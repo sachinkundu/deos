@@ -12,7 +12,7 @@ The design provides a small Python-first boundary for authenticated ingress, dur
 - **Asynchronous boundary:** accepted events move through Cloudflare Queues; the HTTP handler only validates, records, and acknowledges the delivery.
 - **Workflow definition:** the first transition map is `RECEIVED -> QUEUED -> REQUIREMENTS_IN_PROGRESS -> AWAITING_HUMAN_APPROVAL`, with explicit `APPROVED` and `REJECTED` outcomes. Project policy selects which Linear state transition starts the flow.
 - **Cloudflare persistence:** D1 stores deliveries, project policy, workflow runs, transitions, and audit records; R2 stores OpenSpec artifacts and evidence packs; Queue provides durable handoff.
-- **Human approval UX:** the workflow posts a Linear comment containing the proposed next action and approval instructions, then waits in `AWAITING_HUMAN_APPROVAL`. A configured Linear state transition or approval command resumes the run; no worker infers approval from the issue text.
+- **Human approval UX:** the workflow moves the issue into the configured Linear board column `Human Approval` and waits in `AWAITING_HUMAN_APPROVAL`. A configured transition out of that column resumes the run as `APPROVED` or `REJECTED`; no worker infers approval from the issue text.
 - **OpenTelemetry first:** ingress, queue consumption, state transitions, and external calls emit OTEL traces/events with correlation IDs so an existing OTEL backend or tool can visualize and query behavior before a custom UI exists.
 - **Python-first modules:** domain logic is separated from Cloudflare binding adapters so the same behavior can run under deterministic tests and the deployed Worker.
 
