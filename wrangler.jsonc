@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "deos-sample-project",
+  "main": "src/entry.py",
+  "compatibility_date": "2026-08-11",
+  "compatibility_flags": ["python_workers"],
+  "account_id": "c68856288112af7698f5be52ea94b96e",
+  "vars": {
+    "LINEAR_PROJECT_IDS": "99426d9b-cda7-4db4-9136-692a95a0b090",
+    "LINEAR_START_TRANSITIONS": "In Progress,Started"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "deos-sample-project",
+      "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "QUEUE",
+        "queue": "deos-sample-project-events"
+      }
+    ]
+  },
+  "r2_buckets": [
+    {
+      "binding": "ARTIFACTS",
+      "bucket_name": "deos-sample-project-artifacts"
+    }
+  ]
+}
