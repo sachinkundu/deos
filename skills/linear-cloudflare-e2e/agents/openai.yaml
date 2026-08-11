@@ -1,0 +1,4 @@
+interface:
+  display_name: "Linear to Cloudflare E2E"
+  short_description: "Prove real Linear webhook delivery"
+  default_prompt: "Use $linear-cloudflare-e2e to verify a genuine Linear webhook reaches the deployed Cloudflare Worker."
