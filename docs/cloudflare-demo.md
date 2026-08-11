@@ -26,3 +26,5 @@ NPM_CONFIG_CACHE=/tmp/deos-npm-cache npx --yes wrangler r2 bucket list 2>&1 | rt
 name:           deos-sample-project-artifacts
 creation_date:  2026-08-11T14:45:46.491Z
 ```
+
+Important boundary: this captured request was generated locally and sent directly to the Worker with a valid Linear-compatible signature. No Linear webhook is currently registered, so this does not yet prove that Linear itself emitted the delivery.
