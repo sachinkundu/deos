@@ -1,0 +1,12 @@
+.DS_Store
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
