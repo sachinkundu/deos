@@ -22,14 +22,17 @@ Do not describe synthetic ingress as end-to-end provider verification.
 
 ## Tool selection
 
-- Use Linear MCP for creating and transitioning test issues.
-- Use Codex Browser for Linear webhook configuration, authenticated UI state,
-  and screenshots.
+- Use Linear MCP by default for creating and transitioning test issues. Use
+  Codex Browser only when a Linear login/configuration screen is required or
+  when a screenshot is needed for visual proof.
 - Use Wrangler or the Cloudflare API—not the browser—for Worker deployment,
   secrets, D1, Queues, and R2. Prefer `CLOUDFLARE_API_TOKEN` loaded from the ignored local
   `.env`; never print or commit it.
 - Use Showboat to capture executable commands and their real remote output.
 - Use the D1 query API as read-only evidence of the delivery record.
+- For every implementation PR, attach the strongest visual proof available:
+  sanitized screenshots of provider configuration and resulting state. Link or
+  embed them in the PR body/comment alongside Showboat/D1 evidence.
 
 ## Linear webhook invariants
 
@@ -43,3 +46,5 @@ Do not describe synthetic ingress as end-to-end provider verification.
 
 For the reusable procedure, read
 [`skills/linear-cloudflare-e2e/SKILL.md`](skills/linear-cloudflare-e2e/SKILL.md).
+For PR packaging and visual evidence, read
+[`skills/pr-demo-proof/SKILL.md`](skills/pr-demo-proof/SKILL.md).

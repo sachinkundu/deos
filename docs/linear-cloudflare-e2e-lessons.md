@@ -103,6 +103,12 @@ Use the smallest evidence that proves each claim:
 - Provider-originated event: issue transition immediately before the new D1
   row.
 
+Use Linear MCP for routine issue creation and transitions. Browser login and
+navigation are occasional setup/visual steps, not the default Linear control
+path. Attach sanitized screenshots to the PR itself—either as committed
+evidence assets or embedded PR comment images—so reviewers can inspect the
+provider configuration and resulting state without reconstructing the run.
+
 Tests remain useful for deterministic behavior, but they are not deployment or
 provider proof.
 

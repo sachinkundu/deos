@@ -19,9 +19,10 @@ Use fakes only for isolated ACL/domain tests.
 ## Required sequence
 
 1. Confirm the deployed endpoint and the target Linear project.
-2. Inspect Linear Settings → API → Webhooks in Codex Browser. Create or verify
-   an enabled Issue webhook pointing at the Worker. Capture a screenshot, but
-   never expose the signing secret.
+2. Use Linear MCP for project/issue operations. Use Codex Browser only to
+   authenticate or inspect Linear Settings → API → Webhooks when UI access is
+   required. Create or verify an enabled Issue webhook pointing at the Worker.
+   Capture a screenshot, but never expose the signing secret.
 3. Store the Linear signing secret in Cloudflare with Wrangler. Cloudflare
    deployment and resource operations belong to Wrangler/API, not Browser. Load the API
    token from the ignored `.env` as `CLOUDFLARE_API_TOKEN`; do not print either
@@ -34,7 +35,9 @@ Use fakes only for isolated ACL/domain tests.
 6. Query remote D1 read-only for a delivery received immediately after the
    transition. Require `classification = relevant` and a fresh delivery ID.
 7. Capture the issue's resulting state and webhook configuration with Codex
-   Browser. Use Showboat to record the D1 query and remote response.
+   Browser only when visual proof is needed. Use Showboat to record the D1
+   query and remote response, then attach the screenshots and artifact to the
+   PR.
 
 ## Acceptance evidence
 
