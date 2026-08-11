@@ -136,7 +136,7 @@ class LinearIngress:
             return IngressResult(status_code=200, classification=classification)
 
         self._queue.enqueue(event)
-        return IngressResult(status_code=202, classification=classification, event=event)
+        return IngressResult(status_code=200, classification=classification, event=event)
 
 
 def _header(headers: Mapping[str, str], name: str) -> str | None:

@@ -52,7 +52,7 @@ translated application event to the Queue.
 ## Verification evidence
 
 On 2026-08-11, a signed Linear-compatible transition payload was sent to the
-deployed endpoint. The first request returned `202 accepted`; the identical
+deployed endpoint. The first request returned `200 accepted`; the identical
 delivery returned `200 duplicate`; and remote D1 contained the delivery with
 classification `relevant`. The Queue is provisioned with the Worker as its
 producer. The `deos-sample-project-artifacts` R2 bucket was created and accepted

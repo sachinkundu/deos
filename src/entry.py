@@ -78,4 +78,5 @@ class Default(WorkerEntrypoint):
                 "occurred_at": event.occurred_at.isoformat(),
             }
         )
-        return Response("accepted", status=202)
+        # Linear treats any non-200 response as a failed delivery and retries.
+        return Response("accepted", status=200)

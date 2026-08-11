@@ -31,7 +31,7 @@ def test_relevant_delivery_is_translated_recorded_and_enqueued() -> None:
 
     result = ingress.handle(body, headers(body))
 
-    assert result.status_code == 202
+    assert result.status_code == 200
     assert result.classification == DeliveryClassification.RELEVANT
     assert len(queue.events) == 1
     assert queue.events[0].project_id == "project-1"
@@ -59,7 +59,7 @@ def test_duplicate_delivery_is_acknowledged_without_second_enqueue() -> None:
     first = ingress.handle(body, signed_headers)
     duplicate = ingress.handle(body, signed_headers)
 
-    assert first.status_code == 202
+    assert first.status_code == 200
     assert duplicate.status_code == 200
     assert duplicate.classification == DeliveryClassification.DUPLICATE
     assert len(queue.events) == 1
