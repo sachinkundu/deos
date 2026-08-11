@@ -41,9 +41,9 @@ The deployed ingress endpoint is
 ## Linear test project
 
 The test project is `deos-sample-project` with ID
-`99426d9b-cda7-4db4-9136-692a95a0b090`. Configure the Linear webhook to point at
-the deployed Worker URL, use the same signing secret, and send the configured
-`Started` transition for an issue in that project. Linear signs the raw request
+`99426d9b-cda7-4db4-9136-692a95a0b090`. Its enabled Linear Issue webhook points
+at the deployed Worker URL and uses the Worker secret. Move an issue in that
+project to `In Progress` to trigger it. Linear signs the raw request
 body in `Linear-Signature` and sends the millisecond timestamp in
 `Linear-Timestamp`; the Worker verifies both and uses `Linear-Delivery` as the
 idempotency key. The Worker records the delivery in D1 and publishes the
@@ -57,6 +57,8 @@ delivery returned `200 duplicate`; and remote D1 contained the delivery with
 classification `relevant`. The Queue is provisioned with the Worker as its
 producer. The `deos-sample-project-artifacts` R2 bucket was created and accepted
 an uploaded proof object after deployment; it is bound as `env.ARTIFACTS` for
-provenance artifacts. A real Linear webhook registration remains a manual
-Linear setting; the deployed endpoint and project are ready for that
-registration.
+provenance artifacts.
+
+After webhook registration, Linear MCP transitioned `SAC-73` to `In Progress`.
+Remote D1 recorded the resulting Linear delivery at `2026-08-11T16:08:23Z`
+with classification `relevant`.
