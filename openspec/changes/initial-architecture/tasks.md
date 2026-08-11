@@ -1,7 +1,8 @@
 ## Tasks
 
-- [ ] Create a deterministic Python project skeleton with domain interfaces for ingress, queue, state, and artifact storage, plus tests using fakes only.
-- [ ] Implement signature/timestamp validation, event classification, and delivery deduplication behind the ingress interface.
-- [ ] Implement normalized-event dispatch and auditable workflow transitions, including an explicit approval state.
-- [ ] Add artifact provenance records and deterministic evidence capture for workflow runs.
-- [ ] Add adapter boundaries for Cloudflare bindings without enabling live integrations in the test suite.
+- [ ] Create a Python-first Cloudflare Worker skeleton with domain interfaces for ingress, queue, state, telemetry, and artifact storage, plus deterministic tests using fakes.
+- [ ] Implement the Linear webhook ACL, signature/timestamp validation, event classification, and D1 delivery deduplication.
+- [ ] Implement the first workflow definition and durable dispatch through Cloudflare Queues and D1, including the Linear approval UX.
+- [ ] Add OpenTelemetry-compatible correlation across ingress, queue, transitions, and external calls.
+- [ ] Deploy the Worker with Queue, D1, and R2 bindings and verify one end-to-end test Linear transition without live agent execution.
+- [ ] Add R2 artifact provenance records and deterministic evidence capture for workflow runs.

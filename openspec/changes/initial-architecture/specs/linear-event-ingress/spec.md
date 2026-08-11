@@ -6,7 +6,7 @@ Receive Linear webhook events safely and turn relevant, authenticated deliveries
 
 ### Requirement: Authenticate and classify deliveries
 
-The ingress boundary SHALL validate the raw request, reject invalid or stale signatures, and classify accepted events as relevant, irrelevant, or duplicate.
+The ingress boundary SHALL validate the raw request, reject invalid or stale signatures, and use an anti-corruption layer (ACL) to classify accepted events as relevant, irrelevant, or duplicate.
 
 #### Scenario: Invalid delivery
 
@@ -16,7 +16,12 @@ The ingress boundary SHALL validate the raw request, reject invalid or stale sig
 #### Scenario: Relevant delivery
 
 - **WHEN** a valid event matches the configured project and transition policy
-- **THEN** the boundary records the delivery and enqueues a normalized event
+- **THEN** the boundary records the delivery and enqueues an application event containing the source delivery id, issue, project, transition, actor, and occurrence time
+
+#### Scenario: Provider payload translation
+
+- **WHEN** the ACL receives a Linear webhook payload
+- **THEN** it produces the application event without exposing provider-specific fields to workflow logic
 
 ### Requirement: Acknowledge safely
 
@@ -26,4 +31,3 @@ The ingress boundary SHALL acknowledge accepted, irrelevant, and duplicate deliv
 
 - **WHEN** a valid delivery identifier has already been recorded
 - **THEN** the boundary returns a successful duplicate response and does not enqueue a second event
-
