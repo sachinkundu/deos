@@ -3,6 +3,25 @@
 This document records what was built and what the live deployment taught us.
 It is intentionally focused on evidence and repeatable operating practice.
 
+## The main process failures
+
+The most important lesson is that implementation started before the external
+contracts and live path were verified:
+
+1. The Linear webhook contract was not checked first. That led to incorrect
+   assumptions about the signature input, timestamp units, payload shape, and
+   required response code.
+2. Fakes and deterministic unit tests were implemented before checking whether
+   an actual Linear webhook could be registered and exercised. They validated
+   application logic but created false confidence about integration behavior.
+3. Browser tooling was initially used for Cloudflare operations even though
+   Wrangler was the correct authenticated CLI for deployment, secrets, D1,
+   Queues, and R2.
+
+The prevention rule is: verify the provider contract, prove the real external
+path is available, then implement the smallest slice and use fakes only for
+isolated logic—not as a substitute for live integration proof.
+
 ## What was delivered
 
 - A Python Cloudflare Worker receives Linear Issue webhooks.

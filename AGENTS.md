@@ -2,6 +2,12 @@
 
 ## Demo-first delivery
 
+Before implementing an integration, inspect the provider's primary contract
+and identify whether a real sandbox/test resource can trigger it. Do not infer
+the wire format, signature construction, timestamp units, or response contract
+from a fake payload. Do not treat fakes or unit tests as evidence that the
+provider can reach the deployed system.
+
 For integrations, a passing test suite is not completion evidence. Separate
 these claims explicitly:
 
@@ -19,8 +25,8 @@ Do not describe synthetic ingress as end-to-end provider verification.
 - Use Linear MCP for creating and transitioning test issues.
 - Use Codex Browser for Linear webhook configuration, authenticated UI state,
   and screenshots.
-- Use Wrangler or the Cloudflare API for Worker deployment, secrets, D1,
-  Queues, and R2. Prefer `CLOUDFLARE_API_TOKEN` loaded from the ignored local
+- Use Wrangler or the Cloudflare API—not the browser—for Worker deployment,
+  secrets, D1, Queues, and R2. Prefer `CLOUDFLARE_API_TOKEN` loaded from the ignored local
   `.env`; never print or commit it.
 - Use Showboat to capture executable commands and their real remote output.
 - Use the D1 query API as read-only evidence of the delivery record.
