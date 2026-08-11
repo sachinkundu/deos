@@ -19,8 +19,8 @@ npx wrangler r2 bucket create deos-sample-project-artifacts
 ```
 
 The non-secret resource IDs are recorded in `wrangler.jsonc`; the webhook
-secret is intentionally not committed to this repository. R2 creation is
-currently blocked until R2 is enabled for the Cloudflare account.
+secret is intentionally not committed to this repository. R2 is bound as
+`env.ARTIFACTS` for provenance artifacts.
 
 ## Deploy
 
@@ -55,5 +55,8 @@ On 2026-08-11, a signed Linear-compatible transition payload was sent to the
 deployed endpoint. The first request returned `202 accepted`; the identical
 delivery returned `200 duplicate`; and remote D1 contained the delivery with
 classification `relevant`. The Queue is provisioned with the Worker as its
-producer. A real Linear webhook registration remains a manual Linear setting;
-the deployed endpoint and project are ready for that registration.
+producer. The `deos-sample-project-artifacts` R2 bucket was created and accepted
+an uploaded proof object after deployment; it is bound as `env.ARTIFACTS` for
+provenance artifacts. A real Linear webhook registration remains a manual
+Linear setting; the deployed endpoint and project are ready for that
+registration.

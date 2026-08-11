@@ -24,5 +24,11 @@
         "queue": "deos-sample-project-events"
       }
     ]
-  }
+  },
+  "r2_buckets": [
+    {
+      "binding": "ARTIFACTS",
+      "bucket_name": "deos-sample-project-artifacts"
+    }
+  ]
 }
