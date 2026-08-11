@@ -16,10 +16,14 @@ class Default(WorkerEntrypoint):
         if request.method != "POST":
             return Response("method not allowed", status=405)
 
-        body = bytes(await request.arrayBuffer())
+        # Python Workers expose the Request body through the standard text()
+        # promise; re-encode it before HMAC verification so the verified bytes
+        # are the same bytes parsed by the ACL.
+        body = (await request.text()).encode()
         headers = {
             "linear-signature": request.headers.get("linear-signature") or "",
             "linear-timestamp": request.headers.get("linear-timestamp") or "",
+            "linear-delivery": request.headers.get("linear-delivery") or "",
         }
         config = LinearIngressConfig(
             signing_secret=self.env.LINEAR_WEBHOOK_SECRET.encode(),
@@ -38,7 +42,7 @@ class Default(WorkerEntrypoint):
         now = datetime.now(timezone.utc)
         try:
             acl.verify(body, headers, now)
-            event, relevant = acl.translate(body)
+            event, relevant = acl.translate(body, headers["linear-delivery"] or None)
         except InvalidWebhook:
             return Response("invalid webhook", status=400)
 

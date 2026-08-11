@@ -49,19 +49,21 @@ class LinearWebhookACL:
         if timestamp_text is None or signature is None:
             raise InvalidWebhook("missing Linear signature headers")
         try:
-            timestamp = datetime.fromtimestamp(int(timestamp_text), tz=timezone.utc)
+            timestamp_ms = int(timestamp_text)
         except (TypeError, ValueError, OverflowError) as exc:
             raise InvalidWebhook("invalid Linear timestamp") from exc
+        timestamp = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
         if abs(now - timestamp) > self._config.max_timestamp_age:
             raise InvalidWebhook("stale Linear timestamp")
 
-        signed_payload = timestamp_text.encode("ascii") + b"." + body
-        expected = hmac.new(self._config.signing_secret, signed_payload, hashlib.sha256).hexdigest()
+        expected = hmac.new(self._config.signing_secret, body, hashlib.sha256).hexdigest()
         supplied = signature.removeprefix("sha256=")
         if not hmac.compare_digest(expected, supplied):
             raise InvalidWebhook("invalid Linear signature")
 
-    def translate(self, body: bytes) -> tuple[ApplicationEvent, bool]:
+    def translate(
+        self, body: bytes, delivery_id: str | None = None
+    ) -> tuple[ApplicationEvent, bool]:
         try:
             payload: Any = json.loads(body)
         except json.JSONDecodeError as exc:
@@ -72,11 +74,15 @@ class LinearWebhookACL:
         data = _object(payload, "data")
         project = _object(data, "project")
         state = _object(data, "state")
-        delivery_id = _string(payload, "id")
+        delivery_id = delivery_id or _first_string(payload, "webhookId", "id")
         issue_id = _string(data, "id")
         project_id = _string(project, "id")
         transition = _first_string(state, "name", "type")
-        occurred_at = _parse_datetime(_first_string(payload, "updatedAt", "createdAt"))
+        occurred_at = _parse_datetime(
+            _first_string(data, "updatedAt", "createdAt")
+            if isinstance(data, dict)
+            else _first_string(payload, "updatedAt", "createdAt")
+        )
         actor = payload.get("actor")
         actor_id = _string(actor, "id") if isinstance(actor, dict) and actor.get("id") else None
         event = ApplicationEvent(
@@ -114,7 +120,7 @@ class LinearIngress:
         received_at = self._now()
         try:
             self._acl.verify(body, headers, received_at)
-            event, relevant = self._acl.translate(body)
+            event, relevant = self._acl.translate(body, _header(headers, "linear-delivery"))
         except InvalidWebhook:
             return IngressResult(status_code=400)
 

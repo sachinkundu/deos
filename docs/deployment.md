@@ -15,19 +15,18 @@ with Cloudflare and create the resources:
 npx wrangler login
 npx wrangler d1 create deos-sample-project
 npx wrangler queues create deos-sample-project-events
+npx wrangler r2 bucket create deos-sample-project-artifacts
 ```
 
-Copy `wrangler.toml.example` to a private local config if desired. The D1
-database ID returned by the create command is passed as
-`DEOS_D1_DATABASE_ID`; it is intentionally not committed to this repository.
+The non-secret resource IDs are recorded in `wrangler.jsonc`; the webhook
+secret is intentionally not committed to this repository. R2 creation is
+currently blocked until R2 is enabled for the Cloudflare account.
 
 ## Deploy
 
-Set the account, database, and secret values in the environment, then run:
+Set the webhook secret in the environment, then run:
 
 ```sh
-export CLOUDFLARE_ACCOUNT_ID="..."
-export DEOS_D1_DATABASE_ID="..."
 export LINEAR_WEBHOOK_SECRET="..."
 ./scripts/deploy-cloudflare.sh
 ```
@@ -36,10 +35,25 @@ The script applies the D1 migration, uploads the secret through Wrangler, and
 deploys the Python Worker through `pywrangler`. It never writes the secret to a
 tracked file.
 
+The deployed ingress endpoint is
+`https://deos-sample-project.skundu.workers.dev`.
+
 ## Linear test project
 
 The test project is `deos-sample-project` with ID
 `99426d9b-cda7-4db4-9136-692a95a0b090`. Configure the Linear webhook to point at
 the deployed Worker URL, use the same signing secret, and send the configured
-`Started` transition for an issue in that project. The Worker records the
-delivery in D1 and publishes the translated application event to the Queue.
+`Started` transition for an issue in that project. Linear signs the raw request
+body in `Linear-Signature` and sends the millisecond timestamp in
+`Linear-Timestamp`; the Worker verifies both and uses `Linear-Delivery` as the
+idempotency key. The Worker records the delivery in D1 and publishes the
+translated application event to the Queue.
+
+## Verification evidence
+
+On 2026-08-11, a signed Linear-compatible transition payload was sent to the
+deployed endpoint. The first request returned `202 accepted`; the identical
+delivery returned `200 duplicate`; and remote D1 contained the delivery with
+classification `relevant`. The Queue is provisioned with the Worker as its
+producer. A real Linear webhook registration remains a manual Linear setting;
+the deployed endpoint and project are ready for that registration.

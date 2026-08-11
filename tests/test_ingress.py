@@ -82,14 +82,14 @@ def test_invalid_signature_and_stale_timestamp_are_rejected() -> None:
 def make_body(project_id: str, state: str) -> bytes:
     return json.dumps(
         {
-            "id": "delivery-1",
-            "updatedAt": "2026-08-11T10:00:00Z",
-            "actor": {"id": "actor-1"},
+            "webhookId": "webhook-1",
             "data": {
                 "id": "issue-1",
+                "updatedAt": "2026-08-11T10:00:00Z",
                 "project": {"id": project_id},
                 "state": {"name": state},
             },
+            "actor": {"id": "actor-1"},
         },
         separators=(",", ":"),
     ).encode()
@@ -97,7 +97,7 @@ def make_body(project_id: str, state: str) -> bytes:
 
 def headers(body: bytes, timestamp: datetime | None = None) -> dict[str, str]:
     moment = timestamp or NOW
-    timestamp_text = str(int(moment.timestamp()))
-    signed = timestamp_text.encode() + b"." + body
+    timestamp_text = str(int(moment.timestamp() * 1000))
+    signed = body
     signature = hmac.new(SECRET, signed, hashlib.sha256).hexdigest()
     return {"Linear-Timestamp": timestamp_text, "Linear-Signature": signature}
