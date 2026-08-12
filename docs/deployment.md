@@ -62,5 +62,20 @@ an uploaded proof object after deployment; it is bound as `env.ARTIFACTS` for
 provenance artifacts.
 
 After webhook registration, Linear MCP transitioned `SAC-73` to `In Progress`.
-Remote D1 recorded the resulting Linear delivery at `2026-08-11T16:08:23Z`
-with classification `relevant`.
+Remote D1 recorded the resulting Linear delivery with classification `relevant`.
+
+## First workflow
+
+The first workflow is deliberately small and explicit:
+
+```text
+RECEIVED -> QUEUED -> REQUIREMENTS_IN_PROGRESS -> AWAITING_HUMAN_APPROVAL
+                                                    |-> APPROVED
+                                                    `-> REJECTED
+```
+
+A new relevant event creates the run and moves the Linear issue to the
+configured approval state. A later actor-driven `In Progress` event approves
+the waiting run; a `Canceled` event rejects it. Replayed deliveries reuse the
+existing `(project_id, issue_id)` run and the transition identity index prevents
+duplicate audit rows.

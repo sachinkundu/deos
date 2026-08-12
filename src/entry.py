@@ -36,7 +36,11 @@ class Default(WorkerEntrypoint):
             ),
             relevant_transitions=frozenset(
                 transition
-                for transition in self.env.LINEAR_START_TRANSITIONS.split(",")
+                for transition in (
+                    self.env.LINEAR_START_TRANSITIONS.split(",")
+                    + self.env.LINEAR_APPROVAL_TRANSITIONS.split(",")
+                    + self.env.LINEAR_REJECTION_TRANSITIONS.split(",")
+                )
                 if transition
             ),
         )

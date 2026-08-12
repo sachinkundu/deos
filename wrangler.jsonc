@@ -7,7 +7,9 @@
   "account_id": "c68856288112af7698f5be52ea94b96e",
   "vars": {
     "LINEAR_PROJECT_IDS": "99426d9b-cda7-4db4-9136-692a95a0b090",
-    "LINEAR_START_TRANSITIONS": "In Progress,Started"
+    "LINEAR_START_TRANSITIONS": "In Progress,Started",
+    "LINEAR_APPROVAL_TRANSITIONS": "In Progress,Started",
+    "LINEAR_REJECTION_TRANSITIONS": "Canceled"
   },
   "d1_databases": [
     {

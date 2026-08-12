@@ -33,6 +33,8 @@ interface QueueBatch<T> {
   messages: QueueMessage<T>[];
 }
 
+import { decideWorkflowAction, type WorkflowState } from "./workflow";
+
 const runIdFor = (event: QueueBody): string =>
   `workflow:${event.project_id}:${event.issue_id}`;
 
@@ -61,14 +63,16 @@ const moveIssueToHumanApproval = async (event: QueueBody, env: Env): Promise<voi
   }
 };
 
-const recordWorkflow = async (event: QueueBody, env: Env): Promise<void> => {
+const recordWorkflow = async (event: QueueBody, env: Env): Promise<"started" | "approved" | "rejected" | "ignored"> => {
   const existing = await env.DB.prepare(
-    "SELECT run_id FROM workflow_runs WHERE project_id = ? AND issue_id = ?",
+    "SELECT run_id, current_state FROM workflow_runs WHERE project_id = ? AND issue_id = ?",
   )
     .bind(event.project_id, event.issue_id)
-    .first<{ run_id: string }>();
+    .first<{ run_id: string; current_state: WorkflowState }>();
   const runId = existing?.run_id ?? runIdFor(event);
   const occurredAt = new Date(event.occurred_at).toISOString();
+  const action = decideWorkflowAction(event, existing?.current_state ?? null);
+  if (action.kind === "ignore") return "ignored";
 
   await env.DB.prepare(
     "INSERT OR IGNORE INTO workflow_runs (run_id, project_id, issue_id, current_state, correlation_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -76,17 +80,20 @@ const recordWorkflow = async (event: QueueBody, env: Env): Promise<void> => {
     .bind(runId, event.project_id, event.issue_id, "awaiting_human_approval", event.event_id, occurredAt, occurredAt)
     .run();
 
-  for (const [previousState, nextState, cause] of [
-    ["received", "queued", "queue-consumed"],
-    ["queued", "requirements_in_progress", "workflow-started"],
-    ["requirements_in_progress", "awaiting_human_approval", "approval-required"],
-  ]) {
+  const transitions = action.kind === "start" ? action.transitions : [action.transition];
+  for (const [previousState, nextState, cause] of transitions) {
     await env.DB.prepare(
       "INSERT OR IGNORE INTO workflow_transitions (run_id, previous_state, next_state, cause, actor_id, occurred_at) VALUES (?, ?, ?, ?, ?, ?)",
     )
       .bind(runId, previousState, nextState, cause, event.actor_id ?? null, occurredAt)
       .run();
   }
+  if (action.kind !== "start") {
+    await env.DB.prepare("UPDATE workflow_runs SET current_state = ?, updated_at = ? WHERE run_id = ?")
+      .bind(action.transition[1], occurredAt, runId)
+      .run();
+  }
+  return action.kind === "start" ? "started" : action.kind;
 };
 
 export default {
@@ -99,8 +106,8 @@ export default {
 
     for (const message of batch.messages) {
       const event = message.body;
-      await recordWorkflow(event, env);
-      await moveIssueToHumanApproval(event, env);
+      const action = await recordWorkflow(event, env);
+      if (action === "started") await moveIssueToHumanApproval(event, env);
     }
   },
 };
