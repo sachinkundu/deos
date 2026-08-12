@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Mapping
 
-from .ports import ApplicationEvent, Delivery, EventQueue, Transition
+from .ports import ApplicationEvent, Delivery, EventQueue, Transition, WorkflowRun, WorkflowState
 
 
 @dataclass
@@ -23,6 +23,7 @@ class FakeQueue(EventQueue):
 class FakeStateStore:
     deliveries: dict[str, Delivery] = field(default_factory=dict)
     transitions: list[Transition] = field(default_factory=list)
+    runs: dict[str, WorkflowRun] = field(default_factory=dict)
 
     def record_delivery(self, delivery: Delivery) -> bool:
         if delivery.delivery_id in self.deliveries:
@@ -32,6 +33,26 @@ class FakeStateStore:
 
     def record_transition(self, transition: Transition) -> None:
         self.transitions.append(transition)
+
+    def get_run(self, project_id: str, issue_id: str) -> WorkflowRun | None:
+        return next(
+            (run for run in self.runs.values()
+             if run.project_id == project_id and run.issue_id == issue_id),
+            None,
+        )
+
+    def find_run(self, run_id: str, state: WorkflowState) -> WorkflowRun | None:
+        run = self.runs.get(run_id)
+        return run if run is not None and run.current_state == state else None
+
+    def create_run(self, run: WorkflowRun) -> bool:
+        if self.get_run(run.project_id, run.issue_id) is not None:
+            return False
+        self.runs[run.run_id] = run
+        return True
+
+    def update_run(self, run: WorkflowRun) -> None:
+        self.runs[run.run_id] = run
 
 
 @dataclass

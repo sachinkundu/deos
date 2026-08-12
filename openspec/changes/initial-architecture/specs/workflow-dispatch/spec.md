@@ -6,7 +6,7 @@ Convert accepted Linear events into durable workflow commands while keeping even
 
 ### Requirement: Dispatch accepted events
 
-The dispatcher SHALL consume application events, load the applicable project policy, and create an auditable workflow command or transition.
+The dispatcher SHALL consume application events from a provider-supported Queue consumer, load the applicable project policy, and create an auditable workflow command or transition. The consumer MAY be a separate Worker from HTTP ingress when required by runtime binding support.
 
 #### Scenario: Accepted event
 
@@ -22,3 +22,8 @@ The dispatcher SHALL consume application events, load the applicable project pol
 
 - **WHEN** the event cannot be mapped to a configured project
 - **THEN** it records the failure in the D1 delivery/audit record and performs no agent action
+
+#### Scenario: Provider-backed queue consumption
+
+- **WHEN** a relevant provider-originated delivery is enqueued and consumed by the deployed Queue consumer
+- **THEN** the consumer records durable consumption evidence and persists the workflow run and its state transitions in D1

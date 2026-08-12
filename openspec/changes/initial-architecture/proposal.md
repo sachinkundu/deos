@@ -10,7 +10,7 @@ deos needs a small, explicit architecture before implementation begins. The firs
 - Define a dispatcher and workflow state model for selecting the next action.
 - Persist project configuration, delivery IDs, workflow runs, transitions, and audit history.
 - Define where OpenSpec artifacts and evidence packs are stored.
-- Establish a Python-first implementation boundary on a deployed Cloudflare Worker, using Python Workers where the required bindings and dependencies are sufficiently supported.
+- Establish a Python-first implementation boundary for domain logic and HTTP ingress, while allowing a separate TypeScript Cloudflare Worker adapter where a required binding is not operationally supported by Python Workers.
 - Keep human approval as an explicit workflow state that automation cannot silently bypass.
 - Exclude live agent execution from the first slice; exercise the real Linear webhook and Cloudflare Worker path with a test project and safe downstream fakes.
 
@@ -32,5 +32,5 @@ None.
 - Cloudflare Worker and binding configuration for Queues, D1, R2, and potentially Workflows or Durable Objects.
 - Python project tooling managed with `uv`, `pyproject.toml`, Ruff, Pyright, and Pytest.
 - Linear webhook and GraphQL API integration.
-- Deterministic tests using fake webhook payloads, clocks, queues, and downstream clients, plus one deployed Cloudflare smoke path.
+- Deterministic tests using fake webhook payloads, clocks, queues, and downstream clients, plus provider-originated deployed Cloudflare evidence through the real Queue consumer.
 - Future agent runners and VCS integrations, which remain behind explicit interfaces in this first architecture.

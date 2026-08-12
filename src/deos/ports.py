@@ -6,11 +6,12 @@ Linear. Provider-specific translation belongs in the anti-corruption layer.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from hashlib import sha256
-from typing import Mapping, Protocol, Sequence
+from typing import Protocol
 
 
 class DeliveryClassification(StrEnum):
@@ -26,6 +27,17 @@ class WorkflowState(StrEnum):
     AWAITING_HUMAN_APPROVAL = "awaiting_human_approval"
     APPROVED = "approved"
     REJECTED = "rejected"
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowRun:
+    run_id: str
+    project_id: str
+    issue_id: str
+    current_state: WorkflowState
+    correlation_id: str
+    created_at: datetime
+    updated_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +67,7 @@ class Delivery:
         body: bytes,
         received_at: datetime,
         classification: DeliveryClassification,
-    ) -> "Delivery":
+    ) -> Delivery:
         return cls(delivery_id, sha256(body).hexdigest(), received_at, classification)
 
 
@@ -91,6 +103,19 @@ class StatePort(Protocol):
         ...
 
     def record_transition(self, transition: Transition) -> None:
+        ...
+
+    def get_run(self, project_id: str, issue_id: str) -> WorkflowRun | None:
+        ...
+
+    def create_run(self, run: WorkflowRun) -> bool:
+        """Create a run, returning false when the issue already has one."""
+        ...
+
+    def update_run(self, run: WorkflowRun) -> None:
+        ...
+
+    def find_run(self, run_id: str, state: WorkflowState) -> WorkflowRun | None:
         ...
 
 
