@@ -37,6 +37,15 @@ consumer additionally requires a Linear API key uploaded as `LINEAR_API_KEY`;
 it uses `LINEAR_HUMAN_APPROVAL_STATE_ID` to move consumed issues into the
 approval state. Secrets are never written to tracked files.
 
+This direct Queue-consumer credential is a temporary stopgap. The target design centralizes
+Linear writes in a capability gateway. Until that exists, provide credentials only to the Worker
+or sandbox that requires them, using platform secret storage or short-lived runtime injection.
+
+GitHub sandbox access should use a short-lived, repository-scoped GitHub App installation token
+for direct pushes or PR operations when needed. Do not provide the GitHub App private key or a
+broad long-lived PAT. GitHub webhook events should eventually flow to the control plane for
+comment and review reconciliation.
+
 The deployed ingress endpoint is
 `https://deos-sample-project.skundu.workers.dev`.
 
