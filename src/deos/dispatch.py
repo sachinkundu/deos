@@ -7,7 +7,14 @@ from dataclasses import replace
 from datetime import datetime
 from uuid import NAMESPACE_URL, uuid5
 
-from .ports import ApplicationEvent, StatePort, Transition, WorkflowRun, WorkflowState
+from .ports import (
+    ApplicationEvent,
+    StatePort,
+    TelemetryPort,
+    Transition,
+    WorkflowRun,
+    WorkflowState,
+)
 
 
 class InvalidTransition(ValueError):
@@ -17,13 +24,24 @@ class InvalidTransition(ValueError):
 class WorkflowDispatcher:
     """Apply the first workflow definition to an accepted application event."""
 
-    def __init__(self, state: StatePort, now: Callable[[], datetime]) -> None:
+    def __init__(
+        self,
+        state: StatePort,
+        telemetry: TelemetryPort,
+        now: Callable[[], datetime],
+    ) -> None:
         self._state = state
+        self._telemetry = telemetry
         self._now = now
 
     def dispatch(self, event: ApplicationEvent) -> WorkflowRun:
         existing = self._state.get_run(event.project_id, event.issue_id)
         if existing is not None:
+            self._telemetry.emit(
+                "deos.workflow.run.reused",
+                existing.correlation_id,
+                {"deos.workflow.run.id": existing.run_id},
+            )
             return existing
 
         now = self._now()
@@ -40,7 +58,22 @@ class WorkflowDispatcher:
             existing = self._state.get_run(event.project_id, event.issue_id)
             if existing is None:
                 raise RuntimeError("workflow run creation raced without a readable run")
+            self._telemetry.emit(
+                "deos.workflow.run.reused",
+                existing.correlation_id,
+                {"deos.workflow.run.id": existing.run_id},
+            )
             return existing
+
+        self._telemetry.emit(
+            "deos.workflow.run.created",
+            run.correlation_id,
+            {
+                "deos.workflow.run.id": run.run_id,
+                "deos.issue.id": run.issue_id,
+                "deos.project.id": run.project_id,
+            },
+        )
 
         for next_state, cause in (
             (WorkflowState.QUEUED, "queue-consumed"),
@@ -70,10 +103,14 @@ class WorkflowDispatcher:
     def _find_run(self, run_id: str) -> WorkflowRun:
         # StatePort intentionally keeps lookup narrow for the first slice.
         # Implementations may index by run id while preserving this contract.
-        for state in (WorkflowState.RECEIVED, WorkflowState.QUEUED,
-                      WorkflowState.REQUIREMENTS_IN_PROGRESS,
-                      WorkflowState.AWAITING_HUMAN_APPROVAL, WorkflowState.APPROVED,
-                      WorkflowState.REJECTED):
+        for state in (
+            WorkflowState.RECEIVED,
+            WorkflowState.QUEUED,
+            WorkflowState.REQUIREMENTS_IN_PROGRESS,
+            WorkflowState.AWAITING_HUMAN_APPROVAL,
+            WorkflowState.APPROVED,
+            WorkflowState.REJECTED,
+        ):
             run = self._state.find_run(run_id, state)
             if run is not None:
                 return run
@@ -102,4 +139,14 @@ class WorkflowDispatcher:
             Transition(run.run_id, run.current_state, next_state, cause, actor_id, occurred_at)
         )
         self._state.update_run(updated)
+        self._telemetry.emit(
+            "deos.workflow.transition",
+            run.correlation_id,
+            {
+                "deos.workflow.run.id": run.run_id,
+                "deos.workflow.state.previous": run.current_state.value,
+                "deos.workflow.state.next": next_state.value,
+                "deos.workflow.transition.cause": cause,
+            },
+        )
         return updated

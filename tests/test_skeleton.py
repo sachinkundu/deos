@@ -41,12 +41,12 @@ def test_fake_adapters_preserve_domain_values() -> None:
     state.record_transition(transition)
 
     telemetry = FakeTelemetry()
-    telemetry.emit("delivery.accepted", {"delivery_id": "delivery-1"})
+    telemetry.emit("delivery.accepted", "delivery-1", {"delivery_id": "delivery-1"})
     artifacts = FakeArtifactStore()
     artifacts.put("runs/run-1/proposal.md", b"proposal", {"content_type": "text/markdown"})
 
     assert queue.items() == [event]
     assert list(state.deliveries) == ["delivery-1"]
     assert state.transitions == [transition]
-    assert telemetry.events == [("delivery.accepted", {"delivery_id": "delivery-1"})]
+    assert telemetry.events == [("delivery.accepted", "delivery-1", {"delivery_id": "delivery-1"})]
     assert artifacts.objects["runs/run-1/proposal.md"][0] == b"proposal"

@@ -5,7 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from .ports import ApplicationEvent, Delivery, EventQueue, Transition, WorkflowRun, WorkflowState
+from .ports import (
+    ApplicationEvent,
+    Delivery,
+    EventQueue,
+    TelemetryValue,
+    Transition,
+    WorkflowRun,
+    WorkflowState,
+)
 
 
 @dataclass
@@ -36,8 +44,11 @@ class FakeStateStore:
 
     def get_run(self, project_id: str, issue_id: str) -> WorkflowRun | None:
         return next(
-            (run for run in self.runs.values()
-             if run.project_id == project_id and run.issue_id == issue_id),
+            (
+                run
+                for run in self.runs.values()
+                if run.project_id == project_id and run.issue_id == issue_id
+            ),
             None,
         )
 
@@ -57,10 +68,15 @@ class FakeStateStore:
 
 @dataclass
 class FakeTelemetry:
-    events: list[tuple[str, dict[str, str]]] = field(default_factory=list)
+    events: list[tuple[str, str, dict[str, TelemetryValue]]] = field(default_factory=list)
 
-    def emit(self, name: str, attributes: Mapping[str, str]) -> None:
-        self.events.append((name, dict(attributes)))
+    def emit(
+        self,
+        name: str,
+        correlation_id: str,
+        attributes: Mapping[str, TelemetryValue],
+    ) -> None:
+        self.events.append((name, correlation_id, dict(attributes)))
 
 
 @dataclass

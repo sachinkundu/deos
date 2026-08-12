@@ -88,3 +88,21 @@ configured approval state. A later actor-driven `In Progress` event approves
 the waiting run; a `Canceled` event rejects it. Replayed deliveries reuse the
 existing `(project_id, issue_id)` run and the transition identity index prevents
 duplicate audit rows.
+
+## Telemetry correlation
+
+Both Worker configurations enable persisted logs and automatic traces at 100%
+sampling for this low-volume test deployment. Application events follow the
+OpenTelemetry Log Data Model and carry the same `deos.correlation.id` from the
+Linear delivery through ingress, Queue publication and consumption, workflow
+transitions, and the Linear issue-update call.
+
+Use `deos.correlation.id` as the cross-Worker query key in Workers
+Observability or an OTLP destination. The event records also include stable,
+namespaced attributes for delivery, issue, project, run, state, and transition
+cause. No credential, webhook body, or Linear API response body is logged.
+
+The deterministic tests prove event shape and propagation through the domain
+and Queue-consumer adapters. Live observability evidence requires a separately
+approved deployment and provider-originated Linear transition; this task does
+not claim that proof.

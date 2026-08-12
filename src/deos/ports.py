@@ -11,7 +11,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from hashlib import sha256
-from typing import Protocol
+from typing import Protocol, TypeAlias
+
+TelemetryValue: TypeAlias = str | bool | int | float
 
 
 class DeliveryClassification(StrEnum):
@@ -84,15 +86,13 @@ class Transition:
 class IngressPort(Protocol):
     """Accept raw provider input and return a canonical event or classification."""
 
-    def accept(self, body: bytes, headers: Mapping[str, str]) -> ApplicationEvent | None:
-        ...
+    def accept(self, body: bytes, headers: Mapping[str, str]) -> ApplicationEvent | None: ...
 
 
 class QueuePort(Protocol):
     """Durable handoff boundary, implemented by a Cloudflare Queue adapter later."""
 
-    def enqueue(self, event: ApplicationEvent) -> None:
-        ...
+    def enqueue(self, event: ApplicationEvent) -> None: ...
 
 
 class StatePort(Protocol):
@@ -102,39 +102,37 @@ class StatePort(Protocol):
         """Return false when the delivery id has already been recorded."""
         ...
 
-    def record_transition(self, transition: Transition) -> None:
-        ...
+    def record_transition(self, transition: Transition) -> None: ...
 
-    def get_run(self, project_id: str, issue_id: str) -> WorkflowRun | None:
-        ...
+    def get_run(self, project_id: str, issue_id: str) -> WorkflowRun | None: ...
 
     def create_run(self, run: WorkflowRun) -> bool:
         """Create a run, returning false when the issue already has one."""
         ...
 
-    def update_run(self, run: WorkflowRun) -> None:
-        ...
+    def update_run(self, run: WorkflowRun) -> None: ...
 
-    def find_run(self, run_id: str, state: WorkflowState) -> WorkflowRun | None:
-        ...
+    def find_run(self, run_id: str, state: WorkflowState) -> WorkflowRun | None: ...
 
 
 class TelemetryPort(Protocol):
-    """OTEL-compatible event boundary, implemented by an adapter later."""
+    """OTEL-compatible event boundary with an explicit cross-system join key."""
 
-    def emit(self, name: str, attributes: Mapping[str, str]) -> None:
-        ...
+    def emit(
+        self,
+        name: str,
+        correlation_id: str,
+        attributes: Mapping[str, TelemetryValue],
+    ) -> None: ...
 
 
 class ArtifactStore(Protocol):
     """R2 artifact boundary, kept injectable for deterministic tests."""
 
-    def put(self, key: str, content: bytes, metadata: Mapping[str, str]) -> None:
-        ...
+    def put(self, key: str, content: bytes, metadata: Mapping[str, str]) -> None: ...
 
 
 class EventQueue(Protocol):
     """Read-only view useful to deterministic queue fakes and consumers."""
 
-    def items(self) -> Sequence[ApplicationEvent]:
-        ...
+    def items(self) -> Sequence[ApplicationEvent]: ...

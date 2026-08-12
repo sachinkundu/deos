@@ -16,6 +16,7 @@ from .ports import (
     DeliveryClassification,
     QueuePort,
     StatePort,
+    TelemetryPort,
 )
 
 
@@ -110,33 +111,61 @@ class LinearIngress:
         acl: LinearWebhookACL,
         state: StatePort,
         queue: QueuePort,
+        telemetry: TelemetryPort,
         now: Callable[[], datetime],
     ) -> None:
         self._acl = acl
         self._state = state
         self._queue = queue
+        self._telemetry = telemetry
         self._now = now
 
     def handle(self, body: bytes, headers: Mapping[str, str]) -> IngressResult:
         received_at = self._now()
+        correlation_id = _header(headers, "linear-delivery") or "unknown"
         try:
             self._acl.verify(body, headers, received_at)
             event, relevant = self._acl.translate(body, _header(headers, "linear-delivery"))
         except InvalidWebhook:
+            self._telemetry.emit(
+                "deos.ingress.rejected",
+                correlation_id,
+                {"error.type": "invalid_webhook"},
+            )
             return IngressResult(status_code=400)
+
+        correlation_id = event.source_delivery_id
 
         classification = (
             DeliveryClassification.RELEVANT if relevant else DeliveryClassification.IRRELEVANT
         )
-        delivery = Delivery.from_body(
-            event.source_delivery_id, body, received_at, classification
-        )
+        delivery = Delivery.from_body(event.source_delivery_id, body, received_at, classification)
         if not self._state.record_delivery(delivery):
+            self._telemetry.emit(
+                "deos.ingress.duplicate",
+                correlation_id,
+                {"deos.delivery.id": event.source_delivery_id},
+            )
             return IngressResult(status_code=200, classification=DeliveryClassification.DUPLICATE)
         if not relevant:
+            self._telemetry.emit(
+                "deos.ingress.ignored",
+                correlation_id,
+                {
+                    "deos.delivery.id": event.source_delivery_id,
+                    "deos.project.id": event.project_id,
+                },
+            )
             return IngressResult(status_code=200, classification=classification)
 
         self._queue.enqueue(event)
+        common_attributes = {
+            "deos.delivery.id": event.source_delivery_id,
+            "deos.issue.id": event.issue_id,
+            "deos.project.id": event.project_id,
+        }
+        self._telemetry.emit("deos.queue.published", correlation_id, common_attributes)
+        self._telemetry.emit("deos.ingress.accepted", correlation_id, common_attributes)
         return IngressResult(status_code=200, classification=classification, event=event)
 
 
