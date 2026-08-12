@@ -1,4 +1,0 @@
-interface:
-  display_name: "PR Demo Proof"
-  short_description: "Attach visual proof to PRs"
-  default_prompt: "Use $pr-demo-proof to prepare a reviewable PR with live evidence and visual proof."
