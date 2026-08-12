@@ -31,9 +31,11 @@ export LINEAR_WEBHOOK_SECRET="..."
 ./scripts/deploy-cloudflare.sh
 ```
 
-The script applies the D1 migration, uploads the secret through Wrangler, and
-deploys the Python Worker through `pywrangler`. It never writes the secret to a
-tracked file.
+The script applies the D1 migration, uploads the webhook secret through
+Wrangler, and deploys the Python ingress Worker through `pywrangler`. The Queue
+consumer additionally requires a Linear API key uploaded as `LINEAR_API_KEY`;
+it uses `LINEAR_HUMAN_APPROVAL_STATE_ID` to move consumed issues into the
+approval state. Secrets are never written to tracked files.
 
 The deployed ingress endpoint is
 `https://deos-sample-project.skundu.workers.dev`.

@@ -4,6 +4,10 @@
   "main": "src/queue-consumer.ts",
   "compatibility_date": "2026-08-11",
   "account_id": "c68856288112af7698f5be52ea94b96e",
+  "vars": {
+    "LINEAR_API_URL": "https://api.linear.app/graphql",
+    "LINEAR_HUMAN_APPROVAL_STATE_ID": "71738607-03fd-49f2-b4be-b2aac29ccd13"
+  },
   "d1_databases": [
     {
       "binding": "DB",
