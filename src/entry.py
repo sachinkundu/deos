@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from uuid import NAMESPACE_URL, uuid4, uuid5
+
+from workers import Response, WorkerEntrypoint
 
 from deos.ingress import InvalidWebhook, LinearIngressConfig, LinearWebhookACL
-from deos.ports import Delivery, DeliveryClassification
-from workers import Response, WorkerEntrypoint
+from deos.ports import ApplicationEvent, Delivery, DeliveryClassification
 
 
 class Default(WorkerEntrypoint):
@@ -39,7 +41,7 @@ class Default(WorkerEntrypoint):
             ),
         )
         acl = LinearWebhookACL(config)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         try:
             acl.verify(body, headers, now)
             event, relevant = acl.translate(body, headers["linear-delivery"] or None)
@@ -80,3 +82,57 @@ class Default(WorkerEntrypoint):
         )
         # Linear treats any non-200 response as a failed delivery and retries.
         return Response("accepted", status=200)
+
+    async def queue(self, batch):
+        """Consume accepted events and persist the first workflow transitions."""
+        print("workflow.queue.consume", len(batch.messages))
+        await self.env.DB.prepare(
+            "INSERT INTO queue_consumptions (consumption_id, batch_size, received_at) "
+            "VALUES (?, ?, ?)"
+        ).bind(
+            str(uuid4()),
+            len(batch.messages),
+            datetime.now(UTC).isoformat(),
+        ).run()
+        for message in batch.messages:
+            body = message.body
+            event = ApplicationEvent(
+                event_id=body["event_id"],
+                source_delivery_id=body["source_delivery_id"],
+                issue_id=body["issue_id"],
+                project_id=body["project_id"],
+                transition=body["transition"],
+                actor_id=body.get("actor_id"),
+                occurred_at=datetime.fromisoformat(body["occurred_at"]),
+            )
+            run_id = str(uuid5(NAMESPACE_URL, f"deos:{event.project_id}:{event.issue_id}"))
+            await self.env.DB.prepare(
+                "INSERT OR IGNORE INTO workflow_runs "
+                "(run_id, project_id, issue_id, current_state, correlation_id, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)"
+            ).bind(
+                run_id,
+                event.project_id,
+                event.issue_id,
+                "awaiting_human_approval",
+                event.event_id,
+                event.occurred_at.isoformat(),
+                event.occurred_at.isoformat(),
+            ).run()
+            for previous_state, next_state, cause in (
+                ("received", "queued", "queue-consumed"),
+                ("queued", "requirements_in_progress", "workflow-started"),
+                ("requirements_in_progress", "awaiting_human_approval", "approval-required"),
+            ):
+                await self.env.DB.prepare(
+                    "INSERT OR IGNORE INTO workflow_transitions "
+                    "(run_id, previous_state, next_state, cause, actor_id, occurred_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)"
+                ).bind(
+                    run_id,
+                    previous_state,
+                    next_state,
+                    cause,
+                    event.actor_id,
+                    event.occurred_at.isoformat(),
+                ).run()

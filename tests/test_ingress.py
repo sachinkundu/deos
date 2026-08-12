@@ -7,7 +7,6 @@ from deos.fakes import FakeQueue, FakeStateStore
 from deos.ingress import LinearIngress, LinearIngressConfig, LinearWebhookACL
 from deos.ports import DeliveryClassification
 
-
 SECRET = b"test-secret"
 NOW = datetime(2026, 8, 11, 10, 0, tzinfo=UTC)
 

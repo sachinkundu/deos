@@ -5,9 +5,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Mapping
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from .ports import (
     ApplicationEvent,
@@ -52,7 +53,7 @@ class LinearWebhookACL:
             timestamp_ms = int(timestamp_text)
         except (TypeError, ValueError, OverflowError) as exc:
             raise InvalidWebhook("invalid Linear timestamp") from exc
-        timestamp = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
+        timestamp = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC)
         if abs(now - timestamp) > self._config.max_timestamp_age:
             raise InvalidWebhook("stale Linear timestamp")
 
@@ -171,9 +172,9 @@ def _first_string(value: Any, *keys: str) -> str:
 
 def _parse_datetime(value: str) -> datetime:
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError as exc:
         raise InvalidWebhook("invalid event timestamp") from exc
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
