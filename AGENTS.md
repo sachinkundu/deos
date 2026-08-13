@@ -44,7 +44,7 @@ Do not describe synthetic ingress as end-to-end provider verification.
 - Configure the filter using actual Linear state names. This workspace uses
   `In Progress`; `Started` is not the displayed status name.
 
-For the reusable procedure, read
-[`skills/linear-cloudflare-e2e/SKILL.md`](skills/linear-cloudflare-e2e/SKILL.md).
-For PR packaging and visual evidence, read
-[`skills/pr-demo-proof/SKILL.md`](skills/pr-demo-proof/SKILL.md).
+The reusable integration procedure and PR evidence-packaging rules are maintained
+in [`docs/linear-cloudflare-e2e-lessons.md`](docs/linear-cloudflare-e2e-lessons.md).
+Follow its evidence-layering guidance and repeatable runbook; the former local
+`skills/` copies were removed and must not be referenced.
