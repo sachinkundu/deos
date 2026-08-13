@@ -44,18 +44,18 @@ The system SHALL keep observations for repeated processing associated with the o
 #### Scenario: Previously handled delivery is observed again
 
 - **WHEN** the system observes a provider delivery that it has already handled
-- **THEN** telemetry identifies the repeated delivery under the original correlation identifier rather than presenting it as a new workflow
+- **THEN** the delivery is ignored without starting or advancing another workflow, and telemetry records only a duplicate outcome under the original correlation identifier
 
 ### Requirement: Telemetry excludes sensitive data
 
-Telemetry MUST NOT expose webhook signing secrets, API tokens, authorization headers, raw signed request bodies, or unapproved provider payload fields.
+Telemetry MUST NOT expose webhook signing secrets, API tokens, authorization headers, or raw signed request bodies. Provider-derived attributes MUST be limited to the Linear delivery, issue, and project identifiers; telemetry MUST NOT include issue titles, descriptions, comments, user details, or other provider payload fields. Error details MUST use service-authored categories rather than raw dependency responses.
 
 #### Scenario: Operator inspects workflow telemetry
 
 - **WHEN** an operator reads observations from successful and failed workflow paths
 - **THEN** event names, attributes, and error details contain none of the forbidden sensitive data
 
-#### Scenario: Provider error contains sensitive material
+#### Scenario: External dependency fails
 
-- **WHEN** an external dependency returns an error containing request or credential material
-- **THEN** telemetry exposes a safe error classification instead of the unfiltered provider response
+- **WHEN** an external dependency reports a failure
+- **THEN** telemetry records a service-authored error category and does not write the dependency's raw response
