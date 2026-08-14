@@ -39,7 +39,7 @@ Ingress assigns the identifier after authentication and ACL translation:
 
 If inserting a delivery reports a duplicate, ingress reads the stored delivery correlation identifier and emits one terminal `duplicate` observation. It returns HTTP 200 and neither publishes another message nor starts or advances workflow state.
 
-The Queue consumer validates that an explicit Queue correlation value matches the deterministic run identifier. For a message published before the producer deployment, it derives the value from the project and issue identifiers. `workflow_runs.run_id` and `workflow_runs.correlation_id` therefore hold the same canonical value; retaining both columns keeps the correlation role explicit at storage and query boundaries.
+The Queue consumer requires an explicit Queue correlation value and validates that it matches the deterministic run identifier. Messages from the old producer are removed from the dedicated test queue before this strict consumer deploys. `workflow_runs.run_id` and `workflow_runs.correlation_id` therefore hold the same canonical value; retaining both columns keeps the correlation role explicit at storage and query boundaries.
 
 ### 2. One logical event envelope is implemented in both runtimes
 
@@ -54,10 +54,10 @@ Python ingress and the TypeScript Queue consumer will each have a small adapter 
 | `deos.workflow.correlation_id` | yes | Stable workflow correlation identifier |
 | `deos.workflow.stage` | yes | Closed stage name |
 | `deos.workflow.outcome` | yes | `started`, `succeeded`, `failed`, or `duplicate` |
-| `linear.delivery.id` | when available | Current provider delivery identifier |
-| `linear.issue.id` | when available | Related Linear issue identifier |
-| `linear.project.id` | when available | Related Linear project identifier |
-| `deos.workflow.run_id` | when available | Durable workflow run identifier |
+| `linear.delivery.id` | yes | Current provider delivery identifier |
+| `linear.issue.id` | yes | Related Linear issue identifier |
+| `linear.project.id` | yes | Related Linear project identifier |
+| `deos.workflow.run_id` | yes | Durable workflow run identifier |
 | `messaging.message.id` | Queue only | Cloudflare-generated Queue message identifier |
 | `deos.workflow.attempt.number` | Queue only | Cloudflare Queue delivery attempt, starting at 1 |
 | `error.type` | failed only | Closed, service-authored failure category |
@@ -73,7 +73,7 @@ For each fallible post-admission stage, the service emits `started` before the o
 - Queue publication: `queue.publish`.
 - Each Queue message attempt: `queue.consume`, including message ID and attempt number.
 - Each committed D1 state change: `workflow.transition`, emitted as succeeded only after the write completes.
-- The outbound Linear mutation: `linear.issue_update`, with failure categorized before the typed failure is rethrown so Queue retry behavior is unchanged.
+- The outbound Linear mutation: `linear.issue_update`, with failure categorized before the typed failure is rethrown so Cloudflare can deliver another Queue attempt. This telemetry change does not claim that the current state-first workflow logic will re-run the mutation on that attempt.
 
 Delivery persistence emits one terminal `ingress.delivery_record` observation after D1 classifies the attempt: `succeeded`, `duplicate`, or `failed`. This permits the duplicate path to emit only its required duplicate outcome. An irrelevant delivery is still acknowledged but does not create workflow telemetry. Success is never emitted in a `finally` block or before the underlying operation completes.
 
@@ -136,7 +136,7 @@ sequenceDiagram
 ### Minimal data model
 
 - `deliveries`: add nullable `correlation_id`. New rows always set it. Historical rows are backfilled with their delivery ID and are explicitly outside the completeness guarantee for pre-deployment telemetry.
-- Queue body: add `correlation_id`. The consumer temporarily accepts its absence and derives the canonical value from `project_id` and `issue_id` so messages published before the producer deployment remain consumable.
+- Queue body: add required `correlation_id`. The strict consumer does not support messages from the old producer; the dedicated test queue is emptied before that consumer deploys.
 - `workflow_runs`: retain the existing non-null `correlation_id` and normalize it to equal the deterministic `run_id` before the new Workers deploy.
 - `workflow_transitions`: no correlation column is added because a transition joins to its run by `run_id`.
 - Workers Logs: no application-managed table. Each observation carries the query attributes defined above.
@@ -146,10 +146,10 @@ sequenceDiagram
 | Failure | Observable result | Workflow behavior |
 | --- | --- | --- |
 | D1 delivery insert or lookup fails | `ingress.delivery_record` failed with `d1_operation_failed` | Deterministic correlation is still available; request follows existing failure behavior and no false accepted or published observation is emitted |
-| Queue correlation differs from its deterministic run identity | Queue consumption fails with `correlation_mismatch` | Message is not allowed to create or advance workflow state and existing Queue retry behavior applies |
+| Queue correlation is missing or differs from its deterministic run identity | Queue consumption fails with `correlation_mismatch` | This can occur only through a producer/consumer contract defect or a manually injected malformed message after the queue purge; no workflow state is created or advanced |
 | Queue publication fails | `queue.publish` failed with `queue_publish_failed` | Delivery remains durable in D1; no publish success is emitted |
 | Consumer D1 operation fails | Current attempt and stage fail with `d1_operation_failed` | Error is rethrown so Cloudflare Queue retry policy applies |
-| Linear transport, HTTP, or GraphQL failure | `linear.issue_update` fails with the corresponding service category | Typed error is rethrown; raw response text is neither logged nor placed in the error |
+| Linear transport, HTTP, or GraphQL failure | `linear.issue_update` fails with the corresponding service category | The typed error is rethrown and Cloudflare retries the message, but the current state-first consumer does not reliably re-run the Linear mutation and has no post-exhaustion follow-up; that pre-existing workflow correctness gap is outside this telemetry change |
 | Worker stops after a `started` event | No terminal event for that stage | Operator sees the incomplete stage; a later Queue attempt has the same correlation and a higher attempt number |
 | Duplicate provider delivery | One `duplicate` observation under the stored correlation | HTTP 200; no Queue message or workflow transition |
 | Workers Logs unavailable or outside retention | D1 state remains authoritative but the operational narrative is incomplete | No workflow mutation is rolled back or retried solely because telemetry is unavailable |
@@ -161,13 +161,15 @@ sequenceDiagram
 - **Two runtime adapters can drift.** A shared schema fixture and contract tests will assert identical keys, enums, and forbidden-field behavior without forcing a cross-runtime library.
 - **Typed error categories contain less diagnostic detail.** This is intentional: raw dependency responses are excluded. HTTP status may be represented only through an approved bounded value if later required by the spec.
 - **Historical delivery correlations may be approximate.** Backfilling old rows with their own delivery identifiers avoids inventing links. The complete cross-boundary guarantee begins with the deployed schema and adapters.
+- **A Queue retry is not yet a reliable Linear follow-up.** The current consumer persists workflow state before calling Linear, so a later attempt can be classified from that advanced state instead of repeating the failed mutation. This change makes the attempts visible but does not change workflow semantics; remediation requires a separate workflow-correctness change.
 
 ## Migration Plan
 
 1. Apply an additive D1 migration for `deliveries.correlation_id`; leave the column nullable for compatibility, backfill existing delivery rows with `delivery_id`, and normalize existing workflow-run correlations to their deterministic `run_id`.
-2. Deploy the Queue consumer first. It accepts both the new explicit Queue correlation field and legacy messages for which it derives the run identity.
-3. Deploy ingress so new delivery rows and Queue messages always carry the resolved workflow correlation.
-4. Enable Workers Observability logs for both Workers at full sampling, then verify a synthetic correlation query for wiring only.
-5. Trigger a fresh relevant event from Linear and retain the provider configuration, Query Builder result, and matching D1 state as provider-originated proof.
+2. Deploy ingress first so every newly published Queue message carries the required correlation field; the existing consumer ignores the additional property.
+3. Resolve the exact dedicated test queue, inspect it, and purge any remaining pre-deployment messages immediately before deploying the strict consumer. Purge is intentionally limited to this test queue and is treated as irreversible. Messages arriving during the purge are safe because the new ingress already supplies the field.
+4. Deploy the Queue consumer that requires and validates the explicit correlation field.
+5. Enable Workers Observability logs for both Workers at full sampling, then verify a synthetic correlation query for wiring only.
+6. Trigger a fresh relevant event from Linear and retain the provider configuration, Query Builder result, and matching D1 state as provider-originated proof.
 
-Rollback uses the prior Worker versions without reversing the additive D1 column. Older consumers ignore the extra Queue property, and the new consumer remains compatible with messages published before the migration.
+Rollback uses the prior Worker versions without reversing the additive D1 column. Roll back the consumer before ingress: the older consumer ignores the extra Queue property, while the strict consumer must not receive messages from the old producer.
