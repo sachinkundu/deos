@@ -232,8 +232,8 @@ Run coordinator: claim one issue/run and load policy
    leases/timeouts, dead-letter handling, and reconciliation.
 6. `WORKFLOW.md`-style repository-owned policy is not implemented yet; policy is currently split
    between OpenSpec artifacts and Wrangler variables.
-7. OpenTelemetry correlation, R2 provenance, and a useful operator status surface remain open
-   work.
+7. OpenTelemetry correlation is complete. R2 provenance and a useful operator status surface
+   remain open work.
 8. The current webhook ACL only emits the fields needed for the first slice. A Symphony-like
    normalized issue model needs stable identifier, URL, title, labels, blockers, assignee, and
    dispatchability information for scheduling.
