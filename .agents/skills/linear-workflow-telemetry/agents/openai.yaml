@@ -1,0 +1,10 @@
+interface:
+  display_name: "Linear Workflow Telemetry"
+  short_description: "List correlated telemetry for a Linear issue"
+  default_prompt: "Use $linear-workflow-telemetry to list the correlated workflow telemetry for this Linear issue."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "linear"
+      description: "Resolve Linear issue context and transition timestamps"
+
