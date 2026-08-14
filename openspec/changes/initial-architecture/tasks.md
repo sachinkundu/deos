@@ -6,4 +6,3 @@
 - [x] Add OpenTelemetry-compatible correlation across ingress, queue, transitions, and external calls.
 - [x] Deploy the ingress Worker and Queue-consumer Worker with Queue, D1, and R2 bindings and verify one provider-originated end-to-end Linear transition without live agent execution.
 - [ ] Add R2 artifact provenance records and deterministic evidence capture for workflow runs.
-- [ ] Migrate the Python HTTP ingress Worker to TypeScript, update the ingress tests and project tooling accordingly, and require the full test suite, lint/type checks, Wrangler dry runs, and strict OpenSpec validation to pass before completion.
