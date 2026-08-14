@@ -1,6 +1,6 @@
 ---
 name: openspec-review-gated-flow
-description: Run OpenSpec work through small, sequential, human-approved proposal, specification, and design pull requests, then generate tasks internally and implement autonomously to one final PR. Use for non-trivial architecture, integration, or staged OpenSpec changes in this repository, and whenever the user asks for review gates, small planning PRs, easier judgment, or minimum downstream churn.
+description: Run OpenSpec work through small, sequential, human-approved proposal, specification, and design pull requests, then generate tasks internally and implement autonomously to one final PR. Automatically land purely mechanical sync, archive, and checklist reconciliation PRs after validation. Use for non-trivial architecture, integration, or staged OpenSpec changes in this repository, and whenever the user asks for review gates, small planning PRs, easier judgment, or minimum downstream churn.
 ---
 
 # OpenSpec Review-Gated Flow
@@ -24,8 +24,10 @@ together in one final ready-for-review PR.
   change; those fast-forward through multiple artifacts.
 - Open completed stage PRs as ready for review, not draft, unless the user asks
   for a draft or the stage is knowingly incomplete.
-- Do not infer approval from passing checks, review comments, elapsed time, or
-  an approval of a different artifact. Wait for explicit user approval.
+- Do not infer approval for semantic work from passing checks, review comments,
+  elapsed time, or an approval of a different artifact. Wait for explicit user
+  approval except for a PR that satisfies the mechanical reconciliation rules
+  below.
 - Do not modify or split an existing PR retroactively unless the user asks.
 - Never start implementation before the design PR is explicitly approved and
   merged. After that approval, tasks are an internal execution artifact and do
@@ -162,6 +164,37 @@ then implement the checklist autonomously. The final implementation PR must:
 Do not pause merely to expose the task breakdown or individual code slices. If a
 task uncovers a material contradiction in the approved design, stop and request
 that decision rather than silently changing the design.
+
+## Land mechanical reconciliation without approval
+
+Keep one PR per change for traceability, but do not ask for approval or pause on
+a PR whose complete diff is mechanical reconciliation. A qualifying PR may only:
+
+- promote already-approved delta specs into main specs without changing their
+  normative meaning;
+- archive a completed change whose artifacts and tasks are complete;
+- update parent checkboxes or status references to reflect evidence already
+  merged in an approved implementation PR; and
+- remove or close records that are unambiguously superseded by that merged work.
+
+A PR does not qualify if it adds, removes, or reinterprets requirements; changes
+design, task scope, runtime code, configuration, or live provider workflow state
+other than closing an explicitly superseded planning PR; includes an
+incomplete-artifact warning; resolves a conflict using semantic judgment; or mixes
+mechanical cleanup with another change.
+
+For a qualifying PR:
+
+1. Inspect the full diff and cite the approved source artifacts and merged
+   implementation PR that make every edit mechanical.
+2. Run the applicable OpenSpec validation and repository checks.
+3. Open a ready-for-review PR with the classification and evidence in its body.
+4. Wait for required checks to pass, merge it autonomously, refresh the default
+   branch, and continue to the next substantive gate.
+5. Report the merge after completion rather than requesting approval.
+
+If classification is uncertain, checks fail, branch protection requires human
+review, or feedback requests a semantic change, use the normal approval gate.
 
 ## Fast-path exception
 
