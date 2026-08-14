@@ -5,10 +5,18 @@
   "compatibility_date": "2026-08-11",
   "compatibility_flags": ["python_workers"],
   "account_id": "c68856288112af7698f5be52ea94b96e",
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true
+    }
+  },
   "vars": {
     "LINEAR_PROJECT_IDS": "99426d9b-cda7-4db4-9136-692a95a0b090",
-    "LINEAR_START_TRANSITIONS": "In Progress,Started",
-    "LINEAR_APPROVAL_TRANSITIONS": "In Progress,Started",
+    "LINEAR_START_TRANSITIONS": "In Progress",
+    "LINEAR_APPROVAL_TRANSITIONS": "In Progress",
     "LINEAR_REJECTION_TRANSITIONS": "Canceled"
   },
   "d1_databases": [
