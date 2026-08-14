@@ -5,4 +5,3 @@
 - [x] Implement the first workflow definition and durable dispatch through Cloudflare Queues and D1, including the `Human Approval` Linear board-column UX; use the provider-supported Queue-consumer runtime established by E2E validation.
 - [x] Add OpenTelemetry-compatible correlation across ingress, queue, transitions, and external calls.
 - [x] Deploy the ingress Worker and Queue-consumer Worker with Queue, D1, and R2 bindings and verify one provider-originated end-to-end Linear transition without live agent execution.
-- [ ] Add R2 artifact provenance records and deterministic evidence capture for workflow runs.

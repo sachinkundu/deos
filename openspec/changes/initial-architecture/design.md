@@ -1,6 +1,6 @@
 ## Context
 
-This design establishes a deployable Python Cloudflare Worker that receives a real Linear webhook and translates it into an application event. A separate Queue-consumer Worker processes that event asynchronously through Cloudflare Queues, D1, and R2. The first workflow pauses for a human decision in Linear and emits OpenTelemetry-compatible telemetry for tool-level querying.
+This design establishes a deployable Python Cloudflare Worker that receives a real Linear webhook and translates it into an application event. A separate Queue-consumer Worker processes that event asynchronously through Cloudflare Queues and D1. The first workflow pauses for a human decision in Linear and emits OpenTelemetry-compatible telemetry for tool-level querying. The deployed R2 binding and artifact-storage interface are extension points; production artifact provenance and evidence capture are deferred until a concrete producer and consumer are defined.
 
 ## Design intent
 
@@ -11,7 +11,7 @@ The design provides a small Python-first boundary for authenticated ingress and 
 - **Ingress first:** authenticate and deduplicate the raw Linear delivery, then pass it through an anti-corruption layer (ACL) that maps provider fields into the application event model.
 - **Asynchronous boundary:** accepted events move through Cloudflare Queues; the HTTP handler only validates, records, and acknowledges the delivery.
 - **Workflow definition:** the first transition map is `RECEIVED -> QUEUED -> REQUIREMENTS_IN_PROGRESS -> AWAITING_HUMAN_APPROVAL`, with explicit `APPROVED` and `REJECTED` outcomes. Project policy selects which Linear state transition starts the flow.
-- **Cloudflare persistence:** D1 stores deliveries, project policy, workflow runs, transitions, and audit records; R2 stores OpenSpec artifacts and evidence packs; Queue provides durable handoff.
+- **Cloudflare persistence:** D1 stores deliveries, project policy, workflow runs, transitions, and audit records; Queue provides durable handoff. The R2 binding is provisioned for a future artifact contract, but this slice does not write provenance records or evidence packs.
 - **Human approval UX:** the workflow moves the issue into the configured Linear board column `Human Approval` and waits in `AWAITING_HUMAN_APPROVAL`. A configured transition out of that column resumes the run as `APPROVED` or `REJECTED`; no worker infers approval from the issue text.
 - **OpenTelemetry first:** ingress, queue consumption, state transitions, and external calls emit OTEL traces/events with correlation IDs so an existing OTEL backend or tool can visualize and query behavior before a custom UI exists.
 - **Runtime-specific binding adapters:** domain logic is separated from Cloudflare binding adapters. Python remains preferred for ingress and domain modules; the Queue consumer is implemented as a TypeScript Worker because the deployed TypeScript consumer produced durable D1 evidence while the equivalent Python consumer did not.
@@ -25,7 +25,6 @@ flowchart LR
   ingress -->|invalid, irrelevant, duplicate| response[HTTP response]
   queue --> dispatcher[TypeScript dispatcher Worker]
   dispatcher --> state[Cloudflare D1: state and audit]
-  state --> artifacts[Cloudflare R2: artifacts and evidence]
   ingress -.-> telemetry[OpenTelemetry traces and events]
   dispatcher -.-> telemetry
   state -.-> telemetry
@@ -37,7 +36,8 @@ flowchart LR
 - `application_event`: canonical event id, issue id, project id, transition, actor, occurred at, source delivery id.
 - `workflow_run`: project, issue, current state, created and updated timestamps, correlation id.
 - `transition`: run id, previous state, next state, cause, actor, timestamp.
-- `artifact`: run id, capability, kind, R2 location, content hash, created timestamp.
+
+Artifact provenance is intentionally outside this slice's data model.
 
 The ACL owns the mapping from the Linear webhook payload to `application_event`; domain code does not consume provider-specific fields.
 

@@ -9,7 +9,7 @@ deos needs a small, explicit architecture before implementation begins. The firs
 - Enqueue relevant events for asynchronous processing.
 - Define a dispatcher and workflow state model for selecting the next action.
 - Persist project configuration, delivery IDs, workflow runs, transitions, and audit history.
-- Define where OpenSpec artifacts and evidence packs are stored.
+- Provision the R2 binding and artifact-storage interface as extension points, while deferring production artifact provenance and evidence capture until a concrete producer and consumer are defined.
 - Establish a Python-first implementation boundary for domain logic and HTTP ingress, while allowing a separate TypeScript Cloudflare Worker adapter where a required binding is not operationally supported by Python Workers.
 - Keep human approval as an explicit workflow state that automation cannot silently bypass.
 - Exclude live agent execution from the first slice; exercise the real Linear webhook and Cloudflare Worker path with a test project and safe downstream fakes.
