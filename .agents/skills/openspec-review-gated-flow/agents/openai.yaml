@@ -1,4 +1,4 @@
 interface:
   display_name: "OpenSpec Review-Gated Flow"
-  short_description: "Stage OpenSpec work in approval-sized PRs"
-  default_prompt: "Use $openspec-review-gated-flow to plan this OpenSpec change through small, sequential approval PRs."
+  short_description: "Gate semantics and auto-land bookkeeping"
+  default_prompt: "Use $openspec-review-gated-flow to gate semantic OpenSpec work and auto-land only mechanical reconciliation."
