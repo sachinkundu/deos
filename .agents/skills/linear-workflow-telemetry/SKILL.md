@@ -36,10 +36,12 @@ python3 .agents/skills/linear-workflow-telemetry/scripts/query_workflow_telemetr
   --event-time 2026-08-14T05:18:47.208Z
 ```
 
-The helper reads `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` from the
-process environment first, then from `.env`. It sends only read-only Workers
-Observability queries. Use `--env-file PATH` only when the repository credential
-file lives elsewhere.
+The helper reads `CLOUDFLARE_API_TOKEN` (or the repository's legacy
+`CLOUDFLARE_TOKEN` alias) from the process environment first, then from `.env`.
+It reads `CLOUDFLARE_ACCOUNT_ID` the same way and falls back to the non-secret
+`account_id` in `wrangler.jsonc`. It sends only read-only Workers Observability
+queries. Use `--env-file PATH` or `--wrangler-config PATH` only when those files
+live elsewhere.
 
 When an internal issue UUID is known, use the exact lookup:
 
@@ -77,11 +79,10 @@ Keep these boundaries explicit:
 
 ## Failure handling
 
-- Missing credentials: name the missing environment variable; never show
-  credential contents.
+- Missing credentials or account configuration: name the accepted variable or
+  configuration field; never show credential contents.
 - No retained events: report the searched UTC window and recommend the durable
   D1 state/history path without claiming that telemetry never existed.
 - Cloudflare authorization failure: report only the HTTP status and sanitized
   API error message.
 - Linear MCP unavailable: stop instead of bypassing it with browser scraping.
-

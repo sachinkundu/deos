@@ -16,10 +16,11 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
-from uuid import UUID
+from uuid import UUID, uuid4
 
 API_ROOT = "https://api.cloudflare.com/client/v4"
 ACCOUNT_ID_RE = re.compile(r"^[0-9a-fA-F]{32}$")
+WRANGLER_ACCOUNT_ID_RE = re.compile(r'"account_id"\s*:\s*"([0-9a-fA-F]{32})"')
 ISSUE_KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*-[0-9]+$")
 CORRELATION_PREFIX = "workflow:"
 DISCOVERY_MINUTES = 2
@@ -82,26 +83,41 @@ def parse_dotenv(path: Path) -> dict[str, str]:
         value = raw_value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
             value = value[1:-1]
-        if key in {"CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN"}:
+        if key in {"CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_TOKEN"}:
             values[key] = value
     return values
 
 
-def load_credentials(env_file: Path) -> tuple[str, str]:
+def wrangler_account_id(path: Path) -> str | None:
+    """Read the non-secret account ID from a Wrangler JSONC config."""
+    if not path.exists():
+        return None
+    match = WRANGLER_ACCOUNT_ID_RE.search(path.read_text(encoding="utf-8"))
+    return match.group(1) if match else None
+
+
+def load_credentials(env_file: Path, wrangler_config: Path) -> tuple[str, str]:
     """Load Cloudflare credentials with environment precedence."""
     file_values = parse_dotenv(env_file)
-    account_id = os.environ.get("CLOUDFLARE_ACCOUNT_ID") or file_values.get("CLOUDFLARE_ACCOUNT_ID")
-    api_token = os.environ.get("CLOUDFLARE_API_TOKEN") or file_values.get("CLOUDFLARE_API_TOKEN")
-    missing = [
-        name
-        for name, value in (
-            ("CLOUDFLARE_ACCOUNT_ID", account_id),
-            ("CLOUDFLARE_API_TOKEN", api_token),
+    account_id = (
+        os.environ.get("CLOUDFLARE_ACCOUNT_ID")
+        or file_values.get("CLOUDFLARE_ACCOUNT_ID")
+        or wrangler_account_id(wrangler_config)
+    )
+    api_token = (
+        os.environ.get("CLOUDFLARE_API_TOKEN")
+        or os.environ.get("CLOUDFLARE_TOKEN")
+        or file_values.get("CLOUDFLARE_API_TOKEN")
+        or file_values.get("CLOUDFLARE_TOKEN")
+    )
+    if not account_id:
+        raise TelemetryError(
+            "missing Cloudflare account ID: set CLOUDFLARE_ACCOUNT_ID or configure account_id in Wrangler"
         )
-        if not value
-    ]
-    if missing:
-        raise TelemetryError(f"missing credential variable(s): {', '.join(missing)}")
+    if not api_token:
+        raise TelemetryError(
+            "missing credential variable: CLOUDFLARE_API_TOKEN (or CLOUDFLARE_TOKEN)"
+        )
     assert account_id is not None
     assert api_token is not None
     if not ACCOUNT_ID_RE.fullmatch(account_id):
@@ -116,7 +132,7 @@ def build_query(needle: str, start: datetime, end: datetime, *, limit: int) -> d
     if not 1 <= limit <= MAX_QUERY_EVENTS:
         raise TelemetryError(f"query limit must be between 1 and {MAX_QUERY_EVENTS}")
     return {
-        "queryId": "linear-workflow-telemetry",
+        "queryId": f"linear-workflow-telemetry-{uuid4()}",
         "view": "events",
         "limit": limit,
         "timeframe": {
@@ -207,13 +223,32 @@ def raw_events(result: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     return [event for event in events if isinstance(event, Mapping)]
 
 
+def flatten_mapping(
+    value: Mapping[str, Any], *, prefix: str = "", depth: int = 0
+) -> dict[str, Any]:
+    """Flatten Cloudflare's nested representation of dotted OTEL attributes."""
+    if depth > 8:
+        return {}
+    flattened: dict[str, Any] = {}
+    for raw_key, nested in value.items():
+        if not isinstance(raw_key, str):
+            continue
+        key = f"{prefix}.{raw_key}" if prefix else raw_key
+        if isinstance(nested, Mapping):
+            flattened.update(flatten_mapping(nested, prefix=key, depth=depth + 1))
+        else:
+            flattened[key] = nested
+    return flattened
+
+
 def find_observation(value: Any, *, depth: int = 0) -> Mapping[str, Any] | None:
-    """Locate a structured workflow observation within a bounded wrapper."""
+    """Locate and normalize a structured workflow observation in a bounded wrapper."""
     if depth > 5:
         return None
     if isinstance(value, Mapping):
-        if "deos.workflow.correlation_id" in value and "deos.workflow.stage" in value:
-            return value
+        flattened = flatten_mapping(value)
+        if "deos.workflow.correlation_id" in flattened and "deos.workflow.stage" in flattened:
+            return flattened
         for nested in value.values():
             found = find_observation(nested, depth=depth + 1)
             if found is not None:
@@ -338,6 +373,9 @@ def output_result(
     delivery_ids = sorted(
         {value for event in events if isinstance((value := event.get("linear.delivery.id")), str)}
     )
+    message_ids = sorted(
+        {value for event in events if isinstance((value := event.get("messaging.message.id")), str)}
+    )
     if as_json:
         print(
             json.dumps(
@@ -348,6 +386,7 @@ def output_result(
                     "from": start.isoformat().replace("+00:00", "Z"),
                     "to": end.isoformat().replace("+00:00", "Z"),
                     "delivery_ids": delivery_ids,
+                    "queue_message_ids": message_ids,
                     "events": list(events),
                 },
                 indent=2,
@@ -360,6 +399,7 @@ def output_result(
         print(f"Linear issue UUID: {issue_id}")
     print(f"Correlation ID: {correlation_id}")
     print(f"Delivery IDs: {', '.join(delivery_ids) if delivery_ids else '-'}")
+    print(f"Queue message IDs: {', '.join(message_ids) if message_ids else '-'}")
     print(
         "UTC window: "
         f"{start.isoformat().replace('+00:00', 'Z')} -> "
@@ -383,6 +423,12 @@ def parser() -> argparse.ArgumentParser:
     discovery.add_argument("--event-time", help="Exact admitted-state transition timestamp")
     command.add_argument(
         "--env-file", type=Path, default=Path(".env"), help="Ignored dotenv file (default: .env)"
+    )
+    command.add_argument(
+        "--wrangler-config",
+        type=Path,
+        default=Path("wrangler.jsonc"),
+        help="Wrangler config containing account_id (default: wrangler.jsonc)",
     )
     command.add_argument(
         "--timeline-hours",
@@ -431,7 +477,7 @@ def run(arguments: argparse.Namespace) -> None:
         discovery_end = event_time + timedelta(minutes=DISCOVERY_MINUTES)
         discovery_needle = project_id
 
-    account_id, api_token = load_credentials(arguments.env_file)
+    account_id, api_token = load_credentials(arguments.env_file, arguments.wrangler_config)
     discovery_result = post_query(
         account_id=account_id,
         api_token=api_token,

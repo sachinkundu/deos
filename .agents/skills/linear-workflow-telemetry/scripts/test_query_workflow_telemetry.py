@@ -59,14 +59,17 @@ class QueryWorkflowTelemetryTests(unittest.TestCase):
     def test_credentials_load_from_dotenv_without_shell_evaluation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             env_file = Path(directory) / ".env"
+            wrangler_config = Path(directory) / "wrangler.jsonc"
             env_file.write_text(
-                "CLOUDFLARE_ACCOUNT_ID='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'\n"
-                'CLOUDFLARE_API_TOKEN="local-token"\n'
-                "IGNORED=$(must-not-run)\n",
+                'CLOUDFLARE_TOKEN="local-token"\nIGNORED=$(must-not-run)\n',
+                encoding="utf-8",
+            )
+            wrangler_config.write_text(
+                '// local config\n{"account_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}\n',
                 encoding="utf-8",
             )
             with patch.dict(os.environ, {}, clear=True):
-                account_id, api_token = telemetry.load_credentials(env_file)
+                account_id, api_token = telemetry.load_credentials(env_file, wrangler_config)
 
         self.assertEqual(account_id, "a" * 32)
         self.assertEqual(api_token, "local-token")
@@ -78,6 +81,7 @@ class QueryWorkflowTelemetryTests(unittest.TestCase):
         query = telemetry.build_query("issue-1", start, end, limit=50)
 
         self.assertEqual(query["view"], "events")
+        self.assertTrue(query["queryId"].startswith("linear-workflow-telemetry-"))
         self.assertEqual(query["timeframe"]["from"], int(start.timestamp() * 1000))
         self.assertEqual(query["timeframe"]["to"], int(end.timestamp() * 1000))
         self.assertEqual(
@@ -123,6 +127,37 @@ class QueryWorkflowTelemetryTests(unittest.TestCase):
         self.assertEqual(sanitized["error.type"], "linear_http_failed")
         self.assertNotIn("authorization", sanitized)
 
+    def test_sanitize_event_flattens_cloudflare_nested_otel_fields(self) -> None:
+        raw = {
+            "timestamp": 1786684735558,
+            "source": {
+                "event": {"time": "2026-08-14T05:18:55.558Z"},
+                "service": {"name": "deos-queue-consumer-ts"},
+                "deos": {
+                    "workflow": {
+                        "correlation_id": "workflow:project-1:issue-1",
+                        "stage": "queue.consume",
+                        "outcome": "succeeded",
+                        "run_id": "workflow:project-1:issue-1",
+                        "attempt": {"number": 1},
+                    }
+                },
+                "linear": {
+                    "delivery": {"id": "delivery-1"},
+                    "issue": {"id": "issue-1"},
+                    "project": {"id": "project-1"},
+                },
+                "raw_secret": "must-not-escape",
+            },
+            "$metadata": {"service": "deos-queue-consumer-ts"},
+        }
+
+        sanitized = telemetry.sanitize_event(raw)
+
+        self.assertEqual(sanitized["deos.workflow.correlation_id"], "workflow:project-1:issue-1")
+        self.assertEqual(sanitized["deos.workflow.attempt.number"], 1)
+        self.assertNotIn("raw_secret", sanitized)
+
     def test_multiple_project_correlations_are_ambiguous(self) -> None:
         correlations = {
             "workflow:project-1:issue-1",
@@ -151,6 +186,7 @@ class QueryWorkflowTelemetryTests(unittest.TestCase):
             issue_id=issue_id,
             stage="ingress.delivery_record",
             outcome="succeeded",
+            **{"messaging.message.id": "message-1"},
         )
         discovery = {"events": {"events": [earlier]}, "run": {"status": "COMPLETED"}}
         timeline = {"events": {"events": [later, earlier]}, "run": {"status": "COMPLETED"}}
@@ -178,6 +214,7 @@ class QueryWorkflowTelemetryTests(unittest.TestCase):
 
         rendered = output.getvalue()
         self.assertIn(f"Correlation ID: {correlation}", rendered)
+        self.assertIn("Queue message IDs: message-1", rendered)
         self.assertLess(
             rendered.index("ingress.delivery_record"), rendered.index("linear.issue_update")
         )
