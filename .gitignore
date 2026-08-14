@@ -12,3 +12,4 @@ python_modules/
 .env
 .env.*
 !.env.example
+node_modules/
