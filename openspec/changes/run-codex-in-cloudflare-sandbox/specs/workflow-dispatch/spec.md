@@ -2,12 +2,12 @@
 
 ### Requirement: Dispatch accepted events
 
-The dispatcher SHALL consume application events from a provider-supported Queue consumer, load the applicable project policy, and establish an auditable mapping from each accepted issue run to one durable Workflow instance. The Queue message SHALL be acknowledged only after the Workflow instance and its mapping are durably established. The consumer MAY be a separate Worker from HTTP ingress when required by runtime binding support.
+The asynchronous Queue consumer, which is separate from HTTP ingress, SHALL load the applicable project policy and dispatch each accepted application event. Before creating a Workflow instance, it SHALL derive a stable instance identity from the durable issue-run identity. It SHALL establish an auditable mapping from the issue run to that one Workflow instance and SHALL acknowledge the Queue message only after both the instance and mapping are confirmed.
 
 #### Scenario: Accepted event
 
 - **WHEN** the dispatcher receives a new application event for a configured project and issue run
-- **THEN** it creates one durable Workflow instance linked to the delivery, issue, and workflow correlation identifier and records the mapping
+- **THEN** it finds or creates the Workflow instance at the stable instance identity, links it to the delivery, issue, and workflow correlation identifier, and records the mapping
 
 #### Scenario: First workflow path
 
@@ -32,7 +32,12 @@ The dispatcher SHALL consume application events from a provider-supported Queue 
 #### Scenario: Durable dispatch cannot be established
 
 - **WHEN** the Workflow instance or its authoritative mapping cannot be confirmed
-- **THEN** the consumer does not acknowledge successful dispatch, records a safe failure category, and leaves the event eligible for retry without advancing business workflow state
+- **THEN** the consumer does not acknowledge successful dispatch, records a safe failure category, and requires reconciliation by the stable instance identity before any retry can attempt creation
+
+#### Scenario: Instance creation succeeds before mapping persistence fails
+
+- **WHEN** the provider creates the stable Workflow instance but the D1 mapping write is not confirmed
+- **THEN** the retry locates that instance by its stable identity, repairs or confirms the mapping, and does not create a second instance or launch a duplicate agent attempt
 
 ## ADDED Requirements
 

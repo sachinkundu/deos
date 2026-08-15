@@ -2,7 +2,7 @@
 
 ### Requirement: Preserve explicit workflow state
 
-The workflow state model SHALL record authoritative business-state transitions in D1, SHALL distinguish agent execution state from business workflow state, and SHALL represent human approval as an explicit state surfaced through the Linear board column `Human Approval`. The Workflow state machine SHALL be the sole authority that initiates Linear state transitions and selects whether to continue autonomously, launch another agent, record a blocked or failed outcome, or wait at a designated human gate.
+The workflow state model SHALL record authoritative business-state transitions in D1, SHALL distinguish agent execution state from business workflow state, and SHALL represent human approval as an explicit node surfaced through the Linear board column `Human Approval`. The encoded workflow definition SHALL describe nodes, decision edges, loops, autonomous actions, agent dispatches, human gates, and terminal outcomes. The Workflow manager SHALL be the sole authority that initiates Linear state transitions and SHALL select the next action from the previous state, current state, accumulated run data, provider results, and agent outcome.
 
 #### Scenario: Approval required
 
@@ -17,12 +17,17 @@ The workflow state model SHALL record authoritative business-state transitions i
 #### Scenario: Human resumes workflow
 
 - **WHEN** a configured approval or rejection transition out of the `Human Approval` board column is received from Linear with actor identity verified as an authorized human
-- **THEN** the Workflow records the actor and advances to `APPROVED` or `REJECTED`
+- **THEN** the Workflow records the human decision and actor and selects the configured next edge using the state from which the gate was entered, the current gate, and accumulated run data
 
 #### Scenario: Automated event attempts to approve a human gate
 
 - **WHEN** an approval-shaped event is attributable to an agent, integration, bot, unknown actor, or unauthorized human
-- **THEN** the Workflow records the rejected decision event, remains in `AWAITING_HUMAN_APPROVAL`, and performs no approval or rejection transition
+- **THEN** the Workflow records the rejected decision event, keeps D1 in `AWAITING_HUMAN_APPROVAL`, and idempotently restores the issue to the `Human Approval` board column before accepting another decision
+
+#### Scenario: Provider restoration after unauthorized transition fails
+
+- **WHEN** the Workflow cannot confirm that an issue moved by an unauthorized actor has been restored to `Human Approval`
+- **THEN** it records a provider-state repair failure, prevents further gate processing, and creates or updates an operator work item for reconciliation
 
 #### Scenario: Auditable transition
 
@@ -34,21 +39,31 @@ The workflow state model SHALL record authoritative business-state transitions i
 - **WHEN** durable Workflow execution resumes or retries a state-machine step
 - **THEN** it reconciles the D1 authoritative state before making a transition and does not repeat an already recorded provider effect
 
+#### Scenario: Workflow definition contains a loop or decision tree
+
+- **WHEN** the current node has multiple permitted edges or returns to an earlier node
+- **THEN** the Workflow evaluates the encoded conditions against accumulated run data and records the selected edge without substituting a hard-coded human gate
+
 ## ADDED Requirements
 
 ### Requirement: Interpret structured agent outcomes inside the state machine
 
-The Workflow SHALL validate and interpret each structured agent outcome against the current business state and project policy. Agent output MUST NOT directly select or perform a Linear state transition. A completed, blocked, or failed outcome SHALL result only in a state-machine action permitted for the current state, with provider prerequisites and idempotency receipts reconciled before any outward transition.
+The Workflow SHALL validate and interpret each structured agent outcome against the encoded workflow definition, previous and current business states, accumulated run data, and project policy. Agent output MUST NOT directly select or perform a Linear state transition. A completed, blocked, or failed outcome SHALL result only in an action permitted by an edge from the current node, with provider prerequisites and idempotency receipts reconciled before any outward transition.
 
 #### Scenario: Completed outcome permits autonomous continuation
 
 - **WHEN** a valid completed outcome and its required provider receipts satisfy an autonomous state's exit conditions
 - **THEN** the Workflow records the outcome and continues to the configured next state or agent step
 
-#### Scenario: Completed outcome reaches the first-slice human gate
+#### Scenario: Completed outcome reaches a configured human gate
 
-- **WHEN** the controlled first-slice agent succeeds and all required artifacts, provider operations, and cleanup outcomes are complete
-- **THEN** the Workflow records those prerequisites and enters `AWAITING_HUMAN_APPROVAL`
+- **WHEN** an agent succeeds, all prerequisites are complete, and the encoded workflow selects a human gate as the next node
+- **THEN** the Workflow records the state from which the gate is entered and enters `AWAITING_HUMAN_APPROVAL`
+
+#### Scenario: Completed outcome launches another agent
+
+- **WHEN** an agent succeeds and the selected workflow edge dispatches a follow-up agent rather than entering a human gate
+- **THEN** the Workflow records the completed attempt and launches the next agent with the durable branch, work-product, working-note, artifact, and review context required by that node
 
 #### Scenario: Agent reports blocked
 

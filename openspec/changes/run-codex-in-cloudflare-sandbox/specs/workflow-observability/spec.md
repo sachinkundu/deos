@@ -54,7 +54,7 @@ The system SHALL keep observations for repeated processing associated with the o
 
 ### Requirement: Telemetry excludes sensitive data
 
-Telemetry MUST NOT expose webhook signing secrets, OpenAI or provider API tokens, ChatGPT-managed authentication material, authorization headers, raw signed request bodies, raw Codex event content, repository patches, validation output, or artifact bodies. Provider-derived attributes MUST be limited to the Linear delivery, issue, and project identifiers and sanitized GitHub resource identifiers; telemetry MUST NOT include issue titles, descriptions, comments, user details, repository file contents, prompts, agent messages, or other provider payload fields. Error details MUST use service-authored categories rather than raw dependency responses.
+Telemetry MUST NOT expose webhook signing secrets, OpenAI or provider API tokens, ChatGPT-managed authentication material, authorization headers, raw signed request bodies, raw Codex event content, repository patches, validation output, or artifact bodies. Provider-derived attributes MUST be limited to the Linear delivery, issue, and project identifiers and sanitized GitHub resource identifiers; telemetry MUST NOT include issue titles, descriptions, comments, user details, repository file contents, prompts, agent messages, or other provider payload fields. Error observations MUST use service-authored categories and SHALL include a stable opaque reference to an access-controlled diagnostic record when detailed source errors are available. The diagnostic record SHALL preserve the original error as far as possible after removing credentials and other forbidden secrets.
 
 #### Scenario: Operator inspects workflow telemetry
 
@@ -64,30 +64,14 @@ Telemetry MUST NOT expose webhook signing secrets, OpenAI or provider API tokens
 #### Scenario: External dependency fails
 
 - **WHEN** an external dependency reports a failure
-- **THEN** telemetry records a service-authored error category and does not write the dependency's raw response
+- **THEN** telemetry records a service-authored error category and protected diagnostic reference without writing the dependency's raw response into telemetry
+
+#### Scenario: Authorized operator follows an error reference
+
+- **WHEN** an authorized operator opens the diagnostic reference from a failed observation
+- **THEN** the operator can inspect the access-controlled original or minimally redacted error needed for debugging and correlate it with the workflow stage and attempt
 
 #### Scenario: Codex or validation emits sensitive output
 
 - **WHEN** captured process output includes a credential, authentication cache content, prompt, source content, or provider response
 - **THEN** that content is excluded from telemetry and handled only by the artifact policy appropriate to the run
-
-## ADDED Requirements
-
-### Requirement: Completion evidence distinguishes synthetic and provider-originated proof
-
-The implementation evidence SHALL label synthetic ingress separately from provider-originated end-to-end proof. Completion of the integration SHALL require a real Linear event to reach the deployed Worker, Queue, Workflow, Sandbox, Codex run, durable artifact store, required GitHub and non-transition Linear effects, D1 audit trail, and designated `Human Approval` state under one correlation identifier. The evidence package SHALL include sanitized visual proof of the provider configuration and resulting provider state.
-
-#### Scenario: Synthetic ingress is exercised
-
-- **WHEN** a locally generated signed request reaches the deployed Worker
-- **THEN** the evidence identifies it as synthetic ingress proof and does not claim that Linear emitted the event
-
-#### Scenario: Provider-originated path completes
-
-- **WHEN** Linear emits a fresh event from the controlled test issue and the deployed workflow reaches `Human Approval`
-- **THEN** remote evidence shows the correlated provider delivery, Queue consumption, Workflow instance, sandbox and Codex attempt, artifact manifest, provider receipts, D1 transitions, and final Linear state
-
-#### Scenario: Reviewer inspects visual proof
-
-- **WHEN** the implementation is presented for review
-- **THEN** sanitized screenshots show the enabled Linear configuration and the triggering or resulting provider state without exposing secrets

@@ -15,8 +15,8 @@ The system SHALL authorize each agent-initiated provider operation against an ex
 
 #### Scenario: Allowed Linear operation is requested
 
-- **WHEN** an agent requests an approved non-transition Linear action within the configured trial scope
-- **THEN** the system executes the action without granting permission to change issue state
+- **WHEN** an agent requests an approved non-transition Linear action such as updating a shared working note or attaching a durable work-product reference within the configured trial scope
+- **THEN** the system executes the action so later agents can recover the shared context without granting permission to change issue state
 
 #### Scenario: Linear transition is requested by an agent
 
@@ -59,7 +59,7 @@ The system SHALL durably record a receipt for every allowed, denied, failed, rec
 #### Scenario: Provider operation fails safely
 
 - **WHEN** an authorized provider operation fails
-- **THEN** the durable receipt records a service-authored error category and enough sanitized identity to retry or reconcile without storing the raw provider response
+- **THEN** the durable receipt records a service-authored error category, a protected diagnostic reference, and enough sanitized identity to retry or reconcile without storing the raw provider response in the receipt
 
 ### Requirement: Limit and protect provider credentials
 
@@ -75,16 +75,21 @@ Provider credentials SHALL be least-privileged for the controlled trial scope an
 - **WHEN** a provider rejects an operation because the credential lacks permission
 - **THEN** the system records a safe authorization-failure category and does not broaden the credential automatically
 
-### Requirement: Complete required provider work before the first human gate
+### Requirement: Complete required provider work before a success transition
 
-For the controlled first slice, the Workflow SHALL enter `AWAITING_HUMAN_APPROVAL` only after the agent returns a valid completed outcome and every required GitHub and non-transition Linear operation has a successful or reconciled receipt.
+The Workflow SHALL NOT follow a workflow node's success edge until the agent returns a valid completed outcome and every provider operation required by that node has a successful or reconciled receipt. After those prerequisites are satisfied, the configured workflow definition SHALL decide whether the next node is autonomous, another agent step, a human gate, or a terminal state.
 
 #### Scenario: Agent and provider work complete
 
 - **WHEN** the agent result is valid and all required provider receipts report success
-- **THEN** the Workflow moves the issue to the configured `Human Approval` state
+- **THEN** the Workflow evaluates the current node's configured success edge using the accumulated run state
+
+#### Scenario: Configured success edge enters a human gate
+
+- **WHEN** the prerequisites are complete and the workflow definition selects `Human Approval` as the next node
+- **THEN** the Workflow moves the issue to the configured `Human Approval` state and records the state from which the gate was entered
 
 #### Scenario: Required provider work remains incomplete
 
 - **WHEN** any required provider operation is pending, denied, failed, or ambiguous
-- **THEN** the Workflow does not enter `AWAITING_HUMAN_APPROVAL` and records the incomplete operation for retry or operator action
+- **THEN** the Workflow does not follow the success edge and instead applies the current node's configured retry, blocked, failure, or operator-action rule
