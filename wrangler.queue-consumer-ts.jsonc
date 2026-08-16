@@ -2,7 +2,8 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "deos-queue-consumer-ts",
   "main": "src/queue-consumer.ts",
-  "compatibility_date": "2026-08-11",
+  "compatibility_date": "2026-08-16",
+  "compatibility_flags": ["nodejs_compat"],
   "account_id": "c68856288112af7698f5be52ea94b96e",
   "observability": {
     "enabled": true,
@@ -14,7 +15,29 @@
   },
   "vars": {
     "LINEAR_API_URL": "https://api.linear.app/graphql",
-    "LINEAR_HUMAN_APPROVAL_STATE_ID": "71738607-03fd-49f2-b4be-b2aac29ccd13"
+    "LINEAR_HUMAN_APPROVAL_STATE_ID": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+    "LINEAR_PROJECT_ID": "99426d9b-cda7-4db4-9136-692a95a0b090",
+    "LINEAR_START_STATE_NAME": "In Progress",
+    "LINEAR_APPROVAL_STATE_NAMES": "In Progress",
+    "LINEAR_REJECTION_STATE_NAMES": "Canceled",
+    "LINEAR_APP_ACTOR_ID": "f010429f-7734-4f3f-9b4b-13a4abb9b4ab",
+    "LINEAR_TEAM_ID": "ac53207d-68c0-42f1-a245-c1baf047f234",
+    "GITHUB_API_URL": "https://api.github.com",
+    "TRIAL_REPOSITORY": "sachinkundu/deos",
+    "TRIAL_DISPATCH_ENABLED": "false",
+    "CODEX_AUTH_PROFILE_ID": "controlled-trial",
+    "CAPABILITY_BASE_URL": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities"
+  },
+  "secrets": {
+    "required": [
+      "LINEAR_APP_ACCESS_TOKEN",
+      "GITHUB_APP_ID",
+      "GITHUB_APP_PRIVATE_KEY",
+      "GITHUB_INSTALLATION_ID",
+      "CODEX_AUTH_ENCRYPTION_KEY",
+      "CAPABILITY_SIGNING_SECRET",
+      "CLEANUP_AUDIT_SECRET"
+    ]
   },
   "d1_databases": [
     {
@@ -32,5 +55,50 @@
         "max_retries": 3
       }
     ]
-  }
+  },
+  "r2_buckets": [
+    {
+      "binding": "ARTIFACTS",
+      "bucket_name": "deos-sample-project-artifacts"
+    }
+  ],
+  "workflows": [
+    {
+      "binding": "ORCHESTRATION_WORKFLOW",
+      "name": "deos-sandbox-codex-workflow",
+      "class_name": "DeosWorkflow"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "Sandbox",
+        "class_name": "Sandbox"
+      }
+    ]
+  },
+  "containers": [
+    {
+      "class_name": "Sandbox",
+      "image": "./Dockerfile",
+      "max_instances": 5,
+      "instance_type": "basic"
+    }
+  ],
+  "migrations": [
+    {
+      "tag": "sandbox-v1",
+      "new_sqlite_classes": ["Sandbox"]
+    }
+  ],
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+  "rules": [
+    {
+      "type": "Text",
+      "globs": ["**/*.yaml", "**/prompts/*.md"],
+      "fallthrough": true
+    }
+  ]
 }

@@ -35,6 +35,8 @@ def test_relevant_delivery_is_translated_recorded_and_enqueued() -> None:
     assert len(queue.events) == 1
     assert queue.events[0].project_id == "project-1"
     assert queue.events[0].transition == "Started"
+    assert queue.events[0].actor_type == "user"
+    assert queue.events[0].previous_state_id == "previous-state-id"
     assert len(state.deliveries) == 1
 
 
@@ -78,17 +80,40 @@ def test_invalid_signature_and_stale_timestamp_are_rejected() -> None:
     assert state.deliveries == {}
 
 
-def make_body(project_id: str, state: str) -> bytes:
+def test_every_state_change_in_configured_project_is_enqueued() -> None:
+    ingress, queue, _ = make_ingress()
+    body = make_body(project_id="project-1", state="Unexpected Review State")
+
+    result = ingress.handle(body, headers(body))
+
+    assert result.classification == DeliveryClassification.RELEVANT
+    assert queue.events[0].transition == "Unexpected Review State"
+
+
+def test_non_state_issue_update_is_recorded_without_enqueue() -> None:
+    ingress, queue, _ = make_ingress()
+    body = make_body(project_id="project-1", state="Unexpected Review State", state_changed=False)
+
+    result = ingress.handle(body, headers(body))
+
+    assert result.classification == DeliveryClassification.IRRELEVANT
+    assert queue.events == []
+
+
+def make_body(project_id: str, state: str, *, state_changed: bool = True) -> bytes:
     return json.dumps(
         {
             "webhookId": "webhook-1",
+            "action": "update",
+            "type": "Issue",
             "data": {
                 "id": "issue-1",
                 "updatedAt": "2026-08-11T10:00:00Z",
                 "project": {"id": project_id},
-                "state": {"name": state},
+                "state": {"id": "current-state-id", "name": state},
             },
-            "actor": {"id": "actor-1"},
+            "updatedFrom": {"stateId": "previous-state-id"} if state_changed else {"title": "old"},
+            "actor": {"id": "actor-1", "type": "user"},
         },
         separators=(",", ":"),
     ).encode()

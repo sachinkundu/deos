@@ -51,6 +51,11 @@ class ApplicationEvent:
     transition: str
     actor_id: str | None
     occurred_at: datetime
+    actor_type: str | None = None
+    event_kind: str = "Issue.update"
+    state_id: str | None = None
+    previous_state_id: str | None = None
+    previous_state_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

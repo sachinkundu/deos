@@ -1,0 +1,141 @@
+apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata:
+  name: openspec-delivery
+  version: 2
+spec:
+  start: requirements
+  execution:
+    attemptTimeout: 24h
+    heartbeatTimeout: 5m
+    codexSandboxMode: danger-full-access
+  jobs:
+    requirements:
+      promptFile: prompts/requirements.md
+      inputs: [linear_issue, repository_context]
+      context: [shared_workpad]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+    requirements_review:
+      promptFile: prompts/requirements-review.md
+      inputs: [requirements_result, review_history]
+      context: [shared_workpad]
+      resultSchema: schemas/review-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+    bdd_review:
+      promptFile: prompts/bdd-review.md
+      inputs: [proposal, requirements, delta_specs]
+      context: [shared_workpad]
+      resultSchema: schemas/review-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+    ddd_architecture:
+      promptFile: prompts/ddd-architecture.md
+      inputs: [approved_specs]
+      context: [shared_workpad]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+    ddd_review:
+      promptFile: prompts/ddd-review.md
+      inputs: [approved_specs, design]
+      context: [shared_workpad]
+      resultSchema: schemas/review-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+    implementation:
+      promptFile: prompts/implementation.md
+      inputs: [approved_specs, approved_design, tasks]
+      context: [shared_workpad, prior_artifact_manifests]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+    code_review:
+      promptFile: prompts/code-review.md
+      inputs: [implementation_result, branch, diff, validation]
+      context: [shared_workpad]
+      resultSchema: schemas/review-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+    evidence_verification:
+      promptFile: prompts/evidence-verification.md
+      inputs: [evidence_pack, acceptance_criteria]
+      context: [shared_workpad]
+      resultSchema: schemas/review-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+    release_finalization:
+      promptFile: prompts/release-finalization.md
+      inputs: [merged_pr, deployment_evidence]
+      context: [shared_workpad]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+  nodes:
+    requirements:
+      type: agent
+      job: requirements
+      edges: {completed: requirements_review, blocked: blocked, failed: blocked}
+    requirements_review:
+      type: agent
+      job: requirements_review
+      edges: {approved: requirements_approval, changes_requested: requirements, blocked: blocked, failed: blocked}
+    requirements_approval:
+      type: human_gate
+      linearState: Human Approval
+      edges: {approved: openspec_proposal, rejected: requirements}
+    openspec_proposal:
+      type: system_action
+      action: openspec.create_proposal_and_requirements
+      edges: {completed: openspec_specs, failed: blocked}
+    openspec_specs:
+      type: system_action
+      action: openspec.create_delta_specs
+      edges: {completed: bdd_review, failed: blocked}
+    bdd_review:
+      type: agent
+      job: bdd_review
+      edges: {approved: ddd_architecture, changes_requested: openspec_specs, blocked: blocked, failed: blocked}
+    ddd_architecture:
+      type: agent
+      job: ddd_architecture
+      edges: {completed: ddd_review, blocked: blocked, failed: blocked}
+    ddd_review:
+      type: agent
+      job: ddd_review
+      edges: {approved: architecture_approval, changes_requested: ddd_architecture, blocked: blocked, failed: blocked}
+    architecture_approval:
+      type: human_gate
+      linearState: Human Approval
+      edges: {approved: openspec_tasks, rejected: ddd_architecture}
+    openspec_tasks:
+      type: system_action
+      action: openspec.create_tasks
+      edges: {completed: implementation, failed: blocked}
+    implementation:
+      type: agent
+      job: implementation
+      edges: {completed: code_review, blocked: blocked, failed: blocked}
+    code_review:
+      type: agent
+      job: code_review
+      edges: {approved: evidence_verification, changes_requested: implementation, blocked: blocked, failed: blocked}
+    evidence_verification:
+      type: agent
+      job: evidence_verification
+      edges: {certified: openspec_verify, changes_requested: implementation, blocked: blocked, failed: blocked}
+    openspec_verify:
+      type: system_action
+      action: openspec.verify
+      edges: {completed: release_approval, failed: implementation}
+    release_approval:
+      type: human_gate
+      linearState: Human Approval
+      edges: {approved: deploy, rejected: blocked}
+    deploy:
+      type: system_action
+      action: release.deploy
+      edges: {completed: release_finalization, failed: blocked}
+    release_finalization:
+      type: agent
+      job: release_finalization
+      edges: {completed: sync_and_archive, blocked: blocked, failed: blocked}
+    sync_and_archive:
+      type: system_action
+      action: openspec.sync_and_archive
+      edges: {completed: done, failed: blocked}
+    done: {type: terminal, outcome: succeeded}
+    blocked: {type: terminal, outcome: blocked}

@@ -1,12 +1,19 @@
-import { decideWorkflowAction, type WorkflowState } from "./workflow.ts";
+import { correlationIdentity } from "./orchestration-identity.ts";
+import {
+  D1OrchestrationStore,
+  type OrchestrationDispatchStore,
+  type OrchestrationRunRecord,
+  type WorkflowInboxEvent,
+} from "./orchestration-store.ts";
 import {
   buildObservation,
   type ErrorType,
   type ObservationInput,
   type ObservationWriter,
-  workflowIdentity,
   writeObservation,
 } from "./telemetry.ts";
+import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
+import { type LifecycleWriter, writeLifecycleObservation } from "./lifecycle-telemetry.ts";
 
 export interface QueueBody {
   event_id: string;
@@ -15,25 +22,45 @@ export interface QueueBody {
   project_id: string;
   transition: string;
   actor_id?: string | null;
+  actor_type?: string | null;
+  event_kind: string;
+  state_id?: string | null;
+  previous_state_id?: string | null;
+  previous_state_name?: string | null;
   occurred_at: string;
   correlation_id: string;
+  payload_digest: string;
 }
 
-export interface QueueConsumerEnv extends Env {
-  LINEAR_API_KEY: string;
+export interface WorkflowInstanceHandle {
+  id: string;
+  sendEvent(event: { type: string; payload: unknown }): Promise<void>;
 }
 
-interface WorkflowRow {
-  run_id: string;
-  current_state: WorkflowState;
-  correlation_id: string;
+export interface WorkflowBinding {
+  get(id: string): Promise<WorkflowInstanceHandle>;
+  createBatch(
+    batch: Array<{ id: string; params: WorkflowStartParameters }>,
+  ): Promise<WorkflowInstanceHandle[]>;
 }
+
+export interface WorkflowStartParameters {
+  runId: string;
+  sourceDeliveryId: string;
+}
+
+export type QueueConsumerEnv = Omit<Env, "ORCHESTRATION_WORKFLOW"> & {
+  ORCHESTRATION_WORKFLOW: WorkflowBinding;
+};
 
 type QueueMessageView = Pick<Message<QueueBody>, "id" | "attempts" | "body">;
 
 interface ConsumerDependencies {
-  fetch: typeof fetch;
   observe: ObservationWriter;
+  store: OrchestrationDispatchStore;
+  definition: LoadedWorkflowDefinition;
+  now: () => Date;
+  lifecycle: LifecycleWriter;
 }
 
 const SERVICE_NAME = "deos-queue-consumer-ts";
@@ -51,30 +78,19 @@ export class CategorizedWorkflowError extends Error {
 const errorCategory = (error: unknown): ErrorType =>
   error instanceof CategorizedWorkflowError ? error.category : "unexpected_failure";
 
-const asD1Operation = async <T>(operation: () => Promise<T>): Promise<T> => {
-  try {
-    return await operation();
-  } catch {
-    throw new CategorizedWorkflowError("d1_operation_failed");
-  }
-};
-
 const observationBase = (
   event: QueueBody,
   message: QueueMessageView,
-): Omit<ObservationInput, "stage" | "outcome"> => {
-  const runId = workflowIdentity(event.project_id, event.issue_id);
-  return {
-    serviceName: SERVICE_NAME,
-    correlationId: runId,
-    deliveryId: event.source_delivery_id,
-    issueId: event.issue_id,
-    projectId: event.project_id,
-    runId,
-    messageId: message.id,
-    attemptNumber: message.attempts,
-  };
-};
+): Omit<ObservationInput, "stage" | "outcome"> => ({
+  serviceName: SERVICE_NAME,
+  correlationId: event.correlation_id,
+  deliveryId: event.source_delivery_id,
+  issueId: event.issue_id,
+  projectId: event.project_id,
+  runId: event.correlation_id,
+  messageId: message.id,
+  attemptNumber: message.attempts,
+});
 
 const emit = (
   observe: ObservationWriter,
@@ -82,117 +98,89 @@ const emit = (
   input: Pick<ObservationInput, "stage" | "outcome"> & Partial<ObservationInput>,
 ): void => observe(buildObservation({ ...base, ...input }));
 
-const moveIssueToHumanApproval = async (
-  event: QueueBody,
-  env: QueueConsumerEnv,
-  request: typeof fetch,
-): Promise<void> => {
-  let response: Response;
-  try {
-    response = await request(env.LINEAR_API_URL ?? "https://api.linear.app/graphql", {
-      method: "POST",
-      headers: {
-        Authorization: env.LINEAR_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query:
-          "mutation UpdateIssue($id: String!, $stateId: String!) { issueUpdate(id: $id, input: { stateId: $stateId }) { success } }",
-        variables: { id: event.issue_id, stateId: env.LINEAR_HUMAN_APPROVAL_STATE_ID },
-      }),
-    });
-  } catch {
-    throw new CategorizedWorkflowError("linear_transport_failed");
-  }
-  if (!response.ok) throw new CategorizedWorkflowError("linear_http_failed");
+const toInboxEvent = (event: QueueBody, runId: string | null): WorkflowInboxEvent => ({
+  deliveryId: event.source_delivery_id,
+  runId,
+  correlationId: event.correlation_id,
+  eventKind: event.event_kind,
+  actorId: event.actor_id ?? null,
+  actorType: event.actor_type ?? null,
+  providerTime: new Date(event.occurred_at).toISOString(),
+  fromStateId: event.previous_state_id ?? null,
+  fromStateName: event.previous_state_name ?? null,
+  toStateId: event.state_id ?? null,
+  toStateName: event.transition,
+  payloadDigest: event.payload_digest,
+});
 
-  let payload: { data?: { issueUpdate?: { success?: boolean } }; errors?: unknown[] };
+const locateOrCreateInstance = async (
+  binding: WorkflowBinding,
+  run: OrchestrationRunRecord,
+  sourceDeliveryId: string,
+): Promise<WorkflowInstanceHandle> => {
   try {
-    payload = (await response.json()) as typeof payload;
+    return await binding.get(run.workflow_instance_id);
   } catch {
-    throw new CategorizedWorkflowError("linear_graphql_failed");
+    // A failed lookup is not proof of absence. Creation uses the same stable id,
+    // and every ambiguous create response is reconciled with another lookup.
   }
-  if (payload.errors?.length || !payload.data?.issueUpdate?.success) {
-    throw new CategorizedWorkflowError("linear_graphql_failed");
+  try {
+    const created = await binding.createBatch([{
+      id: run.workflow_instance_id,
+      params: { runId: run.run_id, sourceDeliveryId },
+    }]);
+    const handle = created.find((instance) => instance.id === run.workflow_instance_id);
+    if (handle !== undefined) return handle;
+  } catch {
+    // The provider may have committed creation before returning an error.
+  }
+  try {
+    return await binding.get(run.workflow_instance_id);
+  } catch {
+    throw new CategorizedWorkflowError("unexpected_failure");
   }
 };
 
-const recordTransition = async (
+const establishDispatch = async (
   event: QueueBody,
-  env: QueueConsumerEnv,
-  observe: ObservationWriter,
-  base: Omit<ObservationInput, "stage" | "outcome">,
-  runId: string,
-  transition: [WorkflowState, WorkflowState, string],
-  updateRun: boolean,
+  run: OrchestrationRunRecord,
+  store: OrchestrationDispatchStore,
+  binding: WorkflowBinding,
+  now: string,
 ): Promise<void> => {
-  const [previousState, nextState, cause] = transition;
-  const transitionFields = { previousState, nextState, cause };
-  emit(observe, base, { stage: "workflow.transition", outcome: "started", ...transitionFields });
-  try {
-    await asD1Operation(() =>
-      env.DB.prepare(
-        "INSERT OR IGNORE INTO workflow_transitions (run_id, previous_state, next_state, cause, actor_id, occurred_at) VALUES (?, ?, ?, ?, ?, ?)",
-      )
-        .bind(runId, previousState, nextState, cause, event.actor_id ?? null, new Date(event.occurred_at).toISOString())
-        .run(),
-    );
-    if (updateRun) {
-      await asD1Operation(() =>
-        env.DB.prepare("UPDATE workflow_runs SET current_state = ?, updated_at = ? WHERE run_id = ?")
-          .bind(nextState, new Date(event.occurred_at).toISOString(), runId)
-          .run(),
-      );
-    }
-  } catch (error) {
-    emit(observe, base, {
-      stage: "workflow.transition",
-      outcome: "failed",
-      errorType: errorCategory(error),
-      ...transitionFields,
-    });
-    throw error;
-  }
-  emit(observe, base, { stage: "workflow.transition", outcome: "succeeded", ...transitionFields });
-};
-
-const recordWorkflow = async (
-  event: QueueBody,
-  env: QueueConsumerEnv,
-  observe: ObservationWriter,
-  base: Omit<ObservationInput, "stage" | "outcome">,
-): Promise<"started" | "approved" | "rejected" | "ignored"> => {
-  const existing = await asD1Operation(() =>
-    env.DB.prepare(
-      "SELECT run_id, current_state, correlation_id FROM workflow_runs WHERE project_id = ? AND issue_id = ?",
-    )
-      .bind(event.project_id, event.issue_id)
-      .first<WorkflowRow>(),
-  );
-  const runId = workflowIdentity(event.project_id, event.issue_id);
-  if (existing !== null && (existing.run_id !== runId || existing.correlation_id !== runId)) {
+  const intent = await store.createDispatchIntent(run, event.source_delivery_id, now);
+  if (intent.source_delivery_id !== event.source_delivery_id) {
     throw new CategorizedWorkflowError("correlation_mismatch");
   }
-  const occurredAt = new Date(event.occurred_at).toISOString();
-  const action = decideWorkflowAction(event, existing?.current_state ?? null);
-  if (action.kind === "ignore") return "ignored";
-
-  if (action.kind === "start") {
-    await asD1Operation(() =>
-      env.DB.prepare(
-        "INSERT OR IGNORE INTO workflow_runs (run_id, project_id, issue_id, current_state, correlation_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      )
-        .bind(runId, event.project_id, event.issue_id, "awaiting_human_approval", runId, occurredAt, occurredAt)
-        .run(),
-    );
+  if (intent.state === "established") {
+    await locateOrCreateInstance(binding, run, event.source_delivery_id);
+    return;
   }
-
-  const transitions = action.kind === "start" ? action.transitions : [action.transition];
-  for (const transition of transitions) {
-    await recordTransition(event, env, observe, base, runId, transition, action.kind !== "start");
+  try {
+    await locateOrCreateInstance(binding, run, event.source_delivery_id);
+    await store.markDispatchAttempt(run.run_id, "established", now);
+  } catch (error) {
+    await store.markDispatchAttempt(run.run_id, "failed", now, errorCategory(error));
+    throw error;
   }
-  if (action.kind === "start") return "started";
-  return action.kind === "approve" ? "approved" : "rejected";
+};
+
+const routeLaterEvent = async (
+  event: QueueBody,
+  run: OrchestrationRunRecord,
+  store: OrchestrationDispatchStore,
+  binding: WorkflowBinding,
+  now: string,
+): Promise<void> => {
+  const inserted = await store.insertInboxEvent(toInboxEvent(event, run.run_id), now);
+  const inbox = await store.findInboxEvent(event.source_delivery_id);
+  if (inbox === null || inbox.run_id !== run.run_id) {
+    throw new CategorizedWorkflowError("correlation_mismatch");
+  }
+  if (!inserted && inbox.state !== "pending") return;
+  const instance = await locateOrCreateInstance(binding, run, event.source_delivery_id);
+  await instance.sendEvent({ type: "linear-event", payload: { deliveryId: event.source_delivery_id } });
+  await store.markInboxState(event.source_delivery_id, "pending", "sent", now);
 };
 
 export const processQueueMessage = async (
@@ -201,28 +189,66 @@ export const processQueueMessage = async (
   dependencies: Partial<ConsumerDependencies> = {},
 ): Promise<void> => {
   const observe = dependencies.observe ?? writeObservation;
-  const request = dependencies.fetch ?? fetch;
+  const store = dependencies.store ?? new D1OrchestrationStore(env.DB);
+  const definition = dependencies.definition ??
+    await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinition();
+  const now = (dependencies.now ?? (() => new Date()))().toISOString();
+  const lifecycle = dependencies.lifecycle ?? writeLifecycleObservation;
   const event = message.body;
   const base = observationBase(event, message);
   emit(observe, base, { stage: "queue.consume", outcome: "started" });
   try {
-    if (event.correlation_id !== base.correlationId) {
+    if (event.correlation_id !== correlationIdentity(event.project_id, event.issue_id)) {
       throw new CategorizedWorkflowError("correlation_mismatch");
     }
-    const action = await recordWorkflow(event, env, observe, base);
-    if (action === "started") {
-      emit(observe, base, { stage: "linear.issue_update", outcome: "started" });
-      try {
-        await moveIssueToHumanApproval(event, env, request);
-      } catch (error) {
-        emit(observe, base, {
-          stage: "linear.issue_update",
-          outcome: "failed",
-          errorType: errorCategory(error),
+    await store.registerDefinitionAndPolicy({
+      definition,
+      projectId: env.LINEAR_PROJECT_ID,
+      repository: env.TRIAL_REPOSITORY,
+      startStateName: env.LINEAR_START_STATE_NAME,
+      humanGateStateId: env.LINEAR_HUMAN_APPROVAL_STATE_ID,
+      dispatchEnabled: String(env.TRIAL_DISPATCH_ENABLED) === "true",
+      now,
+    });
+    const policy = await store.findPolicy(event.project_id);
+    const activeRun = await store.findActiveRun(event.project_id, event.issue_id);
+    if (activeRun !== null) {
+      const intent = await store.findDispatchIntent(activeRun.run_id);
+      if (intent?.source_delivery_id === event.source_delivery_id) {
+        await establishDispatch(event, activeRun, store, env.ORCHESTRATION_WORKFLOW, now);
+        lifecycle({
+          stage: "dispatch.intent",
+          outcome: "reconciled",
+          correlationId: activeRun.correlation_id,
+          runId: activeRun.run_id,
+          deliveryId: event.source_delivery_id,
+          workflowInstanceId: activeRun.workflow_instance_id,
         });
-        throw error;
+      } else {
+        await routeLaterEvent(event, activeRun, store, env.ORCHESTRATION_WORKFLOW, now);
       }
-      emit(observe, base, { stage: "linear.issue_update", outcome: "succeeded" });
+    } else if (
+      policy !== null &&
+      policy.dispatch_enabled === 1 &&
+      event.transition === policy.start_state_name
+    ) {
+      const allocation = await store.allocateRun({
+        projectId: event.project_id,
+        issueId: event.issue_id,
+        definition,
+        now,
+      });
+      await establishDispatch(event, allocation.run, store, env.ORCHESTRATION_WORKFLOW, now);
+      lifecycle({
+        stage: "workflow.instance",
+        outcome: allocation.created ? "succeeded" : "reconciled",
+        correlationId: allocation.run.correlation_id,
+        runId: allocation.run.run_id,
+        deliveryId: event.source_delivery_id,
+        workflowInstanceId: allocation.run.workflow_instance_id,
+      });
+    } else {
+      await store.insertInboxEvent(toInboxEvent(event, null), now);
     }
   } catch (error) {
     emit(observe, base, {
@@ -239,12 +265,12 @@ export const processQueueBatch = async (
   batch: MessageBatch<QueueBody>,
   env: QueueConsumerEnv,
 ): Promise<void> => {
-  await asD1Operation(() =>
-    env.DB.prepare(
+  try {
+    await env.DB.prepare(
       "INSERT INTO queue_consumptions (consumption_id, batch_size, received_at) VALUES (?, ?, ?)",
-    )
-      .bind(crypto.randomUUID(), batch.messages.length, new Date().toISOString())
-      .run(),
-  );
+    ).bind(crypto.randomUUID(), batch.messages.length, new Date().toISOString()).run();
+  } catch {
+    throw new CategorizedWorkflowError("d1_operation_failed");
+  }
   for (const message of batch.messages) await processQueueMessage(message, env);
 };

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deos.dev/schemas/agent-result-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["outcome", "summary", "workProducts", "providerReceipts", "blocker"],
+  "properties": {
+    "outcome": {"enum": ["completed", "blocked", "failed"]},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "workProducts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pullRequest", "branch", "commit", "validation", "workingNote"],
+      "properties": {
+        "pullRequest": {"type": ["string", "null"]},
+        "branch": {"type": ["string", "null"]},
+        "commit": {"type": ["string", "null"]},
+        "validation": {"type": "array", "items": {"type": "string"}},
+        "workingNote": {"type": ["string", "null"]}
+      }
+    },
+    "providerReceipts": {"type": "array", "items": {"type": "string"}},
+    "blocker": {"type": ["string", "null"]}
+  }
+}

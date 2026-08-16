@@ -7,6 +7,10 @@
     "typecheck": "tsc --noEmit",
     "types:check": "wrangler types worker-configuration.d.ts --include-runtime false --config wrangler.queue-consumer-ts.jsonc --check"
   },
+  "dependencies": {
+    "@cloudflare/sandbox": "0.13.0-next.738.2",
+    "yaml": "2.9.0"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260814.1",
     "@types/node": "22.18.0",

@@ -6,60 +6,243 @@ import {
   processQueueMessage,
   type QueueBody,
   type QueueConsumerEnv,
+  type WorkflowBinding,
+  type WorkflowInstanceHandle,
 } from "../src/queue-consumer-core.ts";
+import {
+  type DispatchIntentRecord,
+  type OrchestrationDispatchStore,
+  type OrchestrationRunRecord,
+  type ProjectWorkflowPolicyRecord,
+  type WorkflowInboxEvent,
+  type WorkflowInboxRecord,
+} from "../src/orchestration-store.ts";
 import type { WorkflowObservation } from "../src/telemetry.ts";
+import type { LoadedWorkflowDefinition } from "../src/workflow-definition.ts";
+import { loadWorkflowDefinition } from "../src/workflow-definition.ts";
 
-interface StoredRun {
-  run_id: string;
-  current_state: string;
-  correlation_id: string;
+const definition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: test, version: 1 }
+spec:
+  start: start
+  execution:
+    attemptTimeout: 24h
+    heartbeatTimeout: 5m
+    codexSandboxMode: danger-full-access
+  jobs: {}
+  nodes:
+    start:
+      type: terminal
+      outcome: succeeded
+`,
+  { prompts: {}, schemas: {} },
+);
+const NOW = "2026-08-16T05:00:00.000Z";
+
+class FakeInstance implements WorkflowInstanceHandle {
+  readonly events: Array<{ type: string; payload: unknown }> = [];
+  readonly id: string;
+
+  constructor(id: string) {
+    this.id = id;
+  }
+
+  async sendEvent(event: { type: string; payload: unknown }): Promise<void> {
+    this.events.push(event);
+  }
 }
 
-class FakeD1 {
-  run: StoredRun | null = null;
-  transitions: Array<[string, string, string]> = [];
-  mutations = 0;
-  failOn: string | null = null;
+class FakeWorkflow implements WorkflowBinding {
+  readonly instances = new Map<string, FakeInstance>();
+  creates = 0;
+  failAfterCreateOnce = false;
 
-  prepare(query: string) {
-    let values: unknown[] = [];
-    const maybeFail = () => {
-      if (this.failOn !== null && query.includes(this.failOn)) throw new Error("raw db failure");
+  async get(id: string): Promise<FakeInstance> {
+    const instance = this.instances.get(id);
+    if (instance === undefined) throw new Error("not found");
+    return instance;
+  }
+
+  async createBatch(batch: Array<{ id: string }>): Promise<FakeInstance[]> {
+    this.creates += 1;
+    const created = batch.map(({ id }) => {
+      const existing = this.instances.get(id);
+      if (existing !== undefined) return existing;
+      const instance = new FakeInstance(id);
+      this.instances.set(id, instance);
+      return instance;
+    });
+    if (this.failAfterCreateOnce) {
+      this.failAfterCreateOnce = false;
+      throw new Error("response lost");
+    }
+    return created;
+  }
+}
+
+class FakeStore implements OrchestrationDispatchStore {
+  readonly policies = new Map<string, ProjectWorkflowPolicyRecord>();
+  readonly runs: OrchestrationRunRecord[] = [];
+  readonly intents = new Map<string, DispatchIntentRecord>();
+  readonly inbox = new Map<string, WorkflowInboxRecord>();
+  failEstablishedOnce = false;
+
+  async registerDefinitionAndPolicy(input: {
+    definition: LoadedWorkflowDefinition;
+    projectId: string;
+    repository: string;
+    startStateName: string;
+    humanGateStateId: string;
+    dispatchEnabled: boolean;
+    now: string;
+  }): Promise<void> {
+    const existing = this.policies.get(input.projectId);
+    this.policies.set(input.projectId, {
+      project_id: input.projectId,
+      definition_id: input.definition.name,
+      definition_version: input.definition.version,
+      definition_digest: input.definition.digest,
+      trial_repository: input.repository,
+      start_state_name: input.startStateName,
+      human_gate_state_id: input.humanGateStateId,
+      dispatch_enabled: existing?.dispatch_enabled ?? (input.dispatchEnabled ? 1 : 0),
+      updated_at: input.now,
+    });
+  }
+
+  findPolicy(projectId: string): Promise<ProjectWorkflowPolicyRecord | null> {
+    return Promise.resolve(this.policies.get(projectId) ?? null);
+  }
+
+  findActiveRun(projectId: string, issueId: string): Promise<OrchestrationRunRecord | null> {
+    return Promise.resolve(
+      this.runs.findLast(
+        (run) =>
+          run.project_id === projectId &&
+          run.issue_id === issueId &&
+          ["pending_dispatch", "active", "awaiting_human"].includes(run.status),
+      ) ?? null,
+    );
+  }
+
+  async allocateRun(input: {
+    projectId: string;
+    issueId: string;
+    definition: LoadedWorkflowDefinition;
+    now: string;
+  }): Promise<{ run: OrchestrationRunRecord; created: boolean }> {
+    const active = await this.findActiveRun(input.projectId, input.issueId);
+    if (active !== null) return { run: active, created: false };
+    const sequence = this.runs.filter(
+      (run) => run.project_id === input.projectId && run.issue_id === input.issueId,
+    ).length + 1;
+    const run: OrchestrationRunRecord = {
+      run_id: `workflow:${input.projectId}:${input.issueId}:run:${sequence}`,
+      correlation_id: `workflow:${input.projectId}:${input.issueId}`,
+      run_sequence: sequence,
+      project_id: input.projectId,
+      issue_id: input.issueId,
+      definition_id: input.definition.name,
+      definition_version: input.definition.version,
+      definition_digest: input.definition.digest,
+      workflow_instance_id: `workflow-instance-${sequence}`,
+      previous_node: null,
+      current_node: input.definition.start,
+      gate_origin_node: null,
+      status: "pending_dispatch",
+      accumulated_data_json: "{}",
+      created_at: input.now,
+      updated_at: input.now,
+      terminal_at: null,
     };
-    const statement = {
-      bind: (...bound: unknown[]) => {
-        values = bound;
-        return statement;
-      },
-      first: async <T>() => {
-        maybeFail();
-        return this.run as T | null;
-      },
-      run: async () => {
-        maybeFail();
-        this.mutations += 1;
-        if (query.includes("INSERT OR IGNORE INTO workflow_runs") && this.run === null) {
-          this.run = {
-            run_id: String(values[0]),
-            current_state: String(values[3]),
-            correlation_id: String(values[4]),
-          };
-        } else if (query.includes("INSERT OR IGNORE INTO workflow_transitions")) {
-          const transition: [string, string, string] = [
-            String(values[1]),
-            String(values[2]),
-            String(values[3]),
-          ];
-          if (!this.transitions.some((existing) => existing.join("|") === transition.join("|"))) {
-            this.transitions.push(transition);
-          }
-        } else if (query.includes("UPDATE workflow_runs") && this.run !== null) {
-          this.run.current_state = String(values[0]);
-        }
-        return {};
-      },
+    this.runs.push(run);
+    return { run, created: true };
+  }
+
+  async createDispatchIntent(
+    run: OrchestrationRunRecord,
+    sourceDeliveryId: string,
+    now: string,
+  ): Promise<DispatchIntentRecord> {
+    const existing = this.intents.get(run.run_id);
+    if (existing !== undefined) return existing;
+    const intent: DispatchIntentRecord = {
+      run_id: run.run_id,
+      source_delivery_id: sourceDeliveryId,
+      workflow_instance_id: run.workflow_instance_id,
+      state: "pending",
+      attempt_count: 0,
+      last_attempt_at: null,
+      safe_error_category: null,
+      created_at: now,
+      updated_at: now,
     };
-    return statement;
+    this.intents.set(run.run_id, intent);
+    return intent;
+  }
+
+  findDispatchIntent(runId: string): Promise<DispatchIntentRecord | null> {
+    return Promise.resolve(this.intents.get(runId) ?? null);
+  }
+
+  async markDispatchAttempt(
+    runId: string,
+    state: DispatchIntentRecord["state"],
+    now: string,
+    safeErrorCategory: string | null = null,
+  ): Promise<void> {
+    if (state === "established" && this.failEstablishedOnce) {
+      this.failEstablishedOnce = false;
+      throw new Error("mapping write failed");
+    }
+    const intent = this.intents.get(runId);
+    if (intent === undefined) throw new Error("missing intent");
+    intent.state = state;
+    intent.attempt_count += 1;
+    intent.last_attempt_at = now;
+    intent.safe_error_category = safeErrorCategory;
+    intent.updated_at = now;
+    if (state === "established") {
+      const run = this.runs.find((candidate) => candidate.run_id === runId);
+      if (run !== undefined) run.status = "active";
+    }
+  }
+
+  async insertInboxEvent(event: WorkflowInboxEvent): Promise<boolean> {
+    if (this.inbox.has(event.deliveryId)) return false;
+    this.inbox.set(event.deliveryId, {
+      delivery_id: event.deliveryId,
+      run_id: event.runId,
+      correlation_id: event.correlationId,
+      event_kind: event.eventKind,
+      actor_id: event.actorId,
+      actor_type: event.actorType,
+      provider_time: event.providerTime,
+      from_state_id: event.fromStateId,
+      from_state_name: event.fromStateName,
+      to_state_id: event.toStateId,
+      to_state_name: event.toStateName,
+      payload_digest: event.payloadDigest,
+      state: event.runId === null ? "unmatched" : "pending",
+    });
+    return true;
+  }
+
+  findInboxEvent(deliveryId: string): Promise<WorkflowInboxRecord | null> {
+    return Promise.resolve(this.inbox.get(deliveryId) ?? null);
+  }
+
+  async markInboxState(
+    deliveryId: string,
+    expected: "pending" | "sent" | "claimed",
+    next: "sent" | "claimed" | "processed" | "duplicate",
+  ): Promise<boolean> {
+    const inbox = this.inbox.get(deliveryId);
+    if (inbox?.state !== expected) return false;
+    inbox.state = next;
+    return true;
   }
 }
 
@@ -70,148 +253,155 @@ const queueBody = (overrides: Partial<QueueBody> = {}): QueueBody => ({
   project_id: "project-1",
   transition: "In Progress",
   actor_id: "actor-1",
-  occurred_at: "2026-08-14T05:00:00Z",
+  actor_type: "user",
+  event_kind: "issue-state-change",
+  state_id: "in-progress-state",
+  previous_state_id: "backlog-state",
+  previous_state_name: "Backlog",
+  occurred_at: NOW,
   correlation_id: "workflow:project-1:issue-1",
+  payload_digest: "sha256-payload-1",
   ...overrides,
 });
 
-const message = (body = queueBody(), attempts = 1) => ({ id: "message-1", attempts, body });
-
-const environment = (db: FakeD1): QueueConsumerEnv =>
-  ({
-    DB: db,
-    LINEAR_API_KEY: "test-only-token",
-    LINEAR_API_URL: "https://api.linear.app/graphql",
-    LINEAR_HUMAN_APPROVAL_STATE_ID: "human-review-state",
-  }) as unknown as QueueConsumerEnv;
-
-const successResponse: typeof fetch = async () =>
-  new Response(JSON.stringify({ data: { issueUpdate: { success: true } } }), { status: 200 });
+const environment = (workflow: FakeWorkflow): QueueConsumerEnv => ({
+  ORCHESTRATION_WORKFLOW: workflow,
+  LINEAR_PROJECT_ID: "project-1",
+  LINEAR_START_STATE_NAME: "In Progress",
+  LINEAR_HUMAN_APPROVAL_STATE_ID: "human-approval-state",
+  TRIAL_REPOSITORY: "sachinkundu/deos",
+  TRIAL_DISPATCH_ENABLED: "true",
+} as unknown as QueueConsumerEnv);
 
 const runMessage = async (
-  db: FakeD1,
-  options: { body?: QueueBody; attempts?: number; request?: typeof fetch } = {},
-) => {
+  store: FakeStore,
+  workflow: FakeWorkflow,
+  body = queueBody(),
+  attempts = 1,
+): Promise<WorkflowObservation[]> => {
   const observations: WorkflowObservation[] = [];
   await processQueueMessage(
-    message(options.body, options.attempts),
-    environment(db),
-    { fetch: options.request ?? successResponse, observe: (entry) => observations.push(entry) },
+    { id: `message-${attempts}`, attempts, body },
+    environment(workflow),
+    {
+      store,
+      definition,
+      now: () => new Date(NOW),
+      observe: (entry) => observations.push(entry),
+      lifecycle: () => {},
+    },
   );
   return observations;
 };
 
-test("successful attempt preserves correlation through transitions and Linear", async () => {
-  const db = new FakeD1();
-  const observations = await runMessage(db, { attempts: 2 });
+test("start delivery allocates one run and establishes one stable Workflow", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  const observations = await runMessage(store, workflow);
 
-  assert.equal(db.run?.correlation_id, "workflow:project-1:issue-1");
-  assert.deepEqual(db.transitions, [
-    ["received", "queued", "queue-consumed"],
-    ["queued", "requirements_in_progress", "workflow-started"],
-    ["requirements_in_progress", "awaiting_human_approval", "approval-required"],
+  assert.equal(store.runs.length, 1);
+  assert.equal(store.runs[0].status, "active");
+  assert.equal(store.intents.get(store.runs[0].run_id)?.state, "established");
+  assert.equal(workflow.creates, 1);
+  assert.equal(observations.at(-1)?.["deos.workflow.outcome"], "succeeded");
+});
+
+test("duplicate start delivery reuses the established instance", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  await runMessage(store, workflow);
+  await runMessage(store, workflow, queueBody(), 2);
+
+  assert.equal(store.runs.length, 1);
+  assert.equal(workflow.creates, 1);
+  assert.equal(workflow.instances.values().next().value?.events.length, 0);
+});
+
+test("lost create response is reconciled by stable identity", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  workflow.failAfterCreateOnce = true;
+  await runMessage(store, workflow);
+
+  assert.equal(workflow.creates, 1);
+  assert.equal(workflow.instances.size, 1);
+  assert.equal(store.intents.values().next().value?.state, "established");
+});
+
+test("mapping write failure retries against the existing instance", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  store.failEstablishedOnce = true;
+  await assert.rejects(runMessage(store, workflow));
+
+  await runMessage(store, workflow, queueBody(), 2);
+  assert.equal(workflow.creates, 1);
+  assert.equal(workflow.instances.size, 1);
+  assert.equal(store.intents.values().next().value?.state, "established");
+});
+
+test("later active-run event is inboxed and sent once", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  await runMessage(store, workflow);
+  const later = queueBody({
+    event_id: "delivery-2",
+    source_delivery_id: "delivery-2",
+    transition: "Human Approval",
+    state_id: "human-approval-state",
+    previous_state_id: "in-progress-state",
+    previous_state_name: "In Progress",
+    payload_digest: "sha256-payload-2",
+  });
+  await runMessage(store, workflow, later);
+  await runMessage(store, workflow, later, 2);
+
+  const instance = workflow.instances.values().next().value;
+  assert.deepEqual(instance?.events, [
+    { type: "linear-event", payload: { deliveryId: "delivery-2" } },
   ]);
-  assert.equal(
-    observations.every(
-      (entry) => entry["deos.workflow.correlation_id"] === "workflow:project-1:issue-1",
-    ),
-    true,
-  );
-  assert.equal(observations.every((entry) => entry["deos.workflow.attempt.number"] === 2), true);
-  assert.deepEqual(
-    observations
-      .filter((entry) => entry["deos.workflow.outcome"] === "succeeded")
-      .map((entry) => entry["deos.workflow.stage"]),
-    [
-      "workflow.transition",
-      "workflow.transition",
-      "workflow.transition",
-      "linear.issue_update",
-      "queue.consume",
-    ],
-  );
+  assert.equal(store.inbox.get("delivery-2")?.state, "sent");
 });
 
-test("reprocessing a terminal run is visible without duplicate transitions", async () => {
-  const db = new FakeD1();
-  db.run = {
-    run_id: "workflow:project-1:issue-1",
-    current_state: "approved",
-    correlation_id: "workflow:project-1:issue-1",
-  };
-  const observations = await runMessage(db, { attempts: 3 });
+test("non-start or disabled events are audited as unmatched", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  const body = queueBody({ transition: "Canceled", state_id: "canceled-state" });
+  await runMessage(store, workflow, body);
 
-  assert.deepEqual(db.transitions, []);
-  assert.deepEqual(
-    observations.map((entry) => [
-      entry["deos.workflow.stage"],
-      entry["deos.workflow.outcome"],
-    ]),
-    [
-      ["queue.consume", "started"],
-      ["queue.consume", "succeeded"],
-    ],
-  );
+  assert.equal(store.runs.length, 0);
+  assert.equal(workflow.creates, 0);
+  assert.equal(store.inbox.get("delivery-1")?.state, "unmatched");
 });
 
-test("correlation mismatch fails before state mutation", async () => {
-  const db = new FakeD1();
-  const observations: WorkflowObservation[] = [];
+test("a new start after terminal completion creates the next run", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  await runMessage(store, workflow);
+  store.runs[0].status = "succeeded";
+  const next = queueBody({
+    event_id: "delivery-2",
+    source_delivery_id: "delivery-2",
+    payload_digest: "sha256-payload-2",
+  });
+  await runMessage(store, workflow, next);
 
+  assert.deepEqual(store.runs.map((run) => run.run_sequence), [1, 2]);
+  assert.deepEqual(store.runs.map((run) => run.workflow_instance_id), [
+    "workflow-instance-1",
+    "workflow-instance-2",
+  ]);
+  assert.equal(workflow.creates, 2);
+});
+
+test("correlation mismatch fails before storage or provider action", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
   await assert.rejects(
-    processQueueMessage(
-      message(queueBody({ correlation_id: "wrong" })),
-      environment(db),
-      { fetch: successResponse, observe: (entry) => observations.push(entry) },
-    ),
+    runMessage(store, workflow, queueBody({ correlation_id: "wrong" })),
     (error: unknown) =>
       error instanceof CategorizedWorkflowError && error.category === "correlation_mismatch",
   );
-  assert.equal(db.mutations, 0);
-  assert.equal(observations.at(-1)?.["error.type"], "correlation_mismatch");
+  assert.equal(store.runs.length, 0);
+  assert.equal(workflow.creates, 0);
 });
-
-test("D1 failures use a service-authored category and no raw detail", async () => {
-  const db = new FakeD1();
-  db.failOn = "SELECT run_id";
-  const observations: WorkflowObservation[] = [];
-
-  await assert.rejects(
-    processQueueMessage(message(), environment(db), {
-      fetch: successResponse,
-      observe: (entry) => observations.push(entry),
-    }),
-  );
-  assert.equal(observations.at(-1)?.["error.type"], "d1_operation_failed");
-  assert.equal(JSON.stringify(observations).includes("raw db failure"), false);
-});
-
-for (const [name, request, category] of [
-  ["transport", async () => { throw new Error("secret transport detail"); }, "linear_transport_failed"],
-  ["HTTP", async () => new Response("secret response", { status: 503 }), "linear_http_failed"],
-  [
-    "GraphQL",
-    async () => new Response(JSON.stringify({ errors: [{ message: "secret provider detail" }] })),
-    "linear_graphql_failed",
-  ],
-] as const) {
-  test(`Linear ${name} failure is safely categorized and rethrown`, async () => {
-    const db = new FakeD1();
-    const observations: WorkflowObservation[] = [];
-    await assert.rejects(
-      processQueueMessage(message(), environment(db), {
-        fetch: request as typeof fetch,
-        observe: (entry) => observations.push(entry),
-      }),
-    );
-    const failures = observations.filter((entry) => entry["deos.workflow.outcome"] === "failed");
-    assert.deepEqual(
-      failures.map((entry) => [entry["deos.workflow.stage"], entry["error.type"]]),
-      [
-        ["linear.issue_update", category],
-        ["queue.consume", category],
-      ],
-    );
-    assert.equal(JSON.stringify(observations).includes("secret"), false);
-  });
-}
