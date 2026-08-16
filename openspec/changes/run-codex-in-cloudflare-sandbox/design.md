@@ -56,13 +56,15 @@ requires a stronger authentication isolation design and is not enabled here.
 
 **Goals:**
 
+- Make the versioned, human-readable workflow definition the center of the
+  system: it defines autonomous nodes, follow-up agents, review loops, human
+  gates, and terminal outcomes instead of hard-coding an approval after every
+  agent.
 - Preserve one traceable path from a signed Linear delivery through Queue,
   Workflow, Sandbox, Codex, R2, GitHub, Linear, and cleanup.
 - Make D1 the authoritative business-state, idempotency, and audit ledger while
-  using Cloudflare Workflow for durable orchestration and event waiting.
-- Represent workflow behavior as a versioned graph so autonomous nodes,
-  follow-up agents, loops, human gates, and terminal nodes are policy choices
-  rather than hard-coded approval after every agent.
+  using Cloudflare Workflow to execute the selected definition durably and
+  wait for events.
 - Run each Codex attempt in a clean, attributable, bounded Sandbox and make a
   fresh attempt independently recoverable from durable context.
 - Keep agent-requested provider work behind narrow capability adapters and keep
@@ -81,6 +83,208 @@ requires a stronger authentication isolation design and is not enabled here.
 - Replacing Workers Logs with a new dashboard or retaining raw agent content in
   telemetry.
 
+## Executable Workflow Definition
+
+The primary authored artifact is a version-controlled `workflow.deos.yaml`.
+Like Symphony's workflow file, it keeps operator-readable configuration and
+agent instructions under review together. Unlike a prompt-only lifecycle, its
+nodes and edges are executable: the orchestration service, rather than Codex,
+decides which edge is taken.
+
+The first definition models the supplied **AI Delivery Workflow with
+OpenSpec**. This abbreviated example shows the intended file shape; the
+implementation will validate it against a versioned schema before enabling it:
+
+```yaml
+apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata:
+  name: openspec-delivery
+  version: 1
+
+spec:
+  start: requirements
+  execution:
+    attemptTimeout: 24h       # enforced by the supervisor, not by Codex
+    heartbeatTimeout: 5m
+    codexSandboxMode: danger-full-access
+
+  jobs:
+    requirements:
+      promptFile: prompts/requirements.md
+      inputs: [linear_issue, repository_context]
+      context: [shared_workpad]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [result.json, patch.diff, validation.txt]
+    requirements_review:
+      promptFile: prompts/requirements-review.md
+      inputs: [requirements_result, review_history]
+      context: [shared_workpad]
+      resultSchema: schemas/review-result-v1.json
+    bdd_review:
+      promptFile: prompts/bdd-review.md
+      inputs: [proposal, requirements, delta_specs]
+      resultSchema: schemas/review-result-v1.json
+    ddd_architecture:
+      promptFile: prompts/ddd-architecture.md
+      inputs: [approved_specs]
+      resultSchema: schemas/agent-result-v1.json
+    ddd_review:
+      promptFile: prompts/ddd-review.md
+      inputs: [approved_specs, design]
+      resultSchema: schemas/review-result-v1.json
+    implementation:
+      promptFile: prompts/implementation.md
+      inputs: [approved_specs, approved_design, tasks]
+      context: [shared_workpad, prior_artifact_manifests]
+      resultSchema: schemas/agent-result-v1.json
+    code_review:
+      promptFile: prompts/code-review.md
+      inputs: [implementation_result, branch, diff, validation]
+      resultSchema: schemas/review-result-v1.json
+    evidence_verification:
+      promptFile: prompts/evidence-verification.md
+      inputs: [evidence_pack, acceptance_criteria]
+      resultSchema: schemas/review-result-v1.json
+    release_finalization:
+      promptFile: prompts/release-finalization.md
+      inputs: [merged_pr, deployment_evidence]
+      resultSchema: schemas/agent-result-v1.json
+
+  nodes:
+    requirements:
+      type: agent
+      job: requirements
+      edges: {completed: requirements_review, blocked: blocked}
+    requirements_review:
+      type: agent
+      job: requirements_review
+      edges: {approved: requirements_approval, changes_requested: requirements}
+    requirements_approval:
+      type: human_gate
+      linearState: Human Approval
+      edges: {approved: openspec_proposal, rejected: requirements}
+    openspec_proposal:
+      type: system_action
+      action: openspec.create_proposal_and_requirements
+      edges: {completed: openspec_specs, failed: blocked}
+    openspec_specs:
+      type: system_action
+      action: openspec.create_delta_specs
+      edges: {completed: bdd_review, failed: blocked}
+    bdd_review:
+      type: agent
+      job: bdd_review
+      edges: {approved: ddd_architecture, changes_requested: openspec_specs}
+    ddd_architecture:
+      type: agent
+      job: ddd_architecture
+      edges: {completed: ddd_review, blocked: blocked}
+    ddd_review:
+      type: agent
+      job: ddd_review
+      edges: {approved: architecture_approval, changes_requested: ddd_architecture}
+    architecture_approval:
+      type: human_gate
+      linearState: Human Approval
+      edges: {approved: openspec_tasks, rejected: ddd_architecture}
+    openspec_tasks:
+      type: system_action
+      action: openspec.create_tasks
+      edges: {completed: implementation, failed: blocked}
+    implementation:
+      type: agent
+      job: implementation
+      edges: {completed: code_review, blocked: blocked}
+    code_review:
+      type: agent
+      job: code_review
+      edges: {approved: evidence_verification, changes_requested: implementation}
+    evidence_verification:
+      type: agent
+      job: evidence_verification
+      edges: {certified: openspec_verify, changes_requested: implementation}
+    openspec_verify:
+      type: system_action
+      action: openspec.verify
+      edges: {completed: release_approval, failed: implementation}
+    release_approval:
+      type: human_gate
+      linearState: Human Approval
+      edges: {approved: deploy, rejected: blocked}
+    deploy:
+      type: system_action
+      action: release.deploy
+      edges: {completed: release_finalization, failed: blocked}
+    release_finalization:
+      type: agent
+      job: release_finalization
+      edges: {completed: sync_and_archive, blocked: blocked}
+    sync_and_archive:
+      type: system_action
+      action: openspec.sync_and_archive
+      edges: {completed: done, failed: blocked}
+    done: {type: terminal, outcome: succeeded}
+    blocked: {type: terminal, outcome: blocked}
+```
+
+Each referenced prompt file is part of the immutable definition bundle. After
+schema-checked interpolation of the declared inputs and context references, its
+contents are the starting prompt passed to Codex. Repository, revision, branch,
+output schema, and required outputs are structured fields, not prose
+conventions. A deadline may be included in prompt context for orientation, but
+Codex is never responsible for measuring or enforcing its own runtime; the
+supervisor heartbeat and absolute timeout own that decision.
+
+```mermaid
+flowchart TB
+  subgraph intent[1. Intent and requirements]
+    L[Linear intent] --> R[Requirements agent]
+    R --> RR[Requirements review agent]
+    RR -->|changes requested| R
+    RR --> RG{Human requirements approval}
+    RG --> P[OpenSpec proposal + requirements]
+    P --> S[OpenSpec delta specs + BDD scenarios]
+    S --> B[BDD review agent]
+    B -->|changes requested| S
+  end
+
+  subgraph architecture[2. Specification and architecture]
+    B --> A[DDD architect]
+    A --> AR[DDD reviewer]
+    AR -->|changes requested| A
+    AR --> AG{Human architecture approval}
+    AG --> T[OpenSpec tasks]
+  end
+
+  subgraph implementation[3. Implementation]
+    T --> I[Implementation agent]
+    I --> CR[Code review agent]
+    CR -->|code fixes| I
+    CR --> EP[Evidence pack]
+  end
+
+  subgraph release[4. Evidence and release]
+    EP --> EV[Evidence verifier]
+    EV -->|changes requested| I
+    EV --> V[OpenSpec verify]
+    V --> PR[PR + evidence]
+    PR --> G{Human release approval}
+    G --> D[Deploy]
+  end
+
+  subgraph operations[5. Operations and compounding]
+    D --> F[Release finalization agent]
+    F --> SA[OpenSpec sync + archive]
+    SA --> VC[Version control history]
+  end
+```
+
+D1 stores the selected definition digest, the current node, attempts, effects,
+and receipts needed to resume this workflow. Telemetry reports important
+boundaries and failures. Both support the executable definition; neither is the
+workflow's authored source of truth.
+
 ## Decisions
 
 ### 1. Extend the TypeScript Queue Worker into one orchestration Worker
@@ -93,11 +297,17 @@ deployment:
 3. the trusted Sandbox controller and artifact collector; and
 4. provider capability adapters.
 
-The Python ingress Worker remains unchanged except for extending the normalized
-application event with the actor type and other already-authenticated decision
-fields. The orchestration Worker receives Workflow, Sandbox, D1, R2, Queue, and
-secret bindings. Co-location avoids an additional network-authentication layer
-between dispatch, Workflow, and Sandbox while keeping the public ingress small.
+The Python ingress Worker keeps its authentication boundary and extends the
+normalized application event with the actor type and other already-authenticated
+decision fields. It enqueues every signed issue-state change in a configured
+project, not only changes whose destination resembles a start, approval, or
+rejection state. The dispatcher starts a run only for a configured start event;
+when a run already exists, it routes every state departure through that run's
+graph. This ensures an unexpected departure from an active human gate reaches
+repair logic instead of being classified as irrelevant at ingress. The
+orchestration Worker receives Workflow, Sandbox, D1, R2, Queue, and secret
+bindings. Co-location avoids an additional network-authentication layer between
+dispatch, Workflow, and Sandbox while keeping the public ingress small.
 
 The Sandbox container is separately built from a pinned image. It contains an
 exact Codex CLI version, the runner supervisor, the result JSON Schema, the
@@ -176,10 +386,11 @@ Alternative considered: continue using the current correlation ID as the
 Workflow instance ID. That prevents a later run for the same issue because a
 Workflow ID cannot be reused and does not distinguish multiple runs in D1.
 
-### 3. Use a D1 dispatch intent and reconcile across the non-transactional create boundary
+### 3. Create or recover exactly one Cloudflare Workflow for each run
 
-D1 and Cloudflare Workflow creation cannot participate in one transaction. The
-dispatcher therefore uses an intent/reconciliation protocol:
+D1 cannot save a row in the same transaction that creates a Cloudflare
+Workflow. The dispatcher therefore records what it intends to create first and
+uses the same stable Workflow ID to recover after any interrupted call:
 
 1. In one D1 transaction, deduplicate `Linear-Delivery`, load project policy,
    find the active run, or allocate a new run and stable Workflow ID. Insert a
@@ -205,22 +416,23 @@ Alternative considered: rely on Queue retries and Workflow `create` errors as
 idempotency. That cannot distinguish a successful create followed by a failed
 D1 mapping write and cannot safely handle ambiguous `sendEvent` outcomes.
 
-### 4. Freeze a versioned declarative graph for each run
+### 4. Freeze the selected executable workflow for each run
 
-Project policy points to an immutable workflow-definition version. The
-definition contains:
+Project policy points to an immutable `workflow.deos.yaml` bundle of graph,
+structured jobs, prompt files, and schemas. The definition contains:
 
 - nodes with stable IDs and a type: `agent`, `system_action`, `human_gate`, or
   `terminal`;
 - permitted result classes and ordered outgoing edges;
 - allowlisted conditions over the previous node, current node, accumulated run
   data, validated agent result, and provider-receipt outcomes;
-- retry, blocked, failure, cancellation, and timeout actions; and
+- retry, blocked, failure, cancellation, and timeout actions;
+- structured agent jobs and their service-authored starting prompts; and
 - the Linear state associated with a node when a visible board transition is
   required.
 
 At run creation, D1 stores the definition ID, version, digest, and start node.
-Definitions cannot contain executable code, free-form expressions, prompts, or
+Definitions cannot contain executable code, free-form edge expressions, or
 agent-provided state names. A small service-owned evaluator handles typed
 operators such as equality, set membership, receipt completeness, and outcome
 class. An unknown operator or missing edge is a configuration failure, not an
@@ -250,32 +462,49 @@ operation row. The operation protocol is:
 2. authorize the action and target, then insert or load its D1 receipt;
 3. if the receipt is terminal, return it;
 4. if prior execution is ambiguous, query provider state by the stable branch,
-   PR, comment marker, attachment URL, or expected Linear state;
+   PR, comment marker, or attachment URL; a Linear transition instead uses the
+   ordered signed-delivery protocol below and never current state alone;
 5. execute only when reconciliation proves the effect absent; and
 6. store a sanitized success, denial, failure, duplicate, or reconciled receipt.
 
 For a Workflow-owned Linear transition, D1 first records a pending transition
-effect. After Linear confirms the expected state, the Workflow commits the
-authoritative D1 node transition. A retry reconciles Linear first. This avoids a
-false D1 advance and closes the current gap where a D1 transition may succeed
-before its Linear update fails.
+effect with the observed pre-state, provider update time, and latest processed
+delivery. The transition adapter uses Linear's app actor for system mutations,
+so its events are distinguishable from a person's decision. Because Linear does
+not expose a documented compare-and-set mutation, a lost response is never
+reconciled from the issue's current state alone. The Workflow waits for and
+records the signed state-change delivery produced by its own operation. A
+matching transition from the recorded pre-state to the target, attributable to
+the Workflow app actor and after the operation began, proves the effect. Any
+later transition is newer intent and must not be overwritten.
+If that ordered evidence never arrives, the operation becomes
+`manual_reconciliation_required`; the Workflow does not blindly repeat a stale
+mutation. System operations for one run are serialized in D1, and the
+authoritative node advances only after the matching effect is proven.
 
-At a human gate, the signed application event must have `actor.type == "user"`
-and an actor ID authorized by the frozen run policy. OAuth clients,
-integrations, null/deleted actors, agents, and unlisted users cannot approve or
-reject. If one of them moves the issue, the Workflow records the rejected
-delivery and uses a stable repair operation to restore `Human Approval`. Gate
-processing remains blocked until restoration is confirmed.
+Linear remains the permission authority for people. At a human gate, any signed
+application event with `actor.type == "user"` may approve or reject according
+to the graph; DEOS does not maintain a second per-user permission allowlist.
+Every signed state-change event is accepted and audited at ingress. An OAuth
+client, integration, null/deleted actor, or agent cannot count as the human
+decision required by the merged specification. If such an actor moves the
+issue away from an active gate, the event still reaches the Workflow, which
+records it and uses a stable repair operation to restore the gate. Gate
+processing remains blocked until restoration is confirmed. A later genuine
+human transition is newer intent and is processed rather than overwritten by
+repair.
 
 ### 6. Run long Codex work as a supervised Sandbox process
 
 Each agent node creates an `agent_attempt` row and a complete immutable job
-specification before starting a Sandbox. The job includes repository and source
-revision, target branch, prompt-template version, result-schema version,
-workflow context references, allowed capabilities, absolute deadline, and
-artifact limits. A follow-up agent receives the prior branch/revision, review
-feedback, structured result, shared Linear working-note reference, and artifact
-manifest references from this durable specification.
+specification before starting a Sandbox. The structured job is resolved from
+the frozen workflow definition and includes the starting prompt, declared
+inputs, repository and source revision, target branch, result schema, workflow
+context references, required outputs, and artifact limits. A follow-up agent
+receives the prior branch/revision, review feedback, structured result, shared
+Linear working-note reference, and artifact manifest references through those
+declared inputs. An absolute deadline may be added to the prompt as
+informational context, but it is not part of the agent's control contract.
 
 The Sandbox controller starts an exactly pinned supervisor using the preview
 SDK's argv-based process API. It passes `cwd` and non-secret environment values
@@ -285,15 +514,24 @@ supervisor invokes Codex with:
 - the service-authored task prompt;
 - `--json` for the provenance event stream;
 - `--output-schema` and `--output-last-message` for the final JSON result; and
-- explicit `workspace-write` permissions, never `danger-full-access`.
+- `danger-full-access` inside the disposable Cloudflare Sandbox for this first
+  controlled slice.
+
+There is no Codex tool allowlist in this version. The disposable Sandbox is the
+outer execution boundary: it contains only the selected checkout and build
+environment, is destroyed after collection, and cannot receive Linear or
+GitHub credentials. Provider writes still pass through the credentialless
+capability adapters because those effects outlive the Sandbox. Fine-grained
+Codex permissions may be added later if evidence shows they are useful.
 
 The supervisor writes JSONL, final output, validation output, and process status
 to fixed files outside the repository checkout. The Workflow does not hold an
 open request for the full run. It waits for a Linear event with a bounded
 heartbeat timeout, then inspects the stored Sandbox and process identity. A
 live process and a fresh supervisor heartbeat update D1 and repeat the wait.
-An arriving event can request a configured cancellation or otherwise update the
-inbox while the attempt is active.
+The supervisor, not Codex, owns deadline enforcement. An arriving event can
+request a configured cancellation or otherwise update the inbox while the
+attempt is active.
 
 If the heartbeat threshold is missed, the Workflow checks Sandbox and process
 state before acting. Process IDs are treated as container-local: if the
@@ -344,10 +582,10 @@ opaque protected diagnostic reference.
 
 This is a controlled-runner exception, not a claim that arbitrary repositories
 can safely receive ChatGPT-managed authentication. Egress is deny-by-default,
-the source revision and prompt are controlled, Codex tool permissions are
-bounded, and artifact scanning is defense in depth. Expansion beyond the trial
-requires a separate design that removes reusable account credentials from the
-agent execution boundary.
+the source revision and prompt are controlled, and the disposable Sandbox is
+the execution boundary. Artifact scanning is defense in depth. Expansion
+beyond the trial requires a separate design that removes reusable account
+credentials from the agent execution boundary.
 
 ### 8. Expose provider work as credentialless, schema-checked capabilities
 
@@ -385,11 +623,15 @@ credentialless gateway.
 
 ### 9. Commit immutable R2 artifacts before a successful attempt outcome
 
-The collector, not an agent command, owns persistence. It reads only an
-allowlisted set of files, enforces per-file and total size limits, validates the
-final result against the frozen JSON Schema, scans every candidate for known
-credential material, and either rejects it or creates a verified redacted
-derivative. Raw Codex output is never copied into Workers Logs.
+The agent and supervisor write the job's declared outputs into a fixed staging
+directory inside the throwaway Sandbox. A trusted runner then performs a small,
+mechanical handoff to R2. It does not review, approve, redact, or certify the
+agent's work. It checks only the required filenames, result schema, and byte
+limits; structurally excludes `CODEX_HOME`, Git credentials, and other auth
+paths; rejects a candidate that matches known authentication or provider-token
+patterns; computes checksums; and writes the manifest required by the merged
+specification. Rich provenance and redacted-derivative generation are deferred.
+Raw Codex output is never copied into Workers Logs.
 
 Artifact keys are immutable and attempt-scoped:
 
@@ -413,17 +655,19 @@ The result is not successful until every required object and the manifest can
 be read and verified.
 
 Protected diagnostics are encrypted, access controlled, and referenced by
-opaque ID. Authentication objects are never part of a run manifest. Artifact
-retrieval verifies the D1 digest against R2 before returning bytes to an
-authorized operator.
+opaque ID. Authentication objects are never part of the staging directory or a
+run manifest. Artifact retrieval verifies the D1 digest against R2 before
+returning bytes to an authorized operator.
 
 ### 10. Keep telemetry bounded and joinable
 
 The existing telemetry envelope is extended with closed stages for dispatch,
-Workflow decisions, event routing, Sandbox lifecycle, heartbeat, Codex result,
-artifact writes, provider operations, Linear transition repair, and cleanup.
-Each observation has a terminal success or closed failure category and the
-identifiers needed to join it to D1.
+Workflow decisions, event routing, Sandbox lifecycle, Codex result, artifact
+writes, provider operations, Linear transition repair, and cleanup. Routine
+heartbeat writes live only in D1; they do not emit one telemetry log per beat.
+Telemetry records attempt start, a missed or stalled heartbeat, recovery,
+absolute timeout, and terminal outcome. Each observation has a terminal success
+or closed failure category and the identifiers needed to join it to D1.
 
 Telemetry excludes prompts, issue titles/descriptions, actor names or emails,
 agent messages, JSONL bodies, diffs, validation text, provider responses,
@@ -507,7 +751,7 @@ readable and rollback does not require destructive schema changes.
 
 | Record | Essential fields and invariant |
 |---|---|
-| `workflow_definitions` | Definition ID, version, project, canonical graph JSON, digest, enabled time. Versions are immutable. |
+| `workflow_definitions` | Definition ID, version, project, canonical workflow bundle/digest, enabled time. Versions are immutable. |
 | `orchestration_runs` | Run ID, correlation ID, sequence, project/issue, definition version/digest, Workflow ID, previous/current node, gate-origin node, status, accumulated-data JSON, timestamps. At most one active run per project/issue. |
 | `dispatch_intents` | Run, source delivery, Workflow ID, `pending/established/failed`, attempt timestamps, safe error category. One row per run. |
 | `workflow_event_inbox` | Delivery ID, run, actor ID/type, event kind, provider time, payload digest, sent/claimed/processed state. Delivery ID is unique. |
@@ -542,6 +786,7 @@ agent attempt always receives a new attempt and Sandbox ID.
 | 24-hour limit or explicit cancellation | Kill if present, collect allowed evidence, persist refreshed auth if valid, destroy, and apply the configured non-success edge. |
 | R2 put is interrupted or ambiguous | Read the deterministic key and accept only an exact digest/metadata match; otherwise fail the artifact set. |
 | Provider call times out after a possible write | Reconcile by stable operation marker/resource identity before retry. Only missing effects are retried. |
+| Linear transition response is lost | Wait for ordered signed transition evidence. Never infer success from current state alone or overwrite a later human move; require manual reconciliation if evidence remains ambiguous. |
 | Partial provider success | Keep successful receipts and retry only incomplete required operations. Success edge remains closed. |
 | Cleanup fails | Keep attempt non-successful, retain Sandbox ID, and upsert the stable operator cleanup item. Scheduled reconciliation continues. |
 | Invalid graph, result schema, target, capability, or requested Linear transition | Non-retryable for that input. Record a configuration/contract/policy failure without broadening authority. |
@@ -585,7 +830,7 @@ agent attempt always receives a new attempt and Sandbox ID.
   while still joining back to ingress.
 - **GitHub and Linear APIs do not provide universal idempotency keys** -> Use
   deterministic branches, PR lookup, comment/workpad markers, attachment URLs,
-  expected-state reads, and durable receipts before retry.
+  ordered Linear delivery evidence, and durable receipts before retry.
 
 ## Migration Plan
 
