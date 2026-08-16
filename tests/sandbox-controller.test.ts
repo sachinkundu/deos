@@ -262,13 +262,20 @@ class Credentials {
 
 class Collector {
   verified = 0;
+  receiptIds = ["operation-1"];
   collect(): Promise<ArtifactCollectionResult> {
     return Promise.resolve({
       manifestId: "manifest:attempt-1",
       aggregateDigest: "aggregate",
       objectCount: 2,
       totalBytes: 100,
-      result: { outcome: "completed", providerReceipts: [] },
+      result: { outcome: "completed", providerReceipts: [...this.receiptIds] },
+      providerReceipts: this.receiptIds.map((operationId) => ({
+        capability: "github",
+        operationId,
+        state: "succeeded" as const,
+        providerResourceId: "resource-1",
+      })),
       manifestKey: "runs/run/attempt/manifest.json",
       manifestSha256: "manifest-digest",
     });
@@ -304,6 +311,10 @@ const setup = (clock = () => NOW) => {
       }),
       capabilityGrant: async () => ({ url: "https://worker.example/capabilities", token: "grant-token" }),
       collector: () => collector as unknown as ArtifactCollector,
+      providerReceipts: {
+        verify: async (_runId, _attemptId, operationIds) =>
+          operationIds === undefined || operationIds.length > 0,
+      },
     },
   );
   return { attempts, factory, credentials, collector, controller };
@@ -355,6 +366,18 @@ test("successful completion refreshes auth, removes it, collects, destroys, then
   assert.equal(attempts.cleanup, "destroyed");
   assert.equal(collector.verified, 1);
   assert.equal(attempts.latest?.manifest_id, "manifest:attempt-1");
+  assert.equal(observation.state === "completed" ? observation.outcome.providerReceiptsComplete : false, true);
+});
+
+test("successful agent output without durable provider receipts fails closed", async () => {
+  const { controller, factory, collector } = setup();
+  collector.receiptIds = [];
+  await controller.execute(run, "work", "work", definition);
+  factory.sandbox.supervisor.state = "exited";
+  factory.sandbox.files.set("/root/.codex/auth.json", '{"auth":"refreshed"}');
+  const observation = await controller.execute(run, "work", "work", definition);
+
+  assert.equal(observation.state === "completed" ? observation.outcome.providerReceiptsComplete : true, false);
 });
 
 test("expired heartbeat kills the process, destroys the Sandbox, and fails closed", async () => {

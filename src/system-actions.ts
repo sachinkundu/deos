@@ -2,10 +2,9 @@ import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { ValidatedSystemOutcome } from "./workflow-evaluator.ts";
 
 export interface SystemActionStore {
-  prerequisites(runId: string): Promise<{
-    completeManifests: number;
+  prerequisites(runId: string, action: string): Promise<{
     incompleteOperations: number;
-    deploymentReceipts: number;
+    actionReceipts: number;
   }>;
 }
 
@@ -16,25 +15,22 @@ export class D1SystemActionStore implements SystemActionStore {
     this.database = database;
   }
 
-  async prerequisites(runId: string): Promise<{
-    completeManifests: number;
+  async prerequisites(runId: string, action: string): Promise<{
     incompleteOperations: number;
-    deploymentReceipts: number;
+    actionReceipts: number;
   }> {
     const row = await this.database.prepare(
       `SELECT
-         (SELECT COUNT(*) FROM artifact_manifests WHERE run_id = ? AND state = 'complete') AS completeManifests,
          (SELECT COUNT(*) FROM provider_operations
           WHERE run_id = ? AND state IN ('pending', 'failed', 'manual_reconciliation_required')) AS incompleteOperations,
          (SELECT COUNT(*) FROM provider_operations
-          WHERE run_id = ? AND capability = 'cloudflare.deploy'
-            AND state IN ('succeeded', 'reconciled')) AS deploymentReceipts`,
-    ).bind(runId, runId, runId).first<{
-      completeManifests: number;
+          WHERE run_id = ? AND capability = 'system_action' AND action = ?
+            AND state IN ('succeeded', 'reconciled')) AS actionReceipts`,
+    ).bind(runId, runId, action).first<{
       incompleteOperations: number;
-      deploymentReceipts: number;
+      actionReceipts: number;
     }>();
-    return row ?? { completeManifests: 0, incompleteOperations: 1, deploymentReceipts: 0 };
+    return row ?? { incompleteOperations: 1, actionReceipts: 0 };
   }
 }
 
@@ -50,12 +46,8 @@ export class SystemActionController {
     _nodeId: string,
     action: string,
   ): Promise<ValidatedSystemOutcome> {
-    const prerequisites = await this.store.prerequisites(run.run_id);
-    const deploymentReady = action !== "release.deploy" || prerequisites.deploymentReceipts > 0;
-    const completed =
-      prerequisites.completeManifests > 0 &&
-      prerequisites.incompleteOperations === 0 &&
-      deploymentReady;
+    const prerequisites = await this.store.prerequisites(run.run_id, action);
+    const completed = prerequisites.incompleteOperations === 0 && prerequisites.actionReceipts > 0;
     return {
       kind: "system_action",
       outcome: completed ? "completed" : "failed",

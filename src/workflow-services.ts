@@ -31,6 +31,7 @@ import type { WorkflowNodeServices } from "./workflow-orchestrator.ts";
 import type { HumanGateWorkflowNode, LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import { writeLifecycleObservation } from "./lifecycle-telemetry.ts";
 import { JobInputMaterializer } from "./job-inputs.ts";
+import { D1ProviderReceiptVerifier } from "./capability-store.ts";
 
 const durationMs = (value: string): number => {
   const match = value.match(/^(\d+(?:\.\d+)?)(ms|s|m|h|d)$/);
@@ -83,6 +84,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           artifactObjects,
           artifactManifests,
         ),
+        providerReceipts: new D1ProviderReceiptVerifier(env.DB),
         lifecycle: writeLifecycleObservation,
       },
     );

@@ -16,7 +16,7 @@
 - [x] 3.1 Implement the typed workflow graph evaluator for agent, system-action, human-gate, loop, and terminal nodes without allowing agent-selected edges or state names.
 - [x] 3.2 Implement the Cloudflare Workflow entrypoint that reloads D1 authority on every step, commits graph transitions with compare-and-set, and waits for deduplicated Linear events.
 - [x] 3.3 Implement Workflow-owned Linear transition receipts using the app actor and ordered signed-delivery evidence, including human-gate decisions, unauthorized-actor repair, and manual reconciliation for ambiguity.
-- [x] 3.4 Add deterministic state-machine tests for autonomous continuation, follow-up agents, loops, human approval/rejection, invalid results, provider prerequisites, duplicate events, repair, and concurrent newer human intent.
+- [x] 3.4 Add deterministic state-machine tests for autonomous continuation, follow-up agents, loops, human approval/rejection, invalid results, exact system-action receipts, provider prerequisites, duplicate events, repair, and concurrent newer human intent.
 
 ## 4. Supervised Sandbox Agent Attempts
 
@@ -31,12 +31,12 @@
 - [x] 5.1 Implement schema-checked capability requests, trial-scope authorization, stable operation receipts, duplicate/ambiguous reconciliation, and denial before provider calls.
 - [x] 5.2 Implement the repository-scoped GitHub work-product adapter with short-lived installation credentials, stable branch/PR markers, and sanitized durable receipts.
 - [x] 5.3 Implement Linear shared-note and artifact-reference adapters while rejecting every agent-requested state transition; keep Workflow-only transitions and cleanup work-item updates separate.
-- [x] 5.4 Add deterministic capability tests for allowed and denied targets/actions, credential isolation, duplicate effects, partial success, ambiguous responses, and required-receipt gating.
+- [x] 5.4 Add deterministic capability tests for allowed and denied targets/actions, credential isolation, duplicate effects, partial success, ambiguous responses, mechanically captured non-empty receipt sets, and D1 required-receipt gating.
 
 ## 6. Operations, Telemetry, and Documentation
 
 - [x] 6.1 Extend bounded structured telemetry across dispatch, Workflow, Sandbox, Codex outcome, artifacts, provider receipts, Linear repair, and cleanup without per-heartbeat or sensitive-content logs.
-- [x] 6.2 Implement D1-known Sandbox reconciliation, the authenticated provider-inventory audit endpoint, and stable Linear cleanup work items for associated and standalone orphans.
+- [x] 6.2 Implement D1-known Sandbox reconciliation, the authenticated provider-inventory audit endpoint, live-attempt exclusion, and stable Linear cleanup work items for associated and standalone orphans.
 - [x] 6.3 Update deployment, rollback, operator inspection, workflow authoring, credential bootstrap, and living architecture documentation plus the scheduled provider-inventory audit workflow.
 - [x] 6.4 Run the complete deterministic Python and TypeScript suites, lint, type checking, generated-binding checks, migration checks, and strict OpenSpec validation.
 

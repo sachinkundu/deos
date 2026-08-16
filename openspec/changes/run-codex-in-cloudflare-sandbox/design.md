@@ -446,6 +446,12 @@ permitted edge and commits the transition with a compare-and-set on the current
 node. Cloudflare Workflow step returns are orchestration checkpoints, not the
 business-state authority.
 
+A `system_action` node may complete only after an action-specific trusted
+adapter has written a successful or reconciled `system_action` receipt for the
+exact configured action. An artifact manifest or an unrelated provider receipt
+is never evidence that the named action ran; without the exact receipt the node
+follows its configured failed edge.
+
 For the controlled path, the configured success edge after the initial agent
 and provider work enters the workspace's `Human Review` state. Other graph versions may continue
 autonomously, dispatch a fresh agent, loop, block, or terminate without human
@@ -553,6 +559,8 @@ cleanup-audit endpoint on the trusted Worker. The Worker creates or updates a
 stable Linear cleanup work item for every orphan, including a provider resource
 with no recoverable run. The job receives only the Cloudflare inventory and
 cleanup-audit credentials; Linear credentials remain in the Worker.
+An inventory entry mapped to a D1 attempt in `pending`, `starting`, `running`,
+or `collecting` is live and is excluded from orphan reporting.
 
 Alternative considered: await Codex in a single Workflow step. That hides
 liveness, makes later event handling difficult, and couples a 24-hour process
@@ -615,7 +623,10 @@ provider call.
 Capability request and response bodies are bounded and schema validated. The
 agent result references provider receipts; it does not treat a CLI exit code as
 proof that the provider effect exists. A success edge is eligible only when all
-required receipts are successful or reconciled.
+required receipts are successful or reconciled. The trusted collector parses
+the mechanically captured non-empty receipt set, requires the structured result
+to name the same operation IDs, and verifies in D1 that every operation belongs
+to that run and attempt and has no incomplete sibling operation.
 
 Alternative considered: inject GitHub and Linear tokens into the Sandbox and
 let `git`, `gh`, or arbitrary scripts use them. That would expose credentials to

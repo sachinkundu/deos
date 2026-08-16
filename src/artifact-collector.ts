@@ -173,8 +173,16 @@ export interface ArtifactCollectionResult {
   objectCount: number;
   totalBytes: number;
   result: Readonly<Record<string, unknown>>;
+  providerReceipts: readonly ProviderReceiptReference[];
   manifestKey: string;
   manifestSha256: string;
+}
+
+export interface ProviderReceiptReference {
+  capability: string;
+  operationId: string;
+  state: "succeeded" | "reconciled";
+  providerResourceId: string | null;
 }
 
 const sha256Hex = async (value: Uint8Array | string): Promise<string> => {
@@ -280,6 +288,7 @@ export class ArtifactCollector {
       }> = [];
       let totalBytes = 0;
       let result: Readonly<Record<string, unknown>> | null = null;
+      let providerReceipts: readonly ProviderReceiptReference[] = [];
       for (const logicalName of input.requiredFiles) {
         if (logicalName.includes("/") || logicalName.includes("..")) {
           throw new Error("artifact logical names must be plain filenames");
@@ -298,6 +307,36 @@ export class ArtifactCollector {
           }
           validateSchema(parsed, input.resultSchema);
           result = Object.freeze(asRecord(parsed, "result"));
+        }
+        if (logicalName === "provider-references.json") {
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(new TextDecoder().decode(file.content));
+          } catch {
+            throw new Error("provider-references.json is invalid JSON");
+          }
+          if (!Array.isArray(parsed) || parsed.length > 100) {
+            throw new Error("provider-references.json must be a bounded array");
+          }
+          providerReceipts = Object.freeze(parsed.map((value, index) => {
+            const reference = asRecord(value, `provider reference ${index}`);
+            const capability = reference.capability;
+            const operationId = reference.operationId;
+            const state = reference.state;
+            const providerResourceId = reference.providerResourceId;
+            if (
+              typeof capability !== "string" || capability.length === 0 ||
+              typeof operationId !== "string" || operationId.length === 0 ||
+              !["succeeded", "reconciled"].includes(String(state)) ||
+              (providerResourceId !== null && typeof providerResourceId !== "string")
+            ) throw new Error(`provider reference ${index} is invalid`);
+            return Object.freeze({
+              capability,
+              operationId,
+              state: state as "succeeded" | "reconciled",
+              providerResourceId,
+            });
+          }));
         }
         const digest = await sha256Hex(file.content);
         const r2Key = `${prefix}/${logicalName}`;
@@ -349,6 +388,7 @@ export class ArtifactCollector {
         objectCount: entries.length,
         totalBytes,
         result,
+        providerReceipts,
         manifestKey,
         manifestSha256: manifestDigest,
       };

@@ -120,3 +120,52 @@ export class D1CapabilityStore implements CapabilityStore {
     return changes(result) === 1;
   }
 }
+
+export interface ProviderReceiptVerifier {
+  verify(
+    runId: string,
+    attemptId: string,
+    operationIds?: readonly string[],
+  ): Promise<boolean>;
+}
+
+export class D1ProviderReceiptVerifier implements ProviderReceiptVerifier {
+  private readonly database: D1Database;
+
+  constructor(database: D1Database) {
+    this.database = database;
+  }
+
+  async verify(
+    runId: string,
+    attemptId: string,
+    operationIds?: readonly string[],
+  ): Promise<boolean> {
+    const uniqueIds = operationIds === undefined ? undefined : [...new Set(operationIds)];
+    if (uniqueIds !== undefined && (uniqueIds.length === 0 || uniqueIds.length !== operationIds?.length)) {
+      return false;
+    }
+    const selected = uniqueIds === undefined
+      ? ""
+      : ` AND operation_id IN (${uniqueIds.map(() => "?").join(", ")})`;
+    const row = await this.database.prepare(
+      `SELECT
+         COUNT(*) AS selectedCount,
+         COALESCE(SUM(CASE WHEN state IN ('succeeded', 'reconciled') THEN 1 ELSE 0 END), 0) AS successfulCount,
+         (SELECT COUNT(*) FROM provider_operations
+          WHERE run_id = ? AND attempt_id = ?
+            AND state NOT IN ('succeeded', 'reconciled')) AS incompleteCount
+       FROM provider_operations
+       WHERE run_id = ? AND attempt_id = ?${selected}`,
+    ).bind(
+      runId,
+      attemptId,
+      runId,
+      attemptId,
+      ...(uniqueIds ?? []),
+    ).first<{ selectedCount: number; successfulCount: number; incompleteCount: number }>();
+    const expected = uniqueIds?.length ?? row?.selectedCount ?? 0;
+    return expected > 0 && row?.selectedCount === expected &&
+      row.successfulCount === expected && row.incompleteCount === 0;
+  }
+}

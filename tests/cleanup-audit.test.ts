@@ -126,6 +126,22 @@ test("known destroyed Sandbox is excluded from external orphan reporting", async
   assert.equal(creates(), 0);
 });
 
+test("known live Sandbox is excluded from external orphan reporting", async () => {
+  const { auditor, store, creates } = setup();
+  store.candidates.set(SANDBOX_ID, {
+    sandbox_id: SANDBOX_ID,
+    run_id: "run-1",
+    attempt_id: "attempt-1",
+    process_id: "process-1",
+    state: "running",
+    cleanup_state: "pending",
+  });
+  const response = await auditor.handle(inventoryRequest());
+  assert.equal(response.status, 200);
+  assert.equal((await response.json() as { reported: number }).reported, 0);
+  assert.equal(creates(), 0);
+});
+
 test("scheduled reconciliation destroys D1-known terminal Sandboxes", async () => {
   const { auditor, store, factory } = setup();
   const candidate = {

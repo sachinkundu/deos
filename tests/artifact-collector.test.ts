@@ -104,6 +104,30 @@ test("collector validates and writes immutable checksum-verified artifacts", asy
   assert.equal(objects.values.size, 3);
 });
 
+test("collector parses mechanically captured successful provider receipts", async () => {
+  const { collector, reader } = setup();
+  reader.files.set(
+    "/deos/output/provider-references.json",
+    new TextEncoder().encode(JSON.stringify([{
+      capability: "github",
+      operationId: "operation-1",
+      state: "succeeded",
+      providerResourceId: "resource-1",
+    }])),
+  );
+  const result = await collector.collect({
+    ...input,
+    requiredFiles: [...input.requiredFiles, "provider-references.json"],
+  });
+
+  assert.deepEqual(result.providerReceipts, [{
+    capability: "github",
+    operationId: "operation-1",
+    state: "succeeded",
+    providerResourceId: "resource-1",
+  }]);
+});
+
 test("same-digest objects reconcile after an ambiguous create response", async () => {
   const { collector, objects } = setup();
   const first = await collector.collect(input);

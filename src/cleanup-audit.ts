@@ -199,6 +199,9 @@ export class CleanupAuditor {
     let reported = 0;
     for (const sandboxId of new Set(sandboxIds as string[])) {
       const known = await this.store.candidate(sandboxId);
+      if (known !== null && ["pending", "starting", "running", "collecting"].includes(known.state ?? "")) {
+        continue;
+      }
       if (known?.cleanup_state === "destroyed") continue;
       await this.report(known ?? {
         sandbox_id: sandboxId,

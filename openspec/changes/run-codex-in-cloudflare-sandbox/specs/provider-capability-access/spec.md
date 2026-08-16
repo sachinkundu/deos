@@ -84,6 +84,11 @@ The Workflow SHALL NOT follow a workflow node's success edge until the agent ret
 - **WHEN** the agent result is valid and all required provider receipts report success
 - **THEN** the Workflow evaluates the current node's configured success edge using the accumulated run state
 
+#### Scenario: Agent reports no durable provider receipts
+
+- **WHEN** an otherwise successful agent result has an empty receipt set, names receipts not present in the mechanically captured provider references, or names operations that D1 does not attribute to the same run and attempt as successful or reconciled
+- **THEN** the Workflow refuses the success edge and does not treat the artifact manifest or CLI exit status as provider proof
+
 #### Scenario: Configured success edge enters a human gate
 
 - **WHEN** the prerequisites are complete and the workflow definition selects the `Human Review` gate as the next node

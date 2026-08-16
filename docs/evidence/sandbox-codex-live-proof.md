@@ -2703,3 +2703,119 @@ set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLARE_API_TOKEN
 ```
 
 ![SAC-98 activity showing DEOS Workflow entering Human Review and the human user moving it to In Progress](58b54b12-2026-08-16.png)
+
+The final deployment ships definition v3 with the exact Linear Human Review gate name. Active older runs remain frozen: if the deployed bundle differs, the Workflow restores the selected canonical definition from D1 and verifies its digest before continuing.
+
+```bash
+set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN:-$CLOUDFLARE_TOKEN}"; npm exec wrangler -- deploy --config wrangler.queue-consumer-ts.jsonc --containers-rollout gradual
+```
+
+```output
+
+ ⛅️ wrangler 4.123.0
+────────────────────
+Total Upload: 1022.07 KiB / gzip: 215.20 KiB
+Worker Startup Time: 10 ms
+Your Worker has access to the following bindings:
+Binding                                                                              Resource
+env.Sandbox (Sandbox)                                                                Durable Object
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow
+env.DB (deos-sample-project)                                                         D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable
+env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable
+env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable
+env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable
+env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable
+
+The following containers are available:
+- deos-queue-consumer-ts-sandbox (/private/tmp/deos-sandbox-codex-implementation/Dockerfile)
+
+Uploaded deos-queue-consumer-ts (6.22 sec)
+Building image deos-queue-consumer-ts-sandbox:f5a4e41b
+#0 building with "colima" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 650B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#2 DONE 1.1s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/7] FROM docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#4 resolve docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75 done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 157B done
+#5 DONE 0.0s
+
+#6 [4/7] COPY container/supervisor.mjs /deos/bin/supervisor.mjs
+#6 CACHED
+
+#7 [2/7] RUN npm install --global --omit=dev @openai/codex@0.147.0
+#7 CACHED
+
+#8 [3/7] RUN mkdir -p /deos/bin /deos/staging /deos/jobs /deos/auth     && chmod 700 /deos/auth     && chmod 755 /deos/bin /deos/staging /deos/jobs
+#8 CACHED
+
+#9 [6/7] COPY container/deos-linear /usr/local/bin/deos-linear
+#9 CACHED
+
+#10 [5/7] COPY container/deos-github /usr/local/bin/deos-github
+#10 CACHED
+
+#11 [7/7] RUN chmod 755 /deos/bin/supervisor.mjs /usr/local/bin/deos-github /usr/local/bin/deos-linear     && codex --version
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:cbb4fbb4050a3ed2fec6ea879abe6336f3f690e1be96d43b059077c74df62c20 done
+#12 exporting config sha256:03b2960f06920d9e77b2f408d24bcb10d425c23ffdc77af0bca80ae025a0f103 done
+#12 naming to docker.io/library/deos-queue-consumer-ts-sandbox:f5a4e41b done
+#12 DONE 0.0s
+
+WARNING! Your credentials are stored unencrypted in '/Users/sachin/.docker/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
+
+Login Succeeded
+Image already exists remotely, skipping push
+Untagged: deos-queue-consumer-ts-sandbox:f5a4e41b
+╭ Deploy a container application deploy changes to your application
+│
+│ Container application changes
+│
+├ no changes deos-queue-consumer-ts-sandbox
+│
+╰ No changes to be made
+
+Deployed deos-queue-consumer-ts triggers (6.05 sec)
+  https://deos-queue-consumer-ts.skundu.workers.dev
+  schedule: */15 * * * *
+  Consumer for deos-sample-project-events
+  workflow: deos-sandbox-codex-workflow
+Current Version ID: f5a4e41b-bb6d-4377-828b-509bcfd51cd0
+```
+
+After the approved edge, the frozen v2 run continued through the bounded BDD and DDD agents and stopped at the next Human Review node, architecture_approval. Every attempt has an immutable manifest and cleanup_state destroyed. The provider-originated gate transition also registered immutable definition v3 while preserving dispatch_enabled=0.
+
+```bash
+set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN:-$CLOUDFLARE_TOKEN}"; npm exec wrangler -- d1 execute DB --remote --config wrangler.queue-consumer-ts.jsonc --command "SELECT current_node, status, previous_node, gate_origin_node, definition_version FROM orchestration_runs WHERE run_id = 'workflow:99426d9b-cda7-4db4-9136-692a95a0b090:127713e8-4f9a-40a6-87aa-0754ac28b6ee:run:3'; SELECT node_id, state, result_class, manifest_id, cleanup_state FROM agent_attempts WHERE run_id = 'workflow:99426d9b-cda7-4db4-9136-692a95a0b090:127713e8-4f9a-40a6-87aa-0754ac28b6ee:run:3' ORDER BY created_at; SELECT definition_version, dispatch_enabled FROM project_workflow_policies WHERE project_id = '99426d9b-cda7-4db4-9136-692a95a0b090';" --json | jq -c 'map(.results)'
+```
+
+```output
+[[{"current_node":"architecture_approval","status":"awaiting_human","previous_node":"ddd_review","gate_origin_node":"ddd_review","definition_version":2}],[{"node_id":"requirements","state":"completed","result_class":"completed","manifest_id":"manifest:01a009c8-c08c-72ab-82ce-21569ca95b24","cleanup_state":"destroyed"},{"node_id":"requirements_review","state":"completed","result_class":"approved","manifest_id":"manifest:01a009ca-f716-76a4-bcc5-3f3fe39eac52","cleanup_state":"destroyed"},{"node_id":"bdd_review","state":"completed","result_class":"approved","manifest_id":"manifest:01a009ea-ea1e-7d9b-adaa-84f680911d1a","cleanup_state":"destroyed"},{"node_id":"ddd_architecture","state":"completed","result_class":"completed","manifest_id":"manifest:01a009ef-d3d2-7492-bb09-037f05461a6b","cleanup_state":"destroyed"},{"node_id":"ddd_review","state":"completed","result_class":"approved","manifest_id":"manifest:01a009f5-ad30-734f-bffd-3ab81a399dc3","cleanup_state":"destroyed"}],[{"definition_version":3,"dispatch_enabled":0}]]
+```

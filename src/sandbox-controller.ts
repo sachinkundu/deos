@@ -1,5 +1,6 @@
 import type { ArtifactCollectionResult, ArtifactCollector } from "./artifact-collector.ts";
 import type { CredentialLease, CredentialVault } from "./credential-vault.ts";
+import type { ProviderReceiptVerifier } from "./capability-store.ts";
 import { sandboxIdentity, uuidV7 } from "./orchestration-identity.ts";
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { ValidatedAgentOutcome } from "./workflow-evaluator.ts";
@@ -242,6 +243,7 @@ interface SandboxControllerDependencies {
   materializeContext: (run: OrchestrationRunRecord, job: WorkflowJob) => Promise<string>;
   capabilityGrant: (attemptId: string, runId: string) => Promise<CapabilityGrant>;
   collector: (sandbox: SandboxView) => ArtifactCollector;
+  providerReceipts: ProviderReceiptVerifier;
   lifecycle?: LifecycleWriter;
 }
 
@@ -498,6 +500,19 @@ export class SandboxAgentController {
       await this.cleanup(attempt, sandbox);
       await collector.verifyAfterCleanup(collection);
       const resultClass = String(collection.result.outcome);
+      const resultReceiptIds = collection.result.providerReceipts;
+      const mechanicalReceiptIds = collection.providerReceipts.map((receipt) => receipt.operationId);
+      const declaredReceiptsMatch =
+        Array.isArray(resultReceiptIds) &&
+        resultReceiptIds.length === mechanicalReceiptIds.length &&
+        resultReceiptIds.every((value) =>
+          typeof value === "string" && mechanicalReceiptIds.includes(value));
+      const providerReceiptsComplete = declaredReceiptsMatch &&
+        await this.dependencies.providerReceipts.verify(
+          attempt.run_id,
+          attempt.attempt_id,
+          mechanicalReceiptIds,
+        );
       const state = resultClass === "blocked" ? "blocked" : resultClass === "failed" ? "failed" : "completed";
       await this.attempts.finish({
         attemptId: attempt.attempt_id,
@@ -523,9 +538,7 @@ export class SandboxAgentController {
         outcome: {
           kind: "agent",
           outcome: resultClass,
-          providerReceiptsComplete:
-            collection.result.providerReceipts === undefined ||
-            Array.isArray(collection.result.providerReceipts),
+          providerReceiptsComplete,
         },
       };
     } catch {
@@ -582,7 +595,7 @@ export class SandboxAgentController {
     }
   }
 
-  private finishedObservation(attempt: AgentAttemptRecord): AgentExecutionObservation {
+  private async finishedObservation(attempt: AgentAttemptRecord): Promise<AgentExecutionObservation> {
     const outcome = attempt.state === "blocked"
       ? "blocked"
       : attempt.state === "completed"
@@ -596,7 +609,8 @@ export class SandboxAgentController {
       outcome: {
         kind: "agent",
         outcome,
-        providerReceiptsComplete: attempt.manifest_id !== null,
+        providerReceiptsComplete: attempt.manifest_id !== null &&
+          await this.dependencies.providerReceipts.verify(attempt.run_id, attempt.attempt_id),
       },
     };
   }

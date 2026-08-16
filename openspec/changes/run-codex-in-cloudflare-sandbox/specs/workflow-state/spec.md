@@ -80,6 +80,11 @@ The Workflow SHALL validate and interpret each structured agent outcome against 
 - **WHEN** agent startup, authentication, execution, result validation, artifact persistence, or cleanup produces a failed outcome
 - **THEN** the Workflow applies the configured retry or failure action and does not advance through a success transition
 
+#### Scenario: System action lacks an exact execution receipt
+
+- **WHEN** a system-action node has only artifact manifests or unrelated provider receipts and no successful or reconciled receipt for its exact configured action
+- **THEN** the Workflow follows the configured failed edge and does not claim that the named action executed
+
 #### Scenario: Agent output names a Linear transition
 
 - **WHEN** an agent result includes or requests a Linear state change
