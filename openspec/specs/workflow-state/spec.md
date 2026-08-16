@@ -8,16 +8,16 @@ Track workflow progress, approvals, runs, transitions, and audit history so auto
 
 ### Requirement: Preserve explicit workflow state
 
-The workflow state model SHALL record transitions in D1 and SHALL represent human approval as an explicit state surfaced through the Linear board column `Human Approval`.
+The workflow state model SHALL record transitions in D1 and SHALL represent human approval as an explicit state surfaced through the Linear board column `Human Review`.
 
 #### Scenario: Approval required
 
 - **WHEN** a workflow reaches a step requiring human approval
-- **THEN** it enters `AWAITING_HUMAN_APPROVAL`, moves the issue into the `Human Approval` board column, and does not advance automatically
+- **THEN** it enters `AWAITING_HUMAN_APPROVAL`, moves the issue into the `Human Review` board column, and does not advance automatically
 
 #### Scenario: Human resumes workflow
 
-- **WHEN** a configured approval or rejection transition out of the `Human Approval` board column is received from Linear
+- **WHEN** a configured approval or rejection transition out of the `Human Review` board column is received from Linear
 - **THEN** the workflow records the actor and advances to `APPROVED` or `REJECTED`
 
 #### Scenario: Auditable transition

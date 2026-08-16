@@ -3,6 +3,7 @@ import { WorkflowEntrypoint, type WorkflowStep } from "cloudflare:workers";
 import { D1OrchestrationStore } from "./orchestration-store.ts";
 import type { WorkflowStartParameters } from "./queue-consumer-core.ts";
 import { loadBundledWorkflowDefinition } from "./workflow-bundle.ts";
+import { restoreWorkflowDefinition } from "./workflow-definition.ts";
 import {
   WorkflowOrchestrator,
   type WorkflowStepLike,
@@ -41,18 +42,28 @@ export class DeosWorkflow extends WorkflowEntrypoint<Env, WorkflowStartParameter
     }>,
     step: WorkflowStep,
   ): Promise<unknown> {
-    const definition = await loadBundledWorkflowDefinition();
-    const run = await new D1OrchestrationStore(this.env.DB).findRun(event.payload.runId);
+    const store = new D1OrchestrationStore(this.env.DB);
+    const bundledDefinition = await loadBundledWorkflowDefinition();
+    const run = await store.findRun(event.payload.runId);
+    let definition = bundledDefinition;
+    if (run !== null && run.definition_digest !== bundledDefinition.digest) {
+      const snapshot = await store.findDefinitionSnapshot(run.definition_id, run.definition_version);
+      if (snapshot === null) throw new Error("Workflow definition snapshot is missing");
+      definition = await restoreWorkflowDefinition(snapshot.canonical_json, run.definition_digest);
+    }
     if (
       run === null ||
       run.workflow_instance_id !== event.instanceId ||
+      run.definition_id !== definition.name ||
+      run.definition_version !== definition.version ||
       run.definition_digest !== definition.digest
     ) throw new Error("Workflow start identity is not authoritative");
     const orchestrator = new WorkflowOrchestrator(
-      new D1OrchestrationStore(this.env.DB),
+      store,
       definition,
       new CloudflareWorkflowServices(this.env, definition),
       {
+        humanGateStateId: this.env.LINEAR_HUMAN_APPROVAL_STATE_ID,
         approvalStateNames: this.env.LINEAR_APPROVAL_STATE_NAMES.split(",").filter(Boolean),
         rejectionStateNames: this.env.LINEAR_REJECTION_STATE_NAMES.split(",").filter(Boolean),
         lifecycle: writeLifecycleObservation,

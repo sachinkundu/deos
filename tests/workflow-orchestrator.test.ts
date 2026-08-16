@@ -222,6 +222,7 @@ class NodeServices implements WorkflowNodeServices {
 
 const orchestrator = (store: RuntimeStore, services: NodeServices) =>
   new WorkflowOrchestrator(store, definition, services, {
+    humanGateStateId: "human-state",
     approvalStateNames: ["In Progress"],
     rejectionStateNames: ["Canceled"],
     now: () => new Date(NOW),

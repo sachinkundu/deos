@@ -4,7 +4,7 @@ The authenticated Python ingress verifies the raw Linear body with HMAC-SHA256, 
 
 The TypeScript Queue consumer loads an immutable workflow definition and project policy from D1. It allocates a monotonic issue run, derives a stable Cloudflare Workflow ID, records a pending dispatch intent, and reconciles by that ID before acknowledging the Queue. Later events enter a delivery-keyed D1 inbox and use one fixed Workflow event type.
 
-Cloudflare Workflow reloads D1 authority before every graph decision. Agent, system-action, human-gate, loop, and terminal nodes select only reviewed edges from `config/workflow.deos.yaml`. Agent output cannot name a Linear state or edge. Human approval requires a signed event from `actor.type == user` leaving the active `Human Approval` gate.
+Cloudflare Workflow reloads D1 authority before every graph decision. An active run keeps its immutable definition version: if the deployed bundle advances, the Workflow restores the run's canonical definition from D1 and verifies its digest. Agent, system-action, human-gate, loop, and terminal nodes select only reviewed edges from `config/workflow.deos.yaml`. Agent output cannot name a Linear state or edge. Human approval requires a signed event from `actor.type == user` leaving the active `Human Review` gate; the provider's prior-state ID is authoritative when Linear omits the prior state name.
 
 Every agent node creates a UUIDv7 attempt and a derived Sandbox ID before provider calls. The pinned supervisor runs Codex with argv, fixed staging paths, JSONL output, a JSON result schema, a five-minute heartbeat, and a 24-hour absolute limit. The disposable Sandbox is the `danger-full-access` boundary; it contains no provider credential.
 

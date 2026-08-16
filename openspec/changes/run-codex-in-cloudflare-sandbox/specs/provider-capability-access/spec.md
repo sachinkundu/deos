@@ -86,8 +86,8 @@ The Workflow SHALL NOT follow a workflow node's success edge until the agent ret
 
 #### Scenario: Configured success edge enters a human gate
 
-- **WHEN** the prerequisites are complete and the workflow definition selects `Human Approval` as the next node
-- **THEN** the Workflow moves the issue to the configured `Human Approval` state and records the state from which the gate was entered
+- **WHEN** the prerequisites are complete and the workflow definition selects the `Human Review` gate as the next node
+- **THEN** the Workflow moves the issue to the configured `Human Review` state and records the state from which the gate was entered
 
 #### Scenario: Required provider work remains incomplete
 

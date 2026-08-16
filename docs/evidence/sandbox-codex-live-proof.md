@@ -34,7 +34,7 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 Migrations to be applied:
 ┌────────────────────────────────┐
@@ -103,7 +103,7 @@ rtk zsh -c 'set -euo pipefail; umask 077; set -a; source /Users/sachin/code/deos
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 Migrations to be applied:
 ┌────────────────────────────────┐
@@ -163,24 +163,24 @@ Your database may not be available to serve requests during the migration, conti
 Total Upload: 1011.81 KiB / gzip: 212.85 KiB
 Worker Startup Time: 8 ms
 Your Worker has access to the following bindings:
-Binding                                                                              Resource                  
-env.Sandbox (Sandbox)                                                                Durable Object            
-env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow                  
-env.DB (deos-sample-project)                                                         D1 Database               
-env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket                 
-env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable      
-env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable      
-env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable      
-env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable      
-env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable      
-env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable      
-env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable      
-env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable      
-env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable      
-env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable      
-env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable      
-env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable      
-env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable      
+Binding                                                                              Resource
+env.Sandbox (Sandbox)                                                                Durable Object
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow
+env.DB (deos-sample-project)                                                         D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable
+env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable
+env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable
+env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable
+env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable
 
 The following containers are available:
 - deos-queue-consumer-ts-sandbox (/private/tmp/deos-sandbox-codex-implementation/Dockerfile)
@@ -709,7 +709,7 @@ da2025239b5f: Pushed
 │
 │  SUCCESS  Created application deos-queue-consumer-ts-sandbox (Application ID: a0344373-884d-4c06-b4c2-4e58295de498)
 │
-╰ Applied changes 
+╰ Applied changes
 
 Deployed deos-queue-consumer-ts triggers (6.46 sec)
   https://deos-queue-consumer-ts.skundu.workers.dev
@@ -719,7 +719,7 @@ Deployed deos-queue-consumer-ts triggers (6.46 sec)
 Current Version ID: 56f29201-93f0-4049-a36c-f812d40da777
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: local 
+Resource location: local
 Use --remote if you want to access the remote instance.
 Creating object "credentials/controlled-trial/auth.v1.enc" in bucket "deos-sample-project-artifacts".
 Upload complete.
@@ -735,7 +735,7 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 ✅ No migrations to apply!
 ```
@@ -906,7 +906,7 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 🌀 Executing on remote database DB (4e854f8a-018a-42c4-a325-c4b8805c06b2):
 🌀 To execute on your local development database, remove the --remote flag from your wrangler command.
@@ -954,7 +954,7 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: local 
+Resource location: local
 
 Use --remote if you want to access the remote instance.
 
@@ -975,7 +975,7 @@ rtk zsh -c 'set -euo pipefail; umask 077; set -a; source /Users/sachin/code/deos
 ✨ Success! Uploaded secret CODEX_AUTH_ENCRYPTION_KEY
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 Creating object "credentials/controlled-trial/auth.v1.enc" in bucket "deos-sample-project-artifacts".
 Upload complete.
 ```
@@ -988,7 +988,7 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 Downloading "credentials/controlled-trial/auth.v1.enc" from "deos-sample-project-artifacts".
 Download complete.
@@ -1073,24 +1073,24 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 Total Upload: 1017.36 KiB / gzip: 214.32 KiB
 Worker Startup Time: 8 ms
 Your Worker has access to the following bindings:
-Binding                                                                              Resource                  
-env.Sandbox (Sandbox)                                                                Durable Object            
-env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow                  
-env.DB (deos-sample-project)                                                         D1 Database               
-env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket                 
-env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable      
-env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable      
-env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable      
-env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable      
-env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable      
-env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable      
-env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable      
-env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable      
-env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable      
-env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable      
-env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable      
-env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable      
-env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable      
+Binding                                                                              Resource
+env.Sandbox (Sandbox)                                                                Durable Object
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow
+env.DB (deos-sample-project)                                                         D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable
+env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable
+env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable
+env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable
+env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable
 
 The following containers are available:
 - deos-queue-consumer-ts-sandbox (/private/tmp/deos-sandbox-codex-implementation/Dockerfile)
@@ -1337,7 +1337,7 @@ b8c875f2a5d1: Pushed
 │
 │  SUCCESS  Modified application deos-queue-consumer-ts-sandbox (Application ID: a0344373-884d-4c06-b4c2-4e58295de498)
 │
-╰ Applied changes 
+╰ Applied changes
 
 Deployed deos-queue-consumer-ts triggers (6.51 sec)
   https://deos-queue-consumer-ts.skundu.workers.dev
@@ -1364,7 +1364,7 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 🌀 Executing on remote database DB (4e854f8a-018a-42c4-a325-c4b8805c06b2):
 🌀 To execute on your local development database, remove the --remote flag from your wrangler command.
@@ -1428,14 +1428,14 @@ Attaching additional modules:
 └─────────────────────┴────────┴───────────┘
 Total Upload: 29.85 KiB / gzip: 7.29 KiB
 Your Worker has access to the following bindings:
-Binding                                                                        Resource                  
-env.QUEUE (inherited)                                                          Queue                     
-env.DB (deos-sample-project)                                                   D1 Database               
-env.ARTIFACTS (deos-sample-project-artifacts)                                  R2 Bucket                 
-env.LINEAR_PROJECT_IDS ("99426d9b-cda7-4db4-9136-692a95a0b090")                Environment Variable      
-env.LINEAR_START_TRANSITIONS ("In Progress")                                   Environment Variable      
-env.LINEAR_APPROVAL_TRANSITIONS ("In Progress")                                Environment Variable      
-env.LINEAR_REJECTION_TRANSITIONS ("Canceled")                                  Environment Variable      
+Binding                                                                        Resource
+env.QUEUE (inherited)                                                          Queue
+env.DB (deos-sample-project)                                                   D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                  R2 Bucket
+env.LINEAR_PROJECT_IDS ("99426d9b-cda7-4db4-9136-692a95a0b090")                Environment Variable
+env.LINEAR_START_TRANSITIONS ("In Progress")                                   Environment Variable
+env.LINEAR_APPROVAL_TRANSITIONS ("In Progress")                                Environment Variable
+env.LINEAR_REJECTION_TRANSITIONS ("Canceled")                                  Environment Variable
 
 
 [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/c68856288112af7698f5be52ea94b96e/workers/scripts/deos-sample-project/versions) failed.[0m
@@ -1455,7 +1455,7 @@ env.LINEAR_REJECTION_TRANSITIONS ("Canceled")                                  E
       raise err
   ModuleNotFoundError: No module named 'workers'
   You need to update to workers-py >= 1.90 or to pass disable_python_external_sdk
-  
+
     at null.<anonymous> (pyodideRuntime-internal:emscriptenSetup:19919:14) in new_error
     at [object Object] in $wrap_exception
     at [object Object] in $pythonexc2js
@@ -1467,7 +1467,7 @@ env.LINEAR_REJECTION_TRANSITIONS ("Canceled")                                  E
    [code: 10021]
   To learn more about this error, visit: [4mhttps://developers.cloudflare.com/workers/observability/errors/#validation-errors-10021[0m
 
-  
+
   If you think this is a bug, please open an issue at: [4mhttps://github.com/cloudflare/workers-sdk/issues/new/choose[0m
 
 
@@ -1485,7 +1485,7 @@ Applying D1 migrations...
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 ✅ No migrations to apply!
 Uploading Linear webhook secret...
@@ -1501,22 +1501,22 @@ Activate with: source .venv-workers/bin/activate
 Using CPython 3.13.2
 Creating virtual environment at: .venv-workers/pyodide-venv
 Activate with: source .venv-workers/pyodide-venv/bin/activate
-INFO     Resolved 1 requirements from                                           
-         /private/tmp/deos-sandbox-codex-implementation/pylock.toml.            
-INFO     Installing packages into python_modules...                             
-INFO     Installing packages into .venv-workers...                              
-INFO     Packages installed in .venv-workers.                                   
-WARNING  error: Failed to inspect Python interpreter from provided path at      
-         `.venv-workers/pyodide-venv`                                           
-           Caused by: Querying Python at                                        
+INFO     Resolved 1 requirements from
+         /private/tmp/deos-sandbox-codex-implementation/pylock.toml.
+INFO     Installing packages into python_modules...
+INFO     Installing packages into .venv-workers...
+INFO     Packages installed in .venv-workers.
+WARNING  error: Failed to inspect Python interpreter from provided path at
+         `.venv-workers/pyodide-venv`
+           Caused by: Querying Python at
          `/private/tmp/deos-sandbox-codex-implementation/.venv-workers/pyodide-v
-         env/bin/python3` failed with exit status exit status: 9                
-                                                                                
-             [stderr]                                                           
-             node: bad option: --experimental-wasm-stack-switching              
-ERROR    Installation of packages into the Python Worker failed. Possibly       
-         because these packages are not currently supported. See above for      
-         details.                                                               
+         env/bin/python3` failed with exit status exit status: 9
+
+             [stderr]
+             node: bad option: --experimental-wasm-stack-switching
+ERROR    Installation of packages into the Python Worker failed. Possibly
+         because these packages are not currently supported. See above for
+         details.
 ```
 
 The repository-supported pywrangler command also stopped before deployment because Node 26 removed a WebAssembly flag that its packaging runtime still invokes. The retry pins the already-installed Node 22 toolchain and regenerates the ignored packaging directories.
@@ -1530,7 +1530,7 @@ Applying D1 migrations...
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 ✅ No migrations to apply!
 Uploading Linear webhook secret...
@@ -1546,13 +1546,13 @@ Activate with: source .venv-workers/bin/activate
 Using CPython 3.13.2
 Creating virtual environment at: .venv-workers/pyodide-venv
 Activate with: source .venv-workers/pyodide-venv/bin/activate
-INFO     Resolved 1 requirements from                                           
-         /private/tmp/deos-sandbox-codex-implementation/pylock.toml.            
-INFO     Installing packages into python_modules...                             
-INFO     Packages installed in python_modules.                                  
-INFO     Installing packages into .venv-workers...                              
-INFO     Packages installed in .venv-workers.                                   
-INFO     Passing command to npx wrangler: npx --yes wrangler deploy             
+INFO     Resolved 1 requirements from
+         /private/tmp/deos-sandbox-codex-implementation/pylock.toml.
+INFO     Installing packages into python_modules...
+INFO     Packages installed in python_modules.
+INFO     Installing packages into .venv-workers...
+INFO     Packages installed in .venv-workers.
+INFO     Passing command to npx wrangler: npx --yes wrangler deploy
 
  ⛅️ wrangler 4.123.0
 ────────────────────
@@ -1583,14 +1583,14 @@ Attaching additional modules:
 Total Upload: 124.30 KiB / gzip: 33.13 KiB
 Worker Startup Time: 507 ms
 Your Worker has access to the following bindings:
-Binding                                                                        Resource                  
-env.QUEUE (inherited)                                                          Queue                     
-env.DB (deos-sample-project)                                                   D1 Database               
-env.ARTIFACTS (deos-sample-project-artifacts)                                  R2 Bucket                 
-env.LINEAR_PROJECT_IDS ("99426d9b-cda7-4db4-9136-692a95a0b090")                Environment Variable      
-env.LINEAR_START_TRANSITIONS ("In Progress")                                   Environment Variable      
-env.LINEAR_APPROVAL_TRANSITIONS ("In Progress")                                Environment Variable      
-env.LINEAR_REJECTION_TRANSITIONS ("Canceled")                                  Environment Variable      
+Binding                                                                        Resource
+env.QUEUE (inherited)                                                          Queue
+env.DB (deos-sample-project)                                                   D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                  R2 Bucket
+env.LINEAR_PROJECT_IDS ("99426d9b-cda7-4db4-9136-692a95a0b090")                Environment Variable
+env.LINEAR_START_TRANSITIONS ("In Progress")                                   Environment Variable
+env.LINEAR_APPROVAL_TRANSITIONS ("In Progress")                                Environment Variable
+env.LINEAR_REJECTION_TRANSITIONS ("Canceled")                                  Environment Variable
 
 Uploaded deos-sample-project (10.35 sec)
 Deployed deos-sample-project triggers (2.40 sec)
@@ -1617,7 +1617,7 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 🌀 Executing on remote database DB (4e854f8a-018a-42c4-a325-c4b8805c06b2):
 🌀 To execute on your local development database, remove the --remote flag from your wrangler command.
@@ -1699,24 +1699,24 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 Total Upload: 1017.33 KiB / gzip: 214.30 KiB
 Worker Startup Time: 9 ms
 Your Worker has access to the following bindings:
-Binding                                                                              Resource                  
-env.Sandbox (Sandbox)                                                                Durable Object            
-env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow                  
-env.DB (deos-sample-project)                                                         D1 Database               
-env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket                 
-env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable      
-env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable      
-env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable      
-env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable      
-env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable      
-env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable      
-env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable      
-env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable      
-env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable      
-env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable      
-env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable      
-env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable      
-env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable      
+Binding                                                                              Resource
+env.Sandbox (Sandbox)                                                                Durable Object
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow
+env.DB (deos-sample-project)                                                         D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable
+env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable
+env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable
+env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable
+env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable
 
 The following containers are available:
 - deos-queue-consumer-ts-sandbox (/private/tmp/deos-sandbox-codex-implementation/Dockerfile)
@@ -1782,7 +1782,7 @@ Untagged: deos-queue-consumer-ts-sandbox:3383ef8a
 │
 ├ no changes deos-queue-consumer-ts-sandbox
 │
-╰ No changes to be made 
+╰ No changes to be made
 
 Deployed deos-queue-consumer-ts triggers (5.87 sec)
   https://deos-queue-consumer-ts.skundu.workers.dev
@@ -1800,7 +1800,7 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 🌀 Executing on remote database DB (4e854f8a-018a-42c4-a325-c4b8805c06b2):
 🌀 To execute on your local development database, remove the --remote flag from your wrangler command.
@@ -1880,24 +1880,24 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 Total Upload: 1017.28 KiB / gzip: 214.29 KiB
 Worker Startup Time: 8 ms
 Your Worker has access to the following bindings:
-Binding                                                                              Resource                  
-env.Sandbox (Sandbox)                                                                Durable Object            
-env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow                  
-env.DB (deos-sample-project)                                                         D1 Database               
-env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket                 
-env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable      
-env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable      
-env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable      
-env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable      
-env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable      
-env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable      
-env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable      
-env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable      
-env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable      
-env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable      
-env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable      
-env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable      
-env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable      
+Binding                                                                              Resource
+env.Sandbox (Sandbox)                                                                Durable Object
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow
+env.DB (deos-sample-project)                                                         D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable
+env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable
+env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable
+env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable
+env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable
 
 The following containers are available:
 - deos-queue-consumer-ts-sandbox (/private/tmp/deos-sandbox-codex-implementation/Dockerfile)
@@ -1963,7 +1963,7 @@ Untagged: deos-queue-consumer-ts-sandbox:5fca3b70
 │
 ├ no changes deos-queue-consumer-ts-sandbox
 │
-╰ No changes to be made 
+╰ No changes to be made
 
 Deployed deos-queue-consumer-ts triggers (6.05 sec)
   https://deos-queue-consumer-ts.skundu.workers.dev
@@ -1994,24 +1994,24 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 Total Upload: 1017.48 KiB / gzip: 214.32 KiB
 Worker Startup Time: 12 ms
 Your Worker has access to the following bindings:
-Binding                                                                              Resource                  
-env.Sandbox (Sandbox)                                                                Durable Object            
-env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow                  
-env.DB (deos-sample-project)                                                         D1 Database               
-env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket                 
-env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable      
-env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable      
-env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable      
-env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable      
-env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable      
-env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable      
-env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable      
-env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable      
-env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable      
-env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable      
-env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable      
-env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable      
-env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable      
+Binding                                                                              Resource
+env.Sandbox (Sandbox)                                                                Durable Object
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow
+env.DB (deos-sample-project)                                                         D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable
+env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable
+env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable
+env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable
+env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable
 
 The following containers are available:
 - deos-queue-consumer-ts-sandbox (/private/tmp/deos-sandbox-codex-implementation/Dockerfile)
@@ -2077,7 +2077,7 @@ Untagged: deos-queue-consumer-ts-sandbox:33521abd
 │
 ├ no changes deos-queue-consumer-ts-sandbox
 │
-╰ No changes to be made 
+╰ No changes to be made
 
 Deployed deos-queue-consumer-ts triggers (6.21 sec)
   https://deos-queue-consumer-ts.skundu.workers.dev
@@ -2108,12 +2108,12 @@ rtk zsh -c 'set -euo pipefail; umask 077; set -a; source /Users/sachin/code/deos
 ✨ Success! Uploaded secret CODEX_AUTH_ENCRYPTION_KEY
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 Creating object "credentials/controlled-trial/auth.v1.enc" in bucket "deos-sample-project-artifacts".
 Upload complete.
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 Downloading "credentials/controlled-trial/auth.v1.enc" from "deos-sample-project-artifacts".
 Download complete.
 ```
@@ -2131,24 +2131,24 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 Total Upload: 1017.58 KiB / gzip: 214.34 KiB
 Worker Startup Time: 9 ms
 Your Worker has access to the following bindings:
-Binding                                                                              Resource                  
-env.Sandbox (Sandbox)                                                                Durable Object            
-env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow                  
-env.DB (deos-sample-project)                                                         D1 Database               
-env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket                 
-env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable      
-env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable      
-env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable      
-env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable      
-env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable      
-env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable      
-env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable      
-env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable      
-env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable      
-env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable      
-env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable      
-env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable      
-env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable      
+Binding                                                                              Resource
+env.Sandbox (Sandbox)                                                                Durable Object
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow
+env.DB (deos-sample-project)                                                         D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable
+env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable
+env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable
+env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable
+env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable
 
 The following containers are available:
 - deos-queue-consumer-ts-sandbox (/private/tmp/deos-sandbox-codex-implementation/Dockerfile)
@@ -2214,7 +2214,7 @@ Untagged: deos-queue-consumer-ts-sandbox:e64f9c4d
 │
 ├ no changes deos-queue-consumer-ts-sandbox
 │
-╰ No changes to be made 
+╰ No changes to be made
 
 Deployed deos-queue-consumer-ts triggers (5.80 sec)
   https://deos-queue-consumer-ts.skundu.workers.dev
@@ -2245,12 +2245,12 @@ rtk zsh -c 'set -euo pipefail; umask 077; set -a; source /Users/sachin/code/deos
 ✨ Success! Uploaded secret CODEX_AUTH_ENCRYPTION_KEY
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 Creating object "credentials/controlled-trial/auth.v1.enc" in bucket "deos-sample-project-artifacts".
 Upload complete.
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 Downloading "credentials/controlled-trial/auth.v1.enc" from "deos-sample-project-artifacts".
 Download complete.
 ```
@@ -2276,25 +2276,25 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 Total Upload: 1017.58 KiB / gzip: 214.34 KiB
 Worker Startup Time: 8 ms
 Your Worker has access to the following bindings:
-Binding                                                                              Resource                  
-env.Sandbox (Sandbox)                                                                Durable Object            
-env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow                  
-env.DB (deos-sample-project)                                                         D1 Database               
-env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket                 
-env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable      
-env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable      
-env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable      
-env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable      
-env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable      
-env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable      
-env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable      
-env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable      
-env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable      
-env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable      
-env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable      
-env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable      
-env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable      
-env.CODEX_AUTH_ENCRYPTION_KEY ("(hidden)")                                           Environment Variable      
+Binding                                                                              Resource
+env.Sandbox (Sandbox)                                                                Durable Object
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow
+env.DB (deos-sample-project)                                                         D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable
+env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable
+env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable
+env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable
+env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable
+env.CODEX_AUTH_ENCRYPTION_KEY ("(hidden)")                                           Environment Variable
 
 The following containers are available:
 - deos-queue-consumer-ts-sandbox (/private/tmp/deos-sandbox-codex-implementation/Dockerfile)
@@ -2360,7 +2360,7 @@ Untagged: deos-queue-consumer-ts-sandbox:c33ed807
 │
 ├ no changes deos-queue-consumer-ts-sandbox
 │
-╰ No changes to be made 
+╰ No changes to be made
 
 Deployed deos-queue-consumer-ts triggers (6.11 sec)
   https://deos-queue-consumer-ts.skundu.workers.dev
@@ -2371,14 +2371,14 @@ Current Version ID: c33ed807-d398-4d8f-bcb2-d8a5f42d87fe
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 Creating object "credentials/controlled-trial/auth.v1.enc" in bucket "deos-sample-project-artifacts".
 Upload complete.
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 Downloading "credentials/controlled-trial/auth.v1.enc" from "deos-sample-project-artifacts".
 Download complete.
@@ -2406,25 +2406,25 @@ rtk zsh -c 'set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLA
 Total Upload: 1017.74 KiB / gzip: 214.37 KiB
 Worker Startup Time: 9 ms
 Your Worker has access to the following bindings:
-Binding                                                                              Resource                  
-env.Sandbox (Sandbox)                                                                Durable Object            
-env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow                  
-env.DB (deos-sample-project)                                                         D1 Database               
-env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket                 
-env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable      
-env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable      
-env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable      
-env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable      
-env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable      
-env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable      
-env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable      
-env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable      
-env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable      
-env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable      
-env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable      
-env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable      
-env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable      
-env.CODEX_AUTH_ENCRYPTION_KEY ("(hidden)")                                           Environment Variable      
+Binding                                                                              Resource
+env.Sandbox (Sandbox)                                                                Durable Object
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow
+env.DB (deos-sample-project)                                                         D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable
+env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable
+env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable
+env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable
+env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable
+env.CODEX_AUTH_ENCRYPTION_KEY ("(hidden)")                                           Environment Variable
 
 The following containers are available:
 - deos-queue-consumer-ts-sandbox (/private/tmp/deos-sandbox-codex-implementation/Dockerfile)
@@ -2490,7 +2490,7 @@ Untagged: deos-queue-consumer-ts-sandbox:040c6010
 │
 ├ no changes deos-queue-consumer-ts-sandbox
 │
-╰ No changes to be made 
+╰ No changes to be made
 
 Deployed deos-queue-consumer-ts triggers (5.78 sec)
   https://deos-queue-consumer-ts.skundu.workers.dev
@@ -2501,14 +2501,14 @@ Current Version ID: 040c6010-15e6-4f94-8011-f43ead1f721c
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 Creating object "credentials/controlled-trial/auth.v1.enc" in bucket "deos-sample-project-artifacts".
 Upload complete.
 
  ⛅️ wrangler 4.123.0
 ────────────────────
-Resource location: remote 
+Resource location: remote
 
 Downloading "credentials/controlled-trial/auth.v1.enc" from "deos-sample-project-artifacts".
 Download complete.
@@ -2568,3 +2568,138 @@ set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLARE_API_TOKEN
 ```output
 [[],[{"project_id":"99426d9b-cda7-4db4-9136-692a95a0b090","dispatch_enabled":0,"start_state_name":"In Progress","definition_version":2}]]
 ```
+
+## Human Review gate correction and continuation
+
+The provider canary exposed that Linear supplies the prior state ID while the prior state name can be absent. The corrected evaluator treats the configured provider state ID as authoritative and uses the reviewed name only when no ID is available. This preserves the real human actor and provider delivery evidence without rewriting the inbox.
+
+```bash
+set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN:-$CLOUDFLARE_TOKEN}"; npm exec wrangler -- deploy --config wrangler.queue-consumer-ts.jsonc --containers-rollout gradual
+```
+
+```output
+
+ ⛅️ wrangler 4.123.0
+────────────────────
+Total Upload: 1018.00 KiB / gzip: 214.56 KiB
+Worker Startup Time: 8 ms
+Your Worker has access to the following bindings:
+Binding                                                                              Resource
+env.Sandbox (Sandbox)                                                                Durable Object
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                            Workflow
+env.DB (deos-sample-project)                                                         D1 Database
+env.ARTIFACTS (deos-sample-project-artifacts)                                        R2 Bucket
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                Environment Variable
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")          Environment Variable
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                       Environment Variable
+env.LINEAR_START_STATE_NAME ("In Progress")                                          Environment Variable
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                      Environment Variable
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                        Environment Variable
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                     Environment Variable
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                          Environment Variable
+env.GITHUB_API_URL ("https://api.github.com")                                        Environment Variable
+env.TRIAL_REPOSITORY ("sachinkundu/deos")                                            Environment Variable
+env.TRIAL_DISPATCH_ENABLED ("false")                                                 Environment Variable
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                       Environment Variable
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                 Environment Variable
+
+The following containers are available:
+- deos-queue-consumer-ts-sandbox (/private/tmp/deos-sandbox-codex-implementation/Dockerfile)
+
+Uploaded deos-queue-consumer-ts (6.88 sec)
+Building image deos-queue-consumer-ts-sandbox:a9d604f5
+#0 building with "colima" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 650B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#2 DONE 1.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/7] FROM docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#4 resolve docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75 done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 157B done
+#5 DONE 0.0s
+
+#6 [4/7] COPY container/supervisor.mjs /deos/bin/supervisor.mjs
+#6 CACHED
+
+#7 [5/7] COPY container/deos-github /usr/local/bin/deos-github
+#7 CACHED
+
+#8 [6/7] COPY container/deos-linear /usr/local/bin/deos-linear
+#8 CACHED
+
+#9 [2/7] RUN npm install --global --omit=dev @openai/codex@0.147.0
+#9 CACHED
+
+#10 [3/7] RUN mkdir -p /deos/bin /deos/staging /deos/jobs /deos/auth     && chmod 700 /deos/auth     && chmod 755 /deos/bin /deos/staging /deos/jobs
+#10 CACHED
+
+#11 [7/7] RUN chmod 755 /deos/bin/supervisor.mjs /usr/local/bin/deos-github /usr/local/bin/deos-linear     && codex --version
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:cbb4fbb4050a3ed2fec6ea879abe6336f3f690e1be96d43b059077c74df62c20 done
+#12 exporting config sha256:03b2960f06920d9e77b2f408d24bcb10d425c23ffdc77af0bca80ae025a0f103 done
+#12 naming to docker.io/library/deos-queue-consumer-ts-sandbox:a9d604f5 done
+#12 DONE 0.0s
+
+WARNING! Your credentials are stored unencrypted in '/Users/sachin/.docker/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
+
+Login Succeeded
+Image already exists remotely, skipping push
+Untagged: deos-queue-consumer-ts-sandbox:a9d604f5
+╭ Deploy a container application deploy changes to your application
+│
+│ Container application changes
+│
+├ no changes deos-queue-consumer-ts-sandbox
+│
+╰ No changes to be made
+
+Deployed deos-queue-consumer-ts triggers (5.95 sec)
+  https://deos-queue-consumer-ts.skundu.workers.dev
+  schedule: */15 * * * *
+  Consumer for deos-sample-project-events
+  workflow: deos-sandbox-codex-workflow
+Current Version ID: a9d604f5-6d91-4df1-b58b-8e138e5c13ba
+```
+
+```bash
+set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN:-$CLOUDFLARE_TOKEN}"; npm exec wrangler -- workflows instances restart deos-sandbox-codex-workflow wf-v1-bqtfvbyevqkeektyhuss352exsgvczk2x3y2i7lhioutbo5wybaa --from-step-name linear-event:requirements_approval --from-step-type waitForEvent --from-step-count 1 --config wrangler.queue-consumer-ts.jsonc
+```
+
+```output
+
+ ⛅️ wrangler 4.123.0
+────────────────────
+🥷 The instance "wf-v1-bqtfvbyevqkeektyhuss352exsgvczk2x3y2i7lhioutbo5wybaa" from deos-sandbox-codex-workflow was restarted successfully
+```
+
+A real user then moved SAC-98 from Human Review to In Progress. Linear delivery 843e470c-c29d-4f4f-919e-2cd67345320b carried the configured Human Review state ID even though updatedFrom.stateName was absent. The Workflow claimed it once, attributed it to the human user, committed the approved edge, and marked the delivery processed.
+
+```bash
+set -a; source /Users/sachin/code/deos/.env; set +a; export CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN:-$CLOUDFLARE_TOKEN}"; npm exec wrangler -- d1 execute DB --remote --config wrangler.queue-consumer-ts.jsonc --command "SELECT delivery_id, from_state_id, from_state_name, to_state_id, to_state_name, actor_id, actor_type, state, processed_at FROM workflow_event_inbox WHERE delivery_id = '843e470c-c29d-4f4f-919e-2cd67345320b'; SELECT from_node, to_node, cause_type, cause_reference, actor_id, actor_type, occurred_at FROM workflow_transitions_v2 WHERE cause_reference = '843e470c-c29d-4f4f-919e-2cd67345320b';" --json | jq -c 'map(.results)'
+```
+
+```output
+[[{"delivery_id":"843e470c-c29d-4f4f-919e-2cd67345320b","from_state_id":"71738607-03fd-49f2-b4be-b2aac29ccd13","from_state_name":null,"to_state_id":"700c1b00-b9dd-4cfb-9d59-bd60c1d8d471","to_state_name":"In Progress","actor_id":"8efc07d8-0d85-430f-84e7-f51bc6833a0b","actor_type":"user","state":"processed","processed_at":"2026-08-16T09:33:03.525Z"}],[{"from_node":"requirements_approval","to_node":"openspec_proposal","cause_type":"linear_event","cause_reference":"843e470c-c29d-4f4f-919e-2cd67345320b","actor_id":"8efc07d8-0d85-430f-84e7-f51bc6833a0b","actor_type":"user","occurred_at":"2026-08-16T09:33:03.326Z"}]]
+```
+
+```bash {image}
+![SAC-98 activity showing DEOS Workflow entering Human Review and the human user moving it to In Progress](docs/evidence/sac-98-human-review-to-in-progress.png)
+```
+
+![SAC-98 activity showing DEOS Workflow entering Human Review and the human user moving it to In Progress](58b54b12-2026-08-16.png)

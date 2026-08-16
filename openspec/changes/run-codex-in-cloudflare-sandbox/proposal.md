@@ -12,7 +12,7 @@ The Queue consumer currently treats dispatch as completed workflow work: it reco
 - Require each agent step to return a structured outcome to the Workflow instead of deciding or performing workflow-state transitions itself.
 - Preserve D1 as the authoritative business-state and audit store while correlating Queue, Workflow, Sandbox, artifact, GitHub, and Linear activity.
 - Make the Workflow state machine the sole authority for Linear transitions and follow-up agent dispatch. It may continue autonomously, launch another agent, record a blocked outcome, or stop at a designated human gate according to the current state and agent result.
-- For the controlled first slice, route the successful trial path to `Human Approval` after the agent and required provider operations succeed, without making human approval a requirement after every agent action.
+- For the controlled first slice, route the successful trial path to the workspace's `Human Review` state after the agent and required provider operations succeed, without making human approval a requirement after every agent action.
 - At states that do require human approval or rejection, accept only events attributable to a verified human actor as the decision that resumes the Workflow.
 - Require provider-originated and visual evidence for the deployed Linear-to-Codex-to-GitHub-and-Linear path.
 

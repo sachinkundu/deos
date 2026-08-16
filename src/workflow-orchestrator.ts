@@ -63,6 +63,7 @@ export interface HumanGateOperation {
 }
 
 export interface OrchestratorOptions {
+  humanGateStateId: string;
   approvalStateNames: readonly string[];
   rejectionStateNames: readonly string[];
   now?: () => Date;
@@ -185,8 +186,10 @@ export class WorkflowOrchestrator {
         deliveryId: claimed.delivery_id,
         actorId: claimed.actor_id,
         actorType: claimed.actor_type,
+        fromStateId: claimed.from_state_id,
         fromStateName: claimed.from_state_name,
         toStateName: claimed.to_state_name,
+        humanGateStateId: this.options.humanGateStateId,
         approvalStateNames: this.options.approvalStateNames,
         rejectionStateNames: this.options.rejectionStateNames,
       });

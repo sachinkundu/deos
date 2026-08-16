@@ -22,8 +22,10 @@ export interface HumanGateEvent {
   deliveryId: string;
   actorId: string | null;
   actorType: string | null;
+  fromStateId: string | null;
   fromStateName: string | null;
   toStateName: string;
+  humanGateStateId: string;
   approvalStateNames: readonly string[];
   rejectionStateNames: readonly string[];
 }
@@ -135,7 +137,10 @@ export const evaluateNodeOutcome = (
   if (input.kind !== "linear_event") {
     throw new Error(`human-gate node ${nodeId} requires a Linear event`);
   }
-  if (input.fromStateName !== node.linearState) return { kind: "wait", reason: "unrelated_event" };
+  const departedActiveGate = input.fromStateId !== null
+    ? input.fromStateId === input.humanGateStateId
+    : input.fromStateName === node.linearState;
+  if (!departedActiveGate) return { kind: "wait", reason: "unrelated_event" };
   if (input.actorType !== "user" || input.actorId === null) {
     return {
       kind: "repair_gate",

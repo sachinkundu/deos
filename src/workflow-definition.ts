@@ -304,3 +304,78 @@ export const loadWorkflowDefinition = async (
     digest,
   });
 };
+
+export const restoreWorkflowDefinition = async (
+  source: string,
+  expectedDigest: string,
+): Promise<LoadedWorkflowDefinition> => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch {
+    throw new Error("stored workflow definition is not valid JSON");
+  }
+  const stored = asRecord(parsed, "stored workflow");
+  assertAllowedKeys(
+    stored,
+    ["apiVersion", "kind", "name", "version", "start", "execution", "jobs", "nodes", "digest"],
+    "stored workflow",
+  );
+  if (stored.apiVersion !== WORKFLOW_API_VERSION) throw new Error("unsupported stored workflow apiVersion");
+  if (stored.kind !== WORKFLOW_KIND) throw new Error("unsupported stored workflow kind");
+  const name = stringValue(stored, "name", "stored workflow");
+  const version = positiveInteger(stored, "version", "stored workflow");
+  const start = stringValue(stored, "start", "stored workflow");
+  const storedDigest = stringValue(stored, "digest", "stored workflow");
+  if (storedDigest !== expectedDigest) throw new Error("stored workflow definition digest mismatch");
+
+  const execution = asRecord(stored.execution, "stored workflow.execution");
+  const storedJobs = asRecord(stored.jobs, "stored workflow.jobs");
+  const jobs: Record<string, unknown> = {};
+  const prompts: Record<string, string> = {};
+  const schemas: Record<string, string> = {};
+  for (const [id, value] of Object.entries(storedJobs)) {
+    const label = `stored workflow.jobs.${id}`;
+    const job = asRecord(value, label);
+    assertAllowedKeys(
+      job,
+      ["id", "promptFile", "prompt", "inputs", "context", "resultSchemaFile", "resultSchema", "requiredOutputs"],
+      label,
+    );
+    if (job.id !== id) throw new Error(`${label}.id must match its map key`);
+    const promptFile = stringValue(job, "promptFile", label);
+    const resultSchemaFile = stringValue(job, "resultSchemaFile", label);
+    prompts[promptFile] = stringValue(job, "prompt", label);
+    schemas[resultSchemaFile] = JSON.stringify(asRecord(job.resultSchema, `${label}.resultSchema`));
+    jobs[id] = {
+      promptFile,
+      inputs: stringArray(job, "inputs", label),
+      context: stringArray(job, "context", label, false),
+      resultSchema: resultSchemaFile,
+      requiredOutputs: stringArray(job, "requiredOutputs", label),
+    };
+  }
+
+  const storedNodes = asRecord(stored.nodes, "stored workflow.nodes");
+  const nodes: Record<string, unknown> = {};
+  for (const [id, value] of Object.entries(storedNodes)) {
+    const label = `stored workflow.nodes.${id}`;
+    const node = asRecord(value, label);
+    if (node.id !== id) throw new Error(`${label}.id must match its map key`);
+    const { id: _id, ...sourceNode } = node;
+    if (sourceNode.type === "terminal") delete sourceNode.edges;
+    nodes[id] = sourceNode;
+  }
+
+  const restored = await loadWorkflowDefinition(
+    JSON.stringify({
+      apiVersion: WORKFLOW_API_VERSION,
+      kind: WORKFLOW_KIND,
+      metadata: { name, version },
+      spec: { start, execution, jobs, nodes },
+    }),
+    { prompts, schemas },
+  );
+  if (restored.digest !== expectedDigest) throw new Error("restored workflow definition digest mismatch");
+  return restored;
+};

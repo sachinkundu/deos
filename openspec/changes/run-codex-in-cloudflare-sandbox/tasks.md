@@ -1,7 +1,7 @@
 ## 1. Runtime Contract and Durable Schema
 
 - [x] 1.1 Pin one exact `@cloudflare/sandbox@next` release and matching container image, add the Workflow/Sandbox/R2 bindings, and regenerate checked Worker types.
-- [x] 1.2 Add the versioned `workflow.deos.yaml` bundle, prompt files, result schemas, loader validation, canonical digesting, and deterministic definition tests.
+- [x] 1.2 Add the versioned `workflow.deos.yaml` bundle, prompt files, result schemas, loader validation, canonical digesting, immutable stored-definition restoration for active older runs, and deterministic definition tests.
 - [x] 1.3 Add additive D1 migrations for immutable definitions, orchestration runs, dispatch intents, event inbox rows, transitions, attempts, credential leases, provider operations, artifact manifests, diagnostics, and cleanup work items.
 
 ## 2. Authenticated Event Dispatch
@@ -45,6 +45,6 @@
 - [x] 7.1 Deploy additive resources with trial dispatch disabled, apply migrations, and verify binding/package/image parity through read-only provider inspection.
 - [x] 7.2 Run a real bounded Sandbox/Codex integration attempt, preserve refreshed auth and checksum-verified R2 artifacts, and prove explicit Sandbox destruction.
 - [x] 7.3 Run and label a synthetic signed-ingress proof through the deployed Queue, Workflow, Sandbox, D1, R2, and provider-capability path.
-- [x] 7.4 Enable one test-project canary and use Linear MCP to trigger a provider-originated delivery through Workflow, Codex, GitHub/Linear work products, Human Approval, artifacts, and cleanup.
+- [x] 7.4 Enable one test-project canary and use Linear MCP to trigger a provider-originated delivery through Workflow, Codex, GitHub/Linear work products, Human Review, artifacts, and cleanup.
 - [x] 7.5 Capture sanitized Linear and GitHub visual evidence plus Showboat deployment, D1, Workflow, Sandbox, R2, and telemetry evidence; attach it to the final implementation PR.
 - [x] 7.6 Complete every task checkbox, inspect the full diff, and publish one ready-for-review implementation PR linked to SAC-91 and approved planning PRs #18, #19, and #20.

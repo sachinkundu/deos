@@ -89,6 +89,13 @@ export interface WorkflowInboxRecord {
   state: "pending" | "sent" | "claimed" | "processed" | "duplicate" | "unmatched";
 }
 
+export interface WorkflowDefinitionSnapshot {
+  definition_id: string;
+  version: number;
+  canonical_json: string;
+  digest: string;
+}
+
 export interface OrchestrationDispatchStore {
   registerDefinitionAndPolicy(input: {
     definition: LoadedWorkflowDefinition;
@@ -251,6 +258,16 @@ export class D1OrchestrationStore {
     return this.database.prepare(
       "SELECT * FROM orchestration_runs WHERE run_id = ?",
     ).bind(runId).first<OrchestrationRunRecord>();
+  }
+
+  findDefinitionSnapshot(
+    definitionId: string,
+    version: number,
+  ): Promise<WorkflowDefinitionSnapshot | null> {
+    return this.database.prepare(
+      `SELECT definition_id, version, canonical_json, digest
+       FROM workflow_definitions WHERE definition_id = ? AND version = ?`,
+    ).bind(definitionId, version).first<WorkflowDefinitionSnapshot>();
   }
 
   async allocateRun(input: {

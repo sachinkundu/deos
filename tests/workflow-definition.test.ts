@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { loadWorkflowDefinition, type WorkflowBundleSources } from "../src/workflow-definition.ts";
+import {
+  loadWorkflowDefinition,
+  restoreWorkflowDefinition,
+  type WorkflowBundleSources,
+} from "../src/workflow-definition.ts";
 
 const source = readFileSync(new URL("../config/workflow.deos.yaml", import.meta.url), "utf8");
 const promptPaths = [
@@ -37,11 +41,13 @@ test("loads the reviewed workflow bundle and resolves prompts and schemas", asyn
   const definition = await loadWorkflowDefinition(source, bundle());
 
   assert.equal(definition.name, "openspec-delivery");
+  assert.equal(definition.version, 3);
   assert.equal(definition.start, "requirements");
   assert.equal(definition.execution.codexSandboxMode, "danger-full-access");
   assert.equal(definition.nodes.requirements.type, "agent");
   assert.equal(definition.nodes.requirements_review.edges.changes_requested, "requirements");
   assert.equal(definition.nodes.requirements_approval.type, "human_gate");
+  assert.equal(definition.nodes.requirements_approval.linearState, "Human Review");
   assert.equal(definition.nodes.done.type, "terminal");
   assert.match(definition.jobs.implementation.prompt, /implementation agent/);
   assert.equal(definition.digest.length, 64);
@@ -51,6 +57,23 @@ test("canonical workflow digest is stable", async () => {
   const first = await loadWorkflowDefinition(source, bundle());
   const second = await loadWorkflowDefinition(source, bundle());
   assert.equal(first.digest, second.digest);
+});
+
+test("restores an immutable stored definition for an older active run", async () => {
+  const original = await loadWorkflowDefinition(source, bundle());
+  const restored = await restoreWorkflowDefinition(JSON.stringify(original), original.digest);
+
+  assert.deepEqual(restored, original);
+});
+
+test("rejects a tampered stored definition", async () => {
+  const original = await loadWorkflowDefinition(source, bundle());
+  const tampered = JSON.stringify({ ...original, start: "implementation" });
+
+  await assert.rejects(
+    restoreWorkflowDefinition(tampered, original.digest),
+    /restored workflow definition digest mismatch/,
+  );
 });
 
 test("rejects executable edge expressions and unknown fields", async () => {

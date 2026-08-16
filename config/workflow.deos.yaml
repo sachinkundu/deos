@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: openspec-delivery
-  version: 2
+  version: 3
 spec:
   start: requirements
   execution:
@@ -75,7 +75,7 @@ spec:
       edges: {approved: requirements_approval, changes_requested: requirements, blocked: blocked, failed: blocked}
     requirements_approval:
       type: human_gate
-      linearState: Human Approval
+      linearState: Human Review
       edges: {approved: openspec_proposal, rejected: requirements}
     openspec_proposal:
       type: system_action
@@ -99,7 +99,7 @@ spec:
       edges: {approved: architecture_approval, changes_requested: ddd_architecture, blocked: blocked, failed: blocked}
     architecture_approval:
       type: human_gate
-      linearState: Human Approval
+      linearState: Human Review
       edges: {approved: openspec_tasks, rejected: ddd_architecture}
     openspec_tasks:
       type: system_action
@@ -123,7 +123,7 @@ spec:
       edges: {completed: release_approval, failed: implementation}
     release_approval:
       type: human_gate
-      linearState: Human Approval
+      linearState: Human Review
       edges: {approved: deploy, rejected: blocked}
     deploy:
       type: system_action

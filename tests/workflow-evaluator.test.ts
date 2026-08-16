@@ -90,20 +90,38 @@ test("only a user leaving the active gate can approve or reject", () => {
     deliveryId: "delivery-1",
     actorId: "user-1",
     actorType: "user",
-    fromStateName: "Human Approval",
+    fromStateId: "human-state",
+    fromStateName: null,
     toStateName: "In Progress",
+    humanGateStateId: "human-state",
     approvalStateNames: ["In Progress"],
     rejectionStateNames: ["Canceled"],
   });
   assert.equal(approved.kind === "transition" ? approved.toNode : null, "action");
+
+  const wrongProviderState = evaluateNodeOutcome(definition, "approval", {
+    kind: "linear_event",
+    deliveryId: "delivery-wrong-state",
+    actorId: "user-1",
+    actorType: "user",
+    fromStateId: "different-state",
+    fromStateName: "Human Approval",
+    toStateName: "In Progress",
+    humanGateStateId: "human-state",
+    approvalStateNames: ["In Progress"],
+    rejectionStateNames: ["Canceled"],
+  });
+  assert.equal(wrongProviderState.kind, "wait");
 
   const repair = evaluateNodeOutcome(definition, "approval", {
     kind: "linear_event",
     deliveryId: "delivery-2",
     actorId: "oauth-1",
     actorType: "oauthclient",
+    fromStateId: "human-state",
     fromStateName: "Human Approval",
     toStateName: "In Progress",
+    humanGateStateId: "human-state",
     approvalStateNames: ["In Progress"],
     rejectionStateNames: ["Canceled"],
   });
@@ -114,8 +132,10 @@ test("only a user leaving the active gate can approve or reject", () => {
     deliveryId: "delivery-3",
     actorId: "user-2",
     actorType: "user",
+    fromStateId: "human-state",
     fromStateName: "Human Approval",
     toStateName: "Canceled",
+    humanGateStateId: "human-state",
     approvalStateNames: ["In Progress"],
     rejectionStateNames: ["Canceled"],
   });
