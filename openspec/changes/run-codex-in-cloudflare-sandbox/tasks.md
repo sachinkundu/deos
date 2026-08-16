@@ -47,4 +47,4 @@
 - [x] 7.3 Run and label a synthetic signed-ingress proof through the deployed Queue, Workflow, Sandbox, D1, R2, and provider-capability path.
 - [x] 7.4 Enable one test-project canary and use Linear MCP to trigger a provider-originated delivery through Workflow, Codex, GitHub/Linear work products, Human Approval, artifacts, and cleanup.
 - [x] 7.5 Capture sanitized Linear and GitHub visual evidence plus Showboat deployment, D1, Workflow, Sandbox, R2, and telemetry evidence; attach it to the final implementation PR.
-- [ ] 7.6 Complete every task checkbox, inspect the full diff, and publish one ready-for-review implementation PR linked to SAC-91 and approved planning PRs #18, #19, and #20.
+- [x] 7.6 Complete every task checkbox, inspect the full diff, and publish one ready-for-review implementation PR linked to SAC-91 and approved planning PRs #18, #19, and #20.
