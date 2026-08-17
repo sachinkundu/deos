@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: openspec-delivery
-  version: 3
+  version: 9
 spec:
   start: requirements
   execution:
@@ -64,6 +64,34 @@ spec:
       context: [shared_workpad]
       resultSchema: schemas/agent-result-v1.json
       requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+    openspec_continue:
+      promptFile: prompts/openspec.md
+      inputs: [linear_issue, openspec_change, openspec_instruction]
+      context: [shared_workpad, prior_artifact_manifests]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+      operation: {kind: openspec, instruction: /opsx:continue}
+    openspec_apply:
+      promptFile: prompts/openspec.md
+      inputs: [linear_issue, openspec_change, openspec_instruction]
+      context: [shared_workpad, prior_artifact_manifests]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+      operation: {kind: openspec, instruction: /opsx:apply}
+    openspec_verify:
+      promptFile: prompts/openspec.md
+      inputs: [linear_issue, openspec_change, openspec_instruction]
+      context: [shared_workpad, prior_artifact_manifests]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+      operation: {kind: openspec, instruction: /opsx:verify}
+    openspec_archive:
+      promptFile: prompts/openspec.md
+      inputs: [linear_issue, openspec_change, openspec_instruction]
+      context: [shared_workpad, prior_artifact_manifests]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+      operation: {kind: openspec, instruction: /opsx:archive}
   nodes:
     requirements:
       type: agent
@@ -78,20 +106,20 @@ spec:
       linearState: Human Review
       edges: {approved: openspec_proposal, rejected: requirements}
     openspec_proposal:
-      type: system_action
-      action: openspec.create_proposal_and_requirements
-      edges: {completed: openspec_specs, failed: blocked}
+      type: agent
+      job: openspec_continue
+      edges: {completed: openspec_specs, blocked: blocked, failed: blocked}
     openspec_specs:
-      type: system_action
-      action: openspec.create_delta_specs
-      edges: {completed: bdd_review, failed: blocked}
+      type: agent
+      job: openspec_continue
+      edges: {completed: bdd_review, blocked: blocked, failed: blocked}
     bdd_review:
       type: agent
       job: bdd_review
       edges: {approved: ddd_architecture, changes_requested: openspec_specs, blocked: blocked, failed: blocked}
     ddd_architecture:
       type: agent
-      job: ddd_architecture
+      job: openspec_continue
       edges: {completed: ddd_review, blocked: blocked, failed: blocked}
     ddd_review:
       type: agent
@@ -102,12 +130,12 @@ spec:
       linearState: Human Review
       edges: {approved: openspec_tasks, rejected: ddd_architecture}
     openspec_tasks:
-      type: system_action
-      action: openspec.create_tasks
-      edges: {completed: implementation, failed: blocked}
+      type: agent
+      job: openspec_continue
+      edges: {completed: implementation, blocked: blocked, failed: blocked}
     implementation:
       type: agent
-      job: implementation
+      job: openspec_apply
       edges: {completed: code_review, blocked: blocked, failed: blocked}
     code_review:
       type: agent
@@ -118,9 +146,9 @@ spec:
       job: evidence_verification
       edges: {certified: openspec_verify, changes_requested: implementation, blocked: blocked, failed: blocked}
     openspec_verify:
-      type: system_action
-      action: openspec.verify
-      edges: {completed: release_approval, failed: implementation}
+      type: agent
+      job: openspec_verify
+      edges: {completed: release_approval, blocked: implementation, failed: implementation}
     release_approval:
       type: human_gate
       linearState: Human Review
@@ -134,8 +162,8 @@ spec:
       job: release_finalization
       edges: {completed: sync_and_archive, blocked: blocked, failed: blocked}
     sync_and_archive:
-      type: system_action
-      action: openspec.sync_and_archive
-      edges: {completed: done, failed: blocked}
+      type: agent
+      job: openspec_archive
+      edges: {completed: done, blocked: blocked, failed: blocked}
     done: {type: terminal, outcome: succeeded}
     blocked: {type: terminal, outcome: blocked}

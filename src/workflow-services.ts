@@ -78,6 +78,11 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         now: () => new Date(),
         attemptId: defaultAttemptId,
         materializeContext: (run, job) => jobInputs.materialize(run, job),
+        readContinuationPatch: async (reference) => {
+          const object = await env.ARTIFACTS.get(reference.r2Key);
+          if (object === null) throw new Error("continuation patch object is missing");
+          return object.text();
+        },
         capabilityGrant: (attemptId, runId) => this.capabilityGrant(attemptId, runId),
         collector: (sandbox) => new ArtifactCollector(
           new SandboxArtifactReaderAdapter(sandbox),

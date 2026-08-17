@@ -20,11 +20,18 @@ spec:
       inputs: []
       resultSchema: schemas/result.json
       requiredOutputs: []
+    openspec:
+      promptFile: prompts/implement.md
+      inputs: []
+      resultSchema: schemas/result.json
+      requiredOutputs: []
+      operation: {kind: openspec, instruction: /opsx:continue}
   nodes:
     implement: { type: agent, job: implement, edges: { completed: review, blocked: blocked, failed: blocked } }
     review: { type: agent, job: implement, edges: { approved: approval, changes_requested: implement, blocked: blocked, failed: blocked } }
     approval: { type: human_gate, linearState: Human Approval, edges: { approved: action, rejected: implement } }
     action: { type: system_action, action: openspec.verify, edges: { completed: done, failed: blocked } }
+    openspec: { type: agent, job: openspec, edges: { completed: done, blocked: blocked, failed: blocked } }
     done: { type: terminal, outcome: succeeded }
     blocked: { type: terminal, outcome: blocked }
 `,
@@ -52,24 +59,40 @@ test("node instructions cover agents, system actions, gates, and terminals", () 
 
 test("autonomous agent continuation and review loops use only configured edges", () => {
   const completed = evaluateNodeOutcome(definition, "implement", {
-    kind: "agent", outcome: "completed", providerReceiptsComplete: true,
+    kind: "agent", outcome: "completed", providerReceiptsPresent: true, providerReceiptsComplete: true,
   });
   assert.equal(completed.kind === "transition" ? completed.toNode : null, "review");
   const loop = evaluateNodeOutcome(definition, "review", {
-    kind: "agent", outcome: "changes_requested", providerReceiptsComplete: true,
+    kind: "agent", outcome: "changes_requested", providerReceiptsPresent: true, providerReceiptsComplete: true,
   });
   assert.equal(loop.kind === "transition" ? loop.toNode : null, "implement");
   assert.throws(() => evaluateNodeOutcome(definition, "review", {
-    kind: "agent", outcome: "completed", providerReceiptsComplete: true,
+    kind: "agent", outcome: "completed", providerReceiptsPresent: true, providerReceiptsComplete: true,
   }), /no completed edge/);
 });
 
 test("success paths fail closed until provider receipts are complete", () => {
   assert.throws(() => evaluateNodeOutcome(definition, "implement", {
-    kind: "agent", outcome: "completed", providerReceiptsComplete: false,
+    kind: "agent", outcome: "completed", providerReceiptsPresent: false, providerReceiptsComplete: false,
   }), /missing provider receipts/);
   assert.throws(() => evaluateNodeOutcome(definition, "action", {
     kind: "system_action", outcome: "completed", providerReceiptsComplete: false,
+  }), /missing provider receipts/);
+});
+
+test("repository-local OpenSpec completion permits zero receipts but not incomplete attempted effects", () => {
+  const local = evaluateNodeOutcome(definition, "openspec", {
+    kind: "agent",
+    outcome: "completed",
+    providerReceiptsPresent: false,
+    providerReceiptsComplete: false,
+  });
+  assert.equal(local.kind === "transition" ? local.toNode : null, "done");
+  assert.throws(() => evaluateNodeOutcome(definition, "openspec", {
+    kind: "agent",
+    outcome: "completed",
+    providerReceiptsPresent: true,
+    providerReceiptsComplete: false,
   }), /missing provider receipts/);
 });
 
@@ -77,6 +100,7 @@ test("agent-requested Linear transitions are recorded but cannot select an edge"
   const decision = evaluateNodeOutcome(definition, "implement", {
     kind: "agent",
     outcome: "completed",
+    providerReceiptsPresent: true,
     providerReceiptsComplete: true,
     attemptedLinearTransition: true,
   });

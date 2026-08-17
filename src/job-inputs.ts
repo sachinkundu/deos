@@ -21,6 +21,26 @@ interface PriorAttemptRow {
   completed_at: string;
 }
 
+interface ContinuationPatchRow {
+  attempt_id: string;
+  manifest_id: string;
+  r2_key: string;
+  sha256: string;
+}
+
+export interface ContinuationPatchReference {
+  attemptId: string;
+  manifestId: string;
+  r2Key: string;
+  sha256: string;
+}
+
+export interface MaterializedJobInput {
+  context: string;
+  openspecChange: string;
+  continuationPatch: ContinuationPatchReference | null;
+}
+
 interface JobInputDependencies {
   fetch: typeof fetch;
 }
@@ -33,6 +53,14 @@ const asObject = (value: unknown): Record<string, unknown> => {
     throw new Error("prior agent result is not an object");
   }
   return value as Record<string, unknown>;
+};
+
+export const openSpecChangeIdentity = (identifier: string): string => {
+  const change = identifier.toLowerCase();
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(change)) {
+    throw new Error("Linear issue identifier cannot form an OpenSpec change identity");
+  }
+  return change;
 };
 
 export class JobInputMaterializer {
@@ -56,12 +84,14 @@ export class JobInputMaterializer {
     this.request = dependencies.fetch ?? ((input, init) => fetch(input, init));
   }
 
-  async materialize(run: OrchestrationRunRecord, job: WorkflowJob): Promise<string> {
+  async materialize(run: OrchestrationRunRecord, job: WorkflowJob): Promise<MaterializedJobInput> {
     const issue = await this.linearIssue(run.issue_id);
     if (issue.project?.id !== run.project_id) {
       throw new Error("Linear issue project does not match the workflow run");
     }
     const priorAttempts = await this.priorAttempts(run.run_id);
+    const openspecChange = openSpecChangeIdentity(issue.identifier);
+    const continuationPatch = await this.continuationPatch(run.run_id);
     const bundle = {
       version: 1,
       declaredInputs: job.inputs,
@@ -84,14 +114,18 @@ export class JobInputMaterializer {
           updatedAt: comment.updatedAt,
         })),
       priorAttempts,
+      openspec: job.operation?.kind === "openspec"
+        ? { change: openspecChange, instruction: job.operation.instruction }
+        : null,
       repository: {
         checkout: "/deos/workspace/repository",
         branch: "deos/{attemptId}",
+        continuationPatch,
       },
     };
     const encoded = JSON.stringify(bundle);
     if (encoded.length > 128_000) throw new Error("materialized job inputs exceed the trusted limit");
-    return encoded;
+    return { context: encoded, openspecChange, continuationPatch };
   }
 
   private async linearIssue(issueId: string): Promise<LinearIssueContext> {
@@ -151,5 +185,22 @@ export class JobInputMaterializer {
       });
     }
     return attempts;
+  }
+
+  private continuationPatch(runId: string): Promise<ContinuationPatchReference | null> {
+    return this.database.prepare(
+      `SELECT a.attempt_id, m.manifest_id, f.r2_key, f.sha256
+       FROM agent_attempts a
+       JOIN artifact_manifests m ON m.manifest_id = a.manifest_id
+       JOIN artifacts f ON f.manifest_id = m.manifest_id AND f.logical_name = 'patch.diff'
+       WHERE a.run_id = ? AND a.state = 'completed' AND m.state = 'complete'
+       ORDER BY m.completed_at DESC, a.attempt_id DESC
+       LIMIT 1`,
+    ).bind(runId).first<ContinuationPatchRow>().then((row) => row === null ? null : ({
+      attemptId: row.attempt_id,
+      manifestId: row.manifest_id,
+      r2Key: row.r2_key,
+      sha256: row.sha256,
+    }));
   }
 }

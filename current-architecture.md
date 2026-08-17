@@ -23,8 +23,10 @@ Logs. A deterministic workflow correlation identifier connects ingress, Queue
 attempts, D1 transitions, and outbound Linear interactions so an operator can
 query the lifecycle of one workflow across service boundaries.
 
-R2 is bound and an artifact-storage interface exists, but the current system
-does not write production artifact provenance or evidence packs.
+R2 stores protected Codex authentication and immutable per-attempt artifact
+manifests, transcripts, structured results, validation output, provider
+references, and cumulative repository patches. Cloudflare Workflow and Sandbox
+run the versioned delivery graph in the separate TypeScript Worker.
 
 ## Design intent
 
@@ -67,6 +69,14 @@ and a test Linear project provide provider-originated integration proof.
   binding adapters. Python remains preferred for ingress and domain modules;
   the Queue consumer is TypeScript because that runtime produced durable D1
   evidence for Queue consumption where the equivalent Python consumer did not.
+- **Native OpenSpec jobs:** typed agent jobs carry an allowlisted OpenSpec
+  instruction and a trusted change name derived from the Linear issue. A later
+  clean Sandbox restores the latest cumulative patch from R2 only after its D1
+  digest matches.
+- **Conditional receipt policy:** ordinary successful agents and external system
+  actions require exact D1-backed receipts. A repository-local OpenSpec job may
+  complete with zero provider operations, but any external operation it
+  attempts retains the exact receipt requirement.
 
 ## Component and event flow
 
@@ -139,18 +149,20 @@ durable source of workflow and audit state.
 
 ## Current boundaries
 
-- R2 artifact provenance and evidence-pack storage are not implemented.
-- There is no isolated agent execution service or durable workspace lifecycle.
-- The Queue consumer currently holds the Linear API credential needed for its
-  mutation; a separate Linear capability gateway is target architecture only.
-- A GitHub capability gateway and GitHub event reconciliation are not
-  implemented.
-- Per-project or per-run serialization through Durable Objects or Cloudflare
-  Workflows is not implemented.
-- Queue retry visibility exists, but retrying after a persisted state transition
-  does not yet guarantee that a failed Linear mutation will be replayed.
-- Workers Logs and Query Builder are the current query surface; there is no
-  custom operator dashboard or application-managed OTLP exporter.
+- Deployment remains an external system action and cannot advance without its
+  exact trusted provider receipt.
+- Repository continuation is a cumulative patch against the configured base;
+  capture uses an isolated temporary Git index so untracked files are included;
+  the first slice does not provide a long-lived mutable workspace or automatic
+  rebase.
+- Workers Logs and Query Builder remain the operational query surface; the
+  issue-centred operator view and native workflow graph are separate follow-up
+  work.
+- The currently implemented lifecycle still uses the legacy ambiguous
+  `blocked` business-state semantics even though the OpenSpec-capable bundle is
+  definition version 9; explicit executor-versus-business lifecycle semantics
+  are planned in the separate `separate-executor-and-business-lifecycle`
+  change.
 
 ## Evolution rule
 

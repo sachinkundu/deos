@@ -46,6 +46,37 @@ spec:
   },
 );
 
+const openSpecDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: openspec-sandbox-test, version: 1 }
+spec:
+  start: work
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs:
+    work:
+      promptFile: prompts/work.md
+      inputs: [openspec_change, openspec_instruction]
+      context: [prior_artifact_manifests]
+      resultSchema: schemas/result.json
+      requiredOutputs: [transcript.jsonl, result.json]
+      operation: {kind: openspec, instruction: /opsx:continue}
+  nodes:
+    work: { type: agent, job: work, edges: { completed: done, blocked: blocked, failed: blocked } }
+    done: { type: terminal, outcome: succeeded }
+    blocked: { type: terminal, outcome: blocked }
+`,
+  {
+    prompts: { "prompts/work.md": "Run the native OpenSpec operation." },
+    schemas: {
+      "schemas/result.json": JSON.stringify({
+        $id: "https://deos.dev/openspec-sandbox-test.json",
+        type: "object",
+      }),
+    },
+  },
+);
+
 const run = {
   run_id: "workflow:project-1:issue-1:run:1",
   issue_id: "issue-1",
@@ -287,7 +318,19 @@ class Collector {
   }
 }
 
-const setup = (clock = () => NOW) => {
+interface SetupOptions {
+  clock?: () => Date;
+  continuationPatch?: {
+    attemptId: string;
+    manifestId: string;
+    r2Key: string;
+    sha256: string;
+  } | null;
+  patchContent?: string;
+}
+
+const setup = (options: SetupOptions = {}) => {
+  const clock = options.clock ?? (() => NOW);
   const attempts = new AttemptStore();
   const factory = new Factory();
   const credentials = new Credentials();
@@ -305,15 +348,21 @@ const setup = (clock = () => NOW) => {
     {
       now: clock,
       attemptId: () => "00000000-0000-7000-8000-000000000001",
-      materializeContext: async () => JSON.stringify({
-        linearIssue: { id: "issue-1", title: "Bounded test task" },
-        repository: { branch: "deos/{attemptId}" },
+      materializeContext: async () => ({
+        context: JSON.stringify({
+          linearIssue: { id: "issue-1", title: "Bounded test task" },
+          repository: { branch: "deos/{attemptId}" },
+        }),
+        openspecChange: "sac-1",
+        continuationPatch: options.continuationPatch ?? null,
       }),
+      readContinuationPatch: async () => options.patchContent ?? "# No repository changes in this attempt.\n",
       capabilityGrant: async () => ({ url: "https://worker.example/capabilities", token: "grant-token" }),
       collector: () => collector as unknown as ArtifactCollector,
       providerReceipts: {
         verify: async (_runId, _attemptId, operationIds) =>
           operationIds === undefined || operationIds.length > 0,
+        hasAny: async () => collector.receiptIds.length > 0,
       },
     },
   );
@@ -334,8 +383,68 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.match(prompt, /Bounded test task/);
   assert.match(prompt, /deos\/00000000-0000-7000-8000-000000000001/);
   assert.match(prompt, /publish_work_product/);
+  assert.match(prompt, /copy the response's exact operationId into result\.json providerReceipts/);
+  assert.match(prompt, /result\.json list must exactly match provider-references\.json/);
+  assert.match(prompt, /Review jobs must publish their review outcome and actionable feedback/);
   assert.match(prompt, /\^\[a-z0-9\]\[a-z0-9\._-\]\{0,79\}\$/);
   assert.match(prompt, /requirements-publish-v1/);
+});
+
+test("OpenSpec attempt records and prompts the frozen instruction and trusted change identity", async () => {
+  const { controller, factory, attempts } = setup();
+  await controller.execute(run, "work", "work", openSpecDefinition);
+  const durableJob = JSON.parse(attempts.latest?.job_spec_json ?? "{}");
+  assert.equal(durableJob.openspecInstruction, "/opsx:continue");
+  assert.equal(durableJob.openspecChange, "sac-1");
+  const prompt = factory.sandbox.files.get("/deos/run/prompt.md") ?? "";
+  assert.match(prompt, /Native OpenSpec instruction: \/opsx:continue/);
+  assert.match(prompt, /OpenSpec change identity: sac-1/);
+  assert.doesNotMatch(prompt, /Review jobs must publish their review outcome and actionable feedback/);
+});
+
+test("trusted controller verifies and applies the cumulative continuation patch before Codex", async () => {
+  const patchContent = "diff --git a/example.txt b/example.txt\nnew file mode 100644\nindex 0000000..8baef1b\n--- /dev/null\n+++ b/example.txt\n@@ -0,0 +1 @@\n+continued\n";
+  const bytes = new TextEncoder().encode(patchContent);
+  const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  const continuationPatch = {
+    attemptId: "prior-attempt",
+    manifestId: "prior-manifest",
+    r2Key: "runs/prior/patch.diff",
+    sha256: digest,
+  };
+  const { controller, factory, attempts } = setup({ continuationPatch, patchContent });
+  await controller.execute(run, "work", "work", openSpecDefinition);
+
+  assert.deepEqual(JSON.parse(attempts.latest?.job_spec_json ?? "{}").continuationPatch, continuationPatch);
+  assert.deepEqual(
+    factory.sandbox.commands.filter(({ command }) => command[0] === "git" && command[1] === "apply")
+      .map(({ command }) => command),
+    [
+      ["git", "apply", "--binary", "--check", "/deos/run/continuation.patch"],
+      ["git", "apply", "--binary", "/deos/run/continuation.patch"],
+    ],
+  );
+  assert.equal(factory.sandbox.files.has("/deos/run/continuation.patch"), false);
+});
+
+test("a continuation patch digest mismatch fails before Codex starts and destroys the Sandbox", async () => {
+  const { controller, factory, attempts } = setup({
+    continuationPatch: {
+      attemptId: "prior-attempt",
+      manifestId: "prior-manifest",
+      r2Key: "runs/prior/patch.diff",
+      sha256: "0".repeat(64),
+    },
+    patchContent: "tampered\n",
+  });
+  await assert.rejects(
+    controller.execute(run, "work", "work", openSpecDefinition),
+    /continuation patch digest mismatch/,
+  );
+  assert.equal(attempts.latest?.state, "failed");
+  assert.equal(factory.sandbox.destroyed, true);
+  assert.equal(factory.sandbox.commands.some(({ command }) => command[0] === "node"), false);
 });
 
 test("running process reconciles the exact process and fresh supervisor heartbeat", async () => {
@@ -383,7 +492,7 @@ test("successful agent output without durable provider receipts fails closed", a
 test("expired heartbeat kills the process, destroys the Sandbox, and fails closed", async () => {
   const later = new Date(NOW.getTime() + 6 * 60_000);
   let clock = NOW;
-  const setupResult = setup(() => clock);
+  const setupResult = setup({ clock: () => clock });
   await setupResult.controller.execute(run, "work", "work", definition);
   setupResult.factory.sandbox.files.set("/deos/output/heartbeat.json", JSON.stringify({
     attemptId: setupResult.attempts.latest?.attempt_id,

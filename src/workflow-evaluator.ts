@@ -7,6 +7,7 @@ import type {
 export interface ValidatedAgentOutcome {
   kind: "agent";
   outcome: string;
+  providerReceiptsPresent: boolean;
   providerReceiptsComplete: boolean;
   attemptedLinearTransition?: boolean;
 }
@@ -99,7 +100,11 @@ export const evaluateNodeOutcome = (
 
   if (node.type === "agent") {
     if (input.kind !== "agent") throw new Error(`agent node ${nodeId} requires an agent outcome`);
-    const requiresReceipts = !["blocked", "failed"].includes(input.outcome);
+    const job = definition.jobs[node.job];
+    if (job === undefined) throw new Error(`agent node ${nodeId} references a missing job`);
+    const repositoryLocalOpenSpec = job.operation?.kind === "openspec";
+    const requiresReceipts = !["blocked", "failed"].includes(input.outcome) &&
+      (!repositoryLocalOpenSpec || input.providerReceiptsPresent);
     if (requiresReceipts && !input.providerReceiptsComplete) {
       throw new Error(`agent node ${nodeId} is missing provider receipts`);
     }

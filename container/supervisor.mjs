@@ -2,6 +2,8 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 
+import { captureRepositoryPatch } from "./patch-capture.mjs";
+
 const RUN_ROOT = "/deos/run";
 const OUTPUT_ROOT = "/deos/output";
 const JOB_PATH = `${RUN_ROOT}/job.json`;
@@ -20,42 +22,10 @@ const atomicJson = async (path, value) => {
   await rename(temporary, path);
 };
 
-const capture = (command, args, cwd, maximumBytes = 10 * 1024 * 1024) =>
-  new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
-    const stdout = [];
-    const stderr = [];
-    let bytes = 0;
-    let rejected = false;
-    const collect = (target) => (chunk) => {
-      bytes += chunk.length;
-      if (bytes > maximumBytes) {
-        rejected = true;
-        child.kill("SIGKILL");
-        reject(new Error("trusted command output exceeds its limit"));
-        return;
-      }
-      target.push(chunk);
-    };
-    child.stdout.on("data", collect(stdout));
-    child.stderr.on("data", collect(stderr));
-    child.once("error", reject);
-    child.once("exit", (code) => {
-      if (rejected) return;
-      resolve({
-        code,
-        stdout: Buffer.concat(stdout).toString("utf8"),
-        stderr: Buffer.concat(stderr).toString("utf8"),
-      });
-    });
-  });
-
 const finalizeMechanicalOutputs = async (job) => {
-  const diff = await capture("git", ["diff", "--binary", "HEAD", "--"], job.cwd);
-  if (diff.code !== 0) throw new Error("repository patch capture failed");
   await writeFile(
     PATCH_PATH,
-    diff.stdout || "# No repository changes in this attempt.\n",
+    await captureRepositoryPatch(job.cwd),
     { mode: 0o600 },
   );
   let references = [];

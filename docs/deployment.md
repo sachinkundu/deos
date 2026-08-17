@@ -15,7 +15,7 @@ The checked Wrangler configurations name the existing D1 database, Queue, and pr
 - Durable Object class `Sandbox` and its pinned Container image;
 - a Queue consumer and fifteen-minute D1-known cleanup cron.
 
-The Sandbox package and image must remain on exact release `0.13.0-next.738.2`; the Docker base is also pinned by digest. Run `npm run types:check` after every binding change.
+The Sandbox package and image must remain on exact release `0.13.0-next.738.2`; the Docker base is also pinned by digest. The image also pins Codex `0.147.0` and OpenSpec `1.8.0`, and the Docker build verifies both CLIs. Run `npm run types:check` after every binding change.
 
 ## Secrets and non-secret configuration
 
@@ -87,7 +87,7 @@ Apply that statement through `wrangler d1 execute ... --remote --command`. Use L
 
 ## Inspection
 
-Use read-only D1 queries for `deliveries`, `orchestration_runs`, `dispatch_intents`, `workflow_event_inbox`, `agent_attempts`, `artifact_manifests`, `provider_operations`, `workflow_transitions_v2`, and `cleanup_work_items`. Correlate Workers Logs by `deos.workflow.correlation_id` and `deos.workflow.run_id`. Do not query or log raw prompts, transcripts, auth envelopes, tokens, or provider response bodies.
+Use read-only D1 queries for `deliveries`, `orchestration_runs`, `dispatch_intents`, `workflow_event_inbox`, `agent_attempts`, `artifact_manifests`, `artifacts`, `provider_operations`, `workflow_transitions_v2`, and `cleanup_work_items`. For OpenSpec nodes, inspect only bounded `job_spec_json` fields for `openspecInstruction`, `openspecChange`, and `continuationPatch`; verify the referenced patch through its recorded digest without printing arbitrary source or transcript content. Correlate Workers Logs by `deos.workflow.correlation_id` and `deos.workflow.run_id`. Do not query or log raw prompts, transcripts, auth envelopes, tokens, or provider response bodies.
 
 The scheduled GitHub workflow reads `wrangler containers instances ... --json` and submits only Sandbox IDs to `/cleanup-audit`. It holds Cloudflare inventory and cleanup-audit credentials; Linear credentials remain in the Worker.
 

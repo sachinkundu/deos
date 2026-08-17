@@ -19,6 +19,7 @@ const promptPaths = [
   "code-review.md",
   "evidence-verification.md",
   "release-finalization.md",
+  "openspec.md",
 ];
 const schemaPaths = ["agent-result-v1.json", "review-result-v1.json"];
 
@@ -41,7 +42,7 @@ test("loads the reviewed workflow bundle and resolves prompts and schemas", asyn
   const definition = await loadWorkflowDefinition(source, bundle());
 
   assert.equal(definition.name, "openspec-delivery");
-  assert.equal(definition.version, 3);
+  assert.equal(definition.version, 9);
   assert.equal(definition.start, "requirements");
   assert.equal(definition.execution.codexSandboxMode, "danger-full-access");
   assert.equal(definition.nodes.requirements.type, "agent");
@@ -49,7 +50,12 @@ test("loads the reviewed workflow bundle and resolves prompts and schemas", asyn
   assert.equal(definition.nodes.requirements_approval.type, "human_gate");
   assert.equal(definition.nodes.requirements_approval.linearState, "Human Review");
   assert.equal(definition.nodes.done.type, "terminal");
-  assert.match(definition.jobs.implementation.prompt, /implementation agent/);
+  assert.equal(definition.jobs.openspec_apply.operation?.instruction, "/opsx:apply");
+  assert.match(definition.jobs.openspec_apply.prompt, /repository-local OpenSpec agent/);
+  assert.match(definition.jobs.evidence_verification.prompt, /pre-release evidence verification agent/);
+  assert.match(definition.jobs.evidence_verification.prompt, /Never require a downstream node's output/);
+  assert.equal(definition.nodes.openspec_proposal.type, "agent");
+  assert.equal(definition.nodes.deploy.type, "system_action");
   assert.equal(definition.digest.length, 64);
 });
 

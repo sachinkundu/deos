@@ -21,6 +21,21 @@ export interface WorkflowJob {
   resultSchemaFile: string;
   resultSchema: Readonly<Record<string, unknown>>;
   requiredOutputs: readonly string[];
+  operation: OpenSpecJobOperation | null;
+}
+
+export const OPENSPEC_INSTRUCTIONS = [
+  "/opsx:continue",
+  "/opsx:apply",
+  "/opsx:verify",
+  "/opsx:archive",
+] as const;
+
+export type OpenSpecInstruction = typeof OPENSPEC_INSTRUCTIONS[number];
+
+export interface OpenSpecJobOperation {
+  kind: "openspec";
+  instruction: OpenSpecInstruction;
 }
 
 interface WorkflowNodeBase {
@@ -87,6 +102,7 @@ const TERMINAL_OUTCOMES = new Set<TerminalOutcome>([
   "canceled",
 ]);
 const DURATION = /^\d+(?:\.\d+)?(?:ms|s|m|h|d)$/;
+const OPEN_SPEC_INSTRUCTION_SET = new Set<string>(OPENSPEC_INSTRUCTIONS);
 
 const asRecord = (value: unknown, label: string): Record<string, unknown> => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -176,6 +192,20 @@ const parseSchema = (source: string, path: string): Readonly<Record<string, unkn
   return Object.freeze(schema);
 };
 
+const parseJobOperation = (value: unknown, label: string): OpenSpecJobOperation | null => {
+  if (value === undefined) return null;
+  const operation = asRecord(value, `${label}.operation`);
+  assertAllowedKeys(operation, ["kind", "instruction"], `${label}.operation`);
+  if (operation.kind !== "openspec") {
+    throw new Error(`${label}.operation.kind must be openspec`);
+  }
+  const instruction = stringValue(operation, "instruction", `${label}.operation`);
+  if (!OPEN_SPEC_INSTRUCTION_SET.has(instruction)) {
+    throw new Error(`${label}.operation.instruction is not supported`);
+  }
+  return Object.freeze({ kind: "openspec", instruction: instruction as OpenSpecInstruction });
+};
+
 export const loadWorkflowDefinition = async (
   source: string,
   bundle: WorkflowBundleSources,
@@ -224,7 +254,11 @@ export const loadWorkflowDefinition = async (
   for (const [id, value] of Object.entries(jobsRecord)) {
     const label = `workflow.spec.jobs.${id}`;
     const job = asRecord(value, label);
-    assertAllowedKeys(job, ["promptFile", "inputs", "context", "resultSchema", "requiredOutputs"], label);
+    assertAllowedKeys(
+      job,
+      ["promptFile", "inputs", "context", "resultSchema", "requiredOutputs", "operation"],
+      label,
+    );
     const promptFile = stringValue(job, "promptFile", label);
     const resultSchemaFile = stringValue(job, "resultSchema", label);
     const prompt = bundle.prompts[promptFile];
@@ -240,6 +274,7 @@ export const loadWorkflowDefinition = async (
       resultSchemaFile,
       resultSchema: parseSchema(schemaSource, resultSchemaFile),
       requiredOutputs: stringArray(job, "requiredOutputs", label),
+      operation: parseJobOperation(job.operation, label),
     });
   }
 
@@ -339,7 +374,10 @@ export const restoreWorkflowDefinition = async (
     const job = asRecord(value, label);
     assertAllowedKeys(
       job,
-      ["id", "promptFile", "prompt", "inputs", "context", "resultSchemaFile", "resultSchema", "requiredOutputs"],
+      [
+        "id", "promptFile", "prompt", "inputs", "context", "resultSchemaFile",
+        "resultSchema", "requiredOutputs", "operation",
+      ],
       label,
     );
     if (job.id !== id) throw new Error(`${label}.id must match its map key`);
@@ -353,6 +391,7 @@ export const restoreWorkflowDefinition = async (
       context: stringArray(job, "context", label, false),
       resultSchema: resultSchemaFile,
       requiredOutputs: stringArray(job, "requiredOutputs", label),
+      ...(job.operation === null ? {} : { operation: asRecord(job.operation, `${label}.operation`) }),
     };
   }
 

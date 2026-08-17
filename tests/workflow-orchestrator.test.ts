@@ -192,7 +192,12 @@ class NodeServices implements WorkflowNodeServices {
       attemptId: `attempt-${outcome}`,
       sandboxId: `sandbox-${outcome}`,
       manifestId: `manifest-${outcome}`,
-      outcome: { kind: "agent" as const, outcome, providerReceiptsComplete: true },
+      outcome: {
+        kind: "agent" as const,
+        outcome,
+        providerReceiptsPresent: true,
+        providerReceiptsComplete: true,
+      },
     });
   }
 

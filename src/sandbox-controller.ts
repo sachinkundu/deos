@@ -6,6 +6,10 @@ import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { ValidatedAgentOutcome } from "./workflow-evaluator.ts";
 import type { LoadedWorkflowDefinition, WorkflowJob } from "./workflow-definition.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
+import type {
+  ContinuationPatchReference,
+  MaterializedJobInput,
+} from "./job-inputs.ts";
 
 export type AgentAttemptState =
   | "pending"
@@ -240,7 +244,8 @@ export type AgentExecutionObservation =
 interface SandboxControllerDependencies {
   now: () => Date;
   attemptId: () => string;
-  materializeContext: (run: OrchestrationRunRecord, job: WorkflowJob) => Promise<string>;
+  materializeContext: (run: OrchestrationRunRecord, job: WorkflowJob) => Promise<MaterializedJobInput>;
+  readContinuationPatch: (reference: ContinuationPatchReference) => Promise<string>;
   capabilityGrant: (attemptId: string, runId: string) => Promise<CapabilityGrant>;
   collector: (sandbox: SandboxView) => ArtifactCollector;
   providerReceipts: ProviderReceiptVerifier;
@@ -315,7 +320,7 @@ export class SandboxAgentController {
     const sandboxId = await sandboxIdentity(attemptId);
     const now = this.dependencies.now();
     const deadline = new Date(now.getTime() + this.config.absoluteTimeoutMs).toISOString();
-    const materializedContext = await this.dependencies.materializeContext(run, job);
+    const materialized = await this.dependencies.materializeContext(run, job);
     const durableJob = {
       version: 1,
       attemptId,
@@ -327,7 +332,10 @@ export class SandboxAgentController {
       promptDigest: await sha256Hex(job.prompt),
       resultSchemaId: job.resultSchema.$id,
       requiredOutputs: job.requiredOutputs,
-      materializedContext,
+      materializedContext: materialized.context,
+      openspecInstruction: job.operation?.instruction ?? null,
+      openspecChange: job.operation?.kind === "openspec" ? materialized.openspecChange : null,
+      continuationPatch: materialized.continuationPatch,
       deadline,
     };
     const jobSpecJson = JSON.stringify(durableJob);
@@ -363,10 +371,23 @@ export class SandboxAgentController {
       await sandbox.mkdir("/deos/output", { recursive: true });
       await sandbox.mkdir("/deos/workspace", { recursive: true });
       await sandbox.writeFile("/root/.codex/auth.json", lease.plaintext, { encoding: "utf8" });
-      const durableJob = JSON.parse(attempt.job_spec_json) as { materializedContext?: unknown };
+      const durableJob = JSON.parse(attempt.job_spec_json) as {
+        materializedContext?: unknown;
+        openspecInstruction?: unknown;
+        openspecChange?: unknown;
+        continuationPatch?: unknown;
+      };
       if (typeof durableJob.materializedContext !== "string") {
         throw new Error("materialized job context is missing");
       }
+      if (
+        job.operation?.kind === "openspec" &&
+        (
+          durableJob.openspecInstruction !== job.operation.instruction ||
+          typeof durableJob.openspecChange !== "string" ||
+          !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(durableJob.openspecChange)
+        )
+      ) throw new Error("OpenSpec job identity is invalid");
       await sandbox.writeFile(
         "/deos/run/prompt.md",
         this.prompt(run, attempt, job, durableJob.materializedContext),
@@ -398,6 +419,7 @@ export class SandboxAgentController {
       if ((await branch.waitForExit({ timeout: 60_000 })).code !== 0) {
         throw new Error("attempt branch creation failed");
       }
+      await this.restoreContinuationPatch(sandbox, durableJob.continuationPatch);
       const process = await sandbox.exec(
         ["node", "/deos/bin/supervisor.mjs"],
         { cwd: "/deos/run" },
@@ -538,6 +560,7 @@ export class SandboxAgentController {
         outcome: {
           kind: "agent",
           outcome: resultClass,
+          providerReceiptsPresent: mechanicalReceiptIds.length > 0,
           providerReceiptsComplete,
         },
       };
@@ -601,6 +624,10 @@ export class SandboxAgentController {
       : attempt.state === "completed"
         ? attempt.result_class ?? "failed"
         : "failed";
+    const providerReceiptsPresent = await this.dependencies.providerReceipts.hasAny(
+      attempt.run_id,
+      attempt.attempt_id,
+    );
     return {
       state: "completed",
       attemptId: attempt.attempt_id,
@@ -609,6 +636,7 @@ export class SandboxAgentController {
       outcome: {
         kind: "agent",
         outcome,
+        providerReceiptsPresent,
         providerReceiptsComplete: attempt.manifest_id !== null &&
           await this.dependencies.providerReceipts.verify(attempt.run_id, attempt.attempt_id),
       },
@@ -625,8 +653,53 @@ export class SandboxAgentController {
       attemptId: attempt.attempt_id,
       sandboxId: attempt.sandbox_id,
       manifestId,
-      outcome: { kind: "agent", outcome, providerReceiptsComplete: false },
+      outcome: {
+        kind: "agent",
+        outcome,
+        providerReceiptsPresent: false,
+        providerReceiptsComplete: false,
+      },
     };
+  }
+
+  private async restoreContinuationPatch(
+    sandbox: SandboxView,
+    value: unknown,
+  ): Promise<void> {
+    if (value === null || value === undefined) return;
+    if (typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("continuation patch reference is invalid");
+    }
+    const reference = value as Partial<ContinuationPatchReference>;
+    if (
+      typeof reference.attemptId !== "string" ||
+      typeof reference.manifestId !== "string" ||
+      typeof reference.r2Key !== "string" ||
+      typeof reference.sha256 !== "string" ||
+      !/^[a-f0-9]{64}$/.test(reference.sha256)
+    ) throw new Error("continuation patch reference is incomplete");
+    const patch = await this.dependencies.readContinuationPatch(reference as ContinuationPatchReference);
+    if (await sha256Hex(patch) !== reference.sha256) {
+      throw new Error("continuation patch digest mismatch");
+    }
+    if (patch === "# No repository changes in this attempt.\n") return;
+    const path = "/deos/run/continuation.patch";
+    await sandbox.writeFile(path, patch, { encoding: "utf8" });
+    try {
+      for (const args of [
+        ["git", "apply", "--binary", "--check", path],
+        ["git", "apply", "--binary", path],
+      ] as const) {
+        const process = await sandbox.exec([...args], {
+          cwd: "/deos/workspace/repository",
+          timeout: 60_000,
+        });
+        const exit = await process.waitForExit({ timeout: 60_000 });
+        if (exit.code !== 0) throw new Error("continuation patch cannot be applied");
+      }
+    } finally {
+      await sandbox.deleteFile(path);
+    }
   }
 
   private prompt(
@@ -638,6 +711,12 @@ export class SandboxAgentController {
     return [
       job.prompt.trim(),
       "",
+      ...(job.operation?.kind === "openspec"
+        ? [
+            `Native OpenSpec instruction: ${job.operation.instruction}`,
+            `OpenSpec change identity: ${JSON.parse(attempt.job_spec_json).openspecChange}`,
+          ]
+        : []),
       `Run: ${run.run_id}`,
       `Node: ${attempt.node_id}`,
       `Attempt: ${attempt.attempt_id}`,
@@ -652,6 +731,10 @@ export class SandboxAgentController {
       "Codex creates result.json through its output schema. Ensure patch.diff is a repository patch or an explicit no-change record, validation.txt contains the validation commands and outcomes, and provider-references.json is a JSON array of sanitized capability receipts.",
       `For GitHub work, pipe one JSON request to deos-github with version 1, action publish_work_product, a stable operationKey, repository ${this.config.repository}, branch deos/${attempt.attempt_id}, baseBranch main, title, body, and a non-empty files array of {path, content}.`,
       `For a Linear working note, pipe one JSON request to deos-linear with version 1, action upsert_working_note, a stable operationKey, issueId ${run.issue_id}, and body. Capability receipts are captured mechanically.`,
+      ...(job.operation?.kind === "openspec"
+        ? []
+        : ["Before finalizing this job, publish at least one durable provider work product or Linear working note through an allowed capability. Review jobs must publish their review outcome and actionable feedback as the working note."]),
+      "After every successful capability call, copy the response's exact operationId into result.json providerReceipts. Use only the operation ID string: no prose, labels, backticks, or provider resource IDs. The result.json list must exactly match provider-references.json.",
       "Every operationKey must match ^[a-z0-9][a-z0-9._-]{0,79}$ exactly. Colons, slashes, uppercase letters, spaces, and full run IDs are invalid. Valid examples: requirements-publish-v1 and requirements-note-v1.",
       "Use only deos-github and deos-linear for allowed durable provider work. Never request or perform a Linear state transition.",
     ].join("\n");

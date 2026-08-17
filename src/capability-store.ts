@@ -127,6 +127,7 @@ export interface ProviderReceiptVerifier {
     attemptId: string,
     operationIds?: readonly string[],
   ): Promise<boolean>;
+  hasAny(runId: string, attemptId: string): Promise<boolean>;
 }
 
 export class D1ProviderReceiptVerifier implements ProviderReceiptVerifier {
@@ -167,5 +168,13 @@ export class D1ProviderReceiptVerifier implements ProviderReceiptVerifier {
     const expected = uniqueIds?.length ?? row?.selectedCount ?? 0;
     return expected > 0 && row?.selectedCount === expected &&
       row.successfulCount === expected && row.incompleteCount === 0;
+  }
+
+  async hasAny(runId: string, attemptId: string): Promise<boolean> {
+    const row = await this.database.prepare(
+      `SELECT COUNT(*) AS operationCount FROM provider_operations
+       WHERE run_id = ? AND attempt_id = ?`,
+    ).bind(runId, attemptId).first<{ operationCount: number }>();
+    return (row?.operationCount ?? 0) > 0;
   }
 }
