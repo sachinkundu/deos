@@ -2,9 +2,9 @@
 
 See [proposal.md](proposal.md) for the lifecycle mismatch and scope. The shipped version 3 workflow has one terminal `blocked` node, and agent or system-action failure edges commonly target it. `WorkflowOrchestrator.run()` returns whenever it reaches any terminal node, so Cloudflare correctly classifies that invocation as complete even when D1 says the DEOS run is blocked.
 
-D1 already owns run identity, current node, transitions, provider receipts, and the Workflow instance mapping. The dispatcher already routes later Linear deliveries to active mappings, and the orchestrator already uses durable `waitForEvent` calls for human gates. The correction should extend those boundaries rather than add another business-state authority.
+D1 already owns run identity, current node, transitions, provider receipts, and the Workflow instance mapping. The dispatcher already routes later Linear deliveries to active mappings, and the orchestrator already uses durable `waitForEvent` calls for human gates. The correction extends those boundaries rather than adding another business-state authority.
 
-Cloudflare execution and DEOS business outcome cannot be made atomically authoritative in one transaction. The runtime can durably record the control action it is taking before it waits, returns, or throws; provider-originated proof and status reads then confirm the resulting Cloudflare instance state.
+Cloudflare execution and DEOS business outcome cannot be made atomically authoritative in one transaction. The runtime therefore records the business control action before it waits, returns, or throws. A reconciliation check treats a completed executor with no final business outcome as a system error and reports that error on the correlated Linear issue.
 
 ## Goals / Non-Goals
 
@@ -12,14 +12,15 @@ Cloudflare execution and DEOS business outcome cannot be made atomically authori
 
 - Make final business outcomes, resumable waits, and unrecoverable failures different typed graph actions.
 - Preserve one D1-authoritative run and one Cloudflare Workflow instance across reconciliation.
-- Make the event that can resume a wait exact, persisted, sanitized, and definition-controlled.
-- Prevent Cloudflare `complete` from being interpreted as DEOS success.
+- Make both the resume event and cancellation event exact, persisted, sanitized, and definition-controlled for every wait.
+- Detect premature Workflow completion, fail it safely, and make it visible to the operator on Linear.
 - Keep version 3 runs and their historical `blocked` outcome readable.
-- Produce deterministic and provider-originated evidence for waiting, resumption, final completion, and executor error behavior.
+- Produce deterministic and provider-originated evidence for waiting, resumption, cancellation, final completion, and executor error behavior.
 
 **Non-Goals:**
 
 - Implement the SAC-101 operator interface or the SAC-102 native graph work.
+- Implement the broader lifecycle telemetry and independent status projection tracked by SAC-103.
 - Generalize reconciliation into an unrestricted operator command channel.
 - Permit an agent or event payload to select a node, DEOS status, or Linear transition.
 - Rewrite immutable version 3 definitions or historical run records.
@@ -46,9 +47,9 @@ flowchart LR
     EventWait --> Inbox
     Final --> Return[Normal return]
     Failure --> Throw[Bounded error / throw]
-    D1 --> Projection[Lifecycle projection]
-    Instance --> Projection
-    Projection --> Telemetry[Workers Observability]
+    Instance --> Reconcile[Completion reconciler]
+    Reconcile --> D1
+    Reconcile --> Notice[Stable Linear operator work item]
 ```
 
 ## Event Flow
@@ -63,24 +64,33 @@ sequenceDiagram
     participant L as Linear
 
     W->>D: Load frozen definition and exact system-action receipts
-    W->>D: Persist awaiting_capability, cause, and expected event
-    W->>D: Record executor disposition waiting
+    W->>D: Persist wait, cause, resume matcher, and cancellation matcher
     W->>C: waitForEvent(linear-event)
     Note over C: Instance becomes waiting
-    L->>W: Provider-originated state event via ingress, Queue, and inbox
-    W->>D: Claim delivery and validate exact matcher/actor
-    W->>D: Consume wait once and record resumption
-    W->>D: Reconcile completed effects and retry configured node
-    W->>W: Continue the same run and instance
+    L->>W: Provider event via ingress, Queue, and inbox
+    W->>D: Claim delivery and validate exact matcher and actor
+    alt authorized resume event
+        W->>D: Consume wait once and record resumption
+        W->>D: Reconcile completed effects and retry configured node
+        W->>W: Continue the same run and instance
+    else authorized cancellation event
+        W->>D: Consume wait once and record canceled terminal
+        W->>C: Return normally
+    else unexpected event
+        W->>D: Audit bounded rejection
+        W->>C: Re-enter the same durable wait
+    end
 ```
 
-An event that fails the matcher or actor policy is marked processed with a bounded rejection cause and the Workflow re-enters the same durable wait. Duplicate deliveries reuse the inbox idempotency key and cannot consume the wait twice.
+Duplicate deliveries reuse the inbox idempotency key and cannot consume the wait twice. A provider event can request only the resume or cancellation edge already frozen in the definition; it cannot provide a target node or status.
 
 ### Final and failure paths
 
-For a final business action, the orchestrator first commits the terminal node and DEOS outcome, records executor disposition `complete`, emits the two-layer observation, and returns normally. A final rejection therefore becomes DEOS `denied` while Cloudflare becomes `complete`.
+For a final business action, the orchestrator first commits the terminal node and DEOS outcome, then returns normally. A final rejection therefore becomes DEOS `denied` while Cloudflare becomes `complete`.
 
-For an unrecoverable executor or invariant failure, the orchestrator exhausts the definition's bounded retries, commits DEOS `failed` with a service-authored cause, records executor disposition `errored`, emits a failure observation, and throws. If D1 itself is unavailable, the Workflow throws without claiming a DEOS terminal state; recovery must reconcile the run from its last durable state before any further action, and no projection may label it successful.
+For an unrecoverable executor or invariant failure, the orchestrator exhausts the definition's bounded retries, commits DEOS `failed` with a service-authored cause, and throws. If D1 itself is unavailable, the Workflow throws without claiming a DEOS terminal state; recovery reconciles the run from its last durable state before any further action.
+
+If Cloudflare nevertheless reports an instance `complete` while D1 remains non-final, reconciliation classifies the run as `premature_workflow_completion`. A guarded D1 update records DEOS `failed`, and a stable operation key creates or updates one operator-visible Linear work item. The reconciler never moves the issue to Done or automatically creates a replacement run.
 
 ## Decisions
 
@@ -100,13 +110,23 @@ nodes:
   await_openspec_tasks:
     type: wait
     deosStatus: awaiting_capability
-    expectedEvent:
+    resumeEvent:
       type: linear.issue.state_changed
       actorType: user
       toState: In Progress
       action: openspec.create_tasks
+    cancelEvent:
+      type: linear.issue.state_changed
+      actorType: user
+      toState: Canceled
     edges:
       received: openspec_tasks
+      canceled: canceled
+
+  canceled:
+    type: terminal
+    deosStatus: canceled
+    executorAction: return
 
   denied:
     type: terminal
@@ -119,7 +139,7 @@ nodes:
     executorAction: throw
 ```
 
-A version 4 `terminal` node may name only a final business outcome and always returns normally. A `wait` node must name one resumable DEOS status, an exact typed event descriptor, and a configured continuation edge. A `failure` node must name a bounded safe cause and always throws after durable failure recording. Definition validation rejects a version 4 terminal `blocked` node or an edge outcome whose target does not make final, resumable, or failure semantics explicit.
+A version 4 `terminal` node may name only a final business outcome and always returns normally. A `wait` node must name one resumable DEOS status, exact typed resume and cancellation descriptors, and configured edges for both events. A `failure` node names a bounded safe cause and always throws after durable failure recording. Definition validation rejects a version 4 terminal `blocked` node, a wait without a cancellation path, or an edge whose target does not make final, resumable, or failure semantics explicit.
 
 Existing version 3 snapshots remain valid and executable for historical compatibility. They retain legacy `blocked` behavior; the new validator rules apply only to version 4 and later.
 
@@ -145,59 +165,41 @@ workflow_waits
   run_id                   D1 run identity
   node_id                  frozen wait node
   status                   awaiting | consumed | canceled
-  expected_event_type      service-authored event class
-  expected_event_json      canonical sanitized typed matcher
-  expected_event_digest    integrity and idempotency key
+  resume_event_type        service-authored event class
+  resume_event_json        canonical sanitized typed matcher
+  resume_event_digest      integrity and idempotency key
+  cancel_event_type        service-authored event class
+  cancel_event_json        canonical sanitized typed matcher
+  cancel_event_digest      integrity and idempotency key
   cause_reference          bounded transition/system-action cause
   created_at
   consumed_delivery_id     nullable, unique when present
   consumed_at              nullable
 ```
 
-The matcher contains only allowlisted fields needed by the evaluator. It cannot contain executable expressions, raw provider content, or a target node selected by the event. Consumption and the next node transition use one D1 transaction or batch guarded by the current node, wait status, and delivery ID.
+Matchers contain only allowlisted fields needed by the evaluator. They cannot contain executable expressions, raw provider content, or a target node selected by the event. Consumption and the configured next-node transition use one D1 transaction or batch guarded by the current node, wait status, and delivery ID.
 
-Alternative considered: store only `expected_event` on the run row. Rejected because it loses wait history and makes replay and duplicate-consumption audits harder.
+Alternative considered: store matchers only on the run row. Rejected because it loses wait history and makes replay and duplicate-consumption audits harder.
 
-### 3. Treat reconciliation as a normal authenticated event, not an operator mutation
+### 3. Treat resume and cancellation as normal authenticated events
 
-The first implementation uses the existing signed Linear event path. A wait node declares the exact Linear event shape and verified actor type that can resume it. Ingress authentication, delivery idempotency, Queue delivery, the D1 inbox, and Workflow event delivery remain unchanged.
+The first implementation uses the existing signed Linear event path. A wait node declares the exact Linear event shapes and verified actor types that can resume or cancel it. Ingress authentication, delivery idempotency, Queue delivery, the D1 inbox, and Workflow event delivery remain unchanged.
 
-The dispatcher considers `awaiting_capability` and `manual_reconciliation_required` resumable mappings. It routes a matching issue event to the recorded Workflow instance and never allocates a replacement. The Workflow, not the dispatcher, makes the final matcher and authorization decision from the frozen definition.
+The dispatcher considers `awaiting_capability` and `manual_reconciliation_required` resumable mappings. It routes a related issue event to the recorded Workflow instance and never allocates a replacement. The Workflow, not the dispatcher, makes the final matcher and authorization decision from the frozen definition.
 
-This permits a provider-originated proof: a run can wait because `openspec.create_tasks` lacks an exact receipt, the trusted capability can be enabled or reconciled, and a real human Linear transition can trigger a retry on the same run. The retried node still requires the exact successful or reconciled system-action receipt before following its success edge.
+This permits provider-originated proof: a run can wait because `openspec.create_tasks` lacks an exact receipt; a real human Linear transition can request a retry on the same run after the capability is repaired, or a configured cancellation transition can end that same run. A retried node still requires the exact successful or reconciled system-action receipt before following its success edge.
 
 Alternative considered: expose a generic endpoint that writes D1 status or resumes arbitrary nodes. Rejected because it bypasses provider authentication, frozen graph policy, and inbox idempotency.
 
-### 4. Record executor disposition separately and verify provider state
+### 4. Detect and surface premature completion as a core fail-safe
 
-Before each control boundary, the orchestrator appends a `workflow_execution_observations` record:
+A reconciliation path reads Cloudflare instance status and the correlated D1 run. When Cloudflare is `complete` and D1 is non-final, it performs a compare-and-set from the state it inspected to DEOS `failed` with the service-authored cause `premature_workflow_completion`.
 
-```text
-workflow_execution_observations
-  observation_id
-  run_id
-  workflow_instance_id
-  status               running | waiting | complete | errored
-  source               orchestrator | cloudflare_api
-  node_id
-  transition_cause
-  observed_at
-```
+After that transition, it uses a stable operation key derived from the run and failure cause to create or update one operator-visible work item on the Linear issue. The notice identifies the failed run and safe cause and states that operator reconciliation is required. Repeated reconciliation reuses the same record and notice. If the D1 compare-and-set loses a race, the reconciler preserves the newer state and does not publish a stale notice.
 
-An orchestrator observation records the action DEOS is taking immediately before `waitForEvent`, normal return, or throw. A read-only Cloudflare API observation can confirm the actual instance state during proof or operator inspection. Projections expose the latest value and its source; they never overwrite `orchestration_runs.status`.
+This is a lifecycle safety requirement, not the broader observability projection. Independent Cloudflare/DEOS status views and telemetry fields are deferred to SAC-103.
 
-Every waiting or terminal lifecycle event includes:
-
-- `cloudflare.execution.status`
-- `cloudflare.execution.status_source`
-- `deos.run.status`
-- `deos.current_node`
-- `deos.transition.cause`
-- `deos.expected_event` only for a wait
-
-`deos.expected_event` is a bounded event identifier plus sanitized matcher, never the raw event. SAC-101 may display these fields but does not redefine them.
-
-Alternative considered: derive DEOS status from the Cloudflare API. Rejected because provider execution is not the governed business process and provider status may lag or be unavailable.
+Alternative considered: leave the run non-final and report only Cloudflare `complete`. Rejected because the original instance can no longer receive its configured event and the operator would have no actionable business error.
 
 ### 5. Make failure ordering fail closed
 
@@ -206,44 +208,47 @@ Business state is committed before executor termination:
 1. reload and compare the current D1 node and status;
 2. apply the configured bounded retry policy;
 3. commit the final DEOS failure transition and safe cause;
-4. record and emit executor disposition `errored`;
-5. throw a service-authored error without raw dependency content.
+4. throw a service-authored error without raw dependency content.
 
-If steps 3 or 4 cannot be durably confirmed, the runtime throws and leaves the last confirmed D1 state intact. It does not return, mark the run successful, or advance Linear. A later reconciliation process must inspect the Cloudflare error and the last D1 transition before deciding whether to retry or mark the run failed.
+If step 3 cannot be durably confirmed, the runtime throws and leaves the last confirmed D1 state intact. It does not return, mark the run successful, or advance Linear. A later reconciliation process inspects the Cloudflare error and the last D1 transition before deciding whether to retry or mark the run failed.
 
-Alternative considered: return `{ outcome: "failed" }` so D1 and Cloudflare both have a terminal record. Rejected because Cloudflare would report `complete`, collapsing an executor failure into a normal return.
+Alternative considered: return `{ outcome: "failed" }`. Rejected because Cloudflare would report `complete`, collapsing an executor failure into a normal return.
 
 ## Failure Modes
 
 | Failure | Required behavior |
 | --- | --- |
 | Wait record commits but `waitForEvent` is not reached | Workflow retry reloads the same wait and invokes `waitForEvent`; no new run is created. |
-| Event is sent but inbox state is not updated | Delivery ID and wait consumption guards make replay a duplicate. |
+| Event is sent but inbox state is not updated | Delivery ID and wait-consumption guards make replay a duplicate. |
 | Unexpected or unauthorized event arrives | Audit bounded rejection, preserve wait, and continue waiting. |
-| Reconciled action still lacks its exact receipt | Return to the same wait with the same stable expected-event identity or apply the configured bounded failure rule. |
-| D1 final transition commits but return/throw is interrupted | Retry reloads the final node and repeats only the matching return or throw disposition. |
-| Cloudflare status readback disagrees with the orchestrator disposition | Preserve both observations, make D1 primary, and flag reconciliation rather than rewriting business state. |
-| D1 is unavailable during failure recording | Throw, emit only safe telemetry when possible, leave the last durable state unchanged, and require reconciliation; never claim DEOS success. |
+| Resume and cancellation deliveries race | The first guarded wait consumption wins; the loser is audited as already consumed. |
+| Reconciled action still lacks its exact receipt | Return to the same wait with the same stable event identities or apply the configured bounded failure rule. |
+| D1 final transition commits but return or throw is interrupted | Retry reloads the final node and repeats only the matching executor action. |
+| Cloudflare reports `complete` while D1 is non-final | Compare-and-set DEOS to failed with `premature_workflow_completion` and create or update the stable Linear operator work item. |
+| Premature-completion reconciliation loses a D1 race | Preserve the newer business state, audit the conflict, and suppress a stale Linear notice. |
+| D1 is unavailable during failure recording | Throw, leave the last durable state unchanged, and require reconciliation; never claim DEOS success. |
 | Legacy version 3 run is loaded | Restore its immutable snapshot and preserve legacy semantics without applying version 4 validation retroactively. |
 
 ## Risks / Trade-offs
 
 - **[Risk] A human Linear transition is used as the first reconciliation signal even though capability repair occurs outside Linear.** → The frozen definition names the exact transition and actor policy; the event only requests reevaluation, while the trusted adapter and exact durable receipt still prove the capability.
 - **[Risk] Copy-and-swap migration affects a table referenced by many orchestration records.** → Disable dispatch, back up and verify production D1, test the migration against a copy, check row counts, foreign keys, active-run uniqueness, and rollback before re-enabling the canary.
-- **[Risk] The runtime-declared executor disposition can briefly precede the provider's visible status.** → Include `status_source` and timestamp, and require Cloudflare API confirmation in provider proof.
+- **[Risk] Resume and cancellation events can arrive concurrently.** → Claim the wait with a single guarded D1 transaction and audit the losing delivery without side effects.
+- **[Risk] Reconciliation could produce duplicate Linear notices.** → Use one stable operation key per run and failure cause and update the existing work item idempotently.
 - **[Risk] Version 3 and version 4 semantics coexist.** → Select behavior by immutable definition version and keep legacy `blocked` read-only for old runs.
-- **[Risk] A resumable wait can remain indefinitely.** → Surface wait age and exact expected event; cancellation remains an explicit final event rather than an implicit timeout success.
+- **[Risk] A resumable wait can remain indefinitely.** → Every wait has an explicit definition-controlled cancellation event; implicit timeout success is forbidden.
 
 ## Migration Plan
 
 1. Keep trial dispatch disabled and capture a D1 backup plus row-count and foreign-key baselines.
-2. Apply the status-constraint migration and create `workflow_waits` and `workflow_execution_observations`.
-3. Deploy runtime support for version 4 definitions while leaving the active project policy on version 3.
+2. Apply the status-constraint migration and create `workflow_waits` with resume and cancellation matchers.
+3. Deploy runtime support for version 4 definitions and premature-completion reconciliation while leaving active project policy on version 3.
 4. Register a version 4 canary definition and validate its digest and typed lifecycle nodes.
 5. Enable only the test-project canary and trigger a real Linear run that reaches the missing-`openspec.create_tasks` wait.
-6. Prove D1 `awaiting_capability`, the exact expected event, the same run/instance mapping, Cloudflare `waiting`, and bounded telemetry.
+6. Prove D1 `awaiting_capability`, both exact event matchers, the same run/instance mapping, and Cloudflare `waiting`.
 7. Enable or reconcile the trusted system-action capability, then use Linear MCP to produce the configured human event and prove idempotent resumption of the same run.
-8. Prove one normal final path and one bounded executor-failure path, including D1, Cloudflare API, Workers Observability, Linear, and visual evidence.
-9. Keep dispatch disabled after proof until the evidence is reviewed.
+8. Produce the configured Linear cancellation event on a separate waiting canary and prove the same run reaches DEOS `canceled` with no resume effects.
+9. Prove one normal final path, one bounded executor-failure path, and one premature-completion reconciliation path, including the stable operator-visible Linear work item.
+10. Keep dispatch disabled after proof until the evidence is reviewed.
 
 Rollback disables dispatch and points new runs back to the version 3 definition. The schema remains expanded and existing version 4 runs retain their immutable definitions; they are canceled or reconciled explicitly rather than downgraded.
