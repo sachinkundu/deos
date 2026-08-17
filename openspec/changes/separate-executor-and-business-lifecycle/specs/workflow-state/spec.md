@@ -64,5 +64,5 @@ A new workflow definition SHALL map every non-success agent or system-action out
 
 #### Scenario: Unrecoverable system action lacks an exact execution receipt
 
-- **WHEN** a system-action node has no successful or reconciled receipt for its exact configured action and the definition classifies the invariant as unrecoverable after bounded retries
-- **THEN** the Workflow records DEOS `failed` with a bounded safe cause and terminates by error without claiming that the named action executed
+- **WHEN** a version 4 system-action node has no successful or reconciled receipt for its exact configured action and the definition classifies the invariant as unrecoverable after bounded retries
+- **THEN** the Workflow durably records DEOS `failed` with a bounded safe cause before terminating by error, without claiming that the named action executed
