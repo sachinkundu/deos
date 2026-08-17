@@ -652,6 +652,8 @@ export class SandboxAgentController {
       "Codex creates result.json through its output schema. Ensure patch.diff is a repository patch or an explicit no-change record, validation.txt contains the validation commands and outcomes, and provider-references.json is a JSON array of sanitized capability receipts.",
       `For GitHub work, pipe one JSON request to deos-github with version 1, action publish_work_product, a stable operationKey, repository ${this.config.repository}, branch deos/${attempt.attempt_id}, baseBranch main, title, body, and a non-empty files array of {path, content}.`,
       `For a Linear working note, pipe one JSON request to deos-linear with version 1, action upsert_working_note, a stable operationKey, issueId ${run.issue_id}, and body. Capability receipts are captured mechanically.`,
+      "Before reporting any successful outcome, perform at least one required durable provider operation. Do not manufacture a repository change merely to obtain a receipt: when the smallest correct result has no GitHub write, publish a concise Linear working note instead.",
+      "Copy every mechanically captured operationId from provider-references.json into result.json providerReceipts. A successful result with an empty, incomplete, or mismatched receipt set fails closed.",
       "Every operationKey must match ^[a-z0-9][a-z0-9._-]{0,79}$ exactly. Colons, slashes, uppercase letters, spaces, and full run IDs are invalid. Valid examples: requirements-publish-v1 and requirements-note-v1.",
       "Use only deos-github and deos-linear for allowed durable provider work. Never request or perform a Linear state transition.",
     ].join("\n");

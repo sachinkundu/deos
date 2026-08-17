@@ -1,6 +1,8 @@
 import type {
+  FailureWorkflowNode,
   LoadedWorkflowDefinition,
   TerminalOutcome,
+  WaitWorkflowNode,
   WorkflowNode,
 } from "./workflow-definition.ts";
 
@@ -39,7 +41,25 @@ export type NodeInstruction =
   | { kind: "dispatch_agent"; nodeId: string; jobId: string }
   | { kind: "run_system_action"; nodeId: string; action: string }
   | { kind: "wait_for_human"; nodeId: string; linearState: string }
-  | { kind: "terminal"; nodeId: string; outcome: TerminalOutcome };
+  | { kind: "wait_for_event"; nodeId: string; node: WaitWorkflowNode }
+  | { kind: "terminal"; nodeId: string; outcome: TerminalOutcome }
+  | { kind: "fail"; nodeId: string; node: FailureWorkflowNode };
+
+export interface WaitEventInput {
+  deliveryId: string;
+  eventKind: string;
+  actorId: string | null;
+  actorType: string | null;
+  toStateName: string;
+}
+
+export type WaitEventDecision =
+  | { kind: "resume"; outcome: "received"; toNode: string; safeReason: "authorized_resume" }
+  | { kind: "cancel"; outcome: "canceled"; toNode: string; safeReason: "authorized_cancel" }
+  | {
+      kind: "reject";
+      safeReason: "unexpected_event" | "unauthorized_actor";
+    };
 
 export type EdgeDecision =
   | {
@@ -80,7 +100,9 @@ export const instructionForNode = (
   if (node.type === "human_gate") {
     return { kind: "wait_for_human", nodeId, linearState: node.linearState };
   }
-  return { kind: "terminal", nodeId, outcome: node.outcome };
+  if (node.type === "wait") return { kind: "wait_for_event", nodeId, node };
+  if (node.type === "terminal") return { kind: "terminal", nodeId, outcome: node.outcome };
+  return { kind: "fail", nodeId, node };
 };
 
 const edge = (node: WorkflowNode, outcome: string): string => {
@@ -95,7 +117,9 @@ export const evaluateNodeOutcome = (
   input: WorkflowDecisionInput,
 ): EdgeDecision => {
   const node = nodeAt(definition, nodeId);
-  if (node.type === "terminal") throw new Error(`terminal node ${nodeId} cannot consume an outcome`);
+  if (node.type === "terminal" || node.type === "wait" || node.type === "failure") {
+    throw new Error(`${node.type} node ${nodeId} cannot consume an outcome`);
+  }
 
   if (node.type === "agent") {
     if (input.kind !== "agent") throw new Error(`agent node ${nodeId} requires an agent outcome`);
@@ -134,6 +158,7 @@ export const evaluateNodeOutcome = (
     };
   }
 
+  if (node.type !== "human_gate") throw new Error(`unsupported outcome node ${nodeId}`);
   if (input.kind !== "linear_event") {
     throw new Error(`human-gate node ${nodeId} requires a Linear event`);
   }
@@ -167,4 +192,42 @@ export const evaluateNodeOutcome = (
     causeReference: input.deliveryId,
     contractViolation: false,
   };
+};
+
+const matchesWaitDescriptor = (
+  descriptor: WaitWorkflowNode["resumeEvent"],
+  input: WaitEventInput,
+): boolean =>
+  input.eventKind === "Issue.update" &&
+  input.actorType === descriptor.actorType &&
+  input.actorId !== null &&
+  input.toStateName === descriptor.toState;
+
+export const evaluateWaitEvent = (
+  definition: LoadedWorkflowDefinition,
+  nodeId: string,
+  input: WaitEventInput,
+): WaitEventDecision => {
+  const node = nodeAt(definition, nodeId);
+  if (node.type !== "wait") throw new Error(`node ${nodeId} is not a wait node`);
+  if (input.actorType !== "user" || input.actorId === null) {
+    return { kind: "reject", safeReason: "unauthorized_actor" };
+  }
+  if (matchesWaitDescriptor(node.resumeEvent, input)) {
+    return {
+      kind: "resume",
+      outcome: "received",
+      toNode: edge(node, "received"),
+      safeReason: "authorized_resume",
+    };
+  }
+  if (matchesWaitDescriptor(node.cancelEvent, input)) {
+    return {
+      kind: "cancel",
+      outcome: "canceled",
+      toNode: edge(node, "canceled"),
+      safeReason: "authorized_cancel",
+    };
+  }
+  return { kind: "reject", safeReason: "unexpected_event" };
 };

@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: openspec-delivery
-  version: 3
+  version: 4
 spec:
   start: requirements
   execution:
@@ -68,11 +68,11 @@ spec:
     requirements:
       type: agent
       job: requirements
-      edges: {completed: requirements_review, blocked: blocked, failed: blocked}
+      edges: {completed: requirements_review, blocked: agent_blocked, failed: agent_failed}
     requirements_review:
       type: agent
       job: requirements_review
-      edges: {approved: requirements_approval, changes_requested: requirements, blocked: blocked, failed: blocked}
+      edges: {approved: requirements_approval, changes_requested: requirements, blocked: agent_blocked, failed: agent_failed}
     requirements_approval:
       type: human_gate
       linearState: Human Review
@@ -80,23 +80,23 @@ spec:
     openspec_proposal:
       type: system_action
       action: openspec.create_proposal_and_requirements
-      edges: {completed: openspec_specs, failed: blocked}
+      edges: {completed: openspec_specs, failed: system_action_failed}
     openspec_specs:
       type: system_action
       action: openspec.create_delta_specs
-      edges: {completed: bdd_review, failed: blocked}
+      edges: {completed: bdd_review, failed: system_action_failed}
     bdd_review:
       type: agent
       job: bdd_review
-      edges: {approved: ddd_architecture, changes_requested: openspec_specs, blocked: blocked, failed: blocked}
+      edges: {approved: ddd_architecture, changes_requested: openspec_specs, blocked: agent_blocked, failed: agent_failed}
     ddd_architecture:
       type: agent
       job: ddd_architecture
-      edges: {completed: ddd_review, blocked: blocked, failed: blocked}
+      edges: {completed: ddd_review, blocked: agent_blocked, failed: agent_failed}
     ddd_review:
       type: agent
       job: ddd_review
-      edges: {approved: architecture_approval, changes_requested: ddd_architecture, blocked: blocked, failed: blocked}
+      edges: {approved: architecture_approval, changes_requested: ddd_architecture, blocked: agent_blocked, failed: agent_failed}
     architecture_approval:
       type: human_gate
       linearState: Human Review
@@ -104,19 +104,32 @@ spec:
     openspec_tasks:
       type: system_action
       action: openspec.create_tasks
-      edges: {completed: implementation, failed: blocked}
+      edges: {completed: implementation, failed: await_openspec_tasks}
+    await_openspec_tasks:
+      type: wait
+      deosStatus: awaiting_capability
+      resumeEvent:
+        type: linear.issue.state_changed
+        actorType: user
+        toState: In Progress
+        action: openspec.create_tasks
+      cancelEvent:
+        type: linear.issue.state_changed
+        actorType: user
+        toState: Canceled
+      edges: {received: openspec_tasks, canceled: canceled}
     implementation:
       type: agent
       job: implementation
-      edges: {completed: code_review, blocked: blocked, failed: blocked}
+      edges: {completed: code_review, blocked: agent_blocked, failed: agent_failed}
     code_review:
       type: agent
       job: code_review
-      edges: {approved: evidence_verification, changes_requested: implementation, blocked: blocked, failed: blocked}
+      edges: {approved: evidence_verification, changes_requested: implementation, blocked: agent_blocked, failed: agent_failed}
     evidence_verification:
       type: agent
       job: evidence_verification
-      edges: {certified: openspec_verify, changes_requested: implementation, blocked: blocked, failed: blocked}
+      edges: {certified: openspec_verify, changes_requested: implementation, blocked: agent_blocked, failed: agent_failed}
     openspec_verify:
       type: system_action
       action: openspec.verify
@@ -124,18 +137,34 @@ spec:
     release_approval:
       type: human_gate
       linearState: Human Review
-      edges: {approved: deploy, rejected: blocked}
+      edges: {approved: deploy, rejected: denied}
     deploy:
       type: system_action
       action: release.deploy
-      edges: {completed: release_finalization, failed: blocked}
+      edges: {completed: release_finalization, failed: system_action_failed}
     release_finalization:
       type: agent
       job: release_finalization
-      edges: {completed: sync_and_archive, blocked: blocked, failed: blocked}
+      edges: {completed: sync_and_archive, blocked: agent_blocked, failed: agent_failed}
     sync_and_archive:
       type: system_action
       action: openspec.sync_and_archive
-      edges: {completed: done, failed: blocked}
-    done: {type: terminal, outcome: succeeded}
-    blocked: {type: terminal, outcome: blocked}
+      edges: {completed: done, failed: system_action_failed}
+    done: {type: terminal, deosStatus: succeeded, executorAction: return}
+    denied: {type: terminal, deosStatus: denied, executorAction: return}
+    canceled: {type: terminal, deosStatus: canceled, executorAction: return}
+    agent_blocked:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: agent_outcome_blocked
+    agent_failed:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: agent_execution_failed
+    system_action_failed:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: system_action_invariant_failed

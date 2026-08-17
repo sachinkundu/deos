@@ -7,6 +7,8 @@ DEOS has two deployable Workers sharing D1 and Queue resources:
 
 The orchestration rollout is additive. Keep `TRIAL_DISPATCH_ENABLED` false while creating bindings, applying migrations, uploading secrets, and deploying the pinned Container image. Enabling a project policy in D1 is the separate canary action.
 
+Migration `0007_explicit_business_lifecycle.sql` is a guarded copy-and-swap of `orchestration_runs`, because SQLite cannot widen its status `CHECK` constraint in place. Before applying it remotely, export a D1 backup and record row counts, `PRAGMA foreign_key_check`, active-run uniqueness, and the current policy/definition digest. The migration preserves legacy version 3 `blocked` rows, includes both resumable statuses in the one-active-run index, and adds wait history plus completion-reconciliation records.
+
 ## Required resources
 
 The checked Wrangler configurations name the existing D1 database, Queue, and private R2 bucket. The TypeScript configuration additionally creates:
@@ -87,7 +89,18 @@ Apply that statement through `wrangler d1 execute ... --remote --command`. Use L
 
 ## Inspection
 
-Use read-only D1 queries for `deliveries`, `orchestration_runs`, `dispatch_intents`, `workflow_event_inbox`, `agent_attempts`, `artifact_manifests`, `provider_operations`, `workflow_transitions_v2`, and `cleanup_work_items`. Correlate Workers Logs by `deos.workflow.correlation_id` and `deos.workflow.run_id`. Do not query or log raw prompts, transcripts, auth envelopes, tokens, or provider response bodies.
+Use read-only D1 queries for `deliveries`, `orchestration_runs`, `dispatch_intents`, `workflow_event_inbox`, `workflow_waits`, `workflow_wait_deliveries`, `workflow_completion_reconciliations`, `agent_attempts`, `artifact_manifests`, `provider_operations`, `workflow_transitions_v2`, and `cleanup_work_items`. Verify `terminal_cause` only from the bounded allowlist and correlate Workers Logs by `deos.workflow.correlation_id` and `deos.workflow.run_id`. Do not query or log raw prompts, transcripts, auth envelopes, tokens, matcher-external provider fields, or provider response bodies.
+
+For migration rehearsal and post-apply inspection, use read-only queries equivalent to:
+
+```sql
+SELECT status, COUNT(*) FROM orchestration_runs GROUP BY status ORDER BY status;
+PRAGMA foreign_key_check;
+SELECT run_id, node_id, status, resume_event_type, cancel_event_type
+FROM workflow_waits ORDER BY created_at DESC LIMIT 20;
+SELECT run_id, safe_cause, observed_executor_status, observed_run_status, state
+FROM workflow_completion_reconciliations ORDER BY created_at DESC LIMIT 20;
+```
 
 The scheduled GitHub workflow reads `wrangler containers instances ... --json` and submits only Sandbox IDs to `/cleanup-audit`. It holds Cloudflare inventory and cleanup-audit credentials; Linear credentials remain in the Worker.
 
@@ -95,4 +108,4 @@ The scheduled GitHub workflow reads `wrangler containers instances ... --json` a
 
 First disable project dispatch in D1. Queue deliveries remain authenticated and auditable but cannot create a new run. Existing Workflow mappings remain available for inspection.
 
-Then deploy the prior Worker version. Migrations are additive and are not reversed. Never delete D1 rows, Workflow history, R2 manifests, or credential envelopes during rollback. For every nonterminal attempt, disable keep-alive, destroy its exact Sandbox ID, and verify `cleanup_state='destroyed'`. If provider inventory still shows a resource, submit it to `/cleanup-audit` and keep the generated Linear cleanup issue open until replacement evidence is recorded.
+Then deploy the prior Worker version and point new policies back to the version 3 definition. The expanded schema is retained: migrations are not reversed, and existing version 4 runs are explicitly canceled or reconciled rather than downgraded. Never delete D1 rows, waits, reconciliation history, Workflow history, R2 manifests, or credential envelopes during rollback. For every nonterminal attempt, disable keep-alive, destroy its exact Sandbox ID, and verify `cleanup_state='destroyed'`. If provider inventory still shows a resource, submit it to `/cleanup-audit` and keep the generated Linear cleanup issue open until replacement evidence is recorded.
