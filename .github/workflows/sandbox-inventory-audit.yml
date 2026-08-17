@@ -1,0 +1,30 @@
+name: Sandbox inventory audit
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - name: Read provider inventory
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CONTAINER_APPLICATION_ID: ${{ secrets.CLOUDFLARE_CONTAINER_APPLICATION_ID }}
+        run: npx wrangler containers instances "$CONTAINER_APPLICATION_ID" --json > sandbox-inventory.json
+      - name: Submit inventory to trusted audit endpoint
+        env:
+          DEOS_CLEANUP_AUDIT_URL: ${{ secrets.DEOS_CLEANUP_AUDIT_URL }}
+          DEOS_CLEANUP_AUDIT_SECRET: ${{ secrets.DEOS_CLEANUP_AUDIT_SECRET }}
+        run: node scripts/audit-sandbox-inventory.mjs < sandbox-inventory.json

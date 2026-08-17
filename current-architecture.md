@@ -48,7 +48,7 @@ and a test Linear project provide provider-originated integration proof.
   and `REJECTED` outcomes. Project policy selects which Linear transition starts
   the flow.
 - **Human approval:** the workflow moves the issue into the configured Linear
-  board column `Human Approval` and waits. A configured transition out of that
+  board column `Human Review` and waits. A configured transition out of that
   column resumes the run; no Worker infers approval from issue text.
 - **Cloudflare persistence:** D1 stores deliveries, project policy, workflow
   runs, transitions, and audit records. Queue provides the durable handoff.

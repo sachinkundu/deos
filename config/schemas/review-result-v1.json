@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deos.dev/schemas/review-result-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["outcome", "summary", "feedback", "providerReceipts"],
+  "properties": {
+    "outcome": {"enum": ["approved", "changes_requested", "certified", "blocked", "failed"]},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "feedback": {"type": "array", "items": {"type": "string"}},
+    "providerReceipts": {"type": "array", "items": {"type": "string"}}
+  }
+}

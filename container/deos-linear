@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+import { appendFile } from "node:fs/promises";
+
+const body = await new Promise((resolve) => {
+  let value = "";
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data", (chunk) => { value += chunk; });
+  process.stdin.on("end", () => resolve(value));
+});
+const response = await fetch(`${process.env.DEOS_CAPABILITY_URL}/linear`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.DEOS_CAPABILITY_TOKEN}`,
+    "Content-Type": "application/json",
+    "Deos-Attempt": process.env.DEOS_ATTEMPT_ID ?? "",
+  },
+  body,
+});
+const responseText = await response.text();
+if (response.ok) {
+  const receipt = JSON.parse(responseText);
+  const sanitized = {
+    capability: "linear",
+    operationId: String(receipt.operationId ?? ""),
+    state: String(receipt.state ?? ""),
+    providerResourceId: receipt.providerResourceId === null
+      ? null
+      : String(receipt.providerResourceId ?? ""),
+  };
+  if (!sanitized.operationId || !sanitized.state) {
+    throw new Error("Linear capability receipt is invalid");
+  }
+  await appendFile(
+    "/deos/output/provider-references.jsonl",
+    `${JSON.stringify(sanitized)}\n`,
+    { mode: 0o600 },
+  );
+}
+process.stdout.write(responseText);
+process.exitCode = response.ok ? 0 : 1;

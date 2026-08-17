@@ -120,8 +120,14 @@ class Default(WorkerEntrypoint):
                     "project_id": event.project_id,
                     "transition": event.transition,
                     "actor_id": event.actor_id,
+                    "actor_type": event.actor_type,
+                    "event_kind": event.event_kind,
+                    "state_id": event.state_id,
+                    "previous_state_id": event.previous_state_id,
+                    "previous_state_name": event.previous_state_name,
                     "occurred_at": event.occurred_at.isoformat(),
                     "correlation_id": run_id,
+                    "payload_digest": delivery.payload_hash,
                 }
             )
         except Exception:

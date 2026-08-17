@@ -75,6 +75,10 @@ class LinearWebhookACL:
         data = _object(payload, "data")
         project = _object(data, "project")
         state = _object(data, "state")
+        action = _optional_string(payload, "action") or "update"
+        resource_type = _optional_string(payload, "type") or "Issue"
+        if resource_type != "Issue":
+            raise InvalidWebhook("webhook resource must be Issue")
         delivery_id = delivery_id or _first_string(payload, "webhookId", "id")
         issue_id = _string(data, "id")
         project_id = _string(project, "id")
@@ -86,6 +90,10 @@ class LinearWebhookACL:
         )
         actor = payload.get("actor")
         actor_id = _string(actor, "id") if isinstance(actor, dict) and actor.get("id") else None
+        actor_type = _optional_string(actor, "type") if isinstance(actor, dict) else None
+        updated_from = payload.get("updatedFrom")
+        previous_state_id, previous_state_name = _previous_state(updated_from)
+        state_id = _optional_string(state, "id")
         event = ApplicationEvent(
             event_id=delivery_id,
             source_delivery_id=delivery_id,
@@ -94,10 +102,18 @@ class LinearWebhookACL:
             transition=transition,
             actor_id=actor_id,
             occurred_at=occurred_at,
+            actor_type=actor_type.lower() if actor_type is not None else None,
+            event_kind=f"{resource_type}.{action}",
+            state_id=state_id,
+            previous_state_id=previous_state_id,
+            previous_state_name=previous_state_name,
+        )
+        state_changed = isinstance(updated_from, dict) and (
+            "stateId" in updated_from or "state" in updated_from
         )
         relevant = (
             project_id in self._config.relevant_project_ids
-            and transition in self._config.relevant_transitions
+            and (state_changed or transition in self._config.relevant_transitions)
         )
         return event, relevant
 
@@ -168,6 +184,23 @@ def _first_string(value: Any, *keys: str) -> str:
         if isinstance(candidate, str) and candidate:
             return candidate
     raise InvalidWebhook(f"missing string fields: {', '.join(keys)}")
+
+
+def _optional_string(value: Any, key: str) -> str | None:
+    result = value.get(key) if isinstance(value, dict) else None
+    return result if isinstance(result, str) and result else None
+
+
+def _previous_state(value: Any) -> tuple[str | None, str | None]:
+    if not isinstance(value, dict):
+        return None, None
+    state_id = _optional_string(value, "stateId")
+    previous = value.get("state")
+    if isinstance(previous, str) and previous:
+        return state_id, previous
+    if isinstance(previous, dict):
+        return state_id or _optional_string(previous, "id"), _optional_string(previous, "name")
+    return state_id, None
 
 
 def _parse_datetime(value: str) -> datetime:

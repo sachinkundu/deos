@@ -1,90 +1,98 @@
-# Cloudflare deployment
+# Cloudflare deployment and rollback
 
-The first slice uses Cloudflare's native Wrangler tooling rather than Terraform.
-The deployable unit is a Python Worker with D1 and Queue bindings, so keeping
-the binding configuration beside the Worker makes local review and deployment
-behavior match. Terraform can be introduced later for shared accounts,
-multiple environments, DNS, and policy-managed infrastructure.
+DEOS has two deployable Workers sharing D1 and Queue resources:
 
-## One-time resource setup
+- `deos-sample-project` is the small Python Linear webhook ingress.
+- `deos-queue-consumer-ts` owns dispatch, Cloudflare Workflow, Sandbox, provider capabilities, artifacts, and cleanup reconciliation.
 
-Install Node.js, `uv`, Wrangler, and the Python Worker tooling. Then authenticate
-with Cloudflare and create the resources:
+The orchestration rollout is additive. Keep `TRIAL_DISPATCH_ENABLED` false while creating bindings, applying migrations, uploading secrets, and deploying the pinned Container image. Enabling a project policy in D1 is the separate canary action.
 
-```sh
-npx wrangler login
-npx wrangler d1 create deos-sample-project
-npx wrangler queues create deos-sample-project-events
-npx wrangler r2 bucket create deos-sample-project-artifacts
-```
+## Required resources
 
-The non-secret resource IDs are recorded in `wrangler.jsonc`; the webhook
-secret is intentionally not committed to this repository. R2 is bound as
-`env.ARTIFACTS` for provenance artifacts.
+The checked Wrangler configurations name the existing D1 database, Queue, and private R2 bucket. The TypeScript configuration additionally creates:
 
-## Deploy
+- Workflow `deos-sandbox-codex-workflow` with entrypoint `DeosWorkflow`;
+- Durable Object class `Sandbox` and its pinned Container image;
+- a Queue consumer and fifteen-minute D1-known cleanup cron.
 
-Set the webhook secret in the environment, then run:
+The Sandbox package and image must remain on exact release `0.13.0-next.738.2`; the Docker base is also pinned by digest. Run `npm run types:check` after every binding change.
 
-```sh
-export LINEAR_WEBHOOK_SECRET="..."
-./scripts/deploy-cloudflare.sh
-```
+## Secrets and non-secret configuration
 
-The script applies the D1 migration, uploads the webhook secret through
-Wrangler, and deploys the Python ingress Worker through `pywrangler`. The Queue
-consumer additionally requires a Linear API key uploaded as `LINEAR_API_KEY`;
-it uses `LINEAR_HUMAN_APPROVAL_STATE_ID` to move consumed issues into the
-approval state. Secrets are never written to tracked files.
-
-This direct Queue-consumer credential is a temporary stopgap. The target design centralizes
-Linear writes in a capability gateway. Until that exists, provide credentials only to the Worker
-or sandbox that requires them, using platform secret storage or short-lived runtime injection.
-
-GitHub sandbox access should use a short-lived, repository-scoped GitHub App installation token
-for direct pushes or PR operations when needed. Do not provide the GitHub App private key or a
-broad long-lived PAT. GitHub webhook events should eventually flow to the control plane for
-comment and review reconciliation.
-
-The deployed ingress endpoint is
-`https://deos-sample-project.skundu.workers.dev`.
-
-## Linear test project
-
-The test project is `deos-sample-project` with ID
-`99426d9b-cda7-4db4-9136-692a95a0b090`. Its enabled Linear Issue webhook points
-at the deployed Worker URL and uses the Worker secret. Move an issue in that
-project to `In Progress` to trigger it. Linear signs the raw request
-body in `Linear-Signature` and sends the millisecond timestamp in
-`Linear-Timestamp`; the Worker verifies both and uses `Linear-Delivery` as the
-idempotency key. The Worker records the delivery in D1 and publishes the
-translated application event to the Queue.
-
-## Verification evidence
-
-On 2026-08-11, a signed Linear-compatible transition payload was sent to the
-deployed endpoint. The first request returned `200 accepted`; the identical
-delivery returned `200 duplicate`; and remote D1 contained the delivery with
-classification `relevant`. The Queue is provisioned with the Worker as its
-producer. The `deos-sample-project-artifacts` R2 bucket was created and accepted
-an uploaded proof object after deployment; it is bound as `env.ARTIFACTS` for
-provenance artifacts.
-
-After webhook registration, Linear MCP transitioned `SAC-73` to `In Progress`.
-Remote D1 recorded the resulting Linear delivery with classification `relevant`.
-
-## First workflow
-
-The first workflow is deliberately small and explicit:
+Load secrets from the ignored local `.env` without printing them. The orchestration Worker requires:
 
 ```text
-RECEIVED -> QUEUED -> REQUIREMENTS_IN_PROGRESS -> AWAITING_HUMAN_APPROVAL
-                                                    |-> APPROVED
-                                                    `-> REJECTED
+LINEAR_APP_ACCESS_TOKEN
+GITHUB_APP_ID
+GITHUB_APP_PRIVATE_KEY or GITHUB_APP_PRIVATE_KEY_PATH
+GITHUB_INSTALLATION_ID
+CODEX_AUTH_ENCRYPTION_KEY
+CAPABILITY_SIGNING_SECRET
+CLEANUP_AUDIT_SECRET
 ```
 
-A new relevant event creates the run and moves the Linear issue to the
-configured approval state. A later actor-driven `In Progress` event approves
-the waiting run; a `Canceled` event rejects it. Replayed deliveries reuse the
-existing `(project_id, issue_id)` run and the transition identity index prevents
-duplicate audit rows.
+Set `LINEAR_APP_ACTOR_ID` to the actor ID observed for the Linear OAuth app, and `LINEAR_TEAM_ID` to the cleanup issue team. The checked configuration carries the verified non-secret IDs for this controlled workspace. The deploy script refuses to continue if a future configuration restores a `configure-before-*` sentinel. Prefer `GITHUB_APP_PRIVATE_KEY_PATH` so the PEM remains in its protected file rather than a shell environment variable.
+
+Provider credentials exist only in the trusted Worker. The Sandbox receives a short-lived, attempt-scoped capability token, never a Linear token, GitHub token, GitHub App key, Cloudflare token, or encryption key.
+
+## Credential bootstrap
+
+Authenticate Codex locally with the same controlled ChatGPT profile. Encrypt its `auth.json` without copying plaintext into the repository:
+
+```sh
+task_tmp="$(mktemp -d)"
+CODEX_AUTH_ENCRYPTION_KEY="$CODEX_AUTH_ENCRYPTION_KEY" \
+  node scripts/encrypt-codex-auth.mjs /path/to/auth.json \
+  > "$task_tmp/auth.v1.enc"
+npx wrangler r2 object put \
+  deos-sample-project-artifacts/credentials/controlled-trial/auth.v1.enc \
+  --file "$task_tmp/auth.v1.enc" \
+  --content-type application/json
+```
+
+Remove the temporary directory after verifying the object exists. Each attempt acquires an exclusive D1 lease, decrypts into `/root/.codex/auth.json`, preserves a refreshed file with conditional R2 replacement, deletes it before artifact collection, and releases the lease. A conditional conflict fails closed.
+
+## Deploy disabled
+
+With a Docker-compatible daemon available:
+
+```sh
+set -a
+. ./.env
+set +a
+./scripts/deploy-orchestration.sh
+```
+
+Then deploy ingress with `LINEAR_WEBHOOK_SECRET` using `./scripts/deploy-cloudflare.sh`. Inspect bindings and resources before enabling dispatch:
+
+```sh
+npx wrangler d1 migrations list DB --remote --config wrangler.queue-consumer-ts.jsonc
+npx wrangler workflows list --config wrangler.queue-consumer-ts.jsonc
+npx wrangler r2 object get deos-sample-project-artifacts/credentials/controlled-trial/auth.v1.enc --remote
+```
+
+Do not print the downloaded credential object. A presence/head-style inspection is sufficient.
+
+## Canary enablement
+
+Enable only the configured test project after disabled deployment and one real Sandbox integration attempt succeed:
+
+```sql
+UPDATE project_workflow_policies
+SET dispatch_enabled = 1, updated_at = datetime('now')
+WHERE project_id = '99426d9b-cda7-4db4-9136-692a95a0b090';
+```
+
+Apply that statement through `wrangler d1 execute ... --remote --command`. Use Linear MCP to move a dedicated test issue to `In Progress`. The provider-originated delivery, not a locally signed payload, is the canary proof.
+
+## Inspection
+
+Use read-only D1 queries for `deliveries`, `orchestration_runs`, `dispatch_intents`, `workflow_event_inbox`, `agent_attempts`, `artifact_manifests`, `provider_operations`, `workflow_transitions_v2`, and `cleanup_work_items`. Correlate Workers Logs by `deos.workflow.correlation_id` and `deos.workflow.run_id`. Do not query or log raw prompts, transcripts, auth envelopes, tokens, or provider response bodies.
+
+The scheduled GitHub workflow reads `wrangler containers instances ... --json` and submits only Sandbox IDs to `/cleanup-audit`. It holds Cloudflare inventory and cleanup-audit credentials; Linear credentials remain in the Worker.
+
+## Rollback
+
+First disable project dispatch in D1. Queue deliveries remain authenticated and auditable but cannot create a new run. Existing Workflow mappings remain available for inspection.
+
+Then deploy the prior Worker version. Migrations are additive and are not reversed. Never delete D1 rows, Workflow history, R2 manifests, or credential envelopes during rollback. For every nonterminal attempt, disable keep-alive, destroy its exact Sandbox ID, and verify `cleanup_state='destroyed'`. If provider inventory still shows a resource, submit it to `/cleanup-audit` and keep the generated Linear cleanup issue open until replacement evidence is recorded.

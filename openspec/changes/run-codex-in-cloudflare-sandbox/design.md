@@ -162,7 +162,7 @@ spec:
       edges: {approved: requirements_approval, changes_requested: requirements}
     requirements_approval:
       type: human_gate
-      linearState: Human Approval
+      linearState: Human Review
       edges: {approved: openspec_proposal, rejected: requirements}
     openspec_proposal:
       type: system_action
@@ -186,7 +186,7 @@ spec:
       edges: {approved: architecture_approval, changes_requested: ddd_architecture}
     architecture_approval:
       type: human_gate
-      linearState: Human Approval
+      linearState: Human Review
       edges: {approved: openspec_tasks, rejected: ddd_architecture}
     openspec_tasks:
       type: system_action
@@ -210,7 +210,7 @@ spec:
       edges: {completed: release_approval, failed: implementation}
     release_approval:
       type: human_gate
-      linearState: Human Approval
+      linearState: Human Review
       edges: {approved: deploy, rejected: blocked}
     deploy:
       type: system_action
@@ -283,7 +283,9 @@ flowchart TB
 D1 stores the selected definition digest, the current node, attempts, effects,
 and receipts needed to resume this workflow. Telemetry reports important
 boundaries and failures. Both support the executable definition; neither is the
-workflow's authored source of truth.
+workflow's authored source of truth. A resumed run reloads its stored canonical
+definition whenever the deployed bundle has advanced to a newer immutable
+version, then verifies the stored digest before making another graph decision.
 
 ## Decisions
 
@@ -444,8 +446,14 @@ permitted edge and commits the transition with a compare-and-set on the current
 node. Cloudflare Workflow step returns are orchestration checkpoints, not the
 business-state authority.
 
+A `system_action` node may complete only after an action-specific trusted
+adapter has written a successful or reconciled `system_action` receipt for the
+exact configured action. An artifact manifest or an unrelated provider receipt
+is never evidence that the named action ran; without the exact receipt the node
+follows its configured failed edge.
+
 For the controlled path, the configured success edge after the initial agent
-and provider work enters `Human Approval`. Other graph versions may continue
+and provider work enters the workspace's `Human Review` state. Other graph versions may continue
 autonomously, dispatch a fresh agent, loop, block, or terminate without human
 approval.
 
@@ -551,6 +559,8 @@ cleanup-audit endpoint on the trusted Worker. The Worker creates or updates a
 stable Linear cleanup work item for every orphan, including a provider resource
 with no recoverable run. The job receives only the Cloudflare inventory and
 cleanup-audit credentials; Linear credentials remain in the Worker.
+An inventory entry mapped to a D1 attempt in `pending`, `starting`, `running`,
+or `collecting` is live and is excluded from orphan reporting.
 
 Alternative considered: await Codex in a single Workflow step. That hides
 liveness, makes later event handling difficult, and couples a 24-hour process
@@ -613,7 +623,10 @@ provider call.
 Capability request and response bodies are bounded and schema validated. The
 agent result references provider receipts; it does not treat a CLI exit code as
 proof that the provider effect exists. A success edge is eligible only when all
-required receipts are successful or reconciled.
+required receipts are successful or reconciled. The trusted collector parses
+the mechanically captured non-empty receipt set, requires the structured result
+to name the same operation IDs, and verifies in D1 that every operation belongs
+to that run and attempt and has no incomplete sibling operation.
 
 Alternative considered: inject GitHub and Linear tokens into the Sandbox and
 let `git`, `gh`, or arbitrary scripts use them. That would expose credentials to
@@ -694,9 +707,9 @@ Validation is layered and each claim is named accurately:
    real delivery; the deployed system must create one Workflow and Sandbox
    attempt, Codex must publish the expected controlled GitHub work and Linear
    note through capabilities, artifacts must be verifiable in R2/D1, cleanup
-   must succeed, and the Workflow must move the issue to `Human Approval`.
+   must succeed, and the Workflow must move the issue to `Human Review`.
 5. Visual proof captures the sanitized Linear webhook configuration, trigger
-   issue, resulting Human Approval state, and GitHub work product. Showboat
+   issue, resulting Human Review state, and GitHub work product. Showboat
    records executable deployment, D1 read-only evidence, Workflow/Sandbox
    inspection, R2 metadata verification, and telemetry queries. The evidence is
    attached to the implementation PR.
@@ -740,7 +753,7 @@ sequenceDiagram
   S->>DB: complete artifact manifest and attempt outcome
   S->>S: persist refreshed auth, then destroy Sandbox
   W->>DB: evaluate configured edge from authoritative state
-  W->>L: Workflow-owned transition to Human Approval
+  W->>L: Workflow-owned transition to Human Review
   W->>DB: confirm provider effect and commit transition
 ```
 
@@ -766,7 +779,7 @@ readable and rollback does not require destructive schema changes.
 
 Legacy `workflow_runs` and `workflow_transitions` remain read-only historical
 records for the previous direct-mutation path. The controlled rollout creates
-fresh rows in the new tables; it does not reinterpret a legacy Human Approval
+fresh rows in the new tables; it does not reinterpret a legacy human-approval
 row as an active Sandbox run.
 
 ## Retry and Failure Model

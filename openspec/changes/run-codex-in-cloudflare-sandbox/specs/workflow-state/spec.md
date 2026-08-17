@@ -2,12 +2,12 @@
 
 ### Requirement: Preserve explicit workflow state
 
-The workflow state model SHALL record authoritative business-state transitions in D1, SHALL distinguish agent execution state from business workflow state, and SHALL represent human approval as an explicit node surfaced through the Linear board column `Human Approval`. The encoded workflow definition SHALL describe nodes, decision edges, loops, autonomous actions, agent dispatches, human gates, and terminal outcomes. The Workflow manager SHALL be the sole authority that initiates Linear state transitions and SHALL select the next action from the previous state, current state, accumulated run data, provider results, and agent outcome.
+The workflow state model SHALL record authoritative business-state transitions in D1, SHALL distinguish agent execution state from business workflow state, and SHALL represent human approval as an explicit node surfaced through the Linear board column `Human Review`. The encoded workflow definition SHALL describe nodes, decision edges, loops, autonomous actions, agent dispatches, human gates, and terminal outcomes. The Workflow manager SHALL be the sole authority that initiates Linear state transitions and SHALL select the next action from the previous state, current state, accumulated run data, provider results, and agent outcome.
 
 #### Scenario: Approval required
 
 - **WHEN** the Workflow reaches a state designated by policy as a human gate after all prerequisite work succeeds
-- **THEN** it enters `AWAITING_HUMAN_APPROVAL`, moves the issue into the `Human Approval` board column, and does not advance automatically
+- **THEN** it enters `AWAITING_HUMAN_APPROVAL`, moves the issue into the `Human Review` board column, and does not advance automatically
 
 #### Scenario: State continues autonomously
 
@@ -16,17 +16,17 @@ The workflow state model SHALL record authoritative business-state transitions i
 
 #### Scenario: Human resumes workflow
 
-- **WHEN** a configured approval or rejection transition out of the `Human Approval` board column is received from Linear with actor identity verified as an authorized human
+- **WHEN** a configured approval or rejection transition out of the `Human Review` board column is received from Linear with actor identity verified as an authorized human
 - **THEN** the Workflow records the human decision and actor and selects the configured next edge using the state from which the gate was entered, the current gate, and accumulated run data
 
 #### Scenario: Automated event attempts to approve a human gate
 
 - **WHEN** an approval-shaped event is attributable to an agent, integration, bot, unknown actor, or unauthorized human
-- **THEN** the Workflow records the rejected decision event, keeps D1 in `AWAITING_HUMAN_APPROVAL`, and idempotently restores the issue to the `Human Approval` board column before accepting another decision
+- **THEN** the Workflow records the rejected decision event, keeps D1 in `AWAITING_HUMAN_APPROVAL`, and idempotently restores the issue to the `Human Review` board column before accepting another decision
 
 #### Scenario: Provider restoration after unauthorized transition fails
 
-- **WHEN** the Workflow cannot confirm that an issue moved by an unauthorized actor has been restored to `Human Approval`
+- **WHEN** the Workflow cannot confirm that an issue moved by an unauthorized actor has been restored to `Human Review`
 - **THEN** it records a provider-state repair failure, prevents further gate processing, and creates or updates an operator work item for reconciliation
 
 #### Scenario: Auditable transition
@@ -38,6 +38,11 @@ The workflow state model SHALL record authoritative business-state transitions i
 
 - **WHEN** durable Workflow execution resumes or retries a state-machine step
 - **THEN** it reconciles the D1 authoritative state before making a transition and does not repeat an already recorded provider effect
+
+#### Scenario: Deployed definition advances while a run is active
+
+- **WHEN** durable Workflow execution resumes after the deployed immutable definition bundle has advanced beyond the active run's selected version
+- **THEN** it restores the run's canonical definition from D1, verifies the selected digest, and continues only through that frozen graph
 
 #### Scenario: Workflow definition contains a loop or decision tree
 
@@ -74,6 +79,11 @@ The Workflow SHALL validate and interpret each structured agent outcome against 
 
 - **WHEN** agent startup, authentication, execution, result validation, artifact persistence, or cleanup produces a failed outcome
 - **THEN** the Workflow applies the configured retry or failure action and does not advance through a success transition
+
+#### Scenario: System action lacks an exact execution receipt
+
+- **WHEN** a system-action node has only artifact manifests or unrelated provider receipts and no successful or reconciled receipt for its exact configured action
+- **THEN** the Workflow follows the configured failed edge and does not claim that the named action executed
 
 #### Scenario: Agent output names a Linear transition
 
