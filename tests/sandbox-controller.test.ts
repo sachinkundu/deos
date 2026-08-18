@@ -77,6 +77,37 @@ spec:
   },
 );
 
+const openSpecArchiveDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: openspec-archive-test, version: 1 }
+spec:
+  start: archive
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs:
+    archive:
+      promptFile: prompts/work.md
+      inputs: [openspec_change, openspec_instruction]
+      context: [prior_artifact_manifests]
+      resultSchema: schemas/result.json
+      requiredOutputs: [transcript.jsonl, result.json]
+      operation: {kind: openspec, instruction: /opsx:archive}
+  nodes:
+    archive: { type: agent, job: archive, edges: { completed: done, blocked: blocked, failed: blocked } }
+    done: { type: terminal, outcome: succeeded }
+    blocked: { type: terminal, outcome: blocked }
+`,
+  {
+    prompts: { "prompts/work.md": "Run the native OpenSpec archive." },
+    schemas: {
+      "schemas/result.json": JSON.stringify({
+        $id: "https://deos.dev/openspec-archive-test.json",
+        type: "object",
+      }),
+    },
+  },
+);
+
 const run = {
   run_id: "workflow:project-1:issue-1:run:1",
   issue_id: "issue-1",
@@ -400,6 +431,41 @@ test("OpenSpec attempt records and prompts the frozen instruction and trusted ch
   assert.match(prompt, /Native OpenSpec instruction: \/opsx:continue/);
   assert.match(prompt, /OpenSpec change identity: sac-1/);
   assert.doesNotMatch(prompt, /Review jobs must publish their review outcome and actionable feedback/);
+});
+
+test("native archive fails closed before allocation when no cumulative patch exists", async () => {
+  const { controller, attempts, factory } = setup();
+
+  await assert.rejects(
+    controller.execute(run, "archive", "archive", openSpecArchiveDefinition),
+    /OpenSpec archive requires a cumulative continuation patch/,
+  );
+  assert.equal(attempts.latest, null);
+  assert.equal(factory.sandbox.commands.length, 0);
+});
+
+test("native archive records the exact instruction, trusted change, and verified cumulative patch", async () => {
+  const patchContent = "# No repository changes in this attempt.\n";
+  const digest = [...new Uint8Array(await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(patchContent),
+  ))].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  const continuationPatch = {
+    attemptId: "prior-attempt",
+    manifestId: "prior-manifest",
+    r2Key: "runs/prior/patch.diff",
+    sha256: digest,
+  };
+  const { controller, attempts, factory } = setup({ continuationPatch, patchContent });
+
+  await controller.execute(run, "archive", "archive", openSpecArchiveDefinition);
+
+  const durableJob = JSON.parse(attempts.latest?.job_spec_json ?? "{}");
+  assert.equal(durableJob.openspecInstruction, "/opsx:archive");
+  assert.equal(durableJob.openspecChange, "sac-1");
+  assert.deepEqual(durableJob.continuationPatch, continuationPatch);
+  assert.match(factory.sandbox.files.get("/deos/run/prompt.md") ?? "", /Native OpenSpec instruction: \/opsx:archive/);
+  assert.deepEqual(factory.sandbox.commands.at(-1)?.command, ["node", "/deos/bin/supervisor.mjs"]);
 });
 
 test("trusted controller verifies and applies the cumulative continuation patch before Codex", async () => {

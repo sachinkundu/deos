@@ -15,9 +15,11 @@ Jobs declare their prompt file, input names, durable context references, JSON re
 
 OpenSpec continue, apply, verify, and archive are agent jobs. Their schema-valid local completion may advance with no provider receipt after the complete artifact manifest is stored. If such a job attempts any GitHub, Linear, deployment, or other external effect, its declared receipts must exactly match the mechanically captured operations and every operation must be successful or reconciled in D1. Ordinary successful agents and all `system_action` nodes retain their existing non-empty exact-receipt requirement.
 
-Keep semantic reviews aligned with their position in the graph. In particular, pre-release evidence verification may require deterministic implementation evidence and any provider or visual proof applicable to the implemented feature, but it must not require outputs from downstream native verify, release, deployment, finalization, sync, or archive nodes. Service-owned D1/R2 integrity, cleanup, and receipt checks belong in trusted controllers, not in an agent prompt that has no platform credentials.
+Keep semantic reviews aligned with their position in the graph. In particular, pre-final-approval evidence verification may require deterministic implementation evidence and any provider or visual proof applicable to the implemented feature, but it must not require outputs from downstream native verify, final approval, sync, or archive nodes. Service-owned D1/R2 integrity, cleanup, and receipt checks belong in trusted controllers, not in an agent prompt that has no platform credentials.
 
-Every new Sandbox starts from the configured base checkout. The trusted runner then selects the latest complete cumulative `patch.diff` for the run, verifies its R2 bytes against the D1-recorded SHA-256, and applies it before Codex starts. Patch capture uses an isolated temporary Git index with `git add -A` and `git diff --cached --binary HEAD`, so tracked changes, deletions, and new untracked OpenSpec artifacts survive clean-Sandbox continuation without mutating the checkout's real index. The new attempt's immutable job record names that patch, the OpenSpec instruction, and the deterministic lowercased Linear issue identifier used as the change name. Never make a prompt discover continuation state from a previous Sandbox filesystem.
+The active terminal tail is `evidence_verification -> openspec_verify -> final_approval -> sync_and_archive -> done`. Treat `final_approval` as the last authority-bearing node. Its approved edge may lead only to the mechanical `/opsx:archive` agent; do not add a later reviewer, deployment action, release-finalization action, or human gate. The archive completed edge reaches `done`, while blocked or failed outcomes reach `blocked`.
+
+Every new Sandbox starts from the configured base checkout. The trusted runner then selects the latest complete cumulative `patch.diff` for the run, verifies its R2 bytes against the D1-recorded SHA-256, and applies it before Codex starts. Patch capture uses an isolated temporary Git index with `git add -A` and `git diff --cached --binary HEAD`, so tracked changes, deletions, and new untracked OpenSpec artifacts survive clean-Sandbox continuation without mutating the checkout's real index. The new attempt's immutable job record names that patch, the OpenSpec instruction, and the deterministic lowercased Linear issue identifier used as the change name. `/opsx:archive` additionally requires a non-null completed cumulative patch reference and fails before allocation when none exists. Never make a prompt discover continuation state from a previous Sandbox filesystem.
 
 Before enabling a new version:
 
@@ -25,7 +27,7 @@ Before enabling a new version:
 npm test
 npm run typecheck
 npm run types:check
-npx openspec validate let-sandbox-agents-complete-openspec-steps --strict
+npx openspec validate end-openspec-workflow-with-mechanical-archive --strict
 ```
 
 The canonical digest covers the resolved YAML, prompt text, and schemas. Reusing a definition ID/version with different content is rejected by D1. Increment the version for every semantic change and preserve prior rows for active and historical runs.

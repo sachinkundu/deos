@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: openspec-delivery
-  version: 9
+  version: 10
 spec:
   start: requirements
   execution:
@@ -57,12 +57,6 @@ spec:
       inputs: [evidence_pack, acceptance_criteria]
       context: [shared_workpad]
       resultSchema: schemas/review-result-v1.json
-      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
-    release_finalization:
-      promptFile: prompts/release-finalization.md
-      inputs: [merged_pr, deployment_evidence]
-      context: [shared_workpad]
-      resultSchema: schemas/agent-result-v1.json
       requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
     openspec_continue:
       promptFile: prompts/openspec.md
@@ -148,19 +142,11 @@ spec:
     openspec_verify:
       type: agent
       job: openspec_verify
-      edges: {completed: release_approval, blocked: implementation, failed: implementation}
-    release_approval:
+      edges: {completed: final_approval, blocked: implementation, failed: implementation}
+    final_approval:
       type: human_gate
       linearState: Human Review
-      edges: {approved: deploy, rejected: blocked}
-    deploy:
-      type: system_action
-      action: release.deploy
-      edges: {completed: release_finalization, failed: blocked}
-    release_finalization:
-      type: agent
-      job: release_finalization
-      edges: {completed: sync_and_archive, blocked: blocked, failed: blocked}
+      edges: {approved: sync_and_archive, rejected: blocked}
     sync_and_archive:
       type: agent
       job: openspec_archive

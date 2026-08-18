@@ -85,6 +85,24 @@ WHERE project_id = '99426d9b-cda7-4db4-9136-692a95a0b090';
 
 Apply that statement through `wrangler d1 execute ... --remote --command`. Use Linear MCP to move a dedicated test issue to `In Progress`. The provider-originated delivery, not a locally signed payload, is the canary proof.
 
+For definition version 10, verify the registered canonical graph before enabling dispatch: `openspec_verify` must lead to `final_approval`, approval must lead directly to `sync_and_archive`, and the snapshot must contain neither `deploy` nor `release_finalization`. Use a deliberately small repository-local OpenSpec change. The run must wait for real authorized-human deliveries at its configured gates; an agent-originated or synthetic approval is not evidence.
+
+After final approval, inspect the `sync_and_archive` attempt's bounded `job_spec_json` for exact `/opsx:archive`, trusted change identity, and the latest continuation-patch reference. Require `state='completed'`, `cleanup_state='destroyed'`, a complete manifest, and a visit-aware transition from `sync_and_archive` to `done`. Retrieve the final `patch.diff` from R2 into a protected temporary location, verify its SHA-256 against D1, and inspect it for the archived change plus applicable main-spec synchronization. The same run must end with business status `succeeded`, and no attempt or transition may name `deploy` or `release_finalization`.
+
+When evidence capture is complete, disable dispatch and read it back:
+
+```sql
+UPDATE project_workflow_policies
+SET dispatch_enabled = 0, updated_at = datetime('now')
+WHERE project_id = '99426d9b-cda7-4db4-9136-692a95a0b090';
+
+SELECT project_id, definition_id, definition_version, dispatch_enabled
+FROM project_workflow_policies
+WHERE project_id = '99426d9b-cda7-4db4-9136-692a95a0b090';
+```
+
+Also confirm every canary attempt is terminal with `cleanup_state='destroyed'` and compare Cloudflare Sandbox inventory to D1 before declaring the proof complete.
+
 ## Inspection
 
 Use read-only D1 queries for `deliveries`, `orchestration_runs`, `dispatch_intents`, `workflow_event_inbox`, `agent_attempts`, `artifact_manifests`, `artifacts`, `provider_operations`, `workflow_transitions_v2`, and `cleanup_work_items`. For OpenSpec nodes, inspect only bounded `job_spec_json` fields for `openspecInstruction`, `openspecChange`, and `continuationPatch`; verify the referenced patch through its recorded digest without printing arbitrary source or transcript content. Correlate Workers Logs by `deos.workflow.correlation_id` and `deos.workflow.run_id`. Do not query or log raw prompts, transcripts, auth envelopes, tokens, or provider response bodies.

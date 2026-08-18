@@ -321,6 +321,13 @@ export class SandboxAgentController {
     const now = this.dependencies.now();
     const deadline = new Date(now.getTime() + this.config.absoluteTimeoutMs).toISOString();
     const materialized = await this.dependencies.materializeContext(run, job);
+    if (
+      job.operation?.kind === "openspec" &&
+      job.operation.instruction === "/opsx:archive" &&
+      materialized.continuationPatch === null
+    ) {
+      throw new Error("OpenSpec archive requires a cumulative continuation patch");
+    }
     const durableJob = {
       version: 1,
       attemptId,

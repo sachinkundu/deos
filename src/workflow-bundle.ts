@@ -7,7 +7,6 @@ import dddReviewPrompt from "../config/prompts/ddd-review.md";
 import implementationPrompt from "../config/prompts/implementation.md";
 import codeReviewPrompt from "../config/prompts/code-review.md";
 import evidenceVerificationPrompt from "../config/prompts/evidence-verification.md";
-import releaseFinalizationPrompt from "../config/prompts/release-finalization.md";
 import openSpecPrompt from "../config/prompts/openspec.md";
 import agentResultSchema from "../config/schemas/agent-result-v1.json";
 import reviewResultSchema from "../config/schemas/review-result-v1.json";
@@ -22,7 +21,6 @@ const prompts: Readonly<Record<string, string>> = Object.freeze({
   "prompts/implementation.md": implementationPrompt,
   "prompts/code-review.md": codeReviewPrompt,
   "prompts/evidence-verification.md": evidenceVerificationPrompt,
-  "prompts/release-finalization.md": releaseFinalizationPrompt,
   "prompts/openspec.md": openSpecPrompt,
 });
 

@@ -18,7 +18,6 @@ const promptPaths = [
   "implementation.md",
   "code-review.md",
   "evidence-verification.md",
-  "release-finalization.md",
   "openspec.md",
 ];
 const schemaPaths = ["agent-result-v1.json", "review-result-v1.json"];
@@ -42,7 +41,7 @@ test("loads the reviewed workflow bundle and resolves prompts and schemas", asyn
   const definition = await loadWorkflowDefinition(source, bundle());
 
   assert.equal(definition.name, "openspec-delivery");
-  assert.equal(definition.version, 9);
+  assert.equal(definition.version, 10);
   assert.equal(definition.start, "requirements");
   assert.equal(definition.execution.codexSandboxMode, "danger-full-access");
   assert.equal(definition.nodes.requirements.type, "agent");
@@ -55,7 +54,16 @@ test("loads the reviewed workflow bundle and resolves prompts and schemas", asyn
   assert.match(definition.jobs.evidence_verification.prompt, /pre-release evidence verification agent/);
   assert.match(definition.jobs.evidence_verification.prompt, /Never require a downstream node's output/);
   assert.equal(definition.nodes.openspec_proposal.type, "agent");
-  assert.equal(definition.nodes.deploy.type, "system_action");
+  assert.equal(definition.nodes.openspec_verify.edges.completed, "final_approval");
+  assert.equal(definition.nodes.final_approval.type, "human_gate");
+  assert.equal(definition.nodes.final_approval.edges.approved, "sync_and_archive");
+  assert.equal(definition.nodes.final_approval.edges.rejected, "blocked");
+  assert.equal(definition.nodes.sync_and_archive.type, "agent");
+  assert.equal(definition.jobs.openspec_archive.operation?.instruction, "/opsx:archive");
+  assert.equal(definition.nodes.sync_and_archive.edges.completed, "done");
+  assert.equal(definition.nodes.deploy, undefined);
+  assert.equal(definition.nodes.release_finalization, undefined);
+  assert.equal(definition.jobs.release_finalization, undefined);
   assert.equal(definition.digest.length, 64);
 });
 
@@ -70,6 +78,28 @@ test("restores an immutable stored definition for an older active run", async ()
   const restored = await restoreWorkflowDefinition(JSON.stringify(original), original.digest);
 
   assert.deepEqual(restored, original);
+});
+
+test("restores a frozen legacy definition containing the retired release action", async () => {
+  const legacy = await loadWorkflowDefinition(
+    `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: openspec-delivery, version: 9 }
+spec:
+  start: deploy
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs: {}
+  nodes:
+    deploy: { type: system_action, action: release.deploy, edges: { completed: done, failed: blocked } }
+    done: { type: terminal, outcome: succeeded }
+    blocked: { type: terminal, outcome: blocked }
+`,
+    { prompts: {}, schemas: {} },
+  );
+  const restored = await restoreWorkflowDefinition(JSON.stringify(legacy), legacy.digest);
+
+  assert.deepEqual(restored, legacy);
+  assert.equal(restored.nodes.deploy.type, "system_action");
 });
 
 test("rejects a tampered stored definition", async () => {
