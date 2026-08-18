@@ -28,4 +28,3 @@ None.
 
 - Adds one dependency-free Python utility under the importable `deos` package and focused pytest coverage.
 - Has no network, provider, persistence, deployment, or production-data effects.
-
