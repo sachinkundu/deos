@@ -244,6 +244,7 @@ class Sandbox implements SandboxView {
   readonly supervisor = new Process("process-supervisor", 44);
   keepAlive = false;
   destroyed = false;
+  repositoryExists = false;
 
   mkdir() { return Promise.resolve({}); }
 
@@ -268,6 +269,13 @@ class Sandbox implements SandboxView {
     if (command[0] === "node") return Promise.resolve(this.supervisor);
     const process = new Process(`process-${this.commands.length}`, 40 + this.commands.length);
     process.state = "exited";
+    if (command[0] === "rm" && command.at(-1) === "/deos/workspace/repository") {
+      this.repositoryExists = false;
+    }
+    if (command[0] === "git" && command[1] === "clone") {
+      if (this.repositoryExists) process.exitCode = 128;
+      else this.repositoryExists = true;
+    }
     return Promise.resolve(process);
   }
 
@@ -419,6 +427,23 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.match(prompt, /Review jobs must publish their review outcome and actionable feedback/);
   assert.match(prompt, /\^\[a-z0-9\]\[a-z0-9\._-\]\{0,79\}\$/);
   assert.match(prompt, /requirements-publish-v1/);
+});
+
+test("pending-attempt startup clears a stale repository checkout before cloning", async () => {
+  const { controller, factory, attempts } = setup();
+  factory.sandbox.repositoryExists = true;
+
+  const observation = await controller.execute(run, "work", "work", definition);
+
+  assert.equal(observation.state, "running");
+  assert.equal(attempts.latest?.state, "running");
+  assert.deepEqual(
+    factory.sandbox.commands.slice(0, 2).map(({ command }) => command),
+    [
+      ["rm", "-rf", "--", "/deos/workspace/repository"],
+      ["git", "clone", "--depth", "1", "https://github.com/sachinkundu/deos.git", "/deos/workspace/repository"],
+    ],
+  );
 });
 
 test("OpenSpec attempt records and prompts the frozen instruction and trusted change identity", async () => {

@@ -413,6 +413,12 @@ export class SandboxAgentController {
         capabilityToken: grant.token,
       };
       await sandbox.writeFile("/deos/run/job.json", JSON.stringify(stagedJob), { encoding: "utf8" });
+      const resetCheckout = await sandbox.exec([
+        "rm", "-rf", "--", "/deos/workspace/repository",
+      ], { cwd: "/deos/workspace", timeout: 60_000 });
+      if ((await resetCheckout.waitForExit({ timeout: 60_000 })).code !== 0) {
+        throw new Error("repository workspace reset failed");
+      }
       const clone = await sandbox.exec([
         "git", "clone", "--depth", "1",
         `https://github.com/${this.config.repository}.git`,

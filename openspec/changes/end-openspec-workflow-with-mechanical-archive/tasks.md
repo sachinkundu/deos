@@ -9,6 +9,7 @@
 - [x] 2.1 Fail archive attempt allocation closed when no completed cumulative patch reference is available.
 - [x] 2.2 Add deterministic controller coverage for the archive-specific patch prerequisite and retain exact instruction, trusted change identity, digest verification, artifact, and cleanup coverage.
 - [x] 2.3 Reconcile later GitHub publications on one forced attempt branch into its existing pull request with the new operation's exact marker.
+- [x] 2.4 Make pending-attempt startup idempotent after a transient Sandbox-destruction failure by clearing the exact stale repository checkout before cloning.
 
 ## 3. Operator Documentation
 
