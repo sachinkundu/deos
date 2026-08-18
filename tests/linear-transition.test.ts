@@ -14,6 +14,7 @@ const NOW = "2026-08-16T07:00:00.000Z";
 const run = {
   run_id: "workflow:project-1:issue-1:run:1",
   issue_id: "issue-1",
+  current_visit_sequence: 1,
 } as OrchestrationRunRecord;
 const node: HumanGateWorkflowNode = {
   id: "approval",
@@ -217,4 +218,23 @@ test("repair uses unauthorized delivery pre-state and a stable per-delivery iden
   assert.equal(first.providerOperationId, retry.providerOperationId);
   assert.deepEqual(calls, ["mutate"]);
   assert.equal(store.operations.get(first.providerOperationId)?.observed_pre_state, "in-progress-state");
+});
+
+test("a later visit to the same gate gets a new provider operation", async () => {
+  const store = new OperationStore();
+  const calls: string[] = [];
+  const controller = new LinearTransitionController(store, config, {
+    fetch: successfulFetch(calls), now: () => new Date(NOW),
+  });
+
+  const first = await controller.ensureHumanGate(run, node);
+  const firstRetry = await controller.ensureHumanGate(run, node);
+  const laterRun = { ...run, current_visit_sequence: 4 };
+  const later = await controller.ensureHumanGate(laterRun, node);
+  const laterRetry = await controller.ensureHumanGate(laterRun, node);
+
+  assert.equal(first.providerOperationId, firstRetry.providerOperationId);
+  assert.equal(later.providerOperationId, laterRetry.providerOperationId);
+  assert.notEqual(first.providerOperationId, later.providerOperationId);
+  assert.deepEqual(calls, ["read", "mutate", "read", "mutate"]);
 });

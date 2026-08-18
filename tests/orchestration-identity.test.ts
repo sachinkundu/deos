@@ -6,7 +6,9 @@ import {
   operationIdentity,
   runIdentity,
   sandboxIdentity,
+  transitionIdentity,
   uuidV7,
+  visitIdentity,
   workflowInstanceIdentity,
 } from "../src/orchestration-identity.ts";
 
@@ -34,4 +36,11 @@ test("operation identities include logical intent and ordinal", () => {
     operationIdentity("run-1", "implementation", "github-pr", 1),
     "run-1:implementation:github-pr:1",
   );
+});
+
+test("visit and transition identities are stable per source visit", () => {
+  assert.equal(visitIdentity("run-1", 3), "run-1:visit:3");
+  assert.equal(transitionIdentity("run-1", 3), "run-1:visit:3:transition");
+  assert.notEqual(transitionIdentity("run-1", 3), transitionIdentity("run-1", 4));
+  assert.throws(() => visitIdentity("run-1", 0), /positive sequence/);
 });

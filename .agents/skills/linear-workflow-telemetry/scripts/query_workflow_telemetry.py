@@ -46,6 +46,8 @@ OBSERVATION_KEYS = (
     "deos.workflow.previous_state",
     "deos.workflow.next_state",
     "deos.workflow.cause",
+    "deos.workflow.visit_id",
+    "deos.workflow.traversal_id",
 )
 
 

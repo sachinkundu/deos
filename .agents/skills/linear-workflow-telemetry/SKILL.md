@@ -64,6 +64,8 @@ Present the correlation ID followed by the time-ordered event table. Summarize:
 - duplicate delivery outcomes;
 - Queue message IDs and attempt numbers when retries exist;
 - workflow transitions as `previous_state -> next_state`.
+- durable node visits and traversals from `deos.workflow.visit_id` and
+  `deos.workflow.traversal_id` when present.
 
 Keep these boundaries explicit:
 
