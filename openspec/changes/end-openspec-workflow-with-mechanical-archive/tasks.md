@@ -29,8 +29,8 @@
 
 ## 6. Provider-Originated Archive Canary
 
-- [ ] 6.1 Create a deliberately small Linear/OpenSpec canary in the configured test project and trigger admission through a real provider-originated event.
-- [ ] 6.2 Verify the same run selects version 10, proceeds through the native OpenSpec nodes, and waits at each configured human gate without an automated approval.
-- [ ] 6.3 After a real authorized final approval, verify the same run executes exact `/opsx:archive`, restores the integrity-checked cumulative patch, archives and syncs the canary change, and reaches `done` / `succeeded`.
-- [ ] 6.4 Capture D1, R2, Workflow, manifest, cleanup, transition-ledger, release-node-absence, and sanitized visual provider evidence in a repository evidence record.
-- [ ] 6.5 Disable trial dispatch, read back disabled configuration, confirm no live canary Sandbox remains, and report the completed E2E proof.
+- [x] 6.1 Create a deliberately small Linear/OpenSpec canary in the configured test project and trigger admission through a real provider-originated event.
+- [x] 6.2 Verify the same run selects version 10, proceeds through the native OpenSpec nodes, and waits at each configured human gate without an automated approval.
+- [x] 6.3 After a real authorized final approval, verify the same run executes exact `/opsx:archive`, restores the integrity-checked cumulative patch, archives and syncs the canary change, and reaches `done` / `succeeded`.
+- [x] 6.4 Capture D1, R2, Workflow, manifest, cleanup, transition-ledger, release-node-absence, and sanitized visual provider evidence in a repository evidence record.
+- [x] 6.5 Disable trial dispatch, read back disabled configuration, confirm no live canary Sandbox remains, and report the completed E2E proof.
