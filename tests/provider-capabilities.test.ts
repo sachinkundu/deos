@@ -14,7 +14,7 @@ const encode = (value: string): string => {
 test("GitHub adapter reconciles branch, file, and PR partial success by stable marker", async () => {
   let branchExists = false;
   let content: string | null = null;
-  let pull: { id: number; html_url: string; body: string } | null = null;
+  let pull: { id: number; number: number; html_url: string; body: string } | null = null;
   let ambiguousFile = true;
   let ambiguousPull = true;
   const calls: string[] = [];
@@ -46,11 +46,22 @@ test("GitHub adapter reconciles branch, file, and PR partial success by stable m
     if (path.includes("/pulls?state=open")) return Response.json(pull === null ? [] : [pull]);
     if (path.endsWith("/pulls") && init?.method === "POST") {
       const body = JSON.parse(String(init.body)) as { body: string };
-      pull = { id: 21, html_url: "https://github.com/sachinkundu/deos/pull/21", body: body.body };
+      pull = { id: 21, number: 21, html_url: "https://github.com/sachinkundu/deos/pull/21", body: body.body };
       if (ambiguousPull) {
         ambiguousPull = false;
         throw new Error("pull response lost");
       }
+      return Response.json(pull);
+    }
+    if (path.endsWith("/pulls/21") && init?.method === "PATCH") {
+      if (pull === null) throw new Error("pull is missing");
+      const body = JSON.parse(String(init.body)) as { body: string };
+      pull = {
+        id: pull.id,
+        number: pull.number,
+        html_url: pull.html_url,
+        body: body.body,
+      };
       return Response.json(pull);
     }
     return new Response("unexpected", { status: 500 });
@@ -70,12 +81,19 @@ test("GitHub adapter reconciles branch, file, and PR partial success by stable m
   };
   const first = await adapter.publish(input, "operation-1");
   const second = await adapter.publish(input, "operation-1");
+  const later = await adapter.publish(input, "operation-2");
   assert.equal(first.reconciled, true);
   assert.equal(second.reconciled, true);
+  assert.equal(later.reconciled, true);
   assert.equal(first.pullRequestId, "21");
+  assert.equal(later.pullRequestId, "21");
   assert.equal(content, "export const value = 1;\n");
   assert.equal(calls.filter((call) => call.startsWith("PUT ")).length, 1);
   assert.equal(calls.filter((call) => call.startsWith("POST ") && call.endsWith("/pulls")).length, 1);
+  assert.equal(calls.filter((call) => call.startsWith("PATCH ") && call.endsWith("/pulls/21")).length, 1);
+  const finalPull = pull as { body: string } | null;
+  assert.match(finalPull?.body ?? "", /deos-operation:operation-1/);
+  assert.match(finalPull?.body ?? "", /deos-operation:operation-2/);
 });
 
 test("Linear note adapter reconciles an ambiguous create without any state mutation", async () => {

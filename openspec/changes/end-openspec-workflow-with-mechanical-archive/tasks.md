@@ -8,6 +8,7 @@
 
 - [x] 2.1 Fail archive attempt allocation closed when no completed cumulative patch reference is available.
 - [x] 2.2 Add deterministic controller coverage for the archive-specific patch prerequisite and retain exact instruction, trusted change identity, digest verification, artifact, and cleanup coverage.
+- [x] 2.3 Reconcile later GitHub publications on one forced attempt branch into its existing pull request with the new operation's exact marker.
 
 ## 3. Operator Documentation
 
@@ -22,8 +23,8 @@
 
 ## 5. Direct Delivery and Disabled Rollout
 
-- [ ] 5.1 Commit and push the user-authorized no-PR implementation directly to `main`.
-- [ ] 5.2 With trial dispatch disabled, deploy orchestration and verify the deployed Worker/container plus immutable version-10 definition registration in D1.
+- [x] 5.1 Commit and push the user-authorized no-PR implementation directly to `main`.
+- [x] 5.2 With trial dispatch disabled, deploy orchestration and verify the deployed Worker/container plus immutable version-10 definition registration in D1.
 
 ## 6. Provider-Originated Archive Canary
 

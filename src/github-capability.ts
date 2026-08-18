@@ -221,11 +221,30 @@ export class GitHubCapabilityAdapter {
     const pullsPath = `/repos/${input.repository}/pulls?state=open&head=${encodeURIComponent(`${owner}:${input.branch}`)}`;
     const pulls = await this.json(token, pullsPath) as Array<{
       id?: number;
+      number?: number;
       html_url?: string;
       body?: string;
     }>;
     let pull = pulls.find((candidate) => candidate.body?.includes(marker));
-    if (pull === undefined) {
+    if (pull === undefined && pulls.length > 0) {
+      const existing = pulls[0];
+      if (typeof existing.number !== "number") {
+        throw new Error("GitHub pull request response is invalid");
+      }
+      const updatedBody = `${existing.body ?? input.body}\n\n${marker}`;
+      try {
+        pull = await this.json(
+          token,
+          `/repos/${input.repository}/pulls/${existing.number}`,
+          { method: "PATCH", body: { body: updatedBody } },
+        ) as typeof pull;
+      } catch {
+        const after = await this.json(token, pullsPath) as typeof pulls;
+        pull = after.find((candidate) => candidate.body?.includes(marker));
+        if (pull === undefined) throw new Error("GitHub pull request update is ambiguous");
+      }
+      reconciled = true;
+    } else if (pull === undefined) {
       try {
         pull = await this.json(token, `/repos/${input.repository}/pulls`, {
           method: "POST",
@@ -260,7 +279,7 @@ export class GitHubCapabilityAdapter {
   private async json(
     token: string,
     path: string,
-    options?: { method: "POST" | "PUT"; body: Record<string, unknown> },
+    options?: { method: "PATCH" | "POST" | "PUT"; body: Record<string, unknown> },
     allowNotFound = false,
   ): Promise<unknown> {
     const response = await this.request(`${this.apiUrl}${path}`, {
