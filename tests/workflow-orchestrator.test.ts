@@ -72,6 +72,7 @@ class RuntimeStore implements WorkflowRuntimeStore {
   readonly inbox = new Map<string, WorkflowInboxRecord>();
   readonly transitions: Array<WorkflowTransitionRecord> = [];
   reads = 0;
+  staleTransitionAtNode: string | null = null;
 
   findRun(runId: string): Promise<OrchestrationRunRecord | null> {
     this.reads += 1;
@@ -147,6 +148,15 @@ class RuntimeStore implements WorkflowRuntimeStore {
         existing.provider_operation_id === input.providerOperationId;
       if (!exact) throw new Error("workflow transition identity conflict");
       return Promise.resolve({ outcome: "replayed" as const, transition: existing });
+    }
+    if (this.staleTransitionAtNode === input.expectedNode) {
+      this.staleTransitionAtNode = null;
+      this.run.previous_node = input.expectedNode;
+      this.run.current_node = input.nextNode;
+      this.run.current_visit_sequence += 1;
+      this.run.status = input.nextStatus;
+      this.run.gate_origin_node = input.gateOriginNode;
+      return Promise.resolve({ outcome: "stale" as const });
     }
     if (
       this.run.run_id !== input.runId ||
@@ -368,6 +378,42 @@ test("a loop records a distinct traversal for the same successful edge", async (
   assert.deepEqual(repeated.map(({ from_visit_sequence }) => from_visit_sequence), [1, 3]);
   assert.notEqual(repeated[0].transition_id, repeated[1].transition_id);
   assert.equal(store.run.current_visit_sequence, 7);
+});
+
+test("a stale transition reloads current authority and resumes the outer loop", async () => {
+  const store = new RuntimeStore();
+  const services = new NodeServices();
+  store.staleTransitionAtNode = "implement";
+  store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+
+  const result = await orchestrator(store, services).run(
+    store.run.run_id,
+    new FakeStep(["delivery-human"]),
+  );
+
+  assert.deepEqual(result, { outcome: "succeeded", runId: store.run.run_id });
+  assert.equal(store.reads >= 6, true);
+  assert.deepEqual(store.transitions.map(({ from_node, to_node }) => [from_node, to_node]), [
+    ["review", "approval"],
+    ["approval", "verify"],
+    ["verify", "done"],
+  ]);
+});
+
+test("a human event that loses transition authority is classified as duplicate", async () => {
+  const store = new RuntimeStore();
+  const services = new NodeServices();
+  store.staleTransitionAtNode = "approval";
+  store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+
+  const result = await orchestrator(store, services).run(
+    store.run.run_id,
+    new FakeStep(["delivery-human"]),
+  );
+
+  assert.equal(result.outcome, "succeeded");
+  assert.equal(store.inbox.get("delivery-human")?.state, "duplicate");
+  assert.equal(store.run.current_node, "done");
 });
 
 test("one source visit commits once, replays exactly, and rejects stale or conflicting facts", async () => {

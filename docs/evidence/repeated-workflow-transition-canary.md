@@ -704,3 +704,63 @@ OK
 All checks passed!
 Change 'record-repeated-workflow-transitions' is valid
 ```
+
+Post-review legacy-instance audit: all four pre-migration D1 rows stopped changing before migration 0007 was applied. Three corresponding version-pinned Cloudflare Workflow instances were already terminal with Errored status; the remaining SAC-110 instance was still Waiting and therefore resumable. The exact executor statuses and absence of post-migration transitions are recorded before drain/reconciliation.
+
+```bash
+set -euo pipefail
+set -a
+source /Users/sachin/code/deos/.env
+set +a
+export CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN:-$CLOUDFLARE_TOKEN}"
+for instance_id in wf-v1-onhwchev2csei4y2rwvb4v627rh5wmnp62lwbx5wumxviyha3o2a wf-v1-etioylc7cebreazgq5tshzkj2reiivcvmrbn6tod5x3cr4t4g7pa wf-v1-m5rhgdgv7tpvbh3sjzpvhwdqu5zs5g5viojy74n2dt3jeujxhkca wf-v1-rgdwok77ut4dud3263qqdylvyab3k232d4j3sbtiofgccfoydwpa; do
+  npx wrangler workflows instances describe deos-sandbox-codex-workflow "$instance_id" --config wrangler.queue-consumer-ts.jsonc | rg "Workflow Name|Instance Id|Version Id|Status|Last Successful Step"
+done
+npx wrangler d1 execute DB --remote --config wrangler.queue-consumer-ts.jsonc --command "SELECT r.run_id, r.workflow_instance_id, r.current_node, r.current_visit_sequence, r.status, r.updated_at, MAX(t.occurred_at) AS last_transition_at, SUM(CASE WHEN a.state IN ('pending', 'starting', 'running', 'collecting') THEN 1 ELSE 0 END) AS live_attempts FROM orchestration_runs AS r LEFT JOIN workflow_transitions_v2 AS t ON t.run_id = r.run_id LEFT JOIN agent_attempts AS a ON a.run_id = r.run_id WHERE r.run_id IN ('workflow:99426d9b-cda7-4db4-9136-692a95a0b090:fbb2c3e5-e993-4a29-8fbe-0998b27305f5:run:8', 'workflow:99426d9b-cda7-4db4-9136-692a95a0b090:6839b197-f5b4-4ea5-be4d-78ee0ecf713c:run:1', 'workflow:99426d9b-cda7-4db4-9136-692a95a0b090:8e9ae257-8cc6-445c-81b4-d50f9bfea92b:run:1', 'workflow:99426d9b-cda7-4db4-9136-692a95a0b090:2fd18891-2272-453e-a3cc-174a236e28f9:run:1') GROUP BY r.run_id ORDER BY r.updated_at;" --json | jq -c 'map(.results)'
+```
+
+```output
+Workflow Name:         deos-sandbox-codex-workflow
+Instance Id:           wf-v1-onhwchev2csei4y2rwvb4v627rh5wmnp62lwbx5wumxviyha3o2a
+Version Id:            9932fe56-2b0c-40c9-9613-ab01ff1b594c
+Status:                ❌ Errored
+Last Successful Step:  enter-gate:requirements_approval-1
+Workflow Name:         deos-sandbox-codex-workflow
+Instance Id:           wf-v1-etioylc7cebreazgq5tshzkj2reiivcvmrbn6tod5x3cr4t4g7pa
+Version Id:            df549253-22a3-4d60-a5cd-4a5a6bc6bcd5
+Status:                ❌ Errored
+Last Successful Step:  agent:requirements-2
+Workflow Name:         deos-sandbox-codex-workflow
+Instance Id:           wf-v1-m5rhgdgv7tpvbh3sjzpvhwdqu5zs5g5viojy74n2dt3jeujxhkca
+Version Id:            368518a3-91cc-43a0-9eca-9605db047d65
+Status:                ❌ Errored
+Last Successful Step:  agent:requirements_review-2
+Workflow Name:         deos-sandbox-codex-workflow
+Instance Id:           wf-v1-rgdwok77ut4dud3263qqdylvyab3k232d4j3sbtiofgccfoydwpa
+Version Id:            eed06c9e-4dab-433c-9fee-66215f5775c2
+Status:                ⏰ Waiting
+Last Successful Step:  confirm-gate:release_approval-1
+[[{"run_id":"workflow:99426d9b-cda7-4db4-9136-692a95a0b090:fbb2c3e5-e993-4a29-8fbe-0998b27305f5:run:8","workflow_instance_id":"wf-v1-onhwchev2csei4y2rwvb4v627rh5wmnp62lwbx5wumxviyha3o2a","current_node":"requirements_approval","current_visit_sequence":3,"status":"active","updated_at":"2026-08-16T08:34:54.560Z","last_transition_at":"2026-08-16T08:34:54.560Z","live_attempts":0},{"run_id":"workflow:99426d9b-cda7-4db4-9136-692a95a0b090:6839b197-f5b4-4ea5-be4d-78ee0ecf713c:run:1","workflow_instance_id":"wf-v1-etioylc7cebreazgq5tshzkj2reiivcvmrbn6tod5x3cr4t4g7pa","current_node":"requirements","current_visit_sequence":1,"status":"active","updated_at":"2026-08-17T11:09:35.029Z","last_transition_at":null,"live_attempts":0},{"run_id":"workflow:99426d9b-cda7-4db4-9136-692a95a0b090:8e9ae257-8cc6-445c-81b4-d50f9bfea92b:run:1","workflow_instance_id":"wf-v1-m5rhgdgv7tpvbh3sjzpvhwdqu5zs5g5viojy74n2dt3jeujxhkca","current_node":"requirements_review","current_visit_sequence":2,"status":"active","updated_at":"2026-08-17T11:29:53.591Z","last_transition_at":"2026-08-17T11:29:53.591Z","live_attempts":0},{"run_id":"workflow:99426d9b-cda7-4db4-9136-692a95a0b090:2fd18891-2272-453e-a3cc-174a236e28f9:run:1","workflow_instance_id":"wf-v1-rgdwok77ut4dud3263qqdylvyab3k232d4j3sbtiofgccfoydwpa","current_node":"release_approval","current_visit_sequence":16,"status":"awaiting_human","updated_at":"2026-08-17T13:43:02.380Z","last_transition_at":"2026-08-17T13:42:50.168Z","live_attempts":0}]]
+```
+
+The only resumable legacy Workflow is terminated by exact instance ID. The three executor-errored rows are marked failed, the terminated waiting row is marked canceled, and guarded predicates ensure only the audited pre-migration records are changed. Dispatch remains disabled and there are no live attempts.
+
+```bash
+set -euo pipefail
+set -a
+source /Users/sachin/code/deos/.env
+set +a
+export CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN:-$CLOUDFLARE_TOKEN}"
+npx wrangler workflows instances terminate deos-sandbox-codex-workflow wf-v1-rgdwok77ut4dud3263qqdylvyab3k232d4j3sbtiofgccfoydwpa --config wrangler.queue-consumer-ts.jsonc
+npx wrangler d1 execute DB --remote --config wrangler.queue-consumer-ts.jsonc --command "UPDATE orchestration_runs SET status = 'failed', terminal_cause = 'legacy_executor_errored_before_visit_identity_migration', terminal_at = datetime('now'), updated_at = datetime('now') WHERE workflow_instance_id IN ('wf-v1-onhwchev2csei4y2rwvb4v627rh5wmnp62lwbx5wumxviyha3o2a', 'wf-v1-etioylc7cebreazgq5tshzkj2reiivcvmrbn6tod5x3cr4t4g7pa', 'wf-v1-m5rhgdgv7tpvbh3sjzpvhwdqu5zs5g5viojy74n2dt3jeujxhkca') AND status = 'active' AND updated_at < '2026-08-18T05:57:25Z'; UPDATE orchestration_runs SET status = 'canceled', terminal_cause = 'legacy_version_pinned_instance_drained', terminal_at = datetime('now'), updated_at = datetime('now') WHERE workflow_instance_id = 'wf-v1-rgdwok77ut4dud3263qqdylvyab3k232d4j3sbtiofgccfoydwpa' AND status = 'awaiting_human' AND updated_at < '2026-08-18T05:57:25Z'; SELECT workflow_instance_id, current_node, current_visit_sequence, status, terminal_cause FROM orchestration_runs WHERE workflow_instance_id IN ('wf-v1-onhwchev2csei4y2rwvb4v627rh5wmnp62lwbx5wumxviyha3o2a', 'wf-v1-etioylc7cebreazgq5tshzkj2reiivcvmrbn6tod5x3cr4t4g7pa', 'wf-v1-m5rhgdgv7tpvbh3sjzpvhwdqu5zs5g5viojy74n2dt3jeujxhkca', 'wf-v1-rgdwok77ut4dud3263qqdylvyab3k232d4j3sbtiofgccfoydwpa') ORDER BY workflow_instance_id; SELECT project_id, dispatch_enabled FROM project_workflow_policies WHERE project_id = '99426d9b-cda7-4db4-9136-692a95a0b090'; SELECT COUNT(*) AS live_attempts FROM agent_attempts WHERE state IN ('pending', 'starting', 'running', 'collecting');" --json | jq -c 'map(.results)'
+```
+
+```output
+
+ ⛅️ wrangler 4.123.0
+────────────────────
+🥷 The instance "wf-v1-rgdwok77ut4dud3263qqdylvyab3k232d4j3sbtiofgccfoydwpa" from deos-sandbox-codex-workflow was terminated successfully
+[[],[],[{"workflow_instance_id":"wf-v1-etioylc7cebreazgq5tshzkj2reiivcvmrbn6tod5x3cr4t4g7pa","current_node":"requirements","current_visit_sequence":1,"status":"failed","terminal_cause":"legacy_executor_errored_before_visit_identity_migration"},{"workflow_instance_id":"wf-v1-m5rhgdgv7tpvbh3sjzpvhwdqu5zs5g5viojy74n2dt3jeujxhkca","current_node":"requirements_review","current_visit_sequence":2,"status":"failed","terminal_cause":"legacy_executor_errored_before_visit_identity_migration"},{"workflow_instance_id":"wf-v1-onhwchev2csei4y2rwvb4v627rh5wmnp62lwbx5wumxviyha3o2a","current_node":"requirements_approval","current_visit_sequence":3,"status":"failed","terminal_cause":"legacy_executor_errored_before_visit_identity_migration"},{"workflow_instance_id":"wf-v1-rgdwok77ut4dud3263qqdylvyab3k232d4j3sbtiofgccfoydwpa","current_node":"release_approval","current_visit_sequence":16,"status":"canceled","terminal_cause":"legacy_version_pinned_instance_drained"}],[{"project_id":"99426d9b-cda7-4db4-9136-692a95a0b090","dispatch_enabled":0}],[{"live_attempts":0}]]
+```
+
+The orchestration deploy script now detects whether migration 0007 is pending and refuses to apply it unless every project policy has dispatch disabled and D1 contains zero pending_dispatch, active, or awaiting_human runs. This converts the corrected drain order into a deployment precondition for future environments.

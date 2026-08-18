@@ -256,10 +256,19 @@ export class WorkflowOrchestrator {
         );
         continue;
       }
-      await step.do(
+      const transition = await step.do(
         `transition:${instruction.nodeId}:${claimed.delivery_id}:visit:${run.current_visit_sequence}`,
         async () => this.commitOutcome(run, decision),
       );
+      if (!transition.transitioned) {
+        await this.store.markInboxState(
+          claimed.delivery_id,
+          "claimed",
+          "duplicate",
+          this.now().toISOString(),
+        );
+        continue;
+      }
       await this.store.markInboxState(
         claimed.delivery_id,
         "claimed",
@@ -311,7 +320,7 @@ export class WorkflowOrchestrator {
   private async commitOutcome(
     run: OrchestrationRunRecord,
     decision: ReturnType<typeof evaluateNodeOutcome>,
-  ): Promise<{ transitioned: true }> {
+  ): Promise<{ transitioned: boolean }> {
     if (decision.kind !== "transition") throw new Error("only a graph transition can be committed");
     const target = this.definition.nodes[decision.toNode];
     if (target === undefined) throw new Error(`target node ${decision.toNode} is missing`);
@@ -334,7 +343,7 @@ export class WorkflowOrchestrator {
     });
     if (result.outcome === "stale") {
       await this.requireRun(run.run_id);
-      throw new Error("workflow node visit compare-and-set conflict");
+      return { transitioned: false };
     }
     this.options.lifecycle?.({
       stage: "workflow.step",
