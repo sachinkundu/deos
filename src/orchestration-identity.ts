@@ -39,6 +39,16 @@ export const workflowInstanceIdentity = async (runId: string): Promise<string> =
 export const sandboxIdentity = async (attemptId: string): Promise<string> =>
   `sbx-v1-${base32(await sha256(attemptId))}`;
 
+export const visitIdentity = (runId: string, sequence: number): string => {
+  if (runId.length === 0 || !Number.isInteger(sequence) || sequence < 1) {
+    throw new Error("visit identity requires a run id and positive sequence");
+  }
+  return `${runId}:visit:${sequence}`;
+};
+
+export const transitionIdentity = (runId: string, fromVisitSequence: number): string =>
+  `${visitIdentity(runId, fromVisitSequence)}:transition`;
+
 export const operationIdentity = (
   runId: string,
   nodeId: string,

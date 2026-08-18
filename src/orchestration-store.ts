@@ -26,6 +26,8 @@ export interface OrchestrationRunRecord {
   workflow_instance_id: string;
   previous_node: string | null;
   current_node: string;
+  current_visit_sequence: number;
+  last_transition_id: string | null;
   gate_origin_node: string | null;
   status: RunStatus;
   accumulated_data_json: string;
@@ -96,6 +98,26 @@ export interface WorkflowDefinitionSnapshot {
   digest: string;
 }
 
+export interface WorkflowTransitionRecord {
+  transition_id: string;
+  run_id: string;
+  from_node: string;
+  to_node: string;
+  from_visit_sequence: number;
+  to_visit_sequence: number;
+  cause_type: string;
+  cause_reference: string;
+  actor_id: string | null;
+  actor_type: string | null;
+  provider_operation_id: string | null;
+  occurred_at: string;
+}
+
+export type TransitionCommitResult =
+  | { outcome: "committed"; transition: WorkflowTransitionRecord }
+  | { outcome: "replayed"; transition: WorkflowTransitionRecord }
+  | { outcome: "stale" };
+
 export interface OrchestrationDispatchStore {
   registerDefinitionAndPolicy(input: {
     definition: LoadedWorkflowDefinition;
@@ -156,6 +178,7 @@ export interface WorkflowRuntimeStore {
   compareAndSetNode(input: {
     runId: string;
     expectedNode: string;
+    expectedVisitSequence: number;
     nextNode: string;
     nextStatus: RunStatus;
     gateOriginNode: string | null;
@@ -166,7 +189,7 @@ export interface WorkflowRuntimeStore {
     actorType: string | null;
     providerOperationId: string | null;
     now: string;
-  }): Promise<boolean>;
+  }): Promise<TransitionCommitResult>;
 }
 
 const activeStatuses = "('pending_dispatch', 'active', 'awaiting_human')";
@@ -441,6 +464,7 @@ export class D1OrchestrationStore {
   async compareAndSetNode(input: {
     runId: string;
     expectedNode: string;
+    expectedVisitSequence: number;
     nextNode: string;
     nextStatus: RunStatus;
     gateOriginNode: string | null;
@@ -451,15 +475,22 @@ export class D1OrchestrationStore {
     actorType: string | null;
     providerOperationId: string | null;
     now: string;
-  }): Promise<boolean> {
+  }): Promise<TransitionCommitResult> {
+    const nextVisitSequence = input.expectedVisitSequence + 1;
     const results = await this.database.batch([
       this.database.prepare(
         `UPDATE orchestration_runs
-         SET previous_node = current_node, current_node = ?, status = ?, gate_origin_node = ?,
+         SET previous_node = current_node, current_node = ?, current_visit_sequence = ?,
+             last_transition_id = ?, status = ?, gate_origin_node = ?,
              updated_at = ?, terminal_at = CASE WHEN ? IN ('blocked','succeeded','failed','canceled') THEN ? ELSE NULL END
-         WHERE run_id = ? AND current_node = ?`,
+         WHERE run_id = ? AND current_node = ? AND current_visit_sequence = ?
+           AND NOT EXISTS (
+             SELECT 1 FROM workflow_transitions_v2 WHERE transition_id = ?
+           )`,
       ).bind(
         input.nextNode,
+        nextVisitSequence,
+        input.transitionId,
         input.nextStatus,
         input.gateOriginNode,
         input.now,
@@ -467,21 +498,27 @@ export class D1OrchestrationStore {
         input.now,
         input.runId,
         input.expectedNode,
+        input.expectedVisitSequence,
+        input.transitionId,
       ),
       this.database.prepare(
         `INSERT OR IGNORE INTO workflow_transitions_v2
-         (transition_id, run_id, from_node, to_node, cause_type, cause_reference,
+         (transition_id, run_id, from_node, to_node, from_visit_sequence,
+          to_visit_sequence, cause_type, cause_reference,
           actor_id, actor_type, provider_operation_id, occurred_at)
-         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
          WHERE EXISTS (
            SELECT 1 FROM orchestration_runs
-           WHERE run_id = ? AND previous_node = ? AND current_node = ? AND updated_at = ?
+           WHERE run_id = ? AND previous_node = ? AND current_node = ?
+             AND current_visit_sequence = ? AND last_transition_id = ?
          )`,
       ).bind(
         input.transitionId,
         input.runId,
         input.expectedNode,
         input.nextNode,
+        input.expectedVisitSequence,
+        nextVisitSequence,
         input.causeType,
         input.causeReference,
         input.actorId,
@@ -491,9 +528,35 @@ export class D1OrchestrationStore {
         input.runId,
         input.expectedNode,
         input.nextNode,
-        input.now,
+        nextVisitSequence,
+        input.transitionId,
       ),
     ]);
-    return changes(results[0]) === 1 && changes(results[1]) === 1;
+    const transition = await this.database.prepare(
+      "SELECT * FROM workflow_transitions_v2 WHERE transition_id = ?",
+    ).bind(input.transitionId).first<WorkflowTransitionRecord>();
+    if (changes(results[0]) === 1 && changes(results[1]) === 1) {
+      if (transition === null) throw new Error("committed workflow transition is not readable");
+      return { outcome: "committed", transition };
+    }
+    if (transition !== null) {
+      const exactReplay =
+        transition.run_id === input.runId &&
+        transition.from_node === input.expectedNode &&
+        transition.to_node === input.nextNode &&
+        transition.from_visit_sequence === input.expectedVisitSequence &&
+        transition.to_visit_sequence === nextVisitSequence &&
+        transition.cause_type === input.causeType &&
+        transition.cause_reference === input.causeReference &&
+        transition.actor_id === input.actorId &&
+        transition.actor_type === input.actorType &&
+        transition.provider_operation_id === input.providerOperationId;
+      if (!exactReplay) throw new Error("workflow transition identity conflict");
+      return { outcome: "replayed", transition };
+    }
+    if (changes(results[0]) !== 0 || changes(results[1]) !== 0) {
+      throw new Error("workflow transition atomicity invariant failed");
+    }
+    return { outcome: "stale" };
   }
 }

@@ -1,4 +1,4 @@
-import { operationIdentity } from "./orchestration-identity.ts";
+import { transitionIdentity, visitIdentity } from "./orchestration-identity.ts";
 import type {
   OrchestrationRunRecord,
   RunStatus,
@@ -109,8 +109,15 @@ export class WorkflowOrchestrator {
       }
 
       if (instruction.kind === "dispatch_agent") {
-        const execution = await step.do(`agent:${instruction.nodeId}`, async () =>
-          this.services.executeAgent(run, instruction.nodeId, instruction.jobId, this.definition));
+        const execution = await step.do(
+          `agent:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
+          async () => this.services.executeAgent(
+            run,
+            instruction.nodeId,
+            instruction.jobId,
+            this.definition,
+          ),
+        );
         if (execution.state === "running") {
           try {
             await step.waitForEvent<{ deliveryId: string }>(
@@ -124,32 +131,44 @@ export class WorkflowOrchestrator {
           continue;
         }
         const outcome = execution.outcome;
-        await step.do(`transition:${instruction.nodeId}:${outcome.outcome}`, async () =>
-          this.commitOutcome(run, evaluateNodeOutcome(
+        await step.do(
+          `transition:${instruction.nodeId}:${outcome.outcome}:visit:${run.current_visit_sequence}`,
+          async () => this.commitOutcome(run, evaluateNodeOutcome(
             this.definition,
             instruction.nodeId,
             outcome,
-          )));
+          )),
+        );
         continue;
       }
 
       if (instruction.kind === "run_system_action") {
-        const outcome = await step.do(`system:${instruction.nodeId}`, async () =>
-          this.services.executeSystemAction(run, instruction.nodeId, instruction.action));
-        await step.do(`transition:${instruction.nodeId}:${outcome.outcome}`, async () =>
-          this.commitOutcome(run, evaluateNodeOutcome(
+        const outcome = await step.do(
+          `system:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
+          async () => this.services.executeSystemAction(
+            run,
+            instruction.nodeId,
+            instruction.action,
+          ),
+        );
+        await step.do(
+          `transition:${instruction.nodeId}:${outcome.outcome}:visit:${run.current_visit_sequence}`,
+          async () => this.commitOutcome(run, evaluateNodeOutcome(
             this.definition,
             instruction.nodeId,
             outcome,
-          )));
+          )),
+        );
         continue;
       }
 
       const gateNode = this.definition.nodes[instruction.nodeId];
       if (gateNode?.type !== "human_gate") throw new Error("human-gate instruction mismatch");
       if (run.status !== "awaiting_human") {
-        const operation = await step.do(`enter-gate:${instruction.nodeId}`, async () =>
-          this.services.ensureHumanGate(run, gateNode));
+        const operation = await step.do(
+          `enter-gate:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
+          async () => this.services.ensureHumanGate(run, gateNode),
+        );
         if (operation.state === "manual_reconciliation_required") {
           throw new Error("human-gate transition requires manual reconciliation");
         }
@@ -157,7 +176,7 @@ export class WorkflowOrchestrator {
           await this.observeGateOperation(step, run, gateNode, operation);
           continue;
         }
-        await step.do(`confirm-gate:${instruction.nodeId}`, async () => {
+        await step.do(`confirm-gate:${instruction.nodeId}:visit:${run.current_visit_sequence}`, async () => {
           const changed = await this.store.setRunStatus(
             run.run_id,
             run.current_node,
@@ -171,7 +190,7 @@ export class WorkflowOrchestrator {
       }
 
       const event = await step.waitForEvent<{ deliveryId: string }>(
-        `linear-event:${instruction.nodeId}`,
+        `linear-event:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
         { type: "linear-event", timeout: "24h" },
       );
       const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
@@ -194,8 +213,10 @@ export class WorkflowOrchestrator {
         rejectionStateNames: this.options.rejectionStateNames,
       });
       if (decision.kind === "repair_gate") {
-        const operation = await step.do(`repair-gate:${claimed.delivery_id}`, async () =>
-          this.services.restoreHumanGate(run, gateNode, claimed.delivery_id));
+        const operation = await step.do(
+          `repair-gate:${claimed.delivery_id}:visit:${run.current_visit_sequence}`,
+          async () => this.services.restoreHumanGate(run, gateNode, claimed.delivery_id),
+        );
         this.options.lifecycle?.({
           stage: "linear.repair",
           outcome: operation.state === "confirmed" ? "reconciled" : "waiting",
@@ -205,6 +226,7 @@ export class WorkflowOrchestrator {
           deliveryId: claimed.delivery_id,
           operationId: operation.providerOperationId,
           nodeId: run.current_node,
+          visitId: visitIdentity(run.run_id, run.current_visit_sequence),
         });
         if (operation.state === "manual_reconciliation_required") {
           throw new Error("human-gate repair requires manual reconciliation");
@@ -234,8 +256,10 @@ export class WorkflowOrchestrator {
         );
         continue;
       }
-      await step.do(`transition:${instruction.nodeId}:${claimed.delivery_id}`, async () =>
-        this.commitOutcome(run, decision));
+      await step.do(
+        `transition:${instruction.nodeId}:${claimed.delivery_id}:visit:${run.current_visit_sequence}`,
+        async () => this.commitOutcome(run, decision),
+      );
       await this.store.markInboxState(
         claimed.delivery_id,
         "claimed",
@@ -292,15 +316,11 @@ export class WorkflowOrchestrator {
     const target = this.definition.nodes[decision.toNode];
     if (target === undefined) throw new Error(`target node ${decision.toNode} is missing`);
     const gateOriginNode = target.type === "human_gate" ? decision.fromNode : null;
-    const transitionId = operationIdentity(
-      run.run_id,
-      decision.fromNode,
-      `transition:${decision.outcome}:${decision.causeReference}`,
-      1,
-    );
-    const transitioned = await this.store.compareAndSetNode({
+    const transitionId = transitionIdentity(run.run_id, run.current_visit_sequence);
+    const result = await this.store.compareAndSetNode({
       runId: run.run_id,
       expectedNode: decision.fromNode,
+      expectedVisitSequence: run.current_visit_sequence,
       nextNode: decision.toNode,
       nextStatus: statusForNode(this.definition, decision.toNode),
       gateOriginNode,
@@ -312,19 +332,19 @@ export class WorkflowOrchestrator {
       providerOperationId: null,
       now: this.now().toISOString(),
     });
-    if (!transitioned) {
-      const current = await this.requireRun(run.run_id);
-      if (current.current_node !== decision.toNode) {
-        throw new Error("workflow node compare-and-set conflict");
-      }
+    if (result.outcome === "stale") {
+      await this.requireRun(run.run_id);
+      throw new Error("workflow node visit compare-and-set conflict");
     }
     this.options.lifecycle?.({
       stage: "workflow.step",
-      outcome: transitioned ? "succeeded" : "duplicate",
+      outcome: result.outcome === "committed" ? "succeeded" : "duplicate",
       correlationId: run.correlation_id,
       runId: run.run_id,
       workflowInstanceId: run.workflow_instance_id,
       nodeId: decision.toNode,
+      visitId: visitIdentity(run.run_id, run.current_visit_sequence),
+      traversalId: transitionId,
     });
     return { transitioned: true };
   }

@@ -150,6 +150,8 @@ class FakeStore implements OrchestrationDispatchStore {
       workflow_instance_id: `workflow-instance-${sequence}`,
       previous_node: null,
       current_node: input.definition.start,
+      current_visit_sequence: 1,
+      last_transition_id: null,
       gate_origin_node: null,
       status: "pending_dispatch",
       accumulated_data_json: "{}",

@@ -4,6 +4,7 @@ import test from "node:test";
 import type {
   OrchestrationRunRecord,
   RunStatus,
+  WorkflowTransitionRecord,
   WorkflowInboxRecord,
   WorkflowRuntimeStore,
 } from "../src/orchestration-store.ts";
@@ -56,6 +57,8 @@ const makeRun = (): OrchestrationRunRecord => ({
   workflow_instance_id: "wf-1",
   previous_node: null,
   current_node: definition.start,
+  current_visit_sequence: 1,
+  last_transition_id: null,
   gate_origin_node: null,
   status: "active",
   accumulated_data_json: "{}",
@@ -67,7 +70,7 @@ const makeRun = (): OrchestrationRunRecord => ({
 class RuntimeStore implements WorkflowRuntimeStore {
   readonly run = makeRun();
   readonly inbox = new Map<string, WorkflowInboxRecord>();
-  readonly transitions: Array<{ from: string; to: string; actorType: string | null }> = [];
+  readonly transitions: Array<WorkflowTransitionRecord> = [];
   reads = 0;
 
   findRun(runId: string): Promise<OrchestrationRunRecord | null> {
@@ -117,24 +120,63 @@ class RuntimeStore implements WorkflowRuntimeStore {
   compareAndSetNode(input: {
     runId: string;
     expectedNode: string;
+    expectedVisitSequence: number;
     nextNode: string;
     nextStatus: RunStatus;
     gateOriginNode: string | null;
+    transitionId: string;
+    causeType: string;
+    causeReference: string;
+    actorId: string | null;
     actorType: string | null;
-  }): Promise<boolean> {
-    if (this.run.run_id !== input.runId || this.run.current_node !== input.expectedNode) {
-      return Promise.resolve(false);
+    providerOperationId: string | null;
+    now: string;
+  }) {
+    const existing = this.transitions.find(({ transition_id }) =>
+      transition_id === input.transitionId);
+    if (existing !== undefined) {
+      const exact = existing.run_id === input.runId &&
+        existing.from_node === input.expectedNode &&
+        existing.to_node === input.nextNode &&
+        existing.from_visit_sequence === input.expectedVisitSequence &&
+        existing.to_visit_sequence === input.expectedVisitSequence + 1 &&
+        existing.cause_type === input.causeType &&
+        existing.cause_reference === input.causeReference &&
+        existing.actor_id === input.actorId &&
+        existing.actor_type === input.actorType &&
+        existing.provider_operation_id === input.providerOperationId;
+      if (!exact) throw new Error("workflow transition identity conflict");
+      return Promise.resolve({ outcome: "replayed" as const, transition: existing });
     }
-    this.transitions.push({
-      from: input.expectedNode,
-      to: input.nextNode,
-      actorType: input.actorType,
-    });
+    if (
+      this.run.run_id !== input.runId ||
+      this.run.current_node !== input.expectedNode ||
+      this.run.current_visit_sequence !== input.expectedVisitSequence
+    ) {
+      return Promise.resolve({ outcome: "stale" as const });
+    }
+    const transition: WorkflowTransitionRecord = {
+      transition_id: input.transitionId,
+      run_id: input.runId,
+      from_node: input.expectedNode,
+      to_node: input.nextNode,
+      from_visit_sequence: input.expectedVisitSequence,
+      to_visit_sequence: input.expectedVisitSequence + 1,
+      cause_type: input.causeType,
+      cause_reference: input.causeReference,
+      actor_id: input.actorId,
+      actor_type: input.actorType,
+      provider_operation_id: input.providerOperationId,
+      occurred_at: input.now,
+    };
+    this.transitions.push(transition);
     this.run.previous_node = input.expectedNode;
     this.run.current_node = input.nextNode;
+    this.run.current_visit_sequence += 1;
+    this.run.last_transition_id = input.transitionId;
     this.run.status = input.nextStatus;
     this.run.gate_origin_node = input.gateOriginNode;
-    return Promise.resolve(true);
+    return Promise.resolve({ outcome: "committed" as const, transition });
   }
 }
 
@@ -179,10 +221,14 @@ class FakeStep implements WorkflowStepLike {
 }
 
 class NodeServices implements WorkflowNodeServices {
-  readonly agentOutcomes = ["completed", "approved"];
+  readonly agentOutcomes: string[];
   gateEntries = 0;
   repairs = 0;
   failRepair = false;
+
+  constructor(agentOutcomes = ["completed", "approved"]) {
+    this.agentOutcomes = agentOutcomes;
+  }
 
   executeAgent() {
     const outcome = this.agentOutcomes.shift();
@@ -243,13 +289,13 @@ test("Workflow reloads D1 authority and continues through agents, a gate, and sy
   );
 
   assert.deepEqual(result, { outcome: "succeeded", runId: store.run.run_id });
-  assert.deepEqual(store.transitions.map(({ from, to }) => [from, to]), [
+  assert.deepEqual(store.transitions.map(({ from_node, to_node }) => [from_node, to_node]), [
     ["implement", "review"],
     ["review", "approval"],
     ["approval", "verify"],
     ["verify", "done"],
   ]);
-  assert.equal(store.transitions[2].actorType, "user");
+  assert.equal(store.transitions[2].actor_type, "user");
   assert.equal(store.reads >= 5, true);
   assert.equal(services.gateEntries, 1);
 });
@@ -297,5 +343,69 @@ test("duplicate buffered delivery cannot repeat a human transition", async () =>
     new FakeStep(["delivery-duplicate", "delivery-human"]),
   );
   assert.equal(result.outcome, "succeeded");
-  assert.equal(store.transitions.filter(({ from }) => from === "approval").length, 1);
+  assert.equal(store.transitions.filter(({ from_node }) => from_node === "approval").length, 1);
+});
+
+test("a loop records a distinct traversal for the same successful edge", async () => {
+  const store = new RuntimeStore();
+  const services = new NodeServices([
+    "completed",
+    "changes_requested",
+    "completed",
+    "approved",
+  ]);
+  store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+
+  const result = await orchestrator(store, services).run(
+    store.run.run_id,
+    new FakeStep(["delivery-human"]),
+  );
+
+  assert.equal(result.outcome, "succeeded");
+  const repeated = store.transitions.filter(({ from_node, to_node }) =>
+    from_node === "implement" && to_node === "review");
+  assert.equal(repeated.length, 2);
+  assert.deepEqual(repeated.map(({ from_visit_sequence }) => from_visit_sequence), [1, 3]);
+  assert.notEqual(repeated[0].transition_id, repeated[1].transition_id);
+  assert.equal(store.run.current_visit_sequence, 7);
+});
+
+test("one source visit commits once, replays exactly, and rejects stale or conflicting facts", async () => {
+  const store = new RuntimeStore();
+  const input = {
+    runId: store.run.run_id,
+    expectedNode: "implement",
+    expectedVisitSequence: 1,
+    nextNode: "review",
+    nextStatus: "active" as const,
+    gateOriginNode: null,
+    transitionId: `${store.run.run_id}:visit:1:transition`,
+    causeType: "agent",
+    causeReference: "attempt-completed",
+    actorId: null,
+    actorType: "agent",
+    providerOperationId: null,
+    now: NOW,
+  };
+
+  const [winner, replay] = await Promise.all([
+    store.compareAndSetNode(input),
+    store.compareAndSetNode(input),
+  ]);
+  assert.deepEqual([winner.outcome, replay.outcome], ["committed", "replayed"]);
+  assert.equal(store.transitions.length, 1);
+
+  const stale = await store.compareAndSetNode({
+    ...input,
+    transitionId: `${store.run.run_id}:visit:1:other-transition`,
+  });
+  assert.equal(stale.outcome, "stale");
+  assert.equal(store.transitions.length, 1);
+
+  await assert.rejects(
+    async () => store.compareAndSetNode({ ...input, nextNode: "approval" }),
+    /identity conflict/,
+  );
+  assert.equal(store.run.current_node, "review");
+  assert.equal(store.transitions.length, 1);
 });

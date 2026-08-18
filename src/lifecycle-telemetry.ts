@@ -36,6 +36,8 @@ export interface LifecycleObservation {
   manifestId?: string;
   operationId?: string;
   nodeId?: string;
+  visitId?: string;
+  traversalId?: string;
 }
 
 export type LifecycleWriter = (input: LifecycleObservation) => void;
@@ -61,6 +63,8 @@ export const writeLifecycleObservation: LifecycleWriter = (input) => {
     "deos.artifact.manifest_id": input.manifestId,
     "deos.provider.operation_id": input.operationId,
     "deos.workflow.node_id": input.nodeId,
+    "deos.workflow.visit_id": input.visitId,
+    "deos.workflow.traversal_id": input.traversalId,
     "error.type": input.safeErrorCategory,
   }).filter(([, value]) => value !== undefined));
   if (input.outcome === "failed") console.error(observation);

@@ -16,12 +16,16 @@ test("lifecycle telemetry contains bounded identities and no content or credenti
       attemptId: "attempt-1",
       sandboxId: "sandbox-1",
       manifestId: "manifest-1",
+      visitId: "workflow:project-1:issue-1:run:1:visit:3",
+      traversalId: "workflow:project-1:issue-1:run:1:visit:3:transition",
     });
   } finally {
     console.log = original;
   }
   const text = JSON.stringify(observed);
   assert.equal(text.includes("manifest-1"), true);
+  assert.equal(text.includes("visit:3"), true);
+  assert.equal(text.includes("visit:3:transition"), true);
   for (const forbidden of ["prompt", "transcript", "token", "credential", "request.body", "response.body"]) {
     assert.equal(text.includes(forbidden), false);
   }

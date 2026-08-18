@@ -116,6 +116,10 @@ class QueryWorkflowTelemetryTests(unittest.TestCase):
             timestamp="2026-08-14T05:18:48Z",
             **{
                 "deos.workflow.attempt.number": 2,
+                "deos.workflow.visit_id": "workflow:project-1:issue-1:run:1:visit:7",
+                "deos.workflow.traversal_id": (
+                    "workflow:project-1:issue-1:run:1:visit:7:transition"
+                ),
                 "error.type": "linear_http_failed",
                 "authorization": "must-not-escape",
             },
@@ -124,6 +128,14 @@ class QueryWorkflowTelemetryTests(unittest.TestCase):
         sanitized = telemetry.sanitize_event(raw)
 
         self.assertEqual(sanitized["deos.workflow.attempt.number"], 2)
+        self.assertEqual(
+            sanitized["deos.workflow.visit_id"],
+            "workflow:project-1:issue-1:run:1:visit:7",
+        )
+        self.assertEqual(
+            sanitized["deos.workflow.traversal_id"],
+            "workflow:project-1:issue-1:run:1:visit:7:transition",
+        )
         self.assertEqual(sanitized["error.type"], "linear_http_failed")
         self.assertNotIn("authorization", sanitized)
 

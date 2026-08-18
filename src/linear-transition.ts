@@ -191,7 +191,12 @@ export class LinearTransitionController {
     run: OrchestrationRunRecord,
     node: HumanGateWorkflowNode,
   ): Promise<HumanGateOperation> {
-    const operationId = operationIdentity(run.run_id, node.id, "linear-enter-human-gate", 1);
+    const operationId = operationIdentity(
+      run.run_id,
+      node.id,
+      "linear-enter-human-gate",
+      run.current_visit_sequence,
+    );
     const existing = await this.store.find(operationId);
     if (existing !== null) {
       return { providerOperationId: existing.operation_id, state: stateFromOperation(existing) };
