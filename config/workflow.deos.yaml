@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: openspec-delivery
-  version: 10
+  version: 11
 spec:
   start: requirements
   execution:
@@ -90,11 +90,11 @@ spec:
     requirements:
       type: agent
       job: requirements
-      edges: {completed: requirements_review, blocked: blocked, failed: blocked}
+      edges: {completed: requirements_review, blocked: agent_blocked, failed: agent_failed}
     requirements_review:
       type: agent
       job: requirements_review
-      edges: {approved: requirements_approval, changes_requested: requirements, blocked: blocked, failed: blocked}
+      edges: {approved: requirements_approval, changes_requested: requirements, blocked: agent_blocked, failed: agent_failed}
     requirements_approval:
       type: human_gate
       linearState: Human Review
@@ -102,23 +102,23 @@ spec:
     openspec_proposal:
       type: agent
       job: openspec_continue
-      edges: {completed: openspec_specs, blocked: blocked, failed: blocked}
+      edges: {completed: openspec_specs, blocked: agent_blocked, failed: agent_failed}
     openspec_specs:
       type: agent
       job: openspec_continue
-      edges: {completed: bdd_review, blocked: blocked, failed: blocked}
+      edges: {completed: bdd_review, blocked: agent_blocked, failed: agent_failed}
     bdd_review:
       type: agent
       job: bdd_review
-      edges: {approved: ddd_architecture, changes_requested: openspec_specs, blocked: blocked, failed: blocked}
+      edges: {approved: ddd_architecture, changes_requested: openspec_specs, blocked: agent_blocked, failed: agent_failed}
     ddd_architecture:
       type: agent
       job: openspec_continue
-      edges: {completed: ddd_review, blocked: blocked, failed: blocked}
+      edges: {completed: ddd_review, blocked: agent_blocked, failed: agent_failed}
     ddd_review:
       type: agent
       job: ddd_review
-      edges: {approved: architecture_approval, changes_requested: ddd_architecture, blocked: blocked, failed: blocked}
+      edges: {approved: architecture_approval, changes_requested: ddd_architecture, blocked: agent_blocked, failed: agent_failed}
     architecture_approval:
       type: human_gate
       linearState: Human Review
@@ -126,19 +126,19 @@ spec:
     openspec_tasks:
       type: agent
       job: openspec_continue
-      edges: {completed: implementation, blocked: blocked, failed: blocked}
+      edges: {completed: implementation, blocked: agent_blocked, failed: agent_failed}
     implementation:
       type: agent
       job: openspec_apply
-      edges: {completed: code_review, blocked: blocked, failed: blocked}
+      edges: {completed: code_review, blocked: agent_blocked, failed: agent_failed}
     code_review:
       type: agent
       job: code_review
-      edges: {approved: evidence_verification, changes_requested: implementation, blocked: blocked, failed: blocked}
+      edges: {approved: evidence_verification, changes_requested: implementation, blocked: agent_blocked, failed: agent_failed}
     evidence_verification:
       type: agent
       job: evidence_verification
-      edges: {certified: openspec_verify, changes_requested: implementation, blocked: blocked, failed: blocked}
+      edges: {certified: openspec_verify, changes_requested: implementation, blocked: agent_blocked, failed: agent_failed}
     openspec_verify:
       type: agent
       job: openspec_verify
@@ -146,10 +146,26 @@ spec:
     final_approval:
       type: human_gate
       linearState: Human Review
-      edges: {approved: sync_and_archive, rejected: blocked}
+      edges: {approved: sync_and_archive, rejected: denied}
     sync_and_archive:
       type: agent
       job: openspec_archive
-      edges: {completed: done, blocked: blocked, failed: blocked}
-    done: {type: terminal, outcome: succeeded}
-    blocked: {type: terminal, outcome: blocked}
+      edges: {completed: done, blocked: agent_blocked, failed: agent_failed}
+    done: {type: terminal, deosStatus: succeeded, executorAction: return}
+    denied: {type: terminal, deosStatus: denied, executorAction: return}
+    canceled: {type: terminal, deosStatus: canceled, executorAction: return}
+    agent_blocked:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: agent_outcome_blocked
+    agent_failed:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: agent_execution_failed
+    system_action_failed:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: system_action_invariant_failed

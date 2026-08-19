@@ -1,34 +1,26 @@
 # Current Architecture
 
-This document describes the architecture currently implemented by `deos`. It is
-a living synthesis of the specifications under `openspec/specs/` and should be
-updated whenever an archived OpenSpec change alters the implemented system.
-The specifications remain the normative source for individual requirements;
-this document explains how those requirements fit together as a system.
+This is the living, repository-level architecture index. The detailed as-built runtime description is [`docs/current-architecture.md`](docs/current-architecture.md); the normative behavior remains in `openspec/specs/`.
 
-Future components belong here only after their specifications are implemented.
-The target ideas in `cloudflare-linear-workflow-architecture.md` are therefore
-not part of the current architecture unless they are described below.
+DEOS receives authenticated Linear webhooks in a Python Worker, deduplicates them by `Linear-Delivery`, records them in D1, and hands relevant events to a TypeScript Queue consumer. The consumer owns the immutable versioned graph, stable issue/run/Workflow identities, D1 transitions and inbox, Cloudflare Workflow execution, isolated Sandbox attempts, provider capability receipts, artifact manifests, and cleanup reconciliation.
 
-## Context
+D1 is the business-state and audit authority. Cloudflare Workflow status is executor evidence. The typed lifecycle first deployed as definition version 4 and is reconciled into the active version 11 graph:
 
-The system receives real Linear webhooks through a Python Cloudflare Worker and
-translates relevant deliveries into provider-independent application events. A
-separate TypeScript Queue-consumer Worker processes those events asynchronously
-through Cloudflare Queues and persists workflow state in D1. The first workflow
-pauses for an explicit human decision in Linear.
+- final `succeeded`, `denied`, and `canceled` nodes commit D1 before normal return;
+- `awaiting_capability` and `manual_reconciliation_required` waits persist exact resume and cancellation matchers and hibernate the same Workflow instance;
+- failure nodes commit D1 `failed` with a bounded service-authored cause before surfacing a non-retryable Cloudflare error;
+- legacy version 3 and parallel-mainline versions 4–10 may retain immutable `blocked` outcomes, while version 11 rejects new legacy terminals.
 
-Both Workers emit a shared, structured telemetry envelope to Cloudflare Workers
-Logs. A deterministic workflow correlation identifier connects ingress, Queue
-attempts, D1 transitions, and outbound Linear interactions so an operator can
-query the lifecycle of one workflow across service boundaries.
+Later signed Linear deliveries for active or waiting runs are stored in the D1 inbox and sent to the recorded Workflow instance. The frozen definition—not the event payload—decides whether the delivery resumes, cancels, or is rejected. Delivery and wait-consumption guards prevent duplicate transitions and provider effects.
 
 R2 stores protected Codex authentication and immutable per-attempt artifact
 manifests, transcripts, structured results, validation output, provider
 references, and cumulative repository patches. Cloudflare Workflow and Sandbox
 run the versioned delivery graph in the separate TypeScript Worker.
 
-## Design intent
+A scheduled reconciler compares non-final D1 runs with Cloudflare instance status. Cloudflare `complete` without a final D1 outcome becomes `premature_workflow_completion`: a guarded update marks DEOS failed and creates or reuses one marked comment on the correlated Linear ticket. A lost D1 race is audited without overwriting the newer state or publishing a stale notice.
+
+Both Workers emit bounded correlated observations to Workers Logs. R2 stores protected credentials, immutable artifacts, and diagnostics; trusted provider adapters retain Linear/GitHub credentials outside the Sandbox. Real completion evidence is layered: deterministic tests, deployed Cloudflare status and D1 records, provider-originated Linear transitions, and sanitized visual proof.
 
 The architecture keeps authenticated ingress and domain logic small and
 Python-first, with durable dispatch isolated behind a provider-supported Queue
@@ -158,11 +150,9 @@ durable source of workflow and audit state.
 - Workers Logs and Query Builder remain the operational query surface; the
   issue-centred operator view and native workflow graph are separate follow-up
   work.
-- The currently implemented lifecycle still uses the legacy ambiguous
-  `blocked` business-state semantics even though the OpenSpec-capable bundle is
-  definition version 9; explicit executor-versus-business lifecycle semantics
-  are planned in the separate `separate-executor-and-business-lifecycle`
-  change.
+- Future operator UI, independent executor/business status projection, and
+  native Cloudflare graph work remain separately tracked; they do not replace
+  D1 authority.
 
 ## Evolution rule
 

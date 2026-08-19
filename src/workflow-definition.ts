@@ -3,8 +3,16 @@ import { parse } from "yaml";
 export const WORKFLOW_API_VERSION = "deos.dev/v1alpha1" as const;
 export const WORKFLOW_KIND = "DeliveryWorkflow" as const;
 
-export type WorkflowNodeType = "agent" | "system_action" | "human_gate" | "terminal";
-export type TerminalOutcome = "succeeded" | "blocked" | "failed" | "canceled";
+export type WorkflowNodeType =
+  | "agent"
+  | "system_action"
+  | "human_gate"
+  | "wait"
+  | "terminal"
+  | "failure";
+export type FinalOutcome = "succeeded" | "denied" | "canceled";
+export type TerminalOutcome = FinalOutcome | "blocked" | "failed";
+export type ResumableStatus = "awaiting_capability" | "manual_reconciliation_required";
 
 export interface WorkflowExecutionPolicy {
   attemptTimeout: string;
@@ -62,13 +70,37 @@ export interface HumanGateWorkflowNode extends WorkflowNodeBase {
 export interface TerminalWorkflowNode extends WorkflowNodeBase {
   type: "terminal";
   outcome: TerminalOutcome;
+  executorAction?: "return";
+}
+
+export interface WorkflowEventDescriptor {
+  type: "linear.issue.state_changed";
+  actorType: "user";
+  toState: string;
+  action?: string;
+}
+
+export interface WaitWorkflowNode extends WorkflowNodeBase {
+  type: "wait";
+  deosStatus: ResumableStatus;
+  resumeEvent: Readonly<WorkflowEventDescriptor>;
+  cancelEvent: Readonly<WorkflowEventDescriptor>;
+}
+
+export interface FailureWorkflowNode extends WorkflowNodeBase {
+  type: "failure";
+  deosStatus: "failed";
+  executorAction: "throw";
+  cause: string;
 }
 
 export type WorkflowNode =
   | AgentWorkflowNode
   | SystemActionWorkflowNode
   | HumanGateWorkflowNode
-  | TerminalWorkflowNode;
+  | WaitWorkflowNode
+  | TerminalWorkflowNode
+  | FailureWorkflowNode;
 
 export interface LoadedWorkflowDefinition {
   apiVersion: typeof WORKFLOW_API_VERSION;
@@ -100,9 +132,17 @@ const TERMINAL_OUTCOMES = new Set<TerminalOutcome>([
   "blocked",
   "failed",
   "canceled",
+  "denied",
+]);
+const FINAL_OUTCOMES = new Set<FinalOutcome>(["succeeded", "denied", "canceled"]);
+const RESUMABLE_STATUSES = new Set<ResumableStatus>([
+  "awaiting_capability",
+  "manual_reconciliation_required",
 ]);
 const DURATION = /^\d+(?:\.\d+)?(?:ms|s|m|h|d)$/;
+const EXPLICIT_LIFECYCLE_REQUIRED_VERSION = 11;
 const OPEN_SPEC_INSTRUCTION_SET = new Set<string>(OPENSPEC_INSTRUCTIONS);
+const SAFE_CAUSE = /^[a-z][a-z0-9_]{2,63}$/;
 
 const asRecord = (value: unknown, label: string): Record<string, unknown> => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -161,6 +201,40 @@ const parseEdges = (record: Record<string, unknown>, label: string): Readonly<Re
     }
   }
   return Object.freeze(Object.fromEntries(Object.entries(edges).map(([key, value]) => [key, String(value)])));
+};
+
+const assertExactEdges = (
+  edges: Readonly<Record<string, string>>,
+  expected: readonly string[],
+  label: string,
+): void => {
+  const actual = Object.keys(edges).sort();
+  const required = [...expected].sort();
+  if (actual.length !== required.length || actual.some((value, index) => value !== required[index])) {
+    throw new Error(`${label}.edges must contain exactly ${required.join(" and ")}`);
+  }
+};
+
+const parseEventDescriptor = (
+  value: unknown,
+  label: string,
+  allowAction: boolean,
+): Readonly<WorkflowEventDescriptor> => {
+  const event = asRecord(value, label);
+  assertAllowedKeys(event, allowAction ? ["type", "actorType", "toState", "action"] : ["type", "actorType", "toState"], label);
+  if (event.type !== "linear.issue.state_changed") {
+    throw new Error(`${label}.type must be linear.issue.state_changed`);
+  }
+  if (event.actorType !== "user") throw new Error(`${label}.actorType must be user`);
+  const descriptor: WorkflowEventDescriptor = {
+    type: "linear.issue.state_changed",
+    actorType: "user",
+    toState: stringValue(event, "toState", label),
+  };
+  if (allowAction && event.action !== undefined) {
+    descriptor.action = stringValue(event, "action", label);
+  }
+  return Object.freeze(descriptor);
 };
 
 const canonicalize = (value: unknown): unknown => {
@@ -303,11 +377,67 @@ export const loadWorkflowDefinition = async (
         linearState: stringValue(node, "linearState", label),
         edges,
       });
+    } else if (type === "wait") {
+      if (version < 4) throw new Error(`${label} requires workflow version 4 or later`);
+      assertAllowedKeys(node, ["type", "deosStatus", "resumeEvent", "cancelEvent", "edges"], label);
+      const deosStatus = stringValue(node, "deosStatus", label) as ResumableStatus;
+      if (!RESUMABLE_STATUSES.has(deosStatus)) {
+        throw new Error(`${label} has unsupported resumable status ${deosStatus}`);
+      }
+      assertExactEdges(edges, ["received", "canceled"], label);
+      nodes[id] = Object.freeze({
+        id,
+        type,
+        deosStatus,
+        resumeEvent: parseEventDescriptor(node.resumeEvent, `${label}.resumeEvent`, true),
+        cancelEvent: parseEventDescriptor(node.cancelEvent, `${label}.cancelEvent`, false),
+        edges,
+      });
     } else if (type === "terminal") {
-      assertAllowedKeys(node, ["type", "outcome"], label);
-      const outcome = stringValue(node, "outcome", label) as TerminalOutcome;
-      if (!TERMINAL_OUTCOMES.has(outcome)) throw new Error(`${label} has unsupported outcome ${outcome}`);
-      nodes[id] = Object.freeze({ id, type, outcome, edges: Object.freeze({}) });
+      const typedLifecycle = node.deosStatus !== undefined || node.executorAction !== undefined;
+      if (typedLifecycle) {
+        if (version < 4) throw new Error(`${label} typed lifecycle requires workflow version 4 or later`);
+        assertAllowedKeys(node, ["type", "deosStatus", "executorAction"], label);
+        const outcome = stringValue(node, "deosStatus", label) as FinalOutcome;
+        if (!FINAL_OUTCOMES.has(outcome)) {
+          throw new Error(`${label} has unsupported final outcome ${outcome}`);
+        }
+        if (node.executorAction !== "return") {
+          throw new Error(`${label}.executorAction must be return`);
+        }
+        nodes[id] = Object.freeze({
+          id,
+          type,
+          outcome,
+          executorAction: "return",
+          edges: Object.freeze({}),
+        });
+      } else {
+        if (version >= EXPLICIT_LIFECYCLE_REQUIRED_VERSION) {
+          throw new Error(`${label} must use the explicit lifecycle terminal contract`);
+        }
+        assertAllowedKeys(node, ["type", "outcome"], label);
+        const outcome = stringValue(node, "outcome", label) as TerminalOutcome;
+        if (!TERMINAL_OUTCOMES.has(outcome)) {
+          throw new Error(`${label} has unsupported outcome ${outcome}`);
+        }
+        nodes[id] = Object.freeze({ id, type, outcome, edges: Object.freeze({}) });
+      }
+    } else if (type === "failure") {
+      if (version < 4) throw new Error(`${label} requires workflow version 4 or later`);
+      assertAllowedKeys(node, ["type", "deosStatus", "executorAction", "cause"], label);
+      if (node.deosStatus !== "failed") throw new Error(`${label}.deosStatus must be failed`);
+      if (node.executorAction !== "throw") throw new Error(`${label}.executorAction must be throw`);
+      const cause = stringValue(node, "cause", label);
+      if (!SAFE_CAUSE.test(cause)) throw new Error(`${label}.cause must be a bounded safe category`);
+      nodes[id] = Object.freeze({
+        id,
+        type,
+        deosStatus: "failed",
+        executorAction: "throw",
+        cause,
+        edges: Object.freeze({}),
+      });
     } else {
       throw new Error(`${label} has unsupported type ${type}`);
     }
@@ -317,6 +447,16 @@ export const loadWorkflowDefinition = async (
   for (const node of Object.values(nodes)) {
     for (const target of Object.values(node.edges)) {
       if (nodes[target] === undefined) throw new Error(`${node.id} references unknown node ${target}`);
+    }
+  }
+  if (version >= 4) {
+    for (const node of Object.values(nodes)) {
+      if (node.type === "agent" && (node.edges.blocked === undefined || node.edges.failed === undefined)) {
+        throw new Error(`workflow.spec.nodes.${node.id} must classify blocked and failed outcomes`);
+      }
+      if (node.type === "system_action" && node.edges.failed === undefined) {
+        throw new Error(`workflow.spec.nodes.${node.id} must classify failed outcomes`);
+      }
     }
   }
 
@@ -402,7 +542,14 @@ export const restoreWorkflowDefinition = async (
     const node = asRecord(value, label);
     if (node.id !== id) throw new Error(`${label}.id must match its map key`);
     const { id: _id, ...sourceNode } = node;
-    if (sourceNode.type === "terminal") delete sourceNode.edges;
+    if (sourceNode.type === "terminal") {
+      delete sourceNode.edges;
+      if (sourceNode.executorAction === "return") {
+        sourceNode.deosStatus = sourceNode.outcome;
+        delete sourceNode.outcome;
+      }
+    }
+    if (sourceNode.type === "failure") delete sourceNode.edges;
     nodes[id] = sourceNode;
   }
 

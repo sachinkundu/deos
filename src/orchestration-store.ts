@@ -9,8 +9,11 @@ export type RunStatus =
   | "pending_dispatch"
   | "active"
   | "awaiting_human"
+  | "awaiting_capability"
+  | "manual_reconciliation_required"
   | "blocked"
   | "succeeded"
+  | "denied"
   | "failed"
   | "canceled";
 
@@ -34,6 +37,7 @@ export interface OrchestrationRunRecord {
   created_at: string;
   updated_at: string;
   terminal_at: string | null;
+  terminal_cause?: string | null;
 }
 
 export interface ProjectWorkflowPolicyRecord {
@@ -118,6 +122,33 @@ export type TransitionCommitResult =
   | { outcome: "replayed"; transition: WorkflowTransitionRecord }
   | { outcome: "stale" };
 
+export interface WorkflowWaitRecord {
+  wait_id: string;
+  run_id: string;
+  node_id: string;
+  status: "awaiting" | "consumed" | "canceled";
+  resume_event_type: string;
+  resume_event_json: string;
+  resume_event_digest: string;
+  cancel_event_type: string;
+  cancel_event_json: string;
+  cancel_event_digest: string;
+  cause_reference: string;
+  created_at: string;
+  consumed_delivery_id: string | null;
+  consumed_at: string | null;
+}
+
+export interface PersistedWaitInput {
+  waitId: string;
+  resumeEventType: string;
+  resumeEventJson: string;
+  resumeEventDigest: string;
+  cancelEventType: string;
+  cancelEventJson: string;
+  cancelEventDigest: string;
+}
+
 export interface OrchestrationDispatchStore {
   registerDefinitionAndPolicy(input: {
     definition: LoadedWorkflowDefinition;
@@ -174,11 +205,38 @@ export interface WorkflowRuntimeStore {
     expected: RunStatus,
     next: RunStatus,
     now: string,
+    safeCause?: string | null,
   ): Promise<boolean>;
+  findOpenWait(runId: string, nodeId: string): Promise<WorkflowWaitRecord | null>;
+  recordWaitDelivery(input: {
+    deliveryId: string;
+    waitId: string;
+    runId: string;
+    decision: "rejected" | "already_consumed";
+    safeReason: string;
+    now: string;
+  }): Promise<boolean>;
+  consumeWait(input: {
+    waitId: string;
+    runId: string;
+    deliveryId: string;
+    expectedNode: string;
+    expectedVisitSequence: number;
+    expectedStatus: "awaiting_capability" | "manual_reconciliation_required";
+    nextNode: string;
+    nextStatus: RunStatus;
+    outcome: "received" | "canceled";
+    transitionId: string;
+    actorId: string | null;
+    actorType: string | null;
+    now: string;
+    terminalCause?: string | null;
+  }): Promise<boolean>;
   compareAndSetNode(input: {
     runId: string;
     expectedNode: string;
     expectedVisitSequence: number;
+    expectedStatus: RunStatus;
     nextNode: string;
     nextStatus: RunStatus;
     gateOriginNode: string | null;
@@ -189,10 +247,13 @@ export interface WorkflowRuntimeStore {
     actorType: string | null;
     providerOperationId: string | null;
     now: string;
+    wait?: PersistedWaitInput;
+    terminalCause?: string | null;
   }): Promise<TransitionCommitResult>;
 }
 
-const activeStatuses = "('pending_dispatch', 'active', 'awaiting_human')";
+const activeStatuses = "('pending_dispatch', 'active', 'awaiting_human', 'awaiting_capability', 'manual_reconciliation_required')";
+const finalStatuses = "('blocked','succeeded','denied','failed','canceled')";
 
 const changes = (result: D1Result<unknown>): number => result.meta.changes ?? 0;
 
@@ -453,18 +514,153 @@ export class D1OrchestrationStore {
     expected: RunStatus,
     next: RunStatus,
     now: string,
+    safeCause: string | null = null,
   ): Promise<boolean> {
     const result = await this.database.prepare(
-      `UPDATE orchestration_runs SET status = ?, updated_at = ?
+      `UPDATE orchestration_runs
+       SET status = ?, updated_at = ?,
+           terminal_at = CASE WHEN ? IN ${finalStatuses} THEN ? ELSE NULL END,
+           terminal_cause = CASE WHEN ? = 'failed' THEN ? ELSE NULL END
        WHERE run_id = ? AND current_node = ? AND status = ?`,
-    ).bind(next, now, runId, currentNode, expected).run();
+    ).bind(next, now, next, now, next, safeCause, runId, currentNode, expected).run();
     return changes(result) === 1;
+  }
+
+  findOpenWait(runId: string, nodeId: string): Promise<WorkflowWaitRecord | null> {
+    return this.database.prepare(
+      `SELECT * FROM workflow_waits
+       WHERE run_id = ? AND node_id = ? AND status = 'awaiting'
+       ORDER BY created_at DESC, wait_id DESC LIMIT 1`,
+    ).bind(runId, nodeId).first<WorkflowWaitRecord>();
+  }
+
+  async recordWaitDelivery(input: {
+    deliveryId: string;
+    waitId: string;
+    runId: string;
+    decision: "rejected" | "already_consumed";
+    safeReason: string;
+    now: string;
+  }): Promise<boolean> {
+    const result = await this.database.prepare(
+      `INSERT OR IGNORE INTO workflow_wait_deliveries
+       (delivery_id, wait_id, run_id, decision, safe_reason, occurred_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      input.deliveryId,
+      input.waitId,
+      input.runId,
+      input.decision,
+      input.safeReason,
+      input.now,
+    ).run();
+    return changes(result) === 1;
+  }
+
+  async consumeWait(input: {
+    waitId: string;
+    runId: string;
+    deliveryId: string;
+    expectedNode: string;
+    expectedVisitSequence: number;
+    expectedStatus: "awaiting_capability" | "manual_reconciliation_required";
+    nextNode: string;
+    nextStatus: RunStatus;
+    outcome: "received" | "canceled";
+    transitionId: string;
+    actorId: string | null;
+    actorType: string | null;
+    now: string;
+    terminalCause?: string | null;
+  }): Promise<boolean> {
+    const waitStatus = input.outcome === "canceled" ? "canceled" : "consumed";
+    const decision = input.outcome === "canceled" ? "canceled" : "resumed";
+    const nextVisitSequence = input.expectedVisitSequence + 1;
+    const results = await this.database.batch([
+      this.database.prepare(
+        `INSERT OR IGNORE INTO workflow_transitions_v2
+         (transition_id, run_id, from_node, to_node, from_visit_sequence,
+          to_visit_sequence, cause_type, cause_reference,
+          actor_id, actor_type, provider_operation_id, occurred_at)
+         SELECT ?, ?, ?, ?, ?, ?, 'linear_event', ?, ?, ?, NULL, ?
+         WHERE EXISTS (
+           SELECT 1 FROM workflow_waits AS wait
+           JOIN orchestration_runs AS run ON run.run_id = wait.run_id
+           WHERE wait.wait_id = ? AND wait.run_id = ? AND wait.node_id = ?
+             AND wait.status = 'awaiting' AND run.current_node = ?
+             AND run.current_visit_sequence = ? AND run.status = ?
+         )`,
+      ).bind(
+        input.transitionId,
+        input.runId,
+        input.expectedNode,
+        input.nextNode,
+        input.expectedVisitSequence,
+        nextVisitSequence,
+        input.deliveryId,
+        input.actorId,
+        input.actorType,
+        input.now,
+        input.waitId,
+        input.runId,
+        input.expectedNode,
+        input.expectedNode,
+        input.expectedVisitSequence,
+        input.expectedStatus,
+      ),
+      this.database.prepare(
+        `UPDATE orchestration_runs
+         SET previous_node = current_node, current_node = ?, current_visit_sequence = ?,
+             last_transition_id = ?, status = ?, gate_origin_node = NULL,
+             updated_at = ?, terminal_at = CASE WHEN ? IN ${finalStatuses} THEN ? ELSE NULL END,
+             terminal_cause = CASE WHEN ? = 'failed' THEN ? ELSE NULL END
+         WHERE run_id = ? AND current_node = ? AND current_visit_sequence = ? AND status = ?
+           AND EXISTS (SELECT 1 FROM workflow_transitions_v2 WHERE transition_id = ?)`,
+      ).bind(
+        input.nextNode,
+        nextVisitSequence,
+        input.transitionId,
+        input.nextStatus,
+        input.now,
+        input.nextStatus,
+        input.now,
+        input.nextStatus,
+        input.terminalCause ?? null,
+        input.runId,
+        input.expectedNode,
+        input.expectedVisitSequence,
+        input.expectedStatus,
+        input.transitionId,
+      ),
+      this.database.prepare(
+        `UPDATE workflow_waits
+         SET status = ?, consumed_delivery_id = ?, consumed_at = ?
+         WHERE wait_id = ? AND status = 'awaiting'
+           AND EXISTS (SELECT 1 FROM workflow_transitions_v2 WHERE transition_id = ?)`,
+      ).bind(waitStatus, input.deliveryId, input.now, input.waitId, input.transitionId),
+      this.database.prepare(
+        `INSERT OR IGNORE INTO workflow_wait_deliveries
+         (delivery_id, wait_id, run_id, decision, safe_reason, occurred_at)
+         SELECT ?, ?, ?, ?, ?, ?
+         WHERE EXISTS (SELECT 1 FROM workflow_transitions_v2 WHERE transition_id = ?)`,
+      ).bind(
+        input.deliveryId,
+        input.waitId,
+        input.runId,
+        decision,
+        decision === "resumed" ? "authorized_resume" : "authorized_cancel",
+        input.now,
+        input.transitionId,
+      ),
+    ]);
+    return changes(results[0]) === 1 && changes(results[1]) === 1 && changes(results[2]) === 1;
   }
 
   async compareAndSetNode(input: {
     runId: string;
     expectedNode: string;
     expectedVisitSequence: number;
+    expectedStatus: RunStatus;
     nextNode: string;
     nextStatus: RunStatus;
     gateOriginNode: string | null;
@@ -475,15 +671,18 @@ export class D1OrchestrationStore {
     actorType: string | null;
     providerOperationId: string | null;
     now: string;
+    wait?: PersistedWaitInput;
+    terminalCause?: string | null;
   }): Promise<TransitionCommitResult> {
     const nextVisitSequence = input.expectedVisitSequence + 1;
-    const results = await this.database.batch([
+    const statements = [
       this.database.prepare(
         `UPDATE orchestration_runs
          SET previous_node = current_node, current_node = ?, current_visit_sequence = ?,
              last_transition_id = ?, status = ?, gate_origin_node = ?,
-             updated_at = ?, terminal_at = CASE WHEN ? IN ('blocked','succeeded','failed','canceled') THEN ? ELSE NULL END
-         WHERE run_id = ? AND current_node = ? AND current_visit_sequence = ?
+             updated_at = ?, terminal_at = CASE WHEN ? IN ${finalStatuses} THEN ? ELSE NULL END,
+             terminal_cause = CASE WHEN ? = 'failed' THEN ? ELSE NULL END
+         WHERE run_id = ? AND current_node = ? AND current_visit_sequence = ? AND status = ?
            AND NOT EXISTS (
              SELECT 1 FROM workflow_transitions_v2 WHERE transition_id = ?
            )`,
@@ -496,9 +695,12 @@ export class D1OrchestrationStore {
         input.now,
         input.nextStatus,
         input.now,
+        input.nextStatus,
+        input.terminalCause ?? null,
         input.runId,
         input.expectedNode,
         input.expectedVisitSequence,
+        input.expectedStatus,
         input.transitionId,
       ),
       this.database.prepare(
@@ -531,11 +733,36 @@ export class D1OrchestrationStore {
         nextVisitSequence,
         input.transitionId,
       ),
-    ]);
+    ];
+    if (input.wait !== undefined) {
+      statements.push(this.database.prepare(
+        `INSERT OR IGNORE INTO workflow_waits
+         (wait_id, run_id, node_id, status, resume_event_type, resume_event_json,
+          resume_event_digest, cancel_event_type, cancel_event_json, cancel_event_digest,
+          cause_reference, created_at)
+         SELECT ?, ?, ?, 'awaiting', ?, ?, ?, ?, ?, ?, ?, ?
+         WHERE EXISTS (SELECT 1 FROM workflow_transitions_v2 WHERE transition_id = ?)`,
+      ).bind(
+        input.wait.waitId,
+        input.runId,
+        input.nextNode,
+        input.wait.resumeEventType,
+        input.wait.resumeEventJson,
+        input.wait.resumeEventDigest,
+        input.wait.cancelEventType,
+        input.wait.cancelEventJson,
+        input.wait.cancelEventDigest,
+        input.causeReference,
+        input.now,
+        input.transitionId,
+      ));
+    }
+    const results = await this.database.batch(statements);
     const transition = await this.database.prepare(
       "SELECT * FROM workflow_transitions_v2 WHERE transition_id = ?",
     ).bind(input.transitionId).first<WorkflowTransitionRecord>();
-    if (changes(results[0]) === 1 && changes(results[1]) === 1) {
+    const waitChanged = input.wait === undefined || changes(results[2]) === 1;
+    if (changes(results[0]) === 1 && changes(results[1]) === 1 && waitChanged) {
       if (transition === null) throw new Error("committed workflow transition is not readable");
       return { outcome: "committed", transition };
     }
@@ -552,9 +779,25 @@ export class D1OrchestrationStore {
         transition.actor_type === input.actorType &&
         transition.provider_operation_id === input.providerOperationId;
       if (!exactReplay) throw new Error("workflow transition identity conflict");
+      if (input.wait !== undefined) {
+        const wait = await this.database.prepare(
+          "SELECT * FROM workflow_waits WHERE wait_id = ?",
+        ).bind(input.wait.waitId).first<WorkflowWaitRecord>();
+        const exactWait = wait !== null &&
+          wait.run_id === input.runId &&
+          wait.node_id === input.nextNode &&
+          wait.resume_event_type === input.wait.resumeEventType &&
+          wait.resume_event_json === input.wait.resumeEventJson &&
+          wait.resume_event_digest === input.wait.resumeEventDigest &&
+          wait.cancel_event_type === input.wait.cancelEventType &&
+          wait.cancel_event_json === input.wait.cancelEventJson &&
+          wait.cancel_event_digest === input.wait.cancelEventDigest &&
+          wait.cause_reference === input.causeReference;
+        if (!exactWait) throw new Error("workflow wait identity conflict");
+      }
       return { outcome: "replayed", transition };
     }
-    if (changes(results[0]) !== 0 || changes(results[1]) !== 0) {
+    if (changes(results[0]) !== 0 || changes(results[1]) !== 0 || !waitChanged) {
       throw new Error("workflow transition atomicity invariant failed");
     }
     return { outcome: "stale" };

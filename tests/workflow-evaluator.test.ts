@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   evaluateNodeOutcome,
+  evaluateWaitEvent,
   instructionForNode,
 } from "../src/workflow-evaluator.ts";
 import { loadWorkflowDefinition } from "../src/workflow-definition.ts";
@@ -44,6 +45,28 @@ spec:
       }),
     },
   },
+);
+
+const waitDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: wait-test, version: 4 }
+spec:
+  start: action
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs: {}
+  nodes:
+    action: { type: system_action, action: openspec.create_tasks, edges: { completed: done, failed: wait } }
+    wait:
+      type: wait
+      deosStatus: awaiting_capability
+      resumeEvent: { type: linear.issue.state_changed, actorType: user, toState: In Progress, action: openspec.create_tasks }
+      cancelEvent: { type: linear.issue.state_changed, actorType: user, toState: Canceled }
+      edges: { received: action, canceled: canceled }
+    done: { type: terminal, deosStatus: succeeded, executorAction: return }
+    canceled: { type: terminal, deosStatus: canceled, executorAction: return }
+`,
+  { prompts: {}, schemas: {} },
 );
 
 test("node instructions cover agents, system actions, gates, and terminals", () => {
@@ -164,4 +187,41 @@ test("only a user leaving the active gate can approve or reject", () => {
     rejectionStateNames: ["Canceled"],
   });
   assert.equal(rejected.kind === "transition" ? rejected.toNode : null, "implement");
+});
+
+test("wait events can only request the frozen resume or cancellation edge", () => {
+  assert.equal(instructionForNode(waitDefinition, "wait").kind, "wait_for_event");
+  assert.deepEqual(evaluateWaitEvent(waitDefinition, "wait", {
+    deliveryId: "delivery-resume",
+    eventKind: "Issue.update",
+    actorId: "user-1",
+    actorType: "user",
+    toStateName: "In Progress",
+  }), {
+    kind: "resume",
+    outcome: "received",
+    toNode: "action",
+    safeReason: "authorized_resume",
+  });
+  assert.equal(evaluateWaitEvent(waitDefinition, "wait", {
+    deliveryId: "delivery-cancel",
+    eventKind: "Issue.update",
+    actorId: "user-1",
+    actorType: "user",
+    toStateName: "Canceled",
+  }).kind, "cancel");
+  assert.equal(evaluateWaitEvent(waitDefinition, "wait", {
+    deliveryId: "delivery-bot",
+    eventKind: "Issue.update",
+    actorId: "app-1",
+    actorType: "oauthclient",
+    toStateName: "In Progress",
+  }).kind, "reject");
+  assert.equal(evaluateWaitEvent(waitDefinition, "wait", {
+    deliveryId: "delivery-unexpected",
+    eventKind: "Issue.update",
+    actorId: "user-1",
+    actorType: "user",
+    toStateName: "Human Review",
+  }).kind, "reject");
 });

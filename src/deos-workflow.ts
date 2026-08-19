@@ -1,4 +1,5 @@
 import { WorkflowEntrypoint, type WorkflowStep } from "cloudflare:workers";
+import { NonRetryableError } from "cloudflare:workflows";
 
 import { D1OrchestrationStore } from "./orchestration-store.ts";
 import type { WorkflowStartParameters } from "./queue-consumer-core.ts";
@@ -6,6 +7,7 @@ import { loadBundledWorkflowDefinition } from "./workflow-bundle.ts";
 import { restoreWorkflowDefinition } from "./workflow-definition.ts";
 import {
   WorkflowOrchestrator,
+  WorkflowFailureError,
   type WorkflowStepLike,
 } from "./workflow-orchestrator.ts";
 import { CloudflareWorkflowServices } from "./workflow-services.ts";
@@ -69,6 +71,13 @@ export class DeosWorkflow extends WorkflowEntrypoint<Env, WorkflowStartParameter
         lifecycle: writeLifecycleObservation,
       },
     );
-    return orchestrator.run(event.payload.runId, new CloudflareWorkflowStep(step));
+    try {
+      return await orchestrator.run(event.payload.runId, new CloudflareWorkflowStep(step));
+    } catch (error) {
+      if (error instanceof WorkflowFailureError) {
+        throw new NonRetryableError(error.safeCause);
+      }
+      throw error;
+    }
   }
 }

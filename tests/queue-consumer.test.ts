@@ -122,7 +122,13 @@ class FakeStore implements OrchestrationDispatchStore {
         (run) =>
           run.project_id === projectId &&
           run.issue_id === issueId &&
-          ["pending_dispatch", "active", "awaiting_human"].includes(run.status),
+          [
+            "pending_dispatch",
+            "active",
+            "awaiting_human",
+            "awaiting_capability",
+            "manual_reconciliation_required",
+          ].includes(run.status),
       ) ?? null,
     );
   }
@@ -363,6 +369,30 @@ test("later active-run event is inboxed and sent once", async () => {
     { type: "linear-event", payload: { deliveryId: "delivery-2" } },
   ]);
   assert.equal(store.inbox.get("delivery-2")?.state, "sent");
+});
+
+test("later waiting-run event is sent to the same instance without a replacement", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  await runMessage(store, workflow);
+  const run = store.runs[0];
+  run.status = "awaiting_capability";
+  run.current_node = "wait-for-capability";
+  const later = queueBody({
+    event_id: "delivery-resume",
+    source_delivery_id: "delivery-resume",
+    transition: "In Progress",
+    previous_state_name: "Human Review",
+    payload_digest: "sha256-resume",
+  });
+
+  await runMessage(store, workflow, later);
+
+  assert.equal(store.runs.length, 1);
+  assert.equal(workflow.creates, 1);
+  assert.deepEqual(workflow.instances.get(run.workflow_instance_id)?.events, [
+    { type: "linear-event", payload: { deliveryId: "delivery-resume" } },
+  ]);
 });
 
 test("non-start or disabled events are audited as unmatched", async () => {
