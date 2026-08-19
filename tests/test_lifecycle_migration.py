@@ -25,7 +25,6 @@ def test_explicit_lifecycle_migration_preserves_history_and_guards_active_runs(
         "0004_idempotent_workflow_transitions.sql",
         "0005_workflow_correlation.sql",
         "0006_sandbox_orchestration.sql",
-        "0007_workflow_visit_identity.sql",
     ):
         apply_migration(connection, name)
 
@@ -50,16 +49,13 @@ def test_explicit_lifecycle_migration_preserves_history_and_guards_active_runs(
     )
     connection.commit()
 
-    connection.execute(
-        "UPDATE orchestration_runs SET current_visit_sequence = 3, last_transition_id = 'transition-2' WHERE run_id = 'run-1'"
-    )
-
-    apply_migration(connection, "0008_explicit_business_lifecycle.sql")
+    apply_migration(connection, "0007_explicit_business_lifecycle.sql")
+    apply_migration(connection, "0007_workflow_visit_identity.sql")
 
     legacy = connection.execute(
         "SELECT status, terminal_at, current_visit_sequence, last_transition_id FROM orchestration_runs WHERE run_id = 'run-1'"
     ).fetchone()
-    assert legacy == ("blocked", "terminal", 3, "transition-2")
+    assert legacy == ("blocked", "terminal", 1, None)
     assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
     assert connection.execute(
         "SELECT run_id FROM dispatch_intents WHERE run_id = 'run-1'"

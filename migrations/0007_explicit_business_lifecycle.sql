@@ -12,9 +12,6 @@ CREATE TABLE orchestration_runs_v4 (
     workflow_instance_id TEXT NOT NULL UNIQUE,
     previous_node TEXT,
     current_node TEXT NOT NULL,
-    current_visit_sequence INTEGER NOT NULL DEFAULT 1
-        CHECK (current_visit_sequence > 0),
-    last_transition_id TEXT,
     gate_origin_node TEXT,
     status TEXT NOT NULL CHECK (
         status IN (
@@ -36,14 +33,14 @@ CREATE TABLE orchestration_runs_v4 (
 INSERT INTO orchestration_runs_v4 (
     run_id, correlation_id, run_sequence, project_id, issue_id, definition_id,
     definition_version, definition_digest, workflow_instance_id, previous_node,
-    current_node, current_visit_sequence, last_transition_id, gate_origin_node,
-    status, accumulated_data_json, created_at, updated_at, terminal_at
+    current_node, gate_origin_node, status, accumulated_data_json, created_at,
+    updated_at, terminal_at
 )
 SELECT
     run_id, correlation_id, run_sequence, project_id, issue_id, definition_id,
     definition_version, definition_digest, workflow_instance_id, previous_node,
-    current_node, current_visit_sequence, last_transition_id, gate_origin_node,
-    status, accumulated_data_json, created_at, updated_at, terminal_at
+    current_node, gate_origin_node, status, accumulated_data_json, created_at,
+    updated_at, terminal_at
 FROM orchestration_runs;
 
 DROP TABLE orchestration_runs;
