@@ -24,21 +24,36 @@ The dispatcher SHALL route later accepted Linear events for a waiting issue run 
 - **WHEN** project policy accepts a new start event after D1 records the prior issue run as a final business outcome
 - **THEN** the dispatcher creates a new uniquely identified Workflow instance and preserves the prior run's mapping and audit history
 
-### Requirement: Surface premature Workflow completion as a system error
+### Requirement: Reconcile unexpected executor outcomes into DEOS states
 
-The system SHALL reconcile Cloudflare executor completion against the authoritative D1 business outcome. Cloudflare `complete` without a final DEOS outcome SHALL be classified as `premature_workflow_completion`, SHALL be visible to the operator on the correlated Linear issue, and MUST NOT be interpreted as business success.
+The system SHALL reconcile confirmed terminal executor outcomes against the authoritative D1 business outcome. It SHALL translate an unexpected executor outcome into a bounded DEOS transition and safe cause in D1 rather than exposing provider status as an operator outcome. Cloudflare `complete` without a final DEOS outcome MUST NOT be interpreted as business success.
 
 #### Scenario: Cloudflare reports complete without a final DEOS outcome
 
 - **WHEN** Cloudflare executor status is `complete` but D1 does not record a final DEOS business outcome
 - **THEN** reconciliation safely records DEOS `failed` with cause `premature_workflow_completion`, creates or updates one stable operator-visible Linear work item for the run, and does not transition the issue to Done or automatically allocate a new run
 
-#### Scenario: Premature-completion reconciliation is repeated
+#### Scenario: Executor errors outside the governed failure path
 
-- **WHEN** the same completed Workflow instance is reconciled more than once
+- **WHEN** Cloudflare reports `errored` for a run that has no final DEOS business outcome or matching durable failure transition
+- **THEN** reconciliation safely records DEOS `failed` with the bounded cause `execution_failed`, creates or updates one stable operator-visible Linear work item, and does not expose the Cloudflare status as the business outcome
+
+#### Scenario: Executor is terminated outside a DEOS cancellation path
+
+- **WHEN** Cloudflare reports `terminated` for a run that has no final DEOS business outcome or matching durable cancellation transition
+- **THEN** reconciliation safely records DEOS `failed` with the bounded cause `execution_terminated`, creates or updates one stable operator-visible Linear work item, and does not infer that the governed run was canceled
+
+#### Scenario: Executor state cannot be read
+
+- **WHEN** a reconciliation attempt cannot establish the recorded executor's state
+- **THEN** it preserves the current D1 business state, records a bounded internal diagnostic, retries according to policy, and does not guess a DEOS outcome or expose a provider error to the operator
+
+#### Scenario: Executor reconciliation is repeated
+
+- **WHEN** the same terminal Workflow instance is reconciled more than once
 - **THEN** the D1 failure transition and Linear operator work item are idempotently reused without duplicate comments, transitions, or replacement runs
 
 #### Scenario: D1 state advances before premature-completion reconciliation commits
 
-- **WHEN** the reconciler observes Cloudflare `complete` but its guarded D1 comparison no longer matches the non-final state it inspected
+- **WHEN** the reconciler observes a terminal executor but its guarded D1 comparison no longer matches the non-final state it inspected
 - **THEN** it preserves the newer D1 state, records the reconciliation conflict for audit, and does not overwrite the business outcome or create a misleading operator notice
