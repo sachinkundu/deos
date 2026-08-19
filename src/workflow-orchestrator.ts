@@ -6,12 +6,16 @@ import type {
 } from "./orchestration-store.ts";
 import {
   evaluateNodeOutcome,
+  evaluateWaitEvent,
   instructionForNode,
+  type EdgeDecision,
+  type ValidatedAgentOutcome,
   type ValidatedSystemOutcome,
 } from "./workflow-evaluator.ts";
 import type {
   HumanGateWorkflowNode,
   LoadedWorkflowDefinition,
+  WorkflowEventDescriptor,
 } from "./workflow-definition.ts";
 import type { AgentExecutionObservation } from "./sandbox-controller.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
@@ -70,6 +74,34 @@ export interface OrchestratorOptions {
   lifecycle?: LifecycleWriter;
 }
 
+export class WorkflowFailureError extends Error {
+  readonly safeCause: string;
+
+  constructor(safeCause: string) {
+    super(safeCause);
+    this.name = "WorkflowFailureError";
+    this.safeCause = safeCause;
+  }
+}
+
+const canonicalize = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (typeof value !== "object" || value === null) return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => [key, canonicalize(nested)]),
+  );
+};
+
+const canonicalEvent = (event: Readonly<WorkflowEventDescriptor>): string =>
+  JSON.stringify(canonicalize(event));
+
+const sha256Hex = async (value: string): Promise<string> => {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
 const statusForNode = (
   definition: LoadedWorkflowDefinition,
   nodeId: string,
@@ -77,6 +109,8 @@ const statusForNode = (
   const node = definition.nodes[nodeId];
   if (node === undefined) throw new Error(`workflow node ${nodeId} is not defined`);
   if (node.type === "terminal") return node.outcome;
+  if (node.type === "wait") return node.deosStatus;
+  if (node.type === "failure") return "failed";
   return "active";
 };
 
@@ -105,7 +139,38 @@ export class WorkflowOrchestrator {
       const run = await step.do(`authority:${runId}`, async () => this.requireRun(runId));
       const instruction = instructionForNode(this.definition, run.current_node);
       if (instruction.kind === "terminal") {
+        if (run.status !== instruction.outcome) {
+          const committed = await step.do(`final:${instruction.nodeId}`, async () =>
+            this.store.setRunStatus(
+              run.run_id,
+              run.current_node,
+              run.status,
+              instruction.outcome,
+              this.now().toISOString(),
+            ));
+          if (!committed) continue;
+        }
         return { outcome: instruction.outcome, runId };
+      }
+      if (instruction.kind === "fail") {
+        if (run.status !== "failed") {
+          const committed = await step.do(`failure:${instruction.nodeId}`, async () =>
+            this.store.setRunStatus(
+              run.run_id,
+              run.current_node,
+              run.status,
+              "failed",
+              this.now().toISOString(),
+              instruction.node.cause,
+            ));
+          if (!committed) continue;
+        }
+        throw new WorkflowFailureError(instruction.node.cause);
+      }
+
+      if (instruction.kind === "wait_for_event") {
+        await this.waitForDefinitionEvent(step, run, instruction.node);
+        continue;
       }
 
       if (instruction.kind === "dispatch_agent") {
@@ -131,13 +196,10 @@ export class WorkflowOrchestrator {
           continue;
         }
         const outcome = execution.outcome;
+        const decision = this.evaluateExecutionOutcome(instruction.nodeId, outcome);
         await step.do(
-          `transition:${instruction.nodeId}:${outcome.outcome}:visit:${run.current_visit_sequence}`,
-          async () => this.commitOutcome(run, evaluateNodeOutcome(
-            this.definition,
-            instruction.nodeId,
-            outcome,
-          )),
+          `transition:${instruction.nodeId}:${decision.outcome}:visit:${run.current_visit_sequence}`,
+          async () => this.commitOutcome(run, decision),
         );
         continue;
       }
@@ -151,13 +213,10 @@ export class WorkflowOrchestrator {
             instruction.action,
           ),
         );
+        const decision = this.evaluateExecutionOutcome(instruction.nodeId, outcome);
         await step.do(
-          `transition:${instruction.nodeId}:${outcome.outcome}:visit:${run.current_visit_sequence}`,
-          async () => this.commitOutcome(run, evaluateNodeOutcome(
-            this.definition,
-            instruction.nodeId,
-            outcome,
-          )),
+          `transition:${instruction.nodeId}:${decision.outcome}:visit:${run.current_visit_sequence}`,
+          async () => this.commitOutcome(run, decision),
         );
         continue;
       }
@@ -187,6 +246,7 @@ export class WorkflowOrchestrator {
           if (!changed) throw new Error("human-gate status compare-and-set failed");
           return { entered: true };
         });
+        run.status = "awaiting_human";
       }
 
       const event = await step.waitForEvent<{ deliveryId: string }>(
@@ -317,6 +377,106 @@ export class WorkflowOrchestrator {
     return run;
   }
 
+  private async waitForDefinitionEvent(
+    step: WorkflowStepLike,
+    run: OrchestrationRunRecord,
+    node: Extract<LoadedWorkflowDefinition["nodes"][string], { type: "wait" }>,
+  ): Promise<void> {
+    const wait = await step.do(`wait-authority:${node.id}`, async () =>
+      this.store.findOpenWait(run.run_id, node.id));
+    if (wait === null) throw new WorkflowFailureError("durable_wait_missing");
+    const resumeJson = canonicalEvent(node.resumeEvent);
+    const cancelJson = canonicalEvent(node.cancelEvent);
+    const [resumeDigest, cancelDigest] = await Promise.all([
+      sha256Hex(resumeJson),
+      sha256Hex(cancelJson),
+    ]);
+    if (
+      wait.resume_event_json !== resumeJson ||
+      wait.resume_event_digest !== resumeDigest ||
+      wait.cancel_event_json !== cancelJson ||
+      wait.cancel_event_digest !== cancelDigest ||
+      wait.resume_event_type !== node.resumeEvent.type ||
+      wait.cancel_event_type !== node.cancelEvent.type
+    ) throw new WorkflowFailureError("durable_wait_definition_mismatch");
+
+    let event: { payload: Readonly<{ deliveryId: string }> };
+    try {
+      event = await step.waitForEvent<{ deliveryId: string }>(
+        `linear-event:${node.id}:${wait.wait_id}`,
+        { type: "linear-event", timeout: "365d" },
+      );
+    } catch {
+      return;
+    }
+    const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
+      this.store.claimInboxEvent(
+        event.payload.deliveryId,
+        run.run_id,
+        this.now().toISOString(),
+      ));
+    if (claimed === null) return;
+    const decision = evaluateWaitEvent(this.definition, node.id, {
+      deliveryId: claimed.delivery_id,
+      eventKind: claimed.event_kind,
+      actorId: claimed.actor_id,
+      actorType: claimed.actor_type,
+      toStateName: claimed.to_state_name,
+    });
+    if (decision.kind === "reject") {
+      await this.store.recordWaitDelivery({
+        deliveryId: claimed.delivery_id,
+        waitId: wait.wait_id,
+        runId: run.run_id,
+        decision: "rejected",
+        safeReason: decision.safeReason,
+        now: this.now().toISOString(),
+      });
+      await this.store.markInboxState(
+        claimed.delivery_id,
+        "claimed",
+        "processed",
+        this.now().toISOString(),
+      );
+      return;
+    }
+    const target = this.definition.nodes[decision.toNode];
+    if (target === undefined) throw new WorkflowFailureError("wait_target_missing");
+    const consumed = await step.do(`consume-wait:${claimed.delivery_id}`, async () =>
+      this.store.consumeWait({
+        waitId: wait.wait_id,
+        runId: run.run_id,
+        deliveryId: claimed.delivery_id,
+        expectedNode: node.id,
+        expectedVisitSequence: run.current_visit_sequence,
+        expectedStatus: node.deosStatus,
+        nextNode: decision.toNode,
+        nextStatus: statusForNode(this.definition, decision.toNode),
+        terminalCause: target.type === "failure" ? target.cause : null,
+        outcome: decision.outcome,
+        transitionId: transitionIdentity(run.run_id, run.current_visit_sequence),
+        actorId: claimed.actor_id,
+        actorType: claimed.actor_type,
+        now: this.now().toISOString(),
+      }));
+    if (!consumed) {
+      await this.store.recordWaitDelivery({
+        deliveryId: claimed.delivery_id,
+        waitId: wait.wait_id,
+        runId: run.run_id,
+        decision: "already_consumed",
+        safeReason: "wait_already_consumed",
+        now: this.now().toISOString(),
+      });
+    }
+    await this.store.markInboxState(
+      claimed.delivery_id,
+      "claimed",
+      "processed",
+      this.now().toISOString(),
+    );
+  }
+
   private async commitOutcome(
     run: OrchestrationRunRecord,
     decision: ReturnType<typeof evaluateNodeOutcome>,
@@ -326,10 +486,24 @@ export class WorkflowOrchestrator {
     if (target === undefined) throw new Error(`target node ${decision.toNode} is missing`);
     const gateOriginNode = target.type === "human_gate" ? decision.fromNode : null;
     const transitionId = transitionIdentity(run.run_id, run.current_visit_sequence);
+    const wait = target.type === "wait" ? await (async () => {
+      const resumeEventJson = canonicalEvent(target.resumeEvent);
+      const cancelEventJson = canonicalEvent(target.cancelEvent);
+      return {
+        waitId: `${transitionId}:wait`,
+        resumeEventType: target.resumeEvent.type,
+        resumeEventJson,
+        resumeEventDigest: await sha256Hex(resumeEventJson),
+        cancelEventType: target.cancelEvent.type,
+        cancelEventJson,
+        cancelEventDigest: await sha256Hex(cancelEventJson),
+      };
+    })() : undefined;
     const result = await this.store.compareAndSetNode({
       runId: run.run_id,
       expectedNode: decision.fromNode,
       expectedVisitSequence: run.current_visit_sequence,
+      expectedStatus: run.status,
       nextNode: decision.toNode,
       nextStatus: statusForNode(this.definition, decision.toNode),
       gateOriginNode,
@@ -340,6 +514,8 @@ export class WorkflowOrchestrator {
       actorType: decision.actorType,
       providerOperationId: null,
       now: this.now().toISOString(),
+      wait,
+      terminalCause: target.type === "failure" ? target.cause : null,
     });
     if (result.outcome === "stale") {
       await this.requireRun(run.run_id);
@@ -356,5 +532,33 @@ export class WorkflowOrchestrator {
       traversalId: transitionId,
     });
     return { transitioned: true };
+  }
+
+  private evaluateExecutionOutcome(
+    nodeId: string,
+    outcome: ValidatedAgentOutcome | ValidatedSystemOutcome,
+  ): Extract<EdgeDecision, { kind: "transition" }> {
+    let decision: EdgeDecision;
+    try {
+      decision = evaluateNodeOutcome(this.definition, nodeId, outcome);
+    } catch (error) {
+      if (this.definition.version < 4) throw error;
+      decision = outcome.kind === "agent"
+        ? evaluateNodeOutcome(this.definition, nodeId, {
+          kind: "agent",
+          outcome: "failed",
+          providerReceiptsPresent: outcome.providerReceiptsPresent,
+          providerReceiptsComplete: false,
+        })
+        : evaluateNodeOutcome(this.definition, nodeId, {
+          kind: "system_action",
+          outcome: "failed",
+          providerReceiptsComplete: false,
+        });
+    }
+    if (decision.kind !== "transition") {
+      throw new Error(`execution node ${nodeId} did not select a graph transition`);
+    }
+    return decision;
   }
 }

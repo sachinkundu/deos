@@ -12,6 +12,11 @@ import { Sandbox } from "./sandbox-platform.ts";
 import { writeLifecycleObservation } from "./lifecycle-telemetry.ts";
 import { CleanupAuditor, D1CleanupAuditStore } from "./cleanup-audit.ts";
 import { CloudflareSandboxFactory } from "./sandbox-platform.ts";
+import {
+  D1CompletionReconciliationStore,
+  LinearCommentOperatorNotice,
+  WorkflowCompletionReconciler,
+} from "./workflow-completion-reconciler.ts";
 
 export { DeosWorkflow, Sandbox };
 
@@ -43,6 +48,13 @@ const cleanupAuditor = (env: Env): CleanupAuditor => new CleanupAuditor(
   { lifecycle: writeLifecycleObservation },
 );
 
+const completionReconciler = (env: Env): WorkflowCompletionReconciler =>
+  new WorkflowCompletionReconciler(
+    new D1CompletionReconciliationStore(env.DB),
+    env.ORCHESTRATION_WORKFLOW,
+    new LinearCommentOperatorNotice(env.LINEAR_API_URL, env.LINEAR_APP_ACCESS_TOKEN),
+  );
+
 export default {
   fetch(request, env) {
     const path = new URL(request.url).pathname;
@@ -56,7 +68,8 @@ export default {
       env as unknown as QueueConsumerEnv,
     );
   },
-  scheduled(_controller, env) {
-    return cleanupAuditor(env).scheduled();
+  async scheduled(_controller, env) {
+    await cleanupAuditor(env).scheduled();
+    await completionReconciler(env).scheduled();
   },
 } satisfies ExportedHandler<Env, QueueBody>;

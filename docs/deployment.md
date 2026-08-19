@@ -7,6 +7,8 @@ DEOS has two deployable Workers sharing D1 and Queue resources:
 
 The orchestration rollout is additive. Keep `TRIAL_DISPATCH_ENABLED` false while creating bindings, applying migrations, uploading secrets, and deploying the pinned Container image. Enabling a project policy in D1 is the separate canary action.
 
+Migration `0007_explicit_business_lifecycle.sql` is a guarded copy-and-swap of `orchestration_runs`, because SQLite cannot widen its status `CHECK` constraint in place. Before applying it remotely, export a D1 backup and record row counts, `PRAGMA foreign_key_check`, active-run uniqueness, and the current policy/definition digest. The migration preserves legacy version 3 `blocked` rows, includes both resumable statuses in the one-active-run index, and adds wait history plus completion-reconciliation records.
+
 ## Required resources
 
 The checked Wrangler configurations name the existing D1 database, Queue, and private R2 bucket. The TypeScript configuration additionally creates:
@@ -85,7 +87,7 @@ WHERE project_id = '99426d9b-cda7-4db4-9136-692a95a0b090';
 
 Apply that statement through `wrangler d1 execute ... --remote --command`. Use Linear MCP to move a dedicated test issue to `In Progress`. The provider-originated delivery, not a locally signed payload, is the canary proof.
 
-For definition version 10, verify the registered canonical graph before enabling dispatch: `openspec_verify` must lead to `final_approval`, approval must lead directly to `sync_and_archive`, and the snapshot must contain neither `deploy` nor `release_finalization`. Use a deliberately small repository-local OpenSpec change. The run must wait for real authorized-human deliveries at its configured gates; an agent-originated or synthetic approval is not evidence.
+For definition version 11, verify the registered canonical graph before enabling dispatch: `openspec_verify` must lead to `final_approval`, approval must lead directly to `sync_and_archive`, rejection must lead to `denied`, and the snapshot must contain neither `deploy` nor `release_finalization`. Use a deliberately small repository-local OpenSpec change. The run must wait for real authorized-human deliveries at its configured gates; an agent-originated or synthetic approval is not evidence.
 
 After final approval, inspect the `sync_and_archive` attempt's bounded `job_spec_json` for exact `/opsx:archive`, trusted change identity, and the latest continuation-patch reference. Require `state='completed'`, `cleanup_state='destroyed'`, a complete manifest, and a visit-aware transition from `sync_and_archive` to `done`. Retrieve the final `patch.diff` from R2 into a protected temporary location, verify its SHA-256 against D1, and inspect it for the archived change plus applicable main-spec synchronization. The same run must end with business status `succeeded`, and no attempt or transition may name `deploy` or `release_finalization`.
 
@@ -105,7 +107,18 @@ Also confirm every canary attempt is terminal with `cleanup_state='destroyed'` a
 
 ## Inspection
 
-Use read-only D1 queries for `deliveries`, `orchestration_runs`, `dispatch_intents`, `workflow_event_inbox`, `agent_attempts`, `artifact_manifests`, `artifacts`, `provider_operations`, `workflow_transitions_v2`, and `cleanup_work_items`. For OpenSpec nodes, inspect only bounded `job_spec_json` fields for `openspecInstruction`, `openspecChange`, and `continuationPatch`; verify the referenced patch through its recorded digest without printing arbitrary source or transcript content. Correlate Workers Logs by `deos.workflow.correlation_id` and `deos.workflow.run_id`. Do not query or log raw prompts, transcripts, auth envelopes, tokens, or provider response bodies.
+Use read-only D1 queries for `deliveries`, `orchestration_runs`, `dispatch_intents`, `workflow_event_inbox`, `workflow_waits`, `workflow_wait_deliveries`, `workflow_completion_reconciliations`, `agent_attempts`, `artifact_manifests`, `artifacts`, `provider_operations`, `workflow_transitions_v2`, and `cleanup_work_items`. For OpenSpec nodes, inspect only bounded `job_spec_json` fields for `openspecInstruction`, `openspecChange`, and `continuationPatch`; verify the referenced patch through its recorded digest without printing arbitrary source or transcript content. Verify `terminal_cause` only from the bounded allowlist and correlate Workers Logs by `deos.workflow.correlation_id` and `deos.workflow.run_id`. Do not query or log raw prompts, transcripts, auth envelopes, tokens, matcher-external provider fields, or provider response bodies.
+
+For migration rehearsal and post-apply inspection, use read-only queries equivalent to:
+
+```sql
+SELECT status, COUNT(*) FROM orchestration_runs GROUP BY status ORDER BY status;
+PRAGMA foreign_key_check;
+SELECT run_id, node_id, status, resume_event_type, cancel_event_type
+FROM workflow_waits ORDER BY created_at DESC LIMIT 20;
+SELECT run_id, safe_cause, observed_executor_status, observed_run_status, state
+FROM workflow_completion_reconciliations ORDER BY created_at DESC LIMIT 20;
+```
 
 The scheduled GitHub workflow reads `wrangler containers instances ... --json` and submits only Sandbox IDs to `/cleanup-audit`. It holds Cloudflare inventory and cleanup-audit credentials; Linear credentials remain in the Worker.
 
@@ -113,4 +126,4 @@ The scheduled GitHub workflow reads `wrangler containers instances ... --json` a
 
 First disable project dispatch in D1. Queue deliveries remain authenticated and auditable but cannot create a new run. Existing Workflow mappings remain available for inspection.
 
-Then deploy the prior Worker version. Migrations are additive and are not reversed. Never delete D1 rows, Workflow history, R2 manifests, or credential envelopes during rollback. For every nonterminal attempt, disable keep-alive, destroy its exact Sandbox ID, and verify `cleanup_state='destroyed'`. If provider inventory still shows a resource, submit it to `/cleanup-audit` and keep the generated Linear cleanup issue open until replacement evidence is recorded.
+Then deploy the prior Worker version and point new policies back to the version 3 definition. The expanded schema is retained: migrations are not reversed, and existing version 4 runs are explicitly canceled or reconciled rather than downgraded. Never delete D1 rows, waits, reconciliation history, Workflow history, R2 manifests, or credential envelopes during rollback. For every nonterminal attempt, disable keep-alive, destroy its exact Sandbox ID, and verify `cleanup_state='destroyed'`. If provider inventory still shows a resource, submit it to `/cleanup-audit` and keep the generated Linear cleanup issue open until replacement evidence is recorded.
