@@ -5,11 +5,11 @@ People cannot currently answer where a Linear issue is in its governed DEOS work
 ## What Changes
 
 - Add an operator-authenticated view that accepts a Linear issue key, selects its latest or requested DEOS run, and presents D1 as the sole authority for workflow status and history.
-- Project an explicit safe read model containing the run status, current or terminal node, exact frozen definition and digest, ordered traversals, repeated visit identities, bounded wait guidance, agent attempts, planning artifacts, governed pull requests, and access-controlled transcript destinations.
+- Project an explicit safe read model containing the run status, current or terminal node, frozen definition version and digest, ordered traversals, repeated visit identities, bounded wait guidance, agent attempts, planning artifacts, governed pull requests, and access-controlled transcript destinations. Derive the visible graph from an allowlist of structural node and edge fields; the displayed digest identifies the complete frozen definition but does not claim that the prompt-free projection hashes to that digest.
 - Render the approved two-row workflow map with repeated review work grouped into stages and cycle counts while retaining every ordered visit and agent run in the detailed history.
 - Make current, waiting, finished, failed, unavailable, and changing states clear; link required human action back to Linear; and refresh often enough to follow a live run without guessing between reads.
 - Preserve the approved System, Light, and Dark themes, restrained active-state motion, reduced-motion fallback, and hosting-provider-neutral product language.
-- Protect every response with operator authentication and an explicit safe-field allowlist. Exclude credentials, prompts, provider payloads, raw matcher or diagnostic content, unrestricted artifact bodies, and Cloudflare execution fields or identifiers.
+- Protect every response with operator authentication and an explicit safe-field allowlist. Exclude the full canonical definition document, credentials, prompts, provider payloads, raw matcher or diagnostic content, unrestricted artifact bodies, and Cloudflare execution fields or identifiers.
 - Require deterministic API, projection, redaction, authorization, UI, polling, and accessibility coverage plus provider-originated evidence for a live wait/resumption path and a terminal path, with sanitized screenshots and read-only D1 proof.
 
 ### Non-goals
