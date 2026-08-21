@@ -5,7 +5,7 @@ Captured 2026-08-21 from `/Users/sachin/code/deos-worktrees/sac-101-portal`.
 ## Live resources
 
 - Portal: <https://deos.voxdez.com/>
-- Portal Worker version: `6dd3221d-b13f-4207-9065-6992e9db3b6a` at 100% traffic
+- Portal Worker version: `9f047f02-7de7-4171-aaa0-de7f71e975bf` at 100% traffic
 - Queue and orchestration Worker version: `2135da21-e9c5-48bf-ac7c-17701efe8c81`
 - Linear ingress Worker version: `1ca6a565-6284-4817-8896-1f647327a63a`
 - D1 database: `deos-sample-project` (`4e854f8a-018a-42c4-a325-c4b8805c06b2`)
@@ -13,12 +13,13 @@ Captured 2026-08-21 from `/Users/sachin/code/deos-worktrees/sac-101-portal`.
 
 ## Authentication and exposure
 
-- Unauthenticated `GET https://deos.voxdez.com/` returns HTTP `302` to `lausac.cloudflareaccess.com` before the Worker or D1 read path.
+- Unauthenticated `GET https://deos.voxdez.com/` returns HTTP `302` to `deos-voxdez.cloudflareaccess.com` before the Worker or D1 read path.
 - The Access application audience is `c12828abda88ac73e394039f6e0b87a9bc5f2d78922463c37a72ccca55bedec7`.
-- The sole allow policy includes exactly `sachinkundu@gmail.com` and requires the account's one-time-PIN identity provider.
+- The Access application allows only the `DEOS Google` Google identity provider (`8f93ab94-bb0e-4613-ac8f-d25c8a2a21f5`) and redirects directly to it.
+- The sole allow policy includes exactly `sachinkundu@gmail.com` and requires that Google login method.
+- The Google OAuth web client is named `DEOS Cloudflare Access` in the `sachinkundu` Google Cloud project. Its authorized origin and callback use `deos-voxdez.cloudflareaccess.com`; no OAuth credential is stored in this repository or in the portal Worker.
 - The Worker re-verifies the Access JWT signature, issuer, audience, expiry, and exact email before assets, routes, or D1.
 - The portal Worker has only D1, Static Assets, and three non-secret authentication variables. Workers.dev and preview URLs are disabled.
-- A Google Workspace identity provider was not added because this account has no Google OAuth client credentials; the existing one-time-PIN provider is used instead.
 
 ## Durable state
 
@@ -44,4 +45,7 @@ The D1 result metadata reported `rows_written: 0` and `changed_db: false`. The f
 - Root and portal TypeScript checks, generated binding check, Ruff, npm audit, production build, three Wrangler dry-runs, local Worker startup, OpenSpec strict validation, and local full migration apply passed.
 - The compiled interface was checked at 1728 x 1003 and 390 x 844. The approved two-row direction, themes, interactions, responsive behavior, and reduced-motion behavior passed visual QA in `portal/design-qa.md`.
 
-The authorized live portal screen still requires the operator to complete the one-time code sent by Cloudflare Access; no mailbox access or authentication bypass was used for evidence collection.
+- A real Google sign-in as the allowed `sachinkundu@gmail.com` account loaded the deployed portal and its SAC-122 data. The sanitized live screen is captured in `portal/qa-google-authenticated.png`.
+- After logout, the Access login screen presented only `Google · DEOS Google` under the `deos-voxdez.cloudflareaccess.com` team domain.
+- A real Google sign-in as `sachinindiakundu@gmail.com` reached Cloudflare Access and was denied with `That account does not have access.` The denial is captured in `portal/qa-google-denied.png`.
+- The post-authentication remote D1 inventory remained 24 runs, 103 transitions, 93 attempts, 0 waits, 15 indexed issues, and 17 governed links. Its metadata again reported `rows_written: 0` and `changed_db: false`.

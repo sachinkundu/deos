@@ -12,8 +12,8 @@
     "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true }
   },
   "vars": {
-    "ACCESS_TEAM_DOMAIN": "configured-by-deploy",
-    "ACCESS_AUD": "configured-by-deploy",
+    "ACCESS_TEAM_DOMAIN": "deos-voxdez.cloudflareaccess.com",
+    "ACCESS_AUD": "c12828abda88ac73e394039f6e0b87a9bc5f2d78922463c37a72ccca55bedec7",
     "ALLOWED_EMAIL": "sachinkundu@gmail.com"
   },
   "d1_databases": [{
