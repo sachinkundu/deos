@@ -31,7 +31,7 @@ The portal SHALL use only the minimum resource access needed to read the operato
 - **THEN** every database statement used by that request is read-only and the request causes no durable state change
 
 #### Scenario: Portal reads an approved artifact
-- **WHEN** the operator opens an artifact or transcript destination
+- **WHEN** the operator opens an approved artifact served by the portal
 - **THEN** the portal performs only metadata or object reads and does not create, replace, or delete any object
 
 #### Scenario: A caller attempts mutation
@@ -74,11 +74,11 @@ For the selected run, the portal SHALL derive the current visit, business status
 
 #### Scenario: Run is waiting for the user
 - **WHEN** D1 records the selected run as `awaiting_human`
-- **THEN** the portal presents `Waiting for your approval`, identifies the exact current visit, and links the required action to the Linear issue
+- **THEN** the portal presents `Human review required: waiting for your approval`, identifies the exact current visit, and links the required action to the Linear issue
 
 #### Scenario: Run is waiting for bounded operator action
 - **WHEN** D1 records the selected run as `awaiting_capability` or `manual_reconciliation_required`
-- **THEN** the portal presents a provider-neutral waiting state and only safe, bounded operator guidance recorded for that wait
+- **THEN** the portal presents `Human review required`, distinguishes the recorded retry or reconciliation action from an approval gate, and shows only safe, bounded operator guidance recorded for that wait
 
 #### Scenario: Run succeeded
 - **WHEN** D1 records the selected run as `succeeded`
@@ -131,11 +131,11 @@ The portal SHALL present the full safe graph as the approved concise two-row wor
 - **THEN** the portal marks the projection unavailable and does not omit the node or replace the run's graph with another version
 
 ### Requirement: Detailed history preserves every visit and agent run
-The portal SHALL retain the complete D1 ordering of workflow visits for the selected run, including repeated visits to the same node. Stage details SHALL show the visits and agent attempts that contributed to each displayed cycle in chronological order. Each agent attempt SHALL remain a distinct row with its safe agent label, cycle or visit context, confirmed outcome, timestamps, and authenticated transcript destination when an approved transcript projection exists.
+The portal SHALL read and display the complete D1-recorded ordering of workflow visits for the selected run, including repeated visits to the same node. Stage details SHALL show the visits and agent attempts that contributed to each displayed cycle in chronological order. Each agent attempt SHALL remain a distinct row with its safe agent label, cycle or visit context, confirmed outcome, timestamps, and transcript-document link when one is recorded.
 
 #### Scenario: A review sends work backward
 - **WHEN** a transition returns from review to an earlier node
-- **THEN** the history retains both traversals as separate ordered visits and the affected stage's cycle count increases accordingly
+- **THEN** the portal's history view shows both D1-recorded traversals as separate ordered visits and the affected stage's cycle count increases accordingly
 
 #### Scenario: Several agents run in one cycle
 - **WHEN** two agents each run during the same displayed cycle
@@ -145,9 +145,9 @@ The portal SHALL retain the complete D1 ordering of workflow visits for the sele
 - **WHEN** more than one attempt is recorded for the same agent work in one visit
 - **THEN** every attempt appears separately in chronological order with its own confirmed outcome
 
-#### Scenario: Attempt has no approved transcript projection
-- **WHEN** an agent attempt is recorded but no safe transcript projection is available
-- **THEN** the attempt remains visible and its transcript destination is explicitly unavailable rather than linked to a raw object
+#### Scenario: Attempt has no transcript document
+- **WHEN** an agent attempt is recorded but no transcript-document link is recorded
+- **THEN** the attempt remains visible and its transcript destination is explicitly unavailable
 
 ### Requirement: Stage details expose useful governed work links
 Stage details SHALL expose the most useful safe work products for the selected run. Planning stages SHALL link their generated OpenSpec artifacts. Implementation and validation stages SHALL use the governed pull request as their primary evidence destination rather than enumerating the implementation's source files. Human waits SHALL link to the Linear issue, and all links SHALL belong to the selected run or issue.
@@ -169,7 +169,7 @@ Stage details SHALL expose the most useful safe work products for the selected r
 - **THEN** the portal denies that destination instead of returning or linking it
 
 ### Requirement: Every response uses an explicit safe-field allowlist
-The portal SHALL construct issue, run, graph, history, wait, attempt, and work-product responses from explicit safe-field allowlists. It SHALL exclude credentials, secrets, full definition documents, prompts, provider payloads, raw matcher or diagnostic content, unrestricted artifact bodies, raw R2 keys, and Cloudflare execution status or identifiers. An access-controlled transcript projection SHALL include only approved human-readable agent output and safe timing or outcome metadata; it SHALL exclude system or developer prompts, hidden context, unsafe tool arguments or results, and credential-like content.
+The portal SHALL construct issue, run, graph, history, wait, attempt, and work-product responses from explicit safe-field allowlists. It SHALL exclude credentials, secrets, full definition documents, prompts, provider payloads, raw matcher or diagnostic content, unrestricted artifact bodies, raw R2 keys, and Cloudflare execution status or identifiers. For transcript documents, the portal SHALL return only allowlisted link metadata, SHALL NOT fetch, inspect, sanitize, or proxy the document body, and SHALL rely on the destination's own access control.
 
 #### Scenario: Safe run projection is returned
 - **WHEN** an authorized operator requests a selected run
@@ -179,19 +179,23 @@ The portal SHALL construct issue, run, graph, history, wait, attempt, and work-p
 - **WHEN** a queried D1 row contains a field that is not present in the response allowlist
 - **THEN** that field is omitted even if the browser did not explicitly request its removal
 
-#### Scenario: Transcript contains excluded material
-- **WHEN** a transcript includes a prompt, hidden context, unsafe tool content, or credential-like text
-- **THEN** the excluded material is not returned and the portal does not fall back to serving the raw transcript object
+#### Scenario: Transcript document is linked
+- **WHEN** a recorded agent attempt has a transcript-document destination
+- **THEN** the portal returns only the allowlisted link metadata and does not read or return the document body
 
 #### Scenario: API or rendering fails
 - **WHEN** an internal read, projection, or rendering error occurs
-- **THEN** the browser receives a safe unavailable state with no SQL text, binding name, internal identifier, provider payload, stack trace, or raw diagnostic
+- **THEN** the browser receives a safe unavailable state with a retry action and no SQL text, binding name, internal identifier, provider payload, stack trace, or raw diagnostic
 
 ### Requirement: Live views refresh without optimistic state
-The portal SHALL obtain a fresh authenticated projection on initial load and while a run view remains active. After a successful response, it SHALL start the next poll within ten seconds while the page is visible, SHALL poll immediately when a hidden page becomes visible again, and SHALL never advance the graph between confirmed responses. Each projection SHALL identify when it was observed and when the selected D1 run was last updated.
+The portal SHALL obtain a fresh authenticated projection on initial load and while a run view remains active. It SHALL poll only the currently viewed issue and selected run. After a successful response, it SHALL start the next poll within ten seconds while the page is visible and SHALL poll immediately when a hidden page becomes visible again. A newer confirmed projection SHALL cause an informational update banner to appear without replacing the content being read; the graph SHALL advance only when the operator applies that confirmed update. Each projection SHALL identify when it was observed and when the selected D1 run was last updated.
 
 #### Scenario: D1 changes between polls
 - **WHEN** a later poll returns a newer confirmed visit or status for the selected run
+- **THEN** within ten seconds the portal shows that updated information is available and preserves the displayed graph, history, stage counts, and status until the operator applies it
+
+#### Scenario: Operator applies a confirmed update
+- **WHEN** the operator activates the update banner for a newer confirmed projection
 - **THEN** the portal updates the graph, history, stage counts, and status together from that response
 
 #### Scenario: No durable change is recorded
@@ -200,11 +204,15 @@ The portal SHALL obtain a fresh authenticated projection on initial load and whi
 
 #### Scenario: Poll fails after confirmed data was shown
 - **WHEN** a refresh cannot confirm current D1 state
-- **THEN** the portal marks status as unconfirmed or unavailable, retains the last confirmed observation time, and does not present cached data as current
+- **THEN** the portal retains the last confirmed view, marks it as unconfirmed or unavailable with its observation time, offers a retry action, and does not present it as current
 
 #### Scenario: Browser tab becomes visible
 - **WHEN** the portal returns to a visible browser state after polling was paused
-- **THEN** it requests a fresh authenticated projection before claiming that the displayed status is current
+- **THEN** it requests a fresh authenticated projection for the currently viewed issue and selected run before claiming that the displayed status is current and shows the update banner if that projection is newer
+
+#### Scenario: Other issues have been viewed previously
+- **WHEN** the operator is viewing one issue and other issues remain in the portal's navigation or recent history
+- **THEN** background polling requests data only for the currently viewed issue and selected run
 
 ### Requirement: The approved presentation remains recognizable and provider-neutral
 The portal SHALL preserve the approved blue-charcoal workflow-map direction with System, Light, and Dark themes. It SHALL make the active stage and matching issue unmistakable with restrained breathing motion, while a reduced-motion preference SHALL remove that animation and retain a clear static active treatment. User-facing product copy SHALL not name Cloudflare, D1, R2, Workers, Sandboxes, or other hosting infrastructure.
@@ -226,16 +234,12 @@ The portal SHALL preserve the approved blue-charcoal workflow-map direction with
 - **THEN** it describes DEOS product state and required action without exposing hosting-provider terminology
 
 ### Requirement: Completion evidence proves real live and terminal paths
-Completion SHALL include deterministic coverage of authorization, read-only access, projection, redaction, run selection, graph cycles, history, work links, polling, themes, and reduced motion. It SHALL also include provider-originated evidence in which real Linear events drive the deployed DEOS system and durable D1 records, and the deployed portal displays both a live wait-and-resumption path and a terminal path. Synthetic ingress and deterministic tests SHALL be labeled separately and SHALL NOT be presented as provider-originated end-to-end proof.
+Completion SHALL include deterministic coverage of authorization, read-only access, projection, redaction, run selection, graph cycles, history, work links, polling, themes, and reduced motion. It SHALL also include provider-originated evidence in which real Linear events drive the deployed DEOS system and durable D1 records, and the deployed portal displays both a live wait-and-resumption path and a terminal path. Retained visual evidence SHALL include sanitized screenshots of the provider configuration, the triggering Linear issue or resource state, and the resulting portal state.
 
 #### Scenario: Live human wait resumes
 - **WHEN** a real provider-originated Linear issue reaches a human wait and the authorized human performs the configured resume transition
-- **THEN** read-only D1 evidence records the wait and subsequent visit and sanitized portal screenshots show the matching waiting and resumed states
+- **THEN** read-only D1 evidence records the wait and subsequent visit, the portal makes each newer confirmed state available within ten seconds, and retained provider, Linear, and portal screenshots show the matching trigger, waiting, and resumed states
 
 #### Scenario: Real run becomes terminal
 - **WHEN** a real provider-originated run reaches a terminal DEOS outcome
-- **THEN** read-only D1 evidence and a sanitized portal screenshot show the same run sequence, terminal outcome, final visit, definition version, and digest
-
-#### Scenario: Only synthetic proof exists
-- **WHEN** the deployed portal has been tested only with locally generated requests, fixtures, or deterministic tests
-- **THEN** the change is not reported as provider-originated end-to-end verified
+- **THEN** read-only D1 evidence and retained Linear and portal screenshots show the same run sequence, terminal outcome, final visit, definition version, and digest, with the portal making the confirmed terminal state available within ten seconds
