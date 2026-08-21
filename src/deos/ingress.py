@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -81,6 +82,19 @@ class LinearWebhookACL:
             raise InvalidWebhook("webhook resource must be Issue")
         delivery_id = delivery_id or _first_string(payload, "webhookId", "id")
         issue_id = _string(data, "id")
+        issue_key = _optional_string(data, "identifier")
+        issue_title = _optional_string(data, "title")
+        issue_url = _optional_string(data, "url")
+        if issue_key is None or re.fullmatch(r"[A-Z][A-Z0-9]+-[1-9][0-9]*", issue_key) is None:
+            raise InvalidWebhook("invalid Linear issue identifier")
+        if issue_title is None or not issue_title.strip() or len(issue_title) > 300:
+            raise InvalidWebhook("invalid Linear issue title")
+        if (
+            issue_url is None
+            or not issue_url.startswith("https://linear.app/")
+            or f"/issue/{issue_key}/" not in issue_url
+        ):
+            raise InvalidWebhook("invalid Linear issue URL")
         project_id = _string(project, "id")
         transition = _first_string(state, "name", "type")
         occurred_at = _parse_datetime(
@@ -107,6 +121,9 @@ class LinearWebhookACL:
             state_id=state_id,
             previous_state_id=previous_state_id,
             previous_state_name=previous_state_name,
+            issue_key=issue_key,
+            issue_title=issue_title.strip(),
+            issue_url=issue_url,
         )
         state_changed = isinstance(updated_from, dict) and (
             "stateId" in updated_from or "state" in updated_from

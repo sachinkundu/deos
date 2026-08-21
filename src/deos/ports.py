@@ -56,6 +56,9 @@ class ApplicationEvent:
     state_id: str | None = None
     previous_state_id: str | None = None
     previous_state_name: str | None = None
+    issue_key: str | None = None
+    issue_title: str | None = None
+    issue_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

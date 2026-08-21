@@ -19,6 +19,9 @@ export interface QueueBody {
   event_id: string;
   source_delivery_id: string;
   issue_id: string;
+  issue_key: string;
+  issue_title: string;
+  issue_url: string;
   project_id: string;
   transition: string;
   actor_id?: string | null;
@@ -209,6 +212,15 @@ export const processQueueMessage = async (
       humanGateStateId: env.LINEAR_HUMAN_APPROVAL_STATE_ID,
       dispatchEnabled: String(env.TRIAL_DISPATCH_ENABLED) === "true",
       now,
+    });
+    await store.upsertIssueIndex({
+      issueId: event.issue_id,
+      projectId: event.project_id,
+      issueKey: event.issue_key,
+      title: event.issue_title,
+      linearUrl: event.issue_url,
+      sourceDeliveryId: event.source_delivery_id,
+      observedAt: event.occurred_at,
     });
     const policy = await store.findPolicy(event.project_id);
     const activeRun = await store.findActiveRun(event.project_id, event.issue_id);

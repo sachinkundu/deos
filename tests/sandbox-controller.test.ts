@@ -127,6 +127,7 @@ class AttemptStore implements AgentAttemptStore {
     sandboxId: string;
     runId: string;
     nodeId: string;
+    visitSequence: number;
     jobSpecJson: string;
     jobSpecDigest: string;
     absoluteDeadline: string;
@@ -137,6 +138,7 @@ class AttemptStore implements AgentAttemptStore {
       sandbox_id: input.sandboxId,
       run_id: input.runId,
       node_id: input.nodeId,
+      visit_sequence: input.visitSequence,
       job_spec_json: input.jobSpecJson,
       job_spec_digest: input.jobSpecDigest,
       process_id: null,

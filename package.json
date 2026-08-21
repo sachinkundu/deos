@@ -5,16 +5,26 @@
   "scripts": {
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "types:check": "wrangler types worker-configuration.d.ts --include-runtime false --config wrangler.queue-consumer-ts.jsonc --check"
+    "types:check": "wrangler types worker-configuration.d.ts --include-runtime false --config wrangler.queue-consumer-ts.jsonc --check",
+    "portal:build": "vite build --config portal/vite.config.ts",
+    "portal:typecheck": "tsc --noEmit -p portal/tsconfig.json",
+    "portal:test": "node --experimental-strip-types --test portal/tests/*.test.ts"
   },
   "dependencies": {
     "@cloudflare/sandbox": "0.13.0-next.738.2",
+    "@phosphor-icons/react": "2.1.10",
+    "jose": "6.1.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
     "yaml": "2.9.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260817.1",
+    "@cloudflare/workers-types": "5.20260821.1",
     "@types/node": "22.18.0",
+    "@types/react": "19.1.12",
+    "@types/react-dom": "19.1.9",
     "typescript": "5.9.3",
-    "wrangler": "4.123.0"
+    "vite": "7.3.6",
+    "wrangler": "4.125.0"
   }
 }

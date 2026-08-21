@@ -290,6 +290,7 @@ class RuntimeStore implements WorkflowRuntimeStore {
         wait_id: input.wait.waitId,
         run_id: input.runId,
         node_id: input.nextNode,
+        visit_sequence: input.expectedVisitSequence + 1,
         status: "awaiting",
         resume_event_type: input.wait.resumeEventType,
         resume_event_json: input.wait.resumeEventJson,

@@ -126,6 +126,7 @@ export interface WorkflowWaitRecord {
   wait_id: string;
   run_id: string;
   node_id: string;
+  visit_sequence: number;
   status: "awaiting" | "consumed" | "canceled";
   resume_event_type: string;
   resume_event_json: string;
@@ -150,6 +151,15 @@ export interface PersistedWaitInput {
 }
 
 export interface OrchestrationDispatchStore {
+  upsertIssueIndex(input: {
+    issueId: string;
+    projectId: string;
+    issueKey: string;
+    title: string;
+    linearUrl: string;
+    sourceDeliveryId: string;
+    observedAt: string;
+  }): Promise<void>;
   registerDefinitionAndPolicy(input: {
     definition: LoadedWorkflowDefinition;
     projectId: string;
@@ -262,6 +272,38 @@ export class D1OrchestrationStore {
 
   constructor(database: D1Database) {
     this.database = database;
+  }
+
+  async upsertIssueIndex(input: {
+    issueId: string;
+    projectId: string;
+    issueKey: string;
+    title: string;
+    linearUrl: string;
+    sourceDeliveryId: string;
+    observedAt: string;
+  }): Promise<void> {
+    await this.database.prepare(
+      `INSERT INTO linear_issue_index
+       (issue_id, project_id, issue_key, title, linear_url, source_delivery_id, observed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(issue_id) DO UPDATE SET
+         project_id = excluded.project_id,
+         issue_key = excluded.issue_key,
+         title = excluded.title,
+         linear_url = excluded.linear_url,
+         source_delivery_id = excluded.source_delivery_id,
+         observed_at = excluded.observed_at
+       WHERE excluded.observed_at >= linear_issue_index.observed_at`,
+    ).bind(
+      input.issueId,
+      input.projectId,
+      input.issueKey,
+      input.title,
+      input.linearUrl,
+      input.sourceDeliveryId,
+      input.observedAt,
+    ).run();
   }
 
   async registerDefinitionAndPolicy(input: {
@@ -737,15 +779,16 @@ export class D1OrchestrationStore {
     if (input.wait !== undefined) {
       statements.push(this.database.prepare(
         `INSERT OR IGNORE INTO workflow_waits
-         (wait_id, run_id, node_id, status, resume_event_type, resume_event_json,
+         (wait_id, run_id, node_id, visit_sequence, status, resume_event_type, resume_event_json,
           resume_event_digest, cancel_event_type, cancel_event_json, cancel_event_digest,
           cause_reference, created_at)
-         SELECT ?, ?, ?, 'awaiting', ?, ?, ?, ?, ?, ?, ?, ?
+         SELECT ?, ?, ?, ?, 'awaiting', ?, ?, ?, ?, ?, ?, ?, ?
          WHERE EXISTS (SELECT 1 FROM workflow_transitions_v2 WHERE transition_id = ?)`,
       ).bind(
         input.wait.waitId,
         input.runId,
         input.nextNode,
+        nextVisitSequence,
         input.wait.resumeEventType,
         input.wait.resumeEventJson,
         input.wait.resumeEventDigest,

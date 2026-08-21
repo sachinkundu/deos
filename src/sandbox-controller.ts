@@ -28,6 +28,7 @@ export interface AgentAttemptRecord {
   sandbox_id: string;
   run_id: string;
   node_id: string;
+  visit_sequence: number;
   job_spec_json: string;
   job_spec_digest: string;
   process_id: string | null;
@@ -52,6 +53,7 @@ export interface AgentAttemptStore {
     sandboxId: string;
     runId: string;
     nodeId: string;
+    visitSequence: number;
     jobSpecJson: string;
     jobSpecDigest: string;
     absoluteDeadline: string;
@@ -92,6 +94,7 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
     sandboxId: string;
     runId: string;
     nodeId: string;
+    visitSequence: number;
     jobSpecJson: string;
     jobSpecDigest: string;
     absoluteDeadline: string;
@@ -99,14 +102,15 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
   }): Promise<AgentAttemptRecord> {
     await this.database.prepare(
       `INSERT INTO agent_attempts
-       (attempt_id, sandbox_id, run_id, node_id, job_spec_json, job_spec_digest,
+       (attempt_id, sandbox_id, run_id, node_id, visit_sequence, job_spec_json, job_spec_digest,
         state, absolute_deadline, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
     ).bind(
       input.attemptId,
       input.sandboxId,
       input.runId,
       input.nodeId,
+      input.visitSequence,
       input.jobSpecJson,
       input.jobSpecDigest,
       input.absoluteDeadline,
@@ -334,6 +338,7 @@ export class SandboxAgentController {
       sandboxId,
       runId: run.run_id,
       nodeId,
+      visitSequence: run.current_visit_sequence,
       jobId: job.id,
       repository: this.config.repository,
       promptDigest: await sha256Hex(job.prompt),
@@ -351,6 +356,7 @@ export class SandboxAgentController {
       sandboxId,
       runId: run.run_id,
       nodeId,
+      visitSequence: run.current_visit_sequence,
       jobSpecJson,
       jobSpecDigest: await sha256Hex(jobSpecJson),
       absoluteDeadline: deadline,

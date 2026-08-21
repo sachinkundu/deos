@@ -88,6 +88,16 @@ class FakeStore implements OrchestrationDispatchStore {
   readonly intents = new Map<string, DispatchIntentRecord>();
   readonly inbox = new Map<string, WorkflowInboxRecord>();
   failEstablishedOnce = false;
+  readonly issueIndex = new Map<string, { key: string; title: string; url: string }>();
+
+  async upsertIssueIndex(input: {
+    issueId: string;
+    issueKey: string;
+    title: string;
+    linearUrl: string;
+  }): Promise<void> {
+    this.issueIndex.set(input.issueId, { key: input.issueKey, title: input.title, url: input.linearUrl });
+  }
 
   async registerDefinitionAndPolicy(input: {
     definition: LoadedWorkflowDefinition;
@@ -258,6 +268,9 @@ const queueBody = (overrides: Partial<QueueBody> = {}): QueueBody => ({
   event_id: "delivery-1",
   source_delivery_id: "delivery-1",
   issue_id: "issue-1",
+  issue_key: "SAC-101",
+  issue_title: "Show the DEOS workflow for a Linear issue",
+  issue_url: "https://linear.app/deos/issue/SAC-101/show-the-deos-workflow-for-a-linear-issue",
   project_id: "project-1",
   transition: "In Progress",
   actor_id: "actor-1",
