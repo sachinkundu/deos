@@ -108,6 +108,9 @@ def make_body(project_id: str, state: str, *, state_changed: bool = True) -> byt
             "type": "Issue",
             "data": {
                 "id": "issue-1",
+                "identifier": "SAC-1",
+                "title": "Test issue",
+                "url": "https://linear.app/sachinkundu/issue/SAC-1/test-issue",
                 "updatedAt": "2026-08-11T10:00:00Z",
                 "project": {"id": project_id},
                 "state": {"id": "current-state-id", "name": state},
