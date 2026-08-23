@@ -63,7 +63,7 @@
 
 ## 9. Deploy inactive and verify the safe default
 
-- [ ] 9.1 Package the implementation, tasks, completed task checkboxes, tests, prompt artifact, provider-contract references, and deterministic evidence in one ready-for-review implementation PR linked to PR 54 and the three changed capabilities.
+- [x] 9.1 Package the implementation, tasks, completed task checkboxes, tests, prompt artifact, provider-contract references, and deterministic evidence in one ready-for-review implementation PR linked to PR 54 and the three changed capabilities.
 - [ ] 9.2 After implementation approval, apply the additive remote D1 migration and deploy the Workers with the simple selector still disabled; capture provider output and read back the definition registry, selector row, migration constraints, and unchanged full default.
 - [ ] 9.3 Confirm existing active and historical runs retain their frozen definition digests, no labeled or unlabeled issue has been dispatched by the inactive selector, and no Sandbox or provider operation was created by deployment alone.
 
