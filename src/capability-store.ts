@@ -146,7 +146,7 @@ export class D1ProviderReceiptVerifier implements ProviderReceiptVerifier {
     if (uniqueIds !== undefined && (uniqueIds.length === 0 || uniqueIds.length !== operationIds?.length)) {
       return false;
     }
-    const selected = uniqueIds === undefined
+    const selectedClause = uniqueIds === undefined
       ? ""
       : ` AND operation_id IN (${uniqueIds.map(() => "?").join(", ")})`;
     const row = await this.database.prepare(
@@ -157,7 +157,7 @@ export class D1ProviderReceiptVerifier implements ProviderReceiptVerifier {
           WHERE run_id = ? AND attempt_id = ?
             AND state NOT IN ('succeeded', 'reconciled')) AS incompleteCount
        FROM provider_operations
-       WHERE run_id = ? AND attempt_id = ?${selected}`,
+       WHERE run_id = ? AND attempt_id = ?${selectedClause}`,
     ).bind(
       runId,
       attemptId,
@@ -166,8 +166,57 @@ export class D1ProviderReceiptVerifier implements ProviderReceiptVerifier {
       ...(uniqueIds ?? []),
     ).first<{ selectedCount: number; successfulCount: number; incompleteCount: number }>();
     const expected = uniqueIds?.length ?? row?.selectedCount ?? 0;
-    return expected > 0 && row?.selectedCount === expected &&
+    const complete = expected > 0 && row?.selectedCount === expected &&
       row.successfulCount === expected && row.incompleteCount === 0;
+    if (!complete) return false;
+    const selected = uniqueIds === undefined
+      ? await this.database.prepare(
+          `SELECT operation_id, action FROM provider_operations
+           WHERE run_id = ? AND attempt_id = ?`,
+        ).bind(runId, attemptId).all<{ operation_id: string; action: string }>()
+      : await this.database.prepare(
+          `SELECT operation_id, action FROM provider_operations
+           WHERE run_id = ? AND attempt_id = ?
+             AND operation_id IN (${uniqueIds.map(() => "?").join(", ")})`,
+        ).bind(runId, attemptId, ...uniqueIds).all<{ operation_id: string; action: string }>();
+    const planning = selected.results.filter((operation) =>
+      operation.action === "publish_planning_work_product");
+    if (planning.length === 0) return true;
+    if (planning.length !== 1 || selected.results.length !== 1) return false;
+    const workProduct = await this.database.prepare(
+      `SELECT latest_publication_operation_id, head_sha, planning_manifest_digest,
+              planning_manifest_json, pull_request_number
+       FROM run_work_products WHERE run_id = ?`,
+    ).bind(runId).first<{
+      latest_publication_operation_id: string | null;
+      head_sha: string | null;
+      planning_manifest_digest: string | null;
+      planning_manifest_json: string | null;
+      pull_request_number: number | null;
+    }>();
+    if (
+      workProduct === null ||
+      workProduct.latest_publication_operation_id !== planning[0].operation_id ||
+      workProduct.head_sha === null || workProduct.planning_manifest_digest === null ||
+      workProduct.planning_manifest_json === null || workProduct.pull_request_number === null
+    ) return false;
+    let manifest: unknown;
+    try {
+      manifest = JSON.parse(workProduct.planning_manifest_json);
+    } catch {
+      return false;
+    }
+    if (!Array.isArray(manifest)) return false;
+    const paths = manifest.map((entry) =>
+      typeof entry === "object" && entry !== null && typeof entry.path === "string"
+        ? entry.path as string
+        : "");
+    const changePrefix = paths[0]?.match(/^(openspec\/changes\/[a-z0-9-]+\/)/)?.[1];
+    return changePrefix !== undefined &&
+      [".openspec.yaml", "proposal.md", "design.md", "tasks.md"].every((path) =>
+        paths.includes(`${changePrefix}${path}`)) &&
+      paths.some((path) => new RegExp(`^${changePrefix}specs/[a-z0-9-]+/spec\\.md$`).test(path)) &&
+      paths.every((path) => path.startsWith(changePrefix));
   }
 
   async hasAny(runId: string, attemptId: string): Promise<boolean> {

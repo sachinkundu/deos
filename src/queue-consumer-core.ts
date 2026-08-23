@@ -14,6 +14,10 @@ import {
 } from "./telemetry.ts";
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import { type LifecycleWriter, writeLifecycleObservation } from "./lifecycle-telemetry.ts";
+import {
+  LinearCapabilityAdapter,
+  type LinearIssueLabelObservation,
+} from "./linear-capability.ts";
 
 export interface QueueBody {
   event_id: string;
@@ -62,6 +66,8 @@ interface ConsumerDependencies {
   observe: ObservationWriter;
   store: OrchestrationDispatchStore;
   definition: LoadedWorkflowDefinition;
+  definitions: Readonly<Record<string, LoadedWorkflowDefinition>>;
+  labelResolver: Pick<LinearCapabilityAdapter, "readIssueLabels">;
   now: () => Date;
   lifecycle: LifecycleWriter;
 }
@@ -193,8 +199,16 @@ export const processQueueMessage = async (
 ): Promise<void> => {
   const observe = dependencies.observe ?? writeObservation;
   const store = dependencies.store ?? new D1OrchestrationStore(env.DB);
-  const definition = dependencies.definition ??
-    await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinition();
+  const bundled = dependencies.definitions ?? (
+    dependencies.definition === undefined
+      ? await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry()
+      : Object.freeze({ [dependencies.definition.name]: dependencies.definition })
+  );
+  const definition = dependencies.definition ?? bundled["openspec-delivery"];
+  if (definition === undefined) throw new Error("default workflow definition is unavailable");
+  const simpleDefinition = bundled.simple;
+  const labelResolver = dependencies.labelResolver ??
+    new LinearCapabilityAdapter(env.LINEAR_API_URL, env.LINEAR_APP_ACCESS_TOKEN);
   const now = (dependencies.now ?? (() => new Date()))().toISOString();
   const lifecycle = dependencies.lifecycle ?? writeLifecycleObservation;
   const event = message.body;
@@ -213,6 +227,19 @@ export const processQueueMessage = async (
       dispatchEnabled: String(env.TRIAL_DISPATCH_ENABLED) === "true",
       now,
     });
+    for (const registered of Object.values(bundled)) {
+      if (registered.name === definition.name && registered.version === definition.version) continue;
+      await store.registerDefinition({ definition: registered, projectId: env.LINEAR_PROJECT_ID, now });
+    }
+    if (simpleDefinition !== undefined) {
+      await store.registerSelector({
+        projectId: env.LINEAR_PROJECT_ID,
+        repository: env.TRIAL_REPOSITORY,
+        labelName: "simple-workflow",
+        definition: simpleDefinition,
+        now,
+      });
+    }
     await store.upsertIssueIndex({
       issueId: event.issue_id,
       projectId: event.project_id,
@@ -244,10 +271,61 @@ export const processQueueMessage = async (
       policy.dispatch_enabled === 1 &&
       event.transition === policy.start_state_name
     ) {
+      let selectedDefinition = definition;
+      let selection: {
+        kind: "default" | "linear_label";
+        value: string;
+        deliveryId: string;
+        observedAt: string;
+        providerDigest: string;
+      } = {
+        kind: "default",
+        value: definition.name,
+        deliveryId: event.source_delivery_id,
+        observedAt: new Date(event.occurred_at).toISOString(),
+        providerDigest: event.payload_digest,
+      };
+      const selector = simpleDefinition === undefined
+        ? null
+        : await store.findSelector(event.project_id, env.TRIAL_REPOSITORY, "simple-workflow");
+      if (selector?.enabled === 1) {
+        let observation: LinearIssueLabelObservation;
+        try {
+          observation = await labelResolver.readIssueLabels(event.issue_id);
+        } catch {
+          throw new CategorizedWorkflowError("unexpected_failure");
+        }
+        if (observation.labels.includes(selector.label_name)) {
+          if (
+            selector.definition_id !== simpleDefinition?.name ||
+            selector.definition_version !== simpleDefinition.version ||
+            selector.definition_digest !== simpleDefinition.digest
+          ) {
+            throw new CategorizedWorkflowError("correlation_mismatch");
+          }
+          selectedDefinition = simpleDefinition;
+          selection = {
+            kind: "linear_label",
+            value: selector.label_name,
+            deliveryId: event.source_delivery_id,
+            observedAt: now,
+            providerDigest: observation.providerDigest,
+          };
+        } else {
+          selection = {
+            kind: "default",
+            value: `${selector.label_name}:absent`,
+            deliveryId: event.source_delivery_id,
+            observedAt: now,
+            providerDigest: observation.providerDigest,
+          };
+        }
+      }
       const allocation = await store.allocateRun({
         projectId: event.project_id,
         issueId: event.issue_id,
-        definition,
+        definition: selectedDefinition,
+        selection,
         now,
       });
       await establishDispatch(event, allocation.run, store, env.ORCHESTRATION_WORKFLOW, now);

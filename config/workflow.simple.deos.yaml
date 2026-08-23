@@ -1,0 +1,60 @@
+apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata:
+  name: simple
+  version: 1
+spec:
+  start: openspec_planning
+  execution:
+    attemptTimeout: 24h
+    heartbeatTimeout: 5m
+    codexSandboxMode: danger-full-access
+  jobs:
+    openspec_planning:
+      promptFile: prompts/openspec-planning.md
+      inputs: [linear_issue, openspec_change, planning_feedback]
+      context: [shared_workpad, prior_artifact_manifests, planning_pull_request]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+      capabilities: [github.publish_planning_work_product]
+  nodes:
+    openspec_planning:
+      type: agent
+      job: openspec_planning
+      edges: {completed: planning_review, blocked: agent_blocked, failed: agent_failed}
+    planning_review:
+      type: human_gate
+      linearState: Human Review
+      decisions:
+        revision_requested: In Progress
+        merge_authorized: Merging
+        canceled: Canceled
+      edges:
+        revision_requested: openspec_planning
+        merge_authorized: merge_planning_pr
+        canceled: canceled
+    merge_planning_pr:
+      type: system_action
+      action: github.merge_planning_pull_request
+      edges: {completed: verify_planning_merge, failed: system_action_failed}
+    verify_planning_merge:
+      type: system_action
+      action: github.verify_planning_merge
+      edges: {completed: done, failed: system_action_failed}
+    done: {type: terminal, deosStatus: succeeded, executorAction: return}
+    canceled: {type: terminal, deosStatus: canceled, executorAction: return}
+    agent_blocked:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: agent_outcome_blocked
+    agent_failed:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: agent_execution_failed
+    system_action_failed:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: system_action_invariant_failed

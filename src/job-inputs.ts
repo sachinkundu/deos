@@ -1,5 +1,6 @@
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { WorkflowJob } from "./workflow-definition.ts";
+import { D1PlanningStore, type RunWorkProductRecord } from "./planning-store.ts";
 
 interface LinearIssueContext {
   id: string;
@@ -39,10 +40,16 @@ export interface MaterializedJobInput {
   context: string;
   openspecChange: string;
   continuationPatch: ContinuationPatchReference | null;
+  planningWorkProduct: RunWorkProductRecord | null;
 }
 
 interface JobInputDependencies {
   fetch: typeof fetch;
+  now: () => Date;
+  readGitHubReviewFeedback: (
+    repository: string,
+    pullRequestNumber: number,
+  ) => Promise<readonly Record<string, unknown>[]>;
 }
 
 const bounded = (value: string, maximum: number): string =>
@@ -69,6 +76,8 @@ export class JobInputMaterializer {
   private readonly linearApiUrl: string;
   private readonly linearAccessToken: string;
   private readonly request: typeof fetch;
+  private readonly now: () => Date;
+  private readonly readGitHubReviewFeedback: JobInputDependencies["readGitHubReviewFeedback"];
 
   constructor(
     database: D1Database,
@@ -82,6 +91,8 @@ export class JobInputMaterializer {
     this.linearApiUrl = linearApiUrl;
     this.linearAccessToken = linearAccessToken;
     this.request = dependencies.fetch ?? ((input, init) => fetch(input, init));
+    this.now = dependencies.now ?? (() => new Date());
+    this.readGitHubReviewFeedback = dependencies.readGitHubReviewFeedback ?? (async () => []);
   }
 
   async materialize(run: OrchestrationRunRecord, job: WorkflowJob): Promise<MaterializedJobInput> {
@@ -92,6 +103,17 @@ export class JobInputMaterializer {
     const priorAttempts = await this.priorAttempts(run.run_id);
     const openspecChange = openSpecChangeIdentity(issue.identifier);
     const continuationPatch = await this.continuationPatch(run.run_id);
+    const planningJob = job.capabilities?.includes("github.publish_planning_work_product") === true;
+    const planningWorkProduct = planningJob
+      ? await this.allocatePlanningWorkProduct(run, openspecChange)
+      : null;
+    const githubFeedback = planningWorkProduct?.pull_request_number === null ||
+        planningWorkProduct?.pull_request_number === undefined
+      ? []
+      : (await this.readGitHubReviewFeedback(
+          planningWorkProduct.repository,
+          planningWorkProduct.pull_request_number,
+        )).slice(-50);
     const bundle = {
       version: 1,
       declaredInputs: job.inputs,
@@ -116,16 +138,59 @@ export class JobInputMaterializer {
       priorAttempts,
       openspec: job.operation?.kind === "openspec"
         ? { change: openspecChange, instruction: job.operation.instruction }
-        : null,
+        : planningJob
+          ? { change: openspecChange, instruction: null }
+          : null,
+      planning: planningWorkProduct === null ? null : {
+        branch: planningWorkProduct.remote_branch,
+        baseBranch: planningWorkProduct.base_branch,
+        pullRequest: planningWorkProduct.pull_request_number === null ? null : {
+          databaseId: planningWorkProduct.pull_request_database_id,
+          number: planningWorkProduct.pull_request_number,
+          url: planningWorkProduct.pull_request_url,
+          headSha: planningWorkProduct.head_sha,
+          manifestDigest: planningWorkProduct.planning_manifest_digest,
+        },
+        feedback: {
+          linearComments: issue.comments.nodes
+            .filter((comment) => !comment.body.includes("<!-- deos-operation:"))
+            .slice(-20)
+            .map((comment) => ({
+              id: comment.id,
+              body: bounded(comment.body, 4_000),
+              updatedAt: comment.updatedAt,
+            })),
+          github: githubFeedback.map((entry) => ({
+            data: bounded(JSON.stringify(entry), 4_000),
+          })),
+        },
+      },
       repository: {
         checkout: "/deos/workspace/repository",
         branch: "deos/{attemptId}",
+        planningBranch: planningWorkProduct?.remote_branch ?? null,
         continuationPatch,
       },
     };
     const encoded = JSON.stringify(bundle);
     if (encoded.length > 128_000) throw new Error("materialized job inputs exceed the trusted limit");
-    return { context: encoded, openspecChange, continuationPatch };
+    return { context: encoded, openspecChange, continuationPatch, planningWorkProduct };
+  }
+
+  private async allocatePlanningWorkProduct(
+    run: OrchestrationRunRecord,
+    changeId: string,
+  ): Promise<RunWorkProductRecord> {
+    const policy = await this.database.prepare(
+      "SELECT trial_repository FROM project_workflow_policies WHERE project_id = ?",
+    ).bind(run.project_id).first<{ trial_repository: string }>();
+    if (policy === null) throw new Error("planning repository policy is missing");
+    return new D1PlanningStore(this.database).allocateRunWorkProduct({
+      runId: run.run_id,
+      repository: policy.trial_repository,
+      changeId,
+      now: this.now().toISOString(),
+    });
   }
 
   private async linearIssue(issueId: string): Promise<LinearIssueContext> {

@@ -8,6 +8,26 @@ export interface LinearNoteReceipt {
   reconciled: boolean;
 }
 
+export interface LinearIssueLabelObservation {
+  issueId: string;
+  labels: readonly string[];
+  observedUpdatedAt: string;
+  providerDigest: string;
+}
+
+export interface LinearPublicationContext {
+  issueId: string;
+  identifier: string;
+  title: string;
+  description: string | null;
+  url: string;
+}
+
+const sha256Hex = async (value: string): Promise<string> => {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
 interface LinearCapabilityDependencies {
   fetch: typeof fetch;
 }
@@ -51,6 +71,83 @@ export class LinearCapabilityAdapter {
       if (reconciled === null) throw new Error("Linear comment creation is ambiguous");
       return { commentId: reconciled, reconciled: true };
     }
+  }
+
+  async readIssueLabels(issueId: string): Promise<LinearIssueLabelObservation> {
+    const payload = await this.graphql(
+      `query DeosIssueLabels($id: String!) {
+         issue(id: $id) {
+           id
+           updatedAt
+           labels { nodes { id name } }
+         }
+       }`,
+      { id: issueId },
+    ) as {
+      data?: {
+        issue?: {
+          id?: string;
+          updatedAt?: string;
+          labels?: { nodes?: Array<{ id?: string; name?: string }> };
+        } | null;
+      };
+    };
+    const issue = payload.data?.issue;
+    if (issue === null || issue === undefined || issue.id !== issueId) {
+      throw new Error("Linear issue label read is unavailable");
+    }
+    if (typeof issue.updatedAt !== "string" || !Array.isArray(issue.labels?.nodes)) {
+      throw new Error("Linear issue label response is invalid");
+    }
+    const labels = issue.labels.nodes.map((label) => {
+      if (typeof label.id !== "string" || typeof label.name !== "string" || label.name.length === 0) {
+        throw new Error("Linear issue label response is invalid");
+      }
+      return { id: label.id, name: label.name };
+    }).sort((left, right) => left.id.localeCompare(right.id));
+    const names = labels.map((label) => label.name);
+    if (new Set(names).size !== names.length) {
+      throw new Error("Linear issue label response is ambiguous");
+    }
+    return Object.freeze({
+      issueId,
+      labels: Object.freeze([...names].sort()),
+      observedUpdatedAt: issue.updatedAt,
+      providerDigest: await sha256Hex(JSON.stringify({ issueId, updatedAt: issue.updatedAt, labels })),
+    });
+  }
+
+  async readPublicationContext(issueId: string): Promise<LinearPublicationContext> {
+    const payload = await this.graphql(
+      `query DeosPublicationIssue($id: String!) {
+         issue(id: $id) { id identifier title description url }
+       }`,
+      { id: issueId },
+    ) as {
+      data?: {
+        issue?: {
+          id?: string;
+          identifier?: string;
+          title?: string;
+          description?: string | null;
+          url?: string;
+        } | null;
+      };
+    };
+    const issue = payload.data?.issue;
+    if (
+      issue === null || issue === undefined || issue.id !== issueId ||
+      typeof issue.identifier !== "string" || typeof issue.title !== "string" ||
+      !(issue.description === null || typeof issue.description === "string") ||
+      typeof issue.url !== "string"
+    ) throw new Error("Linear publication context response is invalid");
+    return {
+      issueId,
+      identifier: issue.identifier,
+      title: issue.title,
+      description: issue.description,
+      url: issue.url,
+    };
   }
 
   private async findComment(issueId: string, marker: string): Promise<string | null> {

@@ -110,6 +110,41 @@ spec:
   },
 );
 
+const simpleDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: simple, version: 1 }
+spec:
+  start: openspec_planning
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs:
+    planning:
+      promptFile: prompts/work.md
+      inputs: [openspec_change]
+      resultSchema: schemas/result.json
+      requiredOutputs: []
+      capabilities: [github.publish_planning_work_product]
+  nodes:
+    openspec_planning: { type: agent, job: planning, edges: { completed: planning_review, blocked: failed, failed: failed } }
+    planning_review:
+      type: human_gate
+      linearState: Human Review
+      decisions: { revision_requested: In Progress, merge_authorized: Merging, canceled: Canceled }
+      edges: { revision_requested: openspec_planning, merge_authorized: merge, canceled: canceled }
+    merge: { type: system_action, action: github.merge_planning_pull_request, edges: { completed: verify, failed: failed } }
+    verify: { type: system_action, action: github.verify_planning_merge, edges: { completed: done, failed: failed } }
+    done: { type: terminal, deosStatus: succeeded, executorAction: return }
+    canceled: { type: terminal, deosStatus: canceled, executorAction: return }
+    failed: { type: failure, deosStatus: failed, executorAction: throw, cause: planning_failed }
+`,
+  {
+    prompts: { "prompts/work.md": "Plan." },
+    schemas: {
+      "schemas/result.json": JSON.stringify({ $id: "https://deos.dev/result.json", type: "object" }),
+    },
+  },
+);
+
 const makeRun = (selectedDefinition = definition): OrchestrationRunRecord => ({
   run_id: "workflow:project-1:issue-1:run:1",
   correlation_id: "workflow:project-1:issue-1",
@@ -493,6 +528,48 @@ test("Workflow reloads D1 authority and continues through agents, a gate, and sy
   assert.equal(store.transitions[2].actor_type, "user");
   assert.equal(store.reads >= 5, true);
   assert.equal(services.gateEntries, 1);
+});
+
+test("simple graph revises on a fresh visit then reaches trusted merge and verification", async () => {
+  const store = new RuntimeStore(makeRun(simpleDefinition));
+  const services = new NodeServices(["completed", "completed"]);
+  store.inbox.set("delivery-revision", inboxEvent("delivery-revision", "user", "In Progress"));
+  store.inbox.set("delivery-merge", inboxEvent("delivery-merge", "user", "Merging"));
+  const result = await new WorkflowOrchestrator(store, simpleDefinition, services, {
+    humanGateStateId: "human-state",
+    approvalStateNames: ["In Progress"],
+    rejectionStateNames: ["Canceled"],
+    now: () => new Date(NOW),
+  }).run(store.run.run_id, new FakeStep(["delivery-revision", "delivery-merge"]));
+  assert.deepEqual(result, { outcome: "succeeded", runId: store.run.run_id });
+  assert.deepEqual(store.transitions.map(({ from_node, to_node }) => [from_node, to_node]), [
+    ["openspec_planning", "planning_review"],
+    ["planning_review", "openspec_planning"],
+    ["openspec_planning", "planning_review"],
+    ["planning_review", "merge"],
+    ["merge", "verify"],
+    ["verify", "done"],
+  ]);
+  assert.deepEqual(
+    store.transitions.filter(({ from_node }) => from_node === "openspec_planning")
+      .map(({ from_visit_sequence }) => from_visit_sequence),
+    [1, 3],
+  );
+  assert.equal(services.gateEntries, 2);
+});
+
+test("simple graph cancellation reaches no merge action", async () => {
+  const store = new RuntimeStore(makeRun(simpleDefinition));
+  const services = new NodeServices(["completed"]);
+  store.inbox.set("delivery-canceled", inboxEvent("delivery-canceled", "user", "Canceled"));
+  const result = await new WorkflowOrchestrator(store, simpleDefinition, services, {
+    humanGateStateId: "human-state",
+    approvalStateNames: ["In Progress"],
+    rejectionStateNames: ["Canceled"],
+    now: () => new Date(NOW),
+  }).run(store.run.run_id, new FakeStep(["delivery-canceled"]));
+  assert.equal(result.outcome, "canceled");
+  assert.equal(store.transitions.some(({ to_node }) => to_node === "merge"), false);
 });
 
 test("version 4 routes a successful agent result with missing receipts to its failure node", async () => {

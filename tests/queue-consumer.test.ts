@@ -14,6 +14,8 @@ import {
   type OrchestrationDispatchStore,
   type OrchestrationRunRecord,
   type ProjectWorkflowPolicyRecord,
+  type RunSelectionEvidence,
+  type WorkflowDefinitionSelectorRecord,
   type WorkflowInboxEvent,
   type WorkflowInboxRecord,
 } from "../src/orchestration-store.ts";
@@ -36,6 +38,19 @@ spec:
     start:
       type: terminal
       outcome: succeeded
+`,
+  { prompts: {}, schemas: {} },
+);
+const simpleDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: simple, version: 1 }
+spec:
+  start: simple_start
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs: {}
+  nodes:
+    simple_start: { type: terminal, outcome: succeeded }
 `,
   { prompts: {}, schemas: {} },
 );
@@ -87,6 +102,7 @@ class FakeStore implements OrchestrationDispatchStore {
   readonly runs: OrchestrationRunRecord[] = [];
   readonly intents = new Map<string, DispatchIntentRecord>();
   readonly inbox = new Map<string, WorkflowInboxRecord>();
+  readonly selectors = new Map<string, WorkflowDefinitionSelectorRecord>();
   failEstablishedOnce = false;
   readonly issueIndex = new Map<string, { key: string; title: string; url: string }>();
 
@@ -122,6 +138,34 @@ class FakeStore implements OrchestrationDispatchStore {
     });
   }
 
+  async registerDefinition(): Promise<void> {}
+
+  async registerSelector(input: {
+    projectId: string;
+    repository: string;
+    labelName: string;
+    definition: LoadedWorkflowDefinition;
+    now: string;
+  }): Promise<void> {
+    const key = `${input.projectId}:${input.repository}:${input.labelName}`;
+    const existing = this.selectors.get(key);
+    this.selectors.set(key, {
+      project_id: input.projectId,
+      repository: input.repository,
+      label_name: input.labelName,
+      definition_id: input.definition.name,
+      definition_version: input.definition.version,
+      definition_digest: input.definition.digest,
+      enabled: existing?.enabled ?? 0,
+      created_at: existing?.created_at ?? input.now,
+      updated_at: input.now,
+    });
+  }
+
+  async findSelector(projectId: string, repository: string, labelName: string) {
+    return this.selectors.get(`${projectId}:${repository}:${labelName}`) ?? null;
+  }
+
   findPolicy(projectId: string): Promise<ProjectWorkflowPolicyRecord | null> {
     return Promise.resolve(this.policies.get(projectId) ?? null);
   }
@@ -147,6 +191,7 @@ class FakeStore implements OrchestrationDispatchStore {
     projectId: string;
     issueId: string;
     definition: LoadedWorkflowDefinition;
+    selection: RunSelectionEvidence;
     now: string;
   }): Promise<{ run: OrchestrationRunRecord; created: boolean }> {
     const active = await this.findActiveRun(input.projectId, input.issueId);
@@ -174,6 +219,11 @@ class FakeStore implements OrchestrationDispatchStore {
       created_at: input.now,
       updated_at: input.now,
       terminal_at: null,
+      selection_kind: input.selection.kind,
+      selection_value: input.selection.value,
+      selection_delivery_id: input.selection.deliveryId,
+      selection_observed_at: input.selection.observedAt,
+      selection_provider_digest: input.selection.providerDigest,
     };
     this.runs.push(run);
     return { run, created: true };
@@ -315,6 +365,40 @@ const runMessage = async (
   return observations;
 };
 
+const runSelectedMessage = async (input: {
+  store: FakeStore;
+  workflow: FakeWorkflow;
+  labels?: readonly string[];
+  labelReadFails?: boolean;
+}): Promise<void> => {
+  await processQueueMessage(
+    { id: "selected-message", attempts: 1, body: queueBody({ transition: "Todo" }) },
+    ({
+      ...environment(input.workflow),
+      LINEAR_START_STATE_NAME: "Todo",
+    } as unknown as QueueConsumerEnv),
+    {
+      store: input.store,
+      definition,
+      definitions: { [definition.name]: definition, simple: simpleDefinition },
+      labelResolver: {
+        readIssueLabels: async (issueId: string) => {
+          if (input.labelReadFails) throw new Error("provider unavailable");
+          return {
+            issueId,
+            labels: input.labels ?? [],
+            observedUpdatedAt: NOW,
+            providerDigest: "provider-label-digest",
+          };
+        },
+      },
+      now: () => new Date(NOW),
+      observe: () => {},
+      lifecycle: () => {},
+    },
+  );
+};
+
 test("start delivery allocates one run and establishes one stable Workflow", async () => {
   const store = new FakeStore();
   const workflow = new FakeWorkflow();
@@ -325,6 +409,74 @@ test("start delivery allocates one run and establishes one stable Workflow", asy
   assert.equal(store.intents.get(store.runs[0].run_id)?.state, "established");
   assert.equal(workflow.creates, 1);
   assert.equal(observations.at(-1)?.["deos.workflow.outcome"], "succeeded");
+});
+
+test("enabled exact label selects and freezes simple while disabled or absent falls back", async () => {
+  const enabled = new FakeStore();
+  const enabledKey = "project-1:sachinkundu/deos:simple-workflow";
+  await enabled.registerSelector({
+    projectId: "project-1",
+    repository: "sachinkundu/deos",
+    labelName: "simple-workflow",
+    definition: simpleDefinition,
+    now: NOW,
+  });
+  const selector = enabled.selectors.get(enabledKey);
+  if (selector === undefined) throw new Error("selector setup failed");
+  selector.enabled = 1;
+  await runSelectedMessage({
+    store: enabled,
+    workflow: new FakeWorkflow(),
+    labels: ["simple-workflow"],
+  });
+  assert.equal(enabled.runs[0].definition_id, "simple");
+  assert.equal(enabled.runs[0].selection_kind, "linear_label");
+  assert.equal(enabled.runs[0].selection_provider_digest, "provider-label-digest");
+
+  const disabled = new FakeStore();
+  await runSelectedMessage({
+    store: disabled,
+    workflow: new FakeWorkflow(),
+    labels: ["simple-workflow"],
+  });
+  assert.equal(disabled.runs[0].definition_id, definition.name);
+  assert.equal(disabled.runs[0].selection_kind, "default");
+
+  const absent = new FakeStore();
+  await absent.registerSelector({
+    projectId: "project-1",
+    repository: "sachinkundu/deos",
+    labelName: "simple-workflow",
+    definition: simpleDefinition,
+    now: NOW,
+  });
+  const absentSelector = absent.selectors.get(enabledKey);
+  if (absentSelector === undefined) throw new Error("selector setup failed");
+  absentSelector.enabled = 1;
+  await runSelectedMessage({ store: absent, workflow: new FakeWorkflow(), labels: [] });
+  assert.equal(absent.runs[0].definition_id, definition.name);
+  assert.equal(absent.runs[0].selection_value, "simple-workflow:absent");
+});
+
+test("enabled selector fails before allocation when the trusted label read fails", async () => {
+  const store = new FakeStore();
+  const key = "project-1:sachinkundu/deos:simple-workflow";
+  await store.registerSelector({
+    projectId: "project-1",
+    repository: "sachinkundu/deos",
+    labelName: "simple-workflow",
+    definition: simpleDefinition,
+    now: NOW,
+  });
+  const selector = store.selectors.get(key);
+  if (selector === undefined) throw new Error("selector setup failed");
+  selector.enabled = 1;
+  await assert.rejects(runSelectedMessage({
+    store,
+    workflow: new FakeWorkflow(),
+    labelReadFails: true,
+  }));
+  assert.equal(store.runs.length, 0);
 });
 
 test("duplicate start delivery reuses the established instance", async () => {

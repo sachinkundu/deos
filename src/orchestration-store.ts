@@ -38,6 +38,11 @@ export interface OrchestrationRunRecord {
   updated_at: string;
   terminal_at: string | null;
   terminal_cause?: string | null;
+  selection_kind?: "default" | "linear_label" | null;
+  selection_value?: string | null;
+  selection_delivery_id?: string | null;
+  selection_observed_at?: string | null;
+  selection_provider_digest?: string | null;
 }
 
 export interface ProjectWorkflowPolicyRecord {
@@ -100,6 +105,26 @@ export interface WorkflowDefinitionSnapshot {
   version: number;
   canonical_json: string;
   digest: string;
+}
+
+export interface WorkflowDefinitionSelectorRecord {
+  project_id: string;
+  repository: string;
+  label_name: string;
+  definition_id: string;
+  definition_version: number;
+  definition_digest: string;
+  enabled: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RunSelectionEvidence {
+  kind: "default" | "linear_label";
+  value: string;
+  deliveryId: string;
+  observedAt: string;
+  providerDigest: string;
 }
 
 export interface WorkflowTransitionRecord {
@@ -169,12 +194,30 @@ export interface OrchestrationDispatchStore {
     dispatchEnabled: boolean;
     now: string;
   }): Promise<void>;
+  registerDefinition(input: {
+    definition: LoadedWorkflowDefinition;
+    projectId: string;
+    now: string;
+  }): Promise<void>;
+  registerSelector(input: {
+    projectId: string;
+    repository: string;
+    labelName: string;
+    definition: LoadedWorkflowDefinition;
+    now: string;
+  }): Promise<void>;
+  findSelector(
+    projectId: string,
+    repository: string,
+    labelName: string,
+  ): Promise<WorkflowDefinitionSelectorRecord | null>;
   findPolicy(projectId: string): Promise<ProjectWorkflowPolicyRecord | null>;
   findActiveRun(projectId: string, issueId: string): Promise<OrchestrationRunRecord | null>;
   allocateRun(input: {
     projectId: string;
     issueId: string;
     definition: LoadedWorkflowDefinition;
+    selection: RunSelectionEvidence;
     now: string;
   }): Promise<{ run: OrchestrationRunRecord; created: boolean }>;
   createDispatchIntent(
@@ -366,6 +409,82 @@ export class D1OrchestrationStore {
     }
   }
 
+  async registerDefinition(input: {
+    definition: LoadedWorkflowDefinition;
+    projectId: string;
+    now: string;
+  }): Promise<void> {
+    await this.database.prepare(
+      `INSERT OR IGNORE INTO workflow_definitions
+       (definition_id, version, project_id, name, canonical_json, digest, enabled_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?)`,
+    ).bind(
+      input.definition.name,
+      input.definition.version,
+      input.projectId,
+      input.definition.name,
+      JSON.stringify(input.definition),
+      input.definition.digest,
+      input.now,
+    ).run();
+    const stored = await this.database.prepare(
+      `SELECT digest FROM workflow_definitions
+       WHERE definition_id = ? AND version = ?`,
+    ).bind(input.definition.name, input.definition.version).first<{ digest: string }>();
+    if (stored?.digest !== input.definition.digest) {
+      throw new Error("workflow definition version already exists with another digest");
+    }
+  }
+
+  async registerSelector(input: {
+    projectId: string;
+    repository: string;
+    labelName: string;
+    definition: LoadedWorkflowDefinition;
+    now: string;
+  }): Promise<void> {
+    await this.database.prepare(
+      `INSERT INTO workflow_definition_selectors
+       (project_id, repository, label_name, definition_id, definition_version,
+        definition_digest, enabled, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+       ON CONFLICT(project_id, repository, label_name) DO UPDATE SET
+         definition_id = excluded.definition_id,
+         definition_version = excluded.definition_version,
+         definition_digest = excluded.definition_digest,
+         updated_at = excluded.updated_at`,
+    ).bind(
+      input.projectId,
+      input.repository,
+      input.labelName,
+      input.definition.name,
+      input.definition.version,
+      input.definition.digest,
+      input.now,
+      input.now,
+    ).run();
+    const stored = await this.findSelector(input.projectId, input.repository, input.labelName);
+    if (
+      stored === null ||
+      stored.definition_id !== input.definition.name ||
+      stored.definition_version !== input.definition.version ||
+      stored.definition_digest !== input.definition.digest
+    ) {
+      throw new Error("workflow definition selector read-back mismatch");
+    }
+  }
+
+  findSelector(
+    projectId: string,
+    repository: string,
+    labelName: string,
+  ): Promise<WorkflowDefinitionSelectorRecord | null> {
+    return this.database.prepare(
+      `SELECT * FROM workflow_definition_selectors
+       WHERE project_id = ? AND repository = ? AND label_name = ?`,
+    ).bind(projectId, repository, labelName).first<WorkflowDefinitionSelectorRecord>();
+  }
+
   findPolicy(projectId: string): Promise<ProjectWorkflowPolicyRecord | null> {
     return this.database.prepare(
       "SELECT * FROM project_workflow_policies WHERE project_id = ?",
@@ -400,6 +519,7 @@ export class D1OrchestrationStore {
     projectId: string;
     issueId: string;
     definition: LoadedWorkflowDefinition;
+    selection: RunSelectionEvidence;
     now: string;
   }): Promise<{ run: OrchestrationRunRecord; created: boolean }> {
     const active = await this.findActiveRun(input.projectId, input.issueId);
@@ -417,8 +537,9 @@ export class D1OrchestrationStore {
         `INSERT INTO orchestration_runs
          (run_id, correlation_id, run_sequence, project_id, issue_id, definition_id,
           definition_version, definition_digest, workflow_instance_id, current_node,
-          status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?)`,
+          status, selection_kind, selection_value, selection_delivery_id,
+          selection_observed_at, selection_provider_digest, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?)`,
       ).bind(
         runId,
         correlationId,
@@ -430,6 +551,11 @@ export class D1OrchestrationStore {
         input.definition.digest,
         workflowInstanceId,
         input.definition.start,
+        input.selection.kind,
+        input.selection.value,
+        input.selection.deliveryId,
+        input.selection.observedAt,
+        input.selection.providerDigest,
         input.now,
         input.now,
       ).run();

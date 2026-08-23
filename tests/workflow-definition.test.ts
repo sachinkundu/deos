@@ -9,6 +9,7 @@ import {
 } from "../src/workflow-definition.ts";
 
 const source = readFileSync(new URL("../config/workflow.deos.yaml", import.meta.url), "utf8");
+const simpleSource = readFileSync(new URL("../config/workflow.simple.deos.yaml", import.meta.url), "utf8");
 const promptPaths = [
   "requirements.md",
   "requirements-review.md",
@@ -19,6 +20,7 @@ const promptPaths = [
   "code-review.md",
   "evidence-verification.md",
   "openspec.md",
+  "openspec-planning.md",
 ];
 const schemaPaths = ["agent-result-v1.json", "review-result-v1.json"];
 
@@ -103,6 +105,56 @@ test("canonical workflow digest is stable", async () => {
   const first = await loadWorkflowDefinition(source, bundle());
   const second = await loadWorkflowDefinition(source, bundle());
   assert.equal(first.digest, second.digest);
+  assert.equal(first.digest, "e85de9ed70c046cfe07a1611b1e0a1c2678cd58dbcfe8edc9ea73856bb6b86c3");
+});
+
+test("simple definition bundles the approved planning prompt and exact three-way graph", async () => {
+  const definition = await loadWorkflowDefinition(simpleSource, bundle());
+  assert.equal(definition.name, "simple");
+  assert.equal(definition.version, 1);
+  assert.equal(definition.digest, "409bd0510765b85efc718326380bdc0ac84a66debf540c2624f2b16cf3f981d3");
+  assert.deepEqual(definition.jobs.openspec_planning.capabilities, [
+    "github.publish_planning_work_product",
+  ]);
+  assert.match(definition.jobs.openspec_planning.prompt, /then `tasks`/);
+  assert.match(definition.jobs.openspec_planning.prompt, /Review notes/);
+  const gate = definition.nodes.planning_review;
+  assert.equal(gate.type, "human_gate");
+  assert.deepEqual(gate.type === "human_gate" ? gate.decisions : null, {
+    revision_requested: "In Progress",
+    merge_authorized: "Merging",
+    canceled: "Canceled",
+  });
+  assert.equal(definition.nodes.merge_planning_pr.type, "system_action");
+  assert.equal(definition.nodes.verify_planning_merge.type, "system_action");
+  assert.deepEqual(
+    await restoreWorkflowDefinition(JSON.stringify(definition), definition.digest),
+    definition,
+  );
+});
+
+test("simple definition rejects ambiguous decisions and unsupported capabilities", async () => {
+  await assert.rejects(
+    loadWorkflowDefinition(simpleSource.replace(
+      "merge_authorized: Merging",
+      "merge_authorized: In Progress",
+    ), bundle()),
+    /state names must be unique/,
+  );
+  await assert.rejects(
+    loadWorkflowDefinition(simpleSource.replace(
+      "github.publish_planning_work_product",
+      "linear.transition_issue",
+    ), bundle()),
+    /unsupported action linear\.transition_issue/,
+  );
+  await assert.rejects(
+    loadWorkflowDefinition(simpleSource.replace(
+      "github.merge_planning_pull_request",
+      "github.merge_any_pull_request",
+    ), bundle()),
+    /unsupported action github\.merge_any_pull_request/,
+  );
 });
 
 test("restores an immutable stored definition for an older active run", async () => {
