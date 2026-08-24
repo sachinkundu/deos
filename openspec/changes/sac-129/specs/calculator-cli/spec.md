@@ -6,12 +6,17 @@ Give users one tool for quick math and unit changes. Give clear results and safe
 
 ### Requirement: Run one math operation
 
-The tool SHALL take a task name and two numbers. It SHALL add, subtract, multiply, and divide. It SHALL print the result.
+The tool SHALL take a task name and two values. Each value can be digits or a number word. The tool SHALL add, subtract, multiply, and divide. It SHALL print the result.
 
 #### Scenario: Add two numbers
 
 - **WHEN** a user selects add and gives two numbers.
 - **THEN** the tool prints their sum and ends with a success code.
+
+#### Scenario: Read digits and number words
+
+- **WHEN** a user selects add and gives `5` and `five`.
+- **THEN** the tool reads both as the same value, prints their sum, and ends with a success code.
 
 #### Scenario: Subtract two numbers
 
@@ -30,7 +35,7 @@ The tool SHALL take a task name and two numbers. It SHALL add, subtract, multipl
 
 ### Requirement: Change temperature units
 
-The tool SHALL change heat units in both ways. Celsius MUST be `(Fahrenheit - 32) × 5 / 9`. Fahrenheit MUST be `(Celsius × 9 / 5) + 32`.
+The tool SHALL change temperature units in both ways. For Celsius, it MUST subtract 32 from Fahrenheit, then multiply by 5 and divide by 9. For Fahrenheit, it MUST multiply Celsius by 9, divide by 5, then add 32.
 
 #### Scenario: Change Fahrenheit to Celsius
 
@@ -58,7 +63,7 @@ The tool SHALL change angle units in both ways. It SHALL treat 180 degrees as eq
 
 ### Requirement: Report bad input safely
 
-The tool MUST show a clear error and end with a fail code for an unknown task, a wrong value count, text in place of a number, or a zero divisor. It MUST NOT show a crash trace for these errors.
+The tool MUST show a clear error for bad input. It MUST end with a fail code. Bad input is an unknown task, a wrong value count, text that is not a number word, or a zero divisor. The tool MUST NOT show a crash trace.
 
 #### Scenario: Operation is unknown
 
@@ -72,7 +77,7 @@ The tool MUST show a clear error and end with a fail code for an unknown task, a
 
 #### Scenario: Value is not a number
 
-- **WHEN** a user gives a value that cannot be read as a number.
+- **WHEN** a user gives a value that is not digits or a known number word.
 - **THEN** the tool states that a number is needed and ends with a fail code.
 
 #### Scenario: Divisor is zero
