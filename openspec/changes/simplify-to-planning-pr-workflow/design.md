@@ -190,8 +190,9 @@ The file list may contain only:
 The tool rejects `design.md`, `tasks.md`, main specs, archive files, code,
 workflow files, unsafe paths, links, and files from another change.
 
-Success needs three things. The OpenSpec check must pass. GitHub must return a
-saved or reconciled receipt. The branch contents must match the full file list.
+Success needs four things. The OpenSpec check must pass. Each reviewer-facing
+file must pass the readability check. GitHub must return a saved or reconciled
+receipt. The branch contents must match the full file list.
 
 The pull request links the Linear issue and OpenSpec change. It also lists the
 reading order and exact checks. Text from Linear or GitHub is input data. It
@@ -213,9 +214,26 @@ part of the workflow hash. It tells the agent to:
 2. Read OpenSpec status and instructions.
 3. Create or revise the proposal and all needed delta specs.
 4. Run the strict OpenSpec check.
-5. Publish the full allowed file list through the one GitHub action.
-6. Never create design, tasks, code, Linear moves, approvals, review resolutions,
+5. Check the full proposal, each delta spec, and the pull request text for clear
+   language.
+6. Publish the full allowed file list through the one GitHub action.
+7. Never create design, tasks, code, Linear moves, approvals, review resolutions,
    or merges.
+
+Clear language is the default, not a final cleanup step. The agent uses short
+sentences, plain verbs, and one idea per sentence. It keeps exact technical names
+when they matter and explains them in simple words.
+
+The agent checks each reviewer-facing Markdown file as a whole. The checker
+ignores headings, code blocks, diagrams, URLs, ids, and file paths. Each file
+must have a Flesch Reading Ease score of at least 70 and a Flesch-Kincaid grade
+of 8 or lower. A score above 80 still passes because easier text is welcome.
+
+The agent records the command and score for every file in `validation.txt`. The
+trusted GitHub tool runs the same check before it writes anything. A failed score
+blocks publication. The agent must not weaken a requirement to improve a score.
+If plain wording would change the meaning, it returns `blocked` and explains the
+conflict.
 
 The controller adds trusted run details to the prompt. These include the run,
 step, visit, attempt, deadline, branch, pull request, issue data, and feedback.
@@ -224,7 +242,9 @@ Sandbox cannot replace this copy.
 
 A fixed test will render the first prompt with known ids. It will check the full
 text, hash, allowed action, and allowed files. It will also check that the prompt
-gives no power to move Linear or merge GitHub work.
+gives no power to move Linear or merge GitHub work. Separate tests cover the
+readability limits, whole-file scoring, easier-than-target text, and meaning-safe
+failure behavior.
 
 The implementation pull request will show this exact first prompt. The selector
 will stay off until that prompt is reviewed.
@@ -296,6 +316,7 @@ All database changes add new data. They do not rewrite old workflows or runs.
 | A workflow version already has another hash. | Stop setup. Never replace the saved workflow. |
 | Queue retries after an unclear create result. | Find the run and Workflow by stable id. Do not create a second one. |
 | Sandbox output is missing, invalid, or contains a blocked path. | Save the failed evidence. Do not enter `Human Review`. |
+| A proposal, spec, or pull request text fails the readability limits. | Return it for a full rewrite. Do not publish partial wording fixes. |
 | A GitHub publish result is unclear. | Read the same branch and pull request before retrying. |
 | A revision conflicts with new work on `main`. | Stop with conflict evidence. Do not open another pull request. |
 | A bot or unknown state moves the issue from `Human Review`. | Record it, pick no edge, and return the issue to the gate. |
@@ -320,6 +341,8 @@ All database changes add new data. They do not rewrite old workflows or runs.
   hide it with a new branch or pull request.
 - [Provider APIs may change] → Check current Linear and GitHub contracts during
   implementation. Keep real provider proof for the live trial.
+- [A score may reward short but awkward text] → Score the whole file, keep human
+  review as the final check, and never trade exact meaning for a better number.
 
 ## Migration Plan
 
@@ -329,8 +352,8 @@ All database changes add new data. They do not rewrite old workflows or runs.
    GitHub action, saved pull request, merge action, and final check. Keep the
    selector off.
 3. Test workflow hashes, label parsing, Queue retries, blocked paths, same-pull-
-   request revisions, merge checks, and the unchanged full workflow. Show the
-   exact first prompt in the implementation pull request.
+   request revisions, readability checks, merge checks, and the unchanged full
+   workflow. Show the exact first prompt in the implementation pull request.
 4. Deploy the code and database change. Confirm that the full workflow stays the
    default. Confirm that old runs keep their saved workflow.
 5. After separate approval, enable the selector for one project and repository.
