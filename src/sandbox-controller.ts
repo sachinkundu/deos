@@ -232,6 +232,7 @@ export interface SandboxView {
   mkdir(path: string, options?: { recursive?: boolean }): Promise<unknown>;
   writeFile(path: string, content: string, options?: { encoding?: string }): Promise<unknown>;
   readFile(path: string, options?: { encoding?: string }): Promise<{ content: string; mimeType?: string }>;
+  exists(path: string): Promise<{ exists: boolean }>;
   deleteFile(path: string): Promise<unknown>;
   exec(command: readonly [string, ...string[]], options?: {
     cwd?: string;
@@ -408,6 +409,7 @@ export class SandboxAgentController {
   ): Promise<AgentExecutionObservation> {
     const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true });
     let lease: CredentialLease | null = null;
+    let supervisor: SandboxProcessView | null = null;
     try {
       lease = await this.credentials.acquire(
         this.config.authProfileId,
@@ -509,21 +511,21 @@ export class SandboxAgentController {
       }
       await this.restoreContinuationPatch(sandbox, durableJob.continuationPatch);
       if (planningJob) await sandbox.deleteFile("/usr/local/bin/deos-linear");
-      const process = await sandbox.exec(
+      supervisor = await sandbox.exec(
         ["node", "/deos/bin/supervisor.mjs"],
         { cwd: "/deos/run" },
       );
       await this.attempts.markStarted(
         attempt.attempt_id,
-        process.id,
-        `${attempt.sandbox_id}:${process.pid}`,
+        supervisor.id,
+        `${attempt.sandbox_id}:${supervisor.pid}`,
         this.dependencies.now().toISOString(),
       );
       this.emit(run, attempt, "sandbox.attempt", "running");
       return { state: "running", attemptId: attempt.attempt_id, sandboxId: attempt.sandbox_id };
     } catch (error) {
       if (lease !== null) await this.credentials.release(lease);
-      await this.finishFailure(attempt, sandbox, "failed", "startup_failed");
+      await this.finishFailure(attempt, sandbox, job, "failed", "startup_failed", supervisor);
       throw error;
     }
   }
@@ -536,18 +538,36 @@ export class SandboxAgentController {
     const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true });
     if (Date.parse(attempt.absolute_deadline) <= this.dependencies.now().getTime()) {
       const process = attempt.process_id === null ? null : await sandbox.getProcess(attempt.process_id);
-      await process?.kill(15);
-      await this.finishFailure(attempt, sandbox, "absolute_timeout", "absolute_timeout");
-      return this.failedObservation(attempt, "failed");
+      const manifestId = await this.finishFailure(
+        attempt,
+        sandbox,
+        job,
+        "absolute_timeout",
+        "absolute_timeout",
+        process,
+      );
+      return this.failedObservation(attempt, "failed", manifestId);
     }
     if (attempt.process_id === null) {
-      await this.finishFailure(attempt, sandbox, "interrupted", "missing_process_identity");
-      return this.failedObservation(attempt, "failed");
+      const manifestId = await this.finishFailure(
+        attempt,
+        sandbox,
+        job,
+        "interrupted",
+        "missing_process_identity",
+      );
+      return this.failedObservation(attempt, "failed", manifestId);
     }
     const process = await sandbox.getProcess(attempt.process_id);
     if (process === null) {
-      await this.finishFailure(attempt, sandbox, "interrupted", "process_not_recoverable");
-      return this.failedObservation(attempt, "failed");
+      const manifestId = await this.finishFailure(
+        attempt,
+        sandbox,
+        job,
+        "interrupted",
+        "process_not_recoverable",
+      );
+      return this.failedObservation(attempt, "failed", manifestId);
     }
     const status = await process.status();
     if (status.state === "running") {
@@ -565,9 +585,15 @@ export class SandboxAgentController {
         observedAt = attempt.heartbeat_at ?? attempt.started_at ?? attempt.created_at;
       }
       if (this.dependencies.now().getTime() - Date.parse(observedAt) > this.config.heartbeatTimeoutMs) {
-        await process.kill(15);
-        await this.finishFailure(attempt, sandbox, "interrupted", "heartbeat_expired");
-        return this.failedObservation(attempt, "failed");
+        const manifestId = await this.finishFailure(
+          attempt,
+          sandbox,
+          job,
+          "interrupted",
+          "heartbeat_expired",
+          process,
+        );
+        return this.failedObservation(attempt, "failed", manifestId);
       }
       await this.attempts.touchHeartbeat(
         attempt.attempt_id,
@@ -578,8 +604,15 @@ export class SandboxAgentController {
       return { state: "running", attemptId: attempt.attempt_id, sandboxId: attempt.sandbox_id };
     }
     if (status.state === "error" || status.exit?.code !== 0) {
-      await this.finishFailure(attempt, sandbox, "failed", "supervisor_failed");
-      return this.failedObservation(attempt, "failed");
+      const manifestId = await this.finishFailure(
+        attempt,
+        sandbox,
+        job,
+        "failed",
+        "supervisor_failed",
+        process,
+      );
+      return this.failedObservation(attempt, "failed", manifestId);
     }
     return this.collect(attempt, sandbox, job);
   }
@@ -592,6 +625,8 @@ export class SandboxAgentController {
     await this.attempts.setState(attempt.attempt_id, "running", "collecting", this.dependencies.now().toISOString());
     attempt.state = "collecting";
     let collection: ArtifactCollectionResult | null = null;
+    let observation: AgentExecutionObservation | null = null;
+    const collector = this.dependencies.collector(sandbox);
     try {
       const lease = await this.credentials.resume(this.config.authProfileId, attempt.attempt_id);
       const refreshed = (await sandbox.readFile("/root/.codex/auth.json", { encoding: "utf8" })).content;
@@ -600,7 +635,6 @@ export class SandboxAgentController {
       } finally {
         await sandbox.deleteFile("/root/.codex/auth.json");
       }
-      const collector = this.dependencies.collector(sandbox);
       collection = await collector.collect({
         runId: attempt.run_id,
         attemptId: attempt.attempt_id,
@@ -608,8 +642,6 @@ export class SandboxAgentController {
         requiredFiles: job.requiredOutputs,
         resultSchema: job.resultSchema,
       });
-      await this.cleanup(attempt, sandbox);
-      await collector.verifyAfterCleanup(collection);
       const resultClass = String(collection.result.outcome);
       const resultReceiptIds = collection.result.providerReceipts;
       const mechanicalReceiptIds = collection.providerReceipts.map((receipt) => receipt.operationId);
@@ -641,7 +673,7 @@ export class SandboxAgentController {
         state === "failed" ? "agent_reported_failure" : undefined,
         collection.manifestId,
       );
-      return {
+      observation = {
         state: "completed",
         attemptId: attempt.attempt_id,
         sandboxId: attempt.sandbox_id,
@@ -654,17 +686,30 @@ export class SandboxAgentController {
         },
       };
     } catch {
-      await this.finishFailure(attempt, sandbox, "failed", "collection_failed");
-      return this.failedObservation(attempt, "failed", collection?.manifestId ?? null);
+      const manifestId = await this.finishFailure(
+        attempt,
+        sandbox,
+        job,
+        "failed",
+        "collection_failed",
+      );
+      return this.failedObservation(attempt, "failed", manifestId);
     }
+    if (collection === null || observation === null) throw new Error("artifact collection outcome is missing");
+    await this.cleanup(attempt, sandbox);
+    await collector.verifyAfterCleanup(collection);
+    return observation;
   }
 
   private async finishFailure(
     attempt: AgentAttemptRecord,
     sandbox: SandboxView,
+    job: WorkflowJob,
     state: "failed" | "interrupted" | "absolute_timeout",
     category: string,
-  ): Promise<void> {
+    process: SandboxProcessView | null = null,
+  ): Promise<string> {
+    if (process !== null) await this.stopProcess(process);
     try {
       await sandbox.deleteFile("/root/.codex/auth.json");
     } catch {}
@@ -672,16 +717,73 @@ export class SandboxAgentController {
       const lease = await this.credentials.resume(this.config.authProfileId, attempt.attempt_id);
       await this.credentials.release(lease);
     } catch {}
-    await this.cleanup(attempt, sandbox);
-    const expected = attempt.state === "pending" ? "pending" : attempt.state === "collecting" ? "collecting" : "running";
+    if (attempt.state !== "collecting") {
+      const changed = await this.attempts.setState(
+        attempt.attempt_id,
+        attempt.state,
+        "collecting",
+        this.dependencies.now().toISOString(),
+      );
+      if (!changed) throw new Error("failure evidence collection state compare-and-set failed");
+      attempt.state = "collecting";
+    }
+    const collector = this.dependencies.collector(sandbox);
+    let collection;
+    try {
+      collection = await collector.collectFailure({
+        runId: attempt.run_id,
+        attemptId: attempt.attempt_id,
+        outputRoot: "/deos/output",
+        expectedFiles: job.requiredOutputs,
+        fallbackErrorCategory: category,
+      });
+      await collector.verifyDurable(collection);
+    } catch (error) {
+      this.emitForAttempt(
+        attempt,
+        "artifact.manifest",
+        "failed",
+        "failure_evidence_collection_failed",
+      );
+      throw error;
+    }
     await this.attempts.finish({
       attemptId: attempt.attempt_id,
-      expected,
+      expected: "collecting",
       state,
-      resultClass: category,
-      manifestId: null,
+      resultClass: collection.safeErrorCategory,
+      manifestId: collection.manifestId,
       now: this.dependencies.now().toISOString(),
     });
+    this.emitForAttempt(
+      attempt,
+      "artifact.manifest",
+      "succeeded",
+      undefined,
+      collection.manifestId,
+    );
+    this.emitForAttempt(
+      attempt,
+      "sandbox.attempt",
+      "failed",
+      collection.safeErrorCategory,
+      collection.manifestId,
+    );
+    await this.cleanup(attempt, sandbox);
+    await collector.verifyAfterCleanup(collection);
+    return collection.manifestId;
+  }
+
+  private async stopProcess(process: SandboxProcessView): Promise<void> {
+    const status = await process.status();
+    if (status.state !== "running") return;
+    await process.kill(15);
+    try {
+      const exit = await process.waitForExit({ timeout: 10_000 });
+      if (!exit.timedOut) return;
+    } catch {}
+    await process.kill(9);
+    await process.waitForExit({ timeout: 10_000 });
   }
 
   private async cleanup(attempt: AgentAttemptRecord, sandbox: SandboxView): Promise<void> {
@@ -881,7 +983,7 @@ export class SandboxAgentController {
 
   private emitForAttempt(
     attempt: AgentAttemptRecord,
-    stage: "sandbox.cleanup" | "codex.outcome" | "artifact.manifest",
+    stage: "sandbox.attempt" | "sandbox.cleanup" | "codex.outcome" | "artifact.manifest",
     outcome: "succeeded" | "failed" | "blocked",
     safeErrorCategory?: string,
     manifestId?: string,

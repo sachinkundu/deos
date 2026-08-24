@@ -106,7 +106,7 @@ const main = async () => {
   clearTimeout(deadlineTimer);
   await new Promise((resolve) => transcript.end(resolve));
   await new Promise((resolve) => validation.end(resolve));
-  if (result.code === 0) await finalizeMechanicalOutputs(job);
+  await finalizeMechanicalOutputs(job);
   const timedOut = Date.now() >= deadline && result.code !== 0;
   await atomicJson(STATUS_PATH, {
     attemptId: job.attemptId,

@@ -307,6 +307,33 @@ credentials and raw replies stay inside the trusted Worker.
 
 The agent will not merge the pull request. An agent result is not human approval.
 
+### 9. Preserve terminal evidence before Sandbox cleanup
+
+The supervisor writes Codex JSONL to `transcript.jsonl`, stderr to
+`validation.txt`, and bounded exit data to `status.json`. It captures the
+repository patch and sanitized provider references after Codex stops even when
+Codex exits with a non-zero status.
+
+The controller treats terminal evidence collection as a required step before
+cleanup. It inspects the allowlisted output names, stores every available
+policy-safe file, and creates a trusted `failure-summary.json`. The summary
+lists stored, absent, and policy-rejected file names and derives only a bounded
+safe category such as `codex_exit_nonzero`, `codex_terminated`, or
+`supervisor_failed`. It never copies raw error text into D1 or telemetry.
+
+Failure manifests are complete evidence snapshots even though their agent
+attempts remain failed. D1 links the failed attempt to that manifest. R2 keeps
+the immutable objects under the attempt prefix. A failed R2 or manifest write
+stops cleanup and leaves the Sandbox recoverable for a Workflow retry. Once the
+manifest is verified, the controller records the terminal attempt, destroys the
+Sandbox, verifies the manifest again, and emits the failed attempt category.
+
+Interrupted work is stopped before collection so the supervisor can flush its
+files. The controller waits briefly for exit, escalates termination only when
+needed, and then follows the same evidence-first path. Missing files are facts,
+not collection failures. Unsafe files are omitted with a policy-rejected entry
+in the trusted summary so credentials are never persisted as artifacts.
+
 ## Event flow
 
 1. A person adds `simple-workflow` to a test issue. They do this before moving
@@ -353,7 +380,7 @@ All database changes add new data. They do not rewrite old workflows or runs.
 | The selector is missing, off, or for another repository. | Use the full workflow and save the reason. |
 | A workflow version already has another hash. | Stop setup. Never replace the saved workflow. |
 | Queue retries after an unclear create result. | Find the run and Workflow by stable id. Do not create a second one. |
-| Sandbox output is missing, invalid, or contains a blocked path. | Save the failed evidence. Do not enter `Human Review`. |
+| Sandbox output is missing, invalid, or contains a blocked path. | Save every available policy-safe file plus a bounded failure summary. Do not enter `Human Review`. |
 | A proposal, spec, or pull request text fails the readability limits. | Return it for a full rewrite. Do not publish partial wording fixes. |
 | A GitHub publish result is unclear. | Read the same branch and pull request before retrying. |
 | A revision conflicts with new work on `main`. | Stop with conflict evidence. Do not open another pull request. |
@@ -361,7 +388,8 @@ All database changes add new data. They do not rewrite old workflows or runs.
 | The Todo claim finds another delegate or a newer human state. | Record the conflict and stop before the planning agent. |
 | GitHub changed the saved base or head, or required checks fail. | Do not merge. Mark the action for repair. |
 | GitHub says merged, but the files on `main` do not match. | Keep the run open for repair. Do not report success. |
-| Sandbox cleanup or R2 storage fails. | Keep the attempt unsuccessful. Do not enter review or success. |
+| Terminal evidence storage fails. | Keep the Sandbox recoverable and retry collection. Do not clean up or enter review. |
+| Sandbox cleanup fails after evidence is verified. | Keep the attempt unsuccessful with its durable manifest and require cleanup reconciliation. |
 
 ## Risks / Trade-offs
 

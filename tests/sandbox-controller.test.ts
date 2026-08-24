@@ -316,6 +316,10 @@ class Sandbox implements SandboxView {
     return Promise.resolve({ content, mimeType: "application/json" });
   }
 
+  exists(path: string) {
+    return Promise.resolve({ exists: this.files.has(path) });
+  }
+
   deleteFile(path: string) {
     this.deletedPaths.push(path);
     this.files.delete(path);
@@ -390,6 +394,11 @@ class Credentials {
 
 class Collector {
   verified = 0;
+  verifiedDurable = 0;
+  failureCollections = 0;
+  failFailureCollection = false;
+  failureErrorCategory = "supervisor_failed";
+  sandbox: Sandbox | null = null;
   receiptIds = ["operation-1"];
   collect(): Promise<ArtifactCollectionResult> {
     return Promise.resolve({
@@ -413,6 +422,29 @@ class Collector {
     this.verified += 1;
     return Promise.resolve();
   }
+
+  verifyDurable() {
+    this.verifiedDurable += 1;
+    return Promise.resolve();
+  }
+
+  collectFailure(): Promise<import("../src/artifact-collector.ts").FailureArtifactCollectionResult> {
+    assert.equal(this.sandbox?.destroyed, false);
+    this.failureCollections += 1;
+    if (this.failFailureCollection) return Promise.reject(new Error("R2 unavailable"));
+    return Promise.resolve({
+      manifestId: "manifest:attempt-1:failure",
+      aggregateDigest: "failure-aggregate",
+      objectCount: 3,
+      totalBytes: 120,
+      manifestKey: "runs/run/attempt/failure-manifest.json",
+      manifestSha256: "failure-manifest-digest",
+      safeErrorCategory: this.failureErrorCategory,
+      storedFiles: ["transcript.jsonl", "validation.txt", "status.json"],
+      absentFiles: ["result.json"],
+      policyRejectedFiles: [],
+    });
+  }
 }
 
 interface SetupOptions {
@@ -434,6 +466,7 @@ const setup = (options: SetupOptions = {}) => {
   const factory = new Factory();
   const credentials = new Credentials();
   const collector = new Collector();
+  collector.sandbox = factory.sandbox;
   const protectedPrompts = new Map<string, string>();
   const grantCalls: unknown[][] = [];
   const controller = new SandboxAgentController(
@@ -740,6 +773,55 @@ test("running process reconciles the exact process and fresh supervisor heartbea
   const observation = await controller.execute(run, "work", "work", definition);
   assert.equal(observation.state, "running");
   assert.equal(attempts.latest?.heartbeat_at, NOW.toISOString());
+});
+
+test("non-zero supervisor exit persists failure evidence before cleanup", async () => {
+  const { controller, factory, attempts, collector } = setup();
+  await controller.execute(run, "work", "work", definition);
+  factory.sandbox.supervisor.state = "exited";
+  factory.sandbox.supervisor.exitCode = 1;
+  collector.failureErrorCategory = "codex_exit_nonzero";
+
+  const observation = await controller.execute(run, "work", "work", definition);
+
+  assert.equal(observation.state, "completed");
+  assert.equal(observation.state === "completed" ? observation.manifestId : null, "manifest:attempt-1:failure");
+  assert.equal(attempts.latest?.state, "failed");
+  assert.equal(attempts.latest?.result_class, "codex_exit_nonzero");
+  assert.equal(attempts.latest?.manifest_id, "manifest:attempt-1:failure");
+  assert.equal(collector.failureCollections, 1);
+  assert.equal(collector.verifiedDurable, 1);
+  assert.equal(collector.verified, 1);
+  assert.equal(factory.sandbox.destroyed, true);
+});
+
+test("failure evidence persistence error keeps the Sandbox recoverable", async () => {
+  const { controller, factory, attempts, collector } = setup();
+  await controller.execute(run, "work", "work", definition);
+  factory.sandbox.supervisor.state = "exited";
+  factory.sandbox.supervisor.exitCode = 1;
+  collector.failFailureCollection = true;
+
+  await assert.rejects(
+    controller.execute(run, "work", "work", definition),
+    /R2 unavailable/,
+  );
+
+  assert.equal(collector.failureCollections, 1);
+  assert.equal(factory.sandbox.destroyed, false);
+  assert.equal(factory.sandbox.keepAlive, true);
+  assert.equal(attempts.latest?.state, "collecting");
+  assert.equal(attempts.latest?.manifest_id, null);
+  assert.equal(attempts.latest?.cleanup_state, "pending");
+
+  collector.failFailureCollection = false;
+  collector.failureErrorCategory = "codex_exit_nonzero";
+  const retried = await controller.execute(run, "work", "work", definition);
+  assert.equal(retried.state, "completed");
+  assert.equal(collector.failureCollections, 2);
+  assert.equal(attempts.latest?.state, "failed");
+  assert.equal(attempts.latest?.manifest_id, "manifest:attempt-1:failure");
+  assert.equal(factory.sandbox.destroyed, true);
 });
 
 test("successful completion refreshes auth, removes it, collects, destroys, then verifies R2", async () => {

@@ -55,3 +55,9 @@
 - [x] 9.1 Revise the simple definition so a trusted claim action preserves the human assignee, delegates the issue to the DEOS app user, and confirms `In Progress` before the planning agent starts.
 - [x] 9.2 Add durable, idempotent Linear claim handling with provider read-back and focused tests for success, replay, ambiguity, and conflicting human intent.
 - [x] 9.3 Validate and deploy the correction, read back definition version 2, then leave SAC-129 in Backlog for a human-triggered Todo test.
+
+## 10. Preserve failed-agent evidence
+
+- [x] 10.1 Capture patch, provider references, JSONL, validation, result, and bounded supervisor status whenever available after any terminal agent outcome.
+- [x] 10.2 Persist and verify an immutable failure manifest before cleanup, retain the manifest on the failed attempt, emit the bounded failure category, and keep the Sandbox recoverable when collection fails.
+- [ ] 10.3 Add deterministic failure, interruption, policy-rejection, and persistence-failure tests; validate and deploy the branch; then re-arm SAC-129 and verify the new run through D1, R2, Linear, and Workers telemetry.

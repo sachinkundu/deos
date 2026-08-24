@@ -28,6 +28,10 @@ export class SandboxArtifactReaderAdapter implements SandboxArtifactReader {
     this.sandbox = sandbox;
   }
 
+  async exists(path: string): Promise<boolean> {
+    return (await this.sandbox.exists(path)).exists;
+  }
+
   async read(path: string): Promise<{ content: Uint8Array; mediaType: string }> {
     const result = await this.sandbox.readFile(path, { encoding: "utf8" });
     return {

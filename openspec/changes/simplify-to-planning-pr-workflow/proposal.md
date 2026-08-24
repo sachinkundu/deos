@@ -11,6 +11,7 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 - Enter `Human Review` only after the planning work and its durable provider evidence are complete.
 - Treat an authorized human transition to `In Progress` as a request to revise the same planning pull request, `Merging` as authorization for DEOS to merge it, and `Canceled` as a terminal stop.
 - Report the planning slice as successful only after DEOS verifies that the approved planning work is present on `origin/main`.
+- Preserve every available policy-safe agent output and bounded process diagnostic before any terminal Sandbox cleanup, including failed and interrupted attempts.
 - Preserve the current deployed full workflow and all immutable historical definitions while the simplified definition remains inactive pending implementation and live provider proof.
 
 ## Non-goals
@@ -37,4 +38,5 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 - Adds a `simple-workflow` Linear-label selection rule, a separately selectable workflow definition, and its external agent prompt bundle without replacing the current production definition.
 - Extends trusted workflow actions and GitHub reconciliation as needed to merge the authorized planning pull request and verify it on `origin/main`.
 - Adds deterministic definition and orchestration coverage followed by a separately authorized Cloudflare deployment and provider-originated Linear canary.
+- Strengthens the shared Sandbox controller so failed-agent transcripts and diagnostics survive cleanup for every workflow that uses it.
 - Establishes one proposal-and-specification traceability boundary from the triggering issue through the verified merge.

@@ -22,6 +22,10 @@ const schema = {
 class Reader implements SandboxArtifactReader {
   readonly files = new Map<string, Uint8Array>();
 
+  exists(path: string) {
+    return Promise.resolve(this.files.has(path));
+  }
+
   read(path: string) {
     const content = this.files.get(path);
     if (content === undefined) return Promise.reject(new Error("missing file"));
@@ -161,4 +165,60 @@ test("a conflicting pre-existing object makes the write ambiguous", async () => 
   objects.values.set(key, { content: new Uint8Array(), digest: "different" });
   await assert.rejects(collector.collect(input), /ambiguous create-only write/);
   assert.equal(manifests.state, "failed");
+});
+
+test("failure collection preserves every available safe output and records absent files", async () => {
+  const { collector, reader, objects, manifests } = setup();
+  reader.files.delete("/deos/output/result.json");
+  reader.files.set(
+    "/deos/output/status.json",
+    new TextEncoder().encode(JSON.stringify({ exitCode: 1, signal: null, timedOut: false })),
+  );
+  reader.files.set("/deos/output/validation.txt", new TextEncoder().encode("codex failed\n"));
+
+  const result = await collector.collectFailure({
+    runId: input.runId,
+    attemptId: input.attemptId,
+    outputRoot: input.outputRoot,
+    expectedFiles: ["transcript.jsonl", "result.json", "validation.txt", "patch.diff"],
+    fallbackErrorCategory: "supervisor_failed",
+  });
+
+  assert.equal(result.safeErrorCategory, "codex_exit_nonzero");
+  assert.deepEqual(result.storedFiles, ["status.json", "transcript.jsonl", "validation.txt"]);
+  assert.deepEqual(result.absentFiles, ["patch.diff", "result.json"]);
+  assert.deepEqual(result.policyRejectedFiles, []);
+  assert.equal(result.objectCount, 4);
+  assert.equal(manifests.state, "complete");
+  assert.equal(objects.values.has(result.manifestKey), true);
+  const summaryKey = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}/failure-summary.json`;
+  const summary = JSON.parse(new TextDecoder().decode(objects.values.get(summaryKey)?.content));
+  assert.equal(summary.safeErrorCategory, "codex_exit_nonzero");
+  assert.deepEqual(summary.absentFiles, ["patch.diff", "result.json"]);
+});
+
+test("failure collection omits credential-bearing output but keeps the safe evidence", async () => {
+  const { collector, reader, objects, manifests } = setup();
+  reader.files.set(
+    "/deos/output/transcript.jsonl",
+    new TextEncoder().encode('{"access_token":"credential-value-that-must-not-escape"}\n'),
+  );
+  reader.files.set("/deos/output/validation.txt", new TextEncoder().encode("bounded failure\n"));
+
+  const result = await collector.collectFailure({
+    runId: input.runId,
+    attemptId: input.attemptId,
+    outputRoot: input.outputRoot,
+    expectedFiles: ["transcript.jsonl", "validation.txt"],
+    fallbackErrorCategory: "supervisor_failed",
+  });
+
+  assert.deepEqual(result.storedFiles, ["validation.txt"]);
+  assert.deepEqual(result.policyRejectedFiles, ["transcript.jsonl"]);
+  assert.equal(manifests.state, "complete");
+  assert.equal(
+    [...objects.values.values()].some(({ content }) =>
+      new TextDecoder().decode(content).includes("credential-value-that-must-not-escape")),
+    false,
+  );
 });
