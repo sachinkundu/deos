@@ -924,7 +924,7 @@ export class SandboxAgentController {
         materializedContext.replace("{attemptId}", attempt.attempt_id),
         "</deos-job-inputs>",
         `Required durable outputs under /deos/output: ${job.requiredOutputs.join(", ")}`,
-        "Codex creates result.json through its output schema. Ensure patch.diff is a repository patch or an explicit no-change record, validation.txt contains the validation commands and outcomes, and provider-references.json is a JSON array of sanitized capability receipts.",
+        "The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.",
         `For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-${attempt.attempt_id}, repository ${this.config.repository}, baseBranch main, change ${durableJob.openspecChange}, title, body, and a non-empty files array of {path, content}. The trusted capability supplies and verifies the run-scoped remote branch ${durableJob.planningBranch}.`,
         "After the successful capability call, copy the response's exact operationId into result.json providerReceipts. Use only the operation ID string: no prose, labels, backticks, or provider resource IDs. The result.json list must exactly match provider-references.json.",
         "Use only the declared planning-publication capability. Never request or perform a Linear state transition or a GitHub merge.",
@@ -951,7 +951,7 @@ export class SandboxAgentController {
       materializedContext.replace("{attemptId}", attempt.attempt_id),
       "</deos-job-inputs>",
       `Required durable outputs under /deos/output: ${job.requiredOutputs.join(", ")}`,
-      "Codex creates result.json through its output schema. Ensure patch.diff is a repository patch or an explicit no-change record, validation.txt contains the validation commands and outcomes, and provider-references.json is a JSON array of sanitized capability receipts.",
+      "The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.",
       `For GitHub work, pipe one JSON request to deos-github with version 1, action publish_work_product, a stable operationKey, repository ${this.config.repository}, branch deos/${attempt.attempt_id}, baseBranch main, title, body, and a non-empty files array of {path, content}.`,
       `For a Linear working note, pipe one JSON request to deos-linear with version 1, action upsert_working_note, a stable operationKey, issueId ${run.issue_id}, and body. Capability receipts are captured mechanically.`,
       ...(job.operation?.kind === "openspec"

@@ -225,6 +225,11 @@ Each attempt uses `planning-publish-<attempt-id>` as its action key. A retry of
 the same attempt reuses that key. A later revision has a new key but updates the
 same pull request.
 
+When the trusted router denies a planning request, it returns and records one
+bounded rule category. The category can identify the request shape, file list,
+body, copied Linear text, readability, or validation evidence. It does not copy
+the request body or provider reply into D1 or telemetry.
+
 We will not reuse the broad `publish_work_product` action. Its file and branch
 rules are too wide for this flow.
 
@@ -309,10 +314,14 @@ The agent will not merge the pull request. An agent result is not human approval
 
 ### 9. Preserve terminal evidence before Sandbox cleanup
 
-The supervisor writes Codex JSONL to `transcript.jsonl`, stderr to
-`validation.txt`, and bounded exit data to `status.json`. It captures the
-repository patch and sanitized provider references after Codex stops even when
-Codex exits with a non-zero status.
+The supervisor captures Codex JSONL in a private temporary file. After Codex
+stops, it replaces `transcript.jsonl` with that trusted stream. The prompt tells
+the agent not to write the transcript, patch, provider references, or status.
+This keeps an agent write from truncating the audit record. The supervisor also
+captures stderr and uses it as `validation.txt` only when the agent did not
+write its own validation record. It writes bounded exit data to `status.json`.
+It captures the repository patch and sanitized provider references after Codex
+stops even when Codex exits with a non-zero status.
 
 The controller treats terminal evidence collection as a required step before
 cleanup. It inspects the allowlisted output names, stores every available

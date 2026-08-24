@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { access, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { finished } from "node:stream/promises";
 
 import { captureRepositoryPatch } from "./patch-capture.mjs";
 
@@ -20,6 +22,31 @@ const atomicJson = async (path, value) => {
   const temporary = `${path}.tmp`;
   await writeFile(temporary, `${JSON.stringify(value)}\n`, { mode: 0o600 });
   await rename(temporary, path);
+};
+
+const trustedCapture = async (name) => {
+  const root = await mkdtemp(`/tmp/deos-${name}-`);
+  const path = `${root}/${name}`;
+  return {
+    stream: createWriteStream(path, { flags: "wx", mode: 0o600 }),
+    async finalize(destination, replace = true) {
+      await finished(this.stream);
+      let shouldWrite = replace;
+      if (!replace) {
+        try {
+          await access(destination);
+        } catch {
+          shouldWrite = true;
+        }
+      }
+      if (shouldWrite) {
+        const temporary = `${destination}.tmp`;
+        await writeFile(temporary, await readFile(path), { mode: 0o600 });
+        await rename(temporary, destination);
+      }
+      await rm(root, { recursive: true, force: true });
+    },
+  };
 };
 
 const finalizeMechanicalOutputs = async (job) => {
@@ -50,10 +77,8 @@ const main = async () => {
   const deadline = Date.parse(job.deadline);
   if (!Number.isFinite(deadline) || deadline <= Date.now()) throw new Error("job deadline is invalid");
   const prompt = await readFile(job.promptPath, "utf8");
-  const transcript = await import("node:fs").then(({ createWriteStream }) =>
-    createWriteStream(TRANSCRIPT_PATH, { flags: "wx", mode: 0o600 }));
-  const validation = await import("node:fs").then(({ createWriteStream }) =>
-    createWriteStream(VALIDATION_PATH, { flags: "wx", mode: 0o600 }));
+  const transcript = await trustedCapture("transcript.jsonl");
+  const validation = await trustedCapture("stderr.txt");
   const args = [
     "exec",
     "-",
@@ -79,8 +104,8 @@ const main = async () => {
     stdio: ["pipe", "pipe", "pipe"],
   });
   child.stdin.end(prompt);
-  child.stdout.pipe(transcript);
-  child.stderr.pipe(validation);
+  child.stdout.pipe(transcript.stream);
+  child.stderr.pipe(validation.stream);
   const heartbeat = async () => atomicJson(HEARTBEAT_PATH, {
     attemptId: job.attemptId,
     processPid: child.pid,
@@ -104,8 +129,8 @@ const main = async () => {
   });
   clearInterval(heartbeatTimer);
   clearTimeout(deadlineTimer);
-  await new Promise((resolve) => transcript.end(resolve));
-  await new Promise((resolve) => validation.end(resolve));
+  await transcript.finalize(TRANSCRIPT_PATH);
+  await validation.finalize(VALIDATION_PATH, false);
   await finalizeMechanicalOutputs(job);
   const timedOut = Date.now() >= deadline && result.code !== 0;
   await atomicJson(STATUS_PATH, {

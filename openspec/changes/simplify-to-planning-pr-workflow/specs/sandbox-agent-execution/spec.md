@@ -4,10 +4,17 @@
 
 Before any terminal agent attempt can be cleaned up, the trusted runner SHALL durably preserve every available policy-safe output as an immutable attempt-scoped manifest. This rule applies to successful, blocked, failed, interrupted, timed-out, and canceled attempts. Failure evidence SHALL include the JSON Lines transcript, validation output, repository patch, structured result, provider references, and trusted supervisor status whenever each file exists. The trusted runner SHALL add a bounded failure summary that records which expected files were stored or absent and the safe process outcome category. It MUST NOT destroy the Sandbox until the manifest is written and verified. If evidence persistence cannot be verified, the attempt SHALL remain recoverable for a later collection retry and cleanup SHALL NOT run.
 
+The JSON Lines transcript SHALL be captured by the trusted supervisor outside paths that the agent is told to write. The supervisor SHALL publish the captured stream only after the agent process ends. Agent writes MUST NOT replace, truncate, append to, or create sparse regions in the trusted transcript.
+
 #### Scenario: Agent exits with a non-zero status after producing output
 
 - **WHEN** the trusted supervisor observes a non-zero Codex exit after one or more output files were created
 - **THEN** the controller stores every available policy-safe output, records a bounded `codex_exit_nonzero` outcome, verifies the failure manifest, and only then destroys the Sandbox
+
+#### Scenario: Agent tries to write the transcript path
+
+- **WHEN** an agent creates or replaces the declared `transcript.jsonl` output while its process is running
+- **THEN** the trusted supervisor replaces that file after exit with its complete captured Codex JSON Lines stream before artifact collection
 
 #### Scenario: Agent is interrupted after partial work
 

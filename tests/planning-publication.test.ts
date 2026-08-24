@@ -75,13 +75,13 @@ test("planning publication rejects copied Linear content and non-review statemen
       "Review the branch rule before the merge begins.",
       "Build a shorter planning workflow.",
     ),
-  }), CONTEXT), /repeat Linear content/);
+  }), CONTEXT), /planning_linear_content_copied/);
   await assert.rejects(validatePlanningPublication(request({
     body: request().body.replace(
       "Review the branch rule before the merge begins.",
       "No implementation is included.",
     ),
-  }), CONTEXT), /implementation-status statement/);
+  }), CONTEXT), /planning_body_invalid/);
 });
 
 test("planning publication rejects missing, stale-scope, and forbidden files", async () => {
@@ -90,13 +90,13 @@ test("planning publication rejects missing, stale-scope, and forbidden files", a
   }), CONTEXT));
   await assert.rejects(validatePlanningPublication(request({
     files: [...request().files, { path: "src/runtime.ts", content: "forbidden" }],
-  }), CONTEXT), /path is forbidden/);
+  }), CONTEXT), /planning_files_invalid/);
   await assert.rejects(validatePlanningPublication(request({
     files: [...request().files, { path: `${PREFIX}design.md`, content: "Easy text.\n" }],
-  }), CONTEXT), /path is forbidden/);
+  }), CONTEXT), /planning_files_invalid/);
   await assert.rejects(validatePlanningPublication(request({
     files: [...request().files, { path: `${PREFIX}tasks.md`, content: "Easy text.\n" }],
-  }), CONTEXT), /path is forbidden/);
+  }), CONTEXT), /planning_files_invalid/);
   await assert.rejects(validatePlanningPublication(request({
     files: request().files.map((file) => file.path.endsWith("spec.md")
       ? { ...file, path: `${PREFIX}specs/../canonical/spec.md` }
@@ -109,7 +109,7 @@ test("planning publication rejects missing, stale-scope, and forbidden files", a
           content: "Interoperability characteristics necessitate comprehensive architectural reconciliation.",
         }
       : file),
-  }), CONTEXT), /outside readability limits/);
+  }), CONTEXT), /planning_readability_invalid/);
 });
 
 test("readability boundaries allow easier text", () => {

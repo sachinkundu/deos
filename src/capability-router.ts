@@ -9,6 +9,7 @@ import { operationIdentity } from "./orchestration-identity.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
 import type { D1PlanningStore } from "./planning-store.ts";
 import {
+  PlanningPublicationValidationError,
   validatePlanningPublication,
   type PlanningPublicationRequest,
   type ValidatedPlanningPublication,
@@ -222,7 +223,13 @@ export class CapabilityRouter {
           planningInput.change !== claims.changeId ||
           planningInput.operationKey !== `planning-publish-${claims.attemptId}` ||
           claims.planningBranch === null
-        ) return this.denied(claims.runId, claims.attemptId, "github", untrusted);
+        ) return this.denied(
+          claims.runId,
+          claims.attemptId,
+          "github",
+          untrusted,
+          "planning_identity_denied",
+        );
         let issue;
         try {
           issue = await this.dependencies.linear.readPublicationContext(claims.issueId);
@@ -237,14 +244,31 @@ export class CapabilityRouter {
             issueTitle: issue.title,
             issueDescription: issue.description,
           });
-        } catch {
-          return this.denied(claims.runId, claims.attemptId, "github", untrusted);
+        } catch (error) {
+          return this.denied(
+            claims.runId,
+            claims.attemptId,
+            "github",
+            untrusted,
+            error instanceof PlanningPublicationValidationError
+              ? error.safeCategory
+              : "planning_validation_failed",
+          );
         }
         return this.planningGithub(
           validated,
           claims.runId,
           claims.attemptId,
           claims.planningBranch,
+        );
+      }
+      if (asRecord(untrusted)?.action === "publish_planning_work_product") {
+        return this.denied(
+          claims.runId,
+          claims.attemptId,
+          "github",
+          untrusted,
+          "planning_request_invalid",
         );
       }
       const input = parseGitHubRequest(untrusted);
@@ -482,6 +506,7 @@ export class CapabilityRouter {
     attemptId: string,
     capability: string,
     input: unknown,
+    safeErrorCategory = "capability_denied",
   ): Promise<Response> {
     const record = asRecord(input);
     const key = operationKey(record?.operationKey) ? record.operationKey : `invalid-${(await digest(input)).slice(0, 16)}`;
@@ -503,11 +528,14 @@ export class CapabilityRouter {
         expected: "pending",
         state: "denied",
         providerResourceId: null,
-        safeErrorCategory: "capability_denied",
+        safeErrorCategory,
         now: this.now().toISOString(),
       });
     }
-    return json(403, this.receipt(operationId, "denied", null));
+    return json(403, {
+      ...this.receipt(operationId, "denied", null),
+      safeErrorCategory,
+    });
   }
 
   private emitProvider(

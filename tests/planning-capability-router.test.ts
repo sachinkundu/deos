@@ -260,13 +260,18 @@ test("planning-only grant rejects generic GitHub, Linear, wrong change, and copi
   const changeState = await setup();
   assert.equal((await changeState.invoke("github", { ...publication(), change: "sac-201" })).status, 403);
   const contentState = await setup();
-  assert.equal((await contentState.invoke("github", {
+  const copied = await contentState.invoke("github", {
     ...publication(),
     body: publication().body.replace(
       "Review the branch rule before the merge begins.",
       "Build a shorter planning workflow.",
     ),
-  })).status, 403);
+  });
+  assert.equal(copied.status, 403);
+  assert.equal(
+    (await copied.json() as { safeErrorCategory?: string }).safeErrorCategory,
+    "planning_linear_content_copied",
+  );
   assert.equal(genericState.githubCalls(), 0);
   assert.equal(changeState.githubCalls(), 0);
   assert.equal(contentState.githubCalls(), 0);

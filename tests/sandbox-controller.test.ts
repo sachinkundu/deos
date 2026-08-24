@@ -625,7 +625,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
     planningContext.replace("{attemptId}", attemptId),
     "</deos-job-inputs>",
     "Required durable outputs under /deos/output: transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json",
-    "Codex creates result.json through its output schema. Ensure patch.diff is a repository patch or an explicit no-change record, validation.txt contains the validation commands and outcomes, and provider-references.json is a JSON array of sanitized capability receipts.",
+    "The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.",
     `For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-${attemptId}, repository sachinkundu/deos, baseBranch main, change sac-1, title, body, and a non-empty files array of {path, content}. The trusted capability supplies and verifies the run-scoped remote branch ${planningBranch}.`,
     "After the successful capability call, copy the response's exact operationId into result.json providerReceipts. Use only the operation ID string: no prose, labels, backticks, or provider resource IDs. The result.json list must exactly match provider-references.json.",
     "Use only the declared planning-publication capability. Never request or perform a Linear state transition or a GitHub merge.",
@@ -637,7 +637,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
   assert.equal(state.attempts.latest?.prompt_r2_key, `protected/prompts/${attemptId}.md`);
   assert.equal(
     state.attempts.latest?.prompt_sha256,
-    "2d7b6ec4bd0e1440cc6b8dc753b43c5bac864b42049dec7ea98fa415b49788f8",
+    "0719c3ec6deca8cacc1548288c17a82daadeb6ac4995cf00197342305d2cda59",
   );
   assert.equal(state.factory.sandbox.deletedPaths.includes("/usr/local/bin/deos-linear"), true);
   assert.deepEqual((state.grantCalls[0][2] as { capabilities?: readonly string[] }).capabilities, [

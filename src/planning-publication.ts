@@ -37,6 +37,28 @@ export interface ValidatedPlanningPublication extends PlanningPublicationRequest
   }>>;
 }
 
+export type PlanningPublicationErrorCategory =
+  | "planning_request_invalid"
+  | "planning_files_invalid"
+  | "planning_body_invalid"
+  | "planning_linear_content_copied"
+  | "planning_readability_invalid"
+  | "planning_validation_evidence_invalid";
+
+export class PlanningPublicationValidationError extends Error {
+  readonly safeCategory: PlanningPublicationErrorCategory;
+
+  constructor(safeCategory: PlanningPublicationErrorCategory) {
+    super(safeCategory);
+    this.name = "PlanningPublicationValidationError";
+    this.safeCategory = safeCategory;
+  }
+}
+
+const invalid = (safeCategory: PlanningPublicationErrorCategory): never => {
+  throw new PlanningPublicationValidationError(safeCategory);
+};
+
 const normalize = (value: string): string => value
   .toLowerCase()
   .replace(/[^a-z0-9]+/g, " ")
@@ -146,20 +168,20 @@ const parseBody = (
     "## Review notes",
   ];
   if (expectedPrefix.some((line, index) => lines[index] !== line)) {
-    throw new Error("planning pull-request body header is invalid");
+    invalid("planning_body_invalid");
   }
   const reviewOrderIndex = lines.indexOf("## Review order");
   if (reviewOrderIndex < 6 || lines[reviewOrderIndex - 1] !== "") {
-    throw new Error("planning pull-request review notes are invalid");
+    invalid("planning_body_invalid");
   }
   const notes = lines.slice(4, reviewOrderIndex - 1);
   if (
     notes.length < 1 || notes.length > 3 ||
     notes.some((line) => !line.startsWith("- ") || line.length < 12 || line.length > 260)
-  ) throw new Error("planning pull-request review notes are invalid");
+  ) invalid("planning_body_invalid");
   const noteText = notes.map((line) => line.slice(2));
   if (noteText.some((note) => note.split(/[.!?]+/).filter((part) => part.trim()).length !== 1)) {
-    throw new Error("planning pull-request review notes must be single sentences");
+    invalid("planning_body_invalid");
   }
   const expectedReviewOrder = [
     "## Review order",
@@ -169,13 +191,13 @@ const parseBody = (
     "## Validation",
   ];
   if (expectedReviewOrder.some((line, index) => lines[reviewOrderIndex + index] !== line)) {
-    throw new Error("planning pull-request review order is invalid");
+    invalid("planning_body_invalid");
   }
   const validation = lines.slice(reviewOrderIndex + expectedReviewOrder.length);
   if (
     validation.length < 1 ||
     validation.some((line) => !line.startsWith("- ") || !line.includes(" — ") || line.length > 500)
-  ) throw new Error("planning pull-request validation list is invalid");
+  ) invalid("planning_validation_evidence_invalid");
   return noteText;
 };
 
@@ -195,7 +217,7 @@ export const validatePlanningPublication = async (
     request.title !== `${context.issueIdentifier}: OpenSpec plan` ||
     request.body.length > 20_000 ||
     request.files.length < 3 || request.files.length > 48
-  ) throw new Error("planning publication request is invalid");
+  ) invalid("planning_request_invalid");
 
   const sortedFiles = [...request.files].sort((left, right) => left.path.localeCompare(right.path));
   const seen = new Set<string>();
@@ -204,32 +226,32 @@ export const validatePlanningPublication = async (
       seen.has(file.path) ||
       file.content.length > 1_000_000 ||
       typeof file.content !== "string"
-    ) throw new Error("planning publication files are invalid");
+    ) invalid("planning_files_invalid");
     seen.add(file.path);
     const path = relativePath(request.change, file.path);
-    if (path === null) throw new Error("planning publication path is forbidden");
-    return path;
+    if (path === null) invalid("planning_files_invalid");
+    return path as string;
   });
   for (const required of [".openspec.yaml", "proposal.md"]) {
-    if (!relative.includes(required)) throw new Error(`planning publication is missing ${required}`);
+    if (!relative.includes(required)) invalid("planning_files_invalid");
   }
   const specPaths = relative.filter((path) => path.startsWith("specs/")).sort();
-  if (specPaths.length === 0) throw new Error("planning publication requires a delta specification");
+  if (specPaths.length === 0) invalid("planning_files_invalid");
   const notes = parseBody(request, context, specPaths);
   if (notes.some((note) => /\b(?:no|without) implementation\b|\bimplementation is (?:absent|not included)\b/i.test(note))) {
-    throw new Error("planning pull-request notes contain an implementation-status statement");
+    invalid("planning_body_invalid");
   }
   if (copiedLinearContent(notes, context)) {
-    throw new Error("planning pull-request notes repeat Linear content");
+    invalid("planning_linear_content_copied");
   }
   const readability = scoreReadability(notes.join(" "));
   if (
     readability.fleschReadingEase < 70 ||
     readability.fleschKincaidGrade > 8
-  ) throw new Error("planning pull-request review notes are outside readability limits");
+  ) invalid("planning_readability_invalid");
   const validationLines = request.body.slice(request.body.indexOf("## Validation")).split("\n");
   if (!validationLines.includes(`- openspec validate ${request.change} --strict — passed`)) {
-    throw new Error("planning pull-request is missing strict OpenSpec validation");
+    invalid("planning_validation_evidence_invalid");
   }
   const reviewerFiles = sortedFiles.filter((file) => {
     const relative = relativePath(request.change, file.path);
@@ -238,10 +260,10 @@ export const validatePlanningPublication = async (
   const fileReadability: Record<string, ReturnType<typeof scoreReadability>> = {};
   for (const file of reviewerFiles) {
     const prose = readabilityProse(file.content);
-    if (words(prose).length === 0) throw new Error("planning file has no readable prose");
+    if (words(prose).length === 0) invalid("planning_readability_invalid");
     const score = scoreReadability(prose);
     if (score.fleschReadingEase < 70 || score.fleschKincaidGrade > 8) {
-      throw new Error(`planning file is outside readability limits: ${file.path}`);
+      invalid("planning_readability_invalid");
     }
     fileReadability[file.path] = score;
   }
