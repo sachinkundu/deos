@@ -176,6 +176,7 @@ const publication = () => ({
       content: "The system saves the plan. It waits for a person to approve the next step.\n",
     },
   ],
+  reviewReplies: [],
 });
 
 const setup = async () => {
@@ -194,6 +195,7 @@ const setup = async () => {
           pullRequestUrl: "https://github.com/sachinkundu/deos/pull/54",
           branch: BRANCH,
           headSha: "head-sha",
+          reviewReplyIds: [],
           reconciled: githubCalls > 1,
         };
       },

@@ -70,6 +70,8 @@ For a selected simplified run, DEOS SHALL preserve any human assignee, delegate 
 
 Every authorized revision SHALL use a fresh isolated agent attempt while preserving the run-scoped planning branch and pull-request identity. The new attempt SHALL receive the durable planning patch, prior result, pull-request reference, and bounded human feedback needed to revise the same proposal and specifications.
 
+For each affected human GitHub review thread, the revision SHALL post one bounded acknowledgment through the trusted publication capability. The reply SHALL state what changed or why no change was made. The revision MUST NOT resolve the thread.
+
 #### Scenario: Human requests planning changes
 
 - **WHEN** an authorized person moves the issue from `Human Review` to `In Progress`
@@ -79,6 +81,11 @@ Every authorized revision SHALL use a fresh isolated agent attempt while preserv
 
 - **WHEN** publication of one logical revision is retried after an ambiguous response
 - **THEN** the trusted GitHub capability reconciles the run-scoped branch and pull request without creating a duplicate pull request
+
+#### Scenario: Revision addresses review comments
+
+- **WHEN** a revision receives human comments on one or more GitHub review threads
+- **THEN** it replies once on each affected thread with what changed or why no change was made, and leaves every thread unresolved
 
 #### Scenario: Earlier sandbox has been removed
 

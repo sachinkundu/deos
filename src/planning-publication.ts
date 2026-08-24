@@ -3,6 +3,11 @@ export interface PlanningFile {
   content: string;
 }
 
+export interface PlanningReviewReply {
+  commentId: number;
+  body: string;
+}
+
 export interface PlanningPublicationRequest {
   version: 1;
   action: "publish_planning_work_product";
@@ -13,6 +18,7 @@ export interface PlanningPublicationRequest {
   title: string;
   body: string;
   files: readonly PlanningFile[];
+  reviewReplies: readonly PlanningReviewReply[];
 }
 
 export interface PlanningPublicationContext {
@@ -41,6 +47,7 @@ export type PlanningPublicationErrorCategory =
   | "planning_request_invalid"
   | "planning_files_invalid"
   | "planning_body_invalid"
+  | "planning_review_replies_invalid"
   | "planning_linear_content_copied"
   | "planning_readability_invalid"
   | "planning_validation_evidence_invalid";
@@ -216,8 +223,20 @@ export const validatePlanningPublication = async (
     !safeChange(request.change) ||
     request.title !== `${context.issueIdentifier}: OpenSpec plan` ||
     request.body.length > 20_000 ||
-    request.files.length < 3 || request.files.length > 48
+    request.files.length < 3 || request.files.length > 48 ||
+    !Array.isArray(request.reviewReplies) || request.reviewReplies.length > 50
   ) invalid("planning_request_invalid");
+
+  const reviewCommentIds = new Set<number>();
+  for (const reply of request.reviewReplies) {
+    if (
+      !Number.isSafeInteger(reply.commentId) || reply.commentId <= 0 ||
+      reviewCommentIds.has(reply.commentId) ||
+      typeof reply.body !== "string" || reply.body.length < 1 || reply.body.length > 1_000 ||
+      reply.body.trim() !== reply.body || reply.body.includes("<!--") || reply.body.includes("-->")
+    ) invalid("planning_review_replies_invalid");
+    reviewCommentIds.add(reply.commentId);
+  }
 
   const sortedFiles = [...request.files].sort((left, right) => left.path.localeCompare(right.path));
   const seen = new Set<string>();

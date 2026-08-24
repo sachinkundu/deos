@@ -62,3 +62,7 @@
 - [x] 10.2 Persist and verify an immutable failure manifest before cleanup, retain the manifest on the failed attempt, emit the bounded failure category, and keep the Sandbox recoverable when collection fails.
 - [x] 10.3 Add deterministic failure, interruption, policy-rejection, and persistence-failure tests; validate and deploy the branch; then re-arm SAC-129 and verify the new run through D1, R2, Linear, and Workers telemetry.
 - [x] 10.4 Keep the Codex JSONL stream supervisor-owned and return a bounded reason when trusted planning publication validation denies a request.
+
+## 11. Acknowledge review threads
+
+- [x] 11.1 Require each revision to reply on every affected human GitHub review thread, state what changed or why no change was made, reconcile reply retries, and never resolve a thread.

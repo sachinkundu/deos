@@ -626,7 +626,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
     "</deos-job-inputs>",
     "Required durable outputs under /deos/output: transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json",
     "The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.",
-    `For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-${attemptId}, repository sachinkundu/deos, baseBranch main, change sac-1, title, body, and a non-empty files array of {path, content}. The trusted capability supplies and verifies the run-scoped remote branch ${planningBranch}.`,
+    `For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-${attemptId}, repository sachinkundu/deos, baseBranch main, change sac-1, title, body, a non-empty files array of {path, content}, and reviewReplies as an array of {commentId, body}. The trusted capability supplies and verifies the run-scoped remote branch ${planningBranch}.`,
     "After the successful capability call, copy the response's exact operationId into result.json providerReceipts. Use only the operation ID string: no prose, labels, backticks, or provider resource IDs. The result.json list must exactly match provider-references.json.",
     "Use only the declared planning-publication capability. Never request or perform a Linear state transition or a GitHub merge.",
   ].join("\n");
@@ -637,7 +637,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
   assert.equal(state.attempts.latest?.prompt_r2_key, `protected/prompts/${attemptId}.md`);
   assert.equal(
     state.attempts.latest?.prompt_sha256,
-    "0719c3ec6deca8cacc1548288c17a82daadeb6ac4995cf00197342305d2cda59",
+    "10bc6f97d35e8edcc2603f4bc533874313554de153ac33a05a4eeed7721180fe",
   );
   assert.equal(state.factory.sandbox.deletedPaths.includes("/usr/local/bin/deos-linear"), true);
   assert.deepEqual((state.grantCalls[0][2] as { capabilities?: readonly string[] }).capabilities, [
@@ -650,7 +650,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
   assert.equal(
     await crypto.subtle.digest("SHA-256", new TextEncoder().encode(planningPrompt)).then((value) =>
       [...new Uint8Array(value)].map((byte) => byte.toString(16).padStart(2, "0")).join("")),
-    "52bfd22c3a2d67d709af3a9fe6616e94c10b8bb00530fe97918cb0e9a0219585",
+    "425632726f396563e1b43958d66f75bdb533aaadbece3f9b835f71a8389dc46c",
   );
 });
 

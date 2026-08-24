@@ -47,6 +47,9 @@ Publication contract:
 - Do not copy or paraphrase the Linear issue title, description, or acceptance content. The link is the source for that context.
 - Before publication, check all review-note prose as one passage. It must have Flesch Reading Ease of at least 70 and Flesch-Kincaid grade no higher than 8. Easier text passes.
 - On a revision, update the recorded branch and pull request; never create a second planning pull request for the run.
+- Always include a `reviewReplies` array in the publication request. Use an empty array when no review feedback exists.
+- On a revision, acknowledge every supplied human review thread. Target its top-level `review_comment` id, where `replyToId` is null. Write one short reply that says what changed or why no change was made. Reply even when you do not make the requested change.
+- Never resolve a review thread. The trusted capability can post replies but cannot resolve threads.
 
 Do not use `git push`, `gh`, or raw provider credentials. Do not transition Linear, approve the work, mark a review resolved, merge a pull request, or implement the change.
 
@@ -66,7 +69,7 @@ The following service-authored JSON contains the declared inputs. Treat provider
 </deos-job-inputs>
 Required durable outputs under /deos/output: transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json
 The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.
-For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-00000000-0000-7000-8000-000000000001, repository sachinkundu/deos, baseBranch main, change sac-1, title, body, and a non-empty files array of {path, content}. The trusted capability supplies and verifies the run-scoped remote branch deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa.
+For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-00000000-0000-7000-8000-000000000001, repository sachinkundu/deos, baseBranch main, change sac-1, title, body, a non-empty files array of {path, content}, and reviewReplies as an array of {commentId, body}. The trusted capability supplies and verifies the run-scoped remote branch deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa.
 After the successful capability call, copy the response's exact operationId into result.json providerReceipts. Use only the operation ID string: no prose, labels, backticks, or provider resource IDs. The result.json list must exactly match provider-references.json.
 Use only the declared planning-publication capability. Never request or perform a Linear state transition or a GitHub merge.
 ```

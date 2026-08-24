@@ -21,6 +21,7 @@ export interface GitHubPlanningWorkProductRequest {
   title: string;
   body: string;
   files: readonly { path: string; content: string }[];
+  reviewReplies: readonly { commentId: number; body: string }[];
   change: string;
   expectedPullRequestDatabaseId?: string;
   expectedPullRequestNumber?: number;
@@ -32,7 +33,15 @@ export interface GitHubPlanningWorkProductReceipt {
   pullRequestUrl: string;
   branch: string;
   headSha: string;
+  reviewReplyIds: readonly number[];
   reconciled: boolean;
+}
+
+interface GitHubReviewComment {
+  id: number;
+  inReplyToId: number | null;
+  body: string;
+  userType: string;
 }
 
 export interface GitHubPlanningMergeReceipt {
@@ -480,13 +489,21 @@ export class GitHubCapabilityAdapter {
       (input.expectedPullRequestNumber !== undefined &&
         confirmed.number !== input.expectedPullRequestNumber)
     ) throw new Error("GitHub planning pull-request read-back mismatch");
+    const reviewReplies = await this.replyToReviewThreads(
+      token,
+      input.repository,
+      confirmed.number,
+      input.reviewReplies,
+      operationId,
+    );
     return {
       pullRequestDatabaseId: confirmed.databaseId,
       pullRequestNumber: confirmed.number,
       pullRequestUrl: confirmed.url,
       branch: input.branch,
       headSha,
-      reconciled,
+      reviewReplyIds: reviewReplies.ids,
+      reconciled: reconciled || reviewReplies.reconciled,
     };
   }
 
@@ -494,7 +511,7 @@ export class GitHubCapabilityAdapter {
     const token = await this.tokens.token();
     const [reviews, reviewComments, issueComments] = await Promise.all([
       this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}/reviews?per_page=50`),
-      this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}/comments?per_page=50`),
+      this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}/comments?per_page=100`),
       this.json(token, `/repos/${repository}/issues/${pullRequestNumber}/comments?per_page=50`),
     ]) as [unknown[], unknown[], unknown[]];
     const pick = (kind: string, entries: unknown[]): Record<string, unknown>[] => entries.map((value) => {
@@ -508,6 +525,8 @@ export class GitHubCapabilityAdapter {
         path: entry.path,
         line: entry.line,
         author: user?.login,
+        authorType: user?.type,
+        replyToId: typeof entry.in_reply_to_id === "number" ? entry.in_reply_to_id : null,
         createdAt: entry.created_at,
         updatedAt: entry.updated_at,
       };
@@ -622,6 +641,106 @@ export class GitHubCapabilityAdapter {
     const sha = value.object?.sha;
     if (typeof sha !== "string") throw new Error("GitHub ref response is invalid");
     return sha;
+  }
+
+  private async reviewComments(
+    token: string,
+    repository: string,
+    pullRequestNumber: number,
+  ): Promise<readonly GitHubReviewComment[]> {
+    const value = await this.json(
+      token,
+      `/repos/${repository}/pulls/${pullRequestNumber}/comments?per_page=100`,
+    );
+    if (!Array.isArray(value) || value.length >= 100) {
+      throw new Error("GitHub review-comment list is invalid or incomplete");
+    }
+    return value.map((entry) => {
+      const comment = entry as {
+        id?: unknown;
+        in_reply_to_id?: unknown;
+        body?: unknown;
+        user?: { type?: unknown };
+      };
+      if (
+        typeof comment.id !== "number" || !Number.isSafeInteger(comment.id) ||
+        typeof comment.body !== "string" || typeof comment.user?.type !== "string" ||
+        (comment.in_reply_to_id !== undefined && comment.in_reply_to_id !== null &&
+          typeof comment.in_reply_to_id !== "number")
+      ) throw new Error("GitHub review-comment response is invalid");
+      return {
+        id: comment.id,
+        inReplyToId: typeof comment.in_reply_to_id === "number" ? comment.in_reply_to_id : null,
+        body: comment.body,
+        userType: comment.user.type,
+      };
+    });
+  }
+
+  private async replyToReviewThreads(
+    token: string,
+    repository: string,
+    pullRequestNumber: number,
+    requestedReplies: readonly { commentId: number; body: string }[],
+    operationId: string,
+  ): Promise<{ ids: readonly number[]; reconciled: boolean }> {
+    let comments = await this.reviewComments(token, repository, pullRequestNumber);
+    const roots = new Map(comments
+      .filter((comment) => comment.inReplyToId === null && comment.userType === "User")
+      .map((comment) => [comment.id, comment]));
+    const requested = new Map(requestedReplies.map((reply) => [reply.commentId, reply]));
+    if ([...requested.keys()].some((commentId) => !roots.has(commentId))) {
+      throw new Error("GitHub review reply targets an unknown human review thread");
+    }
+    const marker = (commentId: number): string =>
+      `<!-- deos-review-reply:${operationId}:${commentId} -->`;
+    const isAcknowledgment = (comment: GitHubReviewComment, rootId: number): boolean =>
+      comment.inReplyToId === rootId && comment.userType === "Bot" &&
+      comment.body.includes("<!-- deos-review-reply:") && comment.body.includes(`:${rootId} -->`);
+    const outstanding = [...roots.keys()].filter((rootId) => {
+      const thread = comments.filter((comment) => comment.id === rootId || comment.inReplyToId === rootId);
+      const lastHumanId = Math.max(...thread
+        .filter((comment) => comment.userType === "User")
+        .map((comment) => comment.id));
+      const lastAcknowledgmentId = Math.max(0, ...thread
+        .filter((comment) => isAcknowledgment(comment, rootId))
+        .map((comment) => comment.id));
+      return lastAcknowledgmentId < lastHumanId;
+    });
+    if (outstanding.some((commentId) => !requested.has(commentId))) {
+      throw new Error("GitHub review reply manifest is incomplete");
+    }
+
+    const ids: number[] = [];
+    let reconciled = requestedReplies.length > 0 && outstanding.length === 0;
+    for (const reply of requestedReplies) {
+      const existing = comments.find((comment) => isAcknowledgment(comment, reply.commentId));
+      if (!outstanding.includes(reply.commentId)) {
+        if (existing !== undefined) ids.push(existing.id);
+        reconciled = true;
+        continue;
+      }
+      const body = `${reply.body}\n\n${marker(reply.commentId)}`;
+      try {
+        const created = await this.json(
+          token,
+          `/repos/${repository}/pulls/${pullRequestNumber}/comments/${reply.commentId}/replies`,
+          { method: "POST", body: { body } },
+        ) as { id?: unknown; in_reply_to_id?: unknown };
+        if (typeof created.id !== "number" || created.in_reply_to_id !== reply.commentId) {
+          throw new Error("GitHub review reply response is invalid");
+        }
+        ids.push(created.id);
+      } catch {
+        comments = await this.reviewComments(token, repository, pullRequestNumber);
+        const after = comments.find((comment) =>
+          comment.inReplyToId === reply.commentId && comment.body.includes(marker(reply.commentId)));
+        if (after === undefined) throw new Error("GitHub review reply is ambiguous");
+        ids.push(after.id);
+        reconciled = true;
+      }
+    }
+    return { ids: Object.freeze(ids), reconciled };
   }
 
   private encodedPath(path: string): string {

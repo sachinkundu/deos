@@ -48,6 +48,7 @@ const request = (overrides: Partial<PlanningPublicationRequest> = {}): PlanningP
       content: "The system saves the plan. It waits for a person to approve the next step.\n",
     },
   ],
+  reviewReplies: [],
   ...overrides,
 });
 
@@ -110,6 +111,25 @@ test("planning publication rejects missing, stale-scope, and forbidden files", a
         }
       : file),
   }), CONTEXT), /planning_readability_invalid/);
+});
+
+test("planning publication accepts bounded review acknowledgments and rejects unsafe reply data", async () => {
+  const validated = await validatePlanningPublication(request({
+    reviewReplies: [
+      { commentId: 101, body: "Updated the term to temperature as requested." },
+      { commentId: 102, body: "Kept the limit because the provider requires it." },
+    ],
+  }), CONTEXT);
+  assert.equal(validated.reviewReplies.length, 2);
+  await assert.rejects(validatePlanningPublication(request({
+    reviewReplies: [
+      { commentId: 101, body: "Updated it." },
+      { commentId: 101, body: "Updated it again." },
+    ],
+  }), CONTEXT), /planning_review_replies_invalid/);
+  await assert.rejects(validatePlanningPublication(request({
+    reviewReplies: [{ commentId: 101, body: "Done. <!-- hidden -->" }],
+  }), CONTEXT), /planning_review_replies_invalid/);
 });
 
 test("readability boundaries allow easier text", () => {

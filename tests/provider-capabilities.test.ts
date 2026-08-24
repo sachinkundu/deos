@@ -115,6 +115,14 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     head: { ref: string; sha: string };
     base: { ref: string };
   } | null = null;
+  const reviewComments: Array<{
+    id: number;
+    in_reply_to_id?: number;
+    body: string;
+    user: { type: string; login: string };
+  }> = [];
+  let reviewReplySequence = 500;
+  let ambiguousReviewReply = true;
   const calls: Array<{ method: string; path: string; body: Record<string, unknown> | null }> = [];
   const request: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
@@ -199,6 +207,31 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
       pull.head.sha = headSha;
       return Response.json(pull);
     }
+    if (path.endsWith("/pulls/54/comments?per_page=100") && method === "GET") {
+      return Response.json(reviewComments);
+    }
+    if (path.endsWith("/pulls/54/reviews?per_page=50") && method === "GET") {
+      return Response.json([]);
+    }
+    if (path.endsWith("/issues/54/comments?per_page=50") && method === "GET") {
+      return Response.json([]);
+    }
+    if (path.includes("/pulls/54/comments/") && path.endsWith("/replies") && method === "POST") {
+      const rootId = Number(path.split("/comments/")[1].split("/")[0]);
+      reviewReplySequence += 1;
+      const reply = {
+        id: reviewReplySequence,
+        in_reply_to_id: rootId,
+        body: String(body?.body),
+        user: { type: "Bot", login: "deos-app[bot]" },
+      };
+      reviewComments.push(reply);
+      if (ambiguousReviewReply) {
+        ambiguousReviewReply = false;
+        throw new Error("review reply response lost");
+      }
+      return Response.json(reply);
+    }
     return new Response(`unexpected ${method} ${path}`, { status: 500 });
   };
   const adapter = new GitHubCapabilityAdapter(
@@ -218,10 +251,28 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     title: "SAC-200: OpenSpec plan",
     body: "first body",
     files: firstFiles,
+    reviewReplies: [],
   }, "operation-1");
+  reviewComments.push(
+    { id: 101, body: "Use temperature here.", user: { type: "User", login: "reviewer" } },
+    { id: 102, body: "Accept five as well as 5.", user: { type: "User", login: "reviewer" } },
+  );
   const revisedFiles = firstFiles
     .filter((file) => !file.path.endsWith("specs/old/spec.md"))
     .concat({ path: `${prefix}specs/new/spec.md`, content: "new spec\n" });
+  await assert.rejects(adapter.publishPlanning({
+    repository: "sachinkundu/deos",
+    branch: branchName,
+    baseBranch: "main",
+    change: "sac-200",
+    title: "SAC-200: OpenSpec plan",
+    body: "revised body",
+    files: revisedFiles,
+    reviewReplies: [
+      { commentId: 101, body: "Updated the term to temperature." },
+    ],
+  }, "operation-incomplete"), /review reply manifest is incomplete/);
+  assert.equal(calls.filter((call) => call.method === "POST" && call.path.endsWith("/replies")).length, 0);
   const revised = await adapter.publishPlanning({
     repository: "sachinkundu/deos",
     branch: branchName,
@@ -230,16 +281,40 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     title: "SAC-200: OpenSpec plan",
     body: "revised body",
     files: revisedFiles,
+    reviewReplies: [
+      { commentId: 101, body: "Updated the term to temperature." },
+      { commentId: 102, body: "Added support for five as well as 5." },
+    ],
   }, "operation-2");
   assert.equal(first.pullRequestDatabaseId, "9001");
   assert.equal(first.pullRequestNumber, 54);
   assert.equal(revised.pullRequestNumber, 54);
   assert.equal(revised.branch, branchName);
+  assert.deepEqual(revised.reviewReplyIds, [501, 502]);
   assert.equal(files.has(`${prefix}specs/old/spec.md`), false);
   assert.equal(files.get(`${prefix}specs/new/spec.md`)?.content, "new spec\n");
   assert.equal(calls.filter((call) => call.method === "POST" && call.path.endsWith("/pulls")).length, 1);
   assert.equal(calls.filter((call) => call.method === "DELETE").length, 1);
   assert.equal((pull as { draft?: boolean } | null)?.draft, false);
+  const postedReplies = calls.filter((call) => call.method === "POST" && call.path.endsWith("/replies"));
+  assert.equal(postedReplies.length, 2);
+  assert.match(String(postedReplies[0].body?.body), /Updated the term to temperature/);
+  assert.match(String(postedReplies[0].body?.body), /deos-review-reply:operation-2:101/);
+  assert.equal(calls.some((call) => call.path.includes("resolve")), false);
+  const feedback = await adapter.readReviewFeedback("sachinkundu/deos", 54);
+  assert.deepEqual(feedback.find((entry) => entry.id === 101), {
+    kind: "review_comment",
+    id: 101,
+    body: "Use temperature here.",
+    state: undefined,
+    path: undefined,
+    line: undefined,
+    author: "reviewer",
+    authorType: "User",
+    replyToId: null,
+    createdAt: undefined,
+    updatedAt: undefined,
+  });
 });
 
 test("GitHub planning merge uses expected head SHA and reconciles a lost response", async () => {

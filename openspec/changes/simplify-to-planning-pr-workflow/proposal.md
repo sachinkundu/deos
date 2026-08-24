@@ -10,6 +10,7 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 - Run one OpenSpec planning agent that creates or updates one GitHub pull request containing only the proposal and required delta specifications while DEOS owns every Linear transition.
 - Enter `Human Review` only after the planning work and its durable provider evidence are complete.
 - Treat an authorized human transition to `In Progress` as a request to revise the same planning pull request, `Merging` as authorization for DEOS to merge it, and `Canceled` as a terminal stop.
+- Have each revision acknowledge every affected GitHub review thread, state what changed or why no change was made, and leave the thread unresolved for the reviewer.
 - Report the planning slice as successful only after DEOS verifies that the approved planning work is present on `origin/main`.
 - Preserve every available policy-safe agent output and bounded process diagnostic before any terminal Sandbox cleanup, including failed and interrupted attempts.
 - Preserve the current deployed full workflow and all immutable historical definitions while the simplified definition remains inactive pending implementation and live provider proof.

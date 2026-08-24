@@ -183,6 +183,11 @@ The first successful attempt creates a ready pull request to `main`. A revision
 gets the prior patch, result, branch, pull request, and limited human feedback.
 It updates the same branch and pull request.
 
+Each revision also replies to every affected human review thread. The reply says
+what changed or why no change was made. The trusted GitHub action posts each
+reply with an action marker, checks it by read-back, and does not expose a thread
+resolution action. A retry finds the marker and does not post the reply twice.
+
 The GitHub tool creates one commit from the full allowed file list. It updates
 the branch only when the old head matches. A revision may remove old files only
 inside the named OpenSpec change folder.

@@ -38,6 +38,9 @@ Publication contract:
 - Do not copy or paraphrase the Linear issue title, description, or acceptance content. The link is the source for that context.
 - Before publication, check all review-note prose as one passage. It must have Flesch Reading Ease of at least 70 and Flesch-Kincaid grade no higher than 8. Easier text passes.
 - On a revision, update the recorded branch and pull request; never create a second planning pull request for the run.
+- Always include a `reviewReplies` array in the publication request. Use an empty array when no review feedback exists.
+- On a revision, acknowledge every supplied human review thread. Target its top-level `review_comment` id, where `replyToId` is null. Write one short reply that says what changed or why no change was made. Reply even when you do not make the requested change.
+- Never resolve a review thread. The trusted capability can post replies but cannot resolve threads.
 
 Do not use `git push`, `gh`, or raw provider credentials. Do not transition Linear, approve the work, mark a review resolved, merge a pull request, or implement the change.
 

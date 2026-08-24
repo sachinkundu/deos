@@ -115,7 +115,7 @@ const parsePlanningRequest = (value: unknown): PlanningPublicationRequest | null
     request === null ||
     !exactKeys(request, [
       "version", "action", "operationKey", "repository", "baseBranch", "change",
-      "title", "body", "files",
+      "title", "body", "files", "reviewReplies",
     ]) ||
     request.version !== 1 ||
     request.action !== "publish_planning_work_product" ||
@@ -125,7 +125,8 @@ const parsePlanningRequest = (value: unknown): PlanningPublicationRequest | null
     !nonEmpty(request.change, 100) ||
     !nonEmpty(request.title, 256) ||
     typeof request.body !== "string" || request.body.length > 20_000 ||
-    !Array.isArray(request.files) || request.files.length < 1 || request.files.length > 50
+    !Array.isArray(request.files) || request.files.length < 1 || request.files.length > 50 ||
+    !Array.isArray(request.reviewReplies) || request.reviewReplies.length > 50
   ) return null;
   const files: Array<{ path: string; content: string }> = [];
   for (const value of request.files) {
@@ -137,6 +138,16 @@ const parsePlanningRequest = (value: unknown): PlanningPublicationRequest | null
     ) return null;
     files.push({ path: file.path, content: file.content });
   }
+  const reviewReplies: Array<{ commentId: number; body: string }> = [];
+  for (const value of request.reviewReplies) {
+    const reply = asRecord(value);
+    if (
+      reply === null || !exactKeys(reply, ["commentId", "body"]) ||
+      !Number.isSafeInteger(reply.commentId) || Number(reply.commentId) <= 0 ||
+      !nonEmpty(reply.body, 1_000)
+    ) return null;
+    reviewReplies.push({ commentId: Number(reply.commentId), body: reply.body });
+  }
   return {
     version: 1,
     action: "publish_planning_work_product",
@@ -147,6 +158,7 @@ const parsePlanningRequest = (value: unknown): PlanningPublicationRequest | null
     title: request.title,
     body: request.body,
     files,
+    reviewReplies,
   };
 };
 
@@ -337,6 +349,7 @@ export class CapabilityRouter {
         title: input.title,
         body: input.body,
         files: input.files,
+        reviewReplies: input.reviewReplies,
         ...(recorded.pull_request_database_id === null ? {} : {
           expectedPullRequestDatabaseId: recorded.pull_request_database_id,
           expectedPullRequestNumber: recorded.pull_request_number ?? undefined,
