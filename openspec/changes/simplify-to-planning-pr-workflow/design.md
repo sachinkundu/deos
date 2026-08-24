@@ -1,143 +1,127 @@
 ## Context
 
-See `proposal.md` for motivation and the delta specifications for the approved
-observable behavior. The current Worker bundles one full workflow from
-`config/workflow.deos.yaml`, stores one default definition in
-`project_workflow_policies`, and freezes that definition on each
-`orchestration_runs` row before creating the Cloudflare Workflow instance.
-Human gates currently interpret two global outcome groups, `approved` and
-`rejected`; they cannot express the simplified planning gate's distinct revise,
-merge, and cancel decisions.
+See `proposal.md` for why this change is needed. The delta specs define the
+required behavior.
 
-The ingress Worker already verifies the exact Linear request body, translates it
-through the Python anti-corruption layer, records the delivery in D1, and sends a
-canonical event to Queue. That canonical event does not yet carry label evidence.
-The Queue consumer therefore has no immutable basis for label-selected dispatch.
-A later Linear read would observe mutable current state and is not acceptable as
-selection evidence for the accepted `Todo` event.
+Today, DEOS has one full workflow. It comes from
+`config/workflow.deos.yaml`. Each run stores the workflow name, version, and
+hash in D1. This keeps the workflow fixed after a run starts.
 
-Sandbox attempts already run behind a trusted controller that prepares a fresh
-checkout, writes the service-authored prompt, collects bounded outputs, stores
-attempt evidence in R2, and exposes credentialless provider capabilities. The
-current GitHub publication path uses one branch per attempt. The simplified
-workflow needs isolated attempts but one durable planning branch and pull request
-per run so that human-requested revisions update the same review surface.
+Human gates have two global choices today: `approved` and `rejected`. The simple
+flow needs three choices. A person can ask for a revision, approve a merge, or
+cancel the run.
 
-The provider boundaries remain authoritative: Linear originates signed start and
-decision events, D1 owns business state and the frozen definition, Cloudflare
-Workflow owns durable orchestration, GitHub owns the pull request and merge, and
-R2 owns attempt evidence. The new selector remains disabled until implementation,
-deployment, and a separately authorized provider-originated canary are ready.
+The ingress Worker already checks the signed Linear request. It saves the
+delivery in D1 and sends a smaller event to Queue. That event does not include
+label evidence yet. A later Linear read is not safe for this choice. The labels
+may have changed while the event waited in Queue.
+
+Each Sandbox run already gets a fresh checkout and a trusted prompt. The
+controller saves its output in R2. It also gives the agent safe tools for GitHub
+and Linear. Today, each attempt uses a new GitHub branch. Revisions need a fresh
+Sandbox but must update the same branch and pull request.
+
+The new selector will start disabled. It stays disabled until the code is
+deployed and a live trial is approved.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Preserve bounded label membership from the authenticated start event before
-  Queue dispatch and freeze the resulting selection on the run.
-- Register the existing full definition and a separate immutable `simple`
-  definition without changing existing or historical runs.
-- Give each initial planning attempt and revision the same remote branch and pull
-  request while retaining a fresh isolated Sandbox attempt.
-- Restrict the agent to one OpenSpec change containing only its scaffold,
-  proposal, and required delta specifications.
-- Keep Linear transitions, pull-request merge, and default-branch verification
-  in trusted workflow-owned actions.
+- Save label evidence from the signed Linear start event.
+- Choose the simple flow only for the exact label and an enabled selector.
+- Keep the current full flow as the default.
+- Reuse one branch and pull request for all planning revisions in a run.
+- Limit the agent to the OpenSpec proposal and delta specs.
+- Keep Linear moves, pull request merge, and final checks under DEOS control.
 
 **Non-Goals:**
 
-- Generalize label selectors into an end-user rules engine or settings UI.
-- Generate a design, tasks, runtime implementation, archive, or release artifacts
-  inside the simplified planning workflow.
-- Replace the current full workflow, rewrite frozen definitions, or migrate the
-  Sandbox SDK package line.
-- Treat local tests, fixtures, or synthetic ingress as provider-originated proof.
+- Build a general rules editor or settings screen.
+- Create design, tasks, code, archive, or release files in the simple flow.
+- Replace the full workflow or change old runs.
+- Change the Sandbox SDK version.
+- Use local tests as proof of a live provider flow.
 
 ## Component diagram
 
 ```mermaid
 flowchart LR
-    L[Linear issue<br/>Todo + event-time labels] -->|signed webhook| I[Ingress Worker + ACL]
-    I -->|bounded label evidence| Q[Cloudflare Queue]
+    L[Linear issue<br/>Todo + labels] -->|signed webhook| I[Ingress Worker]
+    I -->|saved label evidence| Q[Cloudflare Queue]
     I --> D[(D1 deliveries)]
-    Q --> S[Definition selector]
-    S -->|default or unavailable| F[Existing full definition]
-    S -->|exact label + enabled| P[Simple definition]
-    S --> R[(D1 run + frozen selection)]
+    Q --> S[Workflow selector]
+    S -->|default| F[Full workflow]
+    S -->|exact label + enabled| P[Simple workflow]
+    S --> R[(D1 run + selection proof)]
     P --> W[Cloudflare Workflow]
     W --> C[Trusted Sandbox controller]
-    C --> X[Codex in fresh Sandbox]
-    X -->|proposal + specs manifest| G[Trusted GitHub capability]
-    G --> PR[One run-scoped planning PR]
-    C --> E[(R2 attempt evidence)]
-    PR -->|decision arrives through Linear| W
-    W --> M[Trusted merge + main read-back]
+    C --> X[Codex in a fresh Sandbox]
+    X -->|proposal + specs| G[Trusted GitHub tool]
+    G --> PR[One planning PR]
+    C --> E[(R2 evidence)]
+    PR -->|human choice through Linear| W
+    W --> M[Trusted merge + main check]
     M --> MAIN[origin/main]
     M --> R
 ```
 
 ## Decisions
 
-### 1. Translate webhook labels into bounded event-time evidence
+### 1. Save labels from the signed webhook
 
-The Python ACL will add a provider-neutral `label_selection_evidence` value to
-`ApplicationEvent`. It has two states:
+The Python ACL will add `label_selection_evidence` to `ApplicationEvent`. It has
+two states:
 
-- `available`, with sorted, unique Linear label identities and exact label names
-  obtained from the authenticated issue payload; or
-- `unavailable`, with no inferred membership.
+- `available`: a sorted list of exact Linear label names and ids.
+- `unavailable`: the payload did not give safe label evidence.
 
-The adapter will accept only the label representation established by Linear's
-primary contract and a captured provider-originated issue event. Unexpected,
-partial, or malformed label data becomes `unavailable`; it never becomes an
-empty, authoritative label set. The adapter does not query Linear after ingress,
-because that could observe labels changed after the accepted `Todo` event.
+The ACL reads labels only after it checks the webhook signature. It accepts only
+the shape shown by Linear's current contract and a real Linear event. Missing or
+broken label data becomes `unavailable`. Missing data does not mean that the
+issue had no labels.
 
-Ingress writes the bounded canonical evidence and its digest with the D1 delivery
-record before enqueueing the same canonical value. It does not persist arbitrary
-webhook fields. The Queue consumer verifies that the queued evidence digest
-matches the delivery record before it can select a non-default definition.
+Ingress saves the limited evidence and its hash with the delivery record. Then
+it adds the same value to the queue. It skips extra webhook data. The queue
+worker checks that the hash matches the record. Only then can it pick a
+non-default workflow.
 
-Alternative considered: read the issue's current labels through GraphQL during
-Queue consumption. That read is authenticated but temporally wrong: retries or
-queue delay could select from a later label state and violate event-time
-determinism.
+We will not read current labels through GraphQL during Queue work. That read may
+happen after the labels changed. It would no longer describe the accepted
+`Todo` event.
 
-### 2. Select from an inactive, repository-scoped definition registry
+### 2. Keep the simple selector separate and off by default
 
-`workflow-bundle.ts` will expose an immutable registry containing the existing
-full definition and the new `simple` definition. The existing full definition
-remains the project default. A new D1 selector row is scoped by project,
-repository, exact label name, and target definition identity. Registration is
-idempotent and creates the selector disabled; it cannot overwrite another digest
-for an existing definition version.
+`workflow-bundle.ts` will hold two fixed workflows. One is the current full
+workflow. The other is the new `simple` workflow. The full workflow stays the
+default.
 
-For a new accepted start event, the Queue consumer selects `simple` only when all
-of these facts are true:
+A new D1 row will hold the simple selector. It records the project, repository,
+exact label, target workflow, and enabled state. Setup creates this row with the
+selector off. It cannot replace a saved workflow version with different content.
 
-1. the event is the configured `Todo` transition;
-2. its verified event-time evidence is `available` and contains the exact
-   `simple-workflow` label;
-3. the selector is enabled for the event's project and configured repository;
-4. the target definition name, version, and digest resolve to the registered
-   immutable snapshot.
+The Queue worker picks `simple` only when all four checks pass:
 
-Every other case selects the existing full definition and records a bounded
-reason such as `label_absent`, `label_evidence_unavailable`, or
-`selector_disabled`. Selection occurs before run allocation. The run freezes the
-definition identity, source delivery, evidence digest, selector value, and
-selection reason. Queue redelivery reconciles the stable issue-run identity and
-never re-evaluates labels or creates a second Workflow instance.
+1. The event moves the issue to `Todo`.
+2. The saved evidence contains the exact `simple-workflow` label.
+3. The selector is on for this project and repository.
+4. The saved workflow name, version, and hash match the registry.
 
-Alternative considered: add a second mutable default to
-`project_workflow_policies`. A mutable default would make unlabeled issues and
-existing dispatch assumptions ambiguous; an independently disabled selector
-keeps the current behavior explicit.
+All other start events use the full workflow. D1 records why. The reason may be
+`label_absent`, `label_evidence_unavailable`, or `selector_disabled`.
 
-### 3. Encode a small graph with per-gate Linear decisions
+The worker makes this choice before it creates the run. The run saves the chosen
+workflow, source delivery, evidence hash, label, and reason. A Queue retry reuses
+that choice. It does not check labels again or create a second Workflow instance.
 
-The separately versioned `simple` definition contains one agent node, one human
-gate, two trusted GitHub actions, and explicit terminal failures:
+We will not add a second default to `project_workflow_policies`. Two defaults
+would make unlabeled issues unclear. A separate selector keeps the current rule
+simple.
+
+### 3. Add three clear choices at the planning gate
+
+The `simple` workflow has one agent step and one human gate. DEOS owns the merge
+and final check.
 
 ```mermaid
 stateDiagram-v2
@@ -145,234 +129,214 @@ stateDiagram-v2
     openspec_planning --> planning_review: completed + planning receipt
     openspec_planning --> agent_blocked: blocked
     openspec_planning --> agent_failed: failed
-    planning_review --> openspec_planning: In Progress / revision_requested
-    planning_review --> merge_planning_pr: Merging / merge_authorized
-    planning_review --> canceled: Canceled / canceled
+    planning_review --> openspec_planning: In Progress / revision requested
+    planning_review --> merge_planning_pr: Merging / merge approved
+    planning_review --> canceled: Canceled
     merge_planning_pr --> verify_planning_merge: completed
     merge_planning_pr --> system_action_failed: failed
     verify_planning_merge --> done: completed
     verify_planning_merge --> system_action_failed: failed
 ```
 
-`human_gate` nodes gain an optional `decisions` map from bounded workflow outcomes
-to exact Linear state names. A definition without this map retains the current
-global `approved` and `rejected` behavior, preserving the full and historical
-definitions. For a mapped gate, a valid decision must depart the exact active
-`Human Review` state, carry a stable actor id with Linear actor type `user`, and
-match one configured destination. Linear's own project permissions remain the
-authorization boundary for those users. Bot, integration, unknown-actor, and
-unmapped transitions select no business edge and invoke the existing
-visit-scoped restore-to-`Human Review` policy.
+A `human_gate` may have a `decisions` map. It links a workflow result to an exact
+Linear state. Workflows without this map keep the current `approved` and
+`rejected` rules. This protects the full workflow and old saved versions.
 
-Alternative considered: add `Merging` to the global approved-state list. That
-would collapse revision and merge into the same outcome and could authorize the
-wrong edge in another definition.
+For the simple gate, the event must leave the active `Human Review` state. The
+actor must have a Linear user id and actor type `user`. Linear permissions decide
+which users may move the issue. A bot, app, unknown actor, or unknown state picks
+no edge. DEOS records the event and returns the issue to `Human Review`.
 
-### 4. Separate attempt identity from planning work-product identity
+We will not treat `Merging` as a global approval state. That could approve the
+wrong action in another workflow.
 
-Every Sandbox attempt keeps its isolated checkout and attempt identity. The
-trusted service separately allocates one remote branch for the run,
-`deos/planning/<stable-run-digest>`, and records it in `run_work_products`. The
-first successful publication creates one ready-for-review pull request to
-`main`. A revision attempt receives the durable prior patch, prior result,
-recorded branch and pull-request identity, and bounded Linear and GitHub feedback.
-It publishes a new complete manifest to that same branch and pull request.
+### 4. Reuse one planning pull request
 
-The GitHub adapter creates one commit from the complete allowed manifest and
-moves the remote branch with an expected-old-head check. A revision removes
-stale files only inside the exact OpenSpec change directory. Ambiguous responses
-are reconciled by repository, branch, pull-request database id, and head SHA
-before retry. The adapter never creates a replacement pull request merely because
-a prior Sandbox no longer exists.
+Each Sandbox attempt stays separate. DEOS also creates one remote branch for the
+run: `deos/planning/<run-hash>`. D1 saves this branch and its pull request in
+`run_work_products`.
 
-`run_work_products` stores the GitHub database id separately from the human pull
-request number, along with repository, base, remote branch, current head SHA,
-manifest digest, latest publication operation, merge SHA, and verification time.
+The first successful attempt creates a ready pull request to `main`. A revision
+gets the prior patch, result, branch, pull request, and limited human feedback.
+It updates the same branch and pull request.
 
-Alternative considered: publish directly from each attempt branch. That would
-make every revision produce a different head and would break the approved
-same-pull-request loop.
+The GitHub tool creates one commit from the full allowed file list. It updates
+the branch only when the old head matches. A revision may remove old files only
+inside the named OpenSpec change folder.
 
-### 5. Add a proposal-and-specification-only GitHub capability
+If a GitHub response is unclear, DEOS reads the branch and pull request again.
+It checks the repository, pull request id, branch, head, and file hash before it
+retries. It does not create a new pull request because a Sandbox was removed.
 
-The planning job declares `github.publish_planning_work_product` as its sole
-provider capability. Both the signed attempt grant and the trusted router enforce
-that action. The service supplies the repository, base branch, run-scoped remote
-branch, and OpenSpec change identity; the agent cannot choose them.
+D1 stores the GitHub id and pull request number as separate values. It also
+stores the repository, base, branch, head, file hash, last publish action, merge
+commit, and check time.
 
-The complete manifest may contain only:
+We will not publish from each Sandbox branch. That would create a new review
+surface for every revision.
 
-- the named change's required `.openspec.yaml` scaffold;
+### 5. Give the agent one narrow GitHub action
+
+The planning job may call only `github.publish_planning_work_product`. The job
+grant and the trusted router both check this rule. DEOS supplies the repository,
+base branch, planning branch, and OpenSpec change name.
+
+The file list may contain only:
+
+- the change's required `.openspec.yaml` file;
 - `proposal.md`; and
-- one or more `specs/**/spec.md` files beneath that same change.
+- one or more `specs/**/spec.md` files in the same change.
 
-The adapter rejects `design.md`, `tasks.md`, canonical specs, archive paths,
-runtime code, workflow configuration, absolute paths, traversal, symlinks, and
-files belonging to another change. A completed outcome additionally requires
-strict validation evidence plus a successful or reconciled GitHub receipt whose
-head tree exactly matches the manifest digest. The pull-request body links the
-Linear issue and OpenSpec change, lists the review order, and reports the exact
-planning validation. Provider text is treated as untrusted task data and cannot
-expand the capability or file allowlist.
+The tool rejects `design.md`, `tasks.md`, main specs, archive files, code,
+workflow files, unsafe paths, links, and files from another change.
 
-The logical operation key is `planning-publish-<attempt-id>`. Retries of the same
-attempt reconcile that operation; a later human-requested revision has a fresh
-attempt and operation but updates the same work product.
+Success needs three things. The OpenSpec check must pass. GitHub must return a
+saved or reconciled receipt. The branch contents must match the full file list.
 
-Alternative considered: reuse the generic `publish_work_product` capability. Its
-attempt-scoped branch and broad file contract cannot enforce this workflow's
-review boundary.
+The pull request links the Linear issue and OpenSpec change. It also lists the
+reading order and exact checks. Text from Linear or GitHub is input data. It
+cannot widen the file list or tool access.
 
-### 6. Version and preserve the exact planning prompt
+Each attempt uses `planning-publish-<attempt-id>` as its action key. A retry of
+the same attempt reuses that key. A later revision has a new key but updates the
+same pull request.
 
-The static prompt is stored as `config/prompts/openspec-planning.md` and included
-in the immutable definition digest. It directs the agent to:
+We will not reuse the broad `publish_work_product` action. Its file and branch
+rules are too wide for this flow.
 
-1. use only the service-authored change identity;
-2. inspect status and artifact instructions;
-3. create or coherently revise proposal and every required delta specification
-   in dependency order;
-4. validate the named change;
-5. publish the complete allowed manifest once through the declared capability;
-6. never create design, tasks, runtime changes, Linear transitions, approvals,
-   review resolutions, or merges.
+### 6. Save the exact prompt that the agent receives
 
-The trusted controller appends the run, node, visit, attempt, deadline, change
-identity, branch and pull-request identity, bounded issue and feedback data, and
-required output contract. It stores the exact rendered prompt and SHA-256 digest
-as protected R2 evidence before starting Codex. The Sandbox cannot replace that
-service-authored copy.
+The fixed prompt will live in `config/prompts/openspec-planning.md`. Its text is
+part of the workflow hash. It tells the agent to:
 
-A deterministic controller test renders the first-visit prompt with fixed ids and
-asserts the complete content, prompt digest, allowed action, proposal/specification
-file boundary, and absence of design, task, generic provider, Linear-transition,
-or merge authority. The implementation PR will expose that rendered first prompt
-for human inspection before any live selector activation.
+1. Use only the OpenSpec change name supplied by DEOS.
+2. Read OpenSpec status and instructions.
+3. Create or revise the proposal and all needed delta specs.
+4. Run the strict OpenSpec check.
+5. Publish the full allowed file list through the one GitHub action.
+6. Never create design, tasks, code, Linear moves, approvals, review resolutions,
+   or merges.
 
-Alternative considered: adapt the generic one-artifact-at-a-time OpenSpec prompt
-at runtime. Runtime composition would make the security boundary harder to audit
-and would not prove the exact first prompt that Codex received.
+The controller adds trusted run details to the prompt. These include the run,
+step, visit, attempt, deadline, branch, pull request, issue data, and feedback.
+It saves the exact final prompt and its hash in R2 before Codex starts. The
+Sandbox cannot replace this copy.
 
-### 7. Keep merge and default-branch verification as trusted system actions
+A fixed test will render the first prompt with known ids. It will check the full
+text, hash, allowed action, and allowed files. It will also check that the prompt
+gives no power to move Linear or merge GitHub work.
 
-`github.merge_planning_pull_request` reads the recorded work product and verifies
-repository, base `main`, exact remote branch, expected head SHA, manifest digest,
-and current GitHub merge policy before requesting a merge. A visit-scoped
-operation identity makes the action idempotent. If the response is lost, the
-service reads back the same pull request before retrying. A closed-unmerged pull
-request, changed base or head, conflict, or policy rejection produces a bounded
-non-success result and never substitutes another pull request.
+The implementation pull request will show this exact first prompt. The selector
+will stay off until that prompt is reviewed.
 
-`github.verify_planning_merge` independently reads the merged pull request and
-the recorded merge commit on `origin/main`, fetches every approved manifest path,
-rejects forbidden planning paths, recomputes the manifest digest, and records a
-separate receipt. The workflow reaches `done` only when the merge and verification
-receipts both exist and match the frozen work product. GitHub credentials and raw
-provider responses stay inside the trusted Worker boundary.
+We will not build this prompt from the general OpenSpec prompt at runtime. A
+fixed prompt is easier to review and prove.
 
-Alternative considered: allow the planning agent to merge after the issue enters
-`Merging`. That would give an untrusted process workflow-state authority and
-would not independently prove which reviewed head reached `main`.
+### 7. Let DEOS merge and check the approved work
+
+`github.merge_planning_pull_request` reads the saved work record. It checks the
+repository, base `main`, branch, expected head, file hash, and GitHub merge rules.
+Then it asks GitHub to merge.
+
+The action has a stable key for this visit. If the response is lost, DEOS reads
+the same pull request before it retries. It stops if the pull request is closed,
+uses another base or head, has a conflict, or fails a required check.
+
+`github.verify_planning_merge` performs a separate check. It reads the merge
+commit from `origin/main`. Then it reads every approved planning file and builds
+the file hash again. It also confirms that no forbidden planning file was added.
+
+The run ends as successful only when both actions have matching receipts. GitHub
+credentials and raw replies stay inside the trusted Worker.
+
+The agent will not merge the pull request. An agent result is not human approval.
 
 ## Event flow
 
-1. A human attaches `simple-workflow` to a configured Linear test issue before
-   moving it to `Todo`.
-2. Ingress authenticates the exact Linear body, translates bounded event-time
-   label evidence, records the delivery and evidence digest in D1, enqueues the
-   canonical event, and returns `200`.
-3. The Queue consumer verifies the delivery evidence, reads the repository-scoped
-   selector, chooses `simple` only for an enabled exact match, and otherwise
-   chooses the full default. It freezes the selection before creating the stable
-   Workflow instance.
-4. `openspec_planning` allocates a fresh attempt. The controller restores durable
-   prior context when present, stores the rendered prompt evidence, and starts
-   Codex in Sandbox.
-5. Codex creates or revises only the proposal and required delta specifications,
-   validates them, and calls `publish_planning_work_product`. The trusted adapter
-   updates the run-scoped branch and one pull request and records the receipt.
-6. Only after artifact, result, validation, manifest, and provider-receipt checks
-   succeed does the Workflow move the issue to `Human Review`.
-7. `In Progress` dispatches a fresh revision attempt for the same pull request;
-   `Canceled` terminates without merge; `Merging` invokes the trusted merge path.
-8. The verification action proves the approved planning manifest at the recorded
-   `main` commit before D1 records the run as succeeded.
+1. A person adds `simple-workflow` to a test issue. They do this before moving
+   the issue to `Todo`.
+2. Ingress checks the Linear signature. It saves the delivery and label evidence
+   in D1, sends the event to Queue, and returns `200`.
+3. The Queue worker checks the saved evidence. It picks `simple` only for an
+   enabled exact match. Otherwise, it picks the full workflow. It saves the
+   choice before it creates the Workflow instance.
+4. `openspec_planning` starts a fresh Sandbox. The controller restores prior
+   work when needed. It saves the final prompt before Codex starts.
+5. Codex creates or revises only the proposal and delta specs. It checks them and
+   calls the narrow GitHub action. That action updates the run's branch and pull
+   request.
+6. DEOS checks the artifacts, result, file list, and GitHub receipt. Only then
+   does it move the issue to `Human Review`.
+7. `In Progress` starts a revision on the same pull request. `Canceled` ends the
+   run. `Merging` starts the trusted merge.
+8. DEOS checks the approved files on `main`. Only then does D1 mark the run as
+   successful.
 
 ## Minimal data model
 
-| Record | Added or authoritative fields | Purpose |
+| Record | Saved data | Why |
 | --- | --- | --- |
-| `deliveries` | bounded `label_evidence_json` and `label_evidence_digest` | Preserves authenticated event-time label evidence before Queue dispatch without storing arbitrary provider payload fields. |
-| `workflow_definitions` | existing immutable `(definition_id, version, digest, canonical_json)` | Stores the full and `simple` snapshots without mutation. |
-| `workflow_definition_selectors` | project, repository, exact label name, target definition identity, `enabled`, timestamps | Holds the independently toggled selector; initial registration is disabled. |
-| `orchestration_runs` | existing frozen definition plus selection kind, value, reason, source delivery, and evidence digest | Proves why one immutable definition was selected for the run. |
-| `run_work_products` | run, repository, remote branch, PR database id and number/URL, base, head SHA, manifest digest, latest publication operation, merge SHA, verification time | Gives revisions, merge, and read-back one durable pull-request identity. |
-| `provider_operations` | existing capability, action, request digest, state, resource, and reconciliation fields | Records planning publication, trusted merge, and trusted verification receipts. |
-| `agent_attempts`, manifests, and R2 objects | existing attempt identity plus protected rendered-prompt reference and digest | Preserves each isolated attempt and the exact service-authored prompt it received. |
+| `deliveries` | Limited label evidence and its hash. | Proves what the signed start event said before Queue work. |
+| `workflow_definitions` | Existing fixed workflow id, version, hash, and JSON. | Stores both full and simple workflows without changing them. |
+| `workflow_definition_selectors` | Project, repository, label, target workflow, enabled state, and times. | Holds the simple selector. It starts off. |
+| `orchestration_runs` | Existing workflow fields plus the label, reason, source delivery, and evidence hash. | Proves why this run chose its workflow. |
+| `run_work_products` | Run, repository, branch, pull request ids, base, head, file hash, publish action, merge commit, and check time. | Gives every revision one pull request. |
+| `provider_operations` | Existing action, request hash, state, resource, and retry data. | Records publish, merge, and final check receipts. |
+| `agent_attempts`, manifests, and R2 | Existing attempt data plus the saved prompt and hash. | Proves what each fresh Sandbox received and returned. |
 
-All schema changes are additive. Selector and work-product records reference
-existing projects, definitions, and runs. No migration rewrites frozen definitions
-or historical run state.
+All database changes add new data. They do not rewrite old workflows or runs.
 
 ## Failure modes
 
-| Failure | Required behavior |
+| Failure | Response |
 | --- | --- |
-| Webhook label fields are absent, malformed, or not yet provider-proven | Record `unavailable`, select the existing full definition, and never read current labels as a substitute. |
-| Queue evidence differs from the stored delivery digest | Fail dispatch safely, record a bounded correlation error, and allocate no run from the unverified message. |
-| Selector row is absent, mismatched, or disabled | Select and freeze the existing full definition with the exact fallback reason. |
-| Definition registration collides on version with another digest | Fail registration before dispatch and never overwrite the immutable snapshot. |
-| Queue redelivers after instance creation or D1 mapping ambiguity | Reconcile by stable issue-run and Workflow instance identities, reuse the frozen definition, and create no duplicate run. |
-| Sandbox output is invalid, incomplete, or contains a forbidden path | Reject completion, retain failed evidence, and do not enter `Human Review`. |
-| GitHub publication times out or the branch update response is lost | Reconcile the operation, exact branch, PR identity, head SHA, and manifest digest before retry. |
-| A revision conflicts with newer `main` | Return blocked with durable conflict evidence and do not create another branch or pull request. |
-| Human leaves `Human Review` through an unmapped state or non-user actor | Record the event, select no business edge, and restore or retain the visit-scoped gate. |
-| Merge base/head differs or GitHub rejects policy checks | Keep the run non-successful and require reconciliation; do not merge a substituted head. |
-| GitHub reports merged but `main` does not match the approved manifest | Record verification failure and do not mark the run succeeded. |
-| Sandbox cleanup or evidence persistence fails | Preserve the non-success outcome under existing controller policy; the graph cannot enter review or success. |
+| Label data is missing, broken, or not yet proven with Linear. | Save `unavailable` and use the full workflow. Do not read current labels. |
+| Queue evidence does not match the D1 hash. | Stop dispatch, record the error, and create no run from that message. |
+| The selector is missing, off, or for another repository. | Use the full workflow and save the reason. |
+| A workflow version already has another hash. | Stop setup. Never replace the saved workflow. |
+| Queue retries after an unclear create result. | Find the run and Workflow by stable id. Do not create a second one. |
+| Sandbox output is missing, invalid, or contains a blocked path. | Save the failed evidence. Do not enter `Human Review`. |
+| A GitHub publish result is unclear. | Read the same branch and pull request before retrying. |
+| A revision conflicts with new work on `main`. | Stop with conflict evidence. Do not open another pull request. |
+| A bot or unknown state moves the issue from `Human Review`. | Record it, pick no edge, and return the issue to the gate. |
+| GitHub changed the saved base or head, or required checks fail. | Do not merge. Mark the action for repair. |
+| GitHub says merged, but the files on `main` do not match. | Keep the run open for repair. Do not report success. |
+| Sandbox cleanup or R2 storage fails. | Keep the attempt unsuccessful. Do not enter review or success. |
 
 ## Risks / Trade-offs
 
-- [Linear can change or omit label representation in webhook payloads] → Parse
-  only provider-proven fields, treat every unknown shape as unavailable, and
-  require a real captured start event before enabling the selector.
-- [Safe fallback can send an intended simple issue through the full workflow] →
-  Record an explicit fallback reason and surface it in operator evidence; never
-  trade determinism for a mutable label read.
-- [A specialized publication action adds adapter surface] → Keep the action
-  limited to one change directory and reuse existing grant, receipt, and
-  reconciliation machinery.
-- [A complete manifest update may delete a renamed or removed delta] → Compare
-  only the exact change subtree, perform one expected-head commit, and reject any
-  deletion outside the allowlist.
-- [Per-gate decisions add definition schema complexity] → Make the map optional
-  and preserve the current global behavior for all definitions without it.
-- [New commits on `main` can make a revision conflict] → Stop with durable
-  evidence instead of silently rebasing or replacing the pull request.
-- [Provider API behavior can drift] → Verify current Linear and GitHub primary
-  contracts during implementation and retain provider-originated canary evidence.
+- [Linear may change or omit label data] → Accept only a proven shape. Use the
+  full workflow when the evidence is unclear. Test a real event before enabling
+  the selector.
+- [Safe fallback may run the full flow by mistake] → Save and show the exact
+  fallback reason. Do not trade a clear audit trail for a later label read.
+- [The new GitHub action adds more code] → Keep it limited to one OpenSpec change
+  and reuse the current grant, receipt, and retry code.
+- [A full file list can remove an old delta spec] → Limit removal to the named
+  change folder. Update the branch only from the expected old head.
+- [Each gate can now map its own choices] → Keep this map optional. Old workflows
+  keep their current rules.
+- [New work on `main` may block a revision] → Stop and show the conflict. Do not
+  hide it with a new branch or pull request.
+- [Provider APIs may change] → Check current Linear and GitHub contracts during
+  implementation. Keep real provider proof for the live trial.
 
 ## Migration Plan
 
-1. Add the bounded delivery evidence, selector, frozen selection, work-product,
-   and prompt-evidence fields or tables through an additive D1 migration; verify
-   local and remote schema read-back.
-2. Add the definition registry, `simple` graph, per-gate decisions, exact prompt
-   bundle, planning capability, durable work-product identity, trusted merge, and
-   verification paths with the selector still disabled.
-3. Validate definition digests, event translation, Queue retry reconciliation,
-   forbidden-path rejection, same-PR revision, merge read-back, and preservation
-   of the current full definition. Publish the exact rendered first prompt in the
-   implementation evidence.
-4. Deploy code and migration with the full workflow still selected by default;
-   confirm existing and historical runs restore their frozen definitions.
-5. Only after separate human authorization, enable the selector for one controlled
-   project and repository and trigger a real Linear issue with the label attached
-   before its `Todo` transition.
-6. Capture visual Linear and GitHub proof plus D1 delivery, selection, run,
-   publication, decision, merge, and `origin/main` verification records. Synthetic
-   ingress may supplement diagnosis but cannot replace this provider-originated
-   path.
-7. Disable the selector after the canary unless continued activation is separately
-   authorized. Rollback is immediate selector disablement followed by code rollback
-   if required; additive schema and immutable evidence remain for audit.
+1. Add the D1 fields and tables for label evidence, selectors, saved choices,
+   pull requests, and prompt proof. Check the schema locally and after deploy.
+2. Add the workflow registry, simple graph, gate choices, fixed prompt, narrow
+   GitHub action, saved pull request, merge action, and final check. Keep the
+   selector off.
+3. Test workflow hashes, label parsing, Queue retries, blocked paths, same-pull-
+   request revisions, merge checks, and the unchanged full workflow. Show the
+   exact first prompt in the implementation pull request.
+4. Deploy the code and database change. Confirm that the full workflow stays the
+   default. Confirm that old runs keep their saved workflow.
+5. After separate approval, enable the selector for one project and repository.
+   Trigger a real Linear issue with the label added before `Todo`.
+6. Save screenshots from Linear and GitHub. Save D1 proof for the delivery,
+   choice, run, publish, decision, merge, and final file check. Synthetic requests
+   may help debug, but they do not replace this live proof.
+7. Turn the selector off after the trial unless continued use is approved. If
+   needed, roll back the code. Keep the added data and evidence for audit.
