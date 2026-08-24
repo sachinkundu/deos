@@ -57,13 +57,13 @@ flowchart LR
     P --> W[Cloudflare Workflow]
     W --> C[Trusted Sandbox controller]
     C --> X[Codex in a fresh Sandbox]
-    X -->|proposal + specs| G[Trusted GitHub tool]
+    X -->|signed publish request| G[Worker GitHub adapter]
     G --> PR[One planning PR]
     C --> E[(R2 evidence)]
     PR -->|human choice through Linear| W
-    W --> M[Trusted merge + main check]
-    M --> MAIN[origin/main]
-    M --> R
+    W -->|trusted system step| G
+    G --> MAIN[origin/main]
+    G --> R
 ```
 
 ## Decisions
@@ -92,9 +92,13 @@ happen after the labels changed. It would no longer describe the accepted
 
 ### 2. Keep the simple selector separate and off by default
 
-`workflow-bundle.ts` will hold two fixed workflows. One is the current full
-workflow. The other is the new `simple` workflow. The full workflow stays the
-default.
+The workflows will stay in separate YAML files. The current full workflow stays
+in `config/workflow.deos.yaml`. The simple workflow gets its own file at
+`config/workflow.simple.yaml`.
+
+`workflow-bundle.ts` will not define either workflow in TypeScript. It will load
+both YAML files and build the fixed registry with their prompts and schemas. The
+full workflow stays the default.
 
 A new D1 row will hold the simple selector. It records the project, repository,
 exact label, target workflow, and enabled state. Setup creates this row with the
@@ -254,6 +258,19 @@ fixed prompt is easier to review and prove.
 
 ### 7. Let DEOS merge and check the approved work
 
+Cloudflare Workflow runs Worker code. It can call an external API inside a
+durable `step.do` step. For these system actions, the Workflow calls the DEOS
+GitHub adapter directly inside the Worker.
+
+The adapter gets a short-lived GitHub App token and uses HTTPS requests to the
+GitHub API. It does not start a Sandbox or run the `gh` command. GitHub secrets
+stay in the Worker. Sandbox is used only for Codex agent steps.
+
+The agent publish path and the system action path reuse the same GitHub client.
+The agent reaches it through a signed, narrow capability. The Workflow reaches
+it as trusted Worker code. Each path records its own D1 provider operation and
+receipt.
+
 `github.merge_planning_pull_request` reads the saved work record. It checks the
 repository, base `main`, branch, expected head, file hash, and GitHub merge rules.
 Then it asks GitHub to merge.
@@ -348,9 +365,9 @@ All database changes add new data. They do not rewrite old workflows or runs.
 
 1. Add the D1 fields and tables for label evidence, selectors, saved choices,
    pull requests, and prompt proof. Check the schema locally and after deploy.
-2. Add the workflow registry, simple graph, gate choices, fixed prompt, narrow
-   GitHub action, saved pull request, merge action, and final check. Keep the
-   selector off.
+2. Add the simple workflow in its own YAML file. Add the registry, gate choices,
+   fixed prompt, narrow GitHub action, saved pull request, merge action, and final
+   check. Keep the selector off.
 3. Test workflow hashes, label parsing, Queue retries, blocked paths, same-pull-
    request revisions, readability checks, merge checks, and the unchanged full
    workflow. Show the exact first prompt in the implementation pull request.
