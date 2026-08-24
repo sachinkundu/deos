@@ -54,4 +54,4 @@
 
 - [x] 9.1 Revise the simple definition so a trusted claim action preserves the human assignee, delegates the issue to the DEOS app user, and confirms `In Progress` before the planning agent starts.
 - [x] 9.2 Add durable, idempotent Linear claim handling with provider read-back and focused tests for success, replay, ambiguity, and conflicting human intent.
-- [ ] 9.3 Validate and deploy the correction, read back definition version 2, then leave SAC-129 in Backlog for a human-triggered Todo test.
+- [x] 9.3 Validate and deploy the correction, read back definition version 2, then leave SAC-129 in Backlog for a human-triggered Todo test.
