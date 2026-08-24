@@ -42,6 +42,9 @@ wheels = [
 name = "deos"
 version = "0.1.0"
 source = { editable = "." }
+dependencies = [
+    { name = "workers-runtime-sdk" },
+]
 
 [package.optional-dependencies]
 dev = [
@@ -54,7 +57,6 @@ dev = [
 [package.dev-dependencies]
 dev = [
     { name = "workers-py" },
-    { name = "workers-runtime-sdk" },
 ]
 
 [package.metadata]
@@ -63,14 +65,12 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
     { name = "workers-py", marker = "extra == 'dev'", specifier = ">=1.9" },
+    { name = "workers-runtime-sdk", specifier = ">=1.0" },
 ]
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "workers-py", specifier = ">=1.9" },
-    { name = "workers-runtime-sdk", specifier = ">=1.0" },
-]
+dev = [{ name = "workers-py", specifier = ">=1.9" }]
 
 [[package]]
 name = "iniconfig"
