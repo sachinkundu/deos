@@ -46,6 +46,6 @@
 
 ## 8. Deploy inactive for shared testing
 
-- [ ] 8.1 Apply the additive remote D1 migration and deploy the implementation branch with the simple selector still disabled.
-- [ ] 8.2 Read back the registered full and simple definitions, disabled selector, migration constraints, unchanged default policy, and absence of deployment-triggered Sandbox or provider operations.
-- [ ] 8.3 Provide the deployed endpoint, exact first prompt, prompt digest, definition digest, and a controlled provider-originated test sequence; stop before enabling the selector or moving a test issue to `Todo` so the live canary can be run with the user.
+- [x] 8.1 Apply the additive remote D1 migration and deploy the implementation branch with the simple selector still disabled.
+- [x] 8.2 Read back the registered full and simple definitions, disabled selector, migration constraints, full definition as the default with the intended `Todo` start and dispatch off, and absence of deployment-triggered Sandbox or provider operations.
+- [x] 8.3 Provide the deployed endpoint, exact first prompt, prompt digest, definition digest, and a controlled provider-originated test sequence; stop before enabling the selector or moving a test issue to `Todo` so the live canary can be run with the user.
