@@ -60,5 +60,5 @@
 
 - [x] 10.1 Capture patch, provider references, JSONL, validation, result, and bounded supervisor status whenever available after any terminal agent outcome.
 - [x] 10.2 Persist and verify an immutable failure manifest before cleanup, retain the manifest on the failed attempt, emit the bounded failure category, and keep the Sandbox recoverable when collection fails.
-- [ ] 10.3 Add deterministic failure, interruption, policy-rejection, and persistence-failure tests; validate and deploy the branch; then re-arm SAC-129 and verify the new run through D1, R2, Linear, and Workers telemetry.
-- [ ] 10.4 Keep the Codex JSONL stream supervisor-owned and return a bounded reason when trusted planning publication validation denies a request.
+- [x] 10.3 Add deterministic failure, interruption, policy-rejection, and persistence-failure tests; validate and deploy the branch; then re-arm SAC-129 and verify the new run through D1, R2, Linear, and Workers telemetry.
+- [x] 10.4 Keep the Codex JSONL stream supervisor-owned and return a bounded reason when trusted planning publication validation denies a request.
