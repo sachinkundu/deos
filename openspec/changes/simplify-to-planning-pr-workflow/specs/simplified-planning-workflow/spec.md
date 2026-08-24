@@ -42,6 +42,30 @@ The simplified workflow SHALL dispatch one planning agent that creates or revise
 - **WHEN** the planning agent requests a design, task checklist, runtime change, Linear transition, pull-request merge, or provider operation outside its declared capability
 - **THEN** the request is rejected and the workflow does not treat the attempt as completed planning work
 
+### Requirement: Claim admitted work before planning
+
+For a selected simplified run, DEOS SHALL preserve any human assignee, delegate the issue to the configured DEOS app user, move it from `Todo` to `In Progress`, and confirm both fields through Linear before dispatching the planning agent. The claim operation SHALL be durable and idempotent. The planning agent MUST NOT perform this Linear update itself.
+
+#### Scenario: Labeled Todo issue is claimed
+
+- **WHEN** an accepted `Todo` transition selects the simplified workflow
+- **THEN** DEOS delegates the issue to the configured app user, moves it to `In Progress`, confirms both values by provider read-back, and only then dispatches the planning agent
+
+#### Scenario: Human ownership is preserved
+
+- **WHEN** the issue has a human assignee when DEOS claims it
+- **THEN** DEOS leaves the assignee unchanged and sets only the agent delegate and workflow state
+
+#### Scenario: Claim is replayed
+
+- **WHEN** the same durable claim action runs again after an ambiguous response or Workflow replay
+- **THEN** DEOS reconciles the current state and delegate without creating another logical claim or repeating a confirmed provider effect
+
+#### Scenario: Newer human intent conflicts with the claim
+
+- **WHEN** provider read-back shows that a person moved the issue away from `Todo` or delegated it to another agent before the claim completed
+- **THEN** DEOS fails safely, records the bounded conflict, and does not start the planning agent
+
 ### Requirement: Reuse the planning pull request for revisions
 
 Every authorized revision SHALL use a fresh isolated agent attempt while preserving the run-scoped planning branch and pull-request identity. The new attempt SHALL receive the durable planning patch, prior result, pull-request reference, and bounded human feedback needed to revise the same proposal and specifications.

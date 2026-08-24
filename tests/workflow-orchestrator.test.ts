@@ -113,9 +113,9 @@ spec:
 const simpleDefinition = await loadWorkflowDefinition(
   `apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
-metadata: { name: simple, version: 1 }
+metadata: { name: simple, version: 2 }
 spec:
-  start: openspec_planning
+  start: claim_issue
   execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
   jobs:
     planning:
@@ -125,6 +125,7 @@ spec:
       requiredOutputs: []
       capabilities: [github.publish_planning_work_product]
   nodes:
+    claim_issue: { type: system_action, action: linear.delegate_and_start, edges: { completed: openspec_planning, failed: failed } }
     openspec_planning: { type: agent, job: planning, edges: { completed: planning_review, blocked: failed, failed: failed } }
     planning_review:
       type: human_gate
@@ -418,6 +419,7 @@ class NodeServices implements WorkflowNodeServices {
   readonly agentOutcomes: string[];
   gateEntries = 0;
   repairs = 0;
+  readonly systemActions: string[] = [];
   failRepair = false;
 
   constructor(agentOutcomes = ["completed", "approved"]) {
@@ -441,7 +443,12 @@ class NodeServices implements WorkflowNodeServices {
     });
   }
 
-  executeSystemAction(): ReturnType<WorkflowNodeServices["executeSystemAction"]> {
+  executeSystemAction(
+    _run: OrchestrationRunRecord,
+    _nodeId: string,
+    action: string,
+  ): ReturnType<WorkflowNodeServices["executeSystemAction"]> {
+    this.systemActions.push(action);
     return Promise.resolve({
       kind: "system_action" as const,
       outcome: "completed" as const,
@@ -543,6 +550,7 @@ test("simple graph revises on a fresh visit then reaches trusted merge and verif
   }).run(store.run.run_id, new FakeStep(["delivery-revision", "delivery-merge"]));
   assert.deepEqual(result, { outcome: "succeeded", runId: store.run.run_id });
   assert.deepEqual(store.transitions.map(({ from_node, to_node }) => [from_node, to_node]), [
+    ["claim_issue", "openspec_planning"],
     ["openspec_planning", "planning_review"],
     ["planning_review", "openspec_planning"],
     ["openspec_planning", "planning_review"],
@@ -553,8 +561,13 @@ test("simple graph revises on a fresh visit then reaches trusted merge and verif
   assert.deepEqual(
     store.transitions.filter(({ from_node }) => from_node === "openspec_planning")
       .map(({ from_visit_sequence }) => from_visit_sequence),
-    [1, 3],
+    [2, 4],
   );
+  assert.deepEqual(services.systemActions, [
+    "linear.delegate_and_start",
+    "github.merge_planning_pull_request",
+    "github.verify_planning_merge",
+  ]);
   assert.equal(services.gateEntries, 2);
 });
 
@@ -570,6 +583,7 @@ test("simple graph cancellation reaches no merge action", async () => {
   }).run(store.run.run_id, new FakeStep(["delivery-canceled"]));
   assert.equal(result.outcome, "canceled");
   assert.equal(store.transitions.some(({ to_node }) => to_node === "merge"), false);
+  assert.deepEqual(services.systemActions, ["linear.delegate_and_start"]);
 });
 
 test("version 4 routes a successful agent result with missing receipts to its failure node", async () => {

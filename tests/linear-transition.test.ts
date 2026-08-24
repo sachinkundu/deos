@@ -29,7 +29,7 @@ class OperationStore implements LinearOperationStore {
   async begin(input: {
     operationId: string;
     runId: string;
-    action: "enter_human_gate" | "restore_human_gate";
+    action: "enter_human_gate" | "restore_human_gate" | "delegate_and_start";
     targetStateId: string;
     requestDigest: string;
     observedPreState: string;
@@ -107,6 +107,8 @@ const config = {
   accessToken: "test-token",
   appActorId: "app-actor-1",
   humanGateStateId: "human-state",
+  startStateId: "todo-state",
+  workStateId: "in-progress-state",
 };
 
 const successfulFetch = (calls: string[]): typeof fetch => async (_input, init) => {
@@ -237,4 +239,126 @@ test("a later visit to the same gate gets a new provider operation", async () =>
   assert.equal(later.providerOperationId, laterRetry.providerOperationId);
   assert.notEqual(first.providerOperationId, later.providerOperationId);
   assert.deepEqual(calls, ["read", "mutate", "read", "mutate"]);
+});
+
+test("work start preserves the assignee, delegates to the app, and confirms In Progress", async () => {
+  const store = new OperationStore();
+  const calls: Array<{ kind: string; variables: Record<string, string> }> = [];
+  let started = false;
+  const controller = new LinearTransitionController(store, config, {
+    now: () => new Date(NOW),
+    fetch: async (_input, init) => {
+      const request = JSON.parse(String(init?.body)) as {
+        query: string;
+        variables: Record<string, string>;
+      };
+      if (request.query.includes("mutation DeosDelegateAndStart")) {
+        calls.push({ kind: "mutate", variables: request.variables });
+        started = true;
+        return Response.json({ data: { issueUpdate: { success: true } } });
+      }
+      calls.push({ kind: "read", variables: request.variables });
+      return Response.json({ data: { issue: {
+        state: { id: started ? "in-progress-state" : "todo-state" },
+        delegate: started ? { id: "app-actor-1" } : null,
+        assignee: { id: "human-1" },
+        updatedAt: NOW,
+      } } });
+    },
+  });
+
+  const outcome = await controller.ensureWorkStarted(run, "claim_issue");
+
+  assert.deepEqual(outcome, {
+    kind: "system_action",
+    outcome: "completed",
+    providerReceiptsComplete: true,
+  });
+  assert.deepEqual(calls.map((call) => call.kind), ["read", "mutate", "read"]);
+  assert.deepEqual(calls[1].variables, {
+    id: "issue-1",
+    stateId: "in-progress-state",
+    delegateId: "app-actor-1",
+  });
+  assert.equal(store.operations.values().next().value?.state, "succeeded");
+});
+
+test("work start replay reconciles matching provider state without another mutation", async () => {
+  const store = new OperationStore();
+  let calls = 0;
+  const controller = new LinearTransitionController(store, config, {
+    now: () => new Date(NOW),
+    fetch: async () => {
+      calls += 1;
+      return Response.json({ data: { issue: {
+        state: { id: "in-progress-state" },
+        delegate: { id: "app-actor-1" },
+        assignee: { id: "human-1" },
+        updatedAt: NOW,
+      } } });
+    },
+  });
+
+  const first = await controller.ensureWorkStarted(run, "claim_issue");
+  const replay = await controller.ensureWorkStarted(run, "claim_issue");
+
+  assert.equal(first.outcome, "completed");
+  assert.equal(replay.outcome, "completed");
+  assert.equal(calls, 2);
+  assert.equal(store.operations.values().next().value?.state, "reconciled");
+});
+
+test("ambiguous work start reconciles through provider read-back", async () => {
+  const store = new OperationStore();
+  let reads = 0;
+  const controller = new LinearTransitionController(store, config, {
+    now: () => new Date(NOW),
+    fetch: async (_input, init) => {
+      const request = JSON.parse(String(init?.body)) as { query: string };
+      if (request.query.includes("mutation DeosDelegateAndStart")) {
+        throw new Error("response lost");
+      }
+      reads += 1;
+      const complete = reads > 1;
+      return Response.json({ data: { issue: {
+        state: { id: complete ? "in-progress-state" : "todo-state" },
+        delegate: complete ? { id: "app-actor-1" } : null,
+        assignee: null,
+        updatedAt: NOW,
+      } } });
+    },
+  });
+
+  const outcome = await controller.ensureWorkStarted(run, "claim_issue");
+
+  assert.equal(outcome.outcome, "completed");
+  assert.equal(store.operations.values().next().value?.state, "reconciled");
+});
+
+test("conflicting human state or delegate stops work before mutation", async () => {
+  for (const issue of [
+    { state: "human-review-state", delegate: null },
+    { state: "todo-state", delegate: "other-agent" },
+  ]) {
+    const store = new OperationStore();
+    let calls = 0;
+    const controller = new LinearTransitionController(store, config, {
+      now: () => new Date(NOW),
+      fetch: async () => {
+        calls += 1;
+        return Response.json({ data: { issue: {
+          state: { id: issue.state },
+          delegate: issue.delegate === null ? null : { id: issue.delegate },
+          assignee: { id: "human-1" },
+          updatedAt: NOW,
+        } } });
+      },
+    });
+
+    const outcome = await controller.ensureWorkStarted(run, "claim_issue");
+
+    assert.equal(outcome.outcome, "failed");
+    assert.equal(calls, 1);
+    assert.equal(store.operations.values().next().value?.safe_error_category, "linear_claim_conflict");
+  }
 });

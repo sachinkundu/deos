@@ -153,6 +153,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         accessToken: env.LINEAR_APP_ACCESS_TOKEN,
         appActorId: env.LINEAR_APP_ACTOR_ID,
         humanGateStateId: env.LINEAR_HUMAN_APPROVAL_STATE_ID,
+        startStateId: env.LINEAR_START_STATE_ID,
+        workStateId: env.LINEAR_WORK_STATE_ID,
       },
     );
   }
@@ -167,6 +169,9 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
   }
 
   executeSystemAction(run: OrchestrationRunRecord, nodeId: string, action: string) {
+    if (action === "linear.delegate_and_start") {
+      return this.linear.ensureWorkStarted(run, nodeId);
+    }
     return this.systemActions.execute(run, nodeId, action);
   }
 

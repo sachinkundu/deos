@@ -128,6 +128,7 @@ const SYSTEM_ACTIONS = new Set([
   "openspec.verify",
   "release.deploy",
   "openspec.sync_and_archive",
+  "linear.delegate_and_start",
   "github.merge_planning_pull_request",
   "github.verify_planning_merge",
 ]);

@@ -6,6 +6,7 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 
 - Add an inactive simplified workflow definition that, once explicitly enabled for a configured project and repository, is selected when a person moves a Linear issue carrying the `simple-workflow` label to `Todo`; an unlabeled issue or disabled selector continues to select the existing full workflow by default.
 - Preserve authenticated event-time Linear label evidence before asynchronous dispatch so later label changes cannot alter which definition the accepted `Todo` event selects.
+- Before planning starts, have DEOS keep the human assignee, delegate the issue to the DEOS agent, move it to `In Progress`, and confirm both provider fields by read-back.
 - Run one OpenSpec planning agent that creates or updates one GitHub pull request containing only the proposal and required delta specifications while DEOS owns every Linear transition.
 - Enter `Human Review` only after the planning work and its durable provider evidence are complete.
 - Treat an authorized human transition to `In Progress` as a request to revise the same planning pull request, `Merging` as authorization for DEOS to merge it, and `Canceled` as a terminal stop.
@@ -23,7 +24,7 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 
 ### New Capabilities
 
-- `simplified-planning-workflow`: Defines the proposal-and-specification graph, its label-based selection, its human decisions, its workflow-owned merge, and the proof required before the first planning slice succeeds.
+- `simplified-planning-workflow`: Defines the proposal-and-specification graph, its label-based selection, its DEOS-owned delegation and start transition, its human decisions, its workflow-owned merge, and the proof required before the first planning slice succeeds.
 
 ### Modified Capabilities
 

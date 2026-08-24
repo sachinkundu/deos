@@ -2,7 +2,7 @@
 
 ### Requirement: Preserve explicit workflow state
 
-The workflow state model SHALL record authoritative business-state transitions in D1, SHALL distinguish agent execution state from business workflow state, and SHALL represent human approval as an explicit node surfaced through the Linear board column `Human Review`. The encoded workflow definition SHALL describe nodes, decision edges, loops, autonomous actions, agent dispatches, human gates, terminal outcomes, and the configured Linear state that selects each human decision edge. The Workflow manager SHALL be the sole authority that initiates Linear state transitions and SHALL select the next action from the previous state, current state, accumulated run data, provider results, and agent outcome. For the simplified planning gate, the three authorized decisions SHALL be `In Progress` for revision of the same planning pull request, `Merging` for the workflow-owned merge path, and `Canceled` for terminal cancellation.
+The workflow state model SHALL record authoritative business-state transitions in D1, SHALL distinguish agent execution state from business workflow state, and SHALL represent human approval as an explicit node surfaced through the Linear board column `Human Review`. The encoded workflow definition SHALL describe nodes, decision edges, loops, autonomous actions, agent dispatches, human gates, terminal outcomes, and the configured Linear state that selects each human decision edge. The Workflow manager SHALL be the sole authority that initiates Linear state transitions and SHALL select the next action from the previous state, current state, accumulated run data, provider results, and agent outcome. A selected simplified run SHALL begin with a trusted system action that preserves the human assignee, delegates the issue to the DEOS app user, and moves it from `Todo` to `In Progress` before agent execution. For the simplified planning gate, the three authorized decisions SHALL be `In Progress` for revision of the same planning pull request, `Merging` for the workflow-owned merge path, and `Canceled` for terminal cancellation.
 
 #### Scenario: Approval required
 
@@ -13,6 +13,11 @@ The workflow state model SHALL record authoritative business-state transitions i
 
 - **WHEN** a valid agent outcome reaches a state that policy defines as autonomous
 - **THEN** the Workflow selects and records the next state or agent dispatch without requiring a human approval event
+
+#### Scenario: Simplified run takes ownership of admitted work
+
+- **WHEN** the simplified Workflow starts from an accepted human `Backlog` to `Todo` transition
+- **THEN** it records one trusted provider action that delegates the issue to the DEOS app user, preserves the human assignee, confirms `In Progress`, and advances to agent execution only after provider read-back succeeds
 
 #### Scenario: Human resumes workflow
 

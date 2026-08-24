@@ -2,7 +2,7 @@
 
 ### Requirement: Dispatch accepted events
 
-The asynchronous Queue consumer, which is separate from HTTP ingress, SHALL load the applicable project policy and select the workflow definition for each accepted start event before allocating a run. For an accepted `Todo` transition, it SHALL select the enabled simplified planning definition only when the immutable event-time label-selection evidence carried by the application event establishes that the issue had the exact `simple-workflow` Linear label; otherwise it SHALL select the existing full definition as the default. It MUST NOT read the issue's current labels to make that selection. Before creating a Workflow instance, it SHALL derive a stable instance identity from the durable issue-run identity. It SHALL freeze the selected definition name, version, digest, and selection evidence on the run, establish an auditable mapping from the issue run to that one Workflow instance, and SHALL acknowledge the Queue message only after both the instance and mapping are confirmed.
+The asynchronous Queue consumer, which is separate from HTTP ingress, SHALL load the applicable project policy and select the workflow definition for each accepted start event before allocating a run. For an accepted `Todo` transition, it SHALL select the enabled simplified planning definition only when the immutable event-time label-selection evidence carried by the application event establishes that the issue had the exact `simple-workflow` Linear label; otherwise it SHALL select the existing full definition as the default. It MUST NOT read the issue's current labels to make that selection. Before creating a Workflow instance, it SHALL derive a stable instance identity from the durable issue-run identity. It SHALL freeze the selected definition name, version, digest, and selection evidence on the run, establish an auditable mapping from the issue run to that one Workflow instance, and SHALL acknowledge the Queue message only after both the instance and mapping are confirmed. For a selected simplified run, Workflow dispatch SHALL begin at its trusted Linear claim action; planning-agent dispatch MUST wait for confirmed delegation and the `In Progress` read-back.
 
 #### Scenario: Accepted event
 
@@ -43,6 +43,11 @@ The asynchronous Queue consumer, which is separate from HTTP ingress, SHALL load
 
 - **WHEN** the configured start transition is received
 - **THEN** the dispatcher preserves the `RECEIVED` and `QUEUED` audit history, establishes durable Workflow dispatch, and leaves subsequent agent execution and business-state transitions to that Workflow
+
+#### Scenario: Simplified Workflow starts with trusted claim
+
+- **WHEN** the dispatcher creates a Workflow instance with the simplified definition
+- **THEN** the instance starts with its DEOS-owned Linear claim action and does not dispatch the planning agent until that action completes with durable provider evidence
 
 #### Scenario: Unknown project
 

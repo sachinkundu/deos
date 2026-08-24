@@ -49,3 +49,9 @@
 - [x] 8.1 Apply the additive remote D1 migration and deploy the implementation branch with the simple selector still disabled.
 - [x] 8.2 Read back the registered full and simple definitions, disabled selector, migration constraints, full definition as the default with the intended `Todo` start and dispatch off, and absence of deployment-triggered Sandbox or provider operations.
 - [x] 8.3 Provide the deployed endpoint, exact first prompt, prompt digest, definition digest, and a controlled provider-originated test sequence; stop before enabling the selector or moving a test issue to `Todo` so the live canary can be run with the user.
+
+## 9. Correct the Todo handoff
+
+- [x] 9.1 Revise the simple definition so a trusted claim action preserves the human assignee, delegates the issue to the DEOS app user, and confirms `In Progress` before the planning agent starts.
+- [x] 9.2 Add durable, idempotent Linear claim handling with provider read-back and focused tests for success, replay, ambiguity, and conflicting human intent.
+- [ ] 9.3 Validate and deploy the correction, read back definition version 2, then leave SAC-129 in Backlog for a human-triggered Todo test.

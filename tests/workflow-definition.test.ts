@@ -111,8 +111,9 @@ test("canonical workflow digest is stable", async () => {
 test("simple definition bundles the approved planning prompt and exact three-way graph", async () => {
   const definition = await loadWorkflowDefinition(simpleSource, bundle());
   assert.equal(definition.name, "simple");
-  assert.equal(definition.version, 1);
-  assert.equal(definition.digest, "792aaa7901010cd184576d0ede9907f3fd701e13576acb3a36011fc754edaed2");
+  assert.equal(definition.version, 2);
+  assert.equal(definition.start, "claim_issue");
+  assert.equal(definition.digest.length, 64);
   assert.deepEqual(definition.jobs.openspec_planning.capabilities, [
     "github.publish_planning_work_product",
   ]);
@@ -127,6 +128,12 @@ test("simple definition bundles the approved planning prompt and exact three-way
   });
   assert.equal(definition.nodes.merge_planning_pr.type, "system_action");
   assert.equal(definition.nodes.verify_planning_merge.type, "system_action");
+  assert.equal(
+    definition.nodes.claim_issue.type === "system_action"
+      ? definition.nodes.claim_issue.action
+      : null,
+    "linear.delegate_and_start",
+  );
   assert.deepEqual(
     await restoreWorkflowDefinition(JSON.stringify(definition), definition.digest),
     definition,

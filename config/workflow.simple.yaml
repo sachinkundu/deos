@@ -2,9 +2,9 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: simple
-  version: 1
+  version: 2
 spec:
-  start: openspec_planning
+  start: claim_issue
   execution:
     attemptTimeout: 24h
     heartbeatTimeout: 5m
@@ -18,6 +18,10 @@ spec:
       requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
       capabilities: [github.publish_planning_work_product]
   nodes:
+    claim_issue:
+      type: system_action
+      action: linear.delegate_and_start
+      edges: {completed: openspec_planning, failed: system_action_failed}
     openspec_planning:
       type: agent
       job: openspec_planning

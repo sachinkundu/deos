@@ -5,6 +5,7 @@ import type {
 } from "./orchestration-store.ts";
 import type { HumanGateOperation } from "./workflow-orchestrator.ts";
 import type { HumanGateWorkflowNode } from "./workflow-definition.ts";
+import type { ValidatedSystemOutcome } from "./workflow-evaluator.ts";
 
 export type ProviderOperationState =
   | "pending"
@@ -39,7 +40,7 @@ export interface LinearOperationStore {
   begin(input: {
     operationId: string;
     runId: string;
-    action: "enter_human_gate" | "restore_human_gate";
+    action: "enter_human_gate" | "restore_human_gate" | "delegate_and_start";
     targetStateId: string;
     requestDigest: string;
     observedPreState: string;
@@ -70,7 +71,7 @@ export class D1LinearOperationStore implements LinearOperationStore {
   async begin(input: {
     operationId: string;
     runId: string;
-    action: "enter_human_gate" | "restore_human_gate";
+    action: "enter_human_gate" | "restore_human_gate" | "delegate_and_start";
     targetStateId: string;
     requestDigest: string;
     observedPreState: string;
@@ -143,6 +144,8 @@ export class D1LinearOperationStore implements LinearOperationStore {
 interface LinearIssueState {
   id: string;
   updatedAt: string;
+  delegateId: string | null;
+  assigneeId: string | null;
 }
 
 interface LinearTransitionConfig {
@@ -150,6 +153,8 @@ interface LinearTransitionConfig {
   accessToken: string;
   appActorId: string;
   humanGateStateId: string;
+  startStateId: string;
+  workStateId: string;
 }
 
 interface LinearTransitionDependencies {
@@ -226,6 +231,149 @@ export class LinearTransitionController {
     );
   }
 
+  async ensureWorkStarted(
+    run: OrchestrationRunRecord,
+    nodeId: string,
+  ): Promise<ValidatedSystemOutcome> {
+    const operationId = operationIdentity(
+      run.run_id,
+      nodeId,
+      "linear-delegate-and-start",
+      run.current_visit_sequence,
+    );
+    const requestDigest = await this.workStartDigest(run.issue_id);
+    const existing = await this.store.find(operationId);
+    if (
+      existing !== null && (
+        existing.run_id !== run.run_id ||
+        existing.action !== "delegate_and_start" ||
+        existing.sanitized_target !== this.config.workStateId ||
+        existing.request_digest !== requestDigest
+      )
+    ) throw new Error("Linear work-start operation identity mismatch");
+    const observed = await this.readIssueState(run.issue_id);
+    const desired = observed.id === this.config.workStateId &&
+      observed.delegateId === this.config.appActorId;
+    if (desired) {
+      const operation = existing ?? (await this.store.begin({
+        operationId,
+        runId: run.run_id,
+        action: "delegate_and_start",
+        targetStateId: this.config.workStateId,
+        requestDigest,
+        observedPreState: observed.id,
+        providerUpdatedAt: observed.updatedAt,
+        latestDeliveryId: null,
+        now: this.now().toISOString(),
+      })).operation;
+      if (["pending", "failed", "manual_reconciliation_required"].includes(operation.state)) {
+        await this.store.setState(
+          operationId,
+          operation.state,
+          "reconciled",
+          this.now().toISOString(),
+        );
+      }
+      return this.workStartCompleted();
+    }
+    const safeToClaim = observed.id === this.config.startStateId &&
+      (observed.delegateId === null || observed.delegateId === this.config.appActorId);
+    const operation = existing ?? (await this.store.begin({
+      operationId,
+      runId: run.run_id,
+      action: "delegate_and_start",
+      targetStateId: this.config.workStateId,
+      requestDigest,
+      observedPreState: observed.id,
+      providerUpdatedAt: observed.updatedAt,
+      latestDeliveryId: null,
+      now: this.now().toISOString(),
+    })).operation;
+    if (["succeeded", "reconciled", "duplicate"].includes(operation.state)) {
+      return this.workStartFailed();
+    }
+    if (!safeToClaim || operation.state === "failed") {
+      if (operation.state === "pending" || operation.state === "manual_reconciliation_required") {
+        await this.store.setState(
+          operationId,
+          operation.state,
+          "failed",
+          this.now().toISOString(),
+          "linear_claim_conflict",
+        );
+      }
+      return this.workStartFailed();
+    }
+    if (operation.state === "manual_reconciliation_required") return this.workStartFailed();
+    try {
+      const response = await this.graphql(
+        `mutation DeosDelegateAndStart($id: String!, $stateId: String!, $delegateId: String!) {
+           issueUpdate(id: $id, input: { stateId: $stateId, delegateId: $delegateId }) { success }
+         }`,
+        {
+          id: run.issue_id,
+          stateId: this.config.workStateId,
+          delegateId: this.config.appActorId,
+        },
+      );
+      const succeeded = (response as { data?: { issueUpdate?: { success?: boolean } } })
+        .data?.issueUpdate?.success === true;
+      if (!succeeded) {
+        await this.store.setState(
+          operationId,
+          "pending",
+          "failed",
+          this.now().toISOString(),
+          "linear_graphql_failed",
+        );
+        return this.workStartFailed();
+      }
+    } catch {
+      const readBack = await this.readIssueState(run.issue_id);
+      if (
+        readBack.id === this.config.workStateId &&
+        readBack.delegateId === this.config.appActorId
+      ) {
+        await this.store.setState(
+          operationId,
+          "pending",
+          "reconciled",
+          this.now().toISOString(),
+        );
+        return this.workStartCompleted();
+      }
+      await this.store.setState(
+        operationId,
+        "pending",
+        "manual_reconciliation_required",
+        this.now().toISOString(),
+        "linear_response_ambiguous",
+      );
+      return this.workStartFailed();
+    }
+    const readBack = await this.readIssueState(run.issue_id);
+    if (
+      readBack.id !== this.config.workStateId ||
+      readBack.delegateId !== this.config.appActorId
+    ) {
+      await this.store.setState(
+        operationId,
+        "pending",
+        "failed",
+        this.now().toISOString(),
+        "linear_claim_readback_mismatch",
+      );
+      return this.workStartFailed();
+    }
+    await this.store.setState(
+      operationId,
+      "pending",
+      "succeeded",
+      this.now().toISOString(),
+    );
+    return this.workStartCompleted();
+  }
+
   async observeHumanGateDelivery(
     operation: HumanGateOperation,
     event: WorkflowInboxRecord,
@@ -282,6 +430,8 @@ export class LinearTransitionController {
     const observed = knownPreStateId === null ? await this.readIssueState(run.issue_id) : {
       id: knownPreStateId,
       updatedAt: this.now().toISOString(),
+      delegateId: null,
+      assigneeId: null,
     };
     const requestDigest = await sha256Hex(JSON.stringify({
       issueId: run.issue_id,
@@ -343,18 +493,51 @@ export class LinearTransitionController {
 
   private async readIssueState(issueId: string): Promise<LinearIssueState> {
     const payload = await this.graphql(
-      `query DeosIssueState($id: String!) { issue(id: $id) { state { id } updatedAt } }`,
+      `query DeosIssueState($id: String!) {
+         issue(id: $id) { state { id } delegate { id } assignee { id } updatedAt }
+       }`,
       { id: issueId },
-    ) as { data?: { issue?: { state?: { id?: string }; updatedAt?: string } } };
+    ) as {
+      data?: {
+        issue?: {
+          state?: { id?: string };
+          delegate?: { id?: string } | null;
+          assignee?: { id?: string } | null;
+          updatedAt?: string;
+        };
+      };
+    };
     const id = payload.data?.issue?.state?.id;
     const updatedAt = payload.data?.issue?.updatedAt;
     if (typeof id !== "string" || typeof updatedAt !== "string") {
       throw new Error("Linear issue state response is incomplete");
     }
-    return { id, updatedAt };
+    return {
+      id,
+      updatedAt,
+      delegateId: payload.data?.issue?.delegate?.id ?? null,
+      assigneeId: payload.data?.issue?.assignee?.id ?? null,
+    };
   }
 
-  private async graphql(query: string, variables: Record<string, string>): Promise<unknown> {
+  private workStartDigest(issueId: string): Promise<string> {
+    return sha256Hex(JSON.stringify({
+      issueId,
+      targetStateId: this.config.workStateId,
+      delegateId: this.config.appActorId,
+      action: "delegate_and_start",
+    }));
+  }
+
+  private workStartCompleted(): ValidatedSystemOutcome {
+    return { kind: "system_action", outcome: "completed", providerReceiptsComplete: true };
+  }
+
+  private workStartFailed(): ValidatedSystemOutcome {
+    return { kind: "system_action", outcome: "failed", providerReceiptsComplete: false };
+  }
+
+  private async graphql(query: string, variables: Record<string, unknown>): Promise<unknown> {
     const response = await this.request(this.config.apiUrl, {
       method: "POST",
       headers: {

@@ -31,6 +31,7 @@ deployed and a live trial is approved.
 - Save label evidence from the signed Linear start event.
 - Choose the simple flow only for the exact label and an enabled selector.
 - Keep the current full flow as the default.
+- Keep Backlog human-owned, then let the simple Workflow delegate and start work after a person moves an eligible issue to Todo.
 - Reuse one branch and pull request for all planning revisions in a run.
 - Limit the agent to the OpenSpec proposal and delta specs.
 - Keep Linear moves, pull request merge, and final checks under DEOS control.
@@ -55,6 +56,7 @@ flowchart LR
     S -->|exact label + enabled| P[Simple workflow]
     S --> R[(D1 run + selection proof)]
     P --> W[Cloudflare Workflow]
+    W -->|delegate to DEOS + In Progress| L
     W --> C[Trusted Sandbox controller]
     C --> X[Codex in a fresh Sandbox]
     X -->|signed publish request| G[Worker GitHub adapter]
@@ -122,14 +124,31 @@ We will not add a second default to `project_workflow_policies`. Two defaults
 would make unlabeled issues unclear. A separate selector keeps the current rule
 simple.
 
-### 3. Add three clear choices at the planning gate
+### 3. Delegate and start work before the Sandbox
+
+The simple definition starts with `claim_issue`, a trusted system action. It
+reads the issue through Linear, preserves any human assignee, sets the DEOS app
+user as the delegate, and moves the issue from `Todo` to `In Progress` in one
+bounded update. It reads the issue again before it reports success.
+
+The action has one stable D1 provider-operation id for the run visit. A replay
+first reads the current delegate and state. Matching values reconcile without a
+new update. A different delegate or a human state change fails safely and stops
+the planning agent.
+
+We use Linear's `delegateId`, not `assigneeId`. This keeps a person responsible
+for the issue while the DEOS agent works on their behalf.
+
+### 4. Add three clear choices at the planning gate
 
 The `simple` workflow has one agent step and one human gate. DEOS owns the merge
 and final check.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> openspec_planning
+    [*] --> claim_issue
+    claim_issue --> openspec_planning: completed + Linear read-back
+    claim_issue --> system_action_failed: failed
     openspec_planning --> planning_review: completed + planning receipt
     openspec_planning --> agent_blocked: blocked
     openspec_planning --> agent_failed: failed
@@ -154,7 +173,7 @@ no edge. DEOS records the event and returns the issue to `Human Review`.
 We will not treat `Merging` as a global approval state. That could approve the
 wrong action in another workflow.
 
-### 4. Reuse one planning pull request
+### 5. Reuse one planning pull request
 
 Each Sandbox attempt stays separate. DEOS also creates one remote branch for the
 run: `deos/planning/<run-hash>`. D1 saves this branch and its pull request in
@@ -179,7 +198,7 @@ commit, and check time.
 We will not publish from each Sandbox branch. That would create a new review
 surface for every revision.
 
-### 5. Give the agent one narrow GitHub action
+### 6. Give the agent one narrow GitHub action
 
 The planning job may call only `github.publish_planning_work_product`. The job
 grant and the trusted router both check this rule. DEOS supplies the repository,
@@ -209,7 +228,7 @@ same pull request.
 We will not reuse the broad `publish_work_product` action. Its file and branch
 rules are too wide for this flow.
 
-### 6. Save the exact prompt that the agent receives
+### 7. Save the exact prompt that the agent receives
 
 The fixed prompt will live in `config/prompts/openspec-planning.md`. Its text is
 part of the workflow hash. It tells the agent to:
@@ -256,7 +275,7 @@ will stay off until that prompt is reviewed.
 We will not build this prompt from the general OpenSpec prompt at runtime. A
 fixed prompt is easier to review and prove.
 
-### 7. Let DEOS merge and check the approved work
+### 8. Let DEOS merge and check the approved work
 
 Cloudflare Workflow runs Worker code. It can call an external API inside a
 durable `step.do` step. For these system actions, the Workflow calls the DEOS
@@ -297,16 +316,18 @@ The agent will not merge the pull request. An agent result is not human approval
 3. The Queue worker checks the saved evidence. It picks `simple` only for an
    enabled exact match. Otherwise, it picks the full workflow. It saves the
    choice before it creates the Workflow instance.
-4. `openspec_planning` starts a fresh Sandbox. The controller restores prior
+4. The Workflow keeps the human assignee, delegates the issue to the DEOS app,
+   moves it to `In Progress`, and reads both values back from Linear.
+5. `openspec_planning` starts a fresh Sandbox. The controller restores prior
    work when needed. It saves the final prompt before Codex starts.
-5. Codex creates or revises only the proposal and delta specs. It checks them and
+6. Codex creates or revises only the proposal and delta specs. It checks them and
    calls the narrow GitHub action. That action updates the run's branch and pull
    request.
-6. DEOS checks the artifacts, result, file list, and GitHub receipt. Only then
+7. DEOS checks the artifacts, result, file list, and GitHub receipt. Only then
    does it move the issue to `Human Review`.
-7. `In Progress` starts a revision on the same pull request. `Canceled` ends the
+8. `In Progress` starts a revision on the same pull request. `Canceled` ends the
    run. `Merging` starts the trusted merge.
-8. DEOS checks the approved files on `main`. Only then does D1 mark the run as
+9. DEOS checks the approved files on `main`. Only then does D1 mark the run as
    successful.
 
 ## Minimal data model
@@ -337,6 +358,7 @@ All database changes add new data. They do not rewrite old workflows or runs.
 | A GitHub publish result is unclear. | Read the same branch and pull request before retrying. |
 | A revision conflicts with new work on `main`. | Stop with conflict evidence. Do not open another pull request. |
 | A bot or unknown state moves the issue from `Human Review`. | Record it, pick no edge, and return the issue to the gate. |
+| The Todo claim finds another delegate or a newer human state. | Record the conflict and stop before the planning agent. |
 | GitHub changed the saved base or head, or required checks fail. | Do not merge. Mark the action for repair. |
 | GitHub says merged, but the files on `main` do not match. | Keep the run open for repair. Do not report success. |
 | Sandbox cleanup or R2 storage fails. | Keep the attempt unsuccessful. Do not enter review or success. |
