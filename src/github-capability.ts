@@ -14,6 +14,47 @@ export interface GitHubWorkProductReceipt {
   reconciled: boolean;
 }
 
+export interface GitHubPlanningWorkProductRequest {
+  repository: string;
+  branch: string;
+  baseBranch: "main";
+  title: string;
+  body: string;
+  files: readonly { path: string; content: string }[];
+  change: string;
+  expectedPullRequestDatabaseId?: string;
+  expectedPullRequestNumber?: number;
+}
+
+export interface GitHubPlanningWorkProductReceipt {
+  pullRequestDatabaseId: string;
+  pullRequestNumber: number;
+  pullRequestUrl: string;
+  branch: string;
+  headSha: string;
+  reconciled: boolean;
+}
+
+export interface GitHubPlanningMergeReceipt {
+  pullRequestDatabaseId: string;
+  pullRequestNumber: number;
+  mergeCommitSha: string;
+  reconciled: boolean;
+}
+
+export interface GitHubPlanningPullRequest {
+  databaseId: string;
+  number: number;
+  url: string;
+  state: string;
+  draft: boolean;
+  merged: boolean;
+  mergeCommitSha: string | null;
+  headBranch: string;
+  headSha: string;
+  baseBranch: string;
+}
+
 export interface GitHubTokenProvider {
   token(): Promise<string>;
 }
@@ -276,10 +317,428 @@ export class GitHubCapabilityAdapter {
     };
   }
 
+  async publishPlanning(
+    input: GitHubPlanningWorkProductRequest,
+    operationId: string,
+  ): Promise<GitHubPlanningWorkProductReceipt> {
+    const token = await this.tokens.token();
+    const [owner] = input.repository.split("/");
+    const base = await this.ref(token, input.repository, input.baseBranch);
+    let branch = await this.ref(token, input.repository, input.branch, true);
+    let reconciled = branch !== null;
+    if (branch === null) {
+      try {
+        await this.json(token, `/repos/${input.repository}/git/refs`, {
+          method: "POST",
+          body: { ref: `refs/heads/${input.branch}`, sha: base },
+        });
+      } catch {
+        branch = await this.ref(token, input.repository, input.branch, true);
+        if (branch === null) throw new Error("GitHub planning branch creation is ambiguous");
+        reconciled = true;
+      }
+      branch = await this.ref(token, input.repository, input.branch);
+    }
+    if (branch === null) throw new Error("GitHub planning branch is missing");
+
+    const prefix = `openspec/changes/${input.change}/`;
+    const tree = await this.json(
+      token,
+      `/repos/${input.repository}/git/trees/${encodeURIComponent(branch)}?recursive=1`,
+    ) as { tree?: Array<{ path?: string; type?: string; sha?: string }> };
+    if (!Array.isArray(tree.tree)) throw new Error("GitHub planning tree response is invalid");
+    const current = new Map(
+      tree.tree
+        .filter((entry) => entry.type === "blob" && entry.path?.startsWith(prefix) && typeof entry.sha === "string")
+        .map((entry) => [String(entry.path), String(entry.sha)]),
+    );
+    const desired = new Set(input.files.map((file) => file.path));
+    for (const file of input.files) {
+      const existing = await this.readContent(token, input.repository, input.branch, file.path, true);
+      if (existing?.content === file.content) {
+        reconciled = true;
+        continue;
+      }
+      await this.writeContent(
+        token,
+        input.repository,
+        input.branch,
+        file.path,
+        file.content,
+        operationId,
+        existing?.sha,
+      );
+    }
+    for (const [path, sha] of [...current].sort(([left], [right]) => left.localeCompare(right))) {
+      if (desired.has(path)) continue;
+      try {
+        await this.json(token, `/repos/${input.repository}/contents/${this.encodedPath(path)}`, {
+          method: "DELETE",
+          body: {
+            message: `DEOS planning manifest ${operationId}`,
+            sha,
+            branch: input.branch,
+          },
+        });
+      } catch {
+        if (await this.readContent(token, input.repository, input.branch, path, true) !== null) {
+          throw new Error("GitHub stale planning file deletion is ambiguous");
+        }
+        reconciled = true;
+      }
+    }
+
+    const pullsPath = `/repos/${input.repository}/pulls?state=open&base=${encodeURIComponent(input.baseBranch)}&head=${encodeURIComponent(`${owner}:${input.branch}`)}`;
+    let pulls: unknown[];
+    if (
+      input.expectedPullRequestNumber !== undefined ||
+      input.expectedPullRequestDatabaseId !== undefined
+    ) {
+      if (
+        input.expectedPullRequestNumber === undefined ||
+        input.expectedPullRequestDatabaseId === undefined
+      ) throw new Error("GitHub recorded planning pull-request identity is incomplete");
+      const recorded = this.parsePull(await this.json(
+        token,
+        `/repos/${input.repository}/pulls/${input.expectedPullRequestNumber}`,
+      ));
+      if (
+        recorded.databaseId !== input.expectedPullRequestDatabaseId ||
+        recorded.number !== input.expectedPullRequestNumber || recorded.state !== "open" ||
+        recorded.merged || recorded.headBranch !== input.branch ||
+        recorded.baseBranch !== input.baseBranch
+      ) throw new Error("GitHub recorded planning pull-request identity mismatch");
+      pulls = [{ number: recorded.number }];
+    } else {
+      pulls = await this.json(token, pullsPath) as unknown[];
+    }
+    if (!Array.isArray(pulls) || pulls.length > 1) {
+      throw new Error("GitHub planning pull-request selection is ambiguous");
+    }
+    const pullNumber = (value: unknown): number => {
+      const number = (value as { number?: unknown }).number;
+      if (typeof number !== "number") throw new Error("GitHub planning pull-request response is invalid");
+      return number;
+    };
+    let number = pulls.length === 1 ? pullNumber(pulls[0]) : null;
+    if (number === null) {
+      try {
+        number = pullNumber(await this.json(token, `/repos/${input.repository}/pulls`, {
+          method: "POST",
+          body: {
+            title: input.title,
+            body: input.body,
+            head: input.branch,
+            base: input.baseBranch,
+            draft: false,
+          },
+        }));
+      } catch {
+        pulls = await this.json(token, pullsPath) as unknown[];
+        if (!Array.isArray(pulls) || pulls.length !== 1) {
+          throw new Error("GitHub planning pull-request creation is ambiguous");
+        }
+        number = pullNumber(pulls[0]);
+        reconciled = true;
+      }
+    } else {
+      reconciled = true;
+    }
+    const currentRaw = await this.json(
+      token,
+      `/repos/${input.repository}/pulls/${number}`,
+    ) as { title?: unknown; body?: unknown };
+    if (currentRaw.title !== input.title || currentRaw.body !== input.body) {
+      try {
+        await this.json(
+          token,
+          `/repos/${input.repository}/pulls/${number}`,
+          { method: "PATCH", body: { title: input.title, body: input.body } },
+        );
+      } catch {
+        const afterRaw = await this.json(
+          token,
+          `/repos/${input.repository}/pulls/${number}`,
+        ) as { title?: unknown; body?: unknown };
+        if (afterRaw.title !== input.title || afterRaw.body !== input.body) {
+          throw new Error("GitHub planning pull-request update is ambiguous");
+        }
+      }
+    }
+    const headSha = await this.ref(token, input.repository, input.branch);
+    if (headSha === null) throw new Error("GitHub planning branch read-back is missing");
+    const confirmed = this.parsePull(await this.json(
+      token,
+      `/repos/${input.repository}/pulls/${number}`,
+    ));
+    if (
+      confirmed.state !== "open" || confirmed.draft || confirmed.merged ||
+      confirmed.headBranch !== input.branch || confirmed.headSha !== headSha ||
+      confirmed.baseBranch !== input.baseBranch ||
+      (input.expectedPullRequestDatabaseId !== undefined &&
+        confirmed.databaseId !== input.expectedPullRequestDatabaseId) ||
+      (input.expectedPullRequestNumber !== undefined &&
+        confirmed.number !== input.expectedPullRequestNumber)
+    ) throw new Error("GitHub planning pull-request read-back mismatch");
+    return {
+      pullRequestDatabaseId: confirmed.databaseId,
+      pullRequestNumber: confirmed.number,
+      pullRequestUrl: confirmed.url,
+      branch: input.branch,
+      headSha,
+      reconciled,
+    };
+  }
+
+  async readReviewFeedback(repository: string, pullRequestNumber: number): Promise<readonly Record<string, unknown>[]> {
+    const token = await this.tokens.token();
+    const [reviews, reviewComments, issueComments] = await Promise.all([
+      this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}/reviews?per_page=50`),
+      this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}/comments?per_page=50`),
+      this.json(token, `/repos/${repository}/issues/${pullRequestNumber}/comments?per_page=50`),
+    ]) as [unknown[], unknown[], unknown[]];
+    const pick = (kind: string, entries: unknown[]): Record<string, unknown>[] => entries.map((value) => {
+      const entry = value as Record<string, unknown>;
+      const user = entry.user as Record<string, unknown> | undefined;
+      return {
+        kind,
+        id: entry.id,
+        body: typeof entry.body === "string" ? entry.body : "",
+        state: entry.state,
+        path: entry.path,
+        line: entry.line,
+        author: user?.login,
+        createdAt: entry.created_at,
+        updatedAt: entry.updated_at,
+      };
+    });
+    return Object.freeze([
+      ...pick("review", reviews),
+      ...pick("review_comment", reviewComments),
+      ...pick("issue_comment", issueComments),
+    ]);
+  }
+
+  async mergePlanning(input: {
+    repository: string;
+    pullRequestNumber: number;
+    pullRequestDatabaseId: string;
+    baseBranch: "main";
+    headBranch: string;
+    expectedHeadSha: string;
+  }): Promise<GitHubPlanningMergeReceipt> {
+    const token = await this.tokens.token();
+    const before = this.parsePull(await this.json(
+      token,
+      `/repos/${input.repository}/pulls/${input.pullRequestNumber}`,
+    ));
+    this.assertPlanningPullIdentity(before, input);
+    if (before.merged) {
+      if (before.mergeCommitSha === null) throw new Error("GitHub merged pull request has no merge commit");
+      return {
+        pullRequestDatabaseId: before.databaseId,
+        pullRequestNumber: before.number,
+        mergeCommitSha: before.mergeCommitSha,
+        reconciled: true,
+      };
+    }
+    if (before.state !== "open") throw new Error("GitHub planning pull request is closed without merge");
+    let response: { merged?: boolean; sha?: string } | null = null;
+    try {
+      response = await this.json(token, `/repos/${input.repository}/pulls/${input.pullRequestNumber}/merge`, {
+        method: "PUT",
+        body: { sha: input.expectedHeadSha },
+      }) as { merged?: boolean; sha?: string };
+    } catch {
+      // Read-back below distinguishes a committed merge from a rejected request.
+    }
+    const after = this.parsePull(await this.json(
+      token,
+      `/repos/${input.repository}/pulls/${input.pullRequestNumber}`,
+    ));
+    this.assertPlanningPullIdentity(after, input);
+    if (!after.merged || after.mergeCommitSha === null) {
+      throw new Error(response?.merged === false
+        ? "GitHub planning merge was rejected"
+        : "GitHub planning merge response is ambiguous");
+    }
+    if (typeof response?.sha === "string" && response.sha !== after.mergeCommitSha) {
+      throw new Error("GitHub planning merge SHA mismatch");
+    }
+    return {
+      pullRequestDatabaseId: after.databaseId,
+      pullRequestNumber: after.number,
+      mergeCommitSha: after.mergeCommitSha,
+      reconciled: response?.merged !== true,
+    };
+  }
+
+  async readPlanningPullRequest(
+    repository: string,
+    pullRequestNumber: number,
+  ): Promise<GitHubPlanningPullRequest> {
+    const token = await this.tokens.token();
+    return this.parsePull(await this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}`));
+  }
+
+  async readFileAtRef(repository: string, path: string, ref: string): Promise<string> {
+    const token = await this.tokens.token();
+    const file = await this.readContent(token, repository, ref, path, false);
+    if (file === null) throw new Error("GitHub planning file is missing");
+    return file.content;
+  }
+
+  async readRef(repository: string, branch: string): Promise<string> {
+    const value = await this.ref(await this.tokens.token(), repository, branch);
+    if (value === null) throw new Error("GitHub ref is missing");
+    return value;
+  }
+
+  async commitIsOnBranch(repository: string, commitSha: string, branch: string): Promise<boolean> {
+    const token = await this.tokens.token();
+    const headSha = await this.ref(token, repository, branch);
+    if (headSha === null) return false;
+    if (headSha === commitSha) return true;
+    const comparison = await this.json(
+      token,
+      `/repos/${repository}/compare/${encodeURIComponent(commitSha)}...${encodeURIComponent(headSha)}`,
+    ) as { status?: unknown };
+    return comparison.status === "ahead" || comparison.status === "identical";
+  }
+
+  private async ref(
+    token: string,
+    repository: string,
+    branch: string,
+    allowNotFound = false,
+  ): Promise<string | null> {
+    const value = await this.json(
+      token,
+      `/repos/${repository}/git/ref/heads/${encodeURIComponent(branch)}`,
+      undefined,
+      allowNotFound,
+    ) as { object?: { sha?: string } } | null;
+    if (value === null) return null;
+    const sha = value.object?.sha;
+    if (typeof sha !== "string") throw new Error("GitHub ref response is invalid");
+    return sha;
+  }
+
+  private encodedPath(path: string): string {
+    return path.split("/").map(encodeURIComponent).join("/");
+  }
+
+  private async readContent(
+    token: string,
+    repository: string,
+    ref: string,
+    path: string,
+    allowNotFound: boolean,
+  ): Promise<{ sha: string; content: string } | null> {
+    const value = await this.json(
+      token,
+      `/repos/${repository}/contents/${this.encodedPath(path)}?ref=${encodeURIComponent(ref)}`,
+      undefined,
+      allowNotFound,
+    ) as { sha?: string; content?: string } | null;
+    if (value === null) return null;
+    if (typeof value.sha !== "string" || typeof value.content !== "string") {
+      throw new Error("GitHub content response is invalid");
+    }
+    return {
+      sha: value.sha,
+      content: new TextDecoder().decode(
+        Uint8Array.from(atob(value.content.replace(/\s/g, "")), (character) => character.charCodeAt(0)),
+      ),
+    };
+  }
+
+  private async writeContent(
+    token: string,
+    repository: string,
+    branch: string,
+    path: string,
+    content: string,
+    operationId: string,
+    currentSha?: string,
+  ): Promise<void> {
+    const contentPath = `/repos/${repository}/contents/${this.encodedPath(path)}`;
+    try {
+      await this.json(token, contentPath, {
+        method: "PUT",
+        body: {
+          message: `DEOS planning manifest ${operationId}`,
+          content: base64(content),
+          branch,
+          ...(currentSha === undefined ? {} : { sha: currentSha }),
+        },
+      });
+    } catch {
+      const after = await this.readContent(token, repository, branch, path, true);
+      if (after?.content !== content) throw new Error("GitHub planning file write is ambiguous");
+    }
+  }
+
+  private parsePull(value: unknown): GitHubPlanningPullRequest {
+    const pull = value as {
+      id?: unknown;
+      number?: unknown;
+      html_url?: unknown;
+      state?: unknown;
+      draft?: unknown;
+      merged?: unknown;
+      merge_commit_sha?: unknown;
+      head?: { ref?: unknown; sha?: unknown };
+      base?: { ref?: unknown };
+    };
+    if (
+      typeof pull.id !== "number" ||
+      typeof pull.number !== "number" ||
+      typeof pull.html_url !== "string" ||
+      typeof pull.state !== "string" ||
+      typeof pull.draft !== "boolean" ||
+      typeof pull.merged !== "boolean" ||
+      typeof pull.head?.ref !== "string" ||
+      typeof pull.head.sha !== "string" ||
+      typeof pull.base?.ref !== "string"
+    ) throw new Error("GitHub planning pull-request response is invalid");
+    return {
+      databaseId: String(pull.id),
+      number: pull.number,
+      url: pull.html_url,
+      state: pull.state,
+      draft: pull.draft,
+      merged: pull.merged,
+      mergeCommitSha: typeof pull.merge_commit_sha === "string" ? pull.merge_commit_sha : null,
+      headBranch: pull.head.ref,
+      headSha: pull.head.sha,
+      baseBranch: pull.base.ref,
+    };
+  }
+
+  private assertPlanningPullIdentity(
+    pull: GitHubPlanningPullRequest,
+    expected: {
+      pullRequestNumber: number;
+      pullRequestDatabaseId: string;
+      baseBranch: "main";
+      headBranch: string;
+      expectedHeadSha: string;
+    },
+  ): void {
+    if (
+      pull.number !== expected.pullRequestNumber ||
+      pull.databaseId !== expected.pullRequestDatabaseId ||
+      pull.baseBranch !== expected.baseBranch ||
+      pull.headBranch !== expected.headBranch ||
+      pull.headSha !== expected.expectedHeadSha
+    ) throw new Error("GitHub planning pull-request identity mismatch");
+  }
+
   private async json(
     token: string,
     path: string,
-    options?: { method: "PATCH" | "POST" | "PUT"; body: Record<string, unknown> },
+    options?: { method: "DELETE" | "PATCH" | "POST" | "PUT"; body: Record<string, unknown> },
     allowNotFound = false,
   ): Promise<unknown> {
     const response = await this.request(`${this.apiUrl}${path}`, {

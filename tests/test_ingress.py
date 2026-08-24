@@ -37,6 +37,12 @@ def test_relevant_delivery_is_translated_recorded_and_enqueued() -> None:
     assert queue.events[0].transition == "Started"
     assert queue.events[0].actor_type == "user"
     assert queue.events[0].previous_state_id == "previous-state-id"
+    assert queue.events[0].label_selection_evidence.status == "available"
+    assert [label.name for label in queue.events[0].label_selection_evidence.labels] == [
+        "simple-workflow",
+        "test",
+    ]
+    assert len(queue.events[0].label_selection_evidence.digest()) == 64
     assert len(state.deliveries) == 1
 
 
@@ -69,9 +75,7 @@ def test_duplicate_delivery_is_acknowledged_without_second_enqueue() -> None:
 def test_invalid_signature_and_stale_timestamp_are_rejected() -> None:
     ingress, queue, state = make_ingress()
     body = make_body(project_id="project-1", state="Started")
-    invalid = ingress.handle(
-        body, {"Linear-Timestamp": "1786442400", "Linear-Signature": "bad"}
-    )
+    invalid = ingress.handle(body, {"Linear-Timestamp": "1786442400", "Linear-Signature": "bad"})
     stale = ingress.handle(body, headers(body, timestamp=NOW - timedelta(minutes=6)))
 
     assert invalid.status_code == 400
@@ -100,21 +104,58 @@ def test_non_state_issue_update_is_recorded_without_enqueue() -> None:
     assert queue.events == []
 
 
-def make_body(project_id: str, state: str, *, state_changed: bool = True) -> bytes:
+def test_missing_or_inconsistent_provider_labels_become_unavailable() -> None:
+    ingress, queue, _ = make_ingress()
+    missing = make_body(project_id="project-1", state="Started", include_labels=False)
+    result = ingress.handle(missing, headers(missing))
+
+    assert result.classification == DeliveryClassification.RELEVANT
+    assert queue.events[0].label_selection_evidence.status == "unavailable"
+
+    ingress, queue, _ = make_ingress()
+    inconsistent = make_body(
+        project_id="project-1",
+        state="Started",
+        labels=[{"id": "label-1", "name": "simple-workflow"}],
+        label_ids=["another-label"],
+    )
+    result = ingress.handle(inconsistent, headers(inconsistent))
+
+    assert result.classification == DeliveryClassification.RELEVANT
+    assert queue.events[0].label_selection_evidence.status == "unavailable"
+
+
+def make_body(
+    project_id: str,
+    state: str,
+    *,
+    state_changed: bool = True,
+    include_labels: bool = True,
+    labels: list[dict[str, str]] | None = None,
+    label_ids: list[str] | None = None,
+) -> bytes:
+    data: dict[str, object] = {
+        "id": "issue-1",
+        "identifier": "SAC-1",
+        "title": "Test issue",
+        "url": "https://linear.app/sachinkundu/issue/SAC-1/test-issue",
+        "updatedAt": "2026-08-11T10:00:00Z",
+        "project": {"id": project_id},
+        "state": {"id": "current-state-id", "name": state},
+    }
+    if include_labels:
+        labels = labels or [
+            {"id": "label-2", "name": "test"},
+            {"id": "label-1", "name": "simple-workflow"},
+        ]
+        data["labels"] = labels
+        data["labelIds"] = label_ids if label_ids is not None else [label["id"] for label in labels]
     return json.dumps(
         {
             "webhookId": "webhook-1",
             "action": "update",
             "type": "Issue",
-            "data": {
-                "id": "issue-1",
-                "identifier": "SAC-1",
-                "title": "Test issue",
-                "url": "https://linear.app/sachinkundu/issue/SAC-1/test-issue",
-                "updatedAt": "2026-08-11T10:00:00Z",
-                "project": {"id": project_id},
-                "state": {"id": "current-state-id", "name": state},
-            },
+            "data": data,
             "updatedFrom": {"stateId": "previous-state-id"} if state_changed else {"title": "old"},
             "actor": {"id": "actor-1", "type": "user"},
         },

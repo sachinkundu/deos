@@ -8,6 +8,14 @@ export interface LinearNoteReceipt {
   reconciled: boolean;
 }
 
+export interface LinearPublicationContext {
+  issueId: string;
+  identifier: string;
+  title: string;
+  description: string | null;
+  url: string;
+}
+
 interface LinearCapabilityDependencies {
   fetch: typeof fetch;
 }
@@ -51,6 +59,39 @@ export class LinearCapabilityAdapter {
       if (reconciled === null) throw new Error("Linear comment creation is ambiguous");
       return { commentId: reconciled, reconciled: true };
     }
+  }
+
+  async readPublicationContext(issueId: string): Promise<LinearPublicationContext> {
+    const payload = await this.graphql(
+      `query DeosPublicationIssue($id: String!) {
+         issue(id: $id) { id identifier title description url }
+       }`,
+      { id: issueId },
+    ) as {
+      data?: {
+        issue?: {
+          id?: string;
+          identifier?: string;
+          title?: string;
+          description?: string | null;
+          url?: string;
+        } | null;
+      };
+    };
+    const issue = payload.data?.issue;
+    if (
+      issue === null || issue === undefined || issue.id !== issueId ||
+      typeof issue.identifier !== "string" || typeof issue.title !== "string" ||
+      !(issue.description === null || typeof issue.description === "string") ||
+      typeof issue.url !== "string"
+    ) throw new Error("Linear publication context response is invalid");
+    return {
+      issueId,
+      identifier: issue.identifier,
+      title: issue.title,
+      description: issue.description,
+      url: issue.url,
+    };
   }
 
   private async findComment(issueId: string, marker: string): Promise<string | null> {

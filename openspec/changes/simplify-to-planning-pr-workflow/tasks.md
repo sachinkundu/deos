@@ -1,0 +1,51 @@
+## 1. Provider contract and durable evidence
+
+- [x] 1.1 Record the current Linear webhook label shape and GitHub publication, merge, and read-back contracts used by the implementation, distinguishing deterministic adapter coverage from provider-originated proof.
+- [x] 1.2 Extend the authenticated Linear ACL with bounded `available` or `unavailable` event-time label evidence, a deterministic evidence digest, and focused ingress tests for valid, missing, and malformed label payloads.
+- [x] 1.3 Persist the label evidence and digest with the delivery, carry both through Queue, and reject dispatch when Queue evidence does not match the delivery record.
+
+## 2. Immutable definition selection
+
+- [x] 2.1 Add the D1 selector, frozen run-selection, planning work-product, and protected prompt-evidence schema without rewriting historical definitions or runs.
+- [x] 2.2 Register the simple definition and repository-scoped `simple-workflow` selector disabled by default while preserving the existing full workflow as the default.
+- [x] 2.3 Select `simple` only for an enabled selector and exact authenticated event-time label evidence; record `label_absent`, `label_evidence_unavailable`, or `selector_disabled` for every safe fallback.
+- [x] 2.4 Freeze the selected definition, source delivery, evidence digest, label, and reason before Workflow creation, and reuse that choice across Queue retries.
+
+## 3. Simple workflow and human decisions
+
+- [x] 3.1 Load the full and simple YAML definitions into an immutable registry and keep the full definition unchanged as the default.
+- [x] 3.2 Add the simple planning graph with one agent job, a three-way human gate, trusted merge and verification actions, and explicit terminal failure or cancellation outcomes.
+- [x] 3.3 Parse optional per-gate decision maps and route exact human `In Progress`, `Merging`, and `Canceled` transitions without changing legacy approved/rejected gates.
+- [x] 3.4 Restore `Human Review` and select no edge for bot, app, unknown-actor, unauthorized, or unmapped departures.
+
+## 4. Narrow planning agent contract
+
+- [x] 4.1 Add the exact static planning prompt and render the trusted run, attempt, change, branch, pull-request, prior-result, patch, and bounded-feedback context into the protected final prompt.
+- [x] 4.2 Persist and read back the exact rendered prompt in protected R2 before Sandbox execution, storing its object key and SHA-256 digest on the attempt.
+- [x] 4.3 Grant only `github.publish_planning_work_product` and reject Linear transitions, review resolution, merge, generic publication, foreign repositories, branches, or OpenSpec changes.
+- [x] 4.4 Limit the complete planning manifest to the named change's `.openspec.yaml`, `proposal.md`, and one or more `specs/**/spec.md` files; reject design, tasks, main specs, archive files, code, links, unsafe paths, or partial manifests.
+- [x] 4.5 Enforce strict OpenSpec validation, whole-file readability limits, the fixed review pull-request structure, and exact saved or reconciled GitHub receipts before entering `Human Review`.
+
+## 5. Same pull request revisions
+
+- [x] 5.1 Allocate one deterministic `deos/planning/<run-digest>` branch and work-product record per run with separate GitHub database id and pull-request number fields.
+- [x] 5.2 Reconstruct each fresh revision attempt from the durable patch, prior result, same branch and pull request, and bounded human or GitHub feedback.
+- [x] 5.3 Replace the complete allowed manifest on the expected remote head, safely remove only stale files inside the named change, and reconcile ambiguous provider responses without opening a second pull request.
+
+## 6. Trusted merge and verification
+
+- [x] 6.1 Merge only the recorded planning pull request after the exact human `Merging` decision, checking repository, base `main`, branch, expected head, file digest, and provider policy.
+- [x] 6.2 Reconcile ambiguous merge responses by reading the same pull request and fail safely for changed identity, closed-unmerged, conflict, or required-policy rejection.
+- [x] 6.3 Independently verify the merge commit on `origin/main`, re-read every approved planning file, confirm no forbidden file was added, and require a matching manifest digest before terminal success.
+
+## 7. Deterministic validation
+
+- [x] 7.1 Cover available, absent, unavailable, tampered, and disabled selector evidence; Queue replay; allocation races; and preservation of historical definitions.
+- [x] 7.2 Cover the exact first prompt, protected prompt evidence, capability scope, allowed files, readability bounds, same-PR revisions, ambiguous responses, merge, and final read-back.
+- [x] 7.3 Run named strict OpenSpec validation, TypeScript tests and typecheck, Python tests, Ruff, binding generation checks, migration checks, Worker dry-runs, and `git diff --check`.
+
+## 8. Deploy inactive for shared testing
+
+- [ ] 8.1 Apply the additive remote D1 migration and deploy the implementation branch with the simple selector still disabled.
+- [ ] 8.2 Read back the registered full and simple definitions, disabled selector, migration constraints, unchanged default policy, and absence of deployment-triggered Sandbox or provider operations.
+- [ ] 8.3 Provide the deployed endpoint, exact first prompt, prompt digest, definition digest, and a controlled provider-originated test sequence; stop before enabling the selector or moving a test issue to `Todo` so the live canary can be run with the user.

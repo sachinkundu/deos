@@ -9,12 +9,14 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from .ports import (
     ApplicationEvent,
     Delivery,
     DeliveryClassification,
+    LabelSelectionEvidence,
+    LinearLabelIdentity,
     QueuePort,
     StatePort,
 )
@@ -108,6 +110,7 @@ class LinearWebhookACL:
         updated_from = payload.get("updatedFrom")
         previous_state_id, previous_state_name = _previous_state(updated_from)
         state_id = _optional_string(state, "id")
+        label_selection_evidence = _label_selection_evidence(data)
         event = ApplicationEvent(
             event_id=delivery_id,
             source_delivery_id=delivery_id,
@@ -124,13 +127,13 @@ class LinearWebhookACL:
             issue_key=issue_key,
             issue_title=issue_title.strip(),
             issue_url=issue_url,
+            label_selection_evidence=label_selection_evidence,
         )
         state_changed = isinstance(updated_from, dict) and (
             "stateId" in updated_from or "state" in updated_from
         )
-        relevant = (
-            project_id in self._config.relevant_project_ids
-            and (state_changed or transition in self._config.relevant_transitions)
+        relevant = project_id in self._config.relevant_project_ids and (
+            state_changed or transition in self._config.relevant_transitions
         )
         return event, relevant
 
@@ -161,9 +164,7 @@ class LinearIngress:
         classification = (
             DeliveryClassification.RELEVANT if relevant else DeliveryClassification.IRRELEVANT
         )
-        delivery = Delivery.from_body(
-            event.source_delivery_id, body, received_at, classification
-        )
+        delivery = Delivery.from_body(event.source_delivery_id, body, received_at, classification)
         if not self._state.record_delivery(delivery):
             return IngressResult(status_code=200, classification=DeliveryClassification.DUPLICATE)
         if not relevant:
@@ -218,6 +219,44 @@ def _previous_state(value: Any) -> tuple[str | None, str | None]:
     if isinstance(previous, dict):
         return state_id or _optional_string(previous, "id"), _optional_string(previous, "name")
     return state_id, None
+
+
+def _label_selection_evidence(data: dict[str, Any]) -> LabelSelectionEvidence:
+    raw_labels: object = data.get("labels")
+    raw_label_ids: object = data.get("labelIds")
+    if not isinstance(raw_labels, list) or not isinstance(raw_label_ids, list):
+        return LabelSelectionEvidence("unavailable")
+    labels = cast(list[object], raw_labels)
+    label_ids = cast(list[object], raw_label_ids)
+    normalized_label_ids: list[str] = []
+    for label_id in label_ids:
+        if not isinstance(label_id, str) or not label_id:
+            return LabelSelectionEvidence("unavailable")
+        normalized_label_ids.append(label_id)
+
+    identities: list[LinearLabelIdentity] = []
+    for raw_label in labels:
+        if not isinstance(raw_label, dict):
+            return LabelSelectionEvidence("unavailable")
+        label = cast(dict[str, object], raw_label)
+        label_id = label.get("id")
+        name = label.get("name")
+        if (
+            not isinstance(label_id, str)
+            or not label_id
+            or not isinstance(name, str)
+            or not name.strip()
+            or len(name) > 255
+        ):
+            return LabelSelectionEvidence("unavailable")
+        identities.append(LinearLabelIdentity(id=label_id, name=name.strip()))
+
+    if len({identity.id for identity in identities}) != len(identities):
+        return LabelSelectionEvidence("unavailable")
+    if sorted(normalized_label_ids) != sorted(identity.id for identity in identities):
+        return LabelSelectionEvidence("unavailable")
+    identities.sort(key=lambda identity: identity.id)
+    return LabelSelectionEvidence("available", tuple(identities))
 
 
 def _parse_datetime(value: str) -> datetime:

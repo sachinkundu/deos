@@ -7,6 +7,12 @@ import type {
 import type { LinearCapabilityAdapter } from "./linear-capability.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
+import type { D1PlanningStore } from "./planning-store.ts";
+import {
+  validatePlanningPublication,
+  type PlanningPublicationRequest,
+  type ValidatedPlanningPublication,
+} from "./planning-publication.ts";
 
 interface GitHubCapabilityRequest extends GitHubWorkProductRequest {
   version: 1;
@@ -26,6 +32,7 @@ export interface CapabilityRouterDependencies {
   store: CapabilityStore;
   github: GitHubCapabilityAdapter;
   linear: LinearCapabilityAdapter;
+  planningStore?: Pick<D1PlanningStore, "findRunWorkProduct" | "recordPublication">;
   signingSecret: string;
   now?: () => Date;
   lifecycle?: LifecycleWriter;
@@ -101,6 +108,47 @@ const parseGitHubRequest = (value: unknown): GitHubCapabilityRequest | null => {
   };
 };
 
+const parsePlanningRequest = (value: unknown): PlanningPublicationRequest | null => {
+  const request = asRecord(value);
+  if (
+    request === null ||
+    !exactKeys(request, [
+      "version", "action", "operationKey", "repository", "baseBranch", "change",
+      "title", "body", "files",
+    ]) ||
+    request.version !== 1 ||
+    request.action !== "publish_planning_work_product" ||
+    !operationKey(request.operationKey) ||
+    !nonEmpty(request.repository, 200) ||
+    request.baseBranch !== "main" ||
+    !nonEmpty(request.change, 100) ||
+    !nonEmpty(request.title, 256) ||
+    typeof request.body !== "string" || request.body.length > 20_000 ||
+    !Array.isArray(request.files) || request.files.length < 1 || request.files.length > 50
+  ) return null;
+  const files: Array<{ path: string; content: string }> = [];
+  for (const value of request.files) {
+    const file = asRecord(value);
+    if (
+      file === null || !exactKeys(file, ["path", "content"]) ||
+      !nonEmpty(file.path, 500) || typeof file.content !== "string" ||
+      file.content.length > 1_000_000
+    ) return null;
+    files.push({ path: file.path, content: file.content });
+  }
+  return {
+    version: 1,
+    action: "publish_planning_work_product",
+    operationKey: request.operationKey,
+    repository: request.repository,
+    baseBranch: "main",
+    change: request.change,
+    title: request.title,
+    body: request.body,
+    files,
+  };
+};
+
 const parseLinearRequest = (value: unknown): LinearCapabilityRequest | null => {
   const request = asRecord(value);
   if (
@@ -166,9 +214,43 @@ export class CapabilityRouter {
     }
     const path = new URL(request.url).pathname;
     if (path.endsWith("/github")) {
+      const planningInput = parsePlanningRequest(untrusted);
+      if (planningInput !== null) {
+        if (
+          !claims.actions.includes("github.publish_planning_work_product") ||
+          planningInput.repository !== claims.repository ||
+          planningInput.change !== claims.changeId ||
+          planningInput.operationKey !== `planning-publish-${claims.attemptId}` ||
+          claims.planningBranch === null
+        ) return this.denied(claims.runId, claims.attemptId, "github", untrusted);
+        let issue;
+        try {
+          issue = await this.dependencies.linear.readPublicationContext(claims.issueId);
+        } catch {
+          return json(502, { error: "planning_context_unavailable" });
+        }
+        let validated: ValidatedPlanningPublication;
+        try {
+          validated = await validatePlanningPublication(planningInput, {
+            issueIdentifier: issue.identifier,
+            issueUrl: issue.url,
+            issueTitle: issue.title,
+            issueDescription: issue.description,
+          });
+        } catch {
+          return this.denied(claims.runId, claims.attemptId, "github", untrusted);
+        }
+        return this.planningGithub(
+          validated,
+          claims.runId,
+          claims.attemptId,
+          claims.planningBranch,
+        );
+      }
       const input = parseGitHubRequest(untrusted);
       if (
         input === null ||
+        !claims.actions.includes("github.publish_work_product") ||
         input.repository !== claims.repository ||
         input.branch !== `deos/${claims.attemptId}`
       ) return this.denied(claims.runId, claims.attemptId, "github", untrusted);
@@ -176,12 +258,121 @@ export class CapabilityRouter {
     }
     if (path.endsWith("/linear")) {
       const input = parseLinearRequest(untrusted);
-      if (input === null || input.issueId !== claims.issueId) {
+      if (
+        input === null ||
+        !claims.actions.includes("linear.upsert_working_note") ||
+        input.action !== "upsert_working_note" ||
+        input.issueId !== claims.issueId
+      ) {
         return this.denied(claims.runId, claims.attemptId, "linear", untrusted);
       }
       return this.linear(input, claims.runId, claims.attemptId);
     }
     return json(404, { error: "unknown_capability" });
+  }
+
+  private async planningGithub(
+    input: ValidatedPlanningPublication,
+    runId: string,
+    attemptId: string,
+    planningBranch: string,
+  ): Promise<Response> {
+    const planningStore = this.dependencies.planningStore;
+    if (planningStore === undefined) return json(503, { error: "planning_store_unavailable" });
+    const operationId = operationIdentity(
+      runId,
+      "capability",
+      `github:${input.action}:${input.operationKey}`,
+      1,
+    );
+    const operation = await this.dependencies.store.begin({
+      operationId,
+      runId,
+      attemptId,
+      capability: "github",
+      action: input.action,
+      sanitizedTarget: `${input.repository}:${planningBranch}`,
+      requestDigest: await digest({ ...input, planningBranch }),
+      now: this.now().toISOString(),
+    });
+    if (!["pending", "succeeded", "reconciled", "manual_reconciliation_required"].includes(operation.operation.state)) {
+      return json(409, this.receipt(operationId, operation.operation.state, operation.operation.provider_resource_id));
+    }
+    try {
+      const recorded = await planningStore.findRunWorkProduct(runId);
+      if (
+        recorded === null || recorded.repository !== input.repository ||
+        recorded.remote_branch !== planningBranch || recorded.base_branch !== "main" ||
+        recorded.change_id !== input.change
+      ) throw new Error("recorded planning work product does not match the capability");
+      const receipt = await this.dependencies.github.publishPlanning({
+        repository: input.repository,
+        branch: planningBranch,
+        baseBranch: "main",
+        change: input.change,
+        title: input.title,
+        body: input.body,
+        files: input.files,
+        ...(recorded.pull_request_database_id === null ? {} : {
+          expectedPullRequestDatabaseId: recorded.pull_request_database_id,
+          expectedPullRequestNumber: recorded.pull_request_number ?? undefined,
+        }),
+      }, operationId);
+      const state = receipt.reconciled || operation.operation.state !== "pending"
+        ? "reconciled"
+        : "succeeded";
+      if (operation.operation.state !== state) {
+        const updated = await this.dependencies.store.finish({
+          operationId,
+          expected: operation.operation.state,
+          state,
+          providerResourceId: receipt.pullRequestDatabaseId,
+          safeErrorCategory: null,
+          now: this.now().toISOString(),
+        });
+        if (!updated) throw new Error("planning provider receipt compare-and-set failed");
+      }
+      await planningStore.recordPublication({
+        runId,
+        repository: input.repository,
+        remoteBranch: planningBranch,
+        changeId: input.change,
+        pullRequestDatabaseId: receipt.pullRequestDatabaseId,
+        pullRequestNumber: receipt.pullRequestNumber,
+        pullRequestUrl: receipt.pullRequestUrl,
+        headSha: receipt.headSha,
+        planningManifestDigest: input.manifestDigest,
+        planningManifestJson: input.manifestJson,
+        operationId,
+        now: this.now().toISOString(),
+      });
+      this.emitProvider(runId, operationId, state);
+      return json(200, {
+        ...this.receipt(
+          operationId,
+          state,
+          receipt.pullRequestDatabaseId,
+          receipt.pullRequestUrl,
+        ),
+        pullRequestNumber: receipt.pullRequestNumber,
+        branch: planningBranch,
+        headSha: receipt.headSha,
+        manifestDigest: input.manifestDigest,
+      });
+    } catch {
+      if (operation.operation.state === "pending") {
+        await this.dependencies.store.finish({
+          operationId,
+          expected: "pending",
+          state: "manual_reconciliation_required",
+          providerResourceId: null,
+          safeErrorCategory: "github_response_ambiguous",
+          now: this.now().toISOString(),
+        });
+      }
+      this.emitProvider(runId, operationId, "failed", "github_response_ambiguous");
+      return json(502, this.receipt(operationId, "manual_reconciliation_required", null));
+    }
   }
 
   private async github(

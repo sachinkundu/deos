@@ -24,6 +24,9 @@ const claims = {
   runId: "workflow:project-1:issue-1:run:1",
   repository: "sachinkundu/deos",
   issueId: "issue-1",
+  actions: ["github.publish_work_product", "linear.upsert_working_note"] as const,
+  changeId: null,
+  planningBranch: null,
   expiresAt: Math.floor(NOW.getTime() / 1000) + 3600,
 };
 
@@ -203,19 +206,27 @@ test("repository, branch, path, and Linear transition denials occur before provi
   assert.equal([...store.operations.values()][0].state, "denied");
 });
 
-test("Linear capability permits notes and artifact references but only on the scoped issue", async () => {
-  for (const action of ["upsert_working_note", "attach_artifact_reference"] as const) {
-    const { invoke, linear } = await setup();
-    const response = await invoke("linear", {
-      version: 1,
-      action,
-      operationKey: action,
-      issueId: claims.issueId,
-      body: action === "upsert_working_note" ? "Progress note" : "r2://sanitized/reference",
-    });
-    assert.equal(response.status, 200);
-    assert.equal(linear.calls, 1);
-  }
+test("Linear capability permits only the declared note action on the scoped issue", async () => {
+  const allowed = await setup();
+  const allowedResponse = await allowed.invoke("linear", {
+    version: 1,
+    action: "upsert_working_note",
+    operationKey: "upsert-working-note",
+    issueId: claims.issueId,
+    body: "Progress note",
+  });
+  assert.equal(allowedResponse.status, 200);
+  assert.equal(allowed.linear.calls, 1);
+  const undeclared = await setup();
+  const undeclaredResponse = await undeclared.invoke("linear", {
+    version: 1,
+    action: "attach_artifact_reference",
+    operationKey: "attach-artifact-reference",
+    issueId: claims.issueId,
+    body: "r2://sanitized/reference",
+  });
+  assert.equal(undeclaredResponse.status, 403);
+  assert.equal(undeclared.linear.calls, 0);
   const { invoke, linear } = await setup();
   assert.equal((await invoke("linear", {
     version: 1,

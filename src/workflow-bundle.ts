@@ -1,4 +1,5 @@
 import workflowSource from "../config/workflow.deos.yaml";
+import simpleWorkflowSource from "../config/workflow.simple.yaml";
 import requirementsPrompt from "../config/prompts/requirements.md";
 import requirementsReviewPrompt from "../config/prompts/requirements-review.md";
 import bddReviewPrompt from "../config/prompts/bdd-review.md";
@@ -8,9 +9,10 @@ import implementationPrompt from "../config/prompts/implementation.md";
 import codeReviewPrompt from "../config/prompts/code-review.md";
 import evidenceVerificationPrompt from "../config/prompts/evidence-verification.md";
 import openSpecPrompt from "../config/prompts/openspec.md";
+import openSpecPlanningPrompt from "../config/prompts/openspec-planning.md";
 import agentResultSchema from "../config/schemas/agent-result-v1.json";
 import reviewResultSchema from "../config/schemas/review-result-v1.json";
-import { loadWorkflowDefinition } from "./workflow-definition.ts";
+import { loadWorkflowDefinition, type LoadedWorkflowDefinition } from "./workflow-definition.ts";
 
 const prompts: Readonly<Record<string, string>> = Object.freeze({
   "prompts/requirements.md": requirementsPrompt,
@@ -22,6 +24,7 @@ const prompts: Readonly<Record<string, string>> = Object.freeze({
   "prompts/code-review.md": codeReviewPrompt,
   "prompts/evidence-verification.md": evidenceVerificationPrompt,
   "prompts/openspec.md": openSpecPrompt,
+  "prompts/openspec-planning.md": openSpecPlanningPrompt,
 });
 
 const schemas: Readonly<Record<string, string>> = Object.freeze({
@@ -29,5 +32,28 @@ const schemas: Readonly<Record<string, string>> = Object.freeze({
   "schemas/review-result-v1.json": JSON.stringify(reviewResultSchema),
 });
 
-export const loadBundledWorkflowDefinition = () =>
-  loadWorkflowDefinition(workflowSource, { prompts, schemas });
+export const DEFAULT_WORKFLOW_DEFINITION_ID = "openspec-delivery";
+
+const workflowSources = Object.freeze([workflowSource, simpleWorkflowSource]);
+
+export const loadBundledWorkflowDefinitionRegistry = async (): Promise<
+  Readonly<Record<string, LoadedWorkflowDefinition>>
+> => {
+  const definitions = await Promise.all(
+    workflowSources.map((source) => loadWorkflowDefinition(source, { prompts, schemas })),
+  );
+  const registry: Record<string, LoadedWorkflowDefinition> = {};
+  for (const definition of definitions) {
+    if (registry[definition.name] !== undefined) {
+      throw new Error(`duplicate bundled workflow definition ${definition.name}`);
+    }
+    registry[definition.name] = definition;
+  }
+  if (registry[DEFAULT_WORKFLOW_DEFINITION_ID] === undefined || registry.simple === undefined) {
+    throw new Error("bundled workflow registry is incomplete");
+  }
+  return Object.freeze(registry);
+};
+
+export const loadBundledWorkflowDefinition = async () =>
+  (await loadBundledWorkflowDefinitionRegistry())[DEFAULT_WORKFLOW_DEFINITION_ID];

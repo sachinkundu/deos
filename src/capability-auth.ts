@@ -6,8 +6,22 @@ export interface CapabilityClaims {
   runId: string;
   repository: string;
   issueId: string;
+  actions: readonly CapabilityAction[];
+  changeId: string | null;
+  planningBranch: string | null;
   expiresAt: number;
 }
+
+export type CapabilityAction =
+  | "github.publish_work_product"
+  | "github.publish_planning_work_product"
+  | "linear.upsert_working_note";
+
+const CAPABILITY_ACTIONS = new Set<CapabilityAction>([
+  "github.publish_work_product",
+  "github.publish_planning_work_product",
+  "linear.upsert_working_note",
+]);
 
 const base64UrlEncode = (bytes: Uint8Array): string => {
   let binary = "";
@@ -73,8 +87,21 @@ export const verifyCapabilityToken = async (
     !claims.runId ||
     !claims.repository ||
     !claims.issueId ||
+    !Array.isArray(claims.actions) ||
+    claims.actions.length === 0 ||
+    claims.actions.some((action) => !CAPABILITY_ACTIONS.has(action)) ||
+    new Set(claims.actions).size !== claims.actions.length ||
+    !(claims.changeId === null || typeof claims.changeId === "string") ||
+    !(claims.planningBranch === null || typeof claims.planningBranch === "string") ||
     !Number.isSafeInteger(claims.expiresAt) ||
     claims.expiresAt <= Math.floor(nowMs / 1000)
   ) throw new Error("capability token claims are invalid or expired");
+  const planning = claims.actions.includes("github.publish_planning_work_product");
+  if (
+    planning !== (claims.changeId !== null && claims.planningBranch !== null) ||
+    (planning && claims.actions.length !== 1) ||
+    (claims.changeId !== null && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(claims.changeId)) ||
+    (claims.planningBranch !== null && !/^deos\/planning\/[a-f0-9]{24}$/.test(claims.planningBranch))
+  ) throw new Error("capability token planning claims are invalid");
   return claims;
 };

@@ -15,6 +15,10 @@ import {
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import { type LifecycleWriter, writeLifecycleObservation } from "./lifecycle-telemetry.ts";
 
+export type LabelSelectionEvidence =
+  | { status: "available"; labels: Array<{ id: string; name: string }> }
+  | { status: "unavailable" };
+
 export interface QueueBody {
   event_id: string;
   source_delivery_id: string;
@@ -33,6 +37,8 @@ export interface QueueBody {
   occurred_at: string;
   correlation_id: string;
   payload_digest: string;
+  label_selection_evidence: LabelSelectionEvidence;
+  label_selection_evidence_digest: string;
 }
 
 export interface WorkflowInstanceHandle {
@@ -62,11 +68,60 @@ interface ConsumerDependencies {
   observe: ObservationWriter;
   store: OrchestrationDispatchStore;
   definition: LoadedWorkflowDefinition;
+  definitions: Readonly<Record<string, LoadedWorkflowDefinition>>;
   now: () => Date;
   lifecycle: LifecycleWriter;
 }
 
+type WorkflowRegistrationEnv = Pick<
+  QueueConsumerEnv,
+  | "DB"
+  | "LINEAR_PROJECT_ID"
+  | "LINEAR_START_STATE_NAME"
+  | "LINEAR_HUMAN_APPROVAL_STATE_ID"
+  | "TRIAL_REPOSITORY"
+  | "TRIAL_DISPATCH_ENABLED"
+>;
+
+interface RegistrationDependencies {
+  store: OrchestrationDispatchStore;
+  definitions: Readonly<Record<string, LoadedWorkflowDefinition>>;
+  defaultDefinition: LoadedWorkflowDefinition;
+  now: () => Date;
+}
+
 const SERVICE_NAME = "deos-queue-consumer-ts";
+
+const sha256Hex = async (value: string): Promise<string> => {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+const canonicalLabelEvidence = (value: LabelSelectionEvidence): {
+  json: string;
+  names: readonly string[] | null;
+} => {
+  if (value.status === "unavailable") {
+    if (Object.keys(value).length !== 1) throw new CategorizedWorkflowError("correlation_mismatch");
+    return { json: JSON.stringify({ status: "unavailable" }), names: null };
+  }
+  if (!Array.isArray(value.labels)) throw new CategorizedWorkflowError("correlation_mismatch");
+  const labels = value.labels.map((label) => {
+    if (
+      typeof label !== "object" || label === null ||
+      typeof label.id !== "string" || label.id.length === 0 ||
+      typeof label.name !== "string" || label.name.trim().length === 0 || label.name.length > 255
+    ) throw new CategorizedWorkflowError("correlation_mismatch");
+    return { id: label.id, name: label.name.trim() };
+  }).sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
+  if (new Set(labels.map((label) => label.id)).size !== labels.length) {
+    throw new CategorizedWorkflowError("correlation_mismatch");
+  }
+  return {
+    json: JSON.stringify({ status: "available", labels }),
+    names: labels.map((label) => label.name),
+  };
+};
 
 export class CategorizedWorkflowError extends Error {
   readonly category: ErrorType;
@@ -186,6 +241,42 @@ const routeLaterEvent = async (
   await store.markInboxState(event.source_delivery_id, "pending", "sent", now);
 };
 
+export const registerBundledWorkflowDefinitions = async (
+  env: WorkflowRegistrationEnv,
+  dependencies: Partial<RegistrationDependencies> = {},
+): Promise<Readonly<Record<string, LoadedWorkflowDefinition>>> => {
+  const store = dependencies.store ?? new D1OrchestrationStore(env.DB);
+  const bundled = dependencies.definitions ??
+    await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry();
+  const definition = dependencies.defaultDefinition ?? bundled["openspec-delivery"];
+  if (definition === undefined) throw new Error("default workflow definition is unavailable");
+  const now = (dependencies.now ?? (() => new Date()))().toISOString();
+  await store.registerDefinitionAndPolicy({
+    definition,
+    projectId: env.LINEAR_PROJECT_ID,
+    repository: env.TRIAL_REPOSITORY,
+    startStateName: env.LINEAR_START_STATE_NAME,
+    humanGateStateId: env.LINEAR_HUMAN_APPROVAL_STATE_ID,
+    dispatchEnabled: String(env.TRIAL_DISPATCH_ENABLED) === "true",
+    now,
+  });
+  for (const registered of Object.values(bundled)) {
+    if (registered.name === definition.name && registered.version === definition.version) continue;
+    await store.registerDefinition({ definition: registered, projectId: env.LINEAR_PROJECT_ID, now });
+  }
+  const simpleDefinition = bundled.simple;
+  if (simpleDefinition !== undefined) {
+    await store.registerSelector({
+      projectId: env.LINEAR_PROJECT_ID,
+      repository: env.TRIAL_REPOSITORY,
+      labelName: "simple-workflow",
+      definition: simpleDefinition,
+      now,
+    });
+  }
+  return bundled;
+};
+
 export const processQueueMessage = async (
   message: QueueMessageView,
   env: QueueConsumerEnv,
@@ -193,8 +284,14 @@ export const processQueueMessage = async (
 ): Promise<void> => {
   const observe = dependencies.observe ?? writeObservation;
   const store = dependencies.store ?? new D1OrchestrationStore(env.DB);
-  const definition = dependencies.definition ??
-    await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinition();
+  const bundled = dependencies.definitions ?? (
+    dependencies.definition === undefined
+      ? await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry()
+      : Object.freeze({ [dependencies.definition.name]: dependencies.definition })
+  );
+  const definition = dependencies.definition ?? bundled["openspec-delivery"];
+  if (definition === undefined) throw new Error("default workflow definition is unavailable");
+  const simpleDefinition = bundled.simple;
   const now = (dependencies.now ?? (() => new Date()))().toISOString();
   const lifecycle = dependencies.lifecycle ?? writeLifecycleObservation;
   const event = message.body;
@@ -204,14 +301,20 @@ export const processQueueMessage = async (
     if (event.correlation_id !== correlationIdentity(event.project_id, event.issue_id)) {
       throw new CategorizedWorkflowError("correlation_mismatch");
     }
-    await store.registerDefinitionAndPolicy({
-      definition,
-      projectId: env.LINEAR_PROJECT_ID,
-      repository: env.TRIAL_REPOSITORY,
-      startStateName: env.LINEAR_START_STATE_NAME,
-      humanGateStateId: env.LINEAR_HUMAN_APPROVAL_STATE_ID,
-      dispatchEnabled: String(env.TRIAL_DISPATCH_ENABLED) === "true",
-      now,
+    const storedEvidence = await store.findDeliverySelectionEvidence(event.source_delivery_id);
+    const evidence = canonicalLabelEvidence(event.label_selection_evidence);
+    const evidenceDigest = await sha256Hex(evidence.json);
+    if (
+      storedEvidence === null ||
+      storedEvidence.label_selection_evidence_json !== evidence.json ||
+      storedEvidence.label_selection_evidence_digest !== evidenceDigest ||
+      event.label_selection_evidence_digest !== evidenceDigest
+    ) throw new CategorizedWorkflowError("correlation_mismatch");
+    await registerBundledWorkflowDefinitions(env, {
+      store,
+      definitions: bundled,
+      defaultDefinition: definition,
+      now: dependencies.now,
     });
     await store.upsertIssueIndex({
       issueId: event.issue_id,
@@ -244,10 +347,70 @@ export const processQueueMessage = async (
       policy.dispatch_enabled === 1 &&
       event.transition === policy.start_state_name
     ) {
+      let selectedDefinition = definition;
+      let selection: {
+        kind: "default" | "linear_label";
+        value: string;
+        labelName: string;
+        reason: "label_match" | "label_absent" | "label_evidence_unavailable" | "selector_disabled";
+        evidenceJson: string;
+        deliveryId: string;
+        observedAt: string;
+        providerDigest: string;
+      } = {
+        kind: "default",
+        value: "selector_disabled",
+        labelName: "simple-workflow",
+        reason: "selector_disabled",
+        evidenceJson: evidence.json,
+        deliveryId: event.source_delivery_id,
+        observedAt: new Date(event.occurred_at).toISOString(),
+        providerDigest: evidenceDigest,
+      };
+      const selector = simpleDefinition === undefined
+        ? null
+        : await store.findSelector(event.project_id, env.TRIAL_REPOSITORY, "simple-workflow");
+      if (selector?.enabled === 1) {
+        if (evidence.names?.includes(selector.label_name)) {
+          if (
+            selector.definition_id !== simpleDefinition?.name ||
+            selector.definition_version !== simpleDefinition.version ||
+            selector.definition_digest !== simpleDefinition.digest
+          ) {
+            throw new CategorizedWorkflowError("correlation_mismatch");
+          }
+          selectedDefinition = simpleDefinition;
+          selection = {
+            kind: "linear_label",
+            value: selector.label_name,
+            labelName: selector.label_name,
+            reason: "label_match",
+            evidenceJson: evidence.json,
+            deliveryId: event.source_delivery_id,
+            observedAt: new Date(event.occurred_at).toISOString(),
+            providerDigest: evidenceDigest,
+          };
+        } else {
+          const reason = evidence.names === null
+            ? "label_evidence_unavailable" as const
+            : "label_absent" as const;
+          selection = {
+            kind: "default",
+            value: reason,
+            labelName: selector.label_name,
+            reason,
+            evidenceJson: evidence.json,
+            deliveryId: event.source_delivery_id,
+            observedAt: new Date(event.occurred_at).toISOString(),
+            providerDigest: evidenceDigest,
+          };
+        }
+      }
       const allocation = await store.allocateRun({
         projectId: event.project_id,
         issueId: event.issue_id,
-        definition,
+        definition: selectedDefinition,
+        selection,
         now,
       });
       await establishDispatch(event, allocation.run, store, env.ORCHESTRATION_WORKFLOW, now);

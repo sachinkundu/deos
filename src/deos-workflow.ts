@@ -3,7 +3,7 @@ import { NonRetryableError } from "cloudflare:workflows";
 
 import { D1OrchestrationStore } from "./orchestration-store.ts";
 import type { WorkflowStartParameters } from "./queue-consumer-core.ts";
-import { loadBundledWorkflowDefinition } from "./workflow-bundle.ts";
+import { loadBundledWorkflowDefinitionRegistry } from "./workflow-bundle.ts";
 import { restoreWorkflowDefinition } from "./workflow-definition.ts";
 import {
   WorkflowOrchestrator,
@@ -45,16 +45,21 @@ export class DeosWorkflow extends WorkflowEntrypoint<Env, WorkflowStartParameter
     step: WorkflowStep,
   ): Promise<unknown> {
     const store = new D1OrchestrationStore(this.env.DB);
-    const bundledDefinition = await loadBundledWorkflowDefinition();
+    const bundledDefinitions = await loadBundledWorkflowDefinitionRegistry();
     const run = await store.findRun(event.payload.runId);
+    if (run === null) throw new Error("Workflow run is missing");
+    const bundledDefinition = bundledDefinitions[run.definition_id];
     let definition = bundledDefinition;
-    if (run !== null && run.definition_digest !== bundledDefinition.digest) {
+    if (
+      definition === undefined ||
+      definition.version !== run.definition_version ||
+      definition.digest !== run.definition_digest
+    ) {
       const snapshot = await store.findDefinitionSnapshot(run.definition_id, run.definition_version);
       if (snapshot === null) throw new Error("Workflow definition snapshot is missing");
       definition = await restoreWorkflowDefinition(snapshot.canonical_json, run.definition_digest);
     }
     if (
-      run === null ||
       run.workflow_instance_id !== event.instanceId ||
       run.definition_id !== definition.name ||
       run.definition_version !== definition.version ||

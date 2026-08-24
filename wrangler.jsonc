@@ -15,7 +15,7 @@
   },
   "vars": {
     "LINEAR_PROJECT_IDS": "99426d9b-cda7-4db4-9136-692a95a0b090",
-    "LINEAR_START_TRANSITIONS": "In Progress",
+    "LINEAR_START_TRANSITIONS": "Todo",
     "LINEAR_APPROVAL_TRANSITIONS": "In Progress",
     "LINEAR_REJECTION_TRANSITIONS": "Canceled"
   },

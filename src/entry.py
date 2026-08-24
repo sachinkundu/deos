@@ -34,9 +34,7 @@ class Default(WorkerEntrypoint):
         config = LinearIngressConfig(
             signing_secret=self.env.LINEAR_WEBHOOK_SECRET.encode(),
             relevant_project_ids=frozenset(
-                project_id
-                for project_id in self.env.LINEAR_PROJECT_IDS.split(",")
-                if project_id
+                project_id for project_id in self.env.LINEAR_PROJECT_IDS.split(",") if project_id
             ),
             relevant_transitions=frozenset(
                 transition
@@ -62,35 +60,54 @@ class Default(WorkerEntrypoint):
         delivery = Delivery.from_body(event.source_delivery_id, body, now, classification)
         run_id = workflow_identity(event.project_id, event.issue_id)
         try:
-            result = await self.env.DB.prepare(
-                """
+            result = (
+                await self.env.DB.prepare(
+                    """
                 INSERT OR IGNORE INTO deliveries
-                    (delivery_id, payload_hash, received_at, classification, correlation_id)
-                VALUES (?, ?, ?, ?, ?)
+                    (delivery_id, payload_hash, received_at, classification, correlation_id,
+                     label_selection_evidence_json, label_selection_evidence_digest)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """
-            ).bind(
-                delivery.delivery_id,
-                delivery.payload_hash,
-                delivery.received_at.isoformat(),
-                delivery.classification.value,
-                run_id,
-            ).run()
+                )
+                .bind(
+                    delivery.delivery_id,
+                    delivery.payload_hash,
+                    delivery.received_at.isoformat(),
+                    delivery.classification.value,
+                    run_id,
+                    event.label_selection_evidence.canonical_json(),
+                    event.label_selection_evidence.digest(),
+                )
+                .run()
+            )
         except Exception:
             if relevant:
                 emit_observation(
-                    _observation(event, run_id, "ingress.delivery_record", "failed", "d1_operation_failed")
+                    _observation(
+                        event, run_id, "ingress.delivery_record", "failed", "d1_operation_failed"
+                    )
                 )
             raise
         if result.meta.changes == 0:
             if relevant:
                 try:
-                    stored = await self.env.DB.prepare(
-                        "SELECT correlation_id FROM deliveries WHERE delivery_id = ?"
-                    ).bind(delivery.delivery_id).first()
+                    stored = (
+                        await self.env.DB.prepare(
+                            "SELECT correlation_id FROM deliveries WHERE delivery_id = ?"
+                        )
+                        .bind(delivery.delivery_id)
+                        .first()
+                    )
                     stored_correlation = _row_value(stored, "correlation_id")
                 except Exception:
                     emit_observation(
-                        _observation(event, run_id, "ingress.delivery_record", "failed", "d1_operation_failed")
+                        _observation(
+                            event,
+                            run_id,
+                            "ingress.delivery_record",
+                            "failed",
+                            "d1_operation_failed",
+                        )
                     )
                     raise
                 emit_observation(
@@ -105,12 +122,8 @@ class Default(WorkerEntrypoint):
         if not relevant:
             return Response("ignored", status=200)
 
-        emit_observation(
-            _observation(event, run_id, "ingress.delivery_record", "succeeded")
-        )
-        emit_observation(
-            _observation(event, run_id, "queue.publish", "started")
-        )
+        emit_observation(_observation(event, run_id, "ingress.delivery_record", "succeeded"))
+        emit_observation(_observation(event, run_id, "queue.publish", "started"))
         try:
             await self.env.QUEUE.send(
                 {
@@ -131,6 +144,8 @@ class Default(WorkerEntrypoint):
                     "occurred_at": event.occurred_at.isoformat(),
                     "correlation_id": run_id,
                     "payload_digest": delivery.payload_hash,
+                    "label_selection_evidence": event.label_selection_evidence.as_dict(),
+                    "label_selection_evidence_digest": event.label_selection_evidence.digest(),
                 }
             )
         except Exception:
@@ -138,9 +153,7 @@ class Default(WorkerEntrypoint):
                 _observation(event, run_id, "queue.publish", "failed", "queue_publish_failed")
             )
             raise
-        emit_observation(
-            _observation(event, run_id, "queue.publish", "succeeded")
-        )
+        emit_observation(_observation(event, run_id, "queue.publish", "succeeded"))
         # Linear treats any non-200 response as a failed delivery and retries.
         return Response("accepted", status=200)
 

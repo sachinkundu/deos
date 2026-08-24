@@ -181,12 +181,27 @@ export const evaluateNodeOutcome = (
       actorType: input.actorType,
     };
   }
-  const outcome = input.approvalStateNames.includes(input.toStateName)
-    ? "approved"
-    : input.rejectionStateNames.includes(input.toStateName)
-      ? "rejected"
-      : null;
-  if (outcome === null) return { kind: "wait", reason: "unrelated_event" };
+  const mappedOutcome = node.decisions === undefined
+    ? null
+    : Object.entries(node.decisions).find(([, state]) => state === input.toStateName)?.[0] ?? null;
+  const outcome = node.decisions === undefined
+    ? input.approvalStateNames.includes(input.toStateName)
+      ? "approved"
+      : input.rejectionStateNames.includes(input.toStateName)
+        ? "rejected"
+        : null
+    : mappedOutcome;
+  if (outcome === null) {
+    if (node.decisions === undefined) return { kind: "wait", reason: "unrelated_event" };
+    return {
+      kind: "repair_gate",
+      nodeId,
+      linearState: node.linearState,
+      deliveryId: input.deliveryId,
+      actorId: input.actorId,
+      actorType: input.actorType,
+    };
+  }
   return {
     kind: "transition",
     fromNode: nodeId,

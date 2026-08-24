@@ -29,6 +29,7 @@ export interface WorkflowJob {
   resultSchemaFile: string;
   resultSchema: Readonly<Record<string, unknown>>;
   requiredOutputs: readonly string[];
+  capabilities?: readonly string[];
   operation: OpenSpecJobOperation | null;
 }
 
@@ -65,6 +66,7 @@ export interface SystemActionWorkflowNode extends WorkflowNodeBase {
 export interface HumanGateWorkflowNode extends WorkflowNodeBase {
   type: "human_gate";
   linearState: string;
+  decisions?: Readonly<Record<string, string>>;
 }
 
 export interface TerminalWorkflowNode extends WorkflowNodeBase {
@@ -126,6 +128,11 @@ const SYSTEM_ACTIONS = new Set([
   "openspec.verify",
   "release.deploy",
   "openspec.sync_and_archive",
+  "github.merge_planning_pull_request",
+  "github.verify_planning_merge",
+]);
+const AGENT_CAPABILITY_ACTIONS = new Set([
+  "github.publish_planning_work_product",
 ]);
 const TERMINAL_OUTCOMES = new Set<TerminalOutcome>([
   "succeeded",
@@ -143,6 +150,7 @@ const DURATION = /^\d+(?:\.\d+)?(?:ms|s|m|h|d)$/;
 const EXPLICIT_LIFECYCLE_REQUIRED_VERSION = 11;
 const OPEN_SPEC_INSTRUCTION_SET = new Set<string>(OPENSPEC_INSTRUCTIONS);
 const SAFE_CAUSE = /^[a-z][a-z0-9_]{2,63}$/;
+const SAFE_DECISION = /^[a-z][a-z0-9_]{2,63}$/;
 
 const asRecord = (value: unknown, label: string): Record<string, unknown> => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -201,6 +209,32 @@ const parseEdges = (record: Record<string, unknown>, label: string): Readonly<Re
     }
   }
   return Object.freeze(Object.fromEntries(Object.entries(edges).map(([key, value]) => [key, String(value)])));
+};
+
+const parseDecisions = (
+  value: unknown,
+  edges: Readonly<Record<string, string>>,
+  label: string,
+): Readonly<Record<string, string>> | null => {
+  if (value === undefined) return null;
+  const decisions = asRecord(value, `${label}.decisions`);
+  if (Object.keys(decisions).length === 0) throw new Error(`${label}.decisions must not be empty`);
+  const states = new Set<string>();
+  for (const [outcome, state] of Object.entries(decisions)) {
+    if (!SAFE_DECISION.test(outcome)) {
+      throw new Error(`${label}.decisions has unsupported outcome ${outcome}`);
+    }
+    if (typeof state !== "string" || state.length === 0) {
+      throw new Error(`${label}.decisions must map outcomes to exact state names`);
+    }
+    if (edges[outcome] === undefined) {
+      throw new Error(`${label}.decisions outcome ${outcome} has no edge`);
+    }
+    if (states.has(state)) throw new Error(`${label}.decisions state names must be unique`);
+    states.add(state);
+  }
+  assertExactEdges(edges, Object.keys(decisions), label);
+  return Object.freeze(Object.fromEntries(Object.entries(decisions).map(([key, state]) => [key, String(state)])));
 };
 
 const assertExactEdges = (
@@ -299,6 +333,7 @@ export const loadWorkflowDefinition = async (
   assertAllowedKeys(metadata, ["name", "version"], "workflow.metadata");
   const name = stringValue(metadata, "name", "workflow.metadata");
   const version = positiveInteger(metadata, "version", "workflow.metadata");
+  const supportsExplicitLifecycle = version >= 4 || name === "simple";
 
   const spec = asRecord(root.spec, "workflow.spec");
   assertAllowedKeys(spec, ["start", "execution", "jobs", "nodes"], "workflow.spec");
@@ -330,7 +365,7 @@ export const loadWorkflowDefinition = async (
     const job = asRecord(value, label);
     assertAllowedKeys(
       job,
-      ["promptFile", "inputs", "context", "resultSchema", "requiredOutputs", "operation"],
+      ["promptFile", "inputs", "context", "resultSchema", "requiredOutputs", "capabilities", "operation"],
       label,
     );
     const promptFile = stringValue(job, "promptFile", label);
@@ -339,6 +374,14 @@ export const loadWorkflowDefinition = async (
     const schemaSource = bundle.schemas[resultSchemaFile];
     if (prompt === undefined || prompt.trim().length === 0) throw new Error(`missing prompt ${promptFile}`);
     if (schemaSource === undefined) throw new Error(`missing schema ${resultSchemaFile}`);
+    const capabilities = stringArray(job, "capabilities", label, false);
+    const unsupportedCapability = capabilities.find((capability) => !AGENT_CAPABILITY_ACTIONS.has(capability));
+    if (unsupportedCapability !== undefined) {
+      throw new Error(`${label}.capabilities uses unsupported action ${unsupportedCapability}`);
+    }
+    if (new Set(capabilities).size !== capabilities.length) {
+      throw new Error(`${label}.capabilities must not contain duplicates`);
+    }
     jobs[id] = Object.freeze({
       id,
       promptFile,
@@ -348,6 +391,7 @@ export const loadWorkflowDefinition = async (
       resultSchemaFile,
       resultSchema: parseSchema(schemaSource, resultSchemaFile),
       requiredOutputs: stringArray(job, "requiredOutputs", label),
+      ...(capabilities.length === 0 ? {} : { capabilities: Object.freeze([...capabilities]) }),
       operation: parseJobOperation(job.operation, label),
     });
   }
@@ -370,15 +414,18 @@ export const loadWorkflowDefinition = async (
       if (!SYSTEM_ACTIONS.has(action)) throw new Error(`${label} uses unsupported action ${action}`);
       nodes[id] = Object.freeze({ id, type, action, edges });
     } else if (type === "human_gate") {
-      assertAllowedKeys(node, ["type", "linearState", "edges"], label);
+      assertAllowedKeys(node, ["type", "linearState", "decisions", "edges"], label);
       nodes[id] = Object.freeze({
         id,
         type,
         linearState: stringValue(node, "linearState", label),
+        ...(node.decisions === undefined ? {} : {
+          decisions: parseDecisions(node.decisions, edges, label) ?? undefined,
+        }),
         edges,
       });
     } else if (type === "wait") {
-      if (version < 4) throw new Error(`${label} requires workflow version 4 or later`);
+      if (!supportsExplicitLifecycle) throw new Error(`${label} requires explicit lifecycle support`);
       assertAllowedKeys(node, ["type", "deosStatus", "resumeEvent", "cancelEvent", "edges"], label);
       const deosStatus = stringValue(node, "deosStatus", label) as ResumableStatus;
       if (!RESUMABLE_STATUSES.has(deosStatus)) {
@@ -396,7 +443,7 @@ export const loadWorkflowDefinition = async (
     } else if (type === "terminal") {
       const typedLifecycle = node.deosStatus !== undefined || node.executorAction !== undefined;
       if (typedLifecycle) {
-        if (version < 4) throw new Error(`${label} typed lifecycle requires workflow version 4 or later`);
+        if (!supportsExplicitLifecycle) throw new Error(`${label} requires explicit lifecycle support`);
         assertAllowedKeys(node, ["type", "deosStatus", "executorAction"], label);
         const outcome = stringValue(node, "deosStatus", label) as FinalOutcome;
         if (!FINAL_OUTCOMES.has(outcome)) {
@@ -424,7 +471,7 @@ export const loadWorkflowDefinition = async (
         nodes[id] = Object.freeze({ id, type, outcome, edges: Object.freeze({}) });
       }
     } else if (type === "failure") {
-      if (version < 4) throw new Error(`${label} requires workflow version 4 or later`);
+      if (!supportsExplicitLifecycle) throw new Error(`${label} requires explicit lifecycle support`);
       assertAllowedKeys(node, ["type", "deosStatus", "executorAction", "cause"], label);
       if (node.deosStatus !== "failed") throw new Error(`${label}.deosStatus must be failed`);
       if (node.executorAction !== "throw") throw new Error(`${label}.executorAction must be throw`);
@@ -449,7 +496,7 @@ export const loadWorkflowDefinition = async (
       if (nodes[target] === undefined) throw new Error(`${node.id} references unknown node ${target}`);
     }
   }
-  if (version >= 4) {
+  if (supportsExplicitLifecycle) {
     for (const node of Object.values(nodes)) {
       if (node.type === "agent" && (node.edges.blocked === undefined || node.edges.failed === undefined)) {
         throw new Error(`workflow.spec.nodes.${node.id} must classify blocked and failed outcomes`);
@@ -516,7 +563,7 @@ export const restoreWorkflowDefinition = async (
       job,
       [
         "id", "promptFile", "prompt", "inputs", "context", "resultSchemaFile",
-        "resultSchema", "requiredOutputs", "operation",
+        "resultSchema", "requiredOutputs", "capabilities", "operation",
       ],
       label,
     );
@@ -531,6 +578,9 @@ export const restoreWorkflowDefinition = async (
       context: stringArray(job, "context", label, false),
       resultSchema: resultSchemaFile,
       requiredOutputs: stringArray(job, "requiredOutputs", label),
+      ...(job.capabilities === undefined ? {} : {
+        capabilities: stringArray(job, "capabilities", label, false),
+      }),
       ...(job.operation === null ? {} : { operation: asRecord(job.operation, `${label}.operation`) }),
     };
   }

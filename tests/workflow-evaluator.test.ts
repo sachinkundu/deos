@@ -69,6 +69,27 @@ spec:
   { prompts: {}, schemas: {} },
 );
 
+const mappedGateDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: simple, version: 1 }
+spec:
+  start: review
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs: {}
+  nodes:
+    review:
+      type: human_gate
+      linearState: Human Review
+      decisions: { revision_requested: In Progress, merge_authorized: Merging, canceled: Canceled }
+      edges: { revision_requested: revision, merge_authorized: merge, canceled: canceled }
+    revision: { type: terminal, deosStatus: succeeded, executorAction: return }
+    merge: { type: terminal, deosStatus: succeeded, executorAction: return }
+    canceled: { type: terminal, deosStatus: canceled, executorAction: return }
+`,
+  { prompts: {}, schemas: {} },
+);
+
 test("node instructions cover agents, system actions, gates, and terminals", () => {
   assert.deepEqual(instructionForNode(definition, "implement"), {
     kind: "dispatch_agent", nodeId: "implement", jobId: "implement",
@@ -187,6 +208,33 @@ test("only a user leaving the active gate can approve or reject", () => {
     rejectionStateNames: ["Canceled"],
   });
   assert.equal(rejected.kind === "transition" ? rejected.toNode : null, "implement");
+});
+
+test("mapped human gate keeps revision, merge, and cancellation distinct", () => {
+  const event = (toStateName: string, actorType: string | null = "user") =>
+    evaluateNodeOutcome(mappedGateDefinition, "review", {
+      kind: "linear_event" as const,
+      deliveryId: `delivery-${toStateName}`,
+      actorId: "actor-1",
+      actorType,
+      fromStateId: "human-state",
+      fromStateName: "Human Review",
+      toStateName,
+      humanGateStateId: "human-state",
+      approvalStateNames: ["In Progress"],
+      rejectionStateNames: ["Canceled"],
+    });
+  const revision = event("In Progress");
+  const merge = event("Merging");
+  const canceled = event("Canceled");
+  assert.equal(revision.kind === "transition" ? revision.outcome : null, "revision_requested");
+  assert.equal(revision.kind === "transition" ? revision.toNode : null, "revision");
+  assert.equal(merge.kind === "transition" ? merge.outcome : null, "merge_authorized");
+  assert.equal(merge.kind === "transition" ? merge.toNode : null, "merge");
+  assert.equal(canceled.kind === "transition" ? canceled.outcome : null, "canceled");
+  assert.equal(canceled.kind === "transition" ? canceled.toNode : null, "canceled");
+  assert.equal(event("Todo").kind, "repair_gate");
+  assert.equal(event("Merging", "oauthclient").kind, "repair_gate");
 });
 
 test("wait events can only request the frozen resume or cancellation edge", () => {
