@@ -569,7 +569,7 @@ export class D1OrchestrationStore {
           status, selection_kind, selection_value, selection_label_name, selection_reason,
           selection_evidence_json, selection_delivery_id, selection_observed_at,
           selection_provider_digest, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).bind(
         runId,
         correlationId,
