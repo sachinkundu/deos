@@ -162,6 +162,33 @@ interface LinearTransitionDependencies {
   now: () => Date;
 }
 
+class LinearGraphqlError extends Error {
+  readonly safeCategory: string;
+
+  constructor(safeCategory: string) {
+    super("Linear GraphQL request failed");
+    this.name = "LinearGraphqlError";
+    this.safeCategory = safeCategory;
+  }
+}
+
+interface LinearGraphqlFailure {
+  message?: unknown;
+  extensions?: { code?: unknown };
+}
+
+const safeLinearErrorCategory = (errors: LinearGraphqlFailure[]): string => {
+  if (errors.some((error) => error.message === "App user not valid")) {
+    return "linear_delegate_not_assignable";
+  }
+  const codes = new Set(errors.map((error) => error.extensions?.code));
+  if (codes.has("AUTHENTICATION_ERROR")) return "linear_authentication_failed";
+  if (codes.has("FORBIDDEN")) return "linear_forbidden";
+  if (codes.has("INPUT_ERROR")) return "linear_input_error";
+  if (codes.has("RATELIMITED")) return "linear_rate_limited";
+  return "linear_graphql_failed";
+};
+
 const sha256Hex = async (value: string): Promise<string> => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -328,7 +355,7 @@ export class LinearTransitionController {
         );
         return this.workStartFailed();
       }
-    } catch {
+    } catch (error) {
       const readBack = await this.readIssueState(run.issue_id);
       if (
         readBack.id === this.config.workStateId &&
@@ -341,6 +368,16 @@ export class LinearTransitionController {
           this.now().toISOString(),
         );
         return this.workStartCompleted();
+      }
+      if (error instanceof LinearGraphqlError) {
+        await this.store.setState(
+          operationId,
+          "pending",
+          "failed",
+          this.now().toISOString(),
+          error.safeCategory,
+        );
+        return this.workStartFailed();
       }
       await this.store.setState(
         operationId,
@@ -547,8 +584,10 @@ export class LinearTransitionController {
       body: JSON.stringify({ query, variables }),
     });
     if (!response.ok) throw new Error("Linear request failed");
-    const payload = await response.json() as { errors?: unknown[] };
-    if (payload.errors?.length) throw new Error("Linear GraphQL request failed");
+    const payload = await response.json() as { errors?: LinearGraphqlFailure[] };
+    if (payload.errors?.length) {
+      throw new LinearGraphqlError(safeLinearErrorCategory(payload.errors));
+    }
     return payload;
   }
 }

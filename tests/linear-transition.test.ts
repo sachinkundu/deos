@@ -335,6 +335,43 @@ test("ambiguous work start reconciles through provider read-back", async () => {
   assert.equal(store.operations.values().next().value?.state, "reconciled");
 });
 
+test("an unassignable Linear app fails with a bounded diagnostic", async () => {
+  const store = new OperationStore();
+  let reads = 0;
+  const controller = new LinearTransitionController(store, config, {
+    now: () => new Date(NOW),
+    fetch: async (_input, init) => {
+      const request = JSON.parse(String(init?.body)) as { query: string };
+      if (request.query.includes("mutation DeosDelegateAndStart")) {
+        return Response.json({
+          data: null,
+          errors: [{
+            message: "App user not valid",
+            extensions: { code: "INPUT_ERROR", type: "invalid input", userError: true },
+          }],
+        });
+      }
+      reads += 1;
+      return Response.json({ data: { issue: {
+        state: { id: "todo-state" },
+        delegate: null,
+        assignee: null,
+        updatedAt: NOW,
+      } } });
+    },
+  });
+
+  const outcome = await controller.ensureWorkStarted(run, "claim_issue");
+
+  assert.equal(outcome.outcome, "failed");
+  assert.equal(reads, 2);
+  assert.equal(store.operations.values().next().value?.state, "failed");
+  assert.equal(
+    store.operations.values().next().value?.safe_error_category,
+    "linear_delegate_not_assignable",
+  );
+});
+
 test("conflicting human state or delegate stops work before mutation", async () => {
   for (const issue of [
     { state: "human-review-state", delegate: null },
