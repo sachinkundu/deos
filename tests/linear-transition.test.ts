@@ -372,6 +372,20 @@ test("an unassignable Linear app fails with a bounded diagnostic", async () => {
   );
 });
 
+test("a Linear HTTP failure exposes only the bounded status", async () => {
+  const store = new OperationStore();
+  const controller = new LinearTransitionController(store, config, {
+    now: () => new Date(NOW),
+    fetch: async () => new Response(null, { status: 401 }),
+  });
+
+  await assert.rejects(
+    () => controller.ensureWorkStarted(run, "claim_issue"),
+    { message: "Linear request failed (401)" },
+  );
+  assert.equal(store.operations.size, 0);
+});
+
 test("conflicting human state or delegate stops work before mutation", async () => {
   for (const issue of [
     { state: "human-review-state", delegate: null },

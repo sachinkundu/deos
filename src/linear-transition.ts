@@ -583,7 +583,7 @@ export class LinearTransitionController {
       },
       body: JSON.stringify({ query, variables }),
     });
-    if (!response.ok) throw new Error("Linear request failed");
+    if (!response.ok) throw new Error(`Linear request failed (${response.status})`);
     const payload = await response.json() as { errors?: LinearGraphqlFailure[] };
     if (payload.errors?.length) {
       throw new LinearGraphqlError(safeLinearErrorCategory(payload.errors));
