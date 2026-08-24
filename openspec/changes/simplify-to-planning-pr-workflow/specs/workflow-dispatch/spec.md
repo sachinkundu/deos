@@ -2,7 +2,7 @@
 
 ### Requirement: Dispatch accepted events
 
-The asynchronous Queue consumer, which is separate from HTTP ingress, SHALL load the applicable project policy and select the workflow definition for each accepted start event before allocating a run. For an accepted `Todo` transition, it SHALL select the enabled simplified planning definition only when the issue has the exact `simple-workflow` Linear label; otherwise it SHALL select the existing full definition as the default. Before creating a Workflow instance, it SHALL derive a stable instance identity from the durable issue-run identity. It SHALL freeze the selected definition name, version, digest, and selection evidence on the run, establish an auditable mapping from the issue run to that one Workflow instance, and SHALL acknowledge the Queue message only after both the instance and mapping are confirmed.
+The asynchronous Queue consumer, which is separate from HTTP ingress, SHALL load the applicable project policy and select the workflow definition for each accepted start event before allocating a run. For an accepted `Todo` transition, it SHALL select the enabled simplified planning definition only when the immutable event-time label-selection evidence carried by the application event establishes that the issue had the exact `simple-workflow` Linear label; otherwise it SHALL select the existing full definition as the default. It MUST NOT read the issue's current labels to make that selection. Before creating a Workflow instance, it SHALL derive a stable instance identity from the durable issue-run identity. It SHALL freeze the selected definition name, version, digest, and selection evidence on the run, establish an auditable mapping from the issue run to that one Workflow instance, and SHALL acknowledge the Queue message only after both the instance and mapping are confirmed.
 
 #### Scenario: Accepted event
 
@@ -11,18 +11,28 @@ The asynchronous Queue consumer, which is separate from HTTP ingress, SHALL load
 
 #### Scenario: Labeled Todo selects the simplified definition
 
-- **WHEN** an accepted `Todo` transition has the exact `simple-workflow` label and the simplified selector is enabled for the configured project and repository
+- **WHEN** an accepted `Todo` transition carries immutable event-time evidence of the exact `simple-workflow` label and the simplified selector is enabled for the configured project and repository
 - **THEN** the dispatcher allocates the run with the simplified definition and freezes its version, digest, label-selection evidence, and source delivery
 
 #### Scenario: Todo without the label selects the full definition
 
-- **WHEN** an accepted `Todo` transition does not have the exact `simple-workflow` label
+- **WHEN** an accepted `Todo` transition carries immutable event-time evidence that it did not have the exact `simple-workflow` label
 - **THEN** the dispatcher allocates the run with the existing full definition and freezes its version and digest
+
+#### Scenario: Event-time label evidence is unavailable
+
+- **WHEN** an accepted `Todo` transition carries explicit evidence that provider-backed label membership was unavailable
+- **THEN** the dispatcher selects the existing full definition, records the safe fallback, and does not read current issue labels
 
 #### Scenario: Simplified selector is inactive
 
-- **WHEN** an accepted `Todo` transition has the `simple-workflow` label but the simplified selector is disabled
+- **WHEN** an accepted `Todo` transition carries immutable event-time evidence of the `simple-workflow` label but the simplified selector is disabled
 - **THEN** the dispatcher uses the existing full definition and records that the inactive selector did not change the default selection
+
+#### Scenario: Labels change before asynchronous dispatch
+
+- **WHEN** the issue's current labels differ from the authenticated event-time evidence before the Queue message is consumed
+- **THEN** the dispatcher selects the definition from the event-time evidence and does not let the later label state change that selection
 
 #### Scenario: Label changes after allocation
 
