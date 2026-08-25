@@ -83,4 +83,4 @@
 ## 14. Give settings a stable route
 
 - [x] 14.1 Add URL-backed `/` and `/settings` views with browser history and route tests.
-- [ ] 14.2 Validate, deploy, and verify the live `/settings` route.
+- [x] 14.2 Validate, deploy, and verify the live `/settings` route.
