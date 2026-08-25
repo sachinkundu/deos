@@ -220,7 +220,9 @@ Each `files[].path` value uses the full repository-relative path. For example,
 the proposal path is `openspec/changes/<change>/proposal.md`. The reading-order
 list in the pull request stays relative to the change folder, such as
 `proposal.md` and `specs/<capability>/spec.md`. This distinction is explicit in
-the protected prompt and its exact fixture.
+the protected prompt and its exact fixture. Because the prompt is part of the
+immutable workflow digest, this correction advances the simple definition to
+version 4 instead of replacing version 3.
 
 The tool rejects `design.md`, `tasks.md`, main specs, archive files, code,
 workflow files, unsafe paths, links, and files from another change.

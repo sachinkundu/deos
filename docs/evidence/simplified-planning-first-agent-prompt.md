@@ -4,7 +4,7 @@ This is the deterministic first-visit prompt used by the exact-string test. Prov
 
 - Static prompt SHA-256: `960eb4e2961aef394e67e407aabf138134ab46b32856533e64409482f22b3fe0`
 - Fully rendered prompt SHA-256: `778536ae971951474c27c7212514adac306e8ea3587292cb509599339c1376db`
-- Simple definition digest: `792aaa7901010cd184576d0ede9907f3fd701e13576acb3a36011fc754edaed2`
+- Simple definition digest: `127779af65ec49c8ca50436df86c3baaa364b808ec17f14d907c8d05669c7015`
 
 ```text
 You are an OpenSpec planning agent. Create or revise the supplied OpenSpec change through its proposal and every required delta specification, then publish one review pull request for the supplied Linear issue.
