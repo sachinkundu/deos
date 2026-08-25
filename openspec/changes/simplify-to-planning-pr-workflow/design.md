@@ -35,7 +35,7 @@ deployed and a live trial is approved.
 - Reuse one branch and pull request for all planning revisions in a run.
 - Limit the agent to the OpenSpec proposal and delta specs.
 - Keep Linear moves, pull request merge, and final checks under DEOS control.
-- Let one authenticated operator save the project repository in D1 when no run is active.
+- Let one authenticated operator save the project repository and guarded workflow controls in D1 when no run is active.
 
 **Non-Goals:**
 
@@ -359,13 +359,17 @@ value seeds a new policy only. Scheduled setup preserves later portal changes.
 Queue selection, Sandbox checkout, and GitHub grants read the D1 value.
 
 The settings page is behind the existing Cloudflare Access check. It shows the
-saved repository, selector state, revision, and last editor. A save uses the
-shown revision, reads the row back, and leaves the simple selector off. It also
-disables selectors for the prior repository.
+saved repository, workflow dispatch, simple selector, revisions, and last
+editors. Repository and workflow controls have separate revisions. A control
+save writes both switches in one D1 batch and reads them back. It is all or
+nothing for a current revision. A repository save turns dispatch and every
+simple selector for the project off.
 
-The portal rejects a save while any run for the project is active. This keeps
-the repository fixed for work already in flight without changing old runs.
-GitHub access is granted in GitHub and proved there before a test starts.
+The active-run check is part of each guarded D1 update, not only a page check.
+The portal rejects a save if another session changed that kind of setting or a
+run started first. This keeps settings fixed for work already in flight without
+changing old runs. GitHub access is granted in GitHub and proved there before a
+test starts.
 
 ## Event flow
 
@@ -397,7 +401,7 @@ GitHub access is granted in GitHub and proved there before a test starts.
 | `deliveries` | Limited label evidence and its hash. | Proves what the signed start event said before Queue work. |
 | `workflow_definitions` | Existing fixed workflow id, version, hash, and JSON. | Stores both full and simple workflows without changing them. |
 | `workflow_definition_selectors` | Project, repository, label, target workflow, enabled state, and times. | Holds the simple selector. It starts off. |
-| `project_workflow_policies` | Existing policy plus repository revision and editor. | Makes D1 the settings source after first setup. |
+| `project_workflow_policies` | Existing policy plus separate repository and workflow-control revisions and editors. | Makes D1 the settings source after first setup. |
 | `orchestration_runs` | Existing workflow fields plus the label, reason, source delivery, and evidence hash. | Proves why this run chose its workflow. |
 | `run_work_products` | Run, repository, branch, pull request ids, base, head, file hash, publish action, merge commit, and check time. | Gives every revision one pull request. |
 | `provider_operations` | Existing action, request hash, state, resource, and retry data. | Records publish, merge, and final check receipts. |
@@ -412,7 +416,7 @@ All database changes add new data. They do not rewrite old workflows or runs.
 | Label data is missing, broken, or not yet proven with Linear. | Save `unavailable` and use the full workflow. Do not read current labels. |
 | Queue evidence does not match the D1 hash. | Stop dispatch, record the error, and create no run from that message. |
 | The selector is missing, off, or for another repository. | Use the full workflow and save the reason. |
-| A repository save has an old revision or an active run exists. | Reject the save and keep the current repository. |
+| A settings save has an old revision or an active run exists. | Reject the whole save and keep the current settings. |
 | A workflow version already has another hash. | Stop setup. Never replace the saved workflow. |
 | Queue retries after an unclear create result. | Find the run and Workflow by stable id. Do not create a second one. |
 | Sandbox output is missing, invalid, or contains a blocked path. | Save every available policy-safe file plus a bounded failure summary. Do not enter `Human Review`. |

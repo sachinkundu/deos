@@ -37,7 +37,20 @@ interface Visit {
   links: Array<{ kind: string; label: string; url: string; createdAt: string }>;
 }
 interface Projection { run: Run & { freshness: string }; stages: Stage[]; history: Visit[]; unlinked: { attempts: number; waits: number } }
-interface RepositorySettings { projectId: string; repository: string; revision: number; updatedBy: string; updatedAt: string; selectorEnabled: boolean; activeRuns: number }
+interface RepositorySettings {
+  projectId: string;
+  repository: string;
+  revision: number;
+  updatedBy: string;
+  updatedAt: string;
+  dispatchEnabled: boolean;
+  selectorEnabled: boolean;
+  selectorAvailable: boolean;
+  workflowRevision: number;
+  workflowUpdatedBy: string;
+  workflowUpdatedAt: string;
+  activeRuns: number;
+}
 
 const api = async <T,>(path: string, signal?: AbortSignal): Promise<T> => {
   if (import.meta.env.DEV) {
@@ -63,6 +76,28 @@ const saveRepository = async (repository: string, expectedRevision: number): Pro
       invalid_repository: "Use the exact owner/repository format.",
     };
     throw new Error(messages[body.error ?? ""] ?? "The repository could not be saved.");
+  }
+  return body;
+};
+
+const saveWorkflowControls = async (
+  dispatchEnabled: boolean,
+  selectorEnabled: boolean,
+  expectedRevision: number,
+): Promise<RepositorySettings> => {
+  const response = await fetch("/api/settings/workflow", {
+    method: "PUT",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ dispatchEnabled, selectorEnabled, expectedRevision }),
+  });
+  const body = await response.json() as RepositorySettings & { error?: string };
+  if (!response.ok) {
+    const messages: Record<string, string> = {
+      active_run: "A workflow is active. Wait for it to finish before changing these controls.",
+      stale_workflow_revision: "These controls changed in another session. Reload them and try again.",
+      selector_unavailable: "The simple workflow is not ready for this repository yet.",
+    };
+    throw new Error(messages[body.error ?? ""] ?? "The workflow controls could not be saved.");
   }
   return body;
 };
@@ -97,6 +132,8 @@ function StageCard({ stage, onSelect }: { stage: Stage; onSelect: () => void }) 
 function SettingsPanel() {
   const [settings, setSettings] = useState<RepositorySettings | null>(null);
   const [repository, setRepository] = useState("");
+  const [dispatchEnabled, setDispatchEnabled] = useState(false);
+  const [selectorEnabled, setSelectorEnabled] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(true);
 
@@ -107,6 +144,8 @@ function SettingsPanel() {
       const value = await api<RepositorySettings>("/api/settings/repository");
       setSettings(value);
       setRepository(value.repository);
+      setDispatchEnabled(value.dispatchEnabled);
+      setSelectorEnabled(value.selectorEnabled);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Settings could not be loaded.");
     } finally { setBusy(false); }
@@ -122,30 +161,72 @@ function SettingsPanel() {
       const value = await saveRepository(repository, settings.revision);
       setSettings(value);
       setRepository(value.repository);
+      setDispatchEnabled(value.dispatchEnabled);
+      setSelectorEnabled(value.selectorEnabled);
       setMessage("Saved and read back from D1.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The repository could not be saved.");
     } finally { setBusy(false); }
   };
 
+  const saveControls = async () => {
+    if (settings === null) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const value = await saveWorkflowControls(
+        dispatchEnabled, selectorEnabled, settings.workflowRevision,
+      );
+      setSettings(value);
+      setDispatchEnabled(value.dispatchEnabled);
+      setSelectorEnabled(value.selectorEnabled);
+      setMessage("Workflow controls saved and read back from D1.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The workflow controls could not be saved.");
+    } finally { setBusy(false); }
+  };
+
+  const controlsChanged = settings !== null && (
+    dispatchEnabled !== settings.dispatchEnabled || selectorEnabled !== settings.selectorEnabled
+  );
+  const controlsLocked = busy || settings === null || settings.activeRuns > 0 || !settings.selectorAvailable;
+
   return <section className="settings-page">
-    <div className="settings-heading"><div><span className="eyebrow">Project settings</span><h1>Workflow repository</h1><p>Choose where new DEOS workflow work is published.</p></div><GithubLogo /></div>
+    <div className="settings-heading"><div><span className="eyebrow">Project settings</span><h1>Workflow settings</h1><p>Choose the repository and control when new workflow work starts.</p></div><GithubLogo /></div>
     <div className="settings-grid">
-      <div className="settings-card">
-        <label htmlFor="repository">GitHub repository</label>
-        <input id="repository" value={repository} onChange={(event) => setRepository(event.target.value)} placeholder="owner/repository" disabled={busy || settings === null} />
-        <p>Use the exact <code>owner/repository</code> name. The base branch must be <code>main</code>.</p>
-        <div className="settings-actions"><button type="button" onClick={() => void save()} disabled={busy || settings === null || repository.trim() === settings.repository}>{busy ? "Working…" : "Save repository"}</button><button className="secondary" type="button" onClick={() => void load()} disabled={busy}>Reload</button></div>
-        {message && <div className="settings-message" role="status">{message}</div>}
+      <div className="settings-stack">
+        <div className="settings-card">
+          <label htmlFor="repository">GitHub repository</label>
+          <input id="repository" value={repository} onChange={(event) => setRepository(event.target.value)} placeholder="owner/repository" disabled={busy || settings === null} />
+          <p>Use the exact <code>owner/repository</code> name. The base branch must be <code>main</code>.</p>
+          <div className="settings-actions"><button type="button" onClick={() => void save()} disabled={busy || settings === null || repository.trim() === settings.repository}>{busy ? "Working…" : "Save repository"}</button></div>
+        </div>
+        <div className="settings-card controls-card">
+          <div className="card-heading"><div><h2>Workflow controls</h2><p>Both settings apply to new Todo events only.</p></div><span className={settings?.activeRuns ? "guard active" : "guard"}>{settings?.activeRuns ? "Locked" : "Ready"}</span></div>
+          <label className="switch-row">
+            <span><strong>Workflow dispatch</strong><small>Let accepted Todo events start a workflow.</small></span>
+            <input type="checkbox" checked={dispatchEnabled} onChange={(event) => setDispatchEnabled(event.target.checked)} disabled={controlsLocked} />
+          </label>
+          <label className="switch-row">
+            <span><strong>Simple workflow</strong><small>Use the planning flow when the issue has the exact label.</small></span>
+            <input type="checkbox" checked={selectorEnabled} onChange={(event) => setSelectorEnabled(event.target.checked)} disabled={controlsLocked} />
+          </label>
+          {settings !== null && settings.activeRuns > 0 && <p className="guard-note">A workflow is active. These controls will unlock when it ends.</p>}
+          {settings !== null && !settings.selectorAvailable && <p className="guard-note">The simple workflow is not ready for this repository yet.</p>}
+          <div className="settings-actions"><button type="button" onClick={() => void saveControls()} disabled={controlsLocked || !controlsChanged}>{busy ? "Working…" : "Save workflow controls"}</button><button className="secondary" type="button" onClick={() => void load()} disabled={busy}>Reload</button></div>
+          {message && <div className="settings-message" role="status">{message}</div>}
+        </div>
       </div>
       <div className="connection-card">
         <h2>Connection</h2>
         <dl>
           <div><dt>DEOS target</dt><dd>{settings?.repository ?? "Loading…"}</dd></div>
+          <div><dt>Workflow dispatch</dt><dd>{settings?.dispatchEnabled ? "On" : "Off"}</dd></div>
           <div><dt>Simple workflow</dt><dd>{settings?.selectorEnabled ? "On" : "Off"}</dd></div>
           <div><dt>Active runs</dt><dd>{settings?.activeRuns ?? "—"}</dd></div>
-          <div><dt>Last saved</dt><dd>{settings ? formatTime(settings.updatedAt) : "—"}</dd></div>
-          <div><dt>Saved by</dt><dd>{settings?.updatedBy ?? "—"}</dd></div>
+          <div><dt>Controls saved</dt><dd>{settings ? formatTime(settings.workflowUpdatedAt) : "—"}</dd></div>
+          <div><dt>Controls saved by</dt><dd>{settings?.workflowUpdatedBy ?? "—"}</dd></div>
+          <div><dt>Repository saved</dt><dd>{settings ? formatTime(settings.updatedAt) : "—"}</dd></div>
         </dl>
         <a href="https://github.com/settings/installations" target="_blank" rel="noreferrer">Manage GitHub App access <ArrowSquareOut /></a>
         <p>GitHub App access is granted in GitHub. Saving this page does not add new GitHub permission.</p>

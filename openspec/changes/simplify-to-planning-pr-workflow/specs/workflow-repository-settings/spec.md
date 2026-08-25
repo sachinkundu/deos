@@ -27,3 +27,30 @@ separate provider permission.
 
 - **WHEN** a repository is saved in D1 but the DEOS GitHub App is not allowed to use it
 - **THEN** the setting does not grant access and the operator must add the repository in GitHub before a workflow test starts
+
+### Requirement: Save guarded workflow controls
+
+The portal SHALL let the allowed user view and save workflow dispatch and the
+simple workflow selector as one D1 settings change. A save SHALL use the shown
+workflow revision and SHALL read both values back before success is shown. The
+portal MUST reject a save while any project run is active.
+
+#### Scenario: Operator saves workflow controls
+
+- **WHEN** the allowed user saves both controls with the current workflow revision and no project run is active
+- **THEN** D1 stores both values, raises the workflow revision, records the user and time, and returns the saved values
+
+#### Scenario: A run starts before the control save
+
+- **WHEN** a project run becomes active before the control change is stored
+- **THEN** the portal rejects the whole change and keeps both controls unchanged
+
+#### Scenario: Workflow controls have an old revision
+
+- **WHEN** the allowed user saves a workflow revision that no longer matches D1
+- **THEN** the portal rejects the stale save and returns no success
+
+#### Scenario: Repository changes
+
+- **WHEN** the allowed user saves another repository
+- **THEN** workflow dispatch and every simple selector for the project are turned off before success is shown

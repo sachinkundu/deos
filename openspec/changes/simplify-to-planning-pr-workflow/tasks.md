@@ -73,3 +73,9 @@
 - [x] 12.2 Add an Access-protected settings page with safe save and read-back.
 - [x] 12.3 Use the D1 repository for selection and Sandbox checkout.
 - [x] 12.4 Grant the GitHub App access to the test repository and prove both sides of the connection.
+
+## 13. Add guarded workflow controls
+
+- [x] 13.1 Add separate D1 revision and editor fields for workflow controls.
+- [x] 13.2 Add authenticated dispatch and simple workflow switches with active-run guards and read-back.
+- [ ] 13.3 Validate and deploy the portal while both live controls stay off.

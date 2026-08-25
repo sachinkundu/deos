@@ -72,6 +72,32 @@ export const routePortalRequest = async (
       }
       return json(405, { error: "method_not_allowed" });
     }
+    if (url.pathname === "/api/settings/workflow") {
+      const settings = new RepositorySettingsStore(env.DB);
+      if (request.method !== "PUT") return json(405, { error: "method_not_allowed" });
+      if (Number(request.headers.get("Content-Length") ?? "0") > 2_048) {
+        return json(413, { error: "request_too_large" });
+      }
+      const body = await request.json() as {
+        dispatchEnabled?: unknown;
+        selectorEnabled?: unknown;
+        expectedRevision?: unknown;
+      };
+      if (
+        typeof body.dispatchEnabled !== "boolean" ||
+        typeof body.selectorEnabled !== "boolean" ||
+        !Number.isSafeInteger(body.expectedRevision)
+      ) return json(400, { error: "invalid_request" });
+      const value = await settings.saveWorkflowControls({
+        projectId: env.PROJECT_ID,
+        dispatchEnabled: body.dispatchEnabled,
+        selectorEnabled: body.selectorEnabled,
+        expectedRevision: body.expectedRevision as number,
+        actorEmail: identity.email,
+        now: new Date().toISOString(),
+      });
+      return json(200, value);
+    }
     if (!["GET", "HEAD"].includes(request.method)) return json(405, { error: "method_not_allowed" });
     if (url.pathname === "/api/issues") {
       return json(200, { issues: await store.searchIssues(url.searchParams.get("query") ?? "") });
@@ -92,7 +118,8 @@ export const routePortalRequest = async (
     if (error instanceof RepositorySettingsError) {
       const status = error.code === "invalid_repository" ? 400
         : error.code === "settings_not_found" ? 404
-        : error.code === "active_run" || error.code === "stale_revision" ? 409
+        : error.code === "active_run" || error.code === "stale_revision" ||
+          error.code === "stale_workflow_revision" || error.code === "selector_unavailable" ? 409
         : 503;
       return json(status, { error: error.code });
     }

@@ -99,3 +99,21 @@ test("authentication runs before assets, route methods, or D1", async () => {
   assert.equal(await allowed.text(), "portal");
   assert.equal(assetReads, 1);
 });
+
+test("workflow control writes require two booleans and a revision", async () => {
+  const env = {
+    DB: {} as D1Database,
+    ASSETS: { fetch: async () => new Response("portal") } as unknown as Fetcher,
+    ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
+    ACCESS_AUD: "aud",
+    ALLOWED_EMAIL: "sachinkundu@gmail.com",
+    PROJECT_ID: "project-id",
+  };
+  const response = await routePortalRequest(new Request("https://deos.example/api/settings/workflow", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dispatchEnabled: true, selectorEnabled: "yes", expectedRevision: 1 }),
+  }), env, async () => ({ email: "sachinkundu@gmail.com" }));
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "invalid_request" });
+});
