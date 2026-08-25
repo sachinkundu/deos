@@ -78,4 +78,4 @@
 
 - [x] 13.1 Add separate D1 revision and editor fields for workflow controls.
 - [x] 13.2 Add authenticated dispatch and simple workflow switches with active-run guards and read-back.
-- [ ] 13.3 Validate and deploy the portal while both live controls stay off.
+- [x] 13.3 Validate and deploy the portal while both live controls stay off.
