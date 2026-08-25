@@ -365,6 +365,10 @@ save writes both switches in one D1 batch and reads them back. It is all or
 nothing for a current revision. A repository save turns dispatch and every
 simple selector for the project off.
 
+The main cards are the only place that shows the repository and both workflow
+controls. The right-hand details card does not repeat them. It shows only the
+active-run count, save times, editor names, and the GitHub App access link.
+
 The workflow view stays at `/`. The settings page has the stable `/settings`
 route. The client reads the path on first load and on browser history changes.
 Portal navigation updates the URL before it changes the view. Cloudflare's SPA

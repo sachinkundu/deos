@@ -84,3 +84,8 @@
 
 - [x] 14.1 Add URL-backed `/` and `/settings` views with browser history and route tests.
 - [x] 14.2 Validate, deploy, and verify the live `/settings` route.
+
+## 15. Remove repeated settings
+
+- [x] 15.1 Keep editable values in the main cards and unique details in the right-hand card.
+- [ ] 15.2 Validate and deploy the cleaned settings page.

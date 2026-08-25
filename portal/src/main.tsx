@@ -219,15 +219,13 @@ function SettingsPanel() {
         </div>
       </div>
       <div className="connection-card">
-        <h2>Connection</h2>
+        <h2>Details</h2>
         <dl>
-          <div><dt>DEOS target</dt><dd>{settings?.repository ?? "Loading…"}</dd></div>
-          <div><dt>Workflow dispatch</dt><dd>{settings?.dispatchEnabled ? "On" : "Off"}</dd></div>
-          <div><dt>Simple workflow</dt><dd>{settings?.selectorEnabled ? "On" : "Off"}</dd></div>
           <div><dt>Active runs</dt><dd>{settings?.activeRuns ?? "—"}</dd></div>
           <div><dt>Controls saved</dt><dd>{settings ? formatTime(settings.workflowUpdatedAt) : "—"}</dd></div>
           <div><dt>Controls saved by</dt><dd>{settings?.workflowUpdatedBy ?? "—"}</dd></div>
           <div><dt>Repository saved</dt><dd>{settings ? formatTime(settings.updatedAt) : "—"}</dd></div>
+          <div><dt>Repository saved by</dt><dd>{settings?.updatedBy ?? "—"}</dd></div>
         </dl>
         <a href="https://github.com/settings/installations" target="_blank" rel="noreferrer">Manage GitHub App access <ArrowSquareOut /></a>
         <p>GitHub App access is granted in GitHub. Saving this page does not add new GitHub permission.</p>

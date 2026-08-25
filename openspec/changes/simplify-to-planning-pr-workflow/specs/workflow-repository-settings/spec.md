@@ -49,6 +49,18 @@ the view that matches the current path.
 - **WHEN** the allowed user opens a portal path that is not registered
 - **THEN** the portal shows that the page was not found and does not silently show another view
 
+### Requirement: Show each setting once
+
+The settings page SHALL show editable repository and workflow controls only in
+their main cards. A supporting details card SHALL not repeat those values. It
+MAY show active-run count, save history, editor identity, and provider access
+links that are not shown in the main cards.
+
+#### Scenario: Operator reviews project settings
+
+- **WHEN** the settings page has loaded
+- **THEN** the right-hand details card omits the repository, workflow dispatch state, and simple workflow state
+
 ### Requirement: Save guarded workflow controls
 
 The portal SHALL let the allowed user view and save workflow dispatch and the
