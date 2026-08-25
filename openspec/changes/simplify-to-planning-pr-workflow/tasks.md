@@ -88,4 +88,4 @@
 ## 15. Remove repeated settings
 
 - [x] 15.1 Keep editable values in the main cards and unique details in the right-hand card.
-- [ ] 15.2 Validate and deploy the cleaned settings page.
+- [x] 15.2 Validate and deploy the cleaned settings page.
