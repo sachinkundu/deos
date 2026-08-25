@@ -72,4 +72,4 @@
 - [x] 12.1 Preserve the D1 repository setting when setup runs again.
 - [x] 12.2 Add an Access-protected settings page with safe save and read-back.
 - [x] 12.3 Use the D1 repository for selection and Sandbox checkout.
-- [ ] 12.4 Grant the GitHub App access to the test repository and prove both sides of the connection.
+- [x] 12.4 Grant the GitHub App access to the test repository and prove both sides of the connection.
