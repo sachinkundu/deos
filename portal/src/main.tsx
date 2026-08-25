@@ -17,6 +17,7 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 import { applyStaged, receivePoll, type PollState } from "./polling.ts";
+import { portalPageFromPath, portalPathForPage, type PortalPage } from "./routes.ts";
 import "./styles.css";
 
 type Theme = "system" | "light" | "dark";
@@ -245,13 +246,26 @@ function App() {
   const [poll, setPoll] = useState<PollState<Projection>>({ applied: null, staged: null, error: null });
   const [selectedVisit, setSelectedVisit] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const [page, setPage] = useState<"workflow" | "settings">("workflow");
+  const [page, setPage] = useState<PortalPage>(() => portalPageFromPath(window.location.pathname));
   const requestRef = useRef<AbortController | null>(null);
+  const workflowLoadedRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem("deos-theme", theme);
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    const restoreRoute = () => setPage(portalPageFromPath(window.location.pathname));
+    window.addEventListener("popstate", restoreRoute);
+    return () => window.removeEventListener("popstate", restoreRoute);
+  }, []);
+
+  const navigate = useCallback((next: Exclude<PortalPage, "not-found">) => {
+    const path = portalPathForPage(next);
+    if (window.location.pathname !== path) window.history.pushState({}, "", path);
+    setPage(next);
+  }, []);
 
   const loadProjection = useCallback(async (selectedRun: string, initial = false) => {
     requestRef.current?.abort();
@@ -297,14 +311,18 @@ function App() {
     } finally { setBusy(false); }
   }, [query, selectIssue]);
 
-  useEffect(() => { void search(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!runId) return;
+    if (page !== "workflow" || workflowLoadedRef.current) return;
+    workflowLoadedRef.current = true;
+    void search();
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (page !== "workflow" || !runId) return;
     const tick = () => { if (document.visibilityState === "visible") void loadProjection(runId); };
     const timer = window.setInterval(tick, 5_000);
     document.addEventListener("visibilitychange", tick);
     return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", tick); requestRef.current?.abort(); };
-  }, [loadProjection, runId]);
+  }, [loadProjection, page, runId]);
 
   const projection = poll.applied;
   const detail = useMemo(() => projection?.history.find((visit) => visit.sequence === selectedVisit) ?? projection?.history.at(-1) ?? null, [projection, selectedVisit]);
@@ -314,7 +332,7 @@ function App() {
   return <div className="shell">
     <header className="topbar">
       <div className="brand"><span className="brand-mark">D</span><div><strong>DEOS</strong><small>Workflow portal</small></div></div>
-      <div className="topbar-meta"><span className="secure-dot" />Access protected<button className="settings-nav" type="button" onClick={() => setPage((value) => value === "settings" ? "workflow" : "settings")}><Gear />{page === "settings" ? "Workflows" : "Settings"}</button><ThemeControl theme={theme} setTheme={setTheme} /></div>
+      <div className="topbar-meta"><span className="secure-dot" />Access protected<button className="settings-nav" type="button" onClick={() => navigate(page === "settings" ? "workflow" : "settings")}><Gear />{page === "settings" ? "Workflows" : "Settings"}</button><ThemeControl theme={theme} setTheme={setTheme} /></div>
     </header>
     {page === "workflow" && <aside className="rail">
       <form onSubmit={(event) => { event.preventDefault(); void search(); }} className="search-form">
@@ -328,8 +346,8 @@ function App() {
         {!busy && issues.length === 0 && <p className="empty-small">Search by an issue key with a durable DEOS run.</p>}
       </div>
     </aside>}
-    <main className={page === "settings" ? "main settings-main" : "main"}>
-      {page === "settings" ? <SettingsPanel /> : <>
+    <main className={page !== "workflow" ? "main settings-main" : "main"}>
+      {page === "settings" ? <SettingsPanel /> : page === "not-found" ? <section className="empty-state"><WarningCircle /><h1>Page not found</h1><p>This portal route is not registered.</p><button className="route-action" type="button" onClick={() => navigate("workflow")}>Go to workflows</button></section> : <>
       {poll.staged && <div className="update-banner"><span><ArrowClockwise /> Confirmed workflow data is ready.</span><button type="button" onClick={() => setPoll(applyStaged)}>Apply update</button></div>}
       {poll.error && <div className="error-banner"><WarningCircle />{poll.error}<button type="button" onClick={() => runId && void loadProjection(runId)}>Retry</button></div>}
       {selectedIssue && <section className="issue-header">

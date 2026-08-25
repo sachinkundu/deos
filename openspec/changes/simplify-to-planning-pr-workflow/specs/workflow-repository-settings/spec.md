@@ -28,6 +28,27 @@ separate provider permission.
 - **WHEN** a repository is saved in D1 but the DEOS GitHub App is not allowed to use it
 - **THEN** the setting does not grant access and the operator must add the repository in GitHub before a workflow test starts
 
+### Requirement: Open settings at a stable route
+
+The portal SHALL open project settings at `/settings`. The workflow view SHALL
+remain at `/`. Direct navigation, portal links, and browser history SHALL show
+the view that matches the current path.
+
+#### Scenario: Operator opens the settings link
+
+- **WHEN** the allowed user opens `/settings` directly
+- **THEN** the portal shows project settings without first opening the workflow view
+
+#### Scenario: Operator uses browser history
+
+- **WHEN** the allowed user moves between `/` and `/settings` and then uses back or forward
+- **THEN** the portal restores the view that matches the browser path
+
+#### Scenario: Operator opens an unknown path
+
+- **WHEN** the allowed user opens a portal path that is not registered
+- **THEN** the portal shows that the page was not found and does not silently show another view
+
 ### Requirement: Save guarded workflow controls
 
 The portal SHALL let the allowed user view and save workflow dispatch and the

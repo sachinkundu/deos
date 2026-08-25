@@ -79,3 +79,8 @@
 - [x] 13.1 Add separate D1 revision and editor fields for workflow controls.
 - [x] 13.2 Add authenticated dispatch and simple workflow switches with active-run guards and read-back.
 - [x] 13.3 Validate and deploy the portal while both live controls stay off.
+
+## 14. Give settings a stable route
+
+- [x] 14.1 Add URL-backed `/` and `/settings` views with browser history and route tests.
+- [ ] 14.2 Validate, deploy, and verify the live `/settings` route.

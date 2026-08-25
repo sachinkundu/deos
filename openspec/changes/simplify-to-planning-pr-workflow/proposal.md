@@ -13,7 +13,7 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 - Have each revision acknowledge every affected GitHub review thread, state what changed or why no change was made, and leave the thread unresolved for the reviewer.
 - Report the planning slice as successful only after DEOS verifies that the approved planning work is present on `origin/main`.
 - Preserve every available policy-safe agent output and bounded process diagnostic before any terminal Sandbox cleanup, including failed and interrupted attempts.
-- Add a small authenticated settings page that saves the project repository and guarded workflow controls in D1. GitHub App access remains a separate provider permission, and a saved change applies only when no workflow is active.
+- Add a small authenticated settings page at `/settings` that saves the project repository and guarded workflow controls in D1. GitHub App access remains a separate provider permission, and a saved change applies only when no workflow is active.
 - Preserve the current deployed full workflow and all immutable historical definitions while the simplified definition remains inactive pending implementation and live provider proof.
 
 ## Non-goals

@@ -365,6 +365,12 @@ save writes both switches in one D1 batch and reads them back. It is all or
 nothing for a current revision. A repository save turns dispatch and every
 simple selector for the project off.
 
+The workflow view stays at `/`. The settings page has the stable `/settings`
+route. The client reads the path on first load and on browser history changes.
+Portal navigation updates the URL before it changes the view. Cloudflare's SPA
+asset fallback serves the same authenticated shell for both registered paths.
+Unknown paths show a not-found view so future tools can claim their own routes.
+
 The active-run check is part of each guarded D1 update, not only a page check.
 The portal rejects a save if another session changed that kind of setting or a
 run started first. This keeps settings fixed for work already in flight without
