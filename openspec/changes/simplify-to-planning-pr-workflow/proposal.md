@@ -13,12 +13,13 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 - Have each revision acknowledge every affected GitHub review thread, state what changed or why no change was made, and leave the thread unresolved for the reviewer.
 - Report the planning slice as successful only after DEOS verifies that the approved planning work is present on `origin/main`.
 - Preserve every available policy-safe agent output and bounded process diagnostic before any terminal Sandbox cleanup, including failed and interrupted attempts.
+- Add a small authenticated settings page that saves the project repository in D1. GitHub App access remains a separate provider permission, and a saved change applies only when no workflow is active.
 - Preserve the current deployed full workflow and all immutable historical definitions while the simplified definition remains inactive pending implementation and live provider proof.
 
 ## Non-goals
 
 - Generate a design, implementation tasks, or runtime changes, or run an implementation agent as part of this first slice.
-- Build the workflow visibility or settings portal.
+- Build a general workflow editor or change settings for an active run.
 - Let an agent transition Linear, approve its own work, or merge a pull request directly.
 - Activate or deploy the simplified definition as part of the planning-artifact review gates.
 
@@ -27,11 +28,12 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 ### New Capabilities
 
 - `simplified-planning-workflow`: Defines the proposal-and-specification graph, its label-based selection, its DEOS-owned delegation and start transition, its human decisions, its workflow-owned merge, and the proof required before the first planning slice succeeds.
+- `workflow-repository-settings`: Defines the authenticated D1 repository setting, safe update rule, and read-back shown in the small portal page.
 
 ### Modified Capabilities
 
 - `linear-event-ingress`: Preserves immutable provider-backed label-selection evidence from the authenticated event before asynchronous workflow selection.
-- `workflow-dispatch`: Selects and freezes the simplified definition for a new issue run only when its selector is enabled and authenticated event-time evidence shows that the accepted `Todo` transition had the `simple-workflow` Linear label; otherwise selects and freezes the existing full definition.
+- `workflow-dispatch`: Uses the D1 repository setting when it selects and freezes the simplified definition for a new issue run. It selects that definition only when its selector is enabled and authenticated event-time evidence shows that the accepted `Todo` transition had the `simple-workflow` Linear label; otherwise it selects and freezes the existing full definition.
 - `workflow-state`: Interprets authorized human transitions from `Human Review` as three distinct configured decisions: `In Progress` requests revision of the same planning pull request, `Merging` authorizes the workflow-owned merge path, and `Canceled` terminates the run.
 
 ## Impact
@@ -40,4 +42,5 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 - Extends trusted workflow actions and GitHub reconciliation as needed to merge the authorized planning pull request and verify it on `origin/main`.
 - Adds deterministic definition and orchestration coverage followed by a separately authorized Cloudflare deployment and provider-originated Linear canary.
 - Strengthens the shared Sandbox controller so failed-agent transcripts and diagnostics survive cleanup for every workflow that uses it.
+- Makes the deployment repository value a first-run seed. Later repository changes come from the authenticated D1 settings page and are read back before use.
 - Establishes one proposal-and-specification traceability boundary from the triggering issue through the verified merge.

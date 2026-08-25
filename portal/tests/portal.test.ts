@@ -5,6 +5,7 @@ import { verifyAccess } from "../src/auth.ts";
 import { PORTAL_SELECTS } from "../src/model.ts";
 import { validatePresentationManifest } from "../src/manifests.ts";
 import { routePortalRequest } from "../src/worker.ts";
+import { normalizeRepository, RepositorySettingsError } from "../src/settings.ts";
 import type { LoadedWorkflowDefinition } from "../../src/workflow-definition.ts";
 
 test("Access verification binds signature, issuer, audience, expiry, and exact email", async () => {
@@ -44,6 +45,14 @@ test("every portal query belongs to the closed read-only SELECT inventory", () =
   }
 });
 
+test("repository settings accept only exact owner and repository names", () => {
+  assert.equal(normalizeRepository(" sachinkundu/deos-sample-project "), "sachinkundu/deos-sample-project");
+  for (const value of ["deos", "https://github.com/sachinkundu/deos", "owner/repo/extra", "owner/re po"]) {
+    assert.throws(() => normalizeRepository(value), (error) =>
+      error instanceof RepositorySettingsError && error.code === "invalid_repository");
+  }
+});
+
 test("the current exact workflow digest has complete presentation coverage", async () => {
   const nodeIds = [
     "requirements", "requirements_review", "requirements_approval", "openspec_proposal",
@@ -80,6 +89,7 @@ test("authentication runs before assets, route methods, or D1", async () => {
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
     ACCESS_AUD: "aud",
     ALLOWED_EMAIL: "sachinkundu@gmail.com",
+    PROJECT_ID: "project-id",
   };
   const denied = await routePortalRequest(new Request("https://deos.example/", { method: "POST" }), env, async () => { throw new Error("unauthorized"); });
   assert.equal(denied.status, 401);

@@ -22,6 +22,9 @@ test("materializer records the OpenSpec operation and latest cumulative patch re
         bind() { return this; },
         all() { return Promise.resolve({ results: [] }); },
         first() {
+          if (sql.includes("SELECT trial_repository")) {
+            return Promise.resolve({ trial_repository: "sachinkundu/deos" });
+          }
           return Promise.resolve(sql.includes("f.logical_name = 'patch.diff'") ? {
             attempt_id: "attempt-prior",
             manifest_id: "manifest-prior",

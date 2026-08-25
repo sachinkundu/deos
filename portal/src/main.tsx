@@ -6,6 +6,8 @@ import {
   ArrowUUpLeft,
   Check,
   Clock,
+  Gear,
+  GithubLogo,
   GitPullRequest,
   MagnifyingGlass,
   Moon,
@@ -35,6 +37,7 @@ interface Visit {
   links: Array<{ kind: string; label: string; url: string; createdAt: string }>;
 }
 interface Projection { run: Run & { freshness: string }; stages: Stage[]; history: Visit[]; unlinked: { attempts: number; waits: number } }
+interface RepositorySettings { projectId: string; repository: string; revision: number; updatedBy: string; updatedAt: string; selectorEnabled: boolean; activeRuns: number }
 
 const api = async <T,>(path: string, signal?: AbortSignal): Promise<T> => {
   if (import.meta.env.DEV) {
@@ -44,6 +47,24 @@ const api = async <T,>(path: string, signal?: AbortSignal): Promise<T> => {
   const response = await fetch(path, { signal, headers: { Accept: "application/json" } });
   if (!response.ok) throw new Error(response.status === 404 ? "No matching workflow was found." : "The portal could not refresh its data.");
   return response.json() as Promise<T>;
+};
+
+const saveRepository = async (repository: string, expectedRevision: number): Promise<RepositorySettings> => {
+  const response = await fetch("/api/settings/repository", {
+    method: "PUT",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ repository, expectedRevision }),
+  });
+  const body = await response.json() as RepositorySettings & { error?: string };
+  if (!response.ok) {
+    const messages: Record<string, string> = {
+      active_run: "A workflow is active. Wait for it to finish before changing the repository.",
+      stale_revision: "This setting changed in another session. Reload it and try again.",
+      invalid_repository: "Use the exact owner/repository format.",
+    };
+    throw new Error(messages[body.error ?? ""] ?? "The repository could not be saved.");
+  }
+  return body;
 };
 
 const formatTime = (value: string | null): string => value === null
@@ -73,6 +94,66 @@ function StageCard({ stage, onSelect }: { stage: Stage; onSelect: () => void }) 
   </button>;
 }
 
+function SettingsPanel() {
+  const [settings, setSettings] = useState<RepositorySettings | null>(null);
+  const [repository, setRepository] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(true);
+
+  const load = useCallback(async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      const value = await api<RepositorySettings>("/api/settings/repository");
+      setSettings(value);
+      setRepository(value.repository);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Settings could not be loaded.");
+    } finally { setBusy(false); }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const save = async () => {
+    if (settings === null) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const value = await saveRepository(repository, settings.revision);
+      setSettings(value);
+      setRepository(value.repository);
+      setMessage("Saved and read back from D1.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The repository could not be saved.");
+    } finally { setBusy(false); }
+  };
+
+  return <section className="settings-page">
+    <div className="settings-heading"><div><span className="eyebrow">Project settings</span><h1>Workflow repository</h1><p>Choose where new DEOS workflow work is published.</p></div><GithubLogo /></div>
+    <div className="settings-grid">
+      <div className="settings-card">
+        <label htmlFor="repository">GitHub repository</label>
+        <input id="repository" value={repository} onChange={(event) => setRepository(event.target.value)} placeholder="owner/repository" disabled={busy || settings === null} />
+        <p>Use the exact <code>owner/repository</code> name. The base branch must be <code>main</code>.</p>
+        <div className="settings-actions"><button type="button" onClick={() => void save()} disabled={busy || settings === null || repository.trim() === settings.repository}>{busy ? "Working…" : "Save repository"}</button><button className="secondary" type="button" onClick={() => void load()} disabled={busy}>Reload</button></div>
+        {message && <div className="settings-message" role="status">{message}</div>}
+      </div>
+      <div className="connection-card">
+        <h2>Connection</h2>
+        <dl>
+          <div><dt>DEOS target</dt><dd>{settings?.repository ?? "Loading…"}</dd></div>
+          <div><dt>Simple workflow</dt><dd>{settings?.selectorEnabled ? "On" : "Off"}</dd></div>
+          <div><dt>Active runs</dt><dd>{settings?.activeRuns ?? "—"}</dd></div>
+          <div><dt>Last saved</dt><dd>{settings ? formatTime(settings.updatedAt) : "—"}</dd></div>
+          <div><dt>Saved by</dt><dd>{settings?.updatedBy ?? "—"}</dd></div>
+        </dl>
+        <a href="https://github.com/settings/installations" target="_blank" rel="noreferrer">Manage GitHub App access <ArrowSquareOut /></a>
+        <p>GitHub App access is granted in GitHub. Saving this page does not add new GitHub permission.</p>
+      </div>
+    </div>
+  </section>;
+}
+
 function App() {
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("deos-theme") as Theme | null) ?? "system");
   const [query, setQuery] = useState(() => localStorage.getItem("deos-issue") ?? "SAC-122");
@@ -83,6 +164,7 @@ function App() {
   const [poll, setPoll] = useState<PollState<Projection>>({ applied: null, staged: null, error: null });
   const [selectedVisit, setSelectedVisit] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [page, setPage] = useState<"workflow" | "settings">("workflow");
   const requestRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -151,9 +233,9 @@ function App() {
   return <div className="shell">
     <header className="topbar">
       <div className="brand"><span className="brand-mark">D</span><div><strong>DEOS</strong><small>Workflow portal</small></div></div>
-      <div className="topbar-meta"><span className="secure-dot" />Read-only business state<ThemeControl theme={theme} setTheme={setTheme} /></div>
+      <div className="topbar-meta"><span className="secure-dot" />Access protected<button className="settings-nav" type="button" onClick={() => setPage((value) => value === "settings" ? "workflow" : "settings")}><Gear />{page === "settings" ? "Workflows" : "Settings"}</button><ThemeControl theme={theme} setTheme={setTheme} /></div>
     </header>
-    <aside className="rail">
+    {page === "workflow" && <aside className="rail">
       <form onSubmit={(event) => { event.preventDefault(); void search(); }} className="search-form">
         <label htmlFor="issue-search">Linear issue</label>
         <div className="search-input"><MagnifyingGlass /><input id="issue-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="SAC-101" autoComplete="off" /><button aria-label="Search" type="submit"><ArrowRight /></button></div>
@@ -164,8 +246,9 @@ function App() {
         </button>)}
         {!busy && issues.length === 0 && <p className="empty-small">Search by an issue key with a durable DEOS run.</p>}
       </div>
-    </aside>
-    <main className="main">
+    </aside>}
+    <main className={page === "settings" ? "main settings-main" : "main"}>
+      {page === "settings" ? <SettingsPanel /> : <>
       {poll.staged && <div className="update-banner"><span><ArrowClockwise /> Confirmed workflow data is ready.</span><button type="button" onClick={() => setPoll(applyStaged)}>Apply update</button></div>}
       {poll.error && <div className="error-banner"><WarningCircle />{poll.error}<button type="button" onClick={() => runId && void loadProjection(runId)}>Retry</button></div>}
       {selectedIssue && <section className="issue-header">
@@ -195,7 +278,7 @@ function App() {
             <ol className="history-list">{[...projection.history].reverse().map((visit) => <li key={visit.sequence}><button type="button" className={detail?.sequence === visit.sequence ? "selected" : ""} onClick={() => setSelectedVisit(visit.sequence)}><span className="history-number">{visit.sequence}</span><span><strong>{visit.label}</strong><small>{formatTime(visit.enteredAt)}{visit.cycle > 1 ? ` · cycle ${visit.cycle}` : ""}</small></span><span className="history-state">{human(visit.state)}</span></button></li>)}</ol>
           </section>
         </div>
-      </> : <section className="empty-state">{busy ? <><SpinnerGap className="spin" /><h1>Loading durable workflow state</h1></> : <><MagnifyingGlass /><h1>Find a DEOS workflow</h1><p>Search for a Linear issue key to inspect its workflow runs and durable business state.</p></>}</section>}
+      </> : <section className="empty-state">{busy ? <><SpinnerGap className="spin" /><h1>Loading durable workflow state</h1></> : <><MagnifyingGlass /><h1>Find a DEOS workflow</h1><p>Search for a Linear issue key to inspect its workflow runs and durable business state.</p></>}</section>}</>}
     </main>
   </div>;
 }

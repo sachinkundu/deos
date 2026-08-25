@@ -57,6 +57,9 @@ export interface ProjectWorkflowPolicyRecord {
   start_state_name: string;
   human_gate_state_id: string;
   dispatch_enabled: number;
+  repository_revision: number;
+  repository_updated_by: string;
+  repository_updated_at: string;
   updated_at: string;
 }
 
@@ -404,7 +407,6 @@ export class D1OrchestrationStore {
            definition_id = excluded.definition_id,
            definition_version = excluded.definition_version,
            definition_digest = excluded.definition_digest,
-           trial_repository = excluded.trial_repository,
            start_state_name = excluded.start_state_name,
            human_gate_state_id = excluded.human_gate_state_id,
            dispatch_enabled = project_workflow_policies.dispatch_enabled,

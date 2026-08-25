@@ -353,14 +353,15 @@ export class SandboxAgentController {
     nodeId: string,
     job: WorkflowJob,
   ): Promise<AgentAttemptRecord> {
-    if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(this.config.repository)) {
+    const materialized = await this.dependencies.materializeContext(run, job);
+    const repository = materialized.repository ?? this.config.repository;
+    if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
       throw new Error("trial repository is invalid");
     }
     const attemptId = this.dependencies.attemptId();
     const sandboxId = await sandboxIdentity(attemptId);
     const now = this.dependencies.now();
     const deadline = new Date(now.getTime() + this.config.absoluteTimeoutMs).toISOString();
-    const materialized = await this.dependencies.materializeContext(run, job);
     if (
       job.operation?.kind === "openspec" &&
       job.operation.instruction === "/opsx:archive" &&
@@ -376,7 +377,7 @@ export class SandboxAgentController {
       nodeId,
       visitSequence: run.current_visit_sequence,
       jobId: job.id,
-      repository: this.config.repository,
+      repository,
       promptDigest: await sha256Hex(job.prompt),
       resultSchemaId: job.resultSchema.$id,
       requiredOutputs: job.requiredOutputs,
@@ -423,6 +424,7 @@ export class SandboxAgentController {
       await sandbox.mkdir("/deos/workspace", { recursive: true });
       await sandbox.writeFile("/root/.codex/auth.json", lease.plaintext, { encoding: "utf8" });
       const durableJob = JSON.parse(attempt.job_spec_json) as {
+        repository?: unknown;
         materializedContext?: unknown;
         openspecInstruction?: unknown;
         openspecChange?: unknown;
@@ -432,6 +434,10 @@ export class SandboxAgentController {
       if (typeof durableJob.materializedContext !== "string") {
         throw new Error("materialized job context is missing");
       }
+      if (
+        typeof durableJob.repository !== "string" ||
+        !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(durableJob.repository)
+      ) throw new Error("durable repository is invalid");
       if (
         job.operation?.kind === "openspec" &&
         (
@@ -498,7 +504,7 @@ export class SandboxAgentController {
       }
       const clone = await sandbox.exec([
         "git", "clone", "--depth", "1",
-        `https://github.com/${this.config.repository}.git`,
+        `https://github.com/${durableJob.repository}.git`,
         "/deos/workspace/repository",
       ], { cwd: "/deos/workspace", timeout: 10 * 60_000 });
       const cloneExit = await clone.waitForExit({ timeout: 10 * 60_000 });

@@ -1,5 +1,16 @@
 ## MODIFIED Requirements
 
+### Requirement: Preserve the saved repository
+
+The deployment repository value SHALL seed a missing D1 policy but MUST NOT
+replace a repository saved by an operator. Queue selection and selector setup
+SHALL use the repository stored in the D1 project policy.
+
+#### Scenario: Setup runs after a repository change
+
+- **WHEN** scheduled or Queue setup runs after an operator saved a new repository in D1
+- **THEN** setup preserves that repository, registers the inactive selector for it, and does not restore the deployment seed
+
 ### Requirement: Dispatch accepted events
 
 The asynchronous Queue consumer, which is separate from HTTP ingress, SHALL load the applicable project policy and select the workflow definition for each accepted start event before allocating a run. For an accepted `Todo` transition, it SHALL select the enabled simplified planning definition only when the immutable event-time label-selection evidence carried by the application event establishes that the issue had the exact `simple-workflow` Linear label; otherwise it SHALL select the existing full definition as the default. It MUST NOT read the issue's current labels to make that selection. Before creating a Workflow instance, it SHALL derive a stable instance identity from the durable issue-run identity. It SHALL freeze the selected definition name, version, digest, and selection evidence on the run, establish an auditable mapping from the issue run to that one Workflow instance, and SHALL acknowledge the Queue message only after both the instance and mapping are confirmed. For a selected simplified run, Workflow dispatch SHALL begin at its trusted Linear claim action; planning-agent dispatch MUST wait for confirmed delegation and the `In Progress` read-back.

@@ -133,10 +133,13 @@ class FakeStore implements OrchestrationDispatchStore {
       definition_id: input.definition.name,
       definition_version: input.definition.version,
       definition_digest: input.definition.digest,
-      trial_repository: input.repository,
+      trial_repository: existing?.trial_repository ?? input.repository,
       start_state_name: input.startStateName,
       human_gate_state_id: input.humanGateStateId,
       dispatch_enabled: existing?.dispatch_enabled ?? (input.dispatchEnabled ? 1 : 0),
+      repository_revision: existing?.repository_revision ?? 1,
+      repository_updated_by: existing?.repository_updated_by ?? "deployment",
+      repository_updated_at: existing?.repository_updated_at ?? input.now,
       updated_at: input.now,
     });
   }
@@ -385,6 +388,34 @@ test("scheduled registration creates the simple selector disabled and preserves 
     now: () => new Date(NOW),
   });
   assert.equal(store.selectors.get(key)?.enabled, 1);
+});
+
+test("scheduled registration preserves the D1 repository setting", async () => {
+  const store = new FakeStore();
+  store.policies.set("project-1", {
+    project_id: "project-1",
+    definition_id: definition.name,
+    definition_version: definition.version,
+    definition_digest: definition.digest,
+    trial_repository: "sachinkundu/deos-sample-project",
+    start_state_name: "Todo",
+    human_gate_state_id: "human-approval-state",
+    dispatch_enabled: 0,
+    repository_revision: 2,
+    repository_updated_by: "sachinkundu@gmail.com",
+    repository_updated_at: NOW,
+    updated_at: NOW,
+  });
+  await registerBundledWorkflowDefinitions(environment(new FakeWorkflow()), {
+    store,
+    definitions: { "openspec-delivery": definition, simple: simpleDefinition },
+    now: () => new Date(NOW),
+  });
+  assert.equal(store.policies.get("project-1")?.trial_repository, "sachinkundu/deos-sample-project");
+  assert.equal(
+    store.selectors.get("project-1:sachinkundu/deos-sample-project:simple-workflow")?.enabled,
+    0,
+  );
 });
 
 const runMessage = async (

@@ -66,3 +66,10 @@
 ## 11. Acknowledge review threads
 
 - [x] 11.1 Require each revision to reply on every affected human GitHub review thread, state what changed or why no change was made, reconcile reply retries, and never resolve a thread.
+
+## 12. Connect a test repository
+
+- [x] 12.1 Preserve the D1 repository setting when setup runs again.
+- [x] 12.2 Add an Access-protected settings page with safe save and read-back.
+- [x] 12.3 Use the D1 repository for selection and Sandbox checkout.
+- [ ] 12.4 Grant the GitHub App access to the test repository and prove both sides of the connection.

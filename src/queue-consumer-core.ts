@@ -260,6 +260,8 @@ export const registerBundledWorkflowDefinitions = async (
     dispatchEnabled: String(env.TRIAL_DISPATCH_ENABLED) === "true",
     now,
   });
+  const policy = await store.findPolicy(env.LINEAR_PROJECT_ID);
+  if (policy === null) throw new Error("workflow project policy is unavailable");
   for (const registered of Object.values(bundled)) {
     if (registered.name === definition.name && registered.version === definition.version) continue;
     await store.registerDefinition({ definition: registered, projectId: env.LINEAR_PROJECT_ID, now });
@@ -268,7 +270,7 @@ export const registerBundledWorkflowDefinitions = async (
   if (simpleDefinition !== undefined) {
     await store.registerSelector({
       projectId: env.LINEAR_PROJECT_ID,
-      repository: env.TRIAL_REPOSITORY,
+      repository: policy.trial_repository,
       labelName: "simple-workflow",
       definition: simpleDefinition,
       now,
@@ -369,7 +371,7 @@ export const processQueueMessage = async (
       };
       const selector = simpleDefinition === undefined
         ? null
-        : await store.findSelector(event.project_id, env.TRIAL_REPOSITORY, "simple-workflow");
+        : await store.findSelector(event.project_id, policy.trial_repository, "simple-workflow");
       if (selector?.enabled === 1) {
         if (evidence.names?.includes(selector.label_name)) {
           if (

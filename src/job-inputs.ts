@@ -38,6 +38,7 @@ export interface ContinuationPatchReference {
 
 export interface MaterializedJobInput {
   context: string;
+  repository?: string;
   openspecChange: string;
   continuationPatch: ContinuationPatchReference | null;
   planningWorkProduct: RunWorkProductRecord | null;
@@ -107,6 +108,12 @@ export class JobInputMaterializer {
     const planningWorkProduct = planningJob
       ? await this.allocatePlanningWorkProduct(run, openspecChange)
       : null;
+    const policy = planningWorkProduct === null
+      ? await this.database.prepare(
+          "SELECT trial_repository FROM project_workflow_policies WHERE project_id = ?",
+        ).bind(run.project_id).first<{ trial_repository: string }>()
+      : { trial_repository: planningWorkProduct.repository };
+    if (policy === null) throw new Error("job repository policy is missing");
     const githubFeedback = planningWorkProduct?.pull_request_number === null ||
         planningWorkProduct?.pull_request_number === undefined
       ? []
@@ -174,7 +181,13 @@ export class JobInputMaterializer {
     };
     const encoded = JSON.stringify(bundle);
     if (encoded.length > 128_000) throw new Error("materialized job inputs exceed the trusted limit");
-    return { context: encoded, openspecChange, continuationPatch, planningWorkProduct };
+    return {
+      context: encoded,
+      repository: policy.trial_repository,
+      openspecChange,
+      continuationPatch,
+      planningWorkProduct,
+    };
   }
 
   private async allocatePlanningWorkProduct(
