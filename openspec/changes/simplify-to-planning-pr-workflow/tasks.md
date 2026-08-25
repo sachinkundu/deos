@@ -89,3 +89,8 @@
 
 - [x] 15.1 Keep editable values in the main cards and unique details in the right-hand card.
 - [x] 15.2 Validate and deploy the cleaned settings page.
+
+## 16. Freeze the D1 repository before Sandbox startup
+
+- [x] 16.1 Remove the deployment repository from Sandbox runtime authority and render checkout and publication instructions from the repository frozen in the durable job.
+- [ ] 16.2 Add regression coverage where the saved D1 repository differs from the deployment seed, then validate, deploy, and read back the live mapping before another provider test.

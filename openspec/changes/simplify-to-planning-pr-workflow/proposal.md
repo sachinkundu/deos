@@ -14,6 +14,7 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 - Report the planning slice as successful only after DEOS verifies that the approved planning work is present on `origin/main`.
 - Preserve every available policy-safe agent output and bounded process diagnostic before any terminal Sandbox cleanup, including failed and interrupted attempts.
 - Add a small authenticated settings page at `/settings` that saves the project repository and guarded workflow controls in D1. GitHub App access remains a separate provider permission, and a saved change applies only when no workflow is active.
+- Resolve the saved project repository before Sandbox allocation and freeze it into the durable job so checkout, agent instructions, and GitHub capability grants use one identity. The deployment repository value remains a first-run seed only.
 - Preserve the current deployed full workflow and all immutable historical definitions while the simplified definition remains inactive pending implementation and live provider proof.
 
 ## Non-goals
@@ -42,5 +43,5 @@ The current DEOS definition spans the full delivery lifecycle, which makes a fir
 - Extends trusted workflow actions and GitHub reconciliation as needed to merge the authorized planning pull request and verify it on `origin/main`.
 - Adds deterministic definition and orchestration coverage followed by a separately authorized Cloudflare deployment and provider-originated Linear canary.
 - Strengthens the shared Sandbox controller so failed-agent transcripts and diagnostics survive cleanup for every workflow that uses it.
-- Makes the deployment repository value a first-run seed. Later repository and workflow-control changes come from the authenticated D1 settings page and are read back before use.
+- Makes the deployment repository value a first-run seed. Later repository and workflow-control changes come from the authenticated D1 settings page, are frozen before Sandbox startup, and govern checkout, agent instructions, and GitHub capability grants together.
 - Establishes one proposal-and-specification traceability boundary from the triggering issue through the verified merge.

@@ -449,6 +449,7 @@ class Collector {
 
 interface SetupOptions {
   clock?: () => Date;
+  repository?: string;
   continuationPatch?: {
     attemptId: string;
     manifestId: string;
@@ -474,7 +475,6 @@ const setup = (options: SetupOptions = {}) => {
     factory,
     credentials as unknown as CredentialVault,
     {
-      repository: "sachinkundu/deos",
       authProfileId: "trial",
       absoluteTimeoutMs: 24 * 60 * 60_000,
       heartbeatTimeoutMs: 5 * 60_000,
@@ -487,6 +487,7 @@ const setup = (options: SetupOptions = {}) => {
           linearIssue: { id: "issue-1", title: "Bounded test task" },
           repository: { branch: "deos/{attemptId}" },
         }),
+        repository: options.repository ?? "sachinkundu/deos",
         openspecChange: "sac-1",
         continuationPatch: options.continuationPatch ?? null,
         planningWorkProduct: options.planningWorkProduct === undefined ||
@@ -494,7 +495,7 @@ const setup = (options: SetupOptions = {}) => {
           ? null
           : {
               run_id: run.run_id,
-              repository: "sachinkundu/deos",
+              repository: options.repository ?? "sachinkundu/deos",
               base_branch: "main",
               remote_branch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
               change_id: "sac-1",
@@ -594,6 +595,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
     },
   });
   const state = setup({
+    repository: "sachinkundu/deos-sample-project",
     materializedContext: planningContext,
     planningWorkProduct: { remote_branch: planningBranch },
   });
@@ -626,7 +628,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
     "</deos-job-inputs>",
     "Required durable outputs under /deos/output: transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json",
     "The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.",
-    `For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-${attemptId}, repository sachinkundu/deos, baseBranch main, change sac-1, title, body, a non-empty files array of {path, content}, and reviewReplies as an array of {commentId, body}. The trusted capability supplies and verifies the run-scoped remote branch ${planningBranch}.`,
+    `For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-${attemptId}, repository sachinkundu/deos-sample-project, baseBranch main, change sac-1, title, body, a non-empty files array of {path, content}, and reviewReplies as an array of {commentId, body}. The trusted capability supplies and verifies the run-scoped remote branch ${planningBranch}.`,
     "After the successful capability call, copy the response's exact operationId into result.json providerReceipts. Use only the operation ID string: no prose, labels, backticks, or provider resource IDs. The result.json list must exactly match provider-references.json.",
     "Use only the declared planning-publication capability. Never request or perform a Linear state transition or a GitHub merge.",
   ].join("\n");
@@ -637,12 +639,21 @@ test("first planning visit renders and protects the exact least-privilege prompt
   assert.equal(state.attempts.latest?.prompt_r2_key, `protected/prompts/${attemptId}.md`);
   assert.equal(
     state.attempts.latest?.prompt_sha256,
-    "10bc6f97d35e8edcc2603f4bc533874313554de153ac33a05a4eeed7721180fe",
+    "14a50c198b079f0253956d0422d78b895ca9a360997a80c4a01edffb953e619d",
   );
   assert.equal(state.factory.sandbox.deletedPaths.includes("/usr/local/bin/deos-linear"), true);
   assert.deepEqual((state.grantCalls[0][2] as { capabilities?: readonly string[] }).capabilities, [
     "github.publish_planning_work_product",
   ]);
+  assert.equal(state.grantCalls[0][3], "sachinkundu/deos-sample-project");
+  assert.deepEqual(
+    state.factory.sandbox.commands.find(({ command }) => command[0] === "git" && command[1] === "clone")?.command,
+    [
+      "git", "clone", "--depth", "1",
+      "https://github.com/sachinkundu/deos-sample-project.git",
+      "/deos/workspace/repository",
+    ],
+  );
   assert.equal(expected.includes("deos-linear"), false);
   assert.equal(expected.includes("publish_work_product,"), false);
   assert.equal(expected.includes("No implementation is included"), false);

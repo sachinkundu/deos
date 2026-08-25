@@ -254,7 +254,6 @@ export interface CapabilityGrant {
 }
 
 export interface SandboxControllerConfig {
-  repository: string;
   authProfileId: string;
   absoluteTimeoutMs: number;
   heartbeatTimeoutMs: number;
@@ -279,6 +278,7 @@ interface SandboxControllerDependencies {
     attemptId: string,
     runId: string,
     job: WorkflowJob,
+    repository: string,
     openspecChange: string,
     planningBranch: string | null,
   ) => Promise<CapabilityGrant>;
@@ -354,7 +354,7 @@ export class SandboxAgentController {
     job: WorkflowJob,
   ): Promise<AgentAttemptRecord> {
     const materialized = await this.dependencies.materializeContext(run, job);
-    const repository = materialized.repository ?? this.config.repository;
+    const repository = materialized.repository;
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
       throw new Error("trial repository is invalid");
     }
@@ -460,6 +460,7 @@ export class SandboxAgentController {
         attempt.attempt_id,
         run.run_id,
         job,
+        durableJob.repository,
         typeof durableJob.openspecChange === "string" ? durableJob.openspecChange : "",
         typeof durableJob.planningBranch === "string" ? durableJob.planningBranch : null,
       );
@@ -906,10 +907,15 @@ export class SandboxAgentController {
     materializedContext: string,
   ): string {
     const durableJob = JSON.parse(attempt.job_spec_json) as {
+      repository?: unknown;
       openspecChange?: unknown;
       planningBranch?: unknown;
     };
     const planningJob = job.capabilities?.includes("github.publish_planning_work_product") === true;
+    if (
+      typeof durableJob.repository !== "string" ||
+      !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(durableJob.repository)
+    ) throw new Error("durable prompt repository is invalid");
     if (planningJob) {
       if (typeof durableJob.openspecChange !== "string" || typeof durableJob.planningBranch !== "string") {
         throw new Error("planning prompt identity is missing");
@@ -931,7 +937,7 @@ export class SandboxAgentController {
         "</deos-job-inputs>",
         `Required durable outputs under /deos/output: ${job.requiredOutputs.join(", ")}`,
         "The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.",
-        `For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-${attempt.attempt_id}, repository ${this.config.repository}, baseBranch main, change ${durableJob.openspecChange}, title, body, a non-empty files array of {path, content}, and reviewReplies as an array of {commentId, body}. The trusted capability supplies and verifies the run-scoped remote branch ${durableJob.planningBranch}.`,
+        `For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-${attempt.attempt_id}, repository ${durableJob.repository}, baseBranch main, change ${durableJob.openspecChange}, title, body, a non-empty files array of {path, content}, and reviewReplies as an array of {commentId, body}. The trusted capability supplies and verifies the run-scoped remote branch ${durableJob.planningBranch}.`,
         "After the successful capability call, copy the response's exact operationId into result.json providerReceipts. Use only the operation ID string: no prose, labels, backticks, or provider resource IDs. The result.json list must exactly match provider-references.json.",
         "Use only the declared planning-publication capability. Never request or perform a Linear state transition or a GitHub merge.",
       ].join("\n");
@@ -958,7 +964,7 @@ export class SandboxAgentController {
       "</deos-job-inputs>",
       `Required durable outputs under /deos/output: ${job.requiredOutputs.join(", ")}`,
       "The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.",
-      `For GitHub work, pipe one JSON request to deos-github with version 1, action publish_work_product, a stable operationKey, repository ${this.config.repository}, branch deos/${attempt.attempt_id}, baseBranch main, title, body, and a non-empty files array of {path, content}.`,
+      `For GitHub work, pipe one JSON request to deos-github with version 1, action publish_work_product, a stable operationKey, repository ${durableJob.repository}, branch deos/${attempt.attempt_id}, baseBranch main, title, body, and a non-empty files array of {path, content}.`,
       `For a Linear working note, pipe one JSON request to deos-linear with version 1, action upsert_working_note, a stable operationKey, issueId ${run.issue_id}, and body. Capability receipts are captured mechanically.`,
       ...(job.operation?.kind === "openspec"
         ? []

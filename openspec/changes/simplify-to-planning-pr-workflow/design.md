@@ -356,7 +356,11 @@ use. The portal does not hold GitHub credentials and cannot widen that access.
 
 D1 stores the exact `owner/name` repository for the Linear project. The deploy
 value seeds a new policy only. Scheduled setup preserves later portal changes.
-Queue selection, Sandbox checkout, and GitHub grants read the D1 value.
+Before a Sandbox attempt is allocated, the trusted input materializer resolves
+the D1 repository and freezes it in the durable job. Sandbox checkout, the
+service-authored publication instruction, and the signed GitHub grant all use
+that frozen value. The controller has no separate deployment-repository
+fallback. A missing or invalid D1 mapping stops the run before Sandbox startup.
 
 The settings page is behind the existing Cloudflare Access check. It shows the
 saved repository, workflow dispatch, simple selector, revisions, and last
@@ -427,6 +431,8 @@ All database changes add new data. They do not rewrite old workflows or runs.
 | Queue evidence does not match the D1 hash. | Stop dispatch, record the error, and create no run from that message. |
 | The selector is missing, off, or for another repository. | Use the full workflow and save the reason. |
 | A settings save has an old revision or an active run exists. | Reject the whole save and keep the current settings. |
+| The D1 repository is missing or invalid before agent work. | Stop before Sandbox allocation and record a bounded configuration failure. Do not fall back to the deployment seed. |
+| Checkout, prompt, or GitHub grant does not match the frozen repository. | Reject the attempt before agent publication and keep the run open for repair. |
 | A workflow version already has another hash. | Stop setup. Never replace the saved workflow. |
 | Queue retries after an unclear create result. | Find the run and Workflow by stable id. Do not create a second one. |
 | Sandbox output is missing, invalid, or contains a blocked path. | Save every available policy-safe file plus a bounded failure summary. Do not enter `Human Review`. |

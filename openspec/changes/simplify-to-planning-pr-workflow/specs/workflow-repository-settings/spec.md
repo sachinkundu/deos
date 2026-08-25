@@ -28,6 +28,25 @@ separate provider permission.
 - **WHEN** a repository is saved in D1 but the DEOS GitHub App is not allowed to use it
 - **THEN** the setting does not grant access and the operator must add the repository in GitHub before a workflow test starts
 
+### Requirement: Resolve one repository before agent execution
+
+For each new run, DEOS SHALL resolve the configured Linear project's exact
+GitHub repository from D1 before it allocates a Sandbox attempt. It SHALL freeze
+that repository in the durable job. Sandbox checkout, agent publication
+instructions, and the signed GitHub capability grant SHALL use that same frozen
+value. The deployment repository value MUST NOT act as runtime authority after
+the D1 policy exists.
+
+#### Scenario: Saved repository differs from the deployment seed
+
+- **WHEN** D1 maps the project to a repository that differs from the deployment seed
+- **THEN** the durable job, Sandbox checkout, agent publication request, and GitHub capability grant all use the D1 repository
+
+#### Scenario: Repository cannot be resolved
+
+- **WHEN** the project has no valid repository mapping in D1
+- **THEN** DEOS stops before Sandbox allocation and records a bounded configuration failure
+
 ### Requirement: Open settings at a stable route
 
 The portal SHALL open project settings at `/settings`. The workflow view SHALL

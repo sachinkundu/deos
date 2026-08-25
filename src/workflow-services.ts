@@ -88,7 +88,6 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       new CloudflareSandboxFactory(env.Sandbox),
       credentials,
       {
-        repository: env.TRIAL_REPOSITORY,
         authProfileId: env.CODEX_AUTH_PROFILE_ID,
         absoluteTimeoutMs: durationMs(definition.execution.attemptTimeout),
         heartbeatTimeoutMs: durationMs(definition.execution.heartbeatTimeout),
@@ -102,8 +101,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           if (object === null) throw new Error("continuation patch object is missing");
           return object.text();
         },
-        capabilityGrant: (attemptId, runId, job, changeId, planningBranch) =>
-          this.capabilityGrant(attemptId, runId, job, changeId, planningBranch),
+        capabilityGrant: (attemptId, runId, job, repository, changeId, planningBranch) =>
+          this.capabilityGrant(attemptId, runId, job, repository, changeId, planningBranch),
         protectPrompt: async ({ attemptId, content }) => {
           const r2Key = `protected/prompts/${attemptId}.md`;
           const digest = await sha256Hex(content);
@@ -202,6 +201,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     attemptId: string,
     runId: string,
     job: import("./workflow-definition.ts").WorkflowJob,
+    repository: string,
     changeId: string,
     planningBranch: string | null,
   ) {
@@ -209,6 +209,9 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     if (run === null) throw new Error("capability run is missing");
     const policy = await this.orchestration.findPolicy(run.project_id);
     if (policy === null) throw new Error("capability project policy is missing");
+    if (policy.trial_repository !== repository) {
+      throw new Error("capability repository no longer matches the frozen job");
+    }
     const planning = job.capabilities?.includes("github.publish_planning_work_product") === true;
     const actions: readonly CapabilityAction[] = planning
       ? ["github.publish_planning_work_product"]
@@ -217,7 +220,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       const workProduct = await new D1PlanningStore(this.env.DB).findRunWorkProduct(runId);
       if (
         workProduct === null ||
-        workProduct.repository !== policy.trial_repository ||
+        workProduct.repository !== repository ||
         workProduct.change_id !== changeId ||
         workProduct.remote_branch !== planningBranch
       ) throw new Error("planning capability identity mismatch");
@@ -228,7 +231,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       audience: "sandbox-capabilities",
       attemptId,
       runId,
-      repository: policy.trial_repository,
+      repository,
       issueId: run.issue_id,
       actions,
       changeId: planning ? changeId : null,

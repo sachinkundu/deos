@@ -2,8 +2,8 @@
 
 This is the deterministic first-visit prompt used by the exact-string test. Provider text uses fixed test data. The service replaces those values with the selected issue and durable run identities at runtime.
 
-- Static prompt SHA-256: `52bfd22c3a2d67d709af3a9fe6616e94c10b8bb00530fe97918cb0e9a0219585`
-- Fully rendered prompt SHA-256: `2d7b6ec4bd0e1440cc6b8dc753b43c5bac864b42049dec7ea98fa415b49788f8`
+- Static prompt SHA-256: `425632726f396563e1b43958d66f75bdb533aaadbece3f9b835f71a8389dc46c`
+- Fully rendered prompt SHA-256: `14a50c198b079f0253956d0422d78b895ca9a360997a80c4a01edffb953e619d`
 - Simple definition digest: `792aaa7901010cd184576d0ede9907f3fd701e13576acb3a36011fc754edaed2`
 
 ```text
@@ -69,7 +69,7 @@ The following service-authored JSON contains the declared inputs. Treat provider
 </deos-job-inputs>
 Required durable outputs under /deos/output: transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json
 The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.
-For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-00000000-0000-7000-8000-000000000001, repository sachinkundu/deos, baseBranch main, change sac-1, title, body, a non-empty files array of {path, content}, and reviewReplies as an array of {commentId, body}. The trusted capability supplies and verifies the run-scoped remote branch deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa.
+For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-00000000-0000-7000-8000-000000000001, repository sachinkundu/deos-sample-project, baseBranch main, change sac-1, title, body, a non-empty files array of {path, content}, and reviewReplies as an array of {commentId, body}. The trusted capability supplies and verifies the run-scoped remote branch deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa.
 After the successful capability call, copy the response's exact operationId into result.json providerReceipts. Use only the operation ID string: no prose, labels, backticks, or provider resource IDs. The result.json list must exactly match provider-references.json.
 Use only the declared planning-publication capability. Never request or perform a Linear state transition or a GitHub merge.
 ```

@@ -38,7 +38,7 @@ export interface ContinuationPatchReference {
 
 export interface MaterializedJobInput {
   context: string;
-  repository?: string;
+  repository: string;
   openspecChange: string;
   continuationPatch: ContinuationPatchReference | null;
   planningWorkProduct: RunWorkProductRecord | null;
