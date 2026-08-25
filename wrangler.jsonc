@@ -3,7 +3,7 @@
   "name": "deos-sample-project",
   "main": "src/entry.py",
   "compatibility_date": "2026-08-11",
-  "compatibility_flags": ["python_workers"],
+  "compatibility_flags": ["python_workers", "disable_python_external_sdk"],
   "account_id": "c68856288112af7698f5be52ea94b96e",
   "observability": {
     "enabled": true,
