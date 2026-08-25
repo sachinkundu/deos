@@ -216,6 +216,12 @@ The file list may contain only:
 - `proposal.md`; and
 - one or more `specs/**/spec.md` files in the same change.
 
+Each `files[].path` value uses the full repository-relative path. For example,
+the proposal path is `openspec/changes/<change>/proposal.md`. The reading-order
+list in the pull request stays relative to the change folder, such as
+`proposal.md` and `specs/<capability>/spec.md`. This distinction is explicit in
+the protected prompt and its exact fixture.
+
 The tool rejects `design.md`, `tasks.md`, main specs, archive files, code,
 workflow files, unsafe paths, links, and files from another change.
 
@@ -250,7 +256,8 @@ part of the workflow hash. It tells the agent to:
 4. Run the strict OpenSpec check.
 5. Check the full proposal, each delta spec, and the pull request text for clear
    language.
-6. Publish the full allowed file list through the one GitHub action.
+6. Publish the full allowed file list through the one GitHub action. Use the
+   complete `openspec/changes/<change>/...` repository path in every file entry.
 7. Never create design, tasks, code, Linear moves, approvals, review resolutions,
    or merges.
 

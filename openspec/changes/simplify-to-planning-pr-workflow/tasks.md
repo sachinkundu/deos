@@ -94,3 +94,8 @@
 
 - [x] 16.1 Remove the deployment repository from Sandbox runtime authority and render checkout and publication instructions from the repository frozen in the durable job.
 - [x] 16.2 Add regression coverage where the saved D1 repository differs from the deployment seed, then validate, deploy, and read back the live mapping before another provider test.
+
+## 17. Publish planning files with full repository paths
+
+- [x] 17.1 State and enforce that every planning publication file entry uses the full `openspec/changes/<change>/...` repository path while review-order text stays relative.
+- [ ] 17.2 Update the exact prompt fixture and regression coverage, validate, deploy, then re-arm SAC-130 and prove a GitHub pull request is created.

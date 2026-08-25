@@ -25,7 +25,7 @@ The system SHALL store the simplified planning definition as an immutable defini
 
 ### Requirement: Produce one proposal-and-specification pull request
 
-The simplified workflow SHALL dispatch one planning agent that creates or revises the issue-named OpenSpec change through its proposal and every required delta specification in dependency order, validates those artifacts, and publishes them with the required OpenSpec change metadata to one GitHub pull request. The planning agent MUST NOT create a design or task checklist, change runtime code, transition Linear, approve its own work, or merge the pull request.
+The simplified workflow SHALL dispatch one planning agent that creates or revises the issue-named OpenSpec change through its proposal and every required delta specification in dependency order, validates those artifacts, and publishes them with the required OpenSpec change metadata to one GitHub pull request. Every file entry in the publication request SHALL use its complete repository-relative path under `openspec/changes/<change>/`. Human-facing review order text SHALL keep paths relative to that change folder. The planning agent MUST NOT create a design or task checklist, change runtime code, transition Linear, approve its own work, or merge the pull request.
 
 #### Scenario: First planning attempt completes
 
@@ -36,6 +36,11 @@ The simplified workflow SHALL dispatch one planning agent that creates or revise
 
 - **WHEN** the proposal, a required delta specification, validation result, or publication receipt is missing or invalid
 - **THEN** the workflow does not enter `Human Review` and does not report the planning attempt as successful
+
+#### Scenario: Publication uses a short file path
+
+- **WHEN** a planning publication file entry omits the `openspec/changes/<change>/` prefix
+- **THEN** the trusted publisher rejects the request and the workflow does not treat the attempt as completed planning work
 
 #### Scenario: Planning agent attempts a deferred action
 

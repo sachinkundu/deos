@@ -628,7 +628,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
     "</deos-job-inputs>",
     "Required durable outputs under /deos/output: transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json",
     "The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.",
-    `For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-${attemptId}, repository sachinkundu/deos-sample-project, baseBranch main, change sac-1, title, body, a non-empty files array of {path, content}, and reviewReplies as an array of {commentId, body}. The trusted capability supplies and verifies the run-scoped remote branch ${planningBranch}.`,
+    `For planning publication, pipe exactly one JSON request to deos-github with version 1, action publish_planning_work_product, operationKey planning-publish-${attemptId}, repository sachinkundu/deos-sample-project, baseBranch main, change sac-1, title, body, a non-empty files array of {path, content}, and reviewReplies as an array of {commentId, body}. Every files[].path must be a full repository-relative path beginning openspec/changes/sac-1/. The trusted capability supplies and verifies the run-scoped remote branch ${planningBranch}.`,
     "After the successful capability call, copy the response's exact operationId into result.json providerReceipts. Use only the operation ID string: no prose, labels, backticks, or provider resource IDs. The result.json list must exactly match provider-references.json.",
     "Use only the declared planning-publication capability. Never request or perform a Linear state transition or a GitHub merge.",
   ].join("\n");
@@ -639,7 +639,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
   assert.equal(state.attempts.latest?.prompt_r2_key, `protected/prompts/${attemptId}.md`);
   assert.equal(
     state.attempts.latest?.prompt_sha256,
-    "14a50c198b079f0253956d0422d78b895ca9a360997a80c4a01edffb953e619d",
+    "778536ae971951474c27c7212514adac306e8ea3587292cb509599339c1376db",
   );
   assert.equal(state.factory.sandbox.deletedPaths.includes("/usr/local/bin/deos-linear"), true);
   assert.deepEqual((state.grantCalls[0][2] as { capabilities?: readonly string[] }).capabilities, [
@@ -658,10 +658,16 @@ test("first planning visit renders and protects the exact least-privilege prompt
   assert.equal(expected.includes("publish_work_product,"), false);
   assert.equal(expected.includes("No implementation is included"), false);
   assert.equal(expected.includes("GITHUB_"), false);
+  assert.match(
+    expected,
+    /every `files\[\]` entry, set `path` to the full repository-relative path under `openspec\/changes\/<change>\/`/,
+  );
+  assert.match(expected, /Keep the pull request review-order paths relative to the change folder/);
+  assert.match(expected, /Every files\[\]\.path must be a full repository-relative path beginning openspec\/changes\/sac-1\//);
   assert.equal(
     await crypto.subtle.digest("SHA-256", new TextEncoder().encode(planningPrompt)).then((value) =>
       [...new Uint8Array(value)].map((byte) => byte.toString(16).padStart(2, "0")).join("")),
-    "425632726f396563e1b43958d66f75bdb533aaadbece3f9b835f71a8389dc46c",
+    "960eb4e2961aef394e67e407aabf138134ab46b32856533e64409482f22b3fe0",
   );
 });
 

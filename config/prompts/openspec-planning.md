@@ -12,7 +12,7 @@ Planning procedure:
 
 Publication contract:
 - Publish exactly one complete planning manifest through the supplied `deos-github` capability using `publish_planning_work_product` and the service-authored change identity.
-- Include `.openspec.yaml`, `proposal.md`, and every current `specs/**/spec.md` from the named change. Include no other file.
+- Include `.openspec.yaml`, `proposal.md`, and every current `specs/**/spec.md` from the named change. In every `files[]` entry, set `path` to the full repository-relative path under `openspec/changes/<change>/`, such as `openspec/changes/<change>/proposal.md`. Include no other file. Keep the pull request review-order paths relative to the change folder.
 - Use operation key `planning-publish-<attempt-id>` with the exact Attempt value from the prompt envelope. Use the supplied run-scoped planning branch and base `main`.
 - Use this pull-request template exactly and fill each placeholder with short, plain-language text:
 
