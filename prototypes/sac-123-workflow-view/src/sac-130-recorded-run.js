@@ -35,9 +35,18 @@ export const sac130RecordedRun = Object.freeze({
         { label: "Validation", value: "4 checks passed" },
       ],
       files: [
-        "openspec/changes/sac-130/.openspec.yaml",
-        "openspec/changes/sac-130/proposal.md",
-        "openspec/changes/sac-130/specs/entra-login/spec.md",
+        {
+          label: "openspec/changes/sac-130/.openspec.yaml",
+          url: "https://github.com/sachinkundu/deos-sample-project/blob/9270b93d31c653f15714509a8f841d98a13c6e46/openspec/changes/sac-130/.openspec.yaml",
+        },
+        {
+          label: "openspec/changes/sac-130/proposal.md",
+          url: "https://github.com/sachinkundu/deos-sample-project/blob/9270b93d31c653f15714509a8f841d98a13c6e46/openspec/changes/sac-130/proposal.md",
+        },
+        {
+          label: "openspec/changes/sac-130/specs/entra-login/spec.md",
+          url: "https://github.com/sachinkundu/deos-sample-project/blob/9270b93d31c653f15714509a8f841d98a13c6e46/openspec/changes/sac-130/specs/entra-login/spec.md",
+        },
       ],
     },
     review: {
@@ -78,6 +87,11 @@ export const sac130RecordedRun = Object.freeze({
     branch: "deos/planning/1f4edc54506d5719752da488",
     commit: "cd374edc02b5097f0596df6c4731da84803912de",
     mergeCommit: "9270b93d31c653f15714509a8f841d98a13c6e46",
+  },
+  linear: {
+    label: "SAC-130",
+    title: "Add Microsoft Entra login",
+    url: "https://linear.app/sachinkundu/issue/SAC-130/add-microsoft-entra-login",
   },
   agentRuns: {
     planning: [

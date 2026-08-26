@@ -115,10 +115,15 @@ test("SAC-130 uses the recorded simple-workflow evidence", () => {
   assert.equal(issue.pullRequest.label, "PR #1");
   assert.equal(issue.pullRequest.status, "Merged");
   assert.equal(issue.pullRequest.mergeCommit, "9270b93d31c653f15714509a8f841d98a13c6e46");
+  assert.equal(issue.linear.url, "https://linear.app/sachinkundu/issue/SAC-130/add-microsoft-entra-login");
   assert.equal(issue.evidence.runId.endsWith(":run:3"), true);
   assert.equal(issue.evidence.knownGap.includes("governed work-link row is absent"), true);
   assert.equal(issue.stageDetails.claim.facts.find(({ label }) => label === "Transition").value, "Todo → In Progress");
   assert.equal(issue.stageDetails.planning.files.length, 3);
+  for (const file of issue.stageDetails.planning.files) {
+    assert.equal(new URL(file.url).origin, "https://github.com");
+    assert.equal(file.url.includes(issue.pullRequest.mergeCommit), true);
+  }
   assert.equal(issue.stageDetails.review.facts.find(({ label }) => label === "Wait").value, "46 sec");
   assert.equal(issue.stageDetails.merge.facts.find(({ label }) => label === "Merge commit").value, "9270b93");
   assert.equal(issue.stageDetails.complete.facts.find(({ label }) => label === "Visits").value, "6");

@@ -32,6 +32,7 @@
 - [x] Mark Automatic merge & check and Completed as skipped for the rejected issue.
 - [x] Replace SAC-130 placeholder copy with the recorded Add Microsoft Entra login run, PR #1, real files, timings, validations, transcript summary, and terminal facts.
 - [x] Preserve the missing historical governed work-link row as an evidence gap; reconcile PR #1 from the accepted result, Linear attachment, and GitHub read-back.
+- [x] Enable the recorded SAC-130 Linear issue, PR #1, and immutable merged-file destinations; keep illustrative issues unlinked.
 - [x] Preserve all collapsed cancellation and failure paths into Stopped.
 - [x] Show the working SAC-130 provider-proof scenario as finished.
 - [x] Show the planning agent, proposal/specification artifacts, and planning PR #59 in stage detail.
@@ -55,6 +56,7 @@
 - Primary interactions tested: open Planning detail; verify Planning Agent, `proposal.md`, `specs/.../spec.md`, and PR #59; open Stopped detail; verify the bounded cancellation/failure explanation; switch Light and Dark themes; close both inspectors.
 - Browser console: a fresh final tab reported no errors or warnings.
 - Recorded-run interactions tested: open Claim issue, Create planning PR, Human approval, Automatic merge & check, and Completed; verify the reconciled facts in each detail; open Planning Agent Run 1; verify the transcript outcome, counts, and recorded highlights.
+- External destinations tested in the rendered prototype: the SAC-130 link resolved to the signed-in Linear issue and showed `Add Microsoft Entra login`; PR #1 resolved to the merged `SAC-130: OpenSpec plan` pull request; and `proposal.md` resolved to the immutable merge-commit file URL.
 
 **Required Fidelity Surfaces**
 
@@ -74,5 +76,6 @@
 - State comparison: added explicit per-stage state maps for one finished, one in-progress, and one failed issue. The failed example records automatic merge as the failure source and highlights the observed path into Stopped.
 - Branch comparison: added a stopped issue for a plan rejected at Human approval. The observed dotted branch is highlighted, while downstream successful-path cards use the distinct skipped treatment.
 - Recorded-run pass: manually reconciled Linear state history, workflow telemetry, durable run and transition records, the accepted artifact manifest, agent transcript, and GitHub PR #1. The approved layout remained intact; stage facts and transcript content now use the recorded SAC-130 run.
+- External-destination pass: replaced prototype-only destination modals with real new-tab links for SAC-130 and verified the exact Linear and GitHub URLs.
 
 final result: passed

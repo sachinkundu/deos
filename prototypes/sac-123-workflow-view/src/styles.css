@@ -1527,8 +1527,9 @@ select:focus-visible {
 }
 
 .inspector-agents button,
-.inspector-files button,
-.inspector-links button {
+.inspector-files a,
+.inspector-files .inspector-record,
+.inspector-links a {
   width: 100%;
   min-height: 44px;
   display: grid;
@@ -1540,49 +1541,55 @@ select:focus-visible {
   border-bottom: 0;
   background: var(--bg-soft);
   color: var(--text);
+  text-decoration: none;
   text-align: left;
 }
 
 .inspector-agents button:first-of-type,
-.inspector-files button:first-of-type,
-.inspector-links button:first-of-type {
+.inspector-files a:first-of-type,
+.inspector-files .inspector-record:first-of-type,
+.inspector-links a:first-of-type {
   border-radius: 7px 7px 0 0;
 }
 
 .inspector-agents button:last-child,
-.inspector-files button:last-child,
-.inspector-links button:last-child {
+.inspector-files a:last-child,
+.inspector-files .inspector-record:last-child,
+.inspector-links a:last-child {
   border-bottom: 1px solid var(--line);
   border-radius: 0 0 7px 7px;
 }
 
 .inspector-agents button:only-of-type,
-.inspector-files button:only-of-type,
-.inspector-links button:only-of-type {
+.inspector-files a:only-of-type,
+.inspector-files .inspector-record:only-of-type,
+.inspector-links a:only-of-type {
   border-bottom: 1px solid var(--line);
   border-radius: 7px;
 }
 
 .inspector-agents button:hover,
-.inspector-files button:hover,
-.inspector-links button:hover {
+.inspector-files a:hover,
+.inspector-links a:hover {
   border-color: var(--line-strong);
   background: var(--bg-hover);
 }
 
 .inspector-agents button > svg:first-child,
-.inspector-files button > svg:first-child,
-.inspector-links button > svg:first-child {
+.inspector-files a > svg:first-child,
+.inspector-files .inspector-record > svg:first-child,
+.inspector-links a > svg:first-child {
   color: var(--brand);
 }
 
 .inspector-agents button > svg:last-child,
-.inspector-files button > svg:last-child,
-.inspector-links button > svg:last-child {
+.inspector-files a > svg:last-child,
+.inspector-links a > svg:last-child {
   color: var(--text-muted);
 }
 
-.inspector-files button span {
+.inspector-files a span,
+.inspector-files .inspector-record span {
   overflow: hidden;
   font-size: 11px;
   text-overflow: ellipsis;
@@ -1590,7 +1597,7 @@ select:focus-visible {
 }
 
 .inspector-agents button span,
-.inspector-links button span {
+.inspector-links a span {
   display: flex;
   flex-direction: column;
   gap: 2px;

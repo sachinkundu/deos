@@ -759,7 +759,7 @@ function StatusLegend() {
   );
 }
 
-function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) {
+function StepInspector({ selection, issue, onClose, onTranscript }) {
   if (!selection) return null;
   const step = selection.step;
   const definitionIndex = step ? workflowDefinitions.findIndex((item) => item.id === step.id) : -1;
@@ -805,38 +805,26 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
           </section>}
           {usesPullRequest && pullRequest && status !== "future" && status !== "unknown" && <section className="inspector-links">
             <h3>Pull request</h3>
-            <button type="button" onClick={() => onExternal(`${pullRequest.label}: ${pullRequest.title}`)}><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></button>
+            <a href={pullRequest.url} target="_blank" rel="noreferrer"><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></a>
           </section>}
           {step?.files?.length > 0 && <section className="inspector-files">
             <h3>Files</h3>
-            {step?.files?.map((file) => (
-              <button type="button" key={file} onClick={() => onExternal(file)}><FileText size={18} /><span>{file}</span><ArrowSquareOut size={14} /></button>
-            ))}
+            {step.files.map((file) => {
+              const label = typeof file === "string" ? file : file.label;
+              return typeof file === "string"
+                ? <div className="inspector-record" key={label}><FileText size={18} /><span>{label}</span></div>
+                : <a href={file.url} target="_blank" rel="noreferrer" key={label}><FileText size={18} /><span>{label}</span><ArrowSquareOut size={14} /></a>;
+            })}
           </section>}
-          <section className="inspector-links">
+          {(issue.linear || (!usesPullRequest && pullRequest && definitionIndex >= 1)) && <section className="inspector-links">
             <h3>Linked work</h3>
-            <button type="button" onClick={() => onExternal(`Linear issue ${issue.key}`)}><FlowArrow size={19} /><span><strong>{issue.key}</strong><small>Linear</small></span><ArrowSquareOut size={15} /></button>
+            {issue.linear && <a href={issue.linear.url} target="_blank" rel="noreferrer"><FlowArrow size={19} /><span><strong>{issue.linear.label}</strong><small>Linear</small></span><ArrowSquareOut size={15} /></a>}
             {!usesPullRequest && pullRequest && definitionIndex >= 1 && status !== "future" && status !== "unknown" && (
-              <button type="button" onClick={() => onExternal(`${pullRequest.label}: ${pullRequest.title}`)}><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></button>
+              <a href={pullRequest.url} target="_blank" rel="noreferrer"><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></a>
             )}
-          </section>
+          </section>}
       </div>
     </aside>
-  );
-}
-
-function ExternalPreview({ label, onClose }) {
-  if (!label) return null;
-  return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="external-modal" role="dialog" aria-modal="true" aria-labelledby="external-title" onMouseDown={(event) => event.stopPropagation()}>
-        <span className="modal-icon"><ArrowSquareOut size={24} /></span>
-        <span className="eyebrow">External destination</span>
-        <h2 id="external-title">{label}</h2>
-        <p>In the real product, this opens the linked work in a new browser tab. External navigation is disabled in this local prototype.</p>
-        <button type="button" className="primary-button" onClick={onClose}>Back to workflow</button>
-      </section>
-    </div>
   );
 }
 
@@ -863,7 +851,7 @@ function TranscriptPreview({ transcript, onClose }) {
   );
 }
 
-function WorkflowWorkspace({ issue, selection, setSelection, onExternal, onTranscript, onRefresh }) {
+function WorkflowWorkspace({ issue, selection, setSelection, onTranscript, onRefresh }) {
   const graph = useMemo(() => buildGraph(issue), [issue]);
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
@@ -924,7 +912,7 @@ function WorkflowWorkspace({ issue, selection, setSelection, onExternal, onTrans
           </ReactFlow>
         </div>
       </section>
-      <StepInspector selection={selection} issue={issue} onClose={() => setSelection(null)} onExternal={onExternal} onTranscript={onTranscript} />
+      <StepInspector selection={selection} issue={issue} onClose={() => setSelection(null)} onTranscript={onTranscript} />
     </main>
   );
 }
@@ -933,7 +921,6 @@ export function App() {
   const [selectedKey, setSelectedKey] = useState("SAC-130");
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState(null);
-  const [externalIntent, setExternalIntent] = useState(null);
   const [transcriptIntent, setTranscriptIntent] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem("deos-prototype-theme") || "dark");
   const [toast, setToast] = useState("");
@@ -961,7 +948,6 @@ export function App() {
       }
       if (event.key === "Escape") {
         setSelection(null);
-        setExternalIntent(null);
         setTranscriptIntent(null);
       }
     };
@@ -1001,12 +987,10 @@ export function App() {
           issue={issue}
           selection={selection}
           setSelection={setSelection}
-          onExternal={setExternalIntent}
           onTranscript={setTranscriptIntent}
           onRefresh={refresh}
         />
       </div>
-      <ExternalPreview label={externalIntent} onClose={() => setExternalIntent(null)} />
       <TranscriptPreview transcript={transcriptIntent} onClose={() => setTranscriptIntent(null)} />
       {toast && <div className="toast" role="status"><CheckCircle size={18} />{toast}</div>}
     </div>
