@@ -49,7 +49,7 @@ export const routePortalRequest = async (
     for (const [key, value] of Object.entries(securityHeaders)) headers.set(key, value);
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   }
-  const store = new PortalReadStore(env.DB);
+  const store = new PortalReadStore(env.DB, env.PROJECT_ID);
   try {
     if (url.pathname === "/api/settings/repository") {
       const settings = new RepositorySettingsStore(env.DB);
@@ -105,6 +105,9 @@ export const routePortalRequest = async (
     if (!["GET", "HEAD"].includes(request.method)) return json(405, { error: "method_not_allowed" });
     if (url.pathname === "/api/issues") {
       return json(200, { issues: await store.searchIssues(url.searchParams.get("query") ?? "") });
+    }
+    if (url.pathname === "/api/workflows/simple/issues") {
+      return json(200, { issues: await store.simpleIssues() });
     }
     const transcriptMatch = url.pathname.match(
       /^\/api\/attempts\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/transcript(\.jsonl)?$/i,

@@ -9,6 +9,7 @@ import {
   simpleWorkflowPresentation,
 } from "../src/simple-workflow.js";
 import { activityForRecord } from "../src/transcript-view.js";
+import { simpleIssueFromProjection } from "../src/portal-run.js";
 
 const workflowSource = await readFile(new URL("../../../config/workflow.simple.yaml", import.meta.url), "utf8");
 const workflow = parse(workflowSource);
@@ -129,4 +130,39 @@ test("workflow step details show timing and destinations without redundant comme
   assert.equal(appSource.includes('className="detail-summary"'), false);
   assert.equal(appSource.includes('className="inspector-cycles"'), false);
   assert.equal(appSource.includes('["started", "duration"]'), true);
+});
+
+test("a durable simple projection becomes the approved visual issue shape", () => {
+  const issue = simpleIssueFromProjection({
+    issue: { key: "SAC-129", title: "Build a simple calculator CLI", url: "https://linear.app/sachinkundu/issue/SAC-129/build-a-simple-calculator-cli" },
+    run: {
+      id: "workflow:project:issue:run:9", sequence: 9, status: "succeeded",
+      definitionName: "simple", definitionVersion: 2, definitionDigest: "digest",
+      currentNode: "done", currentVisitSequence: 8,
+      startedAt: "2026-08-24T12:25:00Z", updatedAt: "2026-08-24T13:22:26Z",
+      freshness: "2026-08-24T13:22:26Z",
+    },
+    pullRequest: { number: 59, url: "https://github.com/sachinkundu/deos/pull/59", status: "Merged", verified: true },
+    history: [
+      { sequence: 1, stageId: "claim", enteredAt: "2026-08-24T12:25:00Z", leftAt: "2026-08-24T12:25:01Z", attempts: [], links: [] },
+      { sequence: 2, stageId: "planning", enteredAt: "2026-08-24T12:25:01Z", leftAt: "2026-08-24T12:35:31Z", attempts: [{ id: "attempt-1", state: "completed", outcome: "completed", startedAt: "2026-08-24T12:25:02Z", endedAt: "2026-08-24T12:35:30Z", transcriptAvailable: true, transcriptByteSize: 100, transcriptSha256: "a".repeat(64) }], links: [] },
+      { sequence: 3, stageId: "review", enteredAt: "2026-08-24T12:35:31Z", leftAt: "2026-08-24T12:55:47Z", attempts: [], links: [] },
+      { sequence: 4, stageId: "planning", enteredAt: "2026-08-24T12:55:47Z", leftAt: "2026-08-24T13:01:15Z", attempts: [{ id: "attempt-2", state: "completed", outcome: "completed", startedAt: "2026-08-24T12:55:48Z", endedAt: "2026-08-24T13:01:14Z", transcriptAvailable: true, transcriptByteSize: 200, transcriptSha256: "b".repeat(64) }], links: [
+        { kind: "pull_request", label: "PR #59", url: "https://github.com/sachinkundu/deos/pull/59" },
+        { kind: "openspec_artifact", label: "openspec/changes/sac-129/proposal.md", url: `https://github.com/sachinkundu/deos/blob/${"c".repeat(40)}/openspec/changes/sac-129/proposal.md` },
+      ] },
+      { sequence: 5, stageId: "review", enteredAt: "2026-08-24T13:01:15Z", leftAt: "2026-08-24T13:22:15Z", attempts: [], links: [] },
+      { sequence: 6, stageId: "merge", enteredAt: "2026-08-24T13:22:15Z", leftAt: "2026-08-24T13:22:21Z", attempts: [], links: [] },
+      { sequence: 7, stageId: "merge", enteredAt: "2026-08-24T13:22:21Z", leftAt: "2026-08-24T13:22:26Z", attempts: [], links: [] },
+      { sequence: 8, stageId: "complete", enteredAt: "2026-08-24T13:22:26Z", leftAt: null, attempts: [], links: [] },
+    ],
+  });
+  assert.equal(issue.key, "SAC-129");
+  assert.equal(issue.state, "finished");
+  assert.equal(issue.currentStep, "done");
+  assert.equal(issue.pullRequest.label, "PR #59");
+  assert.equal(issue.stageDetails.planning.files.length, 1);
+  assert.equal(issue.agentRuns.planning.length, 2);
+  assert.equal(issue.cycles.planning, 2);
+  assert.deepEqual(issue.stageDetails.planning.facts.map((fact) => fact.label), ["Started", "Duration"]);
 });

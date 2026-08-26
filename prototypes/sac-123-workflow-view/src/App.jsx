@@ -45,6 +45,7 @@ import {
   simpleWorkflowPresentation,
 } from "./simple-workflow.js";
 import { activityForRecord } from "./transcript-view.js";
+import { loadSimpleWorkflowIssues } from "./portal-run.js";
 
 const fullWorkflowDefinitions = [
   {
@@ -321,7 +322,7 @@ const currentNodeByStep = {
   ...simpleWorkflowPresentation.nodeToStage,
 };
 
-const issueDefinitions = simpleWorkflowIssues;
+const initialIssueDefinitions = simpleWorkflowIssues;
 
 const stateIcon = {
   active: Pulse,
@@ -718,8 +719,8 @@ function AppHeader({ theme, onThemeChange }) {
   );
 }
 
-function SideBar({ selectedKey, onSelect, search, setSearch, onSearch }) {
-  const filtered = Object.values(issueDefinitions).filter((issue) => issue.key.includes(search.trim().toUpperCase()) || issue.title.toLowerCase().includes(search.trim().toLowerCase()));
+function SideBar({ issues, selectedKey, onSelect, search, setSearch, onSearch }) {
+  const filtered = Object.values(issues).filter((issue) => issue.key.includes(search.trim().toUpperCase()) || issue.title.toLowerCase().includes(search.trim().toLowerCase()));
   return (
     <aside className="issue-sidebar">
       <form className="issue-search" onSubmit={onSearch}>
@@ -742,7 +743,7 @@ function SideBar({ selectedKey, onSelect, search, setSearch, onSearch }) {
           <IssueRow key={issue.key} issue={issue} selected={selectedKey === issue.key} onSelect={onSelect} />
         ))}
         {!filtered.length && (
-          <div className="no-results"><WarningCircle size={22} /><strong>No issue found</strong><span>Try SAC-130 or clear the search.</span></div>
+          <div className="no-results"><WarningCircle size={22} /><strong>No issue found</strong><span>Enter a recorded simple-workflow issue.</span></div>
         )}
       </nav>
     </aside>
@@ -870,7 +871,7 @@ function TranscriptPreview({ transcript, onClose }) {
         <span className="eyebrow">Agent transcript</span>
         <h2 id="transcript-title">{transcript.label}</h2>
         {!fullTranscript && <>
-          <p>{transcript.summary}</p>
+          {transcript.summary && <p>{transcript.summary}</p>}
           <dl className="detail-list transcript-facts">
             <div><dt>Outcome</dt><dd>{transcript.outcome}</dd></div>
             {transcript.facts?.map((fact) => <div key={`${fact.label}-${fact.value}`}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
@@ -881,7 +882,7 @@ function TranscriptPreview({ transcript, onClose }) {
           </section>}
           {transcript.source && <button className="transcript-source-link" type="button" onClick={() => void loadFullTranscript()} disabled={loading} aria-label="Read full agent transcript JSONL inside the portal">
             {loading ? <SpinnerGap className="spin" size={19} /> : <FileText size={19} />}
-            <span><strong>{loading ? "Loading verified transcript…" : transcript.source.label}</strong><small>{transcript.source.format} · {transcript.source.eventCount} events · {(transcript.source.byteSize / 1000).toFixed(1)} KB</small></span>
+            <span><strong>{loading ? "Loading verified transcript…" : transcript.source.label}</strong><small>{[transcript.source.format, transcript.source.eventCount ? `${transcript.source.eventCount} events` : null, transcript.source.byteSize ? `${(transcript.source.byteSize / 1000).toFixed(1)} KB` : null].filter(Boolean).join(" · ")}</small></span>
             <ArrowSquareOut size={15} />
           </button>}
           {error && <div className="transcript-load-error" role="alert">{error}</div>}
@@ -928,7 +929,7 @@ function WorkflowWorkspace({ issue, selection, setSelection, onTranscript, onRef
     <main className="workflow-workspace">
       <section className="workspace-heading">
         <div className="issue-title-line"><strong>{issue.key}</strong><h1>{issue.title}</h1></div>
-        <div className="workflow-identity"><strong>{simpleWorkflowPresentation.label}</strong><span>Definition v{simpleWorkflowPresentation.version}</span></div>
+        <div className="workflow-identity"><strong>{simpleWorkflowPresentation.label}</strong><span>Definition v{issue.evidence.definitionVersion}</span></div>
       </section>
 
       <section className={`workflow-state-bar workflow-state-bar--${issue.state}`}>
@@ -974,6 +975,7 @@ function WorkflowWorkspace({ issue, selection, setSelection, onTranscript, onRef
 }
 
 export function App() {
+  const [issues, setIssues] = useState(initialIssueDefinitions);
   const [selectedKey, setSelectedKey] = useState("SAC-130");
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState(null);
@@ -981,7 +983,35 @@ export function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem("deos-prototype-theme") || "dark");
   const [toast, setToast] = useState("");
 
-  const issue = issueDefinitions[selectedKey];
+  const issue = issues[selectedKey] ?? Object.values(issues)[0];
+
+  const refreshIssues = useCallback(async () => {
+    const controller = new AbortController();
+    try {
+      const recorded = await loadSimpleWorkflowIssues(controller.signal);
+      setIssues(recorded);
+      setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? current);
+      return true;
+    } catch (reason) {
+      if (reason?.name !== "AbortError") {
+        setToast(reason instanceof Error ? reason.message : "The recorded workflows could not be loaded.");
+      }
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadSimpleWorkflowIssues(controller.signal).then((recorded) => {
+      setIssues(recorded);
+      setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? current);
+    }).catch((reason) => {
+      if (reason?.name !== "AbortError") {
+        setToast(reason instanceof Error ? reason.message : "The recorded workflows could not be loaded.");
+      }
+    });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: light)");
@@ -1025,20 +1055,22 @@ export function App() {
 
   const submitSearch = (event) => {
     event.preventDefault();
-    const match = Object.keys(issueDefinitions).find((key) => key === search.trim().toUpperCase());
+    const match = Object.keys(issues).find((key) => key === search.trim().toUpperCase());
     if (match) selectIssue(match);
-    else setToast("No matching issue in this prototype");
+    else setToast("No matching recorded simple workflow");
   };
 
   const refresh = () => {
-    setToast("Status is still unconfirmed");
+    void refreshIssues().then((loaded) => {
+      if (loaded) setToast("Recorded workflow refreshed");
+    });
   };
 
   return (
     <div className="app-shell">
       <AppHeader theme={theme} onThemeChange={setTheme} />
       <div className="app-body">
-        <SideBar selectedKey={selectedKey} onSelect={selectIssue} search={search} setSearch={setSearch} onSearch={submitSearch} />
+        <SideBar issues={issues} selectedKey={selectedKey} onSelect={selectIssue} search={search} setSearch={setSearch} onSearch={submitSearch} />
         <WorkflowWorkspace
           issue={issue}
           selection={selection}

@@ -6,6 +6,7 @@ import { CapabilityRouter } from "../src/capability-router.ts";
 import type { CapabilityStore } from "../src/capability-store.ts";
 import type { ProviderOperationRecord, ProviderOperationState } from "../src/linear-transition.ts";
 import type { RunWorkProductRecord } from "../src/planning-store.ts";
+import { governedPlanningLinks } from "../src/planning-store.ts";
 
 const SECRET = "planning-capability-secret-with-more-than-thirty-two-bytes";
 const NOW = new Date("2026-08-23T10:00:00.000Z");
@@ -277,4 +278,36 @@ test("planning-only grant rejects generic GitHub, Linear, wrong change, and copi
   assert.equal(genericState.githubCalls(), 0);
   assert.equal(changeState.githubCalls(), 0);
   assert.equal(contentState.githubCalls(), 0);
+});
+
+test("confirmed planning identity produces one PR and immutable links for every manifest file", () => {
+  const manifest = JSON.stringify(publication().files
+    .map((file) => ({ path: file.path, sha256: "a".repeat(64), byteSize: file.content.length }))
+    .sort((left, right) => left.path.localeCompare(right.path)));
+  const links = governedPlanningLinks({
+    repository: "sachinkundu/deos",
+    remoteBranch: BRANCH,
+    changeId: CHANGE,
+    pullRequestNumber: 54,
+    pullRequestUrl: "https://github.com/sachinkundu/deos/pull/54",
+    headSha: "b".repeat(40),
+    planningManifestJson: manifest,
+  });
+  assert.equal(links.length, 4);
+  assert.deepEqual(links[0], {
+    kind: "pull_request",
+    label: "PR #54",
+    url: "https://github.com/sachinkundu/deos/pull/54",
+  });
+  assert.equal(links.filter((link) => link.kind === "openspec_artifact").length, 3);
+  assert.ok(links.slice(1).every((link) => link.url.includes(`/blob/${"b".repeat(40)}/openspec/changes/${CHANGE}/`)));
+  assert.throws(() => governedPlanningLinks({
+    repository: "sachinkundu/deos",
+    remoteBranch: BRANCH,
+    changeId: CHANGE,
+    pullRequestNumber: 54,
+    pullRequestUrl: "https://example.com/sachinkundu/deos/pull/54",
+    headSha: "b".repeat(40),
+    planningManifestJson: manifest,
+  }), /destination is invalid/);
 });
