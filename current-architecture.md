@@ -4,6 +4,8 @@ This is the living, repository-level architecture index. The detailed as-built r
 
 DEOS receives authenticated Linear webhooks in a Python Worker, deduplicates them by `Linear-Delivery`, records them in D1, and hands relevant events to a TypeScript Queue consumer. The consumer owns the immutable versioned graph, stable issue/run/Workflow identities, D1 transitions and inbox, Cloudflare Workflow execution, isolated Sandbox attempts, provider capability receipts, artifact manifests, and cleanup reconciliation.
 
+Project policy selects the full delivery graph by default. An enabled, repository-scoped selector can choose the smaller `simple` planning graph when a provider-originated issue carries the configured `simple-workflow` label. Both graphs use the same trusted execution, evidence, and cleanup boundaries.
+
 D1 is the business-state and audit authority. Cloudflare Workflow status is executor evidence. The typed lifecycle first deployed as definition version 4 and is reconciled into the active version 11 graph:
 
 - final `succeeded`, `denied`, and `canceled` nodes commit D1 before normal return;
@@ -21,6 +23,8 @@ run the versioned delivery graph in the separate TypeScript Worker.
 A scheduled reconciler compares non-final D1 runs with Cloudflare instance status. Cloudflare `complete` without a final D1 outcome becomes `premature_workflow_completion`: a guarded update marks DEOS failed and creates or reuses one marked comment on the correlated Linear ticket. A lost D1 race is audited without overwriting the newer state or publishing a stale notice.
 
 Both Workers emit bounded correlated observations to Workers Logs. R2 stores protected credentials, immutable artifacts, and diagnostics; trusted provider adapters retain Linear/GitHub credentials outside the Sandbox. Real completion evidence is layered: deterministic tests, deployed Cloudflare status and D1 records, provider-originated Linear transitions, and sanitized visual proof.
+
+Cleanup has two independent views. The Worker cron reconciles attempts already known to D1. An hourly GitHub Actions job reads the Cloudflare Container inventory and submits only Sandbox IDs to the authenticated `/cleanup-audit` endpoint. The Worker compares those IDs with D1 and creates or reuses stable Linear cleanup issues for provider-only resources. The Actions job does not receive Linear credentials or direct authority to change DEOS state.
 
 The architecture keeps authenticated ingress and domain logic small and
 Python-first, with durable dispatch isolated behind a provider-supported Queue
@@ -69,6 +73,13 @@ and a test Linear project provide provider-originated integration proof.
   actions require exact D1-backed receipts. A repository-local OpenSpec job may
   complete with zero provider operations, but any external operation it
   attempts retains the exact receipt requirement.
+- **Policy-controlled graph selection:** the full graph remains the default. A
+  D1 selector can choose the immutable `simple` graph only for its configured
+  project and repository when trusted provider label evidence matches.
+- **Two cleanup views:** the Worker cron is authoritative for D1-known attempts.
+  The repository schedule independently lists Cloudflare Container instances
+  and sends only Sandbox IDs to the trusted Worker, which owns comparison,
+  durable work items, and Linear cleanup reporting.
 
 ## Component and event flow
 
@@ -77,13 +88,25 @@ flowchart LR
   linear[Linear] -->|signed webhook| ingress[Python ingress Worker]
   ingress -->|delivery + correlation| deliveries[(D1 deliveries)]
   ingress -->|application event + correlation| queue[Cloudflare Queue]
-  queue -->|message + attempt| consumer[TypeScript Queue consumer]
-  consumer --> state[(D1 runs, transitions, audit)]
-  consumer -->|issue state update| linear
+  queue --> consumer[TypeScript orchestration Worker]
+  consumer --> workflow[Cloudflare Workflow]
+  workflow --> sandbox[Disposable Sandbox]
+  workflow <--> state[(D1 authority)]
+  workflow --> artifacts[(R2 artifacts)]
+  sandbox -->|attempt capability| consumer
+  consumer -->|trusted provider operations| linear
+  consumer -->|trusted provider operations| github[GitHub]
+  portal[Operator portal] -->|authenticated API| consumer
+
+  cron[Worker cron] -->|D1-known cleanup| consumer
+  inventory[GitHub Actions hourly audit] -->|read instances| containers[Cloudflare Containers API]
+  inventory -->|Sandbox IDs + shared auth| audit[/cleanup-audit/]
+  audit --> consumer
+  consumer -->|stable cleanup issue| linear
+
   ingress -.->|structured observations| logs[Workers Logs]
   consumer -.->|structured observations| logs
   logs --> query[Query Builder]
-  ingress -. bound, not yet written .-> r2[(R2)]
 ```
 
 ```text
@@ -95,8 +118,11 @@ Linear signed delivery
   -> irrelevant: return HTTP 200 without starting a workflow
   -> relevant and new: publish the application event to Queue
   -> Queue consumer loads or creates the deterministic workflow run
-  -> commit durable workflow transitions in D1
-  -> update the Linear issue when required by the transition
+  -> select and freeze the reviewed workflow definition
+  -> Cloudflare Workflow commits durable transitions in D1
+  -> agent nodes run in disposable Sandboxes with attempt-scoped capabilities
+  -> immutable artifacts and manifests are written to R2
+  -> the trusted Worker updates Linear or GitHub only with durable receipts
   -> emit correlated observations around each fallible stage
   -> acknowledge Queue success or throw so Queue retry policy applies
 ```
@@ -113,7 +139,17 @@ transition is valid.
   actor, occurrence time, source delivery ID, and correlation ID.
 - `workflow_run`: deterministic run ID, project, issue, current state, created
   and updated timestamps, and the same correlation ID.
+- `workflow_definition` and `workflow_definition_selector`: immutable graph
+  snapshots and a project/repository/label rule for choosing a reviewed graph.
 - `transition`: run ID, previous state, next state, cause, actor, and timestamp.
+- `agent_attempt`: attempt and Sandbox identity, execution state, cleanup state,
+  and bounded result references.
+- `artifact_manifest` and `artifact`: create-only R2 keys, digests, sizes, kinds,
+  and completion state for one attempt.
+- `provider_operation`: stable operation identity, scope, status, and trusted
+  provider receipt for an attempt.
+- `cleanup_work_item`: stable Sandbox identity, cleanup state, Linear operation
+  and resource references, bounded error category, and last attempt time.
 - `telemetry observation`: time, service, stage, outcome, correlation ID,
   relevant resource identifiers, optional Queue attempt metadata, and a closed
   error category on failure.
@@ -137,6 +173,9 @@ durable source of workflow and audit state.
 | Consumer D1 operation fails | Emit `d1_operation_failed` and throw so Queue retry policy applies. |
 | Linear update fails | Emit a bounded transport, HTTP, or GraphQL error category and throw so Queue retry policy applies. |
 | Worker stops after a stage starts | No false terminal success is emitted; a later attempt remains under the same correlation ID. |
+| D1-known Sandbox cleanup fails | The Worker records the cleanup failure and retries from the scheduled cron without waking a missing Sandbox process. |
+| Hourly provider inventory audit is unavailable | Normal ingress and workflow execution continue, but provider-only orphan detection is degraded until the GitHub Actions job succeeds. |
+| Inventory audit authentication fails | `/cleanup-audit` rejects the request; no D1 cleanup item or Linear issue is created from unauthenticated input. |
 | Workers Logs is unavailable or expired | D1 remains authoritative, but the cross-service operational narrative is incomplete. |
 
 ## Current boundaries
@@ -147,12 +186,14 @@ durable source of workflow and audit state.
   capture uses an isolated temporary Git index so untracked files are included;
   the first slice does not provide a long-lived mutable workspace or automatic
   rebase.
-- Workers Logs and Query Builder remain the operational query surface; the
-  issue-centred operator view and native workflow graph are separate follow-up
-  work.
-- Future operator UI, independent executor/business status projection, and
-  native Cloudflare graph work remain separately tracked; they do not replace
-  D1 authority.
+- The operator portal exposes issue/run detail, planning controls, and settings,
+  but D1 remains authoritative and provider configuration still has separate
+  Cloudflare, GitHub, and Linear administration surfaces.
+- A richer native workflow graph and broader executor/business status
+  projection remain separately tracked; they do not replace D1 authority.
+- The external inventory reader should use a Cloudflare credential restricted
+  to the smallest available Container-read scope. Credential rotation and
+  provider permission management remain operational responsibilities.
 
 ## Evolution rule
 
