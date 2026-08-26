@@ -1,25 +1,25 @@
 ---
 name: openspec-review-gated-flow
-description: Run OpenSpec work through small, sequential, human-approved proposal, specification, and design pull requests, then generate tasks internally and implement autonomously to one final PR. Automatically land purely mechanical sync, archive, and checklist reconciliation PRs after validation. Use for non-trivial architecture, integration, or staged OpenSpec changes in this repository, and whenever the user asks for review gates, small planning PRs, easier judgment, or minimum downstream churn.
+description: Run OpenSpec work through a combined human-reviewed proposal-and-specification pull request, then a separate design pull request, before generating tasks internally and implementing autonomously to one final PR. Automatically land purely mechanical sync, archive, and checklist reconciliation PRs after validation. Use for non-trivial architecture, integration, or staged OpenSpec changes in this repository, and whenever the user asks for review gates, traceability before approval, easier judgment, or minimum downstream churn.
 ---
 
 # OpenSpec Review-Gated Flow
 
 Optimize for reviewer attention and cheap rejection while choices are still
-upstream. Publish proposal, delta specifications, and design as separate
-ready-for-review PRs. After design approval, generate the task breakdown
-internally and implement it autonomously; publish tasks, code, tests, and evidence
-together in one final ready-for-review PR.
+upstream. Publish the proposal and delta specifications together so traceability
+can run before approval, then publish design as a separate ready-for-review PR.
+After design approval, generate the task breakdown internally and implement it
+autonomously; publish tasks, code, tests, and evidence together in one final
+ready-for-review PR.
 
 ## Non-negotiable rules
 
-- Use one PR for each human-reviewed planning layer: proposal, specs, and design.
-  Do not combine those layers in one new PR.
-- Do not generate a downstream artifact before every upstream artifact required
-  by this workflow has been approved and merged.
+- Use one PR for the proposal and complete delta specifications, then one
+  separate PR for design. Do not put design in the first planning PR.
+- Do not generate design before the combined proposal-and-specs gate is approved
+  and merged. Do not generate tasks before design is approved and merged.
 - Treat the reviewer-facing artifacts as sequential human gates. For the default
-  schema, use `proposal -> specs -> design`, even though OpenSpec technically
-  allows specs and design after proposal.
+  schema, use `(proposal + specs) -> design`.
 - Never use `/opsx:propose`, `/opsx:ff`, or `openspec-propose` for a gated
   change; those fast-forward through multiple artifacts.
 - Open completed stage PRs as ready for review, not draft, unless the user asks
@@ -60,10 +60,10 @@ approved design gate, continue autonomously to the final implementation PR.
    openspec status --change "<change-name>" --json
    ```
 
-5. Select exactly one next reviewer-facing artifact. Respect the schema's
-   dependency edges, then serialize siblings according to the approved review
-   order. For the default schema, select proposal, then specs, then design.
-6. If the selected artifact's predecessor PR is not merged, stop. Do not use a
+5. Select exactly one next reviewer-facing gate. Respect the schema's dependency
+   edges. For the default schema, the first gate contains both proposal and
+   specs; the second gate contains design.
+6. If the selected gate's predecessor PR is not merged, stop. Do not use a
    stacked branch to begin downstream work.
 
 Use the planning root and artifact paths returned by the CLI. Preserve a
@@ -74,7 +74,9 @@ selected OpenSpec store for all commands when the change belongs to one.
 Start the stage branch from the latest remote default branch after all prior
 gates have merged. Never base it on an unapproved artifact branch.
 
-Get the selected artifact's instructions:
+Get instructions for every artifact in the selected gate. For the combined
+default gate, read proposal instructions first, create or revise the proposal,
+then read specs instructions and create every declared delta spec:
 
 ```bash
 openspec instructions "<artifact-id>" --change "<change-name>" --json
@@ -83,9 +85,9 @@ openspec instructions "<artifact-id>" --change "<change-name>" --json
 Then:
 
 1. Re-read every declared dependency from disk.
-2. Follow the returned template, instructions, context, and rules.
-3. Write only the selected artifact's resolved output files. The proposal stage
-   may also contain the new change's `.openspec.yaml` scaffold.
+2. Follow each artifact's returned template, instructions, context, and rules.
+3. Write only the selected gate's resolved output files. The combined proposal
+   and specs gate may also contain the new change's `.openspec.yaml` scaffold.
 4. Do not create any artifact merely because the status reports it as ready.
 5. Run applicable validation and inspect the complete diff against the PR base.
    Missing downstream artifacts are expected and must not be "fixed."
@@ -94,8 +96,7 @@ For the default schema, enforce these scopes:
 
 | Gate | Allowed OpenSpec change files | Reviewer decision |
 | --- | --- | --- |
-| Proposal | `.openspec.yaml`, `proposal.md` | Is the intent, scope, and high-level approach right? |
-| Specs | `specs/**/*.md` | Is the required observable behavior right? |
+| Proposal + specs | `.openspec.yaml`, `proposal.md`, `specs/**/*.md` | Are the intent, scope, high-level approach, and required observable behavior right, and does traceability hold between them? |
 | Design | `design.md` | Is the technical approach right? |
 | Tasks | `tasks.md` | Internal checklist generated only after design approval; included in the final implementation PR |
 
@@ -105,8 +106,8 @@ scope.
 
 ## Package the gate PR
 
-For proposal, specs, and design, publish a small, ready-for-review PR containing
-only the current layer. Its body
+For the combined proposal-and-specs gate and for design, publish a small,
+ready-for-review PR containing only the current gate. Its body
 must state:
 
 - the artifact being approved;
@@ -123,19 +124,22 @@ tasks-only PR under the default policy.
 
 ## Continue after approval
 
-For proposal, specs, and design, proceed only after explicit user approval and
-after confirming the predecessor PR is merged. Refresh the default branch,
-query `openspec status` again, and start a new branch from that refreshed default
-branch for the next artifact. Once the design PR is approved and merged, create
-a dedicated implementation worktree from the refreshed default branch, generate
-`tasks.md`, and apply the complete checklist without another approval pause.
+For the combined proposal-and-specs gate and for design, proceed only after
+explicit user approval and after confirming the predecessor PR is merged.
+Refresh the default branch, query `openspec status` again, and start a new branch
+from that refreshed default branch for the next gate. Once the design PR is
+approved and merged, create a dedicated implementation worktree from the
+refreshed default branch, generate `tasks.md`, and apply the complete checklist
+without another approval pause.
 
 If approval includes requested edits, revise only the current artifact in its
 existing PR. Re-present it for approval; do not advance.
 
 ## Handle upstream rejection or revision
 
-Before downstream artifacts exist, revise only the rejected upstream artifact.
+If the combined proposal-and-specs gate is rejected, revise the proposal and
+every affected delta spec together in the same PR, rerun traceability, and
+present the same gate again. Do not create design.
 
 If downstream artifacts already exist:
 
@@ -199,7 +203,7 @@ review, or feedback requests a semantic change, use the normal approval gate.
 ## Fast-path exception
 
 Use the all-planning-artifacts fast path only when the user explicitly opts out
-of proposal/spec/design review for a specific change. Do not infer an exception
-because the change seems small or urgent. A user may also explicitly request
-task or code-slice gates; that request overrides the post-design default for the
-named change.
+of combined proposal/specs and design review for a specific change. Do not infer
+an exception because the change seems small or urgent. A user may also explicitly
+request task or code-slice gates; that request overrides the post-design default
+for the named change.
