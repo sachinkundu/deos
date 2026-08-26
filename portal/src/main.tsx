@@ -109,6 +109,17 @@ const formatTime = (value: string | null): string => value === null
   ? "—"
   : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 
+const formatDuration = (startedAt: string, endedAt: string | null): string => {
+  if (endedAt === null) return "In progress";
+  const milliseconds = new Date(endedAt).valueOf() - new Date(startedAt).valueOf();
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "—";
+  const seconds = Math.round(milliseconds / 1_000);
+  if (seconds < 60) return `${seconds} sec`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return remainingSeconds === 0 ? `${minutes} min` : `${minutes} min ${remainingSeconds} sec`;
+};
+
 const human = (value: string): string => value.replaceAll("_", " ");
 
 function ThemeControl({ theme, setTheme }: { theme: Theme; setTheme: (theme: Theme) => void }) {
@@ -329,6 +340,7 @@ function App() {
 
   const projection = poll.applied;
   const detail = useMemo(() => projection?.history.find((visit) => visit.sequence === selectedVisit) ?? projection?.history.at(-1) ?? null, [projection, selectedVisit]);
+  const transcriptAttempts = detail?.attempts.filter((attempt) => attempt.transcriptAvailable) ?? [];
   const firstRow = projection?.stages.slice(0, 4) ?? [];
   const secondRow = [...(projection?.stages.slice(4) ?? [])].reverse();
 
@@ -371,8 +383,11 @@ function App() {
           <section className="detail-panel">
             <div className="section-heading"><div><span className="eyebrow">Visit detail</span><h2>{detail?.label ?? "No visit selected"}</h2></div>{detail && <span>Visit {detail.sequence}{detail.cycle > 1 ? ` · cycle ${detail.cycle}` : ""}</span>}</div>
             {detail && <div className="detail-content">
-              <dl><div><dt>State</dt><dd>{human(detail.state)}</dd></div><div><dt>Entered</dt><dd>{formatTime(detail.enteredAt)}</dd></div><div><dt>Finished</dt><dd>{formatTime(detail.leftAt)}</dd></div></dl>
-              <div className="evidence-grid"><div><h3>Agent attempts</h3>{detail.attempts.length ? detail.attempts.map((attempt) => <div className="attempt-row" key={attempt.id}><p>{human(attempt.state)}{attempt.outcome ? ` · ${human(attempt.outcome)}` : ""}</p>{attempt.transcriptAvailable ? <button type="button" onClick={() => setTranscriptAttempt(attempt.id)}>View transcript</button> : <span>Transcript unavailable</span>}</div>) : <p>Unavailable for this visit</p>}</div><div><h3>Wait state</h3>{detail.waits.length ? detail.waits.map((wait, index) => <p key={index}>{human(wait.state)} · {formatTime(wait.startedAt)}</p>) : <p>No durable wait</p>}</div><div><h3>Governed work</h3>{detail.links.length ? detail.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>) : <p>Unavailable for this visit</p>}</div></div>
+              <dl><div><dt>Started</dt><dd>{formatTime(detail.enteredAt)}</dd></div><div><dt>Duration</dt><dd>{formatDuration(detail.enteredAt, detail.leftAt)}</dd></div></dl>
+              {(transcriptAttempts.length > 0 || detail.links.length > 0) && <div className="evidence-grid">
+                {transcriptAttempts.length > 0 && <div><h3>Transcript</h3>{transcriptAttempts.map((attempt) => <div className="attempt-row" key={attempt.id}><button type="button" onClick={() => setTranscriptAttempt(attempt.id)}>View transcript</button></div>)}</div>}
+                {detail.links.length > 0 && <div><h3>Links</h3>{detail.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>)}</div>}
+              </div>}
             </div>}
           </section>
           <section className="history-panel">

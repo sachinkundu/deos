@@ -35,7 +35,8 @@
 - [x] Mark Completed as skipped when SAC-132 fails during automatic merge.
 - [x] Add a rejected-at-Human-approval issue that highlights the normally dotted Human approval to Stopped branch.
 - [x] Mark Automatic merge & check and Completed as skipped for the rejected issue.
-- [x] Replace SAC-130 placeholder copy with the recorded Add Microsoft Entra login run, PR #1, real files, timings, validations, transcript summary, and terminal facts.
+- [x] Replace SAC-130 placeholder copy with the recorded Add Microsoft Entra login run, PR #1, real files, timings, transcript, and terminal state.
+- [x] Keep every workflow-step inspector compact: status, Started, Duration, and useful destinations only. Do not repeat result, evidence, validation, or explanatory summary copy.
 - [x] Preserve the missing historical governed work-link row as an evidence gap; reconcile PR #1 from the accepted result, Linear attachment, and GitHub read-back.
 - [x] Enable the recorded SAC-130 Linear issue, PR #1, and immutable merged-file destinations; keep illustrative issues unlinked.
 - [x] Open Planning Agent Run 1 through the attempt-scoped portal route while retaining recorded highlights; never expose the storage key or dashboard URL.
@@ -66,7 +67,7 @@
 - Focused comparison: separate source and implementation originals were opened at full resolution. A cropped region was not needed because this pass changes graph content rather than typography, controls, or detailed component anatomy.
 - Primary interactions tested: open Planning detail; verify Planning Agent, `proposal.md`, `specs/.../spec.md`, and PR #59; open Stopped detail; verify the bounded cancellation/failure explanation; switch Light and Dark themes; close both inspectors.
 - Browser console: a fresh final tab reported no errors or warnings.
-- Recorded-run interactions tested: open Claim issue, Create planning PR, Human approval, Automatic merge & check, and Completed; verify the reconciled facts in each detail; open Planning Agent Run 1; verify the transcript outcome, counts, and recorded highlights.
+- Recorded-run interactions tested: open Claim issue, Create planning PR, Human approval, Automatic merge & check, and Completed; verify that each detail contains only available timing and useful destinations; open Planning Agent Run 1; verify the transcript outcome, counts, and recorded highlights.
 - External destinations tested in the rendered prototype: the SAC-130 link resolved to the signed-in Linear issue and showed `Add Microsoft Entra login`; PR #1 resolved to the merged `SAC-130: OpenSpec plan` pull request; and `proposal.md` resolved to the immutable merge-commit file URL.
 - Transcript reader tested with the exact temporary SAC-130 read-back: 46 valid records, 44,634 bytes, and SHA-256 `67fc1d6a7c52b49eca2cccf9dc29d2f4bb47fd94bdee41f33e565133fb85bd58`. The UI loaded it through `/api/attempts/01a03852-9204-7612-bbb6-b76579f1462a/transcript`; no raw object key or Cloudflare dashboard URL entered the browser.
 - Transcript interaction state: Dark theme at a 1280 x 720 CSS viewport, device pixel ratio 2. The browser screenshot API produced normalized 1280 x 720 PNGs.
@@ -95,5 +96,6 @@
 - External-destination pass: replaced prototype-only destination modals with real new-tab links for SAC-130 and verified the exact Linear and GitHub URLs.
 - Durable-transcript pass: read back the accepted `transcript.jsonl`, matched its 46 JSONL records, 44,634 bytes, and recorded SHA-256, then replaced the broken storage-dashboard link with an attempt-scoped in-app reader without committing the raw transcript.
 - Transcript-reader pass: the first real-data render exposed structured agent progress envelopes as noisy JSON in Activity. The renderer now extracts each envelope's human summary while retaining the exact envelope under Record details and Raw JSONL. Post-fix evidence in `implementation-transcript-activity.png` shows readable agent updates and distinct command/file activity; `implementation-transcript-raw.png` shows the exact numbered JSONL.
+- Detail-simplification pass: removed result, evidence, validation, cycle, and explanatory summary sections from the shared workflow-step inspector. Recorded state remains visible on the map, while the inspector now contains only Started, Duration, and available transcript, PR, file, or Linear destinations.
 
 final result: passed

@@ -19,7 +19,7 @@
 
 ## 4. Operator Interface
 
-- [x] 4.1 Convert the approved SAC-123 two-row prototype into the production issue search, run selection, workflow map, detail, history, wait, attempt, and evidence views.
+- [x] 4.1 Convert the approved SAC-123 two-row prototype into the production issue search, run selection, workflow map, compact timing-and-destination detail, history, wait, attempt, and evidence views.
 - [x] 4.2 Implement visible-page polling, stale-request cancellation, confirmed-update staging, retry, freshness, and atomic apply behavior.
 - [x] 4.3 Preserve System, Light, and Dark themes, provider-neutral copy, responsive layout, accessible interaction, active breathing, and reduced-motion treatment.
 - [x] 4.4 Add a default Activity transcript view plus secondary numbered Raw JSONL, copy, and download actions to the approved attempt detail.

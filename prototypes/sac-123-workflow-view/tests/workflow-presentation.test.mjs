@@ -12,6 +12,7 @@ import { activityForRecord } from "../src/transcript-view.js";
 
 const workflowSource = await readFile(new URL("../../../config/workflow.simple.yaml", import.meta.url), "utf8");
 const workflow = parse(workflowSource);
+const appSource = await readFile(new URL("../src/App.jsx", import.meta.url), "utf8");
 
 test("simple workflow presentation covers the version-4 definition", () => {
   assert.equal(workflow.metadata.name, simpleWorkflowPresentation.id);
@@ -125,7 +126,7 @@ test("SAC-130 uses the recorded simple-workflow evidence", () => {
     assert.equal(new URL(file.url).origin, "https://github.com");
     assert.equal(file.url.includes(issue.pullRequest.mergeCommit), true);
   }
-  assert.equal(issue.stageDetails.review.facts.find(({ label }) => label === "Wait").value, "46 sec");
+  assert.equal(issue.stageDetails.review.facts.find(({ label }) => label === "Duration").value, "46 sec");
   assert.equal(issue.stageDetails.merge.facts.find(({ label }) => label === "Merge commit").value, "9270b93");
   assert.equal(issue.stageDetails.complete.facts.find(({ label }) => label === "Visits").value, "6");
   const transcript = issue.agentRuns.planning[0];
@@ -143,4 +144,11 @@ test("transcript records have readable Activity labels while preserving raw JSON
   assert.equal(activity.title, "Tool call · read_file");
   assert.equal(activity.detail, "Read the planning input.");
   assert.equal(activity.raw, raw);
+});
+
+test("workflow step details show timing and destinations without redundant commentary", () => {
+  assert.equal(appSource.includes("<dt>Result</dt>"), false);
+  assert.equal(appSource.includes('className="detail-summary"'), false);
+  assert.equal(appSource.includes('className="inspector-cycles"'), false);
+  assert.equal(appSource.includes('["started", "duration"]'), true);
 });

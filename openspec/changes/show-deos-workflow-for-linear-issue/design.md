@@ -409,6 +409,12 @@ unconfirmed with its observation time, and exposes Retry.
 The approved prototype supplies component anatomy, two-row graph layout,
 blue-charcoal tokens, System/Light/Dark themes, issue rail, detail panel, and
 active-state breathing treatment. Theme is the only durable browser preference.
+The selected-stage detail is deliberately sparse. After the visible state, it
+shows only Started and Duration, followed by recorded transcript, pull request,
+file, or Linear destinations. It does not render result, evidence, validation,
+or explanatory summary copy that duplicates the graph state or linked work.
+The read projection still retains the underlying records for history,
+authorization, polling, and future trace-system use.
 `prefers-reduced-motion: reduce` removes all breathing and transition animation
 while preserving outline, color, icon, and text treatments for active work.
 Recent issue keys may appear in navigation but are never background-polled.

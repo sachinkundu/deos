@@ -772,6 +772,7 @@ function StepInspector({ selection, issue, onClose, onTranscript }) {
   const usesPullRequest = ["planning", "review", "merge", "complete"].includes(step?.id);
   const pullRequest = issue.pullRequest;
   const prStatus = pullRequest?.status ?? (issue.state === "active" ? "Draft" : issue.state === "stopped" ? "Closed" : ["waiting", "failed"].includes(issue.state) ? "Open" : "Unknown");
+  const timingFacts = step?.facts?.filter((fact) => ["started", "duration"].includes(fact.label.toLowerCase())) ?? [];
   return (
     <aside className="step-inspector" aria-label="Workflow detail">
       <div className="inspector-header">
@@ -786,17 +787,9 @@ function StepInspector({ selection, issue, onClose, onTranscript }) {
             {["failed", "rejected", "stopped"].includes(status) ? <WarningCircle size={18} /> : status === "skipped" ? <X size={18} /> : isCurrent && issue.state === "waiting" ? <Clock size={18} /> : status === "completed" ? <CheckCircle size={18} /> : <FlowArrow size={18} />}
             {labelForStageStatus(status, issue, isCurrent)}
           </div>
-          <dl className="detail-list">
-            <div><dt>Result</dt><dd>{step?.result}</dd></div>
-            {step?.facts?.map((fact) => <div key={`${fact.label}-${fact.value}`}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
-          </dl>
-          {step?.summary && <p className="detail-summary">{step.summary}</p>}
-          {step?.cycleBased && step?.cycleCount > 0 && (
-            <section className="inspector-cycles" aria-label="Cycle count">
-              <strong>{step.cycleCount}</strong>
-              <span>{step.cycleCount === 1 ? "Cycle" : "Cycles"}</span>
-            </section>
-          )}
+          {timingFacts.length > 0 && <dl className="detail-list">
+            {timingFacts.map((fact) => <div key={`${fact.label}-${fact.value}`}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
+          </dl>}
           {step?.agentRuns?.length > 0 && <section className="inspector-agents">
             <h3>Agent</h3>
             {step.agentRuns.map((run) => (

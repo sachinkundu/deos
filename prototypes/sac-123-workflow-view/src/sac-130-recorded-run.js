@@ -53,9 +53,9 @@ export const sac130RecordedRun = Object.freeze({
       result: "Plan approved in Linear",
       summary: "SAC-130 entered Human Review. A person approved it by moving the issue to Merging 46 seconds later.",
       facts: [
-        { label: "Entered", value: "25 Aug 2026 · 09:54:18 UTC" },
+        { label: "Started", value: "25 Aug 2026 · 09:54:18 UTC" },
         { label: "Decision", value: "Human Review → Merging" },
-        { label: "Wait", value: "46 sec" },
+        { label: "Duration", value: "46 sec" },
       ],
     },
     merge: {

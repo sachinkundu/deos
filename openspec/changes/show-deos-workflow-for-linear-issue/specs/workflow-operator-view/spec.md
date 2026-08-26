@@ -131,7 +131,7 @@ The portal SHALL present the full safe graph as the approved concise two-row wor
 - **THEN** the portal marks the projection unavailable and does not omit the node or replace the run's graph with another version
 
 ### Requirement: Detailed history preserves every visit and agent run
-The portal SHALL read and display the complete D1-recorded ordering of workflow visits for the selected run, including repeated visits to the same node. Stage details SHALL show the visits and agent attempts that contributed to each displayed cycle in chronological order. Each agent attempt SHALL remain a distinct row with its safe agent label, cycle or visit context, confirmed outcome, timestamps, and a transcript action when one accepted durable transcript is recorded.
+The portal SHALL read and display the complete D1-recorded ordering of workflow visits for the selected run, including repeated visits to the same node. A selected stage detail SHALL stay compact: it SHALL show only the visit's started time and duration before its useful destinations. It SHALL NOT repeat a result, evidence count, validation count, or explanatory summary that is already evident from the workflow state or linked work. Each accepted agent transcript SHALL remain a distinct destination associated with its recorded attempt.
 
 #### Scenario: A review sends work backward
 - **WHEN** a transition returns from review to an earlier node
@@ -139,15 +139,15 @@ The portal SHALL read and display the complete D1-recorded ordering of workflow 
 
 #### Scenario: Several agents run in one cycle
 - **WHEN** two agents each run during the same displayed cycle
-- **THEN** the stage detail shows two distinct agent rows associated with that cycle
+- **THEN** the stage detail offers a distinct transcript destination for each attempt that has an accepted transcript
 
 #### Scenario: An agent is retried
 - **WHEN** more than one attempt is recorded for the same agent work in one visit
-- **THEN** every attempt appears separately in chronological order with its own confirmed outcome
+- **THEN** each accepted attempt transcript appears as a separate destination without adding result commentary
 
 #### Scenario: Attempt has no accepted transcript
 - **WHEN** an agent attempt is recorded but no complete manifest with one accepted `transcript.jsonl` artifact is recorded for it
-- **THEN** the attempt remains visible and its transcript action is explicitly unavailable
+- **THEN** the stage detail does not offer a transcript action for that attempt
 
 ### Requirement: Accepted attempt transcripts are readable inside the portal
 The portal SHALL expose an authenticated read route identified only by attempt ID. The backend SHALL resolve that attempt through the selected project and run, require its artifact manifest to be complete, select only the accepted `transcript.jsonl` artifact, and fetch that exact private object through the R2 binding. It SHALL reject caller-supplied object keys, artifacts owned by another run or project, incomplete manifests, unaccepted policy outcomes, unexpected media types, oversized transcripts, and objects whose byte size or SHA-256 does not match D1. The browser SHALL present the verified records as a readable chronological Activity view by default and SHALL offer a secondary Raw JSONL view plus copy and download actions.
@@ -177,7 +177,7 @@ Stage details SHALL expose the most useful safe work products for the selected r
 
 #### Scenario: Operator inspects a human gate
 - **WHEN** the selected visit requires human action
-- **THEN** the detail explains the required approval or rejection and provides the selected issue's Linear destination
+- **THEN** the detail provides the selected issue's Linear destination without repeating approval or rejection commentary already shown by the workflow state
 
 #### Scenario: Work product belongs to another run
 - **WHEN** a requested artifact, transcript, pull request, or issue destination is not durably associated with the selected run or issue
