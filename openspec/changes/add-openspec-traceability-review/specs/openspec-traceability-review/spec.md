@@ -99,6 +99,25 @@ DEOS SHALL set one bound for repair of a bad sidecar or review result. It SHALL 
 - **WHEN** a proof retry changes the plan or the base finding set
 - **THEN** DEOS rejects it and does not count it as valid proof or a plan fix
 
+### Requirement: Constrain each plan repair
+
+Each base finding SHALL name its allowed repair scope. The scope SHALL hold full proposal or spec blocks. It SHALL also hold all blocks joined to them by the two-way trace map. An author fix MUST change only those blocks. DEOS SHALL check the patch before it starts a recheck. The recheck SHALL read each full changed block and all of its linked blocks. If a change harms one of those links, the related base finding MUST NOT pass.
+
+#### Scenario: Repair stays in the saved scope
+
+- **WHEN** an author changes only blocks in the repair scope
+- **THEN** DEOS may start a closed-set recheck on the new exact plan
+
+#### Scenario: Repair changes unrelated plan text
+
+- **WHEN** an author changes any proposal or spec block outside the repair scope
+- **THEN** DEOS rejects the patch and does not let a closed-set recheck approve it
+
+#### Scenario: Repair harms a linked rule
+
+- **WHEN** a changed block breaks one of its saved plan-to-spec or spec-to-plan links
+- **THEN** the recheck keeps the related base finding open even if its first cited text was fixed
+
 ### Requirement: Start a new review round after human feedback
 
 An allowed human change SHALL start a new review round for the same pull request. The new proposal and each changed spec SHALL pass both checks. The proof SHALL match their new exact forms. Only then may DEOS return the issue to `Human Review`. A person SHALL still be the only source of approval.

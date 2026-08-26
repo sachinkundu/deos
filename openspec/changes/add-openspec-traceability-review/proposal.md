@@ -5,7 +5,7 @@ The first simple planning run worked. DEOS made a plan, revised it, and merged i
 ## What Changes
 
 - Keep a plan private until its first review passes.
-- Give the first reviewer fresh context. Use the same fixed model and settings as the author. Limit repairs. Rechecks cover only the first review's findings.
+- Give the first reviewer fresh context. Use the same fixed model and settings as the author. Limit repairs. Rechecks cover only the first review's findings. A repair can change only the full plan and spec blocks tied to those findings. Recheck every changed block and all of its two-way links.
 - Open one planning pull request after the first review passes. Use a different fixed model for the second review. Repair the same pull request. Recheck its open findings before human review.
 - Keep each draft, test, note, source, and fix as a record. Do not let these records change. Store them outside the standard OpenSpec files.
 - Bind the first check to one exact draft. Bind the later check to one exact pull request version. Show its proof and result in a view that needs a login. Clearly mark the check current or stale. Keep GitHub and Linear notes short. Link them to this view.
