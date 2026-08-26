@@ -6,7 +6,7 @@ Check the meaning and scope of one OpenSpec proposal and its delta specs before 
 
 ### Requirement: Review one exact private planning draft
 
-DEOS SHALL run one full first check on the exact private plan. The plan SHALL have a valid proposal and all needed delta specs. The check SHALL use a fresh context. DEOS SHALL save four author settings. They are the model identity and thought level. They also include the workflow prompt version and tool and permission profile. These fields SHALL be the full author settings for the check. The first check SHALL match all four. It SHALL inspect each named spec and each rule. The review job MUST NOT change the plan or any provider state.
+DEOS SHALL run one full first check on the exact private plan. The plan SHALL have a valid proposal and all needed delta specs. The check SHALL use a fresh context. DEOS SHALL save the author's model identity and thought level. These two fields SHALL be the full author-match settings. The first check SHALL match both. It SHALL use the fixed review prompt. It SHALL use a read-only tool and permission profile for its reviewer role. It SHALL inspect each named spec and each rule. The review job MUST NOT change the plan or any provider state.
 
 #### Scenario: Private draft is ready for review
 
