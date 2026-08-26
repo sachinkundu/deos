@@ -35,12 +35,14 @@ interface TransitionRow {
   occurred_at: string;
 }
 interface AttemptRow {
+  attempt_id: string;
   visit_sequence: number | null;
   node_id: string;
   state: string;
   result_class: string | null;
   created_at: string;
   ended_at: string | null;
+  transcript_available: number;
 }
 interface WaitRow {
   visit_sequence: number | null;
@@ -75,12 +77,40 @@ export const PORTAL_SELECTS = Object.freeze({
   transitions: `SELECT transition_id, from_node, to_node, from_visit_sequence,
     to_visit_sequence, cause_type, occurred_at FROM workflow_transitions_v2
     WHERE run_id = ? ORDER BY from_visit_sequence, transition_id`,
-  attempts: `SELECT visit_sequence, node_id, state, result_class, created_at, ended_at
-    FROM agent_attempts WHERE run_id = ? ORDER BY created_at, attempt_id`,
+  attempts: `SELECT attempt.attempt_id, attempt.visit_sequence, attempt.node_id,
+    attempt.state, attempt.result_class, attempt.created_at, attempt.ended_at,
+    EXISTS (
+      SELECT 1 FROM artifact_manifests manifest
+      JOIN artifacts artifact ON artifact.manifest_id = manifest.manifest_id
+      WHERE manifest.attempt_id = attempt.attempt_id
+        AND manifest.run_id = attempt.run_id
+        AND manifest.state = 'complete'
+        AND artifact.logical_name = 'transcript.jsonl'
+        AND artifact.policy_outcome = 'accepted'
+    ) AS transcript_available
+    FROM agent_attempts attempt WHERE attempt.run_id = ?
+    ORDER BY attempt.created_at, attempt.attempt_id`,
   waits: `SELECT visit_sequence, node_id, status, created_at, consumed_at
     FROM workflow_waits WHERE run_id = ? ORDER BY created_at, wait_id`,
   links: `SELECT visit_sequence, kind, label, url, created_at FROM governed_work_links
     WHERE run_id = ? ORDER BY visit_sequence, created_at, link_id`,
+  transcript: `SELECT attempt.attempt_id, attempt.run_id, attempt.node_id,
+    run.run_sequence, issue.issue_key, artifact.r2_key, artifact.media_type,
+    artifact.byte_size, artifact.sha256
+    FROM agent_attempts attempt
+    JOIN orchestration_runs run ON run.run_id = attempt.run_id
+    JOIN linear_issue_index issue
+      ON issue.issue_id = run.issue_id AND issue.project_id = run.project_id
+    JOIN artifact_manifests manifest
+      ON manifest.manifest_id = attempt.manifest_id
+      AND manifest.attempt_id = attempt.attempt_id
+      AND manifest.run_id = attempt.run_id
+      AND manifest.state = 'complete'
+    JOIN artifacts artifact
+      ON artifact.manifest_id = manifest.manifest_id
+      AND artifact.logical_name = 'transcript.jsonl'
+      AND artifact.policy_outcome = 'accepted'
+    WHERE attempt.attempt_id = ? AND run.project_id = ? LIMIT 1`,
 });
 
 export interface PortalIssue {
@@ -180,10 +210,12 @@ export class PortalReadStore {
         enteredAt: visit.enteredAt,
         leftAt: visit.leftAt,
         attempts: attemptResult.results.filter((attempt) => attempt.visit_sequence === visit.sequence).map((attempt) => ({
+          id: attempt.attempt_id,
           state: attempt.state,
           outcome: attempt.result_class,
           startedAt: attempt.created_at,
           endedAt: attempt.ended_at,
+          transcriptAvailable: attempt.transcript_available === 1,
         })),
         waits: waitResult.results.filter((wait) => wait.visit_sequence === visit.sequence).map((wait) => ({
           state: wait.status,

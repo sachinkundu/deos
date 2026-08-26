@@ -11,6 +11,11 @@
   Evidence: the recorded-run browser pass required closing the current detail before selecting either right-most card; all details opened correctly after closing it.
   Impact: comparison works, but switching directly between right-side stages takes one extra action.
   Fix: consider resizing the graph around an open inspector when the workflow grows; do not change the approved layout in this evidence-only pass.
+- [P3] React Flow still emits its pre-existing node-type memoization warning.
+  Location: browser console when the workflow map mounts.
+  Evidence: the transcript pass reported no runtime errors and one React Flow warning about the existing node-type object.
+  Impact: transcript loading, tabs, filtering, copy, and rendering are unaffected.
+  Fix: memoize the existing workflow node-type map in a separate cleanup change.
 
 **Open Questions**
 
@@ -33,7 +38,9 @@
 - [x] Replace SAC-130 placeholder copy with the recorded Add Microsoft Entra login run, PR #1, real files, timings, validations, transcript summary, and terminal facts.
 - [x] Preserve the missing historical governed work-link row as an evidence gap; reconcile PR #1 from the accepted result, Linear attachment, and GitHub read-back.
 - [x] Enable the recorded SAC-130 Linear issue, PR #1, and immutable merged-file destinations; keep illustrative issues unlinked.
-- [x] Link Planning Agent Run 1 to the checksum-verified private `transcript.jsonl` object while retaining recorded highlights.
+- [x] Open Planning Agent Run 1 through the attempt-scoped portal route while retaining recorded highlights; never expose the storage key or dashboard URL.
+- [x] Show the verified transcript as Activity by default with readable agent updates, command activity, file changes, and expandable record details.
+- [x] Show all 46 exact source lines in the secondary numbered Raw JSONL view with filtering, copy, and download controls.
 - [x] Preserve all collapsed cancellation and failure paths into Stopped.
 - [x] Show the working SAC-130 provider-proof scenario as finished.
 - [x] Show the planning agent, proposal/specification artifacts, and planning PR #59 in stage detail.
@@ -49,6 +56,9 @@
 - Source visual truth: `design-source.png`
 - Implementation screenshot: `implementation-simple-v4.png`
 - Recorded SAC-130 screenshot: `implementation-sac130-recorded.png`
+- Transcript Activity screenshot: `implementation-transcript-activity.png`
+- Transcript Raw JSONL screenshot: `implementation-transcript-raw.png`
+- Transcript design-system comparison: `comparison-transcript-reader.png`
 - Full-view comparison: `comparison-simple-v4.png`
 - Viewport: 1728 x 1003 CSS pixels, density 1.
 - Source pixels: 1484 x 1060. Implementation pixels: 1728 x 1003. The comparison uses `object-fit: contain` because the source and implementation have different aspect ratios and different workflow content.
@@ -58,7 +68,9 @@
 - Browser console: a fresh final tab reported no errors or warnings.
 - Recorded-run interactions tested: open Claim issue, Create planning PR, Human approval, Automatic merge & check, and Completed; verify the reconciled facts in each detail; open Planning Agent Run 1; verify the transcript outcome, counts, and recorded highlights.
 - External destinations tested in the rendered prototype: the SAC-130 link resolved to the signed-in Linear issue and showed `Add Microsoft Entra login`; PR #1 resolved to the merged `SAC-130: OpenSpec plan` pull request; and `proposal.md` resolved to the immutable merge-commit file URL.
-- Transcript destination tested: Planning Agent Run 1 shows `Open full transcript` with `JSONL · 46 events · 44.6 KB`; the link targets the exact private durable object and preserves that object route through the authentication redirect.
+- Transcript reader tested with the exact temporary SAC-130 read-back: 46 valid records, 44,634 bytes, and SHA-256 `67fc1d6a7c52b49eca2cccf9dc29d2f4bb47fd94bdee41f33e565133fb85bd58`. The UI loaded it through `/api/attempts/01a03852-9204-7612-bbb6-b76579f1462a/transcript`; no raw object key or Cloudflare dashboard URL entered the browser.
+- Transcript interaction state: Dark theme at a 1280 x 720 CSS viewport, device pixel ratio 2. The browser screenshot API produced normalized 1280 x 720 PNGs.
+- Transcript interactions tested: open the recorded highlights; load the full Activity view; confirm 46 verified events and the digest prefix; switch to Raw JSONL and count 46 numbered lines; filter Activity to one matching proposal update; use Copy all and observe its success state. Download is present with the same attempt-scoped route but was not written to disk during QA.
 
 **Required Fidelity Surfaces**
 
@@ -67,6 +79,8 @@
 - Colors and visual tokens: the blue-charcoal background, blue product accent, green confirmed state, amber waiting state, and muted dashed future paths match the selected semantic palette.
 - Image quality and asset fidelity: the interface uses the existing Phosphor icon set. No reference icon or visible image asset was replaced with improvised SVG, CSS art, emoji, or text glyphs.
 - Copy and content: all visible workflow copy now describes the actual simple planning flow. It does not expose hosting or storage implementation terms.
+- Transcript typography and layout: the larger reader preserves the approved Inter hierarchy, blue-charcoal modal surface, compact metadata, familiar radii, and icon language. The Activity timeline increases information density without changing the underlying workflow layout.
+- Transcript raw fidelity: every source line remains available verbatim in a horizontally clipped summary row and expandable formatted record. The readable Activity labels are derived presentation only and do not replace the raw record.
 
 **Comparison History**
 
@@ -79,6 +93,7 @@
 - Branch comparison: added a stopped issue for a plan rejected at Human approval. The observed dotted branch is highlighted, while downstream successful-path cards use the distinct skipped treatment.
 - Recorded-run pass: manually reconciled Linear state history, workflow telemetry, durable run and transition records, the accepted artifact manifest, agent transcript, and GitHub PR #1. The approved layout remained intact; stage facts and transcript content now use the recorded SAC-130 run.
 - External-destination pass: replaced prototype-only destination modals with real new-tab links for SAC-130 and verified the exact Linear and GitHub URLs.
-- Durable-transcript pass: read back the accepted `transcript.jsonl`, matched its 46 JSONL records, 44,634 bytes, and recorded SHA-256, then linked its authenticated object view without copying the raw transcript into the prototype.
+- Durable-transcript pass: read back the accepted `transcript.jsonl`, matched its 46 JSONL records, 44,634 bytes, and recorded SHA-256, then replaced the broken storage-dashboard link with an attempt-scoped in-app reader without committing the raw transcript.
+- Transcript-reader pass: the first real-data render exposed structured agent progress envelopes as noisy JSON in Activity. The renderer now extracts each envelope's human summary while retaining the exact envelope under Record details and Raw JSONL. Post-fix evidence in `implementation-transcript-activity.png` shows readable agent updates and distinct command/file activity; `implementation-transcript-raw.png` shows the exact numbered JSONL.
 
 final result: passed

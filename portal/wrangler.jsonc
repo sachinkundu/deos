@@ -4,7 +4,7 @@
   "main": "src/worker.ts",
   "workers_dev": false,
   "preview_urls": false,
-  "compatibility_date": "2026-08-21",
+  "compatibility_date": "2026-08-26",
   "compatibility_flags": ["nodejs_compat"],
   "account_id": "c68856288112af7698f5be52ea94b96e",
   "observability": {
@@ -21,6 +21,10 @@
     "binding": "DB",
     "database_name": "deos-sample-project",
     "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2"
+  }],
+  "r2_buckets": [{
+    "binding": "ARTIFACTS",
+    "bucket_name": "deos-sample-project-artifacts"
   }],
   "assets": {
     "directory": "./dist",

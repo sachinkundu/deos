@@ -6,6 +6,13 @@ import { PORTAL_SELECTS } from "../src/model.ts";
 import { validatePresentationManifest } from "../src/manifests.ts";
 import { routePortalRequest } from "../src/worker.ts";
 import { normalizeRepository, RepositorySettingsError } from "../src/settings.ts";
+import {
+  parseTranscriptJsonl,
+  TranscriptReadStore,
+  TranscriptUnavailableError,
+  transcriptDto,
+} from "../src/transcript.ts";
+import { activityForRecord } from "../src/transcript-view.ts";
 import type { LoadedWorkflowDefinition } from "../../src/workflow-definition.ts";
 
 test("Access verification binds signature, issuer, audience, expiry, and exact email", async () => {
@@ -85,6 +92,7 @@ test("authentication runs before assets, route methods, or D1", async () => {
   let assetReads = 0;
   const env = {
     DB: {} as D1Database,
+    ARTIFACTS: {} as R2Bucket,
     ASSETS: { fetch: async () => { assetReads += 1; return new Response("portal"); } } as unknown as Fetcher,
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
     ACCESS_AUD: "aud",
@@ -103,6 +111,7 @@ test("authentication runs before assets, route methods, or D1", async () => {
 test("workflow control writes require two booleans and a revision", async () => {
   const env = {
     DB: {} as D1Database,
+    ARTIFACTS: {} as R2Bucket,
     ASSETS: { fetch: async () => new Response("portal") } as unknown as Fetcher,
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
     ACCESS_AUD: "aud",
@@ -116,4 +125,84 @@ test("workflow control writes require two booleans and a revision", async () => 
   }), env, async () => ({ email: "sachinkundu@gmail.com" }));
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), { error: "invalid_request" });
+});
+
+test("transcript JSONL keeps exact numbered records for readable and raw views", () => {
+  const text = [
+    JSON.stringify({ type: "assistant_message", timestamp: "2026-08-26T08:00:00Z", text: "Planning started." }),
+    JSON.stringify({ type: "tool_call", tool_name: "read_file", summary: "Read the issue." }),
+  ].join("\n");
+  const records = parseTranscriptJsonl(text);
+  assert.deepEqual(records.map((record) => record.number), [1, 2]);
+  assert.equal(records[0]?.raw, text.split("\n")[0]);
+  assert.equal(activityForRecord(records[0]!).title, "Agent update");
+  assert.equal(activityForRecord(records[1]!).title, "Tool call · read_file");
+});
+
+test("attempt transcript reads only the D1-selected accepted object and verifies integrity", async () => {
+  const attemptId = "01a03852-9204-7612-bbb6-b76579f1462a";
+  const objectKey = "runs/private/attempts/transcript.jsonl";
+  const body = new TextEncoder().encode(`${JSON.stringify({ type: "status", message: "Done" })}\n`);
+  const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", body)))
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  let requestedKey = "";
+  const db = {
+    prepare(query: string) {
+      assert.equal(query, PORTAL_SELECTS.transcript);
+      return {
+        bind(id: string, projectId: string) {
+          assert.equal(id, attemptId);
+          assert.equal(projectId, "project-id");
+          return { first: async () => ({
+            attempt_id: attemptId,
+            run_id: "workflow:project:issue:run:3",
+            node_id: "planning_agent",
+            run_sequence: 3,
+            issue_key: "SAC-130",
+            r2_key: objectKey,
+            media_type: "application/json",
+            byte_size: body.byteLength,
+            sha256: digest,
+          }) };
+        },
+      };
+    },
+  } as unknown as D1Database;
+  const bucket = {
+    async get(key: string) {
+      requestedKey = key;
+      return { size: body.byteLength, arrayBuffer: async () => body.buffer };
+    },
+  } as unknown as R2Bucket;
+  const transcript = await new TranscriptReadStore(db, bucket, "project-id").read(attemptId);
+  assert.equal(requestedKey, objectKey);
+  assert.equal(transcript.records.length, 1);
+  assert.deepEqual(Object.keys(transcriptDto(transcript)).sort(), [
+    "attemptId", "byteSize", "eventCount", "issueKey", "nodeId", "records", "runId", "runSequence", "sha256",
+  ]);
+  assert.equal(JSON.stringify(transcriptDto(transcript)).includes(objectKey), false);
+});
+
+test("attempt transcript fails closed when the R2 body differs from D1", async () => {
+  const body = new TextEncoder().encode("{}\n");
+  const db = {
+    prepare() {
+      return { bind: () => ({ first: async () => ({
+        attempt_id: "01a03852-9204-7612-bbb6-b76579f1462a",
+        run_id: "workflow:project:issue:run:3",
+        node_id: "planning_agent",
+        run_sequence: 3,
+        issue_key: "SAC-130",
+        r2_key: "private/transcript.jsonl",
+        media_type: "application/json",
+        byte_size: body.byteLength,
+        sha256: "0".repeat(64),
+      }) }) };
+    },
+  } as unknown as D1Database;
+  const bucket = { get: async () => ({ size: body.byteLength, arrayBuffer: async () => body.buffer }) } as unknown as R2Bucket;
+  await assert.rejects(
+    () => new TranscriptReadStore(db, bucket, "project-id").read("01a03852-9204-7612-bbb6-b76579f1462a"),
+    TranscriptUnavailableError,
+  );
 });

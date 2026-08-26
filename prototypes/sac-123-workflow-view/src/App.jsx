@@ -17,6 +17,7 @@ import {
   CaretDown,
   CheckCircle,
   Code,
+  Copy,
   Clock,
   FileText,
   FlowArrow,
@@ -30,8 +31,10 @@ import {
   Question,
   RocketLaunch,
   ShieldCheck,
+  SpinnerGap,
   Stamp,
   Sun,
+  DownloadSimple,
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
@@ -41,6 +44,7 @@ import {
   simpleWorkflowIssues,
   simpleWorkflowPresentation,
 } from "./simple-workflow.js";
+import { activityForRecord } from "./transcript-view.js";
 
 const fullWorkflowDefinitions = [
   {
@@ -829,28 +833,91 @@ function StepInspector({ selection, issue, onClose, onTranscript }) {
 }
 
 function TranscriptPreview({ transcript, onClose }) {
+  const [fullTranscript, setFullTranscript] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState("activity");
+  const [filter, setFilter] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setFullTranscript(null);
+    setLoading(false);
+    setError("");
+    setTab("activity");
+    setFilter("");
+  }, [transcript]);
+
   if (!transcript) return null;
+  const loadFullTranscript = async () => {
+    if (!transcript.source?.attemptId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/attempts/${transcript.source.attemptId}/transcript`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("The durable transcript is unavailable right now.");
+      setFullTranscript(await response.json());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The durable transcript could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const activity = fullTranscript?.records.map(activityForRecord) ?? [];
+  const normalizedFilter = filter.trim().toLowerCase();
+  const visibleActivity = normalizedFilter ? activity.filter((event) =>
+    `${event.title} ${event.detail ?? ""} ${event.raw}`.toLowerCase().includes(normalizedFilter)) : activity;
+  const visibleRaw = normalizedFilter ? fullTranscript?.records.filter((record) =>
+    record.raw.toLowerCase().includes(normalizedFilter)) ?? [] : fullTranscript?.records ?? [];
+  const copyAll = async () => {
+    await navigator.clipboard.writeText(`${fullTranscript.records.map((record) => record.raw).join("\n")}\n`);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
+  };
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="external-modal transcript-modal" role="dialog" aria-modal="true" aria-labelledby="transcript-title" onMouseDown={(event) => event.stopPropagation()}>
+      <section className={`external-modal transcript-modal${fullTranscript ? " transcript-modal--reader" : ""}`} role="dialog" aria-modal="true" aria-labelledby="transcript-title" onMouseDown={(event) => event.stopPropagation()}>
+        <button type="button" className="transcript-close icon-button" onClick={onClose} aria-label="Close transcript"><X size={18} /></button>
         <span className="modal-icon"><FileText size={24} /></span>
         <span className="eyebrow">Agent transcript</span>
         <h2 id="transcript-title">{transcript.label}</h2>
-        <p>{transcript.summary}</p>
-        <dl className="detail-list transcript-facts">
-          <div><dt>Outcome</dt><dd>{transcript.outcome}</dd></div>
-          {transcript.facts?.map((fact) => <div key={`${fact.label}-${fact.value}`}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
-        </dl>
-        {transcript.notes?.length > 0 && <section className="transcript-notes">
-          <h3>Recorded highlights</h3>
-          <ul>{transcript.notes.map((note) => <li key={note}>{note}</li>)}</ul>
-        </section>}
-        {transcript.source && <a className="transcript-source-link" href={transcript.source.url} target="_blank" rel="noreferrer" aria-label="Open full agent transcript JSONL">
-          <FileText size={19} />
-          <span><strong>{transcript.source.label}</strong><small>{transcript.source.format} · {transcript.source.eventCount} events · {(transcript.source.byteSize / 1000).toFixed(1)} KB</small></span>
-          <ArrowSquareOut size={15} />
-        </a>}
-        <button type="button" className="primary-button" onClick={onClose}>Back to workflow</button>
+        {!fullTranscript && <>
+          <p>{transcript.summary}</p>
+          <dl className="detail-list transcript-facts">
+            <div><dt>Outcome</dt><dd>{transcript.outcome}</dd></div>
+            {transcript.facts?.map((fact) => <div key={`${fact.label}-${fact.value}`}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
+          </dl>
+          {transcript.notes?.length > 0 && <section className="transcript-notes">
+            <h3>Recorded highlights</h3>
+            <ul>{transcript.notes.map((note) => <li key={note}>{note}</li>)}</ul>
+          </section>}
+          {transcript.source && <button className="transcript-source-link" type="button" onClick={() => void loadFullTranscript()} disabled={loading} aria-label="Read full agent transcript JSONL inside the portal">
+            {loading ? <SpinnerGap className="spin" size={19} /> : <FileText size={19} />}
+            <span><strong>{loading ? "Loading verified transcript…" : transcript.source.label}</strong><small>{transcript.source.format} · {transcript.source.eventCount} events · {(transcript.source.byteSize / 1000).toFixed(1)} KB</small></span>
+            <ArrowSquareOut size={15} />
+          </button>}
+          {error && <div className="transcript-load-error" role="alert">{error}</div>}
+          <button type="button" className="primary-button" onClick={onClose}>Back to workflow</button>
+        </>}
+        {fullTranscript && <div className="transcript-reader">
+          <div className="transcript-reader-meta"><span>{fullTranscript.eventCount} verified events</span><span>SHA-256 {fullTranscript.sha256.slice(0, 12)}…</span></div>
+          <div className="transcript-reader-tools">
+            <div className="transcript-reader-tabs" role="tablist" aria-label="Transcript view">
+              <button type="button" role="tab" aria-selected={tab === "activity"} className={tab === "activity" ? "is-selected" : ""} onClick={() => setTab("activity")}>Activity</button>
+              <button type="button" role="tab" aria-selected={tab === "raw"} className={tab === "raw" ? "is-selected" : ""} onClick={() => setTab("raw")}><Code size={15} />Raw JSONL</button>
+            </div>
+            <label className="transcript-filter"><MagnifyingGlass size={15} /><span className="visually-hidden">Filter transcript</span><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filter events" /></label>
+            <button type="button" onClick={() => void copyAll()}><Copy size={15} />{copied ? "Copied" : "Copy all"}</button>
+            <a href={`/api/attempts/${transcript.source.attemptId}/transcript.jsonl`} download><DownloadSimple size={15} />Download</a>
+          </div>
+          <div className="transcript-records">
+            {tab === "activity" ? <ol className="transcript-activity">{visibleActivity.map((event) => <li key={event.number}><span>{event.number}</span><div><strong>{event.title}</strong>{event.timestamp && <time>{event.timestamp}</time>}{event.detail && <p>{event.detail}</p>}<details><summary>Record details</summary><pre>{JSON.stringify(fullTranscript.records[event.number - 1].value, null, 2)}</pre></details></div></li>)}</ol>
+              : <ol className="transcript-raw">{visibleRaw.map((record) => <li key={record.number}><span>{record.number}</span><details><summary><code>{record.raw}</code></summary><pre>{JSON.stringify(record.value, null, 2)}</pre></details></li>)}</ol>}
+            {(tab === "activity" ? visibleActivity.length : visibleRaw.length) === 0 && <p className="transcript-no-results">No records match that filter.</p>}
+          </div>
+        </div>}
       </section>
     </div>
   );

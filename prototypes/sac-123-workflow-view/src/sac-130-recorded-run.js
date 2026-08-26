@@ -118,7 +118,7 @@ export const sac130RecordedRun = Object.freeze({
           eventCount: 46,
           byteSize: 44634,
           sha256: "67fc1d6a7c52b49eca2cccf9dc29d2f4bb47fd94bdee41f33e565133fb85bd58",
-          url: "https://dash.cloudflare.com/c68856288112af7698f5be52ea94b96e/r2/default/buckets/deos-sample-project-artifacts/objects/runs/workflow%253A99426d9b-cda7-4db4-9136-692a95a0b090%253A8009635e-3567-4dd7-83de-5d9e8274a165%253Arun%253A3/attempts/01a03852-9204-7612-bbb6-b76579f1462a/transcript.jsonl/details",
+          attemptId: "01a03852-9204-7612-bbb6-b76579f1462a",
         },
       },
     ],

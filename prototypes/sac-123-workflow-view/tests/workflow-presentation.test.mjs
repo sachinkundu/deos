@@ -8,6 +8,7 @@ import {
   simpleWorkflowIssues,
   simpleWorkflowPresentation,
 } from "../src/simple-workflow.js";
+import { activityForRecord } from "../src/transcript-view.js";
 
 const workflowSource = await readFile(new URL("../../../config/workflow.simple.yaml", import.meta.url), "utf8");
 const workflow = parse(workflowSource);
@@ -132,6 +133,14 @@ test("SAC-130 uses the recorded simple-workflow evidence", () => {
   assert.equal(transcript.source.eventCount, 46);
   assert.equal(transcript.source.byteSize, 44634);
   assert.equal(transcript.source.sha256, issue.evidence.transcriptDigest);
-  assert.equal(transcript.source.url.includes("/transcript.jsonl/details"), true);
-  assert.equal(transcript.source.url.includes(encodeURIComponent(encodeURIComponent(issue.evidence.runId))), true);
+  assert.equal(transcript.source.attemptId, issue.evidence.attemptId);
+  assert.equal("url" in transcript.source, false);
+});
+
+test("transcript records have readable Activity labels while preserving raw JSONL", () => {
+  const raw = JSON.stringify({ type: "tool_call", tool_name: "read_file", summary: "Read the planning input." });
+  const activity = activityForRecord({ number: 7, raw, value: JSON.parse(raw) });
+  assert.equal(activity.title, "Tool call · read_file");
+  assert.equal(activity.detail, "Read the planning input.");
+  assert.equal(activity.raw, raw);
 });

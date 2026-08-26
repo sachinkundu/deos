@@ -38,8 +38,8 @@ without giving the portal a Linear credential; see
 
 **Goals:**
 
-- Isolate the portal in a separate Worker with only a D1 binding and its static
-  asset binding.
+- Isolate the portal in a separate Worker with D1, one read-only artifact-bucket
+  binding, and its static asset binding.
 - Authenticate every asset and API request twice: first by an exact-email
   Access policy and then by Worker-side JWT and email validation.
 - Resolve a human issue key and run sequence entirely from safe D1 index rows.
@@ -54,13 +54,14 @@ without giving the portal a Linear credential; see
 
 **Non-Goals:**
 
-- Add portal-side Linear or GitHub lookup, R2 artifact proxying, push updates,
-  Workflow executor status, or any mutation endpoint.
+- Add portal-side Linear or GitHub lookup, general R2 artifact browsing, push
+  updates, Workflow executor status, or any mutation endpoint.
 - Change the workflow graph, business lifecycle, human-gate transitions, or
   definition selected by an existing run.
 - Repair historical transition rows whose absence cannot be proven from D1.
-- Expose raw transcripts, diffs, diagnostics, provider payloads, or definition
-  documents through the portal.
+- Expose diffs, diagnostics, provider payloads, definition documents, or any R2
+  body other than an accepted, integrity-verified `transcript.jsonl` through
+  the portal.
 
 ## Component Diagram
 
@@ -80,15 +81,19 @@ flowchart LR
     ReadModel --> Index
     ReadModel --> Authority
     ReadModel --> Links
+    Portal --> Artifacts[Attempt-scoped transcript reader]
+    Artifacts --> Bucket[(Private artifact bucket)]
     Portal --> Assets[Authenticated static assets]
     ReadModel --> Safe[Allowlisted projection DTO]
     Safe --> Browser
 ```
 
 The portal Worker has no Queue producer or consumer, Workflow, Durable Object,
-Sandbox, R2, service binding, GitHub credential, Linear credential, cron, or
-provider-capability route. The deployment-only credential used to configure
-Access is never bound to the Worker.
+Sandbox, service binding, GitHub credential, Linear credential, cron, or
+provider-capability route. Its sole R2 binding can read the private artifact
+bucket, and portal code exposes only the D1-resolved transcript path. The
+deployment-only credential used to configure Access is never bound to the
+Worker.
 
 ## Event Flow
 
@@ -175,18 +180,19 @@ the portal until reconciled; it is never assigned to a guessed cycle.
 `governed_work_links` is written only by trusted orchestration code after a
 provider effect is confirmed. OpenSpec artifact rows come from the exact
 allowlisted file paths in the confirmed GitHub request. Implementation and
-validation rows point to the governed pull request. A transcript link exists
-only when a separately authenticated external transcript destination is
-durably recorded. The existing R2 `transcript.jsonl` object is not such a
-destination and is never returned or proxied.
+validation rows point to the governed pull request. An attempt transcript is
+available only when the attempt owns a complete manifest whose accepted
+`transcript.jsonl` row records the exact R2 key, byte size, and SHA-256. None of
+those storage identifiers is returned in the workflow projection.
 
 ## Decisions
 
-### 1. Deploy a separate D1-only TypeScript Worker
+### 1. Deploy a separate read-only TypeScript Worker
 
-The portal is a new Worker with one D1 binding and one Static Assets binding.
+The portal is a new Worker with one D1 binding, one R2 artifact-bucket binding,
+and one Static Assets binding.
 Its module exposes only `fetch`; its Wrangler configuration contains no Queue,
-Workflow, Durable Object, Sandbox, R2, service, cron, or provider credential.
+Workflow, Durable Object, Sandbox, service, cron, or provider credential.
 Static Assets use `run_worker_first: true`, so the Worker authenticates before
 serving even a hashed asset or SPA fallback.
 
@@ -201,10 +207,10 @@ Alternatives considered:
 
 - Adding routes to the existing orchestration Worker was rejected because an
   HTTP parsing or authorization defect would share its mutation bindings.
-- Binding R2 and wrapping `get`/`head` was rejected for the first version
-  because approved work already has governed destinations and the bucket also
-  contains raw transcripts, patches, and diagnostics. Omitting the binding is
-  a stronger least-privilege boundary.
+- General R2 browsing and caller-supplied object keys are rejected because the
+  bucket also contains patches and diagnostics. The narrow exception resolves
+  one attempt's accepted `transcript.jsonl` row through fixed D1 queries and
+  verifies its stored byte size and SHA-256 before returning it.
 - A separate read-replica database was rejected because D1 remains the required
   live authority and asynchronous copying would add a second freshness model.
 
@@ -294,8 +300,8 @@ conflicting ledger data makes the selected run unavailable.
 
 Attempts and waits join by `(run_id, visit_sequence, node_id)`. Each attempt is
 returned separately in chronological order with only its safe display label,
-attempt ordinal within the visit, normalized confirmed state or outcome, start
-and end times, and optional governed transcript link. Job specifications,
+attempt ID, ordinal within the visit, normalized confirmed state or outcome,
+start and end times, and transcript availability. Job specifications,
 Sandbox/process IDs, raw result classes, and R2 keys never enter the DTO.
 
 Cycle counts are not inferred from elapsed time or a topological sort. Each
@@ -329,10 +335,12 @@ remain unavailable. The portal never accepts a destination from query input and
 selects links only through the selected run and visit, so a URL recorded for
 another run cannot be requested by changing an identifier.
 
-Raw R2 transcripts are deliberately shown as `Transcript unavailable`. A
-future authenticated transcript publisher may create a
-`transcript_document` row after separate review; the portal will continue to
-return only the link metadata and will never fetch or proxy its body.
+The transcript route accepts only an attempt ID. A fixed query joins the
+configured project, run, attempt, complete manifest, and accepted
+`transcript.jsonl` artifact. The Worker fetches the D1-selected R2 key, applies
+a bounded size limit, computes SHA-256 with Web Crypto, and returns a generic
+unavailable response unless both stored size and digest match. The R2 key and
+manifest storage path never leave the Worker.
 
 Alternative considered: reconstruct GitHub URLs in the browser. Rejected
 because the browser could not prove provider confirmation or selected-run
@@ -346,6 +354,8 @@ The API surface is deliberately small:
 ```text
 GET /api/issues/:issueKey/runs
 GET /api/issues/:issueKey/runs/:runSequence
+GET /api/attempts/:attemptId/transcript
+GET /api/attempts/:attemptId/transcript.jsonl
 GET /healthz
 GET /assets/* and SPA navigation
 ```
@@ -375,6 +385,11 @@ validation and missing data return safe `400` or `404`; authorization returns
 one generic unavailable response with a retry hint. API responses use
 `Cache-Control: no-store`, restrictive security headers, and no stack, SQL,
 binding, provider, or internal identifier text.
+
+The transcript metadata route returns attempt ID, safe run and agent context,
+verified byte size and SHA-256, and parsed JSONL records. The download route
+returns the same verified bytes as `application/x-ndjson` with an attachment
+filename. Both use `Cache-Control: no-store`; neither accepts a storage key.
 
 ### 8. Poll confirmed projections and stage updates behind a banner
 
@@ -494,7 +509,8 @@ and deterministic tests are labeled separately and never used as this proof.
 5. Deploy the existing ingress/orchestration writers that preserve issue index,
    visit linkage, and confirmed work destinations. Leave dispatch disabled and
    verify replay/idempotency against the additive schema.
-6. Build and deploy the separate portal Worker with only D1 and Static Assets.
+6. Build and deploy the separate portal Worker with D1, the transcript-only R2
+   binding, and Static Assets.
    Generate Worker types, run a Wrangler dry run and startup check, and inspect
    the deployed binding/secret inventory.
 7. Create or reconcile the Access application, restrict it to Google, apply the

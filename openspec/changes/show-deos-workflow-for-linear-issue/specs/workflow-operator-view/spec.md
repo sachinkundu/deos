@@ -131,7 +131,7 @@ The portal SHALL present the full safe graph as the approved concise two-row wor
 - **THEN** the portal marks the projection unavailable and does not omit the node or replace the run's graph with another version
 
 ### Requirement: Detailed history preserves every visit and agent run
-The portal SHALL read and display the complete D1-recorded ordering of workflow visits for the selected run, including repeated visits to the same node. Stage details SHALL show the visits and agent attempts that contributed to each displayed cycle in chronological order. Each agent attempt SHALL remain a distinct row with its safe agent label, cycle or visit context, confirmed outcome, timestamps, and transcript-document link when one is recorded.
+The portal SHALL read and display the complete D1-recorded ordering of workflow visits for the selected run, including repeated visits to the same node. Stage details SHALL show the visits and agent attempts that contributed to each displayed cycle in chronological order. Each agent attempt SHALL remain a distinct row with its safe agent label, cycle or visit context, confirmed outcome, timestamps, and a transcript action when one accepted durable transcript is recorded.
 
 #### Scenario: A review sends work backward
 - **WHEN** a transition returns from review to an earlier node
@@ -145,9 +145,24 @@ The portal SHALL read and display the complete D1-recorded ordering of workflow 
 - **WHEN** more than one attempt is recorded for the same agent work in one visit
 - **THEN** every attempt appears separately in chronological order with its own confirmed outcome
 
-#### Scenario: Attempt has no transcript document
-- **WHEN** an agent attempt is recorded but no transcript-document link is recorded
-- **THEN** the attempt remains visible and its transcript destination is explicitly unavailable
+#### Scenario: Attempt has no accepted transcript
+- **WHEN** an agent attempt is recorded but no complete manifest with one accepted `transcript.jsonl` artifact is recorded for it
+- **THEN** the attempt remains visible and its transcript action is explicitly unavailable
+
+### Requirement: Accepted attempt transcripts are readable inside the portal
+The portal SHALL expose an authenticated read route identified only by attempt ID. The backend SHALL resolve that attempt through the selected project and run, require its artifact manifest to be complete, select only the accepted `transcript.jsonl` artifact, and fetch that exact private object through the R2 binding. It SHALL reject caller-supplied object keys, artifacts owned by another run or project, incomplete manifests, unaccepted policy outcomes, unexpected media types, oversized transcripts, and objects whose byte size or SHA-256 does not match D1. The browser SHALL present the verified records as a readable chronological Activity view by default and SHALL offer a secondary Raw JSONL view plus copy and download actions.
+
+#### Scenario: Operator opens an accepted transcript
+- **WHEN** the named operator requests the transcript for an attempt whose completed manifest contains one accepted `transcript.jsonl` object with matching size and SHA-256
+- **THEN** the portal returns only that verified transcript and displays its records chronologically in the Activity view
+
+#### Scenario: Operator inspects raw records
+- **WHEN** the operator switches from Activity to Raw JSONL
+- **THEN** the portal shows one numbered JSONL record per row, supports expanding formatted JSON, and offers copy and download without exposing the R2 key
+
+#### Scenario: Transcript ownership or integrity cannot be proved
+- **WHEN** the attempt is outside the configured project, the manifest is incomplete, the artifact is not accepted, the object is absent, or its size or SHA-256 differs from D1
+- **THEN** the portal returns a safe unavailable response and does not return another artifact or an unverified body
 
 ### Requirement: Stage details expose useful governed work links
 Stage details SHALL expose the most useful safe work products for the selected run. Planning stages SHALL link their generated OpenSpec artifacts. Implementation and validation stages SHALL use the governed pull request as their primary evidence destination rather than enumerating the implementation's source files. Human waits SHALL link to the Linear issue, and all links SHALL belong to the selected run or issue.
@@ -169,7 +184,7 @@ Stage details SHALL expose the most useful safe work products for the selected r
 - **THEN** the portal denies that destination instead of returning or linking it
 
 ### Requirement: Every response uses an explicit safe-field allowlist
-The portal SHALL construct issue, run, graph, history, wait, attempt, and work-product responses from explicit safe-field allowlists. It SHALL exclude credentials, secrets, full definition documents, prompts, provider payloads, raw matcher or diagnostic content, unrestricted artifact bodies, raw R2 keys, and Cloudflare execution status or identifiers. For transcript documents, the portal SHALL return only allowlisted link metadata, SHALL NOT fetch, inspect, sanitize, or proxy the document body, and SHALL rely on the destination's own access control.
+The portal SHALL construct issue, run, graph, history, wait, attempt, work-product, and transcript responses from explicit safe-field allowlists. It SHALL exclude credentials, secrets, full definition documents, prompts, provider payloads, raw matcher or diagnostic content, unrestricted artifact bodies, raw R2 keys, and Cloudflare execution status or identifiers. The sole artifact-body exception SHALL be the accepted, integrity-verified `transcript.jsonl` selected through the attempt-scoped authenticated route.
 
 #### Scenario: Safe run projection is returned
 - **WHEN** an authorized operator requests a selected run
@@ -179,9 +194,9 @@ The portal SHALL construct issue, run, graph, history, wait, attempt, and work-p
 - **WHEN** a queried D1 row contains a field that is not present in the response allowlist
 - **THEN** that field is omitted even if the browser did not explicitly request its removal
 
-#### Scenario: Transcript document is linked
-- **WHEN** a recorded agent attempt has a transcript-document destination
-- **THEN** the portal returns only the allowlisted link metadata and does not read or return the document body
+#### Scenario: Transcript response is returned
+- **WHEN** an accepted transcript is requested through its attempt-scoped route
+- **THEN** the portal returns allowlisted metadata and verified JSONL records without returning the R2 key, manifest key, prompt, credential, or unrelated artifact
 
 #### Scenario: API or rendering fails
 - **WHEN** an internal read, projection, or rendering error occurs

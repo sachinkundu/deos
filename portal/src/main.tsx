@@ -18,6 +18,8 @@ import {
 } from "@phosphor-icons/react";
 import { applyStaged, receivePoll, type PollState } from "./polling.ts";
 import { portalPageFromPath, portalPathForPage, type PortalPage } from "./routes.ts";
+import { TranscriptViewer } from "./TranscriptViewer.tsx";
+import type { TranscriptDto } from "./transcript-view.ts";
 import "./styles.css";
 
 type Theme = "system" | "light" | "dark";
@@ -33,7 +35,7 @@ interface Visit {
   state: string;
   enteredAt: string;
   leftAt: string | null;
-  attempts: Array<{ state: string; outcome: string | null; startedAt: string; endedAt: string | null }>;
+  attempts: Array<{ id: string; state: string; outcome: string | null; startedAt: string; endedAt: string | null; transcriptAvailable: boolean }>;
   waits: Array<{ state: string; startedAt: string; endedAt: string | null }>;
   links: Array<{ kind: string; label: string; url: string; createdAt: string }>;
 }
@@ -243,10 +245,12 @@ function App() {
   const [runId, setRunId] = useState("");
   const [poll, setPoll] = useState<PollState<Projection>>({ applied: null, staged: null, error: null });
   const [selectedVisit, setSelectedVisit] = useState<number | null>(null);
+  const [transcriptAttempt, setTranscriptAttempt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState<PortalPage>(() => portalPageFromPath(window.location.pathname));
   const requestRef = useRef<AbortController | null>(null);
   const workflowLoadedRef = useRef(false);
+  const loadTranscript = useCallback((path: string, signal?: AbortSignal) => api<TranscriptDto>(path, signal), []);
 
   useEffect(() => {
     localStorage.setItem("deos-theme", theme);
@@ -290,6 +294,7 @@ function App() {
       const first = result.runs[0]?.id ?? "";
       setRunId(first);
       setSelectedVisit(null);
+      setTranscriptAttempt(null);
       setPoll({ applied: null, staged: null, error: null });
       if (first) await loadProjection(first, true);
     } catch (error) {
@@ -350,7 +355,7 @@ function App() {
       {poll.error && <div className="error-banner"><WarningCircle />{poll.error}<button type="button" onClick={() => runId && void loadProjection(runId)}>Retry</button></div>}
       {selectedIssue && <section className="issue-header">
         <div><span className="eyebrow">{selectedIssue.key}</span><h1>{selectedIssue.title}</h1><a href={selectedIssue.url} target="_blank" rel="noreferrer">Open issue <ArrowSquareOut /></a></div>
-        <div className="run-control"><label htmlFor="run">Workflow run</label><select id="run" value={runId} onChange={(event) => { setRunId(event.target.value); setSelectedVisit(null); void loadProjection(event.target.value, true); }}>{runs.map((run) => <option value={run.id} key={run.id}>Run {run.sequence} · {human(run.status)}</option>)}</select></div>
+        <div className="run-control"><label htmlFor="run">Workflow run</label><select id="run" value={runId} onChange={(event) => { setRunId(event.target.value); setSelectedVisit(null); setTranscriptAttempt(null); void loadProjection(event.target.value, true); }}>{runs.map((run) => <option value={run.id} key={run.id}>Run {run.sequence} · {human(run.status)}</option>)}</select></div>
       </section>}
       {projection ? <>
         <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span></div><span>Fresh as of {formatTime(projection.run.freshness)}</span></section>
@@ -367,7 +372,7 @@ function App() {
             <div className="section-heading"><div><span className="eyebrow">Visit detail</span><h2>{detail?.label ?? "No visit selected"}</h2></div>{detail && <span>Visit {detail.sequence}{detail.cycle > 1 ? ` · cycle ${detail.cycle}` : ""}</span>}</div>
             {detail && <div className="detail-content">
               <dl><div><dt>State</dt><dd>{human(detail.state)}</dd></div><div><dt>Entered</dt><dd>{formatTime(detail.enteredAt)}</dd></div><div><dt>Finished</dt><dd>{formatTime(detail.leftAt)}</dd></div></dl>
-              <div className="evidence-grid"><div><h3>Agent attempts</h3>{detail.attempts.length ? detail.attempts.map((attempt, index) => <p key={index}>{human(attempt.state)}{attempt.outcome ? ` · ${human(attempt.outcome)}` : ""}</p>) : <p>Unavailable for this visit</p>}</div><div><h3>Wait state</h3>{detail.waits.length ? detail.waits.map((wait, index) => <p key={index}>{human(wait.state)} · {formatTime(wait.startedAt)}</p>) : <p>No durable wait</p>}</div><div><h3>Governed work</h3>{detail.links.length ? detail.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>) : <p>Unavailable for this visit</p>}</div></div>
+              <div className="evidence-grid"><div><h3>Agent attempts</h3>{detail.attempts.length ? detail.attempts.map((attempt) => <div className="attempt-row" key={attempt.id}><p>{human(attempt.state)}{attempt.outcome ? ` · ${human(attempt.outcome)}` : ""}</p>{attempt.transcriptAvailable ? <button type="button" onClick={() => setTranscriptAttempt(attempt.id)}>View transcript</button> : <span>Transcript unavailable</span>}</div>) : <p>Unavailable for this visit</p>}</div><div><h3>Wait state</h3>{detail.waits.length ? detail.waits.map((wait, index) => <p key={index}>{human(wait.state)} · {formatTime(wait.startedAt)}</p>) : <p>No durable wait</p>}</div><div><h3>Governed work</h3>{detail.links.length ? detail.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>) : <p>Unavailable for this visit</p>}</div></div>
             </div>}
           </section>
           <section className="history-panel">
@@ -377,6 +382,7 @@ function App() {
         </div>
       </> : <section className="empty-state">{busy ? <><SpinnerGap className="spin" /><h1>Loading durable workflow state</h1></> : <><MagnifyingGlass /><h1>Find a DEOS workflow</h1><p>Search for a Linear issue key to inspect its workflow runs and durable business state.</p></>}</section>}</>}
     </main>
+    {transcriptAttempt !== null && <TranscriptViewer attemptId={transcriptAttempt} loadTranscript={loadTranscript} onClose={() => setTranscriptAttempt(null)} />}
   </div>;
 }
 

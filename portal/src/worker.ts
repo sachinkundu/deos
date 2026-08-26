@@ -1,15 +1,12 @@
 import { verifyAccess } from "./auth.ts";
 import { PortalReadStore } from "./model.ts";
 import { RepositorySettingsError, RepositorySettingsStore } from "./settings.ts";
-
-interface PortalEnv {
-  DB: D1Database;
-  ASSETS: Fetcher;
-  ACCESS_TEAM_DOMAIN: string;
-  ACCESS_AUD: string;
-  ALLOWED_EMAIL: string;
-  PROJECT_ID: string;
-}
+import {
+  TranscriptNotFoundError,
+  TranscriptReadStore,
+  TranscriptUnavailableError,
+  transcriptDto,
+} from "./transcript.ts";
 
 const securityHeaders = {
   "Cache-Control": "no-store",
@@ -21,9 +18,16 @@ const securityHeaders = {
 
 const json = (status: number, body: unknown): Response => Response.json(body, { status, headers: securityHeaders });
 
+type PortalRuntimeEnv = Pick<Env, "DB" | "ARTIFACTS" | "ASSETS"> & {
+  ACCESS_TEAM_DOMAIN: string;
+  ACCESS_AUD: string;
+  ALLOWED_EMAIL: string;
+  PROJECT_ID: string;
+};
+
 export const routePortalRequest = async (
   request: Request,
-  env: PortalEnv,
+  env: PortalRuntimeEnv,
   authenticate: typeof verifyAccess = verifyAccess,
 ): Promise<Response> => {
   let identity: { email: string };
@@ -102,6 +106,25 @@ export const routePortalRequest = async (
     if (url.pathname === "/api/issues") {
       return json(200, { issues: await store.searchIssues(url.searchParams.get("query") ?? "") });
     }
+    const transcriptMatch = url.pathname.match(
+      /^\/api\/attempts\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/transcript(\.jsonl)?$/i,
+    );
+    if (transcriptMatch !== null) {
+      const transcript = await new TranscriptReadStore(env.DB, env.ARTIFACTS, env.PROJECT_ID)
+        .read(transcriptMatch[1]);
+      if (transcriptMatch[2] === ".jsonl") {
+        return new Response(request.method === "HEAD" ? null : transcript.bytes, {
+          status: 200,
+          headers: {
+            ...securityHeaders,
+            "Content-Disposition": `attachment; filename="${transcript.issueKey}-${transcript.attemptId}-transcript.jsonl"`,
+            "Content-Length": String(transcript.byteSize),
+            "Content-Type": "application/x-ndjson; charset=utf-8",
+          },
+        });
+      }
+      return json(200, transcriptDto(transcript));
+    }
     const issueMatch = url.pathname.match(/^\/api\/issues\/([A-Z][A-Z0-9]+-[1-9][0-9]*)\/runs$/);
     if (issueMatch !== null) {
       const result = await store.runs(issueMatch[1]);
@@ -115,6 +138,8 @@ export const routePortalRequest = async (
     return json(404, { error: "route_not_found" });
   } catch (error) {
     if (error instanceof SyntaxError) return json(400, { error: "invalid_request" });
+    if (error instanceof TranscriptNotFoundError) return json(404, { error: "transcript_not_found" });
+    if (error instanceof TranscriptUnavailableError) return json(503, { error: "transcript_unavailable" });
     if (error instanceof RepositorySettingsError) {
       const status = error.code === "invalid_repository" ? 400
         : error.code === "settings_not_found" ? 404
@@ -128,7 +153,7 @@ export const routePortalRequest = async (
 };
 
 export default {
-  fetch(request: Request, env: PortalEnv): Promise<Response> {
+  fetch(request: Request, env: Env): Promise<Response> {
     return routePortalRequest(request, env);
   },
-} satisfies ExportedHandler<PortalEnv>;
+} satisfies ExportedHandler<Env>;
