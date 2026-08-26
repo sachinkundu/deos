@@ -23,11 +23,6 @@ DEOS SHALL run one full first check on the exact private plan. The plan SHALL ha
 - **WHEN** the check needs the author's live job or unsaved notes
 - **THEN** DEOS rejects the job as bad review proof
 
-#### Scenario: Internal reviewer setting differs
-
-- **WHEN** any of the four saved author settings differs in the first check
-- **THEN** DEOS rejects the job as bad review proof
-
 ### Requirement: Keep internal repair and recheck bounded
 
 The full first check SHALL create one base finding set. Each later first recheck SHALL use the same fixed model and thought level. It SHALL rate every base finding. Its state SHALL be `fixed`, `partially_fixed`, `still_present`, or `cannot_verify`. Each rating SHALL cite current proof. A recheck MUST NOT add, drop, or rewrite a base finding. DEOS SHALL derive the full result from the ratings. It SHALL stop at the set fix limit. It MUST post only a plan whose first-check findings are all fixed.
