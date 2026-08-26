@@ -79,35 +79,13 @@ test("simple workflow shows cycles only for explicit automated review stages", (
   assert.equal(cycleCountForStage(automatedReview, { cycles: {} }, "completed", false), 0);
 });
 
-test("comparison issues describe completed, in-progress, failed, and stopped paths explicitly", () => {
+test("the portal lists only the recorded Linear issue", () => {
   const stages = simpleWorkflowPresentation.stages.map((stage) => stage.id).sort();
   const issues = Object.values(simpleWorkflowIssues);
 
-  assert.deepEqual(issues.map((issue) => issue.state).sort(), ["active", "failed", "finished", "stopped"]);
-  for (const issue of issues) {
-    assert.deepEqual(Object.keys(issue.stageStates).sort(), stages, `${issue.key} covers every visible stage`);
-    assert.ok(issue.currentStep in workflow.spec.nodes, `${issue.key} points to a configured workflow node`);
-  }
-
-  assert.deepEqual(simpleWorkflowIssues["SAC-131"].stageStates, {
-    claim: "completed",
-    planning: "active",
-    review: "future",
-    merge: "future",
-    complete: "future",
-    stopped: "future",
-  });
-  assert.equal(simpleWorkflowIssues["SAC-132"].observedBranchSource, "merge");
-  assert.equal(simpleWorkflowIssues["SAC-132"].stageStates.merge, "failed");
-  assert.equal(simpleWorkflowIssues["SAC-132"].stageStates.complete, "skipped");
-  assert.equal(simpleWorkflowIssues["SAC-132"].stageStates.stopped, "failed");
-
-  assert.equal(simpleWorkflowIssues["SAC-133"].currentStep, "canceled");
-  assert.equal(simpleWorkflowIssues["SAC-133"].observedBranchSource, "review");
-  assert.equal(simpleWorkflowIssues["SAC-133"].stageStates.review, "rejected");
-  assert.equal(simpleWorkflowIssues["SAC-133"].stageStates.merge, "skipped");
-  assert.equal(simpleWorkflowIssues["SAC-133"].stageStates.complete, "skipped");
-  assert.equal(simpleWorkflowIssues["SAC-133"].stageStates.stopped, "stopped");
+  assert.deepEqual(issues.map((issue) => issue.key), ["SAC-130"]);
+  assert.deepEqual(Object.keys(issues[0].stageStates).sort(), stages);
+  assert.ok(issues[0].currentStep in workflow.spec.nodes);
 });
 
 test("SAC-130 uses the recorded simple-workflow evidence", () => {
