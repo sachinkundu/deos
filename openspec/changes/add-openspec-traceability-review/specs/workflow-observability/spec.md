@@ -2,7 +2,7 @@
 
 ### Requirement: Correlate every trace review stage
 
-Each trace event SHALL use the flow's shared link ID. It SHALL name the review, run, try, phase, mode, and round. It SHALL also name a safe plan ID and the reviewed head, when one exists. It SHALL name the base finding set, model, thought level, tool version, result, file list, and provider task. These fields SHALL link events to saved review records. They MUST NOT expose plan text.
+Each trace event SHALL use the flow's shared link ID. It SHALL name the review, run, job, try, phase, mode, and round. It SHALL also name a safe plan ID and the reviewed head, when one exists. It SHALL name the base finding set and each related finding ID. It SHALL name the model, thought level, tool version, result, file list, and provider task. These fields SHALL link events to saved review records. They MUST NOT expose plan text.
 
 #### Scenario: Review stage completes
 
