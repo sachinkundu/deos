@@ -21,7 +21,7 @@ The flow SHALL save the active review round, phase, mode, and fix count. It SHAL
 
 ### Requirement: Bound each trace repair loop
 
-The flow SHALL set a separate fix limit for each check. It SHALL set a total job-attempt limit for each review phase in a round. Every started review job, including a retry after a blocked or failed job, SHALL use one attempt. It SHALL also set a firm run-time limit for each review job. It SHALL count a fix only when it starts a fresh author job for that phase. A later human change SHALL start a new review round. That round SHALL get new full checks and fresh limits. DEOS SHALL keep all past proof.
+The flow SHALL set a fix limit for each check. It SHALL set a job limit for each review phase in a round. Every started review job SHALL use one try. This includes a retry after a blocked or failed job. Each review job SHALL also have a firm time limit. A fix SHALL count only when a fresh author job starts for that phase. A later human change SHALL start a new review round. That round SHALL get new full checks and fresh limits. DEOS SHALL keep all past proof.
 
 #### Scenario: Repair remains within its limit
 
@@ -41,7 +41,7 @@ The flow SHALL set a separate fix limit for each check. It SHALL set a total job
 #### Scenario: Review phase uses its job attempts
 
 - **WHEN** a review phase reaches its job-attempt limit without a valid result
-- **THEN** DEOS saves the stop result and does not start another job in that phase or enter `Human Review`
+- **THEN** DEOS saves the stop result. It does not start another job in that phase or enter `Human Review`
 
 #### Scenario: Human requests another revision
 
