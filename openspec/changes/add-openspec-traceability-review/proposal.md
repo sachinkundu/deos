@@ -5,7 +5,7 @@ The first simple planning run worked. DEOS made a plan, revised it, and merged i
 ## What Changes
 
 - Keep a plan private until its first review passes.
-- Give the first reviewer fresh context. Use the same fixed model and settings as the author. Limit repairs. Rechecks cover only the first review's findings. A repair can change only the exact cited ranges tied to those findings. Keep all other plan text byte-for-byte. Recheck each changed range, its full blocks, and all two-way links. Any new defect caused by the repair keeps that finding open.
+- Give the first reviewer fresh context. Match the author's saved model, thought level, workflow prompt version, and tool and permission profile. These are the complete author settings for this check. Limit repairs. Rechecks cover only the first review's findings. A repair can change only the exact cited ranges tied to those findings. Keep all other plan text byte-for-byte. Recheck each changed range, its full blocks, and all two-way links. Any new defect caused by the repair keeps that finding open.
 - Open one planning pull request after the first review passes. Use a different fixed model for the second review. Repair the same pull request. After each repair, let the first model check the exact new head. Then let the second model recheck every finding in its base set before human review.
 - Keep the current plan rules for file order, full repo paths, and blocked later work. Rebuild each new job from saved facts. Keep the same pull request for changes. Reply to each changed human review thread and leave it open.
 - Keep a separate limit for repair of a bad sidecar or review result. Those tries do not count as author fixes and cannot change plan text or findings.
@@ -16,7 +16,7 @@ The first simple planning run worked. DEOS made a plan, revised it, and merged i
 - Let review agents read but not write. Trusted workflow steps can open or update the pull request, post its check, and add its Linear link.
 - Run each review in a new DEOS Sandbox. Pin one BettaView review tool version. DEOS owns the workflow and saved proof. It also owns login and provider changes.
 - Link safe review events by phase, mode, round, plan, finding, pull request head, job, model, tool, file list, and provider task.
-- Set a firm limit for each review and repair loop. Stop before human review if the work fails or uses all its tries.
+- Set a firm attempt limit for each review phase, including blocked and failed retries. Also limit each job and repair loop. Stop before human review if the work fails or uses all its tries.
 
 ### Non-goals
 

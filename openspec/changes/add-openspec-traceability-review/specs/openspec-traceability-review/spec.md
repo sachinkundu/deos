@@ -6,7 +6,7 @@ Check the meaning and scope of one OpenSpec proposal and its delta specs before 
 
 ### Requirement: Review one exact private planning draft
 
-DEOS SHALL run one full first check on the exact private plan. The plan SHALL have a valid proposal and all needed delta specs. The check SHALL use a fresh context. It SHALL use the same fixed model and thought level as the author. It SHALL inspect each named spec and each rule. The review job MUST NOT change the plan or any provider state.
+DEOS SHALL run one full first check on the exact private plan. The plan SHALL have a valid proposal and all needed delta specs. The check SHALL use a fresh context. DEOS SHALL save the author's model identity, thought level, workflow prompt version, and tool and permission profile. These four fields SHALL be the complete author settings for the check. The first check SHALL match all four fields. It SHALL inspect each named spec and each rule. The review job MUST NOT change the plan or any provider state.
 
 #### Scenario: Private draft is ready for review
 
@@ -21,6 +21,11 @@ DEOS SHALL run one full first check on the exact private plan. The plan SHALL ha
 #### Scenario: Internal reviewer lacks fresh context
 
 - **WHEN** the check needs the author's live job or unsaved notes
+- **THEN** DEOS rejects the job as bad review proof
+
+#### Scenario: Internal reviewer setting differs
+
+- **WHEN** any of the four saved author settings differs in the first check
 - **THEN** DEOS rejects the job as bad review proof
 
 ### Requirement: Keep internal repair and recheck bounded
