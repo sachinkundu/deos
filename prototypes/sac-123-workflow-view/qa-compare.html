@@ -8,19 +8,17 @@
       * { box-sizing: border-box; }
       body { margin: 0; background: #020812; color: white; font-family: Inter, system-ui, sans-serif; }
       header { padding: 24px 28px 8px; font-size: 20px; font-weight: 700; }
-      main { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 16px 28px 28px; }
+      main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 16px 28px 28px; }
       figure { margin: 0; padding: 12px; border: 1px solid #22364a; border-radius: 10px; background: #07121f; }
       figcaption { margin: 0 0 10px; color: #94a5b8; font-size: 13px; font-weight: 600; }
       img { display: block; width: 100%; height: 520px; object-fit: contain; background: #07121f; }
     </style>
   </head>
   <body>
-    <header>Two-row workflow and agent-run comparison</header>
+    <header>Simple workflow visual comparison</header>
     <main>
       <figure><figcaption>Visual source · selected dark operator-view direction</figcaption><img src="/design-source.png" alt="Selected DEOS workflow map mockup" /></figure>
-      <figure><figcaption>Structural source · workflow cycles and approvals</figcaption><img src="/workflow-structure-source.jpeg" alt="Source workflow architecture" /></figure>
-      <figure><figcaption>Rendered prototype · two-row workflow with approval status</figcaption><img src="/implementation-two-row-workflow.png" alt="Rendered two-row workflow" /></figure>
-      <figure><figcaption>Rendered prototype · Validation agents and PR evidence</figcaption><img src="/interaction-validation-pr-evidence.png" alt="Rendered Validation PR evidence" /></figure>
+      <figure><figcaption>Rendered prototype · simple planning workflow v4</figcaption><img src="/implementation-simple-v4.png" alt="Rendered simple planning workflow" /></figure>
     </main>
   </body>
 </html>

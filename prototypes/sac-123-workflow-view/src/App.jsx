@@ -35,6 +35,7 @@ import {
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
+import { simpleWorkflowPresentation } from "./simple-workflow.js";
 
 const fullWorkflowDefinitions = [
   {
@@ -293,192 +294,38 @@ const filesByNode = {
   workflow_complete: ["workflow/workflow-result.json"],
 };
 
-const workflowDefinitions = [
-  {
-    id: "requirements",
-    label: "Requirements",
-    phase: "Requirements",
-    owner: "Requirements agent and approver",
-    cycle: "Capture, review, approve",
-    agents: ["Requirements Agent", "Requirements Review Agent"],
-    cycleBased: true,
-    kind: "cycle",
-    x: 40,
-    y: 54,
-    icon: ListChecks,
-    result: "Requirements approved",
-    files: ["proposal.md", "requirements.md", "requirements-review.md", "approvals/requirements.json"],
-  },
-  {
-    id: "specification",
-    label: "Specification",
-    phase: "Specification",
-    owner: "Specification agent",
-    cycle: "Define behavior and scenarios",
-    agents: ["Specification Agent"],
-    kind: "artifact",
-    x: 330,
-    y: 54,
-    icon: FileText,
-    result: "Specification ready",
-    files: ["specs/workflow-status/spec.md", "specs/workflow-status/scenarios.md"],
-  },
-  {
-    id: "architecture",
-    label: "Architecture",
-    phase: "Architecture",
-    owner: "Architecture agent and approver",
-    cycle: "Design, review, approve",
-    agents: ["DDD Architect", "DDD Reviewer"],
-    cycleBased: true,
-    kind: "cycle",
-    x: 620,
-    y: 54,
-    icon: FlowArrow,
-    result: "Architecture approved",
-    files: ["design.md", "reviews/architecture.md", "approvals/architecture.json"],
-  },
-  {
-    id: "implementation_plan",
-    label: "Implementation plan",
-    phase: "Implementation plan",
-    owner: "Planning agent",
-    cycle: "Break approved work into tasks",
-    agents: ["Planning Agent"],
-    kind: "artifact",
-    x: 910,
-    y: 54,
-    icon: ListChecks,
-    result: "Implementation plan ready",
-    files: ["tasks.md"],
-  },
-  {
-    id: "implementation",
-    label: "Implementation",
-    phase: "Implementation",
-    owner: "Implementation agent",
-    cycle: "Complete planned tasks",
-    agents: ["Implementation Agent"],
-    kind: "agent",
-    x: 910,
-    y: 252,
-    icon: Code,
-    result: "Implementation complete",
-    files: ["src/workflow-status.ts"],
-  },
-  {
-    id: "validation",
-    label: "Validation",
-    phase: "Validation",
-    owner: "Review and verification agents",
-    cycle: "Review code, verify tests and evidence",
-    agents: ["Code Review Agent", "Evidence Verifier Agent"],
-    cycleBased: true,
-    kind: "cycle",
-    x: 620,
-    y: 252,
-    icon: ShieldCheck,
-    result: "Review and verification passed",
-    files: ["tests/workflow-status.test.ts", "reviews/code-review.md", "evidence/validation-results.json", "evidence/verification.md"],
-  },
-  {
-    id: "release",
-    label: "Release",
-    phase: "Release",
-    owner: "Release approver and workflow",
-    cycle: "Approve, deploy, finalize",
-    agents: ["Release Finalization Agent"],
-    cycleBased: true,
-    kind: "cycle",
-    x: 330,
-    y: 252,
-    icon: RocketLaunch,
-    result: "Release finalized",
-    files: ["approvals/release.json", "release/release-record.json"],
-  },
-  {
-    id: "complete",
-    label: "Workflow completed",
-    phase: "Complete",
-    owner: "Workflow",
-    cycle: "Sync knowledge and archive",
-    agents: ["Archive Agent"],
-    kind: "action",
-    x: 40,
-    y: 252,
-    icon: CheckCircle,
-    result: "Completed successfully",
-    files: ["archive/workflow-summary.md", "workflow/workflow-result.json"],
-  },
-];
+const workflowIcons = {
+  claim: FlowArrow,
+  planning: FileText,
+  review: Stamp,
+  merge: GithubLogo,
+  complete: CheckCircle,
+  stopped: WarningCircle,
+};
+
+const workflowDefinitions = simpleWorkflowPresentation.stages.map((stage) => ({
+  ...stage,
+  icon: workflowIcons[stage.icon],
+}));
 
 const currentNodeByStep = {
-  requirements: "requirements",
-  requirements_review: "requirements",
-  workflow_update: "specification",
-  implementation: "implementation",
-  human_approval: "architecture",
-  changes_applied: "validation",
-  final_verification: "validation",
-  done: "complete",
+  ...simpleWorkflowPresentation.nodeToStage,
 };
 
 const issueDefinitions = {
-  "SAC-123": {
-    key: "SAC-123",
-    title: "Design and approve the SAC-101 workflow view",
-    listText: "Requirements in progress",
-    state: "active",
-    stateLabel: "Active",
-    headline: "Requirements are active",
-    description: "Requirements are being captured and reviewed.",
-    currentStep: "requirements",
-    completedThrough: -1,
-    loopCount: 0,
-    cycles: { requirements: 1 },
-    primaryAction: "View current work",
-  },
-  "SAC-98": {
-    key: "SAC-98",
-    title: "DEOS provider-originated Linear Sandbox canary",
-    listText: "Needs your approval",
-    state: "waiting",
-    stateLabel: "Waiting",
-    headline: "Waiting for your approval",
-    description: "DEOS needs your approval to apply this change and continue the workflow.",
-    currentStep: "human_approval",
-    completedThrough: 3,
-    loopCount: 1,
-    cycles: { requirements: 2, specification: 1, architecture: 2 },
-    primaryAction: "Review in Linear",
-  },
-  "SAC-122": {
-    key: "SAC-122",
-    title: "Reconciled lifecycle verification",
-    listText: "Succeeded",
-    state: "finished",
-    stateLabel: "Finished",
-    headline: "Workflow completed",
-    description: "The workflow finished successfully and its results are ready.",
-    currentStep: "done",
-    completedThrough: 7,
-    loopCount: 2,
-    cycles: { requirements: 3, specification: 1, architecture: 2, implementation_plan: 1, implementation: 1, validation: 2, release: 1, complete: 1 },
-    primaryAction: "View release results",
-  },
   "SAC-130": {
     key: "SAC-130",
-    title: "Unconfirmed workflow status",
-    listText: "Status not confirmed",
-    state: "unknown",
-    stateLabel: "Unknown",
-    headline: "Status could not be confirmed",
-    description: "DEOS cannot confirm the current workflow state yet. The last known path is shown below.",
-    currentStep: null,
-    completedThrough: 1,
+    title: "Simple planning workflow provider proof",
+    listText: "Simple workflow succeeded",
+    state: "finished",
+    stateLabel: "Finished",
+    headline: "Planning workflow completed",
+    description: "The planning pull request was created, approved, merged, and verified.",
+    currentStep: "done",
+    completedThrough: 4,
     loopCount: 0,
-    cycles: { requirements: 1 },
-    primaryAction: "Retry status",
+    cycles: { claim: 1, planning: 1, review: 1, merge: 1, complete: 1 },
+    primaryAction: "View planning result",
   },
 };
 
@@ -498,7 +345,9 @@ function FullWorkflowNode({ data, selected }) {
       aria-label={`${data.label}: ${data.statusLabel}`}
     >
       <Handle type="target" position={Position.Top} id="top" className="node-handle" />
+      <Handle type="source" position={Position.Top} id="top-out" className="node-handle" />
       <Handle type="source" position={Position.Bottom} id="bottom" className="node-handle" />
+      <Handle type="target" position={Position.Bottom} id="bottom-in" className="node-handle" />
       <Handle type="target" position={Position.Left} id="left" className="node-handle" />
       <Handle type="source" position={Position.Left} id="left-out" className="node-handle" />
       <Handle type="target" position={Position.Right} id="right" className="node-handle" />
@@ -720,7 +569,7 @@ function buildFullGraph(issue) {
 }
 
 function statusForWorkflowNode(issue, definition) {
-  if (issue.state === "finished") return "completed";
+  if (issue.state === "finished") return definition.id === "stopped" ? "future" : "completed";
   const definitionIndex = workflowDefinitions.findIndex((item) => item.id === definition.id);
   const currentIndex = workflowDefinitions.findIndex((item) => item.id === currentNodeByStep[issue.currentStep]);
   if (definitionIndex === currentIndex) return issue.state;
@@ -730,12 +579,8 @@ function statusForWorkflowNode(issue, definition) {
 }
 
 function generatedFilesForNode(definition, status, isCurrent) {
-  if (["implementation", "validation"].includes(definition.id)) return [];
   if (status === "completed") return definition.files;
   if (!isCurrent) return [];
-  if (definition.id === "requirements") return definition.files.slice(0, 2);
-  if (definition.id === "architecture") return definition.files.slice(0, 2);
-  if (definition.id === "release") return definition.files.slice(0, 1);
   return definition.files.slice(0, Math.max(1, definition.files.length - 1));
 }
 
@@ -771,20 +616,29 @@ function buildGraph(issue) {
   });
 
   const statusById = Object.fromEntries(nodes.map((node) => [node.id, node.data.status]));
-  const edges = workflowDefinitions.slice(0, -1).map((definition, index) => {
-    const target = workflowDefinitions[index + 1];
-    const targetStatus = statusById[target.id];
-    const isRowTurn = index === 3;
-    const isSecondRow = index > 3;
+  const edges = simpleWorkflowPresentation.connections.map((connection, index) => {
+    const targetStatus = statusById[connection.target];
+    const isObservedReturn = connection.kind === "return" && (issue.cycles?.planning ?? 0) > 1;
     return {
-      id: `${definition.id}-${target.id}`,
-      source: definition.id,
-      sourceHandle: isRowTurn ? "bottom" : isSecondRow ? "left-out" : "right-out",
-      target: target.id,
-      targetHandle: isRowTurn ? "top" : isSecondRow ? "right" : "left",
+      id: `${connection.source}-${connection.target}-${index}`,
+      source: connection.source,
+      sourceHandle: connection.sourceHandle,
+      target: connection.target,
+      targetHandle: connection.targetHandle,
       type: "smoothstep",
+      label: connection.label,
       markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-      className: targetStatus === "completed" ? "edge-completed" : targetStatus === issue.state ? `edge-${issue.state}` : "edge-future",
+      className: connection.kind === "return"
+        ? `edge-loop ${isObservedReturn ? "edge-loop--observed" : "edge-loop--possible"}`
+        : connection.kind === "branch"
+          ? "edge-future"
+          : targetStatus === "completed"
+            ? "edge-completed"
+            : targetStatus === issue.state
+              ? `edge-${issue.state}`
+              : "edge-future",
+      labelBgPadding: connection.label ? [9, 5] : undefined,
+      labelShowBg: Boolean(connection.label),
     };
   });
 
@@ -854,7 +708,7 @@ function SideBar({ selectedKey, onSelect, search, setSearch, onSearch }) {
             id="issue-search-input"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="SAC-98"
+            placeholder="SAC-130"
             autoComplete="off"
           />
           {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={15} /></button>}
@@ -866,7 +720,7 @@ function SideBar({ selectedKey, onSelect, search, setSearch, onSearch }) {
           <IssueRow key={issue.key} issue={issue} selected={selectedKey === issue.key} onSelect={onSelect} />
         ))}
         {!filtered.length && (
-          <div className="no-results"><WarningCircle size={22} /><strong>No issue found</strong><span>Try SAC-98 or clear the search.</span></div>
+          <div className="no-results"><WarningCircle size={22} /><strong>No issue found</strong><span>Try SAC-130 or clear the search.</span></div>
         )}
       </nav>
     </aside>
@@ -890,7 +744,7 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
   const definitionIndex = step ? workflowDefinitions.findIndex((item) => item.id === step.id) : -1;
   const status = step?.status || "completed";
   const isCurrent = Boolean(selection.isCurrent);
-  const usesPullRequest = ["implementation", "validation"].includes(step?.id);
+  const usesPullRequest = ["planning", "review", "merge", "complete"].includes(step?.id);
   const prStatus = issue.state === "finished" ? "Merged" : issue.state === "active" ? "Draft" : issue.state === "waiting" ? "Open" : "Unknown";
   return (
     <aside className="step-inspector" aria-label="Workflow detail">
@@ -909,6 +763,7 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
           <dl className="detail-list">
             <div><dt>Result</dt><dd>{isCurrent ? issue.headline : step?.result}</dd></div>
           </dl>
+          {step?.summary && <p className="detail-summary">{step.summary}</p>}
           {step?.cycleCount > 0 && (
             <section className="inspector-cycles" aria-label="Cycle count">
               <strong>{step.cycleCount}</strong>
@@ -927,7 +782,7 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
           </section>}
           {usesPullRequest && status !== "future" && status !== "unknown" && <section className="inspector-links">
             <h3>Pull request</h3>
-            <button type="button" onClick={() => onExternal("GitHub PR #25")}><GithubLogo size={19} weight="fill" /><span><strong>PR #25</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></button>
+            <button type="button" onClick={() => onExternal("Planning PR #59")}><GithubLogo size={19} weight="fill" /><span><strong>PR #59</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></button>
           </section>}
           {step?.files?.length > 0 && <section className="inspector-files">
             <h3>Files</h3>
@@ -938,8 +793,8 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
           <section className="inspector-links">
             <h3>Linked work</h3>
             <button type="button" onClick={() => onExternal(`Linear issue ${issue.key}`)}><FlowArrow size={19} /><span><strong>{issue.key}</strong><small>Linear</small></span><ArrowSquareOut size={15} /></button>
-            {!usesPullRequest && definitionIndex >= 3 && status !== "future" && status !== "unknown" && (
-              <button type="button" onClick={() => onExternal("GitHub PR #25")}><GithubLogo size={19} weight="fill" /><span><strong>PR #25</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></button>
+            {!usesPullRequest && definitionIndex >= 1 && status !== "future" && status !== "unknown" && (
+              <button type="button" onClick={() => onExternal("Planning pull request")}><GithubLogo size={19} weight="fill" /><span><strong>Planning pull request</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></button>
             )}
           </section>
       </div>
@@ -998,6 +853,7 @@ function WorkflowWorkspace({ issue, selection, setSelection, onExternal, onTrans
     <main className="workflow-workspace">
       <section className="workspace-heading">
         <div className="issue-title-line"><strong>{issue.key}</strong><h1>{issue.title}</h1></div>
+        <div className="workflow-identity"><strong>{simpleWorkflowPresentation.label}</strong><span>Definition v{simpleWorkflowPresentation.version}</span></div>
       </section>
 
       <section className={`workflow-state-bar workflow-state-bar--${issue.state}`}>
@@ -1043,7 +899,7 @@ function WorkflowWorkspace({ issue, selection, setSelection, onExternal, onTrans
 }
 
 export function App() {
-  const [selectedKey, setSelectedKey] = useState("SAC-98");
+  const [selectedKey, setSelectedKey] = useState("SAC-130");
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState(null);
   const [externalIntent, setExternalIntent] = useState(null);

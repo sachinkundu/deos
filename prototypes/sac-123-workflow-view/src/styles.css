@@ -507,6 +507,23 @@ select:focus-visible {
   letter-spacing: -0.02em;
 }
 
+.workflow-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.workflow-identity strong {
+  color: var(--brand);
+  font-size: 12px;
+}
+
+.workflow-identity span {
+  white-space: nowrap;
+}
+
 .icon-button {
   display: grid;
   place-items: center;

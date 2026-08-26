@@ -16,3 +16,4 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 - Treat the product as live and event-driven. The compiled browser client is only the presentation layer; freshness, live updates, and status changes come from a dynamic backend contract.
 - Keep this prototype local and self-contained. Do not attach prototype iterations to Linear unless the user explicitly asks.
 - Make live work unmistakable with restrained motion: the active workflow card breathes, and the matching active issue in the left rail has a breathing activity indicator. Preserve a clear static active treatment when reduced motion is requested.
+- Render the checked-in `simple` version-4 workflow as the current visual subject. Group its technical nodes into readable stages, but keep every node and collapsed edge covered by the safe presentation manifest so the UI cannot silently hide a new step.
