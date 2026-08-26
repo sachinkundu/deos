@@ -39,3 +39,18 @@ test("simple workflow presentation retains every collapsed edge", () => {
   );
   assert.deepEqual([...presentedPairs].sort(), [...configuredPairs].sort());
 });
+
+test("simple workflow presentation names the human and automatic stages clearly", () => {
+  const stages = new Map(simpleWorkflowPresentation.stages.map((stage) => [stage.id, stage]));
+
+  assert.equal(stages.get("review").label, "Human approval");
+  assert.deepEqual(stages.get("review").nodeIds, ["planning_review"]);
+  assert.equal(workflow.spec.nodes.planning_review.type, "human_gate");
+  assert.equal(workflow.spec.nodes.planning_review.linearState, "Human Review");
+  assert.equal(workflow.spec.nodes.planning_review.decisions.merge_authorized, "Merging");
+
+  assert.equal(stages.get("merge").label, "Automatic merge & check");
+  for (const nodeId of stages.get("merge").nodeIds) {
+    assert.equal(workflow.spec.nodes[nodeId].type, "system_action");
+  }
+});

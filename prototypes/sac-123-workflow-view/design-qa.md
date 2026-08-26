@@ -14,8 +14,9 @@
 **Implementation Checklist**
 
 - [x] Replace the legacy requirements-to-release fixture with the checked-in `simple` version-4 workflow.
-- [x] Show Claim issue, Create planning PR, Review plan, Merge & verify, Completed, and Stopped.
-- [x] Preserve the explicit Review plan to Create planning PR revision loop.
+- [x] Show Claim issue, Create planning PR, Human approval, Automatic merge & check, Completed, and Stopped.
+- [x] Preserve the explicit Human approval to Create planning PR revision loop.
+- [x] Make the Linear approval boundary explicit: moving the issue to Merging approves the plan; merge and verification then run automatically.
 - [x] Preserve all collapsed cancellation and failure paths into Stopped.
 - [x] Show the working SAC-130 provider-proof scenario as finished.
 - [x] Show the planning agent, proposal/specification artifacts, and planning PR #59 in stage detail.
@@ -51,5 +52,6 @@
 - First rendered pass: the review return edge had no valid source handle, so it was absent and the console warned. The branch labels also overlapped the return label.
 - Fix: added explicit top source and bottom target handles, routed the revision loop above the planning cards, and removed labels from the quiet terminal branches.
 - Post-fix evidence: `implementation-simple-v4.png` shows the explicit `Revision requested` loop, solid green successful route, faint dashed alternate outcomes, and no overlapping labels. A fresh browser tab reported no console issues.
+- Copy correction: renamed the `planning_review` human gate to `Human approval` and the following system-action stage to `Automatic merge & check`, so the Linear approval action is not confused with the automated merge.
 
 final result: passed
