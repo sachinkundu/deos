@@ -6,6 +6,11 @@
   Evidence: the successful route stays solid green while four collapsed cancellation and failure paths use faint dashed lines into one terminal stage.
   Impact: the main route remains clear, but the alternate topology takes a moment to parse.
   Fix: keep this treatment for the first simple-workflow preview. Revisit edge bundling when the workflow grows.
+- [P3] The open detail inspector covers the right-most workflow cards.
+  Location: Human approval and Automatic merge & check while any detail is open.
+  Evidence: the recorded-run browser pass required closing the current detail before selecting either right-most card; all details opened correctly after closing it.
+  Impact: comparison works, but switching directly between right-side stages takes one extra action.
+  Fix: consider resizing the graph around an open inspector when the workflow grows; do not change the approved layout in this evidence-only pass.
 
 **Open Questions**
 
@@ -25,6 +30,8 @@
 - [x] Mark Completed as skipped when SAC-132 fails during automatic merge.
 - [x] Add a rejected-at-Human-approval issue that highlights the normally dotted Human approval to Stopped branch.
 - [x] Mark Automatic merge & check and Completed as skipped for the rejected issue.
+- [x] Replace SAC-130 placeholder copy with the recorded Add Microsoft Entra login run, PR #1, real files, timings, validations, transcript summary, and terminal facts.
+- [x] Preserve the missing historical governed work-link row as an evidence gap; reconcile PR #1 from the accepted result, Linear attachment, and GitHub read-back.
 - [x] Preserve all collapsed cancellation and failure paths into Stopped.
 - [x] Show the working SAC-130 provider-proof scenario as finished.
 - [x] Show the planning agent, proposal/specification artifacts, and planning PR #59 in stage detail.
@@ -39,6 +46,7 @@
 
 - Source visual truth: `design-source.png`
 - Implementation screenshot: `implementation-simple-v4.png`
+- Recorded SAC-130 screenshot: `implementation-sac130-recorded.png`
 - Full-view comparison: `comparison-simple-v4.png`
 - Viewport: 1728 x 1003 CSS pixels, density 1.
 - Source pixels: 1484 x 1060. Implementation pixels: 1728 x 1003. The comparison uses `object-fit: contain` because the source and implementation have different aspect ratios and different workflow content.
@@ -46,6 +54,7 @@
 - Focused comparison: separate source and implementation originals were opened at full resolution. A cropped region was not needed because this pass changes graph content rather than typography, controls, or detailed component anatomy.
 - Primary interactions tested: open Planning detail; verify Planning Agent, `proposal.md`, `specs/.../spec.md`, and PR #59; open Stopped detail; verify the bounded cancellation/failure explanation; switch Light and Dark themes; close both inspectors.
 - Browser console: a fresh final tab reported no errors or warnings.
+- Recorded-run interactions tested: open Claim issue, Create planning PR, Human approval, Automatic merge & check, and Completed; verify the reconciled facts in each detail; open Planning Agent Run 1; verify the transcript outcome, counts, and recorded highlights.
 
 **Required Fidelity Surfaces**
 
@@ -64,5 +73,6 @@
 - Sidebar correction: removed default cycle counts from every completed stage. Cycle copy now requires both an automated-review stage and reported cycle data; ordinary agent execution uses `Run`.
 - State comparison: added explicit per-stage state maps for one finished, one in-progress, and one failed issue. The failed example records automatic merge as the failure source and highlights the observed path into Stopped.
 - Branch comparison: added a stopped issue for a plan rejected at Human approval. The observed dotted branch is highlighted, while downstream successful-path cards use the distinct skipped treatment.
+- Recorded-run pass: manually reconciled Linear state history, workflow telemetry, durable run and transition records, the accepted artifact manifest, agent transcript, and GitHub PR #1. The approved layout remained intact; stage facts and transcript content now use the recorded SAC-130 run.
 
 final result: passed

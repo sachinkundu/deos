@@ -585,12 +585,19 @@ function generatedFilesForNode(definition, status, isCurrent) {
   return definition.files.slice(0, Math.max(1, definition.files.length - 1));
 }
 
-function agentRunsForNode(definition, runCount) {
+function agentRunsForNode(definition, runCount, recordedRuns = []) {
   return Array.from({ length: runCount }, (_, runIndex) =>
     definition.agents.map((agent) => ({
       id: `${definition.id}-${runIndex + 1}-${agent}`,
       agent,
       iterationLabel: definition.cycleBased ? `Cycle ${runIndex + 1}` : `Run ${runIndex + 1}`,
+      transcript: recordedRuns[runIndex] ?? {
+        label: `${agent} · ${definition.cycleBased ? `Cycle ${runIndex + 1}` : `Run ${runIndex + 1}`}`,
+        outcome: "Illustrative",
+        summary: "No recorded transcript is attached to this comparison fixture.",
+        facts: [],
+        notes: [],
+      },
     })),
   ).flat();
 }
@@ -611,9 +618,10 @@ function buildGraph(issue) {
         ...definition,
         result: stageDetail?.result ?? definition.result,
         summary: stageDetail?.summary ?? definition.summary,
-        files: generatedFilesForNode(definition, status, isCurrent),
+        facts: stageDetail?.facts ?? [],
+        files: generatedFilesForNode({ ...definition, files: stageDetail?.files ?? definition.files }, status, isCurrent),
         cycleCount,
-        agentRuns: agentRunsForNode(definition, runCount),
+        agentRuns: agentRunsForNode(definition, runCount, issue.agentRuns?.[definition.id]),
         status,
         statusLabel: labelForStageStatus(status, issue, isCurrent),
       },
@@ -758,7 +766,8 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
   const status = step?.status || "completed";
   const isCurrent = Boolean(selection.isCurrent);
   const usesPullRequest = ["planning", "review", "merge", "complete"].includes(step?.id);
-  const prStatus = issue.state === "finished" ? "Merged" : issue.state === "active" ? "Draft" : issue.state === "stopped" ? "Closed" : ["waiting", "failed"].includes(issue.state) ? "Open" : "Unknown";
+  const pullRequest = issue.pullRequest;
+  const prStatus = pullRequest?.status ?? (issue.state === "active" ? "Draft" : issue.state === "stopped" ? "Closed" : ["waiting", "failed"].includes(issue.state) ? "Open" : "Unknown");
   return (
     <aside className="step-inspector" aria-label="Workflow detail">
       <div className="inspector-header">
@@ -775,6 +784,7 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
           </div>
           <dl className="detail-list">
             <div><dt>Result</dt><dd>{step?.result}</dd></div>
+            {step?.facts?.map((fact) => <div key={`${fact.label}-${fact.value}`}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
           </dl>
           {step?.summary && <p className="detail-summary">{step.summary}</p>}
           {step?.cycleBased && step?.cycleCount > 0 && (
@@ -786,16 +796,16 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
           {step?.agentRuns?.length > 0 && <section className="inspector-agents">
             <h3>Agent</h3>
             {step.agentRuns.map((run) => (
-              <button type="button" key={run.id} onClick={() => onTranscript(`${run.agent} · ${run.iterationLabel}`)}>
+              <button type="button" key={run.id} onClick={() => onTranscript(run.transcript)}>
                 <FileText size={18} />
                 <span><strong>{run.agent}</strong><small>{run.iterationLabel}</small></span>
                 <ArrowSquareOut size={14} />
               </button>
             ))}
           </section>}
-          {usesPullRequest && status !== "future" && status !== "unknown" && <section className="inspector-links">
+          {usesPullRequest && pullRequest && status !== "future" && status !== "unknown" && <section className="inspector-links">
             <h3>Pull request</h3>
-            <button type="button" onClick={() => onExternal("Planning PR #59")}><GithubLogo size={19} weight="fill" /><span><strong>PR #59</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></button>
+            <button type="button" onClick={() => onExternal(`${pullRequest.label}: ${pullRequest.title}`)}><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></button>
           </section>}
           {step?.files?.length > 0 && <section className="inspector-files">
             <h3>Files</h3>
@@ -806,8 +816,8 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
           <section className="inspector-links">
             <h3>Linked work</h3>
             <button type="button" onClick={() => onExternal(`Linear issue ${issue.key}`)}><FlowArrow size={19} /><span><strong>{issue.key}</strong><small>Linear</small></span><ArrowSquareOut size={15} /></button>
-            {!usesPullRequest && definitionIndex >= 1 && status !== "future" && status !== "unknown" && (
-              <button type="button" onClick={() => onExternal("Planning pull request")}><GithubLogo size={19} weight="fill" /><span><strong>Planning pull request</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></button>
+            {!usesPullRequest && pullRequest && definitionIndex >= 1 && status !== "future" && status !== "unknown" && (
+              <button type="button" onClick={() => onExternal(`${pullRequest.label}: ${pullRequest.title}`)}><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></button>
             )}
           </section>
       </div>
@@ -830,15 +840,23 @@ function ExternalPreview({ label, onClose }) {
   );
 }
 
-function TranscriptPreview({ label, onClose }) {
-  if (!label) return null;
+function TranscriptPreview({ transcript, onClose }) {
+  if (!transcript) return null;
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="external-modal" role="dialog" aria-modal="true" aria-labelledby="transcript-title" onMouseDown={(event) => event.stopPropagation()}>
+      <section className="external-modal transcript-modal" role="dialog" aria-modal="true" aria-labelledby="transcript-title" onMouseDown={(event) => event.stopPropagation()}>
         <span className="modal-icon"><FileText size={24} /></span>
         <span className="eyebrow">Agent transcript</span>
-        <h2 id="transcript-title">{label}</h2>
-        <p>This opens the transcript for this agent run. Transcript formatting will be designed in a later pass.</p>
+        <h2 id="transcript-title">{transcript.label}</h2>
+        <p>{transcript.summary}</p>
+        <dl className="detail-list transcript-facts">
+          <div><dt>Outcome</dt><dd>{transcript.outcome}</dd></div>
+          {transcript.facts?.map((fact) => <div key={`${fact.label}-${fact.value}`}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
+        </dl>
+        {transcript.notes?.length > 0 && <section className="transcript-notes">
+          <h3>Recorded highlights</h3>
+          <ul>{transcript.notes.map((note) => <li key={note}>{note}</li>)}</ul>
+        </section>}
         <button type="button" className="primary-button" onClick={onClose}>Back to workflow</button>
       </section>
     </div>
@@ -989,7 +1007,7 @@ export function App() {
         />
       </div>
       <ExternalPreview label={externalIntent} onClose={() => setExternalIntent(null)} />
-      <TranscriptPreview label={transcriptIntent} onClose={() => setTranscriptIntent(null)} />
+      <TranscriptPreview transcript={transcriptIntent} onClose={() => setTranscriptIntent(null)} />
       {toast && <div className="toast" role="status"><CheckCircle size={18} />{toast}</div>}
     </div>
   );

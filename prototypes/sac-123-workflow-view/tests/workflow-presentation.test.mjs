@@ -107,3 +107,20 @@ test("comparison issues describe completed, in-progress, failed, and stopped pat
   assert.equal(simpleWorkflowIssues["SAC-133"].stageStates.complete, "skipped");
   assert.equal(simpleWorkflowIssues["SAC-133"].stageStates.stopped, "stopped");
 });
+
+test("SAC-130 uses the recorded simple-workflow evidence", () => {
+  const issue = simpleWorkflowIssues["SAC-130"];
+
+  assert.equal(issue.title, "Add Microsoft Entra login");
+  assert.equal(issue.pullRequest.label, "PR #1");
+  assert.equal(issue.pullRequest.status, "Merged");
+  assert.equal(issue.pullRequest.mergeCommit, "9270b93d31c653f15714509a8f841d98a13c6e46");
+  assert.equal(issue.evidence.runId.endsWith(":run:3"), true);
+  assert.equal(issue.evidence.knownGap.includes("governed work-link row is absent"), true);
+  assert.equal(issue.stageDetails.claim.facts.find(({ label }) => label === "Transition").value, "Todo → In Progress");
+  assert.equal(issue.stageDetails.planning.files.length, 3);
+  assert.equal(issue.stageDetails.review.facts.find(({ label }) => label === "Wait").value, "46 sec");
+  assert.equal(issue.stageDetails.merge.facts.find(({ label }) => label === "Merge commit").value, "9270b93");
+  assert.equal(issue.stageDetails.complete.facts.find(({ label }) => label === "Visits").value, "6");
+  assert.equal(issue.agentRuns.planning[0].facts.find(({ label }) => label === "Transcript").value, "46 recorded events");
+});

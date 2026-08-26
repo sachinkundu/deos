@@ -1,3 +1,5 @@
+import { sac130RecordedRun } from "./sac-130-recorded-run.js";
+
 export const simpleWorkflowPresentation = Object.freeze({
   id: "simple",
   label: "Simple planning workflow",
@@ -115,27 +117,7 @@ export const simpleWorkflowPresentation = Object.freeze({
 });
 
 export const simpleWorkflowIssues = Object.freeze({
-  "SAC-130": {
-    key: "SAC-130",
-    title: "Simple planning workflow provider proof",
-    listText: "Simple workflow succeeded",
-    state: "finished",
-    stateLabel: "Finished",
-    headline: "Planning workflow completed",
-    description: "The planning pull request was created, approved, merged, and verified.",
-    currentStep: "done",
-    stageStates: {
-      claim: "completed",
-      planning: "completed",
-      review: "completed",
-      merge: "completed",
-      complete: "completed",
-      stopped: "future",
-    },
-    cycles: {},
-    runs: { planning: 1 },
-    primaryAction: "View planning result",
-  },
+  "SAC-130": sac130RecordedRun,
   "SAC-131": {
     key: "SAC-131",
     title: "Plan access-control refinement",
