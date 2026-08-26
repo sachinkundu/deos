@@ -837,7 +837,6 @@ function TranscriptPreview({ transcript, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("activity");
-  const [filter, setFilter] = useState("");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -845,7 +844,6 @@ function TranscriptPreview({ transcript, onClose }) {
     setLoading(false);
     setError("");
     setTab("activity");
-    setFilter("");
   }, [transcript]);
 
   if (!transcript) return null;
@@ -866,11 +864,6 @@ function TranscriptPreview({ transcript, onClose }) {
     }
   };
   const activity = fullTranscript?.records.map(activityForRecord) ?? [];
-  const normalizedFilter = filter.trim().toLowerCase();
-  const visibleActivity = normalizedFilter ? activity.filter((event) =>
-    `${event.title} ${event.detail ?? ""} ${event.raw}`.toLowerCase().includes(normalizedFilter)) : activity;
-  const visibleRaw = normalizedFilter ? fullTranscript?.records.filter((record) =>
-    record.raw.toLowerCase().includes(normalizedFilter)) ?? [] : fullTranscript?.records ?? [];
   const copyAll = async () => {
     await navigator.clipboard.writeText(`${fullTranscript.records.map((record) => record.raw).join("\n")}\n`);
     setCopied(true);
@@ -908,14 +901,12 @@ function TranscriptPreview({ transcript, onClose }) {
               <button type="button" role="tab" aria-selected={tab === "activity"} className={tab === "activity" ? "is-selected" : ""} onClick={() => setTab("activity")}>Activity</button>
               <button type="button" role="tab" aria-selected={tab === "raw"} className={tab === "raw" ? "is-selected" : ""} onClick={() => setTab("raw")}><Code size={15} />Raw JSONL</button>
             </div>
-            <label className="transcript-filter"><MagnifyingGlass size={15} /><span className="visually-hidden">Filter transcript</span><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filter events" /></label>
             <button type="button" onClick={() => void copyAll()}><Copy size={15} />{copied ? "Copied" : "Copy all"}</button>
             <a href={`/api/attempts/${transcript.source.attemptId}/transcript.jsonl`} download><DownloadSimple size={15} />Download</a>
           </div>
           <div className="transcript-records">
-            {tab === "activity" ? <ol className="transcript-activity">{visibleActivity.map((event) => <li key={event.number}><span>{event.number}</span><div><strong>{event.title}</strong>{event.timestamp && <time>{event.timestamp}</time>}{event.detail && <p>{event.detail}</p>}<details><summary>Record details</summary><pre>{JSON.stringify(fullTranscript.records[event.number - 1].value, null, 2)}</pre></details></div></li>)}</ol>
-              : <ol className="transcript-raw">{visibleRaw.map((record) => <li key={record.number}><span>{record.number}</span><details><summary><code>{record.raw}</code></summary><pre>{JSON.stringify(record.value, null, 2)}</pre></details></li>)}</ol>}
-            {(tab === "activity" ? visibleActivity.length : visibleRaw.length) === 0 && <p className="transcript-no-results">No records match that filter.</p>}
+            {tab === "activity" ? <ol className="transcript-activity">{activity.map((event) => <li key={event.number}><span>{event.number}</span><div><strong>{event.title}</strong>{event.timestamp && <time>{event.timestamp}</time>}{event.detail && <p>{event.detail}</p>}<details><summary>Record details</summary><pre>{JSON.stringify(fullTranscript.records[event.number - 1].value, null, 2)}</pre></details></div></li>)}</ol>
+              : <ol className="transcript-raw">{fullTranscript.records.map((record) => <li key={record.number}><span>{record.number}</span><details><summary><code>{record.raw}</code></summary><pre>{JSON.stringify(record.value, null, 2)}</pre></details></li>)}</ol>}
           </div>
         </div>}
       </section>

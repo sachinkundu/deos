@@ -14,7 +14,7 @@
 - [P3] React Flow still emits its pre-existing node-type memoization warning.
   Location: browser console when the workflow map mounts.
   Evidence: the transcript pass reported no runtime errors and one React Flow warning about the existing node-type object.
-  Impact: transcript loading, tabs, filtering, copy, and rendering are unaffected.
+  Impact: transcript loading, tabs, copy, and rendering are unaffected.
   Fix: memoize the existing workflow node-type map in a separate cleanup change.
 
 **Open Questions**
@@ -40,7 +40,7 @@
 - [x] Enable the recorded SAC-130 Linear issue, PR #1, and immutable merged-file destinations; keep illustrative issues unlinked.
 - [x] Open Planning Agent Run 1 through the attempt-scoped portal route while retaining recorded highlights; never expose the storage key or dashboard URL.
 - [x] Show the verified transcript as Activity by default with readable agent updates, command activity, file changes, and expandable record details.
-- [x] Show all 46 exact source lines in the secondary numbered Raw JSONL view with filtering, copy, and download controls.
+- [x] Show all 46 exact source lines in the secondary numbered Raw JSONL view with copy and download controls.
 - [x] Preserve all collapsed cancellation and failure paths into Stopped.
 - [x] Show the working SAC-130 provider-proof scenario as finished.
 - [x] Show the planning agent, proposal/specification artifacts, and planning PR #59 in stage detail.
@@ -70,7 +70,7 @@
 - External destinations tested in the rendered prototype: the SAC-130 link resolved to the signed-in Linear issue and showed `Add Microsoft Entra login`; PR #1 resolved to the merged `SAC-130: OpenSpec plan` pull request; and `proposal.md` resolved to the immutable merge-commit file URL.
 - Transcript reader tested with the exact temporary SAC-130 read-back: 46 valid records, 44,634 bytes, and SHA-256 `67fc1d6a7c52b49eca2cccf9dc29d2f4bb47fd94bdee41f33e565133fb85bd58`. The UI loaded it through `/api/attempts/01a03852-9204-7612-bbb6-b76579f1462a/transcript`; no raw object key or Cloudflare dashboard URL entered the browser.
 - Transcript interaction state: Dark theme at a 1280 x 720 CSS viewport, device pixel ratio 2. The browser screenshot API produced normalized 1280 x 720 PNGs.
-- Transcript interactions tested: open the recorded highlights; load the full Activity view; confirm 46 verified events and the digest prefix; switch to Raw JSONL and count 46 numbered lines; filter Activity to one matching proposal update; use Copy all and observe its success state. Download is present with the same attempt-scoped route but was not written to disk during QA.
+- Transcript interactions tested: open the recorded highlights; load the full Activity view; confirm 46 verified events and the digest prefix; switch to Raw JSONL and count 46 numbered lines; use Copy all and observe its success state. Download is present with the same attempt-scoped route but was not written to disk during QA.
 
 **Required Fidelity Surfaces**
 

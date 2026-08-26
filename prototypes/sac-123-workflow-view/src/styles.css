@@ -1801,29 +1801,6 @@ select:focus-visible {
   color: var(--bg-raised);
 }
 
-.transcript-filter {
-  min-width: 180px;
-  height: 34px;
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 7px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg-raised);
-  color: var(--text-muted);
-}
-
-.transcript-filter input {
-  width: 100%;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-}
-
 .transcript-records {
   min-height: 0;
   flex: 1;
@@ -1982,11 +1959,6 @@ select:focus-visible {
   .transcript-reader-tools {
     flex-wrap: wrap;
     padding-inline: 16px;
-  }
-
-  .transcript-filter {
-    order: 2;
-    flex-basis: 100%;
   }
 
   .transcript-reader-meta,
