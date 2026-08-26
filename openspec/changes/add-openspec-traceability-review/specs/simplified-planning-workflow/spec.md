@@ -36,7 +36,7 @@ The simple flow SHALL send one plan job to create or change the issue-named Open
 
 ### Requirement: Reuse the planning pull request for revisions
 
-Each allowed change SHALL use a fresh agent job. It SHALL keep the run branch and pull request ID. The new job SHALL get the saved plan patch and past result. It SHALL also get the pull request link and the set human or review notes. A review fix SHALL pass its closed-set recheck before the flow moves on. A human change SHALL start a new review round. Both checks SHALL pass for the new exact work before the issue returns to `Human Review`.
+Each allowed change SHALL use a fresh agent job. It SHALL keep the run branch and pull request ID. The new job SHALL get the saved plan patch and past result. It SHALL also get the pull request link and the set human or review notes. A first-check fix SHALL pass its closed-set recheck before the flow moves on. An outside fix SHALL pass a first-model recheck and then its outside closed-set recheck on the same exact head. A human change SHALL start a new review round. Both checks SHALL pass for the new exact work before the issue returns to `Human Review`.
 
 The change SHALL reply once on each human GitHub thread that it affects. A trusted post step SHALL send each short reply. It SHALL say what changed or why no change was made. It MUST NOT close the thread.
 
@@ -48,7 +48,7 @@ The change SHALL reply once on each human GitHub thread that it affects. A trust
 #### Scenario: Traceability review requests a repair
 
 - **WHEN** a full first or outside check finds an issue and a fix remains
-- **THEN** a fresh plan job changes the same private plan or pull request and sends it to the right closed-set recheck
+- **THEN** a fresh plan job changes the same private plan or pull request and sends it through every recheck needed for that new exact version
 
 #### Scenario: Revision is retried
 

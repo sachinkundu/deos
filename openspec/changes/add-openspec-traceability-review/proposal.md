@@ -6,7 +6,7 @@ The first simple planning run worked. DEOS made a plan, revised it, and merged i
 
 - Keep a plan private until its first review passes.
 - Give the first reviewer fresh context. Use the same fixed model and settings as the author. Limit repairs. Rechecks cover only the first review's findings. A repair can change only the full plan and spec blocks tied to those findings. Recheck every changed block and all of its two-way links.
-- Open one planning pull request after the first review passes. Use a different fixed model for the second review. Repair the same pull request. Recheck its open findings before human review.
+- Open one planning pull request after the first review passes. Use a different fixed model for the second review. Repair the same pull request. After each repair, let the first model check the exact new head. Then let the second model recheck its open findings before human review.
 - Keep the current plan rules for file order, full repo paths, and blocked later work. Rebuild each new job from saved facts. Keep the same pull request for changes. Reply to each changed human review thread and leave it open.
 - Keep a separate limit for repair of a bad sidecar or review result. Those tries do not count as author fixes and cannot change plan text or findings.
 - Keep safe output from every ended review job. Save its model proof, source list and hashes, raw and clean result, sidecar, tests, findings or fixes, chat log, provider receipts, and safe job result. Mark missing or unsafe output.

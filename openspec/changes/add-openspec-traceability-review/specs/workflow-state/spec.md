@@ -2,17 +2,17 @@
 
 ### Requirement: Gate human review on current trace proof
 
-The flow SHALL save the active review round, phase, mode, and fix count. It SHALL save the plan hash and base finding set. It SHALL also save the reviewed head, when one exists. The flow SHALL enter `Human Review` only when both checks pass for the active round. The outside check MUST match the current pull request head. An agent result MUST NOT count as human approval.
+The flow SHALL save the active review round, phase, mode, and fix count. It SHALL save the plan hash and base finding set. It SHALL also save the reviewed head, when one exists. The flow SHALL enter `Human Review` only when both checks pass for the active round. After an outside repair, both rechecks MUST match the current pull request head. An agent result MUST NOT count as human approval.
 
 #### Scenario: Both reviews pass for the current head
 
-- **WHEN** both checks pass for the active round and current pull request head
+- **WHEN** both checks pass for the active round and exact current pull request head
 - **THEN** the flow saves the gate proof and may enter `AWAITING_HUMAN_APPROVAL`
 
 #### Scenario: Review proof is stale
 
-- **WHEN** the pull request head changes after the outside check passed
-- **THEN** the flow marks that proof stale and does not use it for the human gate
+- **WHEN** the pull request head changes after either check passed
+- **THEN** the flow marks that check stale and does not use it for the human gate
 
 #### Scenario: Review result is not successful
 

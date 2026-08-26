@@ -68,17 +68,22 @@ After the trusted post, DEOS SHALL run one full outside check. It SHALL use the 
 
 ### Requirement: Repair and recheck the same planning pull request
 
-Each outside fix SHALL update the same planning pull request. Each outside recheck SHALL use the same fixed review model and thought level. It SHALL rate only its base findings. Each rating SHALL cite current proof. DEOS SHALL derive the full result from those ratings.
+Each outside fix SHALL update the same planning pull request. The first review model SHALL then recheck the exact new head with its fixed thought level. It SHALL read the outside base findings, each changed block, and all linked blocks. It MUST NOT add a new finding. Each outside recheck SHALL then use the same fixed outside model and thought level. It SHALL rate only its base findings. Each rating SHALL cite current proof. DEOS SHALL derive the full result from both checks on that head.
 
 #### Scenario: Independent discovery finds a concern
 
 - **WHEN** the full outside check finds an issue and a fix remains
-- **THEN** a fresh author job gets those findings and may update the same branch and pull request
+- **THEN** a fresh author job gets those findings and may update the same branch and pull request before both models recheck that head
+
+#### Scenario: First reviewer has not checked the repaired head
+
+- **WHEN** an outside repair has no passing first-model recheck for its exact new head
+- **THEN** DEOS keeps the work out of `Human Review` and does not count the old private-draft proof as current
 
 #### Scenario: Independent recheck is complete
 
-- **WHEN** a recheck rates each base finding with proof from the new head
-- **THEN** DEOS derives the result from the saved ratings
+- **WHEN** both models recheck the same new head and rate each base finding with current proof
+- **THEN** DEOS derives the result from both saved sets of ratings
 
 #### Scenario: Model claims success while a finding remains open
 
