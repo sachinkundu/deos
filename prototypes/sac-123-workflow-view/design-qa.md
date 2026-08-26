@@ -19,6 +19,9 @@
 - [x] Make the Linear approval boundary explicit: moving the issue to Merging approves the plan; merge and verification then run automatically.
 - [x] Show cycle counts only for stages with an explicit automated-review cycle and real cycle data. The simple workflow has none.
 - [x] Describe the one planning-agent execution as `Run 1`, not `Cycle 1`; show no cycle copy for claim, human approval, merge, or outcomes.
+- [x] Provide separate completed, in-progress, and failed issues for direct comparison from the issue rail.
+- [x] Show the in-progress issue at Create planning PR with only Claim issue completed.
+- [x] Show the failed issue on the observed Automatic merge & check to Stopped path; do not imply that Completed was reached.
 - [x] Preserve all collapsed cancellation and failure paths into Stopped.
 - [x] Show the working SAC-130 provider-proof scenario as finished.
 - [x] Show the planning agent, proposal/specification artifacts, and planning PR #59 in stage detail.
@@ -56,5 +59,6 @@
 - Post-fix evidence: `implementation-simple-v4.png` shows the explicit `Revision requested` loop, solid green successful route, faint dashed alternate outcomes, and no overlapping labels. A fresh browser tab reported no console issues.
 - Copy correction: renamed the `planning_review` human gate to `Human approval` and the following system-action stage to `Automatic merge & check`, so the Linear approval action is not confused with the automated merge.
 - Sidebar correction: removed default cycle counts from every completed stage. Cycle copy now requires both an automated-review stage and reported cycle data; ordinary agent execution uses `Run`.
+- State comparison: added explicit per-stage state maps for one finished, one in-progress, and one failed issue. The failed example records automatic merge as the failure source and highlights the observed path into Stopped.
 
 final result: passed

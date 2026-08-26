@@ -5,6 +5,7 @@ import { parse } from "yaml";
 import {
   cycleCountForStage,
   runCountForStage,
+  simpleWorkflowIssues,
   simpleWorkflowPresentation,
 } from "../src/simple-workflow.js";
 
@@ -74,4 +75,28 @@ test("simple workflow shows cycles only for explicit automated review stages", (
   const automatedReview = { id: "automated_review", agents: ["Review Agent"], cycleBased: true };
   assert.equal(cycleCountForStage(automatedReview, { cycles: { automated_review: 2 } }, "completed", false), 2);
   assert.equal(cycleCountForStage(automatedReview, { cycles: {} }, "completed", false), 0);
+});
+
+test("comparison issues describe completed, in-progress, and failed paths explicitly", () => {
+  const stages = simpleWorkflowPresentation.stages.map((stage) => stage.id).sort();
+  const issues = Object.values(simpleWorkflowIssues);
+
+  assert.deepEqual(issues.map((issue) => issue.state).sort(), ["active", "failed", "finished"]);
+  for (const issue of issues) {
+    assert.deepEqual(Object.keys(issue.stageStates).sort(), stages, `${issue.key} covers every visible stage`);
+    assert.ok(issue.currentStep in workflow.spec.nodes, `${issue.key} points to a configured workflow node`);
+  }
+
+  assert.deepEqual(simpleWorkflowIssues["SAC-131"].stageStates, {
+    claim: "completed",
+    planning: "active",
+    review: "future",
+    merge: "future",
+    complete: "future",
+    stopped: "future",
+  });
+  assert.equal(simpleWorkflowIssues["SAC-132"].failureSource, "merge");
+  assert.equal(simpleWorkflowIssues["SAC-132"].stageStates.merge, "failed");
+  assert.equal(simpleWorkflowIssues["SAC-132"].stageStates.complete, "future");
+  assert.equal(simpleWorkflowIssues["SAC-132"].stageStates.stopped, "failed");
 });

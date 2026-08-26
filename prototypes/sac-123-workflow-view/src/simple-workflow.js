@@ -114,6 +114,89 @@ export const simpleWorkflowPresentation = Object.freeze({
   ],
 });
 
+export const simpleWorkflowIssues = Object.freeze({
+  "SAC-130": {
+    key: "SAC-130",
+    title: "Simple planning workflow provider proof",
+    listText: "Simple workflow succeeded",
+    state: "finished",
+    stateLabel: "Finished",
+    headline: "Planning workflow completed",
+    description: "The planning pull request was created, approved, merged, and verified.",
+    currentStep: "done",
+    stageStates: {
+      claim: "completed",
+      planning: "completed",
+      review: "completed",
+      merge: "completed",
+      complete: "completed",
+      stopped: "future",
+    },
+    cycles: {},
+    runs: { planning: 1 },
+    primaryAction: "View planning result",
+  },
+  "SAC-131": {
+    key: "SAC-131",
+    title: "Plan access-control refinement",
+    listText: "Planning agent is working",
+    state: "active",
+    stateLabel: "In progress",
+    headline: "Planning pull request is being created",
+    description: "The issue was claimed and the planning agent is preparing the proposal and specifications.",
+    currentStep: "openspec_planning",
+    stageStates: {
+      claim: "completed",
+      planning: "active",
+      review: "future",
+      merge: "future",
+      complete: "future",
+      stopped: "future",
+    },
+    stageDetails: {
+      planning: {
+        result: "Planning pull request in progress",
+        summary: "The Planning Agent is preparing the proposal and specifications. Human approval has not started.",
+      },
+    },
+    cycles: {},
+    runs: { planning: 1 },
+    primaryAction: "View active planning run",
+  },
+  "SAC-132": {
+    key: "SAC-132",
+    title: "Update workflow retry policy",
+    listText: "Automatic merge failed",
+    state: "failed",
+    stateLabel: "Failed",
+    headline: "Planning pull request could not be merged",
+    description: "Human approval completed, but the automatic merge failed and the workflow stopped.",
+    currentStep: "system_action_failed",
+    failureSource: "merge",
+    stageStates: {
+      claim: "completed",
+      planning: "completed",
+      review: "completed",
+      merge: "failed",
+      complete: "future",
+      stopped: "failed",
+    },
+    stageDetails: {
+      merge: {
+        result: "Planning pull request was not merged",
+        summary: "The approved planning pull request could not be merged, so verification did not run.",
+      },
+      stopped: {
+        result: "Workflow stopped after an automatic action failed",
+        summary: "The failure was recorded after human approval. The successful completion path was not reached.",
+      },
+    },
+    cycles: {},
+    runs: { planning: 1 },
+    primaryAction: "Inspect merge failure",
+  },
+});
+
 export function cycleCountForStage(stage, issue, status, isCurrent) {
   if (!stage.cycleBased || (status !== "completed" && !isCurrent)) return 0;
   return issue.cycles?.[stage.id] ?? 0;

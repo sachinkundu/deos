@@ -38,6 +38,7 @@ import {
 import {
   cycleCountForStage,
   runCountForStage,
+  simpleWorkflowIssues,
   simpleWorkflowPresentation,
 } from "./simple-workflow.js";
 
@@ -316,28 +317,13 @@ const currentNodeByStep = {
   ...simpleWorkflowPresentation.nodeToStage,
 };
 
-const issueDefinitions = {
-  "SAC-130": {
-    key: "SAC-130",
-    title: "Simple planning workflow provider proof",
-    listText: "Simple workflow succeeded",
-    state: "finished",
-    stateLabel: "Finished",
-    headline: "Planning workflow completed",
-    description: "The planning pull request was created, approved, merged, and verified.",
-    currentStep: "done",
-    completedThrough: 4,
-    loopCount: 0,
-    cycles: {},
-    runs: { planning: 1 },
-    primaryAction: "View planning result",
-  },
-};
+const issueDefinitions = simpleWorkflowIssues;
 
 const stateIcon = {
   active: Pulse,
   waiting: Clock,
   finished: CheckCircle,
+  failed: WarningCircle,
   unknown: Question,
 };
 
@@ -574,13 +560,19 @@ function buildFullGraph(issue) {
 }
 
 function statusForWorkflowNode(issue, definition) {
-  if (issue.state === "finished") return definition.id === "stopped" ? "future" : "completed";
-  const definitionIndex = workflowDefinitions.findIndex((item) => item.id === definition.id);
-  const currentIndex = workflowDefinitions.findIndex((item) => item.id === currentNodeByStep[issue.currentStep]);
-  if (definitionIndex === currentIndex) return issue.state;
-  if (currentIndex >= 0 && definitionIndex < currentIndex) return "completed";
-  if (issue.state === "unknown") return definitionIndex <= issue.completedThrough ? "completed" : "unknown";
-  return "future";
+  return issue.stageStates?.[definition.id] ?? "future";
+}
+
+function labelForStageStatus(status, issue, isCurrent) {
+  if (isCurrent) return issue.stateLabel;
+  return {
+    completed: "Completed",
+    active: "In progress",
+    waiting: "Waiting",
+    failed: "Failed",
+    unknown: "Unknown",
+    future: "Upcoming",
+  }[status] ?? "Upcoming";
 }
 
 function generatedFilesForNode(definition, status, isCurrent) {
@@ -605,6 +597,7 @@ function buildGraph(issue) {
     const isCurrent = currentNodeByStep[issue.currentStep] === definition.id;
     const cycleCount = cycleCountForStage(definition, issue, status, isCurrent);
     const runCount = runCountForStage(definition, issue, status, isCurrent);
+    const stageDetail = issue.stageDetails?.[definition.id];
     return {
       id: definition.id,
       type: "fullWorkflow",
@@ -612,11 +605,13 @@ function buildGraph(issue) {
       selected: isCurrent,
       data: {
         ...definition,
+        result: stageDetail?.result ?? definition.result,
+        summary: stageDetail?.summary ?? definition.summary,
         files: generatedFilesForNode(definition, status, isCurrent),
         cycleCount,
         agentRuns: agentRunsForNode(definition, runCount),
         status,
-        statusLabel: isCurrent ? (issue.state === "waiting" ? issue.headline : issue.stateLabel) : status === "completed" ? "Completed" : status === "unknown" ? "Unknown" : "Upcoming",
+        statusLabel: labelForStageStatus(status, issue, isCurrent),
       },
     };
   });
@@ -625,6 +620,10 @@ function buildGraph(issue) {
   const edges = simpleWorkflowPresentation.connections.map((connection, index) => {
     const targetStatus = statusById[connection.target];
     const isObservedReturn = connection.kind === "return" && (issue.cycles?.planning ?? 0) > 1;
+    const isObservedFailure = connection.kind === "branch"
+      && issue.state === "failed"
+      && issue.failureSource === connection.source
+      && connection.target === "stopped";
     return {
       id: `${connection.source}-${connection.target}-${index}`,
       source: connection.source,
@@ -636,6 +635,8 @@ function buildGraph(issue) {
       markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
       className: connection.kind === "return"
         ? `edge-loop ${isObservedReturn ? "edge-loop--observed" : "edge-loop--possible"}`
+        : isObservedFailure
+          ? "edge-failed"
         : connection.kind === "branch"
           ? "edge-future"
           : targetStatus === "completed"
@@ -739,6 +740,7 @@ function StatusLegend() {
       <span className="legend-item legend-completed"><CheckCircle size={17} />Completed</span>
       <span className="legend-item legend-waiting"><Clock size={17} />Waiting</span>
       <span className="legend-item legend-active"><Pulse size={17} />Active</span>
+      <span className="legend-item legend-failed"><WarningCircle size={17} />Failed</span>
       <span className="legend-item legend-future"><Question size={17} />Future / unknown</span>
     </div>
   );
@@ -751,7 +753,7 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
   const status = step?.status || "completed";
   const isCurrent = Boolean(selection.isCurrent);
   const usesPullRequest = ["planning", "review", "merge", "complete"].includes(step?.id);
-  const prStatus = issue.state === "finished" ? "Merged" : issue.state === "active" ? "Draft" : issue.state === "waiting" ? "Open" : "Unknown";
+  const prStatus = issue.state === "finished" ? "Merged" : issue.state === "active" ? "Draft" : ["waiting", "failed"].includes(issue.state) ? "Open" : "Unknown";
   return (
     <aside className="step-inspector" aria-label="Workflow detail">
       <div className="inspector-header">
@@ -763,11 +765,11 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
       </div>
       <div className="inspector-body">
           <div className={`detail-status detail-status--${isCurrent ? issue.state : status}`}>
-            {isCurrent && issue.state === "waiting" ? <Clock size={18} /> : status === "completed" ? <CheckCircle size={18} /> : <FlowArrow size={18} />}
-            {isCurrent ? (issue.state === "waiting" ? issue.headline : issue.stateLabel) : status === "completed" ? "Completed" : "Upcoming"}
+            {status === "failed" ? <WarningCircle size={18} /> : isCurrent && issue.state === "waiting" ? <Clock size={18} /> : status === "completed" ? <CheckCircle size={18} /> : <FlowArrow size={18} />}
+            {labelForStageStatus(status, issue, isCurrent)}
           </div>
           <dl className="detail-list">
-            <div><dt>Result</dt><dd>{isCurrent ? issue.headline : step?.result}</dd></div>
+            <div><dt>Result</dt><dd>{step?.result}</dd></div>
           </dl>
           {step?.summary && <p className="detail-summary">{step.summary}</p>}
           {step?.cycleBased && step?.cycleCount > 0 && (
@@ -865,7 +867,7 @@ function WorkflowWorkspace({ issue, selection, setSelection, onExternal, onTrans
       <section className={`workflow-state-bar workflow-state-bar--${issue.state}`}>
         <CurrentIcon size={19} weight="bold" />
         <strong>{issue.stateLabel}</strong>
-        <span>{currentDefinition?.label || "Last confirmed workflow node unavailable"}</span>
+        <span>{issue.headline || currentDefinition?.label || "Last confirmed workflow node unavailable"}</span>
         {issue.state === "unknown" && <button type="button" onClick={onRefresh}><ArrowClockwise size={16} />Retry</button>}
       </section>
 

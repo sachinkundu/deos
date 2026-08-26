@@ -18,6 +18,8 @@
   --waiting-soft: rgba(255, 189, 36, 0.12);
   --finished: #42d486;
   --finished-soft: rgba(66, 212, 134, 0.12);
+  --failed: #ff6677;
+  --failed-soft: rgba(255, 102, 119, 0.12);
   --unknown: #9aaabc;
   --unknown-soft: rgba(154, 170, 188, 0.1);
   --focus: #7cb8ff;
@@ -43,6 +45,8 @@
   --waiting-soft: rgba(194, 119, 0, 0.1);
   --finished: #087c45;
   --finished-soft: rgba(8, 124, 69, 0.09);
+  --failed: #b4233d;
+  --failed-soft: rgba(180, 35, 61, 0.09);
   --unknown: #68798b;
   --unknown-soft: rgba(104, 121, 139, 0.09);
   --focus: #156fc7;
@@ -353,6 +357,24 @@ select:focus-visible {
   background: var(--active);
 }
 
+.issue-row--finished.is-selected {
+  border-color: var(--finished);
+  background: var(--finished-soft);
+}
+
+.issue-row--finished.is-selected::before {
+  background: var(--finished);
+}
+
+.issue-row--failed.is-selected {
+  border-color: var(--failed);
+  background: var(--failed-soft);
+}
+
+.issue-row--failed.is-selected::before {
+  background: var(--failed);
+}
+
 .issue-row--active .issue-state-icon,
 .issue-row--active .state-dot {
   color: var(--active);
@@ -366,6 +388,11 @@ select:focus-visible {
 .issue-row--finished .issue-state-icon,
 .issue-row--finished .state-dot {
   color: var(--finished);
+}
+
+.issue-row--failed .issue-state-icon,
+.issue-row--failed .state-dot {
+  color: var(--failed);
 }
 
 .issue-row--unknown .issue-state-icon,
@@ -550,6 +577,7 @@ select:focus-visible {
 .workflow-state-bar--active { color: var(--active); }
 .workflow-state-bar--waiting { color: var(--waiting); }
 .workflow-state-bar--finished { color: var(--finished); }
+.workflow-state-bar--failed { color: var(--failed); }
 .workflow-state-bar--unknown { color: var(--unknown); }
 
 .workflow-state-bar strong {
@@ -640,6 +668,7 @@ select:focus-visible {
 .legend-completed svg { color: var(--finished); }
 .legend-waiting svg { color: var(--waiting); }
 .legend-active svg { color: var(--active); }
+.legend-failed svg { color: var(--failed); }
 .legend-future svg { color: var(--unknown); }
 .legend-return { flex-basis: 100%; justify-content: flex-end; }
 
@@ -859,6 +888,7 @@ select:focus-visible {
 .full-flow-node--completed { color: var(--finished); }
 .full-flow-node--waiting { color: var(--waiting); }
 .full-flow-node--active { color: var(--active); }
+.full-flow-node--failed { color: var(--failed); }
 .full-flow-node--unknown,
 .full-flow-node--future { color: var(--unknown); }
 
@@ -1008,6 +1038,7 @@ select:focus-visible {
 .react-flow__edge.edge-completed path { stroke: var(--finished); }
 .react-flow__edge.edge-waiting path { stroke: var(--waiting); }
 .react-flow__edge.edge-active path { stroke: var(--active); }
+.react-flow__edge.edge-failed path { stroke: var(--failed); stroke-width: 2; }
 .react-flow__edge.edge-future path { stroke: var(--unknown); stroke-dasharray: 7 6; opacity: 0.66; }
 .react-flow__edge.edge-loop--observed path { stroke: var(--finished); stroke-width: 2; }
 .react-flow__edge.edge-loop--possible path { stroke: var(--text-soft); stroke-width: 1.5; stroke-dasharray: 5 5; opacity: 0.8; }
@@ -1376,6 +1407,7 @@ select:focus-visible {
 .detail-status--finished { color: var(--finished); }
 .detail-status--waiting { color: var(--waiting); }
 .detail-status--active { color: var(--active); }
+.detail-status--failed { color: var(--failed); }
 .detail-status--unknown,
 .detail-status--future { color: var(--unknown); }
 
