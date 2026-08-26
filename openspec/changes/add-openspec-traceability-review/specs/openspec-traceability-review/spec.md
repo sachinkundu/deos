@@ -106,22 +106,22 @@ DEOS SHALL set one bound for repair of a bad sidecar or review result. It SHALL 
 
 ### Requirement: Constrain each plan repair
 
-Each base finding SHALL name its allowed repair scope. The scope SHALL hold full proposal or spec blocks. It SHALL also hold all blocks joined to them by the two-way trace map. An author fix MUST change only those blocks. DEOS SHALL check the patch before it starts a recheck. The recheck SHALL read each full changed block and all of its linked blocks. If a change harms one of those links, the related base finding MUST NOT pass.
+Each base finding SHALL name the exact source ranges that an author may change. The ranges SHALL be inside the full proposal or spec blocks cited by that finding. All text outside those ranges MUST stay byte-for-byte the same. DEOS SHALL check the patch before it starts a recheck. The recheck SHALL read each changed range, its full blocks, and all blocks joined to them by the two-way trace map. If the changed text adds any new gap, conflict, scope error, extra rule, or unsupported claim, the related base finding MUST NOT pass. The same rule SHALL apply if a change harms a saved trace link.
 
-#### Scenario: Repair stays in the saved scope
+#### Scenario: Repair stays in the saved ranges
 
-- **WHEN** an author changes only blocks in the repair scope
+- **WHEN** an author changes only the exact ranges saved for a base finding
 - **THEN** DEOS may start a closed-set recheck on the new exact plan
 
 #### Scenario: Repair changes unrelated plan text
 
-- **WHEN** an author changes any proposal or spec block outside the repair scope
+- **WHEN** an author changes any plan byte outside the saved ranges
 - **THEN** DEOS rejects the patch and does not let a closed-set recheck approve it
 
-#### Scenario: Repair harms a linked rule
+#### Scenario: Repair creates another defect
 
-- **WHEN** a changed block breaks one of its saved plan-to-spec or spec-to-plan links
-- **THEN** the recheck keeps the related base finding open even if its first cited text was fixed
+- **WHEN** changed text adds a new defect in its full block or any linked block
+- **THEN** the recheck keeps the related base finding open even if its first cited issue was fixed
 
 ### Requirement: Start a new review round after human feedback
 
