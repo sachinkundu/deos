@@ -4,12 +4,11 @@
 
 Track workflow progress, approvals, runs, transitions, and audit history so automation remains observable and cannot bypass human decisions.
 
-
 ## Requirements
 
 ### Requirement: Preserve explicit workflow state
 
-The workflow state model SHALL record authoritative business-state transitions in D1, SHALL distinguish agent execution state from business workflow state, and SHALL represent human approval as an explicit node surfaced through the Linear board column `Human Review`. The encoded workflow definition SHALL describe nodes, decision edges, loops, autonomous actions, agent dispatches, human gates, and terminal outcomes. The Workflow manager SHALL be the sole authority that initiates Linear state transitions and SHALL select the next action from the previous state, current state, accumulated run data, provider results, and agent outcome.
+The workflow state model SHALL record authoritative business-state transitions in D1, SHALL distinguish agent execution state from business workflow state, and SHALL represent human approval as an explicit node surfaced through the Linear board column `Human Review`. The encoded workflow definition SHALL describe nodes, decision edges, loops, autonomous actions, agent dispatches, human gates, terminal outcomes, and the configured Linear state that selects each human decision edge. The Workflow manager SHALL be the sole authority that initiates Linear state transitions and SHALL select the next action from the previous state, current state, accumulated run data, provider results, and agent outcome. A selected simplified run SHALL begin with a trusted system action that preserves the human assignee, delegates the issue to the DEOS app user, and moves it from `Todo` to `In Progress` before agent execution. For the simplified planning gate, the three authorized decisions SHALL be `In Progress` for revision of the same planning pull request, `Merging` for the workflow-owned merge path, and `Canceled` for terminal cancellation.
 
 #### Scenario: Approval required
 
@@ -21,10 +20,35 @@ The workflow state model SHALL record authoritative business-state transitions i
 - **WHEN** a valid agent outcome reaches a state that policy defines as autonomous
 - **THEN** the Workflow selects and records the next state or agent dispatch without requiring a human approval event
 
+#### Scenario: Simplified run takes ownership of admitted work
+
+- **WHEN** the simplified Workflow starts from an accepted human `Backlog` to `Todo` transition
+- **THEN** it records one trusted provider action that delegates the issue to the DEOS app user, preserves the human assignee, confirms `In Progress`, and advances to agent execution only after provider read-back succeeds
+
 #### Scenario: Human resumes workflow
 
-- **WHEN** a configured approval or rejection transition out of the `Human Review` board column is received from Linear with actor identity verified as an authorized human
-- **THEN** the Workflow records the human decision and actor and selects the configured next edge using the state from which the gate was entered, the current gate, and accumulated run data
+- **WHEN** a configured decision transition out of the `Human Review` board column is received from Linear with actor identity verified as an authorized human
+- **THEN** the Workflow records the human decision and actor and selects the edge mapped to that exact provider state using the state from which the gate was entered, the current gate, and accumulated run data
+
+#### Scenario: Simplified planning revision is requested
+
+- **WHEN** an authorized human moves an issue in the simplified planning gate from `Human Review` to `In Progress`
+- **THEN** the Workflow records a revision-requested decision and dispatches the configured planning revision edge for the same run and pull request
+
+#### Scenario: Simplified planning merge is authorized
+
+- **WHEN** an authorized human moves an issue in the simplified planning gate from `Human Review` to `Merging`
+- **THEN** the Workflow records a merge-authorized decision and selects only the configured trusted merge edge
+
+#### Scenario: Simplified planning run is canceled
+
+- **WHEN** an authorized human moves an issue in the simplified planning gate from `Human Review` to `Canceled`
+- **THEN** the Workflow records a canceled decision and selects the configured terminal cancellation edge without merging or dispatching another agent
+
+#### Scenario: Human transition has no configured decision edge
+
+- **WHEN** an authorized human moves an issue from `Human Review` to a provider state not mapped by the active gate
+- **THEN** the Workflow records the unmatched event, selects no edge, and restores or retains the active human gate according to policy
 
 #### Scenario: Automated event attempts to approve a human gate
 
