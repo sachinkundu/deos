@@ -25,7 +25,7 @@ DEOS SHALL save a fixed proof set for each review job. This rule SHALL apply if 
 
 ### Requirement: Index review proof for direct lookup
 
-DEOS SHALL keep one saved row for each review. The row SHALL point to the exact proof set. A lookup MUST NOT need a scan of file storage. The row SHALL name the review, run, job, phase, mode, and round. It SHALL name the author model and review model. It SHALL name the thought level, plan hash, reviewed head, and base finding set. It SHALL also name the file links, result, and times.
+DEOS SHALL keep one saved row for each review. The row SHALL point to the exact proof set. A lookup MUST NOT need a scan of file storage. The row SHALL name the review input ID, review, run, job, phase, mode, and round. It SHALL name the author model and review model. It SHALL name the thought level, prompt version, tool version, plan hash, reviewed head, and base finding set. It SHALL also name the file links, result, and times. A reused result, new head binding, inconsistent result, or superseding decision SHALL point to the original proof and its later decision without copying the semantic result.
 
 #### Scenario: Operator opens a known review
 
@@ -36,6 +36,16 @@ DEOS SHALL keep one saved row for each review. The row SHALL point to the exact 
 
 - **WHEN** the short-lived review space is gone
 - **THEN** the saved proof can still be read and checked by its hashes
+
+#### Scenario: Accepted result is reused
+
+- **WHEN** a later dispatch has the same review input ID
+- **THEN** its saved reuse record points to the accepted proof and states that no new model job ran
+
+#### Scenario: Review result is superseded
+
+- **WHEN** bounded proof repair confirms that an earlier accepted rating was wrong
+- **THEN** the evidence links both results, the adjudication, and the reason the earlier proof no longer controls the phase
 
 ### Requirement: Validate structure without overstating meaning
 
@@ -53,7 +63,7 @@ The proof check SHALL test the file list, paths, hashes, quotes, and line ranges
 
 ### Requirement: Bind evidence to one exact candidate
 
-The first check SHALL bind to one private plan hash. The outside check SHALL also bind to one pull request head. DEOS MUST mark proof stale if the chosen draft, plan hash, or head does not match the saved ID.
+The first check SHALL bind to one private plan hash. The outside check SHALL also bind to one pull request head. DEOS MUST mark proof stale if the chosen draft, plan hash, or head does not match the saved ID. A trusted head rebind MAY keep the semantic result current only after it proves that the complete reviewed file list and hashes are unchanged.
 
 #### Scenario: Evidence matches the selected version
 
@@ -64,6 +74,11 @@ The first check SHALL bind to one private plan hash. The outside check SHALL als
 
 - **WHEN** a chosen file or pull request head is not the reviewed version
 - **THEN** DEOS labels the proof stale and does not use it as gate evidence
+
+#### Scenario: New head has identical reviewed files
+
+- **WHEN** a trusted comparison proves that every reviewed file path and hash matches an accepted result
+- **THEN** DEOS may bind that semantic result to the new head and keeps both the original proof and rebind record
 
 ### Requirement: Keep OpenSpec artifacts standard
 

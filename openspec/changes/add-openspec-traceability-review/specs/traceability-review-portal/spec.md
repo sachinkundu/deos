@@ -6,7 +6,7 @@ Let an allowed user read exact-head OpenSpec review proof and findings in the DE
 
 ### Requirement: Show one protected review view
 
-The DEOS portal SHALL have a guarded review page for a flow run. The page SHALL show the Linear issue, run, and planning pull request. It SHALL show the chosen head and the author and review models. It SHALL show each phase, round, result, base finding, and fix. It SHALL also show safe proof links.
+The DEOS portal SHALL have a guarded review page for a flow run. The page SHALL show the Linear issue, run, and planning pull request. It SHALL show the chosen head and the author and review models. It SHALL show each phase, round, result, base finding, and fix. It SHALL distinguish a closed finding set from a closed review phase. It SHALL show reused results, stale reasons, proof conflicts, and superseding decisions. It SHALL also show safe proof links.
 
 #### Scenario: Authorized operator opens a review
 
@@ -22,6 +22,16 @@ The DEOS portal SHALL have a guarded review page for a flow run. The page SHALL 
 
 - **WHEN** the chosen review is still in work
 - **THEN** the page shows saved progress and does not make the web call own the job
+
+#### Scenario: Saved result avoids another model job
+
+- **WHEN** a review input reuses an accepted result
+- **THEN** the page names the original result and states that no new semantic job ran
+
+#### Scenario: Earlier pass is challenged
+
+- **WHEN** a later result conflicts with a fixed rating from the same round
+- **THEN** the page shows the conflict and its proof decision instead of presenting it as an ordinary repair cycle
 
 ### Requirement: Render citations against the exact reviewed documents
 

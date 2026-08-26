@@ -23,9 +23,42 @@ DEOS SHALL run one full first check on the exact private plan. The plan SHALL ha
 - **WHEN** the check needs the author's live job or unsaved notes
 - **THEN** DEOS rejects the job as bad review proof
 
+### Requirement: Finish deterministic plan checks before semantic review
+
+DEOS SHALL finish every required form, structure, path, and readability check before it starts a full semantic check or closed-set recheck. These checks SHALL report failures but MUST NOT edit the plan. A failure that needs a text change SHALL return the candidate to an author job. DEOS SHALL rerun the deterministic checks after that repair. Once a semantic result passes, no automated step may change the reviewed plan before its trusted publish or gate action.
+
+#### Scenario: Readability check requests a wording change
+
+- **WHEN** a current candidate fails a deterministic readability rule
+- **THEN** an author job repairs it and all deterministic checks pass before DEOS starts the semantic check
+
+#### Scenario: Automated step tries to edit a passed candidate
+
+- **WHEN** a semantic result has passed and a later automated step requests a plan text change
+- **THEN** DEOS rejects that step and does not silently continue the passed review phase
+
+### Requirement: Reuse an accepted result for an identical review input
+
+DEOS SHALL derive one review input ID from the complete reviewed file list and hashes, source inventory, phase, mode, round, model, thought level, prompt version, and BettaView tool version. A full check SHALL include a discovery marker. A recheck SHALL include its base finding set. Before dispatch, DEOS SHALL look up that ID. An accepted terminal result for the same ID SHALL be reused. Reuse MUST NOT start a Sandbox, call the model, consume a job try, or create another semantic result. A trusted step MAY bind that result to a new pull request head only when it proves that every reviewed file path and hash is unchanged.
+
+#### Scenario: The same recheck is requested again
+
+- **WHEN** a dispatch request has an input ID with an accepted terminal result
+- **THEN** DEOS returns the saved result and records a reuse without starting another review job
+
+#### Scenario: Pull request head changes but reviewed files do not
+
+- **WHEN** the head differs but the complete reviewed file list and hashes are unchanged
+- **THEN** a trusted step may add a new head binding to the accepted result without another model call
+
+#### Scenario: One reviewed byte changes
+
+- **WHEN** any reviewed file path or hash differs from the accepted input
+- **THEN** DEOS treats it as a new review input and does not guess that the meaning stayed the same
+
 ### Requirement: Keep internal repair and recheck bounded
 
-The full first check SHALL create one base finding set. Each later first recheck SHALL use the same fixed model and thought level. It SHALL rate every base finding. Its state SHALL be `fixed`, `partially_fixed`, `still_present`, or `cannot_verify`. Each rating SHALL cite current proof. A recheck MUST NOT add, drop, or rewrite a base finding. DEOS SHALL derive the full result from the ratings. It SHALL stop at the set fix limit. It MUST post only a plan whose first-check findings are all fixed.
+The full first check SHALL create one base finding set. Each later first recheck SHALL use the same fixed model and thought level. It SHALL rate every base finding. Its state SHALL be `fixed`, `partially_fixed`, `still_present`, or `cannot_verify`. Each rating SHALL cite current proof. A recheck MUST NOT add, drop, or rewrite a base finding. DEOS SHALL derive the full result from the ratings. It SHALL stop at the set fix limit. It MUST post only a plan whose first-check findings are all fixed. That accepted pass SHALL close the phase for its review input ID.
 
 #### Scenario: Author repairs the private draft
 
@@ -39,8 +72,28 @@ The full first check SHALL create one base finding set. Each later first recheck
 
 #### Scenario: Internal findings are fixed
 
-- **WHEN** a current recheck marks each base finding fixed
-- **THEN** the trusted publish step may post that exact plan
+- **WHEN** a current result has no findings or marks each base finding fixed
+- **THEN** DEOS closes that review phase and the trusted publish step may post that exact plan
+
+#### Scenario: Closed phase receives the same input
+
+- **WHEN** another review dispatch names the input ID of a closed phase
+- **THEN** DEOS reuses its accepted result and does not start another semantic job
+
+#### Scenario: Later rating reopens a fixed finding
+
+- **WHEN** a later result changes a saved `fixed` rating to a non-fixed rating in the same round
+- **THEN** the result identifies the exact changed bytes and explains the causal difference or DEOS rejects it as inconsistent proof
+
+#### Scenario: Recheck conflicts with an earlier pass
+
+- **WHEN** a downgrade cannot tie its concern to a change after the accepted rating
+- **THEN** DEOS uses the bounded proof-repair path and does not spend an author fix
+
+#### Scenario: Proof adjudication finds an earlier review error
+
+- **WHEN** bounded proof repair confirms that the earlier accepted rating was wrong
+- **THEN** DEOS saves a superseding decision with both proofs before it reopens the base finding
 
 #### Scenario: Internal repair limit is used
 
@@ -68,7 +121,7 @@ After the trusted post, DEOS SHALL run one full outside check. It SHALL use the 
 
 ### Requirement: Repair and recheck the same planning pull request
 
-Each outside fix SHALL update the same planning pull request. The first review model SHALL then recheck the exact new head with its fixed thought level. It SHALL read the outside base findings, each changed block, and all linked blocks. It MUST NOT add a new finding. Each outside recheck SHALL then use the same fixed outside model and thought level. It SHALL rate only its base findings. Each rating SHALL cite current proof. DEOS SHALL derive the full result from both checks on that head.
+Each outside fix SHALL update the same planning pull request. All deterministic plan checks SHALL pass before either model rechecks it. The first review model SHALL then recheck the exact new head with its fixed thought level. It SHALL read the outside base findings, each changed block, and all linked blocks. It MUST NOT add a new finding. Each outside recheck SHALL then use the same fixed outside model and thought level. It SHALL rate only its base findings. Each rating SHALL cite current proof. DEOS SHALL derive the full result from both checks on that head.
 
 #### Scenario: Independent discovery finds a concern
 
@@ -92,7 +145,7 @@ Each outside fix SHALL update the same planning pull request. The first review m
 
 ### Requirement: Keep proof repair apart from plan repair
 
-DEOS SHALL set one bound for repair of a bad sidecar or review result. It SHALL set another bound for author fixes to the plan text. A proof repair SHALL not count as an author fix. It MUST NOT change the base finding set or the plan under review.
+DEOS SHALL set one bound for repair of a bad sidecar, invalid review result, or conflict between saved ratings. It SHALL set another bound for author fixes to the plan text. A proof repair SHALL not count as an author fix. It MUST NOT change the base finding set or the plan under review. A semantic conflict SHALL compare the saved results and exact source changes before it may supersede an earlier rating.
 
 #### Scenario: Sidecar fails its form checks
 
@@ -103,6 +156,11 @@ DEOS SHALL set one bound for repair of a bad sidecar or review result. It SHALL 
 
 - **WHEN** a proof retry changes the plan or the base finding set
 - **THEN** DEOS rejects it and does not count it as valid proof or a plan fix
+
+#### Scenario: Saved ratings conflict
+
+- **WHEN** a later result reopens a fixed finding without a causal source change
+- **THEN** DEOS uses the proof-repair bound to keep or supersede the earlier rating before any author fix
 
 ### Requirement: Constrain each plan repair
 

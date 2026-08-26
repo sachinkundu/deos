@@ -9,6 +9,11 @@ Each trace review job SHALL name its Codex model and thought level. These values
 - **WHEN** DEOS dispatches an internal or independent trace review
 - **THEN** the job gets its saved model, thought level, tool version, plan ID, read-only inputs, and result rules
 
+#### Scenario: Accepted review input is dispatched again
+
+- **WHEN** DEOS already has an accepted terminal result for the same review input ID
+- **THEN** the dispatcher returns that result without creating a Sandbox or starting Codex
+
 #### Scenario: Review space was used before
 
 - **WHEN** a trace review job is given a Sandbox from an earlier job
