@@ -6,6 +6,7 @@ const service = "deos-workflow-portal";
 const allowedEmail = "sachinkundu@gmail.com";
 const teamDomain = "deos-voxdez.cloudflareaccess.com";
 const googleProviderName = "DEOS Google";
+const checkOnly = process.argv.includes("--check");
 if (!token) throw new Error("CLOUDFLARE_API_TOKEN is required");
 
 const request = async (method, path, body) => {
@@ -31,6 +32,7 @@ let provider = providers.find(
   (candidate) => candidate.type === "google" && candidate.name === googleProviderName,
 );
 if (!provider) {
+  if (checkOnly) throw new Error(`Expected Google identity provider ${googleProviderName}`);
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
@@ -59,13 +61,20 @@ const applicationBody = {
   http_only_cookie_attribute: true,
 };
 if (!application) {
+  if (checkOnly) throw new Error(`Expected Access application for ${hostname}`);
   application = await request("POST", `/accounts/${accountId}/access/apps`, applicationBody);
-} else {
+} else if (!checkOnly) {
   application = await request(
     "PUT",
     `/accounts/${accountId}/access/apps/${application.id}`,
     applicationBody,
   );
+}
+
+if (checkOnly) {
+  if (application.type !== "self_hosted") throw new Error("Expected a self-hosted Access application");
+  if (application.auto_redirect_to_identity !== true) throw new Error("Expected automatic identity redirect");
+  if (!application.allowed_idps?.includes(provider.id)) throw new Error(`Expected ${googleProviderName} to be allowed`);
 }
 
 const policies = await request("GET", `/accounts/${accountId}/access/apps/${application.id}/policies`);
@@ -80,12 +89,13 @@ const policyBody = {
   session_duration: "24h",
 };
 if (!policy) {
+  if (checkOnly) throw new Error("Expected Access policy Allow Sachin only");
   policy = await request(
     "POST",
     `/accounts/${accountId}/access/apps/${application.id}/policies`,
     policyBody,
   );
-} else {
+} else if (!checkOnly) {
   policy = await request(
     "PUT",
     `/accounts/${accountId}/access/apps/${application.id}/policies/${policy.id}`,
@@ -93,18 +103,32 @@ if (!policy) {
   );
 }
 
+
+if (checkOnly) {
+  if (policy.decision !== "allow") throw new Error("Expected an allow Access policy");
+  if (!policy.include?.some((rule) => rule.email?.email === allowedEmail)) {
+    throw new Error(`Expected Access policy to include ${allowedEmail}`);
+  }
+  if (!policy.require?.some((rule) => rule.login_method?.id === provider.id)) {
+    throw new Error(`Expected Access policy to require ${googleProviderName}`);
+  }
+}
+
 const domains = await request("GET", `/accounts/${accountId}/workers/domains?hostname=${encodeURIComponent(hostname)}`);
 let domain = domains.find((candidate) => candidate.hostname === hostname);
 if (!domain) {
+  if (checkOnly) throw new Error(`Expected Workers custom domain ${hostname}`);
   domain = await request("PUT", `/accounts/${accountId}/workers/domains`, {
     hostname,
     service,
     zone_id: zoneId,
   });
 }
+if (domain.service !== service) throw new Error(`Expected ${hostname} to route to ${service}`);
 
 process.stdout.write(JSON.stringify({
   hostname,
+  mode: checkOnly ? "check" : "reconcile",
   service: domain.service,
   teamDomain: organization.auth_domain,
   audience: application.aud,
