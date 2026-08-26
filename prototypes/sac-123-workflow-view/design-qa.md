@@ -33,6 +33,7 @@
 - [x] Replace SAC-130 placeholder copy with the recorded Add Microsoft Entra login run, PR #1, real files, timings, validations, transcript summary, and terminal facts.
 - [x] Preserve the missing historical governed work-link row as an evidence gap; reconcile PR #1 from the accepted result, Linear attachment, and GitHub read-back.
 - [x] Enable the recorded SAC-130 Linear issue, PR #1, and immutable merged-file destinations; keep illustrative issues unlinked.
+- [x] Link Planning Agent Run 1 to the checksum-verified private `transcript.jsonl` object while retaining recorded highlights.
 - [x] Preserve all collapsed cancellation and failure paths into Stopped.
 - [x] Show the working SAC-130 provider-proof scenario as finished.
 - [x] Show the planning agent, proposal/specification artifacts, and planning PR #59 in stage detail.
@@ -57,6 +58,7 @@
 - Browser console: a fresh final tab reported no errors or warnings.
 - Recorded-run interactions tested: open Claim issue, Create planning PR, Human approval, Automatic merge & check, and Completed; verify the reconciled facts in each detail; open Planning Agent Run 1; verify the transcript outcome, counts, and recorded highlights.
 - External destinations tested in the rendered prototype: the SAC-130 link resolved to the signed-in Linear issue and showed `Add Microsoft Entra login`; PR #1 resolved to the merged `SAC-130: OpenSpec plan` pull request; and `proposal.md` resolved to the immutable merge-commit file URL.
+- Transcript destination tested: Planning Agent Run 1 shows `Open full transcript` with `JSONL · 46 events · 44.6 KB`; the link targets the exact private durable object and preserves that object route through the authentication redirect.
 
 **Required Fidelity Surfaces**
 
@@ -77,5 +79,6 @@
 - Branch comparison: added a stopped issue for a plan rejected at Human approval. The observed dotted branch is highlighted, while downstream successful-path cards use the distinct skipped treatment.
 - Recorded-run pass: manually reconciled Linear state history, workflow telemetry, durable run and transition records, the accepted artifact manifest, agent transcript, and GitHub PR #1. The approved layout remained intact; stage facts and transcript content now use the recorded SAC-130 run.
 - External-destination pass: replaced prototype-only destination modals with real new-tab links for SAC-130 and verified the exact Linear and GitHub URLs.
+- Durable-transcript pass: read back the accepted `transcript.jsonl`, matched its 46 JSONL records, 44,634 bytes, and recorded SHA-256, then linked its authenticated object view without copying the raw transcript into the prototype.
 
 final result: passed

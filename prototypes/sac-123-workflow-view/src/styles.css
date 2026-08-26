@@ -1669,6 +1669,43 @@ select:focus-visible {
   line-height: 1.5;
 }
 
+.transcript-source-link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 12px 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--brand), transparent 92%);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.transcript-source-link:hover,
+.transcript-source-link:focus-visible {
+  border-color: color-mix(in srgb, var(--brand), white 10%);
+  background: color-mix(in srgb, var(--brand), transparent 86%);
+}
+
+.transcript-source-link span {
+  display: grid;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.transcript-source-link strong {
+  font-size: 12px;
+}
+
+.transcript-source-link small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
 .modal-icon {
   width: 46px;
   height: 46px;

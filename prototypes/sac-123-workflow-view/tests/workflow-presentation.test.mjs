@@ -127,5 +127,11 @@ test("SAC-130 uses the recorded simple-workflow evidence", () => {
   assert.equal(issue.stageDetails.review.facts.find(({ label }) => label === "Wait").value, "46 sec");
   assert.equal(issue.stageDetails.merge.facts.find(({ label }) => label === "Merge commit").value, "9270b93");
   assert.equal(issue.stageDetails.complete.facts.find(({ label }) => label === "Visits").value, "6");
-  assert.equal(issue.agentRuns.planning[0].facts.find(({ label }) => label === "Transcript").value, "46 recorded events");
+  const transcript = issue.agentRuns.planning[0];
+  assert.equal(transcript.facts.find(({ label }) => label === "Transcript").value, "46 recorded events");
+  assert.equal(transcript.source.eventCount, 46);
+  assert.equal(transcript.source.byteSize, 44634);
+  assert.equal(transcript.source.sha256, issue.evidence.transcriptDigest);
+  assert.equal(transcript.source.url.includes("/transcript.jsonl/details"), true);
+  assert.equal(transcript.source.url.includes(encodeURIComponent(encodeURIComponent(issue.evidence.runId))), true);
 });

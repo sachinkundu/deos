@@ -845,6 +845,11 @@ function TranscriptPreview({ transcript, onClose }) {
           <h3>Recorded highlights</h3>
           <ul>{transcript.notes.map((note) => <li key={note}>{note}</li>)}</ul>
         </section>}
+        {transcript.source && <a className="transcript-source-link" href={transcript.source.url} target="_blank" rel="noreferrer" aria-label="Open full agent transcript JSONL">
+          <FileText size={19} />
+          <span><strong>{transcript.source.label}</strong><small>{transcript.source.format} · {transcript.source.eventCount} events · {(transcript.source.byteSize / 1000).toFixed(1)} KB</small></span>
+          <ArrowSquareOut size={15} />
+        </a>}
         <button type="button" className="primary-button" onClick={onClose}>Back to workflow</button>
       </section>
     </div>
