@@ -35,7 +35,11 @@ import {
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
-import { simpleWorkflowPresentation } from "./simple-workflow.js";
+import {
+  cycleCountForStage,
+  runCountForStage,
+  simpleWorkflowPresentation,
+} from "./simple-workflow.js";
 
 const fullWorkflowDefinitions = [
   {
@@ -324,7 +328,8 @@ const issueDefinitions = {
     currentStep: "done",
     completedThrough: 4,
     loopCount: 0,
-    cycles: { claim: 1, planning: 1, review: 1, merge: 1, complete: 1 },
+    cycles: {},
+    runs: { planning: 1 },
     primaryAction: "View planning result",
   },
 };
@@ -584,12 +589,12 @@ function generatedFilesForNode(definition, status, isCurrent) {
   return definition.files.slice(0, Math.max(1, definition.files.length - 1));
 }
 
-function agentRunsForNode(definition, cycleCount) {
-  return Array.from({ length: cycleCount }, (_, cycleIndex) =>
+function agentRunsForNode(definition, runCount) {
+  return Array.from({ length: runCount }, (_, runIndex) =>
     definition.agents.map((agent) => ({
-      id: `${definition.id}-${cycleIndex + 1}-${agent}`,
+      id: `${definition.id}-${runIndex + 1}-${agent}`,
       agent,
-      cycle: cycleIndex + 1,
+      iterationLabel: definition.cycleBased ? `Cycle ${runIndex + 1}` : `Run ${runIndex + 1}`,
     })),
   ).flat();
 }
@@ -598,7 +603,8 @@ function buildGraph(issue) {
   const nodes = workflowDefinitions.map((definition) => {
     const status = statusForWorkflowNode(issue, definition);
     const isCurrent = currentNodeByStep[issue.currentStep] === definition.id;
-    const cycleCount = status === "completed" || isCurrent ? issue.cycles?.[definition.id] || 1 : 0;
+    const cycleCount = cycleCountForStage(definition, issue, status, isCurrent);
+    const runCount = runCountForStage(definition, issue, status, isCurrent);
     return {
       id: definition.id,
       type: "fullWorkflow",
@@ -608,7 +614,7 @@ function buildGraph(issue) {
         ...definition,
         files: generatedFilesForNode(definition, status, isCurrent),
         cycleCount,
-        agentRuns: agentRunsForNode(definition, cycleCount),
+        agentRuns: agentRunsForNode(definition, runCount),
         status,
         statusLabel: isCurrent ? (issue.state === "waiting" ? issue.headline : issue.stateLabel) : status === "completed" ? "Completed" : status === "unknown" ? "Unknown" : "Upcoming",
       },
@@ -764,7 +770,7 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
             <div><dt>Result</dt><dd>{isCurrent ? issue.headline : step?.result}</dd></div>
           </dl>
           {step?.summary && <p className="detail-summary">{step.summary}</p>}
-          {step?.cycleCount > 0 && (
+          {step?.cycleBased && step?.cycleCount > 0 && (
             <section className="inspector-cycles" aria-label="Cycle count">
               <strong>{step.cycleCount}</strong>
               <span>{step.cycleCount === 1 ? "Cycle" : "Cycles"}</span>
@@ -773,9 +779,9 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
           {step?.agentRuns?.length > 0 && <section className="inspector-agents">
             <h3>Agent</h3>
             {step.agentRuns.map((run) => (
-              <button type="button" key={run.id} onClick={() => onTranscript(`${run.agent} · Cycle ${run.cycle}`)}>
+              <button type="button" key={run.id} onClick={() => onTranscript(`${run.agent} · ${run.iterationLabel}`)}>
                 <FileText size={18} />
-                <span><strong>{run.agent}</strong><small>Cycle {run.cycle}</small></span>
+                <span><strong>{run.agent}</strong><small>{run.iterationLabel}</small></span>
                 <ArrowSquareOut size={14} />
               </button>
             ))}

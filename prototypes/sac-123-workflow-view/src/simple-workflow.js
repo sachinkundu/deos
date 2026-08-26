@@ -29,7 +29,6 @@ export const simpleWorkflowPresentation = Object.freeze({
       summary: "Create or revise one planning pull request with the proposal and specifications.",
       agents: ["Planning Agent"],
       files: ["proposal.md", "specs/.../spec.md"],
-      cycleBased: true,
       x: 330,
       y: 54,
     },
@@ -44,7 +43,6 @@ export const simpleWorkflowPresentation = Object.freeze({
       summary: "Approve in Linear by moving the issue to Merging, request a revision, or cancel the run.",
       agents: [],
       files: [],
-      cycleBased: true,
       x: 620,
       y: 54,
     },
@@ -115,3 +113,13 @@ export const simpleWorkflowPresentation = Object.freeze({
     { source: "merge", target: "stopped", kind: "branch", sourceHandle: "bottom", targetHandle: "bottom-in" },
   ],
 });
+
+export function cycleCountForStage(stage, issue, status, isCurrent) {
+  if (!stage.cycleBased || (status !== "completed" && !isCurrent)) return 0;
+  return issue.cycles?.[stage.id] ?? 0;
+}
+
+export function runCountForStage(stage, issue, status, isCurrent) {
+  if (!stage.agents?.length || (status !== "completed" && !isCurrent)) return 0;
+  return issue.runs?.[stage.id] ?? 0;
+}

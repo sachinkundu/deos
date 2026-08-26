@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { parse } from "yaml";
-import { simpleWorkflowPresentation } from "../src/simple-workflow.js";
+import {
+  cycleCountForStage,
+  runCountForStage,
+  simpleWorkflowPresentation,
+} from "../src/simple-workflow.js";
 
 const workflowSource = await readFile(new URL("../../../config/workflow.simple.yaml", import.meta.url), "utf8");
 const workflow = parse(workflowSource);
@@ -53,4 +57,21 @@ test("simple workflow presentation names the human and automatic stages clearly"
   for (const nodeId of stages.get("merge").nodeIds) {
     assert.equal(workflow.spec.nodes[nodeId].type, "system_action");
   }
+});
+
+test("simple workflow shows cycles only for explicit automated review stages", () => {
+  const stages = new Map(simpleWorkflowPresentation.stages.map((stage) => [stage.id, stage]));
+  const issue = { cycles: {}, runs: { planning: 1 } };
+
+  assert.deepEqual(simpleWorkflowPresentation.stages.filter((stage) => stage.cycleBased), []);
+  assert.equal(cycleCountForStage(stages.get("claim"), issue, "completed", false), 0);
+  assert.equal(cycleCountForStage(stages.get("planning"), issue, "completed", false), 0);
+  assert.equal(cycleCountForStage(stages.get("review"), issue, "completed", false), 0);
+  assert.equal(cycleCountForStage(stages.get("merge"), issue, "completed", false), 0);
+  assert.equal(runCountForStage(stages.get("planning"), issue, "completed", false), 1);
+  assert.equal(runCountForStage(stages.get("merge"), issue, "completed", false), 0);
+
+  const automatedReview = { id: "automated_review", agents: ["Review Agent"], cycleBased: true };
+  assert.equal(cycleCountForStage(automatedReview, { cycles: { automated_review: 2 } }, "completed", false), 2);
+  assert.equal(cycleCountForStage(automatedReview, { cycles: {} }, "completed", false), 0);
 });
