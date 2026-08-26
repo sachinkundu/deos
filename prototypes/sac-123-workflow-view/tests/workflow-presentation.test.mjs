@@ -77,11 +77,11 @@ test("simple workflow shows cycles only for explicit automated review stages", (
   assert.equal(cycleCountForStage(automatedReview, { cycles: {} }, "completed", false), 0);
 });
 
-test("comparison issues describe completed, in-progress, and failed paths explicitly", () => {
+test("comparison issues describe completed, in-progress, failed, and stopped paths explicitly", () => {
   const stages = simpleWorkflowPresentation.stages.map((stage) => stage.id).sort();
   const issues = Object.values(simpleWorkflowIssues);
 
-  assert.deepEqual(issues.map((issue) => issue.state).sort(), ["active", "failed", "finished"]);
+  assert.deepEqual(issues.map((issue) => issue.state).sort(), ["active", "failed", "finished", "stopped"]);
   for (const issue of issues) {
     assert.deepEqual(Object.keys(issue.stageStates).sort(), stages, `${issue.key} covers every visible stage`);
     assert.ok(issue.currentStep in workflow.spec.nodes, `${issue.key} points to a configured workflow node`);
@@ -95,8 +95,15 @@ test("comparison issues describe completed, in-progress, and failed paths explic
     complete: "future",
     stopped: "future",
   });
-  assert.equal(simpleWorkflowIssues["SAC-132"].failureSource, "merge");
+  assert.equal(simpleWorkflowIssues["SAC-132"].observedBranchSource, "merge");
   assert.equal(simpleWorkflowIssues["SAC-132"].stageStates.merge, "failed");
-  assert.equal(simpleWorkflowIssues["SAC-132"].stageStates.complete, "future");
+  assert.equal(simpleWorkflowIssues["SAC-132"].stageStates.complete, "skipped");
   assert.equal(simpleWorkflowIssues["SAC-132"].stageStates.stopped, "failed");
+
+  assert.equal(simpleWorkflowIssues["SAC-133"].currentStep, "canceled");
+  assert.equal(simpleWorkflowIssues["SAC-133"].observedBranchSource, "review");
+  assert.equal(simpleWorkflowIssues["SAC-133"].stageStates.review, "rejected");
+  assert.equal(simpleWorkflowIssues["SAC-133"].stageStates.merge, "skipped");
+  assert.equal(simpleWorkflowIssues["SAC-133"].stageStates.complete, "skipped");
+  assert.equal(simpleWorkflowIssues["SAC-133"].stageStates.stopped, "stopped");
 });

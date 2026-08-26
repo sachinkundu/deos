@@ -324,6 +324,7 @@ const stateIcon = {
   waiting: Clock,
   finished: CheckCircle,
   failed: WarningCircle,
+  stopped: WarningCircle,
   unknown: Question,
 };
 
@@ -570,6 +571,9 @@ function labelForStageStatus(status, issue, isCurrent) {
     active: "In progress",
     waiting: "Waiting",
     failed: "Failed",
+    rejected: "Rejected",
+    stopped: "Stopped",
+    skipped: "Skipped",
     unknown: "Unknown",
     future: "Upcoming",
   }[status] ?? "Upcoming";
@@ -620,9 +624,8 @@ function buildGraph(issue) {
   const edges = simpleWorkflowPresentation.connections.map((connection, index) => {
     const targetStatus = statusById[connection.target];
     const isObservedReturn = connection.kind === "return" && (issue.cycles?.planning ?? 0) > 1;
-    const isObservedFailure = connection.kind === "branch"
-      && issue.state === "failed"
-      && issue.failureSource === connection.source
+    const isObservedBranch = connection.kind === "branch"
+      && issue.observedBranchSource === connection.source
       && connection.target === "stopped";
     return {
       id: `${connection.source}-${connection.target}-${index}`,
@@ -635,14 +638,14 @@ function buildGraph(issue) {
       markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
       className: connection.kind === "return"
         ? `edge-loop ${isObservedReturn ? "edge-loop--observed" : "edge-loop--possible"}`
-        : isObservedFailure
-          ? "edge-failed"
+        : isObservedBranch
+          ? issue.state === "failed" ? "edge-failed" : "edge-stopped"
         : connection.kind === "branch"
           ? "edge-future"
           : targetStatus === "completed"
             ? "edge-completed"
-            : targetStatus === issue.state
-              ? `edge-${issue.state}`
+            : ["active", "waiting", "failed", "rejected", "stopped", "skipped"].includes(targetStatus)
+              ? `edge-${targetStatus === "rejected" ? "stopped" : targetStatus}`
               : "edge-future",
       labelBgPadding: connection.label ? [9, 5] : undefined,
       labelShowBg: Boolean(connection.label),
@@ -741,6 +744,8 @@ function StatusLegend() {
       <span className="legend-item legend-waiting"><Clock size={17} />Waiting</span>
       <span className="legend-item legend-active"><Pulse size={17} />Active</span>
       <span className="legend-item legend-failed"><WarningCircle size={17} />Failed</span>
+      <span className="legend-item legend-stopped"><WarningCircle size={17} />Stopped</span>
+      <span className="legend-item legend-skipped"><X size={16} />Skipped</span>
       <span className="legend-item legend-future"><Question size={17} />Future / unknown</span>
     </div>
   );
@@ -753,7 +758,7 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
   const status = step?.status || "completed";
   const isCurrent = Boolean(selection.isCurrent);
   const usesPullRequest = ["planning", "review", "merge", "complete"].includes(step?.id);
-  const prStatus = issue.state === "finished" ? "Merged" : issue.state === "active" ? "Draft" : ["waiting", "failed"].includes(issue.state) ? "Open" : "Unknown";
+  const prStatus = issue.state === "finished" ? "Merged" : issue.state === "active" ? "Draft" : issue.state === "stopped" ? "Closed" : ["waiting", "failed"].includes(issue.state) ? "Open" : "Unknown";
   return (
     <aside className="step-inspector" aria-label="Workflow detail">
       <div className="inspector-header">
@@ -765,7 +770,7 @@ function StepInspector({ selection, issue, onClose, onExternal, onTranscript }) 
       </div>
       <div className="inspector-body">
           <div className={`detail-status detail-status--${isCurrent ? issue.state : status}`}>
-            {status === "failed" ? <WarningCircle size={18} /> : isCurrent && issue.state === "waiting" ? <Clock size={18} /> : status === "completed" ? <CheckCircle size={18} /> : <FlowArrow size={18} />}
+            {["failed", "rejected", "stopped"].includes(status) ? <WarningCircle size={18} /> : status === "skipped" ? <X size={18} /> : isCurrent && issue.state === "waiting" ? <Clock size={18} /> : status === "completed" ? <CheckCircle size={18} /> : <FlowArrow size={18} />}
             {labelForStageStatus(status, issue, isCurrent)}
           </div>
           <dl className="detail-list">

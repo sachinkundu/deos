@@ -172,13 +172,13 @@ export const simpleWorkflowIssues = Object.freeze({
     headline: "Planning pull request could not be merged",
     description: "Human approval completed, but the automatic merge failed and the workflow stopped.",
     currentStep: "system_action_failed",
-    failureSource: "merge",
+    observedBranchSource: "merge",
     stageStates: {
       claim: "completed",
       planning: "completed",
       review: "completed",
       merge: "failed",
-      complete: "future",
+      complete: "skipped",
       stopped: "failed",
     },
     stageDetails: {
@@ -194,6 +194,46 @@ export const simpleWorkflowIssues = Object.freeze({
     cycles: {},
     runs: { planning: 1 },
     primaryAction: "Inspect merge failure",
+  },
+  "SAC-133": {
+    key: "SAC-133",
+    title: "Reject unsupported planning change",
+    listText: "Plan rejected at approval",
+    state: "stopped",
+    stateLabel: "Stopped",
+    headline: "Plan rejected during human approval",
+    description: "The plan was reviewed but not approved. The workflow followed the rejection branch and stopped before merge.",
+    currentStep: "canceled",
+    observedBranchSource: "review",
+    stageStates: {
+      claim: "completed",
+      planning: "completed",
+      review: "rejected",
+      merge: "skipped",
+      complete: "skipped",
+      stopped: "stopped",
+    },
+    stageDetails: {
+      review: {
+        result: "Plan rejected",
+        summary: "A person rejected the plan during Human approval, so the workflow did not enter automatic merge.",
+      },
+      merge: {
+        result: "Automatic merge was skipped",
+        summary: "This stage did not run because the plan was not approved.",
+      },
+      complete: {
+        result: "Successful completion was not reached",
+        summary: "The workflow stopped on the rejection branch before merge and verification.",
+      },
+      stopped: {
+        result: "Workflow stopped after rejection",
+        summary: "The rejected plan followed the observed Human approval to Stopped branch.",
+      },
+    },
+    cycles: {},
+    runs: { planning: 1 },
+    primaryAction: "Inspect approval rejection",
   },
 });
 
