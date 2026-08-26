@@ -64,3 +64,14 @@ The change SHALL reply once on each human GitHub thread that it affects. A trust
 
 - **WHEN** a change starts after the old plan space is gone
 - **THEN** the flow rebuilds the plan checkout from saved facts and does not need the old files or jobs
+
+## ADDED Requirements
+
+### Requirement: Keep the live planning flow unchanged during plan gates
+
+Proposal, spec, and design gates SHALL change only OpenSpec plan files and their review notes. They MUST NOT turn on a selector, deploy code, change a live flow file, or alter a live prompt. Live changes SHALL wait for an approved design and the later work phase.
+
+#### Scenario: A planning gate requests a live change
+
+- **WHEN** work in a proposal, spec, or design gate asks to deploy or change the live planning path
+- **THEN** DEOS rejects that work and keeps the live path as it was
