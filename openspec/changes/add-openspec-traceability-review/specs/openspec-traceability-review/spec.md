@@ -6,7 +6,7 @@ Check the meaning and scope of one OpenSpec proposal and its delta specs before 
 
 ### Requirement: Review one exact private planning draft
 
-DEOS SHALL run one full first check on the exact private plan. The plan SHALL have a valid proposal and all needed delta specs. The check SHALL use a fresh context. DEOS SHALL save the author's model identity and thought level. These two fields SHALL be the full author-match settings. The first check SHALL match both. It SHALL use the fixed review prompt. It SHALL use a read-only tool and permission profile for its reviewer role. It SHALL inspect each named spec and each rule. The review job MUST NOT change the plan or any provider state.
+DEOS SHALL run one full Codex self-check on the exact private plan. The plan SHALL have a valid proposal and all needed delta specs. The self-check SHALL use a fresh context. It MUST NOT use the author coding agent's live context or unsaved notes. DEOS SHALL save the author coding agent's Codex model identity and thought level. These two fields SHALL be the full author-match settings. The self-check SHALL match both. It SHALL use the fixed review prompt. It SHALL use a read-only tool and permission profile for its reviewer role. It SHALL inspect each named spec and each rule. The review job MUST NOT change the plan or any provider state.
 
 #### Scenario: Private draft is ready for review
 
@@ -39,7 +39,7 @@ DEOS SHALL finish every required form, structure, path, and readability check be
 
 ### Requirement: Reuse an accepted result for an identical review input
 
-DEOS SHALL derive one review input ID from the complete reviewed file list and hashes, source inventory, phase, mode, round, model, thought level, prompt version, and BettaView tool version. A full check SHALL include a discovery marker. A recheck SHALL include its base finding set. Before dispatch, DEOS SHALL look up that ID. An accepted terminal result for the same ID SHALL be reused. Reuse MUST NOT start a Sandbox, call the model, consume a job try, or create another semantic result. A trusted step MAY bind that result to a new pull request head only when it proves that every reviewed file path and hash is unchanged.
+DEOS SHALL derive one review input ID from the complete reviewed file list and hashes, source inventory, stage, mode, round, model provider, model, thought setting, prompt version, and BettaView tool version. A full check SHALL include a discovery marker. A recheck SHALL include its base finding set. Before dispatch, DEOS SHALL look up that ID. An accepted terminal result for the same ID SHALL be reused. Reuse MUST NOT start a Sandbox, call the model, consume a job try, or create another semantic result. A trusted step MAY bind that result to a new pull request head only when it proves that every reviewed file path and hash is unchanged.
 
 #### Scenario: The same recheck is requested again
 
@@ -58,7 +58,7 @@ DEOS SHALL derive one review input ID from the complete reviewed file list and h
 
 ### Requirement: Keep internal repair and recheck bounded
 
-The full first check SHALL create one base finding set. Each later first recheck SHALL use the same fixed model and thought level. It SHALL rate every base finding. Its state SHALL be `fixed`, `partially_fixed`, `still_present`, or `cannot_verify`. Each rating SHALL cite current proof. A recheck MUST NOT add, drop, or rewrite a base finding. DEOS SHALL derive the full result from the ratings. It SHALL stop at the set fix limit. It MUST post only a plan whose first-check findings are all fixed. That accepted pass SHALL close the phase for its review input ID.
+The full self-check SHALL create one base finding set. Each later self-check SHALL use the same saved Codex model and thought level. It SHALL rate every base finding. Its state SHALL be `fixed`, `partially_fixed`, `still_present`, or `cannot_verify`. Each rating SHALL cite current proof. A recheck MUST NOT add, drop, or rewrite a base finding. DEOS SHALL derive the full result from the ratings. It SHALL use the shared round repair limit. A pass SHALL close the phase for its review input ID. If the shared three-turn limit is used first, DEOS MAY publish the exact valid plan with the open self-check findings marked for human judgment so that independent review can still run.
 
 #### Scenario: Author repairs the private draft
 
@@ -88,21 +88,21 @@ The full first check SHALL create one base finding set. Each later first recheck
 #### Scenario: Recheck conflicts with an earlier pass
 
 - **WHEN** a downgrade cannot tie its concern to a change after the accepted rating
-- **THEN** DEOS uses the bounded proof-repair path and does not spend an author fix
+- **THEN** DEOS keeps both proofs, starts no author repair or referee model, and marks the conflict for human judgment
 
-#### Scenario: Proof adjudication finds an earlier review error
+#### Scenario: Self-check proof stays inconsistent
 
-- **WHEN** bounded proof repair confirms that the earlier accepted rating was wrong
-- **THEN** DEOS saves a superseding decision with both proofs before it reopens the base finding
+- **WHEN** the self-check contradicts its own accepted rating without a matching source change
+- **THEN** DEOS saves both results, starts no referee, publishes the exact valid plan, and marks the conflict for human judgment after independent review
 
 #### Scenario: Internal repair limit is used
 
 - **WHEN** a first-check finding stays open after the last fix
-- **THEN** DEOS saves a stop result and does not post that plan
+- **THEN** DEOS saves the open finding and may post the exact valid plan for independent review with a human-judgment warning
 
 ### Requirement: Independently review the exact published head
 
-After the trusted post, DEOS SHALL run one full outside check. It SHALL use the exact planning pull request head. The check SHALL use a fixed model that is not the author model. It MAY reach a different view than the first check. It SHALL make its own base finding set. The review job MUST NOT change repo or provider state.
+After the trusted post, DEOS SHALL run one full independent check. It SHALL use the exact planning pull request head. It SHALL call OpenRouter through the trusted DEOS model adapter. Its model SHALL be a supported model chosen in the DEOS settings page before the run. It SHALL not be the author coding agent's model. DEOS SHALL save the provider and model with the run and MUST NOT change them during that run. The independent check MAY disagree with the self-check. That difference SHALL be allowed and SHALL become part of its own base finding set. The review job MUST NOT change repo or provider state.
 
 #### Scenario: Planning pull request is published
 
@@ -114,6 +114,11 @@ After the trusted post, DEOS SHALL run one full outside check. It SHALL use the 
 - **WHEN** the outside model is the author model
 - **THEN** DEOS rejects the job before it can make accepted proof
 
+#### Scenario: Independent model setting changes during a run
+
+- **WHEN** a settings change selects another OpenRouter model after a run has started
+- **THEN** the active run keeps its saved provider and model and only a later run uses the new setting
+
 #### Scenario: Pull request advances during review
 
 - **WHEN** the pull request head is not the head in a done outside check
@@ -121,7 +126,7 @@ After the trusted post, DEOS SHALL run one full outside check. It SHALL use the 
 
 ### Requirement: Repair and recheck the same planning pull request
 
-Each outside fix SHALL update the same planning pull request. All deterministic plan checks SHALL pass before either model rechecks it. The first review model SHALL then recheck the exact new head with its fixed thought level. It SHALL read the outside base findings, each changed block, and all linked blocks. It MUST NOT add a new finding. Each outside recheck SHALL then use the same fixed outside model and thought level. It SHALL rate only its base findings. Each rating SHALL cite current proof. DEOS SHALL derive the full result from both checks on that head.
+Each independent-review fix SHALL update the same planning pull request. All deterministic plan checks SHALL pass before either model rechecks it. The Codex self-check SHALL then inspect the exact new head with its saved model and thought level. It SHALL read the independent base findings, each changed block, and all linked blocks. It MUST NOT add a new finding during this closed-set recheck. The independent recheck SHALL then use the saved OpenRouter provider and model. It SHALL rate only its base findings. Each rating SHALL cite current proof. DEOS SHALL derive the full result from both checks on that head.
 
 #### Scenario: Independent discovery finds a concern
 
@@ -141,11 +146,11 @@ Each outside fix SHALL update the same planning pull request. All deterministic 
 #### Scenario: Model claims success while a finding remains open
 
 - **WHEN** the model claims a pass but any finding is not fixed
-- **THEN** DEOS rejects the pass and keeps the work out of the human gate
+- **THEN** DEOS rejects the pass and keeps the finding open; the round may reach the human gate only through the shared turn-limit escalation
 
 ### Requirement: Keep proof repair apart from plan repair
 
-DEOS SHALL set one bound for repair of a bad sidecar, invalid review result, or conflict between saved ratings. It SHALL set another bound for author fixes to the plan text. A proof repair SHALL not count as an author fix. It MUST NOT change the base finding set or the plan under review. A semantic conflict SHALL compare the saved results and exact source changes before it may supersede an earlier rating.
+DEOS SHALL set one bound for repair of a bad sidecar or invalid review result. It SHALL set another shared bound for author fixes to the plan text. A proof repair SHALL not count as an author fix. It MUST NOT change the base finding set or the plan under review. When one review stage contradicts its own saved rating, DEOS SHALL compare the exact inputs and source changes. It SHALL reuse the prior result for an identical input. If no source change explains the conflict, it SHALL stop that automated loop and show both results to the person. A different finding or rating from the independent reviewer SHALL be allowed and MUST NOT be treated as a proof fault merely because it differs from the self-check.
 
 #### Scenario: Sidecar fails its form checks
 
@@ -159,8 +164,13 @@ DEOS SHALL set one bound for repair of a bad sidecar, invalid review result, or 
 
 #### Scenario: Saved ratings conflict
 
-- **WHEN** a later result reopens a fixed finding without a causal source change
-- **THEN** DEOS uses the proof-repair bound to keep or supersede the earlier rating before any author fix
+- **WHEN** one review stage reopens its own fixed finding without a causal source change
+- **THEN** DEOS keeps both proofs, starts no author fix or referee model, and marks the conflict for human judgment after the independent stage is complete
+
+#### Scenario: Independent reviewer disagrees with the self-check
+
+- **WHEN** the independent review finds a concern that the Codex self-check did not report
+- **THEN** DEOS accepts it into the independent base finding set and may use a remaining shared repair turn
 
 ### Requirement: Constrain each plan repair
 
@@ -183,7 +193,7 @@ Each base finding SHALL name the exact source ranges that an author may change. 
 
 ### Requirement: Start a new review round after human feedback
 
-An allowed human change SHALL start a new review round for the same pull request. The new proposal and each changed spec SHALL pass both checks. The proof SHALL match their new exact forms. Only then may DEOS return the issue to `Human Review`. A person SHALL still be the only source of approval.
+An allowed human change SHALL start a new review round for the same pull request. The new proposal and each changed spec SHALL pass all deterministic checks. The proof SHALL match their new exact forms. DEOS MAY return the issue to `Human Review` when both semantic stages pass or when the round uses all three shared author-repair turns and the independent review has completed on the current head. The gate SHALL show every open finding and proof conflict when it is reached by the turn limit. A person SHALL still be the only source of approval.
 
 #### Scenario: Human asks for a planning revision
 
@@ -194,3 +204,8 @@ An allowed human change SHALL start a new review round for the same pull request
 
 - **WHEN** both checks pass for the live pull request head
 - **THEN** DEOS may enter `Human Review` but does not approve or merge the plan
+
+#### Scenario: Three repair turns end with open findings
+
+- **WHEN** the round uses its third author-repair turn and the independent review of the current valid head still has an open finding
+- **THEN** DEOS enters `Human Review` with a needs-judgment state and shows all open findings and conflicts without another author or model repair cycle
