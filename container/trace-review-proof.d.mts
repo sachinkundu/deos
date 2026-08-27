@@ -10,6 +10,7 @@ export function codexReviewArgs(input: {
   schema: string;
   destination: string;
 }): string[];
+export function reviewResultPayload(provider: "codex" | "openrouter", generated: unknown): unknown;
 export function proofRepairPrompt(input: {
   basePrompt: string;
   prior: unknown;

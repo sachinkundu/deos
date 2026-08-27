@@ -6,6 +6,7 @@ import {
   codexSessionId,
   findingSetFingerprint,
   proofRepairPrompt,
+  reviewResultPayload,
   runBoundedProofReview,
 } from "../container/trace-review-proof.mjs";
 
@@ -88,4 +89,11 @@ test("Codex reviewer resume uses only options accepted by the resume subcommand"
   assert.ok(!resumed.includes("--color"));
   assert.ok(resumed.includes("--output-schema"));
   assert.ok(resumed.includes("--output-last-message"));
+});
+
+test("recheck validation receives the provider-neutral review payload", () => {
+  const result = { mode: "recheck", resolutions: [{ findingId: "finding-1" }] };
+  assert.equal(reviewResultPayload("codex", { result, sessionId: "session-123" }), result);
+  assert.equal(reviewResultPayload("openrouter", result), result);
+  assert.throws(() => reviewResultPayload("codex", result), /wrapper is invalid/);
 });

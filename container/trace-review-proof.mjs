@@ -48,6 +48,16 @@ export const codexReviewArgs = ({ sessionId, cwd, model, reasoning, schema, dest
   return args;
 };
 
+export const reviewResultPayload = (provider, generated) => {
+  if (provider === "openrouter") return generated;
+  if (
+    provider === "codex" &&
+    typeof generated === "object" && generated !== null &&
+    Object.hasOwn(generated, "result")
+  ) return generated.result;
+  throw new Error("review provider result wrapper is invalid");
+};
+
 export const proofRepairPrompt = ({ basePrompt, prior, failure, repair, maximumRepairs }) => [
   basePrompt,
   "",

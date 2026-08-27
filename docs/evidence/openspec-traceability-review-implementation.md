@@ -6,7 +6,7 @@ This evidence covers repository implementation, deployment, one bounded OpenRout
 
 ## Implemented boundary
 
-- `simple-traceability` version 9 is bundled for the corrected canary path under `DEOS Traceability`.
+- `simple-traceability` version 10 is bundled for the corrected canary path under `DEOS Traceability`.
 - Registration keeps the selector disabled. The existing `simple` workflow remains the default.
 - The `DEOS Traceability` selector remains disabled while the controlled canary is prepared. The existing `simple` workflow remains the default for unmatched issues.
 - The independent reviewer uses a frozen OpenRouter setting through a narrow Worker adapter. The author and review Sandboxes receive no GitHub, Linear, or OpenRouter secret.
@@ -110,6 +110,8 @@ GitHub CI supplied the clean container-capable check. [CI run 33071291906, TypeS
 
 Version 8 run 7 proved the readability boundary with real provider ingress. The first author draft scored 69.31 Reading Ease and 6.28 grade in `proposal.md`. The trusted completion hook resumed Codex session `01a04378-bbed-70d2-abac-7b634d112ded` inside attempt `01a04378-8de0-73bc-88fd-5c349af8163d`; the repaired draft scored 79.60 and 4.16. D1 recorded one `planning_author` visit and one attempt, while the accepted R2 receipt recorded `repairCount: 1` and matched SHA-256 `32d6bb7e1451561866f8b9d03fc8b789dcd21575d0c5ef420cf24ba75befe6fe`.
 
-The same run then proved bounded review-proof repair. One self-discovery job returned four semantic findings. Its three raw outputs held one unchanged finding set, while two same-attempt proof repairs produced accepted review `review:01a04382-5297-7893-b027-0a4262723780`. D1 recorded `review_job_count = 1` and `proof_repair_count = 2`. The semantic repair passed readability on its first local check. The following recheck exposed a separate response-schema packaging defect before model work: Codex rejected `oneOf` for nullable `causalSourceDigest`. Version 9 replaces that construct with the supported nullable `type` array and adds a regression check.
+The same run then proved bounded review-proof repair. One self-discovery job returned four semantic findings. Its three raw outputs held one unchanged finding set, while two same-attempt proof repairs produced accepted review `review:01a04382-5297-7893-b027-0a4262723780`. D1 recorded `review_job_count = 1` and `proof_repair_count = 2`. The semantic repair passed readability on its first local check. The following recheck exposed a separate response-schema packaging defect before model work: Codex rejected `oneOf` for nullable `causalSourceDigest`. Version 9 replaced that construct with the supported nullable `type` array.
 
-Before implementation approval, version 9 must be deployed and a new provider-originated run must complete both review stages and any genuine finding repairs, reach Human Review, and preserve the exact GitHub PR head and Check Run, single Linear portal link, protected portal rendering, R2 hash read-backs, and Sandbox cleanup. The selector is already back to `enabled = 0`.
+Version 9 run 8 proved the repaired schema reached model execution. Codex returned the exact two required resolutions, but the recheck runner compared the provider wrapper `{ result, sessionId }` with the closed inventory instead of comparing its nested result. Version 10 normalizes Codex and OpenRouter outputs to one provider-neutral payload before validation and has a focused regression test for both providers.
+
+Before implementation approval, version 10 must be deployed and a new provider-originated run must complete both review stages and any genuine finding repairs, reach Human Review, and preserve the exact GitHub PR head and Check Run, single Linear portal link, protected portal rendering, R2 hash read-backs, and Sandbox cleanup. The selector is already back to `enabled = 0`.

@@ -23,6 +23,7 @@ import {
   codexSessionId,
   MAXIMUM_PROOF_REPAIRS,
   proofRepairPrompt,
+  reviewResultPayload,
   runBoundedProofReview,
 } from "./trace-review-proof.mjs";
 
@@ -161,7 +162,7 @@ const recheckJudgment = async ({ job, inventory, temporary }) => {
     numberedSources,
   ].join("\n");
   const rawFile = path.join(temporary, "raw-recheck.json");
-  const result = job.modelProvider === "codex"
+  const generated = job.modelProvider === "codex"
     ? await codexJudgment({
         prompt,
         model: job.model,
@@ -171,6 +172,7 @@ const recheckJudgment = async ({ job, inventory, temporary }) => {
         schema: recheckSchemaFile,
       })
     : await openRouterJudgment({ prompt, job, repairAttempt: 0, mode: "recheck" });
+  const result = reviewResultPayload(job.modelProvider, generated);
   if (
     result.mode !== "recheck" || result.baselineFindingSetDigest !== baseline.findingSetDigest ||
     !Array.isArray(result.resolutions) || result.resolutions.length !== baselineIds.length
