@@ -18,6 +18,12 @@ import {
   normalizeJudgment,
 } from "/deos/bettaview/src/review-traceability.js";
 import { loadTraceability } from "/deos/bettaview/src/traceability.js";
+import {
+  codexSessionId,
+  MAXIMUM_PROOF_REPAIRS,
+  proofRepairPrompt,
+  runBoundedProofReview,
+} from "./trace-review-proof.mjs";
 
 const OUTPUT_ROOT = "/deos/output";
 const PROMPT_VERSION = "openspec-semantic-traceability-bidirectional-v2";
@@ -59,10 +65,19 @@ const run = (command, args, options = {}) => new Promise((resolve, reject) => {
   child.stdin.end(options.input);
 });
 
-const codexJudgment = async ({ prompt, model, reasoning, destination, cwd, schema = schemaFile }) => {
-  await run("codex", [
-    "exec",
-    "--ephemeral",
+const codexJudgment = async ({
+  prompt,
+  model,
+  reasoning,
+  destination,
+  cwd,
+  schema = schemaFile,
+  sessionId = null,
+}) => {
+  const args = sessionId === null
+    ? ["exec", "-"]
+    : ["exec", "resume", sessionId, "-"];
+  args.push(
     "--sandbox", "read-only",
     "--cd", cwd,
     "--skip-git-repo-check",
@@ -72,9 +87,21 @@ const codexJudgment = async ({ prompt, model, reasoning, destination, cwd, schem
     "--output-last-message", destination,
     "--json",
     "--color", "never",
-    "-",
-  ], { cwd, input: prompt, forward: true, env: process.env });
-  return JSON.parse(await readFile(destination, "utf8"));
+  );
+  const execution = await run("codex", args, {
+    cwd,
+    input: prompt,
+    forward: true,
+    env: process.env,
+  });
+  const observedSessionId = codexSessionId(execution.stdout);
+  if (sessionId !== null && observedSessionId !== sessionId) {
+    throw new Error("proof repair resumed a different reviewer session");
+  }
+  return {
+    result: JSON.parse(await readFile(destination, "utf8")),
+    sessionId: observedSessionId,
+  };
 };
 
 const openRouterJudgment = async ({ prompt, job, repairAttempt, mode = "discovery" }) => {
@@ -252,25 +279,43 @@ const main = async () => {
   }
   const instructions = await readFile(promptFile, "utf8");
   const reviewerVersion = `${job.model} (${job.reasoning}) via ${job.modelProvider}`;
-  const rawJudgments = [];
-  let accepted;
   let validatorLog = "";
   try {
-    for (let attempt = 0; attempt < 1; attempt += 1) {
-      const reviewedAt = new Date().toISOString();
-      const prompt = buildJudgePrompt({ inventory, instructions, reviewerVersion, reviewedAt });
-      const rawFile = path.join(temporary, `raw-${attempt}.json`);
-      try {
-        const raw = job.modelProvider === "codex"
-          ? await codexJudgment({
-              prompt,
-              model: job.model,
-              reasoning: job.reasoning,
-              destination: rawFile,
-              cwd: reviewDirectory,
-            })
-          : await openRouterJudgment({ prompt, job, repairAttempt: attempt });
-        rawJudgments.push(raw);
+    const reviewedAtByAttempt = [];
+    const bounded = await runBoundedProofReview({
+      maximumRepairs: MAXIMUM_PROOF_REPAIRS,
+      generate: async ({ attempt, prior, failure, sessionId }) => {
+        const reviewedAt = new Date().toISOString();
+        reviewedAtByAttempt[attempt] = reviewedAt;
+        const basePrompt = buildJudgePrompt({ inventory, instructions, reviewerVersion, reviewedAt });
+        const prompt = attempt === 0
+          ? basePrompt
+          : proofRepairPrompt({
+              basePrompt,
+              prior,
+              failure,
+              repair: attempt,
+              maximumRepairs: MAXIMUM_PROOF_REPAIRS,
+            });
+        const rawFile = path.join(temporary, `raw-${attempt}.json`);
+        if (job.modelProvider === "codex") {
+          const generated = await codexJudgment({
+            prompt,
+            model: job.model,
+            reasoning: job.reasoning,
+            destination: rawFile,
+            cwd: reviewDirectory,
+            sessionId,
+          });
+          return { raw: generated.result, sessionId: generated.sessionId };
+        }
+        return {
+          raw: await openRouterJudgment({ prompt, job, repairAttempt: attempt }),
+          sessionId: null,
+        };
+      },
+      validate: async (raw, attempt) => {
+        const reviewedAt = reviewedAtByAttempt[attempt];
         const normalized = normalizeJudgment(raw, {
           change: inventory.change,
           reviewerVersion,
@@ -292,15 +337,16 @@ const main = async () => {
             throw new Error(`source changed during review: ${document.file}`);
           }
         }
-        accepted = { normalized, traceability, sidecarFile };
-        validatorLog = `${materialized.stdout}validated exact source hashes\n`;
-        break;
-      } catch (error) {
-        validatorLog += `attempt ${attempt + 1}: ${error.message}\n`;
-        throw error;
-      }
-    }
-    if (!accepted) throw new Error("trace review ended without accepted proof");
+        return { normalized, traceability, sidecarFile, materializerLog: materialized.stdout };
+      },
+    });
+    const accepted = bounded.accepted;
+    const rawJudgments = bounded.rawJudgments;
+    validatorLog = [
+      ...bounded.validatorFailures.map((failure, index) => `attempt ${index + 1}: ${failure}`),
+      accepted.materializerLog,
+      "validated exact source hashes",
+    ].filter(Boolean).join("\n") + "\n";
     const findings = findingInventory(accepted.traceability, job.openspecChange);
     const findingSetDigest = sha256(JSON.stringify(canonicalize(findings)));
     await mkdir(OUTPUT_ROOT, { recursive: true });
@@ -326,7 +372,7 @@ const main = async () => {
         : `The semantic review recorded ${findings.length} finding(s).`,
       findingSetDigest,
       findingCount: findings.length,
-      proofRepairCount: Math.max(0, rawJudgments.length - 1),
+      proofRepairCount: bounded.proofRepairCount,
       providerReceipts,
     })}\n`);
   } finally {

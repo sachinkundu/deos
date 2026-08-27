@@ -10,6 +10,7 @@ RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/be
 
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
 COPY container/author-completion.mjs /deos/bin/author-completion.mjs
+COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs
 COPY container/trace-review-runner.mjs /deos/bin/trace-review-runner.mjs
 COPY container/patch-capture.mjs /deos/bin/patch-capture.mjs
 COPY shared/planning-language.mjs /deos/shared/planning-language.mjs

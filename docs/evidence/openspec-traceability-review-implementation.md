@@ -2,11 +2,11 @@
 
 Date: 2026-08-27
 
-This evidence covers repository implementation, deployment, one bounded OpenRouter contract probe, and the failed canaries that exposed the retry defects. It does not yet claim a successful provider-originated workflow canary.
+This evidence covers repository implementation, deployment, one bounded OpenRouter contract probe, the failed canaries that exposed the retry defects, and a provider-originated version 6 author run. The version 6 run proves that deterministic readability repair stays inside one author attempt. Its semantic self-review then exposed a separate proof-repair implementation gap, so this document does not yet claim a complete provider-originated workflow canary.
 
 ## Implemented boundary
 
-- `simple-traceability` version 6 is bundled for the corrected canary path under `DEOS Traceability`.
+- `simple-traceability` version 7 is bundled for the corrected canary path under `DEOS Traceability`.
 - Registration keeps the selector disabled. The existing `simple` workflow remains the default.
 - The `DEOS Traceability` selector remains disabled while the controlled canary is prepared. The existing `simple` workflow remains the default for unmatched issues.
 - The independent reviewer uses a frozen OpenRouter setting through a narrow Worker adapter. The author and review Sandboxes receive no GitHub, Linear, or OpenRouter secret.
@@ -58,6 +58,8 @@ Corrected runtime head `cb499cd` produced:
 
 Container application read-back showed version 7, five healthy instances, zero active instances, and no health errors.
 
+Version 6 runtime head `9f5d3ff` produced Worker version `6df1f154-b93e-4f15-aec7-8fec8c94cfc2`, portal version `fc23ef8b-a763-43b3-a8e3-7705cbd5e9d2`, and Sandbox image `sha256:04ab0dddd111bde07a8f85f09c2d92b81613fa9bb5bd0d1dbb50fa91b5724bd2`. Container application read-back showed version 8, five healthy instances, and no health errors before the version 6 canary.
+
 The protected portal saved and read back provider `openrouter`, model `deepseek/deepseek-v4-pro`, revision 2, the authenticated operator, and the save time. [The live settings screenshot](assets/openspec-traceability-review-settings.jpg) shows the selected model, zero active runs, and the D1 read-back confirmation without exposing the secret.
 
 ## Controlled selector preflight
@@ -84,10 +86,26 @@ The operator disabled the selector and terminated Workflow instance `wf-v1-4dqje
 
 Version 6 moves deterministic correction into the trusted supervisor. It resumes the exact saved Codex session in the same Sandbox, with at most two in-place repairs after the first completion. `author-completion.json` records each round and its scores. The Worker imports the same scorer and treats any post-hook rejection as `author_completion_verification_mismatch`. All three `invalid_candidate` graph edges point to failure, so a deterministic rejection cannot start another author attempt. Focused tests cover a hard draft that passes after one exact-session correction, the two-repair bound, shared score behavior, and the terminal Worker mismatch. A fresh provider-originated canary is still required after version 6 is deployed.
 
+## Version 6 provider-originated author proof
+
+The scheduled registry refresh stored `simple-traceability` version 6 with digest `958044b1b2f43a48563c25747f1acd327303dc50f95fa21ce7f075404ebfd8d7` while preserving `enabled = 0`. The operator enabled only that exact selector, moved SAC-133 from Rework to Todo through Linear, observed the new durable run, and disabled the selector again.
+
+Two diagnostic runs stopped before prompt staging because the manually canceled version 5 run still held the single `controlled-trial` credential lease. D1 tied that lease to attempt `01a04310-2d70-798a-bd1e-344dd0d3714b`, whose state was `canceled` and cleanup state was `destroyed`; Cloudflare inventory showed its exact Sandbox inactive. The operator released only that lease row under guards for the exact attempt, terminal state, cleanup state, and Sandbox identity. The encrypted credential object was not changed.
+
+The next Linear delivery allocated run `workflow:99426d9b-cda7-4db4-9136-692a95a0b090:946c431b-7080-48ba-8a4b-c435e7777610:run:5` and Workflow instance `wf-v1-wukfwy4d5ykiuiorm3q6wfbeecgi5faa4usc33ogasngfkrutfoq`. D1 froze workflow version 6 and recorded one author attempt: `01a0433f-ad13-7216-b770-eb6ad77cf8bd`. That attempt used Sandbox `sbx-v1-slydpabzecj7ffdrpqdqfodforbxglqjd3xpa7iskgfdtlmyekaa`, completed, and read back with cleanup state `destroyed`. No second `planning_author` attempt or visit exists.
+
+The trusted `author-completion.json` receipt has SHA-256 `4a87cf4d77630583d340189eb056f1ec8360648fbc17e6ec00e88f740229804c` in both D1 and a direct R2 read-back. It records one Codex session, `01a04340-0fef-75d2-9cbb-b2cdf4d47ca8`, and `repairCount = 1`. Round 0 passed path, strict OpenSpec, and whitespace checks. The proposal passed at Ease `76.42`, Grade `5.29`; the spec failed at Ease `57.76`, Grade `13.16`. Round 1 is marked `same_session_resume`. It reused the same checkout, attempt, Sandbox, process supervisor, and Codex session. The corrected spec passed at Ease `76.45`, Grade `5.98`; the proposal remained unchanged and passing.
+
+The Worker accepted candidate `candidate:01a0433f-ad13-7216-b770-eb6ad77cf8bd`, then advanced the run directly from `planning_author` visit 2 to semantic `self_discovery` visit 3. This is real provider-originated proof that readability correction consumes no BettaView review turn, no workflow author retry, and no new Sandbox.
+
+The version 6 self-discovery reviewer returned four substantive findings, but its trace proof was not bidirectional: link `show-both-review-states` cited proposal line 11 while proposal line 11 did not map back to that link. The pinned BettaView validator rejected the trace and the review attempt ended `codex_exit_nonzero`. This happened in self-discovery after the successful author stage. It did not create another author attempt or readability cycle.
+
+That canary exposed an existing contract gap. The approved spec allows bounded proof repair and the result schema already records up to two repairs, but the runner loop was hard-coded to one output. Version 7 now gives the same reviewer attempt the exact validator failure and at most two proof repairs against the same immutable plan. Codex resumes the exact reviewer session; OpenRouter stays inside the same attempt through the trusted adapter. Trusted code rejects any repair that changes the first finding set. Focused tests prove exact-session reuse, the fixed bound, and finding-set preservation.
+
 ## Container packaging
 
-The local machine has no Docker CLI or Docker Desktop application. GitHub CI supplied the missing container-capable check. [CI run 33054094846, TypeScript job](https://github.com/sachinkundu/deos/actions/runs/33054094846/job/98456450146) built every Dockerfile layer, ran `codex-cli 0.147.0` and OpenSpec `1.8.0` inside the image, and exported Sandbox image `sha256:a954189818c2a612a408a02efde24b25a86c9e3d55df7c154db151b4014e7940`. The same job completed Worker, Python Worker, and portal Wrangler dry-runs.
+GitHub CI supplied the clean container-capable check. [CI run 33071291906, TypeScript job](https://github.com/sachinkundu/deos/actions/runs/33071291906/job/98513927481) built every Dockerfile layer, ran `codex-cli 0.147.0` and OpenSpec `1.8.0` inside the image, and exported local Sandbox image `sha256:45bb0b317307b0f2f96156458d6fc7d88af72ceaa12a8cb241924e24ee64c243`. The same job completed Worker, Python Worker, and portal Wrangler dry-runs. The deployed registry image has digest `sha256:04ab0dddd111bde07a8f85f09c2d92b81613fa9bb5bd0d1dbb50fa91b5724bd2`; a local run of that exact image verified the supervisor, author hook, shared scorer, Git, Node, Codex CLI, and OpenSpec binaries.
 
 ## Live proof still required
 
-Before implementation approval, the remaining proof must grant the GitHub App only the missing Check Run permission, enable the selector for the controlled label, and run one provider-originated canary. Completion evidence must include exact D1 rows, R2 hash read-back, the exact GitHub PR head and Check Run, the single updated Linear portal link, protected portal rendering, and Sandbox cleanup. The selector must then return to its approved post-canary state.
+Before implementation approval, version 7 must be deployed and a new provider-originated run must complete both review stages and any genuine finding repairs, reach Human Review, and preserve the exact GitHub PR head and Check Run, single Linear portal link, protected portal rendering, R2 hash read-backs, and Sandbox cleanup. The selector is already back to `enabled = 0`.
