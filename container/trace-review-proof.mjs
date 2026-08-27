@@ -30,6 +30,24 @@ export const codexSessionId = (stdout) => {
   return unique[0];
 };
 
+export const codexReviewArgs = ({ sessionId, cwd, model, reasoning, schema, destination }) => {
+  const resumed = sessionId !== null;
+  const args = resumed
+    ? ["exec", "resume", sessionId, "-"]
+    : ["exec", "-"];
+  if (!resumed) args.push("--sandbox", "read-only", "--cd", cwd);
+  args.push(
+    "--skip-git-repo-check",
+    "--model", model,
+    "--config", `model_reasoning_effort=${JSON.stringify(reasoning)}`,
+    "--output-schema", schema,
+    "--output-last-message", destination,
+    "--json",
+  );
+  if (!resumed) args.push("--color", "never");
+  return args;
+};
+
 export const proofRepairPrompt = ({ basePrompt, prior, failure, repair, maximumRepairs }) => [
   basePrompt,
   "",

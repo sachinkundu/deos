@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  codexReviewArgs,
   codexSessionId,
   findingSetFingerprint,
   proofRepairPrompt,
@@ -65,4 +66,26 @@ test("Codex review session identity is exact and repair prompt is bounded", () =
   });
   assert.match(prompt, /Keep every prior finding byte-for-byte identical/);
   assert.match(prompt, /link is not bidirectional/);
+});
+
+test("Codex reviewer resume uses only options accepted by the resume subcommand", () => {
+  const common = {
+    cwd: "/deos/review",
+    model: "gpt-5.6-sol",
+    reasoning: "high",
+    schema: "/deos/schema.json",
+    destination: "/deos/result.json",
+  };
+  const initial = codexReviewArgs({ ...common, sessionId: null });
+  const resumed = codexReviewArgs({ ...common, sessionId: "session-123" });
+  assert.deepEqual(initial.slice(0, 2), ["exec", "-"]);
+  assert.ok(initial.includes("--sandbox"));
+  assert.ok(initial.includes("--cd"));
+  assert.ok(initial.includes("--color"));
+  assert.deepEqual(resumed.slice(0, 4), ["exec", "resume", "session-123", "-"]);
+  assert.ok(!resumed.includes("--sandbox"));
+  assert.ok(!resumed.includes("--cd"));
+  assert.ok(!resumed.includes("--color"));
+  assert.ok(resumed.includes("--output-schema"));
+  assert.ok(resumed.includes("--output-last-message"));
 });

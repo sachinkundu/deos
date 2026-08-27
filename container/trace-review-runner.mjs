@@ -19,6 +19,7 @@ import {
 } from "/deos/bettaview/src/review-traceability.js";
 import { loadTraceability } from "/deos/bettaview/src/traceability.js";
 import {
+  codexReviewArgs,
   codexSessionId,
   MAXIMUM_PROOF_REPAIRS,
   proofRepairPrompt,
@@ -74,20 +75,7 @@ const codexJudgment = async ({
   schema = schemaFile,
   sessionId = null,
 }) => {
-  const args = sessionId === null
-    ? ["exec", "-"]
-    : ["exec", "resume", sessionId, "-"];
-  args.push(
-    "--sandbox", "read-only",
-    "--cd", cwd,
-    "--skip-git-repo-check",
-    "--model", model,
-    "--config", `model_reasoning_effort=${JSON.stringify(reasoning)}`,
-    "--output-schema", schema,
-    "--output-last-message", destination,
-    "--json",
-    "--color", "never",
-  );
+  const args = codexReviewArgs({ sessionId, cwd, model, reasoning, schema, destination });
   const execution = await run("codex", args, {
     cwd,
     input: prompt,

@@ -2,6 +2,14 @@ export const MAXIMUM_PROOF_REPAIRS: 2;
 
 export function findingSetFingerprint(review: unknown): string;
 export function codexSessionId(stdout: string): string;
+export function codexReviewArgs(input: {
+  sessionId: string | null;
+  cwd: string;
+  model: string;
+  reasoning: string;
+  schema: string;
+  destination: string;
+}): string[];
 export function proofRepairPrompt(input: {
   basePrompt: string;
   prior: unknown;

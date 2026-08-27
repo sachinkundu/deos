@@ -6,7 +6,7 @@ This evidence covers repository implementation, deployment, one bounded OpenRout
 
 ## Implemented boundary
 
-- `simple-traceability` version 7 is bundled for the corrected canary path under `DEOS Traceability`.
+- `simple-traceability` version 8 is bundled for the corrected canary path under `DEOS Traceability`.
 - Registration keeps the selector disabled. The existing `simple` workflow remains the default.
 - The `DEOS Traceability` selector remains disabled while the controlled canary is prepared. The existing `simple` workflow remains the default for unmatched issues.
 - The independent reviewer uses a frozen OpenRouter setting through a narrow Worker adapter. The author and review Sandboxes receive no GitHub, Linear, or OpenRouter secret.
@@ -100,7 +100,7 @@ The Worker accepted candidate `candidate:01a0433f-ad13-7216-b770-eb6ad77cf8bd`, 
 
 The version 6 self-discovery reviewer returned four substantive findings, but its trace proof was not bidirectional: link `show-both-review-states` cited proposal line 11 while proposal line 11 did not map back to that link. The pinned BettaView validator rejected the trace and the review attempt ended `codex_exit_nonzero`. This happened in self-discovery after the successful author stage. It did not create another author attempt or readability cycle.
 
-That canary exposed an existing contract gap. The approved spec allows bounded proof repair and the result schema already records up to two repairs, but the runner loop was hard-coded to one output. Version 7 now gives the same reviewer attempt the exact validator failure and at most two proof repairs against the same immutable plan. Codex resumes the exact reviewer session; OpenRouter stays inside the same attempt through the trusted adapter. Trusted code rejects any repair that changes the first finding set. Focused tests prove exact-session reuse, the fixed bound, and finding-set preservation.
+That canary exposed an existing contract gap. The approved spec allows bounded proof repair and the result schema already records up to two repairs, but the runner loop was hard-coded to one output. Version 7 added the missing same-attempt loop, then run 6 exposed one CLI packaging error: `codex exec resume` rejected the initial-only `--sandbox` option before the repair prompt ran. Version 8 passes only options accepted by the resume subcommand. It gives the same reviewer attempt the exact validator failure and at most two proof repairs against the same immutable plan. Codex resumes the exact reviewer session; OpenRouter stays inside the same attempt through the trusted adapter. Trusted code rejects any repair that changes the first finding set. Focused tests prove exact-session reuse, the fixed bound, finding-set preservation, and the exact initial-versus-resume argument contract.
 
 ## Container packaging
 
@@ -108,4 +108,4 @@ GitHub CI supplied the clean container-capable check. [CI run 33071291906, TypeS
 
 ## Live proof still required
 
-Before implementation approval, version 7 must be deployed and a new provider-originated run must complete both review stages and any genuine finding repairs, reach Human Review, and preserve the exact GitHub PR head and Check Run, single Linear portal link, protected portal rendering, R2 hash read-backs, and Sandbox cleanup. The selector is already back to `enabled = 0`.
+Before implementation approval, version 8 must be deployed and a new provider-originated run must complete both review stages and any genuine finding repairs, reach Human Review, and preserve the exact GitHub PR head and Check Run, single Linear portal link, protected portal rendering, R2 hash read-backs, and Sandbox cleanup. The selector is already back to `enabled = 0`.

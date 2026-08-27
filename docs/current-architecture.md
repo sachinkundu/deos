@@ -10,7 +10,7 @@ Repository-local OpenSpec progression is encoded as typed agent jobs carrying on
 
 ## OpenSpec traceability review flow
 
-The bundle also contains `simple-traceability` version 7. It is registered with the fixed `DEOS Traceability` selector, but registration leaves that selector disabled. The existing `simple` definition stays the project default. Deploying this code cannot start a traceability run until an operator separately enables the selector and applies the matching Linear label.
+The bundle also contains `simple-traceability` version 8. It is registered with the fixed `DEOS Traceability` selector, but registration leaves that selector disabled. The existing `simple` definition stays the project default. Deploying this code cannot start a traceability run until an operator separately enables the selector and applies the matching Linear label.
 
 ```mermaid
 flowchart LR
@@ -36,7 +36,7 @@ The author has no GitHub or Linear capability. When it reports completion, the t
 
 After the hook passes, trusted Worker code builds an immutable planning candidate. It allows only `.openspec.yaml`, `proposal.md`, and the declared `specs/**/spec.md` files. It repeats strict OpenSpec and readability checks, writes the candidate and validation receipt to create-only R2 keys, reads both objects back by SHA-256, and then indexes the accepted candidate in D1. In versions 6 and later, a disagreement is stored as `author_completion_verification_mismatch` and follows the failed edge. Every `invalid_candidate` edge also points to failure. No deterministic rejection can route back to an author node or consume a semantic repair turn.
 
-Version 7 also closes the review-proof repair gap. A semantic reviewer first returns its complete finding set and trace proof. If the pinned BettaView validator rejects only the proof form, the same reviewer attempt receives the exact validation failure. Codex review resumes the exact saved reviewer session; OpenRouter receives a bounded repair request through the trusted adapter. Both remain in the same Sandbox and use the same immutable plan. Trusted code permits at most two proof repairs and rejects any repair that changes the first finding set. These repairs increment `proofRepairCount`; they do not create another Workflow review visit or consume an author plan-repair turn.
+Version 8 also closes the review-proof repair gap. A semantic reviewer first returns its complete finding set and trace proof. If the pinned BettaView validator rejects only the proof form, the same reviewer attempt receives the exact validation failure. Codex review resumes the exact saved reviewer session; OpenRouter receives a bounded repair request through the trusted adapter. Both remain in the same Sandbox and use the same immutable plan. Trusted code permits at most two proof repairs and rejects any repair that changes the first finding set. These repairs increment `proofRepairCount`; they do not create another Workflow review visit or consume an author plan-repair turn.
 
 Both semantic stages use a pinned BettaView bundle. The Codex self-check uses the run's frozen author model and thought setting in a fresh read-only Sandbox. The independent stage uses a different OpenRouter model chosen in Settings and frozen when the run is allocated. The OpenRouter key stays in the Worker. The Sandbox receives only a signed, attempt-scoped model channel for that exact model and setting.
 
