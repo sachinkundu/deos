@@ -11,6 +11,7 @@ import type {
   ContinuationPatchReference,
   MaterializedJobInput,
 } from "./job-inputs.ts";
+import { AGENT_HARNESS, AGENT_HARNESS_VERSION } from "./agent-harness.ts";
 
 export type AgentAttemptState =
   | "pending"
@@ -462,6 +463,8 @@ export class SandboxAgentController {
       planningBranch: materialized.planningWorkProduct?.remote_branch ?? null,
       capabilities: job.capabilities ?? [],
       agentRole: job.agentRole ?? null,
+      agentHarness: job.agentRole === undefined ? null : AGENT_HARNESS,
+      agentHarnessVersion: job.agentRole === undefined ? null : AGENT_HARNESS_VERSION,
       modelProvider: job.modelProvider ?? null,
       model: job.model ?? null,
       reasoning: job.reasoning ?? null,
@@ -517,6 +520,8 @@ export class SandboxAgentController {
         planningBranch?: unknown;
         continuationPatch?: unknown;
         agentRole?: unknown;
+        agentHarness?: unknown;
+        agentHarnessVersion?: unknown;
         modelProvider?: unknown;
         model?: unknown;
         reasoning?: unknown;
@@ -540,7 +545,9 @@ export class SandboxAgentController {
       ) throw new Error("OpenSpec job identity is invalid");
       const planningJob = job.capabilities?.includes("github.publish_planning_work_product") === true;
       if (job.agentRole !== undefined && (
-        durableJob.agentRole !== job.agentRole || durableJob.modelProvider !== job.modelProvider ||
+        durableJob.agentRole !== job.agentRole || durableJob.agentHarness !== AGENT_HARNESS ||
+        durableJob.agentHarnessVersion !== AGENT_HARNESS_VERSION ||
+        durableJob.modelProvider !== job.modelProvider ||
         durableJob.model !== job.model || durableJob.reasoning !== job.reasoning ||
         durableJob.permissionProfile !== job.permissionProfile ||
         JSON.stringify(durableJob.providerAccess) !== JSON.stringify(job.providerAccess ?? [])
@@ -594,6 +601,8 @@ export class SandboxAgentController {
         capabilityUrl: grant.url,
         capabilityToken: grant.token,
         agentRole: job.agentRole ?? null,
+        agentHarness: job.agentRole === undefined ? null : AGENT_HARNESS,
+        agentHarnessVersion: job.agentRole === undefined ? null : AGENT_HARNESS_VERSION,
         modelProvider: job.modelProvider ?? null,
         model: job.model ?? null,
         reasoning: job.reasoning ?? null,
@@ -856,6 +865,33 @@ export class SandboxAgentController {
         },
       };
     } catch {
+      if (collection !== null) {
+        await this.attempts.finish({
+          attemptId: attempt.attempt_id,
+          expected: "collecting",
+          state: "failed",
+          resultClass: "post_collection_validation_failed",
+          manifestId: collection.manifestId,
+          now: this.dependencies.now().toISOString(),
+        });
+        this.emitForAttempt(
+          attempt,
+          "artifact.manifest",
+          "succeeded",
+          undefined,
+          collection.manifestId,
+        );
+        this.emitForAttempt(
+          attempt,
+          "sandbox.attempt",
+          "failed",
+          "post_collection_validation_failed",
+          collection.manifestId,
+        );
+        await this.cleanup(attempt, sandbox);
+        await collector.verifyAfterCleanup(collection);
+        return this.failedObservation(attempt, "failed", collection.manifestId);
+      }
       const manifestId = await this.finishFailure(
         attempt,
         sandbox,

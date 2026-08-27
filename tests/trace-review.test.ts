@@ -36,8 +36,8 @@ test("review input identity covers exact sources, models, mode, and tool bundle"
       { path: "specs/workflow-state/spec.md", sha256: "b".repeat(64) },
     ],
     baselineFindingSetDigest: null,
-    author: { provider: "codex" as const, model: "gpt-5.6-sol", reasoning: "high" },
-    reviewer: { provider: "codex" as const, model: "gpt-5.6-sol", reasoning: "high" },
+    author: { harness: "codex" as const, harnessVersion: "0.147.0", provider: "codex" as const, model: "gpt-5.6-sol", reasoning: "high" },
+    reviewer: { harness: "codex" as const, harnessVersion: "0.147.0", provider: "codex" as const, model: "gpt-5.6-sol", reasoning: "high" },
     promptVersion: "trace-v2",
     promptSha256: "c".repeat(64),
     toolVersion: "bundle-v1",
@@ -46,8 +46,14 @@ test("review input identity covers exact sources, models, mode, and tool bundle"
   const first = await reviewInputId(input);
   const second = await reviewInputId({ ...input, sources: [...input.sources].reverse() });
   const changed = await reviewInputId({ ...input, round: 2 });
+  const changedHarness = await reviewInputId({
+    ...input,
+    author: { ...input.author, harnessVersion: "0.151.0" },
+    reviewer: { ...input.reviewer, harnessVersion: "0.151.0" },
+  });
   assert.equal(first, second);
   assert.notEqual(first, changed);
+  assert.notEqual(first, changedHarness);
   assert.equal(first.length, 64);
 });
 
@@ -63,8 +69,8 @@ test("independent review rejects the author model and requires an exact head", a
       { path: "specs/workflow-state/spec.md", sha256: "b".repeat(64) },
     ],
     baselineFindingSetDigest: null,
-    author: { provider: "codex" as const, model: "same/model", reasoning: "high" },
-    reviewer: { provider: "openrouter" as const, model: "same/model", reasoning: "high" },
+    author: { harness: "codex" as const, harnessVersion: "0.147.0", provider: "codex" as const, model: "same/model", reasoning: "high" },
+    reviewer: { harness: "codex" as const, harnessVersion: "0.147.0", provider: "openrouter" as const, model: "same/model", reasoning: "high" },
     promptVersion: "trace-v2",
     promptSha256: "c".repeat(64),
     toolVersion: "bundle-v1",

@@ -22,12 +22,14 @@ export interface CapabilityStore {
     now: string;
   }): Promise<{ operation: ProviderOperationRecord; created: boolean }>;
   find(operationId: string): Promise<ProviderOperationRecord | null>;
+  listAttemptOperations(attemptId: string, action: string): Promise<readonly ProviderOperationRecord[]>;
   finish(input: {
     operationId: string;
     expected: ProviderOperationState;
     state: ProviderOperationState;
     providerResourceId: string | null;
     safeErrorCategory: string | null;
+    diagnosticId?: string | null;
     now: string;
   }): Promise<boolean>;
 }
@@ -95,23 +97,37 @@ export class D1CapabilityStore implements CapabilityStore {
     ).bind(operationId).first<ProviderOperationRecord>();
   }
 
+  async listAttemptOperations(
+    attemptId: string,
+    action: string,
+  ): Promise<readonly ProviderOperationRecord[]> {
+    const rows = await this.database.prepare(
+      `SELECT * FROM provider_operations
+       WHERE attempt_id = ? AND capability = 'model' AND action = ?
+       ORDER BY started_at, operation_id`,
+    ).bind(attemptId, action).all<ProviderOperationRecord>();
+    return Object.freeze(rows.results);
+  }
+
   async finish(input: {
     operationId: string;
     expected: ProviderOperationState;
     state: ProviderOperationState;
     providerResourceId: string | null;
     safeErrorCategory: string | null;
+    diagnosticId?: string | null;
     now: string;
   }): Promise<boolean> {
     const result = await this.database.prepare(
       `UPDATE provider_operations
-       SET state = ?, provider_resource_id = ?, safe_error_category = ?,
+       SET state = ?, provider_resource_id = ?, safe_error_category = ?, diagnostic_id = ?,
            updated_at = ?, completed_at = ?
        WHERE operation_id = ? AND state = ?`,
     ).bind(
       input.state,
       input.providerResourceId,
       input.safeErrorCategory,
+      input.diagnosticId ?? null,
       input.now,
       input.now,
       input.operationId,

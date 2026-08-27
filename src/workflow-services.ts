@@ -52,6 +52,7 @@ import {
   type TraceRecheckResult,
 } from "./trace-review.ts";
 import bettaViewBundleManifest from "../vendor/bettaview/bundle-manifest.json" with { type: "json" };
+import { AGENT_HARNESS, AGENT_HARNESS_VERSION } from "./agent-harness.ts";
 
 const durationMs = (value: string): number => {
   const match = value.match(/^(\d+(?:\.\d+)?)(ms|s|m|h|d)$/);
@@ -352,11 +353,15 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             sources,
             baselineFindingSetDigest: mode === "recheck" ? trustedFindingSetDigest : null,
             author: {
+              harness: AGENT_HARNESS,
+              harnessVersion: AGENT_HARNESS_VERSION,
               provider: "codex",
               model: run.author_model ?? "",
               reasoning: run.author_reasoning ?? "",
             },
             reviewer: {
+              harness: AGENT_HARNESS,
+              harnessVersion: AGENT_HARNESS_VERSION,
               provider: job.modelProvider ?? "codex",
               model: job.model ?? "",
               reasoning: job.reasoning ?? "",
@@ -413,6 +418,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             author_model: run.author_model ?? "",
             reviewer_provider: job.modelProvider ?? "codex",
             reviewer_model: job.model ?? "",
+            agent_harness: AGENT_HARNESS,
+            agent_harness_version: AGENT_HARNESS_VERSION,
             reasoning_effort: job.reasoning ?? "",
             prompt_version: "openspec-semantic-traceability-bidirectional-v2",
             prompt_sha256: await sha256Hex(job.prompt),
@@ -535,11 +542,15 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             sources,
             baselineFindingSetDigest,
             author: {
+              harness: AGENT_HARNESS,
+              harnessVersion: AGENT_HARNESS_VERSION,
               provider: "codex",
               model: run.author_model ?? "",
               reasoning: run.author_reasoning ?? "",
             },
             reviewer: {
+              harness: AGENT_HARNESS,
+              harnessVersion: AGENT_HARNESS_VERSION,
               provider: job.modelProvider ?? "codex",
               model: job.model ?? "",
               reasoning: job.reasoning ?? "",

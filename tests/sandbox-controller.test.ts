@@ -189,6 +189,43 @@ spec:
   },
 );
 
+const reviewerDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: reviewer-test, version: 1 }
+spec:
+  start: self_discovery
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs:
+    self_discovery:
+      promptFile: prompts/reviewer.md
+      inputs: [openspec_change]
+      context: []
+      resultSchema: schemas/result.json
+      requiredOutputs: [transcript.jsonl, result.json]
+      agentRole: reviewer
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: []
+      reviewMode: discovery
+  nodes:
+    self_discovery: { type: agent, job: self_discovery, edges: { pass: done, findings: done, failed: blocked } }
+    done: { type: terminal, outcome: succeeded }
+    blocked: { type: terminal, outcome: blocked }
+`,
+  {
+    prompts: { "prompts/reviewer.md": "Review the exact proposal and specs." },
+    schemas: {
+      "schemas/result.json": JSON.stringify({
+        $id: "https://deos.dev/reviewer-test.json",
+        type: "object",
+      }),
+    },
+  },
+);
+
 const run = {
   run_id: "workflow:project-1:issue-1:run:1",
   issue_id: "issue-1",
@@ -519,6 +556,7 @@ interface SetupOptions {
   planningWorkProduct?: Partial<RunWorkProductRecord> | null;
   materializedContext?: string;
   candidateRejection?: PlanningCandidateRejectedError;
+  reviewAcceptanceError?: Error;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -598,6 +636,10 @@ const setup = (options: SetupOptions = {}) => {
       },
       persistPlanningCandidate: async () => {
         if (options.candidateRejection !== undefined) throw options.candidateRejection;
+      },
+      acceptTraceReview: async ({ collection }) => {
+        if (options.reviewAcceptanceError !== undefined) throw options.reviewAcceptanceError;
+        return String(collection.result.reviewOutcome ?? "pass");
       },
     },
   );
@@ -779,6 +821,12 @@ test("a byte-identical rejected plan stops before another author retry and keeps
   } as OrchestrationRunRecord;
 
   await state.controller.execute(traceRun, "planning_author", "planning_author", tracePlanningDefinition);
+  const durableJob = JSON.parse(state.attempts.latest?.job_spec_json ?? "{}");
+  const stagedJob = JSON.parse(state.factory.sandbox.files.get("/deos/run/job.json") ?? "{}");
+  assert.equal(durableJob.agentHarness, "codex");
+  assert.equal(durableJob.agentHarnessVersion, "0.147.0");
+  assert.equal(stagedJob.agentHarness, "codex");
+  assert.equal(stagedJob.agentHarnessVersion, "0.147.0");
   state.factory.sandbox.files.set("/deos/output/patch.diff", patch);
   state.factory.sandbox.files.set("/deos/output/review-replies.json", "[]");
   state.factory.sandbox.files.set("/deos/workspace/repository/openspec/changes/sac-1/.openspec.yaml", "schema: spec-driven\n");
@@ -1030,6 +1078,35 @@ test("successful agent output without durable provider receipts fails closed", a
   const observation = await controller.execute(run, "work", "work", definition);
 
   assert.equal(observation.state === "completed" ? observation.outcome.providerReceiptsComplete : true, false);
+});
+
+test("post-collection validation failure preserves the completed manifest", async () => {
+  const state = setup({ reviewAcceptanceError: new Error("trusted review evidence is invalid") });
+  const traceRun = {
+    ...run,
+    project_id: "project-1",
+    current_visit_sequence: 3,
+    author_model_provider: "codex",
+    author_model: "gpt-5.6-sol",
+    author_reasoning: "high",
+  } as OrchestrationRunRecord;
+  await state.controller.execute(traceRun, "self_discovery", "self_discovery", reviewerDefinition);
+  state.factory.sandbox.supervisor.state = "exited";
+  state.factory.sandbox.files.set("/root/.codex/auth.json", '{"auth":"refreshed"}');
+
+  const observation = await state.controller.execute(
+    traceRun,
+    "self_discovery",
+    "self_discovery",
+    reviewerDefinition,
+  );
+
+  assert.equal(observation.state === "completed" ? observation.outcome.outcome : null, "failed");
+  assert.equal(state.collector.failureCollections, 0);
+  assert.equal(state.attempts.latest?.state, "failed");
+  assert.equal(state.attempts.latest?.result_class, "post_collection_validation_failed");
+  assert.equal(state.attempts.latest?.manifest_id, "manifest:attempt-1");
+  assert.equal(state.factory.sandbox.destroyed, true);
 });
 
 test("expired heartbeat kills the process, destroys the Sandbox, and fails closed", async () => {

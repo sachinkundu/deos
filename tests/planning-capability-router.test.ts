@@ -79,6 +79,7 @@ class OperationStore implements CapabilityStore {
     return Promise.resolve({ operation: this.operation, created: false });
   }
   find() { return Promise.resolve(this.operation); }
+  listAttemptOperations() { return Promise.resolve([]); }
   finish(input: {
     expected: ProviderOperationState;
     state: ProviderOperationState;

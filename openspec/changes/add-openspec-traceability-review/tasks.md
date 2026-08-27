@@ -16,8 +16,8 @@
 ## 3. Review Execution and Repair
 
 - [x] 3.1 Run the author-model self-check in a fresh read-only Sandbox with the fixed BettaView bundle and bounded resources
-- [x] 3.2 Add trusted OpenRouter model discovery, saved settings, per-run model freezing, and a secret-safe structured-output adapter
-- [x] 3.3 Run the different-model independent review in a fresh read-only Sandbox and preserve all required artifacts
+- [x] 3.2 Add trusted OpenRouter model discovery, saved settings, per-run model freezing, and a capability-scoped Responses proxy with protected diagnostics
+- [x] 3.3 Run the different-model independent review through the pinned Codex coding-agent harness in a fresh read-only Sandbox and preserve its transcript, provider turns, and required artifacts
 - [x] 3.4 Implement immutable discovery baselines and closed-set rechecks that cannot add finding identifiers
 - [x] 3.5 Derive review outcomes in trusted code and surface malformed proof, proof conflicts, and unresolved findings for human judgment
 - [x] 3.6 Share a maximum of three author-repair turns across both review stages and stop further semantic retries when the budget is exhausted
@@ -30,6 +30,7 @@
 - [x] 4.3 Keep the new workflow selector disabled while preserving older frozen runs and workflow versions
 - [x] 4.4 Create or update one exact-head GitHub Check Run with a stable review identifier and durable read-back
 - [x] 4.5 Add one durable Linear portal link and concise review state without copying detailed findings
+- [x] 4.6 Add an authenticated, idempotent retry for the latest cleaned-up failed independent review attempt while preserving the run, candidate, PR, and prior evidence
 
 ## 5. Review Portal
 
@@ -46,4 +47,5 @@
 - [x] 6.4 Verify deployable Worker, portal, container, migration, and settings packaging without activating the live workflow or canary
 - [x] 6.5 Persist trusted deterministic-rejection feedback and stop a byte-identical rejected plan before another author-model retry
 - [x] 6.6 Run deterministic author checks as a bounded same-session completion hook and remove workflow-level deterministic author retries
-- [ ] 6.7 Rerun the real Linear canary and preserve the author, review, repair, provider, and portal proof
+- [x] 6.7 Prove the read-only Codex/OpenRouter tool loop, trusted malformed-output rejection, secret boundary, tests, deploy, and durable provider diagnostics
+- [ ] 6.8 Rerun the real Linear canary and preserve the author, review, repair, provider, and portal proof

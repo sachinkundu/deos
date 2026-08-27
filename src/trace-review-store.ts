@@ -43,6 +43,8 @@ export interface TraceReviewRecord {
   author_model: string;
   reviewer_provider: string;
   reviewer_model: string;
+  agent_harness: string;
+  agent_harness_version: string;
   reasoning_effort: string;
   prompt_version: string;
   prompt_sha256: string;
@@ -220,11 +222,12 @@ export class D1TraceReviewStore {
       `INSERT OR IGNORE INTO trace_reviews
        (review_id, review_input_id, run_id, attempt_id, phase, mode, round,
         candidate_id, reviewed_head_sha, author_model_provider, author_model,
-        reviewer_provider, reviewer_model, reasoning_effort, prompt_version,
+        reviewer_provider, reviewer_model, agent_harness, agent_harness_version,
+        reasoning_effort, prompt_version,
         prompt_sha256, tool_version, bundle_sha256, baseline_finding_set_digest,
         proof_manifest_id, sidecar_r2_key, overall_outcome, accepted,
         reused_from_review_id, conflicting_review_id, created_at, completed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
     ).bind(
       input.review_id,
       input.review_input_id,
@@ -239,6 +242,8 @@ export class D1TraceReviewStore {
       input.author_model,
       input.reviewer_provider,
       input.reviewer_model,
+      input.agent_harness,
+      input.agent_harness_version,
       input.reasoning_effort,
       input.prompt_version,
       input.prompt_sha256,
@@ -279,11 +284,12 @@ export class D1TraceReviewStore {
       `INSERT OR IGNORE INTO trace_reviews
        (review_id, review_input_id, run_id, attempt_id, phase, mode, round,
         candidate_id, reviewed_head_sha, author_model_provider, author_model,
-        reviewer_provider, reviewer_model, reasoning_effort, prompt_version,
+        reviewer_provider, reviewer_model, agent_harness, agent_harness_version,
+        reasoning_effort, prompt_version,
         prompt_sha256, tool_version, bundle_sha256, baseline_finding_set_digest,
         proof_manifest_id, sidecar_r2_key, overall_outcome, accepted,
         reused_from_review_id, conflicting_review_id, created_at, completed_at)
-       VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
     ).bind(
       input.review_id,
       input.review_input_id,
@@ -297,6 +303,8 @@ export class D1TraceReviewStore {
       input.author_model,
       input.reviewer_provider,
       input.reviewer_model,
+      input.agent_harness,
+      input.agent_harness_version,
       input.reasoning_effort,
       input.prompt_version,
       input.prompt_sha256,

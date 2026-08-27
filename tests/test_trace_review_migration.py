@@ -23,6 +23,7 @@ def test_trace_review_storage_is_additive_and_secret_free() -> None:
         "trace_review_phases",
         "trace_reviews",
         "trace_review_head_bindings",
+        "openrouter_response_receipts",
     } <= tables
     policy_columns = {
         row[1]
@@ -48,6 +49,37 @@ def test_trace_review_storage_is_additive_and_secret_free() -> None:
         row[1] for row in database.execute("PRAGMA table_info(agent_attempts)")
     }
     assert "result_detail" in attempt_columns
+    diagnostic_columns = {
+        row[1] for row in database.execute("PRAGMA table_info(diagnostics)")
+    }
+    assert {
+        "operation_id",
+        "provider",
+        "failure_stage",
+        "http_status",
+        "provider_code",
+        "provider_request_id",
+        "response_body_sha256",
+        "request_may_have_succeeded",
+        "retryable",
+        "safe_message",
+    } <= diagnostic_columns
+    review_columns = {
+        row[1] for row in database.execute("PRAGMA table_info(trace_reviews)")
+    }
+    assert {"agent_harness", "agent_harness_version"} <= review_columns
+    response_columns = {
+        row[1]
+        for row in database.execute("PRAGMA table_info(openrouter_response_receipts)")
+    }
+    assert {
+        "operation_id",
+        "r2_key",
+        "response_sha256",
+        "http_status",
+        "content_type",
+        "provider_request_id",
+    } <= response_columns
     all_columns = {
         row[1]
         for table in (

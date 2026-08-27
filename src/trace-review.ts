@@ -13,6 +13,8 @@ export type FindingResolution = typeof FINDING_RESOLUTIONS[number];
 export type TraceReviewProvider = "codex" | "openrouter";
 
 export interface TraceReviewModel {
+  harness: "codex";
+  harnessVersion: string;
   provider: TraceReviewProvider;
   model: string;
   reasoning: string;
@@ -179,6 +181,8 @@ export const reviewInputId = async (input: TraceReviewInput): Promise<string> =>
     throw new Error("discovery cannot name a baseline finding set");
   }
   for (const model of [input.author, input.reviewer]) {
+    if (model.harness !== "codex") throw new Error("review agent harness is invalid");
+    assertSafeText(model.harnessVersion, "review agent harness version", 80);
     if (!(["codex", "openrouter"] as const).includes(model.provider)) throw new Error("review model provider is invalid");
     assertSafeText(model.model, "review model", 240);
     assertSafeText(model.reasoning, "review reasoning", 80);

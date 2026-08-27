@@ -107,12 +107,22 @@ The full self-check SHALL create one base finding set. Each later self-check SHA
 
 ### Requirement: Independently review the exact published head
 
-After the trusted post, DEOS SHALL run one full independent check. It SHALL use the exact planning pull request head. It SHALL call OpenRouter through the trusted DEOS model adapter. Its model SHALL be a supported model chosen in the DEOS settings page before the run. It SHALL not be the author coding agent's model. DEOS SHALL save the provider and model with the run and MUST NOT change them during that run. The independent check MAY disagree with the self-check. That difference SHALL be allowed and SHALL become part of its own base finding set. The review job MUST NOT change repo or provider state.
+After the trusted post, DEOS SHALL run one full independent check. It SHALL use the exact planning pull request head. It SHALL run through a pinned Codex coding-agent harness configured to use a capability-scoped DEOS Responses proxy and the saved OpenRouter model. Its model SHALL be a supported model chosen in the DEOS settings page before the run. It SHALL not be the author coding agent's model. DEOS SHALL save the harness version, provider, and model with the run and MUST NOT change them during that run. The independent check MAY disagree with the self-check. That difference SHALL be allowed and SHALL become part of its own base finding set. The review job MUST NOT change repo or provider state. Trusted DEOS code SHALL validate the final structured result even when the provider does not enforce the requested output schema.
 
 #### Scenario: Planning pull request is published
 
 - **WHEN** the trusted post returns a pull request and exact head
 - **THEN** DEOS starts one full outside check on the proposal and delta specs at that head
+
+#### Scenario: Independent reviewer starts its model loop
+
+- **WHEN** the outside check needs model reasoning or a read-only tool call
+- **THEN** one fresh Codex coding-agent session uses only the saved OpenRouter model and the capability-scoped Responses proxy
+
+#### Scenario: Provider accepts an invalid final shape
+
+- **WHEN** the OpenRouter model returns a result that does not satisfy the trusted review schema
+- **THEN** DEOS rejects that result as proof and uses only the bounded proof-repair path
 
 #### Scenario: Independent reviewer uses the author model
 

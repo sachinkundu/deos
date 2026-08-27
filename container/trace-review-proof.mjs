@@ -14,6 +14,87 @@ export const findingSetFingerprint = (review) => {
   return JSON.stringify(canonicalize(findings));
 };
 
+export const parseCodexFinalMessage = (message) => {
+  if (typeof message !== "string") return message;
+  const trimmed = message.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const fenced = trimmed.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
+    if (fenced) {
+      try {
+        return JSON.parse(fenced[1]);
+      } catch {
+        // Preserve the original value so deterministic validation reports the failure.
+      }
+    }
+    return message;
+  }
+};
+
+export const reviewPromptWithSchema = (prompt, schema, provider) => provider === "openrouter"
+  ? [
+      prompt.trim(),
+      "",
+      "## Required exact JSON schema",
+      "",
+      "The routed model does not enforce the native output-schema parameter.",
+      "Return one JSON object matching this schema exactly. Do not nest top-level fields inside review, rename fields, wrap the object in Markdown, or add prose.",
+      schema.trim(),
+    ].join("\n")
+  : prompt;
+
+export const validateDiscoveryProofShape = (review) => {
+  if (typeof review !== "object" || review === null || Array.isArray(review)) {
+    throw new Error("review result must be an object");
+  }
+  const failures = [];
+  const isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+  const validateJudgment = (judgment, label) => {
+    if (!isObject(judgment)) {
+      failures.push(`${label} must be an object`);
+      return;
+    }
+    for (const field of ["coverage", "scope", "minimality", "rationale"]) {
+      if (typeof judgment[field] !== "string" || judgment[field].length === 0) {
+        failures.push(`${label}.${field} must be a non-empty string`);
+      }
+    }
+  };
+
+  validateJudgment(review.passingJudgment, "passingJudgment");
+  if (!Array.isArray(review.capabilities) || review.capabilities.length === 0) {
+    failures.push("review result must include a non-empty capabilities array");
+  } else {
+    for (const [index, capability] of review.capabilities.entries()) {
+      if (!isObject(capability)) {
+        failures.push(`capabilities[${index}] must be an object`);
+        continue;
+      }
+      const label = typeof capability.path === "string" && capability.path.length > 0
+        ? `capability ${capability.path}`
+        : `capabilities[${index}]`;
+      validateJudgment(capability.judgment, `${label}.judgment`);
+      if (!Array.isArray(capability.links)) {
+        failures.push(`${label} must include links as an array`);
+      } else {
+        for (const [linkIndex, link] of capability.links.entries()) {
+          if (!isObject(link)) {
+            failures.push(`${label}.links[${linkIndex}] must be an object`);
+            continue;
+          }
+          validateJudgment(link.judgment, `${label}.links[${linkIndex}].judgment`);
+        }
+      }
+    }
+  }
+  if (!Array.isArray(review.findings)) failures.push("review result must include findings as an array");
+  if (!Array.isArray(review.proposalStatements)) {
+    failures.push("review result must include proposalStatements as an array");
+  }
+  if (failures.length > 0) throw new Error(failures.join("; "));
+};
+
 export const codexSessionId = (stdout) => {
   const ids = stdout.split("\n").filter(Boolean).flatMap((line) => {
     try {
@@ -30,7 +111,16 @@ export const codexSessionId = (stdout) => {
   return unique[0];
 };
 
-export const codexReviewArgs = ({ sessionId, cwd, model, reasoning, schema, destination }) => {
+export const codexReviewArgs = ({
+  sessionId,
+  cwd,
+  model,
+  reasoning,
+  schema,
+  destination,
+  modelProvider = "codex",
+  capabilityUrl = null,
+}) => {
   const resumed = sessionId !== null;
   const args = resumed
     ? ["exec", "resume", sessionId, "-"]
@@ -44,18 +134,63 @@ export const codexReviewArgs = ({ sessionId, cwd, model, reasoning, schema, dest
     "--output-last-message", destination,
     "--json",
   );
+  if (modelProvider === "openrouter") {
+    if (typeof capabilityUrl !== "string" || capabilityUrl.length === 0) {
+      throw new Error("independent Codex provider URL is missing");
+    }
+    args.push(
+      "--ignore-user-config",
+      "--strict-config",
+      "--ignore-rules",
+      "--config", 'model_provider="deos_openrouter"',
+      "--config", 'model_providers.deos_openrouter.name="DEOS OpenRouter"',
+      "--config", `model_providers.deos_openrouter.base_url=${JSON.stringify(`${capabilityUrl.replace(/\/$/, "")}/openrouter/v1`)}`,
+      "--config", 'model_providers.deos_openrouter.env_key="DEOS_MODEL_CAPABILITY_TOKEN"',
+      "--config", 'model_providers.deos_openrouter.wire_api="responses"',
+      "--config", 'model_providers.deos_openrouter.env_http_headers={"Deos-Attempt"="DEOS_ATTEMPT_ID"}',
+      "--config", 'shell_environment_policy.include_only=["PATH","HOME"]',
+      "--config", "model_context_window=1000000",
+    );
+  }
   if (!resumed) args.push("--color", "never");
   return args;
 };
 
 export const reviewResultPayload = (provider, generated) => {
-  if (provider === "openrouter") return generated;
   if (
-    provider === "codex" &&
+    ["codex", "openrouter"].includes(provider) &&
     typeof generated === "object" && generated !== null &&
     Object.hasOwn(generated, "result")
   ) return generated.result;
   throw new Error("review provider result wrapper is invalid");
+};
+
+export const canonicalRecheckResolutions = (resolutions, change, documents) => {
+  const prefix = `openspec/changes/${change}/`;
+  const lineCounts = new Map(documents.map((document) => [
+    document.file,
+    String(document.source).split("\n").length,
+  ]));
+  return resolutions.map((resolution) => ({
+    ...resolution,
+    currentEvidence: Array.isArray(resolution.currentEvidence)
+      ? resolution.currentEvidence.map((evidence) => {
+        if (typeof evidence !== "object" || evidence === null || Array.isArray(evidence)) {
+          throw new Error("recheck evidence is outside the reviewed source set");
+        }
+        const relativePath = typeof evidence.path === "string" && evidence.path.startsWith(prefix)
+          ? evidence.path.slice(prefix.length)
+          : evidence.path;
+        const lineCount = typeof relativePath === "string" ? lineCounts.get(relativePath) : undefined;
+        if (
+          lineCount === undefined || !Number.isSafeInteger(evidence.startLine) ||
+          !Number.isSafeInteger(evidence.endLine) || evidence.startLine < 1 ||
+          evidence.endLine < evidence.startLine || evidence.endLine > lineCount
+        ) throw new Error("recheck evidence is outside the reviewed source set");
+        return { ...evidence, path: `${prefix}${relativePath}` };
+      })
+      : resolution.currentEvidence,
+  }));
 };
 
 export const proofRepairPrompt = ({ basePrompt, prior, failure, repair, maximumRepairs }) => [

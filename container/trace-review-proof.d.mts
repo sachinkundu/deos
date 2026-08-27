@@ -1,6 +1,9 @@
 export const MAXIMUM_PROOF_REPAIRS: 2;
 
 export function findingSetFingerprint(review: unknown): string;
+export function parseCodexFinalMessage(message: unknown): unknown;
+export function reviewPromptWithSchema(prompt: string, schema: string, provider: "codex" | "openrouter"): string;
+export function validateDiscoveryProofShape(review: unknown): void;
 export function codexSessionId(stdout: string): string;
 export function codexReviewArgs(input: {
   sessionId: string | null;
@@ -9,8 +12,15 @@ export function codexReviewArgs(input: {
   reasoning: string;
   schema: string;
   destination: string;
+  modelProvider?: "codex" | "openrouter";
+  capabilityUrl?: string | null;
 }): string[];
 export function reviewResultPayload(provider: "codex" | "openrouter", generated: unknown): unknown;
+export function canonicalRecheckResolutions(
+  resolutions: Array<Record<string, any>>,
+  change: string,
+  documents: Array<{ file: string; source: string }>,
+): Array<Record<string, any>>;
 export function proofRepairPrompt(input: {
   basePrompt: string;
   prior: unknown;

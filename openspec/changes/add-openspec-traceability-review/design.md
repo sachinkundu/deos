@@ -2,9 +2,9 @@
 
 The simple flow has one planning agent today. It writes the proposal and specs. It can also publish them to GitHub. The flow then waits for a person.
 
-This change adds a Codex self-check before publish. It also adds an independent review after publish. The self-check uses Codex, like the author coding agent Codex. The independent stage uses another supported model through OpenRouter. Both stages use BettaView. They must leave a clear trail. They must not waste work when the input has not changed.
+This change adds a Codex self-check before publish. It also adds an independent review after publish. Both stages use the Codex coding-agent harness. The self-check uses the author model through OpenAI. The independent stage configures the same harness with another supported model through OpenRouter. Both stages use BettaView. They must leave a clear trail. They must not waste work when the input has not changed.
 
-DEOS will still own the flow. D1 will own its state. R2 will hold the full proof. Each author coding agent Codex or review job will use a fresh Sandbox. Only trusted Worker code may use GitHub or Linear rights. A trusted model adapter will call OpenRouter without giving its key to a Sandbox.
+DEOS will still own the flow. D1 will own its state. R2 will hold the full proof. Each author coding agent Codex or review job will use a fresh Sandbox. Only trusted Worker code may use GitHub or Linear rights. A trusted Responses proxy will call OpenRouter without giving its key to a Sandbox.
 
 BettaView will supply the review rules. Its bundle will find the plan files, number each line, shape the model result, map quotes back to source, and check the final trace. These checks prove that the trace is well formed and fresh. The models try to check meaning. Their results cannot be absolute because model output is probabilistic.
 
@@ -18,7 +18,7 @@ The flow also needs a firm stop rule. The same review input will reuse the saved
 
 - Split plan writing from plan publish.
 - Run trusted file, OpenSpec, and reading checks before each model review.
-- Run the self-check with the author coding agent Codex model. Run the independent stage with an OpenRouter model chosen in settings and saved with the run.
+- Run both semantic checks through Codex. Run the self-check with the author coding agent Codex model. Run the independent Codex session with an OpenRouter model chosen in settings and saved with the run.
 - Reuse a good saved result when the review input is the same.
 - Allow no more than three shared author-repair turns before human judgment.
 - Keep the full review trail in D1 and R2.
@@ -48,7 +48,9 @@ flowchart LR
     C --> P[Trusted publish action]
     P --> G[One GitHub PR]
 
-    G --> I[Independent review stage<br/>OpenRouter model from Settings]
+    G --> I[Independent review stage<br/>Codex harness + OpenRouter model]
+    I --> X[Trusted DEOS Responses proxy]
+    X --> OR[OpenRouter]
     B --> I
     I --> E[(R2 independent proof)]
     I --> D
@@ -75,13 +77,13 @@ The first trial will use these settings:
 
 - author coding agent Codex: the model and thought level saved by the planning flow;
 - Codex self-check: that same saved Codex model and thought level, with fresh context; and
-- independent reviewer: a supported OpenRouter model chosen on the DEOS settings page.
+- independent reviewer: the pinned Codex harness configured with a supported OpenRouter model chosen on the DEOS settings page.
 
 The settings page will save the OpenRouter model for new runs. A run will copy that provider and model into its fixed data before work starts. A later settings change will not affect active work. The selected independent model must differ from the author coding agent Codex model.
 
-Each job record will name its model provider, model, thought setting, role, and provider rights. The saved flow hash will cover those fields. The runner will pass the saved Codex settings to Codex. A trusted model adapter will pass the saved independent setting to OpenRouter. Neither path will use an image, account, or user default.
+Each job record will name its coding-agent harness and version, model provider, model, thought setting, role, and provider rights. The saved flow hash will cover those fields. The runner will pass both review jobs to the pinned Codex binary. For the independent job, it will create a custom Codex provider that points at the trusted DEOS Responses proxy and names the saved OpenRouter model. Neither path will use an image, account, or user default.
 
-The author coding agent Codex and both review jobs will have no GitHub or Linear rights. The independent job will have only a narrow model-inference channel. It will never receive the OpenRouter key. Old saved flows will keep their old rules. Trusted code will set the repo, base, branch, change name, and future pull request before the author coding agent Codex starts.
+The author coding agent Codex and both review jobs will have no GitHub or Linear rights. The independent job will have only a narrow model-inference channel. It will receive a short-lived DEOS capability token as the custom-provider bearer token. The proxy will validate the exact run, attempt, provider, model, and path before it injects the OpenRouter key in the Worker. Old saved flows will keep their old rules. Trusted code will set the repo, base, branch, change name, and future pull request before the author coding agent Codex starts.
 
 We will not let the author coding agent Codex call BettaView or publish on its own. That would mix plan work, model work, and provider rights in one job.
 
@@ -107,9 +109,9 @@ No job may edit that saved plan. Worker verification uses the same check contrac
 
 The container will include a pinned review bundle. It will hold the prompt, schema, file scan, source builder, quote mapper, and validator. Its manifest will name the BettaView source commit and a hash for every file.
 
-One review job will make one semantic model call. The self-check will start one Codex process. The independent stage will call one saved OpenRouter model through the trusted model adapter. Neither job may start another model process or model call. The job will get only the saved plan, fixed bundle, stage, review mode, and any fixed finding list. It must return an empty patch.
+One review job will start one fresh Codex process and one agent session. The self-check will use the saved OpenAI-backed model. The independent stage will use the saved OpenRouter model through the trusted Responses proxy. A session may make only the bounded provider turns needed for its read-only Codex tool loop. It may not start another agent process or session. Every provider turn will use a stable operation identity and durable receipt. The job will get only the saved plan, fixed bundle, stage, review mode, and any fixed finding list. It must return an empty patch.
 
-The Codex self-check will use a fresh context. It may not read the author coding agent Codex job or notes that are not in the saved plan. The independent reviewer will receive only the saved review input. Each review job will also have a firm time limit. A timeout will use one job try and will not produce gate proof.
+The Codex self-check will use a fresh context. It may not read the author coding agent Codex job or notes that are not in the saved plan. The independent Codex session will receive only the saved review input. Codex will request the result schema, but trusted DEOS code will still parse and validate the final result because a routed provider may accept malformed output. Each review job will also have a firm time limit. A timeout will use one job try and will not produce gate proof.
 
 Trusted DEOS controller code outside the model and Sandbox will map and check the raw result. It will choose the flow outcome from the checked result. The model may not choose its own next step.
 
@@ -156,7 +158,7 @@ The proof-repair limit now covers malformed or missing review output. It does no
 
 The author coding agent Codex will never receive a GitHub token. A trusted action will publish the saved R2 plan to the run branch. It will create or update one planning pull request. It will then read back the branch, pull request, and exact head.
 
-The Codex self-check happens inside the `Create Planning PR` stage before publish. Trusted code publishes when that check passes or the shared three-turn repair limit is used. The independent OpenRouter review happens on the exact published head. If it finds a concern and a shared repair turn remains, the author coding agent Codex will repair the same plan. Trusted code will update the same pull request.
+The Codex self-check happens inside the `Create Planning PR` stage before publish. Trusted code publishes when that check passes or the shared three-turn repair limit is used. The independent Codex session using OpenRouter happens on the exact published head. If it finds a concern and a shared repair turn remains, the author coding agent Codex will repair the same plan. Trusted code will update the same pull request.
 
 After such a repair, both stages must check the exact new head. The Codex self-check will see the independent finding list, changed blocks, and linked blocks. It may only rate that list during this recheck. The OpenRouter reviewer will then rate its own fixed list.
 
@@ -206,6 +208,14 @@ Events may name the run, round, stage, mode, input ID, result ID, model provider
 
 Logs will not hold plan text, findings, prompts, model output, transcripts, or provider secrets. Those items belong in guarded R2 proof.
 
+### 12. Retry one failed review stage without rebuilding prior work
+
+An operator may retry a failed or heartbeat-interrupted independent review attempt after its Sandbox cleanup is confirmed. The request must name the exact run, stopped attempt, and review node. It may not select an author or system-action node.
+
+DEOS will keep the same run, candidate, pull request, model settings, and evidence. It will append an `operator_retry` transition from the terminal failure node to a fresh visit of the failed review node. A durable retry row will bind the failed attempt, new visit, transition, operator, and Cloudflare Workflow restart status. The existing Workflow instance will restart from D1 authority, so completed stages do not execute again.
+
+The retry endpoint is authenticated and idempotent. It will accept only the latest failed attempt for that node after cleanup is `destroyed`. An unclear Workflow restart remains pending for safe operator replay. It will not allocate a new Linear run or require a new provider delivery.
+
 ## State flow
 
 ```mermaid
@@ -225,6 +235,7 @@ stateDiagram-v2
     create_planning_pr --> stopped: hard fault
     self_check --> stopped: invalid proof or job limit
     independent_review --> stopped: invalid proof or job limit
+    stopped --> independent_review: audited operator retry of failed independent attempt
     human_pass --> [*]
     human_judgment --> [*]
 ```
@@ -279,6 +290,8 @@ No table will hold a provider secret. Full plan text and full review text will s
 | The same good review input appears again. | Save a reuse event. Do not run a job or model. |
 | A reviewed file changes. | Mark the old result stale. Make a new input. |
 | A review job changes a file. | Reject its proof. Use the proof-repair path. |
+| OpenRouter accepts a final answer that violates the requested schema. | Reject it in trusted validation, preserve the transcript and provider receipts, and use only the bounded proof-repair path. |
+| A Codex provider request changes the saved model or path. | Deny it at the Responses proxy before OpenRouter is called. |
 | The result or sidecar fails a check. | Keep the bad proof. Retry only within the proof limit. |
 | Recheck changes the fixed finding list. | Reject it. Keep the prior list and state. |
 | One stage reopens its own fixed finding with no source change. | Keep both proofs. Run no referee or author repair. Finish the independent stage, then send the conflict to human judgment. |
@@ -308,7 +321,7 @@ No table will hold a provider secret. Full plan text and full review text will s
 2. Add the trusted plan builder. Prove path checks, strict OpenSpec, reading checks, hashes, R2 save, and read-back.
 3. Add the four D1 review records. Add guarded state updates, exact-input reuse, the shared three-turn limit, stage close, stale state, and human escalation. Make R2 read-back happen before D1 accepts a result.
 4. Add result forms for discovery, recheck, and safety faults. Add trusted-controller outcomes and a clear author coding agent Codex feedback input. Do not add a referee model.
-5. Add the OpenRouter model choice to the DEOS settings page. Save it for new runs. Add the trusted model adapter and secret binding. Prove that no Sandbox or prompt receives the raw key.
+5. Add the OpenRouter model choice to the DEOS settings page. Save it for new runs. Add the capability-scoped Responses proxy and secret binding. Configure the pinned Codex binary to use that proxy as its independent-review provider. Prove a real read-only Codex tool loop and prove that no Sandbox or prompt receives the raw OpenRouter key.
 6. Split writing from publish. Add trusted plan identity and publish actions. Give new author and review jobs no GitHub or Linear rights.
 7. Keep self-check inside `Create Planning PR`. Add the independent review stage to a new fixed simple flow version. Keep its selector off. Prove old saved flows still work with the same hash and rights.
 8. Add the portal page, `View review trace` link in the planning-node popup, D1 view, safe R2 reads, trace view, raw proof links, reuse labels, stale state, and conflict history.

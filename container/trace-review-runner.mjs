@@ -19,12 +19,16 @@ import {
 } from "/deos/bettaview/src/review-traceability.js";
 import { loadTraceability } from "/deos/bettaview/src/traceability.js";
 import {
+  canonicalRecheckResolutions,
   codexReviewArgs,
   codexSessionId,
   MAXIMUM_PROOF_REPAIRS,
+  parseCodexFinalMessage,
   proofRepairPrompt,
+  reviewPromptWithSchema,
   reviewResultPayload,
   runBoundedProofReview,
+  validateDiscoveryProofShape,
 } from "./trace-review-proof.mjs";
 
 const OUTPUT_ROOT = "/deos/output";
@@ -75,26 +79,47 @@ const codexJudgment = async ({
   cwd,
   schema = schemaFile,
   sessionId = null,
+  modelProvider = "codex",
+  capabilityUrl = null,
+  capabilityToken = null,
+  attemptId = null,
 }) => {
-  const args = codexReviewArgs({ sessionId, cwd, model, reasoning, schema, destination });
+  const args = codexReviewArgs({
+    sessionId,
+    cwd,
+    model,
+    reasoning,
+    schema,
+    destination,
+    modelProvider,
+    capabilityUrl,
+  });
   const execution = await run("codex", args, {
     cwd,
     input: prompt,
     forward: true,
-    env: process.env,
+    env: modelProvider === "openrouter"
+      ? {
+          ...process.env,
+          DEOS_MODEL_CAPABILITY_TOKEN: String(capabilityToken ?? ""),
+          DEOS_ATTEMPT_ID: String(attemptId ?? ""),
+        }
+      : process.env,
   });
   const observedSessionId = codexSessionId(execution.stdout);
   if (sessionId !== null && observedSessionId !== sessionId) {
     throw new Error("proof repair resumed a different reviewer session");
   }
+  const finalMessage = await readFile(destination, "utf8");
+  const result = parseCodexFinalMessage(finalMessage);
   return {
-    result: JSON.parse(await readFile(destination, "utf8")),
+    result,
     sessionId: observedSessionId,
   };
 };
 
-const openRouterJudgment = async ({ prompt, job, repairAttempt, mode = "discovery" }) => {
-  const response = await fetch(`${job.capabilityUrl}/model-review`, {
+const collectOpenRouterReceipts = async (job) => {
+  const response = await fetch(`${job.capabilityUrl}/model-review/receipts`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${job.capabilityToken}`,
@@ -103,29 +128,31 @@ const openRouterJudgment = async ({ prompt, job, repairAttempt, mode = "discover
     },
     body: JSON.stringify({
       version: 1,
-      action: "openrouter_trace_review",
-      model: job.model,
-      reasoning: job.reasoning,
-      mode,
-      repairAttempt,
-      prompt,
+      action: "list_openrouter_review_receipts",
     }),
   });
   const body = await response.json();
-  if (!response.ok || typeof body !== "object" || body === null || typeof body.operationId !== "string") {
-    throw new Error("trusted OpenRouter review adapter rejected the request");
+  if (
+    !response.ok || typeof body !== "object" || body === null ||
+    !Array.isArray(body.receipts) || body.receipts.length === 0 || body.receipts.length > 100
+  ) {
+    throw new Error("trusted OpenRouter receipt lookup failed");
   }
+  const receipts = body.receipts.map((value) => {
+    const receipt = asObject(value, "OpenRouter provider receipt");
+    if (
+      receipt.capability !== "model" || typeof receipt.operationId !== "string" ||
+      !["succeeded", "reconciled"].includes(receipt.state) ||
+      !(receipt.providerResourceId === null || typeof receipt.providerResourceId === "string")
+    ) throw new Error("OpenRouter provider receipt is invalid");
+    return receipt;
+  });
   await writeFile(
     `${OUTPUT_ROOT}/provider-references.jsonl`,
-    `${JSON.stringify({
-      capability: "model",
-      operationId: body.operationId,
-      state: body.state,
-      providerResourceId: body.providerResourceId ?? null,
-    })}\n`,
-    { flag: "a", mode: 0o600 },
+    `${receipts.map((receipt) => JSON.stringify(receipt)).join("\n")}\n`,
+    { mode: 0o600 },
   );
-  return body.result;
+  return receipts.map((receipt) => receipt.operationId);
 };
 
 const asObject = (value, label) => {
@@ -151,7 +178,7 @@ const recheckJudgment = async ({ job, inventory, temporary }) => {
     ...document.source.split("\n").map((line, index) => `${index + 1}: ${line}`),
   ].join("\n")).join("\n\n");
   const instructions = await readFile(recheckPromptFile, "utf8");
-  const prompt = [
+  const basePrompt = [
     instructions.trim(),
     "",
     `Baseline finding set digest: ${baseline.findingSetDigest}`,
@@ -161,23 +188,34 @@ const recheckJudgment = async ({ job, inventory, temporary }) => {
     "Current numbered sources:",
     numberedSources,
   ].join("\n");
+  const prompt = reviewPromptWithSchema(
+    basePrompt,
+    await readFile(recheckSchemaFile, "utf8"),
+    job.modelProvider,
+  );
   const rawFile = path.join(temporary, "raw-recheck.json");
-  const generated = job.modelProvider === "codex"
-    ? await codexJudgment({
-        prompt,
-        model: job.model,
-        reasoning: job.reasoning,
-        destination: rawFile,
-        cwd: path.join(temporary, job.openspecChange),
-        schema: recheckSchemaFile,
-      })
-    : await openRouterJudgment({ prompt, job, repairAttempt: 0, mode: "recheck" });
+  const generated = await codexJudgment({
+    prompt,
+    model: job.model,
+    reasoning: job.reasoning,
+    destination: rawFile,
+    cwd: path.join(temporary, job.openspecChange),
+    schema: recheckSchemaFile,
+    modelProvider: job.modelProvider,
+    capabilityUrl: job.capabilityUrl,
+    capabilityToken: job.capabilityToken,
+    attemptId: job.attemptId,
+  });
   const result = reviewResultPayload(job.modelProvider, generated);
   if (
     result.mode !== "recheck" || result.baselineFindingSetDigest !== baseline.findingSetDigest ||
     !Array.isArray(result.resolutions) || result.resolutions.length !== baselineIds.length
   ) throw new Error("recheck changed the fixed finding inventory");
-  const resolutions = [...result.resolutions].sort((left, right) =>
+  const resolutions = canonicalRecheckResolutions(
+    result.resolutions,
+    job.openspecChange,
+    inventory.documents,
+  ).sort((left, right) =>
     String(left.findingId).localeCompare(String(right.findingId)));
   const expected = [...baselineIds].sort();
   if (resolutions.some((resolution, index) => resolution.findingId !== expected[index])) {
@@ -201,8 +239,7 @@ const recheckJudgment = async ({ job, inventory, temporary }) => {
   }, null, 2)}\n`);
   await writeFile(`${OUTPUT_ROOT}/trace-validation.txt`, "validated closed finding inventory and current exact source hashes\n");
   const providerReceipts = job.modelProvider === "openrouter"
-    ? (await readFile(`${OUTPUT_ROOT}/provider-references.jsonl`, "utf8"))
-        .trim().split("\n").filter(Boolean).map((line) => JSON.parse(line).operationId)
+    ? await collectOpenRouterReceipts(job)
     : [];
   await writeFile(`${OUTPUT_ROOT}/result.json`, `${JSON.stringify({
     outcome: "completed",
@@ -241,7 +278,9 @@ const findingInventory = (traceability, change) => traceability.findings
 const main = async () => {
   const job = JSON.parse(await readFile("/deos/run/job.json", "utf8"));
   if (
-    job.agentRole !== "reviewer" || job.permissionProfile !== "review_read_only" ||
+    job.agentRole !== "reviewer" || job.agentHarness !== "codex" ||
+    job.agentHarnessVersion !== "0.147.0" ||
+    job.permissionProfile !== "review_read_only" ||
     !["codex", "openrouter"].includes(job.modelProvider) ||
     typeof job.model !== "string" || typeof job.reasoning !== "string" ||
     !["discovery", "recheck"].includes(job.reviewMode) ||
@@ -268,6 +307,7 @@ const main = async () => {
     }
   }
   const instructions = await readFile(promptFile, "utf8");
+  const schemaSource = await readFile(schemaFile, "utf8");
   const reviewerVersion = `${job.model} (${job.reasoning}) via ${job.modelProvider}`;
   let validatorLog = "";
   try {
@@ -277,7 +317,11 @@ const main = async () => {
       generate: async ({ attempt, prior, failure, sessionId }) => {
         const reviewedAt = new Date().toISOString();
         reviewedAtByAttempt[attempt] = reviewedAt;
-        const basePrompt = buildJudgePrompt({ inventory, instructions, reviewerVersion, reviewedAt });
+        const basePrompt = reviewPromptWithSchema(
+          buildJudgePrompt({ inventory, instructions, reviewerVersion, reviewedAt }),
+          schemaSource,
+          job.modelProvider,
+        );
         const prompt = attempt === 0
           ? basePrompt
           : proofRepairPrompt({
@@ -288,23 +332,22 @@ const main = async () => {
               maximumRepairs: MAXIMUM_PROOF_REPAIRS,
             });
         const rawFile = path.join(temporary, `raw-${attempt}.json`);
-        if (job.modelProvider === "codex") {
-          const generated = await codexJudgment({
-            prompt,
-            model: job.model,
-            reasoning: job.reasoning,
-            destination: rawFile,
-            cwd: reviewDirectory,
-            sessionId,
-          });
-          return { raw: generated.result, sessionId: generated.sessionId };
-        }
-        return {
-          raw: await openRouterJudgment({ prompt, job, repairAttempt: attempt }),
-          sessionId: null,
-        };
+        const generated = await codexJudgment({
+          prompt,
+          model: job.model,
+          reasoning: job.reasoning,
+          destination: rawFile,
+          cwd: reviewDirectory,
+          sessionId,
+          modelProvider: job.modelProvider,
+          capabilityUrl: job.capabilityUrl,
+          capabilityToken: job.capabilityToken,
+          attemptId: job.attemptId,
+        });
+        return { raw: generated.result, sessionId: generated.sessionId };
       },
       validate: async (raw, attempt) => {
+        validateDiscoveryProofShape(raw);
         const reviewedAt = reviewedAtByAttempt[attempt];
         const normalized = normalizeJudgment(raw, {
           change: inventory.change,
@@ -351,8 +394,7 @@ const main = async () => {
     }, null, 2)}\n`);
     await writeFile(`${OUTPUT_ROOT}/trace-validation.txt`, validatorLog);
     const providerReceipts = job.modelProvider === "openrouter"
-      ? (await readFile(`${OUTPUT_ROOT}/provider-references.jsonl`, "utf8"))
-          .trim().split("\n").filter(Boolean).map((line) => JSON.parse(line).operationId)
+      ? await collectOpenRouterReceipts(job)
       : [];
     await writeFile(`${OUTPUT_ROOT}/result.json`, `${JSON.stringify({
       outcome: "completed",
