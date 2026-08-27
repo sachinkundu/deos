@@ -32,7 +32,7 @@ const schemas: Readonly<Record<string, string>> = Object.freeze({
   "schemas/review-result-v1.json": JSON.stringify(reviewResultSchema),
 });
 
-export const DEFAULT_WORKFLOW_DEFINITION_ID = "openspec-delivery";
+export const DEFAULT_WORKFLOW_DEFINITION_ID = "simple";
 
 const workflowSources = Object.freeze([workflowSource, simpleWorkflowSource]);
 

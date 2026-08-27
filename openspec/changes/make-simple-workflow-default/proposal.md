@@ -1,16 +1,14 @@
 ## Why
 
-The proven simple workflow still depends on a Linear label and stops after planning. New issues should enter one clear default flow, and the portal must keep its settings page separate from the workflow map.
+The proven simple workflow still needs a Linear label even though it is now the workflow we want to use. The portal build also sends `/settings` to the visualization instead of the existing settings interface.
 
 ## What Changes
 
-- **BREAKING** Make the simple workflow the default for every accepted start event. A `simple-workflow` label no longer selects a definition.
-- Replace the planning-only agent step with one governed delivery step. It creates the proposal, delta specs, design, tasks, implementation, validation, and one pull request in one agent attempt.
-- Keep Human Review as the explicit approval gate. Revision returns to a fresh delivery attempt on the same governed pull request; approval moves to automatic merge and verification.
-- Retire the simple-workflow selector control from settings. Keep dispatch as the operator switch for admitting new runs.
-- Serve the workflow visualization only at `/`. Serve the existing project settings interface at `/settings` and `/settings/`.
-- Preserve frozen historical definitions and recorded runs. Do not rewrite older label-selected or planning-only runs.
-- Do not remove the larger workflow definition in this change. It remains available for later migration work but is not the default.
+- **BREAKING** Make the existing simple workflow the default for every accepted start event. A `simple-workflow` label no longer selects a definition.
+- Keep workflow dispatch as the operator switch for admitting new runs and remove the obsolete simple-workflow selector from settings.
+- Serve the approved workflow visualization at `/` only. Serve the existing project settings interface at `/settings` and `/settings/`.
+- Preserve the larger workflow definition and every frozen historical run. Do not change the simple workflow's planning, Human Review, merge, verification, or terminal behavior.
+- Do not remove bounded Linear label evidence from webhook ingress in this change. It remains compatible event evidence but does not affect workflow selection.
 
 ## Capabilities
 
@@ -20,10 +18,8 @@ The proven simple workflow still depends on a Linear label and stops after plann
 
 ### Modified Capabilities
 
-- `workflow-dispatch`: Makes the simple definition the default and removes label-based definition selection for new runs.
-- `sandbox-agent-execution`: Requires one delivery agent attempt to produce the complete OpenSpec plan, implementation, validation, and governed pull request.
-- `provider-capability-access`: Governs one stable full-delivery pull request across the initial attempt and any revision attempts.
+- `workflow-dispatch`: Makes the existing simple definition the default and removes label-based definition selection for new runs.
 
 ## Impact
 
-The change affects the bundled workflow definition, Queue dispatch selection, durable work-product records, sandbox job inputs and prompts, GitHub capability validation, automatic merge verification, portal settings contracts, frontend routing, migrations, deployment configuration, and provider canary evidence. It requires a new immutable simple workflow version and additive D1 migration. Existing runs keep their frozen definitions and history.
+The change affects bundled-definition selection, Queue dispatch, selector registration, portal settings contracts, frontend builds, Worker asset routing, tests, and the deployed Queue and portal Workers. It does not change the simple workflow definition, agent prompt, provider capabilities, governed pull request, or merge path.

@@ -44,7 +44,17 @@ export const routePortalRequest = async (
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/")) {
     if (!["GET", "HEAD"].includes(request.method)) return json(405, { error: "method_not_allowed" });
-    const response = await env.ASSETS.fetch(request);
+    const assetPath = url.pathname === "/"
+      ? "/index.html"
+      : url.pathname === "/settings" || url.pathname === "/settings/"
+        ? "/settings.html"
+        : url.pathname.startsWith("/assets/")
+          ? url.pathname
+          : null;
+    if (assetPath === null) return json(404, { error: "route_not_found" });
+    const assetUrl = new URL(url);
+    assetUrl.pathname = assetPath;
+    const response = await env.ASSETS.fetch(new Request(assetUrl, request));
     const headers = new Headers(response.headers);
     for (const [key, value] of Object.entries(securityHeaders)) headers.set(key, value);
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
@@ -84,18 +94,16 @@ export const routePortalRequest = async (
       }
       const body = await request.json() as {
         dispatchEnabled?: unknown;
-        selectorEnabled?: unknown;
         expectedRevision?: unknown;
       };
       if (
+        Object.keys(body).some((key) => !["dispatchEnabled", "expectedRevision"].includes(key)) ||
         typeof body.dispatchEnabled !== "boolean" ||
-        typeof body.selectorEnabled !== "boolean" ||
         !Number.isSafeInteger(body.expectedRevision)
       ) return json(400, { error: "invalid_request" });
       const value = await settings.saveWorkflowControls({
         projectId: env.PROJECT_ID,
         dispatchEnabled: body.dispatchEnabled,
-        selectorEnabled: body.selectorEnabled,
         expectedRevision: body.expectedRevision as number,
         actorEmail: identity.email,
         now: new Date().toISOString(),
@@ -147,7 +155,7 @@ export const routePortalRequest = async (
       const status = error.code === "invalid_repository" ? 400
         : error.code === "settings_not_found" ? 404
         : error.code === "active_run" || error.code === "stale_revision" ||
-          error.code === "stale_workflow_revision" || error.code === "selector_unavailable" ? 409
+          error.code === "stale_workflow_revision" ? 409
         : 503;
       return json(status, { error: error.code });
     }

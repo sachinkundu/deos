@@ -139,8 +139,8 @@ export type SelectionReason =
 export interface RunSelectionEvidence {
   kind: "default" | "linear_label";
   value: string;
-  labelName: string;
-  reason: SelectionReason;
+  labelName: string | null;
+  reason: SelectionReason | null;
   evidenceJson: string;
   deliveryId: string;
   observedAt: string;

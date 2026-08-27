@@ -366,28 +366,19 @@ const environment = (workflow: FakeWorkflow): QueueConsumerEnv => ({
   TRIAL_DISPATCH_ENABLED: "true",
 } as unknown as QueueConsumerEnv);
 
-test("scheduled registration creates the simple selector disabled and preserves activation", async () => {
+test("scheduled registration makes simple the default without creating a selector", async () => {
   const store = new FakeStore();
   const env = environment(new FakeWorkflow());
   const definitions = { "openspec-delivery": definition, simple: simpleDefinition };
-  const key = "project-1:sachinkundu/deos:simple-workflow";
 
   await registerBundledWorkflowDefinitions(env, {
     store,
     definitions,
     now: () => new Date(NOW),
   });
-  const selector = store.selectors.get(key);
-  assert.equal(selector?.enabled, 0);
-
-  if (selector === undefined) throw new Error("selector setup failed");
-  selector.enabled = 1;
-  await registerBundledWorkflowDefinitions(env, {
-    store,
-    definitions,
-    now: () => new Date(NOW),
-  });
-  assert.equal(store.selectors.get(key)?.enabled, 1);
+  assert.equal(store.policies.get("project-1")?.definition_id, simpleDefinition.name);
+  assert.equal(store.policies.get("project-1")?.definition_digest, simpleDefinition.digest);
+  assert.equal(store.selectors.size, 0);
 });
 
 test("scheduled registration preserves the D1 repository setting", async () => {
@@ -412,10 +403,9 @@ test("scheduled registration preserves the D1 repository setting", async () => {
     now: () => new Date(NOW),
   });
   assert.equal(store.policies.get("project-1")?.trial_repository, "sachinkundu/deos-sample-project");
-  assert.equal(
-    store.selectors.get("project-1:sachinkundu/deos-sample-project:simple-workflow")?.enabled,
-    0,
-  );
+  assert.equal(store.policies.get("project-1")?.definition_id, simpleDefinition.name);
+  assert.equal(store.policies.get("project-1")?.dispatch_enabled, 0);
+  assert.equal(store.selectors.size, 0);
 });
 
 const runMessage = async (
@@ -473,7 +463,6 @@ const runSelectedMessage = async (input: {
     } as unknown as QueueConsumerEnv),
     {
       store: input.store,
-      definition,
       definitions: { [definition.name]: definition, simple: simpleDefinition },
       now: () => new Date(NOW),
       observe: () => {},
@@ -494,84 +483,56 @@ test("start delivery allocates one run and establishes one stable Workflow", asy
   assert.equal(observations.at(-1)?.["deos.workflow.outcome"], "succeeded");
 });
 
-test("enabled exact label selects and freezes simple while disabled or absent falls back", async () => {
-  const enabled = new FakeStore();
-  const enabledKey = "project-1:sachinkundu/deos:simple-workflow";
-  await enabled.registerSelector({
+test("labels and legacy selector state do not change the simple default", async () => {
+  const labeled = new FakeStore();
+  const legacyKey = "project-1:sachinkundu/deos:simple-workflow";
+  await labeled.registerSelector({
     projectId: "project-1",
     repository: "sachinkundu/deos",
     labelName: "simple-workflow",
     definition: simpleDefinition,
     now: NOW,
   });
-  const selector = enabled.selectors.get(enabledKey);
+  const selector = labeled.selectors.get(legacyKey);
   if (selector === undefined) throw new Error("selector setup failed");
   selector.enabled = 1;
   await runSelectedMessage({
-    store: enabled,
+    store: labeled,
     workflow: new FakeWorkflow(),
     evidence: {
       status: "available",
       labels: [{ id: "label-1", name: "simple-workflow" }],
     },
   });
-  assert.equal(enabled.runs[0].definition_id, "simple");
-  assert.equal(enabled.runs[0].selection_kind, "linear_label");
-  assert.equal(enabled.runs[0].selection_reason, "label_match");
+  assert.equal(labeled.runs[0].definition_id, "simple");
+  assert.equal(labeled.runs[0].selection_kind, "default");
+  assert.equal(labeled.runs[0].selection_value, "project_policy");
+  assert.equal(labeled.runs[0].selection_label_name, null);
+  assert.equal(labeled.runs[0].selection_reason, null);
   assert.equal(
-    enabled.runs[0].selection_provider_digest,
+    labeled.runs[0].selection_provider_digest,
     "0e2ea257f23ae2fad54c7b9a1e0a37721e92921c0bdc1645f4263ca6a9bdc499",
   );
 
-  const disabled = new FakeStore();
+  const unlabeled = new FakeStore();
   await runSelectedMessage({
-    store: disabled,
+    store: unlabeled,
     workflow: new FakeWorkflow(),
-    evidence: {
-      status: "available",
-      labels: [{ id: "label-1", name: "simple-workflow" }],
-    },
   });
-  assert.equal(disabled.runs[0].definition_id, definition.name);
-  assert.equal(disabled.runs[0].selection_kind, "default");
-  assert.equal(disabled.runs[0].selection_reason, "selector_disabled");
-
-  const absent = new FakeStore();
-  await absent.registerSelector({
-    projectId: "project-1",
-    repository: "sachinkundu/deos",
-    labelName: "simple-workflow",
-    definition: simpleDefinition,
-    now: NOW,
-  });
-  const absentSelector = absent.selectors.get(enabledKey);
-  if (absentSelector === undefined) throw new Error("selector setup failed");
-  absentSelector.enabled = 1;
-  await runSelectedMessage({ store: absent, workflow: new FakeWorkflow() });
-  assert.equal(absent.runs[0].definition_id, definition.name);
-  assert.equal(absent.runs[0].selection_reason, "label_absent");
+  assert.equal(unlabeled.runs[0].definition_id, "simple");
+  assert.equal(unlabeled.runs[0].selection_value, "project_policy");
 });
 
-test("unavailable evidence falls back while tampered queue evidence fails before allocation", async () => {
+test("unavailable evidence keeps the simple default while tampering fails before allocation", async () => {
   const store = new FakeStore();
-  const key = "project-1:sachinkundu/deos:simple-workflow";
-  await store.registerSelector({
-    projectId: "project-1",
-    repository: "sachinkundu/deos",
-    labelName: "simple-workflow",
-    definition: simpleDefinition,
-    now: NOW,
-  });
-  const selector = store.selectors.get(key);
-  if (selector === undefined) throw new Error("selector setup failed");
-  selector.enabled = 1;
   await runSelectedMessage({
     store,
     workflow: new FakeWorkflow(),
     evidence: { status: "unavailable" },
   });
-  assert.equal(store.runs[0].definition_id, definition.name);
-  assert.equal(store.runs[0].selection_reason, "label_evidence_unavailable");
+  assert.equal(store.runs[0].definition_id, "simple");
+  assert.equal(store.runs[0].selection_value, "project_policy");
+  assert.equal(store.runs[0].selection_reason, null);
 
   const tampered = new FakeStore();
   await assert.rejects(runSelectedMessage({

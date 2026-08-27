@@ -47,8 +47,6 @@ interface RepositorySettings {
   updatedBy: string;
   updatedAt: string;
   dispatchEnabled: boolean;
-  selectorEnabled: boolean;
-  selectorAvailable: boolean;
   workflowRevision: number;
   workflowUpdatedBy: string;
   workflowUpdatedAt: string;
@@ -85,20 +83,18 @@ const saveRepository = async (repository: string, expectedRevision: number): Pro
 
 const saveWorkflowControls = async (
   dispatchEnabled: boolean,
-  selectorEnabled: boolean,
   expectedRevision: number,
 ): Promise<RepositorySettings> => {
   const response = await fetch("/api/settings/workflow", {
     method: "PUT",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ dispatchEnabled, selectorEnabled, expectedRevision }),
+    body: JSON.stringify({ dispatchEnabled, expectedRevision }),
   });
   const body = await response.json() as RepositorySettings & { error?: string };
   if (!response.ok) {
     const messages: Record<string, string> = {
       active_run: "A workflow is active. Wait for it to finish before changing these controls.",
       stale_workflow_revision: "These controls changed in another session. Reload them and try again.",
-      selector_unavailable: "The simple workflow is not ready for this repository yet.",
     };
     throw new Error(messages[body.error ?? ""] ?? "The workflow controls could not be saved.");
   }
@@ -147,7 +143,6 @@ function SettingsPanel() {
   const [settings, setSettings] = useState<RepositorySettings | null>(null);
   const [repository, setRepository] = useState("");
   const [dispatchEnabled, setDispatchEnabled] = useState(false);
-  const [selectorEnabled, setSelectorEnabled] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(true);
 
@@ -159,7 +154,6 @@ function SettingsPanel() {
       setSettings(value);
       setRepository(value.repository);
       setDispatchEnabled(value.dispatchEnabled);
-      setSelectorEnabled(value.selectorEnabled);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Settings could not be loaded.");
     } finally { setBusy(false); }
@@ -176,7 +170,6 @@ function SettingsPanel() {
       setSettings(value);
       setRepository(value.repository);
       setDispatchEnabled(value.dispatchEnabled);
-      setSelectorEnabled(value.selectorEnabled);
       setMessage("Saved and read back from D1.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The repository could not be saved.");
@@ -188,22 +181,17 @@ function SettingsPanel() {
     setBusy(true);
     setMessage("");
     try {
-      const value = await saveWorkflowControls(
-        dispatchEnabled, selectorEnabled, settings.workflowRevision,
-      );
+      const value = await saveWorkflowControls(dispatchEnabled, settings.workflowRevision);
       setSettings(value);
       setDispatchEnabled(value.dispatchEnabled);
-      setSelectorEnabled(value.selectorEnabled);
       setMessage("Workflow controls saved and read back from D1.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The workflow controls could not be saved.");
     } finally { setBusy(false); }
   };
 
-  const controlsChanged = settings !== null && (
-    dispatchEnabled !== settings.dispatchEnabled || selectorEnabled !== settings.selectorEnabled
-  );
-  const controlsLocked = busy || settings === null || settings.activeRuns > 0 || !settings.selectorAvailable;
+  const controlsChanged = settings !== null && dispatchEnabled !== settings.dispatchEnabled;
+  const controlsLocked = busy || settings === null || settings.activeRuns > 0;
 
   return <section className="settings-page">
     <div className="settings-heading"><div><span className="eyebrow">Project settings</span><h1>Workflow settings</h1><p>Choose the repository and control when new workflow work starts.</p></div><GithubLogo /></div>
@@ -216,17 +204,12 @@ function SettingsPanel() {
           <div className="settings-actions"><button type="button" onClick={() => void save()} disabled={busy || settings === null || repository.trim() === settings.repository}>{busy ? "Working…" : "Save repository"}</button></div>
         </div>
         <div className="settings-card controls-card">
-          <div className="card-heading"><div><h2>Workflow controls</h2><p>Both settings apply to new Todo events only.</p></div><span className={settings?.activeRuns ? "guard active" : "guard"}>{settings?.activeRuns ? "Locked" : "Ready"}</span></div>
+          <div className="card-heading"><div><h2>Workflow controls</h2><p>This setting applies to new Todo events only.</p></div><span className={settings?.activeRuns ? "guard active" : "guard"}>{settings?.activeRuns ? "Locked" : "Ready"}</span></div>
           <label className="switch-row">
             <span><strong>Workflow dispatch</strong><small>Let accepted Todo events start a workflow.</small></span>
             <input type="checkbox" checked={dispatchEnabled} onChange={(event) => setDispatchEnabled(event.target.checked)} disabled={controlsLocked} />
           </label>
-          <label className="switch-row">
-            <span><strong>Simple workflow</strong><small>Use the planning flow when the issue has the exact label.</small></span>
-            <input type="checkbox" checked={selectorEnabled} onChange={(event) => setSelectorEnabled(event.target.checked)} disabled={controlsLocked} />
-          </label>
           {settings !== null && settings.activeRuns > 0 && <p className="guard-note">A workflow is active. These controls will unlock when it ends.</p>}
-          {settings !== null && !settings.selectorAvailable && <p className="guard-note">The simple workflow is not ready for this repository yet.</p>}
           <div className="settings-actions"><button type="button" onClick={() => void saveControls()} disabled={controlsLocked || !controlsChanged}>{busy ? "Working…" : "Save workflow controls"}</button><button className="secondary" type="button" onClick={() => void load()} disabled={busy}>Reload</button></div>
           {message && <div className="settings-message" role="status">{message}</div>}
         </div>
@@ -347,7 +330,7 @@ function App() {
   return <div className="shell">
     <header className="topbar">
       <div className="brand"><span className="brand-mark">D</span><div><strong>DEOS</strong><small>Workflow portal</small></div></div>
-      <div className="topbar-meta"><span className="secure-dot" />Access protected<button className="settings-nav" type="button" onClick={() => navigate(page === "settings" ? "workflow" : "settings")}><Gear />{page === "settings" ? "Workflows" : "Settings"}</button><ThemeControl theme={theme} setTheme={setTheme} /></div>
+      <div className="topbar-meta"><span className="secure-dot" />Access protected<a className="settings-nav" href="/"><Gear />Workflows</a><ThemeControl theme={theme} setTheme={setTheme} /></div>
     </header>
     {page === "workflow" && <aside className="rail">
       <form onSubmit={(event) => { event.preventDefault(); void search(); }} className="search-form">

@@ -5,7 +5,7 @@ import { verifyAccess } from "../src/auth.ts";
 import { PORTAL_SELECTS } from "../src/model.ts";
 import { validatePresentationManifest } from "../src/manifests.ts";
 import { routePortalRequest } from "../src/worker.ts";
-import { normalizeRepository, RepositorySettingsError } from "../src/settings.ts";
+import { normalizeRepository, RepositorySettingsError, RepositorySettingsStore } from "../src/settings.ts";
 import {
   parseTranscriptJsonl,
   TranscriptReadStore,
@@ -60,6 +60,31 @@ test("repository settings accept only exact owner and repository names", () => {
   }
 });
 
+test("repository settings no longer read workflow selectors", async () => {
+  let query = "";
+  const db = {
+    prepare(value: string) {
+      query = value;
+      return { bind: () => ({ first: async () => ({
+        project_id: "project-id",
+        trial_repository: "sachinkundu/deos",
+        repository_revision: 3,
+        repository_updated_by: "sachinkundu@gmail.com",
+        repository_updated_at: "2026-08-27T08:00:00Z",
+        dispatch_enabled: 0,
+        workflow_revision: 5,
+        workflow_updated_by: "sachinkundu@gmail.com",
+        workflow_updated_at: "2026-08-27T08:00:00Z",
+        active_runs: 0,
+      }) }) };
+    },
+  } as unknown as D1Database;
+  const settings = await new RepositorySettingsStore(db).read("project-id");
+  assert.equal(settings?.dispatchEnabled, false);
+  assert.deepEqual(Object.keys(settings ?? {}).includes("selectorEnabled"), false);
+  assert.doesNotMatch(query, /workflow_definition_selectors|simple-workflow/i);
+});
+
 test("the current exact workflow digest has complete presentation coverage", async () => {
   const nodeIds = [
     "requirements", "requirements_review", "requirements_approval", "openspec_proposal",
@@ -108,7 +133,33 @@ test("authentication runs before assets, route methods, or D1", async () => {
   assert.equal(assetReads, 1);
 });
 
-test("workflow control writes require two booleans and a revision", async () => {
+test("browser routes map to explicit portal entries without SPA fallback", async () => {
+  const paths: string[] = [];
+  const env = {
+    DB: {} as D1Database,
+    ARTIFACTS: {} as R2Bucket,
+    ASSETS: { fetch: async (request: Request) => {
+      const path = new URL(request.url).pathname;
+      paths.push(path);
+      return new Response(path);
+    } } as unknown as Fetcher,
+    ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
+    ACCESS_AUD: "aud",
+    ALLOWED_EMAIL: "sachinkundu@gmail.com",
+    PROJECT_ID: "project-id",
+  };
+  const authenticate = async () => ({ email: "sachinkundu@gmail.com" });
+  assert.equal(await (await routePortalRequest(new Request("https://deos.example/"), env, authenticate)).text(), "/index.html");
+  assert.equal(await (await routePortalRequest(new Request("https://deos.example/settings"), env, authenticate)).text(), "/settings.html");
+  assert.equal(await (await routePortalRequest(new Request("https://deos.example/settings/"), env, authenticate)).text(), "/settings.html");
+  assert.equal(await (await routePortalRequest(new Request("https://deos.example/assets/app.js"), env, authenticate)).text(), "/assets/app.js");
+  const unknown = await routePortalRequest(new Request("https://deos.example/future-tool"), env, authenticate);
+  assert.equal(unknown.status, 404);
+  assert.deepEqual(await unknown.json(), { error: "route_not_found" });
+  assert.deepEqual(paths, ["/index.html", "/settings.html", "/settings.html", "/assets/app.js"]);
+});
+
+test("workflow control writes require only dispatch and revision", async () => {
   const env = {
     DB: {} as D1Database,
     ARTIFACTS: {} as R2Bucket,
@@ -121,7 +172,7 @@ test("workflow control writes require two booleans and a revision", async () => 
   const response = await routePortalRequest(new Request("https://deos.example/api/settings/workflow", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dispatchEnabled: true, selectorEnabled: "yes", expectedRevision: 1 }),
+    body: JSON.stringify({ dispatchEnabled: true, selectorEnabled: true, expectedRevision: 1 }),
   }), env, async () => ({ email: "sachinkundu@gmail.com" }));
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), { error: "invalid_request" });

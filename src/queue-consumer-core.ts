@@ -248,7 +248,7 @@ export const registerBundledWorkflowDefinitions = async (
   const store = dependencies.store ?? new D1OrchestrationStore(env.DB);
   const bundled = dependencies.definitions ??
     await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry();
-  const definition = dependencies.defaultDefinition ?? bundled["openspec-delivery"];
+  const definition = dependencies.defaultDefinition ?? bundled.simple;
   if (definition === undefined) throw new Error("default workflow definition is unavailable");
   const now = (dependencies.now ?? (() => new Date()))().toISOString();
   await store.registerDefinitionAndPolicy({
@@ -260,21 +260,9 @@ export const registerBundledWorkflowDefinitions = async (
     dispatchEnabled: String(env.TRIAL_DISPATCH_ENABLED) === "true",
     now,
   });
-  const policy = await store.findPolicy(env.LINEAR_PROJECT_ID);
-  if (policy === null) throw new Error("workflow project policy is unavailable");
   for (const registered of Object.values(bundled)) {
     if (registered.name === definition.name && registered.version === definition.version) continue;
     await store.registerDefinition({ definition: registered, projectId: env.LINEAR_PROJECT_ID, now });
-  }
-  const simpleDefinition = bundled.simple;
-  if (simpleDefinition !== undefined) {
-    await store.registerSelector({
-      projectId: env.LINEAR_PROJECT_ID,
-      repository: policy.trial_repository,
-      labelName: "simple-workflow",
-      definition: simpleDefinition,
-      now,
-    });
   }
   return bundled;
 };
@@ -291,9 +279,8 @@ export const processQueueMessage = async (
       ? await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry()
       : Object.freeze({ [dependencies.definition.name]: dependencies.definition })
   );
-  const definition = dependencies.definition ?? bundled["openspec-delivery"];
+  const definition = dependencies.definition ?? bundled.simple;
   if (definition === undefined) throw new Error("default workflow definition is unavailable");
-  const simpleDefinition = bundled.simple;
   const now = (dependencies.now ?? (() => new Date()))().toISOString();
   const lifecycle = dependencies.lifecycle ?? writeLifecycleObservation;
   const event = message.body;
@@ -349,69 +336,20 @@ export const processQueueMessage = async (
       policy.dispatch_enabled === 1 &&
       event.transition === policy.start_state_name
     ) {
-      let selectedDefinition = definition;
-      let selection: {
-        kind: "default" | "linear_label";
-        value: string;
-        labelName: string;
-        reason: "label_match" | "label_absent" | "label_evidence_unavailable" | "selector_disabled";
-        evidenceJson: string;
-        deliveryId: string;
-        observedAt: string;
-        providerDigest: string;
-      } = {
+      const selection = {
         kind: "default",
-        value: "selector_disabled",
-        labelName: "simple-workflow",
-        reason: "selector_disabled",
+        value: "project_policy",
+        labelName: null,
+        reason: null,
         evidenceJson: evidence.json,
         deliveryId: event.source_delivery_id,
         observedAt: new Date(event.occurred_at).toISOString(),
         providerDigest: evidenceDigest,
-      };
-      const selector = simpleDefinition === undefined
-        ? null
-        : await store.findSelector(event.project_id, policy.trial_repository, "simple-workflow");
-      if (selector?.enabled === 1) {
-        if (evidence.names?.includes(selector.label_name)) {
-          if (
-            selector.definition_id !== simpleDefinition?.name ||
-            selector.definition_version !== simpleDefinition.version ||
-            selector.definition_digest !== simpleDefinition.digest
-          ) {
-            throw new CategorizedWorkflowError("correlation_mismatch");
-          }
-          selectedDefinition = simpleDefinition;
-          selection = {
-            kind: "linear_label",
-            value: selector.label_name,
-            labelName: selector.label_name,
-            reason: "label_match",
-            evidenceJson: evidence.json,
-            deliveryId: event.source_delivery_id,
-            observedAt: new Date(event.occurred_at).toISOString(),
-            providerDigest: evidenceDigest,
-          };
-        } else {
-          const reason = evidence.names === null
-            ? "label_evidence_unavailable" as const
-            : "label_absent" as const;
-          selection = {
-            kind: "default",
-            value: reason,
-            labelName: selector.label_name,
-            reason,
-            evidenceJson: evidence.json,
-            deliveryId: event.source_delivery_id,
-            observedAt: new Date(event.occurred_at).toISOString(),
-            providerDigest: evidenceDigest,
-          };
-        }
-      }
+      } as const;
       const allocation = await store.allocateRun({
         projectId: event.project_id,
         issueId: event.issue_id,
-        definition: selectedDefinition,
+        definition,
         selection,
         now,
       });
