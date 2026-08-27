@@ -34,9 +34,9 @@ The following checks passed in `/private/tmp/deos-traceability-implementation`:
 
 Wrangler generated and checked the Worker and portal binding types. The Worker dry run recognized the Sandbox container binding while suppressing the container rollout.
 
-## Packaging limitation
+## Container packaging
 
-The local machine has no Docker CLI or Docker Desktop application. Therefore the full local container image build could not run. The Dockerfile pins the Sandbox base image by digest, copies the pinned BettaView bundle and trace runner, and passed JavaScript syntax plus Worker packaging checks. A container-capable CI check or approved deployment remains required before the selector can be enabled.
+The local machine has no Docker CLI or Docker Desktop application. GitHub CI supplied the missing container-capable check. [CI run 33054094846, TypeScript job](https://github.com/sachinkundu/deos/actions/runs/33054094846/job/98456450146) built every Dockerfile layer, ran `codex-cli 0.147.0` and OpenSpec `1.8.0` inside the image, and exported Sandbox image `sha256:a954189818c2a612a408a02efde24b25a86c9e3d55df7c154db151b4014e7940`. The same job completed Worker, Python Worker, and portal Wrangler dry-runs.
 
 ## Live proof still required
 

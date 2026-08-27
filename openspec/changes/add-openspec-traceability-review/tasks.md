@@ -43,4 +43,4 @@
 - [x] 6.1 Add migration, schema, orchestration, storage, provider, and portal tests for the approved failure and reuse cases
 - [x] 6.2 Run the full test, typecheck, build, strict OpenSpec, and readability validation suites
 - [x] 6.3 Update the current architecture document and implementation evidence with the as-built selector-off boundary
-- [ ] 6.4 Verify deployable Worker, portal, container, migration, and settings packaging without activating the live workflow or canary
+- [x] 6.4 Verify deployable Worker, portal, container, migration, and settings packaging without activating the live workflow or canary
