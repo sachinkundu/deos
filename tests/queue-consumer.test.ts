@@ -412,13 +412,22 @@ test("scheduled registration preserves the D1 repository setting", async () => {
   });
   await registerBundledWorkflowDefinitions(environment(new FakeWorkflow()), {
     store,
-    definitions: { "openspec-delivery": definition, simple: simpleDefinition },
+    definitions: {
+      "openspec-delivery": definition,
+      simple: simpleDefinition,
+      "simple-traceability": traceabilityDefinition,
+    },
     now: () => new Date(NOW),
   });
   assert.equal(store.policies.get("project-1")?.trial_repository, "sachinkundu/deos-sample-project");
   assert.equal(store.policies.get("project-1")?.definition_id, simpleDefinition.name);
   assert.equal(store.policies.get("project-1")?.dispatch_enabled, 0);
-  assert.equal(store.selectors.size, 0);
+  assert.equal(store.selectors.size, 1);
+  assert.equal(
+    store.selectors.get("project-1:sachinkundu/deos-sample-project:DEOS Traceability")?.enabled,
+    0,
+  );
+  assert.equal(store.selectors.has("project-1:sachinkundu/deos:DEOS Traceability"), false);
 });
 
 const runMessage = async (

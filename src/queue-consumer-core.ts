@@ -266,9 +266,10 @@ export const registerBundledWorkflowDefinitions = async (
   }
   const traceability = bundled["simple-traceability"];
   if (traceability !== undefined) {
+    const policy = await store.findPolicy(env.LINEAR_PROJECT_ID);
     await store.registerSelector({
       projectId: env.LINEAR_PROJECT_ID,
-      repository: env.TRIAL_REPOSITORY,
+      repository: policy?.trial_repository ?? env.TRIAL_REPOSITORY,
       labelName: "DEOS Traceability",
       definition: traceability,
       now,
