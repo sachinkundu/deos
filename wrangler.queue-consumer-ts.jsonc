@@ -26,7 +26,7 @@
     "LINEAR_TEAM_ID": "ac53207d-68c0-42f1-a245-c1baf047f234",
     "GITHUB_API_URL": "https://api.github.com",
     "OPENROUTER_API_URL": "https://openrouter.ai/api/v1",
-    "OPENROUTER_SUPPORTED_MODELS": "anthropic/claude-sonnet-4.5",
+    "OPENROUTER_SUPPORTED_MODELS": "deepseek/deepseek-v4-pro",
     "TRIAL_REPOSITORY": "sachinkundu/deos",
     "TRIAL_DISPATCH_ENABLED": "false",
     "CODEX_AUTH_PROFILE_ID": "controlled-trial",

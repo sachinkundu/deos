@@ -264,7 +264,7 @@ test("OpenRouter capability permits one exact saved-model call and no repair cal
     ...claims,
     actions: ["model.openrouter_review"] as const,
     modelProvider: "openrouter" as const,
-    model: "anthropic/claude-sonnet-4.5",
+    model: "deepseek/deepseek-v4-pro",
     reasoning: "high",
   };
   const router = new CapabilityRouter({
