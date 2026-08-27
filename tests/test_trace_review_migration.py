@@ -44,6 +44,10 @@ def test_trace_review_storage_is_additive_and_secret_free() -> None:
         "independent_review_model",
         "independent_review_reasoning",
     } <= run_columns
+    attempt_columns = {
+        row[1] for row in database.execute("PRAGMA table_info(agent_attempts)")
+    }
+    assert "result_detail" in attempt_columns
     all_columns = {
         row[1]
         for table in (

@@ -40,6 +40,7 @@ export interface AgentAttemptRecord {
   absolute_deadline: string;
   ended_at: string | null;
   result_class: string | null;
+  result_detail: string | null;
   manifest_id: string | null;
   cleanup_state: "pending" | "destroyed" | "failed";
   cleanup_error_category: string | null;
@@ -71,6 +72,7 @@ export interface AgentAttemptStore {
     expected: AgentAttemptState;
     state: "completed" | "blocked" | "failed" | "interrupted" | "absolute_timeout" | "canceled";
     resultClass: string;
+    resultDetail?: string | null;
     manifestId: string | null;
     now: string;
   }): Promise<void>;
@@ -186,16 +188,18 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
     expected: AgentAttemptState;
     state: "completed" | "blocked" | "failed" | "interrupted" | "absolute_timeout" | "canceled";
     resultClass: string;
+    resultDetail?: string | null;
     manifestId: string | null;
     now: string;
   }): Promise<void> {
     const result = await this.database.prepare(
       `UPDATE agent_attempts
-       SET state = ?, result_class = ?, manifest_id = ?, ended_at = ?, updated_at = ?
+       SET state = ?, result_class = ?, result_detail = ?, manifest_id = ?, ended_at = ?, updated_at = ?
        WHERE attempt_id = ? AND state = ?`,
     ).bind(
       input.state,
       input.resultClass,
+      input.resultDetail ?? null,
       input.manifestId,
       input.now,
       input.now,
@@ -781,11 +785,14 @@ export class SandboxAgentController {
           await this.capturePlanningCandidate(run, attempt, sandbox);
         } catch (error) {
           if (error instanceof PlanningCandidateRejectedError) {
+            const repeatedPatch = await this.repeatsContinuationPatch(attempt, sandbox);
+            const resultDetail = this.safeResultDetail(error.message, repeatedPatch);
             await this.attempts.finish({
               attemptId: attempt.attempt_id,
               expected: "collecting",
-              state: "completed",
-              resultClass: "invalid_candidate",
+              state: repeatedPatch ? "failed" : "completed",
+              resultClass: repeatedPatch ? "repeated_invalid_candidate" : "invalid_candidate",
+              resultDetail,
               manifestId: collection.manifestId,
               now: this.dependencies.now().toISOString(),
             });
@@ -798,7 +805,7 @@ export class SandboxAgentController {
               manifestId: collection.manifestId,
               outcome: {
                 kind: "agent",
-                outcome: "invalid_candidate",
+                outcome: repeatedPatch ? "failed" : "invalid_candidate",
                 providerReceiptsPresent: false,
                 providerReceiptsComplete: true,
               },
@@ -922,6 +929,27 @@ export class SandboxAgentController {
       files,
       reviewReplies,
     });
+  }
+
+  private async repeatsContinuationPatch(
+    attempt: AgentAttemptRecord,
+    sandbox: SandboxView,
+  ): Promise<boolean> {
+    const durableJob = JSON.parse(attempt.job_spec_json) as {
+      continuationPatch?: { sha256?: unknown } | null;
+    };
+    const previousSha256 = durableJob.continuationPatch?.sha256;
+    if (typeof previousSha256 !== "string" || !/^[a-f0-9]{64}$/.test(previousSha256)) return false;
+    const currentPatch = (await sandbox.readFile("/deos/output/patch.diff", { encoding: "utf8" })).content;
+    return await sha256Hex(currentPatch) === previousSha256;
+  }
+
+  private safeResultDetail(message: string, repeatedPatch: boolean): string {
+    const normalized = message.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+    const detail = repeatedPatch
+      ? `Rejected plan bytes match the prior invalid candidate. Trusted check: ${normalized}`
+      : normalized;
+    return detail.slice(0, 1_000);
   }
 
   private async validateRepairScope(

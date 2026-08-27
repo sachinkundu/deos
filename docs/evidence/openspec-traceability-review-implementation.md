@@ -6,7 +6,7 @@ This evidence covers repository implementation, deployment, and one bounded Open
 
 ## Implemented boundary
 
-- `simple-traceability` version 4 is bundled and registered under `DEOS Traceability`.
+- `simple-traceability` version 5 is bundled for the corrected canary path under `DEOS Traceability`.
 - Registration keeps the selector disabled. The existing `simple` workflow remains the default.
 - The `DEOS Traceability` selector remains disabled while the controlled canary is prepared. The existing `simple` workflow remains the default for unmatched issues.
 - The independent reviewer uses a frozen OpenRouter setting through a narrow Worker adapter. The author and review Sandboxes receive no GitHub, Linear, or OpenRouter secret.
@@ -18,7 +18,7 @@ The following checks passed in `/private/tmp/deos-traceability-implementation`:
 
 - `npm run typecheck`
 - `npm run portal:typecheck`
-- `npm test` — 159 tests passed
+- `npm test` — 162 tests passed
 - `npm run portal:test` — 17 tests passed
 - `npm run portal:build:full-workflow`
 - `npm run portal:build`
@@ -28,7 +28,7 @@ The following checks passed in `/private/tmp/deos-traceability-implementation`:
 - `uv run --with pytest pytest -q tests/test_trace_review_migration.py` — 2 tests passed
 - `uv run --with pytest pytest -q` — 25 tests passed
 - `uv run --with ruff ruff check src tests`
-- all 14 D1 migrations applied to an empty local database, including `0013_openspec_traceability_review.sql`
+- all 15 D1 migrations applied to an empty local database, including `0013_openspec_traceability_review.sql` and `0014_agent_attempt_result_detail.sql`
 - Worker `wrangler deploy --dry-run --containers-rollout=none`
 - portal `wrangler deploy --dry-run`
 
@@ -65,6 +65,18 @@ The first live preflight found that the deploy variable still named `sachinkundu
 Linear issue [SAC-133](https://linear.app/sachinkundu/issue/SAC-133/show-review-readiness-before-plan-approval) was created in Backlog with the `DEOS Traceability` label, then moved to Rework. That non-start transition produced relevant delivery `98cdf6a0-71c9-4e2a-b60e-b012beeb180a` without allocating a workflow run. D1 then showed selector `simple-traceability` version 4, digest `fe52677cbe82792dc0d5382974be37fcfed371f4edaf0f7ae4284f246ae60524`, repository `sachinkundu/deos-sample-project`, and `enabled = 0`.
 
 This preflight proves provider-originated label evidence and safe disabled registration. It does not yet prove the traceability workflow run.
+
+## First provider-originated canary finding
+
+At `2026-08-27T10:47:11.889Z`, Linear moved SAC-133 from Rework to Todo. Delivery `5c2086e3-0bf2-499a-9657-d677f56643ea` allocated run `workflow:99426d9b-cda7-4db4-9136-692a95a0b090:946c431b-7080-48ba-8a4b-c435e7777610:run:1` and Cloudflare Workflow instance `wf-v1-itjo7sp4ccup5usmh27lvycezt5egghf3ymk56wsfpdmz2rfcvka`. D1 froze `simple-traceability` version 4, the expected definition digest, Codex `gpt-5.6-sol` with high reasoning, and OpenRouter `deepseek/deepseek-v4-pro` with high reasoning. The selector was disabled again after allocation; D1 read it back as `enabled = 0` at `2026-08-27T10:48:39.111Z`.
+
+The first author attempt completed with a full six-object R2 manifest but was correctly classified `invalid_candidate` by the trusted candidate builder. Its own OpenSpec and repository checks had passed. A separate replay of the trusted readability function against the saved patch showed that `proposal.md` scored Ease `48.84`, Grade `9.97`, and the delta spec scored Ease `15.45`, Grade `25.19`. Both missed the required Ease of at least 70 and Grade of at most 8.
+
+The second author attempt then produced the same `patch.diff` byte-for-byte. Both manifests recorded patch SHA-256 `1804eee3c10a3052688016be0953ec4c6c30db46f9e539aadb2445bd70e04f0e`. The old code stored only `invalid_candidate`, so the next author did not receive the trusted failure reason and the workflow followed the same self-loop. This is real evidence of duplicate token use, not a mock or a test.
+
+The canary Workflow was paused and then terminated after the duplicate was proven. A third author process had already started before the pause landed, but termination prevented a fourth workflow retry. No planning candidate or GitHub pull request was published, and no semantic reviewer ran. The selector remained disabled.
+
+The corrected version 5 path adds migration `0014_agent_attempt_result_detail.sql`, saves a bounded trusted rejection reason, gives it to the next author as `trustedResultDetail`, and routes a byte-identical rejected patch to the failed edge. A focused controller regression proves that such a duplicate cannot follow the author self-loop. A second provider-originated canary is still required after this correction is deployed.
 
 ## Container packaging
 

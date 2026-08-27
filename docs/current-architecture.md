@@ -10,7 +10,7 @@ Repository-local OpenSpec progression is encoded as typed agent jobs carrying on
 
 ## OpenSpec traceability review flow
 
-The bundle also contains `simple-traceability` version 4. It is registered with the fixed `DEOS Traceability` selector, but registration leaves that selector disabled. The existing `simple` definition stays the project default. Deploying this code cannot start a traceability run until an operator separately enables the selector and applies the matching Linear label.
+The bundle also contains `simple-traceability` version 5. It is registered with the fixed `DEOS Traceability` selector, but registration leaves that selector disabled. The existing `simple` definition stays the project default. Deploying this code cannot start a traceability run until an operator separately enables the selector and applies the matching Linear label.
 
 ```mermaid
 flowchart LR
@@ -30,7 +30,7 @@ flowchart LR
     R --> O
 ```
 
-The author has no GitHub or Linear capability. Trusted code builds an immutable planning candidate after the author exits. It allows only `.openspec.yaml`, `proposal.md`, and the declared `specs/**/spec.md` files. It runs strict OpenSpec and readability checks, writes the candidate and validation receipt to create-only R2 keys, reads both objects back by SHA-256, and then indexes the accepted candidate in D1.
+The author has no GitHub or Linear capability. Trusted code builds an immutable planning candidate after the author exits. It allows only `.openspec.yaml`, `proposal.md`, and the declared `specs/**/spec.md` files. It runs strict OpenSpec and readability checks, writes the candidate and validation receipt to create-only R2 keys, reads both objects back by SHA-256, and then indexes the accepted candidate in D1. When a deterministic check rejects a candidate, D1 keeps a short trusted reason and the next author gets it as service-authored input. If that author returns the same rejected patch bytes, the controller stops the run on the failed edge. It does not start another author retry.
 
 Both semantic stages use a pinned BettaView bundle. The Codex self-check uses the run's frozen author model and thought setting in a fresh read-only Sandbox. The independent stage uses a different OpenRouter model chosen in Settings and frozen when the run is allocated. The OpenRouter key stays in the Worker. The Sandbox receives only a signed, attempt-scoped model channel for that exact model and setting.
 

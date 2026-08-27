@@ -17,6 +17,7 @@ interface PriorAttemptRow {
   node_id: string;
   attempt_id: string;
   result_class: string | null;
+  result_detail: string | null;
   manifest_id: string;
   r2_key: string;
   completed_at: string;
@@ -297,7 +298,7 @@ export class JobInputMaterializer {
 
   private async priorAttempts(runId: string): Promise<Array<Record<string, unknown>>> {
     const result = await this.database.prepare(
-      `SELECT a.node_id, a.attempt_id, a.result_class, a.manifest_id,
+      `SELECT a.node_id, a.attempt_id, a.result_class, a.result_detail, a.manifest_id,
               m.r2_key, m.completed_at
        FROM agent_attempts a
        JOIN artifact_manifests m ON m.manifest_id = a.manifest_id
@@ -316,6 +317,7 @@ export class JobInputMaterializer {
         nodeId: row.node_id,
         attemptId: row.attempt_id,
         outcome: row.result_class,
+        trustedResultDetail: row.result_detail,
         manifestId: row.manifest_id,
         completedAt: row.completed_at,
         result: asObject(JSON.parse(text)),

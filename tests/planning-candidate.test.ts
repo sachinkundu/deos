@@ -78,3 +78,33 @@ test("trusted candidate rejects files outside the standard OpenSpec plan", async
     checkedAt: "2026-08-27T08:00:00.000Z",
   }), /invalid file/);
 });
+
+test("trusted candidate reports actionable readability scores", async () => {
+  const difficultSpec = `## ADDED Requirements
+
+### Requirement: Demonstrate deterministic comprehensibility
+
+The implementation SHALL institutionalize multidimensional interoperability characteristics before authorization.
+
+#### Scenario: Evaluation occurs
+
+- **WHEN** administrative representatives initiate comprehensive verification
+- **THEN** the implementation demonstrates deterministic comprehensibility
+`;
+  await assert.rejects(buildPlanningCandidate({
+    candidateId: "candidate:12345678",
+    runId: "project:run:12345678",
+    round: 1,
+    sourceAttemptId: "attempt-12345678",
+    baseCommit: "1".repeat(40),
+    change: "add-review",
+    files: [
+      { path: "openspec/changes/add-review/.openspec.yaml", content: "schema: spec-driven\n" },
+      { path: "openspec/changes/add-review/proposal.md", content: easyProposal },
+      { path: "openspec/changes/add-review/specs/review-step/spec.md", content: difficultSpec },
+    ],
+    reviewReplies: [],
+    strictOpenSpecCheck: async () => {},
+    checkedAt: "2026-08-27T08:00:00.000Z",
+  }), /candidate readability failed for .*reading ease .*minimum 70.*grade .*maximum 8/);
+});

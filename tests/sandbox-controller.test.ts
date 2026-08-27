@@ -6,6 +6,7 @@ import type { ArtifactCollectionResult, ArtifactCollector } from "../src/artifac
 import type { CredentialLease, CredentialVault } from "../src/credential-vault.ts";
 import type { OrchestrationRunRecord } from "../src/orchestration-store.ts";
 import type { RunWorkProductRecord } from "../src/planning-store.ts";
+import { PlanningCandidateRejectedError } from "../src/planning-candidate.ts";
 import {
   SandboxAgentController,
   type AgentAttemptRecord,
@@ -152,6 +153,42 @@ spec:
   },
 );
 
+const tracePlanningDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: trace-planning-test, version: 4 }
+spec:
+  start: planning_author
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs:
+    planning_author:
+      promptFile: prompts/author.md
+      inputs: [openspec_change]
+      context: [prior_artifact_manifests]
+      resultSchema: schemas/result.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, review-replies.json]
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: repository_write
+      providerAccess: []
+  nodes:
+    planning_author: { type: agent, job: planning_author, edges: { completed: done, invalid_candidate: planning_author, blocked: blocked, failed: blocked } }
+    done: { type: terminal, deosStatus: succeeded, executorAction: return }
+    blocked: { type: failure, deosStatus: failed, executorAction: throw, cause: planning_failed }
+`,
+  {
+    prompts: { "prompts/author.md": "Write a clear proposal and its specs." },
+    schemas: {
+      "schemas/result.json": JSON.stringify({
+        $id: "https://deos.dev/trace-planning-test.json",
+        type: "object",
+      }),
+    },
+  },
+);
+
 const run = {
   run_id: "workflow:project-1:issue-1:run:1",
   issue_id: "issue-1",
@@ -193,6 +230,7 @@ class AttemptStore implements AgentAttemptStore {
       absolute_deadline: input.absoluteDeadline,
       ended_at: null,
       result_class: null,
+      result_detail: null,
       manifest_id: null,
       cleanup_state: "pending",
       cleanup_error_category: null,
@@ -244,6 +282,7 @@ class AttemptStore implements AgentAttemptStore {
     expected: AgentAttemptState;
     state: "completed" | "blocked" | "failed" | "interrupted" | "absolute_timeout" | "canceled";
     resultClass: string;
+    resultDetail?: string | null;
     manifestId: string | null;
     now: string;
   }) {
@@ -251,6 +290,7 @@ class AttemptStore implements AgentAttemptStore {
     if (this.latest !== null) {
       this.latest.state = input.state;
       this.latest.result_class = input.resultClass;
+      this.latest.result_detail = input.resultDetail ?? null;
       this.latest.manifest_id = input.manifestId;
       this.latest.ended_at = input.now;
     }
@@ -269,6 +309,7 @@ class Process implements SandboxProcessView {
   readonly pid: number;
   state: "running" | "exited" | "error" = "running";
   exitCode = 0;
+  stdout = "";
   killed = false;
 
   constructor(id: string, pid: number) {
@@ -288,7 +329,7 @@ class Process implements SandboxProcessView {
 
   output() {
     return Promise.resolve({
-      stdout: "",
+      stdout: this.stdout,
       stderr: "",
       exitCode: this.exitCode,
       timedOut: false,
@@ -348,6 +389,14 @@ class Sandbox implements SandboxView {
       if (this.repositoryExists) process.exitCode = 128;
       else this.repositoryExists = true;
     }
+    if (command[0] === "git" && command[1] === "ls-files") {
+      process.stdout = [
+        "openspec/changes/sac-1/.openspec.yaml",
+        "openspec/changes/sac-1/proposal.md",
+        "openspec/changes/sac-1/specs/review-step/spec.md",
+      ].join("\n") + "\n";
+    }
+    if (command[0] === "git" && command[1] === "rev-parse") process.stdout = "1".repeat(40) + "\n";
     return Promise.resolve(process);
   }
 
@@ -469,6 +518,7 @@ interface SetupOptions {
   patchContent?: string;
   planningWorkProduct?: Partial<RunWorkProductRecord> | null;
   materializedContext?: string;
+  candidateRejection?: PlanningCandidateRejectedError;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -545,6 +595,9 @@ const setup = (options: SetupOptions = {}) => {
         verify: async (_runId, _attemptId, operationIds) =>
           operationIds === undefined || operationIds.length > 0,
         hasAny: async () => collector.receiptIds.length > 0,
+      },
+      persistPlanningCandidate: async () => {
+        if (options.candidateRejection !== undefined) throw options.candidateRejection;
       },
     },
   );
@@ -695,6 +748,61 @@ test("pending-attempt startup clears a stale repository checkout before cloning"
       ["rm", "-rf", "--", "/deos/workspace/repository"],
       ["git", "clone", "--depth", "1", "https://github.com/sachinkundu/deos.git", "/deos/workspace/repository"],
     ],
+  );
+});
+
+test("a byte-identical rejected plan stops before another author retry and keeps trusted feedback", async () => {
+  const patch = "diff --git a/openspec/changes/sac-1/proposal.md b/openspec/changes/sac-1/proposal.md\n";
+  const sha256 = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(patch)).then((value) =>
+    [...new Uint8Array(value)].map((byte) => byte.toString(16).padStart(2, "0")).join(""));
+  const state = setup({
+    continuationPatch: {
+      attemptId: "prior-attempt",
+      manifestId: "prior-manifest",
+      r2Key: "runs/prior/patch.diff",
+      sha256,
+    },
+    patchContent: patch,
+    candidateRejection: new PlanningCandidateRejectedError(
+      "candidate readability failed for openspec/changes/sac-1/proposal.md: " +
+      "reading ease 48.84 (minimum 70), grade 9.97 (maximum 8)",
+    ),
+  });
+  state.collector.receiptIds = [];
+  const traceRun = {
+    ...run,
+    project_id: "project-1",
+    current_visit_sequence: 3,
+    author_model_provider: "codex",
+    author_model: "gpt-5.6-sol",
+    author_reasoning: "high",
+  } as OrchestrationRunRecord;
+
+  await state.controller.execute(traceRun, "planning_author", "planning_author", tracePlanningDefinition);
+  state.factory.sandbox.files.set("/deos/output/patch.diff", patch);
+  state.factory.sandbox.files.set("/deos/output/review-replies.json", "[]");
+  state.factory.sandbox.files.set("/deos/workspace/repository/openspec/changes/sac-1/.openspec.yaml", "schema: spec-driven\n");
+  state.factory.sandbox.files.set("/deos/workspace/repository/openspec/changes/sac-1/proposal.md", "## Why\n\nPeople need a clear plan.\n");
+  state.factory.sandbox.files.set(
+    "/deos/workspace/repository/openspec/changes/sac-1/specs/review-step/spec.md",
+    "## ADDED Requirements\n\n### Requirement: Review the plan\n\nThe system SHALL review the plan.\n",
+  );
+  state.factory.sandbox.supervisor.state = "exited";
+
+  const observation = await state.controller.execute(
+    traceRun,
+    "planning_author",
+    "planning_author",
+    tracePlanningDefinition,
+  );
+
+  assert.equal(observation.state, "completed");
+  assert.equal(observation.state === "completed" ? observation.outcome.outcome : null, "failed");
+  assert.equal(state.attempts.latest?.state, "failed");
+  assert.equal(state.attempts.latest?.result_class, "repeated_invalid_candidate");
+  assert.match(
+    state.attempts.latest?.result_detail ?? "",
+    /Rejected plan bytes match the prior invalid candidate.*reading ease 48\.84.*grade 9\.97/,
   );
 });
 

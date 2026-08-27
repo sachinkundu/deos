@@ -174,7 +174,11 @@ export const buildPlanningCandidate = async (
     const prose = proseForReadability(file.content);
     const score = scoreReadability(prose);
     if (score.fleschReadingEase < 70 || score.fleschKincaidGrade > 8) {
-      throw new Error(`candidate readability failed for ${file.path}`);
+      throw new Error(
+        `candidate readability failed for ${file.path}: ` +
+        `reading ease ${score.fleschReadingEase} (minimum 70), ` +
+        `grade ${score.fleschKincaidGrade} (maximum 8)`,
+      );
     }
     readabilityByFile[file.path] = score;
   }
