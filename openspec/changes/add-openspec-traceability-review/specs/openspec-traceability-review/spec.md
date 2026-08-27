@@ -25,12 +25,17 @@ DEOS SHALL run one full Codex self-check on the exact private plan. The plan SHA
 
 ### Requirement: Finish deterministic plan checks before semantic review
 
-DEOS SHALL finish every required form, structure, path, and readability check before it starts a full semantic check or closed-set recheck. These checks SHALL report failures but MUST NOT edit the plan. A failure that needs a text change SHALL return the candidate to an author job. DEOS SHALL rerun the deterministic checks after that repair. Once a semantic result passes, no automated step may change the reviewed plan before its trusted publish or gate action.
+DEOS SHALL finish every required form, structure, path, and readability check before it starts a full semantic check or closed-set recheck. The author supervisor SHALL run these checks before it accepts completion. The checks SHALL report failures but MUST NOT edit the plan. A failure that needs a text change SHALL resume the same Codex session in the same Sandbox and author attempt with the exact trusted failure. DEOS SHALL rerun the deterministic checks after that repair. This local correction MUST NOT start another workflow visit, Sandbox, or semantic repair turn. Trusted Worker code SHALL repeat the same checks after the attempt exits. A mismatch between the supervisor and Worker checks SHALL stop as a tooling fault and MUST NOT start another author attempt. Once a semantic result passes, no automated step may change the reviewed plan before its trusted publish or gate action.
 
 #### Scenario: Readability check requests a wording change
 
 - **WHEN** a current candidate fails a deterministic readability rule
-- **THEN** an author job repairs it and all deterministic checks pass before DEOS starts the semantic check
+- **THEN** the same author session repairs it and all deterministic checks pass inside that attempt before DEOS starts the semantic check
+
+#### Scenario: Trusted verification disagrees with the author hook
+
+- **WHEN** trusted Worker verification rejects a candidate that the author completion hook accepted
+- **THEN** DEOS records a tooling fault, starts no semantic check, and does not create another author attempt
 
 #### Scenario: Automated step tries to edit a passed candidate
 

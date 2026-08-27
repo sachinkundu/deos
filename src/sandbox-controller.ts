@@ -785,13 +785,19 @@ export class SandboxAgentController {
           await this.capturePlanningCandidate(run, attempt, sandbox);
         } catch (error) {
           if (error instanceof PlanningCandidateRejectedError) {
+            const verificationMismatch = run.definition_id === "simple-traceability" &&
+              run.definition_version >= 6;
             const repeatedPatch = await this.repeatsContinuationPatch(attempt, sandbox);
-            const resultDetail = this.safeResultDetail(error.message, repeatedPatch);
+            const resultDetail = verificationMismatch
+              ? this.safeResultDetail(`Author completion verification mismatch: ${error.message}`, false)
+              : this.safeResultDetail(error.message, repeatedPatch);
             await this.attempts.finish({
               attemptId: attempt.attempt_id,
               expected: "collecting",
-              state: repeatedPatch ? "failed" : "completed",
-              resultClass: repeatedPatch ? "repeated_invalid_candidate" : "invalid_candidate",
+              state: verificationMismatch || repeatedPatch ? "failed" : "completed",
+              resultClass: verificationMismatch
+                ? "author_completion_verification_mismatch"
+                : repeatedPatch ? "repeated_invalid_candidate" : "invalid_candidate",
               resultDetail,
               manifestId: collection.manifestId,
               now: this.dependencies.now().toISOString(),
@@ -805,7 +811,7 @@ export class SandboxAgentController {
               manifestId: collection.manifestId,
               outcome: {
                 kind: "agent",
-                outcome: repeatedPatch ? "failed" : "invalid_candidate",
+                outcome: verificationMismatch || repeatedPatch ? "failed" : "invalid_candidate",
                 providerReceiptsPresent: false,
                 providerReceiptsComplete: true,
               },
@@ -1262,7 +1268,7 @@ export class SandboxAgentController {
       materializedContext.replace("{attemptId}", attempt.attempt_id),
       "</deos-job-inputs>",
       `Required durable outputs under /deos/output: ${job.requiredOutputs.join(", ")}`,
-      "The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, and status.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.",
+      "The trusted supervisor creates transcript.jsonl, patch.diff, provider-references.json, status.json, and any declared author-completion.json. Do not create, replace, truncate, or append to those files. Codex creates result.json through its output schema. Create validation.txt with the validation commands and outcomes.",
       `For GitHub work, pipe one JSON request to deos-github with version 1, action publish_work_product, a stable operationKey, repository ${durableJob.repository}, branch deos/${attempt.attempt_id}, baseBranch main, title, body, and a non-empty files array of {path, content}.`,
       `For a Linear working note, pipe one JSON request to deos-linear with version 1, action upsert_working_note, a stable operationKey, issueId ${run.issue_id}, and body. Capability receipts are captured mechanically.`,
       ...(job.operation?.kind === "openspec"

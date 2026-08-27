@@ -2,7 +2,7 @@
 
 ### Requirement: Produce one proposal-and-specification pull request
 
-The simple flow SHALL send one author coding agent Codex job to create or change the issue-named OpenSpec change. The job SHALL write the proposal first. It SHALL then write each needed delta spec in order. DEOS SHALL run all required deterministic plan checks before the Codex self-check. A failed deterministic check SHALL return the private plan to an author coding agent Codex job. The check MUST NOT edit the plan. DEOS SHALL keep the plan private while the self-check can use a remaining shared repair turn. A trusted step SHALL post that exact valid plan to one GitHub pull request when the self-check passes or the shared three-turn limit is used. The post SHALL carry any unresolved self-check findings into the review proof. It SHALL also post the needed OpenSpec change data. Each file request SHALL use its full repo path under `openspec/changes/<change>/`. The human review list SHALL use paths from the change folder. The plan job MUST NOT write a design or task list. It MUST NOT change app code or Linear state. It also MUST NOT approve, post, or merge its own work.
+The simple flow SHALL send one author coding agent Codex job to create or change the issue-named OpenSpec change. The job SHALL write the proposal first. It SHALL then write each needed delta spec in order. The trusted author supervisor SHALL run all required deterministic plan checks before it accepts that job as complete. A failed deterministic check SHALL resume the same Codex session in the same Sandbox and attempt with the exact failure. The check MUST NOT edit the plan. A deterministic correction MUST NOT create another workflow visit or use a semantic repair turn. Trusted Worker code SHALL verify the same checks after exit. A verification mismatch SHALL stop as a tooling fault instead of creating another author job. DEOS SHALL keep the plan private while the self-check can use a remaining shared repair turn. A trusted step SHALL post that exact valid plan to one GitHub pull request when the self-check passes or the shared three-turn limit is used. The post SHALL carry any unresolved self-check findings into the review proof. It SHALL also post the needed OpenSpec change data. Each file request SHALL use its full repo path under `openspec/changes/<change>/`. The human review list SHALL use paths from the change folder. The plan job MUST NOT write a design or task list. It MUST NOT change app code or Linear state. It also MUST NOT approve, post, or merge its own work.
 
 #### Scenario: First planning attempt completes
 
@@ -22,7 +22,12 @@ The simple flow SHALL send one author coding agent Codex job to create or change
 #### Scenario: Deterministic check needs a plan repair
 
 - **WHEN** a form, structure, path, or readability check fails
-- **THEN** an author job repairs the private plan and DEOS reruns those checks before any semantic review
+- **THEN** the same author session repairs the private plan and DEOS reruns those checks inside the same attempt before any semantic review
+
+#### Scenario: Deterministic verification fails after author completion
+
+- **WHEN** trusted Worker verification rejects a plan accepted by the author completion hook
+- **THEN** the flow stops with a tooling fault and does not start another author attempt
 
 #### Scenario: Planning artifacts are incomplete or invalid
 

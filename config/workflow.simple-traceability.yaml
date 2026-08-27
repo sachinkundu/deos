@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: simple-traceability
-  version: 5
+  version: 6
 spec:
   start: claim_issue
   execution:
@@ -15,7 +15,7 @@ spec:
       inputs: [linear_issue, openspec_change, planning_feedback, traceability_feedback]
       context: [shared_workpad, prior_artifact_manifests, planning_pull_request]
       resultSchema: schemas/agent-result-v1.json
-      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, review-replies.json]
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, review-replies.json, author-completion.json]
       agentRole: author
       modelProvider: codex
       model: gpt-5.6-sol
@@ -82,7 +82,7 @@ spec:
     planning_author:
       type: agent
       job: planning_author
-      edges: {completed: self_discovery, invalid_candidate: planning_author, blocked: agent_blocked, failed: agent_failed}
+      edges: {completed: self_discovery, invalid_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
     self_discovery:
       type: agent
       job: self_discovery
@@ -90,7 +90,7 @@ spec:
     planning_self_repair:
       type: agent
       job: planning_author
-      edges: {completed: self_recheck_before_publish, invalid_candidate: planning_self_repair, blocked: agent_blocked, failed: agent_failed}
+      edges: {completed: self_recheck_before_publish, invalid_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
     self_recheck_before_publish:
       type: agent
       job: self_recheck
@@ -106,7 +106,7 @@ spec:
     planning_independent_repair:
       type: agent
       job: planning_author
-      edges: {completed: self_recheck_after_publish, invalid_candidate: planning_independent_repair, blocked: agent_blocked, failed: agent_failed}
+      edges: {completed: self_recheck_after_publish, invalid_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
     self_recheck_after_publish:
       type: agent
       job: self_recheck

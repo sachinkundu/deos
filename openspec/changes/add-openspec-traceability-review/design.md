@@ -8,7 +8,7 @@ DEOS will still own the flow. D1 will own its state. R2 will hold the full proof
 
 BettaView will supply the review rules. Its bundle will find the plan files, number each line, shape the model result, map quotes back to source, and check the final trace. These checks prove that the trace is well formed and fresh. The models try to check meaning. Their results cannot be absolute because model output is probabilistic.
 
-The current author coding agent Codex can edit files after it runs a check. The new flow will close that gap. Trusted code will build and check one plan copy after the author coding agent Codex exits. No job may change that copy before review or publish.
+The current author coding agent Codex can exit before it runs the correct deterministic checks. The new flow will close that gap. Its trusted supervisor will withhold completion, run the exact checks, and resume the same Codex session when an author-correctable check fails. Trusted Worker code will build and verify one plan copy after the author attempt exits. No job may change that copy before review or publish.
 
 The flow also needs a firm stop rule. The same review input will reuse the saved result. A pass will close that stage for the same input. Changed reviewed bytes will make the old pass stale and open the needed recheck. If one stage reverses its own fixed rating with no matching source change, DEOS will show both results to a person. The independent reviewer may disagree with the self-check. That is a valid independent view, not a proof fault.
 
@@ -85,9 +85,13 @@ The author coding agent Codex and both review jobs will have no GitHub or Linear
 
 We will not let the author coding agent Codex call BettaView or publish on its own. That would mix plan work, model work, and provider rights in one job.
 
-### 2. Save one checked plan after Codex exits
+### 2. Complete deterministic repairs inside one author attempt
 
-The author coding agent Codex will exit before DEOS accepts a plan. Trusted code will then build `planning-candidate.json`. It will hold the base commit, change name, allowed file list, file text, byte size, and file hash. It will also hold one hash for all plan files and one hash for the files under review.
+The author coding agent Codex may say it is complete, but the trusted supervisor will own the attempt's final completion signal. Before the supervisor accepts completion, it will capture the current plan and run the same allowed-file, strict OpenSpec, readability, and whitespace checks used by trusted Worker verification.
+
+When an author-correctable check fails, the supervisor will send the exact file, score, threshold, or validation error to `codex exec resume` for the same saved session. The resumed Codex process will use the same checkout, model, thought level, and attempt. The supervisor will run the checks again. This local loop will be bounded. It will not create another Workflow visit, Sandbox, D1 attempt, or semantic repair turn. If the local bound ends without a valid plan, the attempt will fail.
+
+After the local checks pass, the supervisor will capture the final artifacts and exit. Trusted Worker code will then build `planning-candidate.json`. It will hold the base commit, change name, allowed file list, file text, byte size, and file hash. It will also hold one hash for all plan files and one hash for the files under review.
 
 Trusted code will then:
 
@@ -97,7 +101,7 @@ Trusted code will then:
 4. save `candidate-validation.json` in R2; and
 5. read both files back before the flow moves on.
 
-No job may edit that saved plan. A failed check returns to the author coding agent Codex. Deterministic checks do not use the three semantic repair turns. Review and publish may only use a plan that passed all deterministic checks.
+No job may edit that saved plan. Worker verification uses the same check contract as the supervisor. A mismatch is a tooling fault and stops the flow. It does not start another author attempt. Deterministic corrections do not use the three semantic repair turns. Review and publish may only use a plan that passed all deterministic checks.
 
 ### 3. Use a fixed BettaView bundle
 
@@ -232,10 +236,13 @@ For an author coding agent Codex step:
 1. The flow freezes the repo, change, round, job, model, and limits.
 2. A fresh Sandbox restores the last good plan patch.
 3. The author coding agent Codex edits only the allowed plan files.
-4. The author coding agent Codex exits.
-5. Trusted code builds and checks the plan copy.
-6. DEOS saves and reads back the proof.
-7. The flow may now start review or publish.
+4. The author coding agent Codex reports completion.
+5. The trusted supervisor runs every deterministic check.
+6. A failed author-correctable check resumes the same Codex session and repeats step 5 within a local bound.
+7. The supervisor accepts completion only after those checks pass.
+8. Trusted Worker code builds the plan copy and verifies the same checks.
+9. DEOS saves and reads back the proof.
+10. The flow may now start review or publish.
 
 For a review step:
 
@@ -266,7 +273,8 @@ No table will hold a provider secret. Full plan text and full review text will s
 | Failure | Response |
 | --- | --- |
 | Author coding agent Codex changes a banned file. | Reject the plan. Keep the attempt. Do not review or publish it. |
-| OpenSpec or reading check fails. | Return to the author coding agent Codex. Do not spend a semantic repair turn. |
+| OpenSpec or reading check fails inside the author attempt. | Resume the same Codex session with the exact failure. Do not start another attempt or spend a semantic repair turn. |
+| Worker verification disagrees with the author completion hook. | Stop with a tooling fault. Do not start another author attempt or semantic review. |
 | Plan proof cannot be saved and read back. | Do not move on. Keep the Sandbox for normal recovery. |
 | The same good review input appears again. | Save a reuse event. Do not run a job or model. |
 | A reviewed file changes. | Mark the old result stale. Make a new input. |

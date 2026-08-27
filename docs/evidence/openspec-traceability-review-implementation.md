@@ -2,11 +2,11 @@
 
 Date: 2026-08-27
 
-This evidence covers repository implementation, deployment, and one bounded OpenRouter contract probe. It does not yet claim a provider-originated workflow canary.
+This evidence covers repository implementation, deployment, one bounded OpenRouter contract probe, and the failed canaries that exposed the retry defects. It does not yet claim a successful provider-originated workflow canary.
 
 ## Implemented boundary
 
-- `simple-traceability` version 5 is bundled for the corrected canary path under `DEOS Traceability`.
+- `simple-traceability` version 6 is bundled for the corrected canary path under `DEOS Traceability`.
 - Registration keeps the selector disabled. The existing `simple` workflow remains the default.
 - The `DEOS Traceability` selector remains disabled while the controlled canary is prepared. The existing `simple` workflow remains the default for unmatched issues.
 - The independent reviewer uses a frozen OpenRouter setting through a narrow Worker adapter. The author and review Sandboxes receive no GitHub, Linear, or OpenRouter secret.
@@ -18,12 +18,14 @@ The following checks passed in `/private/tmp/deos-traceability-implementation`:
 
 - `npm run typecheck`
 - `npm run portal:typecheck`
-- `npm test` — 162 tests passed
+- `npm test` — 168 tests passed
 - `npm run portal:test` — 17 tests passed
 - `npm run portal:build:full-workflow`
 - `npm run portal:build`
 - `npx openspec validate add-openspec-traceability-review --strict`
 - `node --check container/supervisor.mjs`
+- `node --check container/author-completion.mjs`
+- `node --check shared/planning-language.mjs`
 - `node --check container/trace-review-runner.mjs`
 - `uv run --with pytest pytest -q tests/test_trace_review_migration.py` — 2 tests passed
 - `uv run --with pytest pytest -q` — 25 tests passed
@@ -76,7 +78,11 @@ The second author attempt then produced the same `patch.diff` byte-for-byte. Bot
 
 The canary Workflow was paused and then terminated after the duplicate was proven. A third author process had already started before the pause landed, but termination prevented a fourth workflow retry. No planning candidate or GitHub pull request was published, and no semantic reviewer ran. The selector remained disabled.
 
-The corrected version 5 path adds migration `0014_agent_attempt_result_detail.sql`, saves a bounded trusted rejection reason, gives it to the next author as `trustedResultDetail`, and routes a byte-identical rejected patch to the failed edge. A focused controller regression proves that such a duplicate cannot follow the author self-loop. A second provider-originated canary is still required after this correction is deployed.
+Version 5 saved the trusted rejection reason and stopped only a byte-identical repeat. The next provider-originated run showed why that was not enough. Run `workflow:99426d9b-cda7-4db4-9136-692a95a0b090:946c431b-7080-48ba-8a4b-c435e7777610:run:2` created three distinct author attempts. The first failed the proposal reading check at Ease `51.4`, Grade `9.39`. The second changed the plan but failed the delta spec at Ease `34.04`, Grade `18.33`. The third passed and moved to self-discovery. Each wording correction had consumed a fresh Workflow visit, attempt, and Sandbox even though no semantic review had requested it.
+
+The operator disabled the selector and terminated Workflow instance `wf-v1-4dqje4dqkz4h37kml56yatr3vbrilmmzgf6ulyaif2qkl4prl3pq`. The remaining self-discovery process had already exited with code 1. Its exact Sandbox `sbx-v1-ene65nsebdjnvo2cjriztrwof2feqdmmopzi73ydbycwdcwcywlq` was destroyed. D1 then read back attempt `01a04310-2d70-798a-bd1e-344dd0d3714b` with `state = canceled` and `cleanup_state = destroyed`, and the run with `status = canceled` and cause `operator_canceled_for_same_session_author_hook_rollout`.
+
+Version 6 moves deterministic correction into the trusted supervisor. It resumes the exact saved Codex session in the same Sandbox, with at most two in-place repairs after the first completion. `author-completion.json` records each round and its scores. The Worker imports the same scorer and treats any post-hook rejection as `author_completion_verification_mismatch`. All three `invalid_candidate` graph edges point to failure, so a deterministic rejection cannot start another author attempt. Focused tests cover a hard draft that passes after one exact-session correction, the two-repair bound, shared score behavior, and the terminal Worker mismatch. A fresh provider-originated canary is still required after version 6 is deployed.
 
 ## Container packaging
 

@@ -10,27 +10,31 @@ Repository-local OpenSpec progression is encoded as typed agent jobs carrying on
 
 ## OpenSpec traceability review flow
 
-The bundle also contains `simple-traceability` version 5. It is registered with the fixed `DEOS Traceability` selector, but registration leaves that selector disabled. The existing `simple` definition stays the project default. Deploying this code cannot start a traceability run until an operator separately enables the selector and applies the matching Linear label.
+The bundle also contains `simple-traceability` version 6. It is registered with the fixed `DEOS Traceability` selector, but registration leaves that selector disabled. The existing `simple` definition stays the project default. Deploying this code cannot start a traceability run until an operator separately enables the selector and applies the matching Linear label.
 
 ```mermaid
 flowchart LR
     L[Linear issue] --> W[Cloudflare Workflow]
     W <--> D[(D1 authority)]
     W --> A[Planning author<br/>Codex, repository write only]
-    A --> C[Trusted candidate checks]
-    C --> S[Codex self-check<br/>fresh read-only Sandbox]
+    A <--> C[Same-Sandbox completion hook<br/>strict OpenSpec and readability]
+    C --> V[Trusted Worker verification]
+    V --> S[Codex self-check<br/>fresh read-only Sandbox]
     S --> P[Trusted GitHub publish]
     P --> G[One planning PR]
     G --> I[Independent review<br/>OpenRouter via narrow Worker adapter]
     I --> H[Human Review]
     C --> R[(Immutable R2 evidence)]
+    V --> R
     S --> R
     I --> R
     D --> O[Access-protected review page]
     R --> O
 ```
 
-The author has no GitHub or Linear capability. Trusted code builds an immutable planning candidate after the author exits. It allows only `.openspec.yaml`, `proposal.md`, and the declared `specs/**/spec.md` files. It runs strict OpenSpec and readability checks, writes the candidate and validation receipt to create-only R2 keys, reads both objects back by SHA-256, and then indexes the accepted candidate in D1. When a deterministic check rejects a candidate, D1 keeps a short trusted reason and the next author gets it as service-authored input. If that author returns the same rejected patch bytes, the controller stops the run on the failed edge. It does not start another author retry.
+The author has no GitHub or Linear capability. When it reports completion, the trusted supervisor runs the allowed-path, strict OpenSpec, whitespace, and readability checks before the attempt can end. Both the supervisor and Worker import the same reading scorer. A failed author-correctable check resumes the exact Codex session in the same checkout and Sandbox. The bound is two in-place repairs after the first draft. The supervisor records every round in `author-completion.json`. These rounds do not create Workflow visits, D1 attempts, Sandboxes, or semantic reviews.
+
+After the hook passes, trusted Worker code builds an immutable planning candidate. It allows only `.openspec.yaml`, `proposal.md`, and the declared `specs/**/spec.md` files. It repeats strict OpenSpec and readability checks, writes the candidate and validation receipt to create-only R2 keys, reads both objects back by SHA-256, and then indexes the accepted candidate in D1. A version 6 disagreement is stored as `author_completion_verification_mismatch` and follows the failed edge. Every version 6 `invalid_candidate` edge also points to failure. No deterministic rejection can route back to an author node or consume a semantic repair turn.
 
 Both semantic stages use a pinned BettaView bundle. The Codex self-check uses the run's frozen author model and thought setting in a fresh read-only Sandbox. The independent stage uses a different OpenRouter model chosen in Settings and frozen when the run is allocated. The OpenRouter key stays in the Worker. The Sandbox receives only a signed, attempt-scoped model channel for that exact model and setting.
 

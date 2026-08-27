@@ -1,4 +1,10 @@
-import { scoreReadability } from "./planning-publication.ts";
+import {
+  MAXIMUM_FLESCH_KINCAID_GRADE,
+  MINIMUM_FLESCH_READING_EASE,
+  proseForReadability,
+  readabilityPassed,
+  scoreReadability,
+} from "../shared/planning-language.mjs";
 import { sha256Hex, type ReviewedSource } from "./trace-review.ts";
 
 export class PlanningCandidateRejectedError extends Error {
@@ -79,31 +85,6 @@ const safePath = (change: string, path: string): boolean => {
     /^specs\/[a-z0-9]+(?:-[a-z0-9]+)*\/spec\.md$/.test(relative);
 };
 
-const proseForReadability = (value: string): string => {
-  let inCode = false;
-  const lines: string[] = [];
-  for (const line of value.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("```")) {
-      inCode = !inCode;
-      continue;
-    }
-    if (
-      inCode || trimmed.length === 0 || trimmed.startsWith("#") ||
-      trimmed.startsWith("|") || trimmed.startsWith("flowchart ") ||
-      trimmed.startsWith("stateDiagram") || trimmed.startsWith("%%")
-    ) continue;
-    lines.push(trimmed
-      .replace(/https?:\/\/\S+/g, "")
-      .replace(/`[^`]+`/g, "")
-      .replace(/\b[a-f0-9]{16,}\b/gi, "")
-      .replace(/\b[A-Z][A-Z0-9]+-[0-9]+\b/g, "")
-      .replace(/^[-*+]\s+/, "")
-      .replace(/^\d+\.\s+/, ""));
-  }
-  return lines.join(" ");
-};
-
 const encode = (value: unknown): Uint8Array => new TextEncoder().encode(JSON.stringify(value));
 
 const writeAndReadBack = async (
@@ -173,11 +154,11 @@ export const buildPlanningCandidate = async (
   for (const file of files.filter((candidate) => candidate.path.endsWith(".md"))) {
     const prose = proseForReadability(file.content);
     const score = scoreReadability(prose);
-    if (score.fleschReadingEase < 70 || score.fleschKincaidGrade > 8) {
+    if (!readabilityPassed(score)) {
       throw new Error(
         `candidate readability failed for ${file.path}: ` +
-        `reading ease ${score.fleschReadingEase} (minimum 70), ` +
-        `grade ${score.fleschKincaidGrade} (maximum 8)`,
+        `reading ease ${score.fleschReadingEase} (minimum ${MINIMUM_FLESCH_READING_EASE}), ` +
+        `grade ${score.fleschKincaidGrade} (maximum ${MAXIMUM_FLESCH_KINCAID_GRADE})`,
       );
     }
     readabilityByFile[file.path] = score;

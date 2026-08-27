@@ -45,4 +45,5 @@
 - [x] 6.3 Update the current architecture document and implementation evidence with the as-built selector-off boundary
 - [x] 6.4 Verify deployable Worker, portal, container, migration, and settings packaging without activating the live workflow or canary
 - [x] 6.5 Persist trusted deterministic-rejection feedback and stop a byte-identical rejected plan before another author-model retry
-- [ ] 6.6 Rerun the real Linear canary and preserve the author, review, repair, provider, and portal proof
+- [x] 6.6 Run deterministic author checks as a bounded same-session completion hook and remove workflow-level deterministic author retries
+- [ ] 6.7 Rerun the real Linear canary and preserve the author, review, repair, provider, and portal proof

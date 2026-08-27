@@ -806,6 +806,49 @@ test("a byte-identical rejected plan stops before another author retry and keeps
   );
 });
 
+test("version 6 treats any post-hook candidate rejection as a tooling mismatch", async () => {
+  const state = setup({
+    candidateRejection: new PlanningCandidateRejectedError(
+      "candidate readability failed for openspec/changes/sac-1/proposal.md: " +
+      "reading ease 48.84 (minimum 70), grade 9.97 (maximum 8)",
+    ),
+  });
+  state.collector.receiptIds = [];
+  const traceRun = {
+    ...run,
+    project_id: "project-1",
+    definition_id: "simple-traceability",
+    definition_version: 6,
+    current_visit_sequence: 3,
+    author_model_provider: "codex",
+    author_model: "gpt-5.6-sol",
+    author_reasoning: "high",
+  } as OrchestrationRunRecord;
+
+  await state.controller.execute(traceRun, "planning_author", "planning_author", tracePlanningDefinition);
+  state.factory.sandbox.files.set("/deos/output/review-replies.json", "[]");
+  state.factory.sandbox.files.set("/deos/workspace/repository/openspec/changes/sac-1/.openspec.yaml", "schema: spec-driven\n");
+  state.factory.sandbox.files.set("/deos/workspace/repository/openspec/changes/sac-1/proposal.md", "## Why\n\nPeople need a clear plan.\n");
+  state.factory.sandbox.files.set(
+    "/deos/workspace/repository/openspec/changes/sac-1/specs/review-step/spec.md",
+    "## ADDED Requirements\n\n### Requirement: Review the plan\n\nThe system SHALL review the plan.\n",
+  );
+  state.factory.sandbox.supervisor.state = "exited";
+
+  const observation = await state.controller.execute(
+    traceRun,
+    "planning_author",
+    "planning_author",
+    tracePlanningDefinition,
+  );
+
+  assert.equal(observation.state, "completed");
+  assert.equal(observation.state === "completed" ? observation.outcome.outcome : null, "failed");
+  assert.equal(state.attempts.latest?.state, "failed");
+  assert.equal(state.attempts.latest?.result_class, "author_completion_verification_mismatch");
+  assert.match(state.attempts.latest?.result_detail ?? "", /Author completion verification mismatch/);
+});
+
 test("OpenSpec attempt records and prompts the frozen instruction and trusted change identity", async () => {
   const { controller, factory, attempts } = setup();
   await controller.execute(run, "work", "work", openSpecDefinition);
