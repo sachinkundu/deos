@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deos.dev/schemas/trace-agent-result-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "outcome",
+    "reviewOutcome",
+    "summary",
+    "findingSetDigest",
+    "findingCount",
+    "proofRepairCount",
+    "providerReceipts"
+  ],
+  "properties": {
+    "outcome": { "type": "string", "enum": ["completed", "blocked", "failed"] },
+    "reviewOutcome": { "type": "string", "enum": ["pass", "findings"] },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "findingSetDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "findingCount": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "proofRepairCount": { "type": "integer", "minimum": 0, "maximum": 2 },
+    "providerReceipts": { "type": "array", "items": { "type": "string" } }
+  }
+}

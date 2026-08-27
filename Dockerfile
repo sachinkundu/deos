@@ -4,15 +4,20 @@ USER root
 
 RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0
 
-RUN mkdir -p /deos/bin /deos/staging /deos/jobs /deos/auth \
+RUN mkdir -p /deos/bin /deos/staging /deos/jobs /deos/auth /deos/bettaview \
     && chmod 700 /deos/auth \
     && chmod 755 /deos/bin /deos/staging /deos/jobs
 
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
+COPY container/trace-review-runner.mjs /deos/bin/trace-review-runner.mjs
 COPY container/patch-capture.mjs /deos/bin/patch-capture.mjs
+COPY vendor/bettaview/ /deos/bettaview/
+COPY config/schemas/trace-recheck-result-v1.json /deos/config/schemas/trace-recheck-result-v1.json
+COPY config/prompts/openspec-traceability-recheck.md /deos/config/prompts/openspec-traceability-recheck.md
 COPY container/deos-github /usr/local/bin/deos-github
 COPY container/deos-linear /usr/local/bin/deos-linear
 
-RUN chmod 755 /deos/bin/supervisor.mjs /usr/local/bin/deos-github /usr/local/bin/deos-linear \
+RUN chmod 755 /deos/bin/supervisor.mjs /deos/bin/trace-review-runner.mjs \
+      /usr/local/bin/deos-github /usr/local/bin/deos-linear \
     && codex --version \
     && openspec --version

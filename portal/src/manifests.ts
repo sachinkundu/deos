@@ -15,6 +15,7 @@ const SUPPORTED_DIGESTS = new Set([
   "5814eb9c981b93fd7fa6e5144d370a083533ff1292768f3af83c30ede025acfc",
   "4eb12c3335e46fe482251a164f3133e15200fae18c136b57c2bb10bf571232f9",
   "127779af65ec49c8ca50436df86c3baaa364b808ec17f14d907c8d05669c7015",
+  "fe52677cbe82792dc0d5382974be37fcfed371f4edaf0f7ae4284f246ae60524",
 ]);
 
 export const STAGES = [
@@ -38,9 +39,26 @@ export const SIMPLE_STAGES = [
   { id: "stopped", label: "Stopped" },
 ] as const;
 
+export const TRACEABILITY_STAGES = [
+  { id: "claim", label: "Claim issue" },
+  { id: "planning", label: "Create planning PR" },
+  { id: "independent_review", label: "Independent review" },
+  { id: "review", label: "Human approval" },
+  { id: "merge", label: "Automatic merge & check" },
+  { id: "complete", label: "Completed" },
+  { id: "stopped", label: "Stopped" },
+] as const;
+
 const stageForNode = (nodeId: string): string => {
   if (nodeId === "claim_issue") return "claim";
-  if (nodeId === "openspec_planning") return "planning";
+  if (
+    nodeId === "openspec_planning" || nodeId === "planning_author" ||
+    nodeId === "planning_self_repair" || nodeId === "self_discovery" ||
+    nodeId === "self_recheck_before_publish" || nodeId === "publish_initial" ||
+    nodeId === "planning_independent_repair" || nodeId === "self_recheck_after_publish" ||
+    nodeId === "publish_update"
+  ) return "planning";
+  if (["independent_discovery", "independent_recheck"].includes(nodeId)) return "independent_review";
   if (nodeId === "planning_review") return "review";
   if (["merge_planning_pr", "verify_planning_merge"].includes(nodeId)) return "merge";
   if (["requirements", "requirements_review", "requirements_approval"].includes(nodeId)) return "requirements";
@@ -57,7 +75,9 @@ const stageForNode = (nodeId: string): string => {
 
 export const presentationStagesForDefinition = (
   definition: LoadedWorkflowDefinition,
-): readonly { id: string; label: string }[] => definition.name === "simple" ? SIMPLE_STAGES : STAGES;
+): readonly { id: string; label: string }[] => definition.name === "simple"
+  ? SIMPLE_STAGES
+  : definition.name === "simple-traceability" ? TRACEABILITY_STAGES : STAGES;
 
 export const validatePresentationManifest = (definition: LoadedWorkflowDefinition): Map<string, string> => {
   if (!SUPPORTED_DIGESTS.has(definition.digest)) throw new Error("unsupported workflow definition");

@@ -286,6 +286,16 @@ class Process implements SandboxProcessView {
     return Promise.resolve({ code: this.exitCode, timedOut: false });
   }
 
+  output() {
+    return Promise.resolve({
+      stdout: "",
+      stderr: "",
+      exitCode: this.exitCode,
+      timedOut: false,
+      truncated: false,
+    });
+  }
+
   kill() {
     this.killed = true;
     this.state = "exited";

@@ -5,6 +5,7 @@ import { sandboxIdentity, uuidV7 } from "./orchestration-identity.ts";
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { ValidatedAgentOutcome } from "./workflow-evaluator.ts";
 import type { LoadedWorkflowDefinition, WorkflowJob } from "./workflow-definition.ts";
+import { PlanningCandidateRejectedError } from "./planning-candidate.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
 import type {
   ContinuationPatchReference,
@@ -225,6 +226,14 @@ export interface SandboxProcessView {
     exit?: { code: number; signal?: number; timedOut: boolean };
   }>;
   waitForExit(options?: { timeout?: number }): Promise<{ code: number; signal?: number; timedOut: boolean }>;
+  output(options: { encoding: "utf8"; timeout?: number; maxBytes?: number }): Promise<{
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+    signal?: number;
+    timedOut: boolean;
+    truncated: boolean;
+  }>;
   kill(signal?: number): Promise<void>;
 }
 
@@ -263,8 +272,8 @@ export type AgentExecutionObservation =
   | { state: "running"; attemptId: string; sandboxId: string }
   | {
       state: "completed";
-      attemptId: string;
-      sandboxId: string;
+      attemptId: string | null;
+      sandboxId: string | null;
       outcome: ValidatedAgentOutcome;
       manifestId: string | null;
     };
@@ -289,6 +298,29 @@ interface SandboxControllerDependencies {
   }) => Promise<{ r2Key: string; sha256: string }>;
   collector: (sandbox: SandboxView) => ArtifactCollector;
   providerReceipts: ProviderReceiptVerifier;
+  persistPlanningCandidate?: (input: {
+    run: OrchestrationRunRecord;
+    attempt: AgentAttemptRecord;
+    baseCommit: string;
+    change: string;
+    files: readonly { path: string; content: string }[];
+    reviewReplies: readonly { commentId: number; body: string }[];
+  }) => Promise<void>;
+  repairScope?: (runId: string) => Promise<{
+    files: readonly { path: string; content: string }[];
+    allowedRanges: readonly { path: string; startLine: number; endLine: number }[];
+  } | null>;
+  acceptTraceReview?: (input: {
+    run: OrchestrationRunRecord;
+    attempt: AgentAttemptRecord;
+    job: WorkflowJob;
+    collection: ArtifactCollectionResult;
+  }) => Promise<string | void>;
+  reuseTraceReview?: (
+    run: OrchestrationRunRecord,
+    nodeId: string,
+    job: WorkflowJob,
+  ) => Promise<AgentExecutionObservation | null>;
   lifecycle?: LifecycleWriter;
 }
 
@@ -327,8 +359,13 @@ export class SandboxAgentController {
     jobId: string,
     definition: LoadedWorkflowDefinition,
   ): Promise<AgentExecutionObservation> {
-    const job = definition.jobs[jobId];
-    if (job === undefined) throw new Error(`workflow job ${jobId} is missing`);
+    const configuredJob = definition.jobs[jobId];
+    if (configuredJob === undefined) throw new Error(`workflow job ${jobId} is missing`);
+    const job = this.runtimeJob(run, configuredJob);
+    if (job.agentRole === "reviewer" && this.dependencies.reuseTraceReview !== undefined) {
+      const reused = await this.dependencies.reuseTraceReview(run, nodeId, job);
+      if (reused !== null) return reused;
+    }
     let attempt = await this.attempts.findLatest(run.run_id, nodeId);
     if (
       attempt === null ||
@@ -346,6 +383,40 @@ export class SandboxAgentController {
       return this.finishedObservation(attempt);
     }
     return this.reconcile(run, attempt, job);
+  }
+
+  private runtimeJob(run: OrchestrationRunRecord, job: WorkflowJob): WorkflowJob {
+    if (job.agentRole === undefined) return job;
+    if (job.agentRole === "author") {
+      if (!run.author_model_provider || !run.author_model || !run.author_reasoning) {
+        throw new Error("run author model settings are missing");
+      }
+      return Object.freeze({
+        ...job,
+        modelProvider: run.author_model_provider as "codex",
+        model: run.author_model,
+        reasoning: run.author_reasoning,
+      });
+    }
+    if (job.modelProvider === "codex") {
+      if (!run.author_model || !run.author_reasoning) {
+        throw new Error("run self-check model settings are missing");
+      }
+      return Object.freeze({ ...job, model: run.author_model, reasoning: run.author_reasoning });
+    }
+    if (
+      run.independent_review_provider !== "openrouter" ||
+      !run.independent_review_model || !run.independent_review_reasoning
+    ) throw new Error("run independent review model settings are missing");
+    if (run.independent_review_model === run.author_model) {
+      throw new Error("run independent review model matches the author model");
+    }
+    return Object.freeze({
+      ...job,
+      modelProvider: "openrouter",
+      model: run.independent_review_model,
+      reasoning: run.independent_review_reasoning,
+    });
   }
 
   private async allocate(
@@ -386,6 +457,13 @@ export class SandboxAgentController {
       openspecChange: job.inputs.includes("openspec_change") ? materialized.openspecChange : null,
       planningBranch: materialized.planningWorkProduct?.remote_branch ?? null,
       capabilities: job.capabilities ?? [],
+      agentRole: job.agentRole ?? null,
+      modelProvider: job.modelProvider ?? null,
+      model: job.model ?? null,
+      reasoning: job.reasoning ?? null,
+      permissionProfile: job.permissionProfile ?? null,
+      providerAccess: job.providerAccess ?? [],
+      reviewMode: job.reviewMode ?? null,
       continuationPatch: materialized.continuationPatch,
       deadline,
     };
@@ -412,17 +490,21 @@ export class SandboxAgentController {
     let lease: CredentialLease | null = null;
     let supervisor: SandboxProcessView | null = null;
     try {
-      lease = await this.credentials.acquire(
-        this.config.authProfileId,
-        attempt.attempt_id,
-        this.config.absoluteTimeoutMs + 15 * 60_000,
-      );
+      if (job.modelProvider !== "openrouter") {
+        lease = await this.credentials.acquire(
+          this.config.authProfileId,
+          attempt.attempt_id,
+          this.config.absoluteTimeoutMs + 15 * 60_000,
+        );
+      }
       await sandbox.setKeepAlive(true);
       await sandbox.mkdir("/root/.codex", { recursive: true });
       await sandbox.mkdir("/deos/run", { recursive: true });
       await sandbox.mkdir("/deos/output", { recursive: true });
       await sandbox.mkdir("/deos/workspace", { recursive: true });
-      await sandbox.writeFile("/root/.codex/auth.json", lease.plaintext, { encoding: "utf8" });
+      if (lease !== null) {
+        await sandbox.writeFile("/root/.codex/auth.json", lease.plaintext, { encoding: "utf8" });
+      }
       const durableJob = JSON.parse(attempt.job_spec_json) as {
         repository?: unknown;
         materializedContext?: unknown;
@@ -430,6 +512,12 @@ export class SandboxAgentController {
         openspecChange?: unknown;
         planningBranch?: unknown;
         continuationPatch?: unknown;
+        agentRole?: unknown;
+        modelProvider?: unknown;
+        model?: unknown;
+        reasoning?: unknown;
+        permissionProfile?: unknown;
+        providerAccess?: unknown;
       };
       if (typeof durableJob.materializedContext !== "string") {
         throw new Error("materialized job context is missing");
@@ -447,6 +535,12 @@ export class SandboxAgentController {
         )
       ) throw new Error("OpenSpec job identity is invalid");
       const planningJob = job.capabilities?.includes("github.publish_planning_work_product") === true;
+      if (job.agentRole !== undefined && (
+        durableJob.agentRole !== job.agentRole || durableJob.modelProvider !== job.modelProvider ||
+        durableJob.model !== job.model || durableJob.reasoning !== job.reasoning ||
+        durableJob.permissionProfile !== job.permissionProfile ||
+        JSON.stringify(durableJob.providerAccess) !== JSON.stringify(job.providerAccess ?? [])
+      )) throw new Error("saved agent model configuration is invalid");
       if (
         planningJob &&
         (
@@ -495,6 +589,14 @@ export class SandboxAgentController {
         deadline: attempt.absolute_deadline,
         capabilityUrl: grant.url,
         capabilityToken: grant.token,
+        agentRole: job.agentRole ?? null,
+        modelProvider: job.modelProvider ?? null,
+        model: job.model ?? null,
+        reasoning: job.reasoning ?? null,
+        permissionProfile: job.permissionProfile ?? null,
+        reviewMode: job.reviewMode ?? null,
+        openspecChange: typeof durableJob.openspecChange === "string" ? durableJob.openspecChange : null,
+        materializedContext: durableJob.materializedContext,
       };
       await sandbox.writeFile("/deos/run/job.json", JSON.stringify(stagedJob), { encoding: "utf8" });
       const resetCheckout = await sandbox.exec([
@@ -517,7 +619,12 @@ export class SandboxAgentController {
         throw new Error("attempt branch creation failed");
       }
       await this.restoreContinuationPatch(sandbox, durableJob.continuationPatch);
-      if (planningJob) await sandbox.deleteFile("/usr/local/bin/deos-linear");
+      if (job.agentRole === "reviewer") {
+        await sandbox.deleteFile("/usr/local/bin/deos-linear");
+        await sandbox.deleteFile("/usr/local/bin/deos-github");
+      } else if (planningJob) {
+        await sandbox.deleteFile("/usr/local/bin/deos-linear");
+      }
       supervisor = await sandbox.exec(
         ["node", "/deos/bin/supervisor.mjs"],
         { cwd: "/deos/run" },
@@ -621,10 +728,11 @@ export class SandboxAgentController {
       );
       return this.failedObservation(attempt, "failed", manifestId);
     }
-    return this.collect(attempt, sandbox, job);
+    return this.collect(run, attempt, sandbox, job);
   }
 
   private async collect(
+    run: OrchestrationRunRecord,
     attempt: AgentAttemptRecord,
     sandbox: SandboxView,
     job: WorkflowJob,
@@ -635,12 +743,14 @@ export class SandboxAgentController {
     let observation: AgentExecutionObservation | null = null;
     const collector = this.dependencies.collector(sandbox);
     try {
-      const lease = await this.credentials.resume(this.config.authProfileId, attempt.attempt_id);
-      const refreshed = (await sandbox.readFile("/root/.codex/auth.json", { encoding: "utf8" })).content;
-      try {
-        await this.credentials.replaceAndRelease(lease, refreshed);
-      } finally {
-        await sandbox.deleteFile("/root/.codex/auth.json");
+      if (job.modelProvider !== "openrouter") {
+        const lease = await this.credentials.resume(this.config.authProfileId, attempt.attempt_id);
+        const refreshed = (await sandbox.readFile("/root/.codex/auth.json", { encoding: "utf8" })).content;
+        try {
+          await this.credentials.replaceAndRelease(lease, refreshed);
+        } finally {
+          await sandbox.deleteFile("/root/.codex/auth.json");
+        }
       }
       collection = await collector.collect({
         runId: attempt.run_id,
@@ -649,7 +759,10 @@ export class SandboxAgentController {
         requiredFiles: job.requiredOutputs,
         resultSchema: job.resultSchema,
       });
-      const resultClass = String(collection.result.outcome);
+      await collector.verifyDurable(collection);
+      let resultClass = job.agentRole === "reviewer"
+        ? String(collection.result.reviewOutcome)
+        : String(collection.result.outcome);
       const resultReceiptIds = collection.result.providerReceipts;
       const mechanicalReceiptIds = collection.providerReceipts.map((receipt) => receipt.operationId);
       const declaredReceiptsMatch =
@@ -663,6 +776,43 @@ export class SandboxAgentController {
           attempt.attempt_id,
           mechanicalReceiptIds,
         );
+      if (job.agentRole === "author" && job.inputs.includes("openspec_change")) {
+        try {
+          await this.capturePlanningCandidate(run, attempt, sandbox);
+        } catch (error) {
+          if (error instanceof PlanningCandidateRejectedError) {
+            await this.attempts.finish({
+              attemptId: attempt.attempt_id,
+              expected: "collecting",
+              state: "completed",
+              resultClass: "invalid_candidate",
+              manifestId: collection.manifestId,
+              now: this.dependencies.now().toISOString(),
+            });
+            await this.cleanup(attempt, sandbox);
+            await collector.verifyAfterCleanup(collection);
+            return {
+              state: "completed",
+              attemptId: attempt.attempt_id,
+              sandboxId: attempt.sandbox_id,
+              manifestId: collection.manifestId,
+              outcome: {
+                kind: "agent",
+                outcome: "invalid_candidate",
+                providerReceiptsPresent: false,
+                providerReceiptsComplete: true,
+              },
+            };
+          }
+          throw error;
+        }
+      }
+      if (job.agentRole === "reviewer") {
+        if (this.dependencies.acceptTraceReview === undefined) {
+          throw new Error("trusted trace review accepter is unavailable");
+        }
+        resultClass = await this.dependencies.acceptTraceReview({ run, attempt, job, collection }) ?? resultClass;
+      }
       const state = resultClass === "blocked" ? "blocked" : resultClass === "failed" ? "failed" : "completed";
       await this.attempts.finish({
         attemptId: attempt.attempt_id,
@@ -706,6 +856,127 @@ export class SandboxAgentController {
     await this.cleanup(attempt, sandbox);
     await collector.verifyAfterCleanup(collection);
     return observation;
+  }
+
+  private async capturePlanningCandidate(
+    run: OrchestrationRunRecord,
+    attempt: AgentAttemptRecord,
+    sandbox: SandboxView,
+  ): Promise<void> {
+    if (this.dependencies.persistPlanningCandidate === undefined) {
+      throw new Error("trusted planning candidate writer is unavailable");
+    }
+    const durableJob = JSON.parse(attempt.job_spec_json) as { openspecChange?: unknown };
+    if (
+      typeof durableJob.openspecChange !== "string" ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(durableJob.openspecChange)
+    ) throw new Error("trusted planning candidate change is invalid");
+    const root = `openspec/changes/${durableJob.openspecChange}`;
+    const validation = await sandbox.exec(
+      ["openspec", "validate", durableJob.openspecChange, "--strict"],
+      { cwd: "/deos/workspace/repository", timeout: 120_000 },
+    );
+    const validationOutput = await validation.output({ encoding: "utf8", timeout: 120_000, maxBytes: 64_000 });
+    if (validationOutput.exitCode !== 0 || validationOutput.truncated) {
+      throw new PlanningCandidateRejectedError("trusted strict OpenSpec validation failed");
+    }
+    const inventory = await sandbox.exec(
+      ["git", "ls-files", "--cached", "--others", "--exclude-standard", "--", root],
+      { cwd: "/deos/workspace/repository", timeout: 60_000 },
+    );
+    const inventoryOutput = await inventory.output({ encoding: "utf8", timeout: 60_000, maxBytes: 64_000 });
+    if (inventoryOutput.exitCode !== 0 || inventoryOutput.truncated) {
+      throw new PlanningCandidateRejectedError("trusted planning candidate inventory failed");
+    }
+    const paths = inventoryOutput.stdout.split("\n").filter(Boolean).sort();
+    if (paths.length < 3 || paths.length > 64 || new Set(paths).size !== paths.length) {
+      throw new PlanningCandidateRejectedError("trusted planning candidate inventory is invalid");
+    }
+    const files = await Promise.all(paths.map(async (path) => ({
+      path,
+      content: (await sandbox.readFile(`/deos/workspace/repository/${path}`, { encoding: "utf8" })).content,
+    })));
+    let reviewReplies: readonly { commentId: number; body: string }[];
+    try {
+      reviewReplies = JSON.parse((await sandbox.readFile("/deos/output/review-replies.json", {
+        encoding: "utf8",
+      })).content) as readonly { commentId: number; body: string }[];
+    } catch {
+      throw new PlanningCandidateRejectedError("trusted planning review replies are invalid");
+    }
+    const revision = await sandbox.exec(
+      ["git", "rev-parse", "HEAD"],
+      { cwd: "/deos/workspace/repository", timeout: 60_000 },
+    );
+    const revisionOutput = await revision.output({ encoding: "utf8", timeout: 60_000, maxBytes: 1_024 });
+    const baseCommit = revisionOutput.stdout.trim();
+    if (revisionOutput.exitCode !== 0 || !/^[a-f0-9]{40}$/.test(baseCommit)) {
+      throw new Error("trusted planning candidate base commit is invalid");
+    }
+    await this.validateRepairScope(run.run_id, sandbox, files);
+    await this.dependencies.persistPlanningCandidate({
+      run,
+      attempt,
+      baseCommit,
+      change: durableJob.openspecChange,
+      files,
+      reviewReplies,
+    });
+  }
+
+  private async validateRepairScope(
+    runId: string,
+    sandbox: SandboxView,
+    currentFiles: readonly { path: string; content: string }[],
+  ): Promise<void> {
+    if (this.dependencies.repairScope === undefined) return;
+    const scope = await this.dependencies.repairScope(runId);
+    if (scope === null) return;
+    const previousPaths = scope.files.map((file) => file.path).sort();
+    const currentPaths = currentFiles.map((file) => file.path).sort();
+    if (JSON.stringify(previousPaths) !== JSON.stringify(currentPaths)) {
+      throw new PlanningCandidateRejectedError("traceability repair changed the planning file inventory");
+    }
+    const previousRoot = "/deos/run/previous-candidate";
+    await sandbox.mkdir(previousRoot, { recursive: true });
+    try {
+      for (const previous of scope.files) {
+        const current = currentFiles.find((file) => file.path === previous.path);
+        if (current === undefined) throw new PlanningCandidateRejectedError("traceability repair file is missing");
+        const oldPath = `${previousRoot}/${previous.path}`;
+        await sandbox.mkdir(oldPath.slice(0, oldPath.lastIndexOf("/")), { recursive: true });
+        await sandbox.writeFile(oldPath, previous.content, { encoding: "utf8" });
+        const process = await sandbox.exec(
+          ["git", "diff", "--no-index", "--unified=0", "--", oldPath, `/deos/workspace/repository/${current.path}`],
+          { cwd: "/deos/run", timeout: 60_000 },
+        );
+        const output = await process.output({ encoding: "utf8", timeout: 60_000, maxBytes: 256_000 });
+        if (![0, 1].includes(output.exitCode) || output.truncated) {
+          throw new PlanningCandidateRejectedError("traceability repair diff could not be checked");
+        }
+        const ranges = scope.allowedRanges.filter((range) => range.path === current.path);
+        for (const match of output.stdout.matchAll(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/gm)) {
+          const oldStart = Number(match[1]);
+          const oldCount = match[2] === undefined ? 1 : Number(match[2]);
+          const oldEnd = oldCount === 0 ? oldStart : oldStart + oldCount - 1;
+          const allowed = ranges.some((range) =>
+            oldStart >= range.startLine && oldEnd <= range.endLine + 1);
+          if (!allowed) {
+            throw new PlanningCandidateRejectedError(
+              "traceability repair changed bytes outside accepted finding ranges",
+            );
+          }
+        }
+      }
+    } finally {
+      const cleanup = await sandbox.exec(["rm", "-rf", "--", previousRoot], {
+        cwd: "/deos/run",
+        timeout: 60_000,
+      });
+      if ((await cleanup.waitForExit({ timeout: 60_000 })).code !== 0) {
+        throw new Error("traceability repair scope cleanup failed");
+      }
+    }
   }
 
   private async finishFailure(

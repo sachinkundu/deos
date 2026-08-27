@@ -8,6 +8,42 @@ Cloudflare Workflow reloads D1 authority before every graph decision. The run's 
 
 Repository-local OpenSpec progression is encoded as typed agent jobs carrying one allowlisted native instruction and a trusted change identity derived from the Linear issue identifier. Continue advances one planning artifact, apply implements the task checklist, verify consumes the completed change, and archive performs mechanical spec synchronization and change closure. Each fresh Sandbox starts from the configured base and restores the latest complete cumulative patch from R2 only after its SHA-256 matches D1, so later review and implementation agents see earlier unmerged work without preserving a Sandbox filesystem. Archive fails closed when no completed cumulative patch is available.
 
+## OpenSpec traceability review flow
+
+The bundle also contains `simple-traceability` version 4. It is registered with the fixed `DEOS Traceability` selector, but registration leaves that selector disabled. The existing `simple` definition stays the project default. Deploying this code cannot start a traceability run until an operator separately enables the selector and applies the matching Linear label.
+
+```mermaid
+flowchart LR
+    L[Linear issue] --> W[Cloudflare Workflow]
+    W <--> D[(D1 authority)]
+    W --> A[Planning author<br/>Codex, repository write only]
+    A --> C[Trusted candidate checks]
+    C --> S[Codex self-check<br/>fresh read-only Sandbox]
+    S --> P[Trusted GitHub publish]
+    P --> G[One planning PR]
+    G --> I[Independent review<br/>OpenRouter via narrow Worker adapter]
+    I --> H[Human Review]
+    C --> R[(Immutable R2 evidence)]
+    S --> R
+    I --> R
+    D --> O[Access-protected review page]
+    R --> O
+```
+
+The author has no GitHub or Linear capability. Trusted code builds an immutable planning candidate after the author exits. It allows only `.openspec.yaml`, `proposal.md`, and the declared `specs/**/spec.md` files. It runs strict OpenSpec and readability checks, writes the candidate and validation receipt to create-only R2 keys, reads both objects back by SHA-256, and then indexes the accepted candidate in D1.
+
+Both semantic stages use a pinned BettaView bundle. The Codex self-check uses the run's frozen author model and thought setting in a fresh read-only Sandbox. The independent stage uses a different OpenRouter model chosen in Settings and frozen when the run is allocated. The OpenRouter key stays in the Worker. The Sandbox receives only a signed, attempt-scoped model channel for that exact model and setting.
+
+D1 stores the candidate, phase, accepted review, and exact-head binding. R2 stores the full model and validation proof. Discovery creates one fixed finding inventory. A recheck must rate every existing ID once and cannot add, remove, rename, merge, or split a finding. Trusted code derives the outcome from the checked artifact. The two stages share at most three author-repair turns. An identical input records a reuse event without creating an attempt, Sandbox, or model call. A different pull-request head can reuse proof only after trusted GitHub reads show that every reviewed file has the same hash.
+
+Trusted publication creates or updates one planning pull request from the accepted R2 candidate. It also posts each candidate-bound human review reply through the existing idempotent GitHub adapter and leaves the thread open. Independent proof is bound to the exact published head. The Worker updates one exact-head GitHub Check Run and updates one marked Linear status link to the protected portal. Review agents cannot make any of these provider calls.
+
+Human feedback closes neither prior proof nor its finding inventory. A trusted action allocates the next round with fresh counters. The author then handles the human comments, and both stages run new full discovery checks. Later repairs inside that round remain limited to the fixed finding ranges. No-semantic-change author output is rejected before another review attempt, Sandbox, or model call can be allocated.
+
+The portal serves `/runs/<encoded-run-id>/review`. It reads rounds, phase counters, accepted reviews, reuse, exact heads, findings, cited ranges, repair evidence, conflicts, and candidates from D1. It marks exact-head proof current or stale against the saved pull-request head. Raw proof is available only through an allowlisted route that selects an accepted manifest, reads its exact R2 key, verifies the D1 SHA-256, and returns `Cache-Control: no-store`. The ordinary workflow view does not generate proof during page load. Its planning-stage detail links to the review page only after accepted proof exists.
+
+This code and its packaging checks do not prove a live traceability run. A provider-originated canary, deployment read-back, portal Access check, and real D1/R2/GitHub/Linear evidence remain a separate, explicitly authorized step after merge and selector enablement.
+
 Definition version 11 ends with `evidence_verification -> openspec_verify -> final_approval -> sync_and_archive -> done`. Final approval is the last authority-bearing gate: approval may dispatch only the typed `/opsx:archive` job, whose complete artifacts and confirmed Sandbox cleanup permit terminal `succeeded`; rejection commits `denied`, while blocked or failed archive work reaches a typed failure node that commits `failed` before the executor errors. The active definition has no deploy or release-finalization node. Older runs still restore their own immutable D1 snapshot and verified digest, including version 10's legacy `blocked` tail and any historical release nodes.
 
 The evidence-verification agent is a pre-final-approval semantic consumer. It evaluates the restored implementation and evidence applicable before native OpenSpec verify; it cannot require later verify, final approval, sync, or archive outputs to certify entry to those nodes. Immutable identity, manifest integrity, patch checksums, cleanup, and receipt completeness remain trusted controller concerns rather than credentialed agent duties. Provider-originated and visual evidence are required only for changes that actually expose provider or user-interface behavior.

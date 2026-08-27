@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deos.dev/schemas/trace-recheck-result-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode", "baselineFindingSetDigest", "resolutions"],
+  "properties": {
+    "mode": { "type": "string", "const": "recheck" },
+    "baselineFindingSetDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "resolutions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "findingId",
+          "status",
+          "rationale",
+          "currentEvidence",
+          "causalSourceDigest"
+        ],
+        "properties": {
+          "findingId": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["fixed", "partially_fixed", "still_present", "cannot_verify"]
+          },
+          "rationale": { "type": "string", "minLength": 1, "maxLength": 4000 },
+          "currentEvidence": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "startLine", "endLine"],
+              "properties": {
+                "path": { "type": "string", "minLength": 1, "maxLength": 500 },
+                "startLine": { "type": "integer", "minimum": 1 },
+                "endLine": { "type": "integer", "minimum": 1 }
+              }
+            }
+          },
+          "causalSourceDigest": {
+            "oneOf": [
+              { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              { "type": "null" }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

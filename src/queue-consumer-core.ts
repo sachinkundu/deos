@@ -264,6 +264,16 @@ export const registerBundledWorkflowDefinitions = async (
     if (registered.name === definition.name && registered.version === definition.version) continue;
     await store.registerDefinition({ definition: registered, projectId: env.LINEAR_PROJECT_ID, now });
   }
+  const traceability = bundled["simple-traceability"];
+  if (traceability !== undefined) {
+    await store.registerSelector({
+      projectId: env.LINEAR_PROJECT_ID,
+      repository: env.TRIAL_REPOSITORY,
+      labelName: "DEOS Traceability",
+      definition: traceability,
+      now,
+    });
+  }
   return bundled;
 };
 
@@ -336,7 +346,26 @@ export const processQueueMessage = async (
       policy.dispatch_enabled === 1 &&
       event.transition === policy.start_state_name
     ) {
-      const selection = {
+      const selectorMatches = evidence.names === null || policy === null
+        ? []
+        : (await Promise.all(evidence.names.map(async (labelName) => ({
+            labelName,
+            selector: await store.findSelector(event.project_id, policy.trial_repository, labelName),
+          })))).filter((match) =>
+            match.selector?.enabled === 1 && match.selector.definition_id === "simple-traceability");
+      if (selectorMatches.length > 1) throw new CategorizedWorkflowError("correlation_mismatch");
+      const selected = selectorMatches[0];
+      const selectedDefinition = selected === undefined
+        ? definition
+        : bundled[selected.selector!.definition_id];
+      if (
+        selectedDefinition === undefined ||
+        (selected !== undefined && (
+          selectedDefinition.version !== selected.selector!.definition_version ||
+          selectedDefinition.digest !== selected.selector!.definition_digest
+        ))
+      ) throw new CategorizedWorkflowError("unexpected_failure");
+      const selection = selected === undefined ? {
         kind: "default",
         value: "project_policy",
         labelName: null,
@@ -345,11 +374,20 @@ export const processQueueMessage = async (
         deliveryId: event.source_delivery_id,
         observedAt: new Date(event.occurred_at).toISOString(),
         providerDigest: evidenceDigest,
+      } as const : {
+        kind: "linear_label",
+        value: selected.selector!.definition_id,
+        labelName: selected.labelName,
+        reason: "label_match",
+        evidenceJson: evidence.json,
+        deliveryId: event.source_delivery_id,
+        observedAt: new Date(event.occurred_at).toISOString(),
+        providerDigest: evidenceDigest,
       } as const;
       const allocation = await store.allocateRun({
         projectId: event.project_id,
         issueId: event.issue_id,
-        definition,
+        definition: selectedDefinition,
         selection,
         now,
       });

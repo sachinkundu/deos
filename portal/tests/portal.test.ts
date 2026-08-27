@@ -7,6 +7,11 @@ import { validatePresentationManifest } from "../src/manifests.ts";
 import { routePortalRequest } from "../src/worker.ts";
 import { normalizeRepository, RepositorySettingsError, RepositorySettingsStore } from "../src/settings.ts";
 import {
+  TraceReviewArtifactError,
+  TraceReviewNotFoundError,
+  TraceReviewReadStore,
+} from "../src/review.ts";
+import {
   parseTranscriptJsonl,
   TranscriptReadStore,
   TranscriptUnavailableError,
@@ -255,5 +260,66 @@ test("attempt transcript fails closed when the R2 body differs from D1", async (
   await assert.rejects(
     () => new TranscriptReadStore(db, bucket, "project-id").read("01a03852-9204-7612-bbb6-b76579f1462a"),
     TranscriptUnavailableError,
+  );
+});
+
+test("review artifacts use the allowlist, D1-selected key, and exact hash", async () => {
+  const body = new TextEncoder().encode('{"version":1}\n');
+  const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", body)))
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  let requestedKey = "";
+  const db = {
+    prepare() {
+      return { bind: (reviewId: string, projectId: string, logicalName: string) => {
+        assert.equal(reviewId, "review:01a03852-9204-7612-bbb6-b76579f1462a");
+        assert.equal(projectId, "project-id");
+        assert.equal(logicalName, "candidate-inventory.json");
+        return { first: async () => ({
+          r2_key: "private/review/candidate-inventory.json",
+          media_type: "application/json",
+          sha256: digest,
+        }) };
+      } };
+    },
+  } as unknown as D1Database;
+  const bucket = { get: async (key: string) => {
+    requestedKey = key;
+    return { arrayBuffer: async () => body.buffer };
+  } } as unknown as R2Bucket;
+  const artifact = await new TraceReviewReadStore(db, bucket, "project-id").artifact(
+    "review:01a03852-9204-7612-bbb6-b76579f1462a",
+    "candidate-inventory.json",
+  );
+  assert.equal(requestedKey, "private/review/candidate-inventory.json");
+  assert.equal(artifact.sha256, digest);
+  await assert.rejects(
+    () => new TraceReviewReadStore(db, bucket, "project-id").artifact(
+      "review:01a03852-9204-7612-bbb6-b76579f1462a",
+      "provider-references.json",
+    ),
+    TraceReviewNotFoundError,
+  );
+});
+
+test("review artifact hash mismatch fails closed", async () => {
+  const body = new TextEncoder().encode("changed");
+  const db = {
+    prepare() {
+      return { bind: () => ({ first: async () => ({
+        r2_key: "private/review/raw-review-output.json",
+        media_type: "application/json",
+        sha256: "0".repeat(64),
+      }) }) };
+    },
+  } as unknown as D1Database;
+  const bucket = {
+    get: async () => ({ arrayBuffer: async () => body.buffer }),
+  } as unknown as R2Bucket;
+  await assert.rejects(
+    () => new TraceReviewReadStore(db, bucket, "project-id").artifact(
+      "review:01a03852-9204-7612-bbb6-b76579f1462a",
+      "raw-review-output.json",
+    ),
+    TraceReviewArtifactError,
   );
 });

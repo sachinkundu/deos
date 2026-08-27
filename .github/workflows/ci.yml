@@ -54,16 +54,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install workflow-view dependencies
+        run: npm ci --prefix prototypes/sac-123-workflow-view
+
       - name: Test TypeScript
         run: npm test
 
       - name: Type-check TypeScript
         run: npm run typecheck
 
+      - name: Test and type-check portal
+        run: |
+          npm run portal:test
+          npm run portal:typecheck
+
+      - name: Build portal entries
+        run: |
+          npm run portal:build:full-workflow
+          npm run portal:build
+
       - name: Check generated Worker bindings
-        run: npm run types:check
+        run: |
+          npm run types:check
+          npm run portal:types:check
 
       - name: Validate Wrangler configurations
         run: |
           npx wrangler deploy --dry-run --config wrangler.queue-consumer-ts.jsonc
           npx wrangler deploy --dry-run --config wrangler.jsonc
+          npx wrangler deploy --dry-run --config portal/wrangler.jsonc

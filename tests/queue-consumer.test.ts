@@ -56,6 +56,19 @@ spec:
 `,
   { prompts: {}, schemas: {} },
 );
+const traceabilityDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: simple-traceability, version: 1 }
+spec:
+  start: trace_start
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs: {}
+  nodes:
+    trace_start: { type: terminal, outcome: succeeded }
+`,
+  { prompts: {}, schemas: {} },
+);
 const NOW = "2026-08-16T05:00:00.000Z";
 
 class FakeInstance implements WorkflowInstanceHandle {
@@ -463,7 +476,11 @@ const runSelectedMessage = async (input: {
     } as unknown as QueueConsumerEnv),
     {
       store: input.store,
-      definitions: { [definition.name]: definition, simple: simpleDefinition },
+      definitions: {
+        [definition.name]: definition,
+        simple: simpleDefinition,
+        "simple-traceability": traceabilityDefinition,
+      },
       now: () => new Date(NOW),
       observe: () => {},
       lifecycle: () => {},
@@ -521,6 +538,35 @@ test("labels and legacy selector state do not change the simple default", async 
   });
   assert.equal(unlabeled.runs[0].definition_id, "simple");
   assert.equal(unlabeled.runs[0].selection_value, "project_policy");
+});
+
+test("the traceability selector is registered off and selects only after explicit enablement", async () => {
+  const store = new FakeStore();
+  await registerBundledWorkflowDefinitions(environment(new FakeWorkflow()), {
+    store,
+    definitions: {
+      [definition.name]: definition,
+      simple: simpleDefinition,
+      "simple-traceability": traceabilityDefinition,
+    },
+    now: () => new Date(NOW),
+  });
+  const selector = store.selectors.get("project-1:sachinkundu/deos:DEOS Traceability");
+  assert.equal(selector?.enabled, 0);
+
+  if (selector === undefined) throw new Error("traceability selector setup failed");
+  selector.enabled = 1;
+  const evidence = {
+    status: "available" as const,
+    labels: [{ id: "trace-label", name: "DEOS Traceability" }],
+  };
+  const encoded = JSON.stringify(evidence);
+  const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(encoded)))]
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  await runSelectedMessage({ store, workflow: new FakeWorkflow(), evidence, evidenceDigest: digest });
+  assert.equal(store.runs[0].definition_id, "simple-traceability");
+  assert.equal(store.runs[0].selection_kind, "linear_label");
+  assert.equal(store.runs[0].selection_label_name, "DEOS Traceability");
 });
 
 test("unavailable evidence keeps the simple default while tampering fails before allocation", async () => {

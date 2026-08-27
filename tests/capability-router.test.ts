@@ -256,3 +256,56 @@ test("inactive or mismatched attempt is rejected before provider access", async 
   assert.equal((await invoke("github", requestBody)).status, 403);
   assert.equal(github.calls, 0);
 });
+
+test("OpenRouter capability permits one exact saved-model call and no repair call", async () => {
+  const store = new Store();
+  let reviewCalls = 0;
+  const modelClaims = {
+    ...claims,
+    actions: ["model.openrouter_review"] as const,
+    modelProvider: "openrouter" as const,
+    model: "anthropic/claude-sonnet-4.5",
+    reasoning: "high",
+  };
+  const router = new CapabilityRouter({
+    store,
+    github: new GitHub() as unknown as GitHubCapabilityAdapter,
+    linear: new Linear() as unknown as LinearCapabilityAdapter,
+    openrouter: { review: async () => {
+      reviewCalls += 1;
+      return {
+        model: modelClaims.model,
+        providerRequestId: "request-1",
+        result: { findings: [] },
+        rawResponse: { id: "request-1" },
+      };
+    } },
+    signingSecret: SECRET,
+    now: () => NOW,
+  });
+  const token = await mintCapabilityToken(modelClaims, SECRET);
+  const invoke = (repairAttempt: number) => router.handle(new Request(
+    "https://worker.example/capabilities/model-review",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Deos-Attempt": claims.attemptId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        version: 1,
+        action: "openrouter_trace_review",
+        model: modelClaims.model,
+        reasoning: modelClaims.reasoning,
+        mode: "discovery",
+        repairAttempt,
+        prompt: "Review the exact plan.",
+      }),
+    },
+  ));
+  assert.equal((await invoke(0)).status, 200);
+  assert.equal((await invoke(0)).status, 409);
+  assert.equal((await invoke(1)).status, 403);
+  assert.equal(reviewCalls, 1);
+});

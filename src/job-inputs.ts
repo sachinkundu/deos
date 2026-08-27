@@ -104,10 +104,13 @@ export class JobInputMaterializer {
     const priorAttempts = await this.priorAttempts(run.run_id);
     const openspecChange = openSpecChangeIdentity(issue.identifier);
     const continuationPatch = await this.continuationPatch(run.run_id);
-    const planningJob = job.capabilities?.includes("github.publish_planning_work_product") === true;
-    const planningWorkProduct = planningJob
+    const planningAuthor = job.capabilities?.includes("github.publish_planning_work_product") === true ||
+      (job.agentRole === "author" && job.inputs.includes("openspec_change"));
+    const planningParticipant = planningAuthor || job.agentRole === "reviewer" ||
+      job.context.includes("planning_pull_request") || job.inputs.includes("traceability_feedback");
+    const planningWorkProduct = planningAuthor
       ? await this.allocatePlanningWorkProduct(run, openspecChange)
-      : null;
+      : planningParticipant ? await new D1PlanningStore(this.database).findRunWorkProduct(run.run_id) : null;
     const policy = planningWorkProduct === null
       ? await this.database.prepare(
           "SELECT trial_repository FROM project_workflow_policies WHERE project_id = ?",
@@ -145,7 +148,7 @@ export class JobInputMaterializer {
       priorAttempts,
       openspec: job.operation?.kind === "openspec"
         ? { change: openspecChange, instruction: job.operation.instruction }
-        : planningJob
+        : planningParticipant
           ? { change: openspecChange, instruction: null }
           : null,
       planning: planningWorkProduct === null ? null : {
@@ -178,6 +181,9 @@ export class JobInputMaterializer {
         planningBranch: planningWorkProduct?.remote_branch ?? null,
         continuationPatch,
       },
+      traceabilityFeedback: job.inputs.includes("traceability_feedback")
+        ? await this.traceabilityFeedback(run.run_id)
+        : null,
     };
     const encoded = JSON.stringify(bundle);
     if (encoded.length > 128_000) throw new Error("materialized job inputs exceed the trusted limit");
@@ -187,6 +193,59 @@ export class JobInputMaterializer {
       openspecChange,
       continuationPatch,
       planningWorkProduct,
+    };
+  }
+
+  private async traceabilityFeedback(runId: string): Promise<Record<string, unknown> | null> {
+    const row = await this.database.prepare(
+      `SELECT r.review_id, r.phase, r.mode, r.round, r.review_input_id,
+              r.baseline_finding_set_digest, r.overall_outcome,
+              sidecar.r2_key AS sidecar_r2_key, sidecar.sha256 AS sidecar_sha256,
+              inventory.r2_key AS inventory_r2_key, inventory.sha256 AS inventory_sha256
+       FROM trace_reviews r
+       JOIN artifacts sidecar
+         ON sidecar.manifest_id = r.proof_manifest_id
+        AND sidecar.logical_name = 'bettaview-traceability.json'
+       JOIN artifacts inventory
+         ON inventory.manifest_id = r.proof_manifest_id
+        AND inventory.logical_name = 'candidate-inventory.json'
+       WHERE r.run_id = ? AND r.accepted = 1
+       ORDER BY r.completed_at DESC, r.review_id DESC LIMIT 1`,
+    ).bind(runId).first<{
+      review_id: string;
+      phase: string;
+      mode: string;
+      round: number;
+      review_input_id: string;
+      baseline_finding_set_digest: string | null;
+      overall_outcome: string;
+      sidecar_r2_key: string;
+      sidecar_sha256: string;
+      inventory_r2_key: string;
+      inventory_sha256: string;
+    }>();
+    if (row === null) return null;
+    const [sidecar, inventory] = await Promise.all([
+      this.artifacts.get(row.sidecar_r2_key),
+      this.artifacts.get(row.inventory_r2_key),
+    ]);
+    if (sidecar === null || inventory === null) throw new Error("traceability feedback artifacts are missing");
+    const [sidecarText, inventoryText] = await Promise.all([sidecar.text(), inventory.text()]);
+    if (sidecarText.length + inventoryText.length > 96_000) {
+      throw new Error("traceability feedback exceeds the trusted limit");
+    }
+    return {
+      reviewId: row.review_id,
+      phase: row.phase,
+      mode: row.mode,
+      round: row.round,
+      reviewInputId: row.review_input_id,
+      baselineFindingSetDigest: row.baseline_finding_set_digest,
+      overallOutcome: row.overall_outcome,
+      sidecarSha256: row.sidecar_sha256,
+      inventorySha256: row.inventory_sha256,
+      sidecar: asObject(JSON.parse(sidecarText)),
+      inventory: asObject(JSON.parse(inventoryText)),
     };
   }
 
@@ -272,6 +331,7 @@ export class JobInputMaterializer {
        JOIN artifact_manifests m ON m.manifest_id = a.manifest_id
        JOIN artifacts f ON f.manifest_id = m.manifest_id AND f.logical_name = 'patch.diff'
        WHERE a.run_id = ? AND a.state = 'completed' AND m.state = 'complete'
+         AND COALESCE(json_extract(a.job_spec_json, '$.agentRole'), 'author') <> 'reviewer'
        ORDER BY m.completed_at DESC, a.attempt_id DESC
        LIMIT 1`,
     ).bind(runId).first<ContinuationPatchRow>().then((row) => row === null ? null : ({

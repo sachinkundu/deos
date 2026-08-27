@@ -1,0 +1,39 @@
+{
+  "bundleVersion": "bettaview-openspec-traceability-2026-08-27",
+  "sourceRepository": "sachinkundu/bettaview",
+  "sourceRevision": "444d4e4addc7313e85e5dd5506abea12452ffcd4",
+  "files": [
+    {
+      "path": ".agents/skills/review-openspec-traceability/references/claims.md",
+      "sha256": "38102de5a4c46cd21db45fdb9e25e4d32f5ad246e27dc2ba77dc593571e66289"
+    },
+    {
+      "path": "bin/materialize-traceability.js",
+      "sha256": "0a3d98f9ea2bd37d628db9e54666d0106eae3dff35ca01cd13c02ef3bd4460d8"
+    },
+    {
+      "path": "bin/review-traceability.js",
+      "sha256": "fb2a3037176426189ea43d5b46ffc7823a69d060b846deb9d1bfbe18214f93d1"
+    },
+    {
+      "path": "bin/traceability.js",
+      "sha256": "5dd948355ef228834d02a90720865668d38e04fb2b7b2fc7786318271d591c83"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-bidirectional-v2.md",
+      "sha256": "69efe7725760e3adc8b3e6077922a6893f303261f4d6d7ff414ea795fe7a9b86"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-bidirectional-v2.schema.json",
+      "sha256": "e0c1c53f26fc155e8206eeb4fdeb5a35b6990d36b65084a5ed5bf4844302c20e"
+    },
+    {
+      "path": "src/review-traceability.js",
+      "sha256": "d85ae4fdff6655ef4beb4c403869b21b9263a79800b285eb06f300d42eaf3302"
+    },
+    {
+      "path": "src/traceability.js",
+      "sha256": "08720037c68c74a111b435c789611b1f17c4147921d7b14fe6a933b1f91538df"
+    }
+  ]
+}

@@ -46,6 +46,12 @@ export interface OrchestrationRunRecord {
   selection_delivery_id?: string | null;
   selection_observed_at?: string | null;
   selection_provider_digest?: string | null;
+  author_model_provider?: string | null;
+  author_model?: string | null;
+  author_reasoning?: string | null;
+  independent_review_provider?: string | null;
+  independent_review_model?: string | null;
+  independent_review_reasoning?: string | null;
 }
 
 export interface ProjectWorkflowPolicyRecord {
@@ -60,6 +66,11 @@ export interface ProjectWorkflowPolicyRecord {
   repository_revision: number;
   repository_updated_by: string;
   repository_updated_at: string;
+  independent_review_provider?: "openrouter";
+  independent_review_model?: string | null;
+  independent_review_revision?: number;
+  independent_review_updated_by?: string;
+  independent_review_updated_at?: string;
   updated_at: string;
 }
 
@@ -563,6 +574,21 @@ export class D1OrchestrationStore {
     const correlationId = correlationIdentity(input.projectId, input.issueId);
     const runId = runIdentity(correlationId, sequence);
     const workflowInstanceId = await workflowInstanceIdentity(runId);
+    const definitionJobs = input.definition.jobs ?? {};
+    const authorJobs = Object.values(definitionJobs)
+      .filter((job) => job.agentRole === "author");
+    const independentJobs = Object.values(definitionJobs)
+      .filter((job) => job.agentRole === "reviewer" && job.modelProvider === "openrouter");
+    const authorSettings = authorJobs[0] ?? null;
+    if (authorJobs.some((job) =>
+      job.modelProvider !== authorSettings?.modelProvider || job.model !== authorSettings?.model ||
+      job.reasoning !== authorSettings?.reasoning)) {
+      throw new Error("workflow author model settings are inconsistent");
+    }
+    const policy = independentJobs.length === 0 ? null : await this.findPolicy(input.projectId);
+    if (independentJobs.length > 0 && !policy?.independent_review_model) {
+      throw new Error("independent review model setting is missing");
+    }
     try {
       const result = await this.database.prepare(
         `INSERT INTO orchestration_runs
@@ -570,8 +596,10 @@ export class D1OrchestrationStore {
           definition_version, definition_digest, workflow_instance_id, current_node,
           status, selection_kind, selection_value, selection_label_name, selection_reason,
           selection_evidence_json, selection_delivery_id, selection_observed_at,
-          selection_provider_digest, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          selection_provider_digest, author_model_provider, author_model, author_reasoning,
+          independent_review_provider, independent_review_model, independent_review_reasoning,
+          created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).bind(
         runId,
         correlationId,
@@ -591,6 +619,12 @@ export class D1OrchestrationStore {
         input.selection.deliveryId,
         input.selection.observedAt,
         input.selection.providerDigest,
+        authorSettings?.modelProvider ?? null,
+        authorSettings?.model ?? null,
+        authorSettings?.reasoning ?? null,
+        independentJobs.length === 0 ? null : "openrouter",
+        independentJobs.length === 0 ? null : policy?.independent_review_model ?? null,
+        independentJobs[0]?.reasoning ?? null,
         input.now,
         input.now,
       ).run();

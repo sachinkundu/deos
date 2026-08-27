@@ -79,7 +79,7 @@ const main = async () => {
   const prompt = await readFile(job.promptPath, "utf8");
   const transcript = await trustedCapture("transcript.jsonl");
   const validation = await trustedCapture("stderr.txt");
-  const args = [
+  const codexArgs = [
     "exec",
     "-",
     "--json",
@@ -89,7 +89,16 @@ const main = async () => {
     RESULT_PATH,
     "--dangerously-bypass-approvals-and-sandbox",
   ];
-  const child = spawn("codex", args, {
+  if (typeof job.model === "string" && job.model.length > 0) {
+    codexArgs.push("--model", job.model);
+  }
+  if (typeof job.reasoning === "string" && job.reasoning.length > 0) {
+    codexArgs.push("--config", `model_reasoning_effort=${JSON.stringify(job.reasoning)}`);
+  }
+  const reviewer = job.agentRole === "reviewer";
+  const child = spawn(reviewer ? "node" : "codex", reviewer
+    ? ["/deos/bin/trace-review-runner.mjs"]
+    : codexArgs, {
     cwd: job.cwd,
     env: {
       PATH: process.env.PATH,
@@ -103,7 +112,7 @@ const main = async () => {
     detached: true,
     stdio: ["pipe", "pipe", "pipe"],
   });
-  child.stdin.end(prompt);
+  child.stdin.end(reviewer ? undefined : prompt);
   child.stdout.pipe(transcript.stream);
   child.stderr.pipe(validation.stream);
   const heartbeat = async () => atomicJson(HEARTBEAT_PATH, {

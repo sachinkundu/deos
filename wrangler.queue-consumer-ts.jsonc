@@ -25,10 +25,13 @@
     "LINEAR_APP_ACTOR_ID": "f010429f-7734-4f3f-9b4b-13a4abb9b4ab",
     "LINEAR_TEAM_ID": "ac53207d-68c0-42f1-a245-c1baf047f234",
     "GITHUB_API_URL": "https://api.github.com",
+    "OPENROUTER_API_URL": "https://openrouter.ai/api/v1",
+    "OPENROUTER_SUPPORTED_MODELS": "anthropic/claude-sonnet-4.5",
     "TRIAL_REPOSITORY": "sachinkundu/deos",
     "TRIAL_DISPATCH_ENABLED": "false",
     "CODEX_AUTH_PROFILE_ID": "controlled-trial",
-    "CAPABILITY_BASE_URL": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities"
+    "CAPABILITY_BASE_URL": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities",
+    "PORTAL_BASE_URL": "https://deos.voxdez.com"
   },
   "secrets": {
     "required": [
@@ -38,7 +41,8 @@
       "GITHUB_INSTALLATION_ID",
       "CODEX_AUTH_ENCRYPTION_KEY",
       "CAPABILITY_SIGNING_SECRET",
-      "CLEANUP_AUDIT_SECRET"
+      "CLEANUP_AUDIT_SECRET",
+      "OPENROUTER_API_KEY"
     ]
   },
   "d1_databases": [

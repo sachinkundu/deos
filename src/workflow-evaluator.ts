@@ -127,8 +127,12 @@ export const evaluateNodeOutcome = (
     const job = definition.jobs[node.job];
     if (job === undefined) throw new Error(`agent node ${nodeId} references a missing job`);
     const repositoryLocalOpenSpec = job.operation?.kind === "openspec";
+    const explicitProviderAccess = (job.providerAccess?.length ?? 0) > 0 ||
+      (job.capabilities?.length ?? 0) > 0;
     const requiresReceipts = !["blocked", "failed"].includes(input.outcome) &&
-      (!repositoryLocalOpenSpec || input.providerReceiptsPresent);
+      (job.agentRole === undefined
+        ? (!repositoryLocalOpenSpec || input.providerReceiptsPresent)
+        : explicitProviderAccess);
     if (requiresReceipts && !input.providerReceiptsComplete) {
       throw new Error(`agent node ${nodeId} is missing provider receipts`);
     }

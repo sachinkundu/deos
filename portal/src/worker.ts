@@ -7,6 +7,11 @@ import {
   TranscriptUnavailableError,
   transcriptDto,
 } from "./transcript.ts";
+import {
+  TraceReviewArtifactError,
+  TraceReviewNotFoundError,
+  TraceReviewReadStore,
+} from "./review.ts";
 
 const securityHeaders = {
   "Cache-Control": "no-store",
@@ -23,6 +28,16 @@ type PortalRuntimeEnv = Pick<Env, "DB" | "ARTIFACTS" | "ASSETS"> & {
   ACCESS_AUD: string;
   ALLOWED_EMAIL: string;
   PROJECT_ID: string;
+  OPENROUTER_SUPPORTED_MODELS?: string;
+};
+
+const supportedOpenRouterModels = (value: string): readonly string[] => {
+  const models = value.split(",").map((model) => model.trim()).filter(Boolean).sort();
+  if (
+    models.length === 0 || models.length > 50 || new Set(models).size !== models.length ||
+    models.some((model) => !/^[A-Za-z0-9_.:-]+\/[A-Za-z0-9_.:-]+$/.test(model))
+  ) throw new Error("supported model configuration is invalid");
+  return models;
 };
 
 export const routePortalRequest = async (
@@ -48,6 +63,8 @@ export const routePortalRequest = async (
       ? "/index.html"
       : url.pathname === "/settings" || url.pathname === "/settings/"
         ? "/settings.html"
+        : /^\/runs\/.+\/review\/?$/.test(url.pathname)
+          ? "/index.html"
         : url.pathname.startsWith("/assets/")
           ? url.pathname
           : null;
@@ -110,6 +127,34 @@ export const routePortalRequest = async (
       });
       return json(200, value);
     }
+    if (url.pathname === "/api/settings/independent-review") {
+      const settings = new RepositorySettingsStore(env.DB);
+      const models = supportedOpenRouterModels(env.OPENROUTER_SUPPORTED_MODELS ?? "");
+      if (request.method === "GET") {
+        const value = await settings.read(env.PROJECT_ID);
+        return value === null
+          ? json(404, { error: "settings_not_found" })
+          : json(200, { settings: value, models });
+      }
+      if (request.method !== "PUT") return json(405, { error: "method_not_allowed" });
+      if (Number(request.headers.get("Content-Length") ?? "0") > 2_048) {
+        return json(413, { error: "request_too_large" });
+      }
+      const body = await request.json() as { model?: unknown; expectedRevision?: unknown };
+      if (
+        Object.keys(body).some((key) => !["model", "expectedRevision"].includes(key)) ||
+        typeof body.model !== "string" || !Number.isSafeInteger(body.expectedRevision)
+      ) return json(400, { error: "invalid_request" });
+      const value = await settings.saveIndependentReviewModel({
+        projectId: env.PROJECT_ID,
+        model: body.model,
+        supportedModels: models,
+        expectedRevision: body.expectedRevision as number,
+        actorEmail: identity.email,
+        now: new Date().toISOString(),
+      });
+      return json(200, { settings: value, models });
+    }
     if (!["GET", "HEAD"].includes(request.method)) return json(405, { error: "method_not_allowed" });
     if (url.pathname === "/api/issues") {
       return json(200, { issues: await store.searchIssues(url.searchParams.get("query") ?? "") });
@@ -141,6 +186,28 @@ export const routePortalRequest = async (
       const result = await store.runs(issueMatch[1]);
       return result === null ? json(404, { error: "issue_not_found" }) : json(200, result);
     }
+    const reviewArtifactMatch = url.pathname.match(/^\/api\/reviews\/([^/]+)\/artifacts\/([^/]+)$/);
+    if (reviewArtifactMatch !== null) {
+      const artifact = await new TraceReviewReadStore(env.DB, env.ARTIFACTS, env.PROJECT_ID).artifact(
+        decodeURIComponent(reviewArtifactMatch[1]),
+        decodeURIComponent(reviewArtifactMatch[2]),
+      );
+      return new Response(request.method === "HEAD" ? null : artifact.bytes, {
+        status: 200,
+        headers: {
+          ...securityHeaders,
+          "Content-Type": artifact.mediaType,
+          "Content-Length": String(artifact.bytes.byteLength),
+          "X-Content-SHA256": artifact.sha256,
+        },
+      });
+    }
+    const reviewMatch = url.pathname.match(/^\/api\/runs\/(.+)\/review$/);
+    if (reviewMatch !== null) {
+      const result = await new TraceReviewReadStore(env.DB, env.ARTIFACTS, env.PROJECT_ID)
+        .projection(decodeURIComponent(reviewMatch[1]));
+      return result === null ? json(404, { error: "run_not_found" }) : json(200, result);
+    }
     const runMatch = url.pathname.match(/^\/api\/runs\/(.+)$/);
     if (runMatch !== null) {
       const result = await store.projection(decodeURIComponent(runMatch[1]));
@@ -151,11 +218,15 @@ export const routePortalRequest = async (
     if (error instanceof SyntaxError) return json(400, { error: "invalid_request" });
     if (error instanceof TranscriptNotFoundError) return json(404, { error: "transcript_not_found" });
     if (error instanceof TranscriptUnavailableError) return json(503, { error: "transcript_unavailable" });
+    if (error instanceof TraceReviewNotFoundError) return json(404, { error: "review_artifact_not_found" });
+    if (error instanceof TraceReviewArtifactError) return json(503, { error: "review_artifact_unavailable" });
     if (error instanceof RepositorySettingsError) {
       const status = error.code === "invalid_repository" ? 400
         : error.code === "settings_not_found" ? 404
+        : error.code === "invalid_independent_review_model" ? 400
         : error.code === "active_run" || error.code === "stale_revision" ||
-          error.code === "stale_workflow_revision" ? 409
+          error.code === "stale_workflow_revision" ||
+          error.code === "stale_independent_review_revision" ? 409
         : 503;
       return json(status, { error: error.code });
     }

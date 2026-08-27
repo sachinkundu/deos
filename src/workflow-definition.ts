@@ -30,6 +30,13 @@ export interface WorkflowJob {
   resultSchema: Readonly<Record<string, unknown>>;
   requiredOutputs: readonly string[];
   capabilities?: readonly string[];
+  agentRole?: "author" | "reviewer";
+  modelProvider?: "codex" | "openrouter";
+  model?: string;
+  reasoning?: string;
+  permissionProfile?: "repository_write" | "review_read_only";
+  providerAccess?: readonly "model.openrouter_review"[];
+  reviewMode?: "discovery" | "recheck";
   operation: OpenSpecJobOperation | null;
 }
 
@@ -131,6 +138,8 @@ const SYSTEM_ACTIONS = new Set([
   "linear.delegate_and_start",
   "github.merge_planning_pull_request",
   "github.verify_planning_merge",
+  "github.publish_planning_candidate",
+  "traceability.start_new_round",
 ]);
 const AGENT_CAPABILITY_ACTIONS = new Set([
   "github.publish_planning_work_product",
@@ -366,7 +375,11 @@ export const loadWorkflowDefinition = async (
     const job = asRecord(value, label);
     assertAllowedKeys(
       job,
-      ["promptFile", "inputs", "context", "resultSchema", "requiredOutputs", "capabilities", "operation"],
+      [
+        "promptFile", "inputs", "context", "resultSchema", "requiredOutputs", "capabilities",
+        "agentRole", "modelProvider", "model", "reasoning", "permissionProfile",
+        "providerAccess", "reviewMode", "operation",
+      ],
       label,
     );
     const promptFile = stringValue(job, "promptFile", label);
@@ -383,6 +396,58 @@ export const loadWorkflowDefinition = async (
     if (new Set(capabilities).size !== capabilities.length) {
       throw new Error(`${label}.capabilities must not contain duplicates`);
     }
+    const explicitAgent = job.agentRole !== undefined || job.modelProvider !== undefined ||
+      job.model !== undefined || job.reasoning !== undefined || job.permissionProfile !== undefined ||
+      job.providerAccess !== undefined;
+    let agentConfiguration: Pick<WorkflowJob,
+      "agentRole" | "modelProvider" | "model" | "reasoning" | "permissionProfile" | "providerAccess"
+    > = {};
+    if (explicitAgent) {
+      if (!(["author", "reviewer"] as const).includes(job.agentRole as "author" | "reviewer")) {
+        throw new Error(`${label}.agentRole is invalid`);
+      }
+      if (!(["codex", "openrouter"] as const).includes(job.modelProvider as "codex" | "openrouter")) {
+        throw new Error(`${label}.modelProvider is invalid`);
+      }
+      const model = stringValue(job, "model", label);
+      const reasoning = stringValue(job, "reasoning", label);
+      if (model.length > 240 || reasoning.length > 80) throw new Error(`${label} model settings are invalid`);
+      if (!(["repository_write", "review_read_only"] as const).includes(
+        job.permissionProfile as "repository_write" | "review_read_only",
+      )) throw new Error(`${label}.permissionProfile is invalid`);
+      const providerAccess = stringArray(job, "providerAccess", label, false);
+      if (
+        providerAccess.some((access) => access !== "model.openrouter_review") ||
+        new Set(providerAccess).size !== providerAccess.length
+      ) throw new Error(`${label}.providerAccess is invalid`);
+      if (job.agentRole === "reviewer" && job.permissionProfile !== "review_read_only") {
+        throw new Error(`${label} reviewer must use the read-only permission profile`);
+      }
+      if (job.agentRole === "author" && job.modelProvider !== "codex") {
+        throw new Error(`${label} author must use Codex`);
+      }
+      if (job.agentRole === "reviewer" && capabilities.length > 0) {
+        throw new Error(`${label} reviewer cannot have provider mutation capabilities`);
+      }
+      if (
+        (job.modelProvider === "openrouter") !== providerAccess.includes("model.openrouter_review")
+      ) throw new Error(`${label} OpenRouter access does not match its model provider`);
+      if (job.agentRole === "reviewer") {
+        if (!(job.reviewMode === "discovery" || job.reviewMode === "recheck")) {
+          throw new Error(`${label}.reviewMode is required for a reviewer`);
+        }
+      } else if (job.reviewMode !== undefined) {
+        throw new Error(`${label}.reviewMode is only valid for a reviewer`);
+      }
+      agentConfiguration = {
+        agentRole: job.agentRole as "author" | "reviewer",
+        modelProvider: job.modelProvider as "codex" | "openrouter",
+        model,
+        reasoning,
+        permissionProfile: job.permissionProfile as "repository_write" | "review_read_only",
+        providerAccess: Object.freeze(providerAccess as "model.openrouter_review"[]),
+      };
+    }
     jobs[id] = Object.freeze({
       id,
       promptFile,
@@ -393,6 +458,8 @@ export const loadWorkflowDefinition = async (
       resultSchema: parseSchema(schemaSource, resultSchemaFile),
       requiredOutputs: stringArray(job, "requiredOutputs", label),
       ...(capabilities.length === 0 ? {} : { capabilities: Object.freeze([...capabilities]) }),
+      ...agentConfiguration,
+      ...(job.reviewMode === undefined ? {} : { reviewMode: job.reviewMode as "discovery" | "recheck" }),
       operation: parseJobOperation(job.operation, label),
     });
   }
@@ -564,7 +631,8 @@ export const restoreWorkflowDefinition = async (
       job,
       [
         "id", "promptFile", "prompt", "inputs", "context", "resultSchemaFile",
-        "resultSchema", "requiredOutputs", "capabilities", "operation",
+        "resultSchema", "requiredOutputs", "capabilities", "agentRole", "modelProvider",
+        "model", "reasoning", "permissionProfile", "providerAccess", "reviewMode", "operation",
       ],
       label,
     );
@@ -581,6 +649,15 @@ export const restoreWorkflowDefinition = async (
       requiredOutputs: stringArray(job, "requiredOutputs", label),
       ...(job.capabilities === undefined ? {} : {
         capabilities: stringArray(job, "capabilities", label, false),
+      }),
+      ...(job.agentRole === undefined ? {} : {
+        agentRole: stringValue(job, "agentRole", label),
+        modelProvider: stringValue(job, "modelProvider", label),
+        model: stringValue(job, "model", label),
+        reasoning: stringValue(job, "reasoning", label),
+        permissionProfile: stringValue(job, "permissionProfile", label),
+        providerAccess: stringArray(job, "providerAccess", label, false),
+        ...(job.reviewMode === undefined ? {} : { reviewMode: stringValue(job, "reviewMode", label) }),
       }),
       ...(job.operation === null ? {} : { operation: asRecord(job.operation, `${label}.operation`) }),
     };

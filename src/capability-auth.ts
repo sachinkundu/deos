@@ -9,18 +9,23 @@ export interface CapabilityClaims {
   actions: readonly CapabilityAction[];
   changeId: string | null;
   planningBranch: string | null;
+  modelProvider?: "openrouter" | null;
+  model?: string | null;
+  reasoning?: string | null;
   expiresAt: number;
 }
 
 export type CapabilityAction =
   | "github.publish_work_product"
   | "github.publish_planning_work_product"
-  | "linear.upsert_working_note";
+  | "linear.upsert_working_note"
+  | "model.openrouter_review";
 
 const CAPABILITY_ACTIONS = new Set<CapabilityAction>([
   "github.publish_work_product",
   "github.publish_planning_work_product",
   "linear.upsert_working_note",
+  "model.openrouter_review",
 ]);
 
 const base64UrlEncode = (bytes: Uint8Array): string => {
@@ -97,11 +102,23 @@ export const verifyCapabilityToken = async (
     claims.expiresAt <= Math.floor(nowMs / 1000)
   ) throw new Error("capability token claims are invalid or expired");
   const planning = claims.actions.includes("github.publish_planning_work_product");
+  const modelReview = claims.actions.includes("model.openrouter_review");
   if (
     planning !== (claims.changeId !== null && claims.planningBranch !== null) ||
     (planning && claims.actions.length !== 1) ||
     (claims.changeId !== null && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(claims.changeId)) ||
-    (claims.planningBranch !== null && !/^deos\/planning\/[a-f0-9]{24}$/.test(claims.planningBranch))
+    (claims.planningBranch !== null && !/^deos\/planning\/[a-f0-9]{24}$/.test(claims.planningBranch)) ||
+    (modelReview && claims.actions.length !== 1) ||
+    (modelReview && (
+      claims.modelProvider !== "openrouter" ||
+      typeof claims.model !== "string" || !/^[A-Za-z0-9_.:-]+\/[A-Za-z0-9_.:-]+$/.test(claims.model) ||
+      typeof claims.reasoning !== "string" || claims.reasoning.length === 0 || claims.reasoning.length > 80
+    )) ||
+    (!modelReview && (
+      claims.modelProvider !== undefined && claims.modelProvider !== null ||
+      claims.model !== undefined && claims.model !== null ||
+      claims.reasoning !== undefined && claims.reasoning !== null
+    ))
   ) throw new Error("capability token planning claims are invalid");
   return claims;
 };

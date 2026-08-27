@@ -15,7 +15,8 @@
     "ACCESS_TEAM_DOMAIN": "deos-voxdez.cloudflareaccess.com",
     "ACCESS_AUD": "c12828abda88ac73e394039f6e0b87a9bc5f2d78922463c37a72ccca55bedec7",
     "ALLOWED_EMAIL": "sachinkundu@gmail.com",
-    "PROJECT_ID": "99426d9b-cda7-4db4-9136-692a95a0b090"
+    "PROJECT_ID": "99426d9b-cda7-4db4-9136-692a95a0b090",
+    "OPENROUTER_SUPPORTED_MODELS": "anthropic/claude-sonnet-4.5"
   },
   "d1_databases": [{
     "binding": "DB",

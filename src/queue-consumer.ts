@@ -19,6 +19,7 @@ import {
   WorkflowCompletionReconciler,
 } from "./workflow-completion-reconciler.ts";
 import { D1PlanningStore } from "./planning-store.ts";
+import { OpenRouterReviewClient, parseSupportedOpenRouterModels } from "./openrouter-review.ts";
 
 export { DeosWorkflow, Sandbox };
 
@@ -35,6 +36,11 @@ const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
   ),
   linear: new LinearCapabilityAdapter(env.LINEAR_API_URL, env.LINEAR_APP_ACCESS_TOKEN),
   planningStore: new D1PlanningStore(env.DB),
+  openrouter: new OpenRouterReviewClient({
+    apiKey: env.OPENROUTER_API_KEY,
+    apiUrl: env.OPENROUTER_API_URL,
+    supportedModels: parseSupportedOpenRouterModels(env.OPENROUTER_SUPPORTED_MODELS),
+  }),
   signingSecret: env.CAPABILITY_SIGNING_SECRET,
   lifecycle: writeLifecycleObservation,
 });

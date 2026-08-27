@@ -8,6 +8,10 @@ export interface LinearNoteReceipt {
   reconciled: boolean;
 }
 
+export interface LinearStatusRequest extends LinearNoteRequest {
+  markerId: string;
+}
+
 export interface LinearPublicationContext {
   issueId: string;
   identifier: string;
@@ -61,6 +65,59 @@ export class LinearCapabilityAdapter {
     }
   }
 
+  async upsertStatus(input: LinearStatusRequest): Promise<LinearNoteReceipt> {
+    if (!/^[a-z0-9][a-z0-9:._-]{7,299}$/i.test(input.markerId)) {
+      throw new Error("Linear status marker is invalid");
+    }
+    const marker = `<!-- deos-status:${input.markerId} -->`;
+    const desired = `${input.body}\n\n${marker}`;
+    const existing = await this.findCommentRecord(input.issueId, marker);
+    if (existing?.body === desired) return { commentId: existing.id, reconciled: true };
+    if (existing === null) {
+      try {
+        const payload = await this.graphql(
+          `mutation DeosCreateStatusComment($issueId: String!, $body: String!) {
+             commentCreate(input: { issueId: $issueId, body: $body }) {
+               success
+               comment { id }
+             }
+           }`,
+          { issueId: input.issueId, body: desired },
+        ) as { data?: { commentCreate?: { success?: boolean; comment?: { id?: string } } } };
+        const id = payload.data?.commentCreate?.comment?.id;
+        if (payload.data?.commentCreate?.success !== true || typeof id !== "string") {
+          throw new Error("Linear status comment response is invalid");
+        }
+        return { commentId: id, reconciled: false };
+      } catch {
+        const recovered = await this.findCommentRecord(input.issueId, marker);
+        if (recovered?.body !== desired) throw new Error("Linear status comment creation is ambiguous");
+        return { commentId: recovered.id, reconciled: true };
+      }
+    }
+    try {
+      const payload = await this.graphql(
+        `mutation DeosUpdateStatusComment($id: String!, $body: String!) {
+           commentUpdate(id: $id, input: { body: $body }) {
+             success
+             comment { id }
+           }
+         }`,
+        { id: existing.id, body: desired },
+      ) as { data?: { commentUpdate?: { success?: boolean; comment?: { id?: string } } } };
+      if (payload.data?.commentUpdate?.success !== true || payload.data.commentUpdate.comment?.id !== existing.id) {
+        throw new Error("Linear status comment update response is invalid");
+      }
+      return { commentId: existing.id, reconciled: false };
+    } catch {
+      const recovered = await this.findCommentRecord(input.issueId, marker);
+      if (recovered?.id !== existing.id || recovered.body !== desired) {
+        throw new Error("Linear status comment update is ambiguous");
+      }
+      return { commentId: existing.id, reconciled: true };
+    }
+  }
+
   async readPublicationContext(issueId: string): Promise<LinearPublicationContext> {
     const payload = await this.graphql(
       `query DeosPublicationIssue($id: String!) {
@@ -95,6 +152,13 @@ export class LinearCapabilityAdapter {
   }
 
   private async findComment(issueId: string, marker: string): Promise<string | null> {
+    return (await this.findCommentRecord(issueId, marker))?.id ?? null;
+  }
+
+  private async findCommentRecord(
+    issueId: string,
+    marker: string,
+  ): Promise<{ id: string; body: string } | null> {
     const payload = await this.graphql(
       `query DeosIssueComments($id: String!) {
          issue(id: $id) { comments { nodes { id body } } }
@@ -102,7 +166,9 @@ export class LinearCapabilityAdapter {
       { id: issueId },
     ) as { data?: { issue?: { comments?: { nodes?: Array<{ id?: string; body?: string }> } } } };
     const match = payload.data?.issue?.comments?.nodes?.find((comment) => comment.body?.includes(marker));
-    return typeof match?.id === "string" ? match.id : null;
+    return typeof match?.id === "string" && typeof match.body === "string"
+      ? { id: match.id, body: match.body }
+      : null;
   }
 
   private async graphql(query: string, variables: Record<string, string>): Promise<unknown> {

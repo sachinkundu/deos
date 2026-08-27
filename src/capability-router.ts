@@ -14,6 +14,9 @@ import {
   type PlanningPublicationRequest,
   type ValidatedPlanningPublication,
 } from "./planning-publication.ts";
+import type { OpenRouterReviewClient } from "./openrouter-review.ts";
+import traceDiscoverySchema from "../config/schemas/trace-discovery-result-v1.json" with { type: "json" };
+import traceRecheckSchema from "../config/schemas/trace-recheck-result-v1.json" with { type: "json" };
 
 interface GitHubCapabilityRequest extends GitHubWorkProductRequest {
   version: 1;
@@ -29,11 +32,22 @@ interface LinearCapabilityRequest {
   body: string;
 }
 
+interface OpenRouterCapabilityRequest {
+  version: 1;
+  action: "openrouter_trace_review";
+  model: string;
+  reasoning: string;
+  mode: "discovery" | "recheck";
+  repairAttempt: number;
+  prompt: string;
+}
+
 export interface CapabilityRouterDependencies {
   store: CapabilityStore;
   github: GitHubCapabilityAdapter;
   linear: LinearCapabilityAdapter;
   planningStore?: Pick<D1PlanningStore, "findRunWorkProduct" | "recordPublication">;
+  openrouter?: Pick<OpenRouterReviewClient, "review">;
   signingSecret: string;
   now?: () => Date;
   lifecycle?: LifecycleWriter;
@@ -182,6 +196,29 @@ const parseLinearRequest = (value: unknown): LinearCapabilityRequest | null => {
   };
 };
 
+const parseOpenRouterRequest = (value: unknown): OpenRouterCapabilityRequest | null => {
+  const request = asRecord(value);
+  if (
+    request === null ||
+    !exactKeys(request, [
+      "version", "action", "model", "reasoning", "mode", "repairAttempt", "prompt",
+    ]) ||
+    request.version !== 1 || request.action !== "openrouter_trace_review" ||
+    !nonEmpty(request.model, 240) || !nonEmpty(request.reasoning, 80) ||
+    !["discovery", "recheck"].includes(String(request.mode)) ||
+    request.repairAttempt !== 0 || !nonEmpty(request.prompt, 1_000_000)
+  ) return null;
+  return {
+    version: 1,
+    action: "openrouter_trace_review",
+    model: request.model,
+    reasoning: request.reasoning,
+    mode: request.mode as "discovery" | "recheck",
+    repairAttempt: Number(request.repairAttempt),
+    prompt: request.prompt,
+  };
+};
+
 const digest = async (value: unknown): Promise<string> => {
   const encoded = new TextEncoder().encode(JSON.stringify(value));
   const hash = await crypto.subtle.digest("SHA-256", encoded);
@@ -304,7 +341,84 @@ export class CapabilityRouter {
       }
       return this.linear(input, claims.runId, claims.attemptId);
     }
+    if (path.endsWith("/model-review")) {
+      const input = parseOpenRouterRequest(untrusted);
+      if (
+        input === null || !claims.actions.includes("model.openrouter_review") ||
+        claims.modelProvider !== "openrouter" || input.model !== claims.model ||
+        input.reasoning !== claims.reasoning
+      ) return this.denied(claims.runId, claims.attemptId, "model", untrusted, "model_identity_denied");
+      return this.openRouter(input, claims.runId, claims.attemptId);
+    }
     return json(404, { error: "unknown_capability" });
+  }
+
+  private async openRouter(
+    input: OpenRouterCapabilityRequest,
+    runId: string,
+    attemptId: string,
+  ): Promise<Response> {
+    if (this.dependencies.openrouter === undefined) {
+      return json(503, { error: "openrouter_adapter_unavailable" });
+    }
+    const operationId = operationIdentity(
+      runId,
+      "capability",
+      `model:${input.action}:${attemptId}:${input.repairAttempt}`,
+      1,
+    );
+    const operation = await this.dependencies.store.begin({
+      operationId,
+      runId,
+      attemptId,
+      capability: "model",
+      action: input.action,
+      sanitizedTarget: input.model,
+      requestDigest: await digest(input),
+      now: this.now().toISOString(),
+    });
+    if (["succeeded", "reconciled", "duplicate"].includes(operation.operation.state)) {
+      return json(409, { error: "model_result_requires_durable_recovery", operationId });
+    }
+    if (operation.operation.state !== "pending") {
+      return json(409, this.receipt(operationId, operation.operation.state, operation.operation.provider_resource_id));
+    }
+    try {
+      const response = await this.dependencies.openrouter.review({
+        model: input.model,
+        reasoning: input.reasoning,
+        prompt: input.prompt,
+        schemaName: input.mode === "discovery" ? "deos_trace_discovery" : "deos_trace_recheck",
+        schema: input.mode === "discovery" ? traceDiscoverySchema : traceRecheckSchema,
+      });
+      const changed = await this.dependencies.store.finish({
+        operationId,
+        expected: "pending",
+        state: "succeeded",
+        providerResourceId: response.providerRequestId,
+        safeErrorCategory: null,
+        now: this.now().toISOString(),
+      });
+      if (!changed) throw new Error("OpenRouter receipt compare-and-set failed");
+      this.emitProvider(runId, operationId, "succeeded");
+      return json(200, {
+        operationId,
+        state: "succeeded",
+        providerResourceId: response.providerRequestId,
+        result: response.result,
+      });
+    } catch {
+      await this.dependencies.store.finish({
+        operationId,
+        expected: "pending",
+        state: "manual_reconciliation_required",
+        providerResourceId: null,
+        safeErrorCategory: "openrouter_response_ambiguous",
+        now: this.now().toISOString(),
+      });
+      this.emitProvider(runId, operationId, "failed", "openrouter_response_ambiguous");
+      return json(502, this.receipt(operationId, "manual_reconciliation_required", null));
+    }
   }
 
   private async planningGithub(
