@@ -12,6 +12,9 @@ const SUPPORTED_DIGESTS = new Set([
   "7b8c872007337f0b6b034746359da0cfe4ce6d5a9cfddfd6842112bf1f39f5ca",
   "b648d257f546ab130984c26d564c162de648a5929e3520dd1f12e594f0e6db12",
   "e85de9ed70c046cfe07a1611b1e0a1c2678cd58dbcfe8edc9ea73856bb6b86c3",
+  "5814eb9c981b93fd7fa6e5144d370a083533ff1292768f3af83c30ede025acfc",
+  "4eb12c3335e46fe482251a164f3133e15200fae18c136b57c2bb10bf571232f9",
+  "127779af65ec49c8ca50436df86c3baaa364b808ec17f14d907c8d05669c7015",
 ]);
 
 export const STAGES = [
@@ -26,7 +29,20 @@ export const STAGES = [
   { id: "terminal", label: "Stopped" },
 ] as const;
 
+export const SIMPLE_STAGES = [
+  { id: "claim", label: "Claim issue" },
+  { id: "planning", label: "Create planning PR" },
+  { id: "review", label: "Human approval" },
+  { id: "merge", label: "Automatic merge & check" },
+  { id: "complete", label: "Completed" },
+  { id: "stopped", label: "Stopped" },
+] as const;
+
 const stageForNode = (nodeId: string): string => {
+  if (nodeId === "claim_issue") return "claim";
+  if (nodeId === "openspec_planning") return "planning";
+  if (nodeId === "planning_review") return "review";
+  if (["merge_planning_pr", "verify_planning_merge"].includes(nodeId)) return "merge";
   if (["requirements", "requirements_review", "requirements_approval"].includes(nodeId)) return "requirements";
   if (["openspec_proposal", "openspec_specs", "bdd_review"].includes(nodeId)) return "specification";
   if (["ddd_architecture", "ddd_review", "architecture_approval"].includes(nodeId)) return "architecture";
@@ -38,6 +54,10 @@ const stageForNode = (nodeId: string): string => {
   if (["blocked", "denied", "canceled", "agent_blocked", "agent_failed", "system_action_failed"].includes(nodeId)) return "terminal";
   throw new Error("unsupported workflow presentation node");
 };
+
+export const presentationStagesForDefinition = (
+  definition: LoadedWorkflowDefinition,
+): readonly { id: string; label: string }[] => definition.name === "simple" ? SIMPLE_STAGES : STAGES;
 
 export const validatePresentationManifest = (definition: LoadedWorkflowDefinition): Map<string, string> => {
   if (!SUPPORTED_DIGESTS.has(definition.digest)) throw new Error("unsupported workflow definition");

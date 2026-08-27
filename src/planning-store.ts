@@ -5,6 +5,97 @@ const sha256Hex = async (value: string): Promise<string> => {
 
 const changes = (result: D1Result<unknown>): number => result.meta.changes ?? 0;
 
+export interface GovernedPlanningLink {
+  kind: "pull_request" | "openspec_artifact";
+  label: string;
+  url: string;
+}
+
+interface PlanningManifestEntry {
+  path: string;
+  sha256: string;
+  byteSize: number;
+}
+
+const repositoryPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const changePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const planningBranchPattern = /^deos\/planning\/[0-9a-f]{24}$/;
+const shaPattern = /^[0-9a-f]{40}$/;
+const digestPattern = /^[0-9a-f]{64}$/;
+
+const manifestPath = (changeId: string, path: string): boolean => {
+  const prefix = `openspec/changes/${changeId}/`;
+  if (!path.startsWith(prefix)) return false;
+  const relative = path.slice(prefix.length);
+  return relative === ".openspec.yaml" || relative === "proposal.md" ||
+    /^specs\/[a-z0-9]+(?:-[a-z0-9]+)*\/spec\.md$/.test(relative);
+};
+
+export const governedPlanningLinks = (input: {
+  repository: string;
+  remoteBranch: string;
+  changeId: string;
+  pullRequestNumber: number;
+  pullRequestUrl: string;
+  headSha: string;
+  planningManifestJson: string;
+}): readonly GovernedPlanningLink[] => {
+  if (
+    !repositoryPattern.test(input.repository) ||
+    !planningBranchPattern.test(input.remoteBranch) ||
+    !changePattern.test(input.changeId) ||
+    !Number.isSafeInteger(input.pullRequestNumber) ||
+    input.pullRequestNumber <= 0 ||
+    !shaPattern.test(input.headSha) ||
+    input.pullRequestUrl !== `https://github.com/${input.repository}/pull/${input.pullRequestNumber}`
+  ) throw new Error("planning publication destination is invalid");
+
+  let untrusted: unknown;
+  try {
+    untrusted = JSON.parse(input.planningManifestJson);
+  } catch {
+    throw new Error("planning publication manifest is invalid");
+  }
+  if (!Array.isArray(untrusted) || untrusted.length < 3 || untrusted.length > 48) {
+    throw new Error("planning publication manifest is invalid");
+  }
+  const entries: PlanningManifestEntry[] = [];
+  const seen = new Set<string>();
+  for (const value of untrusted) {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      throw new Error("planning publication manifest is invalid");
+    }
+    const entry = value as Record<string, unknown>;
+    if (
+      typeof entry.path !== "string" || !manifestPath(input.changeId, entry.path) ||
+      typeof entry.sha256 !== "string" || !digestPattern.test(entry.sha256) ||
+      typeof entry.byteSize !== "number" || !Number.isSafeInteger(entry.byteSize) || entry.byteSize < 0 ||
+      seen.has(entry.path)
+    ) throw new Error("planning publication manifest is invalid");
+    seen.add(entry.path);
+    entries.push({ path: entry.path, sha256: entry.sha256, byteSize: entry.byteSize });
+  }
+  if (
+    entries.some((entry, index) => index > 0 && entries[index - 1]!.path.localeCompare(entry.path) >= 0) ||
+    !seen.has(`openspec/changes/${input.changeId}/.openspec.yaml`) ||
+    !seen.has(`openspec/changes/${input.changeId}/proposal.md`) ||
+    !entries.some((entry) => entry.path.includes("/specs/"))
+  ) throw new Error("planning publication manifest is invalid");
+
+  return Object.freeze([
+    Object.freeze({
+      kind: "pull_request" as const,
+      label: `PR #${input.pullRequestNumber}`,
+      url: input.pullRequestUrl,
+    }),
+    ...entries.map((entry) => Object.freeze({
+      kind: "openspec_artifact" as const,
+      label: entry.path,
+      url: `https://github.com/${input.repository}/blob/${input.headSha}/${entry.path}`,
+    })),
+  ]);
+};
+
 export interface RunWorkProductRecord {
   run_id: string;
   repository: string;
@@ -88,7 +179,11 @@ export class D1PlanningStore {
     operationId: string;
     now: string;
   }): Promise<RunWorkProductRecord> {
-    const result = await this.database.prepare(
+    if (await sha256Hex(input.planningManifestJson) !== input.planningManifestDigest) {
+      throw new Error("planning publication manifest digest mismatch");
+    }
+    const links = governedPlanningLinks(input);
+    const update = this.database.prepare(
       `UPDATE run_work_products
        SET pull_request_database_id = ?, pull_request_number = ?, pull_request_url = ?,
            head_sha = ?, planning_manifest_digest = ?, planning_manifest_json = ?,
@@ -114,8 +209,44 @@ export class D1PlanningStore {
       input.pullRequestDatabaseId,
       input.pullRequestNumber,
       input.pullRequestUrl,
-    ).run();
-    if (changes(result) !== 1) throw new Error("planning publication identity mismatch");
+    );
+    const linkStatements = links.map((link, index) => this.database.prepare(
+      `INSERT INTO governed_work_links
+       (link_id, run_id, visit_sequence, attempt_id, operation_id,
+        kind, label, url, created_at)
+       SELECT ?, operation.run_id, attempt.visit_sequence, attempt.attempt_id,
+              operation.operation_id, ?, ?, ?, operation.completed_at
+       FROM provider_operations operation
+       JOIN agent_attempts attempt
+         ON attempt.attempt_id = operation.attempt_id
+        AND attempt.run_id = operation.run_id
+       WHERE operation.operation_id = ? AND operation.run_id = ?
+         AND operation.capability = 'github'
+         AND operation.action = 'publish_planning_work_product'
+         AND operation.sanitized_target = ?
+         AND operation.state IN ('succeeded', 'reconciled', 'duplicate')
+         AND operation.completed_at IS NOT NULL
+         AND attempt.node_id = 'openspec_planning'
+         AND attempt.visit_sequence IS NOT NULL
+       ON CONFLICT (run_id, visit_sequence, kind, label) DO UPDATE SET
+         attempt_id = excluded.attempt_id,
+         operation_id = excluded.operation_id,
+         url = excluded.url,
+         created_at = excluded.created_at`,
+    ).bind(
+      `governed:${input.operationId}:${link.kind}:${index}`,
+      link.kind,
+      link.label,
+      link.url,
+      input.operationId,
+      input.runId,
+      `${input.repository}:${input.remoteBranch}`,
+    ));
+    const results = await this.database.batch([update, ...linkStatements]);
+    if (changes(results[0]!) !== 1) throw new Error("planning publication identity mismatch");
+    if (results.slice(1).some((result) => changes(result) !== 1)) {
+      throw new Error("planning publication governed-link write failed");
+    }
     const stored = await this.findRunWorkProduct(input.runId);
     if (
       stored === null ||
@@ -125,6 +256,20 @@ export class D1PlanningStore {
     ) {
       throw new Error("planning publication read-back mismatch");
     }
+    const recordedLinks = await this.database.prepare(
+      `SELECT kind, label, url FROM governed_work_links
+       WHERE run_id = ? AND operation_id = ?
+       ORDER BY kind, label`,
+    ).bind(input.runId, input.operationId).all<GovernedPlanningLink>();
+    const expected = [...links].sort((left, right) =>
+      left.kind.localeCompare(right.kind) || left.label.localeCompare(right.label));
+    if (
+      recordedLinks.results.length !== expected.length ||
+      recordedLinks.results.some((link, index) =>
+        link.kind !== expected[index]!.kind ||
+        link.label !== expected[index]!.label ||
+        link.url !== expected[index]!.url)
+    ) throw new Error("planning publication governed-link read-back mismatch");
     return stored;
   }
 

@@ -18,6 +18,8 @@ import {
 } from "@phosphor-icons/react";
 import { applyStaged, receivePoll, type PollState } from "./polling.ts";
 import { portalPageFromPath, portalPathForPage, type PortalPage } from "./routes.ts";
+import { TranscriptViewer } from "./TranscriptViewer.tsx";
+import type { TranscriptDto } from "./transcript-view.ts";
 import "./styles.css";
 
 type Theme = "system" | "light" | "dark";
@@ -33,7 +35,7 @@ interface Visit {
   state: string;
   enteredAt: string;
   leftAt: string | null;
-  attempts: Array<{ state: string; outcome: string | null; startedAt: string; endedAt: string | null }>;
+  attempts: Array<{ id: string; state: string; outcome: string | null; startedAt: string; endedAt: string | null; transcriptAvailable: boolean }>;
   waits: Array<{ state: string; startedAt: string; endedAt: string | null }>;
   links: Array<{ kind: string; label: string; url: string; createdAt: string }>;
 }
@@ -45,8 +47,6 @@ interface RepositorySettings {
   updatedBy: string;
   updatedAt: string;
   dispatchEnabled: boolean;
-  selectorEnabled: boolean;
-  selectorAvailable: boolean;
   workflowRevision: number;
   workflowUpdatedBy: string;
   workflowUpdatedAt: string;
@@ -83,20 +83,18 @@ const saveRepository = async (repository: string, expectedRevision: number): Pro
 
 const saveWorkflowControls = async (
   dispatchEnabled: boolean,
-  selectorEnabled: boolean,
   expectedRevision: number,
 ): Promise<RepositorySettings> => {
   const response = await fetch("/api/settings/workflow", {
     method: "PUT",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ dispatchEnabled, selectorEnabled, expectedRevision }),
+    body: JSON.stringify({ dispatchEnabled, expectedRevision }),
   });
   const body = await response.json() as RepositorySettings & { error?: string };
   if (!response.ok) {
     const messages: Record<string, string> = {
       active_run: "A workflow is active. Wait for it to finish before changing these controls.",
       stale_workflow_revision: "These controls changed in another session. Reload them and try again.",
-      selector_unavailable: "The simple workflow is not ready for this repository yet.",
     };
     throw new Error(messages[body.error ?? ""] ?? "The workflow controls could not be saved.");
   }
@@ -106,6 +104,17 @@ const saveWorkflowControls = async (
 const formatTime = (value: string | null): string => value === null
   ? "—"
   : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+
+const formatDuration = (startedAt: string, endedAt: string | null): string => {
+  if (endedAt === null) return "In progress";
+  const milliseconds = new Date(endedAt).valueOf() - new Date(startedAt).valueOf();
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "—";
+  const seconds = Math.round(milliseconds / 1_000);
+  if (seconds < 60) return `${seconds} sec`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return remainingSeconds === 0 ? `${minutes} min` : `${minutes} min ${remainingSeconds} sec`;
+};
 
 const human = (value: string): string => value.replaceAll("_", " ");
 
@@ -134,7 +143,6 @@ function SettingsPanel() {
   const [settings, setSettings] = useState<RepositorySettings | null>(null);
   const [repository, setRepository] = useState("");
   const [dispatchEnabled, setDispatchEnabled] = useState(false);
-  const [selectorEnabled, setSelectorEnabled] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(true);
 
@@ -146,7 +154,6 @@ function SettingsPanel() {
       setSettings(value);
       setRepository(value.repository);
       setDispatchEnabled(value.dispatchEnabled);
-      setSelectorEnabled(value.selectorEnabled);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Settings could not be loaded.");
     } finally { setBusy(false); }
@@ -163,7 +170,6 @@ function SettingsPanel() {
       setSettings(value);
       setRepository(value.repository);
       setDispatchEnabled(value.dispatchEnabled);
-      setSelectorEnabled(value.selectorEnabled);
       setMessage("Saved and read back from D1.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The repository could not be saved.");
@@ -175,22 +181,17 @@ function SettingsPanel() {
     setBusy(true);
     setMessage("");
     try {
-      const value = await saveWorkflowControls(
-        dispatchEnabled, selectorEnabled, settings.workflowRevision,
-      );
+      const value = await saveWorkflowControls(dispatchEnabled, settings.workflowRevision);
       setSettings(value);
       setDispatchEnabled(value.dispatchEnabled);
-      setSelectorEnabled(value.selectorEnabled);
       setMessage("Workflow controls saved and read back from D1.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The workflow controls could not be saved.");
     } finally { setBusy(false); }
   };
 
-  const controlsChanged = settings !== null && (
-    dispatchEnabled !== settings.dispatchEnabled || selectorEnabled !== settings.selectorEnabled
-  );
-  const controlsLocked = busy || settings === null || settings.activeRuns > 0 || !settings.selectorAvailable;
+  const controlsChanged = settings !== null && dispatchEnabled !== settings.dispatchEnabled;
+  const controlsLocked = busy || settings === null || settings.activeRuns > 0;
 
   return <section className="settings-page">
     <div className="settings-heading"><div><span className="eyebrow">Project settings</span><h1>Workflow settings</h1><p>Choose the repository and control when new workflow work starts.</p></div><GithubLogo /></div>
@@ -203,17 +204,12 @@ function SettingsPanel() {
           <div className="settings-actions"><button type="button" onClick={() => void save()} disabled={busy || settings === null || repository.trim() === settings.repository}>{busy ? "Working…" : "Save repository"}</button></div>
         </div>
         <div className="settings-card controls-card">
-          <div className="card-heading"><div><h2>Workflow controls</h2><p>Both settings apply to new Todo events only.</p></div><span className={settings?.activeRuns ? "guard active" : "guard"}>{settings?.activeRuns ? "Locked" : "Ready"}</span></div>
+          <div className="card-heading"><div><h2>Workflow controls</h2><p>This setting applies to new Todo events only.</p></div><span className={settings?.activeRuns ? "guard active" : "guard"}>{settings?.activeRuns ? "Locked" : "Ready"}</span></div>
           <label className="switch-row">
             <span><strong>Workflow dispatch</strong><small>Let accepted Todo events start a workflow.</small></span>
             <input type="checkbox" checked={dispatchEnabled} onChange={(event) => setDispatchEnabled(event.target.checked)} disabled={controlsLocked} />
           </label>
-          <label className="switch-row">
-            <span><strong>Simple workflow</strong><small>Use the planning flow when the issue has the exact label.</small></span>
-            <input type="checkbox" checked={selectorEnabled} onChange={(event) => setSelectorEnabled(event.target.checked)} disabled={controlsLocked} />
-          </label>
           {settings !== null && settings.activeRuns > 0 && <p className="guard-note">A workflow is active. These controls will unlock when it ends.</p>}
-          {settings !== null && !settings.selectorAvailable && <p className="guard-note">The simple workflow is not ready for this repository yet.</p>}
           <div className="settings-actions"><button type="button" onClick={() => void saveControls()} disabled={controlsLocked || !controlsChanged}>{busy ? "Working…" : "Save workflow controls"}</button><button className="secondary" type="button" onClick={() => void load()} disabled={busy}>Reload</button></div>
           {message && <div className="settings-message" role="status">{message}</div>}
         </div>
@@ -243,10 +239,12 @@ function App() {
   const [runId, setRunId] = useState("");
   const [poll, setPoll] = useState<PollState<Projection>>({ applied: null, staged: null, error: null });
   const [selectedVisit, setSelectedVisit] = useState<number | null>(null);
+  const [transcriptAttempt, setTranscriptAttempt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState<PortalPage>(() => portalPageFromPath(window.location.pathname));
   const requestRef = useRef<AbortController | null>(null);
   const workflowLoadedRef = useRef(false);
+  const loadTranscript = useCallback((path: string, signal?: AbortSignal) => api<TranscriptDto>(path, signal), []);
 
   useEffect(() => {
     localStorage.setItem("deos-theme", theme);
@@ -290,6 +288,7 @@ function App() {
       const first = result.runs[0]?.id ?? "";
       setRunId(first);
       setSelectedVisit(null);
+      setTranscriptAttempt(null);
       setPoll({ applied: null, staged: null, error: null });
       if (first) await loadProjection(first, true);
     } catch (error) {
@@ -324,13 +323,14 @@ function App() {
 
   const projection = poll.applied;
   const detail = useMemo(() => projection?.history.find((visit) => visit.sequence === selectedVisit) ?? projection?.history.at(-1) ?? null, [projection, selectedVisit]);
+  const transcriptAttempts = detail?.attempts.filter((attempt) => attempt.transcriptAvailable) ?? [];
   const firstRow = projection?.stages.slice(0, 4) ?? [];
   const secondRow = [...(projection?.stages.slice(4) ?? [])].reverse();
 
   return <div className="shell">
     <header className="topbar">
       <div className="brand"><span className="brand-mark">D</span><div><strong>DEOS</strong><small>Workflow portal</small></div></div>
-      <div className="topbar-meta"><span className="secure-dot" />Access protected<button className="settings-nav" type="button" onClick={() => navigate(page === "settings" ? "workflow" : "settings")}><Gear />{page === "settings" ? "Workflows" : "Settings"}</button><ThemeControl theme={theme} setTheme={setTheme} /></div>
+      <div className="topbar-meta"><span className="secure-dot" />Access protected<a className="settings-nav" href="/"><Gear />Workflows</a><ThemeControl theme={theme} setTheme={setTheme} /></div>
     </header>
     {page === "workflow" && <aside className="rail">
       <form onSubmit={(event) => { event.preventDefault(); void search(); }} className="search-form">
@@ -350,7 +350,7 @@ function App() {
       {poll.error && <div className="error-banner"><WarningCircle />{poll.error}<button type="button" onClick={() => runId && void loadProjection(runId)}>Retry</button></div>}
       {selectedIssue && <section className="issue-header">
         <div><span className="eyebrow">{selectedIssue.key}</span><h1>{selectedIssue.title}</h1><a href={selectedIssue.url} target="_blank" rel="noreferrer">Open issue <ArrowSquareOut /></a></div>
-        <div className="run-control"><label htmlFor="run">Workflow run</label><select id="run" value={runId} onChange={(event) => { setRunId(event.target.value); setSelectedVisit(null); void loadProjection(event.target.value, true); }}>{runs.map((run) => <option value={run.id} key={run.id}>Run {run.sequence} · {human(run.status)}</option>)}</select></div>
+        <div className="run-control"><label htmlFor="run">Workflow run</label><select id="run" value={runId} onChange={(event) => { setRunId(event.target.value); setSelectedVisit(null); setTranscriptAttempt(null); void loadProjection(event.target.value, true); }}>{runs.map((run) => <option value={run.id} key={run.id}>Run {run.sequence} · {human(run.status)}</option>)}</select></div>
       </section>}
       {projection ? <>
         <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span></div><span>Fresh as of {formatTime(projection.run.freshness)}</span></section>
@@ -366,8 +366,11 @@ function App() {
           <section className="detail-panel">
             <div className="section-heading"><div><span className="eyebrow">Visit detail</span><h2>{detail?.label ?? "No visit selected"}</h2></div>{detail && <span>Visit {detail.sequence}{detail.cycle > 1 ? ` · cycle ${detail.cycle}` : ""}</span>}</div>
             {detail && <div className="detail-content">
-              <dl><div><dt>State</dt><dd>{human(detail.state)}</dd></div><div><dt>Entered</dt><dd>{formatTime(detail.enteredAt)}</dd></div><div><dt>Finished</dt><dd>{formatTime(detail.leftAt)}</dd></div></dl>
-              <div className="evidence-grid"><div><h3>Agent attempts</h3>{detail.attempts.length ? detail.attempts.map((attempt, index) => <p key={index}>{human(attempt.state)}{attempt.outcome ? ` · ${human(attempt.outcome)}` : ""}</p>) : <p>Unavailable for this visit</p>}</div><div><h3>Wait state</h3>{detail.waits.length ? detail.waits.map((wait, index) => <p key={index}>{human(wait.state)} · {formatTime(wait.startedAt)}</p>) : <p>No durable wait</p>}</div><div><h3>Governed work</h3>{detail.links.length ? detail.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>) : <p>Unavailable for this visit</p>}</div></div>
+              <dl><div><dt>Started</dt><dd>{formatTime(detail.enteredAt)}</dd></div><div><dt>Duration</dt><dd>{formatDuration(detail.enteredAt, detail.leftAt)}</dd></div></dl>
+              {(transcriptAttempts.length > 0 || detail.links.length > 0) && <div className="evidence-grid">
+                {transcriptAttempts.length > 0 && <div><h3>Transcript</h3>{transcriptAttempts.map((attempt) => <div className="attempt-row" key={attempt.id}><button type="button" onClick={() => setTranscriptAttempt(attempt.id)}>View transcript</button></div>)}</div>}
+                {detail.links.length > 0 && <div><h3>Links</h3>{detail.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>)}</div>}
+              </div>}
             </div>}
           </section>
           <section className="history-panel">
@@ -377,6 +380,7 @@ function App() {
         </div>
       </> : <section className="empty-state">{busy ? <><SpinnerGap className="spin" /><h1>Loading durable workflow state</h1></> : <><MagnifyingGlass /><h1>Find a DEOS workflow</h1><p>Search for a Linear issue key to inspect its workflow runs and durable business state.</p></>}</section>}</>}
     </main>
+    {transcriptAttempt !== null && <TranscriptViewer attemptId={transcriptAttempt} loadTranscript={loadTranscript} onClose={() => setTranscriptAttempt(null)} />}
   </div>;
 }
 

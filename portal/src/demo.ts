@@ -27,6 +27,8 @@ const nodes = [
   ["done", "Done", "completed"],
 ] as const;
 
+const demoAttemptId = "11111111-1111-4111-8111-111111111111";
+
 const history = nodes.map(([nodeId, label, stageId], index) => ({
   sequence: index + 1,
   nodeId,
@@ -37,7 +39,14 @@ const history = nodes.map(([nodeId, label, stageId], index) => ({
   enteredAt: new Date(Date.parse(run.startedAt) + index * 9 * 60_000).toISOString(),
   leftAt: new Date(Date.parse(run.startedAt) + (index + 1) * 9 * 60_000).toISOString(),
   attempts: ["requirements", "requirements_review", "ddd_architecture", "implementation", "code_review"].includes(nodeId)
-    ? [{ state: "completed", outcome: "approved", startedAt: run.startedAt, endedAt: run.endedAt }]
+    ? [{
+        id: demoAttemptId,
+        state: "completed",
+        outcome: "approved",
+        startedAt: run.startedAt,
+        endedAt: run.endedAt,
+        transcriptAvailable: nodeId === "requirements",
+      }]
     : [],
   waits: nodeId === "final_approval" ? [{ state: "consumed", startedAt: run.startedAt, endedAt: run.endedAt }] : [],
   links: nodeId === "implementation" ? [{ kind: "pull_request", label: "Pull request #46", url: "https://github.com/sachinkundu/deos/pull/46", createdAt: run.endedAt }] : [],
@@ -69,5 +78,26 @@ export const demoApi = (path: string): unknown => {
     history,
     unlinked: { attempts: 0, waits: 0 },
   };
+  if (path === `/api/attempts/${demoAttemptId}/transcript`) {
+    const values = [
+      { type: "status", timestamp: run.startedAt, message: "Planning work started." },
+      { type: "assistant_message", timestamp: "2026-08-19T09:04:00.000Z", text: "I am reading the issue and current workflow context." },
+      { type: "tool_call", timestamp: "2026-08-19T09:04:14.000Z", tool_name: "read_file", summary: "Read the approved planning inputs." },
+      { type: "tool_result", timestamp: "2026-08-19T09:04:15.000Z", tool_name: "read_file", summary: "The planning inputs were loaded." },
+      { type: "assistant_message", timestamp: "2026-08-19T09:08:10.000Z", text: "The proposal is ready for review." },
+    ];
+    const records = values.map((value, index) => ({ number: index + 1, raw: JSON.stringify(value), value }));
+    return {
+      attemptId: demoAttemptId,
+      runId: run.id,
+      runSequence: run.sequence,
+      issueKey: issue.key,
+      nodeId: "requirements",
+      byteSize: records.reduce((total, record) => total + record.raw.length + 1, 0),
+      sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      eventCount: records.length,
+      records,
+    };
+  }
   throw new Error("No matching workflow was found.");
 };

@@ -13,4 +13,6 @@ python_modules/
 .env.*
 !.env.example
 node_modules/
+/portal/dist/
+/prototypes/*/dist/
 symphony-understanding.md

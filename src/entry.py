@@ -126,27 +126,30 @@ class Default(WorkerEntrypoint):
         emit_observation(_observation(event, run_id, "queue.publish", "started"))
         try:
             await self.env.QUEUE.send(
-                {
-                    "event_id": event.event_id,
-                    "source_delivery_id": event.source_delivery_id,
-                    "issue_id": event.issue_id,
-                    "issue_key": event.issue_key,
-                    "issue_title": event.issue_title,
-                    "issue_url": event.issue_url,
-                    "project_id": event.project_id,
-                    "transition": event.transition,
-                    "actor_id": event.actor_id,
-                    "actor_type": event.actor_type,
-                    "event_kind": event.event_kind,
-                    "state_id": event.state_id,
-                    "previous_state_id": event.previous_state_id,
-                    "previous_state_name": event.previous_state_name,
-                    "occurred_at": event.occurred_at.isoformat(),
-                    "correlation_id": run_id,
-                    "payload_digest": delivery.payload_hash,
-                    "label_selection_evidence": event.label_selection_evidence.as_dict(),
-                    "label_selection_evidence_digest": event.label_selection_evidence.digest(),
-                }
+                _javascript_value(
+                    {
+                        "event_id": event.event_id,
+                        "source_delivery_id": event.source_delivery_id,
+                        "issue_id": event.issue_id,
+                        "issue_key": event.issue_key,
+                        "issue_title": event.issue_title,
+                        "issue_url": event.issue_url,
+                        "project_id": event.project_id,
+                        "transition": event.transition,
+                        "actor_id": event.actor_id,
+                        "actor_type": event.actor_type,
+                        "event_kind": event.event_kind,
+                        "state_id": event.state_id,
+                        "previous_state_id": event.previous_state_id,
+                        "previous_state_name": event.previous_state_name,
+                        "occurred_at": event.occurred_at.isoformat(),
+                        "correlation_id": run_id,
+                        "payload_digest": delivery.payload_hash,
+                        "label_selection_evidence": event.label_selection_evidence.as_dict(),
+                        "label_selection_evidence_digest": event.label_selection_evidence.digest(),
+                    }
+                ),
+                contentType="json",
             )
         except Exception:
             emit_observation(
@@ -156,6 +159,14 @@ class Default(WorkerEntrypoint):
         emit_observation(_observation(event, run_id, "queue.publish", "succeeded"))
         # Linear treats any non-200 response as a failed delivery and retries.
         return Response("accepted", status=200)
+
+
+def _javascript_value(value: object):
+    """Deep-convert Queue payloads before crossing the Pyodide FFI boundary."""
+    from js import Object
+    from pyodide.ffi import to_js
+
+    return to_js(value, dict_converter=Object.fromEntries)
 
 
 def _observation(
