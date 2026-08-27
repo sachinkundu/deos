@@ -12,7 +12,6 @@ import {
 import "@xyflow/react/dist/style.css";
 import {
   ArrowClockwise,
-  ArrowDown,
   ArrowSquareOut,
   CaretDown,
   CheckCircle,
@@ -919,10 +918,6 @@ function WorkflowWorkspace({ issue, selection, setSelection, onTranscript, onRef
   }, [graph, setNodes, setEdges]);
 
   const onNodeClick = useCallback((_, node) => setSelection({ kind: "node", id: node.id, step: node.data, isCurrent: node.selected }), [setSelection]);
-  const jumpToCurrent = useCallback(() => {
-    document.querySelector(".full-flow-node.is-selected")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, []);
-
   const CurrentIcon = stateIcon[issue.state];
   const currentDefinition = workflowDefinitions.find((item) => item.id === currentNodeByStep[issue.currentStep]);
   return (
@@ -941,9 +936,6 @@ function WorkflowWorkspace({ issue, selection, setSelection, onTranscript, onRef
 
       <section className="graph-section" aria-label="Workflow map">
         <div className="graph-toolbar">
-          <div className="graph-view-actions">
-            {currentDefinition && <button type="button" className="direction-chip" onClick={jumpToCurrent}><ArrowDown size={15} />Current node</button>}
-          </div>
           <StatusLegend />
         </div>
         <div className="graph-canvas graph-canvas--workflow" style={{ height: graph.height, minHeight: graph.height }}>

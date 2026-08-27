@@ -14,6 +14,7 @@ import { simpleIssueFromProjection } from "../src/portal-run.js";
 const workflowSource = await readFile(new URL("../../../config/workflow.simple.yaml", import.meta.url), "utf8");
 const workflow = parse(workflowSource);
 const appSource = await readFile(new URL("../src/App.jsx", import.meta.url), "utf8");
+const styleSource = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
 
 test("simple workflow presentation covers the version-4 definition", () => {
   assert.equal(workflow.metadata.name, simpleWorkflowPresentation.id);
@@ -130,6 +131,35 @@ test("workflow step details show timing and destinations without redundant comme
   assert.equal(appSource.includes('className="detail-summary"'), false);
   assert.equal(appSource.includes('className="inspector-cycles"'), false);
   assert.equal(appSource.includes('["started", "duration"]'), true);
+});
+
+test("the graph itself identifies the current stage without a separate pill", () => {
+  assert.equal(appSource.includes("Current node"), false);
+  assert.equal(appSource.includes("direction-chip"), false);
+  assert.equal(styleSource.includes(".full-flow-node--active"), true);
+  assert.equal(styleSource.includes("animation: active-node-breathe"), true);
+  assert.equal(styleSource.includes(".full-flow-node--waiting { color: var(--waiting); }"), true);
+});
+
+test("a non-active current stage uses the yellow waiting treatment", () => {
+  const issue = simpleIssueFromProjection({
+    issue: { key: "SAC-200", title: "Start a small plan", url: "https://linear.app/example/issue/SAC-200/start-a-small-plan" },
+    run: {
+      id: "workflow:project:issue:run:1", sequence: 1, status: "pending_dispatch",
+      definitionName: "simple", definitionVersion: 4, definitionDigest: "digest",
+      currentNode: "claim_issue", currentVisitSequence: 1,
+      startedAt: "2026-08-27T08:00:00Z", updatedAt: "2026-08-27T08:00:01Z",
+      freshness: "2026-08-27T08:00:01Z",
+    },
+    pullRequest: null,
+    history: [
+      { sequence: 1, stageId: "claim", enteredAt: "2026-08-27T08:00:00Z", leftAt: null, attempts: [], links: [] },
+    ],
+  });
+
+  assert.equal(issue.state, "waiting");
+  assert.equal(issue.stateLabel, "Starting");
+  assert.equal(issue.stageStates.claim, "waiting");
 });
 
 test("a durable simple projection becomes the approved visual issue shape", () => {

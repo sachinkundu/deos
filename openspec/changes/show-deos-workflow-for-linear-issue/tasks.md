@@ -36,5 +36,5 @@
 - [x] 6.1 Capture remote D1 and definition baselines, apply and verify the additive migration and truthful backfills, then deploy the updated writers with dispatch disabled.
 - [x] 6.2 Deploy the portal and reconcile Cloudflare Access to Google plus exactly `sachinkundu@gmail.com`; verify unauthorized denial and the minimum binding and secret inventory.
 - [x] 6.3 Prove remote portal reads do not mutate D1 and capture sanitized browser evidence of the authorized deployed portal.
-- [ ] 6.4 Run real Linear provider wait-and-resume and terminal canaries, capture matching Linear, D1, portal, and timing proof, and disable canary dispatch afterward.
+- [x] 6.4 Run real Linear provider wait-and-resume and terminal canaries, capture matching Linear, D1, portal, and timing proof, and disable canary dispatch afterward.
 - [x] 6.5 Deploy the read-only artifact binding and prove SAC-130 loads its durable transcript inside the Access-protected portal without changing D1 or R2.

@@ -52,7 +52,7 @@ const stateFromStatus = (status) => {
   if (status === "succeeded") return "finished";
   if (["failed", "blocked", "denied"].includes(status)) return "failed";
   if (status === "canceled") return "stopped";
-  if (["awaiting_human", "awaiting_capability", "manual_reconciliation_required"].includes(status)) return "waiting";
+  if (["pending_dispatch", "awaiting_human", "awaiting_capability", "manual_reconciliation_required"].includes(status)) return "waiting";
   if (status === "active") return "active";
   return "unknown";
 };
@@ -71,7 +71,7 @@ const stateLabelFromStatus = (status) => ({
 }[status] ?? "Unknown");
 
 const statusForCurrentStage = (runStatus) => {
-  if (["awaiting_human", "awaiting_capability", "manual_reconciliation_required"].includes(runStatus)) return "waiting";
+  if (["pending_dispatch", "awaiting_human", "awaiting_capability", "manual_reconciliation_required"].includes(runStatus)) return "waiting";
   if (runStatus === "active") return "active";
   return "unknown";
 };
