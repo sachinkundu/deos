@@ -4,14 +4,33 @@ Let an allowed user read exact-head OpenSpec review proof and findings in the DE
 
 ## ADDED Requirements
 
+### Requirement: Choose the independent review model in settings
+
+The DEOS settings page SHALL list the OpenRouter models that DEOS supports for independent review. An allowed operator SHALL choose one model for new runs. DEOS SHALL save the provider and model with a settings revision. A new run SHALL copy that choice into its fixed run data. An active run MUST NOT change models when the setting changes. The page MUST NOT show or accept the raw OpenRouter key.
+
+#### Scenario: Operator saves an independent model
+
+- **WHEN** an allowed operator selects a supported OpenRouter model and saves the settings
+- **THEN** DEOS reads back the new settings revision and uses that choice only for later runs
+
+#### Scenario: Model choice is missing or unsupported
+
+- **WHEN** a new review run has no supported OpenRouter model in its saved settings
+- **THEN** DEOS rejects independent-review dispatch before any model call
+
 ### Requirement: Show one protected review view
 
-The DEOS portal SHALL have a guarded review page for a flow run. The page SHALL show the Linear issue, run, and planning pull request. It SHALL show the chosen head and the author and review models. It SHALL show each phase, round, result, base finding, and fix. It SHALL distinguish a closed finding set from a closed review phase. It SHALL show reused results, stale reasons, proof conflicts, and superseding decisions. It SHALL also show safe proof links.
+The DEOS portal SHALL have a guarded review page for a flow run. The `Create Planning PR` node popup SHALL show a `View review trace` link when saved review proof exists. The normal workflow graph SHALL not add a separate self-check node. The review page SHALL show the Linear issue, run, and planning pull request. It SHALL show the chosen head, author coding agent Codex model, and independent OpenRouter model. It SHALL show the self-check and independent stages, each round, result, base finding, and fix. It SHALL distinguish a closed finding set from a closed review stage. It SHALL show reused results, stale reasons, same-stage proof conflicts, turn-limit escalation, and open findings sent to human judgment. It SHALL also show safe proof links.
 
 #### Scenario: Authorized operator opens a review
 
 - **WHEN** an allowed user opens the review page for a known run
 - **THEN** the portal loads its saved review rows and safe files
+
+#### Scenario: Operator opens the planning node
+
+- **WHEN** the `Create Planning PR` node has saved self-check or independent-review proof
+- **THEN** its popup shows a link to the guarded review page without adding a self-check node to the workflow graph
 
 #### Scenario: User lacks access
 
@@ -30,8 +49,13 @@ The DEOS portal SHALL have a guarded review page for a flow run. The page SHALL 
 
 #### Scenario: Earlier pass is challenged
 
-- **WHEN** a later result conflicts with a fixed rating from the same round
-- **THEN** the page shows the conflict and its proof decision instead of presenting it as an ordinary repair cycle
+- **WHEN** a later result from the same review stage conflicts with its fixed rating from the same round
+- **THEN** the page shows both results and the human-judgment state instead of presenting it as an ordinary repair cycle
+
+#### Scenario: Review turns end with findings open
+
+- **WHEN** a round reaches human review through the shared three-turn limit
+- **THEN** the page labels it `needs judgment` and keeps every open finding and model disagreement visible
 
 ### Requirement: Render citations against the exact reviewed documents
 

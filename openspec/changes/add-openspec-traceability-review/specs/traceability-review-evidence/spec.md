@@ -6,7 +6,7 @@ Keep safe proof of what each review checked, found, and fixed. Keep this proof o
 
 ### Requirement: Preserve immutable evidence for every review attempt
 
-DEOS SHALL save a fixed proof set for each review job. This rule SHALL apply if the job passed, was blocked, failed, or was stopped. The set SHALL name the run, job, phase, mode, and round. It SHALL name the plan hash and reviewed head, if one exists. It SHALL include the fixed model and thought level. It SHALL list each source and hash. It SHALL also keep the raw result, clean result, sidecar, test result, findings, fixes, chat log, and safe job result. It SHALL keep safe provider receipts when they exist. If an output is missing or unsafe, the set SHALL say so. It MUST NOT make up its content.
+DEOS SHALL save a fixed proof set for each review job. This rule SHALL apply if the job passed, was blocked, failed, or was stopped. The set SHALL name the run, job, stage, mode, and round. It SHALL name the plan hash and reviewed head, if one exists. It SHALL include the saved model provider, model, and thought level or provider equivalent. It SHALL list each source and hash. It SHALL also keep the raw result, clean result, sidecar, test result, findings, fixes, chat log, and safe job result. It SHALL keep safe provider receipts when they exist. If an output is missing or unsafe, the set SHALL say so. It MUST NOT make up its content.
 
 #### Scenario: Review attempt completes
 
@@ -25,7 +25,7 @@ DEOS SHALL save a fixed proof set for each review job. This rule SHALL apply if 
 
 ### Requirement: Index review proof for direct lookup
 
-DEOS SHALL keep one saved row for each review. The row SHALL point to the exact proof set. A lookup MUST NOT need a scan of file storage. The row SHALL name the review input ID, review, run, job, phase, mode, and round. It SHALL name the author model and review model. It SHALL name the thought level, prompt version, tool version, plan hash, reviewed head, and base finding set. It SHALL also name the file links, result, and times. A reused result, new head binding, inconsistent result, or superseding decision SHALL point to the original proof and its later decision without copying the semantic result.
+DEOS SHALL keep one saved row for each review. The row SHALL point to the exact proof set. A lookup MUST NOT need a scan of file storage. The row SHALL name the review input ID, review, run, job, stage, mode, and round. It SHALL name the author model, review provider, and review model. It SHALL name the thought setting, prompt version, tool version, plan hash, reviewed head, and base finding set. It SHALL also name the file links, result, and times. A reused result, new head binding, inconsistent result, or human-escalation decision SHALL point to the original proof and its later decision without copying the semantic result.
 
 #### Scenario: Operator opens a known review
 
@@ -42,14 +42,14 @@ DEOS SHALL keep one saved row for each review. The row SHALL point to the exact 
 - **WHEN** a later dispatch has the same review input ID
 - **THEN** its saved reuse record points to the accepted proof and states that no new model job ran
 
-#### Scenario: Review result is superseded
+#### Scenario: Same-stage review results conflict
 
-- **WHEN** bounded proof repair confirms that an earlier accepted rating was wrong
-- **THEN** the evidence links both results, the adjudication, and the reason the earlier proof no longer controls the phase
+- **WHEN** one review stage contradicts its own saved rating without a matching source change
+- **THEN** the evidence links both results and the human-escalation decision and does not invent another semantic result
 
 ### Requirement: Validate structure without overstating meaning
 
-The proof check SHALL test the file list, paths, hashes, quotes, and line ranges. It SHALL test the plan map and each spec map. It SHALL test both link ways, the plan ID, and the closed finding list. These tests MUST NOT claim to prove meaning, scope, need, match, or a good fix. Those views SHALL stay tied to the named review model.
+The proof check SHALL test the file list, paths, hashes, quotes, and line ranges. It SHALL test the plan map and each spec map. It SHALL test both link ways, the plan ID, and the closed finding list. These checks prove form and freshness. The models attempt semantic checks, but their results are not absolute because model output is probabilistic. Each semantic view SHALL stay tied to its named provider and model.
 
 #### Scenario: Sidecar is structurally valid
 
