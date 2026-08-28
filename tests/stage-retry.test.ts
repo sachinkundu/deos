@@ -45,9 +45,9 @@ class FakeRetryStore implements AgentStageRetryStore {
     target_definition_version: 12,
     target_definition_digest: TARGET_DEFINITION.digest,
     source_workflow_instance_id: "workflow-1",
-    target_workflow_instance_id: "workflow-1",
+    target_workflow_instance_id: "workflow-retry-1",
     source_delivery_id: "delivery-1",
-    workflow_instance_id: "workflow-1",
+    workflow_instance_id: "workflow-retry-1",
   };
   prepares = 0;
 
@@ -76,28 +76,34 @@ class FakeRetryStore implements AgentStageRetryStore {
 
 class FakeInstance implements WorkflowInstanceHandle {
   id = "workflow-1";
-  restarts = 0;
   current = "errored";
 
   async sendEvent(): Promise<void> {}
-  async restart(): Promise<void> {
-    this.restarts += 1;
-    this.current = "running";
-  }
   async status(): Promise<{ status: string }> {
     return { status: this.current };
   }
 }
 
 class FakeWorkflow implements WorkflowBinding {
-  readonly instance = new FakeInstance();
-  async get(): Promise<FakeInstance> {
-    return this.instance;
+  readonly instances = new Map<string, FakeInstance>();
+  readonly creates: Array<{ id: string; params: WorkflowStartParameters }> = [];
+  createdStatus = "running";
+  async get(id: string): Promise<FakeInstance> {
+    const instance = this.instances.get(id);
+    if (instance === undefined) throw new Error("missing");
+    return instance;
   }
   async createBatch(
-    _batch: Array<{ id: string; params: WorkflowStartParameters }>,
+    batch: Array<{ id: string; params: WorkflowStartParameters }>,
   ): Promise<WorkflowInstanceHandle[]> {
-    throw new Error("not used");
+    this.creates.push(...batch);
+    return batch.map(({ id }) => {
+      const instance = new FakeInstance();
+      instance.id = id;
+      instance.current = this.createdStatus;
+      this.instances.set(id, instance);
+      return instance;
+    });
   }
 }
 
@@ -113,7 +119,7 @@ const request = (secret = "operator-secret"): Request => new Request("https://ex
   }),
 });
 
-test("failed agent stage restart is authenticated, audited, and idempotent", async () => {
+test("failed agent stage retry creates a replacement and is authenticated, audited, and idempotent", async () => {
   const store = new FakeRetryStore();
   const workflows = new FakeWorkflow();
   const controller = new AgentStageRetryController(
@@ -131,21 +137,22 @@ test("failed agent stage restart is authenticated, audited, and idempotent", asy
 
   const started = await controller.handle(request());
   assert.equal(started.status, 202);
-  assert.equal(workflows.instance.restarts, 1);
+  assert.deepEqual(workflows.creates, [{
+    id: "workflow-retry-1",
+    params: { runId: "run-1", sourceDeliveryId: "delivery-1" },
+  }]);
   assert.equal(store.record.state, "established");
   assert.equal(store.record.workflow_status, "running");
 
   const replay = await controller.handle(request());
   assert.equal(replay.status, 200);
-  assert.equal(workflows.instance.restarts, 1);
+  assert.equal(workflows.creates.length, 1);
 });
 
-test("an errored read-back stays pending and can be retried", async () => {
+test("an errored replacement read-back stays pending", async () => {
   const store = new FakeRetryStore();
   const workflows = new FakeWorkflow();
-  workflows.instance.restart = async () => {
-    workflows.instance.restarts += 1;
-  };
+  workflows.createdStatus = "errored";
   const controller = new AgentStageRetryController(
     store,
     workflows,
@@ -158,7 +165,44 @@ test("an errored read-back stays pending and can be retried", async () => {
   const response = await controller.handle(request());
   assert.equal(response.status, 502);
   assert.equal(store.record.state, "pending");
-  assert.equal(store.record.safe_error_category, "workflow_restart_not_established");
+  assert.equal(store.record.safe_error_category, "workflow_replacement_not_established");
+});
+
+test("a same-definition retry plans a fresh deterministic Workflow instance", async () => {
+  const source = {
+    run_id: "run-1",
+    definition_id: "simple-traceability",
+    definition_version: 12,
+    definition_digest: TARGET_DEFINITION.digest,
+    workflow_instance_id: "workflow-v12-old",
+    current_visit_sequence: 10,
+    target_registered: 1,
+    has_published_product: 1,
+    has_validated_candidate: 1,
+    has_published_entry: 0,
+    has_failed_exit: 0,
+  };
+  const plan = await planStageRetryDefinition(
+    source,
+    "independent_discovery",
+    TARGET_DEFINITION,
+  );
+  const replay = await planStageRetryDefinition(
+    source,
+    "independent_discovery",
+    TARGET_DEFINITION,
+  );
+  const nextVisit = await planStageRetryDefinition(
+    { ...source, current_visit_sequence: 12 },
+    "independent_discovery",
+    TARGET_DEFINITION,
+  );
+
+  assert.equal(plan.retryKind, "same_definition");
+  assert.equal(plan.sourceWorkflowInstanceId, "workflow-v12-old");
+  assert.notEqual(plan.targetWorkflowInstanceId, "workflow-v12-old");
+  assert.equal(plan.targetWorkflowInstanceId, replay.targetWorkflowInstanceId);
+  assert.notEqual(plan.targetWorkflowInstanceId, nextVisit.targetWorkflowInstanceId);
 });
 
 test("the exact published v11 independent-review tail plans a new v12 instance", async () => {
@@ -168,6 +212,7 @@ test("the exact published v11 independent-review tail plans a new v12 instance",
     definition_version: 11,
     definition_digest: "digest-v11",
     workflow_instance_id: "workflow-v11",
+    current_visit_sequence: 8,
     target_registered: 1,
     has_published_product: 1,
     has_validated_candidate: 1,
@@ -188,6 +233,7 @@ test("the exact published v11 independent-review tail plans a new v12 instance",
       definition_version: 11,
       definition_digest: "digest-v11",
       workflow_instance_id: "workflow-v11",
+      current_visit_sequence: 8,
       target_registered: 1,
       has_published_product: 1,
       has_validated_candidate: 1,
@@ -204,6 +250,7 @@ test("the v11 to v12 plan rejects a missing published prefix proof", async () =>
     definition_version: 11,
     definition_digest: "digest-v11",
     workflow_instance_id: "workflow-v11",
+    current_visit_sequence: 8,
     target_registered: 1,
     has_published_product: 1,
     has_validated_candidate: 1,
@@ -262,6 +309,5 @@ test("a compatible tail creates only the new v12 Workflow instance", async () =>
     params: { runId: "run-1", sourceDeliveryId: "delivery-1" },
   }]);
   assert.ok(gets.every((id) => id === "workflow-v12"));
-  assert.equal(instances.get("workflow-v12")?.restarts, 0);
   assert.equal(store.record.state, "established");
 });

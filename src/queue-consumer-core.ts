@@ -45,7 +45,6 @@ export interface QueueBody {
 export interface WorkflowInstanceHandle {
   id: string;
   sendEvent(event: { type: string; payload: unknown }): Promise<void>;
-  restart?(): Promise<void>;
   status?(): Promise<{ status: string }>;
 }
 

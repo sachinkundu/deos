@@ -182,6 +182,20 @@ A structurally valid independent review SHALL complete successfully even when it
 - **WHEN** the independent review is structurally valid and has findings or disputed links
 - **THEN** the external-review workflow outcome is `pass` while the semantic concerns remain visible for the author and human
 
+### Requirement: Retry a cleaned-up review stage with a replacement Workflow
+
+DEOS SHALL allow an authenticated operator to retry only the latest failed or heartbeat-interrupted independent review attempt after its Sandbox cleanup is `destroyed`. It SHALL preserve the run ID, definition, candidate, pull request, reviewed files, model settings, provider delivery, and prior evidence. It SHALL append an `operator_retry` transition to a fresh visit, derive a new deterministic Workflow instance ID, atomically bind the run and dispatch intent to that ID, and create that replacement instance. It MUST NOT restart the failed Workflow instance or repeat completed nodes. An exact replay SHALL return the existing retry result without creating another instance.
+
+#### Scenario: Latest independent review attempt is cleaned up
+
+- **WHEN** an authenticated operator retries the latest cleaned-up failed independent review attempt
+- **THEN** DEOS creates one new Workflow instance for the same run and source delivery at a fresh visit of that review node
+
+#### Scenario: Retry request is replayed
+
+- **WHEN** the same operator request is delivered more than once
+- **THEN** DEOS returns the durable retry record and creates no additional Workflow instance or transition
+
 ### Requirement: Upgrade only one compatible failed review tail
 
 DEOS MAY upgrade a failed version 11 run to version 12 only when its latest failed attempt is `independent_discovery`, its Sandbox cleanup is `destroyed`, and the completed path ends after the trusted initial pull request publication. The target SHALL be the exact registered bundled version 12 definition. DEOS SHALL preserve the run ID, planning candidate, pull request, reviewed files, model settings, and all prior evidence. It SHALL record the source and target definition IDs, versions, and digests and the old and new Workflow instance IDs. It SHALL create a new version 12 Workflow instance for the same run at `independent_discovery` and MUST NOT restart the old version 11 instance. Every other cross-version retry SHALL fail before mutation.

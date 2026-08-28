@@ -99,6 +99,7 @@ export const planStageRetryDefinition = async (
     | "definition_version"
     | "definition_digest"
     | "workflow_instance_id"
+    | "current_visit_sequence"
     | "target_registered"
     | "has_published_product"
     | "has_validated_candidate"
@@ -121,7 +122,9 @@ export const planStageRetryDefinition = async (
       targetDefinitionId: source.definition_id,
       targetDefinitionVersion: source.definition_version,
       targetDefinitionDigest: source.definition_digest,
-      targetWorkflowInstanceId: source.workflow_instance_id,
+      targetWorkflowInstanceId: await workflowInstanceIdentity(
+        `${source.run_id}:stage-retry:${source.current_visit_sequence + 1}:${source.definition_id}:${source.definition_version}:${source.definition_digest}`,
+      ),
     };
   }
   if (
@@ -377,21 +380,19 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
         retryId,
       ),
     ];
-    if (plan.retryKind === "compatible_tail") {
-      statements.push(this.database.prepare(
-        `UPDATE dispatch_intents
+    statements.push(this.database.prepare(
+      `UPDATE dispatch_intents
          SET workflow_instance_id = ?, safe_error_category = NULL, updated_at = ?
          WHERE run_id = ? AND source_delivery_id = ? AND workflow_instance_id = ?
            AND EXISTS (SELECT 1 FROM agent_stage_retries WHERE retry_id = ?)`,
-      ).bind(
-        plan.targetWorkflowInstanceId,
-        input.now,
-        input.runId,
-        source.source_delivery_id,
-        plan.sourceWorkflowInstanceId,
-        retryId,
-      ));
-    }
+    ).bind(
+      plan.targetWorkflowInstanceId,
+      input.now,
+      input.runId,
+      source.source_delivery_id,
+      plan.sourceWorkflowInstanceId,
+      retryId,
+    ));
     statements.push(
       this.database.prepare(
         `INSERT OR IGNORE INTO workflow_transitions_v2
@@ -457,8 +458,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
   }
 }
 
-type RestartableInstance = WorkflowInstanceHandle & {
-  restart(): Promise<void>;
+type ObservableInstance = WorkflowInstanceHandle & {
   status(): Promise<{ status: string }>;
 };
 
@@ -549,12 +549,12 @@ export class AgentStageRetryController {
     return id;
   }
 
-  private async locateCompatibleReplacement(
+  private async locateReplacement(
     retry: AgentStageRetryRecord,
-  ): Promise<RestartableInstance> {
+  ): Promise<ObservableInstance> {
     const id = this.targetWorkflowInstanceId(retry);
     try {
-      return await this.workflows.get(id) as RestartableInstance;
+      return await this.workflows.get(id) as ObservableInstance;
     } catch {
       // Creation uses the durable target ID, so an ambiguous response is safe to reconcile.
     }
@@ -564,11 +564,11 @@ export class AgentStageRetryController {
         params: { runId: retry.run_id, sourceDeliveryId: retry.source_delivery_id! },
       }]);
       const handle = created.find((instance) => instance.id === id);
-      if (handle !== undefined) return handle as RestartableInstance;
+      if (handle !== undefined) return handle as ObservableInstance;
     } catch {
       // The provider may have created the instance before the response failed.
     }
-    return await this.workflows.get(id) as RestartableInstance;
+    return await this.workflows.get(id) as ObservableInstance;
   }
 
   async handle(request: Request): Promise<Response> {
@@ -613,19 +613,10 @@ export class AgentStageRetryController {
     if (retry.state === "established") return json(200, { retry });
     this.observe(this.observation(retry, "prepared"));
     const targetId = this.targetWorkflowInstanceId(retry);
-    const replacement = retry.retry_kind === "compatible_tail";
-    const notEstablished = replacement
-      ? "workflow_replacement_not_established"
-      : "workflow_restart_not_established";
-    const ambiguous = replacement
-      ? "workflow_replacement_ambiguous"
-      : "workflow_restart_ambiguous";
+    const notEstablished = "workflow_replacement_not_established";
+    const ambiguous = "workflow_replacement_ambiguous";
     try {
-      const instance = replacement
-        ? await this.locateCompatibleReplacement(retry)
-        : await this.workflows.get(targetId) as RestartableInstance;
-      const before = await instance.status();
-      if (terminalWorkflowStatuses.has(before.status)) await instance.restart();
+      const instance = await this.locateReplacement(retry);
       const after = await instance.status();
       if (terminalWorkflowStatuses.has(after.status)) {
         await this.store.observe({
@@ -653,7 +644,7 @@ export class AgentStageRetryController {
     } catch {
       let status: string | null = null;
       try {
-        const instance = await this.workflows.get(targetId) as RestartableInstance;
+        const instance = await this.workflows.get(targetId) as ObservableInstance;
         status = (await instance.status()).status;
       } catch {
         // The durable pending row makes an ambiguous provider response retryable.
