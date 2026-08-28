@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-expect-error The pinned BettaView bundle is JavaScript by design.
-import { normalizeDirectionalJudgments, validateDirectionalJudgment } from "../vendor/bettaview/src/review-traceability.js";
+import { buildDirectionalJudgePrompt, normalizeDirectionalJudgments, validateDirectionalJudgment } from "../vendor/bettaview/src/review-traceability.js";
 
 const inventory = {
   change: "add-review",
@@ -77,4 +77,28 @@ test("one-sided semantic links are valid evidence and remain visible as disagree
   assert.equal(normalized.directionalLinks.length, 1);
   assert.deepEqual(normalized.directionalLinks.map((link: { status: string }) => link.status), ["proposal_only"]);
   assert.equal(normalized.review.overall, "findings");
+});
+
+test("requirement-first prompt names the exact capability identifier and proposal line", () => {
+  const prompt = buildDirectionalJudgePrompt({
+    inventory,
+    instructions: "Review the requirements.",
+    direction: "spec_to_proposal",
+    repair: null,
+  });
+
+  assert.match(prompt, /Capabilities:\n- review-step: proposal\.md:9/);
+});
+
+test("capability inventory rejection reports expected and received identifiers", () => {
+  assert.throws(() => validateDirectionalJudgment("spec_to_proposal", {
+    passingJudgment,
+    capabilities: [{
+      path: "proposal.md",
+      capabilityLine: 9,
+      judgment: passingJudgment,
+      links: [],
+    }],
+    findings: [],
+  }, inventory), /expected: review-step; received: proposal\.md/);
 });

@@ -125,8 +125,15 @@ export function buildDirectionalJudgePrompt({
   repair,
 }) {
   if (!Object.hasOwn(directionalPasses, direction)) throw new Error(`Unknown traceability direction: ${direction}`);
+  const capabilityDeclarations = proposalCapabilityDeclarations(
+    splitSourceLines(inventory.documents[0].source),
+  );
   const identityInventory = [
     "## Host-supplied identity inventory",
+    "",
+    "Capabilities:",
+    ...capabilityDeclarations.map((capability) =>
+      `- ${capability.path}: proposal.md:${capability.startLine}`),
     "",
     "Proposal statements:",
     ...inventory.proposalStatements.map((statement) =>
@@ -238,7 +245,9 @@ function assertExactValues(actual, expected, label) {
   const sortedActual = [...actual].sort();
   const sortedExpected = [...expected].sort();
   if (JSON.stringify(sortedActual) !== JSON.stringify(sortedExpected)) {
-    throw new Error(`${label} must exactly match the trusted inventory`);
+    throw new Error(
+      `${label} must exactly match the trusted inventory (expected: ${sortedExpected.join(", ")}; received: ${sortedActual.join(", ")})`,
+    );
   }
 }
 
