@@ -18,6 +18,9 @@ import agentResultSchema from "../config/schemas/agent-result-v1.json";
 import reviewResultSchema from "../config/schemas/review-result-v1.json";
 import traceAgentResultSchema from "../config/schemas/trace-agent-result-v1.json";
 import { loadWorkflowDefinition, type LoadedWorkflowDefinition } from "./workflow-definition.ts";
+import { DEFAULT_WORKFLOW_DEFINITION_ID } from "./workflow-default.ts";
+
+export { DEFAULT_WORKFLOW_DEFINITION_ID } from "./workflow-default.ts";
 
 const prompts: Readonly<Record<string, string>> = Object.freeze({
   "prompts/requirements.md": requirementsPrompt,
@@ -40,8 +43,6 @@ const schemas: Readonly<Record<string, string>> = Object.freeze({
   "schemas/review-result-v1.json": JSON.stringify(reviewResultSchema),
   "schemas/trace-agent-result-v1.json": JSON.stringify(traceAgentResultSchema),
 });
-
-export const DEFAULT_WORKFLOW_DEFINITION_ID = "simple";
 
 const workflowSources = Object.freeze([workflowSource, simpleWorkflowSource, traceabilityWorkflowSource]);
 

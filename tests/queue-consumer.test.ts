@@ -379,19 +379,23 @@ const environment = (workflow: FakeWorkflow): QueueConsumerEnv => ({
   TRIAL_DISPATCH_ENABLED: "true",
 } as unknown as QueueConsumerEnv);
 
-test("scheduled registration makes simple the default without creating a selector", async () => {
+test("scheduled registration makes simple-traceability the default", async () => {
   const store = new FakeStore();
   const env = environment(new FakeWorkflow());
-  const definitions = { "openspec-delivery": definition, simple: simpleDefinition };
+  const definitions = {
+    "openspec-delivery": definition,
+    simple: simpleDefinition,
+    "simple-traceability": traceabilityDefinition,
+  };
 
   await registerBundledWorkflowDefinitions(env, {
     store,
     definitions,
     now: () => new Date(NOW),
   });
-  assert.equal(store.policies.get("project-1")?.definition_id, simpleDefinition.name);
-  assert.equal(store.policies.get("project-1")?.definition_digest, simpleDefinition.digest);
-  assert.equal(store.selectors.size, 0);
+  assert.equal(store.policies.get("project-1")?.definition_id, traceabilityDefinition.name);
+  assert.equal(store.policies.get("project-1")?.definition_digest, traceabilityDefinition.digest);
+  assert.equal(store.selectors.size, 1);
 });
 
 test("scheduled registration preserves the D1 repository setting", async () => {
@@ -420,7 +424,7 @@ test("scheduled registration preserves the D1 repository setting", async () => {
     now: () => new Date(NOW),
   });
   assert.equal(store.policies.get("project-1")?.trial_repository, "sachinkundu/deos-sample-project");
-  assert.equal(store.policies.get("project-1")?.definition_id, simpleDefinition.name);
+  assert.equal(store.policies.get("project-1")?.definition_id, traceabilityDefinition.name);
   assert.equal(store.policies.get("project-1")?.dispatch_enabled, 0);
   assert.equal(store.selectors.size, 1);
   assert.equal(
@@ -509,7 +513,7 @@ test("start delivery allocates one run and establishes one stable Workflow", asy
   assert.equal(observations.at(-1)?.["deos.workflow.outcome"], "succeeded");
 });
 
-test("labels and legacy selector state do not change the simple default", async () => {
+test("labels and legacy selector state do not change the simple-traceability default", async () => {
   const labeled = new FakeStore();
   const legacyKey = "project-1:sachinkundu/deos:simple-workflow";
   await labeled.registerSelector({
@@ -530,7 +534,7 @@ test("labels and legacy selector state do not change the simple default", async 
       labels: [{ id: "label-1", name: "simple-workflow" }],
     },
   });
-  assert.equal(labeled.runs[0].definition_id, "simple");
+  assert.equal(labeled.runs[0].definition_id, "simple-traceability");
   assert.equal(labeled.runs[0].selection_kind, "default");
   assert.equal(labeled.runs[0].selection_value, "project_policy");
   assert.equal(labeled.runs[0].selection_label_name, null);
@@ -545,7 +549,7 @@ test("labels and legacy selector state do not change the simple default", async 
     store: unlabeled,
     workflow: new FakeWorkflow(),
   });
-  assert.equal(unlabeled.runs[0].definition_id, "simple");
+  assert.equal(unlabeled.runs[0].definition_id, "simple-traceability");
   assert.equal(unlabeled.runs[0].selection_value, "project_policy");
 });
 
@@ -578,14 +582,14 @@ test("the traceability selector is registered off and selects only after explici
   assert.equal(store.runs[0].selection_label_name, "DEOS Traceability");
 });
 
-test("unavailable evidence keeps the simple default while tampering fails before allocation", async () => {
+test("unavailable evidence keeps the simple-traceability default while tampering fails before allocation", async () => {
   const store = new FakeStore();
   await runSelectedMessage({
     store,
     workflow: new FakeWorkflow(),
     evidence: { status: "unavailable" },
   });
-  assert.equal(store.runs[0].definition_id, "simple");
+  assert.equal(store.runs[0].definition_id, "simple-traceability");
   assert.equal(store.runs[0].selection_value, "project_policy");
   assert.equal(store.runs[0].selection_reason, null);
 

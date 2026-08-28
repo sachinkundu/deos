@@ -14,6 +14,7 @@ import {
 } from "./telemetry.ts";
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import { type LifecycleWriter, writeLifecycleObservation } from "./lifecycle-telemetry.ts";
+import { DEFAULT_WORKFLOW_DEFINITION_ID } from "./workflow-default.ts";
 
 export type LabelSelectionEvidence =
   | { status: "available"; labels: Array<{ id: string; name: string }> }
@@ -250,7 +251,7 @@ export const registerBundledWorkflowDefinitions = async (
   const store = dependencies.store ?? new D1OrchestrationStore(env.DB);
   const bundled = dependencies.definitions ??
     await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry();
-  const definition = dependencies.defaultDefinition ?? bundled.simple;
+  const definition = dependencies.defaultDefinition ?? bundled[DEFAULT_WORKFLOW_DEFINITION_ID];
   if (definition === undefined) throw new Error("default workflow definition is unavailable");
   const now = (dependencies.now ?? (() => new Date()))().toISOString();
   await store.registerDefinitionAndPolicy({
@@ -292,7 +293,7 @@ export const processQueueMessage = async (
       ? await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry()
       : Object.freeze({ [dependencies.definition.name]: dependencies.definition })
   );
-  const definition = dependencies.definition ?? bundled.simple;
+  const definition = dependencies.definition ?? bundled[DEFAULT_WORKFLOW_DEFINITION_ID];
   if (definition === undefined) throw new Error("default workflow definition is unavailable");
   const now = (dependencies.now ?? (() => new Date()))().toISOString();
   const lifecycle = dependencies.lifecycle ?? writeLifecycleObservation;

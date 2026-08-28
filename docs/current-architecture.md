@@ -10,7 +10,7 @@ Repository-local OpenSpec progression is encoded as typed agent jobs carrying on
 
 ## OpenSpec traceability review flow
 
-The bundle also contains `simple-traceability` version 10. It is registered with the fixed `DEOS Traceability` selector, but registration leaves that selector disabled. The existing `simple` definition stays the project default. Deploying this code cannot start a traceability run until an operator separately enables the selector and applies the matching Linear label.
+The bundle contains `simple-traceability` version 11 as the project default. The legacy `DEOS Traceability` selector remains registered but disabled, so ordinary eligible issues enter traceability without requiring a label. The immutable definition snapshot and digest are still frozen when each run is allocated.
 
 ```mermaid
 flowchart LR
