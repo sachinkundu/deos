@@ -1,7 +1,7 @@
 {
   "bundleVersion": "bettaview-openspec-traceability-directional-v4-2026-08-28",
   "sourceRepository": "sachinkundu/bettaview",
-  "sourceRevision": "f7feb60c889febf69dce12b0d73cd0debbd63a4b",
+  "sourceRevision": "de22c3cf9a95285647bbf31cac1d6242bef6142a",
   "files": [
     {
       "path": ".agents/skills/review-openspec-traceability/references/claims.md",
@@ -37,7 +37,7 @@
     },
     {
       "path": "prompts/openspec-semantic-traceability-requirement-first-v1.md",
-      "sha256": "46c75249a437f8f4518f4a701357d34b156693e37983d0b44da18c33512cc455"
+      "sha256": "a38ff93c33b61b9d5703b418ddb60c5b9a286cdeec2c21e5d5e629fa5f929261"
     },
     {
       "path": "prompts/openspec-semantic-traceability-requirement-first-v1.schema.json",
@@ -45,7 +45,7 @@
     },
     {
       "path": "src/review-traceability.js",
-      "sha256": "89809c07b3de1fd0d50333f07e5aad24a015a65a2abef8693b76c3ac1fb5b5de"
+      "sha256": "16a5383d3a997af11d157789b3e9fba254aa0abc8cefeebffdc468c140fce019"
     },
     {
       "path": "src/traceability.js",

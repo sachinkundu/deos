@@ -54,4 +54,4 @@
 - [x] 6.12 Update the same pull request and provider summaries with review and author-response counts before entering human review without an independent semantic recheck loop
 - [x] 6.13 Add focused prompt, schema, runner, workflow, evidence, provider, and portal tests for directional disagreement and author decline
 - [x] 6.14 Add an authenticated, auditable version 11 to version 12 retry handoff for the exact cleaned-up `independent_discovery` failure while preserving the run, candidate, pull request, and prior evidence
-- [ ] 6.8 Rerun the real Linear canary and preserve the author, two-pass review, author response, provider, and portal proof
+- [x] 6.8 Rerun the real Linear canary and preserve the author, two-pass review, author response, provider, and portal proof

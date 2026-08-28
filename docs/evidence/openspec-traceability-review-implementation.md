@@ -1,16 +1,14 @@
 # OpenSpec traceability review implementation evidence
 
-Date: 2026-08-27
+Date: 2026-08-28
 
-This evidence covers repository implementation, deployment, one bounded OpenRouter contract probe, the failed canaries that exposed the retry defects, and a provider-originated version 6 author run. The version 6 run proves that deterministic readability repair stays inside one author attempt. Its semantic self-review then exposed a separate proof-repair implementation gap, so this document does not yet claim a complete provider-originated workflow canary.
+This evidence covers repository implementation, deployment, the failed canaries that exposed the retry defects, and the completed provider-originated SAC-139 run. SAC-139 preserved its earlier author and self-check work, resumed only its failed independent-review tail, completed both OpenRouter directional passes, recorded the author's response, updated GitHub and Linear, and reached Human Review.
 
 ## Implemented boundary
 
-- `simple-traceability` version 10 is bundled for the corrected canary path under `DEOS Traceability`.
-- Registration keeps the selector disabled. The existing `simple` workflow remains the default.
-- The `DEOS Traceability` selector remains disabled while the controlled canary is prepared. The existing `simple` workflow remains the default for unmatched issues.
+- `simple-traceability` version 12 is the project default. The legacy `DEOS Traceability` selector remains registered and disabled.
 - The independent reviewer uses a frozen OpenRouter setting through a narrow Worker adapter. The author and review Sandboxes receive no GitHub, Linear, or OpenRouter secret.
-- BettaView review assets are pinned to source revision `444d4e4addc7313e85e5dd5506abea12452ffcd4` and checked against `vendor/bettaview/bundle-manifest.json` before use.
+- BettaView review assets are pinned to source revision `de22c3cf9a95285647bbf31cac1d6242bef6142a`. A repository test now recomputes every hash in `vendor/bettaview/bundle-manifest.json` so changed review bytes cannot retain an older manifest identity.
 
 ## Repository validation
 
@@ -18,7 +16,7 @@ The following checks passed in `/private/tmp/deos-traceability-implementation`:
 
 - `npm run typecheck`
 - `npm run portal:typecheck`
-- `npm test` — 168 tests passed
+- `npm test` — 199 tests passed
 - `npm run portal:test` — 17 tests passed
 - `npm run portal:build:full-workflow`
 - `npm run portal:build`
@@ -106,7 +104,7 @@ That canary exposed an existing contract gap. The approved spec allows bounded p
 
 GitHub CI supplied the clean container-capable check. [CI run 33071291906, TypeScript job](https://github.com/sachinkundu/deos/actions/runs/33071291906/job/98513927481) built every Dockerfile layer, ran `codex-cli 0.147.0` and OpenSpec `1.8.0` inside the image, and exported local Sandbox image `sha256:45bb0b317307b0f2f96156458d6fc7d88af72ceaa12a8cb241924e24ee64c243`. The same job completed Worker, Python Worker, and portal Wrangler dry-runs. The deployed registry image has digest `sha256:04ab0dddd111bde07a8f85f09c2d92b81613fa9bb5bd0d1dbb50fa91b5724bd2`; a local run of that exact image verified the supervisor, author hook, shared scorer, Git, Node, Codex CLI, and OpenSpec binaries.
 
-## Live proof still required
+## Earlier live proof gaps
 
 Version 8 run 7 proved the readability boundary with real provider ingress. The first author draft scored 69.31 Reading Ease and 6.28 grade in `proposal.md`. The trusted completion hook resumed Codex session `01a04378-bbed-70d2-abac-7b634d112ded` inside attempt `01a04378-8de0-73bc-88fd-5c349af8163d`; the repaired draft scored 79.60 and 4.16. D1 recorded one `planning_author` visit and one attempt, while the accepted R2 receipt recorded `repairCount: 1` and matched SHA-256 `32d6bb7e1451561866f8b9d03fc8b789dcd21575d0c5ef420cf24ba75befe6fe`.
 
@@ -114,4 +112,34 @@ The same run then proved bounded review-proof repair. One self-discovery job ret
 
 Version 9 run 8 proved the repaired schema reached model execution. Codex returned the exact two required resolutions, but the recheck runner compared the provider wrapper `{ result, sessionId }` with the closed inventory instead of comparing its nested result. Version 10 normalizes Codex and OpenRouter outputs to one provider-neutral payload before validation and has a focused regression test for both providers.
 
-Before implementation approval, version 10 must be deployed and a new provider-originated run must complete both review stages and any genuine finding repairs, reach Human Review, and preserve the exact GitHub PR head and Check Run, single Linear portal link, protected portal rendering, R2 hash read-backs, and Sandbox cleanup. The selector is already back to `enabled = 0`.
+These gaps were resolved by the version 12 SAC-139 run below.
+
+## Completed SAC-139 provider-originated canary
+
+Linear issue [SAC-139](https://linear.app/sachinkundu/issue/SAC-139/specify-a-calculator-cli) requested a calculator CLI proposal and specifications. Its real Linear delivery allocated run `workflow:99426d9b-cda7-4db4-9136-692a95a0b090:dcde8049-91b0-4f81-a6ad-ca57b3f968a1:run:1`. The run froze author `codex/gpt-5.6-sol` and independent reviewer `openrouter/deepseek/deepseek-v4-pro`.
+
+The self-check first returned findings in review `review:01a0472e-76ac-77ce-bb4b-1848631717d0`. One fresh author repair attempt responded to that fixed finding set. Review `review:01a04739-1252-7584-82c9-8295a947d2f7` then passed the closed-set recheck. D1 closed the self-check phase after two review jobs and no proof repair.
+
+The initial independent-review Workflow tail failed under version 11. The guarded retry preserved the run, candidate, planning pull request, earlier reviews, and provider evidence while replacing only the failed Workflow tail with version 12 instance `wf-v1-h32cy2sylafl4dohqsqeltaezjclsmrdpoyjjzzle7qz4nlfnbcq`. It did not rerun the author or self-check prefix.
+
+Independent review attempt `01a04805-0f3e-7643-a22d-aafbd9bde4eb` ran the pinned Codex `0.147.0` harness with OpenRouter model `deepseek/deepseek-v4-pro`. Two fresh Responses calls succeeded:
+
+- `gen-1787914692-UI08zMYKGQS58a1BCRL4` for the first direction; and
+- `gen-1787914734-5QAgqL5UJQXec4mCqHNr` for the second direction.
+
+Trusted validation accepted review `review:01a04805-0f3e-7643-a22d-aafbd9bde4eb` as `pass` with prompt `openspec-semantic-traceability-directional-v3`. Its R2 manifest contains 10 objects and 103,146 bytes with aggregate digest `e7c2baa59b5d3c78dbc747c87c57c203fa320c5cc508e49ad98b6832c249b849`. D1 closed the independent phase after one review job and zero proof repairs for exact head `1d98fffb9eba10f330d64bc3428e5dee6f6a824e`.
+
+Author-response attempt `01a04809-e591-7814-af43-82a2545ca1dc` completed in a fresh Sandbox. It recorded all nine directional review items as `no_change`, with a reason for each. Its R2 manifest contains 8 objects and 43,541 bytes with aggregate digest `09b109ab050a82ad1ab9f8e0042226192ddb27a2f07c353b7961d06cfe04eef5`. Every Sandbox used by the successful author, self-check, repair, independent review, and author response reads back as terminal with `cleanup_state = 'destroyed'`.
+
+Trusted provider work left one current result at each target:
+
+- [planning pull request #5](https://github.com/sachinkundu/deos-sample-project/pull/5) is open, ready for review, and still at exact head `1d98fffb9eba10f330d64bc3428e5dee6f6a824e`;
+- GitHub Check Run `98830432480` is `SUCCESS` and links to the protected review route;
+- Linear comment `08efde09-3ccc-41bf-a5a6-fbe9b7f6f83b` reports 0 applied, 0 declined, and 9 no-change dispositions; and
+- the signed Linear transition placed SAC-139 in `Human Review`.
+
+Final D1 read-back shows definition version 12, node `planning_review`, visit 17, and status `awaiting_human` at `2026-08-28T11:09:04.908Z`. The protected review URL returns a Cloudflare Access login redirect with `Cache-Control: no-store`. No signed-in browser screenshot was captured; the durable D1/R2 projection, exact provider links, and protected route are the preserved portal proof.
+
+The canary used the corrected reviewer bytes but exposed that their vendored manifest still named the previous BettaView revision and hashes. The manifest now names `de22c3cf9a95285647bbf31cac1d6242bef6142a`, its file hashes match every vendored asset, and a new integrity test prevents recurrence. The corrected Worker/container deployment is recorded separately from the immutable SAC-139 review evidence; it does not rewrite that completed run.
+
+The corrected deployment produced Worker version `e83df30b-e405-4eb8-85e2-c60c64f589c4` and Sandbox container image `sha256:28f04e0718e10165515f32945970ef8f530ea395c9c521752709e049c10ab66f`. Container read-back at `2026-08-28T11:43:18.159Z` showed application version 26 in `ready` state with five instances. This proves the manifest correction and integrity test are present in the deployed runtime; it does not claim that the already completed SAC-139 run was regenerated.
