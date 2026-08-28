@@ -175,10 +175,11 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 11);
+  assert.equal(definition.version, 12);
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
   assert.ok(definition.jobs.planning_author.requiredOutputs.includes("review-replies.json"));
+  assert.ok(definition.jobs.planning_author.requiredOutputs.includes("review-dispositions.json"));
   assert.ok(definition.jobs.planning_author.requiredOutputs.includes("author-completion.json"));
   assert.equal(definition.jobs.self_discovery.reviewMode, "discovery");
   assert.equal(definition.jobs.self_recheck.reviewMode, "recheck");
@@ -194,7 +195,11 @@ test("traceability planning definition freezes reviewers and keeps publication t
   assert.equal(definition.nodes.start_new_review_round.edges.completed, "planning_author");
   assert.equal(definition.nodes.planning_author.edges.invalid_candidate, "agent_failed");
   assert.equal(definition.nodes.planning_self_repair.edges.invalid_candidate, "agent_failed");
-  assert.equal(definition.nodes.planning_independent_repair.edges.invalid_candidate, "agent_failed");
+  assert.equal(definition.nodes.planning_independent_response.edges.invalid_candidate, "agent_failed");
+  assert.equal(definition.nodes.independent_discovery.edges.pass, "planning_independent_response");
+  assert.equal(definition.nodes.publish_update.edges.completed, "publish_author_response");
+  assert.equal(definition.nodes.publish_author_response.edges.completed, "planning_review");
+  assert.equal(Object.hasOwn(definition.jobs, "independent_recheck"), false);
   assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(definition), definition.digest), definition);
 });
 

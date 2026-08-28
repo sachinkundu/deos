@@ -36,6 +36,8 @@ export interface PlanningCandidate {
   change: string;
   files: readonly CandidateFileReceipt[];
   reviewReplies: readonly PlanningCandidateReviewReply[];
+  reviewDispositions: readonly PlanningCandidateReviewDisposition[];
+  reviewContextId: string | null;
   candidateDigest: string;
   reviewSetDigest: string;
 }
@@ -43,6 +45,12 @@ export interface PlanningCandidate {
 export interface PlanningCandidateReviewReply {
   commentId: number;
   body: string;
+}
+
+export interface PlanningCandidateReviewDisposition {
+  itemId: string;
+  status: "applied" | "declined" | "no_change";
+  reason: string;
 }
 
 export interface CandidateValidation {
@@ -73,6 +81,8 @@ export interface CandidateBuildInput {
   change: string;
   files: readonly CandidateFile[];
   reviewReplies: readonly PlanningCandidateReviewReply[];
+  reviewDispositions: readonly PlanningCandidateReviewDisposition[];
+  reviewContextId: string | null;
   strictOpenSpecCheck: (change: string, files: readonly CandidateFile[]) => Promise<void>;
   checkedAt: string;
 }
@@ -133,6 +143,31 @@ export const buildPlanningCandidate = async (
     replyIds.add(reply.commentId);
     return Object.freeze({ commentId: reply.commentId, body: reply.body });
   });
+  if (!Array.isArray(input.reviewDispositions) || input.reviewDispositions.length > 100) {
+    throw new Error("candidate review dispositions are invalid");
+  }
+  const dispositionIds = new Set<string>();
+  const reviewDispositions = input.reviewDispositions.map((disposition) => {
+    if (
+      typeof disposition.itemId !== "string" ||
+      !/^[a-z0-9][a-z0-9:._-]{0,299}$/.test(disposition.itemId) ||
+      dispositionIds.has(disposition.itemId) ||
+      !["applied", "declined", "no_change"].includes(disposition.status) ||
+      typeof disposition.reason !== "string" || disposition.reason.trim() !== disposition.reason ||
+      disposition.reason.length < 1 || disposition.reason.length > 2_000 ||
+      disposition.reason.includes("<!--")
+    ) throw new Error("candidate review disposition is invalid");
+    dispositionIds.add(disposition.itemId);
+    return Object.freeze({
+      itemId: disposition.itemId,
+      status: disposition.status,
+      reason: disposition.reason,
+    });
+  });
+  if (
+    input.reviewContextId !== null &&
+    !/^review:[0-9a-f][0-9a-f:-]{7,199}$/i.test(input.reviewContextId)
+  ) throw new Error("candidate review context is invalid");
 
   const files = [...input.files].sort((left, right) => left.path.localeCompare(right.path));
   const seen = new Set<string>();
@@ -175,6 +210,8 @@ export const buildPlanningCandidate = async (
   const candidateDigest = await sha256Hex(JSON.stringify({
     files: receipts.map(({ content: _content, ...file }) => file),
     reviewReplies,
+    reviewDispositions,
+    reviewContextId: input.reviewContextId,
   }));
   const reviewSetDigest = await sha256Hex(JSON.stringify(reviewReceipts));
   const candidate: PlanningCandidate = Object.freeze({
@@ -187,6 +224,8 @@ export const buildPlanningCandidate = async (
     change: input.change,
     files: Object.freeze(receipts),
     reviewReplies: Object.freeze(reviewReplies),
+    reviewDispositions: Object.freeze(reviewDispositions),
+    reviewContextId: input.reviewContextId,
     candidateDigest,
     reviewSetDigest,
   });

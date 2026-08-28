@@ -16,6 +16,7 @@ const SUPPORTED_DIGESTS = new Set([
   "4eb12c3335e46fe482251a164f3133e15200fae18c136b57c2bb10bf571232f9",
   "127779af65ec49c8ca50436df86c3baaa364b808ec17f14d907c8d05669c7015",
   "fe52677cbe82792dc0d5382974be37fcfed371f4edaf0f7ae4284f246ae60524",
+  "bdf06eb5bf4c52ba98463881064f29194f771f4020fceb3936c5943bce389814",
 ]);
 
 export const STAGES = [
@@ -55,10 +56,15 @@ const stageForNode = (nodeId: string): string => {
     nodeId === "openspec_planning" || nodeId === "planning_author" ||
     nodeId === "planning_self_repair" || nodeId === "self_discovery" ||
     nodeId === "self_recheck_before_publish" || nodeId === "publish_initial" ||
-    nodeId === "planning_independent_repair" || nodeId === "self_recheck_after_publish" ||
-    nodeId === "publish_update"
+    nodeId === "planning_independent_repair" || nodeId === "self_recheck_after_publish"
   ) return "planning";
-  if (["independent_discovery", "independent_recheck"].includes(nodeId)) return "independent_review";
+  if ([
+    "independent_discovery",
+    "independent_recheck",
+    "planning_independent_response",
+    "publish_update",
+    "publish_author_response",
+  ].includes(nodeId)) return "independent_review";
   if (nodeId === "planning_review") return "review";
   if (["merge_planning_pr", "verify_planning_merge"].includes(nodeId)) return "merge";
   if (["requirements", "requirements_review", "requirements_approval"].includes(nodeId)) return "requirements";

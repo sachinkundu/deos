@@ -98,6 +98,7 @@ for (const capability of judgment.capabilities) {
 const linkIds = new Set(links.map((link) => link.id));
 const parsedStatements = proposalChangeStatements(proposalLines);
 let proposalStatements = [];
+const parsedStatementByLine = new Map(parsedStatements.map((statement) => [statement.startLine, statement]));
 if (judgment.proposalStatements !== undefined) {
   if (!Array.isArray(judgment.proposalStatements)) throw new Error("Judgment proposalStatements must be an array");
   if (parsedStatements.length === 0) throw new Error("proposal.md has no list statements under ## What Changes");
@@ -127,6 +128,26 @@ if (judgment.proposalStatements !== undefined) {
   }
 }
 
+const directionalLinks = judgment.directionalLinks === undefined
+  ? undefined
+  : judgment.directionalLinks.map((claim) => {
+    const statement = parsedStatementByLine.get(claim.proposalLine);
+    if (!statement) throw new Error(`Directional link names unknown proposal statement line ${claim.proposalLine}`);
+    if (!linkIds.has(claim.requirementLinkId)) {
+      throw new Error(`Directional link names unknown requirement ${claim.requirementLinkId}`);
+    }
+    if (!["confirmed", "proposal_only", "requirement_only"].includes(claim.status)) {
+      throw new Error(`Directional link has invalid status ${JSON.stringify(claim.status)}`);
+    }
+    return {
+      proposalStatementId: statement.id,
+      requirementLinkId: claim.requirementLinkId,
+      status: claim.status,
+      proposalFirst: claim.proposalFirst,
+      requirementFirst: claim.requirementFirst,
+    };
+  });
+
 const findings = judgment.findings.map((finding) => {
   const spec = specByCapability.get(finding.capability);
   if (!spec) throw new Error(`Finding ${finding.id} names unknown capability ${finding.capability}`);
@@ -144,12 +165,13 @@ const findings = judgment.findings.map((finding) => {
 });
 
 const sidecar = {
-  version: judgment.proposalStatements === undefined ? 2 : 3,
+  version: directionalLinks === undefined ? (judgment.proposalStatements === undefined ? 2 : 3) : 4,
   change: judgment.change,
   review: { ...judgment.review, documents },
   capabilities,
   links,
   ...(judgment.proposalStatements === undefined ? {} : { proposalStatements }),
+  ...(directionalLinks === undefined ? {} : { directionalLinks }),
   findings,
 };
 const destination = outputFile || path.join(changeDirectory, "bettaview-traceability.json");

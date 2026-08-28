@@ -829,6 +829,7 @@ test("a byte-identical rejected plan stops before another author retry and keeps
   assert.equal(stagedJob.agentHarnessVersion, "0.147.0");
   state.factory.sandbox.files.set("/deos/output/patch.diff", patch);
   state.factory.sandbox.files.set("/deos/output/review-replies.json", "[]");
+  state.factory.sandbox.files.set("/deos/output/review-dispositions.json", "[]");
   state.factory.sandbox.files.set("/deos/workspace/repository/openspec/changes/sac-1/.openspec.yaml", "schema: spec-driven\n");
   state.factory.sandbox.files.set("/deos/workspace/repository/openspec/changes/sac-1/proposal.md", "## Why\n\nPeople need a clear plan.\n");
   state.factory.sandbox.files.set(
@@ -875,6 +876,7 @@ test("version 6 treats any post-hook candidate rejection as a tooling mismatch",
 
   await state.controller.execute(traceRun, "planning_author", "planning_author", tracePlanningDefinition);
   state.factory.sandbox.files.set("/deos/output/review-replies.json", "[]");
+  state.factory.sandbox.files.set("/deos/output/review-dispositions.json", "[]");
   state.factory.sandbox.files.set("/deos/workspace/repository/openspec/changes/sac-1/.openspec.yaml", "schema: spec-driven\n");
   state.factory.sandbox.files.set("/deos/workspace/repository/openspec/changes/sac-1/proposal.md", "## Why\n\nPeople need a clear plan.\n");
   state.factory.sandbox.files.set(

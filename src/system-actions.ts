@@ -131,6 +131,12 @@ interface PlanningSystemActionDependencies {
     change: string;
     files: readonly { path: string; content: string; sha256: string; byteSize: number }[];
     reviewReplies: readonly { commentId: number; body: string }[];
+    reviewDispositions: readonly {
+      itemId: string;
+      status: "applied" | "declined" | "no_change";
+      reason: string;
+    }[];
+    reviewContextId: string | null;
   } | null>;
   issueContext?: (runId: string) => Promise<{
     identifier: string;
@@ -223,12 +229,22 @@ export class SystemActionController {
     const specPaths = candidate.files
       .map((file) => file.path.slice(`openspec/changes/${candidate.change}/`.length))
       .filter((path) => path.startsWith("specs/"));
+    const dispositionCounts = candidate.reviewDispositions.reduce((counts, disposition) => ({
+      ...counts,
+      [disposition.status]: counts[disposition.status] + 1,
+    }), { applied: 0, declined: 0, no_change: 0 });
+    const reviewNotes = [
+      "- Review the proposal and complete delta specs together.",
+      ...(candidate.reviewDispositions.length === 0 ? [] : [
+        `- Independent review response: ${dispositionCounts.applied} applied, ${dispositionCounts.declined} declined, and ${dispositionCounts.no_change} needed no text change; use the DEOS trace for each concern and reason.`,
+      ]),
+    ];
     const body = [
       `Linear: [${issue.identifier}](${issue.url})`,
       `OpenSpec change: ${candidate.change}`,
       "",
       "## Review notes",
-      "- Review the proposal and complete delta specs together.",
+      ...reviewNotes,
       "",
       "## Review order",
       "1. proposal.md",

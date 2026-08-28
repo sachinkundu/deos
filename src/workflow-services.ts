@@ -48,6 +48,7 @@ import {
   normalizeFindingSet,
   reviewInputId,
   validateClosedSetRecheck,
+  workflowOutcomeForReview,
   type TraceFinding,
   type TraceRecheckResult,
 } from "./trace-review.ts";
@@ -157,7 +158,6 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
                ON inventory.manifest_id = review.proof_manifest_id
               AND inventory.logical_name = 'candidate-inventory.json'
              WHERE review.run_id = ? AND review.accepted = 1
-               AND review.overall_outcome IN ('findings', 'needs_judgment')
                AND review.round = (
                  SELECT COALESCE(MAX(round), 1) FROM trace_review_phases WHERE run_id = review.run_id
                )
@@ -208,12 +208,21 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
                 endLine: Number(range.endLine),
               };
             }));
-          if (files.length === 0 || allowedRanges.length === 0) {
+          if (files.length === 0) {
             throw new Error("traceability repair scope is empty");
           }
           return { files, allowedRanges };
         },
-        persistPlanningCandidate: async ({ run, attempt, baseCommit, change, files, reviewReplies }) => {
+        persistPlanningCandidate: async ({
+          run,
+          attempt,
+          baseCommit,
+          change,
+          files,
+          reviewReplies,
+          reviewDispositions,
+          reviewContextId,
+        }) => {
           const activeRound = await env.DB.prepare(
             "SELECT COALESCE(MAX(round), 1) AS round FROM trace_review_phases WHERE run_id = ?",
           ).bind(run.run_id).first<{ round: number }>();
@@ -228,6 +237,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               change,
               files,
               reviewReplies,
+              reviewDispositions,
+              reviewContextId,
               strictOpenSpecCheck: async () => {},
               checkedAt: new Date().toISOString(),
             });
@@ -366,7 +377,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               model: job.model ?? "",
               reasoning: job.reasoning ?? "",
             },
-            promptVersion: "openspec-semantic-traceability-bidirectional-v2",
+            promptVersion: "openspec-semantic-traceability-directional-v3",
             promptSha256: await sha256Hex(job.prompt),
             toolVersion: bettaViewBundleManifest.bundleVersion,
             bundleSha256,
@@ -394,14 +405,10 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             now: new Date().toISOString(),
           });
           const currentTurns = Math.max(phase.shared_repair_turns, shared?.turns ?? 0);
-          const nextTurns = trustedOutcome === "findings" && currentTurns < 3
+          const nextTurns = stage === "self_check" && trustedOutcome === "findings" && currentTurns < 3
             ? currentTurns + 1
             : currentTurns;
-          const workflowOutcome = trustedOutcome === "proof_conflict"
-            ? "proof_conflict"
-            : trustedOutcome === "findings" && currentTurns >= 3
-              ? "needs_judgment"
-              : trustedOutcome;
+          const workflowOutcome = workflowOutcomeForReview(stage, trustedOutcome, currentTurns);
           const reviewId = `review:${attempt.attempt_id}`;
           const now = new Date().toISOString();
           await store.acceptReview({
@@ -421,7 +428,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             agent_harness: AGENT_HARNESS,
             agent_harness_version: AGENT_HARNESS_VERSION,
             reasoning_effort: job.reasoning ?? "",
-            prompt_version: "openspec-semantic-traceability-bidirectional-v2",
+            prompt_version: "openspec-semantic-traceability-directional-v3",
             prompt_sha256: await sha256Hex(job.prompt),
             tool_version: bettaViewBundleManifest.bundleVersion,
             bundle_sha256: bundleSha256,
@@ -497,6 +504,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             stage,
             outcome: workflowOutcome,
             findingCount: Number(collection.result.findingCount),
+            confirmedLinkCount: Number(collection.result.confirmedLinkCount ?? 0),
+            disputedLinkCount: Number(collection.result.disputedLinkCount ?? 0),
             headSha: reviewedHeadSha,
           });
           return workflowOutcome;
@@ -555,7 +564,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               model: job.model ?? "",
               reasoning: job.reasoning ?? "",
             },
-            promptVersion: "openspec-semantic-traceability-bidirectional-v2",
+            promptVersion: "openspec-semantic-traceability-directional-v3",
             promptSha256: await sha256Hex(job.prompt),
             toolVersion: bettaViewBundleManifest.bundleVersion,
             bundleSha256: await sha256Hex(JSON.stringify(bettaViewBundleManifest)),
@@ -737,14 +746,26 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             change: string;
             files: Array<{ path: string; content: string; sha256: string; byteSize: number }>;
             reviewReplies: Array<{ commentId: number; body: string }>;
+            reviewDispositions?: Array<{
+              itemId: string;
+              status: "applied" | "declined" | "no_change";
+              reason: string;
+            }>;
+            reviewContextId?: string | null;
           };
           if (
             candidate.candidateId !== row.candidate_id ||
             candidate.candidateDigest !== row.candidate_digest ||
             candidate.change !== row.change_id || !Array.isArray(candidate.files) ||
-            !Array.isArray(candidate.reviewReplies)
+            !Array.isArray(candidate.reviewReplies) ||
+            !(candidate.reviewContextId === undefined || candidate.reviewContextId === null ||
+              typeof candidate.reviewContextId === "string")
           ) throw new Error("trusted planning candidate identity mismatch");
-          return candidate;
+          return {
+            ...candidate,
+            reviewDispositions: candidate.reviewDispositions ?? [],
+            reviewContextId: candidate.reviewContextId ?? null,
+          };
         },
         issueContext: (runId) => env.DB.prepare(
           `SELECT issue.issue_key AS identifier, issue.linear_url AS url
@@ -784,7 +805,88 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     if (action === "traceability.start_new_round") {
       return this.startTraceReviewRound(run, nodeId);
     }
+    if (action === "traceability.publish_author_response") {
+      return this.publishTraceReviewAuthorResponse(run);
+    }
     return this.systemActions.execute(run, nodeId, action);
+  }
+
+  private async publishTraceReviewAuthorResponse(run: OrchestrationRunRecord) {
+    const candidateRow = await this.env.DB.prepare(
+      `SELECT candidate_r2_key, candidate_sha256
+       FROM planning_candidates WHERE run_id = ? AND state = 'validated'
+       ORDER BY created_at DESC, candidate_id DESC LIMIT 1`,
+    ).bind(run.run_id).first<{ candidate_r2_key: string; candidate_sha256: string }>();
+    if (candidateRow === null) {
+      return { kind: "system_action" as const, outcome: "failed" as const, providerReceiptsComplete: false };
+    }
+    const candidateObject = await this.env.ARTIFACTS.get(candidateRow.candidate_r2_key);
+    if (candidateObject === null) throw new Error("author response candidate is missing");
+    const candidateText = await candidateObject.text();
+    if (await sha256Hex(candidateText) !== candidateRow.candidate_sha256) {
+      throw new Error("author response candidate hash mismatch");
+    }
+    const candidate = JSON.parse(candidateText) as {
+      reviewContextId?: unknown;
+      reviewDispositions?: Array<{ status?: unknown }>;
+    };
+    if (typeof candidate.reviewContextId !== "string" || !Array.isArray(candidate.reviewDispositions)) {
+      throw new Error("author response candidate is invalid");
+    }
+    const review = await this.env.DB.prepare(
+      `SELECT review.review_id, review.reviewed_head_sha,
+              inventory.r2_key AS inventory_r2_key, inventory.sha256 AS inventory_sha256
+       FROM trace_reviews review
+       JOIN artifacts inventory
+         ON inventory.manifest_id = review.proof_manifest_id
+        AND inventory.logical_name = 'candidate-inventory.json'
+       WHERE review.review_id = ? AND review.run_id = ? AND review.phase = 'independent'
+         AND review.accepted = 1 LIMIT 1`,
+    ).bind(candidate.reviewContextId, run.run_id).first<{
+      review_id: string;
+      reviewed_head_sha: string | null;
+      inventory_r2_key: string;
+      inventory_sha256: string;
+    }>();
+    if (review === null) throw new Error("author response review is missing");
+    const inventoryObject = await this.env.ARTIFACTS.get(review.inventory_r2_key);
+    if (inventoryObject === null) throw new Error("author response inventory is missing");
+    const inventoryText = await inventoryObject.text();
+    if (await sha256Hex(inventoryText) !== review.inventory_sha256) {
+      throw new Error("author response inventory hash mismatch");
+    }
+    const inventory = JSON.parse(inventoryText) as {
+      findings?: unknown[];
+      directionalClaims?: Array<{ status?: unknown }>;
+    };
+    const dispositions = { applied: 0, declined: 0, no_change: 0 };
+    for (const disposition of candidate.reviewDispositions) {
+      if (!["applied", "declined", "no_change"].includes(String(disposition.status))) {
+        throw new Error("author response disposition is invalid");
+      }
+      dispositions[disposition.status as keyof typeof dispositions] += 1;
+    }
+    const workProduct = await new D1PlanningStore(this.env.DB).findRunWorkProduct(run.run_id);
+    if (workProduct?.head_sha === null || workProduct?.head_sha === undefined) {
+      throw new Error("author response pull request head is missing");
+    }
+    const directionalClaims = inventory.directionalClaims ?? [];
+    const complete = await this.syncTraceReviewProviders({
+      run,
+      reviewId: review.review_id,
+      stage: "independent",
+      outcome: "pass",
+      findingCount: inventory.findings?.length ?? 0,
+      confirmedLinkCount: directionalClaims.filter((claim) => claim.status === "confirmed").length,
+      disputedLinkCount: directionalClaims.filter((claim) => claim.status !== "confirmed").length,
+      headSha: workProduct.head_sha,
+      authorResponse: dispositions,
+    });
+    return {
+      kind: "system_action" as const,
+      outcome: complete ? "completed" as const : "failed" as const,
+      providerReceiptsComplete: complete,
+    };
   }
 
   private async startTraceReviewRound(run: OrchestrationRunRecord, nodeId: string) {
@@ -882,15 +984,24 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     stage: "self_check" | "independent";
     outcome: string;
     findingCount: number;
+    confirmedLinkCount: number;
+    disputedLinkCount: number;
     headSha: string | null;
-  }): Promise<void> {
+    authorResponse?: { applied: number; declined: number; no_change: number };
+  }): Promise<boolean> {
     const detailsUrl = `${this.env.PORTAL_BASE_URL.replace(/\/$/, "")}/runs/${encodeURIComponent(input.run.run_id)}/review`;
     const operations = new D1SystemActionStore(this.env.DB);
     const now = new Date().toISOString();
+    let complete = true;
     if (input.headSha !== null) {
       const workProduct = await new D1PlanningStore(this.env.DB).findRunWorkProduct(input.run.run_id);
       if (workProduct !== null && workProduct.head_sha === input.headSha) {
-        const operationId = operationIdentity(input.run.run_id, "system_action", `trace-review-check:${input.reviewId}`, 1);
+        const operationId = operationIdentity(
+          input.run.run_id,
+          "system_action",
+          `trace-review-check:${input.authorResponse ? "author-response:" : ""}${input.reviewId}`,
+          1,
+        );
         const operation = await operations.beginPlanningOperation({
           operationId,
           runId: input.run.run_id,
@@ -900,6 +1011,9 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             headSha: input.headSha,
             outcome: input.outcome,
             findingCount: input.findingCount,
+            confirmedLinkCount: input.confirmedLinkCount,
+            disputedLinkCount: input.disputedLinkCount,
+            authorResponse: input.authorResponse ?? null,
             detailsUrl,
           })),
           now,
@@ -919,9 +1033,17 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               headSha: input.headSha,
               externalId: `deos-trace:${input.run.run_id}:${input.stage}`,
               detailsUrl,
-              title: `${input.stage === "self_check" ? "Codex self-check" : "Independent review"}: ${input.outcome}`,
-              summary: `${input.findingCount} finding(s). Full proof is in the protected DEOS portal.`,
-              conclusion: input.outcome === "pass" ? "success" : input.outcome === "findings" ? "failure" : "neutral",
+              title: input.stage === "independent"
+                ? input.authorResponse ? "Independent review and author response complete" : "Independent review complete"
+                : `Codex self-check: ${input.outcome}`,
+              summary: input.stage === "independent"
+                ? input.authorResponse
+                  ? `${input.findingCount} concern(s): ${input.authorResponse.applied} applied, ${input.authorResponse.declined} declined, and ${input.authorResponse.no_change} needed no text change. Human review is ready. Full proof is in the protected DEOS portal.`
+                  : `${input.findingCount} concern(s): ${input.confirmedLinkCount} confirmed relationship(s) and ${input.disputedLinkCount} directional disagreement(s). The author will respond before human review. Full proof is in the protected DEOS portal.`
+                : `${input.findingCount} finding(s). Full proof is in the protected DEOS portal.`,
+              conclusion: input.stage === "independent"
+                ? "success"
+                : input.outcome === "pass" ? "success" : input.outcome === "findings" ? "failure" : "neutral",
             });
             await operations.finishPlanningOperation({
               operationId,
@@ -932,6 +1054,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               now: new Date().toISOString(),
             });
           } catch {
+            complete = false;
             await operations.finishPlanningOperation({
               operationId,
               expected: "pending",
@@ -941,6 +1064,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               now: new Date().toISOString(),
             });
           }
+        } else if (!["succeeded", "reconciled"].includes(operation.state)) {
+          complete = false;
         }
       }
     }
@@ -948,13 +1073,17 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       input.run.run_id,
       "system_action",
       `trace-review-portal-link:${input.reviewId}`,
-      1,
+      input.authorResponse ? 2 : 1,
     );
     const linearOperation = await operations.beginPlanningOperation({
       operationId: linearOperationId,
       runId: input.run.run_id,
       action: "linear.upsert_trace_review_link",
-      requestDigest: await sha256Hex(JSON.stringify({ issueId: input.run.issue_id, detailsUrl })),
+      requestDigest: await sha256Hex(JSON.stringify({
+        issueId: input.run.issue_id,
+        detailsUrl,
+        authorResponse: input.authorResponse ?? null,
+      })),
       now,
     });
     if (linearOperation.state === "pending") {
@@ -965,7 +1094,11 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         ).upsertStatus({
           issueId: input.run.issue_id,
           markerId: `trace-review:${input.run.run_id}`,
-          body: `DEOS traceability review: ${input.stage === "self_check" ? "Codex self-check" : "independent review"} is ${input.outcome}. [View the protected trace](${detailsUrl}).`,
+          body: input.stage === "independent"
+            ? input.authorResponse
+              ? `DEOS traceability review: independent review and author response are complete. ${input.authorResponse.applied} concern(s) applied, ${input.authorResponse.declined} declined, and ${input.authorResponse.no_change} needed no text change. Human review is ready. [View the protected trace](${detailsUrl}).`
+              : `DEOS traceability review: independent review is complete with ${input.findingCount} concern(s). The author response will be added before human review. [View the protected trace](${detailsUrl}).`
+            : `DEOS traceability review: Codex self-check is ${input.outcome}. [View the protected trace](${detailsUrl}).`,
         });
         await operations.finishPlanningOperation({
           operationId: linearOperationId,
@@ -976,6 +1109,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           now: new Date().toISOString(),
         });
       } catch {
+        complete = false;
         await operations.finishPlanningOperation({
           operationId: linearOperationId,
           expected: "pending",
@@ -985,7 +1119,10 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           now: new Date().toISOString(),
         });
       }
+    } else if (!["succeeded", "reconciled"].includes(linearOperation.state)) {
+      complete = false;
     }
+    return complete;
   }
 
   private async capabilityGrant(

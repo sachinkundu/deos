@@ -20,13 +20,13 @@
 - [x] 3.3 Run the different-model independent review through the pinned Codex coding-agent harness in a fresh read-only Sandbox and preserve its transcript, provider turns, and required artifacts
 - [x] 3.4 Implement immutable discovery baselines and closed-set rechecks that cannot add finding identifiers
 - [x] 3.5 Derive review outcomes in trusted code and surface malformed proof, proof conflicts, and unresolved findings for human judgment
-- [x] 3.6 Share a maximum of three author-repair turns across both review stages and stop further semantic retries when the budget is exhausted
-- [x] 3.7 Materialize only the accepted traceability feedback for each repair and enforce exact reviewed-head rechecks
+- [x] 3.6 Limit the self-check to three author-repair turns and keep the independent stage free of semantic repair loops
+- [x] 3.7 Materialize accepted self-check feedback for repair and preserve independent feedback for author dispositions
 
 ## 4. Workflow and Provider Actions
 
 - [x] 4.1 Separate planning authoring from trusted publication and remove direct GitHub publication capability from the author job
-- [x] 4.2 Add an immutable simple-workflow version with self-check inside planning, an independent review node, same-PR repair, and the existing human gate
+- [x] 4.2 Add an immutable simple-workflow version with self-check inside planning, an independent review node, same-PR author response, and the existing human gate
 - [x] 4.3 Keep the new workflow selector disabled while preserving older frozen runs and workflow versions
 - [x] 4.4 Create or update one exact-head GitHub Check Run with a stable review identifier and durable read-back
 - [x] 4.5 Add one durable Linear portal link and concise review state without copying detailed findings
@@ -48,4 +48,9 @@
 - [x] 6.5 Persist trusted deterministic-rejection feedback and stop a byte-identical rejected plan before another author-model retry
 - [x] 6.6 Run deterministic author checks as a bounded same-session completion hook and remove workflow-level deterministic author retries
 - [x] 6.7 Prove the read-only Codex/OpenRouter tool loop, trusted malformed-output rejection, secret boundary, tests, deploy, and durable provider diagnostics
-- [ ] 6.8 Rerun the real Linear canary and preserve the author, review, repair, provider, and portal proof
+- [x] 6.9 Update BettaView to run fresh proposal-first and requirement-first semantic passes and reconcile confirmed and disputed links without rejecting one-sided claims
+- [x] 6.10 Render confirmed, proposal-only, and requirement-only links with both pass rationales in BettaView and the DEOS review portal
+- [x] 6.11 Make a structurally valid independent review complete as `pass`, send every concern and disputed link to one author response, and preserve each author disposition
+- [x] 6.12 Update the same pull request and provider summaries with review and author-response counts before entering human review without an independent semantic recheck loop
+- [x] 6.13 Add focused prompt, schema, runner, workflow, evidence, provider, and portal tests for directional disagreement and author decline
+- [ ] 6.8 Rerun the real Linear canary and preserve the author, two-pass review, author response, provider, and portal proof

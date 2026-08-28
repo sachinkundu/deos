@@ -16,13 +16,13 @@
   },
   "type": "object",
   "additionalProperties": false,
-  "required": ["change", "review", "passingJudgment", "proposalStatements", "capabilities", "findings"],
+  "required": ["change", "review", "passingJudgment", "proposalStatements", "capabilities", "findings", "directionalLinks"],
   "properties": {
     "change": { "type": "string", "minLength": 1 },
     "review": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "reviewer", "promptVersion", "reviewedAt", "overall"],
+      "required": ["kind", "reviewer", "promptVersion", "reviewedAt", "overall", "passes"],
       "properties": {
         "kind": { "type": "string", "const": "semantic-spec-review" },
         "reviewer": {
@@ -35,9 +35,23 @@
             "version": { "type": "string", "minLength": 1 }
           }
         },
-        "promptVersion": { "type": "string", "const": "openspec-semantic-traceability-bidirectional-v2" },
+        "promptVersion": { "type": "string", "const": "openspec-semantic-traceability-directional-v3" },
         "reviewedAt": { "type": "string", "minLength": 1 },
-        "overall": { "type": "string", "enum": ["pass", "findings"] }
+        "overall": { "type": "string", "enum": ["pass", "findings"] },
+        "passes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["direction", "promptVersion"],
+            "properties": {
+              "direction": { "type": "string", "enum": ["proposal_to_spec", "spec_to_proposal"] },
+              "promptVersion": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
       }
     },
     "passingJudgment": { "$ref": "#/$defs/judgment" },
@@ -87,6 +101,37 @@
                 "specStartLine": { "type": "integer", "minimum": 1 },
                 "judgment": { "$ref": "#/$defs/judgment" }
               }
+            }
+          }
+        }
+      }
+    },
+    "directionalLinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["proposalLine", "requirementLinkId", "status", "proposalFirst", "requirementFirst"],
+        "properties": {
+          "proposalLine": { "type": "integer", "minimum": 1 },
+          "requirementLinkId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "status": { "type": "string", "enum": ["confirmed", "proposal_only", "requirement_only"] },
+          "proposalFirst": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["claimed", "rationale"],
+            "properties": {
+              "claimed": { "type": "boolean" },
+              "rationale": { "type": "string", "minLength": 1 }
+            }
+          },
+          "requirementFirst": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["claimed", "rationale"],
+            "properties": {
+              "claimed": { "type": "boolean" },
+              "rationale": { "type": "string", "minLength": 1 }
             }
           }
         }

@@ -10,7 +10,7 @@ Repository-local OpenSpec progression is encoded as typed agent jobs carrying on
 
 ## OpenSpec traceability review flow
 
-The bundle contains `simple-traceability` version 11 as the project default. The legacy `DEOS Traceability` selector remains registered but disabled, so ordinary eligible issues enter traceability without requiring a label. The immutable definition snapshot and digest are still frozen when each run is allocated.
+The bundle contains `simple-traceability` version 12 as the project default. The legacy `DEOS Traceability` selector remains registered but disabled, so ordinary eligible issues enter traceability without requiring a label. The immutable definition snapshot and digest are still frozen when each run is allocated.
 
 ```mermaid
 flowchart LR
@@ -22,8 +22,10 @@ flowchart LR
     V --> S[Codex self-check<br/>fresh read-only Sandbox]
     S --> P[Trusted GitHub publish]
     P --> G[One planning PR]
-    G --> I[Independent review<br/>OpenRouter via narrow Worker adapter]
-    I --> H[Human Review]
+    G --> I[Independent review<br/>two fresh directional passes]
+    I --> AR[Author response<br/>apply, decline, or no change]
+    AR --> U[Trusted same-PR update<br/>and provider summaries]
+    U --> H[Human Review]
     C --> R[(Immutable R2 evidence)]
     V --> R
     S --> R
@@ -36,17 +38,17 @@ The author has no GitHub or Linear capability. When it reports completion, the t
 
 After the hook passes, trusted Worker code builds an immutable planning candidate. It allows only `.openspec.yaml`, `proposal.md`, and the declared `specs/**/spec.md` files. It repeats strict OpenSpec and readability checks, writes the candidate and validation receipt to create-only R2 keys, reads both objects back by SHA-256, and then indexes the accepted candidate in D1. In versions 6 and later, a disagreement is stored as `author_completion_verification_mismatch` and follows the failed edge. Every `invalid_candidate` edge also points to failure. No deterministic rejection can route back to an author node or consume a semantic repair turn.
 
-Version 10 closes the review-proof repair gap, uses a Codex-compatible nullable field in the recheck response schema, and unwraps Codex's session envelope before closed-set validation. A semantic reviewer first returns its complete finding set and trace proof. If the pinned BettaView validator rejects only the proof form, the same reviewer attempt receives the exact validation failure. Codex review resumes the exact saved reviewer session; OpenRouter receives a bounded repair request through the trusted adapter. Both remain in the same Sandbox and use the same immutable plan. Trusted code permits at most two proof repairs and rejects any repair that changes the first finding set. These repairs increment `proofRepairCount`; they do not create another Workflow review visit or consume an author plan-repair turn.
+Each full review now runs two fresh Codex sessions over the same immutable inventory. The proposal-first pass maps each proposal statement to requirements. The requirement-first pass maps each requirement back to proposal statements. The second pass never sees the first result. BettaView reconciles the independent claim sets as `confirmed`, `proposal_only`, or `requirement_only`. One-sided links are valid semantic disagreement. Only malformed source identities, unsafe values, changed hashes, or invalid structure use the bounded proof-repair path inside that directional session.
 
 Both semantic stages use a pinned BettaView bundle. The Codex self-check uses the run's frozen author model and thought setting in a fresh read-only Sandbox. The independent stage uses a different OpenRouter model chosen in Settings and frozen when the run is allocated. The OpenRouter key stays in the Worker. The Sandbox receives only a signed, attempt-scoped model channel for that exact model and setting.
 
-D1 stores the candidate, phase, accepted review, and exact-head binding. R2 stores the full model and validation proof. Discovery creates one fixed finding inventory. A recheck must rate every existing ID once and cannot add, remove, rename, merge, or split a finding. Trusted code derives the outcome from the checked artifact. The two stages share at most three author-repair turns. An identical input records a reuse event without creating an attempt, Sandbox, or model call. A different pull-request head can reuse proof only after trusted GitHub reads show that every reviewed file has the same hash.
+D1 stores the candidate, phase, accepted review, and exact-head binding. R2 stores both directional model results and the validation proof. Self-check discovery creates one fixed finding inventory. A self-check recheck must rate every existing ID once and cannot add, remove, rename, merge, or split a finding. Trusted code derives its outcome from the checked artifact. The self-check has at most three author-repair turns. An identical input records a reuse event without creating an attempt, Sandbox, or model call. A different pull-request head can reuse proof only after trusted GitHub reads show that every reviewed file has the same hash.
 
-Trusted publication creates or updates one planning pull request from the accepted R2 candidate. It also posts each candidate-bound human review reply through the existing idempotent GitHub adapter and leaves the thread open. Independent proof is bound to the exact published head. The Worker updates one exact-head GitHub Check Run and updates one marked Linear status link to the protected portal. Review agents cannot make any of these provider calls.
+Trusted publication creates or updates one planning pull request from the accepted R2 candidate. It also posts each candidate-bound human review reply through the existing idempotent GitHub adapter and leaves the thread open. Independent proof is bound to the exact published head. A structurally valid outside review always completes the external stage, even when it reports concerns. One fresh author job records `applied`, `declined`, or `no_change` for every finding and directional dispute. Trusted code validates any plan edits, updates the same pull request, and then refreshes the GitHub Check Run and marked Linear status with disposition counts. It does not run the independent reviewer again merely to make its opinion disappear.
 
 Human feedback closes neither prior proof nor its finding inventory. A trusted action allocates the next round with fresh counters. The author then handles the human comments, and both stages run new full discovery checks. Later repairs inside that round remain limited to the fixed finding ranges. No-semantic-change author output is rejected before another review attempt, Sandbox, or model call can be allocated.
 
-The portal serves `/runs/<encoded-run-id>/review`. It reads rounds, phase counters, accepted reviews, reuse, exact heads, findings, cited ranges, repair evidence, conflicts, and candidates from D1. It marks exact-head proof current or stale against the saved pull-request head. Raw proof is available only through an allowlisted route that selects an accepted manifest, reads its exact R2 key, verifies the D1 SHA-256, and returns `Cache-Control: no-store`. The ordinary workflow view does not generate proof during page load. Its planning-stage detail links to the review page only after accepted proof exists.
+The portal serves `/runs/<encoded-run-id>/review`. It reads rounds, phase counters, accepted reviews, reuse, exact heads, findings, both directional claim sets, cited ranges, author dispositions, conflicts, and candidates from D1 and hash-checked R2 evidence. It marks exact-head proof current or stale against the saved pull-request head. Raw proof is available only through an allowlisted route that selects an accepted manifest, reads its exact R2 key, verifies the D1 SHA-256, and returns `Cache-Control: no-store`. The ordinary workflow view does not generate proof during page load. Its planning-stage detail links to the review page only after accepted proof exists.
 
 This code and its packaging checks do not prove a live traceability run. A provider-originated canary, deployment read-back, portal Access check, and real D1/R2/GitHub/Linear evidence remain a separate, explicitly authorized step after merge and selector enablement.
 

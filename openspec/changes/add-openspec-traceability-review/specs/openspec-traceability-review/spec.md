@@ -63,7 +63,7 @@ DEOS SHALL derive one review input ID from the complete reviewed file list and h
 
 ### Requirement: Keep internal repair and recheck bounded
 
-The full self-check SHALL create one base finding set. Each later self-check SHALL use the same saved Codex model and thought level. It SHALL rate every base finding. Its state SHALL be `fixed`, `partially_fixed`, `still_present`, or `cannot_verify`. Each rating SHALL cite current proof. A recheck MUST NOT add, drop, or rewrite a base finding. DEOS SHALL derive the full result from the ratings. It SHALL use the shared round repair limit. A pass SHALL close the phase for its review input ID. If the shared three-turn limit is used first, DEOS MAY publish the exact valid plan with the open self-check findings marked for human judgment so that independent review can still run.
+The full self-check SHALL create one base finding set. Each later self-check SHALL use the same saved Codex model and thought level. It SHALL rate every base finding. Its state SHALL be `fixed`, `partially_fixed`, `still_present`, or `cannot_verify`. Each rating SHALL cite current proof. A recheck MUST NOT add, drop, or rewrite a base finding. DEOS SHALL derive the full result from the ratings. It SHALL use the self-check repair limit. A pass SHALL close the phase for its review input ID. If the three-turn self-check limit is used first, DEOS MAY publish the exact valid plan with the open self-check findings marked for human judgment so that independent review can still run.
 
 #### Scenario: Author repairs the private draft
 
@@ -139,38 +139,62 @@ After the trusted post, DEOS SHALL run one full independent check. It SHALL use 
 - **WHEN** the pull request head is not the head in a done outside check
 - **THEN** DEOS marks the proof stale and does not use it for the human gate
 
-### Requirement: Repair and recheck the same planning pull request
+### Requirement: Compare two independent directional claim sets
 
-Each independent-review fix SHALL update the same planning pull request. All deterministic plan checks SHALL pass before either model rechecks it. The Codex self-check SHALL then inspect the exact new head with its saved model and thought level. It SHALL read the independent base findings, each changed block, and all linked blocks. It MUST NOT add a new finding during this closed-set recheck. The independent recheck SHALL then use the saved OpenRouter provider and model. It SHALL rate only its base findings. Each rating SHALL cite current proof. DEOS SHALL derive the full result from both checks on that head.
+Each full semantic review SHALL use two fresh model passes over the same exact source inventory. The proposal-first pass SHALL map every proposal statement to the requirements that implement it. The requirement-first pass SHALL map every requirement to the proposal statements that justify it. The second pass MUST NOT receive the first pass result. DEOS SHALL preserve both claim sets and reconcile them by host-derived source identities. It SHALL mark a link `confirmed`, `proposal_only`, or `requirement_only`. A one-sided link SHALL be accepted as semantic disagreement and MUST NOT be treated as malformed proof.
+
+#### Scenario: Both passes find the same relationship
+
+- **WHEN** each directional pass independently links the same proposal statement and requirement
+- **THEN** DEOS records one confirmed link with both model rationales
+
+#### Scenario: Only one pass finds a relationship
+
+- **WHEN** one directional pass links a proposal statement and requirement but the other does not
+- **THEN** DEOS records the one-sided claim as disputed review information and preserves which pass made it
+
+#### Scenario: A pass cites an unknown source item
+
+- **WHEN** a directional result names a proposal statement or requirement outside the trusted inventory
+- **THEN** DEOS rejects that result as malformed proof and may use its bounded proof-repair path
+
+### Requirement: Send independent review to the author before human review
+
+A structurally valid independent review SHALL complete successfully even when it contains findings or disputed links. DEOS SHALL send every independent finding, confirmed link, disputed link, and rationale to one fresh author response job. The author SHALL record `applied`, `declined`, or `no_change` for every finding and disputed link. It SHALL give a short reason. If it changes the plan, trusted deterministic checks SHALL pass before DEOS updates the same planning pull request. DEOS MUST NOT require the independent reviewer to withdraw its judgment before the human gate.
 
 #### Scenario: Independent discovery finds a concern
 
-- **WHEN** the full outside check finds an issue and a fix remains
-- **THEN** a fresh author job gets those findings and may update the same branch and pull request before both models recheck that head
+- **WHEN** the full outside check finds an issue or one-sided relationship
+- **THEN** a fresh author job gets the complete review and records its disposition for each item
 
-#### Scenario: First reviewer has not checked the repaired head
+#### Scenario: Author applies a concern
 
-- **WHEN** an outside repair has no passing first-model recheck for its exact new head
-- **THEN** DEOS keeps the work out of `Human Review` and does not count the old private-draft proof as current
+- **WHEN** the author changes the plan in response to the independent review
+- **THEN** trusted checks validate the change, update the same pull request, and link the new head to the original review and author disposition
 
-#### Scenario: Independent recheck is complete
+#### Scenario: Author declines a concern
 
-- **WHEN** both models recheck the same new head and rate each base finding with current proof
-- **THEN** DEOS derives the result from both saved sets of ratings
+- **WHEN** the author decides that an independent finding or disputed link should not change the plan
+- **THEN** DEOS preserves the concern and the author's reason and releases both to human review
 
-#### Scenario: Model claims success while a finding remains open
+#### Scenario: Independent semantic concerns remain
 
-- **WHEN** the model claims a pass but any finding is not fixed
-- **THEN** DEOS rejects the pass and keeps the finding open; the round may reach the human gate only through the shared turn-limit escalation
+- **WHEN** the independent review is structurally valid and has findings or disputed links
+- **THEN** the external-review workflow outcome is `pass` while the semantic concerns remain visible for the author and human
 
 ### Requirement: Keep proof repair apart from plan repair
 
-DEOS SHALL set one bound for repair of a bad sidecar or invalid review result. It SHALL set another shared bound for author fixes to the plan text. A proof repair SHALL not count as an author fix. It MUST NOT change the base finding set or the plan under review. When one review stage contradicts its own saved rating, DEOS SHALL compare the exact inputs and source changes. It SHALL reuse the prior result for an identical input. If no source change explains the conflict, it SHALL stop that automated loop and show both results to the person. A different finding or rating from the independent reviewer SHALL be allowed and MUST NOT be treated as a proof fault merely because it differs from the self-check.
+DEOS SHALL set one bound for repair of a bad sidecar or invalid review result. It SHALL set another bound for self-check author fixes to the plan text. A proof repair SHALL not count as an author fix. It MUST NOT change the base finding set or the plan under review. When the self-check contradicts its own saved rating, DEOS SHALL compare the exact inputs and source changes. It SHALL reuse the prior result for an identical input. If no source change explains the conflict, it SHALL stop that automated loop and show both results to the person. A different finding or rating from the independent reviewer SHALL be allowed and MUST NOT be treated as a proof fault merely because it differs from the self-check.
 
 #### Scenario: Sidecar fails its form checks
 
-- **WHEN** a review result has bad links, hashes, ranges, quotes, or form
+- **WHEN** a review result has unknown sources, invalid ranges, bad hashes, unsafe values, or malformed form
 - **THEN** the review tool may retry within its proof limit against the same exact plan
+
+#### Scenario: Directional claims disagree
+
+- **WHEN** the proposal-first and requirement-first passes do not claim the same relationship
+- **THEN** DEOS accepts the one-sided semantic claim and does not spend a proof-repair attempt
 
 #### Scenario: Proof repair changes plan meaning
 
@@ -185,7 +209,7 @@ DEOS SHALL set one bound for repair of a bad sidecar or invalid review result. I
 #### Scenario: Independent reviewer disagrees with the self-check
 
 - **WHEN** the independent review finds a concern that the Codex self-check did not report
-- **THEN** DEOS accepts it into the independent base finding set and may use a remaining shared repair turn
+- **THEN** DEOS accepts it into the independent finding set, asks the author for a disposition, and sends both views to human review without an independent recheck
 
 ### Requirement: Constrain each plan repair
 
@@ -208,7 +232,7 @@ Each base finding SHALL name the exact source ranges that an author may change. 
 
 ### Requirement: Start a new review round after human feedback
 
-An allowed human change SHALL start a new review round for the same pull request. The new proposal and each changed spec SHALL pass all deterministic checks. The proof SHALL match their new exact forms. DEOS MAY return the issue to `Human Review` when both semantic stages pass or when the round uses all three shared author-repair turns and the independent review has completed on the current head. The gate SHALL show every open finding and proof conflict when it is reached by the turn limit. A person SHALL still be the only source of approval.
+An allowed human change SHALL start a new review round for the same pull request. The new proposal and each changed spec SHALL pass all deterministic checks. The proof SHALL match their new exact forms. DEOS MAY return the issue to `Human Review` after the self-check gate, one completed independent review, a complete author disposition set, and pull request read-back. The gate SHALL show every open finding, directional dispute, author disposition, and proof conflict. A person SHALL still be the only source of approval.
 
 #### Scenario: Human asks for a planning revision
 

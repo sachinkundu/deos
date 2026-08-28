@@ -13,9 +13,10 @@ import os from "node:os";
 import path from "node:path";
 
 import {
-  buildJudgePrompt,
+  buildDirectionalJudgePrompt,
   inventoryOpenSpecChange,
-  normalizeJudgment,
+  normalizeDirectionalJudgments,
+  validateDirectionalJudgment,
 } from "/deos/bettaview/src/review-traceability.js";
 import { loadTraceability } from "/deos/bettaview/src/traceability.js";
 import {
@@ -24,17 +25,22 @@ import {
   codexSessionId,
   MAXIMUM_PROOF_REPAIRS,
   parseCodexFinalMessage,
-  proofRepairPrompt,
   reviewPromptWithSchema,
   reviewResultPayload,
   runBoundedProofReview,
-  validateDiscoveryProofShape,
 } from "./trace-review-proof.mjs";
 
 const OUTPUT_ROOT = "/deos/output";
-const PROMPT_VERSION = "openspec-semantic-traceability-bidirectional-v2";
-const promptFile = `/deos/bettaview/prompts/${PROMPT_VERSION}.md`;
-const schemaFile = `/deos/bettaview/prompts/${PROMPT_VERSION}.schema.json`;
+const directionalPasses = {
+  proposal_to_spec: {
+    promptFile: "/deos/bettaview/prompts/openspec-semantic-traceability-proposal-first-v1.md",
+    schemaFile: "/deos/bettaview/prompts/openspec-semantic-traceability-proposal-first-v1.schema.json",
+  },
+  spec_to_proposal: {
+    promptFile: "/deos/bettaview/prompts/openspec-semantic-traceability-requirement-first-v1.md",
+    schemaFile: "/deos/bettaview/prompts/openspec-semantic-traceability-requirement-first-v1.schema.json",
+  },
+};
 const materializerFile = "/deos/bettaview/bin/materialize-traceability.js";
 const recheckPromptFile = "/deos/config/prompts/openspec-traceability-recheck.md";
 const recheckSchemaFile = "/deos/config/schemas/trace-recheck-result-v1.json";
@@ -77,7 +83,7 @@ const codexJudgment = async ({
   reasoning,
   destination,
   cwd,
-  schema = schemaFile,
+  schema,
   sessionId = null,
   modelProvider = "codex",
   capabilityUrl = null,
@@ -254,8 +260,8 @@ const recheckJudgment = async ({ job, inventory, temporary }) => {
   })}\n`);
 };
 
-const findingInventory = (traceability, change) => traceability.findings
-  .map((finding) => ({
+const reviewInventory = (traceability, change) => {
+  const findings = traceability.findings.map((finding) => ({
     id: finding.id,
     type: finding.type,
     message: finding.message,
@@ -272,8 +278,108 @@ const findingInventory = (traceability, change) => traceability.findings
         endLine: finding.spec.endLine,
       },
     ],
-  }))
-  .sort((left, right) => left.id.localeCompare(right.id));
+  }));
+  const linkById = new Map(traceability.links.map((link) => [link.id, link]));
+  const statementById = new Map(traceability.proposalStatements.map((statement) => [statement.id, statement]));
+  for (const statement of traceability.proposalStatements) {
+    if (statement.coverage === "sufficient") continue;
+    findings.push({
+      id: `proposal-coverage-${statement.proposal.startLine}`,
+      type: statement.coverage === "missing" ? "missing_coverage" : "ambiguous",
+      message: `The proposal-first pass rated this statement ${statement.coverage}: ${statement.rationale}`,
+      capability: "proposal",
+      allowedRanges: [{
+        path: `openspec/changes/${change}/${statement.proposal.file}`,
+        startLine: statement.proposal.startLine,
+        endLine: statement.proposal.endLine,
+      }, ...statement.requirementLinks.flatMap((linkId) => {
+        const link = linkById.get(linkId);
+        return link === undefined ? [] : [{
+          path: `openspec/changes/${change}/${link.spec.file}`,
+          startLine: link.spec.startLine,
+          endLine: link.spec.endLine,
+        }];
+      })],
+    });
+  }
+  const passing = (judgment) => judgment.coverage === "sufficient" &&
+    judgment.scope === "in_scope" && judgment.minimality === "minimal";
+  for (const capability of traceability.capabilities) {
+    if (
+      !passing(capability.judgment) &&
+      !traceability.findings.some((finding) => finding.capability === capability.path)
+    ) {
+      const capabilityLinks = traceability.links.filter((link) => link.capability === capability.path);
+      findings.push({
+        id: `capability-judgment-${capability.path.replaceAll("/", "-")}`,
+        type: "ambiguous",
+        message: `The requirement-first pass did not give this capability a fully passing judgment: ${capability.judgment.rationale}`,
+        capability: capability.path,
+        allowedRanges: [{
+          path: `openspec/changes/${change}/${capability.proposal.file}`,
+          startLine: capability.proposal.startLine,
+          endLine: capability.proposal.endLine,
+        }, ...capabilityLinks.map((link) => ({
+          path: `openspec/changes/${change}/${link.spec.file}`,
+          startLine: link.spec.startLine,
+          endLine: link.spec.endLine,
+        }))],
+      });
+    }
+  }
+  for (const link of traceability.links) {
+    if (
+      passing(link.judgment) ||
+      traceability.findings.some((finding) =>
+        finding.capability === link.capability && finding.spec.startLine === link.spec.startLine)
+    ) continue;
+    findings.push({
+      id: `requirement-judgment-${link.id}`,
+      type: link.judgment.coverage === "missing" ? "unsupported_requirement" :
+        link.judgment.minimality === "over_specified" ? "over_specified" : "ambiguous",
+      message: `The requirement-first pass did not give this requirement a fully passing judgment: ${link.judgment.rationale}`,
+      capability: link.capability,
+      allowedRanges: [
+        ...link.proposalEvidence.map((evidence) => ({
+          path: `openspec/changes/${change}/${evidence.file}`,
+          startLine: evidence.startLine,
+          endLine: evidence.endLine,
+        })),
+        {
+          path: `openspec/changes/${change}/${link.spec.file}`,
+          startLine: link.spec.startLine,
+          endLine: link.spec.endLine,
+        },
+      ],
+    });
+  }
+  const directionalClaims = (traceability.directionalLinks || []).map((claim) => {
+    const statement = statementById.get(claim.proposalStatementId);
+    const link = linkById.get(claim.requirementLinkId);
+    if (!statement || !link) throw new Error("directional claim inventory is invalid");
+    const id = `directional-${claim.status.replaceAll("_", "-")}-${statement.proposal.startLine}-${link.id}`;
+    const allowedRanges = [{
+      path: `openspec/changes/${change}/${statement.proposal.file}`,
+      startLine: statement.proposal.startLine,
+      endLine: statement.proposal.endLine,
+    }, {
+      path: `openspec/changes/${change}/${link.spec.file}`,
+      startLine: link.spec.startLine,
+      endLine: link.spec.endLine,
+    }];
+    if (claim.status !== "confirmed") findings.push({
+      id,
+      type: "ambiguous",
+      message: `${claim.status === "proposal_only" ? "Only the proposal-first pass" : "Only the requirement-first pass"} claimed this relationship. Proposal-first: ${claim.proposalFirst.rationale} Requirement-first: ${claim.requirementFirst.rationale}`,
+      capability: link.capability,
+      allowedRanges,
+    });
+    return { id, ...claim, allowedRanges };
+  });
+  findings.sort((left, right) => left.id.localeCompare(right.id));
+  directionalClaims.sort((left, right) => left.id.localeCompare(right.id));
+  return { findings, directionalClaims };
+};
 
 const main = async () => {
   const job = JSON.parse(await readFile("/deos/run/job.json", "utf8"));
@@ -306,90 +412,88 @@ const main = async () => {
       await rm(temporary, { recursive: true, force: true });
     }
   }
-  const instructions = await readFile(promptFile, "utf8");
-  const schemaSource = await readFile(schemaFile, "utf8");
   const reviewerVersion = `${job.model} (${job.reasoning}) via ${job.modelProvider}`;
-  let validatorLog = "";
   try {
-    const reviewedAtByAttempt = [];
-    const bounded = await runBoundedProofReview({
-      maximumRepairs: MAXIMUM_PROOF_REPAIRS,
-      generate: async ({ attempt, prior, failure, sessionId }) => {
-        const reviewedAt = new Date().toISOString();
-        reviewedAtByAttempt[attempt] = reviewedAt;
-        const basePrompt = reviewPromptWithSchema(
-          buildJudgePrompt({ inventory, instructions, reviewerVersion, reviewedAt }),
-          schemaSource,
-          job.modelProvider,
-        );
-        const prompt = attempt === 0
-          ? basePrompt
-          : proofRepairPrompt({
-              basePrompt,
-              prior,
-              failure,
-              repair: attempt,
-              maximumRepairs: MAXIMUM_PROOF_REPAIRS,
-            });
-        const rawFile = path.join(temporary, `raw-${attempt}.json`);
-        const generated = await codexJudgment({
-          prompt,
-          model: job.model,
-          reasoning: job.reasoning,
-          destination: rawFile,
-          cwd: reviewDirectory,
-          sessionId,
-          modelProvider: job.modelProvider,
-          capabilityUrl: job.capabilityUrl,
-          capabilityToken: job.capabilityToken,
-          attemptId: job.attemptId,
-        });
-        return { raw: generated.result, sessionId: generated.sessionId };
-      },
-      validate: async (raw, attempt) => {
-        validateDiscoveryProofShape(raw);
-        const reviewedAt = reviewedAtByAttempt[attempt];
-        const normalized = normalizeJudgment(raw, {
-          change: inventory.change,
-          reviewerVersion,
-          reviewedAt,
-        });
-        const normalizedFile = path.join(temporary, `normalized-${attempt}.json`);
-        const sidecarFile = path.join(temporary, `sidecar-${attempt}.json`);
-        await writeFile(normalizedFile, `${JSON.stringify(normalized, null, 2)}\n`);
-        const materialized = await run(process.execPath, [
-          materializerFile,
-          reviewDirectory,
-          normalizedFile,
-          sidecarFile,
-        ]);
-        const traceability = await loadTraceability(reviewDirectory, sidecarFile);
-        for (const document of inventory.documents) {
-          const acceptedDocument = traceability.review.documents.find((entry) => entry.file === document.file);
-          if (acceptedDocument?.sha256 !== document.sha256) {
-            throw new Error(`source changed during review: ${document.file}`);
-          }
-        }
-        return { normalized, traceability, sidecarFile, materializerLog: materialized.stdout };
-      },
-    });
-    const accepted = bounded.accepted;
-    const rawJudgments = bounded.rawJudgments;
-    validatorLog = [
-      ...bounded.validatorFailures.map((failure, index) => `attempt ${index + 1}: ${failure}`),
-      accepted.materializerLog,
+    const reviewedAt = new Date().toISOString();
+    const directionalResults = {};
+    for (const direction of ["proposal_to_spec", "spec_to_proposal"]) {
+      const pass = directionalPasses[direction];
+      const instructions = await readFile(pass.promptFile, "utf8");
+      const schemaSource = await readFile(pass.schemaFile, "utf8");
+      directionalResults[direction] = await runBoundedProofReview({
+        maximumRepairs: MAXIMUM_PROOF_REPAIRS,
+        generate: async ({ attempt, prior, failure, sessionId }) => {
+          const prompt = reviewPromptWithSchema(
+            buildDirectionalJudgePrompt({
+              inventory,
+              instructions,
+              direction,
+              repair: attempt === 0 ? null : { error: failure, judgment: prior },
+            }),
+            schemaSource,
+            job.modelProvider,
+          );
+          const rawFile = path.join(temporary, `${direction}-${attempt}.json`);
+          const generated = await codexJudgment({
+            prompt,
+            model: job.model,
+            reasoning: job.reasoning,
+            destination: rawFile,
+            cwd: reviewDirectory,
+            schema: pass.schemaFile,
+            sessionId,
+            modelProvider: job.modelProvider,
+            capabilityUrl: job.capabilityUrl,
+            capabilityToken: job.capabilityToken,
+            attemptId: job.attemptId,
+          });
+          return { raw: generated.result, sessionId: generated.sessionId };
+        },
+        validate: async (raw) => validateDirectionalJudgment(direction, raw, inventory),
+      });
+    }
+    const normalized = normalizeDirectionalJudgments({
+      proposalFirst: directionalResults.proposal_to_spec.accepted,
+      requirementFirst: directionalResults.spec_to_proposal.accepted,
+    }, { inventory, reviewerVersion, reviewedAt });
+    const normalizedFile = path.join(temporary, "directional-review.json");
+    const sidecarFile = path.join(temporary, "bettaview-traceability.json");
+    await writeFile(normalizedFile, `${JSON.stringify(normalized, null, 2)}\n`);
+    const materialized = await run(process.execPath, [
+      materializerFile,
+      reviewDirectory,
+      normalizedFile,
+      sidecarFile,
+    ]);
+    const traceability = await loadTraceability(reviewDirectory, sidecarFile);
+    for (const document of inventory.documents) {
+      const acceptedDocument = traceability.review.documents.find((entry) => entry.file === document.file);
+      if (acceptedDocument?.sha256 !== document.sha256) {
+        throw new Error(`source changed during review: ${document.file}`);
+      }
+    }
+    const validatorLog = [
+      ...Object.entries(directionalResults).flatMap(([direction, result]) =>
+        result.validatorFailures.map((failure, index) => `${direction} attempt ${index + 1}: ${failure}`)),
+      materialized.stdout,
+      "validated both independent directional passes",
+      "accepted one-sided semantic claims as review information",
       "validated exact source hashes",
     ].filter(Boolean).join("\n") + "\n";
-    const findings = findingInventory(accepted.traceability, job.openspecChange);
+    const { findings, directionalClaims } = reviewInventory(traceability, job.openspecChange);
     const findingSetDigest = sha256(JSON.stringify(canonicalize(findings)));
     await mkdir(OUTPUT_ROOT, { recursive: true });
-    await writeFile(`${OUTPUT_ROOT}/raw-review-output.json`, `${JSON.stringify(rawJudgments, null, 2)}\n`);
-    await writeFile(`${OUTPUT_ROOT}/normalized-review.json`, `${JSON.stringify(accepted.normalized, null, 2)}\n`);
-    await writeFile(`${OUTPUT_ROOT}/bettaview-traceability.json`, await readFile(accepted.sidecarFile));
+    await writeFile(`${OUTPUT_ROOT}/raw-review-output.json`, `${JSON.stringify({
+      proposalFirst: directionalResults.proposal_to_spec.rawJudgments,
+      requirementFirst: directionalResults.spec_to_proposal.rawJudgments,
+    }, null, 2)}\n`);
+    await writeFile(`${OUTPUT_ROOT}/normalized-review.json`, `${JSON.stringify(normalized, null, 2)}\n`);
+    await writeFile(`${OUTPUT_ROOT}/bettaview-traceability.json`, await readFile(sidecarFile));
     await writeFile(`${OUTPUT_ROOT}/candidate-inventory.json`, `${JSON.stringify({
       change: inventory.change,
       documents: inventory.documents.map(({ file, sha256 }) => ({ file, sha256 })),
       findings,
+      directionalClaims,
       findingSetDigest,
     }, null, 2)}\n`);
     await writeFile(`${OUTPUT_ROOT}/trace-validation.txt`, validatorLog);
@@ -398,13 +502,16 @@ const main = async () => {
       : [];
     await writeFile(`${OUTPUT_ROOT}/result.json`, `${JSON.stringify({
       outcome: "completed",
-      reviewOutcome: accepted.traceability.review.overall,
-      summary: accepted.traceability.review.overall === "pass"
+      reviewOutcome: traceability.review.overall,
+      summary: traceability.review.overall === "pass"
         ? "The semantic review found no traceability findings."
-        : `The semantic review recorded ${findings.length} finding(s).`,
+        : `The semantic review recorded ${findings.length} concern(s), including ${directionalClaims.filter((claim) => claim.status !== "confirmed").length} directional disagreement(s).`,
       findingSetDigest,
       findingCount: findings.length,
-      proofRepairCount: bounded.proofRepairCount,
+      confirmedLinkCount: directionalClaims.filter((claim) => claim.status === "confirmed").length,
+      disputedLinkCount: directionalClaims.filter((claim) => claim.status !== "confirmed").length,
+      proofRepairCount: Object.values(directionalResults)
+        .reduce((total, result) => total + result.proofRepairCount, 0),
       providerReceipts,
     })}\n`);
   } finally {

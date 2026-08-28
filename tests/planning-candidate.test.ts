@@ -45,6 +45,12 @@ test("trusted candidate hashes exact repository bytes after deterministic checks
       { path: "openspec/changes/add-review/specs/review-step/spec.md", content: easySpec },
     ],
     reviewReplies: [{ commentId: 101, body: "Updated the scenario to state the exact check." }],
+    reviewDispositions: [{
+      itemId: "directional-proposal-only-7-review-step-requirement-3",
+      status: "declined",
+      reason: "The two lines describe different parts of the review step.",
+    }],
+    reviewContextId: "review:12345678-1234-1234-1234-123456789abc",
     strictOpenSpecCheck: async () => { strictChecks += 1; },
     checkedAt: "2026-08-27T08:00:00.000Z",
   });
@@ -54,6 +60,12 @@ test("trusted candidate hashes exact repository bytes after deterministic checks
   assert.deepEqual(result.candidate.reviewReplies, [
     { commentId: 101, body: "Updated the scenario to state the exact check." },
   ]);
+  assert.deepEqual(result.candidate.reviewDispositions, [{
+    itemId: "directional-proposal-only-7-review-step-requirement-3",
+    status: "declined",
+    reason: "The two lines describe different parts of the review step.",
+  }]);
+  assert.equal(result.candidate.reviewContextId, "review:12345678-1234-1234-1234-123456789abc");
   assert.equal(result.candidate.candidateDigest.length, 64);
   assert.equal(result.reviewedSources.length, 2);
   assert.equal(result.validation.strictOpenSpec, "passed");
@@ -74,6 +86,8 @@ test("trusted candidate rejects files outside the standard OpenSpec plan", async
       { path: "openspec/changes/add-review/tasks.md", content: "not allowed\n" },
     ],
     reviewReplies: [],
+    reviewDispositions: [],
+    reviewContextId: null,
     strictOpenSpecCheck: async () => {},
     checkedAt: "2026-08-27T08:00:00.000Z",
   }), /invalid file/);
@@ -104,6 +118,8 @@ The implementation SHALL institutionalize multidimensional interoperability char
       { path: "openspec/changes/add-review/specs/review-step/spec.md", content: difficultSpec },
     ],
     reviewReplies: [],
+    reviewDispositions: [],
+    reviewContextId: null,
     strictOpenSpecCheck: async () => {},
     checkedAt: "2026-08-27T08:00:00.000Z",
   }), /candidate readability failed for .*reading ease .*minimum 70.*grade .*maximum 8/);

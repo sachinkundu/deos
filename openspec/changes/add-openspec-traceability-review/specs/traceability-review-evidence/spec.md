@@ -49,7 +49,7 @@ DEOS SHALL keep one saved row for each review. The row SHALL point to the exact 
 
 ### Requirement: Validate structure without overstating meaning
 
-The proof check SHALL test the file list, paths, hashes, quotes, and line ranges. It SHALL test the plan map and each spec map. It SHALL test both link ways, the plan ID, and the closed finding list. These checks prove form and freshness. The models attempt semantic checks, but their results are not absolute because model output is probabilistic. Each semantic view SHALL stay tied to its named provider and model.
+The proof check SHALL test the file list, paths, hashes, quotes, and line ranges. It SHALL test the complete proposal and requirement inventories, both directional claim sets, their reconciliation, the plan ID, and the closed finding list. It SHALL require each claim to point to a real source item. It MUST NOT require the two semantic claim sets to agree. These checks prove form and freshness. The models attempt semantic checks, but their results are not absolute because model output is probabilistic. Each semantic view SHALL stay tied to its named provider and model.
 
 #### Scenario: Sidecar is structurally valid
 
@@ -60,6 +60,11 @@ The proof check SHALL test the file list, paths, hashes, quotes, and line ranges
 
 - **WHEN** a user reads a map or finding result
 - **THEN** DEOS calls it a model view and not a hard fact
+
+#### Scenario: Directional claims disagree
+
+- **WHEN** only one semantic pass claims a proposal-to-requirement relationship
+- **THEN** the proof keeps both pass results and records a disputed link without calling the sidecar invalid
 
 ### Requirement: Bind evidence to one exact candidate
 

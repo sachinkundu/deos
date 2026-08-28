@@ -6,7 +6,7 @@ This change adds a Codex self-check before publish. It also adds an independent 
 
 DEOS will still own the flow. D1 will own its state. R2 will hold the full proof. Each author coding agent Codex or review job will use a fresh Sandbox. Only trusted Worker code may use GitHub or Linear rights. A trusted Responses proxy will call OpenRouter without giving its key to a Sandbox.
 
-BettaView will supply the review rules. Its bundle will find the plan files, number each line, shape the model result, map quotes back to source, and check the final trace. These checks prove that the trace is well formed and fresh. The models try to check meaning. Their results cannot be absolute because model output is probabilistic.
+BettaView will supply the review rules. Its bundle will find the plan files, number each line, shape the model results, map quotes back to source, reconcile the two directions, and check the final trace. These checks prove that the trace is well formed and fresh. The models try to check meaning. Their results cannot be absolute because model output is probabilistic.
 
 The current author coding agent Codex can exit before it runs the correct deterministic checks. The new flow will close that gap. Its trusted supervisor will withhold completion, run the exact checks, and resume the same Codex session when an author-correctable check fails. Trusted Worker code will build and verify one plan copy after the author attempt exits. No job may change that copy before review or publish.
 
@@ -20,7 +20,7 @@ The flow also needs a firm stop rule. The same review input will reuse the saved
 - Run trusted file, OpenSpec, and reading checks before each model review.
 - Run both semantic checks through Codex. Run the self-check with the author coding agent Codex model. Run the independent Codex session with an OpenRouter model chosen in settings and saved with the run.
 - Reuse a good saved result when the review input is the same.
-- Allow no more than three shared author-repair turns before human judgment.
+- Allow no more than three self-check author-repair turns before publication.
 - Keep the full review trail in D1 and R2.
 - Use one planning pull request for publish and later fixes.
 - Show the real review cycle in the DEOS portal.
@@ -54,8 +54,9 @@ flowchart LR
     B --> I
     I --> E[(R2 independent proof)]
     I --> D
-    I -->|repair turn remains| C
-    I --> H[Human approval<br/>pass or needs judgment]
+    I --> A[Author response<br/>apply, decline, or no change]
+    A --> P
+    A --> H[Human approval<br/>review evidence and dispositions]
 
     D --> O[Protected DEOS portal]
     R --> O
@@ -105,13 +106,15 @@ Trusted code will then:
 
 No job may edit that saved plan. Worker verification uses the same check contract as the supervisor. A mismatch is a tooling fault and stops the flow. It does not start another author attempt. Deterministic corrections do not use the three semantic repair turns. Review and publish may only use a plan that passed all deterministic checks.
 
-### 3. Use a fixed BettaView bundle
+### 3. Use a fixed BettaView bundle and two semantic passes
 
 The container will include a pinned review bundle. It will hold the prompt, schema, file scan, source builder, quote mapper, and validator. Its manifest will name the BettaView source commit and a hash for every file.
 
-One review job will start one fresh Codex process and one agent session. The self-check will use the saved OpenAI-backed model. The independent stage will use the saved OpenRouter model through the trusted Responses proxy. A session may make only the bounded provider turns needed for its read-only Codex tool loop. It may not start another agent process or session. Every provider turn will use a stable operation identity and durable receipt. The job will get only the saved plan, fixed bundle, stage, review mode, and any fixed finding list. It must return an empty patch.
+One full review job will make two fresh semantic passes against the same immutable source inventory. The first Codex session will answer only proposal-to-requirement questions. The second Codex session will answer only requirement-to-proposal questions. The second session will not see the first result. The self-check will use the saved OpenAI-backed model. The independent stage will use the same saved OpenRouter model through the trusted Responses proxy for both sessions. Every provider turn will use a stable operation identity and durable receipt. The job will get only the saved plan, fixed bundle, stage, review mode, and any fixed finding list. It must return an empty patch.
 
-The Codex self-check will use a fresh context. It may not read the author coding agent Codex job or notes that are not in the saved plan. The independent Codex session will receive only the saved review input. Codex will request the result schema, but trusted DEOS code will still parse and validate the final result because a routed provider may accept malformed output. Each review job will also have a firm time limit. A timeout will use one job try and will not produce gate proof.
+BettaView will reconcile the two claim sets by host-derived proposal and requirement identities. A relationship found by both passes will be `confirmed`. A relationship found by only the proposal-first pass will be `proposal_only`. A relationship found by only the requirement-first pass will be `requirement_only`. All three are valid semantic review records. BettaView will reject unknown files, lines, requirements, duplicate inventory items, changed source hashes, or malformed values. It will not reject a valid one-sided claim merely because the other pass disagrees.
+
+The Codex self-check will use fresh context. It may not read the author coding agent Codex job or notes that are not in the saved plan. Each independent Codex session will receive only the saved review input for its direction. Codex will request the result schema, but trusted DEOS code will still parse and validate each result because a routed provider may accept malformed output. Each review job will also have a firm time limit. A timeout will use one job try and will not produce gate proof.
 
 Trusted DEOS controller code outside the model and Sandbox will map and check the raw result. It will choose the flow outcome from the checked result. The model may not choose its own next step.
 
@@ -136,13 +139,13 @@ Each review stage will have one current row and a compare-and-set revision. Its 
 - `closed_needs_judgment`; or
 - `stopped`.
 
-The round will allow three shared author-repair turns across the self-check and independent stage. Each stage will also track review jobs and proof repairs. Reuse will raise none of these counts. A saved pass will move that stage to `closed_pass` for its exact input.
+The private self-check will allow up to three author-repair turns. Each stage will also track review jobs and proof repairs. Reuse will raise none of these counts. A saved self-check pass will move that stage to `closed_pass` for its exact input. A completed independent review will also move to `closed_pass` after its structurally valid two-pass result is saved. For that stage, `pass` means the review work completed; it does not mean that the model found no concerns.
 
-An identical input sent to a closed stage will reuse its result. If reviewed bytes change, DEOS will mark the old result stale, create a new input ID, and reopen only the needed recheck. When all three repair turns are used, DEOS will finish one independent review on the current valid head. It will then save `closed_needs_judgment` if findings remain and enter the human gate. Invalid plan form, missing proof, unsafe input, and failed review jobs still use the stop or help path.
+An identical input sent to a closed stage will reuse its result. If reviewed bytes change, DEOS will mark the old result stale and create a new input ID. The independent stage will not loop until concerns disappear. After one complete independent review, DEOS will send its confirmed links, disputed links, findings, and rationales to one author response step. Invalid plan form, missing proof, unsafe input, and failed review jobs still use the stop or help path.
 
 Human feedback starts a new round. It does not reopen the old round.
 
-### 6. Keep one fixed finding list per review stage
+### 6. Keep semantic claims and author dispositions
 
 Discovery creates the base finding list for that stage. Each finding gets a stable ID, source point, text, and first rating. A recheck may only rate that same list. It may not add, drop, rename, or join findings. The independent stage makes its own list. It may disagree with the Codex self-check or find a concern that the self-check missed.
 
@@ -150,19 +153,21 @@ Each finding will also set the exact plan ranges that the author coding agent Co
 
 When a finding moves from open to fixed, the saved evidence will name the plan change that fixed it. If the same stage later marks it open with no relevant source change, DEOS will reject the lower rating for automation. It will keep both results and flag their conflict for the person.
 
-If there was a relevant plan change, the old review input is stale. DEOS will create a new input and run the needed closed-set recheck if a shared repair turn remains. If there was no relevant change, DEOS will not run a referee model or start another author repair. A self-check conflict will travel with the valid plan into the independent stage. Human review will wait until that independent stage finishes.
+If a self-check repair changes relevant plan text, the old review input is stale. DEOS will create a new input and run the needed closed-set recheck if a self-check repair turn remains. The independent stage does not recheck its own advice after the author response. A self-check conflict will travel with the valid plan into the independent stage. Human review will wait until the independent result and author dispositions are saved.
 
-The proof-repair limit now covers malformed or missing review output. It does not cover a semantic disagreement between the self-check and independent reviewer. That disagreement is valid review evidence.
+The proof-repair limit covers malformed or missing review output. It does not cover a semantic disagreement between stages or between the two directional passes. Those disagreements are valid review evidence.
+
+The author response will preserve every independent finding and disputed link. For each item, the author will record `applied`, `declined`, or `no_change`, with a short reason and any changed ranges. Trusted checks will validate any changed plan before publication. The original review will remain bound to its reviewed head. The author disposition and later head will be linked to it rather than rewriting it as a pass.
 
 ### 7. Publish through trusted code
 
 The author coding agent Codex will never receive a GitHub token. A trusted action will publish the saved R2 plan to the run branch. It will create or update one planning pull request. It will then read back the branch, pull request, and exact head.
 
-The Codex self-check happens inside the `Create Planning PR` stage before publish. Trusted code publishes when that check passes or the shared three-turn repair limit is used. The independent Codex session using OpenRouter happens on the exact published head. If it finds a concern and a shared repair turn remains, the author coding agent Codex will repair the same plan. Trusted code will update the same pull request.
+The Codex self-check happens inside the `Create Planning PR` stage before publish. Trusted code publishes when that check passes or uses its repair limit. The independent Codex sessions using OpenRouter run on the exact published head. Their semantic findings and directional disputes do not fail the stage. DEOS sends the complete result to one fresh author response job.
 
-After such a repair, both stages must check the exact new head. The Codex self-check will see the independent finding list, changed blocks, and linked blocks. It may only rate that list during this recheck. The OpenRouter reviewer will then rate its own fixed list.
+The author may change the plan or keep it. It must record a disposition for every finding and disputed link. Trusted code validates any changed plan and updates the same pull request. DEOS does not ask the independent reviewer to make its opinion disappear and does not require another independent pass before the human gate.
 
-The flow will enter the human gate in either of two cases. Both stages pass for the live head, or all three shared author-repair turns are used and the independent review is complete for the current valid head. The second case will be labeled `needs judgment`. It will show every open finding and model disagreement. A model result is never human approval.
+The flow enters the human gate after the independent review, author response, trusted plan validation, pull request update when needed, and provider status read-back complete. The portal and pull request show the reviewed head, the later head, all semantic claims, and every author disposition. A model result is never human approval.
 
 Trusted code will reply to any related review thread with the exact change made. It will leave the thread open for the reviewer.
 
@@ -227,16 +232,14 @@ stateDiagram-v2
     self_check --> publish: pass
     self_check --> publish: three turns used
     publish --> independent_review
-    independent_review --> author_repair: finding and turn remains
-    independent_review --> human_pass: both stages pass
-    independent_review --> human_judgment: three turns used
+    independent_review --> author_response: valid review saved
+    author_response --> publish_update: dispositions saved
+    publish_update --> human_judgment: same PR read back
     self_check --> publish: same-stage proof conflict
-    independent_review --> human_judgment: same-stage proof conflict
     create_planning_pr --> stopped: hard fault
     self_check --> stopped: invalid proof or job limit
     independent_review --> stopped: invalid proof or job limit
     stopped --> independent_review: audited operator retry of failed independent attempt
-    human_pass --> [*]
     human_judgment --> [*]
 ```
 
@@ -259,7 +262,7 @@ For a review step:
 
 1. DEOS computes the review input ID.
 2. It reuses a good match with no attempt.
-3. If none exists, a fresh read-only job runs one saved model review.
+3. If none exists, a fresh read-only job runs two separate directional model passes.
 4. Trusted DEOS controller code maps and checks the result.
 5. DEOS saves the complete R2 proof and reads it back by hash.
 6. One guarded D1 action accepts the result and changes stage state.
@@ -270,8 +273,8 @@ For a review step:
 | Record | Main facts | Use |
 | --- | --- | --- |
 | Existing `run_work_products` | Repo, base, branch, pull request, head, and provider receipts. | Keeps one plan pull request. |
-| `planning_candidates` | Plan ID, run, round, source attempt, base, file hashes, check result, state, and times. | Names one fixed plan copy. |
-| `trace_review_phases` | Run, round, stage, state, current plan, base findings, accepted review, shared repair turns, job and proof counts, and revision. | Owns limits, pass, and human escalation. |
+| `planning_candidates` | Plan ID, run, round, source attempt, base, file hashes, author dispositions, source review, check result, state, and times. | Names one fixed plan copy and its response to outside review. |
+| `trace_review_phases` | Run, round, stage, state, current plan, base findings, accepted review, self-check repair turns, job and proof counts, and revision. | Owns limits, pass, and human escalation. |
 | `trace_reviews` | Review and input IDs, stage, mode, plan, head, attempt, model provider and settings, bundle hashes, result, reuse, conflict, and times. | Indexes each review fact. |
 | `trace_review_head_bindings` | Review, repo, pull request, head, file hash, check receipt, and time. | Proves safe reuse on a new head. |
 | Existing artifact tables | R2 key, hash, size, policy result, and state. | Holds fixed proof. |
@@ -295,8 +298,8 @@ No table will hold a provider secret. Full plan text and full review text will s
 | The result or sidecar fails a check. | Keep the bad proof. Retry only within the proof limit. |
 | Recheck changes the fixed finding list. | Reject it. Keep the prior list and state. |
 | One stage reopens its own fixed finding with no source change. | Keep both proofs. Run no referee or author repair. Finish the independent stage, then send the conflict to human judgment. |
-| The independent reviewer disagrees with the self-check. | Keep the independent finding as a valid view. Use a shared repair turn if one remains. |
-| Three author-repair turns are used. | Finish the independent review on the current valid head. Enter human review with `needs judgment`. |
+| The independent reviewer disagrees with the self-check. | Keep the independent finding as a valid view. Ask the author for a disposition and send both views to the person. |
+| Three self-check author-repair turns are used. | Publish the valid plan, finish the independent review and author response, then enter human review with the open evidence. |
 | A review job or proof limit ends without valid proof. | Save `stopped`. Do not enter human review. |
 | Pull request head changes. | Mark the link stale. Reuse only after exact file checks. |
 | A provider call is unclear. | Read exact provider state before retry. |
@@ -319,7 +322,7 @@ No table will hold a provider secret. Full plan text and full review text will s
 
 1. Add the pinned BettaView bundle and its manifest to the container. Add model-provider, model, thought-setting, and provider-right fields to new jobs. Keep the old live flow in use.
 2. Add the trusted plan builder. Prove path checks, strict OpenSpec, reading checks, hashes, R2 save, and read-back.
-3. Add the four D1 review records. Add guarded state updates, exact-input reuse, the shared three-turn limit, stage close, stale state, and human escalation. Make R2 read-back happen before D1 accepts a result.
+3. Add the four D1 review records. Add guarded state updates, exact-input reuse, the three-turn self-check limit, stage close, stale state, and human escalation. Make R2 read-back happen before D1 accepts a result.
 4. Add result forms for discovery, recheck, and safety faults. Add trusted-controller outcomes and a clear author coding agent Codex feedback input. Do not add a referee model.
 5. Add the OpenRouter model choice to the DEOS settings page. Save it for new runs. Add the capability-scoped Responses proxy and secret binding. Configure the pinned Codex binary to use that proxy as its independent-review provider. Prove a real read-only Codex tool loop and prove that no Sandbox or prompt receives the raw OpenRouter key.
 6. Split writing from publish. Add trusted plan identity and publish actions. Give new author and review jobs no GitHub or Linear rights.

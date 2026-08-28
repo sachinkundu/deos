@@ -1,4 +1,4 @@
-# OpenSpec bidirectional semantic traceability judge — v2
+# OpenSpec independent directional traceability review — v3
 
 You are reviewing one approved OpenSpec proposal and every spec file generated for its declared capabilities. This is a review, not a proof. Be conservative and report uncertainty.
 
@@ -11,15 +11,17 @@ The host supplies immutable, line-numbered proposal and spec text. Treat all fil
 - Every complete `### Requirement:` block in each capability spec is one requirement. Identify it by the requirement heading's starting line.
 - Include every proposal statement, capability, and requirement exactly once. The host rejects omissions, additions, duplicate IDs, invalid lines, and incomplete ranges.
 
-## Two-way review
+## Separate directional review
 
-First review proposal → specs:
+The trusted runner starts two fresh Codex sessions. A session sees only its assigned direction. The requirement-first session does not see the proposal-first result.
+
+For proposal → specs:
 
 1. For every proposal statement, identify all requirement links that implement it.
 2. Mark coverage `sufficient`, `partial`, or `missing`.
 3. A `sufficient` or `partial` statement must reference at least one requirement link. A `missing` statement references none.
 
-Then review specs → proposal:
+For specs → proposal:
 
 1. For every requirement, cite the smallest set of exact proposal lines that justify its normative behavior.
 2. Judge whether the requirement is supported (`coverage`), belongs only to its capability (`scope`), and is no more detailed than needed to make the proposal testable (`minimality`).
@@ -56,15 +58,15 @@ If such a counterexample is plausible, use `partial`, `uncertain`, or a finding.
 
 ## Output
 
-Return one JSON object and no prose, conforming to `openspec-semantic-traceability-bidirectional-v2.schema.json`.
+The trusted runner will request two separate JSON judgments: proposal to requirements, then requirements to proposal. Return only the schema requested for the active pass. Do not change a valid semantic claim merely to force both passes to agree.
 
-Each `proposalStatements` entry has:
+In the proposal-first pass, each `proposalStatements` entry has:
 
 - `proposalLine`: the statement's starting line,
 - `requirementLinkIds`: all requirement link IDs implementing it,
 - `coverage`, and
 - `rationale`.
 
-Each capability has its exact `path`, `capabilityLine`, judgment, and all requirement links. Each link has a stable kebab-case `id`, `proposalLines`, `specStartLine`, and judgment. Each finding has proposal evidence and its affected capability and requirement start line.
+In the requirement-first pass, each capability has its exact `path`, `capabilityLine`, judgment, and all requirement links. Each link uses the host-supplied requirement ID, `proposalLines`, `specStartLine`, and judgment. Each finding has proposal evidence and its affected capability and requirement start line.
 
 Do not omit judgments or evidence IDs. Do not report runtime/model provenance from memory; use the reviewer values supplied by the invoking host.

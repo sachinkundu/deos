@@ -82,6 +82,21 @@ export interface DerivedReviewOutcome {
   conflictingFindingIds: readonly string[];
 }
 
+export const workflowOutcomeForReview = (
+  stage: TraceReviewStage,
+  semanticOutcome: DerivedReviewOutcome["outcome"],
+  sharedRepairTurns: number,
+): "pass" | "findings" | "needs_judgment" | "proof_conflict" => {
+  if (!TRACE_REVIEW_STAGES.includes(stage)) throw new Error("review stage is invalid");
+  if (!Number.isSafeInteger(sharedRepairTurns) || sharedRepairTurns < 0) {
+    throw new Error("shared repair turns are invalid");
+  }
+  if (stage === "independent") return "pass";
+  if (semanticOutcome === "proof_conflict") return "proof_conflict";
+  if (semanticOutcome === "findings" && sharedRepairTurns >= 3) return "needs_judgment";
+  return semanticOutcome;
+};
+
 const SAFE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const HEAD_SHA = /^[a-f0-9]{40}$/;

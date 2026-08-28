@@ -313,7 +313,19 @@ interface ReviewEvent {
 interface ReviewProjection {
   run: Record<string, unknown>;
   phases: Array<{ round: number; stage: string; state: string; sharedRepairTurns: number; reviewJobs: number; proofRepairs: number; reviewedHeadSha: string | null }>;
-  candidates: Array<{ id: string; round: number; digest: string; state: string; createdAt: string }>;
+  candidates: Array<{
+    id: string;
+    round: number;
+    digest: string;
+    state: string;
+    createdAt: string;
+    reviewDispositions: Array<{
+      itemId: string;
+      status: "applied" | "declined" | "no_change";
+      reason: string;
+    }>;
+    reviewContextId: string | null;
+  }>;
   reviews: ReviewEvent[];
   headBindings: Array<Record<string, unknown>>;
 }
@@ -360,28 +372,47 @@ function ReviewTracePage({ runId }: { runId: string }) {
       {trace.phases.map((phase) => <article className="review-phase" key={`${phase.round}:${phase.stage}`}>
         <span className="eyebrow">Round {phase.round} · {human(phase.stage)}</span>
         <h2>{human(phase.state)}</h2>
-        <dl><div><dt>Review jobs</dt><dd>{phase.reviewJobs}</dd></div><div><dt>Author repairs</dt><dd>{phase.sharedRepairTurns} / 3</dd></div><div><dt>Proof repairs</dt><dd>{phase.proofRepairs}</dd></div></dl>
+        <dl><div><dt>Review jobs</dt><dd>{phase.reviewJobs}</dd></div><div><dt>{phase.stage === "self_check" ? "Self-check repairs" : "Semantic repair loops"}</dt><dd>{phase.stage === "self_check" ? `${phase.sharedRepairTurns} / 3` : "None"}</dd></div><div><dt>Proof repairs</dt><dd>{phase.proofRepairs}</dd></div></dl>
       </article>)}
     </div>
     <ol className="review-timeline">{trace.reviews.map((review, index) => {
       const inventory = inventories[review.id] ?? {};
       const findings = Array.isArray(inventory.findings) ? inventory.findings as Array<Record<string, unknown>> : [];
       const resolutions = Array.isArray(inventory.resolutions) ? inventory.resolutions as Array<Record<string, unknown>> : [];
-      const stale = review.reviewedHeadSha !== null && liveHead !== null && review.reviewedHeadSha !== liveHead;
+      const directionalClaims = Array.isArray(inventory.directionalClaims) ? inventory.directionalClaims as Array<Record<string, unknown>> : [];
+      const responseCandidate = trace.candidates.find((candidate) => candidate.reviewContextId === review.id);
+      const dispositions = responseCandidate?.reviewDispositions ?? [];
+      const headChanged = review.reviewedHeadSha !== null && liveHead !== null && review.reviewedHeadSha !== liveHead;
+      const stale = headChanged && responseCandidate === undefined;
       return <li key={review.id} className={`review-event ${review.outcome}`}>
         <div className="review-event-index">{index + 1}</div>
         <div className="review-event-body">
-          <div className="card-heading"><div><span className="eyebrow">Round {review.round} · {human(review.stage)} · {human(review.mode)}</span><h2>{human(review.outcome)}</h2></div><span className="guard">{review.reusedFromReviewId ? "Reused · no model call" : stale ? "Stale head" : review.reviewedHeadSha === null ? review.reviewer.provider : "Current head"}</span></div>
+          <div className="card-heading"><div><span className="eyebrow">Round {review.round} · {human(review.stage)} · {human(review.mode)}</span><h2>{human(review.outcome)}</h2></div><span className="guard">{review.reusedFromReviewId ? "Reused · no model call" : stale ? "Stale head" : headChanged ? "Author response head" : review.reviewedHeadSha === null ? review.reviewer.provider : "Current head"}</span></div>
           <p>Author {review.author.model} · Reviewer {review.reviewer.model} · {review.reviewer.reasoning}</p>
+          {review.stage === "independent" && <p className="guard-note">Complete means the external review ran and its evidence was saved. Its concerns do not fail the workflow. The author responds, then a human judges the plan.</p>}
           <dl><div><dt>Input</dt><dd><code>{review.inputId.slice(0, 16)}…</code></dd></div><div><dt>Finding set</dt><dd><code>{review.findingSetDigest?.slice(0, 16) ?? "Discovery pending"}</code></dd></div><div><dt>Head</dt><dd><code>{review.reviewedHeadSha?.slice(0, 12) ?? "pre-publish"}</code></dd></div><div><dt>Finished</dt><dd>{review.completedAt ? formatTime(review.completedAt) : "—"}</dd></div></dl>
           {stale && <p className="guard-note">This proof is for {review.reviewedHeadSha?.slice(0, 12)}. The pull request is now at {liveHead?.slice(0, 12)}.</p>}
-          {findings.length > 0 && <div className="review-findings"><h3>Fixed finding set</h3>{findings.map((finding) => {
+          {headChanged && responseCandidate && <p className="guard-note">The outside review remains bound to {review.reviewedHeadSha?.slice(0, 12)}. The current head contains the linked author response.</p>}
+          {findings.length > 0 && <div className="review-findings"><h3>{review.stage === "independent" ? "Review concerns" : "Fixed finding set"}</h3>{findings.map((finding) => {
             const resolution = resolutions.find((item) => item.findingId === finding.id);
+            const disposition = dispositions.find((item) => item.itemId === finding.id);
             const ranges = Array.isArray(finding.allowedRanges) ? finding.allowedRanges as Array<Record<string, unknown>> : [];
             const currentEvidence = Array.isArray(resolution?.currentEvidence) ? resolution.currentEvidence as Array<Record<string, unknown>> : [];
-            return <article key={String(finding.id)}><strong>{String(finding.id)}</strong><span>{human(String(resolution?.status ?? "open"))}</span><p>{String(finding.message ?? "")}</p>
+            return <article key={String(finding.id)}><strong>{String(finding.id)}</strong><span>{human(String(disposition?.status ?? resolution?.status ?? "awaiting author"))}</span><p>{String(finding.message ?? "")}</p>
               {typeof resolution?.rationale === "string" && <p>{resolution.rationale}</p>}
+              {disposition && <p><strong>Author:</strong> {disposition.reason}</p>}
               <div className="review-artifacts">{ranges.map((range, rangeIndex) => <code key={`source-${rangeIndex}`}>{String(range.path)}:{String(range.startLine)}-{String(range.endLine)}</code>)}{currentEvidence.map((range, rangeIndex) => <code key={`current-${rangeIndex}`}>Now {String(range.path)}:{String(range.startLine)}-{String(range.endLine)}</code>)}</div>
+            </article>;
+          })}</div>}
+          {directionalClaims.length > 0 && <div className="review-findings"><h3>Directional relationship evidence</h3>{directionalClaims.map((claim) => {
+            const proposal = claim.proposalFirst as Record<string, unknown> | undefined;
+            const requirement = claim.requirementFirst as Record<string, unknown> | undefined;
+            const disposition = dispositions.find((item) => item.itemId === claim.id);
+            return <article key={String(claim.id)}>
+              <strong>{String(claim.id)}</strong><span>{human(String(disposition?.status ?? claim.status ?? "unknown"))}</span>
+              <p><strong>Proposal-first:</strong> {String(proposal?.rationale ?? "No rationale")}</p>
+              <p><strong>Requirement-first:</strong> {String(requirement?.rationale ?? "No rationale")}</p>
+              {disposition && <p><strong>Author:</strong> {disposition.reason}</p>}
             </article>;
           })}</div>}
           {review.conflictingReviewId && <p className="guard-note">This result conflicts with {review.conflictingReviewId}. Human judgment is required.</p>}

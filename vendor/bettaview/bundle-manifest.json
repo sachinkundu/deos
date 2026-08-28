@@ -1,7 +1,7 @@
 {
-  "bundleVersion": "bettaview-openspec-traceability-2026-08-27",
+  "bundleVersion": "bettaview-openspec-traceability-directional-v4-2026-08-28",
   "sourceRepository": "sachinkundu/bettaview",
-  "sourceRevision": "444d4e4addc7313e85e5dd5506abea12452ffcd4",
+  "sourceRevision": "f7feb60c889febf69dce12b0d73cd0debbd63a4b",
   "files": [
     {
       "path": ".agents/skills/review-openspec-traceability/references/claims.md",
@@ -9,7 +9,7 @@
     },
     {
       "path": "bin/materialize-traceability.js",
-      "sha256": "0a3d98f9ea2bd37d628db9e54666d0106eae3dff35ca01cd13c02ef3bd4460d8"
+      "sha256": "34f0f499968d9afc89f7dd58d93beb61e5d43b775e741fa774321b3f7c6515f8"
     },
     {
       "path": "bin/review-traceability.js",
@@ -28,12 +28,28 @@
       "sha256": "e0c1c53f26fc155e8206eeb4fdeb5a35b6990d36b65084a5ed5bf4844302c20e"
     },
     {
+      "path": "prompts/openspec-semantic-traceability-proposal-first-v1.md",
+      "sha256": "05c68bccd92cc7616e512615ee8040e74e2299676c1e956f2f560778325d0e60"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-proposal-first-v1.schema.json",
+      "sha256": "8f5a6e9f6144cd396c9e2eb5a26269fdaa103cc478103e667d45ba7b3b535d44"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-requirement-first-v1.md",
+      "sha256": "46c75249a437f8f4518f4a701357d34b156693e37983d0b44da18c33512cc455"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-requirement-first-v1.schema.json",
+      "sha256": "343061f10b7fa73728e39d4a3ba6fabfa018e95b6bf5215dad54cbb36bdfbe3c"
+    },
+    {
       "path": "src/review-traceability.js",
-      "sha256": "d85ae4fdff6655ef4beb4c403869b21b9263a79800b285eb06f300d42eaf3302"
+      "sha256": "89809c07b3de1fd0d50333f07e5aad24a015a65a2abef8693b76c3ac1fb5b5de"
     },
     {
       "path": "src/traceability.js",
-      "sha256": "08720037c68c74a111b435c789611b1f17c4147921d7b14fe6a933b1f91538df"
+      "sha256": "b20ef03b00c268e8cca06bc60f07369f1b07867b293435a48859ac94d8c82e8a"
     }
   ]
 }

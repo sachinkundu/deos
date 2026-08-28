@@ -60,6 +60,8 @@ interface CandidateRow {
   change_id: string;
   candidate_digest: string;
   review_set_digest: string;
+  candidate_r2_key: string;
+  candidate_sha256: string;
   state: string;
   created_at: string;
 }
@@ -111,7 +113,7 @@ export class TraceReviewReadStore {
       ).bind(runId).all<ReviewRow>(),
       this.db.prepare(
         `SELECT candidate_id, round, base_commit, change_id, candidate_digest,
-                review_set_digest, state, created_at
+                review_set_digest, candidate_r2_key, candidate_sha256, state, created_at
          FROM planning_candidates WHERE run_id = ? ORDER BY round, created_at`,
       ).bind(runId).all<CandidateRow>(),
       this.db.prepare(
@@ -161,6 +163,31 @@ export class TraceReviewReadStore {
           })),
       };
     }));
+    const candidateDtos = await Promise.all(candidates.results.map(async (candidate) => {
+      const object = await this.artifacts.get(candidate.candidate_r2_key);
+      if (object === null) throw new TraceReviewArtifactError();
+      const bytes = await object.arrayBuffer();
+      if (await sha256Hex(bytes) !== candidate.candidate_sha256) throw new TraceReviewArtifactError();
+      const durable = JSON.parse(new TextDecoder().decode(bytes)) as {
+        reviewDispositions?: unknown;
+        reviewContextId?: unknown;
+      };
+      if (durable.reviewDispositions !== undefined && !Array.isArray(durable.reviewDispositions)) {
+        throw new TraceReviewArtifactError();
+      }
+      return {
+        id: candidate.candidate_id,
+        round: candidate.round,
+        baseCommit: candidate.base_commit,
+        change: candidate.change_id,
+        digest: candidate.candidate_digest,
+        reviewSetDigest: candidate.review_set_digest,
+        state: candidate.state,
+        createdAt: candidate.created_at,
+        reviewDispositions: durable.reviewDispositions ?? [],
+        reviewContextId: typeof durable.reviewContextId === "string" ? durable.reviewContextId : null,
+      };
+    }));
     return {
       run,
       phases: phases.results.map((phase) => ({
@@ -175,16 +202,7 @@ export class TraceReviewReadStore {
         revision: phase.revision,
         updatedAt: phase.updated_at,
       })),
-      candidates: candidates.results.map((candidate) => ({
-        id: candidate.candidate_id,
-        round: candidate.round,
-        baseCommit: candidate.base_commit,
-        change: candidate.change_id,
-        digest: candidate.candidate_digest,
-        reviewSetDigest: candidate.review_set_digest,
-        state: candidate.state,
-        createdAt: candidate.created_at,
-      })),
+      candidates: candidateDtos,
       reviews: reviewDtos,
       headBindings: bindings.results,
     };

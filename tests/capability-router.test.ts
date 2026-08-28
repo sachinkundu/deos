@@ -441,7 +441,7 @@ test("Codex Responses calls use the saved OpenRouter model and replay durable ou
     now: () => NOW,
   });
   const token = await mintCapabilityToken(modelClaims, SECRET);
-  const request = () => router.handle(new Request(
+  const request = (input = "Inspect the repository.") => router.handle(new Request(
     "https://worker.example/capabilities/openrouter/v1/responses",
     {
       method: "POST",
@@ -452,7 +452,7 @@ test("Codex Responses calls use the saved OpenRouter model and replay durable ou
       },
       body: JSON.stringify({
         model: modelClaims.model,
-        input: "Inspect the repository.",
+        input,
         stream: true,
         tools: [
           { type: "function", name: "exec", parameters: { type: "object" } },
@@ -463,10 +463,12 @@ test("Codex Responses calls use the saved OpenRouter model and replay durable ou
   ));
   const first = await request();
   const second = await request();
+  const otherDirection = await request("Review requirements back to proposal statements.");
   assert.equal(first.status, 200);
   assert.equal(second.status, 200);
+  assert.equal(otherDirection.status, 200);
   assert.equal(await first.text(), await second.text());
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   const captured = proxied as unknown as Record<string, unknown>;
   assert.equal(captured.model, modelClaims.model);
   assert.equal(captured.store, false);
@@ -485,6 +487,7 @@ test("Codex Responses calls use the saved OpenRouter model and replay durable ou
     },
   ));
   const receiptBody = await receipts.json() as { receipts: Array<{ providerResourceId: string }> };
+  assert.equal(receiptBody.receipts.length, 2);
   assert.equal(receiptBody.receipts[0].providerResourceId, "resp-1");
 });
 

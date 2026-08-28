@@ -310,6 +310,12 @@ interface SandboxControllerDependencies {
     change: string;
     files: readonly { path: string; content: string }[];
     reviewReplies: readonly { commentId: number; body: string }[];
+    reviewDispositions: readonly {
+      itemId: string;
+      status: "applied" | "declined" | "no_change";
+      reason: string;
+    }[];
+    reviewContextId: string | null;
   }) => Promise<void>;
   repairScope?: (runId: string) => Promise<{
     files: readonly { path: string; content: string }[];
@@ -915,7 +921,10 @@ export class SandboxAgentController {
     if (this.dependencies.persistPlanningCandidate === undefined) {
       throw new Error("trusted planning candidate writer is unavailable");
     }
-    const durableJob = JSON.parse(attempt.job_spec_json) as { openspecChange?: unknown };
+    const durableJob = JSON.parse(attempt.job_spec_json) as {
+      openspecChange?: unknown;
+      materializedContext?: unknown;
+    };
     if (
       typeof durableJob.openspecChange !== "string" ||
       !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(durableJob.openspecChange)
@@ -953,6 +962,43 @@ export class SandboxAgentController {
     } catch {
       throw new PlanningCandidateRejectedError("trusted planning review replies are invalid");
     }
+    let reviewDispositions: readonly {
+      itemId: string;
+      status: "applied" | "declined" | "no_change";
+      reason: string;
+    }[] = [];
+    let reviewContextId: string | null = null;
+    if (run.definition_id === "simple-traceability" && run.definition_version >= 12) {
+      try {
+        reviewDispositions = JSON.parse((await sandbox.readFile("/deos/output/review-dispositions.json", {
+          encoding: "utf8",
+        })).content) as typeof reviewDispositions;
+        if (!Array.isArray(reviewDispositions)) throw new Error("not an array");
+        const materialized = typeof durableJob.materializedContext === "string"
+          ? JSON.parse(durableJob.materializedContext) as {
+              traceabilityFeedback?: {
+                reviewId?: unknown;
+                phase?: unknown;
+                inventory?: { findings?: Array<{ id?: unknown }> };
+              } | null;
+            }
+          : null;
+        const expectedIds = materialized?.traceabilityFeedback?.phase === "independent"
+          ? (materialized.traceabilityFeedback.inventory?.findings ?? []).map((finding) => finding.id)
+          : [];
+        reviewContextId = materialized?.traceabilityFeedback?.phase === "independent" &&
+            typeof materialized.traceabilityFeedback.reviewId === "string"
+          ? materialized.traceabilityFeedback.reviewId
+          : null;
+        if (
+          expectedIds.some((id) => typeof id !== "string") ||
+          JSON.stringify(reviewDispositions.map((item) => item.itemId).sort()) !==
+            JSON.stringify([...expectedIds].sort())
+        ) throw new Error("wrong disposition set");
+      } catch {
+        throw new PlanningCandidateRejectedError("trusted external review dispositions are invalid");
+      }
+    }
     const revision = await sandbox.exec(
       ["git", "rev-parse", "HEAD"],
       { cwd: "/deos/workspace/repository", timeout: 60_000 },
@@ -970,6 +1016,8 @@ export class SandboxAgentController {
       change: durableJob.openspecChange,
       files,
       reviewReplies,
+      reviewDispositions,
+      reviewContextId,
     });
   }
 

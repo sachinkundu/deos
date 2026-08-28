@@ -140,6 +140,7 @@ const SYSTEM_ACTIONS = new Set([
   "github.verify_planning_merge",
   "github.publish_planning_candidate",
   "traceability.start_new_round",
+  "traceability.publish_author_response",
 ]);
 const AGENT_CAPABILITY_ACTIONS = new Set([
   "github.publish_planning_work_product",

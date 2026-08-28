@@ -25,6 +25,12 @@ function assertNonEmptyString(value, label) {
   }
 }
 
+function assertExactSet(actual, expected, label) {
+  if (actual.size !== expected.size || [...actual].some((value) => !expected.has(value))) {
+    fail(`${label} must exactly match the derived directional claim set.`);
+  }
+}
+
 function assertInsideChange(changeDirectory, candidate, label) {
   const relative = path.relative(changeDirectory, candidate);
   if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
@@ -297,7 +303,7 @@ async function loadSemanticVersion(changeDirectory, sidecar) {
     capabilityByPath.set(capability.path, resolved);
   }
 
-  if (sidecar.version === 3) {
+  if (sidecar.version >= 3) {
     const proposal = snapshots.get("proposal.md");
     if (!proposal) fail("Version 3 review.documents must pin proposal.md.");
     const declarations = proposalCapabilityDeclarations(proposal.lines);
@@ -305,12 +311,12 @@ async function loadSemanticVersion(changeDirectory, sidecar) {
     const declaredPaths = declarations.map((entry) => entry.path).sort();
     const reviewedPaths = capabilities.map((entry) => entry.path).sort();
     if (JSON.stringify(declaredPaths) !== JSON.stringify(reviewedPaths)) {
-      fail(`Version 3 capabilities must exactly match proposal declarations (declared: ${declaredPaths.join(", ")}; reviewed: ${reviewedPaths.join(", ")}).`);
+      fail(`Version ${sidecar.version} capabilities must exactly match proposal declarations (declared: ${declaredPaths.join(", ")}; reviewed: ${reviewedPaths.join(", ")}).`);
     }
     const expectedSpecFiles = declarations.map((entry) => `specs/${entry.path}/spec.md`).sort();
     const actualSpecFiles = await listSpecFiles(changeDirectory);
     if (JSON.stringify(expectedSpecFiles) !== JSON.stringify(actualSpecFiles)) {
-      fail(`Version 3 spec files must exactly match proposal capabilities (expected: ${expectedSpecFiles.join(", ")}; found: ${actualSpecFiles.join(", ")}).`);
+      fail(`Version ${sidecar.version} spec files must exactly match proposal capabilities (expected: ${expectedSpecFiles.join(", ")}; found: ${actualSpecFiles.join(", ")}).`);
     }
   }
 
@@ -369,7 +375,8 @@ async function loadSemanticVersion(changeDirectory, sidecar) {
   }
 
   let proposalStatements = [];
-  if (sidecar.version === 3) {
+  let directionalLinks = [];
+  if (sidecar.version >= 3) {
     const proposalDocument = snapshots.get("proposal.md");
     const expectedStatements = proposalChangeStatements(proposalDocument.lines);
     if (expectedStatements.length === 0) fail("proposal.md has no list statements under ## What Changes.");
@@ -412,10 +419,12 @@ async function loadSemanticVersion(changeDirectory, sidecar) {
         targetIds.add(linkId);
         const link = linkById.get(linkId);
         if (!link) fail(`${label}.requirementLinks references unknown link ${linkId}.`);
-        const citesStatement = link.proposalEvidence.some((evidence) => (
-          evidence.startLine >= expected.startLine && evidence.endLine <= expected.endLine
-        ));
-        if (!citesStatement) fail(`${label}.requirementLinks references ${linkId}, but that link does not cite this proposal statement.`);
+        if (sidecar.version === 3) {
+          const citesStatement = link.proposalEvidence.some((evidence) => (
+            evidence.startLine >= expected.startLine && evidence.endLine <= expected.endLine
+          ));
+          if (!citesStatement) fail(`${label}.requirementLinks references ${linkId}, but that link does not cite this proposal statement.`);
+        }
       }
       const resolved = { ...statement, proposal };
       proposalStatements.push(resolved);
@@ -424,15 +433,60 @@ async function loadSemanticVersion(changeDirectory, sidecar) {
     for (const expected of expectedStatements) {
       if (!statementById.has(expected.id)) fail(`Proposal statement proposal.md:${expected.startLine}-${expected.endLine} has no forward coverage record.`);
     }
-    for (const link of links) {
-      const citedStatements = expectedStatements.filter((statement) => link.proposalEvidence.some((evidence) => (
-        evidence.startLine >= statement.startLine && evidence.endLine <= statement.endLine
-      )));
-      for (const statement of citedStatements) {
-        if (!statementById.get(statement.id).requirementLinks.includes(link.id)) {
-          fail(`Link ${link.id} cites ${statement.id}, but the proposal statement does not map forward to that link.`);
+    if (sidecar.version === 3) {
+      for (const link of links) {
+        const citedStatements = expectedStatements.filter((statement) => link.proposalEvidence.some((evidence) => (
+          evidence.startLine >= statement.startLine && evidence.endLine <= statement.endLine
+        )));
+        for (const statement of citedStatements) {
+          if (!statementById.get(statement.id).requirementLinks.includes(link.id)) {
+            fail(`Link ${link.id} cites ${statement.id}, but the proposal statement does not map forward to that link.`);
+          }
         }
       }
+    }
+    if (sidecar.version === 4) {
+      if (!Array.isArray(sidecar.directionalLinks)) fail("directionalLinks must be an array in version 4.");
+      const expectedClaims = new Map();
+      for (const statement of proposalStatements) {
+        for (const linkId of statement.requirementLinks) {
+          expectedClaims.set(`${statement.id}\0${linkId}`, { proposalClaimed: true, requirementClaimed: false });
+        }
+      }
+      for (const link of links) {
+        for (const statement of expectedStatements.filter((candidate) => link.proposalEvidence.some((evidence) => (
+          evidence.startLine >= candidate.startLine && evidence.endLine <= candidate.endLine
+        )))) {
+          const key = `${statement.id}\0${link.id}`;
+          const claim = expectedClaims.get(key) || { proposalClaimed: false, requirementClaimed: false };
+          claim.requirementClaimed = true;
+          expectedClaims.set(key, claim);
+        }
+      }
+      const observedClaims = new Set();
+      directionalLinks = sidecar.directionalLinks.map((value, index) => {
+        const label = `directionalLinks[${index}]`;
+        assertPlainObject(value, label);
+        assertNonEmptyString(value.proposalStatementId, `${label}.proposalStatementId`);
+        assertNonEmptyString(value.requirementLinkId, `${label}.requirementLinkId`);
+        const key = `${value.proposalStatementId}\0${value.requirementLinkId}`;
+        if (observedClaims.has(key)) fail(`${label} duplicates directional link ${key}.`);
+        observedClaims.add(key);
+        const expected = expectedClaims.get(key);
+        if (!expected) fail(`${label} is not present in either directional claim set.`);
+        const expectedStatus = expected.proposalClaimed && expected.requirementClaimed
+          ? "confirmed"
+          : expected.proposalClaimed ? "proposal_only" : "requirement_only";
+        if (value.status !== expectedStatus) fail(`${label}.status must be ${expectedStatus}.`);
+        assertPlainObject(value.proposalFirst, `${label}.proposalFirst`);
+        assertPlainObject(value.requirementFirst, `${label}.requirementFirst`);
+        if (value.proposalFirst.claimed !== expected.proposalClaimed) fail(`${label}.proposalFirst.claimed is inconsistent.`);
+        if (value.requirementFirst.claimed !== expected.requirementClaimed) fail(`${label}.requirementFirst.claimed is inconsistent.`);
+        assertNonEmptyString(value.proposalFirst.rationale, `${label}.proposalFirst.rationale`);
+        assertNonEmptyString(value.requirementFirst.rationale, `${label}.requirementFirst.rationale`);
+        return value;
+      });
+      assertExactSet(observedClaims, new Set(expectedClaims.keys()), "directionalLinks");
     }
   }
 
@@ -488,8 +542,12 @@ async function loadSemanticVersion(changeDirectory, sidecar) {
   if (sidecar.review.overall === "pass" && proposalStatements.some((statement) => statement.coverage !== "sufficient")) {
     fail('review.overall cannot be "pass" when a proposal statement is not sufficiently covered.');
   }
+  if (sidecar.review.overall === "pass" && directionalLinks.some((link) => link.status !== "confirmed")) {
+    fail('review.overall cannot be "pass" when directional claims disagree.');
+  }
   const hasAdverseJudgment = judgments.some((judgment) => !isPassingJudgment(judgment))
-    || proposalStatements.some((statement) => statement.coverage !== "sufficient");
+    || proposalStatements.some((statement) => statement.coverage !== "sufficient")
+    || directionalLinks.some((link) => link.status !== "confirmed");
   if (sidecar.review.overall === "findings" && findings.length === 0 && !hasAdverseJudgment) {
     fail('review.overall cannot be "findings" when findings is empty.');
   }
@@ -501,6 +559,7 @@ async function loadSemanticVersion(changeDirectory, sidecar) {
     capabilities,
     links,
     proposalStatements,
+    directionalLinks,
     findings,
   };
 }
@@ -537,8 +596,8 @@ export async function loadTraceability(changeDirectoryArgument, sidecarFileArgum
   }
 
   assertPlainObject(sidecar, SIDECAR_NAME);
-  if (![1, 2, 3].includes(sidecar.version)) {
-    fail(`Unsupported traceability sidecar version: ${JSON.stringify(sidecar.version)} (expected 1, 2, or 3).`);
+  if (![1, 2, 3, 4].includes(sidecar.version)) {
+    fail(`Unsupported traceability sidecar version: ${JSON.stringify(sidecar.version)} (expected 1, 2, 3, or 4).`);
   }
 
   const expectedChange = path.basename(changeDirectory);
@@ -586,7 +645,7 @@ export function formatTraceability(traceability) {
   ));
   if (traceability.version === 1) return formattedLinks.join("\n\n");
 
-  const proposalCoverage = traceability.version === 3
+  const proposalCoverage = traceability.version >= 3
     ? [
       "proposal coverage:",
       ...traceability.proposalStatements.flatMap((statement) => [

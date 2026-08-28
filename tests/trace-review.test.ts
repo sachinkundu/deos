@@ -8,6 +8,7 @@ import {
   nextRepairTurn,
   reviewInputId,
   validateClosedSetRecheck,
+  workflowOutcomeForReview,
   type TraceFinding,
 } from "../src/trace-review.ts";
 
@@ -140,4 +141,12 @@ test("shared author repair turns stop exactly at three", () => {
   assert.equal(nextRepairTurn(0), 1);
   assert.equal(nextRepairTurn(2), 3);
   assert.throws(() => nextRepairTurn(3), /exhausted/);
+});
+
+test("independent semantic concerns complete the external stage for human judgment", () => {
+  assert.equal(workflowOutcomeForReview("independent", "pass", 0), "pass");
+  assert.equal(workflowOutcomeForReview("independent", "findings", 0), "pass");
+  assert.equal(workflowOutcomeForReview("independent", "proof_conflict", 3), "pass");
+  assert.equal(workflowOutcomeForReview("self_check", "findings", 2), "findings");
+  assert.equal(workflowOutcomeForReview("self_check", "findings", 3), "needs_judgment");
 });
