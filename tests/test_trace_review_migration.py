@@ -80,6 +80,22 @@ def test_trace_review_storage_is_additive_and_secret_free() -> None:
         "content_type",
         "provider_request_id",
     } <= response_columns
+    retry_columns = {
+        row[1]
+        for row in database.execute("PRAGMA table_info(agent_stage_retries)")
+    }
+    assert {
+        "retry_kind",
+        "source_definition_id",
+        "source_definition_version",
+        "source_definition_digest",
+        "target_definition_id",
+        "target_definition_version",
+        "target_definition_digest",
+        "source_workflow_instance_id",
+        "target_workflow_instance_id",
+        "source_delivery_id",
+    } <= retry_columns
     all_columns = {
         row[1]
         for table in (

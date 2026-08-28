@@ -93,3 +93,12 @@ Review IDs, links, hashes, quotes, and marks SHALL stay in sidecars, file lists,
 
 - **WHEN** DEOS posts reviewed OpenSpec plan work
 - **THEN** its standard files have only normal OpenSpec text and the proof stays outside them
+
+### Requirement: Preserve compatible definition-handoff evidence
+
+When DEOS performs the guarded version 11 to version 12 review-tail handoff, it SHALL preserve one durable retry record with the failed attempt, operator, transition, source and target definition identities, and old and new Workflow instance IDs. The record SHALL link to the unchanged run, candidate, pull request, and prior proof. It MUST NOT rewrite earlier evidence as if it ran under version 12.
+
+#### Scenario: Operator resumes the compatible failed tail
+
+- **WHEN** the guarded handoff establishes the replacement Workflow instance
+- **THEN** the evidence shows which work ran under version 11 and which unfinished tail resumed under version 12

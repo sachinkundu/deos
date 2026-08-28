@@ -182,6 +182,20 @@ A structurally valid independent review SHALL complete successfully even when it
 - **WHEN** the independent review is structurally valid and has findings or disputed links
 - **THEN** the external-review workflow outcome is `pass` while the semantic concerns remain visible for the author and human
 
+### Requirement: Upgrade only one compatible failed review tail
+
+DEOS MAY upgrade a failed version 11 run to version 12 only when its latest failed attempt is `independent_discovery`, its Sandbox cleanup is `destroyed`, and the completed path ends after the trusted initial pull request publication. The target SHALL be the exact registered bundled version 12 definition. DEOS SHALL preserve the run ID, planning candidate, pull request, reviewed files, model settings, and all prior evidence. It SHALL record the source and target definition IDs, versions, and digests and the old and new Workflow instance IDs. It SHALL create a new version 12 Workflow instance for the same run at `independent_discovery` and MUST NOT restart the old version 11 instance. Every other cross-version retry SHALL fail before mutation.
+
+#### Scenario: Version 11 failed at the compatible boundary
+
+- **WHEN** an authenticated operator retries the latest cleaned-up version 11 `independent_discovery` failure against the registered version 12 definition
+- **THEN** DEOS keeps the completed author, self-check, candidate, and pull request proof and starts the version 12 independent review and author-response tail on the same run
+
+#### Scenario: Requested upgrade is not the approved shape
+
+- **WHEN** the run, node, attempt, cleanup state, source definition, target definition, or completed prefix differs from the one compatible handoff
+- **THEN** DEOS rejects the request before changing D1 or creating a Workflow instance
+
 ### Requirement: Keep proof repair apart from plan repair
 
 DEOS SHALL set one bound for repair of a bad sidecar or invalid review result. It SHALL set another bound for self-check author fixes to the plan text. A proof repair SHALL not count as an author fix. It MUST NOT change the base finding set or the plan under review. When the self-check contradicts its own saved rating, DEOS SHALL compare the exact inputs and source changes. It SHALL reuse the prior result for an identical input. If no source change explains the conflict, it SHALL stop that automated loop and show both results to the person. A different finding or rating from the independent reviewer SHALL be allowed and MUST NOT be treated as a proof fault merely because it differs from the self-check.

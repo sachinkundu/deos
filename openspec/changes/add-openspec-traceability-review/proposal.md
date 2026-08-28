@@ -21,6 +21,7 @@ The first simple planning run worked. DEOS made a plan, revised it, and merged i
 - Run each review in a new DEOS Sandbox. Pin one BettaView review tool version. DEOS owns the workflow and saved proof. It also owns login and provider changes.
 - Link safe review events by phase, mode, round, plan, finding, pull request head, job, model, tool, file list, and provider task.
 - Set a firm attempt limit for each review stage. Count blocked and failed retries. Also limit each job. The private self-check may use up to three plan repair turns. The independent stage completes after one valid two-pass review and one author response. Then ask for human approval and show every finding, disputed link, and author disposition. A missing plan, failed deterministic check, unsafe input, or missing proof still blocks the gate.
+- Let an authenticated operator resume the exact cleaned-up version 11 run that failed at `independent_discovery` by moving only its unfinished tail to version 12. Keep its run, candidate, pull request, and prior proof. Record both definition digests and Workflow instance IDs. Start a new version 12 Workflow instance at the failed review node. Reject every other cross-version retry.
 
 ### Non-goals
 
@@ -51,6 +52,7 @@ The first simple planning run worked. DEOS made a plan, revised it, and merged i
 - Changes the planning flow, saved state, review job format, result format, and proof collection.
 - Replaces the direct OpenRouter completion call with a pinned Codex coding-agent process and a capability-scoped DEOS Responses proxy that keeps the raw OpenRouter key outside the Sandbox.
 - Adds saved review proof and lookup records. Trusted steps report the result to GitHub and Linear.
+- Extends the durable stage-retry record with one guarded version 11 to version 12 handoff for the already-published independent-review boundary.
 - Adds a trace view that needs a login. It uses one fixed BettaView review tool version and its display patterns.
 - Uses the finished simple-flow proof only as a starting point. Completion needs a fresh Linear run from the real provider. The run must cover both checks and a repair. It must prove exact versions, saved records, stale handling, a new human round, provider links, Sandbox cleanup, and portal views. It also needs visual proof of the new provider and portal state.
 - Runtime code and prompts stay out of proposal, specification, and design pull requests.

@@ -221,6 +221,8 @@ DEOS will keep the same run, candidate, pull request, model settings, and eviden
 
 The retry endpoint is authenticated and idempotent. It will accept only the latest failed attempt for that node after cleanup is `destroyed`. An unclear Workflow restart remains pending for safe operator replay. It will not allocate a new Linear run or require a new provider delivery.
 
+One compatibility case may replace the failed Workflow instance instead of restarting it. A version 11 run that failed at `independent_discovery` may move to the exact bundled version 12 definition because both versions have the same completed prefix through `publish_initial`, while version 12 adds the required author-response tail after that node. Trusted code will require the exact source and target versions and digests, the latest failed independent attempt, destroyed cleanup, the same run and current pull request, and the registered target definition. It will save the old and new Workflow instance IDs and both definition identities in the retry row. It will update the run and retry transition in one D1 batch, then create a new Workflow instance for the same run at `independent_discovery`. The old instance will not restart. No other node, source version, target version, or graph change is eligible.
+
 ## State flow
 
 ```mermaid
@@ -239,7 +241,7 @@ stateDiagram-v2
     create_planning_pr --> stopped: hard fault
     self_check --> stopped: invalid proof or job limit
     independent_review --> stopped: invalid proof or job limit
-    stopped --> independent_review: audited operator retry of failed independent attempt
+    stopped --> independent_review: audited retry or guarded v11 to v12 tail handoff
     human_judgment --> [*]
 ```
 
@@ -273,6 +275,7 @@ For a review step:
 | Record | Main facts | Use |
 | --- | --- | --- |
 | Existing `run_work_products` | Repo, base, branch, pull request, head, and provider receipts. | Keeps one plan pull request. |
+| `agent_stage_retries` | Failed attempt, retry node, old and new definition identities, old and new Workflow instance IDs, transition, operator, and provider result. | Restarts one failed review or performs the single compatible version 11 to version 12 tail handoff. |
 | `planning_candidates` | Plan ID, run, round, source attempt, base, file hashes, author dispositions, source review, check result, state, and times. | Names one fixed plan copy and its response to outside review. |
 | `trace_review_phases` | Run, round, stage, state, current plan, base findings, accepted review, self-check repair turns, job and proof counts, and revision. | Owns limits, pass, and human escalation. |
 | `trace_reviews` | Review and input IDs, stage, mode, plan, head, attempt, model provider and settings, bundle hashes, result, reuse, conflict, and times. | Indexes each review fact. |
@@ -303,6 +306,7 @@ No table will hold a provider secret. Full plan text and full review text will s
 | A review job or proof limit ends without valid proof. | Save `stopped`. Do not enter human review. |
 | Pull request head changes. | Mark the link stale. Reuse only after exact file checks. |
 | A provider call is unclear. | Read exact provider state before retry. |
+| A cross-version retry names another source, target, node, digest, attempt, or unfinished prefix. | Reject it before changing the run or creating a Workflow instance. |
 | A portal artifact fails its hash. | Hide it as accepted proof. Show a guarded error. |
 | Portal or R2 is down. | Keep D1 as flow authority. The page must not run the flow. |
 | Cleanup fails. | Keep the review non-final until cleanup is reconciled. |

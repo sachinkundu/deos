@@ -44,6 +44,11 @@ The flow SHALL save the active review round, stage, mode, self-check repair-turn
 - **WHEN** the same review input ID reaches the closed phase again
 - **THEN** the flow reuses the accepted result without spending another job try
 
+#### Scenario: Compatible failed review tail is upgraded
+
+- **WHEN** a version 11 run has published its exact plan and its latest cleaned-up `independent_discovery` attempt failed
+- **THEN** an authenticated retry may bind that unchanged completed prefix to the exact registered version 12 definition, replace the Workflow instance, and continue the same run through independent review, author response, and human review
+
 ### Requirement: Bound the self-check repair loop and external work
 
 The flow SHALL set one limit of three self-check author-repair turns for each round. The independent stage SHALL not use that count and SHALL not start a semantic repair loop. The flow SHALL also set a job limit for each review stage. Every started review job SHALL use one try. This includes a retry after a blocked or failed job. A saved-result reuse or trusted unchanged-file rebind SHALL not use a try because no review job starts. Each review job SHALL also have a firm time limit. A repair turn SHALL count only when a fresh author coding agent Codex job starts because of a self-check semantic finding. A bad sidecar or invalid result SHALL use the proof-repair limit and SHALL not use an author-repair turn. A same-stage self-check proof conflict without a source change SHALL stop that automated loop without a referee model. The independent stage SHALL still finish on the current valid head before that conflict goes to human judgment. A later human change SHALL start a new review round. That round SHALL get new full checks and fresh limits. DEOS SHALL keep all past proof.

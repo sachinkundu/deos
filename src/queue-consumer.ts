@@ -23,6 +23,7 @@ import { OpenRouterReviewClient, parseSupportedOpenRouterModels } from "./openro
 import { D1R2ProviderDiagnosticStore } from "./provider-diagnostics.ts";
 import { D1R2OpenRouterResponseStore } from "./openrouter-response-store.ts";
 import { AgentStageRetryController, D1AgentStageRetryStore } from "./stage-retry.ts";
+import { loadBundledWorkflowDefinitionRegistry } from "./workflow-bundle.ts";
 
 export { DeosWorkflow, Sandbox };
 
@@ -73,18 +74,23 @@ const completionReconciler = (env: Env): WorkflowCompletionReconciler =>
     new LinearCommentOperatorNotice(env.LINEAR_API_URL, env.LINEAR_APP_ACCESS_TOKEN),
   );
 
-const stageRetryController = (env: Env): AgentStageRetryController =>
-  new AgentStageRetryController(
+const stageRetryController = async (env: Env): Promise<AgentStageRetryController> => {
+  const definitions = await loadBundledWorkflowDefinitionRegistry();
+  const targetDefinition = definitions["simple-traceability"];
+  if (targetDefinition === undefined) throw new Error("traceability workflow definition is missing");
+  return new AgentStageRetryController(
     new D1AgentStageRetryStore(env.DB),
     env.ORCHESTRATION_WORKFLOW as unknown as QueueConsumerEnv["ORCHESTRATION_WORKFLOW"],
     env.STAGE_RETRY_SECRET,
+    targetDefinition,
   );
+};
 
 export default {
-  fetch(request, env) {
+  async fetch(request, env) {
     const path = new URL(request.url).pathname;
     if (path === "/cleanup-audit") return cleanupAuditor(env).handle(request);
-    if (path === "/stage-retries") return stageRetryController(env).handle(request);
+    if (path === "/stage-retries") return (await stageRetryController(env)).handle(request);
     if (!path.startsWith("/capabilities/")) return new Response("not found", { status: 404 });
     return capabilityRouter(env).handle(request);
   },
