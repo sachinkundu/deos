@@ -64,6 +64,12 @@ export interface GitHubPlanningPullRequest {
   baseBranch: string;
 }
 
+export interface GitHubCheckRunReceipt {
+  checkRunId: string;
+  url: string;
+  reconciled: boolean;
+}
+
 export interface GitHubTokenProvider {
   token(): Promise<string>;
 }
@@ -505,6 +511,76 @@ export class GitHubCapabilityAdapter {
       reviewReplyIds: reviewReplies.ids,
       reconciled: reconciled || reviewReplies.reconciled,
     };
+  }
+
+  async upsertTraceReviewCheck(input: {
+    repository: string;
+    headSha: string;
+    externalId: string;
+    detailsUrl: string;
+    title: string;
+    summary: string;
+    conclusion: "success" | "neutral" | "failure";
+  }): Promise<GitHubCheckRunReceipt> {
+    const token = await this.tokens.token();
+    const name = "DEOS OpenSpec traceability";
+    const list = await this.json(
+      token,
+      `/repos/${input.repository}/commits/${input.headSha}/check-runs?check_name=${encodeURIComponent(name)}`,
+    ) as { check_runs?: Array<{ id?: number; external_id?: string }> };
+    if (!Array.isArray(list.check_runs)) throw new Error("GitHub Check Run list is invalid");
+    const matches = list.check_runs.filter((check) => check.external_id === input.externalId);
+    if (matches.length > 1) throw new Error("GitHub Check Run selection is ambiguous");
+    const payload = {
+      name,
+      head_sha: input.headSha,
+      external_id: input.externalId,
+      details_url: input.detailsUrl,
+      status: "completed",
+      conclusion: input.conclusion,
+      output: { title: input.title, summary: input.summary },
+    };
+    let id = matches[0]?.id;
+    let reconciled = id !== undefined;
+    try {
+      const response = await this.json(
+        token,
+        id === undefined
+          ? `/repos/${input.repository}/check-runs`
+          : `/repos/${input.repository}/check-runs/${id}`,
+        { method: id === undefined ? "POST" : "PATCH", body: payload },
+      ) as { id?: number };
+      if (typeof response.id !== "number") throw new Error("GitHub Check Run response is invalid");
+      id = response.id;
+    } catch {
+      const after = await this.json(
+        token,
+        `/repos/${input.repository}/commits/${input.headSha}/check-runs?check_name=${encodeURIComponent(name)}`,
+      ) as { check_runs?: Array<{ id?: number; external_id?: string }> };
+      const recovered = after.check_runs?.filter((check) => check.external_id === input.externalId) ?? [];
+      if (recovered.length !== 1 || typeof recovered[0]?.id !== "number") {
+        throw new Error("GitHub Check Run write is ambiguous");
+      }
+      id = recovered[0].id;
+      reconciled = true;
+    }
+    const confirmed = await this.json(
+      token,
+      `/repos/${input.repository}/check-runs/${id}`,
+    ) as {
+      id?: number;
+      external_id?: string;
+      head_sha?: string;
+      details_url?: string;
+      conclusion?: string;
+      html_url?: string;
+    };
+    if (
+      confirmed.id !== id || confirmed.external_id !== input.externalId ||
+      confirmed.head_sha !== input.headSha || confirmed.details_url !== input.detailsUrl ||
+      confirmed.conclusion !== input.conclusion || typeof confirmed.html_url !== "string"
+    ) throw new Error("GitHub Check Run read-back mismatch");
+    return { checkRunId: String(id), url: confirmed.html_url, reconciled };
   }
 
   async readReviewFeedback(repository: string, pullRequestNumber: number): Promise<readonly Record<string, unknown>[]> {

@@ -1,0 +1,55 @@
+{
+  "bundleVersion": "bettaview-openspec-traceability-directional-v4-2026-08-28",
+  "sourceRepository": "sachinkundu/bettaview",
+  "sourceRevision": "de22c3cf9a95285647bbf31cac1d6242bef6142a",
+  "files": [
+    {
+      "path": ".agents/skills/review-openspec-traceability/references/claims.md",
+      "sha256": "38102de5a4c46cd21db45fdb9e25e4d32f5ad246e27dc2ba77dc593571e66289"
+    },
+    {
+      "path": "bin/materialize-traceability.js",
+      "sha256": "34f0f499968d9afc89f7dd58d93beb61e5d43b775e741fa774321b3f7c6515f8"
+    },
+    {
+      "path": "bin/review-traceability.js",
+      "sha256": "fb2a3037176426189ea43d5b46ffc7823a69d060b846deb9d1bfbe18214f93d1"
+    },
+    {
+      "path": "bin/traceability.js",
+      "sha256": "5dd948355ef228834d02a90720865668d38e04fb2b7b2fc7786318271d591c83"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-bidirectional-v2.md",
+      "sha256": "69efe7725760e3adc8b3e6077922a6893f303261f4d6d7ff414ea795fe7a9b86"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-bidirectional-v2.schema.json",
+      "sha256": "e0c1c53f26fc155e8206eeb4fdeb5a35b6990d36b65084a5ed5bf4844302c20e"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-proposal-first-v1.md",
+      "sha256": "05c68bccd92cc7616e512615ee8040e74e2299676c1e956f2f560778325d0e60"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-proposal-first-v1.schema.json",
+      "sha256": "8f5a6e9f6144cd396c9e2eb5a26269fdaa103cc478103e667d45ba7b3b535d44"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-requirement-first-v1.md",
+      "sha256": "a38ff93c33b61b9d5703b418ddb60c5b9a286cdeec2c21e5d5e629fa5f929261"
+    },
+    {
+      "path": "prompts/openspec-semantic-traceability-requirement-first-v1.schema.json",
+      "sha256": "343061f10b7fa73728e39d4a3ba6fabfa018e95b6bf5215dad54cbb36bdfbe3c"
+    },
+    {
+      "path": "src/review-traceability.js",
+      "sha256": "16a5383d3a997af11d157789b3e9fba254aa0abc8cefeebffdc468c140fce019"
+    },
+    {
+      "path": "src/traceability.js",
+      "sha256": "b20ef03b00c268e8cca06bc60f07369f1b07867b293435a48859ac94d8c82e8a"
+    }
+  ]
+}

@@ -56,6 +56,19 @@ spec:
 `,
   { prompts: {}, schemas: {} },
 );
+const traceabilityDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: simple-traceability, version: 1 }
+spec:
+  start: trace_start
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs: {}
+  nodes:
+    trace_start: { type: terminal, outcome: succeeded }
+`,
+  { prompts: {}, schemas: {} },
+);
 const NOW = "2026-08-16T05:00:00.000Z";
 
 class FakeInstance implements WorkflowInstanceHandle {
@@ -366,19 +379,23 @@ const environment = (workflow: FakeWorkflow): QueueConsumerEnv => ({
   TRIAL_DISPATCH_ENABLED: "true",
 } as unknown as QueueConsumerEnv);
 
-test("scheduled registration makes simple the default without creating a selector", async () => {
+test("scheduled registration makes simple-traceability the default", async () => {
   const store = new FakeStore();
   const env = environment(new FakeWorkflow());
-  const definitions = { "openspec-delivery": definition, simple: simpleDefinition };
+  const definitions = {
+    "openspec-delivery": definition,
+    simple: simpleDefinition,
+    "simple-traceability": traceabilityDefinition,
+  };
 
   await registerBundledWorkflowDefinitions(env, {
     store,
     definitions,
     now: () => new Date(NOW),
   });
-  assert.equal(store.policies.get("project-1")?.definition_id, simpleDefinition.name);
-  assert.equal(store.policies.get("project-1")?.definition_digest, simpleDefinition.digest);
-  assert.equal(store.selectors.size, 0);
+  assert.equal(store.policies.get("project-1")?.definition_id, traceabilityDefinition.name);
+  assert.equal(store.policies.get("project-1")?.definition_digest, traceabilityDefinition.digest);
+  assert.equal(store.selectors.size, 1);
 });
 
 test("scheduled registration preserves the D1 repository setting", async () => {
@@ -399,13 +416,22 @@ test("scheduled registration preserves the D1 repository setting", async () => {
   });
   await registerBundledWorkflowDefinitions(environment(new FakeWorkflow()), {
     store,
-    definitions: { "openspec-delivery": definition, simple: simpleDefinition },
+    definitions: {
+      "openspec-delivery": definition,
+      simple: simpleDefinition,
+      "simple-traceability": traceabilityDefinition,
+    },
     now: () => new Date(NOW),
   });
   assert.equal(store.policies.get("project-1")?.trial_repository, "sachinkundu/deos-sample-project");
-  assert.equal(store.policies.get("project-1")?.definition_id, simpleDefinition.name);
+  assert.equal(store.policies.get("project-1")?.definition_id, traceabilityDefinition.name);
   assert.equal(store.policies.get("project-1")?.dispatch_enabled, 0);
-  assert.equal(store.selectors.size, 0);
+  assert.equal(store.selectors.size, 1);
+  assert.equal(
+    store.selectors.get("project-1:sachinkundu/deos-sample-project:DEOS Traceability")?.enabled,
+    0,
+  );
+  assert.equal(store.selectors.has("project-1:sachinkundu/deos:DEOS Traceability"), false);
 });
 
 const runMessage = async (
@@ -463,7 +489,11 @@ const runSelectedMessage = async (input: {
     } as unknown as QueueConsumerEnv),
     {
       store: input.store,
-      definitions: { [definition.name]: definition, simple: simpleDefinition },
+      definitions: {
+        [definition.name]: definition,
+        simple: simpleDefinition,
+        "simple-traceability": traceabilityDefinition,
+      },
       now: () => new Date(NOW),
       observe: () => {},
       lifecycle: () => {},
@@ -483,7 +513,7 @@ test("start delivery allocates one run and establishes one stable Workflow", asy
   assert.equal(observations.at(-1)?.["deos.workflow.outcome"], "succeeded");
 });
 
-test("labels and legacy selector state do not change the simple default", async () => {
+test("labels and legacy selector state do not change the simple-traceability default", async () => {
   const labeled = new FakeStore();
   const legacyKey = "project-1:sachinkundu/deos:simple-workflow";
   await labeled.registerSelector({
@@ -504,7 +534,7 @@ test("labels and legacy selector state do not change the simple default", async 
       labels: [{ id: "label-1", name: "simple-workflow" }],
     },
   });
-  assert.equal(labeled.runs[0].definition_id, "simple");
+  assert.equal(labeled.runs[0].definition_id, "simple-traceability");
   assert.equal(labeled.runs[0].selection_kind, "default");
   assert.equal(labeled.runs[0].selection_value, "project_policy");
   assert.equal(labeled.runs[0].selection_label_name, null);
@@ -519,18 +549,47 @@ test("labels and legacy selector state do not change the simple default", async 
     store: unlabeled,
     workflow: new FakeWorkflow(),
   });
-  assert.equal(unlabeled.runs[0].definition_id, "simple");
+  assert.equal(unlabeled.runs[0].definition_id, "simple-traceability");
   assert.equal(unlabeled.runs[0].selection_value, "project_policy");
 });
 
-test("unavailable evidence keeps the simple default while tampering fails before allocation", async () => {
+test("the traceability selector is registered off and selects only after explicit enablement", async () => {
+  const store = new FakeStore();
+  await registerBundledWorkflowDefinitions(environment(new FakeWorkflow()), {
+    store,
+    definitions: {
+      [definition.name]: definition,
+      simple: simpleDefinition,
+      "simple-traceability": traceabilityDefinition,
+    },
+    now: () => new Date(NOW),
+  });
+  const selector = store.selectors.get("project-1:sachinkundu/deos:DEOS Traceability");
+  assert.equal(selector?.enabled, 0);
+
+  if (selector === undefined) throw new Error("traceability selector setup failed");
+  selector.enabled = 1;
+  const evidence = {
+    status: "available" as const,
+    labels: [{ id: "trace-label", name: "DEOS Traceability" }],
+  };
+  const encoded = JSON.stringify(evidence);
+  const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(encoded)))]
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  await runSelectedMessage({ store, workflow: new FakeWorkflow(), evidence, evidenceDigest: digest });
+  assert.equal(store.runs[0].definition_id, "simple-traceability");
+  assert.equal(store.runs[0].selection_kind, "linear_label");
+  assert.equal(store.runs[0].selection_label_name, "DEOS Traceability");
+});
+
+test("unavailable evidence keeps the simple-traceability default while tampering fails before allocation", async () => {
   const store = new FakeStore();
   await runSelectedMessage({
     store,
     workflow: new FakeWorkflow(),
     evidence: { status: "unavailable" },
   });
-  assert.equal(store.runs[0].definition_id, "simple");
+  assert.equal(store.runs[0].definition_id, "simple-traceability");
   assert.equal(store.runs[0].selection_value, "project_policy");
   assert.equal(store.runs[0].selection_reason, null);
 

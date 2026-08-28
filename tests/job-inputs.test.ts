@@ -86,6 +86,75 @@ test("materializer records the OpenSpec operation and latest cumulative patch re
   assert.deepEqual(context.repository.continuationPatch, result.continuationPatch);
 });
 
+test("materializer gives the next author trusted deterministic rejection feedback", async () => {
+  const database = {
+    prepare(sql: string) {
+      return {
+        bind() { return this; },
+        all() {
+          return Promise.resolve({ results: sql.includes("JOIN artifact_manifests") ? [{
+            node_id: "planning_author",
+            attempt_id: "attempt-prior",
+            result_class: "invalid_candidate",
+            result_detail: "candidate readability failed for proposal.md: reading ease 48.84 (minimum 70)",
+            manifest_id: "manifest-prior",
+            r2_key: "runs/prior/manifest.json",
+            completed_at: "2026-08-27T10:53:03.135Z",
+          }] : [] });
+        },
+        first() {
+          if (sql.includes("SELECT trial_repository")) {
+            return Promise.resolve({ trial_repository: "sachinkundu/deos-sample-project" });
+          }
+          return Promise.resolve(null);
+        },
+      };
+    },
+  } as unknown as D1Database;
+  const artifacts = {
+    get: async () => ({
+      text: async () => JSON.stringify({ outcome: "completed", summary: "Drafted the plan." }),
+    }),
+  } as unknown as R2Bucket;
+  const materializer = new JobInputMaterializer(
+    database,
+    artifacts,
+    "https://api.linear.app/graphql",
+    "test-token",
+    {
+      fetch: async () => Response.json({ data: { issue: {
+        id: "issue-1",
+        identifier: "SAC-133",
+        title: "Show review readiness",
+        description: "Keep the summary clear.",
+        url: "https://linear.example/SAC-133",
+        state: { id: "todo", name: "Todo" },
+        project: { id: "project-1", name: "DEOS Sample" },
+        comments: { nodes: [] },
+      } } }),
+    },
+  );
+  const result = await materializer.materialize({
+    run_id: "workflow:project-1:issue-1:run:1",
+    project_id: "project-1",
+    issue_id: "issue-1",
+  } as OrchestrationRunRecord, {
+    id: "openspec_continue",
+    promptFile: "prompts/openspec.md",
+    prompt: "Continue.",
+    inputs: [],
+    context: [],
+    resultSchemaFile: "schemas/result.json",
+    resultSchema: { $id: "https://deos.dev/result.json", type: "object" },
+    requiredOutputs: [],
+    operation: { kind: "openspec", instruction: "/opsx:continue" },
+  } as const satisfies WorkflowJob);
+
+  const context = JSON.parse(result.context);
+  assert.equal(context.priorAttempts[0].outcome, "invalid_candidate");
+  assert.match(context.priorAttempts[0].trustedResultDetail, /reading ease 48\.84/);
+});
+
 test("planning materializer allocates one run branch and bounds both feedback providers", async () => {
   let workProduct: Record<string, unknown> | null = null;
   const database = {

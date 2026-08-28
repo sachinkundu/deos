@@ -222,3 +222,24 @@ test("failure collection omits credential-bearing output but keeps the safe evid
     false,
   );
 });
+
+test("failure collection preserves the trusted author completion category", async () => {
+  const { collector, reader } = setup();
+  reader.files.set(
+    "/deos/output/status.json",
+    new TextEncoder().encode(JSON.stringify({
+      exitCode: 1,
+      signal: null,
+      timedOut: false,
+      safeErrorCategory: "author_completion_failed",
+    })),
+  );
+  const result = await collector.collectFailure({
+    runId: input.runId,
+    attemptId: input.attemptId,
+    outputRoot: input.outputRoot,
+    expectedFiles: ["transcript.jsonl"],
+    fallbackErrorCategory: "supervisor_failed",
+  });
+  assert.equal(result.safeErrorCategory, "author_completion_failed");
+});

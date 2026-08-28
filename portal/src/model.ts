@@ -241,7 +241,7 @@ export class PortalReadStore {
     if (!/^workflow:[0-9a-f-]+:[0-9a-f-]+:run:[1-9][0-9]*$/i.test(runId)) return null;
     const run = await this.db.prepare(PORTAL_SELECTS.run).bind(runId, this.projectId).first<RunRow>();
     if (run === null) return null;
-    const [definitionRow, transitionResult, attemptResult, waitResult, linkResult, issueRow, workProduct] = await Promise.all([
+    const [definitionRow, transitionResult, attemptResult, waitResult, linkResult, issueRow, workProduct, reviewProof] = await Promise.all([
       this.db.prepare(PORTAL_SELECTS.definition).bind(run.definition_id, run.definition_version).first<DefinitionRow>(),
       this.db.prepare(PORTAL_SELECTS.transitions).bind(runId).all<TransitionRow>(),
       this.db.prepare(PORTAL_SELECTS.attempts).bind(runId).all<AttemptRow>(),
@@ -249,6 +249,9 @@ export class PortalReadStore {
       this.db.prepare(PORTAL_SELECTS.links).bind(runId).all<LinkRow>(),
       this.db.prepare(PORTAL_SELECTS.issueForRun).bind(runId, this.projectId).first<IssueRow>(),
       this.db.prepare(PORTAL_SELECTS.workProduct).bind(runId).first<WorkProductRow>(),
+      this.db.prepare(
+        "SELECT COUNT(*) AS count FROM trace_reviews WHERE run_id = ? AND accepted = 1",
+      ).bind(runId).first<{ count: number }>(),
     ]);
     if (definitionRow === null || definitionRow.digest !== run.definition_digest || issueRow === null) {
       throw new Error("workflow definition unavailable");
@@ -366,6 +369,7 @@ export class PortalReadStore {
         attempts: attemptResult.results.filter((attempt) => attempt.visit_sequence === null).length,
         waits: waitResult.results.filter((wait) => wait.visit_sequence === null).length,
       },
+      reviewAvailable: (reviewProof?.count ?? 0) > 0,
     };
   }
 }

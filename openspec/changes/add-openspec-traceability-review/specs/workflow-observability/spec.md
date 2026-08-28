@@ -33,3 +33,8 @@ Each trace event SHALL use the flow's shared link ID. It SHALL name the review i
 
 - **WHEN** review output has plan text, findings, notes, quotes, prompts, or chat logs
 - **THEN** events leave out that text and keep only safe IDs and guarded file links
+
+#### Scenario: Compatible failed tail changes definition version
+
+- **WHEN** the guarded version 11 to version 12 retry is prepared or established
+- **THEN** safe events name the retry, transition, source and target definition versions, old and new Workflow instance IDs, and outcome without exposing planning content

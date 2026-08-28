@@ -273,6 +273,7 @@ const CREDENTIAL_PATTERNS = [
 
 const SAFE_SUPERVISOR_ERROR_CATEGORIES = new Set([
   "absolute_timeout",
+  "author_completion_failed",
   "codex_exit_nonzero",
   "codex_terminated",
   "supervisor_failed",

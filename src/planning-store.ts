@@ -214,20 +214,24 @@ export class D1PlanningStore {
       `INSERT INTO governed_work_links
        (link_id, run_id, visit_sequence, attempt_id, operation_id,
         kind, label, url, created_at)
-       SELECT ?, operation.run_id, attempt.visit_sequence, attempt.attempt_id,
+       SELECT ?, operation.run_id, COALESCE(attempt.visit_sequence, run.current_visit_sequence),
+              attempt.attempt_id,
               operation.operation_id, ?, ?, ?, operation.completed_at
        FROM provider_operations operation
-       JOIN agent_attempts attempt
+       JOIN orchestration_runs run ON run.run_id = operation.run_id
+       LEFT JOIN agent_attempts attempt
          ON attempt.attempt_id = operation.attempt_id
         AND attempt.run_id = operation.run_id
        WHERE operation.operation_id = ? AND operation.run_id = ?
-         AND operation.capability = 'github'
-         AND operation.action = 'publish_planning_work_product'
-         AND operation.sanitized_target = ?
+         AND ((operation.capability = 'github'
+           AND operation.action = 'publish_planning_work_product'
+           AND operation.sanitized_target = ?
+           AND attempt.node_id = 'openspec_planning')
+          OR (operation.capability = 'system_action'
+           AND operation.action = 'github.publish_planning_candidate'))
          AND operation.state IN ('succeeded', 'reconciled', 'duplicate')
          AND operation.completed_at IS NOT NULL
-         AND attempt.node_id = 'openspec_planning'
-         AND attempt.visit_sequence IS NOT NULL
+         AND COALESCE(attempt.visit_sequence, run.current_visit_sequence) IS NOT NULL
        ON CONFLICT (run_id, visit_sequence, kind, label) DO UPDATE SET
          attempt_id = excluded.attempt_id,
          operation_id = excluded.operation_id,

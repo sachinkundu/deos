@@ -14,6 +14,7 @@ import {
 } from "./telemetry.ts";
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import { type LifecycleWriter, writeLifecycleObservation } from "./lifecycle-telemetry.ts";
+import { DEFAULT_WORKFLOW_DEFINITION_ID } from "./workflow-default.ts";
 
 export type LabelSelectionEvidence =
   | { status: "available"; labels: Array<{ id: string; name: string }> }
@@ -44,6 +45,7 @@ export interface QueueBody {
 export interface WorkflowInstanceHandle {
   id: string;
   sendEvent(event: { type: string; payload: unknown }): Promise<void>;
+  status?(): Promise<{ status: string }>;
 }
 
 export interface WorkflowBinding {
@@ -248,7 +250,7 @@ export const registerBundledWorkflowDefinitions = async (
   const store = dependencies.store ?? new D1OrchestrationStore(env.DB);
   const bundled = dependencies.definitions ??
     await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry();
-  const definition = dependencies.defaultDefinition ?? bundled.simple;
+  const definition = dependencies.defaultDefinition ?? bundled[DEFAULT_WORKFLOW_DEFINITION_ID];
   if (definition === undefined) throw new Error("default workflow definition is unavailable");
   const now = (dependencies.now ?? (() => new Date()))().toISOString();
   await store.registerDefinitionAndPolicy({
@@ -263,6 +265,17 @@ export const registerBundledWorkflowDefinitions = async (
   for (const registered of Object.values(bundled)) {
     if (registered.name === definition.name && registered.version === definition.version) continue;
     await store.registerDefinition({ definition: registered, projectId: env.LINEAR_PROJECT_ID, now });
+  }
+  const traceability = bundled["simple-traceability"];
+  if (traceability !== undefined) {
+    const policy = await store.findPolicy(env.LINEAR_PROJECT_ID);
+    await store.registerSelector({
+      projectId: env.LINEAR_PROJECT_ID,
+      repository: policy?.trial_repository ?? env.TRIAL_REPOSITORY,
+      labelName: "DEOS Traceability",
+      definition: traceability,
+      now,
+    });
   }
   return bundled;
 };
@@ -279,7 +292,7 @@ export const processQueueMessage = async (
       ? await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry()
       : Object.freeze({ [dependencies.definition.name]: dependencies.definition })
   );
-  const definition = dependencies.definition ?? bundled.simple;
+  const definition = dependencies.definition ?? bundled[DEFAULT_WORKFLOW_DEFINITION_ID];
   if (definition === undefined) throw new Error("default workflow definition is unavailable");
   const now = (dependencies.now ?? (() => new Date()))().toISOString();
   const lifecycle = dependencies.lifecycle ?? writeLifecycleObservation;
@@ -336,7 +349,26 @@ export const processQueueMessage = async (
       policy.dispatch_enabled === 1 &&
       event.transition === policy.start_state_name
     ) {
-      const selection = {
+      const selectorMatches = evidence.names === null || policy === null
+        ? []
+        : (await Promise.all(evidence.names.map(async (labelName) => ({
+            labelName,
+            selector: await store.findSelector(event.project_id, policy.trial_repository, labelName),
+          })))).filter((match) =>
+            match.selector?.enabled === 1 && match.selector.definition_id === "simple-traceability");
+      if (selectorMatches.length > 1) throw new CategorizedWorkflowError("correlation_mismatch");
+      const selected = selectorMatches[0];
+      const selectedDefinition = selected === undefined
+        ? definition
+        : bundled[selected.selector!.definition_id];
+      if (
+        selectedDefinition === undefined ||
+        (selected !== undefined && (
+          selectedDefinition.version !== selected.selector!.definition_version ||
+          selectedDefinition.digest !== selected.selector!.definition_digest
+        ))
+      ) throw new CategorizedWorkflowError("unexpected_failure");
+      const selection = selected === undefined ? {
         kind: "default",
         value: "project_policy",
         labelName: null,
@@ -345,11 +377,20 @@ export const processQueueMessage = async (
         deliveryId: event.source_delivery_id,
         observedAt: new Date(event.occurred_at).toISOString(),
         providerDigest: evidenceDigest,
+      } as const : {
+        kind: "linear_label",
+        value: selected.selector!.definition_id,
+        labelName: selected.labelName,
+        reason: "label_match",
+        evidenceJson: evidence.json,
+        deliveryId: event.source_delivery_id,
+        observedAt: new Date(event.occurred_at).toISOString(),
+        providerDigest: evidenceDigest,
       } as const;
       const allocation = await store.allocateRun({
         projectId: event.project_id,
         issueId: event.issue_id,
-        definition,
+        definition: selectedDefinition,
         selection,
         now,
       });

@@ -8,6 +8,52 @@ Cloudflare Workflow reloads D1 authority before every graph decision. The run's 
 
 Repository-local OpenSpec progression is encoded as typed agent jobs carrying one allowlisted native instruction and a trusted change identity derived from the Linear issue identifier. Continue advances one planning artifact, apply implements the task checklist, verify consumes the completed change, and archive performs mechanical spec synchronization and change closure. Each fresh Sandbox starts from the configured base and restores the latest complete cumulative patch from R2 only after its SHA-256 matches D1, so later review and implementation agents see earlier unmerged work without preserving a Sandbox filesystem. Archive fails closed when no completed cumulative patch is available.
 
+## OpenSpec traceability review flow
+
+The bundle contains `simple-traceability` version 12 as the project default. The legacy `DEOS Traceability` selector remains registered but disabled, so ordinary eligible issues enter traceability without requiring a label. The immutable definition snapshot and digest are still frozen when each run is allocated.
+
+```mermaid
+flowchart LR
+    L[Linear issue] --> W[Cloudflare Workflow]
+    W <--> D[(D1 authority)]
+    W --> A[Planning author<br/>Codex, repository write only]
+    A <--> C[Same-Sandbox completion hook<br/>strict OpenSpec and readability]
+    C --> V[Trusted Worker verification]
+    V --> S[Codex self-check<br/>fresh read-only Sandbox]
+    S --> P[Trusted GitHub publish]
+    P --> G[One planning PR]
+    G --> I[Independent review<br/>two fresh directional passes]
+    I --> AR[Author response<br/>apply, decline, or no change]
+    AR --> U[Trusted same-PR update<br/>and provider summaries]
+    U --> H[Human Review]
+    C --> R[(Immutable R2 evidence)]
+    V --> R
+    S --> R
+    I --> R
+    D --> O[Access-protected review page]
+    R --> O
+```
+
+The author has no GitHub or Linear capability. When it reports completion, the trusted supervisor runs the allowed-path, strict OpenSpec, whitespace, and readability checks before the attempt can end. Both the supervisor and Worker import the same reading scorer. A failed author-correctable check resumes the exact Codex session in the same checkout and Sandbox. The bound is two in-place repairs after the first draft. The supervisor records every round in `author-completion.json`. These rounds do not create Workflow visits, D1 attempts, Sandboxes, or semantic reviews.
+
+After the hook passes, trusted Worker code builds an immutable planning candidate. It allows only `.openspec.yaml`, `proposal.md`, and the declared `specs/**/spec.md` files. It repeats strict OpenSpec and readability checks, writes the candidate and validation receipt to create-only R2 keys, reads both objects back by SHA-256, and then indexes the accepted candidate in D1. In versions 6 and later, a disagreement is stored as `author_completion_verification_mismatch` and follows the failed edge. Every `invalid_candidate` edge also points to failure. No deterministic rejection can route back to an author node or consume a semantic repair turn.
+
+Each full review now runs two fresh Codex sessions over the same immutable inventory. The proposal-first pass maps each proposal statement to requirements. The requirement-first pass maps each requirement back to proposal statements. The second pass never sees the first result. BettaView reconciles the independent claim sets as `confirmed`, `proposal_only`, or `requirement_only`. One-sided links are valid semantic disagreement. Only malformed source identities, unsafe values, changed hashes, or invalid structure use the bounded proof-repair path inside that directional session.
+
+Both semantic stages use a pinned BettaView bundle. The Codex self-check uses the run's frozen author model and thought setting in a fresh read-only Sandbox. The independent stage uses a different OpenRouter model chosen in Settings and frozen when the run is allocated. The OpenRouter key stays in the Worker. The Sandbox receives only a signed, attempt-scoped model channel for that exact model and setting.
+
+D1 stores the candidate, phase, accepted review, and exact-head binding. R2 stores both directional model results and the validation proof. Self-check discovery creates one fixed finding inventory. A self-check recheck must rate every existing ID once and cannot add, remove, rename, merge, or split a finding. Trusted code derives its outcome from the checked artifact. The self-check has at most three author-repair turns. An identical input records a reuse event without creating an attempt, Sandbox, or model call. A different pull-request head can reuse proof only after trusted GitHub reads show that every reviewed file has the same hash.
+
+Trusted publication creates or updates one planning pull request from the accepted R2 candidate. It also posts each candidate-bound human review reply through the existing idempotent GitHub adapter and leaves the thread open. Independent proof is bound to the exact published head. A structurally valid outside review always completes the external stage, even when it reports concerns. One fresh author job records `applied`, `declined`, or `no_change` for every finding and directional dispute. Trusted code validates any plan edits, updates the same pull request, and then refreshes the GitHub Check Run and marked Linear status with disposition counts. It does not run the independent reviewer again merely to make its opinion disappear.
+
+Human feedback closes neither prior proof nor its finding inventory. A trusted action allocates the next round with fresh counters. The author then handles the human comments, and both stages run new full discovery checks. Later repairs inside that round remain limited to the fixed finding ranges. No-semantic-change author output is rejected before another review attempt, Sandbox, or model call can be allocated.
+
+The portal serves `/runs/<encoded-run-id>/review`. It reads rounds, phase counters, accepted reviews, reuse, exact heads, findings, both directional claim sets, cited ranges, author dispositions, conflicts, and candidates from D1 and hash-checked R2 evidence. It marks exact-head proof current or stale against the saved pull-request head. Raw proof is available only through an allowlisted route that selects an accepted manifest, reads its exact R2 key, verifies the D1 SHA-256, and returns `Cache-Control: no-store`. The ordinary workflow view does not generate proof during page load. Its planning-stage detail links to the review page only after accepted proof exists.
+
+The authenticated stage-retry route creates a new deterministic Workflow instance after the latest failed independent-review attempt has ended and its Sandbox cleanup is `destroyed`. One D1 batch records the retry, advances the visit, binds the run and dispatch intent to the replacement ID, and appends the operator transition. The replacement reads the current D1 node, so earlier stages do not execute again; the failed Workflow instance remains terminal. One guarded compatibility handoff may also change the frozen definition. A `simple-traceability` version 11 run that failed at the published `independent_discovery` boundary may move to the exact registered bundled version 12 definition. D1 additionally verifies the validated candidate, published pull request, entry and failure transitions, and registered source and target definition snapshots. Every retry record keeps both definition digests and both Workflow instance IDs.
+
+SAC-139 is the provider-originated traceability canary. It preserved its completed author and self-check prefix through a guarded version 11 to version 12 retry, ran two independent OpenRouter directions through the Codex harness, recorded nine author `no_change` dispositions, updated the same GitHub pull request and Linear link, destroyed every Sandbox, and reached `planning_review` with D1 status `awaiting_human`. D1/R2 hashes, provider receipts, the exact pull request head, and the Cloudflare Access-protected review route are preserved in `docs/evidence/openspec-traceability-review-implementation.md`.
+
 Definition version 11 ends with `evidence_verification -> openspec_verify -> final_approval -> sync_and_archive -> done`. Final approval is the last authority-bearing gate: approval may dispatch only the typed `/opsx:archive` job, whose complete artifacts and confirmed Sandbox cleanup permit terminal `succeeded`; rejection commits `denied`, while blocked or failed archive work reaches a typed failure node that commits `failed` before the executor errors. The active definition has no deploy or release-finalization node. Older runs still restore their own immutable D1 snapshot and verified digest, including version 10's legacy `blocked` tail and any historical release nodes.
 
 The evidence-verification agent is a pre-final-approval semantic consumer. It evaluates the restored implementation and evidence applicable before native OpenSpec verify; it cannot require later verify, final approval, sync, or archive outputs to certify entry to those nodes. Immutable identity, manifest integrity, patch checksums, cleanup, and receipt completeness remain trusted controller concerns rather than credentialed agent duties. Provider-originated and visual evidence are required only for changes that actually expose provider or user-interface behavior.
@@ -24,4 +70,4 @@ Cleanup has two independent views. A Worker cron reconciles D1-known attempts wi
 
 The same Worker cron checks D1 non-final runs against their recorded Cloudflare Workflow instances. A Cloudflare `complete` result with no final D1 outcome is compare-and-set to DEOS `failed` with `premature_workflow_completion`. One stable marked comment is created or reused on the correlated Linear ticket. A lost D1 comparison records a conflict and suppresses the stale comment; reconciliation never moves the ticket to Done or allocates a replacement run.
 
-The implemented slice includes real provider adapters and production bindings. A selected canary still requires deployed Sandbox, provider-originated Linear, remote D1, Cloudflare Workflow status, R2, GitHub/Linear work-product, and cleanup evidence, plus visual evidence when the tested feature has a provider configuration or user-interface surface. Deterministic tests alone are supporting proof.
+The implemented slice includes real provider adapters and production bindings. Completion evidence pairs deployed Sandbox, provider-originated Linear, remote D1, Cloudflare Workflow status, R2, GitHub/Linear work-product, cleanup, and the protected portal route. Deterministic tests remain supporting proof. A signed-in screenshot is additional visual evidence and is never substituted for the durable provider records.

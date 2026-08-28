@@ -10,6 +10,11 @@ import {
 
 const source = readFileSync(new URL("../config/workflow.deos.yaml", import.meta.url), "utf8");
 const simpleSource = readFileSync(new URL("../config/workflow.simple.yaml", import.meta.url), "utf8");
+const traceabilitySource = readFileSync(new URL("../config/workflow.simple-traceability.yaml", import.meta.url), "utf8");
+const traceRecheckSchema = JSON.parse(readFileSync(
+  new URL("../config/schemas/trace-recheck-result-v1.json", import.meta.url),
+  "utf8",
+)) as Record<string, unknown>;
 const promptPaths = [
   "requirements.md",
   "requirements-review.md",
@@ -21,8 +26,11 @@ const promptPaths = [
   "evidence-verification.md",
   "openspec.md",
   "openspec-planning.md",
+  "openspec-planning-author.md",
+  "openspec-traceability-review.md",
+  "openspec-traceability-recheck.md",
 ];
-const schemaPaths = ["agent-result-v1.json", "review-result-v1.json"];
+const schemaPaths = ["agent-result-v1.json", "review-result-v1.json", "trace-agent-result-v1.json"];
 
 const bundle = (): WorkflowBundleSources => ({
   prompts: Object.fromEntries(
@@ -162,6 +170,48 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
     ), bundle()),
     /unsupported action github\.merge_any_pull_request/,
   );
+});
+
+test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
+  const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
+  assert.equal(definition.name, "simple-traceability");
+  assert.equal(definition.version, 12);
+  assert.equal(definition.jobs.planning_author.agentRole, "author");
+  assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
+  assert.ok(definition.jobs.planning_author.requiredOutputs.includes("review-replies.json"));
+  assert.ok(definition.jobs.planning_author.requiredOutputs.includes("review-dispositions.json"));
+  assert.ok(definition.jobs.planning_author.requiredOutputs.includes("author-completion.json"));
+  assert.equal(definition.jobs.self_discovery.reviewMode, "discovery");
+  assert.equal(definition.jobs.self_recheck.reviewMode, "recheck");
+  assert.equal(definition.jobs.independent_discovery.modelProvider, "openrouter");
+  assert.deepEqual(definition.jobs.independent_discovery.providerAccess, ["model.openrouter_review"]);
+  assert.equal(
+    definition.nodes.publish_initial.type === "system_action"
+      ? definition.nodes.publish_initial.action
+      : null,
+    "github.publish_planning_candidate",
+  );
+  assert.equal(definition.nodes.independent_discovery.type, "agent");
+  assert.equal(definition.nodes.start_new_review_round.edges.completed, "planning_author");
+  assert.equal(definition.nodes.planning_author.edges.invalid_candidate, "agent_failed");
+  assert.equal(definition.nodes.planning_self_repair.edges.invalid_candidate, "agent_failed");
+  assert.equal(definition.nodes.planning_independent_response.edges.invalid_candidate, "agent_failed");
+  assert.equal(definition.nodes.independent_discovery.edges.pass, "planning_independent_response");
+  assert.equal(definition.nodes.publish_update.edges.completed, "publish_author_response");
+  assert.equal(definition.nodes.publish_author_response.edges.completed, "planning_review");
+  assert.equal(Object.hasOwn(definition.jobs, "independent_recheck"), false);
+  assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(definition), definition.digest), definition);
+});
+
+test("traceability recheck schema uses the Codex-supported nullable form", () => {
+  const schemaText = JSON.stringify(traceRecheckSchema);
+  assert.equal(schemaText.includes('"oneOf"'), false);
+  const properties = traceRecheckSchema.properties as Record<string, unknown>;
+  const resolutions = properties.resolutions as Record<string, unknown>;
+  const items = resolutions.items as Record<string, unknown>;
+  const itemProperties = items.properties as Record<string, unknown>;
+  const causalSourceDigest = itemProperties.causalSourceDigest as Record<string, unknown>;
+  assert.deepEqual(causalSourceDigest.type, ["string", "null"]);
 });
 
 test("restores an immutable stored definition for an older active run", async () => {

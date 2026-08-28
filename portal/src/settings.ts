@@ -8,6 +8,11 @@ export interface RepositorySettings {
   workflowRevision: number;
   workflowUpdatedBy: string;
   workflowUpdatedAt: string;
+  independentReviewProvider: "openrouter";
+  independentReviewModel: string | null;
+  independentReviewRevision: number;
+  independentReviewUpdatedBy: string;
+  independentReviewUpdatedAt: string;
   activeRuns: number;
 }
 
@@ -21,6 +26,11 @@ interface SettingsRow {
   workflow_revision: number;
   workflow_updated_by: string;
   workflow_updated_at: string;
+  independent_review_provider: "openrouter";
+  independent_review_model: string | null;
+  independent_review_revision: number;
+  independent_review_updated_by: string;
+  independent_review_updated_at: string;
   active_runs: number;
 }
 
@@ -30,6 +40,8 @@ export type RepositorySettingsErrorCode =
   | "active_run"
   | "stale_revision"
   | "stale_workflow_revision"
+  | "invalid_independent_review_model"
+  | "stale_independent_review_revision"
   | "settings_read_back_failed";
 
 export class RepositorySettingsError extends Error {
@@ -59,6 +71,11 @@ const dto = (row: SettingsRow): RepositorySettings => ({
   workflowRevision: row.workflow_revision,
   workflowUpdatedBy: row.workflow_updated_by,
   workflowUpdatedAt: row.workflow_updated_at,
+  independentReviewProvider: row.independent_review_provider,
+  independentReviewModel: row.independent_review_model,
+  independentReviewRevision: row.independent_review_revision,
+  independentReviewUpdatedBy: row.independent_review_updated_by,
+  independentReviewUpdatedAt: row.independent_review_updated_at,
   activeRuns: row.active_runs,
 });
 
@@ -75,6 +92,9 @@ export class RepositorySettingsStore {
               p.repository_updated_by, p.repository_updated_at,
               p.dispatch_enabled, p.workflow_revision,
               p.workflow_updated_by, p.workflow_updated_at,
+              p.independent_review_provider, p.independent_review_model,
+              p.independent_review_revision, p.independent_review_updated_by,
+              p.independent_review_updated_at,
               (SELECT COUNT(*) FROM orchestration_runs r
                 WHERE r.project_id = p.project_id
                   AND r.status IN ('pending_dispatch', 'active', 'awaiting_human',
@@ -172,6 +192,60 @@ export class RepositorySettingsStore {
       saved === null || saved.dispatchEnabled !== input.dispatchEnabled ||
       saved.workflowRevision !== input.expectedRevision + 1 ||
       saved.workflowUpdatedBy !== input.actorEmail
+    ) throw new RepositorySettingsError("settings_read_back_failed");
+    return saved;
+  }
+
+  async saveIndependentReviewModel(input: {
+    projectId: string;
+    model: string;
+    supportedModels: readonly string[];
+    expectedRevision: number;
+    actorEmail: string;
+    now: string;
+  }): Promise<RepositorySettings> {
+    if (!input.supportedModels.includes(input.model)) {
+      throw new RepositorySettingsError("invalid_independent_review_model");
+    }
+    const current = await this.read(input.projectId);
+    if (current === null) throw new RepositorySettingsError("settings_not_found");
+    if (current.independentReviewRevision !== input.expectedRevision) {
+      throw new RepositorySettingsError("stale_independent_review_revision");
+    }
+    if (current.independentReviewModel === input.model) return current;
+    if (current.activeRuns > 0) throw new RepositorySettingsError("active_run");
+    const result = await this.db.prepare(
+      `UPDATE project_workflow_policies
+       SET independent_review_provider = 'openrouter', independent_review_model = ?,
+           independent_review_revision = independent_review_revision + 1,
+           independent_review_updated_by = ?, independent_review_updated_at = ?, updated_at = ?
+       WHERE project_id = ? AND independent_review_revision = ?
+         AND NOT EXISTS (SELECT 1 FROM orchestration_runs r
+           WHERE r.project_id = project_workflow_policies.project_id
+             AND r.status IN ('pending_dispatch', 'active', 'awaiting_human',
+               'awaiting_capability', 'manual_reconciliation_required'))`,
+    ).bind(
+      input.model,
+      input.actorEmail,
+      input.now,
+      input.now,
+      input.projectId,
+      input.expectedRevision,
+    ).run();
+    if ((result.meta.changes ?? 0) !== 1) {
+      const latest = await this.read(input.projectId);
+      throw new RepositorySettingsError(
+        latest !== null && latest.activeRuns > 0
+          ? "active_run"
+          : "stale_independent_review_revision",
+      );
+    }
+    const saved = await this.read(input.projectId);
+    if (
+      saved === null || saved.independentReviewModel !== input.model ||
+      saved.independentReviewProvider !== "openrouter" ||
+      saved.independentReviewRevision !== input.expectedRevision + 1 ||
+      saved.independentReviewUpdatedBy !== input.actorEmail
     ) throw new RepositorySettingsError("settings_read_back_failed");
     return saved;
   }

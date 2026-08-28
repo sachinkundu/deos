@@ -13,6 +13,11 @@ import type {
   ProviderOperationRecord,
   ProviderOperationState,
 } from "../src/linear-transition.ts";
+import { OpenRouterReviewError } from "../src/openrouter-review.ts";
+import type {
+  OpenRouterResponseStore,
+  OpenRouterStoredResponse,
+} from "../src/openrouter-response-store.ts";
 
 const SECRET = "test-capability-secret-with-more-than-thirty-two-bytes";
 const NOW = new Date("2026-08-16T11:00:00.000Z");
@@ -80,12 +85,19 @@ class Store implements CapabilityStore {
 
   find(operationId: string) { return Promise.resolve(this.operations.get(operationId) ?? null); }
 
+  listAttemptOperations(attemptId: string, action: string) {
+    return Promise.resolve([...this.operations.values()].filter((operation) =>
+      operation.attempt_id === attemptId && operation.capability === "model" &&
+      operation.action === action));
+  }
+
   finish(input: {
     operationId: string;
     expected: ProviderOperationState;
     state: ProviderOperationState;
     providerResourceId: string | null;
     safeErrorCategory: string | null;
+    diagnosticId?: string | null;
     now: string;
   }) {
     const operation = this.operations.get(input.operationId);
@@ -93,6 +105,7 @@ class Store implements CapabilityStore {
     operation.state = input.state;
     operation.provider_resource_id = input.providerResourceId;
     operation.safe_error_category = input.safeErrorCategory;
+    operation.diagnostic_id = input.diagnosticId ?? null;
     operation.updated_at = input.now;
     operation.completed_at = input.now;
     return Promise.resolve(true);
@@ -119,6 +132,18 @@ class Linear {
   async upsertNote() {
     this.calls += 1;
     return { commentId: "comment-1", reconciled: false };
+  }
+}
+
+class Responses implements OpenRouterResponseStore {
+  readonly stored = new Map<string, OpenRouterStoredResponse>();
+  put(input: OpenRouterStoredResponse & { now: string }) {
+    const { now: _now, ...response } = input;
+    this.stored.set(input.operationId, response);
+    return Promise.resolve();
+  }
+  get(operationId: string) {
+    return Promise.resolve(this.stored.get(operationId) ?? null);
   }
 }
 
@@ -255,4 +280,262 @@ test("inactive or mismatched attempt is rejected before provider access", async 
   store.contextValue = { ...store.contextValue!, attemptState: "completed" };
   assert.equal((await invoke("github", requestBody)).status, 403);
   assert.equal(github.calls, 0);
+});
+
+test("OpenRouter capability permits one exact saved-model call and no repair call", async () => {
+  const store = new Store();
+  let reviewCalls = 0;
+  const modelClaims = {
+    ...claims,
+    actions: ["model.openrouter_review"] as const,
+    modelProvider: "openrouter" as const,
+    model: "deepseek/deepseek-v4-pro",
+    reasoning: "high",
+  };
+  const router = new CapabilityRouter({
+    store,
+    github: new GitHub() as unknown as GitHubCapabilityAdapter,
+    linear: new Linear() as unknown as LinearCapabilityAdapter,
+    openrouter: { review: async () => {
+      reviewCalls += 1;
+      return {
+        model: modelClaims.model,
+        providerRequestId: "request-1",
+        result: { findings: [] },
+        rawResponse: { id: "request-1" },
+      };
+    } },
+    signingSecret: SECRET,
+    now: () => NOW,
+  });
+  const token = await mintCapabilityToken(modelClaims, SECRET);
+  const invoke = (repairAttempt: number) => router.handle(new Request(
+    "https://worker.example/capabilities/model-review",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Deos-Attempt": claims.attemptId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        version: 1,
+        action: "openrouter_trace_review",
+        model: modelClaims.model,
+        reasoning: modelClaims.reasoning,
+        mode: "discovery",
+        repairAttempt,
+        prompt: "Review the exact plan.",
+      }),
+    },
+  ));
+  assert.equal((await invoke(0)).status, 200);
+  assert.equal((await invoke(0)).status, 409);
+  assert.equal((await invoke(1)).status, 403);
+  assert.equal(reviewCalls, 1);
+});
+
+test("OpenRouter failure returns a safe durable diagnostic reference", async () => {
+  const store = new Store();
+  const diagnostics: Array<Record<string, unknown>> = [];
+  const modelClaims = {
+    ...claims,
+    actions: ["model.openrouter_review"] as const,
+    modelProvider: "openrouter" as const,
+    model: "deepseek/deepseek-v4-pro",
+    reasoning: "high",
+  };
+  const router = new CapabilityRouter({
+    store,
+    github: new GitHub() as unknown as GitHubCapabilityAdapter,
+    linear: new Linear() as unknown as LinearCapabilityAdapter,
+    openrouter: { review: async () => {
+      throw new OpenRouterReviewError("OpenRouter HTTP 400", {
+        stage: "http",
+        httpStatus: 400,
+        providerCode: "invalid_request_error",
+        providerType: "invalid_request_error",
+        providerMessage: "Invalid JSON schema; secret sk-or-v1-should-never-be-returned",
+        providerRequestId: "request-error-1",
+        responseContentType: "application/json",
+        responseBodySha256: "abc123",
+        responseTruncated: false,
+        requestMayHaveSucceeded: false,
+        retryable: false,
+        rawResponseBody: "{\"error\":\"protected\"}",
+      });
+    } },
+    diagnostics: { record: async (input) => {
+      diagnostics.push(input);
+      return "diagnostic:provider:test";
+    } },
+    signingSecret: SECRET,
+    now: () => NOW,
+  });
+  const token = await mintCapabilityToken(modelClaims, SECRET);
+  const response = await router.handle(new Request(
+    "https://worker.example/capabilities/model-review",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Deos-Attempt": claims.attemptId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        version: 1,
+        action: "openrouter_trace_review",
+        model: modelClaims.model,
+        reasoning: modelClaims.reasoning,
+        mode: "discovery",
+        repairAttempt: 0,
+        prompt: "Review the exact plan.",
+      }),
+    },
+  ));
+  assert.equal(response.status, 502);
+  const body = await response.json() as Record<string, unknown>;
+  assert.equal(body.state, "failed");
+  assert.equal(body.safeErrorCategory, "openrouter_http_400");
+  assert.equal(body.diagnosticId, "diagnostic:provider:test");
+  assert.equal(JSON.stringify(body).includes("secret"), false);
+  assert.equal(JSON.stringify(body).includes("Invalid JSON schema"), false);
+  assert.equal(diagnostics.length, 1);
+  const operation = [...store.operations.values()][0];
+  assert.equal(operation.state, "failed");
+  assert.equal(operation.safe_error_category, "openrouter_http_400");
+  assert.equal(operation.diagnostic_id, "diagnostic:provider:test");
+});
+
+test("Codex Responses calls use the saved OpenRouter model and replay durable output", async () => {
+  const store = new Store();
+  const responses = new Responses();
+  let calls = 0;
+  let proxied: Readonly<Record<string, unknown>> | null = null;
+  const modelClaims = {
+    ...claims,
+    actions: ["model.openrouter_review"] as const,
+    modelProvider: "openrouter" as const,
+    model: "deepseek/deepseek-v4-pro",
+    reasoning: "high",
+  };
+  const router = new CapabilityRouter({
+    store,
+    github: new GitHub() as unknown as GitHubCapabilityAdapter,
+    linear: new Linear() as unknown as LinearCapabilityAdapter,
+    openrouter: {
+      review: async () => { throw new Error("legacy adapter must not run"); },
+      proxyResponses: async (input) => {
+        calls += 1;
+        proxied = input;
+        return {
+          status: 200,
+          contentType: "text/event-stream",
+          body: "event: response.completed\ndata: {\"response\":{\"id\":\"resp-1\"}}\n\n",
+          providerRequestId: "resp-1",
+        };
+      },
+    },
+    openrouterResponses: responses,
+    signingSecret: SECRET,
+    now: () => NOW,
+  });
+  const token = await mintCapabilityToken(modelClaims, SECRET);
+  const request = (input = "Inspect the repository.") => router.handle(new Request(
+    "https://worker.example/capabilities/openrouter/v1/responses",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Deos-Attempt": claims.attemptId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: modelClaims.model,
+        input,
+        stream: true,
+        tools: [
+          { type: "function", name: "exec", parameters: { type: "object" } },
+          { type: "web_search" },
+        ],
+      }),
+    },
+  ));
+  const first = await request();
+  const second = await request();
+  const otherDirection = await request("Review requirements back to proposal statements.");
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(otherDirection.status, 200);
+  assert.equal(await first.text(), await second.text());
+  assert.equal(calls, 2);
+  const captured = proxied as unknown as Record<string, unknown>;
+  assert.equal(captured.model, modelClaims.model);
+  assert.equal(captured.store, false);
+  assert.equal([...store.operations.values()][0].state, "succeeded");
+
+  const receipts = await router.handle(new Request(
+    "https://worker.example/capabilities/model-review/receipts",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Deos-Attempt": claims.attemptId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ version: 1, action: "list_openrouter_review_receipts" }),
+    },
+  ));
+  const receiptBody = await receipts.json() as { receipts: Array<{ providerResourceId: string }> };
+  assert.equal(receiptBody.receipts.length, 2);
+  assert.equal(receiptBody.receipts[0].providerResourceId, "resp-1");
+});
+
+test("Codex Responses proxy rejects model substitution, disallowed hosted tools, and raw credentials", async () => {
+  const store = new Store();
+  const responses = new Responses();
+  let calls = 0;
+  const modelClaims = {
+    ...claims,
+    actions: ["model.openrouter_review"] as const,
+    modelProvider: "openrouter" as const,
+    model: "deepseek/deepseek-v4-pro",
+    reasoning: "high",
+  };
+  const router = new CapabilityRouter({
+    store,
+    github: new GitHub() as unknown as GitHubCapabilityAdapter,
+    linear: new Linear() as unknown as LinearCapabilityAdapter,
+    openrouter: {
+      review: async () => { throw new Error("unused"); },
+      proxyResponses: async () => {
+        calls += 1;
+        return { status: 200, contentType: "application/json", body: "{}", providerRequestId: null };
+      },
+    },
+    openrouterResponses: responses,
+    signingSecret: SECRET,
+    now: () => NOW,
+  });
+  const token = await mintCapabilityToken(modelClaims, SECRET);
+  for (const body of [
+    { model: "other/model", input: "Review." },
+    { model: modelClaims.model, input: "Review.", tools: [{ type: "file_search" }] },
+    { model: modelClaims.model, input: "Bearer abcdefghijklmnopqrstuvwxyz" },
+  ]) {
+    const response = await router.handle(new Request(
+      "https://worker.example/capabilities/openrouter/v1/responses",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Deos-Attempt": claims.attemptId,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      },
+    ));
+    assert.equal(response.status, 403);
+  }
+  assert.equal(calls, 0);
 });

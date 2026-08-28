@@ -1,0 +1,132 @@
+apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata:
+  name: simple-traceability
+  version: 12
+spec:
+  start: claim_issue
+  execution:
+    attemptTimeout: 24h
+    heartbeatTimeout: 5m
+    codexSandboxMode: danger-full-access
+  jobs:
+    planning_author:
+      promptFile: prompts/openspec-planning-author.md
+      inputs: [linear_issue, openspec_change, planning_feedback, traceability_feedback]
+      context: [shared_workpad, prior_artifact_manifests, planning_pull_request]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, review-replies.json, review-dispositions.json, author-completion.json]
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: repository_write
+      providerAccess: []
+    self_discovery:
+      promptFile: prompts/openspec-traceability-review.md
+      inputs: [openspec_change]
+      context: []
+      resultSchema: schemas/trace-agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, raw-review-output.json, normalized-review.json, bettaview-traceability.json, candidate-inventory.json, trace-validation.txt]
+      agentRole: reviewer
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: []
+      reviewMode: discovery
+    self_recheck:
+      promptFile: prompts/openspec-traceability-recheck.md
+      inputs: [openspec_change, traceability_feedback]
+      context: []
+      resultSchema: schemas/trace-agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, raw-review-output.json, normalized-review.json, bettaview-traceability.json, candidate-inventory.json, trace-validation.txt]
+      agentRole: reviewer
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: []
+      reviewMode: recheck
+    independent_discovery:
+      promptFile: prompts/openspec-traceability-review.md
+      inputs: [openspec_change]
+      context: [planning_pull_request]
+      resultSchema: schemas/trace-agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, raw-review-output.json, normalized-review.json, bettaview-traceability.json, candidate-inventory.json, trace-validation.txt]
+      agentRole: reviewer
+      modelProvider: openrouter
+      model: configured-at-run-allocation
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: [model.openrouter_review]
+      reviewMode: discovery
+  nodes:
+    claim_issue:
+      type: system_action
+      action: linear.delegate_and_start
+      edges: {completed: planning_author, failed: system_action_failed}
+    planning_author:
+      type: agent
+      job: planning_author
+      edges: {completed: self_discovery, invalid_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+    self_discovery:
+      type: agent
+      job: self_discovery
+      edges: {pass: publish_initial, findings: planning_self_repair, needs_judgment: publish_initial, proof_conflict: publish_initial, blocked: agent_blocked, failed: agent_failed}
+    planning_self_repair:
+      type: agent
+      job: planning_author
+      edges: {completed: self_recheck_before_publish, invalid_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+    self_recheck_before_publish:
+      type: agent
+      job: self_recheck
+      edges: {pass: publish_initial, findings: planning_self_repair, needs_judgment: publish_initial, proof_conflict: publish_initial, blocked: agent_blocked, failed: agent_failed}
+    publish_initial:
+      type: system_action
+      action: github.publish_planning_candidate
+      edges: {completed: independent_discovery, failed: system_action_failed}
+    independent_discovery:
+      type: agent
+      job: independent_discovery
+      edges: {pass: planning_independent_response, findings: planning_independent_response, needs_judgment: planning_independent_response, proof_conflict: planning_independent_response, blocked: agent_blocked, failed: agent_failed}
+    planning_independent_response:
+      type: agent
+      job: planning_author
+      edges: {completed: publish_update, invalid_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+    publish_update:
+      type: system_action
+      action: github.publish_planning_candidate
+      edges: {completed: publish_author_response, failed: system_action_failed}
+    publish_author_response:
+      type: system_action
+      action: traceability.publish_author_response
+      edges: {completed: planning_review, failed: system_action_failed}
+    planning_review:
+      type: human_gate
+      linearState: Human Review
+      decisions:
+        revision_requested: In Progress
+        merge_authorized: Merging
+        canceled: Canceled
+      edges:
+        revision_requested: start_new_review_round
+        merge_authorized: merge_planning_pr
+        canceled: canceled
+    start_new_review_round:
+      type: system_action
+      action: traceability.start_new_round
+      edges: {completed: planning_author, failed: system_action_failed}
+    merge_planning_pr:
+      type: system_action
+      action: github.merge_planning_pull_request
+      edges: {completed: verify_planning_merge, failed: system_action_failed}
+    verify_planning_merge:
+      type: system_action
+      action: github.verify_planning_merge
+      edges: {completed: done, failed: system_action_failed}
+    done: {type: terminal, deosStatus: succeeded, executorAction: return}
+    canceled: {type: terminal, deosStatus: canceled, executorAction: return}
+    agent_blocked: {type: failure, deosStatus: failed, executorAction: throw, cause: agent_outcome_blocked}
+    agent_failed: {type: failure, deosStatus: failed, executorAction: throw, cause: agent_execution_failed}
+    system_action_failed: {type: failure, deosStatus: failed, executorAction: throw, cause: system_action_invariant_failed}

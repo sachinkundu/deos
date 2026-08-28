@@ -364,6 +364,57 @@ test("GitHub planning merge uses expected head SHA and reconciles a lost respons
   assert.equal(mergeCalls, 1);
 });
 
+test("GitHub trace review check is exact-head, stable, and read back", async () => {
+  const calls: Array<{ method: string; path: string }> = [];
+  let created = false;
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input, init) => {
+      const url = new URL(String(input));
+      const method = init?.method ?? "GET";
+      const path = `${url.pathname}${url.search}`;
+      calls.push({ method, path });
+      if (path.includes("/commits/head-sha/check-runs")) {
+        return Response.json({ check_runs: created ? [{ id: 77, external_id: "review:stable" }] : [] });
+      }
+      if (path.endsWith("/check-runs") && method === "POST") {
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        assert.equal(body.head_sha, "head-sha");
+        assert.equal(body.external_id, "review:stable");
+        created = true;
+        return Response.json({ id: 77 });
+      }
+      if (path.endsWith("/check-runs/77") && method === "GET") {
+        return Response.json({
+          id: 77,
+          external_id: "review:stable",
+          head_sha: "head-sha",
+          details_url: "https://portal.example/review",
+          conclusion: "success",
+          html_url: "https://github.test/check/77",
+        });
+      }
+      return new Response(`unexpected ${method} ${path}`, { status: 500 });
+    } },
+  );
+  const receipt = await adapter.upsertTraceReviewCheck({
+    repository: "sachinkundu/deos",
+    headSha: "head-sha",
+    externalId: "review:stable",
+    detailsUrl: "https://portal.example/review",
+    title: "Traceability passed",
+    summary: "No open findings.",
+    conclusion: "success",
+  });
+  assert.deepEqual(receipt, {
+    checkRunId: "77",
+    url: "https://github.test/check/77",
+    reconciled: false,
+  });
+  assert.equal(calls.filter((call) => call.method === "POST").length, 1);
+});
+
 test("Linear note adapter reconciles an ambiguous create without any state mutation", async () => {
   const comments: Array<{ id: string; body: string }> = [];
   let ambiguous = true;
@@ -393,4 +444,47 @@ test("Linear note adapter reconciles an ambiguous create without any state mutat
   assert.deepEqual(second, { commentId: "comment-7", reconciled: true });
   assert.equal(comments.length, 1);
   assert.equal(queries.some((query) => query.includes("stateId")), false);
+});
+
+test("Linear trace status updates one marked comment in place", async () => {
+  const comments: Array<{ id: string; body: string }> = [];
+  let creates = 0;
+  let updates = 0;
+  const adapter = new LinearCapabilityAdapter(
+    "https://api.linear.test/graphql",
+    "linear-access-token",
+    { fetch: async (_input, init) => {
+      const request = JSON.parse(String(init?.body)) as {
+        query: string;
+        variables: { body?: string; id?: string };
+      };
+      if (request.query.includes("query DeosIssueComments")) {
+        return Response.json({ data: { issue: { comments: { nodes: comments } } } });
+      }
+      if (request.query.includes("commentCreate")) {
+        creates += 1;
+        comments.push({ id: "comment-status", body: request.variables.body ?? "" });
+        return Response.json({ data: { commentCreate: { success: true, comment: { id: "comment-status" } } } });
+      }
+      if (request.query.includes("commentUpdate")) {
+        updates += 1;
+        assert.equal(request.variables.id, "comment-status");
+        comments[0] = { id: "comment-status", body: request.variables.body ?? "" };
+        return Response.json({ data: { commentUpdate: { success: true, comment: { id: "comment-status" } } } });
+      }
+      return new Response("unexpected", { status: 500 });
+    } },
+  );
+  await adapter.upsertStatus({ issueId: "issue-1", markerId: "trace-review:run-1234", body: "Review has findings." });
+  await adapter.upsertStatus({ issueId: "issue-1", markerId: "trace-review:run-1234", body: "Review passed." });
+  const replay = await adapter.upsertStatus({
+    issueId: "issue-1",
+    markerId: "trace-review:run-1234",
+    body: "Review passed.",
+  });
+  assert.equal(creates, 1);
+  assert.equal(updates, 1);
+  assert.equal(comments.length, 1);
+  assert.match(comments[0]?.body ?? "", /Review passed/);
+  assert.equal(replay.reconciled, true);
 });

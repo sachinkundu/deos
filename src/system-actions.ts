@@ -120,11 +120,28 @@ interface PlanningSystemActionDependencies {
   github: Pick<
     GitHubCapabilityAdapter,
     "mergePlanning" | "readPlanningPullRequest" | "readFileAtRef" | "commitIsOnBranch"
-  >;
+  > & Partial<Pick<GitHubCapabilityAdapter, "publishPlanning">>;
   planningStore: Pick<
     D1PlanningStore,
     "findRunWorkProduct" | "recordMerge" | "recordVerification"
-  >;
+  > & Partial<Pick<D1PlanningStore, "recordPublication">>;
+  planningCandidate?: (runId: string) => Promise<{
+    candidateId: string;
+    candidateDigest: string;
+    change: string;
+    files: readonly { path: string; content: string; sha256: string; byteSize: number }[];
+    reviewReplies: readonly { commentId: number; body: string }[];
+    reviewDispositions: readonly {
+      itemId: string;
+      status: "applied" | "declined" | "no_change";
+      reason: string;
+    }[];
+    reviewContextId: string | null;
+  } | null>;
+  issueContext?: (runId: string) => Promise<{
+    identifier: string;
+    url: string;
+  } | null>;
   now?: () => Date;
 }
 
@@ -150,6 +167,9 @@ export class SystemActionController {
     if (action === "github.verify_planning_merge") {
       return this.verifyPlanning(run, nodeId, action);
     }
+    if (action === "github.publish_planning_candidate") {
+      return this.publishPlanning(run, nodeId, action);
+    }
     const prerequisites = await this.store.prerequisites(run.run_id, action);
     const completed = prerequisites.incompleteOperations === 0 && prerequisites.actionReceipts > 0;
     return {
@@ -157,6 +177,140 @@ export class SystemActionController {
       outcome: completed ? "completed" : "failed",
       providerReceiptsComplete: completed,
     };
+  }
+
+  private async publishPlanning(
+    run: OrchestrationRunRecord,
+    nodeId: string,
+    action: string,
+  ): Promise<ValidatedSystemOutcome> {
+    const dependencies = this.requirePlanningDependencies();
+    if (
+      this.planning?.planningCandidate === undefined || this.planning.issueContext === undefined ||
+      dependencies.github.publishPlanning === undefined ||
+      dependencies.planningStore.recordPublication === undefined
+    ) {
+      throw new Error("trusted planning publication dependencies are unavailable");
+    }
+    const [workProduct, candidate, issue] = await Promise.all([
+      dependencies.planningStore.findRunWorkProduct(run.run_id),
+      this.planning.planningCandidate(run.run_id),
+      this.planning.issueContext(run.run_id),
+    ]);
+    if (workProduct === null || candidate === null || issue === null) return this.failed();
+    if (
+      candidate.change !== workProduct.change_id || candidate.files.length < 3 ||
+      candidate.files.some((file) => !file.path.startsWith(`openspec/changes/${candidate.change}/`))
+    ) return this.failed();
+    const manifestJson = JSON.stringify(candidate.files.map(({ content: _content, ...file }) => file));
+    const manifestDigest = await sha256Hex(manifestJson);
+    const operationId = operationIdentity(
+      run.run_id,
+      "system_action",
+      `${nodeId}:${action}:${candidate.candidateDigest}`,
+      run.current_visit_sequence,
+    );
+    const operation = await this.beginPlanningOperation(
+      operationId,
+      run.run_id,
+      action,
+      await sha256Hex(JSON.stringify({
+        candidateId: candidate.candidateId,
+        candidateDigest: candidate.candidateDigest,
+        repository: workProduct.repository,
+        branch: workProduct.remote_branch,
+        manifestDigest,
+      })),
+    );
+    if (["succeeded", "reconciled"].includes(operation.state) && workProduct.head_sha !== null) {
+      return this.completed();
+    }
+    if (!["pending", "manual_reconciliation_required"].includes(operation.state)) return this.failed();
+    const specPaths = candidate.files
+      .map((file) => file.path.slice(`openspec/changes/${candidate.change}/`.length))
+      .filter((path) => path.startsWith("specs/"));
+    const dispositionCounts = candidate.reviewDispositions.reduce((counts, disposition) => ({
+      ...counts,
+      [disposition.status]: counts[disposition.status] + 1,
+    }), { applied: 0, declined: 0, no_change: 0 });
+    const reviewNotes = [
+      "- Review the proposal and complete delta specs together.",
+      ...(candidate.reviewDispositions.length === 0 ? [] : [
+        `- Independent review response: ${dispositionCounts.applied} applied, ${dispositionCounts.declined} declined, and ${dispositionCounts.no_change} needed no text change; use the DEOS trace for each concern and reason.`,
+      ]),
+    ];
+    const body = [
+      `Linear: [${issue.identifier}](${issue.url})`,
+      `OpenSpec change: ${candidate.change}`,
+      "",
+      "## Review notes",
+      ...reviewNotes,
+      "",
+      "## Review order",
+      "1. proposal.md",
+      `2. Specs: ${specPaths.join(", ")}`,
+      "",
+      "## Validation",
+      `- openspec validate ${candidate.change} --strict — passed`,
+      "- Trusted candidate readability check — passed",
+    ].join("\n");
+    try {
+      const receipt = await dependencies.github.publishPlanning({
+        repository: workProduct.repository,
+        branch: workProduct.remote_branch,
+        baseBranch: "main",
+        change: candidate.change,
+        title: `${issue.identifier}: OpenSpec plan`,
+        body,
+        files: candidate.files.map(({ path, content }) => ({ path, content })),
+        reviewReplies: candidate.reviewReplies,
+        ...(workProduct.pull_request_database_id === null ? {} : {
+          expectedPullRequestDatabaseId: workProduct.pull_request_database_id,
+          expectedPullRequestNumber: workProduct.pull_request_number ?? undefined,
+        }),
+      }, operationId);
+      const state = receipt.reconciled || operation.state !== "pending" ? "reconciled" : "succeeded";
+      if (operation.state !== state) {
+        const finished = await this.finishPlanningOperation({
+          operationId,
+          expected: operation.state,
+          state,
+          providerResourceId: receipt.pullRequestDatabaseId,
+          safeErrorCategory: null,
+          now: this.now().toISOString(),
+        });
+        if (!finished) throw new Error("trusted planning publication receipt compare-and-set failed");
+      }
+      await dependencies.planningStore.recordPublication({
+        runId: run.run_id,
+        repository: workProduct.repository,
+        remoteBranch: workProduct.remote_branch,
+        changeId: candidate.change,
+        pullRequestDatabaseId: receipt.pullRequestDatabaseId,
+        pullRequestNumber: receipt.pullRequestNumber,
+        pullRequestUrl: receipt.pullRequestUrl,
+        headSha: receipt.headSha,
+        planningManifestDigest: manifestDigest,
+        planningManifestJson: manifestJson,
+        operationId,
+        now: this.now().toISOString(),
+      });
+      return this.completed();
+    } catch (error) {
+      const ambiguous = error instanceof Error && /ambiguous|provider request failed/i.test(error.message);
+      if (operation.state === "pending") {
+        await this.finishPlanningOperation({
+          operationId,
+          expected: "pending",
+          state: ambiguous ? "manual_reconciliation_required" : "failed",
+          providerResourceId: workProduct.pull_request_database_id,
+          safeErrorCategory: ambiguous ? "planning_publish_unconfirmed" : "planning_publish_rejected",
+          now: this.now().toISOString(),
+        });
+      }
+      if (ambiguous) throw new Error("trusted planning publication requires provider reconciliation");
+      return this.failed();
+    }
   }
 
   private async mergePlanning(

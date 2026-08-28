@@ -14,6 +14,15 @@ import {
   type PlanningPublicationRequest,
   type ValidatedPlanningPublication,
 } from "./planning-publication.ts";
+import {
+  OpenRouterReviewError,
+  type OpenRouterFailureStage,
+  type OpenRouterReviewClient,
+} from "./openrouter-review.ts";
+import type { ProviderDiagnosticWriter } from "./provider-diagnostics.ts";
+import type { OpenRouterResponseStore, OpenRouterStoredResponse } from "./openrouter-response-store.ts";
+import traceDiscoverySchema from "../config/schemas/trace-discovery-result-v1.json" with { type: "json" };
+import traceRecheckSchema from "../config/schemas/trace-recheck-result-v1.json" with { type: "json" };
 
 interface GitHubCapabilityRequest extends GitHubWorkProductRequest {
   version: 1;
@@ -29,11 +38,25 @@ interface LinearCapabilityRequest {
   body: string;
 }
 
+interface OpenRouterCapabilityRequest {
+  version: 1;
+  action: "openrouter_trace_review";
+  model: string;
+  reasoning: string;
+  mode: "discovery" | "recheck";
+  repairAttempt: number;
+  prompt: string;
+}
+
 export interface CapabilityRouterDependencies {
   store: CapabilityStore;
   github: GitHubCapabilityAdapter;
   linear: LinearCapabilityAdapter;
   planningStore?: Pick<D1PlanningStore, "findRunWorkProduct" | "recordPublication">;
+  openrouter?: Pick<OpenRouterReviewClient, "review"> &
+    Partial<Pick<OpenRouterReviewClient, "proxyResponses">>;
+  diagnostics?: ProviderDiagnosticWriter;
+  openrouterResponses?: OpenRouterResponseStore;
   signingSecret: string;
   now?: () => Date;
   lifecycle?: LifecycleWriter;
@@ -182,10 +205,86 @@ const parseLinearRequest = (value: unknown): LinearCapabilityRequest | null => {
   };
 };
 
+const parseOpenRouterRequest = (value: unknown): OpenRouterCapabilityRequest | null => {
+  const request = asRecord(value);
+  if (
+    request === null ||
+    !exactKeys(request, [
+      "version", "action", "model", "reasoning", "mode", "repairAttempt", "prompt",
+    ]) ||
+    request.version !== 1 || request.action !== "openrouter_trace_review" ||
+    !nonEmpty(request.model, 240) || !nonEmpty(request.reasoning, 80) ||
+    !["discovery", "recheck"].includes(String(request.mode)) ||
+    request.repairAttempt !== 0 || !nonEmpty(request.prompt, 1_000_000)
+  ) return null;
+  return {
+    version: 1,
+    action: "openrouter_trace_review",
+    model: request.model,
+    reasoning: request.reasoning,
+    mode: request.mode as "discovery" | "recheck",
+    repairAttempt: Number(request.repairAttempt),
+    prompt: request.prompt,
+  };
+};
+
+const parseOpenRouterResponsesRequest = (
+  value: unknown,
+  savedModel: string,
+): Readonly<Record<string, unknown>> | null => {
+  const request = asRecord(value);
+  if (
+    request === null || request.model !== savedModel ||
+    !(typeof request.input === "string" || Array.isArray(request.input)) ||
+    (request.stream !== undefined && typeof request.stream !== "boolean") ||
+    request.background === true || request.store === true ||
+    request.conversation !== undefined || request.plugins !== undefined
+  ) return null;
+  const encoded = JSON.stringify(request);
+  if (
+    encoded.length === 0 || encoded.length > 3_000_000 ||
+    /\bsk-or-v1-[A-Za-z0-9_-]{12,}\b/.test(encoded) ||
+    /\bBearer\s+[A-Za-z0-9._~+/-]{20,}=*\b/i.test(encoded)
+  ) return null;
+  if (request.tools !== undefined) {
+    if (!Array.isArray(request.tools) || request.tools.length > 64) return null;
+    const forbiddenTools = new Set([
+      "file_search", "computer_use", "computer_use_preview",
+      "code_interpreter", "image_generation", "mcp", "hosted_mcp",
+    ]);
+    for (const value of request.tools) {
+      const tool = asRecord(value);
+      if (
+        tool === null || !nonEmpty(tool.type, 100) ||
+        tool.type.startsWith("openrouter:") || forbiddenTools.has(tool.type)
+      ) return null;
+    }
+  }
+  return Object.freeze({ ...request, model: savedModel, background: false, store: false });
+};
+
+const isReceiptRequest = (value: unknown): boolean => {
+  const request = asRecord(value);
+  return request !== null && exactKeys(request, ["version", "action"]) &&
+    request.version === 1 && request.action === "list_openrouter_review_receipts";
+};
+
 const digest = async (value: unknown): Promise<string> => {
   const encoded = new TextEncoder().encode(JSON.stringify(value));
   const hash = await crypto.subtle.digest("SHA-256", encoded);
   return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+const openRouterSafeCategory = (stage: OpenRouterFailureStage, status: number | null): string => {
+  if (stage === "http") return `openrouter_http_${status ?? "unknown"}`;
+  return ({
+    transport: "openrouter_transport_error",
+    response_body: "openrouter_response_body_too_large",
+    response_json: "openrouter_response_json_invalid",
+    response_contract: "openrouter_response_contract_invalid",
+    structured_content: "openrouter_structured_content_missing",
+    structured_json: "openrouter_structured_json_invalid",
+  } satisfies Record<Exclude<OpenRouterFailureStage, "http">, string>)[stage];
 };
 
 export class CapabilityRouter {
@@ -304,7 +403,323 @@ export class CapabilityRouter {
       }
       return this.linear(input, claims.runId, claims.attemptId);
     }
+    if (path.endsWith("/model-review")) {
+      const input = parseOpenRouterRequest(untrusted);
+      if (
+        input === null || !claims.actions.includes("model.openrouter_review") ||
+        claims.modelProvider !== "openrouter" || input.model !== claims.model ||
+        input.reasoning !== claims.reasoning
+      ) return this.denied(claims.runId, claims.attemptId, "model", untrusted, "model_identity_denied");
+      return this.openRouter(input, claims.runId, claims.attemptId);
+    }
+    if (path.endsWith("/openrouter/v1/responses")) {
+      const input = typeof claims.model === "string"
+        ? parseOpenRouterResponsesRequest(untrusted, claims.model)
+        : null;
+      if (
+        input === null || !claims.actions.includes("model.openrouter_review") ||
+        claims.modelProvider !== "openrouter"
+      ) return this.denied(
+        claims.runId,
+        claims.attemptId,
+        "model",
+        untrusted,
+        "model_responses_identity_denied",
+      );
+      return this.openRouterResponses(input, claims.runId, claims.attemptId);
+    }
+    if (path.endsWith("/model-review/receipts")) {
+      if (
+        !isReceiptRequest(untrusted) ||
+        !claims.actions.includes("model.openrouter_review") ||
+        claims.modelProvider !== "openrouter"
+      ) return json(403, { error: "model_receipts_denied" });
+      return this.openRouterReceipts(claims.attemptId);
+    }
     return json(404, { error: "unknown_capability" });
+  }
+
+  private async openRouterReceipts(attemptId: string): Promise<Response> {
+    const operations = await this.dependencies.store.listAttemptOperations(
+      attemptId,
+      "openrouter_responses",
+    );
+    return json(200, {
+      version: 1,
+      receipts: operations
+        .filter((operation) => ["succeeded", "reconciled"].includes(operation.state))
+        .map((operation) => ({
+          capability: "model",
+          operationId: operation.operation_id,
+          state: operation.state,
+          providerResourceId: operation.provider_resource_id,
+        })),
+    });
+  }
+
+  private async openRouterResponses(
+    input: Readonly<Record<string, unknown>>,
+    runId: string,
+    attemptId: string,
+  ): Promise<Response> {
+    if (
+      this.dependencies.openrouter?.proxyResponses === undefined ||
+      this.dependencies.openrouterResponses === undefined
+    ) {
+      return json(503, { error: "openrouter_adapter_unavailable" });
+    }
+    const requestDigest = await digest(input);
+    const operationId = operationIdentity(
+      runId,
+      "capability",
+      `model:openrouter_responses:${attemptId}:${requestDigest.slice(0, 24)}`,
+      1,
+    );
+    const operation = await this.dependencies.store.begin({
+      operationId,
+      runId,
+      attemptId,
+      capability: "model",
+      action: "openrouter_responses",
+      sanitizedTarget: String(input.model),
+      requestDigest,
+      now: this.now().toISOString(),
+    });
+    const replay = await this.dependencies.openrouterResponses.get(operationId);
+    if (replay !== null) {
+      if (["pending", "manual_reconciliation_required"].includes(operation.operation.state)) {
+        await this.dependencies.store.finish({
+          operationId,
+          expected: operation.operation.state,
+          state: "reconciled",
+          providerResourceId: replay.providerRequestId,
+          safeErrorCategory: null,
+          now: this.now().toISOString(),
+        });
+      }
+      this.emitProvider(runId, operationId, "reconciled");
+      return this.openRouterResponse(replay);
+    }
+    if (operation.operation.state !== "pending" || !operation.created) {
+      return json(409, {
+        error: "model_response_replay_unavailable",
+        operationId,
+        state: operation.operation.state,
+        diagnosticId: operation.operation.diagnostic_id,
+      });
+    }
+    try {
+      const response = await this.dependencies.openrouter.proxyResponses(input);
+      await this.dependencies.openrouterResponses.put({
+        operationId,
+        ...response,
+        now: this.now().toISOString(),
+      });
+      const changed = await this.dependencies.store.finish({
+        operationId,
+        expected: "pending",
+        state: "succeeded",
+        providerResourceId: response.providerRequestId,
+        safeErrorCategory: null,
+        now: this.now().toISOString(),
+      });
+      if (!changed) throw new Error("OpenRouter Responses receipt compare-and-set failed");
+      this.emitProvider(runId, operationId, "succeeded");
+      return this.openRouterResponse({ operationId, ...response });
+    } catch (error) {
+      const diagnostic = error instanceof OpenRouterReviewError ? error.diagnostic : null;
+      const safeErrorCategory = diagnostic === null
+        ? "openrouter_adapter_error"
+        : openRouterSafeCategory(diagnostic.stage, diagnostic.httpStatus);
+      const now = this.now().toISOString();
+      let diagnosticId: string | null = null;
+      if (diagnostic !== null && this.dependencies.diagnostics !== undefined) {
+        try {
+          diagnosticId = await this.dependencies.diagnostics.record({
+            operationId,
+            runId,
+            attemptId,
+            provider: "openrouter",
+            safeCategory: safeErrorCategory,
+            diagnostic,
+            now,
+          });
+        } catch {
+          console.error(JSON.stringify({
+            message: "openrouter diagnostic write failed",
+            runId,
+            attemptId,
+            operationId,
+            safeErrorCategory,
+          }));
+        }
+      }
+      const state = diagnostic?.requestMayHaveSucceeded === false
+        ? "failed"
+        : "manual_reconciliation_required";
+      await this.dependencies.store.finish({
+        operationId,
+        expected: "pending",
+        state,
+        providerResourceId: null,
+        safeErrorCategory,
+        diagnosticId,
+        now,
+      });
+      console.error(JSON.stringify({
+        message: "openrouter Responses proxy failed",
+        runId,
+        attemptId,
+        operationId,
+        diagnosticId,
+        safeErrorCategory,
+        failureStage: diagnostic?.stage ?? null,
+        httpStatus: diagnostic?.httpStatus ?? null,
+        providerCode: diagnostic?.providerCode ?? null,
+        providerType: diagnostic?.providerType ?? null,
+        providerRequestId: diagnostic?.providerRequestId ?? null,
+        retryable: diagnostic?.retryable ?? false,
+        requestMayHaveSucceeded: diagnostic?.requestMayHaveSucceeded ?? true,
+      }));
+      this.emitProvider(runId, operationId, "failed", safeErrorCategory);
+      return json(502, {
+        error: {
+          message: `DEOS OpenRouter proxy failed (${safeErrorCategory})`,
+          type: "deos_provider_error",
+          code: safeErrorCategory,
+          diagnostic_id: diagnosticId,
+        },
+      });
+    }
+  }
+
+  private openRouterResponse(response: OpenRouterStoredResponse): Response {
+    return new Response(response.body, {
+      status: response.status,
+      headers: {
+        "Cache-Control": "no-store",
+        "Content-Type": response.contentType,
+        "X-Deos-Operation-Id": response.operationId,
+      },
+    });
+  }
+
+  private async openRouter(
+    input: OpenRouterCapabilityRequest,
+    runId: string,
+    attemptId: string,
+  ): Promise<Response> {
+    if (this.dependencies.openrouter === undefined) {
+      return json(503, { error: "openrouter_adapter_unavailable" });
+    }
+    const operationId = operationIdentity(
+      runId,
+      "capability",
+      `model:${input.action}:${attemptId}:${input.repairAttempt}`,
+      1,
+    );
+    const operation = await this.dependencies.store.begin({
+      operationId,
+      runId,
+      attemptId,
+      capability: "model",
+      action: input.action,
+      sanitizedTarget: input.model,
+      requestDigest: await digest(input),
+      now: this.now().toISOString(),
+    });
+    if (["succeeded", "reconciled", "duplicate"].includes(operation.operation.state)) {
+      return json(409, { error: "model_result_requires_durable_recovery", operationId });
+    }
+    if (operation.operation.state !== "pending") {
+      return json(409, this.receipt(operationId, operation.operation.state, operation.operation.provider_resource_id));
+    }
+    try {
+      const response = await this.dependencies.openrouter.review({
+        model: input.model,
+        reasoning: input.reasoning,
+        prompt: input.prompt,
+        schemaName: input.mode === "discovery" ? "deos_trace_discovery" : "deos_trace_recheck",
+        schema: input.mode === "discovery" ? traceDiscoverySchema : traceRecheckSchema,
+      });
+      const changed = await this.dependencies.store.finish({
+        operationId,
+        expected: "pending",
+        state: "succeeded",
+        providerResourceId: response.providerRequestId,
+        safeErrorCategory: null,
+        now: this.now().toISOString(),
+      });
+      if (!changed) throw new Error("OpenRouter receipt compare-and-set failed");
+      this.emitProvider(runId, operationId, "succeeded");
+      return json(200, {
+        operationId,
+        state: "succeeded",
+        providerResourceId: response.providerRequestId,
+        result: response.result,
+      });
+    } catch (error) {
+      const diagnostic = error instanceof OpenRouterReviewError ? error.diagnostic : null;
+      const safeErrorCategory = diagnostic === null
+        ? "openrouter_adapter_error"
+        : openRouterSafeCategory(diagnostic.stage, diagnostic.httpStatus);
+      const now = this.now().toISOString();
+      let diagnosticId: string | null = null;
+      if (diagnostic !== null && this.dependencies.diagnostics !== undefined) {
+        try {
+          diagnosticId = await this.dependencies.diagnostics.record({
+            operationId,
+            runId,
+            attemptId,
+            provider: "openrouter",
+            safeCategory: safeErrorCategory,
+            diagnostic,
+            now,
+          });
+        } catch {
+          console.error(JSON.stringify({
+            message: "openrouter diagnostic write failed",
+            runId,
+            attemptId,
+            operationId,
+            safeErrorCategory,
+          }));
+        }
+      }
+      const state = diagnostic?.requestMayHaveSucceeded === false
+        ? "failed"
+        : "manual_reconciliation_required";
+      await this.dependencies.store.finish({
+        operationId,
+        expected: "pending",
+        state,
+        providerResourceId: null,
+        safeErrorCategory,
+        diagnosticId,
+        now,
+      });
+      console.error(JSON.stringify({
+        message: "openrouter review failed",
+        runId,
+        attemptId,
+        operationId,
+        diagnosticId,
+        safeErrorCategory,
+        failureStage: diagnostic?.stage ?? null,
+        httpStatus: diagnostic?.httpStatus ?? null,
+        providerCode: diagnostic?.providerCode ?? null,
+        providerType: diagnostic?.providerType ?? null,
+        providerRequestId: diagnostic?.providerRequestId ?? null,
+        retryable: diagnostic?.retryable ?? false,
+        requestMayHaveSucceeded: diagnostic?.requestMayHaveSucceeded ?? true,
+      }));
+      this.emitProvider(runId, operationId, "failed", safeErrorCategory);
+      return json(502, {
+        ...this.receipt(operationId, state, null),
+        safeErrorCategory,
+        diagnosticId,
+      });
+    }
   }
 
   private async planningGithub(

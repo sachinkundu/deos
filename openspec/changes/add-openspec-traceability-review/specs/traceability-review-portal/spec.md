@@ -20,7 +20,7 @@ The DEOS settings page SHALL list the OpenRouter models that DEOS supports for i
 
 ### Requirement: Show one protected review view
 
-The DEOS portal SHALL have a guarded review page for a flow run. The `Create Planning PR` node popup SHALL show a `View review trace` link when saved review proof exists. The normal workflow graph SHALL not add a separate self-check node. The review page SHALL show the Linear issue, run, and planning pull request. It SHALL show the chosen head, author coding agent Codex model, and independent OpenRouter model. It SHALL show the self-check and independent stages, each round, result, base finding, and fix. It SHALL distinguish a closed finding set from a closed review stage. It SHALL show reused results, stale reasons, same-stage proof conflicts, turn-limit escalation, and open findings sent to human judgment. It SHALL also show safe proof links.
+The DEOS portal SHALL have a guarded review page for a flow run. The `Create Planning PR` node popup SHALL show a `View review trace` link when saved review proof exists. The normal workflow graph SHALL not add a separate self-check node. The review page SHALL show the Linear issue, run, and planning pull request. It SHALL show the chosen head, author coding agent Codex model, and independent OpenRouter model. It SHALL show both directional passes, confirmed links, one-sided disputed links, findings, and author dispositions. It SHALL distinguish completed review work from a semantic claim that needs human judgment. It SHALL show reused results, stale reasons, same-stage proof conflicts, and safe proof links.
 
 #### Scenario: Authorized operator opens a review
 
@@ -52,10 +52,20 @@ The DEOS portal SHALL have a guarded review page for a flow run. The `Create Pla
 - **WHEN** a later result from the same review stage conflicts with its fixed rating from the same round
 - **THEN** the page shows both results and the human-judgment state instead of presenting it as an ordinary repair cycle
 
-#### Scenario: Review turns end with findings open
+#### Scenario: Self-check turns end with findings open
 
-- **WHEN** a round reaches human review through the shared three-turn limit
+- **WHEN** a round reaches human review after the self-check uses its three-turn limit
 - **THEN** the page labels it `needs judgment` and keeps every open finding and model disagreement visible
+
+#### Scenario: Directional passes disagree
+
+- **WHEN** only one pass claims a proposal-to-requirement relationship
+- **THEN** the page identifies its direction, shows both rationales or the absent claim, and does not present it as a confirmed link
+
+#### Scenario: Author responds to external review
+
+- **WHEN** the author applies, declines, or makes no change for a review item
+- **THEN** the page shows that disposition beside the original item and keeps both reviewed and resulting head identities
 
 ### Requirement: Render citations against the exact reviewed documents
 
@@ -87,7 +97,7 @@ The portal SHALL compare the head in the outside review with the live pull reque
 
 ### Requirement: Link concise provider status to detailed proof
 
-After the outside review, DEOS SHALL update one short GitHub check on the exact head. It SHALL also update one short Linear review link or file. Both SHALL link to the guarded portal page. Full findings SHALL stay in the saved proof and portal.
+After the outside review and author response, DEOS SHALL update one short GitHub check. It SHALL state that external review completed and show confirmed-link, disputed-link, finding, and author-disposition counts. It SHALL also update one short Linear review link or file. Both SHALL link to the guarded portal page. Full findings SHALL stay in the saved proof and portal.
 
 #### Scenario: Independent review completes
 
