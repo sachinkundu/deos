@@ -30,7 +30,25 @@ test("GitHub authorization fails closed until the client secret is configured", 
     { headers: { "CF-Access-Jwt-Assertion": "test" } },
   ), env(), allowed);
   assert.equal(response.status, 503);
-  assert.deepEqual(await response.json(), { error: "github_authorization_unavailable" });
+  assert.deepEqual(await response.json(), {
+    error: "github_authorization_unavailable",
+    reason: "missing_github_client_secret",
+  });
+});
+
+test("GitHub authorization distinguishes a rejected session start", async () => {
+  const runtime = env();
+  runtime.GITHUB_CLIENT_SECRET = "secret";
+  const response = await routeBettaViewRequest(new Request(
+    "https://bettaview.example/auth/github",
+    { headers: { "CF-Access-Jwt-Assertion": "test" } },
+  ), runtime, allowed);
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), {
+    error: "github_authorization_unavailable",
+    reason: "github_session_start_rejected",
+    status: 401,
+  });
 });
 
 test("cloud pull request URLs are canonical and exact", () => {

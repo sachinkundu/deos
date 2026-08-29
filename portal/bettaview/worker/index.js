@@ -73,17 +73,40 @@ function safeReturnTo(value) {
 }
 
 async function githubStart(request, env) {
-  if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) {
-    return json(503, { error: "github_authorization_unavailable" });
-  }
+  if (!env.GITHUB_CLIENT_ID) return json(503, {
+    error: "github_authorization_unavailable",
+    reason: "missing_github_client_id",
+  });
+  if (!env.GITHUB_CLIENT_SECRET) return json(503, {
+    error: "github_authorization_unavailable",
+    reason: "missing_github_client_secret",
+  });
   const url = new URL(request.url);
   const id = sessionId(request) || newSessionId();
   const redirectUri = `${url.origin}/auth/github/callback`;
-  const response = await sessionStub(env, id).fetch("https://session/start", {
-    method: "POST",
-    body: JSON.stringify({ returnTo: safeReturnTo(url.searchParams.get("returnTo")), redirectUri }),
-  });
-  if (!response.ok) return json(503, { error: "github_authorization_unavailable" });
+  let response;
+  try {
+    response = await sessionStub(env, id).fetch("https://session/start", {
+      method: "POST",
+      body: JSON.stringify({ returnTo: safeReturnTo(url.searchParams.get("returnTo")), redirectUri }),
+    });
+  } catch (error) {
+    console.error("BettaView GitHub session start failed", {
+      name: error instanceof Error ? error.name : "UnknownError",
+    });
+    return json(503, {
+      error: "github_authorization_unavailable",
+      reason: "github_session_start_failed",
+    });
+  }
+  if (!response.ok) {
+    console.error("BettaView GitHub session start rejected", { status: response.status });
+    return json(503, {
+      error: "github_authorization_unavailable",
+      reason: "github_session_start_rejected",
+      status: response.status,
+    });
+  }
   const { state, challenge } = await response.json();
   const authorize = new URL("https://github.com/login/oauth/authorize");
   authorize.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
