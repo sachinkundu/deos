@@ -763,6 +763,19 @@ function StatusLegend() {
   );
 }
 
+function bettaViewPullRequestUrl(pullRequestUrl) {
+  return `https://bettaview.voxdez.com/?pr=${encodeURIComponent(pullRequestUrl)}`;
+}
+
+function PullRequestLinks({ pullRequest, status }) {
+  return (
+    <>
+      <a href={pullRequest.url} target="_blank" rel="noreferrer"><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>GitHub · {status}</small></span><ArrowSquareOut size={15} /></a>
+      <a href={bettaViewPullRequestUrl(pullRequest.url)} target="_blank" rel="noreferrer"><IntersectSquare size={19} weight="fill" /><span><strong>Read in BettaView</strong><small>Review story and trace</small></span><ArrowSquareOut size={15} /></a>
+    </>
+  );
+}
+
 function StepInspector({ selection, issue, onClose, onTranscript }) {
   if (!selection) return null;
   const step = selection.step;
@@ -802,7 +815,7 @@ function StepInspector({ selection, issue, onClose, onTranscript }) {
           </section>}
           {usesPullRequest && pullRequest && status !== "future" && status !== "unknown" && <section className="inspector-links">
             <h3>Pull request</h3>
-            <a href={pullRequest.url} target="_blank" rel="noreferrer"><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></a>
+            <PullRequestLinks pullRequest={pullRequest} status={prStatus} />
           </section>}
           {step?.files?.length > 0 && <section className="inspector-files">
             <h3>Files</h3>
@@ -817,7 +830,7 @@ function StepInspector({ selection, issue, onClose, onTranscript }) {
             <h3>Linked work</h3>
             {issue.linear && <a href={issue.linear.url} target="_blank" rel="noreferrer"><FlowArrow size={19} /><span><strong>{issue.linear.label}</strong><small>Linear</small></span><ArrowSquareOut size={15} /></a>}
             {!usesPullRequest && pullRequest && definitionIndex >= 1 && status !== "future" && status !== "unknown" && (
-              <a href={pullRequest.url} target="_blank" rel="noreferrer"><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></a>
+              <PullRequestLinks pullRequest={pullRequest} status={prStatus} />
             )}
           </section>}
       </div>

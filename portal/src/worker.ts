@@ -12,6 +12,11 @@ import {
   TraceReviewNotFoundError,
   TraceReviewReadStore,
 } from "./review.ts";
+import {
+  ReviewStoryArtifactError,
+  ReviewStoryNotFoundError,
+  ReviewStoryReadStore,
+} from "./story.ts";
 
 const securityHeaders = {
   "Cache-Control": "no-store",
@@ -208,6 +213,34 @@ export const routePortalRequest = async (
         .projection(decodeURIComponent(reviewMatch[1]));
       return result === null ? json(404, { error: "run_not_found" }) : json(200, result);
     }
+    const processArtifactMatch = url.pathname.match(
+      /^\/api\/process-attempts\/([0-9a-f-]{36})\/artifacts\/([^/]+)$/i,
+    );
+    if (processArtifactMatch !== null) {
+      const artifact = await new ReviewStoryReadStore(env.DB, env.ARTIFACTS, env.PROJECT_ID).artifact(
+        processArtifactMatch[1],
+        decodeURIComponent(processArtifactMatch[2]),
+      );
+      return new Response(request.method === "HEAD" ? null : artifact.bytes, {
+        status: 200,
+        headers: {
+          ...securityHeaders,
+          "Content-Type": artifact.mediaType,
+          "Content-Length": String(artifact.bytes.byteLength),
+          "X-Content-SHA256": artifact.sha256,
+        },
+      });
+    }
+    const pullRequestStoryMatch = url.pathname.match(
+      /^\/api\/pull-requests\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/([1-9][0-9]*)\/review-story$/,
+    );
+    if (pullRequestStoryMatch !== null) {
+      const result = await new ReviewStoryReadStore(env.DB, env.ARTIFACTS, env.PROJECT_ID).projection(
+        `${pullRequestStoryMatch[1]}/${pullRequestStoryMatch[2]}`,
+        Number(pullRequestStoryMatch[3]),
+      );
+      return result === null ? json(404, { error: "governed_pull_request_not_found" }) : json(200, result);
+    }
     const runMatch = url.pathname.match(/^\/api\/runs\/(.+)$/);
     if (runMatch !== null) {
       const result = await store.projection(decodeURIComponent(runMatch[1]));
@@ -220,6 +253,8 @@ export const routePortalRequest = async (
     if (error instanceof TranscriptUnavailableError) return json(503, { error: "transcript_unavailable" });
     if (error instanceof TraceReviewNotFoundError) return json(404, { error: "review_artifact_not_found" });
     if (error instanceof TraceReviewArtifactError) return json(503, { error: "review_artifact_unavailable" });
+    if (error instanceof ReviewStoryNotFoundError) return json(404, { error: "process_artifact_not_found" });
+    if (error instanceof ReviewStoryArtifactError) return json(503, { error: "process_artifact_unavailable" });
     if (error instanceof RepositorySettingsError) {
       const status = error.code === "invalid_repository" ? 400
         : error.code === "settings_not_found" ? 404

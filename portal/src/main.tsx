@@ -39,7 +39,14 @@ interface Visit {
   waits: Array<{ state: string; startedAt: string; endedAt: string | null }>;
   links: Array<{ kind: string; label: string; url: string; createdAt: string }>;
 }
-interface Projection { run: Run & { freshness: string }; stages: Stage[]; history: Visit[]; unlinked: { attempts: number; waits: number }; reviewAvailable: boolean }
+interface Projection {
+  run: Run & { freshness: string };
+  stages: Stage[];
+  history: Visit[];
+  unlinked: { attempts: number; waits: number };
+  reviewAvailable: boolean;
+  pullRequest: { number: number; url: string; status: string; verified: boolean } | null;
+}
 interface RepositorySettings {
   projectId: string;
   repository: string;
@@ -142,6 +149,9 @@ const formatDuration = (startedAt: string, endedAt: string | null): string => {
   const remainingSeconds = seconds % 60;
   return remainingSeconds === 0 ? `${minutes} min` : `${minutes} min ${remainingSeconds} sec`;
 };
+
+const bettaViewUrl = (pullRequestUrl: string): string =>
+  `https://bettaview.voxdez.com/?pr=${encodeURIComponent(pullRequestUrl)}`;
 
 const human = (value: string): string => value.replaceAll("_", " ");
 
@@ -564,7 +574,10 @@ function App() {
                 {transcriptAttempts.length > 0 && <div><h3>Transcript</h3>{transcriptAttempts.map((attempt) => <div className="attempt-row" key={attempt.id}><button type="button" onClick={() => setTranscriptAttempt(attempt.id)}>View transcript</button></div>)}</div>}
                 {detail.links.length > 0 && <div><h3>Links</h3>{detail.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>)}</div>}
               </div>}
-              {detail.stageId === "planning" && projection.reviewAvailable && <a className="review-trace-link" href={`/runs/${encodeURIComponent(projection.run.id)}/review`}>View review trace <ArrowSquareOut /></a>}
+              {detail.stageId === "planning" && projection.pullRequest && <div className="planning-pr-actions">
+                <a className="review-trace-link" href={projection.pullRequest.url} target="_blank" rel="noreferrer">Open on GitHub <ArrowSquareOut /></a>
+                <a className="review-trace-link" href={bettaViewUrl(projection.pullRequest.url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>
+              </div>}
             </div>}
           </section>
           <section className="history-panel">
