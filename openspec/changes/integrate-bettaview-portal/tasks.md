@@ -29,8 +29,8 @@
 ## 5. Verification and delivery
 
 - [x] 5.1 Run BettaView unit, Worker contract, DEOS portal, type, build, and strict OpenSpec checks.
-- [ ] 5.2 Deploy the DEOS and BettaView Workers, configure the service binding, custom domain, Access application, and GitHub App callback and secrets.
-- [ ] 5.3 Read back the deployments and verify that SAC-139 resolves without a new Linear delivery or Workflow run.
+- [x] 5.2 Deploy the DEOS and BettaView Workers, configure the service binding, custom domain, Access application, and GitHub App callback and secrets.
+- [x] 5.3 Read back the deployments and verify that SAC-139 resolves without a new Linear delivery or Workflow run.
 - [ ] 5.4 Verify the existing SAC-139 planning PR across PR, Trace, and Process, including D1/R2 hashes and stale-head state.
 - [ ] 5.5 Verify real GitHub comment, reply, review-decision, and Mermaid annotation actions on an existing controlled pull request under the signed-in human identity.
 - [ ] 5.6 Publish a ready implementation PR with tests, deployment proof, provider proof, and completed checkboxes.
