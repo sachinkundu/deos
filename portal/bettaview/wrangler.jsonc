@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "deos-bettaview-portal",
+  "main": "worker/index.js",
+  "workers_dev": false,
+  "preview_urls": false,
+  "compatibility_date": "2026-08-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "account_id": "c68856288112af7698f5be52ea94b96e",
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true }
+  },
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "deos-voxdez.cloudflareaccess.com",
+    "ACCESS_AUD": "c12828abda88ac73e394039f6e0b87a9bc5f2d78922463c37a72ccca55bedec7",
+    "ALLOWED_EMAIL": "sachinkundu@gmail.com",
+    "GITHUB_CLIENT_ID": "Iv23likxukpheraNrZlx"
+  },
+  "services": [{
+    "binding": "DEOS_PORTAL",
+    "service": "deos-workflow-portal"
+  }],
+  "durable_objects": {
+    "bindings": [{ "name": "GITHUB_SESSIONS", "class_name": "GitHubSession" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GitHubSession"] }],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "none"
+  },
+  "routes": [{ "pattern": "bettaview.voxdez.com", "custom_domain": true }]
+}
