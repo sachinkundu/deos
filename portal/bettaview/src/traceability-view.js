@@ -36,6 +36,26 @@ export function requirementJudgmentIsSatisfied(link) {
     && link.judgment.minimality === "minimal";
 }
 
+export function directionalClaimPresentation(claim) {
+  const proposalRationale = claim?.proposalFirst?.rationale || "No rationale";
+  const requirementRationale = claim?.requirementFirst?.rationale || "No rationale";
+  if (claim?.status === "proposal_only") return {
+    label: "Only in proposal",
+    details: [{ label: null, rationale: proposalRationale }],
+  };
+  if (claim?.status === "requirement_only") return {
+    label: "Only in requirement",
+    details: [{ label: null, rationale: requirementRationale }],
+  };
+  return {
+    label: claim?.status === "confirmed" ? "In proposal and requirement" : "Relationship evidence",
+    details: [
+      { label: "Proposal", rationale: proposalRationale },
+      { label: "Requirement", rationale: requirementRationale },
+    ],
+  };
+}
+
 export function buildTraceabilityView(review) {
   if (!review?.manifest) throw new Error("A loaded traceability review is required.");
   const manifest = review.manifest;

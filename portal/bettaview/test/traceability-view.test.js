@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildTraceabilityQuality,
   buildTraceabilityView,
+  directionalClaimPresentation,
   preferredStatementId,
   requirementJudgmentIsSatisfied,
   sourceRangeLabel,
@@ -113,6 +114,10 @@ test("renders a one-sided v4 relationship in both directions without hiding the 
   assert.equal(view.links[0].directionalClaims[0].status, "requirement_only");
   assert.equal(quality.directionalDisagreements.length, 1);
   assert.equal(quality.needsAttention, true);
+  assert.deepEqual(directionalClaimPresentation(view.links[0].directionalClaims[0]), {
+    label: "Only in requirement",
+    details: [{ label: null, rationale: "The requirement cites this statement." }],
+  });
 });
 
 test("quality summary surfaces an adverse requirement judgment", () => {

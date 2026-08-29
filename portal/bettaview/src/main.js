@@ -23,6 +23,7 @@ import {
 import {
   buildTraceabilityQuality,
   buildTraceabilityView,
+  directionalClaimPresentation,
   requirementJudgmentIsSatisfied,
   sourceRangeLabel,
 } from "./traceability-view.js";
@@ -426,16 +427,11 @@ function specCitationIndex(view, link) {
   return view.links.filter((candidate) => candidate.spec.path === link.spec.path).indexOf(link) + 1;
 }
 
-function directionalClaimLabel(status) {
-  if (status === "confirmed") return "Confirmed by both passes";
-  if (status === "proposal_only") return "Proposal-first only";
-  if (status === "requirement_only") return "Requirement-first only";
-  return "Legacy link";
-}
-
 function renderDirectionalClaim(claim) {
   if (!claim) return "";
-  return `<div class="directional-claim claim-${escapeHtml(claim.status)}"><strong>${escapeHtml(directionalClaimLabel(claim.status))}</strong><p><b>Proposal-first:</b> ${escapeHtml(claim.proposalFirst.rationale)}</p><p><b>Requirement-first:</b> ${escapeHtml(claim.requirementFirst.rationale)}</p></div>`;
+  const presentation = directionalClaimPresentation(claim);
+  const details = presentation.details.map((detail) => `<p>${detail.label ? `<b>${escapeHtml(detail.label)}:</b> ` : ""}${escapeHtml(detail.rationale)}</p>`).join("");
+  return `<div class="directional-claim claim-${escapeHtml(claim.status)}"><strong>${escapeHtml(presentation.label)}</strong>${details}</div>`;
 }
 
 function renderCitationRequirement(link, claim = null) {

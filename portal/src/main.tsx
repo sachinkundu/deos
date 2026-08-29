@@ -17,6 +17,7 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 import { applyStaged, receivePoll, type PollState } from "./polling.ts";
+import { directionalClaimPresentation } from "./directional-claim.ts";
 import { portalPageFromPath, portalPathForPage, reviewRunIdFromPath, type PortalPage } from "./routes.ts";
 import { TranscriptViewer } from "./TranscriptViewer.tsx";
 import type { TranscriptDto } from "./transcript-view.ts";
@@ -415,13 +416,12 @@ function ReviewTracePage({ runId }: { runId: string }) {
             </article>;
           })}</div>}
           {directionalClaims.length > 0 && <div className="review-findings"><h3>Directional relationship evidence</h3>{directionalClaims.map((claim) => {
-            const proposal = claim.proposalFirst as Record<string, unknown> | undefined;
-            const requirement = claim.requirementFirst as Record<string, unknown> | undefined;
             const disposition = dispositions.find((item) => item.itemId === claim.id);
+            const presentation = directionalClaimPresentation(claim);
             return <article key={String(claim.id)}>
-              <strong>{String(claim.id)}</strong><span>{human(String(disposition?.status ?? claim.status ?? "unknown"))}</span>
-              <p><strong>Proposal-first:</strong> {String(proposal?.rationale ?? "No rationale")}</p>
-              <p><strong>Requirement-first:</strong> {String(requirement?.rationale ?? "No rationale")}</p>
+              <strong>{String(claim.id)}</strong><span>{disposition ? human(String(disposition.status)) : presentation.label}</span>
+              {disposition && <p><strong>{presentation.label}</strong></p>}
+              {presentation.details.map((detail, detailIndex) => <p key={detailIndex}>{detail.label && <strong>{detail.label}: </strong>}{detail.rationale}</p>)}
               {disposition && <p><strong>Author:</strong> {disposition.reason}</p>}
             </article>;
           })}</div>}
