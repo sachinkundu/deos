@@ -79,5 +79,19 @@ test("Access denial happens before static assets", async () => {
     throw new Error("unauthorized");
   });
   assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: "unauthorized", reason: "missing_access_token" });
   assert.equal(reads, 0);
+});
+
+test("Access can validate Cloudflare's authorization cookie when the assertion header is absent", async () => {
+  let received = null;
+  const response = await routeBettaViewRequest(new Request("https://bettaview.example/", {
+    headers: { Cookie: "other=value; CF_Authorization=cookie-token" },
+  }), env(), async (token) => {
+    received = token;
+    return { email: "sachinkundu@gmail.com" };
+  });
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "bettaview");
+  assert.equal(received, "cookie-token");
 });

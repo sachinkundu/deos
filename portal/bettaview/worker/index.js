@@ -41,6 +41,21 @@ function clearSessionCookie() {
   return "bettaview_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0";
 }
 
+function accessTokenFromRequest(request) {
+  const assertion = request.headers.get("Cf-Access-Jwt-Assertion");
+  if (assertion) return assertion;
+  const cookie = request.headers.get("Cookie")?.match(/(?:^|;\s*)CF_Authorization=([^;]+)(?:;|$)/i);
+  return cookie?.[1] || null;
+}
+
+function accessFailureReason(error, token) {
+  if (!token) return "missing_access_token";
+  if (error?.code === "ERR_JWT_CLAIM_VALIDATION_FAILED") return "invalid_access_claim";
+  if (error?.code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED") return "invalid_access_signature";
+  if (error?.code === "ERR_JWKS_NO_MATCHING_KEY") return "access_key_unavailable";
+  return "invalid_access_token";
+}
+
 function sessionStub(env, id) {
   return env.GITHUB_SESSIONS.get(env.GITHUB_SESSIONS.idFromName(id));
 }
@@ -123,7 +138,7 @@ async function proxyDeosArtifact(request, env, accessToken, pathname) {
 }
 
 export async function routeBettaViewRequest(request, env, authenticate = verifyAccess) {
-  const accessToken = request.headers.get("CF-Access-Jwt-Assertion");
+  const accessToken = accessTokenFromRequest(request);
   try {
     await authenticate(accessToken, {
       teamDomain: env.ACCESS_TEAM_DOMAIN,
@@ -132,7 +147,9 @@ export async function routeBettaViewRequest(request, env, authenticate = verifyA
     });
   } catch (error) {
     const forbidden = error instanceof Error && error.message === "forbidden";
-    return json(forbidden ? 403 : 401, { error: forbidden ? "forbidden" : "unauthorized" });
+    const reason = forbidden ? "email_not_allowed" : accessFailureReason(error, accessToken);
+    console.warn("BettaView Access verification failed", { reason });
+    return json(forbidden ? 403 : 401, { error: forbidden ? "forbidden" : "unauthorized", reason });
   }
 
   const url = new URL(request.url);
