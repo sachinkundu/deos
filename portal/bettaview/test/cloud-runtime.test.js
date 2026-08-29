@@ -5,7 +5,7 @@ import {
   parsePullRequestUrl,
   readMarker,
 } from "../worker/github-core.js";
-import { routeBettaViewRequest } from "../worker/index.js";
+import { createBettaViewHandler, routeBettaViewRequest } from "../worker/index.js";
 
 const allowed = async () => ({ email: "sachinkundu@gmail.com" });
 
@@ -94,4 +94,20 @@ test("Access can validate Cloudflare's authorization cookie when the assertion h
   assert.equal(response.status, 200);
   assert.equal(await response.text(), "bettaview");
   assert.equal(received, "cookie-token");
+});
+
+test("Worker execution context is not mistaken for the Access authenticator", async () => {
+  let received = null;
+  const worker = createBettaViewHandler(async (token) => {
+    received = token;
+    return { email: "sachinkundu@gmail.com" };
+  });
+  const executionContext = { waitUntil() {}, passThroughOnException() {} };
+  const response = await worker.fetch(new Request("https://bettaview.example/", {
+    headers: { "CF-Access-Jwt-Assertion": "access-token" },
+  }), env(), executionContext);
+
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "bettaview");
+  assert.equal(received, "access-token");
 });

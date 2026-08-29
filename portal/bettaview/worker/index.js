@@ -210,4 +210,12 @@ export async function routeBettaViewRequest(request, env, authenticate = verifyA
   });
 }
 
-export default { fetch: routeBettaViewRequest };
+export function createBettaViewHandler(authenticate = verifyAccess) {
+  return {
+    fetch(request, env, _context) {
+      return routeBettaViewRequest(request, env, authenticate);
+    },
+  };
+}
+
+export default createBettaViewHandler();
