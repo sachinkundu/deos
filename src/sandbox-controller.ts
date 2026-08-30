@@ -1209,7 +1209,7 @@ export class SandboxAgentController {
     if (await sha256Hex(patch) !== reference.sha256) {
       throw new Error("continuation patch digest mismatch");
     }
-    if (patch === "# No repository changes in this attempt.\n") return;
+    if (patch.length === 0 || patch === "# No repository changes in this attempt.\n") return;
     const path = "/deos/run/continuation.patch";
     await sandbox.writeFile(path, patch, { encoding: "utf8" });
     try {
