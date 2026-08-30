@@ -42,12 +42,12 @@ flowchart LR
 4. The Worker sends the canonical repository and pull-request number to the DEOS service binding.
 5. DEOS resolves one durable run and builds the accepted trace and complete review/process story.
 6. DEOS reads only allowlisted artifacts through complete manifests and verifies every object hash.
-7. BettaView narrows the story to author work, self-review, external review, author dispositions, and the final result, then shows PR and Review. It compares the live and reviewed heads before calling the trace current.
+7. BettaView narrows the story to author work, self-review, one external-discovery cycle, author dispositions, trace refreshes, semantic human-review decisions, and the final result, then shows PR and Review. It compares the live and reviewed heads before calling the trace current.
 8. A GitHub write is checked against the loaded head and sent with the reader's user token.
 
 After external review and any author response, trusted publication updates the pull request first. DEOS then generates a complete trace against that exact published head and document hashes. Only the accepted final-head trace supplies BettaView's active citations and final summary. Earlier candidate traces remain chronological review evidence. Human Review starts only after the final trace is complete and hash-verified.
 
-When Human Review requests a later revision, workflow version 13 routes the author update directly to trusted publication and a new external review. It does not repeat the author self-review used before the first publication.
+When Human Review requests a later revision, workflow version 16 routes the author update directly to trusted publication and a final-head trace refresh. It repeats neither the author self-review nor the external-discovery cycle used before the first Human Review.
 
 ## Minimal data model
 
@@ -78,9 +78,9 @@ DEOS keeps its complete ordered projection because the main portal needs workflo
 
 Production validation performs read-only D1/R2 and provider reads for SAC-139. GitHub review actions use an existing controlled pull request and do not dispatch DEOS. No Linear event or workflow run is created for this portal work.
 
-### Keep self-review before first publication only
+### Keep discovery reviews before first Human Review only
 
-The initial planning candidate still runs through author self-review and its bounded repair loop before publication. A later revision requested by the human reviewer has already passed that initial boundary. The author updates the existing plan, trusted publication updates the same pull request, and the external reviewer reviews the new exact head. Repeating the author self-review in that later round adds cost and obscures the review story without adding another independent perspective.
+The initial planning candidate still runs through author self-review, its bounded repair loop, and one external-discovery cycle before Human Review. A later revision requested by the human reviewer has already passed those discovery boundaries. The author updates the existing plan, trusted publication updates the same pull request, and DEOS refreshes the complete trace against the new exact head before returning to Human Review. Repeating either discovery review adds cost and incorrectly presents a new review cycle; the exact-head trace refresh supplies the required freshness proof.
 
 ### Render the definition pinned to the run
 

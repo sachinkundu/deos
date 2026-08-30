@@ -16,7 +16,7 @@ The system SHALL resolve one workflow run from a configured repository and pull-
 
 ### Requirement: Expose a safe complete review story
 
-The system SHALL provide an ordered read model for all retained trace-review phases, attempts, candidates, head bindings, author dispositions, manifests, provider operations, workflow visits, and cleanup outcomes for one governed run. Artifact content SHALL be allowlisted, selected through a complete manifest, read from its recorded object key, and verified against its recorded SHA-256 before release. BettaView SHALL consume only the author and semantic-review subset of this model; the main DEOS portal remains the reader for operational workflow activity.
+The system SHALL provide an ordered read model for all retained trace-review phases, attempts, candidates, head bindings, author dispositions, manifests, provider operations, workflow visits, and cleanup outcomes for one governed run. Artifact content SHALL be allowlisted, selected through a complete manifest, read from its recorded object key, and verified against its recorded SHA-256 before release. BettaView SHALL consume only the author, trace-refresh, external-review, and semantic human-gate subset of this model; the main DEOS portal remains the reader for other operational workflow activity.
 
 #### Scenario: Story contains failed and accepted review attempts
 

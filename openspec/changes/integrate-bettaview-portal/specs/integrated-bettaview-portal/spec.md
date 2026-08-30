@@ -44,9 +44,9 @@ BettaView SHALL render only hash-verified trace data selected by DEOS. It SHALL 
 
 ### Requirement: Show the focused review story
 
-The **Review** view SHALL show the semantic provenance needed to understand the final pull-request result in chronological order. It SHALL show when author work began, the retained self-review output, author responses and dispositions, the retained external-review output, and the final authored result and reviewed head. It SHALL keep the accepted trace adjacent to that history and link trace findings back to their PR citations. It MUST label missing or redacted review records and MUST NOT reconstruct them from a summary.
+The **Review** view SHALL show the semantic provenance needed to understand the final pull-request result in chronological order. It SHALL show when author work began, the retained self-review output, author responses and dispositions, the single retained external-review cycle, later final-head trace refreshes, semantic human-review decisions, and the final authored result and reviewed head. It SHALL keep the accepted trace adjacent to that history and link trace findings back to their PR citations. It MUST label missing or redacted review records and MUST NOT reconstruct them from a summary.
 
-The Review view MUST NOT repeat Linear transitions, generic workflow transitions, provider-operation records, human waits, cleanup activity, or failed attempts that produced no semantic review output. Those operational records remain available in the main DEOS portal.
+The Review view MUST NOT repeat generic Linear transitions, generic workflow transitions, provider-operation records, human waits, cleanup activity, or failed attempts that produced no semantic review output. It MAY include only the human-gate transitions that record a revision request or merge approval because those decisions are part of the semantic review chronology. Other operational records remain available in the main DEOS portal.
 
 #### Scenario: Reader inspects SAC-139
 
@@ -61,7 +61,12 @@ The Review view MUST NOT repeat Linear transitions, generic workflow transitions
 #### Scenario: Human review requests a later revision
 
 - **WHEN** the author updates an already externally reviewed plan in a new human-requested revision round
-- **THEN** DEOS publishes the updated candidate for a new exact-head external review without running another author self-review, and the Review view shows the resulting retained chronology
+- **THEN** DEOS publishes the updated candidate, refreshes the complete trace on the new exact head, and returns to Human Review without running another author self-review or external-discovery cycle
+
+#### Scenario: Human reviewer requests changes
+
+- **WHEN** a human reviewer comments on the planning pull request and moves the issue from Human Review to In Progress
+- **THEN** the Review view shows a human-review revision event between the prior trace and the revision-author work without exposing unrelated workflow transitions
 
 ### Requirement: Keep review actions under the human GitHub identity
 

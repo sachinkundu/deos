@@ -23,9 +23,9 @@
 
 - [x] 4.1 Replace PR, Trace, and Process navigation with focused PR and Review views.
 - [x] 4.2 Load DEOS trace and process data by repository and pull-request number and show current, stale, unavailable, and redacted states.
-- [x] 4.3 Render author work, self-review, external review, author dispositions, and the final reviewed result in chronological order while excluding operational workflow activity from BettaView.
+- [x] 4.3 Render author work, self-review, one external review, trace refreshes, semantic human-review decisions, author dispositions, and the final reviewed result in chronological order while excluding other operational workflow activity from BettaView.
 - [x] 4.4 Add adjacent GitHub and BettaView actions to DEOS workflow node details.
-- [x] 4.5 Route later human-requested planning revisions from author update to publication and external exact-head review without another author self-review.
+- [x] 4.5 Route later human-requested planning revisions from author update to publication and an exact-head trace refresh without another author self-review or external-discovery cycle.
 - [x] 4.6 Render every run from its digest-verified frozen workflow definition without a deployment-specific digest allowlist.
 - [x] 4.7 Backfill SAC-142 PR #6 with a complete exact-head trace and expose it as the active BettaView trace without allocating another run.
 - [x] 4.8 Advance the workflow definition with a final-head trace step after publication and before Human Review while keeping earlier traces historical.

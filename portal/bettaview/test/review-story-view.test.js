@@ -27,7 +27,30 @@ test("focuses the BettaView story on authored work and semantic review evidence"
   const response = attempt("5", "planning_independent_response", {
     content: { "review-dispositions.json": [{ itemId: "one", status: "no_change" }] },
   });
-  const transition = { id: "transition:1", type: "transition", time: "2026-08-28T00:00:00Z", data: {} };
+  const traceRefresh = attempt("6", "final_trace_backfill", { review: { phase: "independent", mode: "discovery" } });
+  const humanRevision = {
+    id: "transition:revision",
+    type: "transition",
+    time: "2026-08-28T10:00:00Z",
+    data: {
+      from_node: "planning_review",
+      to_node: "start_new_review_round",
+      cause_type: "linear_event",
+      actor_type: "user",
+    },
+  };
+  const humanApproval = {
+    id: "transition:approval",
+    type: "transition",
+    time: "2026-08-28T11:00:00Z",
+    data: {
+      from_node: "planning_review",
+      to_node: "merge_planning_pr",
+      cause_type: "linear_event",
+      actor_type: "user",
+    },
+  };
+  const transition = { id: "transition:other", type: "transition", time: "2026-08-28T00:00:00Z", data: {} };
   const provider = { id: "provider:1", type: "provider", time: "2026-08-28T00:00:01Z", data: {} };
   const story = {
     governed: {
@@ -41,7 +64,7 @@ test("focuses the BettaView story on authored work and semantic review evidence"
     phases: [{ stage: "independent" }],
     reviews: [{ review_id: "review:4" }],
     candidates: [{ candidate_id: "candidate:1" }],
-    events: [transition, provider, author, selfReview, emptyFailure, externalReview, response],
+    events: [transition, provider, author, selfReview, emptyFailure, externalReview, response, traceRefresh, humanRevision, humanApproval],
   };
 
   const focused = focusReviewStory(story);
@@ -50,6 +73,9 @@ test("focuses the BettaView story on authored work and semantic review evidence"
     "attempt:2",
     "attempt:4",
     "attempt:5",
+    "attempt:6",
+    "transition:revision",
+    "transition:approval",
   ]);
   assert.deepEqual(Object.keys(focused).sort(), ["acceptedTrace", "events", "governed"]);
   assert.deepEqual(focused.governed, {
@@ -61,6 +87,10 @@ test("focuses the BettaView story on authored work and semantic review evidence"
   assert.equal(reviewStoryStage(selfReview), "self_review");
   assert.equal(reviewStoryStage(externalReview), "external_review");
   assert.equal(reviewStoryStage(response), "author_response");
+  assert.equal(reviewStoryStage(traceRefresh), "trace_refresh");
+  assert.equal(reviewStoryStage(humanRevision), "human_revision");
+  assert.equal(reviewStoryStage(humanApproval), "human_approval");
+  assert.equal(reviewStoryStage(transition), null);
   assert.equal(reviewStoryStage(emptyFailure), null);
 });
 

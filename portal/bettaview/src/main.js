@@ -308,6 +308,9 @@ function prettyJson(value) {
 }
 
 function reviewEventOutcome(event) {
+  const stage = reviewStoryStage(event);
+  if (stage === "human_revision") return "revision_requested";
+  if (stage === "human_approval") return "approved";
   return event.data.review?.overall_outcome || event.data.result_class || event.data.state;
 }
 
@@ -315,6 +318,9 @@ function reviewEventTitle(event, authorWorkIndex) {
   const stage = reviewStoryStage(event);
   if (stage === "self_review") return `Self-review · ${event.data.review.mode}`;
   if (stage === "external_review") return `External review · ${event.data.review.mode}`;
+  if (stage === "trace_refresh") return "Final-head trace refresh";
+  if (stage === "human_revision") return "Human review comments";
+  if (stage === "human_approval") return "Human approval";
   if (stage === "author_response") {
     return String(event.data.node_id).includes("independent")
       ? "Author response to external review"
@@ -326,6 +332,8 @@ function reviewEventTitle(event, authorWorkIndex) {
 function reviewStageLabel(stage) {
   if (stage === "self_review") return "Self-review";
   if (stage === "external_review") return "External review";
+  if (stage === "trace_refresh") return "Trace refresh";
+  if (["human_revision", "human_approval"].includes(stage)) return "Human review";
   if (stage === "author_response") return "Author response";
   return "Author work";
 }
@@ -391,9 +399,15 @@ function renderReviewEvent(event, authorWorkIndex) {
   const stage = reviewStoryStage(event);
   const records = reviewStoryContentEntries(event)
     .filter(([name]) => name !== "result.json" || reviewStoryContentEntries(event).length === 1);
+  const humanSummary = stage === "human_revision"
+    ? "The human reviewer requested changes and returned the issue to In Progress. The review comments remain on the pull request."
+    : stage === "human_approval"
+      ? "The human reviewer approved the planning result and moved the issue to Merging."
+      : "";
   return `<article class="review-card review-${escapeHtml(reviewEventOutcome(event))}">
     <header><div><span class="eyebrow">${escapeHtml(reviewStageLabel(stage))} · ${escapeHtml(new Date(event.time).toLocaleString())}</span><h2>${escapeHtml(reviewEventTitle(event, authorWorkIndex))}</h2></div><span class="review-outcome">${escapeHtml(String(reviewEventOutcome(event)).replaceAll("_", " "))}</span></header>
     ${event.data.review ? `<p class="review-provenance">${escapeHtml(event.data.review.reviewer_provider)} · ${escapeHtml(event.data.review.reviewer_model)} · ${escapeHtml(event.data.review.agent_harness || "unknown harness")}</p>` : ""}
+    ${humanSummary ? `<p>${escapeHtml(humanSummary)}</p>` : ""}
     ${records.map(([name, value]) => renderReviewRecord(name, value)).join("")}
     ${renderReviewArtifacts(event.data.artifacts)}
   </article>`;

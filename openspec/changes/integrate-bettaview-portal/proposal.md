@@ -8,14 +8,14 @@ DEOS already keeps the trace and review evidence for SAC-139, but the current po
 - Deploy a protected BettaView Worker at `bettaview.voxdez.com`.
 - Let a reader open one planning pull request and move between focused **PR** and **Review** views.
 - Resolve the DEOS run from the canonical GitHub repository and pull-request number.
-- Show accepted trace evidence and the retained author, self-review, external-review, and author-disposition records that explain the final pull-request result.
+- Show accepted trace evidence and the retained author, self-review, external-review, human-review, trace-refresh, and author-disposition records that explain the final pull-request result.
 - Keep Linear transitions, workflow visits, provider operations, waits, retries without semantic review output, and cleanup activity in the main DEOS portal instead of repeating them in BettaView.
 - Add **Open on GitHub** and **Open in BettaView** actions to the DEOS workflow node detail.
 - Render each run from the exact frozen workflow definition it selected at allocation, without a deployment-specific digest allowlist.
 - Keep semantic trace generation in DEOS. The cloud BettaView Worker cannot start Codex or another model.
 - After external review and any author response are published, generate the active trace against the exact final pull-request head before Human Review. Keep earlier traces only as review history.
 - Keep GitHub review writes tied to the signed-in human identity. Reading remains available when a viewer lacks a specific write permission.
-- Remove the redundant author self-review from later revision rounds. After Human Review requests changes, the author updates and publishes the plan, the external reviewer reviews the new head, and the author returns it to Human Review.
+- Keep one external-discovery cycle. After Human Review requests changes, the author updates and publishes the plan, DEOS refreshes the complete trace on the new head, and the author returns it to Human Review without another external review.
 
 ### Non-goals
 
@@ -39,7 +39,7 @@ DEOS already keeps the trace and review evidence for SAC-139, but the current po
 - Adds `portal/bettaview/`, a second Cloudflare Worker deployment, and its static application build.
 - Extends the DEOS portal read model and routes for pull-request lookup and complete review-story data.
 - Changes the workflow node detail so both GitHub and BettaView can open the same planning pull request.
-- Advances `simple-traceability` to version 13 so later human revision rounds skip the author self-review while retaining external exact-head review.
+- Advances `simple-traceability` to version 16 so later human revision rounds skip both author self-review and another external-discovery cycle while retaining an exact-head trace refresh.
 - Advances `simple-traceability` again so the final published head receives a fresh complete trace before Human Review.
 - Keeps workflow identity immutable within a run while allowing different issues to use different workflow definitions or versions.
 - Uses the existing SAC-139 run as production proof and does not allocate a new workflow run.

@@ -18,12 +18,28 @@ function artifactNames(event) {
 }
 
 export function reviewStoryStage(event) {
+  if (event?.type === "transition") {
+    if (
+      event.data?.from_node === "planning_review"
+      && event.data?.to_node === "start_new_review_round"
+      && event.data?.cause_type === "linear_event"
+      && event.data?.actor_type === "user"
+    ) return "human_revision";
+    if (
+      event.data?.from_node === "planning_review"
+      && event.data?.to_node === "merge_planning_pr"
+      && event.data?.cause_type === "linear_event"
+      && event.data?.actor_type === "user"
+    ) return "human_approval";
+    return null;
+  }
   if (event?.type !== "attempt") return null;
+  const node = String(event.data?.node_id || "");
+  if (["final_trace", "final_trace_backfill"].includes(node)) return "trace_refresh";
   const review = event.data?.review;
   if (review?.phase === "independent") return "external_review";
   if (review) return "self_review";
 
-  const node = String(event.data?.node_id || "");
   const names = artifactNames(event);
   const hasAuthorEvidence = names.has("author-completion.json")
     || names.has("review-dispositions.json")

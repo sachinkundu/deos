@@ -26,7 +26,7 @@ const findings: readonly TraceFinding[] = [{
   }],
 }];
 
-test("later human revision rounds keep only external semantic review", () => {
+test("later human revision rounds initialize only the final-head trace phase", () => {
   assert.deepEqual(LATER_ROUND_REVIEW_STAGES, ["independent"]);
 });
 
