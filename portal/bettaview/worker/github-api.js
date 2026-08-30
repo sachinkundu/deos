@@ -13,6 +13,7 @@ import {
   readMarker,
   sha256,
 } from "./github-core.js";
+import { focusReviewStory } from "../src/review-story-view.js";
 
 const API = "https://api.github.com";
 const allowedTags = sanitizeHtml.defaults.allowedTags.concat([
@@ -96,10 +97,11 @@ async function threads(token, owner, repo, number) {
 
 function proxiedStory(story) {
   if (!story) return null;
-  return JSON.parse(JSON.stringify(story).replaceAll(
+  const proxied = JSON.parse(JSON.stringify(story).replaceAll(
     '"/api/process-attempts/',
     '"/api/deos/process-attempts/',
   ));
+  return focusReviewStory(proxied);
 }
 
 function resolveDocumentPath(change, relativePath) {

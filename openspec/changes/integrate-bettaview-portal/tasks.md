@@ -21,9 +21,9 @@
 
 ## 4. Integrated portal experience
 
-- [x] 4.1 Add PR, Trace, and Process navigation for the loaded pull request.
+- [x] 4.1 Replace PR, Trace, and Process navigation with focused PR and Review views.
 - [x] 4.2 Load DEOS trace and process data by repository and pull-request number and show current, stale, unavailable, and redacted states.
-- [x] 4.3 Render retained review output, author dispositions, candidate changes, retries, failures, reuse, provider outcomes, and cleanup in chronological order.
+- [x] 4.3 Render author work, self-review, external review, author dispositions, and the final reviewed result in chronological order while excluding operational workflow activity from BettaView.
 - [x] 4.4 Add adjacent GitHub and BettaView actions to DEOS workflow node details.
 
 ## 5. Verification and delivery
@@ -31,6 +31,6 @@
 - [x] 5.1 Run BettaView unit, Worker contract, DEOS portal, type, build, and strict OpenSpec checks.
 - [x] 5.2 Deploy the DEOS and BettaView Workers, configure the service binding, custom domain, Access application, and GitHub App callback and secrets.
 - [x] 5.3 Read back the deployments and verify that SAC-139 resolves without a new Linear delivery or Workflow run.
-- [ ] 5.4 Verify the existing SAC-139 planning PR across PR, Trace, and Process, including D1/R2 hashes and stale-head state.
+- [ ] 5.4 Verify the existing SAC-139 planning PR across PR and Review, including D1/R2 hashes, focused review provenance, and stale-head state.
 - [ ] 5.5 Verify real GitHub comment, reply, review-decision, and Mermaid annotation actions on an existing controlled pull request under the signed-in human identity.
 - [ ] 5.6 Publish a ready implementation PR with tests, deployment proof, provider proof, and completed checkboxes.

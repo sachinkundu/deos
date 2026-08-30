@@ -10,6 +10,7 @@ test("pull request story keeps failed attempts and selects a verified exact-head
   const runId = "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:dcde8049-91b0-4f81-a6ad-ca57b3f968a1:run:1";
   const reviewAttempt = "01a04805-0f3e-7643-a22d-aafbd9bde4eb";
   const failedAttempt = "01a0473e-9c2f-7bf9-83d4-df80a9f44245";
+  const authorAttempt = "01a04729-5143-74b3-8e00-461ce7f6cbde";
   const sidecar = new TextEncoder().encode(JSON.stringify({
     version: 4,
     change: "add-calculator-cli",
@@ -20,7 +21,9 @@ test("pull request story keeps failed attempts and selects a verified exact-head
   }));
   const normalized = new TextEncoder().encode(JSON.stringify({ review: { overall: "pass" } }));
   const failure = new TextEncoder().encode(JSON.stringify({ category: "codex_exit_nonzero" }));
+  const authorCompletion = new TextEncoder().encode(JSON.stringify({ outcome: "passed", rounds: [] }));
   const rows = [
+    { attempt_id: authorAttempt, logical_name: "author-completion.json", r2_key: "author", media_type: "application/json", byte_size: authorCompletion.byteLength, sha256: await digest(authorCompletion) },
     { attempt_id: reviewAttempt, logical_name: "bettaview-traceability.json", r2_key: "trace", media_type: "application/json", byte_size: sidecar.byteLength, sha256: await digest(sidecar) },
     { attempt_id: reviewAttempt, logical_name: "normalized-review.json", r2_key: "normalized", media_type: "application/json", byte_size: normalized.byteLength, sha256: await digest(normalized) },
     { attempt_id: failedAttempt, logical_name: "failure-summary.json", r2_key: "failure", media_type: "application/json", byte_size: failure.byteLength, sha256: await digest(failure) },
@@ -47,6 +50,7 @@ test("pull request story keeps failed attempts and selects a verified exact-head
     if (query.includes("FROM planning_candidates")) return [{ candidate_id: "candidate:one", round: 1, state: "validated", created_at: "2026-08-28T10:50:00Z" }];
     if (query.includes("FROM trace_review_head_bindings")) return [{ review_id: `review:${reviewAttempt}`, head_sha: "1".repeat(40), created_at: "2026-08-28T11:03:19Z" }];
     if (query.includes("FROM agent_attempts WHERE")) return [
+      { attempt_id: authorAttempt, node_id: "planning_author", state: "completed", result_class: "completed", cleanup_state: "destroyed", created_at: "2026-08-28T06:58:05Z" },
       { attempt_id: failedAttempt, node_id: "independent_discovery", state: "failed", result_class: "codex_exit_nonzero", cleanup_state: "destroyed", created_at: "2026-08-28T07:21:20Z" },
       { attempt_id: reviewAttempt, node_id: "independent_discovery", state: "completed", result_class: "pass", cleanup_state: "destroyed", created_at: "2026-08-28T10:58:06Z" },
     ];
@@ -86,7 +90,7 @@ test("pull request story keeps failed attempts and selects a verified exact-head
       };
     },
   } as unknown as D1Database;
-  const objects = new Map<string, Uint8Array>([["trace", sidecar], ["normalized", normalized], ["failure", failure]]);
+  const objects = new Map<string, Uint8Array>([["trace", sidecar], ["normalized", normalized], ["failure", failure], ["author", authorCompletion]]);
   const bucket = {
     get: async (key: string) => {
       const value = objects.get(key);
@@ -105,4 +109,6 @@ test("pull request story keeps failed attempts and selects a verified exact-head
   const accepted = story.events.find((event: any) => event.id === `attempt:${reviewAttempt}`);
   assert.deepEqual(accepted.data.content["normalized-review.json"], { review: { overall: "pass" } });
   assert.match(accepted.data.artifacts[0].url, /^\/api\/process-attempts\//);
+  const author = story.events.find((event: any) => event.id === `attempt:${authorAttempt}`);
+  assert.deepEqual(author.data.content["author-completion.json"], { outcome: "passed", rounds: [] });
 });

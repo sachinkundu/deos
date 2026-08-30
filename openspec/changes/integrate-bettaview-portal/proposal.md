@@ -6,9 +6,10 @@ DEOS already keeps the trace and review evidence for SAC-139, but the current po
 
 - Import the pinned BettaView source into DEOS and maintain its production build here.
 - Deploy a protected BettaView Worker at `bettaview.voxdez.com`.
-- Let a reader open one planning pull request and move between **PR**, **Trace**, and **Process** views.
+- Let a reader open one planning pull request and move between focused **PR** and **Review** views.
 - Resolve the DEOS run from the canonical GitHub repository and pull-request number.
-- Show accepted trace evidence and every retained review attempt, author disposition, retry, failure, and provider outcome without reconstructing missing records.
+- Show accepted trace evidence and the retained author, self-review, external-review, and author-disposition records that explain the final pull-request result.
+- Keep Linear transitions, workflow visits, provider operations, waits, retries without semantic review output, and cleanup activity in the main DEOS portal instead of repeating them in BettaView.
 - Add **Open on GitHub** and **Open in BettaView** actions to the DEOS workflow node detail.
 - Keep semantic trace generation in DEOS. The cloud BettaView Worker cannot start Codex or another model.
 - Keep GitHub review writes tied to the signed-in human identity. Reading remains available when a viewer lacks a specific write permission.
@@ -24,11 +25,11 @@ DEOS already keeps the trace and review evidence for SAC-139, but the current po
 
 ### New Capabilities
 
-- `integrated-bettaview-portal`: Reads a GitHub planning pull request, its accepted trace, and its retained DEOS process story in one protected portal.
+- `integrated-bettaview-portal`: Reads a GitHub planning pull request, its accepted trace, and its focused review story in one protected portal.
 
 ### Modified Capabilities
 
-- `workflow-observability`: Resolves a governed run from its canonical pull request and exposes safe, hash-verified review-process records for that run.
+- `workflow-observability`: Resolves a governed run from its canonical pull request and exposes safe, hash-verified review records while retaining operational workflow activity in the main DEOS portal.
 
 ## Impact
 

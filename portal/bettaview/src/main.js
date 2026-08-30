@@ -3,6 +3,7 @@ import { toPng } from "html-to-image";
 import { request } from "./api.js";
 import { annotationSvgAttributes, circleSvgGeometry, startDrawing } from "./annotation-geometry.js";
 import { MIN_FILE_RAIL_WIDTH, clampFileRailWidth, defaultFileRailWidth, maxFileRailWidth } from "./file-rail.js";
+import { selectPortalView } from "./portal-view.js";
 import { highlightCodeBlocks } from "./syntax-highlighting.js";
 import {
   canRestoreRecentPullRequest,
@@ -11,6 +12,11 @@ import {
   saveRecentPullRequest,
 } from "./recent-pull-request.js";
 import { buildReviewFileTree, commentCloseNeedsConfirmation, decorateScenarioKeywords } from "./review-ui.js";
+import {
+  reviewStoryArtifactVisible,
+  reviewStoryContentEntries,
+  reviewStoryStage,
+} from "./review-story-view.js";
 import { applyTheme, getInitialTheme, nextTheme } from "./theme.js";
 import { activeThreadReferences, draftReferenceKey, threadReferenceKey } from "./thread-links.js";
 import {
@@ -98,8 +104,7 @@ function shell() {
         </form>
         <nav id="portal-tabs" class="portal-tabs" aria-label="Pull request views" hidden>
           <button type="button" data-portal-view="pr">PR</button>
-          <button type="button" data-portal-view="trace">Trace</button>
-          <button type="button" data-portal-view="process">Process</button>
+          <button type="button" data-portal-view="review">Review</button>
         </nav>
       </div>
       <button id="theme-toggle" class="theme-toggle" type="button">
@@ -124,12 +129,7 @@ function shell() {
   `;
   document.querySelector("#pr-form").addEventListener("submit", openPullRequest);
   document.querySelectorAll("[data-portal-view]").forEach((button) => button.addEventListener("click", () => {
-    state.activeView = button.dataset.portalView;
-    if (state.activeView === "trace") {
-      state.activeQualityPath = state.data?.traceabilityReviews?.find((review) => review.manifest)?.path || null;
-    } else if (state.activeView === "pr") {
-      state.activeQualityPath = null;
-    }
+    Object.assign(state, selectPortalView(button.dataset.portalView));
     renderWorkspace();
   }));
   const composer = document.querySelector("#selection-composer");
@@ -307,74 +307,129 @@ function prettyJson(value) {
   return escapeHtml(JSON.stringify(value, null, 2));
 }
 
-function processEventTitle(event) {
-  if (event.type === "attempt") {
-    const review = event.data.review;
-    if (review) return `${review.phase === "independent" ? "External review" : "Internal review"} · ${review.mode}`;
-    if (String(event.data.node_id).includes("response") || String(event.data.node_id).includes("repair")) return "Author response and repair";
-    if (String(event.data.node_id).includes("author")) return "Author attempt";
-    return `Agent attempt · ${event.data.node_id}`;
+function reviewEventOutcome(event) {
+  return event.data.review?.overall_outcome || event.data.result_class || event.data.state;
+}
+
+function reviewEventTitle(event, authorWorkIndex) {
+  const stage = reviewStoryStage(event);
+  if (stage === "self_review") return `Self-review · ${event.data.review.mode}`;
+  if (stage === "external_review") return `External review · ${event.data.review.mode}`;
+  if (stage === "author_response") {
+    return String(event.data.node_id).includes("independent")
+      ? "Author response to external review"
+      : "Author response to self-review";
   }
-  if (event.type === "provider") return `Provider · ${event.data.capability}.${event.data.action}`;
-  if (event.type === "transition") return `Workflow · ${event.data.from_node} → ${event.data.to_node}`;
-  if (event.type === "wait") return `Human wait · ${event.data.node_id}`;
-  if (event.type === "cleanup") return "Sandbox cleanup";
-  return event.type;
+  return authorWorkIndex === 0 ? "Author started the planning work" : "Author updated the planning work";
 }
 
-function processEventOutcome(event) {
-  if (event.type === "attempt") return event.data.review?.overall_outcome || event.data.result_class || event.data.state;
-  if (event.type === "provider") return event.data.state;
-  if (event.type === "wait") return event.data.status;
-  if (event.type === "cleanup") return event.data.cleanup_state;
-  return event.data.cause_type || "recorded";
+function reviewStageLabel(stage) {
+  if (stage === "self_review") return "Self-review";
+  if (stage === "external_review") return "External review";
+  if (stage === "author_response") return "Author response";
+  return "Author work";
 }
 
-function renderProcessArtifacts(artifacts = []) {
-  if (!artifacts.length) return "";
-  return `<div class="process-artifacts">${artifacts.map((artifact) => `<a href="${escapeHtml(artifact.url)}" target="_blank" rel="noreferrer">${escapeHtml(artifact.name)} <small>${escapeHtml(String(artifact.sha256).slice(0, 10))}</small></a>`).join("")}</div>`;
+function renderExactReviewRecord(name, value) {
+  return `<details class="review-exact-record"><summary>Exact ${escapeHtml(name)}</summary><pre>${prettyJson(value)}</pre></details>`;
 }
 
-function renderProcessEvent(event) {
-  const content = event.type === "attempt" ? event.data.content || {} : {};
-  const exactRecords = Object.entries(content);
-  const detail = event.type === "attempt" ? {
-    attemptId: event.data.attempt_id,
-    node: event.data.node_id,
-    visit: event.data.visit_sequence,
-    state: event.data.state,
-    result: event.data.result_class,
-    cleanup: event.data.cleanup_state,
-    review: event.data.review,
-  } : event.data;
-  return `<article class="process-card process-${escapeHtml(processEventOutcome(event))}">
-    <header><div><span class="eyebrow">${escapeHtml(event.type)} · ${escapeHtml(new Date(event.time).toLocaleString())}</span><h2>${escapeHtml(processEventTitle(event))}</h2></div><span class="process-outcome">${escapeHtml(String(processEventOutcome(event)).replaceAll("_", " "))}</span></header>
-    ${event.type === "attempt" && event.data.review ? `<p>${escapeHtml(event.data.review.reviewer_provider)} · ${escapeHtml(event.data.review.reviewer_model)} · ${escapeHtml(event.data.review.agent_harness || "unknown harness")}</p>` : ""}
-    ${event.type === "attempt" && String(event.data.node_id).includes("repair") ? `<p>The author evaluated the supplied review and recorded applied, declined, or no-change dispositions when available.</p>` : ""}
-    ${exactRecords.map(([name, value]) => `<details class="process-record" ${name === "normalized-review.json" || name === "review-dispositions.json" || name === "failure-summary.json" ? "open" : ""}><summary>${escapeHtml(name)}</summary><pre>${prettyJson(value)}</pre></details>`).join("")}
-    ${event.type === "attempt" ? renderProcessArtifacts(event.data.artifacts) : ""}
-    <details class="process-record"><summary>Durable record</summary><pre>${prettyJson(detail)}</pre></details>
+function renderAuthorCompletion(value) {
+  if (!value || typeof value !== "object" || value.unavailable) return renderExactReviewRecord("author record", value);
+  const rounds = Array.isArray(value.rounds) ? value.rounds : [];
+  const latest = rounds.at(-1) || {};
+  const changedPaths = Array.isArray(latest.changedPaths) ? latest.changedPaths : [];
+  const checks = [
+    ["Allowed paths", latest.allowedPaths],
+    ["OpenSpec", latest.strictOpenSpec],
+    ["Whitespace", latest.whitespace],
+    ["Readability", latest.readability],
+  ].filter(([, outcome]) => outcome);
+  return `<section class="review-record author-record">
+    <header><strong>Author result</strong><span class="review-record-state">${escapeHtml(String(value.outcome || "recorded").replaceAll("_", " "))}</span></header>
+    ${changedPaths.length ? `<div class="review-changed-files"><span class="eyebrow">Changed files</span>${changedPaths.map((path) => `<code>${escapeHtml(path)}</code>`).join("")}</div>` : ""}
+    ${checks.length ? `<div class="review-checks">${checks.map(([label, outcome]) => `<span><b>${escapeHtml(label)}</b>${escapeHtml(String(outcome))}</span>`).join("")}</div>` : ""}
+    ${renderExactReviewRecord("author-completion.json", value)}
+  </section>`;
+}
+
+function renderNormalizedReview(value) {
+  if (!value || typeof value !== "object" || value.unavailable) return renderExactReviewRecord("review record", value);
+  const review = value.review || {};
+  const findings = Array.isArray(value.findings) ? value.findings : [];
+  return `<section class="review-record reviewer-record">
+    <header><strong>Review output</strong><span class="review-record-state">${escapeHtml(String(review.overall || "recorded").replaceAll("_", " "))}</span></header>
+    ${value.passingJudgment?.rationale ? `<p>${escapeHtml(value.passingJudgment.rationale)}</p>` : ""}
+    ${findings.length ? `<div class="review-findings">${findings.map((finding) => `<article><strong>${escapeHtml(finding.id || String(finding.type || "Finding").replaceAll("_", " "))}</strong><p>${escapeHtml(finding.message || "")}</p></article>`).join("")}</div>` : `<p class="review-no-findings">No semantic findings were recorded.</p>`}
+    ${renderExactReviewRecord("normalized-review.json", value)}
+  </section>`;
+}
+
+function renderReviewDispositions(value) {
+  if (!Array.isArray(value)) return renderExactReviewRecord("review-dispositions.json", value);
+  return `<section class="review-record disposition-record">
+    <header><strong>Author decisions</strong><span class="review-record-state">${value.length} item${value.length === 1 ? "" : "s"}</span></header>
+    <div class="review-dispositions">${value.map((item) => `<article><span>${escapeHtml(String(item.status || "recorded").replaceAll("_", " "))}</span><div><strong>${escapeHtml(item.itemId || "Review item")}</strong><p>${escapeHtml(item.reason || "No reason retained.")}</p></div></article>`).join("")}</div>
+    ${renderExactReviewRecord("review-dispositions.json", value)}
+  </section>`;
+}
+
+function renderReviewRecord(name, value) {
+  if (name === "author-completion.json") return renderAuthorCompletion(value);
+  if (name === "normalized-review.json") return renderNormalizedReview(value);
+  if (name === "review-dispositions.json") return renderReviewDispositions(value);
+  return renderExactReviewRecord(name, value);
+}
+
+function renderReviewArtifacts(artifacts = []) {
+  const visible = artifacts.filter(reviewStoryArtifactVisible);
+  if (!visible.length) return "";
+  return `<div class="review-artifacts"><span class="eyebrow">Evidence files</span><div>${visible.map((artifact) => `<a href="${escapeHtml(artifact.url)}" target="_blank" rel="noreferrer">${escapeHtml(artifact.name)} <small>${escapeHtml(String(artifact.sha256).slice(0, 10))}</small></a>`).join("")}</div></div>`;
+}
+
+function renderReviewEvent(event, authorWorkIndex) {
+  const stage = reviewStoryStage(event);
+  const records = reviewStoryContentEntries(event)
+    .filter(([name]) => name !== "result.json" || reviewStoryContentEntries(event).length === 1);
+  return `<article class="review-card review-${escapeHtml(reviewEventOutcome(event))}">
+    <header><div><span class="eyebrow">${escapeHtml(reviewStageLabel(stage))} · ${escapeHtml(new Date(event.time).toLocaleString())}</span><h2>${escapeHtml(reviewEventTitle(event, authorWorkIndex))}</h2></div><span class="review-outcome">${escapeHtml(String(reviewEventOutcome(event)).replaceAll("_", " "))}</span></header>
+    ${event.data.review ? `<p class="review-provenance">${escapeHtml(event.data.review.reviewer_provider)} · ${escapeHtml(event.data.review.reviewer_model)} · ${escapeHtml(event.data.review.agent_harness || "unknown harness")}</p>` : ""}
+    ${records.map(([name, value]) => renderReviewRecord(name, value)).join("")}
+    ${renderReviewArtifacts(event.data.artifacts)}
   </article>`;
 }
 
-function renderProcessWorkspace() {
+function renderReviewWorkspace() {
   closeCitationPopover();
   const workspace = document.querySelector("#workspace");
   const story = state.data?.deos;
-  workspace.className = "process-workspace";
-  if (!story) {
-    workspace.innerHTML = `<section class="process-empty"><span class="eyebrow">Process</span><h1>No DEOS workflow found</h1><p>This pull request is still readable, but DEOS has no governed run for its repository and number.</p></section>`;
+  const trace = traceabilityViews()[0] || null;
+  workspace.className = "review-workspace";
+  if (!story && !trace) {
+    workspace.innerHTML = `<section class="review-empty"><span class="eyebrow">Review</span><h1>No DEOS review found</h1><p>This pull request is still readable, but DEOS has no accepted trace or retained review story for it.</p></section>`;
     return;
   }
-  const recordedHead = story.governed.pullRequest.recordedHeadSha;
+  const recordedHead = story?.governed.pullRequest.recordedHeadSha || trace?.reviewedHeadSha;
   const current = recordedHead === state.data.headSha;
+  let authorWorkIndex = 0;
+  const events = (story?.events || []).map((event) => {
+    const index = reviewStoryStage(event) === "author_work" ? authorWorkIndex++ : authorWorkIndex;
+    return renderReviewEvent(event, index);
+  });
   workspace.innerHTML = `
-    <section class="process-hero">
-      <div><span class="eyebrow">${escapeHtml(story.governed.issue.key)} · ${escapeHtml(story.governed.runId)}</span><h1>Author and review process</h1><p>${escapeHtml(story.governed.issue.title)}</p></div>
-      <div class="process-summary"><span class="process-outcome">${escapeHtml(String(story.governed.status).replaceAll("_", " "))}</span><span class="commit-chip"><span></span>${current ? "Current" : "Recorded"} head <code>${shortSha(recordedHead)}</code></span></div>
+    <section class="review-hero">
+      <div><span class="eyebrow">${escapeHtml(story?.governed.issue.key || trace?.change || "DEOS review")}</span><h1>Review story</h1><p>${escapeHtml(story?.governed.issue.title || "Accepted trace and retained semantic review evidence")}</p></div>
+      <div class="review-summary"><span class="review-outcome">${escapeHtml(String(trace?.review.overall || "review recorded").replaceAll("_", " "))}</span><span class="commit-chip"><span></span>${current ? "Final reviewed commit" : "Reviewed commit"} <code>${shortSha(recordedHead)}</code></span></div>
     </section>
-    ${current ? "" : `<div class="process-warning"><strong>The pull request moved.</strong> DEOS recorded ${escapeHtml(shortSha(recordedHead))}; GitHub now shows ${escapeHtml(shortSha(state.data.headSha))}.</div>`}
-    <section class="process-timeline">${story.events.map(renderProcessEvent).join("")}</section>
+    ${current ? "" : `<div class="review-warning"><strong>The pull request moved.</strong> The review records ${escapeHtml(shortSha(recordedHead))}; GitHub now shows ${escapeHtml(shortSha(state.data.headSha))}.</div>`}
+    <section class="review-section review-trace-section">
+      <div class="review-section-heading"><span class="eyebrow">Current evidence</span><h2>Proposal and requirement trace</h2><p>The accepted semantic result, with links back to the reviewed PR documents.</p></div>
+      ${trace ? renderTraceabilityQuality(trace, { embedded: true }) : `<div class="review-missing"><strong>Trace unavailable</strong><p>No accepted, hash-verified trace is available for this pull request.</p></div>`}
+    </section>
+    <section class="review-section">
+      <div class="review-section-heading"><span class="eyebrow">Provenance</span><h2>How the review reached this result</h2><p>The retained author and reviewer evidence behind this result.</p></div>
+      ${events.length ? `<div class="review-timeline">${events.join("")}</div>` : `<div class="review-missing"><strong>Review history unavailable</strong><p>No retained semantic review records are available.</p></div>`}
+    </section>
   `;
 }
 
@@ -660,17 +715,17 @@ function renderQualityRequirementIssue(view, link) {
   `;
 }
 
-function renderTraceabilityQuality(view) {
+function renderTraceabilityQuality(view, { embedded = false } = {}) {
   const quality = buildTraceabilityQuality(view);
   const statementPercent = quality.totalStatements
     ? Math.round((quality.satisfiedStatements / quality.totalStatements) * 100)
     : 0;
   return `
-    <div class="quality-toolbar">
+    ${embedded ? "" : `<div class="quality-toolbar">
       <div><span class="status-dot ${quality.evidenceCurrent ? "" : "stale"}"></span><strong>Trace quality</strong><small>${escapeHtml(view.change)}</small></div>
       <button id="refresh" class="button ghost">Refresh from GitHub</button>
-    </div>
-    <div class="quality-view">
+    </div>`}
+    <div class="quality-view ${embedded ? "embedded" : ""}">
       <header class="quality-hero">
         <div><span class="eyebrow">OpenSpec · proposal ↔ specs</span><h1>${quality.needsAttention ? "Needs attention" : "Trace satisfied"}</h1></div>
         ${quality.needsAttention ? "" : '<span class="quality-overall satisfied">Satisfied</span>'}
@@ -707,6 +762,7 @@ function renderQualityEvidenceRail(view) {
 
 function openQualityTarget(path, citationId) {
   if (!state.data.files.some((file) => file.path === path)) return;
+  state.activeView = "pr";
   state.activeQualityPath = null;
   state.activePath = path;
   closeSelectionComposer();
@@ -725,12 +781,9 @@ function openQualityTarget(path, citationId) {
 
 function renderWorkspace() {
   syncPullRequestForm();
-  if (state.activeView === "process") {
-    renderProcessWorkspace();
+  if (state.activeView === "review") {
+    renderReviewWorkspace();
     return;
-  }
-  if (state.activeView === "trace") {
-    state.activeQualityPath = state.data?.traceabilityReviews?.find((review) => review.manifest)?.path || null;
   }
   closeCitationPopover();
   document.body.classList.remove("diagram-fullscreen-open");
@@ -753,7 +806,6 @@ function renderWorkspace() {
         <a href="${escapeHtml(data.url)}" target="_blank" rel="noreferrer"><h1>${escapeHtml(data.title)}</h1></a>
         <div class="pr-state-row"><span class="pr-state pr-state-${escapeHtml(data.state)}">${escapeHtml(data.state)}</span><div class="commit-chip"><span></span>Exact head <code>${shortSha(data.headSha)}</code></div></div>
       </div>
-      ${renderTraceabilityQualityNavigation()}
       <nav class="file-list" aria-label="Changed Markdown files">
         <div class="file-tree" role="tree">${renderFileTree(buildReviewFileTree(data.files)) || `<p class="muted">No changed Markdown files.</p>`}</div>
       </nav>

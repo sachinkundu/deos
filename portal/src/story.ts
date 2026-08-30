@@ -20,10 +20,12 @@ const ALLOWED_STORY_ARTIFACTS = new Set([
 ]);
 
 const INLINE_JSON_ARTIFACTS = new Set([
+  "author-completion.json",
   "failure-summary.json",
   "normalized-review.json",
   "result.json",
   "review-dispositions.json",
+  "review-replies.json",
 ]);
 
 const sha256Hex = async (bytes: ArrayBuffer): Promise<string> => {

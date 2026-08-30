@@ -1,22 +1,22 @@
 ## Purpose
 
-Let an allowed reader review one GitHub planning pull request, its exact DEOS trace, and the retained author-review process in one protected portal.
+Let an allowed reader review one GitHub planning pull request, its exact DEOS trace, and the retained semantic review story in one protected portal.
 
 ## ADDED Requirements
 
-### Requirement: Open one governed pull request in three connected views
+### Requirement: Open one governed pull request in two connected views
 
-BettaView SHALL accept a canonical GitHub pull-request URL and show **PR**, **Trace**, and **Process** views for the same pull request. It SHALL load the live pull-request head from GitHub and resolve the related DEOS run by repository and pull-request number. It MUST NOT require a run identifier in the entry URL.
+BettaView SHALL accept a canonical GitHub pull-request URL and show **PR** and **Review** views for the same pull request. The PR view SHALL render the changed documents, GitHub review threads, and inline trace citations. The Review view SHALL combine the accepted trace with its retained semantic review history. BettaView SHALL load the live pull-request head from GitHub and resolve the related DEOS run by repository and pull-request number. It MUST NOT require a run identifier in the entry URL.
 
 #### Scenario: Reader opens a governed planning pull request
 
 - **WHEN** an allowed reader opens BettaView with a governed planning pull-request URL
-- **THEN** the portal loads the rendered pull request and connects its trace and process views to the DEOS run for that repository and pull-request number
+- **THEN** the portal loads the rendered pull request and connects its review view to the accepted trace and semantic review records for that repository and pull-request number
 
 #### Scenario: Pull request has no DEOS run
 
 - **WHEN** a reader opens a valid pull request that DEOS does not govern
-- **THEN** BettaView keeps the pull-request reader available and states that no DEOS trace or process story was found
+- **THEN** BettaView keeps the pull-request reader available and states that no DEOS trace or review story was found
 
 ### Requirement: Preserve exact-head trace meaning
 
@@ -32,18 +32,20 @@ BettaView SHALL render only hash-verified trace data selected by DEOS. It SHALL 
 - **WHEN** the live pull-request head differs from the reviewed head
 - **THEN** BettaView keeps the evidence readable, labels it stale, and shows both head identities
 
-### Requirement: Show the retained review process
+### Requirement: Show the focused review story
 
-The **Process** view SHALL show every safe retained review attempt in chronological order. It SHALL include actual available reviewer output, author dispositions and reasons, candidate identities, later checks, failures, retries, reuse, head bindings, and provider or workflow outcomes. It MUST label missing or redacted records and MUST NOT reconstruct them from a summary.
+The **Review** view SHALL show the semantic provenance needed to understand the final pull-request result in chronological order. It SHALL show when author work began, the retained self-review output, author responses and dispositions, the retained external-review output, and the final authored result and reviewed head. It SHALL keep the accepted trace adjacent to that history and link trace findings back to their PR citations. It MUST label missing or redacted review records and MUST NOT reconstruct them from a summary.
+
+The Review view MUST NOT repeat Linear transitions, generic workflow transitions, provider-operation records, human waits, cleanup activity, or failed attempts that produced no semantic review output. Those operational records remain available in the main DEOS portal.
 
 #### Scenario: Reader inspects SAC-139
 
 - **WHEN** the reader opens the planning pull request for the completed SAC-139 run
-- **THEN** the process view shows its retained internal and external review work, author response records, failed attempts, and final human-review state without starting another workflow
+- **THEN** the review view shows its retained author work, self-review, external review, author response, accepted trace, and final reviewed head without starting another workflow
 
 #### Scenario: An older attempt lacks a safe artifact
 
-- **WHEN** a process event refers to content that was not retained or cannot pass its manifest and hash checks
+- **WHEN** a review event refers to content that was not retained or cannot pass its manifest and hash checks
 - **THEN** BettaView labels the content unavailable and does not invent or expose it
 
 ### Requirement: Keep review actions under the human GitHub identity

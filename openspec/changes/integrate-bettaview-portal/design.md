@@ -7,7 +7,8 @@ See `proposal.md` for motivation. DEOS already serves a protected workflow porta
 **Goals:**
 
 - Own the maintained BettaView source in DEOS.
-- Keep one pull request connected to its PR, Trace, and Process views.
+- Keep one pull request connected to focused PR and Review views.
+- Put the accepted trace and its semantic review history on one Review page.
 - Preserve GitHub review behavior and human attribution.
 - Reuse SAC-139 without starting another workflow.
 - Verify every released D1/R2 artifact against its durable record.
@@ -39,16 +40,16 @@ flowchart LR
 2. BettaView restores or starts a server-side GitHub user session.
 3. The Worker reads the live pull request, rendered Markdown, threads, viewer identity, and capabilities from GitHub.
 4. The Worker sends the canonical repository and pull-request number to the DEOS service binding.
-5. DEOS resolves one durable run and builds the trace and complete process story.
+5. DEOS resolves one durable run and builds the accepted trace and complete review/process story.
 6. DEOS reads only allowlisted artifacts through complete manifests and verifies every object hash.
-7. BettaView shows PR, Trace, and Process. It compares the live and reviewed heads before calling the trace current.
+7. BettaView narrows the story to author work, self-review, external review, author dispositions, and the final result, then shows PR and Review. It compares the live and reviewed heads before calling the trace current.
 8. A GitHub write is checked against the loaded head and sent with the reader's user token.
 
 ## Minimal data model
 
 - `BettaViewSession`: opaque session ID, Access identity, encrypted GitHub access token, encrypted refresh token, expiry, and refresh state.
 - `GovernedPullRequest`: repository, pull-request number, run ID, issue key, recorded head, and canonical URL.
-- `ReviewStoryEvent`: stable event ID, time, kind, outcome, stage, attempt or review ID, provider fields, summary fields, and safe artifact references.
+- `ReviewStoryEvent`: stable event ID, time, semantic stage, outcome, attempt or review ID, reviewer identity, summary fields, and safe artifact references.
 - Existing D1 review, candidate, manifest, provider-operation, workflow-visit, and cleanup tables remain authoritative. No browser-owned workflow state is added.
 
 ## Decisions
@@ -65,9 +66,9 @@ The imported UI and pure review helpers stay recognizable. Node-specific GitHub 
 
 Cloudflare Access is admission, not GitHub authorization. The Worker uses the GitHub App web flow with PKCE, keeps tokens in a per-session Durable Object, and sends only an opaque secure cookie to the browser. The rejected shared installation-token design would give review actions the wrong actor and too much shared authority.
 
-### Build a new complete story projection
+### Keep complete evidence in DEOS and focus BettaView on review provenance
 
-The existing review projection deliberately selects accepted or reused results. The Process view needs failures and retries too, so DEOS adds a separate ordered projection. This avoids weakening the accepted-trace query. Every artifact still passes allowlist, manifest, object-key, and hash checks.
+DEOS keeps its complete ordered projection because the main portal needs workflow transitions, failures, provider operations, waits, and cleanup. BettaView derives a smaller review story from that verified source: authored work, self-review, external review, author responses, and the accepted trace. This avoids duplicating the operational portal while preserving the evidence a pull-request reader needs. Every released artifact still passes allowlist, manifest, object-key, and hash checks.
 
 ### Prove with the existing SAC-139 run
 
@@ -86,7 +87,7 @@ Production validation performs read-only D1/R2 and provider reads for SAC-139. G
 1. Import the pinned BettaView source and record provenance.
 2. Add DEOS pull-request lookup and complete-story routes with contract tests.
 3. Add the Worker adapter, Access validation, GitHub user sessions, and static build.
-4. Add PR, Trace, and Process navigation plus DEOS dual links.
+4. Add PR and Review navigation, with the accepted trace and focused review history on one page, plus DEOS dual links.
 5. Deploy BettaView without changing the workflow definition.
 6. Configure the custom domain, Access application, GitHub callback, and secrets.
 7. Verify SAC-139 and real GitHub review actions. Then make the BettaView link the supported reader.
