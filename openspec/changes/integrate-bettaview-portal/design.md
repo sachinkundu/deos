@@ -47,7 +47,7 @@ flowchart LR
 
 After external review and any author response, trusted publication updates the pull request first. DEOS then generates a complete trace against that exact published head and document hashes. Only the accepted final-head trace supplies BettaView's active citations and final summary. Earlier candidate traces remain chronological review evidence. Human Review starts only after the final trace is complete and hash-verified.
 
-When Human Review requests a later revision, workflow version 16 routes the author update directly to trusted publication and a final-head trace refresh. It repeats neither the author self-review nor the external-discovery cycle used before the first Human Review.
+When Human Review requests a later revision, workflow version 16 routes the author update directly to trusted publication and a final-head trace refresh. It repeats neither the author self-review nor the external-discovery cycle used before the first Human Review. The refreshed result returns to the same Human Review gate, so the human reviewer can request another revision round as many times as needed before approving or canceling.
 
 ## Minimal data model
 
@@ -80,7 +80,7 @@ Production validation performs read-only D1/R2 and provider reads for SAC-139. G
 
 ### Keep discovery reviews before first Human Review only
 
-The initial planning candidate still runs through author self-review, its bounded repair loop, and one external-discovery cycle before Human Review. A later revision requested by the human reviewer has already passed those discovery boundaries. The author updates the existing plan, trusted publication updates the same pull request, and DEOS refreshes the complete trace against the new exact head before returning to Human Review. Repeating either discovery review adds cost and incorrectly presents a new review cycle; the exact-head trace refresh supplies the required freshness proof.
+The initial planning candidate still runs through author self-review, its bounded repair loop, and one external-discovery cycle before Human Review. A later revision requested by the human reviewer has already passed those discovery boundaries. The author updates the existing plan, trusted publication updates the same pull request, and DEOS refreshes the complete trace against the new exact head before returning to Human Review. This human revision loop remains available for any number of rounds. Repeating either discovery review adds cost and incorrectly presents a new discovery cycle; the exact-head trace refresh supplies the required freshness proof.
 
 ### Render the definition pinned to the run
 

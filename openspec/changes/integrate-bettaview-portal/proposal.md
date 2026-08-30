@@ -15,7 +15,7 @@ DEOS already keeps the trace and review evidence for SAC-139, but the current po
 - Keep semantic trace generation in DEOS. The cloud BettaView Worker cannot start Codex or another model.
 - After external review and any author response are published, generate the active trace against the exact final pull-request head before Human Review. Keep earlier traces only as review history.
 - Keep GitHub review writes tied to the signed-in human identity. Reading remains available when a viewer lacks a specific write permission.
-- Keep one external-discovery cycle. After Human Review requests changes, the author updates and publishes the plan, DEOS refreshes the complete trace on the new head, and the author returns it to Human Review without another external review.
+- Keep external discovery to one cycle. Human Review may request any number of later revision rounds; each round updates and publishes the plan, refreshes the complete trace on the new head, and returns to Human Review without another external review.
 
 ### Non-goals
 
@@ -39,7 +39,7 @@ DEOS already keeps the trace and review evidence for SAC-139, but the current po
 - Adds `portal/bettaview/`, a second Cloudflare Worker deployment, and its static application build.
 - Extends the DEOS portal read model and routes for pull-request lookup and complete review-story data.
 - Changes the workflow node detail so both GitHub and BettaView can open the same planning pull request.
-- Advances `simple-traceability` to version 16 so later human revision rounds skip both author self-review and another external-discovery cycle while retaining an exact-head trace refresh.
+- Advances `simple-traceability` to version 16 so every later human revision round skips both author self-review and another external-discovery cycle while retaining an exact-head trace refresh and returning to the repeatable Human Review gate.
 - Advances `simple-traceability` again so the final published head receives a fresh complete trace before Human Review.
 - Keeps workflow identity immutable within a run while allowing different issues to use different workflow definitions or versions.
 - Uses the existing SAC-139 run as production proof and does not allocate a new workflow run.

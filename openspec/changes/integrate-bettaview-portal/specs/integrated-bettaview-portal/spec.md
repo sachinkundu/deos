@@ -63,6 +63,11 @@ The Review view MUST NOT repeat generic Linear transitions, generic workflow tra
 - **WHEN** the author updates an already externally reviewed plan in a new human-requested revision round
 - **THEN** DEOS publishes the updated candidate, refreshes the complete trace on the new exact head, and returns to Human Review without running another author self-review or external-discovery cycle
 
+#### Scenario: Human review requests repeated revisions
+
+- **WHEN** the human reviewer requests another revision after a refreshed plan has returned to Human Review
+- **THEN** DEOS runs the same author-update, publication, and exact-head trace-refresh loop again and continues to allow later revision rounds until the human reviewer approves or cancels
+
 #### Scenario: Human reviewer requests changes
 
 - **WHEN** a human reviewer comments on the planning pull request and moves the issue from Human Review to In Progress

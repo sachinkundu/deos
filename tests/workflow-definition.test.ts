@@ -217,6 +217,24 @@ test("traceability planning definition freezes reviewers and keeps publication t
     failed: "agent_failed",
   });
   assert.equal(definition.nodes.publish_author_response.edges.completed, "planning_review");
+  assert.deepEqual(
+    [
+      definition.nodes.planning_review.edges.revision_requested,
+      definition.nodes.start_new_review_round.edges.completed,
+      definition.nodes.planning_revision_author.edges.completed,
+      definition.nodes.publish_update.edges.completed,
+      definition.nodes.final_trace.edges.pass,
+      definition.nodes.publish_author_response.edges.completed,
+    ],
+    [
+      "start_new_review_round",
+      "planning_revision_author",
+      "publish_update",
+      "final_trace",
+      "publish_author_response",
+      "planning_review",
+    ],
+  );
   assert.equal(definition.nodes.merge_planning_pr.edges.completed, "done");
   assert.equal(Object.hasOwn(definition.jobs, "independent_recheck"), false);
   assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(definition), definition.digest), definition);
