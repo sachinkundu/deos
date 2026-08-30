@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: simple-traceability
-  version: 13
+  version: 14
 spec:
   start: claim_issue
   execution:
@@ -101,7 +101,11 @@ spec:
     publish_update:
       type: system_action
       action: github.publish_planning_candidate
-      edges: {completed: publish_author_response, failed: system_action_failed}
+      edges: {completed: final_trace, failed: system_action_failed}
+    final_trace:
+      type: agent
+      job: independent_discovery
+      edges: {pass: publish_author_response, findings: publish_author_response, needs_judgment: publish_author_response, proof_conflict: publish_author_response, blocked: agent_blocked, failed: agent_failed}
     publish_author_response:
       type: system_action
       action: traceability.publish_author_response

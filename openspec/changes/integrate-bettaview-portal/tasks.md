@@ -27,6 +27,8 @@
 - [x] 4.4 Add adjacent GitHub and BettaView actions to DEOS workflow node details.
 - [x] 4.5 Route later human-requested planning revisions from author update to publication and external exact-head review without another author self-review.
 - [x] 4.6 Render every run from its digest-verified frozen workflow definition without a deployment-specific digest allowlist.
+- [x] 4.7 Backfill SAC-142 PR #6 with a complete exact-head trace and expose it as the active BettaView trace without allocating another run.
+- [x] 4.8 Advance the workflow definition with a final-head trace step after publication and before Human Review while keeping earlier traces historical.
 
 ## 5. Verification and delivery
 
@@ -36,3 +38,4 @@
 - [ ] 5.4 Verify the existing SAC-139 planning PR across PR and Review, including D1/R2 hashes, focused review provenance, and stale-head state.
 - [ ] 5.5 Verify real GitHub comment, reply, review-decision, and Mermaid annotation actions on an existing controlled pull request under the signed-in human identity.
 - [ ] 5.6 Publish a ready implementation PR with tests, deployment proof, provider proof, and completed checkboxes.
+- [x] 5.7 Deploy and read back the final-head trace behavior, then verify SAC-142's run count and frozen workflow definition are unchanged.

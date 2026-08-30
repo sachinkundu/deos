@@ -175,7 +175,7 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 13);
+  assert.equal(definition.version, 14);
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
   assert.ok(definition.jobs.planning_author.requiredOutputs.includes("review-replies.json"));
@@ -200,7 +200,17 @@ test("traceability planning definition freezes reviewers and keeps publication t
   assert.equal(definition.nodes.planning_self_repair.edges.invalid_candidate, "agent_failed");
   assert.equal(definition.nodes.planning_independent_response.edges.invalid_candidate, "agent_failed");
   assert.equal(definition.nodes.independent_discovery.edges.pass, "planning_independent_response");
-  assert.equal(definition.nodes.publish_update.edges.completed, "publish_author_response");
+  assert.equal(definition.nodes.publish_update.edges.completed, "final_trace");
+  assert.equal(definition.nodes.final_trace.type, "agent");
+  assert.equal(definition.nodes.final_trace.type === "agent" ? definition.nodes.final_trace.job : null, "independent_discovery");
+  assert.deepEqual(definition.nodes.final_trace.edges, {
+    pass: "publish_author_response",
+    findings: "publish_author_response",
+    needs_judgment: "publish_author_response",
+    proof_conflict: "publish_author_response",
+    blocked: "agent_blocked",
+    failed: "agent_failed",
+  });
   assert.equal(definition.nodes.publish_author_response.edges.completed, "planning_review");
   assert.equal(Object.hasOwn(definition.jobs, "independent_recheck"), false);
   assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(definition), definition.digest), definition);

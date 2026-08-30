@@ -20,7 +20,7 @@ BettaView SHALL accept a canonical GitHub pull-request URL and show **PR** and *
 
 ### Requirement: Preserve exact-head trace meaning
 
-BettaView SHALL render only hash-verified trace data selected by DEOS. It SHALL compare the reviewed head with the live GitHub head and MUST NOT present evidence from an older head as current.
+BettaView SHALL render only hash-verified trace data selected by DEOS. It SHALL compare the reviewed head with the live GitHub head and MUST NOT present evidence from an older head as current. The active PR citations and final trace summary SHALL use the complete trace generated for the final published pull-request head. Traces from earlier review candidates MAY remain in the chronological Review story, but MUST NOT supply the active PR citations or final trace summary.
 
 #### Scenario: Reviewed and live heads match
 
@@ -31,6 +31,16 @@ BettaView SHALL render only hash-verified trace data selected by DEOS. It SHALL 
 
 - **WHEN** the live pull-request head differs from the reviewed head
 - **THEN** BettaView keeps the evidence readable, labels it stale, and shows both head identities
+
+#### Scenario: Author changes the candidate after external review
+
+- **WHEN** an author response changes the pull request after an external trace review
+- **THEN** DEOS generates and accepts a complete trace for the new published head before Human Review, and BettaView uses that trace for the active PR citations and final summary
+
+#### Scenario: Final-head trace is unavailable
+
+- **WHEN** no complete hash-verified trace exists for the live pull-request head
+- **THEN** BettaView reports the active trace pending or unavailable and does not present an older trace as the final result
 
 ### Requirement: Show the focused review story
 

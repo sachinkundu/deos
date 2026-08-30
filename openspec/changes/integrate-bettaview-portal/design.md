@@ -45,6 +45,8 @@ flowchart LR
 7. BettaView narrows the story to author work, self-review, external review, author dispositions, and the final result, then shows PR and Review. It compares the live and reviewed heads before calling the trace current.
 8. A GitHub write is checked against the loaded head and sent with the reader's user token.
 
+After external review and any author response, trusted publication updates the pull request first. DEOS then generates a complete trace against that exact published head and document hashes. Only the accepted final-head trace supplies BettaView's active citations and final summary. Earlier candidate traces remain chronological review evidence. Human Review starts only after the final trace is complete and hash-verified.
+
 When Human Review requests a later revision, workflow version 13 routes the author update directly to trusted publication and a new external review. It does not repeat the author self-review used before the first publication.
 
 ## Minimal data model
@@ -85,6 +87,12 @@ The initial planning candidate still runs through author self-review and its bou
 The portal restores the frozen canonical definition selected when each run was allocated and keeps the existing identity, version, and digest verification. Presentation is derived from that verified definition. Known workflow families retain their grouped product stages, while an unfamiliar node or workflow receives a safe label derived from its structural node ID so no node or edge is silently omitted.
 
 The portal does not keep a second allowlist of accepted workflow digests. Such an allowlist couples issue visibility to portal deployment and rejects valid runs whenever the workflow evolves. Workflow immutability remains per run: an existing issue run never changes definition, while another issue may select another workflow or version.
+
+### Separate review traces from the active final trace
+
+An external reviewer may generate trace evidence for a candidate that the author later changes. That evidence remains part of the review story, but it stops being the active trace when reviewed bytes change. After the author response is published, the workflow uses the existing DEOS trace process with a new exact-input identity for the final head. Exact-input reuse is allowed only when the reviewed bytes and trace identity are unchanged. Human Review is gated on a complete hash-verified final trace.
+
+Older frozen workflows are not rewritten. SAC-142 receives an operator backfill tied to its existing governed run and current pull-request head. The backfill adds durable evidence but does not add a workflow visit, replace version 13, or allocate another run.
 
 ## Risks / Trade-offs
 

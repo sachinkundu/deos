@@ -10,7 +10,7 @@ Repository-local OpenSpec progression is encoded as typed agent jobs carrying on
 
 ## OpenSpec traceability review flow
 
-The bundle contains `simple-traceability` version 13 as the project default. The legacy `DEOS Traceability` selector remains registered but disabled, so ordinary eligible issues enter traceability without requiring a label. The immutable definition snapshot and digest are still frozen when each run is allocated. The initial planning candidate keeps its author self-review, while a later human-requested revision publishes the author's update and returns to external exact-head review without repeating that self-review.
+The bundle contains `simple-traceability` version 14 as the project default. The legacy `DEOS Traceability` selector remains registered but disabled, so ordinary eligible issues enter traceability without requiring a label. The immutable definition snapshot and digest are still frozen when each run is allocated. The initial planning candidate keeps its author self-review, while a later human-requested revision publishes the author's update and returns to external exact-head review without repeating that self-review. Every author response is published before one final independent trace is generated for the exact head that enters Human Review.
 
 ```mermaid
 flowchart LR
@@ -25,11 +25,14 @@ flowchart LR
     G --> I[Independent review<br/>two fresh directional passes]
     I --> AR[Author response<br/>apply, decline, or no change]
     AR --> U[Trusted same-PR update<br/>and provider summaries]
-    U --> H[Human Review]
+    U --> F[Final independent trace<br/>exact published head]
+    F --> PS[Trusted author-response summary]
+    PS --> H[Human Review]
     C --> R[(Immutable R2 evidence)]
     V --> R
     S --> R
     I --> R
+    F --> R
     D --> O[Access-protected review page]
     R --> O
 ```
@@ -44,11 +47,11 @@ Both semantic stages use a pinned BettaView bundle. The Codex self-check uses th
 
 D1 stores the candidate, phase, accepted review, and exact-head binding. R2 stores both directional model results and the validation proof. Self-check discovery creates one fixed finding inventory. A self-check recheck must rate every existing ID once and cannot add, remove, rename, merge, or split a finding. Trusted code derives its outcome from the checked artifact. The self-check has at most three author-repair turns. The finding ranges guide the author and recheck, but DEOS does not use diff-hunk byte ranges as a trusted rejection gate. The repaired candidate must still keep the allowed planning inventory and pass strict OpenSpec, whitespace, and readability checks. An identical input records a reuse event without creating an attempt, Sandbox, or model call. A different pull-request head can reuse proof only after trusted GitHub reads show that every reviewed file has the same hash.
 
-Trusted publication creates or updates one planning pull request from the accepted R2 candidate. It also posts each candidate-bound human review reply through the existing idempotent GitHub adapter and leaves the thread open. Independent proof is bound to the exact published head. A structurally valid outside review always completes the external stage, even when it reports concerns. One fresh author job records `applied`, `declined`, or `no_change` for every finding and directional dispute. Trusted code validates any plan edits, updates the same pull request, and then refreshes the GitHub Check Run and marked Linear status with disposition counts. It does not run the independent reviewer again merely to make its opinion disappear.
+Trusted publication creates or updates one planning pull request from the accepted R2 candidate. It also posts each candidate-bound human review reply through the existing idempotent GitHub adapter and leaves the thread open. Independent proof is bound to the exact published head. A structurally valid outside review always completes the external stage, even when it reports concerns. One fresh author job records `applied`, `declined`, or `no_change` for every finding and directional dispute. Trusted code validates any plan edits and updates the same pull request. The workflow then runs a complete independent trace against that final published head before it refreshes the GitHub Check Run and marked Linear status with disposition counts and enters Human Review. This final trace supplies the active BettaView citations; the earlier trace remains review history.
 
 Human feedback closes neither prior proof nor its finding inventory. A trusted action allocates the next round with fresh counters. The author then handles the human comments, and both stages run new full discovery checks. Later repairs inside that round use the fixed finding inventory as review context and must pass the full trusted planning checks. No-semantic-change author output is rejected before another review attempt, Sandbox, or model call can be allocated.
 
-The portal serves `/runs/<encoded-run-id>/review`. It reads rounds, phase counters, accepted reviews, reuse, exact heads, findings, both directional claim sets, cited ranges, author dispositions, conflicts, and candidates from D1 and hash-checked R2 evidence. It marks exact-head proof current or stale against the saved pull-request head. Raw proof is available only through an allowlisted route that selects an accepted manifest, reads its exact R2 key, verifies the D1 SHA-256, and returns `Cache-Control: no-store`. The ordinary workflow view does not generate proof during page load. Its planning-stage detail links to the review page only after accepted proof exists.
+The portal serves `/runs/<encoded-run-id>/review`. It reads rounds, phase counters, accepted reviews, reuse, exact heads, findings, both directional claim sets, cited ranges, author dispositions, conflicts, and candidates from D1 and hash-checked R2 evidence. It marks exact-head proof current or stale against the saved pull-request head. The active PR citations and final summary use only the accepted trace for that exact head; older accepted traces remain chronological review evidence. Raw proof is available only through an allowlisted route that selects an accepted manifest, reads its exact R2 key, verifies the D1 SHA-256, and returns `Cache-Control: no-store`. The ordinary workflow view does not generate proof during page load. Its planning-stage detail links to the review page only after accepted proof exists.
 
 The authenticated stage-retry route creates a new deterministic Workflow instance after the latest failed independent-review attempt has ended and its Sandbox cleanup is `destroyed`. One D1 batch records the retry, advances the visit, binds the run and dispatch intent to the replacement ID, and appends the operator transition. The replacement reads the current D1 node, so earlier stages do not execute again; the failed Workflow instance remains terminal. One guarded compatibility handoff may also change the frozen definition. A `simple-traceability` version 11 run that failed at the published `independent_discovery` boundary may move to the exact registered bundled version 12 definition. D1 additionally verifies the validated candidate, published pull request, entry and failure transitions, and registered source and target definition snapshots. Every retry record keeps both definition digests and both Workflow instance IDs.
 
