@@ -279,6 +279,43 @@ test("browser routes map to explicit portal entries without SPA fallback", async
   assert.deepEqual(paths, ["/index.html", "/settings.html", "/settings.html", "/assets/app.js"]);
 });
 
+test("an authenticated issue search records the viewer before the read-only API guard", async () => {
+  const queries: string[] = [];
+  const db = {
+    prepare(query: string) {
+      queries.push(query);
+      return {
+        bind() {
+          if (query === PORTAL_SELECTS.issueByKey) return { first: async () => ({
+            issue_id: "issue-142",
+            project_id: "project-id",
+            issue_key: "SAC-142",
+            title: "Specify a calculator CLI",
+            linear_url: "https://linear.example/SAC-142",
+            observed_at: "2026-08-30T12:00:00Z",
+          }) };
+          return { run: async () => ({ success: true }) };
+        },
+      };
+    },
+  } as unknown as D1Database;
+  const env = {
+    DB: db,
+    ARTIFACTS: {} as R2Bucket,
+    ASSETS: { fetch: async () => new Response("portal") } as unknown as Fetcher,
+    ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
+    ACCESS_AUD: "aud",
+    ALLOWED_EMAIL: "sachinkundu@gmail.com",
+    PROJECT_ID: "project-id",
+  };
+  const response = await routePortalRequest(new Request("https://deos.example/api/issues/SAC-142/search", {
+    method: "POST",
+  }), env, async () => ({ email: "sachinkundu@gmail.com" }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { recorded: true });
+  assert.deepEqual(queries, [PORTAL_SELECTS.issueByKey, PORTAL_MUTATIONS.recordIssueSearch]);
+});
+
 test("workflow control writes require only dispatch and revision", async () => {
   const env = {
     DB: {} as D1Database,
