@@ -149,15 +149,15 @@ const workflowPresentation = (projection) => {
     seen.add(identity);
     const source = layouts.get(connection.from);
     const target = layouts.get(connection.to);
-    const returns = indexes.get(connection.to) <= indexes.get(connection.from);
     const branch = ["stopped", "terminal"].includes(connection.to);
+    const returns = !branch && indexes.get(connection.to) <= indexes.get(connection.from);
     const movesRight = source.column < target.column;
     connections.push({
       source: connection.from,
       target: connection.to,
-      sourceHandle: returns ? "top-out" : source.row === target.row ? movesRight ? "right-out" : "left-out" : "bottom",
-      targetHandle: returns ? "top" : source.row === target.row ? movesRight ? "left" : "right" : "top",
-      kind: returns ? "return" : branch ? "branch" : "forward",
+      sourceHandle: branch ? "bottom" : returns ? "top-out" : source.row === target.row ? movesRight ? "right-out" : "left-out" : "bottom",
+      targetHandle: branch ? "bottom-in" : returns ? "top" : source.row === target.row ? movesRight ? "left" : "right" : "top",
+      kind: branch ? "branch" : returns ? "return" : "forward",
       label: returns ? titleCase(connection.outcome) : undefined,
     });
   }

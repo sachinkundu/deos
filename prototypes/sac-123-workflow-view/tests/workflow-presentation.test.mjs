@@ -234,6 +234,7 @@ const sac142Projection = {
     { from: "review", to: "planning", outcome: "revision_requested" },
     { from: "review", to: "merge", outcome: "merge_authorized" },
     { from: "merge", to: "complete", outcome: "completed" },
+    { from: "merge", to: "stopped", outcome: "failed" },
   ],
   history: [
     { sequence: 1, stageId: "claim", enteredAt: "2026-08-30T07:00:00Z", leftAt: "2026-08-30T07:00:01Z", attempts: [], links: [] },
@@ -254,6 +255,16 @@ test("a simple-traceability v13 run becomes a dynamic visible workflow", () => {
   assert.equal(issue.currentStage, "review");
   assert.equal(issue.stageStates.review, "waiting");
   assert.equal(issue.pullRequest.label, "PR #6");
+  const stoppedBranch = issue.workflow.connections.find((connection) => connection.source === "merge" && connection.target === "stopped");
+  assert.deepEqual(stoppedBranch, {
+    source: "merge",
+    target: "stopped",
+    sourceHandle: "bottom",
+    targetHandle: "bottom-in",
+    kind: "branch",
+    label: undefined,
+  });
+  assert.equal(issue.workflow.connections.some((connection) => connection.source === "complete" && connection.target === "stopped"), false);
 });
 
 test("a recovered internal failure remains in history while the unvisited terminal is skipped", () => {
