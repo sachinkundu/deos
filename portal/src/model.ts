@@ -185,9 +185,7 @@ export const PORTAL_MUTATIONS = Object.freeze({
   recordIssueSearch: `INSERT INTO portal_issue_search_history (
       project_id, viewer_email, issue_id, searched_at
     )
-    SELECT issue.project_id, ?, issue.issue_id, ?
-    FROM linear_issue_index issue
-    WHERE issue.project_id = ? AND issue.issue_key = ?
+    VALUES (?, ?, ?, ?)
     ON CONFLICT (project_id, viewer_email, issue_id)
     DO UPDATE SET searched_at = excluded.searched_at`,
 });
@@ -436,8 +434,11 @@ export class PortalIssueSearchHistoryStore {
     const normalizedKey = issueKey.trim().toUpperCase();
     const normalizedEmail = viewerEmail.trim().toLowerCase();
     if (!keyPattern.test(normalizedKey) || normalizedEmail.length === 0) return false;
-    const result = await this.db.prepare(PORTAL_MUTATIONS.recordIssueSearch)
-      .bind(normalizedEmail, now, this.projectId, normalizedKey).run();
-    return (result.meta.changes ?? 0) > 0;
+    const issue = await this.db.prepare(PORTAL_SELECTS.issueByKey)
+      .bind(this.projectId, normalizedKey).first<IssueRow>();
+    if (issue === null) return false;
+    await this.db.prepare(PORTAL_MUTATIONS.recordIssueSearch)
+      .bind(this.projectId, normalizedEmail, issue.issue_id, now).run();
+    return true;
   }
 }

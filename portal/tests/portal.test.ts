@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { exportJWK, generateKeyPair, SignJWT, createLocalJWKSet } from "jose";
 import { verifyAccess } from "../src/auth.ts";
-import { isRecoveredTerminalVisit, PORTAL_MUTATIONS, PORTAL_SELECTS } from "../src/model.ts";
+import {
+  isRecoveredTerminalVisit,
+  PortalIssueSearchHistoryStore,
+  PORTAL_MUTATIONS,
+  PORTAL_SELECTS,
+} from "../src/model.ts";
 import { presentationStagesForDefinition, validatePresentationManifest } from "../src/manifests.ts";
 import { routePortalRequest } from "../src/worker.ts";
 import { normalizeRepository, RepositorySettingsError, RepositorySettingsStore } from "../src/settings.ts";
@@ -65,8 +70,38 @@ test("the Workflow Map issue inventory is not restricted to one workflow definit
 
 test("search history is a separate bounded mutation", () => {
   assert.match(PORTAL_MUTATIONS.recordIssueSearch, /^INSERT INTO portal_issue_search_history/);
+  assert.match(PORTAL_MUTATIONS.recordIssueSearch, /VALUES \(\?, \?, \?, \?\)/);
   assert.match(PORTAL_MUTATIONS.recordIssueSearch, /ON CONFLICT/);
   assert.match(PORTAL_MUTATIONS.recordIssueSearch, /DO UPDATE SET searched_at/);
+});
+
+test("search history resolves the exact recorded issue before saving the viewer entry", async () => {
+  const calls: Array<{ query: string; values: unknown[] }> = [];
+  const db = {
+    prepare(query: string) {
+      return {
+        bind(...values: unknown[]) {
+          calls.push({ query, values });
+          if (query === PORTAL_SELECTS.issueByKey) return { first: async () => ({
+            issue_id: "issue-142",
+            project_id: "project-id",
+            issue_key: "SAC-142",
+            title: "Specify a calculator CLI",
+            linear_url: "https://linear.example/SAC-142",
+            observed_at: "2026-08-30T12:00:00Z",
+          }) };
+          return { run: async () => ({ success: true }) };
+        },
+      };
+    },
+  } as unknown as D1Database;
+  const recorded = await new PortalIssueSearchHistoryStore(db, "project-id")
+    .record("Person@Example.com", "sac-142", "2026-08-30T13:00:00Z");
+  assert.equal(recorded, true);
+  assert.deepEqual(calls.map((call) => call.values), [
+    ["project-id", "SAC-142"],
+    ["project-id", "person@example.com", "issue-142", "2026-08-30T13:00:00Z"],
+  ]);
 });
 
 test("only an operator-recovered terminal visit is excluded from the final workflow path", () => {
