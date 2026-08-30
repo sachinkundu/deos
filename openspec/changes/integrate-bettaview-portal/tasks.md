@@ -25,6 +25,7 @@
 - [x] 4.2 Load DEOS trace and process data by repository and pull-request number and show current, stale, unavailable, and redacted states.
 - [x] 4.3 Render author work, self-review, external review, author dispositions, and the final reviewed result in chronological order while excluding operational workflow activity from BettaView.
 - [x] 4.4 Add adjacent GitHub and BettaView actions to DEOS workflow node details.
+- [x] 4.5 Route later human-requested planning revisions from author update to publication and external exact-head review without another author self-review.
 
 ## 5. Verification and delivery
 

@@ -10,7 +10,7 @@ Repository-local OpenSpec progression is encoded as typed agent jobs carrying on
 
 ## OpenSpec traceability review flow
 
-The bundle contains `simple-traceability` version 12 as the project default. The legacy `DEOS Traceability` selector remains registered but disabled, so ordinary eligible issues enter traceability without requiring a label. The immutable definition snapshot and digest are still frozen when each run is allocated.
+The bundle contains `simple-traceability` version 13 as the project default. The legacy `DEOS Traceability` selector remains registered but disabled, so ordinary eligible issues enter traceability without requiring a label. The immutable definition snapshot and digest are still frozen when each run is allocated. The initial planning candidate keeps its author self-review, while a later human-requested revision publishes the author's update and returns to external exact-head review without repeating that self-review.
 
 ```mermaid
 flowchart LR

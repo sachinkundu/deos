@@ -48,6 +48,11 @@ The Review view MUST NOT repeat Linear transitions, generic workflow transitions
 - **WHEN** a review event refers to content that was not retained or cannot pass its manifest and hash checks
 - **THEN** BettaView labels the content unavailable and does not invent or expose it
 
+#### Scenario: Human review requests a later revision
+
+- **WHEN** the author updates an already externally reviewed plan in a new human-requested revision round
+- **THEN** DEOS publishes the updated candidate for a new exact-head external review without running another author self-review, and the Review view shows the resulting retained chronology
+
 ### Requirement: Keep review actions under the human GitHub identity
 
 BettaView SHALL use a GitHub user authorization for pull-request reads and writes. Comments, replies, approvals, change requests, and annotation uploads SHALL use that user's token. BettaView MUST NOT use a shared installation identity for a human review action.

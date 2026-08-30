@@ -18,7 +18,7 @@ See `proposal.md` for motivation. DEOS already serves a protected workflow porta
 - Run a model or a second workflow orchestrator in BettaView.
 - Make review evidence public.
 - Reconstruct missing historical content.
-- Change the semantic review policy implemented by workflow version 12.
+- Remove the initial author self-review before the first planning pull request is published.
 
 ## Component diagram
 
@@ -44,6 +44,8 @@ flowchart LR
 6. DEOS reads only allowlisted artifacts through complete manifests and verifies every object hash.
 7. BettaView narrows the story to author work, self-review, external review, author dispositions, and the final result, then shows PR and Review. It compares the live and reviewed heads before calling the trace current.
 8. A GitHub write is checked against the loaded head and sent with the reader's user token.
+
+When Human Review requests a later revision, workflow version 13 routes the author update directly to trusted publication and a new external review. It does not repeat the author self-review used before the first publication.
 
 ## Minimal data model
 
@@ -73,6 +75,10 @@ DEOS keeps its complete ordered projection because the main portal needs workflo
 ### Prove with the existing SAC-139 run
 
 Production validation performs read-only D1/R2 and provider reads for SAC-139. GitHub review actions use an existing controlled pull request and do not dispatch DEOS. No Linear event or workflow run is created for this portal work.
+
+### Keep self-review before first publication only
+
+The initial planning candidate still runs through author self-review and its bounded repair loop before publication. A later revision requested by the human reviewer has already passed that initial boundary. The author updates the existing plan, trusted publication updates the same pull request, and the external reviewer reviews the new exact head. Repeating the author self-review in that later round adds cost and obscures the review story without adding another independent perspective.
 
 ## Risks / Trade-offs
 

@@ -45,6 +45,7 @@ import { D1TraceReviewStore } from "./trace-review-store.ts";
 import {
   deriveReviewOutcome,
   findingSetDigest,
+  LATER_ROUND_REVIEW_STAGES,
   normalizeFindingSet,
   reviewInputId,
   validateClosedSetRecheck,
@@ -928,7 +929,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     }
     const now = new Date().toISOString();
     const results = await this.env.DB.batch([
-      ...(["self_check", "independent"] as const).map((stage) => this.env.DB.prepare(
+      ...LATER_ROUND_REVIEW_STAGES.map((stage) => this.env.DB.prepare(
         `INSERT OR IGNORE INTO trace_review_phases
          (run_id, round, stage, state, current_candidate_id, current_head_sha,
           shared_repair_turns, review_job_count, proof_repair_count, revision,
@@ -939,7 +940,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         roundRow.round,
         stage,
         candidate.candidate_id,
-        stage === "independent" ? workProduct?.head_sha ?? null : null,
+        workProduct?.head_sha ?? null,
         now,
         now,
       )),

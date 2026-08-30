@@ -5,6 +5,7 @@ import {
   canBindReviewToHead,
   deriveReviewOutcome,
   findingSetDigest,
+  LATER_ROUND_REVIEW_STAGES,
   nextRepairTurn,
   reviewInputId,
   validateClosedSetRecheck,
@@ -24,6 +25,10 @@ const findings: readonly TraceFinding[] = [{
     endLine: 12,
   }],
 }];
+
+test("later human revision rounds keep only external semantic review", () => {
+  assert.deepEqual(LATER_ROUND_REVIEW_STAGES, ["independent"]);
+});
 
 test("review input identity covers exact sources, models, mode, and tool bundle", async () => {
   const input = {
