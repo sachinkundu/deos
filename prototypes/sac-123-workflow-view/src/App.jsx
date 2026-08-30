@@ -40,7 +40,6 @@ import {
 import {
   cycleCountForStage,
   runCountForStage,
-  simpleWorkflowIssues,
   simpleWorkflowPresentation,
 } from "./simple-workflow.js";
 import { activityForRecord } from "./transcript-view.js";
@@ -340,8 +339,6 @@ const workflowForIssue = (issue) => {
     })),
   };
 };
-
-const initialIssueDefinitions = simpleWorkflowIssues;
 
 const stateIcon = {
   active: Pulse,
@@ -739,8 +736,23 @@ function AppHeader({ theme, onThemeChange }) {
   );
 }
 
-function SideBar({ issues, selectedKey, onSelect, search, setSearch, onSearch }) {
-  const filtered = Object.values(issues).filter((issue) => issue.key.includes(search.trim().toUpperCase()) || issue.title.toLowerCase().includes(search.trim().toLowerCase()));
+const issueStatusFilters = [
+  { id: "all", label: "All" },
+  { id: "finished", label: "Finished" },
+  { id: "failed", label: "Failed" },
+  { id: "waiting", label: "Waiting" },
+  { id: "active", label: "In progress" },
+];
+
+const matchesStatusFilter = (issue, filter) => filter === "all"
+  || issue.state === filter
+  || (filter === "failed" && issue.state === "stopped");
+
+function SideBar({ issues, selectedKey, onSelect, search, setSearch, onSearch, statusFilter, setStatusFilter }) {
+  const issueValues = Object.values(issues);
+  const normalizedSearch = search.trim().toLowerCase();
+  const filtered = issueValues.filter((issue) => matchesStatusFilter(issue, statusFilter)
+    && (issue.key.toLowerCase().includes(normalizedSearch) || issue.title.toLowerCase().includes(normalizedSearch)));
   return (
     <aside className="issue-sidebar">
       <form className="issue-search" onSubmit={onSearch}>
@@ -758,12 +770,26 @@ function SideBar({ issues, selectedKey, onSelect, search, setSearch, onSearch })
           <kbd>/</kbd>
         </div>
       </form>
+      <div className="issue-filters" aria-label="Filter searched issues by status">
+        {issueStatusFilters.map((filter) => (
+          <button
+            type="button"
+            key={filter.id}
+            className={statusFilter === filter.id ? "is-selected" : ""}
+            aria-pressed={statusFilter === filter.id}
+            onClick={() => setStatusFilter(filter.id)}
+          >
+            {filter.label}
+            <span>{issueValues.filter((issue) => matchesStatusFilter(issue, filter.id)).length}</span>
+          </button>
+        ))}
+      </div>
       <nav className="issue-list" aria-label="Issues">
         {filtered.map((issue) => (
           <IssueRow key={issue.key} issue={issue} selected={selectedKey === issue.key} onSelect={onSelect} />
         ))}
         {!filtered.length && (
-          <div className="no-results"><WarningCircle size={22} /><strong>No issue found</strong><span>Enter an issue with a recorded workflow run.</span></div>
+          <div className="no-results"><WarningCircle size={22} /><strong>No issue found</strong><span>Search for a recorded issue to add it to your list.</span></div>
         )}
       </nav>
     </aside>
@@ -1003,22 +1029,23 @@ function WorkflowWorkspace({ issue, selection, setSelection, onTranscript, onRef
 }
 
 export function App() {
-  const [issues, setIssues] = useState(initialIssueDefinitions);
-  const [selectedKey, setSelectedKey] = useState("SAC-130");
+  const [issues, setIssues] = useState({});
+  const [selectedKey, setSelectedKey] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selection, setSelection] = useState(null);
   const [transcriptIntent, setTranscriptIntent] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem("deos-prototype-theme") || "dark");
   const [toast, setToast] = useState("");
 
-  const issue = issues[selectedKey] ?? Object.values(issues)[0];
+  const issue = issues[selectedKey];
 
   const refreshIssues = useCallback(async () => {
     const controller = new AbortController();
     try {
       const recorded = await loadWorkflowIssues(controller.signal);
       setIssues(recorded);
-      setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? current);
+      setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? "");
       return true;
     } catch (reason) {
       if (reason?.name !== "AbortError") {
@@ -1032,7 +1059,7 @@ export function App() {
     const controller = new AbortController();
     void loadWorkflowIssues(controller.signal).then((recorded) => {
       setIssues(recorded);
-      setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? current);
+      setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? "");
     }).catch((reason) => {
       if (reason?.name !== "AbortError") {
         setToast(reason instanceof Error ? reason.message : "The recorded workflows could not be loaded.");
@@ -1097,6 +1124,7 @@ export function App() {
         return;
       }
       setIssues((current) => ({ ...current, [found.key]: found }));
+      setStatusFilter("all");
       selectIssue(found.key);
     } catch (reason) {
       setToast(reason instanceof Error ? reason.message : "The recorded workflow could not be loaded.");
@@ -1113,14 +1141,18 @@ export function App() {
     <div className="app-shell">
       <AppHeader theme={theme} onThemeChange={setTheme} />
       <div className="app-body">
-        <SideBar issues={issues} selectedKey={selectedKey} onSelect={selectIssue} search={search} setSearch={setSearch} onSearch={submitSearch} />
-        <WorkflowWorkspace
+        <SideBar issues={issues} selectedKey={selectedKey} onSelect={selectIssue} search={search} setSearch={setSearch} onSearch={submitSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} />
+        {issue ? <WorkflowWorkspace
           issue={issue}
           selection={selection}
           setSelection={setSelection}
           onTranscript={setTranscriptIntent}
           onRefresh={refresh}
-        />
+        /> : <main className="workflow-workspace workflow-empty">
+          <MagnifyingGlass size={30} />
+          <h1>Search for a workflow issue</h1>
+          <p>Your list contains only issues you have searched for while signed in.</p>
+        </main>}
       </div>
       <TranscriptPreview transcript={transcriptIntent} onClose={() => setTranscriptIntent(null)} />
       {toast && <div className="toast" role="status"><CheckCircle size={18} />{toast}</div>}

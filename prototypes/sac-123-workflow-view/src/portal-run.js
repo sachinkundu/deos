@@ -192,9 +192,9 @@ export const workflowIssueFromProjection = (projection) => {
   if (terminalStatuses.has(run.status)) {
     if (run.status !== "succeeded" && currentStage in stageStates) {
       stageStates[currentStage] = state === "stopped" ? "stopped" : "failed";
-      for (const id of stageIds) {
-        if (id !== currentStage && !visitedStages.has(id)) stageStates[id] = "skipped";
-      }
+    }
+    for (const id of stageIds) {
+      if (id !== currentStage && !visitedStages.has(id)) stageStates[id] = "skipped";
     }
   } else if (currentStage in stageStates) {
     stageStates[currentStage] = statusForCurrentStage(run.status);
@@ -300,6 +300,12 @@ export const loadWorkflowIssue = async (issueKey, signal) => {
   const search = await searchResponse.json();
   const exact = Array.isArray(search.issues) ? search.issues.find((issue) => issue.key === normalized) : undefined;
   if (!exact) return null;
+  const historyResponse = await fetch(`/api/issues/${encodeURIComponent(normalized)}/search`, {
+    method: "POST",
+    signal,
+    headers: { Accept: "application/json" },
+  });
+  if (!historyResponse.ok) throw new Error(`The search history for ${normalized} could not be saved.`);
   const runsResponse = await fetch(`/api/issues/${encodeURIComponent(normalized)}/runs`, {
     signal,
     headers: { Accept: "application/json" },

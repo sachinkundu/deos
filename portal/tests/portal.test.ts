@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { exportJWK, generateKeyPair, SignJWT, createLocalJWKSet } from "jose";
 import { verifyAccess } from "../src/auth.ts";
-import { isRecoveredTerminalVisit, PORTAL_SELECTS } from "../src/model.ts";
+import { isRecoveredTerminalVisit, PORTAL_MUTATIONS, PORTAL_SELECTS } from "../src/model.ts";
 import { presentationStagesForDefinition, validatePresentationManifest } from "../src/manifests.ts";
 import { routePortalRequest } from "../src/worker.ts";
 import { normalizeRepository, RepositorySettingsError, RepositorySettingsStore } from "../src/settings.ts";
@@ -58,8 +58,15 @@ test("every portal query belongs to the closed read-only SELECT inventory", () =
 });
 
 test("the Workflow Map issue inventory is not restricted to one workflow definition", () => {
-  assert.match(PORTAL_SELECTS.workflowIssues, /FROM linear_issue_index issue/);
+  assert.match(PORTAL_SELECTS.workflowIssues, /FROM portal_issue_search_history history/);
+  assert.match(PORTAL_SELECTS.workflowIssues, /history\.viewer_email = \?/);
   assert.doesNotMatch(PORTAL_SELECTS.workflowIssues, /definition_id\s*=/i);
+});
+
+test("search history is a separate bounded mutation", () => {
+  assert.match(PORTAL_MUTATIONS.recordIssueSearch, /^INSERT INTO portal_issue_search_history/);
+  assert.match(PORTAL_MUTATIONS.recordIssueSearch, /ON CONFLICT/);
+  assert.match(PORTAL_MUTATIONS.recordIssueSearch, /DO UPDATE SET searched_at/);
 });
 
 test("only an operator-recovered terminal visit is excluded from the final workflow path", () => {

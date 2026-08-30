@@ -256,7 +256,7 @@ test("a simple-traceability v13 run becomes a dynamic visible workflow", () => {
   assert.equal(issue.pullRequest.label, "PR #6");
 });
 
-test("a recovered internal failure remains in history without completing Stopped", () => {
+test("a recovered internal failure remains in history while the unvisited terminal is skipped", () => {
   const issue = workflowIssueFromProjection({
     ...sac142Projection,
     run: {
@@ -325,7 +325,7 @@ test("a recovered internal failure remains in history without completing Stopped
     ],
   });
 
-  assert.equal(issue.stageStates.stopped, "future");
+  assert.equal(issue.stageStates.stopped, "skipped");
   assert.equal(issue.stageDetails.stopped, undefined);
   assert.equal(issue.cycles.stopped, undefined);
   assert.equal(issue.stageStates.planning_revision_author, "completed");
@@ -334,10 +334,11 @@ test("a recovered internal failure remains in history without completing Stopped
 test("issue search loads an exact recorded run regardless of workflow family", async () => {
   const originalFetch = globalThis.fetch;
   const paths = [];
-  globalThis.fetch = async (input) => {
+  globalThis.fetch = async (input, init) => {
     const path = String(input);
-    paths.push(path);
+    paths.push(`${init?.method ?? "GET"} ${path}`);
     if (path.startsWith("/api/issues?query=")) return Response.json({ issues: [sac142Projection.issue] });
+    if (path === "/api/issues/SAC-142/search" && init?.method === "POST") return Response.json({ recorded: true });
     if (path === "/api/issues/SAC-142/runs") return Response.json({ issue: sac142Projection.issue, runs: [{ id: sac142Projection.run.id }] });
     if (path.startsWith("/api/runs/")) return Response.json(sac142Projection);
     return new Response(null, { status: 404 });
@@ -346,9 +347,10 @@ test("issue search loads an exact recorded run regardless of workflow family", a
     const issue = await loadWorkflowIssue("sac-142");
     assert.equal(issue.key, "SAC-142");
     assert.deepEqual(paths, [
-      "/api/issues?query=SAC-142",
-      "/api/issues/SAC-142/runs",
-      `/api/runs/${encodeURIComponent(sac142Projection.run.id)}`,
+      "GET /api/issues?query=SAC-142",
+      "POST /api/issues/SAC-142/search",
+      "GET /api/issues/SAC-142/runs",
+      `GET /api/runs/${encodeURIComponent(sac142Projection.run.id)}`,
     ]);
   } finally {
     globalThis.fetch = originalFetch;
@@ -358,4 +360,10 @@ test("issue search loads an exact recorded run regardless of workflow family", a
 test("the production UI no longer limits search copy or loading to simple workflows", () => {
   assert.match(appSource, /loadWorkflowIssue/);
   assert.doesNotMatch(appSource, /recorded simple-workflow issue|No matching recorded simple workflow/);
+});
+
+test("the production UI shows only searched issues and offers the four requested status filters", () => {
+  assert.doesNotMatch(appSource, /useState\(initialIssueDefinitions\)/);
+  assert.match(appSource, /Your list contains only issues you have searched for while signed in/);
+  for (const label of ["Finished", "Failed", "Waiting", "In progress"]) assert.match(appSource, new RegExp(label));
 });

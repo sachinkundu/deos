@@ -83,15 +83,17 @@ export const isRecoveredTerminalVisit = (stageId: string | undefined, causeType:
 export const PORTAL_SELECTS = Object.freeze({
   workflowIssues: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
     issue.linear_url, issue.observed_at, run.run_id, run.run_sequence, run.status, run.updated_at
-    FROM linear_issue_index issue
+    FROM portal_issue_search_history history
+    JOIN linear_issue_index issue
+      ON issue.issue_id = history.issue_id AND issue.project_id = history.project_id
     JOIN orchestration_runs run
       ON run.issue_id = issue.issue_id AND run.project_id = issue.project_id
-    WHERE issue.project_id = ?
+    WHERE issue.project_id = ? AND history.viewer_email = ? COLLATE NOCASE
       AND run.run_sequence = (
         SELECT MAX(latest.run_sequence) FROM orchestration_runs latest
         WHERE latest.issue_id = run.issue_id AND latest.project_id = run.project_id
       )
-    ORDER BY run.updated_at DESC, issue.issue_key LIMIT 50`,
+    ORDER BY history.searched_at DESC, issue.issue_key LIMIT 50`,
   simpleIssues: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
     issue.linear_url, issue.observed_at, run.run_id, run.run_sequence, run.status, run.updated_at
     FROM linear_issue_index issue
@@ -179,6 +181,17 @@ export const PORTAL_SELECTS = Object.freeze({
     WHERE attempt.attempt_id = ? AND run.project_id = ? LIMIT 1`,
 });
 
+export const PORTAL_MUTATIONS = Object.freeze({
+  recordIssueSearch: `INSERT INTO portal_issue_search_history (
+      project_id, viewer_email, issue_id, searched_at
+    )
+    SELECT issue.project_id, ?, issue.issue_id, ?
+    FROM linear_issue_index issue
+    WHERE issue.project_id = ? AND issue.issue_key = ?
+    ON CONFLICT (project_id, viewer_email, issue_id)
+    DO UPDATE SET searched_at = excluded.searched_at`,
+});
+
 export interface PortalIssue {
   key: string;
   title: string;
@@ -229,13 +242,14 @@ export class PortalReadStore {
     }));
   }
 
-  async workflowIssues(): Promise<Array<PortalIssue & {
+  async workflowIssues(viewerEmail: string): Promise<Array<PortalIssue & {
     runId: string;
     runSequence: number;
     status: string;
     updatedAt: string;
   }>> {
-    const result = await this.db.prepare(PORTAL_SELECTS.workflowIssues).bind(this.projectId).all<SimpleIssueRow>();
+    const result = await this.db.prepare(PORTAL_SELECTS.workflowIssues)
+      .bind(this.projectId, viewerEmail.trim().toLowerCase()).all<SimpleIssueRow>();
     return result.results.map((row) => ({
       ...issueDto(row),
       runId: row.run_id,
@@ -406,5 +420,24 @@ export class PortalReadStore {
       },
       reviewAvailable: (reviewProof?.count ?? 0) > 0,
     };
+  }
+}
+
+export class PortalIssueSearchHistoryStore {
+  private readonly db: D1Database;
+  private readonly projectId: string;
+
+  constructor(db: D1Database, projectId: string) {
+    this.db = db;
+    this.projectId = projectId;
+  }
+
+  async record(viewerEmail: string, issueKey: string, now: string): Promise<boolean> {
+    const normalizedKey = issueKey.trim().toUpperCase();
+    const normalizedEmail = viewerEmail.trim().toLowerCase();
+    if (!keyPattern.test(normalizedKey) || normalizedEmail.length === 0) return false;
+    const result = await this.db.prepare(PORTAL_MUTATIONS.recordIssueSearch)
+      .bind(normalizedEmail, now, this.projectId, normalizedKey).run();
+    return (result.meta.changes ?? 0) > 0;
   }
 }

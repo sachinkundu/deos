@@ -1,5 +1,5 @@
 import { verifyAccess } from "./auth.ts";
-import { PortalReadStore } from "./model.ts";
+import { PortalIssueSearchHistoryStore, PortalReadStore } from "./model.ts";
 import { RepositorySettingsError, RepositorySettingsStore } from "./settings.ts";
 import {
   TranscriptNotFoundError,
@@ -63,6 +63,13 @@ export const routePortalRequest = async (
   }
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/")) {
+    const issueSearchHistoryMatch = url.pathname.match(/^\/api\/issues\/([A-Z][A-Z0-9]+-[1-9][0-9]*)\/search$/);
+    if (issueSearchHistoryMatch !== null) {
+      if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
+      const recorded = await new PortalIssueSearchHistoryStore(env.DB, env.PROJECT_ID)
+        .record(identity.email, issueSearchHistoryMatch[1], new Date().toISOString());
+      return recorded ? json(200, { recorded: true }) : json(404, { error: "issue_not_found" });
+    }
     if (!["GET", "HEAD"].includes(request.method)) return json(405, { error: "method_not_allowed" });
     const assetPath = url.pathname === "/"
       ? "/index.html"
@@ -165,7 +172,7 @@ export const routePortalRequest = async (
       return json(200, { issues: await store.searchIssues(url.searchParams.get("query") ?? "") });
     }
     if (url.pathname === "/api/workflows/issues") {
-      return json(200, { issues: await store.workflowIssues() });
+      return json(200, { issues: await store.workflowIssues(identity.email) });
     }
     if (url.pathname === "/api/workflows/simple/issues") {
       return json(200, { issues: await store.simpleIssues() });
