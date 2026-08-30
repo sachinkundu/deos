@@ -57,6 +57,11 @@ test("every portal query belongs to the closed read-only SELECT inventory", () =
   }
 });
 
+test("the Workflow Map issue inventory is not restricted to one workflow definition", () => {
+  assert.match(PORTAL_SELECTS.workflowIssues, /FROM linear_issue_index issue/);
+  assert.doesNotMatch(PORTAL_SELECTS.workflowIssues, /definition_id\s*=/i);
+});
+
 test("repository settings accept only exact owner and repository names", () => {
   assert.equal(normalizeRepository(" sachinkundu/deos-sample-project "), "sachinkundu/deos-sample-project");
   for (const value of ["deos", "https://github.com/sachinkundu/deos", "owner/repo/extra", "owner/re po"]) {

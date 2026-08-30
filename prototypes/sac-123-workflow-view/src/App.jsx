@@ -44,7 +44,7 @@ import {
   simpleWorkflowPresentation,
 } from "./simple-workflow.js";
 import { activityForRecord } from "./transcript-view.js";
-import { loadSimpleWorkflowIssues } from "./portal-run.js";
+import { loadWorkflowIssue, loadWorkflowIssues } from "./portal-run.js";
 
 const fullWorkflowDefinitions = [
   {
@@ -310,6 +310,8 @@ const workflowIcons = {
   merge: GithubLogo,
   complete: CheckCircle,
   stopped: WarningCircle,
+  independent_review: ShieldCheck,
+  default: FlowArrow,
 };
 
 const workflowDefinitions = simpleWorkflowPresentation.stages.map((stage) => ({
@@ -319,6 +321,24 @@ const workflowDefinitions = simpleWorkflowPresentation.stages.map((stage) => ({
 
 const currentNodeByStep = {
   ...simpleWorkflowPresentation.nodeToStage,
+};
+
+const workflowForIssue = (issue) => {
+  if (!issue.workflow) {
+    return {
+      label: simpleWorkflowPresentation.label,
+      stages: workflowDefinitions,
+      connections: simpleWorkflowPresentation.connections,
+      height: 470,
+    };
+  }
+  return {
+    ...issue.workflow,
+    stages: issue.workflow.stages.map((stage) => ({
+      ...stage,
+      icon: workflowIcons[stage.icon] ?? workflowIcons[stage.id] ?? workflowIcons.default,
+    })),
+  };
 };
 
 const initialIssueDefinitions = simpleWorkflowIssues;
@@ -607,9 +627,10 @@ function agentRunsForNode(definition, runCount, recordedRuns = []) {
 }
 
 function buildGraph(issue) {
-  const nodes = workflowDefinitions.map((definition) => {
+  const workflow = workflowForIssue(issue);
+  const nodes = workflow.stages.map((definition) => {
     const status = statusForWorkflowNode(issue, definition);
-    const isCurrent = currentNodeByStep[issue.currentStep] === definition.id;
+    const isCurrent = (issue.currentStage ?? currentNodeByStep[issue.currentStep]) === definition.id;
     const cycleCount = cycleCountForStage(definition, issue, status, isCurrent);
     const runCount = runCountForStage(definition, issue, status, isCurrent);
     const stageDetail = issue.stageDetails?.[definition.id];
@@ -633,9 +654,9 @@ function buildGraph(issue) {
   });
 
   const statusById = Object.fromEntries(nodes.map((node) => [node.id, node.data.status]));
-  const edges = simpleWorkflowPresentation.connections.map((connection, index) => {
+  const edges = workflow.connections.map((connection, index) => {
     const targetStatus = statusById[connection.target];
-    const isObservedReturn = connection.kind === "return" && (issue.cycles?.planning ?? 0) > 1;
+    const isObservedReturn = connection.kind === "return" && (issue.cycles?.[connection.target] ?? 0) > 1;
     const isObservedBranch = connection.kind === "branch"
       && issue.observedBranchSource === connection.source
       && connection.target === "stopped";
@@ -664,7 +685,7 @@ function buildGraph(issue) {
     };
   });
 
-  return { nodes, edges, height: 470 };
+  return { nodes, edges, height: workflow.height ?? 470 };
 }
 
 function IssueRow({ issue, selected, onSelect }) {
@@ -742,7 +763,7 @@ function SideBar({ issues, selectedKey, onSelect, search, setSearch, onSearch })
           <IssueRow key={issue.key} issue={issue} selected={selectedKey === issue.key} onSelect={onSelect} />
         ))}
         {!filtered.length && (
-          <div className="no-results"><WarningCircle size={22} /><strong>No issue found</strong><span>Enter a recorded simple-workflow issue.</span></div>
+          <div className="no-results"><WarningCircle size={22} /><strong>No issue found</strong><span>Enter an issue with a recorded workflow run.</span></div>
         )}
       </nav>
     </aside>
@@ -779,11 +800,12 @@ function PullRequestLinks({ pullRequest, status }) {
 function StepInspector({ selection, issue, onClose, onTranscript }) {
   if (!selection) return null;
   const step = selection.step;
-  const definitionIndex = step ? workflowDefinitions.findIndex((item) => item.id === step.id) : -1;
+  const definitions = workflowForIssue(issue).stages;
+  const definitionIndex = step ? definitions.findIndex((item) => item.id === step.id) : -1;
   const status = step?.status || "completed";
   const isCurrent = Boolean(selection.isCurrent);
-  const usesPullRequest = ["planning", "review", "merge", "complete"].includes(step?.id);
   const pullRequest = issue.pullRequest;
+  const usesPullRequest = Boolean(pullRequest && definitionIndex >= 1);
   const prStatus = pullRequest?.status ?? (issue.state === "active" ? "Draft" : issue.state === "stopped" ? "Closed" : ["waiting", "failed"].includes(issue.state) ? "Open" : "Unknown");
   const timingFacts = step?.facts?.filter((fact) => ["started", "duration"].includes(fact.label.toLowerCase())) ?? [];
   return (
@@ -932,12 +954,13 @@ function WorkflowWorkspace({ issue, selection, setSelection, onTranscript, onRef
 
   const onNodeClick = useCallback((_, node) => setSelection({ kind: "node", id: node.id, step: node.data, isCurrent: node.selected }), [setSelection]);
   const CurrentIcon = stateIcon[issue.state];
-  const currentDefinition = workflowDefinitions.find((item) => item.id === currentNodeByStep[issue.currentStep]);
+  const workflow = workflowForIssue(issue);
+  const currentDefinition = workflow.stages.find((item) => item.id === (issue.currentStage ?? currentNodeByStep[issue.currentStep]));
   return (
     <main className="workflow-workspace">
       <section className="workspace-heading">
         <div className="issue-title-line"><strong>{issue.key}</strong><h1>{issue.title}</h1></div>
-        <div className="workflow-identity"><strong>{simpleWorkflowPresentation.label}</strong><span>Definition v{issue.evidence.definitionVersion}</span></div>
+        <div className="workflow-identity"><strong>{workflow.label}</strong><span>Definition v{issue.evidence.definitionVersion}</span></div>
       </section>
 
       <section className={`workflow-state-bar workflow-state-bar--${issue.state}`}>
@@ -993,7 +1016,7 @@ export function App() {
   const refreshIssues = useCallback(async () => {
     const controller = new AbortController();
     try {
-      const recorded = await loadSimpleWorkflowIssues(controller.signal);
+      const recorded = await loadWorkflowIssues(controller.signal);
       setIssues(recorded);
       setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? current);
       return true;
@@ -1007,7 +1030,7 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void loadSimpleWorkflowIssues(controller.signal).then((recorded) => {
+    void loadWorkflowIssues(controller.signal).then((recorded) => {
       setIssues(recorded);
       setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? current);
     }).catch((reason) => {
@@ -1058,16 +1081,31 @@ export function App() {
     setSelection(null);
   };
 
-  const submitSearch = (event) => {
+  const submitSearch = async (event) => {
     event.preventDefault();
-    const match = Object.keys(issues).find((key) => key === search.trim().toUpperCase());
-    if (match) selectIssue(match);
-    else setToast("No matching recorded simple workflow");
+    const normalized = search.trim().toUpperCase();
+    const match = Object.keys(issues).find((key) => key === normalized);
+    if (match) {
+      selectIssue(match);
+      return;
+    }
+    const controller = new AbortController();
+    try {
+      const found = await loadWorkflowIssue(normalized, controller.signal);
+      if (!found) {
+        setToast("No matching recorded workflow");
+        return;
+      }
+      setIssues((current) => ({ ...current, [found.key]: found }));
+      selectIssue(found.key);
+    } catch (reason) {
+      setToast(reason instanceof Error ? reason.message : "The recorded workflow could not be loaded.");
+    }
   };
 
   const refresh = () => {
     void refreshIssues().then((loaded) => {
-      if (loaded) setToast("Recorded workflow refreshed");
+      if (loaded) setToast("Recorded workflows refreshed");
     });
   };
 

@@ -9,12 +9,20 @@ import {
   simpleWorkflowPresentation,
 } from "../src/simple-workflow.js";
 import { activityForRecord } from "../src/transcript-view.js";
-import { simpleIssueFromProjection } from "../src/portal-run.js";
+import { loadWorkflowIssue, simpleIssueFromProjection, workflowIssueFromProjection } from "../src/portal-run.js";
 
 const workflowSource = await readFile(new URL("../../../config/workflow.simple.yaml", import.meta.url), "utf8");
 const workflow = parse(workflowSource);
 const appSource = await readFile(new URL("../src/App.jsx", import.meta.url), "utf8");
 const styleSource = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+const simpleProjectionPresentation = {
+  stages: simpleWorkflowPresentation.stages.map(({ id, label }) => ({ id, label })),
+  connections: simpleWorkflowPresentation.connections.map(({ source, target }, index) => ({
+    from: source,
+    to: target,
+    outcome: index === 2 ? "revision_requested" : "completed",
+  })),
+};
 
 test("simple workflow presentation covers the version-4 definition", () => {
   assert.equal(workflow.metadata.name, simpleWorkflowPresentation.id);
@@ -143,6 +151,7 @@ test("the graph itself identifies the current stage without a separate pill", ()
 
 test("a non-active current stage uses the yellow waiting treatment", () => {
   const issue = simpleIssueFromProjection({
+    ...simpleProjectionPresentation,
     issue: { key: "SAC-200", title: "Start a small plan", url: "https://linear.app/example/issue/SAC-200/start-a-small-plan" },
     run: {
       id: "workflow:project:issue:run:1", sequence: 1, status: "pending_dispatch",
@@ -164,6 +173,7 @@ test("a non-active current stage uses the yellow waiting treatment", () => {
 
 test("a durable simple projection becomes the approved visual issue shape", () => {
   const issue = simpleIssueFromProjection({
+    ...simpleProjectionPresentation,
     issue: { key: "SAC-129", title: "Build a simple calculator CLI", url: "https://linear.app/sachinkundu/issue/SAC-129/build-a-simple-calculator-cli" },
     run: {
       id: "workflow:project:issue:run:9", sequence: 9, status: "succeeded",
@@ -195,4 +205,82 @@ test("a durable simple projection becomes the approved visual issue shape", () =
   assert.equal(issue.agentRuns.planning.length, 2);
   assert.equal(issue.cycles.planning, 2);
   assert.deepEqual(issue.stageDetails.planning.facts.map((fact) => fact.label), ["Started", "Duration"]);
+});
+
+const sac142Projection = {
+  issue: { key: "SAC-142", title: "Specify a calculator CLI", url: "https://linear.app/sachinkundu/issue/SAC-142/specify-a-calculator-cli" },
+  run: {
+    id: "workflow:project:issue:run:1", sequence: 1, status: "awaiting_human",
+    definitionName: "simple-traceability", definitionVersion: 13, definitionDigest: "e1f91bf7",
+    currentNode: "planning_review", currentVisitSequence: 4,
+    startedAt: "2026-08-30T07:00:00Z", updatedAt: "2026-08-30T08:00:00Z",
+    freshness: "2026-08-30T08:00:00Z",
+  },
+  pullRequest: { number: 6, url: "https://github.com/sachinkundu/deos-sample-project/pull/6", status: "Open", verified: false },
+  stages: [
+    { id: "claim", label: "Claim issue" },
+    { id: "planning", label: "Create planning PR" },
+    { id: "independent_review", label: "Independent review" },
+    { id: "review", label: "Human approval" },
+    { id: "merge", label: "Automatic merge & check" },
+    { id: "complete", label: "Completed" },
+    { id: "stopped", label: "Stopped" },
+    { id: "planning_revision_author", label: "Planning revision author" },
+  ],
+  connections: [
+    { from: "claim", to: "planning", outcome: "completed" },
+    { from: "planning", to: "independent_review", outcome: "completed" },
+    { from: "independent_review", to: "review", outcome: "completed" },
+    { from: "review", to: "planning", outcome: "revision_requested" },
+    { from: "review", to: "merge", outcome: "merge_authorized" },
+    { from: "merge", to: "complete", outcome: "completed" },
+  ],
+  history: [
+    { sequence: 1, stageId: "claim", enteredAt: "2026-08-30T07:00:00Z", leftAt: "2026-08-30T07:00:01Z", attempts: [], links: [] },
+    { sequence: 2, stageId: "planning", enteredAt: "2026-08-30T07:00:01Z", leftAt: "2026-08-30T07:40:00Z", attempts: [], links: [] },
+    { sequence: 3, stageId: "independent_review", enteredAt: "2026-08-30T07:40:00Z", leftAt: "2026-08-30T08:00:00Z", attempts: [], links: [
+      { kind: "pull_request", label: "PR #6", url: "https://github.com/sachinkundu/deos-sample-project/pull/6" },
+    ] },
+    { sequence: 4, stageId: "review", enteredAt: "2026-08-30T08:00:00Z", leftAt: null, attempts: [], links: [] },
+  ],
+};
+
+test("a simple-traceability v13 run becomes a dynamic visible workflow", () => {
+  const issue = workflowIssueFromProjection(sac142Projection);
+  assert.equal(issue.key, "SAC-142");
+  assert.equal(issue.workflow.label, "Simple traceability workflow");
+  assert.equal(issue.workflow.stages.length, 8);
+  assert.equal(issue.workflow.stages.at(-1).id, "planning_revision_author");
+  assert.equal(issue.currentStage, "review");
+  assert.equal(issue.stageStates.review, "waiting");
+  assert.equal(issue.pullRequest.label, "PR #6");
+});
+
+test("issue search loads an exact recorded run regardless of workflow family", async () => {
+  const originalFetch = globalThis.fetch;
+  const paths = [];
+  globalThis.fetch = async (input) => {
+    const path = String(input);
+    paths.push(path);
+    if (path.startsWith("/api/issues?query=")) return Response.json({ issues: [sac142Projection.issue] });
+    if (path === "/api/issues/SAC-142/runs") return Response.json({ issue: sac142Projection.issue, runs: [{ id: sac142Projection.run.id }] });
+    if (path.startsWith("/api/runs/")) return Response.json(sac142Projection);
+    return new Response(null, { status: 404 });
+  };
+  try {
+    const issue = await loadWorkflowIssue("sac-142");
+    assert.equal(issue.key, "SAC-142");
+    assert.deepEqual(paths, [
+      "/api/issues?query=SAC-142",
+      "/api/issues/SAC-142/runs",
+      `/api/runs/${encodeURIComponent(sac142Projection.run.id)}`,
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("the production UI no longer limits search copy or loading to simple workflows", () => {
+  assert.match(appSource, /loadWorkflowIssue/);
+  assert.doesNotMatch(appSource, /recorded simple-workflow issue|No matching recorded simple workflow/);
 });

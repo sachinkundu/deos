@@ -77,6 +77,17 @@ interface WorkProductRow {
 }
 
 export const PORTAL_SELECTS = Object.freeze({
+  workflowIssues: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
+    issue.linear_url, issue.observed_at, run.run_id, run.run_sequence, run.status, run.updated_at
+    FROM linear_issue_index issue
+    JOIN orchestration_runs run
+      ON run.issue_id = issue.issue_id AND run.project_id = issue.project_id
+    WHERE issue.project_id = ?
+      AND run.run_sequence = (
+        SELECT MAX(latest.run_sequence) FROM orchestration_runs latest
+        WHERE latest.issue_id = run.issue_id AND latest.project_id = run.project_id
+      )
+    ORDER BY run.updated_at DESC, issue.issue_key LIMIT 50`,
   simpleIssues: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
     issue.linear_url, issue.observed_at, run.run_id, run.run_sequence, run.status, run.updated_at
     FROM linear_issue_index issue
@@ -205,6 +216,22 @@ export class PortalReadStore {
     updatedAt: string;
   }>> {
     const result = await this.db.prepare(PORTAL_SELECTS.simpleIssues).bind(this.projectId).all<SimpleIssueRow>();
+    return result.results.map((row) => ({
+      ...issueDto(row),
+      runId: row.run_id,
+      runSequence: row.run_sequence,
+      status: row.status,
+      updatedAt: row.updated_at,
+    }));
+  }
+
+  async workflowIssues(): Promise<Array<PortalIssue & {
+    runId: string;
+    runSequence: number;
+    status: string;
+    updatedAt: string;
+  }>> {
+    const result = await this.db.prepare(PORTAL_SELECTS.workflowIssues).bind(this.projectId).all<SimpleIssueRow>();
     return result.results.map((row) => ({
       ...issueDto(row),
       runId: row.run_id,

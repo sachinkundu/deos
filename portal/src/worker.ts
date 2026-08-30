@@ -164,6 +164,9 @@ export const routePortalRequest = async (
     if (url.pathname === "/api/issues") {
       return json(200, { issues: await store.searchIssues(url.searchParams.get("query") ?? "") });
     }
+    if (url.pathname === "/api/workflows/issues") {
+      return json(200, { issues: await store.workflowIssues() });
+    }
     if (url.pathname === "/api/workflows/simple/issues") {
       return json(200, { issues: await store.simpleIssues() });
     }
