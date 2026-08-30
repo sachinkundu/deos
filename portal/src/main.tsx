@@ -17,6 +17,7 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 import { applyStaged, receivePoll, type PollState } from "./polling.ts";
+import { directionalClaimPresentation } from "./directional-claim.ts";
 import { portalPageFromPath, portalPathForPage, reviewRunIdFromPath, type PortalPage } from "./routes.ts";
 import { TranscriptViewer } from "./TranscriptViewer.tsx";
 import type { TranscriptDto } from "./transcript-view.ts";
@@ -32,6 +33,7 @@ interface Visit {
   label: string;
   stageId: string;
   cycle: number;
+  recovered: boolean;
   state: string;
   enteredAt: string;
   leftAt: string | null;
@@ -39,7 +41,14 @@ interface Visit {
   waits: Array<{ state: string; startedAt: string; endedAt: string | null }>;
   links: Array<{ kind: string; label: string; url: string; createdAt: string }>;
 }
-interface Projection { run: Run & { freshness: string }; stages: Stage[]; history: Visit[]; unlinked: { attempts: number; waits: number }; reviewAvailable: boolean }
+interface Projection {
+  run: Run & { freshness: string };
+  stages: Stage[];
+  history: Visit[];
+  unlinked: { attempts: number; waits: number };
+  reviewAvailable: boolean;
+  pullRequest: { number: number; url: string; status: string; verified: boolean } | null;
+}
 interface RepositorySettings {
   projectId: string;
   repository: string;
@@ -142,6 +151,9 @@ const formatDuration = (startedAt: string, endedAt: string | null): string => {
   const remainingSeconds = seconds % 60;
   return remainingSeconds === 0 ? `${minutes} min` : `${minutes} min ${remainingSeconds} sec`;
 };
+
+const bettaViewUrl = (pullRequestUrl: string): string =>
+  `https://bettaview.voxdez.com/?pr=${encodeURIComponent(pullRequestUrl)}`;
 
 const human = (value: string): string => value.replaceAll("_", " ");
 
@@ -405,13 +417,12 @@ function ReviewTracePage({ runId }: { runId: string }) {
             </article>;
           })}</div>}
           {directionalClaims.length > 0 && <div className="review-findings"><h3>Directional relationship evidence</h3>{directionalClaims.map((claim) => {
-            const proposal = claim.proposalFirst as Record<string, unknown> | undefined;
-            const requirement = claim.requirementFirst as Record<string, unknown> | undefined;
             const disposition = dispositions.find((item) => item.itemId === claim.id);
+            const presentation = directionalClaimPresentation(claim);
             return <article key={String(claim.id)}>
-              <strong>{String(claim.id)}</strong><span>{human(String(disposition?.status ?? claim.status ?? "unknown"))}</span>
-              <p><strong>Proposal-first:</strong> {String(proposal?.rationale ?? "No rationale")}</p>
-              <p><strong>Requirement-first:</strong> {String(requirement?.rationale ?? "No rationale")}</p>
+              <strong>{String(claim.id)}</strong><span>{disposition ? human(String(disposition.status)) : presentation.label}</span>
+              {disposition && <p><strong>{presentation.label}</strong></p>}
+              {presentation.details.map((detail, detailIndex) => <p key={detailIndex}>{detail.label && <strong>{detail.label}: </strong>}{detail.rationale}</p>)}
               {disposition && <p><strong>Author:</strong> {disposition.reason}</p>}
             </article>;
           })}</div>}
@@ -564,7 +575,10 @@ function App() {
                 {transcriptAttempts.length > 0 && <div><h3>Transcript</h3>{transcriptAttempts.map((attempt) => <div className="attempt-row" key={attempt.id}><button type="button" onClick={() => setTranscriptAttempt(attempt.id)}>View transcript</button></div>)}</div>}
                 {detail.links.length > 0 && <div><h3>Links</h3>{detail.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>)}</div>}
               </div>}
-              {detail.stageId === "planning" && projection.reviewAvailable && <a className="review-trace-link" href={`/runs/${encodeURIComponent(projection.run.id)}/review`}>View review trace <ArrowSquareOut /></a>}
+              {detail.stageId === "planning" && projection.pullRequest && <div className="planning-pr-actions">
+                <a className="review-trace-link" href={projection.pullRequest.url} target="_blank" rel="noreferrer">Open on GitHub <ArrowSquareOut /></a>
+                <a className="review-trace-link" href={bettaViewUrl(projection.pullRequest.url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>
+              </div>}
             </div>}
           </section>
           <section className="history-panel">

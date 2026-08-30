@@ -10,7 +10,9 @@
     "portal:build:full-workflow": "vite build --config portal/vite.config.ts",
     "portal:typecheck": "tsc --noEmit -p portal/tsconfig.json",
     "portal:types:check": "wrangler types portal/src/worker-configuration.d.ts --include-runtime false --config portal/wrangler.jsonc --check",
-    "portal:test": "node --experimental-strip-types --test portal/tests/*.test.ts"
+    "portal:test": "node --experimental-strip-types --test portal/tests/*.test.ts",
+    "bettaview:build": "npm --prefix portal/bettaview run build:cloud",
+    "bettaview:test": "npm --prefix portal/bettaview test"
   },
   "dependencies": {
     "@cloudflare/sandbox": "0.13.0-next.738.2",

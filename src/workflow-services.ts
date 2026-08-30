@@ -45,6 +45,7 @@ import { D1TraceReviewStore } from "./trace-review-store.ts";
 import {
   deriveReviewOutcome,
   findingSetDigest,
+  LATER_ROUND_REVIEW_STAGES,
   normalizeFindingSet,
   reviewInputId,
   validateClosedSetRecheck,
@@ -147,72 +148,6 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           artifactManifests,
         ),
         providerReceipts: new D1ProviderReceiptVerifier(env.DB),
-        repairScope: async (runId) => {
-          const row = await env.DB.prepare(
-            `SELECT candidate.candidate_r2_key, candidate.candidate_sha256,
-                    inventory.r2_key AS inventory_r2_key,
-                    inventory.sha256 AS inventory_sha256
-             FROM trace_reviews review
-             JOIN planning_candidates candidate ON candidate.candidate_id = review.candidate_id
-             JOIN artifacts inventory
-               ON inventory.manifest_id = review.proof_manifest_id
-              AND inventory.logical_name = 'candidate-inventory.json'
-             WHERE review.run_id = ? AND review.accepted = 1
-               AND review.round = (
-                 SELECT COALESCE(MAX(round), 1) FROM trace_review_phases WHERE run_id = review.run_id
-               )
-             ORDER BY review.completed_at DESC, review.review_id DESC LIMIT 1`,
-          ).bind(runId).first<{
-            candidate_r2_key: string;
-            candidate_sha256: string;
-            inventory_r2_key: string;
-            inventory_sha256: string;
-          }>();
-          if (row === null) return null;
-          const [candidateObject, inventoryObject] = await Promise.all([
-            env.ARTIFACTS.get(row.candidate_r2_key),
-            env.ARTIFACTS.get(row.inventory_r2_key),
-          ]);
-          if (candidateObject === null || inventoryObject === null) {
-            throw new Error("traceability repair scope evidence is missing");
-          }
-          const [candidateText, inventoryText] = await Promise.all([
-            candidateObject.text(),
-            inventoryObject.text(),
-          ]);
-          if (
-            await sha256Hex(candidateText) !== row.candidate_sha256 ||
-            await sha256Hex(inventoryText) !== row.inventory_sha256
-          ) throw new Error("traceability repair scope evidence hash mismatch");
-          const candidate = JSON.parse(candidateText) as {
-            files?: Array<{ path?: string; content?: string }>;
-          };
-          const inventory = JSON.parse(inventoryText) as {
-            findings?: Array<{ allowedRanges?: Array<{ path?: string; startLine?: number; endLine?: number }> }>;
-          };
-          const files = (candidate.files ?? []).map((file) => {
-            if (typeof file.path !== "string" || typeof file.content !== "string") {
-              throw new Error("traceability repair candidate is invalid");
-            }
-            return { path: file.path, content: file.content };
-          });
-          const allowedRanges = (inventory.findings ?? []).flatMap((finding) =>
-            (finding.allowedRanges ?? []).map((range) => {
-              if (
-                typeof range.path !== "string" || !Number.isSafeInteger(range.startLine) ||
-                !Number.isSafeInteger(range.endLine)
-              ) throw new Error("traceability repair range is invalid");
-              return {
-                path: range.path,
-                startLine: Number(range.startLine),
-                endLine: Number(range.endLine),
-              };
-            }));
-          if (files.length === 0) {
-            throw new Error("traceability repair scope is empty");
-          }
-          return { files, allowedRanges };
-        },
         persistPlanningCandidate: async ({
           run,
           attempt,
@@ -928,7 +863,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     }
     const now = new Date().toISOString();
     const results = await this.env.DB.batch([
-      ...(["self_check", "independent"] as const).map((stage) => this.env.DB.prepare(
+      ...LATER_ROUND_REVIEW_STAGES.map((stage) => this.env.DB.prepare(
         `INSERT OR IGNORE INTO trace_review_phases
          (run_id, round, stage, state, current_candidate_id, current_head_sha,
           shared_repair_turns, review_job_count, proof_repair_count, revision,
@@ -939,7 +874,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         roundRow.round,
         stage,
         candidate.candidate_id,
-        stage === "independent" ? workProduct?.head_sha ?? null : null,
+        workProduct?.head_sha ?? null,
         now,
         now,
       )),

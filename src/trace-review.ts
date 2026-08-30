@@ -1,4 +1,5 @@
 export const TRACE_REVIEW_STAGES = ["self_check", "independent"] as const;
+export const LATER_ROUND_REVIEW_STAGES = ["independent"] as const;
 export const TRACE_REVIEW_MODES = ["discovery", "recheck"] as const;
 export const FINDING_RESOLUTIONS = [
   "fixed",

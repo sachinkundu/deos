@@ -317,10 +317,6 @@ interface SandboxControllerDependencies {
     }[];
     reviewContextId: string | null;
   }) => Promise<void>;
-  repairScope?: (runId: string) => Promise<{
-    files: readonly { path: string; content: string }[];
-    allowedRanges: readonly { path: string; startLine: number; endLine: number }[];
-  } | null>;
   acceptTraceReview?: (input: {
     run: OrchestrationRunRecord;
     attempt: AgentAttemptRecord;
@@ -1008,7 +1004,6 @@ export class SandboxAgentController {
     if (revisionOutput.exitCode !== 0 || !/^[a-f0-9]{40}$/.test(baseCommit)) {
       throw new Error("trusted planning candidate base commit is invalid");
     }
-    await this.validateRepairScope(run.run_id, sandbox, files);
     await this.dependencies.persistPlanningCandidate({
       run,
       attempt,
@@ -1040,61 +1035,6 @@ export class SandboxAgentController {
       ? `Rejected plan bytes match the prior invalid candidate. Trusted check: ${normalized}`
       : normalized;
     return detail.slice(0, 1_000);
-  }
-
-  private async validateRepairScope(
-    runId: string,
-    sandbox: SandboxView,
-    currentFiles: readonly { path: string; content: string }[],
-  ): Promise<void> {
-    if (this.dependencies.repairScope === undefined) return;
-    const scope = await this.dependencies.repairScope(runId);
-    if (scope === null) return;
-    const previousPaths = scope.files.map((file) => file.path).sort();
-    const currentPaths = currentFiles.map((file) => file.path).sort();
-    if (JSON.stringify(previousPaths) !== JSON.stringify(currentPaths)) {
-      throw new PlanningCandidateRejectedError("traceability repair changed the planning file inventory");
-    }
-    const previousRoot = "/deos/run/previous-candidate";
-    await sandbox.mkdir(previousRoot, { recursive: true });
-    try {
-      for (const previous of scope.files) {
-        const current = currentFiles.find((file) => file.path === previous.path);
-        if (current === undefined) throw new PlanningCandidateRejectedError("traceability repair file is missing");
-        const oldPath = `${previousRoot}/${previous.path}`;
-        await sandbox.mkdir(oldPath.slice(0, oldPath.lastIndexOf("/")), { recursive: true });
-        await sandbox.writeFile(oldPath, previous.content, { encoding: "utf8" });
-        const process = await sandbox.exec(
-          ["git", "diff", "--no-index", "--unified=0", "--", oldPath, `/deos/workspace/repository/${current.path}`],
-          { cwd: "/deos/run", timeout: 60_000 },
-        );
-        const output = await process.output({ encoding: "utf8", timeout: 60_000, maxBytes: 256_000 });
-        if (![0, 1].includes(output.exitCode) || output.truncated) {
-          throw new PlanningCandidateRejectedError("traceability repair diff could not be checked");
-        }
-        const ranges = scope.allowedRanges.filter((range) => range.path === current.path);
-        for (const match of output.stdout.matchAll(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/gm)) {
-          const oldStart = Number(match[1]);
-          const oldCount = match[2] === undefined ? 1 : Number(match[2]);
-          const oldEnd = oldCount === 0 ? oldStart : oldStart + oldCount - 1;
-          const allowed = ranges.some((range) =>
-            oldStart >= range.startLine && oldEnd <= range.endLine + 1);
-          if (!allowed) {
-            throw new PlanningCandidateRejectedError(
-              "traceability repair changed bytes outside accepted finding ranges",
-            );
-          }
-        }
-      }
-    } finally {
-      const cleanup = await sandbox.exec(["rm", "-rf", "--", previousRoot], {
-        cwd: "/deos/run",
-        timeout: 60_000,
-      });
-      if ((await cleanup.waitForExit({ timeout: 60_000 })).code !== 0) {
-        throw new Error("traceability repair scope cleanup failed");
-      }
-    }
   }
 
   private async finishFailure(
@@ -1269,7 +1209,7 @@ export class SandboxAgentController {
     if (await sha256Hex(patch) !== reference.sha256) {
       throw new Error("continuation patch digest mismatch");
     }
-    if (patch === "# No repository changes in this attempt.\n") return;
+    if (patch.length === 0 || patch === "# No repository changes in this attempt.\n") return;
     const path = "/deos/run/continuation.patch";
     await sandbox.writeFile(path, patch, { encoding: "utf8" });
     try {

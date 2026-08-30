@@ -40,11 +40,10 @@ import {
 import {
   cycleCountForStage,
   runCountForStage,
-  simpleWorkflowIssues,
   simpleWorkflowPresentation,
 } from "./simple-workflow.js";
 import { activityForRecord } from "./transcript-view.js";
-import { loadSimpleWorkflowIssues } from "./portal-run.js";
+import { loadWorkflowIssue, loadWorkflowIssues } from "./portal-run.js";
 
 const fullWorkflowDefinitions = [
   {
@@ -310,6 +309,8 @@ const workflowIcons = {
   merge: GithubLogo,
   complete: CheckCircle,
   stopped: WarningCircle,
+  independent_review: ShieldCheck,
+  default: FlowArrow,
 };
 
 const workflowDefinitions = simpleWorkflowPresentation.stages.map((stage) => ({
@@ -321,7 +322,23 @@ const currentNodeByStep = {
   ...simpleWorkflowPresentation.nodeToStage,
 };
 
-const initialIssueDefinitions = simpleWorkflowIssues;
+const workflowForIssue = (issue) => {
+  if (!issue.workflow) {
+    return {
+      label: simpleWorkflowPresentation.label,
+      stages: workflowDefinitions,
+      connections: simpleWorkflowPresentation.connections,
+      height: 470,
+    };
+  }
+  return {
+    ...issue.workflow,
+    stages: issue.workflow.stages.map((stage) => ({
+      ...stage,
+      icon: workflowIcons[stage.icon] ?? workflowIcons[stage.id] ?? workflowIcons.default,
+    })),
+  };
+};
 
 const stateIcon = {
   active: Pulse,
@@ -607,9 +624,10 @@ function agentRunsForNode(definition, runCount, recordedRuns = []) {
 }
 
 function buildGraph(issue) {
-  const nodes = workflowDefinitions.map((definition) => {
+  const workflow = workflowForIssue(issue);
+  const nodes = workflow.stages.map((definition) => {
     const status = statusForWorkflowNode(issue, definition);
-    const isCurrent = currentNodeByStep[issue.currentStep] === definition.id;
+    const isCurrent = (issue.currentStage ?? currentNodeByStep[issue.currentStep]) === definition.id;
     const cycleCount = cycleCountForStage(definition, issue, status, isCurrent);
     const runCount = runCountForStage(definition, issue, status, isCurrent);
     const stageDetail = issue.stageDetails?.[definition.id];
@@ -633,12 +651,11 @@ function buildGraph(issue) {
   });
 
   const statusById = Object.fromEntries(nodes.map((node) => [node.id, node.data.status]));
-  const edges = simpleWorkflowPresentation.connections.map((connection, index) => {
+  const edges = workflow.connections.map((connection, index) => {
     const targetStatus = statusById[connection.target];
-    const isObservedReturn = connection.kind === "return" && (issue.cycles?.planning ?? 0) > 1;
+    const isObservedReturn = connection.kind === "return" && (issue.cycles?.[connection.target] ?? 0) > 1;
     const isObservedBranch = connection.kind === "branch"
-      && issue.observedBranchSource === connection.source
-      && connection.target === "stopped";
+      && issue.observedConnections?.includes(`${connection.source}->${connection.target}`);
     return {
       id: `${connection.source}-${connection.target}-${index}`,
       source: connection.source,
@@ -664,7 +681,7 @@ function buildGraph(issue) {
     };
   });
 
-  return { nodes, edges, height: 470 };
+  return { nodes, edges, height: workflow.height ?? 470 };
 }
 
 function IssueRow({ issue, selected, onSelect }) {
@@ -718,8 +735,23 @@ function AppHeader({ theme, onThemeChange }) {
   );
 }
 
-function SideBar({ issues, selectedKey, onSelect, search, setSearch, onSearch }) {
-  const filtered = Object.values(issues).filter((issue) => issue.key.includes(search.trim().toUpperCase()) || issue.title.toLowerCase().includes(search.trim().toLowerCase()));
+const issueStatusFilters = [
+  { id: "all", label: "All" },
+  { id: "finished", label: "Finished" },
+  { id: "failed", label: "Failed" },
+  { id: "waiting", label: "Waiting" },
+  { id: "active", label: "In progress" },
+];
+
+const matchesStatusFilter = (issue, filter) => filter === "all"
+  || issue.state === filter
+  || (filter === "failed" && issue.state === "stopped");
+
+function SideBar({ issues, selectedKey, onSelect, search, setSearch, onSearch, statusFilter, setStatusFilter }) {
+  const issueValues = Object.values(issues);
+  const normalizedSearch = search.trim().toLowerCase();
+  const filtered = issueValues.filter((issue) => matchesStatusFilter(issue, statusFilter)
+    && (issue.key.toLowerCase().includes(normalizedSearch) || issue.title.toLowerCase().includes(normalizedSearch)));
   return (
     <aside className="issue-sidebar">
       <form className="issue-search" onSubmit={onSearch}>
@@ -737,12 +769,26 @@ function SideBar({ issues, selectedKey, onSelect, search, setSearch, onSearch })
           <kbd>/</kbd>
         </div>
       </form>
+      <div className="issue-filters" aria-label="Filter searched issues by status">
+        {issueStatusFilters.map((filter) => (
+          <button
+            type="button"
+            key={filter.id}
+            className={statusFilter === filter.id ? "is-selected" : ""}
+            aria-pressed={statusFilter === filter.id}
+            onClick={() => setStatusFilter(filter.id)}
+          >
+            {filter.label}
+            <span>{issueValues.filter((issue) => matchesStatusFilter(issue, filter.id)).length}</span>
+          </button>
+        ))}
+      </div>
       <nav className="issue-list" aria-label="Issues">
         {filtered.map((issue) => (
           <IssueRow key={issue.key} issue={issue} selected={selectedKey === issue.key} onSelect={onSelect} />
         ))}
         {!filtered.length && (
-          <div className="no-results"><WarningCircle size={22} /><strong>No issue found</strong><span>Enter a recorded simple-workflow issue.</span></div>
+          <div className="no-results"><WarningCircle size={22} /><strong>No issue found</strong><span>Search for a recorded issue to add it to your list.</span></div>
         )}
       </nav>
     </aside>
@@ -763,14 +809,28 @@ function StatusLegend() {
   );
 }
 
+function bettaViewPullRequestUrl(pullRequestUrl) {
+  return `https://bettaview.voxdez.com/?pr=${encodeURIComponent(pullRequestUrl)}`;
+}
+
+function PullRequestLinks({ pullRequest, status }) {
+  return (
+    <>
+      <a href={pullRequest.url} target="_blank" rel="noreferrer"><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>GitHub · {status}</small></span><ArrowSquareOut size={15} /></a>
+      <a href={bettaViewPullRequestUrl(pullRequest.url)} target="_blank" rel="noreferrer"><IntersectSquare size={19} weight="fill" /><span><strong>Read in BettaView</strong><small>Review story and trace</small></span><ArrowSquareOut size={15} /></a>
+    </>
+  );
+}
+
 function StepInspector({ selection, issue, onClose, onTranscript }) {
   if (!selection) return null;
   const step = selection.step;
-  const definitionIndex = step ? workflowDefinitions.findIndex((item) => item.id === step.id) : -1;
+  const definitions = workflowForIssue(issue).stages;
+  const definitionIndex = step ? definitions.findIndex((item) => item.id === step.id) : -1;
   const status = step?.status || "completed";
   const isCurrent = Boolean(selection.isCurrent);
-  const usesPullRequest = ["planning", "review", "merge", "complete"].includes(step?.id);
   const pullRequest = issue.pullRequest;
+  const usesPullRequest = Boolean(pullRequest && definitionIndex >= 1);
   const prStatus = pullRequest?.status ?? (issue.state === "active" ? "Draft" : issue.state === "stopped" ? "Closed" : ["waiting", "failed"].includes(issue.state) ? "Open" : "Unknown");
   const timingFacts = step?.facts?.filter((fact) => ["started", "duration"].includes(fact.label.toLowerCase())) ?? [];
   return (
@@ -802,7 +862,7 @@ function StepInspector({ selection, issue, onClose, onTranscript }) {
           </section>}
           {usesPullRequest && pullRequest && status !== "future" && status !== "unknown" && <section className="inspector-links">
             <h3>Pull request</h3>
-            <a href={pullRequest.url} target="_blank" rel="noreferrer"><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></a>
+            <PullRequestLinks pullRequest={pullRequest} status={prStatus} />
           </section>}
           {step?.files?.length > 0 && <section className="inspector-files">
             <h3>Files</h3>
@@ -817,7 +877,7 @@ function StepInspector({ selection, issue, onClose, onTranscript }) {
             <h3>Linked work</h3>
             {issue.linear && <a href={issue.linear.url} target="_blank" rel="noreferrer"><FlowArrow size={19} /><span><strong>{issue.linear.label}</strong><small>Linear</small></span><ArrowSquareOut size={15} /></a>}
             {!usesPullRequest && pullRequest && definitionIndex >= 1 && status !== "future" && status !== "unknown" && (
-              <a href={pullRequest.url} target="_blank" rel="noreferrer"><GithubLogo size={19} weight="fill" /><span><strong>{pullRequest.label}</strong><small>{prStatus}</small></span><ArrowSquareOut size={15} /></a>
+              <PullRequestLinks pullRequest={pullRequest} status={prStatus} />
             )}
           </section>}
       </div>
@@ -919,12 +979,13 @@ function WorkflowWorkspace({ issue, selection, setSelection, onTranscript, onRef
 
   const onNodeClick = useCallback((_, node) => setSelection({ kind: "node", id: node.id, step: node.data, isCurrent: node.selected }), [setSelection]);
   const CurrentIcon = stateIcon[issue.state];
-  const currentDefinition = workflowDefinitions.find((item) => item.id === currentNodeByStep[issue.currentStep]);
+  const workflow = workflowForIssue(issue);
+  const currentDefinition = workflow.stages.find((item) => item.id === (issue.currentStage ?? currentNodeByStep[issue.currentStep]));
   return (
     <main className="workflow-workspace">
       <section className="workspace-heading">
         <div className="issue-title-line"><strong>{issue.key}</strong><h1>{issue.title}</h1></div>
-        <div className="workflow-identity"><strong>{simpleWorkflowPresentation.label}</strong><span>Definition v{issue.evidence.definitionVersion}</span></div>
+        <div className="workflow-identity"><strong>{workflow.label}</strong><span>Definition v{issue.evidence.definitionVersion}</span></div>
       </section>
 
       <section className={`workflow-state-bar workflow-state-bar--${issue.state}`}>
@@ -967,22 +1028,23 @@ function WorkflowWorkspace({ issue, selection, setSelection, onTranscript, onRef
 }
 
 export function App() {
-  const [issues, setIssues] = useState(initialIssueDefinitions);
-  const [selectedKey, setSelectedKey] = useState("SAC-130");
+  const [issues, setIssues] = useState({});
+  const [selectedKey, setSelectedKey] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selection, setSelection] = useState(null);
   const [transcriptIntent, setTranscriptIntent] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem("deos-prototype-theme") || "dark");
   const [toast, setToast] = useState("");
 
-  const issue = issues[selectedKey] ?? Object.values(issues)[0];
+  const issue = issues[selectedKey];
 
   const refreshIssues = useCallback(async () => {
     const controller = new AbortController();
     try {
-      const recorded = await loadSimpleWorkflowIssues(controller.signal);
+      const recorded = await loadWorkflowIssues(controller.signal);
       setIssues(recorded);
-      setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? current);
+      setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? "");
       return true;
     } catch (reason) {
       if (reason?.name !== "AbortError") {
@@ -994,9 +1056,9 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void loadSimpleWorkflowIssues(controller.signal).then((recorded) => {
+    void loadWorkflowIssues(controller.signal).then((recorded) => {
       setIssues(recorded);
-      setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? current);
+      setSelectedKey((current) => current in recorded ? current : Object.keys(recorded)[0] ?? "");
     }).catch((reason) => {
       if (reason?.name !== "AbortError") {
         setToast(reason instanceof Error ? reason.message : "The recorded workflows could not be loaded.");
@@ -1045,16 +1107,32 @@ export function App() {
     setSelection(null);
   };
 
-  const submitSearch = (event) => {
+  const submitSearch = async (event) => {
     event.preventDefault();
-    const match = Object.keys(issues).find((key) => key === search.trim().toUpperCase());
-    if (match) selectIssue(match);
-    else setToast("No matching recorded simple workflow");
+    const normalized = search.trim().toUpperCase();
+    const match = Object.keys(issues).find((key) => key === normalized);
+    if (match) {
+      selectIssue(match);
+      return;
+    }
+    const controller = new AbortController();
+    try {
+      const found = await loadWorkflowIssue(normalized, controller.signal);
+      if (!found) {
+        setToast("No matching recorded workflow");
+        return;
+      }
+      setIssues((current) => ({ ...current, [found.key]: found }));
+      setStatusFilter("all");
+      selectIssue(found.key);
+    } catch (reason) {
+      setToast(reason instanceof Error ? reason.message : "The recorded workflow could not be loaded.");
+    }
   };
 
   const refresh = () => {
     void refreshIssues().then((loaded) => {
-      if (loaded) setToast("Recorded workflow refreshed");
+      if (loaded) setToast("Recorded workflows refreshed");
     });
   };
 
@@ -1062,14 +1140,18 @@ export function App() {
     <div className="app-shell">
       <AppHeader theme={theme} onThemeChange={setTheme} />
       <div className="app-body">
-        <SideBar issues={issues} selectedKey={selectedKey} onSelect={selectIssue} search={search} setSearch={setSearch} onSearch={submitSearch} />
-        <WorkflowWorkspace
+        <SideBar issues={issues} selectedKey={selectedKey} onSelect={selectIssue} search={search} setSearch={setSearch} onSearch={submitSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} />
+        {issue ? <WorkflowWorkspace
           issue={issue}
           selection={selection}
           setSelection={setSelection}
           onTranscript={setTranscriptIntent}
           onRefresh={refresh}
-        />
+        /> : <main className="workflow-workspace workflow-empty">
+          <MagnifyingGlass size={30} />
+          <h1>Search for a workflow issue</h1>
+          <p>Your list contains only issues you have searched for while signed in.</p>
+        </main>}
       </div>
       <TranscriptPreview transcript={transcriptIntent} onClose={() => setTranscriptIntent(null)} />
       {toast && <div className="toast" role="status"><CheckCircle size={18} />{toast}</div>}

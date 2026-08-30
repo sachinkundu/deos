@@ -28,3 +28,13 @@ test("the production build keeps separate visualization and settings entries", (
   assert.match(readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8"), /"html_handling": "none"/);
   assert.match(readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8"), /href="\/"[^>]*><Gear \/>Workflows/);
 });
+
+test("the deployed workflow inspector offers GitHub and BettaView PR links", () => {
+  const source = readFileSync(
+    new URL("../../prototypes/sac-123-workflow-view/src/App.jsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /https:\/\/bettaview\.voxdez\.com\/\?pr=/);
+  assert.match(source, /Read in BettaView/);
+  assert.match(source, /GitHub ·/);
+});

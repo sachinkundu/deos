@@ -50,9 +50,13 @@ class FakeRetryStore implements AgentStageRetryStore {
     workflow_instance_id: "workflow-retry-1",
   };
   prepares = 0;
+  preparedRetryNode: AgentStageRetryRecord["retry_node"] | null = null;
 
-  async prepare(): Promise<AgentStageRetryRecord> {
+  async prepare(input: {
+    retryNode: AgentStageRetryRecord["retry_node"];
+  }): Promise<AgentStageRetryRecord> {
     this.prepares += 1;
+    this.preparedRetryNode = input.retryNode;
     return this.record;
   }
 
@@ -107,16 +111,37 @@ class FakeWorkflow implements WorkflowBinding {
   }
 }
 
-const request = (secret = "operator-secret"): Request => new Request("https://example.test/stage-retries", {
+const request = (
+  secret = "operator-secret",
+  retryNode: AgentStageRetryRecord["retry_node"] = "independent_discovery",
+): Request => new Request("https://example.test/stage-retries", {
   method: "POST",
   headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
   body: JSON.stringify({
     version: 1,
     runId: "run-1",
     failedAttemptId: "attempt-1",
-    retryNode: "independent_discovery",
+    retryNode,
     requestedBy: "operator@example.com",
   }),
+});
+
+test("a failed planning revision author can request a same-definition retry", async () => {
+  const store = new FakeRetryStore();
+  const workflows = new FakeWorkflow();
+  const controller = new AgentStageRetryController(
+    store,
+    workflows,
+    "operator-secret",
+    TARGET_DEFINITION,
+    () => NOW,
+    () => {},
+  );
+
+  const response = await controller.handle(request("operator-secret", "planning_revision_author"));
+
+  assert.equal(response.status, 202);
+  assert.equal(store.preparedRetryNode, "planning_revision_author");
 });
 
 test("failed agent stage retry creates a replacement and is authenticated, audited, and idempotent", async () => {

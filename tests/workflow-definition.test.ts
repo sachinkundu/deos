@@ -119,7 +119,7 @@ test("canonical workflow digest is stable", async () => {
 test("simple definition bundles the approved planning prompt and exact three-way graph", async () => {
   const definition = await loadWorkflowDefinition(simpleSource, bundle());
   assert.equal(definition.name, "simple");
-  assert.equal(definition.version, 4);
+  assert.equal(definition.version, 5);
   assert.equal(definition.start, "claim_issue");
   assert.equal(definition.digest.length, 64);
   assert.deepEqual(definition.jobs.openspec_planning.capabilities, [
@@ -135,7 +135,12 @@ test("simple definition bundles the approved planning prompt and exact three-way
     canceled: "Canceled",
   });
   assert.equal(definition.nodes.merge_planning_pr.type, "system_action");
-  assert.equal(definition.nodes.verify_planning_merge.type, "system_action");
+  assert.equal(
+    definition.nodes.merge_planning_pr.type === "system_action"
+      ? definition.nodes.merge_planning_pr.edges.completed
+      : null,
+    "done",
+  );
   assert.equal(
     definition.nodes.claim_issue.type === "system_action"
       ? definition.nodes.claim_issue.action
@@ -175,7 +180,7 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 12);
+  assert.equal(definition.version, 16);
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
   assert.ok(definition.jobs.planning_author.requiredOutputs.includes("review-replies.json"));
@@ -192,13 +197,45 @@ test("traceability planning definition freezes reviewers and keeps publication t
     "github.publish_planning_candidate",
   );
   assert.equal(definition.nodes.independent_discovery.type, "agent");
-  assert.equal(definition.nodes.start_new_review_round.edges.completed, "planning_author");
+  assert.equal(definition.nodes.planning_author.edges.completed, "self_discovery");
+  assert.equal(definition.nodes.start_new_review_round.edges.completed, "planning_revision_author");
+  assert.equal(definition.nodes.planning_revision_author.type, "agent");
+  assert.equal(definition.nodes.planning_revision_author.edges.completed, "publish_update");
   assert.equal(definition.nodes.planning_author.edges.invalid_candidate, "agent_failed");
   assert.equal(definition.nodes.planning_self_repair.edges.invalid_candidate, "agent_failed");
   assert.equal(definition.nodes.planning_independent_response.edges.invalid_candidate, "agent_failed");
   assert.equal(definition.nodes.independent_discovery.edges.pass, "planning_independent_response");
-  assert.equal(definition.nodes.publish_update.edges.completed, "publish_author_response");
+  assert.equal(definition.nodes.publish_update.edges.completed, "final_trace");
+  assert.equal(definition.nodes.final_trace.type, "agent");
+  assert.equal(definition.nodes.final_trace.type === "agent" ? definition.nodes.final_trace.job : null, "independent_discovery");
+  assert.deepEqual(definition.nodes.final_trace.edges, {
+    pass: "publish_author_response",
+    findings: "publish_author_response",
+    needs_judgment: "publish_author_response",
+    proof_conflict: "publish_author_response",
+    blocked: "agent_blocked",
+    failed: "agent_failed",
+  });
   assert.equal(definition.nodes.publish_author_response.edges.completed, "planning_review");
+  assert.deepEqual(
+    [
+      definition.nodes.planning_review.edges.revision_requested,
+      definition.nodes.start_new_review_round.edges.completed,
+      definition.nodes.planning_revision_author.edges.completed,
+      definition.nodes.publish_update.edges.completed,
+      definition.nodes.final_trace.edges.pass,
+      definition.nodes.publish_author_response.edges.completed,
+    ],
+    [
+      "start_new_review_round",
+      "planning_revision_author",
+      "publish_update",
+      "final_trace",
+      "publish_author_response",
+      "planning_review",
+    ],
+  );
+  assert.equal(definition.nodes.merge_planning_pr.edges.completed, "done");
   assert.equal(Object.hasOwn(definition.jobs, "independent_recheck"), false);
   assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(definition), definition.digest), definition);
 });
@@ -249,6 +286,35 @@ spec:
 
   assert.deepEqual(restored, legacy);
   assert.equal(restored.nodes.deploy.type, "system_action");
+});
+
+test("restores the retired planning verifier only from an immutable stored definition", async () => {
+  const retired = `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: legacy-planning, version: 13 }
+spec:
+  start: verify
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs: {}
+  nodes:
+    verify:
+      type: system_action
+      action: github.verify_planning_merge
+      edges: { completed: done, failed: failed }
+    done: { type: terminal, deosStatus: succeeded, executorAction: return }
+    failed: { type: failure, deosStatus: failed, executorAction: throw, cause: planning_failed }
+`;
+  await assert.rejects(
+    loadWorkflowDefinition(retired, { prompts: {}, schemas: {} }),
+    /unsupported action github\.verify_planning_merge/,
+  );
+  const stored = await loadWorkflowDefinition(
+    retired,
+    { prompts: {}, schemas: {} },
+    { allowRetiredSystemActions: true },
+  );
+
+  assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(stored), stored.digest), stored);
 });
 
 test("restores the frozen version 10 legacy blocked tail", async () => {

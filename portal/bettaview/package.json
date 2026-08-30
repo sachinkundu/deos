@@ -1,0 +1,31 @@
+{
+  "name": "bettaview",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "build:cloud": "vite build",
+    "deploy:cloud": "wrangler deploy",
+    "dev": "concurrently -k \"node --watch server/index.js\" \"vite --host 127.0.0.1\"",
+    "start": "node server/index.js",
+    "test": "node --test",
+    "test:cloud": "node --test test/cloud-*.test.js",
+    "traceability": "node bin/traceability.js",
+    "traceability:review": "node bin/review-traceability.js",
+    "traceability:materialize": "node bin/materialize-traceability.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "highlight.js": "^11.12.0",
+    "html-to-image": "^1.11.13",
+    "jose": "^6.1.0",
+    "mermaid": "^11.10.1",
+    "sanitize-html": "^2.17.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "vite": "^7.1.3",
+    "wrangler": "^4.125.0"
+  }
+}

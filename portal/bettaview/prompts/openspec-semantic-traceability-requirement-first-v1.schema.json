@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "judgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coverage", "scope", "minimality", "rationale"],
+      "properties": {
+        "coverage": { "type": "string", "enum": ["sufficient", "partial", "missing"] },
+        "scope": { "type": "string", "enum": ["in_scope", "mixed", "out_of_scope"] },
+        "minimality": { "type": "string", "enum": ["minimal", "over_specified", "uncertain"] },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["passingJudgment", "capabilities", "findings"],
+  "properties": {
+    "passingJudgment": { "$ref": "#/$defs/judgment" },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "capabilityLine", "judgment", "links"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "capabilityLine": { "type": "integer", "minimum": 1 },
+          "judgment": { "$ref": "#/$defs/judgment" },
+          "links": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "proposalLines", "specStartLine", "judgment"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+                "proposalLines": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1 } },
+                "specStartLine": { "type": "integer", "minimum": 1 },
+                "judgment": { "$ref": "#/$defs/judgment" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "message", "capability", "proposalLines", "specStartLine"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "type": { "type": "string", "enum": ["missing_coverage", "unsupported_requirement", "over_specified", "ambiguous"] },
+          "message": { "type": "string", "minLength": 1 },
+          "capability": { "type": "string", "minLength": 1 },
+          "proposalLines": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1 } },
+          "specStartLine": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

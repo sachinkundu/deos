@@ -96,6 +96,10 @@ def test_trace_review_storage_is_additive_and_secret_free() -> None:
         "target_workflow_instance_id",
         "source_delivery_id",
     } <= retry_columns
+    retry_sql = database.execute(
+        "SELECT sql FROM sqlite_schema WHERE name = 'agent_stage_retries'"
+    ).fetchone()[0]
+    assert "planning_revision_author" in retry_sql
     all_columns = {
         row[1]
         for table in (

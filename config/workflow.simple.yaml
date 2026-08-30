@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: simple
-  version: 4
+  version: 5
 spec:
   start: claim_issue
   execution:
@@ -40,10 +40,6 @@ spec:
     merge_planning_pr:
       type: system_action
       action: github.merge_planning_pull_request
-      edges: {completed: verify_planning_merge, failed: system_action_failed}
-    verify_planning_merge:
-      type: system_action
-      action: github.verify_planning_merge
       edges: {completed: done, failed: system_action_failed}
     done: {type: terminal, deosStatus: succeeded, executorAction: return}
     canceled: {type: terminal, deosStatus: canceled, executorAction: return}

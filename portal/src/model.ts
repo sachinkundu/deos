@@ -76,7 +76,24 @@ interface WorkProductRow {
   verified_at: string | null;
 }
 
+export const isRecoveredTerminalVisit = (stageId: string | undefined, causeType: string | undefined): boolean =>
+  ["stopped", "terminal"].includes(stageId ?? "") &&
+  ["operator_retry", "operator_reconciliation"].includes(causeType ?? "");
+
 export const PORTAL_SELECTS = Object.freeze({
+  workflowIssues: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
+    issue.linear_url, issue.observed_at, run.run_id, run.run_sequence, run.status, run.updated_at
+    FROM portal_issue_search_history history
+    JOIN linear_issue_index issue
+      ON issue.issue_id = history.issue_id AND issue.project_id = history.project_id
+    JOIN orchestration_runs run
+      ON run.issue_id = issue.issue_id AND run.project_id = issue.project_id
+    WHERE issue.project_id = ? AND history.viewer_email = ? COLLATE NOCASE
+      AND run.run_sequence = (
+        SELECT MAX(latest.run_sequence) FROM orchestration_runs latest
+        WHERE latest.issue_id = run.issue_id AND latest.project_id = run.project_id
+      )
+    ORDER BY history.searched_at DESC, issue.issue_key LIMIT 50`,
   simpleIssues: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
     issue.linear_url, issue.observed_at, run.run_id, run.run_sequence, run.status, run.updated_at
     FROM linear_issue_index issue
@@ -164,6 +181,15 @@ export const PORTAL_SELECTS = Object.freeze({
     WHERE attempt.attempt_id = ? AND run.project_id = ? LIMIT 1`,
 });
 
+export const PORTAL_MUTATIONS = Object.freeze({
+  recordIssueSearch: `INSERT INTO portal_issue_search_history (
+      project_id, viewer_email, issue_id, searched_at
+    )
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT (project_id, viewer_email, issue_id)
+    DO UPDATE SET searched_at = excluded.searched_at`,
+});
+
 export interface PortalIssue {
   key: string;
   title: string;
@@ -205,6 +231,23 @@ export class PortalReadStore {
     updatedAt: string;
   }>> {
     const result = await this.db.prepare(PORTAL_SELECTS.simpleIssues).bind(this.projectId).all<SimpleIssueRow>();
+    return result.results.map((row) => ({
+      ...issueDto(row),
+      runId: row.run_id,
+      runSequence: row.run_sequence,
+      status: row.status,
+      updatedAt: row.updated_at,
+    }));
+  }
+
+  async workflowIssues(viewerEmail: string): Promise<Array<PortalIssue & {
+    runId: string;
+    runSequence: number;
+    status: string;
+    updatedAt: string;
+  }>> {
+    const result = await this.db.prepare(PORTAL_SELECTS.workflowIssues)
+      .bind(this.projectId, viewerEmail.trim().toLowerCase()).all<SimpleIssueRow>();
     return result.results.map((row) => ({
       ...issueDto(row),
       runId: row.run_id,
@@ -288,12 +331,15 @@ export class PortalReadStore {
     const history = visits.map((visit) => {
       const cycle = (cycleCounts.get(visit.nodeId) ?? 0) + 1;
       cycleCounts.set(visit.nodeId, cycle);
+      const stageId = mapping.get(visit.nodeId);
+      const outgoing = transitions.find((transition) => transition.from_visit_sequence === visit.sequence);
       return {
         sequence: visit.sequence,
         nodeId: visit.nodeId,
         label: visit.nodeId.replaceAll("_", " "),
-        stageId: mapping.get(visit.nodeId),
+        stageId,
         cycle,
+        recovered: isRecoveredTerminalVisit(stageId, outgoing?.cause_type),
         state: visit.sequence === run.current_visit_sequence ? run.status : "completed",
         enteredAt: visit.enteredAt,
         leftAt: visit.leftAt,
@@ -320,14 +366,15 @@ export class PortalReadStore {
         })),
       };
     });
-    const visitedStages = new Set(history.map((visit) => visit.stageId));
+    const visibleHistory = history.filter((visit) => !visit.recovered);
+    const visitedStages = new Set(visibleHistory.map((visit) => visit.stageId));
     const currentStage = mapping.get(run.current_node);
     const terminalRun = ["blocked", "succeeded", "denied", "failed", "canceled"].includes(run.status);
     const presentationStages = presentationStagesForDefinition(definition);
     const stages = presentationStages.map((stage) => ({
       ...stage,
       state: stage.id === currentStage && !terminalRun ? "active" : visitedStages.has(stage.id) ? "complete" : "upcoming",
-      visits: history.filter((visit) => visit.stageId === stage.id).length,
+      visits: visibleHistory.filter((visit) => visit.stageId === stage.id).length,
     }));
     const connections = Object.values(definition.nodes).flatMap((node) =>
       Object.entries(node.edges).map(([outcome, target]) => ({
@@ -371,5 +418,27 @@ export class PortalReadStore {
       },
       reviewAvailable: (reviewProof?.count ?? 0) > 0,
     };
+  }
+}
+
+export class PortalIssueSearchHistoryStore {
+  private readonly db: D1Database;
+  private readonly projectId: string;
+
+  constructor(db: D1Database, projectId: string) {
+    this.db = db;
+    this.projectId = projectId;
+  }
+
+  async record(viewerEmail: string, issueKey: string, now: string): Promise<boolean> {
+    const normalizedKey = issueKey.trim().toUpperCase();
+    const normalizedEmail = viewerEmail.trim().toLowerCase();
+    if (!keyPattern.test(normalizedKey) || normalizedEmail.length === 0) return false;
+    const issue = await this.db.prepare(PORTAL_SELECTS.issueByKey)
+      .bind(this.projectId, normalizedKey).first<IssueRow>();
+    if (issue === null) return false;
+    await this.db.prepare(PORTAL_MUTATIONS.recordIssueSearch)
+      .bind(this.projectId, normalizedEmail, issue.issue_id, now).run();
+    return true;
   }
 }

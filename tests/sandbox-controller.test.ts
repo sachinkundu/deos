@@ -972,6 +972,29 @@ test("trusted controller verifies and applies the cumulative continuation patch 
   assert.equal(factory.sandbox.files.has("/deos/run/continuation.patch"), false);
 });
 
+test("an empty verified continuation patch is a no-op before Codex", async () => {
+  const patchContent = "";
+  const digest = [...new Uint8Array(await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(patchContent),
+  ))].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  const continuationPatch = {
+    attemptId: "prior-attempt",
+    manifestId: "prior-manifest",
+    r2Key: "runs/prior/patch.diff",
+    sha256: digest,
+  };
+  const { controller, factory } = setup({ continuationPatch, patchContent });
+
+  await controller.execute(run, "work", "work", openSpecDefinition);
+
+  assert.equal(
+    factory.sandbox.commands.some(({ command }) => command[0] === "git" && command[1] === "apply"),
+    false,
+  );
+  assert.deepEqual(factory.sandbox.commands.at(-1)?.command, ["node", "/deos/bin/supervisor.mjs"]);
+});
+
 test("a continuation patch digest mismatch fails before Codex starts and destroys the Sandbox", async () => {
   const { controller, factory, attempts } = setup({
     continuationPatch: {

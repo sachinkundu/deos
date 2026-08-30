@@ -3,12 +3,25 @@ import type { WorkflowBinding, WorkflowInstanceHandle } from "./queue-consumer-c
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
 
 export type AgentStageRetryKind = "same_definition" | "compatible_tail";
+export type AgentStageRetryNode =
+  | "planning_revision_author"
+  | "independent_discovery"
+  | "independent_recheck";
+
+const agentStageRetryNodes = new Set<unknown>([
+  "planning_revision_author",
+  "independent_discovery",
+  "independent_recheck",
+]);
+
+const isAgentStageRetryNode = (value: unknown): value is AgentStageRetryNode =>
+  agentStageRetryNodes.has(value);
 
 export interface AgentStageRetryRecord {
   retry_id: string;
   run_id: string;
   failed_attempt_id: string;
-  retry_node: "independent_discovery" | "independent_recheck";
+  retry_node: AgentStageRetryNode;
   retry_kind: AgentStageRetryKind;
   from_visit_sequence: number;
   to_visit_sequence: number;
@@ -592,7 +605,7 @@ export class AgentStageRetryController {
     if (
       value.version !== 1 || typeof value.runId !== "string" || value.runId.length === 0 ||
       typeof value.failedAttemptId !== "string" || value.failedAttemptId.length === 0 ||
-      (value.retryNode !== "independent_discovery" && value.retryNode !== "independent_recheck") ||
+      !isAgentStageRetryNode(value.retryNode) ||
       typeof value.requestedBy !== "string" || !/^[a-zA-Z0-9._@-]{1,100}$/.test(value.requestedBy)
     ) return json(400, { error: "invalid_stage_retry" });
 
