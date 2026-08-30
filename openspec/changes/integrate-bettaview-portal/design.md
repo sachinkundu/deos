@@ -80,6 +80,12 @@ Production validation performs read-only D1/R2 and provider reads for SAC-139. G
 
 The initial planning candidate still runs through author self-review and its bounded repair loop before publication. A later revision requested by the human reviewer has already passed that initial boundary. The author updates the existing plan, trusted publication updates the same pull request, and the external reviewer reviews the new exact head. Repeating the author self-review in that later round adds cost and obscures the review story without adding another independent perspective.
 
+### Render the definition pinned to the run
+
+The portal restores the frozen canonical definition selected when each run was allocated and keeps the existing identity, version, and digest verification. Presentation is derived from that verified definition. Known workflow families retain their grouped product stages, while an unfamiliar node or workflow receives a safe label derived from its structural node ID so no node or edge is silently omitted.
+
+The portal does not keep a second allowlist of accepted workflow digests. Such an allowlist couples issue visibility to portal deployment and rejects valid runs whenever the workflow evolves. Workflow immutability remains per run: an existing issue run never changes definition, while another issue may select another workflow or version.
+
 ## Risks / Trade-offs
 
 - [GitHub authorization setup is incomplete] → Keep deployment non-preferred until the app callback, secret, and real user login pass production read/write checks.

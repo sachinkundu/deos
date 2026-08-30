@@ -3,7 +3,7 @@ import test from "node:test";
 import { exportJWK, generateKeyPair, SignJWT, createLocalJWKSet } from "jose";
 import { verifyAccess } from "../src/auth.ts";
 import { PORTAL_SELECTS } from "../src/model.ts";
-import { validatePresentationManifest } from "../src/manifests.ts";
+import { presentationStagesForDefinition, validatePresentationManifest } from "../src/manifests.ts";
 import { routePortalRequest } from "../src/worker.ts";
 import { normalizeRepository, RepositorySettingsError, RepositorySettingsStore } from "../src/settings.ts";
 import {
@@ -90,7 +90,7 @@ test("repository settings no longer read workflow selectors", async () => {
   assert.doesNotMatch(query, /workflow_definition_selectors|simple-workflow/i);
 });
 
-test("the current exact workflow digest has complete presentation coverage", async () => {
+test("a digest-verified workflow does not require a deployment-specific presentation allowlist", async () => {
   const nodeIds = [
     "requirements", "requirements_review", "requirements_approval", "openspec_proposal",
     "openspec_specs", "bdd_review", "ddd_architecture", "ddd_review",
@@ -106,7 +106,8 @@ test("the current exact workflow digest has complete presentation coverage", asy
     edges: index + 1 < nodeIds.length ? { next: nodeIds[index + 1] } : {},
   }]));
   const definition = {
-    digest: "e85de9ed70c046cfe07a1611b1e0a1c2678cd58dbcfe8edc9ea73856bb6b86c3",
+    digest: "a-new-digest-that-was-not-known-when-the-portal-was-deployed",
+    name: "openspec-delivery",
     start: "requirements",
     nodes,
   } as unknown as LoadedWorkflowDefinition;
@@ -116,6 +117,66 @@ test("the current exact workflow digest has complete presentation coverage", asy
     assert.ok(manifest.has(node.id));
     for (const target of Object.values(node.edges)) assert.ok(manifest.has(target));
   }
+});
+
+test("the SAC-142 workflow version and future nodes receive a complete dynamic presentation", () => {
+  const definition = {
+    digest: "e1f91bf77c8dbfbf82d685f0989dd4c42369541e8ea73c0a46be8280eabe42c4",
+    name: "simple-traceability",
+    start: "claim_issue",
+    nodes: {
+      claim_issue: { id: "claim_issue", edges: { completed: "planning_author" } },
+      planning_author: { id: "planning_author", edges: { completed: "planning_review" } },
+      planning_review: {
+        id: "planning_review",
+        edges: { revision_requested: "start_new_review_round", merge_authorized: "done" },
+      },
+      start_new_review_round: { id: "start_new_review_round", edges: { completed: "planning_author" } },
+      future_provider_gate: { id: "future_provider_gate", edges: { completed: "done" } },
+      done: { id: "done", edges: {} },
+    },
+  } as unknown as LoadedWorkflowDefinition;
+  const manifest = validatePresentationManifest(definition);
+  assert.equal(manifest.size, Object.keys(definition.nodes).length);
+  assert.equal(manifest.get("start_new_review_round"), "planning");
+  assert.equal(manifest.get("future_provider_gate"), "future_provider_gate");
+  assert.equal(manifest.get("done"), "complete");
+  assert.deepEqual(presentationStagesForDefinition(definition).map((stage) => stage.id), [
+    "claim", "planning", "review", "complete", "future_provider_gate",
+  ]);
+});
+
+test("an unknown workflow renders each stored node without semantic guessing", () => {
+  const definition = {
+    digest: "another-new-digest",
+    name: "custom-delivery",
+    start: "collect_context",
+    nodes: {
+      collect_context: { id: "collect_context", edges: { completed: "human_decision" } },
+      human_decision: { id: "human_decision", edges: {} },
+    },
+  } as unknown as LoadedWorkflowDefinition;
+  const manifest = validatePresentationManifest(definition);
+  assert.deepEqual([...manifest], [
+    ["collect_context", "collect_context"],
+    ["human_decision", "human_decision"],
+  ]);
+  assert.deepEqual(presentationStagesForDefinition(definition), [
+    { id: "collect_context", label: "Collect context" },
+    { id: "human_decision", label: "Human decision" },
+  ]);
+});
+
+test("dynamic presentation still rejects a missing edge target", () => {
+  const definition = {
+    digest: "new-digest",
+    name: "custom-delivery",
+    start: "known_node",
+    nodes: {
+      known_node: { id: "known_node", edges: { completed: "missing_node" } },
+    },
+  } as unknown as LoadedWorkflowDefinition;
+  assert.throws(() => validatePresentationManifest(definition), /workflow presentation edge is incomplete/);
 });
 
 test("authentication runs before assets, route methods, or D1", async () => {

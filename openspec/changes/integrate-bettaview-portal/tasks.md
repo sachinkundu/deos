@@ -26,6 +26,7 @@
 - [x] 4.3 Render author work, self-review, external review, author dispositions, and the final reviewed result in chronological order while excluding operational workflow activity from BettaView.
 - [x] 4.4 Add adjacent GitHub and BettaView actions to DEOS workflow node details.
 - [x] 4.5 Route later human-requested planning revisions from author update to publication and external exact-head review without another author self-review.
+- [x] 4.6 Render every run from its digest-verified frozen workflow definition without a deployment-specific digest allowlist.
 
 ## 5. Verification and delivery
 
