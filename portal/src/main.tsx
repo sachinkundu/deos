@@ -33,6 +33,7 @@ interface Visit {
   label: string;
   stageId: string;
   cycle: number;
+  recovered: boolean;
   state: string;
   enteredAt: string;
   leftAt: string | null;

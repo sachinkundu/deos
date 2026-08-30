@@ -24,7 +24,7 @@ const simpleProjectionPresentation = {
   })),
 };
 
-test("simple workflow presentation covers the version-4 definition", () => {
+test("simple workflow presentation covers the current definition", () => {
   assert.equal(workflow.metadata.name, simpleWorkflowPresentation.id);
   assert.equal(workflow.metadata.version, simpleWorkflowPresentation.version);
   assert.equal(workflow.spec.start, simpleWorkflowPresentation.startNode);
@@ -254,6 +254,81 @@ test("a simple-traceability v13 run becomes a dynamic visible workflow", () => {
   assert.equal(issue.currentStage, "review");
   assert.equal(issue.stageStates.review, "waiting");
   assert.equal(issue.pullRequest.label, "PR #6");
+});
+
+test("a recovered internal failure remains in history without completing Stopped", () => {
+  const issue = workflowIssueFromProjection({
+    ...sac142Projection,
+    run: {
+      ...sac142Projection.run,
+      status: "succeeded",
+      currentNode: "done",
+      currentVisitSequence: 7,
+    },
+    history: [
+      ...sac142Projection.history.slice(0, 2),
+      {
+        sequence: 3,
+        stageId: "planning_revision_author",
+        enteredAt: "2026-08-30T07:40:00Z",
+        leftAt: "2026-08-30T07:41:00Z",
+        attempts: [{
+          id: "attempt-failed",
+          state: "failed",
+          outcome: "startup_failed",
+          startedAt: "2026-08-30T07:40:00Z",
+          endedAt: "2026-08-30T07:41:00Z",
+          transcriptAvailable: false,
+        }],
+        links: [],
+      },
+      {
+        sequence: 4,
+        stageId: "stopped",
+        recovered: true,
+        enteredAt: "2026-08-30T07:41:00Z",
+        leftAt: "2026-08-30T07:42:00Z",
+        attempts: [],
+        links: [],
+      },
+      {
+        sequence: 5,
+        stageId: "planning_revision_author",
+        enteredAt: "2026-08-30T07:42:00Z",
+        leftAt: "2026-08-30T07:50:00Z",
+        attempts: [{
+          id: "attempt-complete",
+          state: "completed",
+          outcome: "completed",
+          startedAt: "2026-08-30T07:42:00Z",
+          endedAt: "2026-08-30T07:50:00Z",
+          transcriptAvailable: true,
+        }],
+        links: [],
+      },
+      {
+        sequence: 6,
+        stageId: "merge",
+        enteredAt: "2026-08-30T07:50:00Z",
+        leftAt: "2026-08-30T07:51:00Z",
+        attempts: [],
+        links: [],
+      },
+      {
+        sequence: 7,
+        stageId: "complete",
+        enteredAt: "2026-08-30T07:51:00Z",
+        leftAt: null,
+        attempts: [],
+        links: [],
+      },
+    ],
+  });
+
+  assert.equal(issue.stageStates.stopped, "future");
+  assert.equal(issue.stageDetails.stopped, undefined);
+  assert.equal(issue.cycles.stopped, undefined);
+  assert.equal(issue.stageStates.planning_revision_author, "completed");
 });
 
 test("issue search loads an exact recorded run regardless of workflow family", async () => {

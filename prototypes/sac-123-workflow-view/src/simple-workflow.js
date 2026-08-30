@@ -3,7 +3,7 @@ import { sac130RecordedRun } from "./sac-130-recorded-run.js";
 export const simpleWorkflowPresentation = Object.freeze({
   id: "simple",
   label: "Simple planning workflow",
-  version: 4,
+  version: 5,
   startNode: "claim_issue",
   stages: [
     {
@@ -54,9 +54,9 @@ export const simpleWorkflowPresentation = Object.freeze({
       phase: "Finish",
       kind: "action",
       icon: "merge",
-      nodeIds: ["merge_planning_pr", "verify_planning_merge"],
-      result: "Planning pull request merged and verified",
-      summary: "Automatically merge the approved planning pull request and confirm the trusted result.",
+      nodeIds: ["merge_planning_pr"],
+      result: "Planning pull request merged",
+      summary: "Automatically merge the approved planning pull request using its recorded identity and exact head.",
       agents: [],
       files: [],
       x: 620,
@@ -96,7 +96,6 @@ export const simpleWorkflowPresentation = Object.freeze({
     openspec_planning: "planning",
     planning_review: "review",
     merge_planning_pr: "merge",
-    verify_planning_merge: "merge",
     done: "complete",
     canceled: "stopped",
     agent_blocked: "stopped",

@@ -182,7 +182,8 @@ export const workflowIssueFromProjection = (projection) => {
   const state = stateFromStatus(run.status);
   const currentVisit = history.find((visit) => visit.sequence === run.currentVisitSequence) ?? history.at(-1);
   const currentStage = currentVisit?.stageId ?? stageIds.at(-1);
-  const visitedStages = new Set(history.map((visit) => visit.stageId));
+  const visibleHistory = history.filter((visit) => visit.recovered !== true);
+  const visitedStages = new Set(visibleHistory.map((visit) => visit.stageId));
   const stageStates = Object.fromEntries(stageIds.map((id) => [id, "future"]));
   for (const id of visitedStages) {
     if (id in stageStates) stageStates[id] = "completed";
@@ -204,7 +205,7 @@ export const workflowIssueFromProjection = (projection) => {
   const cycles = {};
   const runs = {};
   for (const stageId of stageIds) {
-    const visits = history.filter((visit) => visit.stageId === stageId);
+    const visits = visibleHistory.filter((visit) => visit.stageId === stageId);
     if (visits.length === 0) continue;
     const startedAt = visits[0].enteredAt;
     const duration = visits.reduce((total, visit) =>
@@ -247,8 +248,8 @@ export const workflowIssueFromProjection = (projection) => {
     : run.status === "awaiting_human"
       ? "Waiting for human approval"
       : currentLabel ?? "Last confirmed workflow state";
-  const currentHistoryIndex = history.findIndex((visit) => visit.sequence === run.currentVisitSequence);
-  const observedBranchSource = currentHistoryIndex > 0 ? history[currentHistoryIndex - 1].stageId : undefined;
+  const currentHistoryIndex = visibleHistory.findIndex((visit) => visit.sequence === run.currentVisitSequence);
+  const observedBranchSource = currentHistoryIndex > 0 ? visibleHistory[currentHistoryIndex - 1].stageId : undefined;
 
   return Object.freeze({
     key: issue.key,

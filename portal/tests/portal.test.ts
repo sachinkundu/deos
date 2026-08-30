@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { exportJWK, generateKeyPair, SignJWT, createLocalJWKSet } from "jose";
 import { verifyAccess } from "../src/auth.ts";
-import { PORTAL_SELECTS } from "../src/model.ts";
+import { isRecoveredTerminalVisit, PORTAL_SELECTS } from "../src/model.ts";
 import { presentationStagesForDefinition, validatePresentationManifest } from "../src/manifests.ts";
 import { routePortalRequest } from "../src/worker.ts";
 import { normalizeRepository, RepositorySettingsError, RepositorySettingsStore } from "../src/settings.ts";
@@ -60,6 +60,13 @@ test("every portal query belongs to the closed read-only SELECT inventory", () =
 test("the Workflow Map issue inventory is not restricted to one workflow definition", () => {
   assert.match(PORTAL_SELECTS.workflowIssues, /FROM linear_issue_index issue/);
   assert.doesNotMatch(PORTAL_SELECTS.workflowIssues, /definition_id\s*=/i);
+});
+
+test("only an operator-recovered terminal visit is excluded from the final workflow path", () => {
+  assert.equal(isRecoveredTerminalVisit("stopped", "operator_retry"), true);
+  assert.equal(isRecoveredTerminalVisit("stopped", "operator_reconciliation"), true);
+  assert.equal(isRecoveredTerminalVisit("stopped", "workflow"), false);
+  assert.equal(isRecoveredTerminalVisit("planning", "operator_retry"), false);
 });
 
 test("repository settings accept only exact owner and repository names", () => {

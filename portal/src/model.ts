@@ -76,6 +76,10 @@ interface WorkProductRow {
   verified_at: string | null;
 }
 
+export const isRecoveredTerminalVisit = (stageId: string | undefined, causeType: string | undefined): boolean =>
+  ["stopped", "terminal"].includes(stageId ?? "") &&
+  ["operator_retry", "operator_reconciliation"].includes(causeType ?? "");
+
 export const PORTAL_SELECTS = Object.freeze({
   workflowIssues: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
     issue.linear_url, issue.observed_at, run.run_id, run.run_sequence, run.status, run.updated_at
@@ -315,12 +319,15 @@ export class PortalReadStore {
     const history = visits.map((visit) => {
       const cycle = (cycleCounts.get(visit.nodeId) ?? 0) + 1;
       cycleCounts.set(visit.nodeId, cycle);
+      const stageId = mapping.get(visit.nodeId);
+      const outgoing = transitions.find((transition) => transition.from_visit_sequence === visit.sequence);
       return {
         sequence: visit.sequence,
         nodeId: visit.nodeId,
         label: visit.nodeId.replaceAll("_", " "),
-        stageId: mapping.get(visit.nodeId),
+        stageId,
         cycle,
+        recovered: isRecoveredTerminalVisit(stageId, outgoing?.cause_type),
         state: visit.sequence === run.current_visit_sequence ? run.status : "completed",
         enteredAt: visit.enteredAt,
         leftAt: visit.leftAt,
@@ -347,14 +354,15 @@ export class PortalReadStore {
         })),
       };
     });
-    const visitedStages = new Set(history.map((visit) => visit.stageId));
+    const visibleHistory = history.filter((visit) => !visit.recovered);
+    const visitedStages = new Set(visibleHistory.map((visit) => visit.stageId));
     const currentStage = mapping.get(run.current_node);
     const terminalRun = ["blocked", "succeeded", "denied", "failed", "canceled"].includes(run.status);
     const presentationStages = presentationStagesForDefinition(definition);
     const stages = presentationStages.map((stage) => ({
       ...stage,
       state: stage.id === currentStage && !terminalRun ? "active" : visitedStages.has(stage.id) ? "complete" : "upcoming",
-      visits: history.filter((visit) => visit.stageId === stage.id).length,
+      visits: visibleHistory.filter((visit) => visit.stageId === stage.id).length,
     }));
     const connections = Object.values(definition.nodes).flatMap((node) =>
       Object.entries(node.edges).map(([outcome, target]) => ({
