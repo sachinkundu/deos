@@ -668,14 +668,6 @@ export class GitHubCapabilityAdapter {
     };
   }
 
-  async readPlanningPullRequest(
-    repository: string,
-    pullRequestNumber: number,
-  ): Promise<GitHubPlanningPullRequest> {
-    const token = await this.tokens.token();
-    return this.parsePull(await this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}`));
-  }
-
   async readFileAtRef(repository: string, path: string, ref: string): Promise<string> {
     const token = await this.tokens.token();
     const file = await this.readContent(token, repository, ref, path, false);
@@ -687,18 +679,6 @@ export class GitHubCapabilityAdapter {
     const value = await this.ref(await this.tokens.token(), repository, branch);
     if (value === null) throw new Error("GitHub ref is missing");
     return value;
-  }
-
-  async commitIsOnBranch(repository: string, commitSha: string, branch: string): Promise<boolean> {
-    const token = await this.tokens.token();
-    const headSha = await this.ref(token, repository, branch);
-    if (headSha === null) return false;
-    if (headSha === commitSha) return true;
-    const comparison = await this.json(
-      token,
-      `/repos/${repository}/compare/${encodeURIComponent(commitSha)}...${encodeURIComponent(headSha)}`,
-    ) as { status?: unknown };
-    return comparison.status === "ahead" || comparison.status === "identical";
   }
 
   private async ref(

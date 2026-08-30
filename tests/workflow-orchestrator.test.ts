@@ -132,8 +132,7 @@ spec:
       linearState: Human Review
       decisions: { revision_requested: In Progress, merge_authorized: Merging, canceled: Canceled }
       edges: { revision_requested: openspec_planning, merge_authorized: merge, canceled: canceled }
-    merge: { type: system_action, action: github.merge_planning_pull_request, edges: { completed: verify, failed: failed } }
-    verify: { type: system_action, action: github.verify_planning_merge, edges: { completed: done, failed: failed } }
+    merge: { type: system_action, action: github.merge_planning_pull_request, edges: { completed: done, failed: failed } }
     done: { type: terminal, deosStatus: succeeded, executorAction: return }
     canceled: { type: terminal, deosStatus: canceled, executorAction: return }
     failed: { type: failure, deosStatus: failed, executorAction: throw, cause: planning_failed }
@@ -537,7 +536,7 @@ test("Workflow reloads D1 authority and continues through agents, a gate, and sy
   assert.equal(services.gateEntries, 1);
 });
 
-test("simple graph revises on a fresh visit then reaches trusted merge and verification", async () => {
+test("simple graph revises on a fresh visit then reaches trusted merge", async () => {
   const store = new RuntimeStore(makeRun(simpleDefinition));
   const services = new NodeServices(["completed", "completed"]);
   store.inbox.set("delivery-revision", inboxEvent("delivery-revision", "user", "In Progress"));
@@ -555,8 +554,7 @@ test("simple graph revises on a fresh visit then reaches trusted merge and verif
     ["planning_review", "openspec_planning"],
     ["openspec_planning", "planning_review"],
     ["planning_review", "merge"],
-    ["merge", "verify"],
-    ["verify", "done"],
+    ["merge", "done"],
   ]);
   assert.deepEqual(
     store.transitions.filter(({ from_node }) => from_node === "openspec_planning")
@@ -566,7 +564,6 @@ test("simple graph revises on a fresh visit then reaches trusted merge and verif
   assert.deepEqual(services.systemActions, [
     "linear.delegate_and_start",
     "github.merge_planning_pull_request",
-    "github.verify_planning_merge",
   ]);
   assert.equal(services.gateEntries, 2);
 });

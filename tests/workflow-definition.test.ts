@@ -119,7 +119,7 @@ test("canonical workflow digest is stable", async () => {
 test("simple definition bundles the approved planning prompt and exact three-way graph", async () => {
   const definition = await loadWorkflowDefinition(simpleSource, bundle());
   assert.equal(definition.name, "simple");
-  assert.equal(definition.version, 4);
+  assert.equal(definition.version, 5);
   assert.equal(definition.start, "claim_issue");
   assert.equal(definition.digest.length, 64);
   assert.deepEqual(definition.jobs.openspec_planning.capabilities, [
@@ -135,7 +135,12 @@ test("simple definition bundles the approved planning prompt and exact three-way
     canceled: "Canceled",
   });
   assert.equal(definition.nodes.merge_planning_pr.type, "system_action");
-  assert.equal(definition.nodes.verify_planning_merge.type, "system_action");
+  assert.equal(
+    definition.nodes.merge_planning_pr.type === "system_action"
+      ? definition.nodes.merge_planning_pr.edges.completed
+      : null,
+    "done",
+  );
   assert.equal(
     definition.nodes.claim_issue.type === "system_action"
       ? definition.nodes.claim_issue.action
@@ -175,7 +180,7 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 14);
+  assert.equal(definition.version, 15);
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
   assert.ok(definition.jobs.planning_author.requiredOutputs.includes("review-replies.json"));
@@ -212,6 +217,7 @@ test("traceability planning definition freezes reviewers and keeps publication t
     failed: "agent_failed",
   });
   assert.equal(definition.nodes.publish_author_response.edges.completed, "planning_review");
+  assert.equal(definition.nodes.merge_planning_pr.edges.completed, "done");
   assert.equal(Object.hasOwn(definition.jobs, "independent_recheck"), false);
   assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(definition), definition.digest), definition);
 });

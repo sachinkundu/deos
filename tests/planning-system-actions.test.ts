@@ -2,23 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { OrchestrationRunRecord } from "../src/orchestration-store.ts";
-import { manifestDigestFromFiles } from "../src/planning-publication.ts";
 import type { RunWorkProductRecord } from "../src/planning-store.ts";
 import { SystemActionController, type SystemActionStore } from "../src/system-actions.ts";
 import type { ProviderOperationRecord, ProviderOperationState } from "../src/linear-transition.ts";
 
 const NOW = new Date("2026-08-23T12:00:00.000Z");
-const files = [
-  { path: "openspec/changes/sac-200/.openspec.yaml", content: "schema: spec-driven\n" },
-  { path: "openspec/changes/sac-200/proposal.md", content: "proposal\n" },
-  { path: "openspec/changes/sac-200/specs/example/spec.md", content: "spec\n" },
-];
-const manifestDigest = await manifestDigestFromFiles(files);
-const manifestJson = JSON.stringify(await Promise.all(files.map(async (file) => ({
-  path: file.path,
-  sha256: "unused-in-controller-test",
-  byteSize: file.content.length,
-}))));
+const manifestDigest = "a".repeat(64);
 const run = {
   run_id: "workflow:project-1:issue-1:run:1",
   current_visit_sequence: 3,
@@ -89,7 +78,7 @@ class PlanningStore {
     pull_request_url: "https://github.com/sachinkundu/deos/pull/54",
     head_sha: "head-sha",
     planning_manifest_digest: manifestDigest,
-    planning_manifest_json: manifestJson,
+    planning_manifest_json: null,
     latest_publication_operation_id: "publication-operation",
     merge_operation_id: null,
     merge_commit_sha: null,
@@ -105,15 +94,9 @@ class PlanningStore {
     this.record.updated_at = input.now;
     return Promise.resolve(this.record);
   }
-  recordVerification(input: { operationId: string; now: string }) {
-    this.record.verification_operation_id = input.operationId;
-    this.record.verified_at = input.now;
-    this.record.updated_at = input.now;
-    return Promise.resolve(this.record);
-  }
 }
 
-const setup = (substituteHead = false) => {
+const setup = () => {
   const operations = new OperationStore();
   const planning = new PlanningStore();
   const controller = new SystemActionController(operations, {
@@ -129,31 +112,12 @@ const setup = (substituteHead = false) => {
           reconciled: false,
         };
       },
-      readPlanningPullRequest: async () => ({
-        databaseId: "9001",
-        number: 54,
-        url: "https://github.com/sachinkundu/deos/pull/54",
-        state: "closed",
-        draft: false,
-        merged: true,
-        mergeCommitSha: "merge-sha",
-        headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
-        headSha: substituteHead ? "substituted-head" : "head-sha",
-        baseBranch: "main",
-      }),
-      readFileAtRef: async (_repository, path, ref) => {
-        assert.equal(ref, "merge-sha");
-        const file = files.find((candidate) => candidate.path === path);
-        if (file === undefined) throw new Error("missing file");
-        return file.content;
-      },
-      commitIsOnBranch: async () => true,
     },
   });
   return { controller, operations, planning };
 };
 
-test("trusted merge and independent manifest read-back are separate receipts", async () => {
+test("trusted merge completion records one durable provider receipt", async () => {
   const state = setup();
   const merged = await state.controller.execute(
     run,
@@ -162,31 +126,6 @@ test("trusted merge and independent manifest read-back are separate receipts", a
   );
   assert.equal(merged.outcome, "completed");
   assert.equal(state.planning.record.merge_commit_sha, "merge-sha");
-  const verified = await state.controller.execute(
-    { ...run, current_visit_sequence: 4 },
-    "verify_planning_merge",
-    "github.verify_planning_merge",
-  );
-  assert.equal(verified.outcome, "completed");
-  assert.notEqual(
-    state.planning.record.merge_operation_id,
-    state.planning.record.verification_operation_id,
-  );
-  assert.equal([...state.operations.operations.values()].length, 2);
-});
-
-test("verification fails closed when GitHub reports a substituted head", async () => {
-  const state = setup(true);
-  await state.controller.execute(run, "merge_planning_pr", "github.merge_planning_pull_request");
-  const verified = await state.controller.execute(
-    { ...run, current_visit_sequence: 4 },
-    "verify_planning_merge",
-    "github.verify_planning_merge",
-  );
-  assert.equal(verified.outcome, "failed");
-  assert.equal(state.planning.record.verified_at, null);
-  assert.equal(
-    [...state.operations.operations.values()].at(-1)?.state,
-    "failed",
-  );
+  assert.equal(state.planning.record.verification_operation_id, null);
+  assert.equal([...state.operations.operations.values()].length, 1);
 });

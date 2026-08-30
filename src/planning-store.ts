@@ -307,35 +307,6 @@ export class D1PlanningStore {
     return stored;
   }
 
-  async recordVerification(input: {
-    runId: string;
-    operationId: string;
-    mergeCommitSha: string;
-    planningManifestDigest: string;
-    now: string;
-  }): Promise<RunWorkProductRecord> {
-    const result = await this.database.prepare(
-      `UPDATE run_work_products
-       SET verification_operation_id = ?, verified_at = ?, updated_at = ?
-       WHERE run_id = ? AND merge_commit_sha = ? AND planning_manifest_digest = ?
-         AND (verification_operation_id IS NULL OR verification_operation_id = ?)`,
-    ).bind(
-      input.operationId,
-      input.now,
-      input.now,
-      input.runId,
-      input.mergeCommitSha,
-      input.planningManifestDigest,
-      input.operationId,
-    ).run();
-    if (changes(result) !== 1) throw new Error("planning verification identity mismatch");
-    const stored = await this.findRunWorkProduct(input.runId);
-    if (stored?.verification_operation_id !== input.operationId || stored.verified_at !== input.now) {
-      throw new Error("planning verification read-back mismatch");
-    }
-    return stored;
-  }
-
   async setSelectorEnabled(input: {
     projectId: string;
     repository: string;

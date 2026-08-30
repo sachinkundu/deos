@@ -4,7 +4,6 @@ import type { GitHubCapabilityAdapter } from "./github-capability.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
 import type { ProviderOperationRecord, ProviderOperationState } from "./linear-transition.ts";
 import type { D1PlanningStore } from "./planning-store.ts";
-import { manifestDigestFromFiles } from "./planning-publication.ts";
 
 export interface SystemActionStore {
   prerequisites(runId: string, action: string): Promise<{
@@ -119,11 +118,11 @@ export class D1SystemActionStore implements SystemActionStore {
 interface PlanningSystemActionDependencies {
   github: Pick<
     GitHubCapabilityAdapter,
-    "mergePlanning" | "readPlanningPullRequest" | "readFileAtRef" | "commitIsOnBranch"
+    "mergePlanning"
   > & Partial<Pick<GitHubCapabilityAdapter, "publishPlanning">>;
   planningStore: Pick<
     D1PlanningStore,
-    "findRunWorkProduct" | "recordMerge" | "recordVerification"
+    "findRunWorkProduct" | "recordMerge"
   > & Partial<Pick<D1PlanningStore, "recordPublication">>;
   planningCandidate?: (runId: string) => Promise<{
     candidateId: string;
@@ -163,9 +162,6 @@ export class SystemActionController {
   ): Promise<ValidatedSystemOutcome> {
     if (action === "github.merge_planning_pull_request") {
       return this.mergePlanning(run, nodeId, action);
-    }
-    if (action === "github.verify_planning_merge") {
-      return this.verifyPlanning(run, nodeId, action);
     }
     if (action === "github.publish_planning_candidate") {
       return this.publishPlanning(run, nodeId, action);
@@ -392,115 +388,6 @@ export class SystemActionController {
         });
       }
       if (ambiguous) throw new Error("planning merge requires provider reconciliation");
-      return this.failed();
-    }
-  }
-
-  private async verifyPlanning(
-    run: OrchestrationRunRecord,
-    nodeId: string,
-    action: string,
-  ): Promise<ValidatedSystemOutcome> {
-    const dependencies = this.requirePlanningDependencies();
-    const workProduct = await dependencies.planningStore.findRunWorkProduct(run.run_id);
-    if (
-      workProduct === null || workProduct.pull_request_database_id === null ||
-      workProduct.pull_request_number === null || workProduct.head_sha === null ||
-      workProduct.planning_manifest_digest === null || workProduct.planning_manifest_json === null ||
-      workProduct.merge_operation_id === null || workProduct.merge_commit_sha === null
-    ) return this.failed();
-    const operationId = operationIdentity(
-      run.run_id,
-      "system_action",
-      `${nodeId}:${action}`,
-      run.current_visit_sequence,
-    );
-    const operation = await this.beginPlanningOperation(
-      operationId,
-      run.run_id,
-      action,
-      await sha256Hex(JSON.stringify({
-        repository: workProduct.repository,
-        number: workProduct.pull_request_number,
-        databaseId: workProduct.pull_request_database_id,
-        mergeCommitSha: workProduct.merge_commit_sha,
-        manifestDigest: workProduct.planning_manifest_digest,
-      })),
-    );
-    if (["succeeded", "reconciled"].includes(operation.state) && workProduct.verified_at !== null) {
-      return this.completed();
-    }
-    if (!["pending", "manual_reconciliation_required"].includes(operation.state)) return this.failed();
-    try {
-      const pull = await dependencies.github.readPlanningPullRequest(
-        workProduct.repository,
-        workProduct.pull_request_number,
-      );
-      if (
-        !pull.merged || pull.databaseId !== workProduct.pull_request_database_id ||
-        pull.number !== workProduct.pull_request_number || pull.baseBranch !== "main" ||
-        pull.headBranch !== workProduct.remote_branch || pull.headSha !== workProduct.head_sha ||
-        pull.mergeCommitSha !== workProduct.merge_commit_sha ||
-        !await dependencies.github.commitIsOnBranch(
-          workProduct.repository,
-          workProduct.merge_commit_sha,
-          "main",
-        )
-      ) throw new Error("planning merge provider read-back mismatch");
-      const manifest = JSON.parse(workProduct.planning_manifest_json) as unknown;
-      if (!Array.isArray(manifest)) throw new Error("stored planning manifest is invalid");
-      const paths = manifest.map((entry) => {
-        if (
-          typeof entry !== "object" || entry === null ||
-          typeof (entry as { path?: unknown }).path !== "string"
-        ) throw new Error("stored planning manifest is invalid");
-        return (entry as { path: string }).path;
-      });
-      const files = await Promise.all(paths.map(async (path) => ({
-        path,
-        content: await dependencies.github.readFileAtRef(
-          workProduct.repository,
-          path,
-          workProduct.merge_commit_sha as string,
-        ),
-      })));
-      if (await manifestDigestFromFiles(files) !== workProduct.planning_manifest_digest) {
-        throw new Error("planning manifest differs on the merged commit");
-      }
-      const state = operation.state === "pending" ? "succeeded" : "reconciled";
-      const finished = await this.finishPlanningOperation({
-        operationId,
-        expected: operation.state,
-        state,
-        providerResourceId: workProduct.pull_request_database_id,
-        safeErrorCategory: null,
-        now: this.now().toISOString(),
-      });
-      if (!finished) throw new Error("planning verification receipt compare-and-set failed");
-      await dependencies.planningStore.recordVerification({
-        runId: run.run_id,
-        operationId,
-        mergeCommitSha: workProduct.merge_commit_sha,
-        planningManifestDigest: workProduct.planning_manifest_digest,
-        now: this.now().toISOString(),
-      });
-      return this.completed();
-    } catch (error) {
-      const ambiguous = error instanceof Error &&
-        /ambiguous|provider request failed/i.test(error.message);
-      if (operation.state === "pending") {
-        await this.finishPlanningOperation({
-          operationId,
-          expected: "pending",
-          state: ambiguous ? "manual_reconciliation_required" : "failed",
-          providerResourceId: workProduct.pull_request_database_id,
-          safeErrorCategory: ambiguous
-            ? "planning_verification_unconfirmed"
-            : "planning_verification_failed",
-          now: this.now().toISOString(),
-        });
-      }
-      if (ambiguous) throw new Error("planning verification requires provider reconciliation");
       return this.failed();
     }
   }
