@@ -270,6 +270,35 @@ spec:
   assert.equal(restored.nodes.deploy.type, "system_action");
 });
 
+test("restores the retired planning verifier only from an immutable stored definition", async () => {
+  const retired = `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: legacy-planning, version: 13 }
+spec:
+  start: verify
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs: {}
+  nodes:
+    verify:
+      type: system_action
+      action: github.verify_planning_merge
+      edges: { completed: done, failed: failed }
+    done: { type: terminal, deosStatus: succeeded, executorAction: return }
+    failed: { type: failure, deosStatus: failed, executorAction: throw, cause: planning_failed }
+`;
+  await assert.rejects(
+    loadWorkflowDefinition(retired, { prompts: {}, schemas: {} }),
+    /unsupported action github\.verify_planning_merge/,
+  );
+  const stored = await loadWorkflowDefinition(
+    retired,
+    { prompts: {}, schemas: {} },
+    { allowRetiredSystemActions: true },
+  );
+
+  assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(stored), stored.digest), stored);
+});
+
 test("restores the frozen version 10 legacy blocked tail", async () => {
   const legacy = await loadWorkflowDefinition(
     `apiVersion: deos.dev/v1alpha1

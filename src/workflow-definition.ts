@@ -141,6 +141,9 @@ const SYSTEM_ACTIONS = new Set([
   "traceability.start_new_round",
   "traceability.publish_author_response",
 ]);
+const RETIRED_SYSTEM_ACTIONS = new Set([
+  "github.verify_planning_merge",
+]);
 const AGENT_CAPABILITY_ACTIONS = new Set([
   "github.publish_planning_work_product",
 ]);
@@ -327,6 +330,7 @@ const parseJobOperation = (value: unknown, label: string): OpenSpecJobOperation 
 export const loadWorkflowDefinition = async (
   source: string,
   bundle: WorkflowBundleSources,
+  options: { allowRetiredSystemActions?: boolean } = {},
 ): Promise<LoadedWorkflowDefinition> => {
   let parsed: unknown;
   try {
@@ -479,7 +483,10 @@ export const loadWorkflowDefinition = async (
     } else if (type === "system_action") {
       assertAllowedKeys(node, ["type", "action", "edges"], label);
       const action = stringValue(node, "action", label);
-      if (!SYSTEM_ACTIONS.has(action)) throw new Error(`${label} uses unsupported action ${action}`);
+      if (
+        !SYSTEM_ACTIONS.has(action) &&
+        !(options.allowRetiredSystemActions === true && RETIRED_SYSTEM_ACTIONS.has(action))
+      ) throw new Error(`${label} uses unsupported action ${action}`);
       nodes[id] = Object.freeze({ id, type, action, edges });
     } else if (type === "human_gate") {
       assertAllowedKeys(node, ["type", "linearState", "decisions", "edges"], label);
@@ -689,6 +696,7 @@ export const restoreWorkflowDefinition = async (
       spec: { start, execution, jobs, nodes },
     }),
     { prompts, schemas },
+    { allowRetiredSystemActions: true },
   );
   if (restored.digest !== expectedDigest) throw new Error("restored workflow definition digest mismatch");
   return restored;
