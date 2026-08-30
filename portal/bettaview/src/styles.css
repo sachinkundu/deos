@@ -116,7 +116,13 @@ a { color: inherit; }
 .review-section-heading { margin-bottom: 24px; }
 .review-section-heading h2 { margin: 6px 0; color: var(--heading); font: 600 30px/1.08 "Newsreader", Georgia, serif; }
 .review-section-heading p { margin: 0; color: var(--muted); line-height: 1.55; }
-.review-trace-section .quality-view.embedded { max-width: none; margin: 0; padding: 0; }
+.review-trace-summary { padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--control); }
+.review-trace-summary > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.review-trace-summary h3 { margin: 5px 0 0; color: var(--heading); font: 600 25px/1.08 "Newsreader", Georgia, serif; }
+.review-trace-summary > p { margin: 14px 0; color: var(--muted); line-height: 1.5; }
+.review-trace-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 16px; }
+.review-trace-metrics span { padding: 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: 11px; }
+.review-trace-metrics strong { display: block; margin-bottom: 5px; color: var(--heading); font: 600 22px/1 "Newsreader", Georgia, serif; }
 .review-timeline { position: relative; display: grid; gap: 16px; padding-left: 34px; }
 .review-timeline::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: var(--line); }
 .review-card { position: relative; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--control); }

@@ -399,6 +399,21 @@ function renderReviewEvent(event, authorWorkIndex) {
   </article>`;
 }
 
+function renderReviewTraceSummary(view) {
+  if (!view) return `<div class="review-missing"><strong>Trace unavailable</strong><p>No accepted, hash-verified trace is available for this pull request.</p></div>`;
+  const quality = buildTraceabilityQuality(view);
+  return `<div class="review-trace-summary">
+    <header><div><span class="eyebrow">Final trace</span><h3>${quality.needsAttention ? "Needs attention" : "Trace satisfied"}</h3></div><span class="review-record-state">${quality.evidenceCurrent ? "Current" : "Stale"}</span></header>
+    <div class="review-trace-metrics">
+      <span><strong>${quality.satisfiedStatements}/${quality.totalStatements}</strong> proposal statements</span>
+      <span><strong>${quality.satisfiedRequirements}/${quality.totalRequirements}</strong> requirements</span>
+      <span><strong>${quality.directionalDisagreements.length}</strong> one-sided links</span>
+    </div>
+    <p>The detailed proposal and requirement citations remain beside the reviewed documents in PR.</p>
+    <button type="button" class="button ghost" data-review-open-pr>Open traced PR</button>
+  </div>`;
+}
+
 function renderReviewWorkspace() {
   closeCitationPopover();
   const workspace = document.querySelector("#workspace");
@@ -422,15 +437,19 @@ function renderReviewWorkspace() {
       <div class="review-summary"><span class="review-outcome">${escapeHtml(String(trace?.review.overall || "review recorded").replaceAll("_", " "))}</span><span class="commit-chip"><span></span>${current ? "Final reviewed commit" : "Reviewed commit"} <code>${shortSha(recordedHead)}</code></span></div>
     </section>
     ${current ? "" : `<div class="review-warning"><strong>The pull request moved.</strong> The review records ${escapeHtml(shortSha(recordedHead))}; GitHub now shows ${escapeHtml(shortSha(state.data.headSha))}.</div>`}
-    <section class="review-section review-trace-section">
-      <div class="review-section-heading"><span class="eyebrow">Current evidence</span><h2>Proposal and requirement trace</h2><p>The accepted semantic result, with links back to the reviewed PR documents.</p></div>
-      ${trace ? renderTraceabilityQuality(trace, { embedded: true }) : `<div class="review-missing"><strong>Trace unavailable</strong><p>No accepted, hash-verified trace is available for this pull request.</p></div>`}
-    </section>
     <section class="review-section">
       <div class="review-section-heading"><span class="eyebrow">Provenance</span><h2>How the review reached this result</h2><p>The retained author and reviewer evidence behind this result.</p></div>
       ${events.length ? `<div class="review-timeline">${events.join("")}</div>` : `<div class="review-missing"><strong>Review history unavailable</strong><p>No retained semantic review records are available.</p></div>`}
     </section>
+    <section class="review-section">
+      <div class="review-section-heading"><span class="eyebrow">Reviewed result</span><h2>Final trace summary</h2><p>A compact result here; the detailed citations stay with the PR documents.</p></div>
+      ${renderReviewTraceSummary(trace)}
+    </section>
   `;
+  document.querySelector("[data-review-open-pr]")?.addEventListener("click", () => {
+    Object.assign(state, selectPortalView("pr"));
+    renderWorkspace();
+  });
 }
 
 function traceabilityViews() {
@@ -715,17 +734,17 @@ function renderQualityRequirementIssue(view, link) {
   `;
 }
 
-function renderTraceabilityQuality(view, { embedded = false } = {}) {
+function renderTraceabilityQuality(view) {
   const quality = buildTraceabilityQuality(view);
   const statementPercent = quality.totalStatements
     ? Math.round((quality.satisfiedStatements / quality.totalStatements) * 100)
     : 0;
   return `
-    ${embedded ? "" : `<div class="quality-toolbar">
+    <div class="quality-toolbar">
       <div><span class="status-dot ${quality.evidenceCurrent ? "" : "stale"}"></span><strong>Trace quality</strong><small>${escapeHtml(view.change)}</small></div>
       <button id="refresh" class="button ghost">Refresh from GitHub</button>
-    </div>`}
-    <div class="quality-view ${embedded ? "embedded" : ""}">
+    </div>
+    <div class="quality-view">
       <header class="quality-hero">
         <div><span class="eyebrow">OpenSpec · proposal ↔ specs</span><h1>${quality.needsAttention ? "Needs attention" : "Trace satisfied"}</h1></div>
         ${quality.needsAttention ? "" : '<span class="quality-overall satisfied">Satisfied</span>'}
