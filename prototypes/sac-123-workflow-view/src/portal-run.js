@@ -248,8 +248,11 @@ export const workflowIssueFromProjection = (projection) => {
     : run.status === "awaiting_human"
       ? "Waiting for human approval"
       : currentLabel ?? "Last confirmed workflow state";
-  const currentHistoryIndex = visibleHistory.findIndex((visit) => visit.sequence === run.currentVisitSequence);
-  const observedBranchSource = currentHistoryIndex > 0 ? visibleHistory[currentHistoryIndex - 1].stageId : undefined;
+  const observedConnections = [...new Set(visibleHistory.slice(1).flatMap((visit, index) => {
+    const source = visibleHistory[index].stageId;
+    const target = visit.stageId;
+    return source && target && source !== target ? [`${source}->${target}`] : [];
+  }))];
 
   return Object.freeze({
     key: issue.key,
@@ -268,7 +271,7 @@ export const workflowIssueFromProjection = (projection) => {
     agentRuns,
     cycles,
     runs,
-    observedBranchSource,
+    observedConnections,
     primaryAction: "View workflow result",
     evidence: {
       runId: run.id,

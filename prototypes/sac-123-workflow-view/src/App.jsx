@@ -655,8 +655,7 @@ function buildGraph(issue) {
     const targetStatus = statusById[connection.target];
     const isObservedReturn = connection.kind === "return" && (issue.cycles?.[connection.target] ?? 0) > 1;
     const isObservedBranch = connection.kind === "branch"
-      && issue.observedBranchSource === connection.source
-      && connection.target === "stopped";
+      && issue.observedConnections?.includes(`${connection.source}->${connection.target}`);
     return {
       id: `${connection.source}-${connection.target}-${index}`,
       source: connection.source,

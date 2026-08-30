@@ -340,6 +340,8 @@ test("a recovered internal failure remains in history while the unvisited termin
   assert.equal(issue.stageDetails.stopped, undefined);
   assert.equal(issue.cycles.stopped, undefined);
   assert.equal(issue.stageStates.planning_revision_author, "completed");
+  assert.equal(issue.observedConnections.includes("merge->complete"), true);
+  assert.equal(issue.observedConnections.includes("merge->stopped"), false);
 });
 
 test("issue search loads an exact recorded run regardless of workflow family", async () => {
@@ -377,4 +379,9 @@ test("the production UI shows only searched issues and offers the four requested
   assert.doesNotMatch(appSource, /useState\(initialIssueDefinitions\)/);
   assert.match(appSource, /Your list contains only issues you have searched for while signed in/);
   for (const label of ["Finished", "Failed", "Waiting", "In progress"]) assert.match(appSource, new RegExp(label));
+});
+
+test("the production graph marks only exact observed branch transitions", () => {
+  assert.match(appSource, /observedConnections\?\.includes\(`\$\{connection\.source\}->\$\{connection\.target\}`\)/);
+  assert.doesNotMatch(appSource, /observedBranchSource/);
 });
