@@ -109,6 +109,7 @@ export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
     if (path === "/cleanup-audit") return cleanupAuditor(env).handle(request);
+    if (path === "/cleanup-attempts") return cleanupAuditor(env).handleDestroy(request);
     if (path === "/stage-retries") return (await stageRetryController(env)).handle(request);
     if (!path.startsWith("/capabilities/")) return new Response("not found", { status: 404 });
     return capabilityRouter(env).handle(request);

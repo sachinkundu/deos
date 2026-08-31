@@ -8,6 +8,7 @@ import {
 import type { SandboxFactory, SandboxView } from "../src/sandbox-controller.ts";
 
 const SANDBOX_ID = `sbx-v1-${"a".repeat(30)}`;
+const ATTEMPT_ID = "01a0578b-245c-7734-89f2-fe641acb74d2";
 const NOW = new Date("2026-08-16T12:00:00.000Z");
 
 class Store implements CleanupAuditStore {
@@ -44,6 +45,17 @@ class Store implements CleanupAuditStore {
     item.linear_resource_id = resource;
     item.cleanup_state = "reported";
   }
+  async claimAttemptCleanup(attemptId: string, sandboxId: string, expectedUpdatedAt: string, now: string) {
+    const candidate = this.candidates.get(sandboxId);
+    if (
+      candidate?.attempt_id !== attemptId || candidate.state !== "collecting" ||
+      candidate.cleanup_state === "destroyed" || candidate.updated_at !== expectedUpdatedAt
+    ) return false;
+    candidate.state = "interrupted";
+    candidate.result_class = "operator_cleanup";
+    candidate.updated_at = now;
+    return true;
+  }
   async markAttemptCleanup(attemptId: string, state: "destroyed" | "failed") {
     const candidate = [...this.candidates.values()].find((value) => value.attempt_id === attemptId);
     if (candidate !== undefined) candidate.cleanup_state = state;
@@ -52,7 +64,12 @@ class Store implements CleanupAuditStore {
 
 class Sandbox {
   destroyed = false;
-  getProcess() { return Promise.resolve(null); }
+  processState: "running" | "exited" | "error" | null = null;
+  getProcess() {
+    return Promise.resolve(this.processState === null ? null : {
+      status: async () => ({ state: this.processState }),
+    });
+  }
   setKeepAlive() { return Promise.resolve(); }
   destroy() { this.destroyed = true; return Promise.resolve(); }
 }
@@ -103,6 +120,19 @@ const inventoryRequest = (secret = "audit-secret") => new Request("https://worke
   body: JSON.stringify({ version: 1, sandboxIds: [SANDBOX_ID] }),
 });
 
+const destroyRequest = (overrides: Record<string, unknown> = {}, secret = "audit-secret") =>
+  new Request("https://worker.test/cleanup-attempts", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      version: 1,
+      attemptId: ATTEMPT_ID,
+      sandboxId: SANDBOX_ID,
+      expectedUpdatedAt: NOW.toISOString(),
+      ...overrides,
+    }),
+  });
+
 test("provider inventory endpoint is authenticated and reports standalone orphans once", async () => {
   const { auditor, store, creates } = setup();
   assert.equal((await auditor.handle(inventoryRequest("wrong"))).status, 401);
@@ -113,6 +143,55 @@ test("provider inventory endpoint is authenticated and reports standalone orphan
   assert.equal(creates(), 1);
   assert.equal(store.work.get(SANDBOX_ID).linear_resource_id, "cleanup-issue-1");
   assert.equal(store.work.get(SANDBOX_ID).run_id, null);
+});
+
+test("operator cleanup destroys one exact stopped tracked Sandbox and records D1 cleanup", async () => {
+  const { auditor, store, factory } = setup();
+  store.candidates.set(SANDBOX_ID, {
+    sandbox_id: SANDBOX_ID,
+    run_id: "run-1",
+    attempt_id: ATTEMPT_ID,
+    process_id: "process-1",
+    state: "collecting",
+    cleanup_state: "pending",
+    cleanup_hold_until: null,
+    updated_at: NOW.toISOString(),
+  });
+  factory.sandbox.processState = "exited";
+
+  assert.equal((await auditor.handleDestroy(destroyRequest({}, "wrong"))).status, 401);
+  const response = await auditor.handleDestroy(destroyRequest());
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    version: 1,
+    attemptId: ATTEMPT_ID,
+    sandboxId: SANDBOX_ID,
+    cleanupState: "destroyed",
+  });
+  assert.equal(factory.sandbox.destroyed, true);
+  assert.equal(store.candidates.get(SANDBOX_ID).state, "interrupted");
+  assert.equal(store.candidates.get(SANDBOX_ID).result_class, "operator_cleanup");
+  assert.equal(store.candidates.get(SANDBOX_ID).cleanup_state, "destroyed");
+});
+
+test("operator cleanup rejects changed targets and a process that is still running", async () => {
+  const { auditor, store, factory } = setup();
+  store.candidates.set(SANDBOX_ID, {
+    sandbox_id: SANDBOX_ID,
+    run_id: "run-1",
+    attempt_id: ATTEMPT_ID,
+    process_id: "process-1",
+    state: "collecting",
+    cleanup_state: "pending",
+    cleanup_hold_until: null,
+    updated_at: NOW.toISOString(),
+  });
+  assert.equal((await auditor.handleDestroy(destroyRequest({ expectedUpdatedAt: "2026-08-16T11:59:59.000Z" }))).status, 409);
+  factory.sandbox.processState = "running";
+  assert.equal((await auditor.handleDestroy(destroyRequest())).status, 409);
+  assert.equal(factory.sandbox.destroyed, false);
+  assert.equal(store.candidates.get(SANDBOX_ID).cleanup_state, "pending");
 });
 
 test("known destroyed Sandbox is excluded from external orphan reporting", async () => {

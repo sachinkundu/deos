@@ -156,6 +156,14 @@ FROM workflow_completion_reconciliations ORDER BY created_at DESC LIMIT 20;
 
 The scheduled GitHub workflow reads `wrangler containers instances ... --json` and submits only Sandbox IDs to `/cleanup-audit`. It holds Cloudflare inventory and cleanup-audit credentials; Linear credentials remain in the Worker.
 
+If a Workflow executor errors while an attempt is stuck in `collecting`, an
+operator can submit the exact tracked `attemptId`, `sandboxId`, and D1
+`expectedUpdatedAt` to `POST /cleanup-attempts` with the cleanup-audit bearer
+credential. The Worker rejects a changed record or running process. A valid
+request compare-and-sets the attempt to `interrupted`, destroys only that
+Sandbox, and records `cleanup_state='destroyed'`. Repeating an already completed
+request is safe.
+
 ## Rollback
 
 First disable each intended route through Settings and read it back. Queue deliveries remain authenticated and auditable but cannot create a new run. Existing Workflow mappings and their frozen repositories remain available for inspection. If Settings is unavailable, an exact-project D1 update that only changes `dispatch_enabled` to `0` is an emergency stop. It intentionally leaves the route proof stale; do not re-enable it until Settings has run a fresh access check and saved a new revision and digest.

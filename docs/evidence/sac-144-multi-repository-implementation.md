@@ -17,6 +17,13 @@ GitHub App access. The crop excludes account and Access identity details.
 
 ![Live repository routes](assets/sac-144-settings-live-routes.png)
 
+After both provider canaries passed, Settings added the DEOS project as the
+third route and enabled it for future work. Its saved target is
+`sachinkundu/deos`; GitHub access passed, the route is at revision `2`, and D1
+confirms the project has zero runs.
+
+![Three enabled live repository routes](assets/sac-144-settings-live-three-routes.png)
+
 ## Local verification
 
 - Python: 31 tests passed.
