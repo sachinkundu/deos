@@ -42,7 +42,7 @@ The provider adapter tests prove paginated Linear project and GitHub App reposit
 Migrations `0020_multi_repository_routes.sql`,
 `0021_concurrent_credential_leases.sql`, and
 `0022_sandbox_failure_retention.sql` are applied. Queue Worker version
-`82bf88e8-e405-49f0-a219-ec0413b4f092`, portal version
+`4a9ba528-097e-4576-8318-43d2121c6ec8`, portal version
 `42a5be63-f30c-41ea-990c-81def5544a99`, and ingress version
 `cdf86643-5b03-4678-9c9c-be146c1af6b2` are deployed. The remote credential
 table uses `(profile_id, attempt_id)` as its primary key, and the remote
@@ -104,7 +104,11 @@ credential leases, and the empty foreign-key check.
 For the remaining canary retries, failed Sandboxes had a 60-minute debug hold.
 DEOS removes Codex auth first, records the exact Sandbox and expiry in D1, and
 lets scheduled cleanup destroy it after the hold. The deployed default returned
-to zero after the clean canaries reached human review.
+to zero after the clean canaries reached human review. Cloudflare deployed
+Worker version `4a9ba528-097e-4576-8318-43d2121c6ec8` at 100 percent, and the
+version read-back reports `SANDBOX_FAILURE_RETENTION_MINUTES=0`. The unchanged
+container image upload timed out separately after the Worker version became
+active; no agent was running and no new container content was required.
 
 During the first provider run, Settings disabled the second route at revision
 `3` and restored it at revision `4`. The already allocated run kept the second
