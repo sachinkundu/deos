@@ -43,7 +43,7 @@ Set `LINEAR_APP_ACTOR_ID` to the actor ID observed for the Linear OAuth app, and
 
 `GITHUB_INSTALLATION_ID`, `LINEAR_PROJECT_ID`, and `TRIAL_REPOSITORY` are first-route seed and rollback inputs. They are not the live route allowlist after D1 has a route. `ROUTE_ADMIN_ALLOWED_EMAIL` is non-secret queue Worker configuration and must equal the portal's allowed Access email.
 
-Provider credentials exist only in the trusted Worker. The Sandbox receives a short-lived, attempt-scoped capability token, never a Linear token, GitHub token, GitHub App key, Cloudflare token, or encryption key.
+Provider credentials exist only in the trusted Worker. The Sandbox receives a short-lived, attempt-scoped capability token, never a Linear token, GitHub token, GitHub App key, Cloudflare token, or encryption key. Git checkout uses that capability against the Worker's read-only `git-upload-pack` proxy. The Worker validates the frozen route and adds a short-lived App token only to its upstream GitHub request.
 
 ## Credential bootstrap
 

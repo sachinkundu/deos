@@ -4,6 +4,7 @@ import type {
   GitHubCapabilityAdapter,
   GitHubWorkProductRequest,
 } from "./github-capability.ts";
+import type { GitHubGitProxyAdapter, GitUploadPackRequest } from "./github-git-proxy.ts";
 import type { LinearCapabilityAdapter } from "./linear-capability.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
@@ -52,6 +53,7 @@ export interface CapabilityRouterDependencies {
   store: CapabilityStore;
   github: GitHubCapabilityAdapter;
   githubForInstallation?: (installationId: string) => GitHubCapabilityAdapter;
+  githubGit?: GitHubGitProxyAdapter;
   linear: LinearCapabilityAdapter;
   planningStore?: Pick<D1PlanningStore, "findRunWorkProduct" | "recordPublication">;
   openrouter?: Pick<OpenRouterReviewClient, "review"> &
@@ -298,7 +300,17 @@ export class CapabilityRouter {
   }
 
   async handle(request: Request): Promise<Response> {
-    if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
+    const path = new URL(request.url).pathname;
+    const gitKind: GitUploadPackRequest | null =
+      request.method === "GET" && path.endsWith("/git/info/refs") &&
+          new URL(request.url).searchParams.get("service") === "git-upload-pack"
+        ? "advertisement"
+        : request.method === "POST" && path.endsWith("/git/git-upload-pack")
+          ? "upload_pack"
+          : null;
+    if (gitKind === null && request.method !== "POST") {
+      return json(405, { error: "method_not_allowed" });
+    }
     const authorization = request.headers.get("Authorization") ?? "";
     const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
     let claims;
@@ -313,11 +325,34 @@ export class CapabilityRouter {
     const context = await this.dependencies.store.context(claims.attemptId);
     if (
       context === null ||
-      context.attemptState !== "running" ||
+      !(gitKind === null
+        ? context.attemptState === "running"
+        : ["starting", "running"].includes(context.attemptState)) ||
       context.runId !== claims.runId ||
       context.repository !== claims.repository ||
       context.issueId !== claims.issueId
     ) return json(403, { error: "capability_not_active" });
+
+    if (gitKind !== null) {
+      if (
+        !claims.actions.includes("github.clone_repository") ||
+        context.githubInstallationId === undefined ||
+        this.dependencies.githubGit === undefined
+      ) return json(403, { error: "repository_checkout_denied" });
+      try {
+        return await this.dependencies.githubGit.proxy({
+          request,
+          repository: claims.repository,
+          installationId: context.githubInstallationId,
+          kind: gitKind,
+        });
+      } catch {
+        return new Response("repository checkout adapter failed\n", {
+          status: 502,
+          headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+    }
 
     let untrusted: unknown;
     try {
@@ -325,7 +360,6 @@ export class CapabilityRouter {
     } catch {
       return json(400, { error: "invalid_json" });
     }
-    const path = new URL(request.url).pathname;
     if (path.endsWith("/github")) {
       const planningInput = parsePlanningRequest(untrusted);
       if (planningInput !== null) {

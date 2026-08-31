@@ -675,6 +675,13 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.equal(credentials.acquired, 1);
   assert.equal(factory.sandbox.files.has("/root/.codex/auth.json"), true);
   assert.deepEqual(factory.sandbox.commands.at(-1)?.command, ["node", "/deos/bin/supervisor.mjs"]);
+  const clone = factory.sandbox.commands.find(({ command }) =>
+    command[0] === "git" && command[1] === "clone");
+  assert.deepEqual(clone?.command.slice(0, 5), [
+    "git", "clone", "--depth", "1", "https://worker.example/capabilities/git",
+  ]);
+  assert.equal(clone?.env?.GIT_CONFIG_VALUE_0, "Authorization: Bearer grant-token");
+  assert.equal(clone?.env?.GIT_CONFIG_VALUE_1, "Deos-Attempt: 00000000-0000-7000-8000-000000000001");
   assert.equal(JSON.stringify(factory.sandbox.commands).includes("secret-seed"), false);
   assert.equal(JSON.parse(factory.sandbox.files.get("/deos/run/job.json") ?? "{}").capabilityToken, "grant-token");
   const prompt = factory.sandbox.files.get("/deos/run/prompt.md") ?? "";
@@ -776,7 +783,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
     state.factory.sandbox.commands.find(({ command }) => command[0] === "git" && command[1] === "clone")?.command,
     [
       "git", "clone", "--depth", "1",
-      "https://github.com/sachinkundu/deos-sample-project.git",
+      "https://worker.example/capabilities/git",
       "/deos/workspace/repository",
     ],
   );
@@ -809,7 +816,7 @@ test("pending-attempt startup clears a stale repository checkout before cloning"
     factory.sandbox.commands.slice(0, 2).map(({ command }) => command),
     [
       ["rm", "-rf", "--", "/deos/workspace/repository"],
-      ["git", "clone", "--depth", "1", "https://github.com/sachinkundu/deos.git", "/deos/workspace/repository"],
+      ["git", "clone", "--depth", "1", "https://worker.example/capabilities/git", "/deos/workspace/repository"],
     ],
   );
 });

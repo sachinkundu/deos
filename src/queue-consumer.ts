@@ -2,6 +2,7 @@ import { CapabilityRouter } from "./capability-router.ts";
 import { D1CapabilityStore } from "./capability-store.ts";
 import { DeosWorkflow } from "./deos-workflow.ts";
 import { GitHubAppTokenProvider, GitHubCapabilityAdapter } from "./github-capability.ts";
+import { GitHubGitProxy } from "./github-git-proxy.ts";
 import { LinearCapabilityAdapter } from "./linear-capability.ts";
 import {
   processQueueBatch,
@@ -48,6 +49,14 @@ const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
       installationId,
     }),
   ),
+  githubGit: new GitHubGitProxy({
+    tokenProvider: (installationId) => new GitHubAppTokenProvider({
+      apiUrl: env.GITHUB_API_URL,
+      appId: env.GITHUB_APP_ID,
+      privateKey: env.GITHUB_APP_PRIVATE_KEY,
+      installationId,
+    }),
+  }),
   linear: new LinearCapabilityAdapter(env.LINEAR_API_URL, env.LINEAR_APP_ACCESS_TOKEN),
   planningStore: new D1PlanningStore(env.DB),
   openrouter: new OpenRouterReviewClient({

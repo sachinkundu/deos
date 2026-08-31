@@ -1079,11 +1079,12 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     }
     const planning = job.capabilities?.includes("github.publish_planning_work_product") === true;
     const explicitlyBound = job.agentRole !== undefined;
-    const actions: readonly CapabilityAction[] = planning
+    const workActions: readonly CapabilityAction[] = planning
       ? ["github.publish_planning_work_product"]
       : job.providerAccess?.includes("model.openrouter_review") === true
         ? ["model.openrouter_review"]
         : explicitlyBound ? [] : ["github.publish_work_product", "linear.upsert_working_note"];
+    const actions: readonly CapabilityAction[] = ["github.clone_repository", ...workActions];
     if (planning) {
       const workProduct = await new D1PlanningStore(this.env.DB).findRunWorkProduct(runId);
       if (
@@ -1093,7 +1094,6 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         workProduct.remote_branch !== planningBranch
       ) throw new Error("planning capability identity mismatch");
     }
-    if (actions.length === 0) return { url: "", token: "" };
     const token = await mintCapabilityToken({
       version: 1,
       issuer: "deos",

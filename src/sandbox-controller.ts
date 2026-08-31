@@ -647,9 +647,20 @@ export class SandboxAgentController {
       }
       const clone = await sandbox.exec([
         "git", "clone", "--depth", "1",
-        `https://github.com/${durableJob.repository}.git`,
+        `${grant.url}/git`,
         "/deos/workspace/repository",
-      ], { cwd: "/deos/workspace", timeout: 10 * 60_000 });
+      ], {
+        cwd: "/deos/workspace",
+        timeout: 10 * 60_000,
+        env: {
+          GIT_CONFIG_COUNT: "2",
+          GIT_CONFIG_KEY_0: "http.extraHeader",
+          GIT_CONFIG_VALUE_0: `Authorization: Bearer ${grant.token}`,
+          GIT_CONFIG_KEY_1: "http.extraHeader",
+          GIT_CONFIG_VALUE_1: `Deos-Attempt: ${attempt.attempt_id}`,
+          GIT_TERMINAL_PROMPT: "0",
+        },
+      });
       const cloneExit = await clone.waitForExit({ timeout: 10 * 60_000 });
       if (cloneExit.code !== 0) {
         const output = await clone.output({ encoding: "utf8", timeout: 10_000, maxBytes: 8_192 });

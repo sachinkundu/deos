@@ -8,6 +8,7 @@ import type {
   CapabilityStore,
 } from "../src/capability-store.ts";
 import type { GitHubCapabilityAdapter } from "../src/github-capability.ts";
+import type { GitHubGitProxyAdapter } from "../src/github-git-proxy.ts";
 import type { LinearCapabilityAdapter } from "../src/linear-capability.ts";
 import type {
   ProviderOperationRecord,
@@ -29,7 +30,11 @@ const claims = {
   runId: "workflow:project-1:issue-1:run:1",
   repository: "sachinkundu/deos",
   issueId: "issue-1",
-  actions: ["github.publish_work_product", "linear.upsert_working_note"] as const,
+  actions: [
+    "github.clone_repository",
+    "github.publish_work_product",
+    "linear.upsert_working_note",
+  ] as const,
   changeId: null,
   planningBranch: null,
   expiresAt: Math.floor(NOW.getTime() / 1000) + 3600,
@@ -136,6 +141,25 @@ class Linear {
   }
 }
 
+class GitProxy implements GitHubGitProxyAdapter {
+  readonly calls: Array<{ repository: string; installationId: string; kind: string }> = [];
+  proxy(input: {
+    request: Request;
+    repository: string;
+    installationId: string;
+    kind: "advertisement" | "upload_pack";
+  }) {
+    this.calls.push({
+      repository: input.repository,
+      installationId: input.installationId,
+      kind: input.kind,
+    });
+    return Promise.resolve(new Response("git-proxy-response", {
+      headers: { "Content-Type": "application/x-git-upload-pack-advertisement" },
+    }));
+  }
+}
+
 class Responses implements OpenRouterResponseStore {
   readonly stored = new Map<string, OpenRouterStoredResponse>();
   put(input: OpenRouterStoredResponse & { now: string }) {
@@ -165,6 +189,7 @@ const setup = async () => {
   const github = new GitHub();
   const selectedInstallations: string[] = [];
   const linear = new Linear();
+  const gitProxy = new GitProxy();
   const router = new CapabilityRouter({
     store,
     github: github as unknown as GitHubCapabilityAdapter,
@@ -172,6 +197,7 @@ const setup = async () => {
       selectedInstallations.push(installationId);
       return github as unknown as GitHubCapabilityAdapter;
     },
+    githubGit: gitProxy,
     linear: linear as unknown as LinearCapabilityAdapter,
     signingSecret: SECRET,
     now: () => NOW,
@@ -187,7 +213,21 @@ const setup = async () => {
       },
       body: JSON.stringify(body),
     }));
-  return { store, github, selectedInstallations, linear, router, token, invoke };
+  const invokeGit = (kind: "advertisement" | "upload_pack" = "advertisement") => router.handle(new Request(
+    kind === "advertisement"
+      ? "https://worker.example/capabilities/git/info/refs?service=git-upload-pack"
+      : "https://worker.example/capabilities/git/git-upload-pack",
+    {
+      method: kind === "advertisement" ? "GET" : "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Deos-Attempt": claims.attemptId,
+        ...(kind === "upload_pack" ? { "Content-Type": "application/x-git-upload-pack-request" } : {}),
+      },
+      ...(kind === "upload_pack" ? { body: "pack-request" } : {}),
+    },
+  ));
+  return { store, github, selectedInstallations, linear, gitProxy, router, token, invoke, invokeGit };
 };
 
 test("signed capability token is scoped and expires", async () => {
@@ -198,6 +238,30 @@ test("signed capability token is scoped and expires", async () => {
     verifyCapabilityToken(token, SECRET, (claims.expiresAt + 1) * 1000),
     /expired/,
   );
+});
+
+test("repository checkout proxy accepts only the active frozen attempt", async () => {
+  const active = await setup();
+  active.store.contextValue = { ...active.store.contextValue!, attemptState: "starting" };
+  const response = await active.invokeGit();
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "git-proxy-response");
+  assert.deepEqual(active.gitProxy.calls, [{
+    repository: claims.repository,
+    installationId: "154095438",
+    kind: "advertisement",
+  }]);
+
+  assert.equal((await active.invokeGit("upload_pack")).status, 200);
+  assert.deepEqual(active.gitProxy.calls[1], {
+    repository: claims.repository,
+    installationId: "154095438",
+    kind: "upload_pack",
+  });
+
+  active.store.contextValue = { ...active.store.contextValue!, attemptState: "completed" };
+  assert.equal((await active.invokeGit()).status, 403);
+  assert.equal(active.gitProxy.calls.length, 2);
 });
 
 test("allowed GitHub work product uses the frozen install once and duplicate returns the durable receipt", async () => {

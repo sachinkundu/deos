@@ -21,7 +21,7 @@ GitHub App access. The crop excludes account and Access identity details.
 
 - Python: 31 tests passed.
 - Ruff: passed.
-- Worker tests: 218 tests passed.
+- Worker tests: 221 tests passed.
 - Portal tests: 31 tests passed.
 - Root and portal TypeScript checks: passed.
 - Generated Worker binding checks: passed.
@@ -73,6 +73,13 @@ Each attempt had its own `credential_leases` row. Neither startup blocked the
 other. Both issues use the exact shared title required by the change. The
 executable query and captured remote output are in
 [`sac-144-concurrent-route-canary.md`](sac-144-concurrent-route-canary.md).
+
+The first second-route attempt then exposed a separate checkout defect: the
+Sandbox used anonymous Git transport even though the route had a frozen GitHub
+App installation. DEOS now exposes only read-only Git smart HTTP through the
+attempt capability. The trusted Worker validates the frozen route, adds the
+short-lived App token upstream, and never sends that token into the Sandbox.
+The next provider run is the proof for this repair.
 
 During the first provider run, Settings disabled the second route at revision
 `3` and restored it at revision `4`. The already allocated run kept the second

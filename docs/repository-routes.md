@@ -39,6 +39,11 @@ The required repository permissions are:
 
 The trusted queue Worker mints short-lived tokens for the route's saved App installation. Tokens and raw provider replies do not cross the internal route-admin binding or enter D1. D1 stores only safe provider ids, rights digests, results, settings links, actors, and times.
 
+Repository checkout uses the same frozen App installation without exposing its
+token. Git authenticates to a read-only Worker endpoint with the Sandbox's
+attempt capability. The Worker validates that attempt and proxies only
+`git-upload-pack` to the frozen repository. It does not expose a push endpoint.
+
 ## Safe failure behavior
 
 - Unknown or disabled Linear project: acknowledge the webhook and start no work.

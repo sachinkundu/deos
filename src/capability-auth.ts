@@ -16,12 +16,14 @@ export interface CapabilityClaims {
 }
 
 export type CapabilityAction =
+  | "github.clone_repository"
   | "github.publish_work_product"
   | "github.publish_planning_work_product"
   | "linear.upsert_working_note"
   | "model.openrouter_review";
 
 const CAPABILITY_ACTIONS = new Set<CapabilityAction>([
+  "github.clone_repository",
   "github.publish_work_product",
   "github.publish_planning_work_product",
   "linear.upsert_working_note",
@@ -103,12 +105,13 @@ export const verifyCapabilityToken = async (
   ) throw new Error("capability token claims are invalid or expired");
   const planning = claims.actions.includes("github.publish_planning_work_product");
   const modelReview = claims.actions.includes("model.openrouter_review");
+  const workActions = claims.actions.filter((action) => action !== "github.clone_repository");
   if (
     planning !== (claims.changeId !== null && claims.planningBranch !== null) ||
-    (planning && claims.actions.length !== 1) ||
+    (planning && workActions.length !== 1) ||
     (claims.changeId !== null && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(claims.changeId)) ||
     (claims.planningBranch !== null && !/^deos\/planning\/[a-f0-9]{24}$/.test(claims.planningBranch)) ||
-    (modelReview && claims.actions.length !== 1) ||
+    (modelReview && workActions.length !== 1) ||
     (modelReview && (
       claims.modelProvider !== "openrouter" ||
       typeof claims.model !== "string" || !/^[A-Za-z0-9_.:-]+\/[A-Za-z0-9_.:-]+$/.test(claims.model) ||

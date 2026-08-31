@@ -122,6 +122,12 @@ only the saved App install. It checks the repo and all needed rights. If the
 check fails, DEOS records a safe result and blocks new work on that route. It
 does not start a run or Sandbox.
 
+Sandbox checkout uses a read-only Git smart-HTTP endpoint on the trusted
+Worker. The Sandbox authenticates with its signed attempt capability. The
+Worker checks the attempt's frozen repository and App install, mints the
+short-lived GitHub App token, and proxies only `git-upload-pack`. The App token
+never enters the Sandbox, and the proxy cannot push.
+
 This live check is needed even after a Settings check. GitHub access may change
 at any time. Reading current route data at each node was also rejected because
 it would let an active run drift.
