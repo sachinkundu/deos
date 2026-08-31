@@ -91,6 +91,6 @@
 - [x] 10.7 Create this real issue in both sample projects: "create a simple text graphics generator which can create popular graphics on command line terminal"
 - [x] 10.8 Run both issues and prove separate GitHub work, D1 runs, and provider receipts
 - [x] 10.9 Change a route setting during active work and prove the save succeeds while that run stays fixed
-- [ ] 10.10 Prove all Sandboxes are removed. Add safe screenshots, command logs, and D1 proof to the code PR
+- [x] 10.10 Prove all Sandboxes are removed. Add safe screenshots, command logs, and D1 proof to the code PR
 - [x] 10.11 After both sample runs pass, add and enable the DEOS project with `sachinkundu/deos` as the third route without starting an issue
-- [ ] 10.12 Keep SAC-143 blocked until the two sample routes pass provider proof and this change is merged
+- [x] 10.12 Keep SAC-143 blocked until the two sample routes pass provider proof and this change is merged

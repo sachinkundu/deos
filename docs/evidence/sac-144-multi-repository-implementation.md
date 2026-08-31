@@ -28,7 +28,7 @@ confirms the project has zero runs.
 
 - Python: 31 tests passed.
 - Ruff: passed.
-- Worker tests: 224 tests passed.
+- Worker tests: 226 tests passed.
 - Portal tests: 32 tests passed.
 - Root and portal TypeScript checks: passed.
 - Generated Worker binding checks: passed.
@@ -48,8 +48,10 @@ The provider adapter tests prove paginated Linear project and GitHub App reposit
 
 Migrations `0020_multi_repository_routes.sql`,
 `0021_concurrent_credential_leases.sql`, and
-`0022_sandbox_failure_retention.sql` are applied. Queue Worker version
-`4a9ba528-097e-4576-8318-43d2121c6ec8`, portal version
+`0022_sandbox_failure_retention.sql` are applied. Queue code version
+`b4483f16-2a9c-4cfa-b4fa-d15ad0450d0a` is deployed. The active queue version
+after the final cleanup-capability rotation is
+`7b4b7eb2-cd1e-4ba8-baa1-cfae9966ee47`. Portal version
 `42a5be63-f30c-41ea-990c-81def5544a99`, and ingress version
 `cdf86643-5b03-4678-9c9c-be146c1af6b2` are deployed. The remote credential
 table uses `(profile_id, attempt_id)` as its primary key, and the remote
@@ -111,11 +113,10 @@ credential leases, and the empty foreign-key check.
 For the remaining canary retries, failed Sandboxes had a 60-minute debug hold.
 DEOS removes Codex auth first, records the exact Sandbox and expiry in D1, and
 lets scheduled cleanup destroy it after the hold. The deployed default returned
-to zero after the clean canaries reached human review. Cloudflare deployed
-Worker version `4a9ba528-097e-4576-8318-43d2121c6ec8` at 100 percent, and the
-version read-back reports `SANDBOX_FAILURE_RETENTION_MINUTES=0`. The unchanged
-container image upload timed out separately after the Worker version became
-active; no agent was running and no new container content was required.
+to zero after the clean canaries reached human review. The active queue version
+read-back reports `SANDBOX_FAILURE_RETENTION_MINUTES=0`. The unchanged container
+image upload timed out separately after the Worker code version became active;
+no agent was running and no new container content was required.
 
 During the first provider run, Settings disabled the second route at revision
 `3` and restored it at revision `4`. The already allocated run kept the second
@@ -138,3 +139,18 @@ attempts. All fourteen attempts have `cleanup_state='destroyed'`; none has a
 cleanup hold, and the remote foreign-key check is empty. The executable final
 read-back is appended to
 [`sac-144-concurrent-route-canary.md`](sac-144-concurrent-route-canary.md).
+
+Two older attempts remained in `collecting` after their Workflow instances had
+already errored and their provider Sandboxes had become inactive. The guarded
+operator cleanup endpoint reconciled only those exact attempt and Sandbox ids.
+It rejected changed targets and running processes before claiming cleanup. The
+final D1 read-back reports zero attempts whose cleanup state is not
+`destroyed`; both reconciled attempts are `interrupted` with
+`result_class='operator_cleanup'`, and the foreign-key check is empty.
+Cloudflare's historical inventory reports zero active instances and shows both
+exact Sandboxes as inactive. The executable commands and outputs are in the
+same canary evidence record.
+
+Immediately before the implementation PR was made ready, Linear showed
+`SAC-143` in Backlog with `SAC-144` still recorded as its blocker. DEOS did not
+start that work before this multi-repository change merged.
