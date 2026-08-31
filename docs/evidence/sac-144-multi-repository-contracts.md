@@ -109,10 +109,12 @@ An installation token then returned these accessible repositories:
 | --- | --- | --- |
 | `sachinkundu/deos` | `1330744912` | `main` |
 | `sachinkundu/deos-sample-project` | `1345702511` | `main` |
+| `sachinkundu/deos-sample-project-2` | `1352134004` | `main` |
 
-The second repository now exists as
-`sachinkundu/deos-sample-project-2`, repository id `1352134004`, with default
-branch `main`. It is not yet in the installation list.
+After the owner added the second repository in GitHub's installation settings,
+a fresh App JWT and installation token read back all three repositories. The
+second repository is `sachinkundu/deos-sample-project-2`, repository id
+`1352134004`, with default branch `main`.
 
 The current GitHub CLI OAuth token correctly failed the add-repository endpoint
 with HTTP 403. This matches the primary contract: that endpoint accepts only a
@@ -121,7 +123,7 @@ failed call.
 
 ## Fixed provider-proof task
 
-After App access is granted, both routes will receive this exact issue title:
+Both routes will receive this exact issue title:
 
 > create a simple text graphics generator which can create popular graphics on command line terminal
 
@@ -129,8 +131,9 @@ The two issues must produce separate D1 runs and separate GitHub work in their
 own repositories. `sachinkundu/deos` is added as a third enabled route only
 after both pass, and no DEOS issue starts during this change.
 
-## Current external prerequisite
+## Access read-back
 
-The owner must add `sachinkundu/deos-sample-project-2` to GitHub App installation
-`154095438` at the settings URL above. Implementation of provider adapters stays
-paused until a fresh App JWT and installation token read that repository back.
+GitHub App installation `154095438` now returns all three repositories through
+`GET /installation/repositories`. Its live permissions include every right DEOS
+needs. The provider prerequisite is complete, so adapter implementation can
+proceed from these verified contracts and resource ids.
