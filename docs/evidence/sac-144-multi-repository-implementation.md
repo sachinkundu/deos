@@ -32,4 +32,10 @@ The repository-route tests apply every migration to a real in-memory SQLite data
 
 The provider adapter tests prove paginated Linear project and GitHub App repository catalogs, personal and organization installation settings links, safe provider errors, and permission classification. The exact live provider contract and stable test IDs are recorded in [the contract evidence](sac-144-multi-repository-contracts.md).
 
-Remote migration, deployment, two-route provider-originated runs, and final D1 read-back are recorded separately after the local implementation commit is deployed.
+## Remote deployment checkpoint
+
+Migration `0020_multi_repository_routes.sql` is applied. Queue Worker version `24b78b8c-e421-4294-bebf-61d8a477996c`, portal version `14d7898b-618b-4112-9ca2-54d09e6190f6`, and ingress version `cdf86643-5b03-4678-9c9c-be146c1af6b2` are deployed.
+
+The scheduled seed read-back shows `deos-sample-project` on GitHub App installation `154095438`, route revision `1`, and digest `464ec282a1af74ce8af94f4e4782ba71152af07a804721f1e2337c829b2ae846`. Both pre-existing nonterminal runs carry the same complete frozen route. The remote foreign-key check returns no failures.
+
+The second-route provider-originated runs and final D1 read-back are added after the protected Settings session creates and enables that route.

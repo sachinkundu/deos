@@ -11,7 +11,7 @@
 
 - [x] 2.1 Add route, GitHub App install, access audit, event proof, and frozen run fields to D1
 - [x] 2.2 Test that the change keeps the sample policy, active runs, history, and revisions
-- [ ] 2.3 Backfill the current App install and all active run snapshots, then read them back
+- [x] 2.3 Backfill the current App install and all active run snapshots, then read them back
 - [x] 2.4 Require full frozen data for new runs, but keep read-only support for old runs
 
 ## 3. Provider Lists and Trust Boundary
@@ -79,10 +79,10 @@
 
 ## 10. Deploy and Real Provider Proof
 
-- [ ] 10.1 Recheck the live Linear projects, GitHub App repos, rights, and saved test ids before deploy
-- [ ] 10.2 Apply the remote D1 change and backfill active runs. Read each saved snapshot back
+- [x] 10.1 Recheck the live Linear projects, GitHub App repos, rights, and saved test ids before deploy
+- [x] 10.2 Apply the remote D1 change and backfill active runs. Read each saved snapshot back
 - [ ] 10.3 Deploy the queue Worker and check route admin, setup, digests, and old run support
-- [ ] 10.4 Deploy D1 route admission while only the first sample route is enabled
+- [x] 10.4 Deploy D1 route admission while only the first sample route is enabled
 - [ ] 10.5 Deploy the portal binding and Settings UI. Check both through Cloudflare Access
 - [ ] 10.6 Add and enable the second sample route in Settings. Read both routes back
 - [ ] 10.7 Create this real issue in both sample projects: "create a simple text graphics generator which can create popular graphics on command line terminal"
