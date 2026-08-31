@@ -1,11 +1,11 @@
 ## 1. Provider Contracts and Test Resources
 
-- [ ] 1.1 Read primary docs for Linear data, GitHub App access, and Worker bindings
-- [ ] 1.2 Record exact auth, fields, time units, paging, errors, and rights
-- [ ] 1.3 Use safe live calls to prove the real Linear and GitHub response shapes
-- [ ] 1.4 Confirm the first sample project and repo. Create a second sample project and repo
+- [x] 1.1 Read primary docs for Linear data, GitHub App access, and Worker bindings
+- [x] 1.2 Record exact auth, fields, time units, paging, errors, and rights
+- [x] 1.3 Use safe live calls to prove the real Linear and GitHub response shapes
+- [x] 1.4 Confirm the first sample project and repo. Create a second sample project and repo
 - [ ] 1.5 Grant the DEOS GitHub App access to the second repo. Read the access back
-- [ ] 1.6 Record both test route ids and the exact shared issue text before adapter code starts
+- [x] 1.6 Record both test route ids and the exact shared issue text before adapter code starts
 
 ## 2. Route Data and Migration
 
