@@ -2,6 +2,7 @@ import { CapabilityRouter } from "./capability-router.ts";
 import { D1CapabilityStore } from "./capability-store.ts";
 import { DeosWorkflow } from "./deos-workflow.ts";
 import { GitHubAppTokenProvider, GitHubCapabilityAdapter } from "./github-capability.ts";
+import { GitHubGitProxy } from "./github-git-proxy.ts";
 import { LinearCapabilityAdapter } from "./linear-capability.ts";
 import {
   processQueueBatch,
@@ -26,6 +27,7 @@ import { AgentStageRetryController, D1AgentStageRetryStore } from "./stage-retry
 import { loadBundledWorkflowDefinitionRegistry } from "./workflow-bundle.ts";
 
 export { DeosWorkflow, Sandbox };
+export { RouteAdmin } from "./route-admin-entrypoint.ts";
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
   store: new D1CapabilityStore(env.DB),
@@ -38,6 +40,23 @@ const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
       installationId: env.GITHUB_INSTALLATION_ID,
     }),
   ),
+  githubForInstallation: (installationId) => new GitHubCapabilityAdapter(
+    env.GITHUB_API_URL,
+    new GitHubAppTokenProvider({
+      apiUrl: env.GITHUB_API_URL,
+      appId: env.GITHUB_APP_ID,
+      privateKey: env.GITHUB_APP_PRIVATE_KEY,
+      installationId,
+    }),
+  ),
+  githubGit: new GitHubGitProxy({
+    tokenProvider: (installationId) => new GitHubAppTokenProvider({
+      apiUrl: env.GITHUB_API_URL,
+      appId: env.GITHUB_APP_ID,
+      privateKey: env.GITHUB_APP_PRIVATE_KEY,
+      installationId,
+    }),
+  }),
   linear: new LinearCapabilityAdapter(env.LINEAR_API_URL, env.LINEAR_APP_ACCESS_TOKEN),
   planningStore: new D1PlanningStore(env.DB),
   openrouter: new OpenRouterReviewClient({
@@ -90,6 +109,7 @@ export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
     if (path === "/cleanup-audit") return cleanupAuditor(env).handle(request);
+    if (path === "/cleanup-attempts") return cleanupAuditor(env).handleDestroy(request);
     if (path === "/stage-retries") return (await stageRetryController(env)).handle(request);
     if (!path.startsWith("/capabilities/")) return new Response("not found", { status: 404 });
     return capabilityRouter(env).handle(request);

@@ -49,24 +49,55 @@ interface Projection {
   reviewAvailable: boolean;
   pullRequest: { number: number; url: string; status: string; verified: boolean } | null;
 }
-interface RepositorySettings {
+interface RepositoryRoute {
   projectId: string;
+  projectName: string;
   repository: string;
-  revision: number;
+  githubInstallationId: string;
+  definitionId: string;
+  definitionVersion: number;
+  definitionDigest: string;
+  startStateName: string;
+  humanGateStateId: string;
+  repositoryRevision: number;
+  routeRevision: number;
+  routeDigest: string;
   updatedBy: string;
   updatedAt: string;
   dispatchEnabled: boolean;
   workflowRevision: number;
-  workflowUpdatedBy: string;
-  workflowUpdatedAt: string;
   independentReviewProvider: "openrouter";
   independentReviewModel: string | null;
   independentReviewRevision: number;
-  independentReviewUpdatedBy: string;
-  independentReviewUpdatedAt: string;
+  accessState: "unchecked" | "passed" | "missing" | "weak_permissions" | "unavailable";
+  accessCheckedAt: string | null;
+  accessPermissionsDigest: string | null;
+  githubSettingsUrl: string | null;
   activeRuns: number;
 }
-interface IndependentReviewSettings { settings: RepositorySettings; models: string[] }
+interface LinearProjectChoice { projectId: string; name: string; url: string; teams: Array<{ id: string; name: string; key: string }> }
+interface GitHubRepositoryChoice {
+  repositoryId: string;
+  fullName: string;
+  defaultBranch: string;
+  installationId: string;
+  accountLogin: string;
+  settingsUrl: string;
+  access: "ready" | "weak_permissions";
+}
+interface GitHubInstallationChoice {
+  installationId: string;
+  accountLogin: string;
+  settingsUrl: string;
+  suspended: boolean;
+  repositories: GitHubRepositoryChoice[];
+}
+interface RouteAdminOverview {
+  routes: RepositoryRoute[];
+  linear: { state: "ready" | "unavailable"; values: LinearProjectChoice[] };
+  github: { state: "ready" | "unavailable"; values: GitHubInstallationChoice[] };
+  supportedReviewModels: string[];
+}
 
 const api = async <T,>(path: string, signal?: AbortSignal): Promise<T> => {
   if (import.meta.env.DEV) {
@@ -78,61 +109,30 @@ const api = async <T,>(path: string, signal?: AbortSignal): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
-const saveRepository = async (repository: string, expectedRevision: number): Promise<RepositorySettings> => {
-  const response = await fetch("/api/settings/repository", {
-    method: "PUT",
+const routeMutation = async <T,>(
+  path: string,
+  method: "POST" | "PUT",
+  input: Record<string, unknown>,
+): Promise<T> => {
+  const response = await fetch(path, {
+    method,
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ repository, expectedRevision }),
+    body: JSON.stringify(input),
   });
-  const body = await response.json() as RepositorySettings & { error?: string };
+  const body = await response.json() as T & { error?: string };
   if (!response.ok) {
     const messages: Record<string, string> = {
-      active_run: "A workflow is active. Wait for it to finish before changing the repository.",
-      stale_revision: "This setting changed in another session. Reload it and try again.",
-      invalid_repository: "Use the exact owner/repository format.",
+      stale_repository_revision: "This repository changed in another session. Reload and try again.",
+      stale_workflow_revision: "These controls changed in another session. Reload and try again.",
+      stale_review_revision: "The review model changed in another session. Reload and try again.",
+      github_access_not_ready: "The DEOS GitHub App does not have the access this route needs.",
+      provider_unavailable: "A provider list is unavailable. Saved routes are still shown.",
+      route_exists: "That Linear project already has a route.",
+      project_not_available: "Choose a Linear project from the live list.",
+      repository_not_available: "Choose a repository from the live GitHub App list.",
+      unsupported_review_model: "Choose a supported review model.",
     };
-    throw new Error(messages[body.error ?? ""] ?? "The repository could not be saved.");
-  }
-  return body;
-};
-
-const saveWorkflowControls = async (
-  dispatchEnabled: boolean,
-  expectedRevision: number,
-): Promise<RepositorySettings> => {
-  const response = await fetch("/api/settings/workflow", {
-    method: "PUT",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ dispatchEnabled, expectedRevision }),
-  });
-  const body = await response.json() as RepositorySettings & { error?: string };
-  if (!response.ok) {
-    const messages: Record<string, string> = {
-      active_run: "A workflow is active. Wait for it to finish before changing these controls.",
-      stale_workflow_revision: "These controls changed in another session. Reload them and try again.",
-    };
-    throw new Error(messages[body.error ?? ""] ?? "The workflow controls could not be saved.");
-  }
-  return body;
-};
-
-const saveIndependentReviewModel = async (
-  model: string,
-  expectedRevision: number,
-): Promise<IndependentReviewSettings> => {
-  const response = await fetch("/api/settings/independent-review", {
-    method: "PUT",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ model, expectedRevision }),
-  });
-  const body = await response.json() as IndependentReviewSettings & { error?: string };
-  if (!response.ok) {
-    const messages: Record<string, string> = {
-      active_run: "A workflow is active. Wait for it to finish before changing the review model.",
-      stale_independent_review_revision: "The review model changed in another session. Reload it and try again.",
-      invalid_independent_review_model: "Choose a supported OpenRouter review model.",
-    };
-    throw new Error(messages[body.error ?? ""] ?? "The review model could not be saved.");
+    throw new Error(messages[body.error ?? ""] ?? "The route could not be saved.");
   }
   return body;
 };
@@ -179,129 +179,170 @@ function StageCard({ stage, onSelect }: { stage: Stage; onSelect: () => void }) 
 }
 
 function SettingsPanel() {
-  const [settings, setSettings] = useState<RepositorySettings | null>(null);
-  const [repository, setRepository] = useState("");
+  const [overview, setOverview] = useState<RouteAdminOverview | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [projectId, setProjectId] = useState("");
+  const [repositoryKey, setRepositoryKey] = useState("");
   const [dispatchEnabled, setDispatchEnabled] = useState(false);
   const [independentModel, setIndependentModel] = useState("");
-  const [independentModels, setIndependentModels] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(true);
+
+  const repositories = useMemo(() => overview?.github.values.flatMap((installation) =>
+    installation.repositories.map((repository) => ({
+      ...repository,
+      key: `${installation.installationId}|${repository.fullName}`,
+    }))) ?? [], [overview]);
+  const selected = overview?.routes.find((route) => route.projectId === selectedId) ?? null;
+
+  const syncDraft = useCallback((route: RepositoryRoute) => {
+    setRepositoryKey(`${route.githubInstallationId}|${route.repository}`);
+    setDispatchEnabled(route.dispatchEnabled);
+    setIndependentModel(route.independentReviewModel ?? "");
+  }, []);
 
   const load = useCallback(async () => {
     setBusy(true);
     setMessage("");
     try {
-      const [value, independent] = await Promise.all([
-        api<RepositorySettings>("/api/settings/repository"),
-        api<IndependentReviewSettings>("/api/settings/independent-review"),
-      ]);
-      setSettings(value);
-      setRepository(value.repository);
-      setDispatchEnabled(value.dispatchEnabled);
-      setIndependentModels(independent.models);
-      setIndependentModel(independent.settings.independentReviewModel ?? independent.models[0] ?? "");
+      const value = await api<RouteAdminOverview>("/api/settings/routes");
+      setOverview(value);
+      const route = value.routes.find((item) => item.projectId === selectedId) ?? value.routes[0] ?? null;
+      setSelectedId(route?.projectId ?? null);
+      if (route !== null) syncDraft(route);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Settings could not be loaded.");
     } finally { setBusy(false); }
-  }, []);
+  }, [selectedId, syncDraft]);
 
   useEffect(() => { void load(); }, [load]);
 
-  const save = async () => {
-    if (settings === null) return;
+  const replaceRoute = (route: RepositoryRoute) => {
+    setOverview((value) => value === null ? value : {
+      ...value,
+      routes: value.routes.some((item) => item.projectId === route.projectId)
+        ? value.routes.map((item) => item.projectId === route.projectId ? route : item)
+        : [...value.routes, route].sort((left, right) => left.projectName.localeCompare(right.projectName)),
+    });
+    setSelectedId(route.projectId);
+    syncDraft(route);
+  };
+
+  const work = async (action: () => Promise<RepositoryRoute>, success: string) => {
     setBusy(true);
     setMessage("");
     try {
-      const value = await saveRepository(repository, settings.revision);
-      setSettings(value);
-      setRepository(value.repository);
-      setDispatchEnabled(value.dispatchEnabled);
-      setMessage("Saved and read back from D1.");
+      replaceRoute(await action());
+      setAdding(false);
+      setMessage(success);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The repository could not be saved.");
+      setMessage(error instanceof Error ? error.message : "The route could not be saved.");
     } finally { setBusy(false); }
   };
 
-  const saveControls = async () => {
-    if (settings === null) return;
-    setBusy(true);
+  const parsedRepository = () => {
+    const separator = repositoryKey.indexOf("|");
+    return separator < 1 ? null : {
+      githubInstallationId: repositoryKey.slice(0, separator),
+      repository: repositoryKey.slice(separator + 1),
+    };
+  };
+
+  const openRoute = (route: RepositoryRoute) => {
+    setAdding(false);
+    setSelectedId(route.projectId);
+    syncDraft(route);
     setMessage("");
-    try {
-      const value = await saveWorkflowControls(dispatchEnabled, settings.workflowRevision);
-      setSettings(value);
-      setDispatchEnabled(value.dispatchEnabled);
-      setMessage("Workflow controls saved and read back from D1.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The workflow controls could not be saved.");
-    } finally { setBusy(false); }
   };
-
-  const saveReviewModel = async () => {
-    if (settings === null || independentModel.length === 0) return;
-    setBusy(true);
-    setMessage("");
-    try {
-      const value = await saveIndependentReviewModel(
-        independentModel,
-        settings.independentReviewRevision,
-      );
-      setSettings(value.settings);
-      setIndependentModels(value.models);
-      setIndependentModel(value.settings.independentReviewModel ?? "");
-      setMessage("Independent review model saved and read back from D1.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The review model could not be saved.");
-    } finally { setBusy(false); }
-  };
-
-  const controlsChanged = settings !== null && dispatchEnabled !== settings.dispatchEnabled;
-  const controlsLocked = busy || settings === null || settings.activeRuns > 0;
 
   return <section className="settings-page">
-    <div className="settings-heading"><div><span className="eyebrow">Project settings</span><h1>Workflow settings</h1><p>Choose the repository and control when new workflow work starts.</p></div><GithubLogo /></div>
-    <div className="settings-grid">
+    <div className="settings-heading"><div><span className="eyebrow">Project connections</span><h1>Repository routes</h1><p>Pair each Linear project with one repository the DEOS GitHub App can use.</p></div><button className="add-route" type="button" onClick={() => {
+      setAdding(true);
+      setProjectId(overview?.linear.values.find((project) =>
+        !overview.routes.some((route) => route.projectId === project.projectId))?.projectId ?? "");
+      setRepositoryKey(repositories.find((repository) => repository.access === "ready")?.key ?? "");
+      setMessage("");
+    }} disabled={busy || overview?.linear.state !== "ready" || overview?.github.state !== "ready"}>Add route</button></div>
+
+    {(overview?.linear.state === "unavailable" || overview?.github.state === "unavailable") &&
+      <div className="provider-warning" role="status"><WarningCircle /> A live provider list is unavailable. Saved routes remain visible, but unchecked routes cannot be enabled.</div>}
+
+    <div className="route-card-grid" aria-label="Configured repository routes">
+      {overview?.routes.map((route) => <button type="button" key={route.projectId}
+        className={`route-card ${route.projectId === selectedId && !adding ? "selected" : ""}`}
+        onClick={() => openRoute(route)}>
+        <span className="route-card-top"><span className="eyebrow">{route.projectName}</span><span className={route.dispatchEnabled ? "guard" : "guard active"}>{route.dispatchEnabled ? "Enabled" : "Off"}</span></span>
+        <strong>{route.projectName}</strong>
+        <span className="route-pair"><span>Linear</span><ArrowRight /><span>{route.repository}</span></span>
+        <span className="route-card-meta"><span className={`access-dot ${route.accessState}`} />{human(route.accessState)} · {route.activeRuns} active</span>
+      </button>)}
+      {overview?.routes.length === 0 && <div className="settings-card"><h2>No routes yet</h2><p>Add a Linear project and GitHub repository connection.</p></div>}
+    </div>
+
+    {adding && <div className="settings-card route-editor">
+      <div className="card-heading"><div><span className="eyebrow">New connection</span><h2>Add repository route</h2><p>The route starts off. Enable it after checking the saved pairing.</p></div><GithubLogo /></div>
+      <div className="field-grid"><div><label htmlFor="new-project">Linear project</label><select id="new-project" value={projectId} onChange={(event) => setProjectId(event.target.value)} disabled={busy}>
+        {overview?.linear.values.filter((project) => !overview.routes.some((route) => route.projectId === project.projectId)).map((project) => <option value={project.projectId} key={project.projectId}>{project.name} · {project.teams.map((team) => team.key).join(", ")}</option>)}
+      </select></div><div><label htmlFor="new-repository">GitHub App repository</label><select id="new-repository" value={repositoryKey} onChange={(event) => setRepositoryKey(event.target.value)} disabled={busy}>
+        {repositories.map((repository) => <option value={repository.key} key={repository.key} disabled={repository.access !== "ready"}>{repository.fullName} · {repository.accountLogin}</option>)}
+      </select></div></div>
+      <div className="settings-actions"><button type="button" disabled={busy || !projectId || parsedRepository() === null} onClick={() => {
+        const repository = parsedRepository();
+        if (repository !== null) void work(() => routeMutation<RepositoryRoute>("/api/settings/routes", "POST", { projectId, ...repository }), "Route created, checked, and read back from D1.");
+      }}>Create route</button><button className="secondary" type="button" onClick={() => setAdding(false)} disabled={busy}>Cancel</button></div>
+    </div>}
+
+    {!adding && selected !== null && <div className="settings-grid route-editor-grid">
       <div className="settings-stack">
         <div className="settings-card">
-          <label htmlFor="repository">GitHub repository</label>
-          <input id="repository" value={repository} onChange={(event) => setRepository(event.target.value)} placeholder="owner/repository" disabled={busy || settings === null} />
-          <p>Use the exact <code>owner/repository</code> name. The base branch must be <code>main</code>.</p>
-          <div className="settings-actions"><button type="button" onClick={() => void save()} disabled={busy || settings === null || repository.trim() === settings.repository}>{busy ? "Working…" : "Save repository"}</button></div>
+          <div className="card-heading"><div><span className="eyebrow">{selected.projectName}</span><h2>GitHub repository</h2><p>Changing this turns off only this route. Active work keeps its saved repository.</p></div><span className={`guard ${selected.accessState === "passed" ? "" : "active"}`}>{human(selected.accessState)}</span></div>
+          <label htmlFor="repository">Repository</label><select id="repository" value={repositoryKey} onChange={(event) => setRepositoryKey(event.target.value)} disabled={busy || overview?.github.state !== "ready"}>
+            {!repositories.some((repository) => repository.key === repositoryKey) && <option value={repositoryKey}>{selected.repository} · saved route</option>}
+            {repositories.map((repository) => <option value={repository.key} key={repository.key} disabled={repository.access !== "ready"}>{repository.fullName} · {repository.accountLogin}</option>)}
+          </select>
+          <div className="settings-actions"><button type="button" disabled={busy || parsedRepository() === null || repositoryKey === `${selected.githubInstallationId}|${selected.repository}`} onClick={() => {
+            const repository = parsedRepository();
+            if (repository !== null) void work(() => routeMutation<RepositoryRoute>(`/api/settings/routes/${selected.projectId}/repository`, "PUT", { ...repository, expectedRevision: selected.repositoryRevision }), "Repository saved for future runs.");
+          }}>Save repository</button><button className="secondary" type="button" disabled={busy} onClick={() => void work(() => routeMutation<RepositoryRoute>(`/api/settings/routes/${selected.projectId}/recheck`, "POST", {}), "GitHub App access checked and read back.")}>Recheck</button></div>
         </div>
         <div className="settings-card controls-card">
-          <div className="card-heading"><div><h2>Workflow controls</h2><p>This setting applies to new Todo events only.</p></div><span className={settings?.activeRuns ? "guard active" : "guard"}>{settings?.activeRuns ? "Locked" : "Ready"}</span></div>
+          <div className="card-heading"><div><h2>Workflow controls</h2><p>This setting applies to new {selected.startStateName} events.</p></div><span className="guard">Future runs</span></div>
           <label className="switch-row">
-            <span><strong>Workflow dispatch</strong><small>Let accepted Todo events start a workflow.</small></span>
-            <input type="checkbox" checked={dispatchEnabled} onChange={(event) => setDispatchEnabled(event.target.checked)} disabled={controlsLocked} />
+            <span><strong>Workflow dispatch</strong><small>Let accepted {selected.startStateName} events start a workflow.</small></span>
+            <input type="checkbox" checked={dispatchEnabled} onChange={(event) => setDispatchEnabled(event.target.checked)} disabled={busy || (!dispatchEnabled && (selected.accessState !== "passed" || overview?.github.state !== "ready"))} />
           </label>
-          {settings !== null && settings.activeRuns > 0 && <p className="guard-note">A workflow is active. These controls will unlock when it ends.</p>}
-          <div className="settings-actions"><button type="button" onClick={() => void saveControls()} disabled={controlsLocked || !controlsChanged}>{busy ? "Working…" : "Save workflow controls"}</button><button className="secondary" type="button" onClick={() => void load()} disabled={busy}>Reload</button></div>
+          {!selected.dispatchEnabled && (selected.accessState !== "passed" || overview?.github.state !== "ready") &&
+            <p className="guard-note">Recheck live GitHub App access before enabling this route.</p>}
+          {selected.activeRuns > 0 && <p className="guard-note">{selected.activeRuns} active run(s) keep their frozen setup. This save affects only later work.</p>}
+          <div className="settings-actions"><button type="button" onClick={() => void work(() => routeMutation<RepositoryRoute>(`/api/settings/routes/${selected.projectId}/workflow`, "PUT", { dispatchEnabled, expectedRevision: selected.workflowRevision }), "Workflow control saved for future runs.")} disabled={busy || dispatchEnabled === selected.dispatchEnabled || (dispatchEnabled && (selected.accessState !== "passed" || overview?.github.state !== "ready"))}>Save workflow controls</button><button className="secondary" type="button" onClick={() => void load()} disabled={busy}>Reload</button></div>
           {message && <div className="settings-message" role="status">{message}</div>}
         </div>
         <div className="settings-card">
-          <div className="card-heading"><div><h2>Independent review</h2><p>This OpenRouter model is frozen into each new traceability run.</p></div><span className={settings?.activeRuns ? "guard active" : "guard"}>{settings?.activeRuns ? "Locked" : "Ready"}</span></div>
+          <div className="card-heading"><div><h2>Independent review</h2><p>This model is frozen into each new traceability run.</p></div><span className="guard">Future runs</span></div>
           <label htmlFor="independent-review-model">Review model</label>
-          <select id="independent-review-model" value={independentModel} onChange={(event) => setIndependentModel(event.target.value)} disabled={controlsLocked}>
-            {independentModels.map((model) => <option value={model} key={model}>{model}</option>)}
+          <select id="independent-review-model" value={independentModel} onChange={(event) => setIndependentModel(event.target.value)} disabled={busy}>
+            {overview?.supportedReviewModels.map((model) => <option value={model} key={model}>{model}</option>)}
           </select>
-          <p>The OpenRouter key stays in the trusted Worker. It is never shown here or sent to a review Sandbox.</p>
-          <div className="settings-actions"><button type="button" onClick={() => void saveReviewModel()} disabled={controlsLocked || independentModel.length === 0 || independentModel === settings?.independentReviewModel}>{busy ? "Working…" : "Save review model"}</button></div>
+          <p>The provider key stays in the trusted Worker. Active runs keep their saved model.</p>
+          <div className="settings-actions"><button type="button" onClick={() => void work(() => routeMutation<RepositoryRoute>(`/api/settings/routes/${selected.projectId}/review`, "PUT", { model: independentModel, expectedRevision: selected.independentReviewRevision }), "Review model saved for future runs.")} disabled={busy || independentModel.length === 0 || independentModel === selected.independentReviewModel}>Save review model</button></div>
         </div>
       </div>
       <div className="connection-card">
-        <h2>Details</h2>
+        <h2>Route status</h2>
         <dl>
-          <div><dt>Active runs</dt><dd>{settings?.activeRuns ?? "—"}</dd></div>
-          <div><dt>Controls saved</dt><dd>{settings ? formatTime(settings.workflowUpdatedAt) : "—"}</dd></div>
-          <div><dt>Controls saved by</dt><dd>{settings?.workflowUpdatedBy ?? "—"}</dd></div>
-          <div><dt>Repository saved</dt><dd>{settings ? formatTime(settings.updatedAt) : "—"}</dd></div>
-          <div><dt>Repository saved by</dt><dd>{settings?.updatedBy ?? "—"}</dd></div>
-          <div><dt>Review model</dt><dd>{settings?.independentReviewModel ?? "Not set"}</dd></div>
-          <div><dt>Review model saved</dt><dd>{settings ? formatTime(settings.independentReviewUpdatedAt) : "—"}</dd></div>
+          <div><dt>Active runs</dt><dd>{selected.activeRuns}</dd></div>
+          <div><dt>Route revision</dt><dd>{selected.routeRevision}</dd></div>
+          <div><dt>Saved</dt><dd>{formatTime(selected.updatedAt)}</dd></div>
+          <div><dt>Saved by</dt><dd>{selected.updatedBy}</dd></div>
+          <div><dt>Access checked</dt><dd>{formatTime(selected.accessCheckedAt)}</dd></div>
+          <div><dt>Workflow</dt><dd>{selected.definitionId} v{selected.definitionVersion}</dd></div>
         </dl>
-        <a href="https://github.com/settings/installations" target="_blank" rel="noreferrer">Manage GitHub App access <ArrowSquareOut /></a>
-        <p>GitHub App access is granted in GitHub. Saving this page does not add new GitHub permission.</p>
+        <a href={selected.githubSettingsUrl ?? "https://github.com/settings/installations"} target="_blank" rel="noreferrer">Manage this GitHub App install <ArrowSquareOut /></a>
+        <p>GitHub grants repository access. DEOS only checks it and records a safe result.</p>
       </div>
-    </div>
+    </div>}
+    {message && (adding || selected === null) && <div className="settings-message" role="status">{message}</div>}
   </section>;
 }
 

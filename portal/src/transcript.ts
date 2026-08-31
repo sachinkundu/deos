@@ -60,21 +60,18 @@ export const parseTranscriptJsonl = (text: string): TranscriptRecord[] => {
 export class TranscriptReadStore {
   private readonly db: D1Database;
   private readonly bucket: R2Bucket;
-  private readonly projectId: string;
 
   constructor(
     db: D1Database,
     bucket: R2Bucket,
-    projectId: string,
   ) {
     this.db = db;
     this.bucket = bucket;
-    this.projectId = projectId;
   }
 
   async read(attemptId: string): Promise<VerifiedTranscript> {
     const row = await this.db.prepare(PORTAL_SELECTS.transcript)
-      .bind(attemptId, this.projectId)
+      .bind(attemptId)
       .first<TranscriptRow>();
     if (row === null) throw new TranscriptNotFoundError("transcript not found");
     if (

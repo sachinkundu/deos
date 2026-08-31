@@ -17,6 +17,7 @@
     "LINEAR_API_URL": "https://api.linear.app/graphql",
     "LINEAR_HUMAN_APPROVAL_STATE_ID": "71738607-03fd-49f2-b4be-b2aac29ccd13",
     "LINEAR_PROJECT_ID": "99426d9b-cda7-4db4-9136-692a95a0b090",
+    "LINEAR_PROJECT_NAME": "deos-sample-project",
     "LINEAR_START_STATE_NAME": "Todo",
     "LINEAR_START_STATE_ID": "ee23b3ec-76fc-4186-8d9e-ddadd1254ee1",
     "LINEAR_WORK_STATE_ID": "700c1b00-b9dd-4cfb-9d59-bd60c1d8d471",
@@ -30,8 +31,10 @@
     "TRIAL_REPOSITORY": "sachinkundu/deos-sample-project",
     "TRIAL_DISPATCH_ENABLED": "false",
     "CODEX_AUTH_PROFILE_ID": "controlled-trial",
+    "SANDBOX_FAILURE_RETENTION_MINUTES": "0",
     "CAPABILITY_BASE_URL": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities",
-    "PORTAL_BASE_URL": "https://deos.voxdez.com"
+    "PORTAL_BASE_URL": "https://deos.voxdez.com",
+    "ROUTE_ADMIN_ALLOWED_EMAIL": "sachinkundu@gmail.com"
   },
   "secrets": {
     "required": [

@@ -6,6 +6,7 @@ export interface CapabilityContext {
   issueId: string;
   projectId: string;
   repository: string;
+  githubInstallationId?: string;
   attemptState: string;
 }
 
@@ -47,11 +48,13 @@ export class D1CapabilityStore implements CapabilityStore {
     return this.database.prepare(
       `SELECT a.attempt_id AS attemptId, a.run_id AS runId, a.state AS attemptState,
               r.issue_id AS issueId, r.project_id AS projectId,
-              p.trial_repository AS repository
+              r.route_repository AS repository,
+              r.route_github_installation_id AS githubInstallationId
        FROM agent_attempts a
        JOIN orchestration_runs r ON r.run_id = a.run_id
-       JOIN project_workflow_policies p ON p.project_id = r.project_id
-       WHERE a.attempt_id = ?`,
+       WHERE a.attempt_id = ?
+         AND r.route_repository IS NOT NULL
+         AND r.route_github_installation_id IS NOT NULL`,
     ).bind(attemptId).first<CapabilityContext>();
   }
 

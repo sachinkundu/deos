@@ -15,6 +15,12 @@ import {
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import { type LifecycleWriter, writeLifecycleObservation } from "./lifecycle-telemetry.ts";
 import { DEFAULT_WORKFLOW_DEFINITION_ID } from "./workflow-default.ts";
+import { D1RepositoryRouteStore, RepositoryRouteError } from "./repository-routes.ts";
+import {
+  GitHubAppCatalog,
+  type GitHubRepositoryAccessCheck,
+} from "./github-capability.ts";
+import { permissionsDigest, REQUIRED_GITHUB_PERMISSIONS } from "./repository-routes.ts";
 
 export type LabelSelectionEvidence =
   | { status: "available"; labels: Array<{ id: string; name: string }> }
@@ -40,6 +46,8 @@ export interface QueueBody {
   payload_digest: string;
   label_selection_evidence: LabelSelectionEvidence;
   label_selection_evidence_digest: string;
+  route_revision: number;
+  route_digest: string;
 }
 
 export interface WorkflowInstanceHandle {
@@ -73,16 +81,22 @@ interface ConsumerDependencies {
   definitions: Readonly<Record<string, LoadedWorkflowDefinition>>;
   now: () => Date;
   lifecycle: LifecycleWriter;
+  githubAccess: (
+    installationId: string,
+    repository: string,
+  ) => Promise<GitHubRepositoryAccessCheck>;
 }
 
 type WorkflowRegistrationEnv = Pick<
   QueueConsumerEnv,
   | "DB"
   | "LINEAR_PROJECT_ID"
+  | "LINEAR_PROJECT_NAME"
   | "LINEAR_START_STATE_NAME"
   | "LINEAR_HUMAN_APPROVAL_STATE_ID"
   | "TRIAL_REPOSITORY"
   | "TRIAL_DISPATCH_ENABLED"
+  | "GITHUB_INSTALLATION_ID"
 >;
 
 interface RegistrationDependencies {
@@ -266,16 +280,41 @@ export const registerBundledWorkflowDefinitions = async (
     if (registered.name === definition.name && registered.version === definition.version) continue;
     await store.registerDefinition({ definition: registered, projectId: env.LINEAR_PROJECT_ID, now });
   }
+  if (dependencies.store === undefined) {
+    const routeStore = new D1RepositoryRouteStore(env.DB);
+    if (await routeStore.read(env.LINEAR_PROJECT_ID) !== null) {
+      await routeStore.backfillLegacyRoute({
+        projectId: env.LINEAR_PROJECT_ID,
+        projectName: env.LINEAR_PROJECT_NAME,
+        githubInstallationId: env.GITHUB_INSTALLATION_ID,
+        actorEmail: "deployment",
+        now,
+      });
+    }
+  }
+  const policies = store.listPolicies === undefined
+    ? [await store.findPolicy(env.LINEAR_PROJECT_ID)].filter((value) => value !== null)
+    : await store.listPolicies();
+  if (store.linkDefinitionToPolicy !== undefined) {
+    for (const policy of policies) {
+      await store.linkDefinitionToPolicy({
+        projectId: policy.project_id,
+        definition,
+        now,
+      });
+    }
+  }
   const traceability = bundled["simple-traceability"];
   if (traceability !== undefined) {
-    const policy = await store.findPolicy(env.LINEAR_PROJECT_ID);
-    await store.registerSelector({
-      projectId: env.LINEAR_PROJECT_ID,
-      repository: policy?.trial_repository ?? env.TRIAL_REPOSITORY,
-      labelName: "DEOS Traceability",
-      definition: traceability,
-      now,
-    });
+    for (const policy of policies) {
+      await store.registerSelector({
+        projectId: policy.project_id,
+        repository: policy.trial_repository,
+        labelName: "DEOS Traceability",
+        definition: traceability,
+        now,
+      });
+    }
   }
   return bundled;
 };
@@ -349,6 +388,113 @@ export const processQueueMessage = async (
       policy.dispatch_enabled === 1 &&
       event.transition === policy.start_state_name
     ) {
+      if (
+        !Number.isSafeInteger(event.route_revision) || event.route_revision <= 0 ||
+        !/^[a-f0-9]{64}$/.test(event.route_digest) ||
+        policy.route_revision !== event.route_revision || policy.route_digest !== event.route_digest
+      ) {
+        await store.recordRouteDispatchResult?.({
+          resultId: `${event.source_delivery_id}:stale-route`,
+          deliveryId: event.source_delivery_id,
+          projectId: event.project_id,
+          queuedRouteRevision: Number.isSafeInteger(event.route_revision) ? event.route_revision : null,
+          queuedRouteDigest: typeof event.route_digest === "string" ? event.route_digest : null,
+          outcome: "stale_route",
+          safeErrorCategory: "route_proof_mismatch",
+          recordedAt: now,
+        });
+        await store.insertInboxEvent(toInboxEvent(event, null), now);
+        emit(observe, base, { stage: "queue.consume", outcome: "succeeded" });
+        return;
+      }
+      if (policy.github_installation_id === null || policy.github_installation_id === undefined) {
+        await store.recordRouteDispatchResult?.({
+          resultId: `${event.source_delivery_id}:access-denied`,
+          deliveryId: event.source_delivery_id,
+          projectId: event.project_id,
+          queuedRouteRevision: event.route_revision,
+          queuedRouteDigest: event.route_digest,
+          outcome: "access_denied",
+          safeErrorCategory: "route_installation_missing",
+          recordedAt: now,
+        });
+        emit(observe, base, { stage: "queue.consume", outcome: "succeeded" });
+        return;
+      }
+      const access = await (dependencies.githubAccess ?? (dependencies.store === undefined
+        ? async (installationId: string, repository: string) => new GitHubAppCatalog({
+            apiUrl: env.GITHUB_API_URL,
+            appId: env.GITHUB_APP_ID,
+            privateKey: env.GITHUB_APP_PRIVATE_KEY,
+          }).checkRepository(installationId, repository)
+        : async () => ({
+            state: "passed" as const,
+            repository: null,
+            settingsUrl: policy.github_settings_url ?? null,
+            permissions: REQUIRED_GITHUB_PERMISSIONS,
+        })))(policy.github_installation_id, policy.trial_repository).catch(() => ({
+            state: "unavailable" as const,
+            repository: null,
+            settingsUrl: policy.github_settings_url ?? null,
+            permissions: null,
+          }));
+      const requiredPermissionsDigest = await permissionsDigest(REQUIRED_GITHUB_PERMISSIONS);
+      const observedPermissionsDigest = access.permissions === null
+        ? null
+        : await permissionsDigest(access.permissions);
+      try {
+        await store.saveRouteAccessResult?.({
+          projectId: event.project_id,
+          repository: policy.trial_repository,
+          installationId: policy.github_installation_id,
+          expectedRouteRevision: event.route_revision,
+          expectedRouteDigest: event.route_digest,
+          checkId: crypto.randomUUID(),
+          requiredPermissionsDigest,
+          observedPermissionsDigest,
+          result: access.state,
+          settingsUrl: access.settingsUrl,
+          safeErrorCategory: access.state === "passed"
+            ? null
+            : access.state === "unavailable"
+              ? "github_route_access_unavailable"
+              : "github_route_access_denied",
+          actorEmail: "workflow",
+          now,
+        });
+      } catch (error) {
+        if (error instanceof RepositoryRouteError && error.code === "stale_repository_revision") {
+          await store.recordRouteDispatchResult?.({
+            resultId: `${event.source_delivery_id}:stale-route`,
+            deliveryId: event.source_delivery_id,
+            projectId: event.project_id,
+            queuedRouteRevision: event.route_revision,
+            queuedRouteDigest: event.route_digest,
+            outcome: "stale_route",
+            safeErrorCategory: "route_changed_during_access_check",
+            recordedAt: now,
+          });
+          emit(observe, base, { stage: "queue.consume", outcome: "succeeded" });
+          return;
+        }
+        throw error;
+      }
+      if (access.state !== "passed") {
+        await store.recordRouteDispatchResult?.({
+          resultId: `${event.source_delivery_id}:access-denied`,
+          deliveryId: event.source_delivery_id,
+          projectId: event.project_id,
+          queuedRouteRevision: event.route_revision,
+          queuedRouteDigest: event.route_digest,
+          outcome: "access_denied",
+          safeErrorCategory: access.state === "unavailable"
+            ? "github_route_access_unavailable"
+            : "github_route_access_denied",
+          recordedAt: now,
+        });
+        emit(observe, base, { stage: "queue.consume", outcome: "succeeded" });
+        return;
+      }
       const selectorMatches = evidence.names === null || policy === null
         ? []
         : (await Promise.all(evidence.names.map(async (labelName) => ({
@@ -392,8 +538,24 @@ export const processQueueMessage = async (
         issueId: event.issue_id,
         definition: selectedDefinition,
         selection,
+        routeRevision: event.route_revision,
+        routeDigest: event.route_digest,
         now,
       });
+      if (allocation === null) {
+        await store.recordRouteDispatchResult?.({
+          resultId: `${event.source_delivery_id}:stale-route`,
+          deliveryId: event.source_delivery_id,
+          projectId: event.project_id,
+          queuedRouteRevision: event.route_revision,
+          queuedRouteDigest: event.route_digest,
+          outcome: "stale_route",
+          safeErrorCategory: "atomic_route_guard_failed",
+          recordedAt: now,
+        });
+        emit(observe, base, { stage: "queue.consume", outcome: "succeeded" });
+        return;
+      }
       await establishDispatch(event, allocation.run, store, env.ORCHESTRATION_WORKFLOW, now);
       lifecycle({
         stage: "workflow.instance",

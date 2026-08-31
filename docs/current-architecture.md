@@ -1,8 +1,36 @@
 # Current orchestration architecture
 
-The authenticated Python ingress verifies the raw Linear body with HMAC-SHA256, treats `Linear-Timestamp` as milliseconds, deduplicates on `Linear-Delivery`, and enqueues every issue-state change for configured projects. It returns HTTP 200 for accepted, ignored, and duplicate deliveries.
+The authenticated Python ingress verifies the raw Linear body with HMAC-SHA256, treats `Linear-Timestamp` as milliseconds, and deduplicates on `Linear-Delivery`. After authentication, it finds the Linear project's repository route in D1. An enabled start event carries the route revision and digest into the delivery row and Queue message. A later event for active work carries the run's frozen proof. Unknown and disabled projects are recorded and acknowledged without queued work. Ingress returns HTTP 200 for accepted, ignored, and duplicate deliveries.
 
-The TypeScript Queue consumer loads an immutable workflow definition and project policy from D1. It allocates a monotonic issue run, derives a stable Cloudflare Workflow ID, records a pending dispatch intent, and reconciles by that ID before acknowledging the Queue. Later events enter a delivery-keyed D1 inbox and use one fixed Workflow event type.
+The TypeScript Queue consumer compares the queued proof with the current D1 route before checking GitHub. It verifies the saved GitHub App install, repository, and required rights. One guarded D1 insert allocates a monotonic issue run only while the same route remains enabled. That insert freezes the project name, repository, App install, route revision and digest, gate states, and control revisions. It then derives a stable Cloudflare Workflow ID, records a pending dispatch intent, and reconciles by that ID before acknowledging the Queue. Later events enter a delivery-keyed D1 inbox and use one fixed Workflow event type.
+
+## Repository routes and Settings
+
+Each `project_workflow_policies` row is one route from a Linear project to one GitHub repository. The Linear project id is the stable route id. D1 is the live route list, so adding another project and repository does not require a deploy. The checked deploy values seed the first route only when the list is empty and remain available for one rollback release.
+
+The Access-protected `/settings` page uses project connection cards. It shows every saved route, even when a live provider list is unavailable. A selected card exposes repository, workflow, review, access, and active-run controls. Repository and App-install changes turn off only that route. All saves use control revisions plus one shared route revision. They remain allowed during active work because the save affects only later runs.
+
+The portal has no provider secret. It passes the verified Access email through an internal service binding to the queue Worker's named `RouteAdmin` entrypoint. That entrypoint validates the operator and input again, lists Linear projects with the Linear app token, and lists all App-accessible repositories with short-lived GitHub installation tokens. Only safe ids, labels, rights, states, and GitHub settings links return to the portal. Access checks are append-only D1 audit rows; tokens, authorization headers, and raw provider replies are never stored or returned.
+
+```mermaid
+flowchart LR
+    O[Allowed operator] --> P[Settings page]
+    P --> A[Portal and Access check]
+    A -->|internal RouteAdmin binding| R[Trusted queue Worker]
+    R --> L[Linear project catalog]
+    R --> G[GitHub App installs and repos]
+    R --> D[(D1 route list)]
+    E[Signed Linear event] --> I[Python ingress]
+    I --> D
+    I --> Q[Queue with route proof]
+    Q --> R
+    R -->|atomic frozen route| W[Cloudflare Workflow]
+    W --> S[Sandbox agent]
+    S -->|attempt-scoped capability| R
+    R -->|frozen repo and install| G
+```
+
+Every repository checkout, planning work product, capability grant, review read, check, merge, retry, and repair uses the run's frozen repository and GitHub App installation. Sandbox checkout goes through a read-only Git smart-HTTP endpoint on the trusted Worker. The Sandbox presents its attempt capability; the Worker validates the frozen route, mints the App installation token, and proxies only `git-upload-pack`. The GitHub token never enters the Sandbox, and checkout cannot push. If Settings changes while GitHub access is being checked, the atomic insert rejects the old proof and records a safe stale-route result. If GitHub access disappears, DEOS disables only that route and starts no run or Sandbox.
 
 Cloudflare Workflow reloads D1 authority before every graph decision. The run's current node carries a monotonic visit sequence; each selected edge derives a stable traversal ID from its source visit. D1 advances the node and visit and inserts the matching transition row in one guarded transaction. An exact replay reuses that traversal without advancing, while a later genuine pass over the same edge has a new visit and row. Workflow-step telemetry carries both identities and reports `duplicate` only for the exact replay. An active run keeps its immutable definition version: if the deployed bundle advances, the Workflow restores the run's canonical definition from D1 and verifies its digest. Agent, system-action, human-gate, loop, and terminal nodes select only reviewed edges from `config/workflow.deos.yaml`. Agent output cannot name a Linear state or edge. Human approval requires a signed event from `actor.type == user` leaving the active `Human Review` gate; the provider's prior-state ID is authoritative when Linear omits the prior state name.
 
@@ -67,11 +95,17 @@ The lifecycle contract first deployed as definition version 4 separates Cloudfla
 
 Every agent node creates a UUIDv7 attempt and a derived Sandbox ID before provider calls. The pinned supervisor runs Codex with argv, fixed staging paths, JSONL output, a JSON result schema, a five-minute heartbeat, and a 24-hour absolute limit. The disposable Sandbox is the `danger-full-access` boundary; it contains no provider credential.
 
-ChatGPT auth is an encrypted, conditionally replaced R2 object protected by an exclusive D1 lease. Required outputs pass schema, size, and credential checks before checksum-verified create-only R2 writes. The Sandbox is destroyed before the manifest is re-read for final integrity verification.
+ChatGPT auth is an encrypted, conditionally replaced R2 object. Each attempt
+has its own D1 checkout row, so several Codex agents may read the same protected
+snapshot. Refreshed auth uses the source ETag as a compare-and-swap guard. A
+losing writer preserves only a newer valid encrypted winner. Required outputs
+pass schema, size, and credential checks before checksum-verified create-only
+R2 writes. The Sandbox is destroyed before the manifest is re-read for final
+integrity verification.
 
 Durable GitHub and Linear work products go through attempt-scoped capability endpoints. Each request is schema-checked, restricted to the trial repository or issue, and recorded under a stable operation identity. Ordinary successful agents require a non-empty mechanically captured receipt set that matches the structured result and D1's successful or reconciled operations for the same run and attempt. A typed OpenSpec job may instead complete with zero provider operations; if it attempts any external effect, the same exact receipt rule applies. GitHub uses a short-lived App installation token. Linear capabilities can write notes and artifact references but cannot mutate issue state. Workflow-owned transitions use the Linear app actor and are confirmed only by ordered signed-delivery evidence. Human-gate entry operations are scoped to the durable gate visit, so a same-visit retry reuses the provider operation while a later visit to the same gate creates a new one. Historical frozen definitions may still contain an external `system_action`; it requires a successful or reconciled receipt for its exact named action, and repository artifacts cannot prove a deployment or other provider effect.
 
-Cleanup has two independent views. A Worker cron reconciles D1-known attempts without waking a missing process. An hourly GitHub Actions job uses a Cloudflare inventory credential, account ID, and Container application ID to list real provider instances. It sends only normalized Sandbox IDs, authenticated by a separate shared audit secret, to `/cleanup-audit`. The trusted Worker owns the D1 comparison and Linear integration; the repository job has no Linear credential and cannot write cleanup state directly. D1 attempts in `pending`, `starting`, `running`, or `collecting` are excluded from orphan reports. Associated and standalone orphans create or reuse stable `cleanup_work_items` and Linear cleanup issues through the Worker. If the external job is unavailable, normal ingress, Workflow execution, and the D1-known cron continue, but detection of provider-only resources is degraded until the audit succeeds.
+Cleanup has two independent views. A Worker cron reconciles D1-known attempts without waking a missing process. An hourly GitHub Actions job uses a Cloudflare inventory credential, account ID, and Container application ID to list real provider instances. It sends only normalized Sandbox IDs, authenticated by a separate shared audit secret, to `/cleanup-audit`. The trusted Worker owns the D1 comparison and Linear integration; the repository job has no Linear credential and cannot write cleanup state directly. D1 attempts in `pending`, `starting`, `running`, or `collecting` are excluded from orphan reports. A deployment may temporarily retain failed canary Sandboxes. DEOS stops their process, removes Codex auth, records an expiring D1 cleanup hold, and excludes that exact Sandbox from scheduled and external orphan cleanup until the deadline. Success cleanup stays immediate. Because Cloudflare may still replace an idle container, R2 remains the durable failure evidence. Associated and standalone orphans create or reuse stable `cleanup_work_items` and Linear cleanup issues through the Worker. If the external job is unavailable, normal ingress, Workflow execution, and the D1-known cron continue, but detection of provider-only resources is degraded until the audit succeeds.
 
 The same Worker cron checks D1 non-final runs against their recorded Cloudflare Workflow instances. A Cloudflare `complete` result with no final D1 outcome is compare-and-set to DEOS `failed` with `premature_workflow_completion`. One stable marked comment is created or reused on the correlated Linear ticket. A lost D1 comparison records a conflict and suppresses the stale comment; reconciliation never moves the ticket to Done or allocates a replacement run.
 

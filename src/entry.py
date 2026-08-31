@@ -7,7 +7,13 @@ from typing import Any
 
 from workers import Response, WorkerEntrypoint
 
-from deos.ingress import InvalidWebhook, LinearIngressConfig, LinearWebhookACL
+from deos.ingress import (
+    IngressRouteProof,
+    InvalidWebhook,
+    LinearIngressConfig,
+    LinearWebhookACL,
+    route_event_proof,
+)
 from deos.ports import ApplicationEvent, Delivery, DeliveryClassification
 from deos.telemetry import Observation, build_observation, workflow_identity
 from worker_telemetry import emit_observation
@@ -33,9 +39,7 @@ class Default(WorkerEntrypoint):
         }
         config = LinearIngressConfig(
             signing_secret=self.env.LINEAR_WEBHOOK_SECRET.encode(),
-            relevant_project_ids=frozenset(
-                project_id for project_id in self.env.LINEAR_PROJECT_IDS.split(",") if project_id
-            ),
+            relevant_project_ids=frozenset(),
             relevant_transitions=frozenset(
                 transition
                 for transition in (
@@ -50,9 +54,12 @@ class Default(WorkerEntrypoint):
         now = datetime.now(UTC)
         try:
             acl.verify(body, headers, now)
-            event, relevant = acl.translate(body, headers["linear-delivery"] or None)
+            event, _ = acl.translate(body, headers["linear-delivery"] or None)
         except InvalidWebhook:
             return Response("invalid webhook", status=400)
+
+        route_proof = await _find_route_proof(self.env.DB, event)
+        relevant = route_proof is not None
 
         classification = (
             DeliveryClassification.RELEVANT if relevant else DeliveryClassification.IRRELEVANT
@@ -65,8 +72,9 @@ class Default(WorkerEntrypoint):
                     """
                 INSERT OR IGNORE INTO deliveries
                     (delivery_id, payload_hash, received_at, classification, correlation_id,
-                     label_selection_evidence_json, label_selection_evidence_digest)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                     label_selection_evidence_json, label_selection_evidence_digest,
+                     route_project_id, route_revision, route_digest)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
                 )
                 .bind(
@@ -77,6 +85,9 @@ class Default(WorkerEntrypoint):
                     run_id,
                     event.label_selection_evidence.canonical_json(),
                     event.label_selection_evidence.digest(),
+                    route_proof.project_id if route_proof is not None else None,
+                    route_proof.route_revision if route_proof is not None else None,
+                    route_proof.route_digest if route_proof is not None else None,
                 )
                 .run()
             )
@@ -147,6 +158,8 @@ class Default(WorkerEntrypoint):
                         "payload_digest": delivery.payload_hash,
                         "label_selection_evidence": event.label_selection_evidence.as_dict(),
                         "label_selection_evidence_digest": event.label_selection_evidence.digest(),
+                        "route_revision": route_proof.route_revision,
+                        "route_digest": route_proof.route_digest,
                     }
                 ),
                 contentType="json",
@@ -197,3 +210,73 @@ def _row_value(row: Any, key: str) -> str | None:
     else:
         value = getattr(row, key, None)
     return value if isinstance(value, str) and value else None
+
+
+def _row_any(row: Any, key: str) -> Any:
+    if row is None:
+        return None
+    if isinstance(row, dict):
+        return row.get(key)
+    return getattr(row, key, None)
+
+
+def _proof_from_row(row: Any) -> IngressRouteProof | None:
+    project_id = _row_any(row, "project_id")
+    route_revision = _row_any(row, "route_revision")
+    route_digest = _row_any(row, "route_digest")
+    start_state_name = _row_any(row, "start_state_name")
+    dispatch_enabled = _row_any(row, "dispatch_enabled")
+    if (
+        not isinstance(project_id, str)
+        or not project_id
+        or not isinstance(route_revision, int)
+        or isinstance(route_revision, bool)
+        or route_revision <= 0
+        or not isinstance(route_digest, str)
+        or len(route_digest) != 64
+        or any(character not in "0123456789abcdef" for character in route_digest)
+        or not isinstance(start_state_name, str)
+        or not start_state_name
+        or dispatch_enabled not in (0, 1, False, True)
+    ):
+        return None
+    return IngressRouteProof(
+        project_id=project_id,
+        route_revision=route_revision,
+        route_digest=route_digest,
+        start_state_name=start_state_name,
+        dispatch_enabled=bool(dispatch_enabled),
+    )
+
+
+async def _find_route_proof(database: Any, event: ApplicationEvent) -> IngressRouteProof | None:
+    active_row = (
+        await database.prepare(
+            """
+            SELECT project_id, route_revision, route_digest,
+                   COALESCE(route_start_state_name, '') AS start_state_name,
+                   0 AS dispatch_enabled
+            FROM orchestration_runs
+            WHERE project_id = ? AND issue_id = ?
+              AND status IN ('pending_dispatch', 'active', 'awaiting_human',
+                             'awaiting_capability', 'manual_reconciliation_required')
+            ORDER BY run_sequence DESC LIMIT 1
+            """
+        )
+        .bind(event.project_id, event.issue_id)
+        .first()
+    )
+    active = _proof_from_row(active_row)
+    if active is not None:
+        return route_event_proof(event, None, active)
+    route_row = (
+        await database.prepare(
+            """
+            SELECT project_id, route_revision, route_digest, start_state_name, dispatch_enabled
+            FROM project_workflow_policies WHERE project_id = ? LIMIT 1
+            """
+        )
+        .bind(event.project_id)
+        .first()
+    )
+    return route_event_proof(event, _proof_from_row(route_row), active)

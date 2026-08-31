@@ -9,6 +9,9 @@ interface CleanupCandidate {
   process_id: string | null;
   state: string | null;
   cleanup_state: string | null;
+  cleanup_hold_until: string | null;
+  cleanup_hold_reason: string | null;
+  updated_at: string | null;
 }
 
 interface CleanupWorkItem {
@@ -22,10 +25,16 @@ interface CleanupWorkItem {
 
 export interface CleanupAuditStore {
   knownLive(): Promise<CleanupCandidate[]>;
-  terminalPendingCleanup(): Promise<CleanupCandidate[]>;
+  terminalPendingCleanup(now: string): Promise<CleanupCandidate[]>;
   candidate(sandboxId: string): Promise<CleanupCandidate | null>;
   upsertWorkItem(candidate: CleanupCandidate, operationId: string, now: string): Promise<CleanupWorkItem>;
   markReported(sandboxId: string, linearResourceId: string, now: string): Promise<void>;
+  claimAttemptCleanup(
+    attemptId: string,
+    sandboxId: string,
+    expectedUpdatedAt: string,
+    now: string,
+  ): Promise<boolean>;
   markAttemptCleanup(attemptId: string, state: "destroyed" | "failed", category: string | null, now: string): Promise<void>;
 }
 
@@ -38,24 +47,28 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
 
   knownLive(): Promise<CleanupCandidate[]> {
     return this.database.prepare(
-      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state
+      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state,
+              cleanup_hold_until, cleanup_hold_reason, updated_at
        FROM agent_attempts
        WHERE state IN ('pending', 'starting', 'running', 'collecting')`,
     ).all<CleanupCandidate>().then((result) => result.results);
   }
 
-  terminalPendingCleanup(): Promise<CleanupCandidate[]> {
+  terminalPendingCleanup(now: string): Promise<CleanupCandidate[]> {
     return this.database.prepare(
-      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state
+      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state,
+              cleanup_hold_until, cleanup_hold_reason, updated_at
        FROM agent_attempts
        WHERE state IN ('completed', 'blocked', 'failed', 'interrupted', 'absolute_timeout', 'canceled')
-         AND cleanup_state <> 'destroyed'`,
-    ).all<CleanupCandidate>().then((result) => result.results);
+         AND cleanup_state <> 'destroyed'
+         AND (cleanup_hold_until IS NULL OR cleanup_hold_until <= ?)`,
+    ).bind(now).all<CleanupCandidate>().then((result) => result.results);
   }
 
   candidate(sandboxId: string): Promise<CleanupCandidate | null> {
     return this.database.prepare(
-      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state
+      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state,
+              cleanup_hold_until, cleanup_hold_reason, updated_at
        FROM agent_attempts WHERE sandbox_id = ?`,
     ).bind(sandboxId).first<CleanupCandidate>();
   }
@@ -92,6 +105,22 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
     ).bind(linearResourceId, now, now, sandboxId).run();
   }
 
+  async claimAttemptCleanup(
+    attemptId: string,
+    sandboxId: string,
+    expectedUpdatedAt: string,
+    now: string,
+  ): Promise<boolean> {
+    const result = await this.database.prepare(
+      `UPDATE agent_attempts
+       SET state = 'interrupted', result_class = 'operator_cleanup',
+           result_detail = NULL, ended_at = COALESCE(ended_at, ?), updated_at = ?
+       WHERE attempt_id = ? AND sandbox_id = ? AND state = 'collecting'
+         AND cleanup_state <> 'destroyed' AND updated_at = ?`,
+    ).bind(now, now, attemptId, sandboxId, expectedUpdatedAt).run();
+    return (result.meta.changes ?? 0) === 1;
+  }
+
   async markAttemptCleanup(
     attemptId: string,
     state: "destroyed" | "failed",
@@ -99,7 +128,9 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
     now: string,
   ): Promise<void> {
     await this.database.prepare(
-      `UPDATE agent_attempts SET cleanup_state = ?, cleanup_error_category = ?, updated_at = ?
+      `UPDATE agent_attempts
+       SET cleanup_state = ?, cleanup_error_category = ?, cleanup_hold_until = NULL,
+           cleanup_hold_reason = NULL, updated_at = ?
        WHERE attempt_id = ?`,
     ).bind(state, category, now, attemptId).run();
   }
@@ -141,12 +172,13 @@ export class CleanupAuditor {
   }
 
   async scheduled(): Promise<void> {
+    const now = this.now().toISOString();
     for (const candidate of await this.store.knownLive()) {
       const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: true });
       const process = candidate.process_id === null ? null : await sandbox.getProcess(candidate.process_id);
       if (process === null && candidate.state !== "pending") await this.report(candidate);
     }
-    for (const candidate of await this.store.terminalPendingCleanup()) {
+    for (const candidate of await this.store.terminalPendingCleanup(now)) {
       const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: false });
       try {
         await sandbox.setKeepAlive(false);
@@ -202,6 +234,8 @@ export class CleanupAuditor {
       if (known !== null && ["pending", "starting", "running", "collecting"].includes(known.state ?? "")) {
         continue;
       }
+      if (known?.cleanup_hold_until !== null && known?.cleanup_hold_until !== undefined &&
+        known.cleanup_hold_until > this.now().toISOString()) continue;
       if (known?.cleanup_state === "destroyed") continue;
       await this.report(known ?? {
         sandbox_id: sandboxId,
@@ -210,10 +244,102 @@ export class CleanupAuditor {
         process_id: null,
         state: null,
         cleanup_state: null,
+        cleanup_hold_until: null,
+        cleanup_hold_reason: null,
+        updated_at: null,
       });
       reported += 1;
     }
     return Response.json({ version: 1, reported }, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  async handleDestroy(request: Request): Promise<Response> {
+    if (request.method !== "POST") return Response.json({ error: "method_not_allowed" }, { status: 405 });
+    const authorization = request.headers.get("Authorization") ?? "";
+    if (authorization !== `Bearer ${this.config.auditSecret}`) {
+      return Response.json({ error: "invalid_audit_capability" }, { status: 401 });
+    }
+    const text = await request.text();
+    if (new TextEncoder().encode(text).byteLength > 4_096) {
+      return Response.json({ error: "invalid_cleanup_request" }, { status: 400 });
+    }
+    let body: unknown;
+    try {
+      body = JSON.parse(text) as unknown;
+    } catch {
+      return Response.json({ error: "invalid_json" }, { status: 400 });
+    }
+    if (
+      typeof body !== "object" || body === null || Array.isArray(body) ||
+      Object.keys(body).some((key) => !["version", "attemptId", "sandboxId", "expectedUpdatedAt"].includes(key))
+    ) return Response.json({ error: "invalid_cleanup_request" }, { status: 400 });
+    const input = body as Record<string, unknown>;
+    if (
+      input.version !== 1 ||
+      typeof input.attemptId !== "string" || !/^[0-9a-f-]{36}$/i.test(input.attemptId) ||
+      typeof input.sandboxId !== "string" || !/^sbx-v1-[a-z2-7]{20,80}$/.test(input.sandboxId) ||
+      typeof input.expectedUpdatedAt !== "string" || input.expectedUpdatedAt.length > 64 ||
+      Number.isNaN(Date.parse(input.expectedUpdatedAt))
+    ) return Response.json({ error: "invalid_cleanup_request" }, { status: 400 });
+
+    const candidate = await this.store.candidate(input.sandboxId);
+    if (candidate === null || candidate.attempt_id !== input.attemptId) {
+      return Response.json({ error: "cleanup_target_not_found" }, { status: 404 });
+    }
+    const result = {
+      version: 1,
+      attemptId: candidate.attempt_id,
+      sandboxId: candidate.sandbox_id,
+      cleanupState: "destroyed",
+    };
+    if (candidate.cleanup_state === "destroyed") {
+      return Response.json(result, { headers: { "Cache-Control": "no-store" } });
+    }
+    if (
+      candidate.updated_at !== input.expectedUpdatedAt ||
+      candidate.state !== "collecting" ||
+      (candidate.cleanup_hold_until !== null && candidate.cleanup_hold_until > this.now().toISOString())
+    ) return Response.json({ error: "cleanup_target_changed" }, { status: 409 });
+
+    const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: false });
+    const process = candidate.process_id === null ? null : await sandbox.getProcess(candidate.process_id);
+    if (process !== null && (await process.status()).state === "running") {
+      return Response.json({ error: "cleanup_process_running" }, { status: 409 });
+    }
+    const claimedAt = this.now().toISOString();
+    if (!await this.store.claimAttemptCleanup(
+      candidate.attempt_id,
+      candidate.sandbox_id,
+      input.expectedUpdatedAt,
+      claimedAt,
+    )) return Response.json({ error: "cleanup_target_changed" }, { status: 409 });
+    try {
+      await sandbox.setKeepAlive(false);
+      await sandbox.destroy();
+      await this.store.markAttemptCleanup(
+        candidate.attempt_id,
+        "destroyed",
+        null,
+        this.now().toISOString(),
+      );
+    } catch {
+      await this.store.markAttemptCleanup(
+        candidate.attempt_id,
+        "failed",
+        "operator_destroy_failed",
+        this.now().toISOString(),
+      );
+      return Response.json({ error: "cleanup_failed" }, { status: 503 });
+    }
+    this.lifecycle?.({
+      stage: "cleanup.audit",
+      outcome: "succeeded",
+      correlationId: candidate.run_id?.split(":run:")[0] ?? `standalone:${candidate.sandbox_id}`,
+      runId: candidate.run_id ?? `standalone:${candidate.sandbox_id}`,
+      attemptId: candidate.attempt_id,
+      sandboxId: candidate.sandbox_id,
+    });
+    return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   }
 
   private async report(candidate: CleanupCandidate): Promise<void> {

@@ -45,6 +45,8 @@ export interface AgentAttemptRecord {
   manifest_id: string | null;
   cleanup_state: "pending" | "destroyed" | "failed";
   cleanup_error_category: string | null;
+  cleanup_hold_until?: string | null;
+  cleanup_hold_reason?: string | null;
   prompt_r2_key?: string | null;
   prompt_sha256?: string | null;
   created_at: string;
@@ -78,6 +80,7 @@ export interface AgentAttemptStore {
     now: string;
   }): Promise<void>;
   markCleanup(attemptId: string, state: "destroyed" | "failed", category: string | null, now: string): Promise<void>;
+  markCleanupHold(attemptId: string, until: string, reason: "debug_failure", now: string): Promise<void>;
 }
 
 const changes = (result: D1Result<unknown>): number => result.meta.changes ?? 0;
@@ -221,6 +224,21 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
        WHERE attempt_id = ?`,
     ).bind(state, category, now, attemptId).run();
   }
+
+  async markCleanupHold(
+    attemptId: string,
+    until: string,
+    reason: "debug_failure",
+    now: string,
+  ): Promise<void> {
+    const result = await this.database.prepare(
+      `UPDATE agent_attempts
+       SET cleanup_state = 'pending', cleanup_error_category = NULL,
+           cleanup_hold_until = ?, cleanup_hold_reason = ?, updated_at = ?
+       WHERE attempt_id = ? AND cleanup_state = 'pending'`,
+    ).bind(until, reason, now, attemptId).run();
+    if (changes(result) !== 1) throw new Error("Sandbox cleanup hold compare-and-set failed");
+  }
 }
 
 export interface SandboxProcessView {
@@ -258,6 +276,31 @@ export interface SandboxView {
   destroy(): Promise<void>;
 }
 
+export const classifyRepositoryCheckoutFailure = (stderr: string): string => {
+  const detail = stderr.toLowerCase();
+  if (detail.includes("could not resolve host")) return "repository_checkout_dns_failed";
+  if (
+    detail.includes("failed to connect") || detail.includes("connection timed out") ||
+    detail.includes("connection reset") || detail.includes("network is unreachable")
+  ) return "repository_checkout_network_failed";
+  if (detail.includes("repository not found")) return "repository_checkout_missing";
+  if (
+    detail.includes("authentication failed") || detail.includes("could not read username") ||
+    detail.includes("terminal prompts disabled")
+  ) return "repository_checkout_auth_required";
+  if (detail.includes("returned error: 429") || detail.includes("rate limit")) {
+    return "repository_checkout_rate_limited";
+  }
+  if (detail.includes("returned error: 403")) return "repository_checkout_denied";
+  if (detail.includes("rpc failed") || detail.includes("http/2 stream")) {
+    return "repository_checkout_transport_failed";
+  }
+  if (detail.includes("remote branch") && detail.includes("not found")) {
+    return "repository_checkout_branch_missing";
+  }
+  return "repository_checkout_failed";
+};
+
 export interface SandboxFactory {
   get(sandboxId: string, options: { keepAlive: boolean }): SandboxView;
 }
@@ -271,6 +314,7 @@ export interface SandboxControllerConfig {
   authProfileId: string;
   absoluteTimeoutMs: number;
   heartbeatTimeoutMs: number;
+  failureRetentionMs: number;
 }
 
 export type AgentExecutionObservation =
@@ -622,11 +666,25 @@ export class SandboxAgentController {
       }
       const clone = await sandbox.exec([
         "git", "clone", "--depth", "1",
-        `https://github.com/${durableJob.repository}.git`,
+        `${grant.url}/git`,
         "/deos/workspace/repository",
-      ], { cwd: "/deos/workspace", timeout: 10 * 60_000 });
+      ], {
+        cwd: "/deos/workspace",
+        timeout: 10 * 60_000,
+        env: {
+          GIT_CONFIG_COUNT: "2",
+          GIT_CONFIG_KEY_0: "http.extraHeader",
+          GIT_CONFIG_VALUE_0: `Authorization: Bearer ${grant.token}`,
+          GIT_CONFIG_KEY_1: "http.extraHeader",
+          GIT_CONFIG_VALUE_1: `Deos-Attempt: ${attempt.attempt_id}`,
+          GIT_TERMINAL_PROMPT: "0",
+        },
+      });
       const cloneExit = await clone.waitForExit({ timeout: 10 * 60_000 });
-      if (cloneExit.code !== 0) throw new Error("repository checkout failed");
+      if (cloneExit.code !== 0) {
+        const output = await clone.output({ encoding: "utf8", timeout: 10_000, maxBytes: 8_192 });
+        throw new Error(classifyRepositoryCheckoutFailure(output.stderr));
+      }
       const branch = await sandbox.exec([
         "git", "switch", "-c", `deos/${attempt.attempt_id}`,
       ], { cwd: "/deos/workspace/repository", timeout: 60_000 });
@@ -813,7 +871,11 @@ export class SandboxAgentController {
               manifestId: collection.manifestId,
               now: this.dependencies.now().toISOString(),
             });
-            await this.cleanup(attempt, sandbox);
+            if (verificationMismatch || repeatedPatch) {
+              await this.cleanupFailure(attempt, sandbox);
+            } else {
+              await this.cleanup(attempt, sandbox);
+            }
             await collector.verifyAfterCleanup(collection);
             return {
               state: "completed",
@@ -890,7 +952,7 @@ export class SandboxAgentController {
           "post_collection_validation_failed",
           collection.manifestId,
         );
-        await this.cleanup(attempt, sandbox);
+        await this.cleanupFailure(attempt, sandbox);
         await collector.verifyAfterCleanup(collection);
         return this.failedObservation(attempt, "failed", collection.manifestId);
       }
@@ -1105,7 +1167,7 @@ export class SandboxAgentController {
       collection.safeErrorCategory,
       collection.manifestId,
     );
-    await this.cleanup(attempt, sandbox);
+    await this.cleanupFailure(attempt, sandbox);
     await collector.verifyAfterCleanup(collection);
     return collection.manifestId;
   }
@@ -1120,6 +1182,21 @@ export class SandboxAgentController {
     } catch {}
     await process.kill(9);
     await process.waitForExit({ timeout: 10_000 });
+  }
+
+  private async cleanupFailure(attempt: AgentAttemptRecord, sandbox: SandboxView): Promise<void> {
+    if (this.config.failureRetentionMs <= 0) {
+      await this.cleanup(attempt, sandbox);
+      return;
+    }
+    const now = this.dependencies.now();
+    await sandbox.setKeepAlive(true);
+    await this.attempts.markCleanupHold(
+      attempt.attempt_id,
+      new Date(now.getTime() + this.config.failureRetentionMs).toISOString(),
+      "debug_failure",
+      now.toISOString(),
+    );
   }
 
   private async cleanup(attempt: AgentAttemptRecord, sandbox: SandboxView): Promise<void> {

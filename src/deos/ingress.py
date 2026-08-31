@@ -41,6 +41,33 @@ class LinearIngressConfig:
     max_timestamp_age: timedelta = timedelta(minutes=5)
 
 
+@dataclass(frozen=True, slots=True)
+class IngressRouteProof:
+    project_id: str
+    route_revision: int
+    route_digest: str
+    start_state_name: str
+    dispatch_enabled: bool
+
+
+def route_event_proof(
+    event: ApplicationEvent,
+    route: IngressRouteProof | None,
+    active_run: IngressRouteProof | None = None,
+) -> IngressRouteProof | None:
+    """Return only the D1 route proof that may cross the Queue boundary."""
+    if active_run is not None:
+        return active_run if active_run.project_id == event.project_id else None
+    if (
+        route is None
+        or route.project_id != event.project_id
+        or not route.dispatch_enabled
+        or event.transition != route.start_state_name
+    ):
+        return None
+    return route
+
+
 class LinearWebhookACL:
     """Translate a verified Linear payload into the application event model."""
 

@@ -15,7 +15,6 @@
     "ACCESS_TEAM_DOMAIN": "deos-voxdez.cloudflareaccess.com",
     "ACCESS_AUD": "c12828abda88ac73e394039f6e0b87a9bc5f2d78922463c37a72ccca55bedec7",
     "ALLOWED_EMAIL": "sachinkundu@gmail.com",
-    "PROJECT_ID": "99426d9b-cda7-4db4-9136-692a95a0b090",
     "OPENROUTER_SUPPORTED_MODELS": "deepseek/deepseek-v4-pro"
   },
   "d1_databases": [{
@@ -26,6 +25,11 @@
   "r2_buckets": [{
     "binding": "ARTIFACTS",
     "bucket_name": "deos-sample-project-artifacts"
+  }],
+  "services": [{
+    "binding": "ROUTE_ADMIN",
+    "service": "deos-queue-consumer-ts",
+    "entrypoint": "RouteAdmin"
   }],
   "assets": {
     "directory": "./dist",

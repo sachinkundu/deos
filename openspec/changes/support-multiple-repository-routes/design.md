@@ -122,6 +122,12 @@ only the saved App install. It checks the repo and all needed rights. If the
 check fails, DEOS records a safe result and blocks new work on that route. It
 does not start a run or Sandbox.
 
+Sandbox checkout uses a read-only Git smart-HTTP endpoint on the trusted
+Worker. The Sandbox authenticates with its signed attempt capability. The
+Worker checks the attempt's frozen repository and App install, mints the
+short-lived GitHub App token, and proxies only `git-upload-pack`. The App token
+never enters the Sandbox, and the proxy cannot push.
+
 This live check is needed even after a Settings check. GitHub access may change
 at any time. Reading current route data at each node was also rejected because
 it would let an active run drift.
@@ -213,6 +219,32 @@ The other two remain as design history.
 Each option shows GitHub App access, active-run state, and the rule that saved
 changes affect future runs while active work keeps its frozen setup.
 
+### 7. Let concurrent agents share one protected credential seed
+
+Each Sandbox attempt gets its own D1 credential checkout row. More than one
+attempt may read the same encrypted R2 auth snapshot, so agents on separate
+routes do not block each other at startup.
+
+An attempt that refreshes auth may replace the R2 object only when its source
+ETag is still current. If another attempt already stored a valid encrypted
+refresh, the losing writer keeps that winner and releases its own checkout. A
+failed conditional write with no newer valid object remains an error. This
+separates concurrent reads from the one guarded shared write without exposing
+the credential or letting a later finisher overwrite a newer refresh.
+
+### 8. Retain failed canary Sandboxes for a bounded debug window
+
+Failure retention is an explicit deployment setting and is off by default.
+When enabled, DEOS stops the agent process, removes local Codex auth, preserves
+the failure artifacts, and records the exact Sandbox id, hold deadline, and
+reason in D1. The cleanup cron and external inventory audit respect an active
+hold. After the deadline, the normal cleanup path destroys the Sandbox and
+clears the hold. Successful attempts are never retained.
+
+The Sandbox id is durable authority; local files are best-effort debug state.
+Cloudflare may replace an idle or failed container before the hold ends, so a
+hold cannot replace R2 evidence.
+
 ## Component Diagram
 
 ```mermaid
@@ -266,6 +298,10 @@ flowchart LR
 - **Old Settings revision:** reject only that route's save.
 - **Active run on the edited route:** save for later runs and keep the run fixed.
 - **Active run on another route:** save the edit and keep both runs fixed.
+- **Concurrent agent starts:** give each attempt a checkout of the same protected
+  credential snapshot; neither route waits for the other.
+- **Concurrent credential refreshes:** keep the first valid conditional-write
+  winner and safely release the losing checkout.
 - **Setup stops partway:** keep all route values and retry missing links by id.
 - **Internal admin call fails:** show a safe error and save no partial change.
 - **Bad provider reply:** store a safe class, not the raw reply.

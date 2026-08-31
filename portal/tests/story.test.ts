@@ -98,7 +98,7 @@ test("pull request story keeps failed attempts and selects a verified exact-head
     },
   } as unknown as R2Bucket;
 
-  const story = await new ReviewStoryReadStore(db, bucket, "project-id")
+  const story = await new ReviewStoryReadStore(db, bucket)
     .projection("sachinkundu/deos-sample-project", 5) as Record<string, any>;
   assert.equal(story.governed.issue.key, "SAC-139");
   assert.equal(story.acceptedTrace.reviewId, `review:${reviewAttempt}`);

@@ -4,6 +4,7 @@ import type {
   GitHubCapabilityAdapter,
   GitHubWorkProductRequest,
 } from "./github-capability.ts";
+import type { GitHubGitProxyAdapter, GitUploadPackRequest } from "./github-git-proxy.ts";
 import type { LinearCapabilityAdapter } from "./linear-capability.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
@@ -51,6 +52,8 @@ interface OpenRouterCapabilityRequest {
 export interface CapabilityRouterDependencies {
   store: CapabilityStore;
   github: GitHubCapabilityAdapter;
+  githubForInstallation?: (installationId: string) => GitHubCapabilityAdapter;
+  githubGit?: GitHubGitProxyAdapter;
   linear: LinearCapabilityAdapter;
   planningStore?: Pick<D1PlanningStore, "findRunWorkProduct" | "recordPublication">;
   openrouter?: Pick<OpenRouterReviewClient, "review"> &
@@ -297,7 +300,17 @@ export class CapabilityRouter {
   }
 
   async handle(request: Request): Promise<Response> {
-    if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
+    const path = new URL(request.url).pathname;
+    const gitKind: GitUploadPackRequest | null =
+      request.method === "GET" && path.endsWith("/git/info/refs") &&
+          new URL(request.url).searchParams.get("service") === "git-upload-pack"
+        ? "advertisement"
+        : request.method === "POST" && path.endsWith("/git/git-upload-pack")
+          ? "upload_pack"
+          : null;
+    if (gitKind === null && request.method !== "POST") {
+      return json(405, { error: "method_not_allowed" });
+    }
     const authorization = request.headers.get("Authorization") ?? "";
     const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
     let claims;
@@ -312,11 +325,34 @@ export class CapabilityRouter {
     const context = await this.dependencies.store.context(claims.attemptId);
     if (
       context === null ||
-      context.attemptState !== "running" ||
+      !(gitKind === null
+        ? context.attemptState === "running"
+        : ["pending", "starting", "running"].includes(context.attemptState)) ||
       context.runId !== claims.runId ||
       context.repository !== claims.repository ||
       context.issueId !== claims.issueId
     ) return json(403, { error: "capability_not_active" });
+
+    if (gitKind !== null) {
+      if (
+        !claims.actions.includes("github.clone_repository") ||
+        context.githubInstallationId === undefined ||
+        this.dependencies.githubGit === undefined
+      ) return json(403, { error: "repository_checkout_denied" });
+      try {
+        return await this.dependencies.githubGit.proxy({
+          request,
+          repository: claims.repository,
+          installationId: context.githubInstallationId,
+          kind: gitKind,
+        });
+      } catch {
+        return new Response("repository checkout adapter failed\n", {
+          status: 502,
+          headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+    }
 
     let untrusted: unknown;
     try {
@@ -324,7 +360,6 @@ export class CapabilityRouter {
     } catch {
       return json(400, { error: "invalid_json" });
     }
-    const path = new URL(request.url).pathname;
     if (path.endsWith("/github")) {
       const planningInput = parsePlanningRequest(untrusted);
       if (planningInput !== null) {
@@ -371,6 +406,7 @@ export class CapabilityRouter {
           claims.runId,
           claims.attemptId,
           claims.planningBranch,
+          context.githubInstallationId,
         );
       }
       if (asRecord(untrusted)?.action === "publish_planning_work_product") {
@@ -389,7 +425,7 @@ export class CapabilityRouter {
         input.repository !== claims.repository ||
         input.branch !== `deos/${claims.attemptId}`
       ) return this.denied(claims.runId, claims.attemptId, "github", untrusted);
-      return this.github(input, claims.runId, claims.attemptId);
+      return this.github(input, claims.runId, claims.attemptId, context.githubInstallationId);
     }
     if (path.endsWith("/linear")) {
       const input = parseLinearRequest(untrusted);
@@ -727,6 +763,7 @@ export class CapabilityRouter {
     runId: string,
     attemptId: string,
     planningBranch: string,
+    githubInstallationId: string | undefined,
   ): Promise<Response> {
     const planningStore = this.dependencies.planningStore;
     if (planningStore === undefined) return json(503, { error: "planning_store_unavailable" });
@@ -756,7 +793,7 @@ export class CapabilityRouter {
         recorded.remote_branch !== planningBranch || recorded.base_branch !== "main" ||
         recorded.change_id !== input.change
       ) throw new Error("recorded planning work product does not match the capability");
-      const receipt = await this.dependencies.github.publishPlanning({
+      const receipt = await this.githubAdapter(githubInstallationId).publishPlanning({
         repository: input.repository,
         branch: planningBranch,
         baseBranch: "main",
@@ -831,6 +868,7 @@ export class CapabilityRouter {
     input: GitHubCapabilityRequest,
     runId: string,
     attemptId: string,
+    githubInstallationId: string | undefined,
   ): Promise<Response> {
     const operationId = operationIdentity(
       runId,
@@ -852,7 +890,7 @@ export class CapabilityRouter {
       return json(200, this.receipt(operationId, operation.operation.state, operation.operation.provider_resource_id));
     }
     try {
-      const receipt = await this.dependencies.github.publish(input, operationId);
+      const receipt = await this.githubAdapter(githubInstallationId).publish(input, operationId);
       const state = receipt.reconciled ? "reconciled" : "succeeded";
       await this.dependencies.store.finish({
         operationId,
@@ -876,6 +914,14 @@ export class CapabilityRouter {
       this.emitProvider(runId, operationId, "failed", "github_response_ambiguous");
       return json(502, this.receipt(operationId, "manual_reconciliation_required", null));
     }
+  }
+
+  private githubAdapter(installationId: string | undefined): GitHubCapabilityAdapter {
+    if (this.dependencies.githubForInstallation === undefined) return this.dependencies.github;
+    if (installationId === undefined || !/^[1-9][0-9]{0,19}$/.test(installationId)) {
+      throw new Error("frozen GitHub App installation is missing");
+    }
+    return this.dependencies.githubForInstallation(installationId);
   }
 
   private async linear(

@@ -69,6 +69,22 @@ const sha256Hex = async (value: string): Promise<string> => {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 };
 
+const githubForRun = (env: Env, run: OrchestrationRunRecord): GitHubCapabilityAdapter => {
+  const installationId = run.route_github_installation_id;
+  if (installationId === null || installationId === undefined) {
+    throw new Error("frozen GitHub App installation is missing");
+  }
+  return new GitHubCapabilityAdapter(
+    env.GITHUB_API_URL,
+    new GitHubAppTokenProvider({
+      apiUrl: env.GITHUB_API_URL,
+      appId: env.GITHUB_APP_ID,
+      privateKey: env.GITHUB_APP_PRIVATE_KEY,
+      installationId,
+    }),
+  );
+};
+
 export class CloudflareWorkflowServices implements WorkflowNodeServices {
   private readonly env: Env;
   private readonly orchestration: D1OrchestrationStore;
@@ -92,14 +108,14 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       env.LINEAR_API_URL,
       env.LINEAR_APP_ACCESS_TOKEN,
       {
-        readGitHubReviewFeedback: (repository, pullRequestNumber) =>
+        readGitHubReviewFeedback: (repository, pullRequestNumber, installationId) =>
           new GitHubCapabilityAdapter(
             env.GITHUB_API_URL,
             new GitHubAppTokenProvider({
               apiUrl: env.GITHUB_API_URL,
               appId: env.GITHUB_APP_ID,
               privateKey: env.GITHUB_APP_PRIVATE_KEY,
-              installationId: env.GITHUB_INSTALLATION_ID,
+              installationId,
             }),
           ).readReviewFeedback(repository, pullRequestNumber),
       },
@@ -112,6 +128,10 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         authProfileId: env.CODEX_AUTH_PROFILE_ID,
         absoluteTimeoutMs: durationMs(definition.execution.attemptTimeout),
         heartbeatTimeoutMs: durationMs(definition.execution.heartbeatTimeout),
+        failureRetentionMs: Math.min(
+          24 * 60,
+          Math.max(0, Number.parseInt(env.SANDBOX_FAILURE_RETENTION_MINUTES, 10) || 0),
+        ) * 60_000,
       },
       {
         now: () => new Date(),
@@ -540,15 +560,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               job.model,
             ).first<import("./trace-review-store.ts").TraceReviewRecord>();
             if (reusable !== null && reusable.reviewed_head_sha !== reviewedHeadSha) {
-              const github = new GitHubCapabilityAdapter(
-                env.GITHUB_API_URL,
-                new GitHubAppTokenProvider({
-                  apiUrl: env.GITHUB_API_URL,
-                  appId: env.GITHUB_APP_ID,
-                  privateKey: env.GITHUB_APP_PRIVATE_KEY,
-                  installationId: env.GITHUB_INSTALLATION_ID,
-                }),
-              );
+              const github = githubForRun(env, run);
               const exact = await Promise.all(sources.map(async (source) =>
                 await sha256Hex(await github.readFileAtRef(
                   workProduct.repository,
@@ -653,6 +665,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             installationId: env.GITHUB_INSTALLATION_ID,
           }),
         ),
+        githubForRun: (run) => githubForRun(env, run),
         planningStore: new D1PlanningStore(env.DB),
         planningCandidate: async (runId) => {
           const row = await env.DB.prepare(
@@ -955,15 +968,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         });
         if (operation.state === "pending") {
           try {
-            const receipt = await new GitHubCapabilityAdapter(
-              this.env.GITHUB_API_URL,
-              new GitHubAppTokenProvider({
-                apiUrl: this.env.GITHUB_API_URL,
-                appId: this.env.GITHUB_APP_ID,
-                privateKey: this.env.GITHUB_APP_PRIVATE_KEY,
-                installationId: this.env.GITHUB_INSTALLATION_ID,
-              }),
-            ).upsertTraceReviewCheck({
+            const receipt = await githubForRun(this.env, input.run).upsertTraceReviewCheck({
               repository: workProduct.repository,
               headSha: input.headSha,
               externalId: `deos-trace:${input.run.run_id}:${input.stage}`,
@@ -1070,18 +1075,20 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
   ) {
     const run = await this.orchestration.findRun(runId);
     if (run === null) throw new Error("capability run is missing");
-    const policy = await this.orchestration.findPolicy(run.project_id);
-    if (policy === null) throw new Error("capability project policy is missing");
-    if (policy.trial_repository !== repository) {
-      throw new Error("capability repository no longer matches the frozen job");
+    if (run.route_repository !== repository) {
+      throw new Error("capability repository does not match the frozen run");
+    }
+    if (run.route_github_installation_id === null || run.route_github_installation_id === undefined) {
+      throw new Error("capability GitHub App installation is missing from the frozen run");
     }
     const planning = job.capabilities?.includes("github.publish_planning_work_product") === true;
     const explicitlyBound = job.agentRole !== undefined;
-    const actions: readonly CapabilityAction[] = planning
+    const workActions: readonly CapabilityAction[] = planning
       ? ["github.publish_planning_work_product"]
       : job.providerAccess?.includes("model.openrouter_review") === true
         ? ["model.openrouter_review"]
         : explicitlyBound ? [] : ["github.publish_work_product", "linear.upsert_working_note"];
+    const actions: readonly CapabilityAction[] = ["github.clone_repository", ...workActions];
     if (planning) {
       const workProduct = await new D1PlanningStore(this.env.DB).findRunWorkProduct(runId);
       if (
@@ -1091,7 +1098,6 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         workProduct.remote_branch !== planningBranch
       ) throw new Error("planning capability identity mismatch");
     }
-    if (actions.length === 0) return { url: "", token: "" };
     const token = await mintCapabilityToken({
       version: 1,
       issuer: "deos",

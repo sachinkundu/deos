@@ -120,6 +120,10 @@ interface PlanningSystemActionDependencies {
     GitHubCapabilityAdapter,
     "mergePlanning"
   > & Partial<Pick<GitHubCapabilityAdapter, "publishPlanning">>;
+  githubForRun?: (run: OrchestrationRunRecord) => Pick<
+    GitHubCapabilityAdapter,
+    "mergePlanning"
+  > & Partial<Pick<GitHubCapabilityAdapter, "publishPlanning">>;
   planningStore: Pick<
     D1PlanningStore,
     "findRunWorkProduct" | "recordMerge"
@@ -180,7 +184,7 @@ export class SystemActionController {
     nodeId: string,
     action: string,
   ): Promise<ValidatedSystemOutcome> {
-    const dependencies = this.requirePlanningDependencies();
+    const dependencies = this.requirePlanningDependencies(run);
     if (
       this.planning?.planningCandidate === undefined || this.planning.issueContext === undefined ||
       dependencies.github.publishPlanning === undefined ||
@@ -314,7 +318,7 @@ export class SystemActionController {
     nodeId: string,
     action: string,
   ): Promise<ValidatedSystemOutcome> {
-    const dependencies = this.requirePlanningDependencies();
+    const dependencies = this.requirePlanningDependencies(run);
     const workProduct = await dependencies.planningStore.findRunWorkProduct(run.run_id);
     if (
       workProduct === null || workProduct.pull_request_database_id === null ||
@@ -392,13 +396,18 @@ export class SystemActionController {
     }
   }
 
-  private requirePlanningDependencies(): Required<Pick<PlanningSystemActionDependencies, "github" | "planningStore">> {
+  private requirePlanningDependencies(
+    run: OrchestrationRunRecord,
+  ): Required<Pick<PlanningSystemActionDependencies, "github" | "planningStore">> {
     if (
       this.planning === undefined ||
       this.store.beginPlanningOperation === undefined ||
       this.store.finishPlanningOperation === undefined
     ) throw new Error("planning system-action dependencies are unavailable");
-    return { github: this.planning.github, planningStore: this.planning.planningStore };
+    return {
+      github: this.planning.githubForRun?.(run) ?? this.planning.github,
+      planningStore: this.planning.planningStore,
+    };
   }
 
   private beginPlanningOperation(

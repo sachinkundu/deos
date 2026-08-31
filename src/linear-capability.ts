@@ -20,6 +20,17 @@ export interface LinearPublicationContext {
   url: string;
 }
 
+export interface LinearProjectChoice {
+  projectId: string;
+  name: string;
+  url: string;
+  teams: Array<{
+    id: string;
+    name: string;
+    key: string;
+  }>;
+}
+
 interface LinearCapabilityDependencies {
   fetch: typeof fetch;
 }
@@ -151,6 +162,74 @@ export class LinearCapabilityAdapter {
     };
   }
 
+  async listProjects(): Promise<LinearProjectChoice[]> {
+    const projects: LinearProjectChoice[] = [];
+    let after: string | null = null;
+    for (let page = 1; page <= 100; page += 1) {
+      const payload = await this.graphql(
+         `query DeosRouteProjects($first: Int!, $after: String) {
+           projects(first: $first, after: $after) {
+             nodes { id name url teams { nodes { id name key } } }
+             pageInfo { hasNextPage endCursor }
+           }
+         }`,
+        { first: 100, after },
+      ) as {
+        data?: {
+          projects?: {
+            nodes?: unknown;
+            pageInfo?: { hasNextPage?: unknown; endCursor?: unknown };
+          };
+        };
+      };
+      const connection = payload.data?.projects;
+      if (!Array.isArray(connection?.nodes) || typeof connection.pageInfo?.hasNextPage !== "boolean") {
+        throw new Error("Linear project catalog response is invalid");
+      }
+      for (const raw of connection.nodes) {
+        const project = raw as {
+          id?: unknown;
+          name?: unknown;
+          url?: unknown;
+          teams?: { nodes?: unknown };
+        };
+        const teams = Array.isArray(project.teams?.nodes) ? project.teams.nodes : null;
+        if (
+          typeof project.id !== "string" || project.id.length === 0 ||
+          typeof project.name !== "string" || project.name.trim().length === 0 ||
+          typeof project.url !== "string" || !project.url.startsWith("https://linear.app/") ||
+          teams === null || teams.length === 0
+        ) throw new Error("Linear project catalog response is invalid");
+        const validatedTeams = teams.map((rawTeam) => {
+          const team = rawTeam as { id?: unknown; name?: unknown; key?: unknown };
+          if (
+            typeof team.id !== "string" || team.id.length === 0 ||
+            typeof team.name !== "string" || team.name.trim().length === 0 ||
+            typeof team.key !== "string" || team.key.length === 0
+          ) throw new Error("Linear project catalog response is invalid");
+          return { id: team.id, name: team.name.trim(), key: team.key };
+        }).sort((left, right) => left.key.localeCompare(right.key) || left.id.localeCompare(right.id));
+        projects.push({
+          projectId: project.id,
+          name: project.name.trim(),
+          url: project.url,
+          teams: validatedTeams,
+        });
+      }
+      if (!connection.pageInfo.hasNextPage) break;
+      if (
+        typeof connection.pageInfo.endCursor !== "string" ||
+        connection.pageInfo.endCursor.length === 0 ||
+        connection.pageInfo.endCursor === after || page === 100
+      ) throw new Error("Linear project catalog paging is invalid");
+      after = connection.pageInfo.endCursor;
+    }
+    const ids = projects.map((project) => project.projectId);
+    if (new Set(ids).size !== ids.length) throw new Error("Linear project catalog has duplicates");
+    return projects.sort((left, right) => left.name.localeCompare(right.name) ||
+      left.projectId.localeCompare(right.projectId));
+  }
+
   private async findComment(issueId: string, marker: string): Promise<string | null> {
     return (await this.findCommentRecord(issueId, marker))?.id ?? null;
   }
@@ -171,7 +250,7 @@ export class LinearCapabilityAdapter {
       : null;
   }
 
-  private async graphql(query: string, variables: Record<string, string>): Promise<unknown> {
+  private async graphql(query: string, variables: Record<string, unknown>): Promise<unknown> {
     const response = await this.request(this.apiUrl, {
       method: "POST",
       headers: {

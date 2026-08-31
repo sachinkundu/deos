@@ -8,6 +8,7 @@ import type { OrchestrationRunRecord } from "../src/orchestration-store.ts";
 import type { RunWorkProductRecord } from "../src/planning-store.ts";
 import { PlanningCandidateRejectedError } from "../src/planning-candidate.ts";
 import {
+  classifyRepositoryCheckoutFailure,
   SandboxAgentController,
   type AgentAttemptRecord,
   type AgentAttemptState,
@@ -30,6 +31,26 @@ const firstPlanningPromptArtifact = readFileSync(
 if (firstPlanningPromptArtifact === undefined) {
   throw new Error("first planning prompt artifact is missing its text block");
 }
+
+test("repository checkout errors become bounded safe categories", () => {
+  assert.equal(
+    classifyRepositoryCheckoutFailure("fatal: unable to access: Could not resolve host: github.com"),
+    "repository_checkout_dns_failed",
+  );
+  assert.equal(
+    classifyRepositoryCheckoutFailure("remote: Repository not found."),
+    "repository_checkout_missing",
+  );
+  assert.equal(
+    classifyRepositoryCheckoutFailure("fatal: could not read Username for 'https://github.com'"),
+    "repository_checkout_auth_required",
+  );
+  assert.equal(
+    classifyRepositoryCheckoutFailure("fatal: an unknown git failure"),
+    "repository_checkout_failed",
+  );
+});
+
 const definition = await loadWorkflowDefinition(
   `apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
@@ -271,6 +292,8 @@ class AttemptStore implements AgentAttemptStore {
       manifest_id: null,
       cleanup_state: "pending",
       cleanup_error_category: null,
+      cleanup_hold_until: null,
+      cleanup_hold_reason: null,
       created_at: input.now,
       updated_at: input.now,
     };
@@ -337,6 +360,14 @@ class AttemptStore implements AgentAttemptStore {
   markCleanup(_attempt: string, state: "destroyed" | "failed") {
     this.cleanup = state;
     if (this.latest !== null) this.latest.cleanup_state = state;
+    return Promise.resolve();
+  }
+
+  markCleanupHold(_attempt: string, until: string, reason: "debug_failure") {
+    if (this.latest !== null) {
+      this.latest.cleanup_hold_until = until;
+      this.latest.cleanup_hold_reason = reason;
+    }
     return Promise.resolve();
   }
 }
@@ -557,6 +588,7 @@ interface SetupOptions {
   materializedContext?: string;
   candidateRejection?: PlanningCandidateRejectedError;
   reviewAcceptanceError?: Error;
+  failureRetentionMs?: number;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -576,6 +608,7 @@ const setup = (options: SetupOptions = {}) => {
       authProfileId: "trial",
       absoluteTimeoutMs: 24 * 60 * 60_000,
       heartbeatTimeoutMs: 5 * 60_000,
+      failureRetentionMs: options.failureRetentionMs ?? 0,
     },
     {
       now: clock,
@@ -654,6 +687,13 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.equal(credentials.acquired, 1);
   assert.equal(factory.sandbox.files.has("/root/.codex/auth.json"), true);
   assert.deepEqual(factory.sandbox.commands.at(-1)?.command, ["node", "/deos/bin/supervisor.mjs"]);
+  const clone = factory.sandbox.commands.find(({ command }) =>
+    command[0] === "git" && command[1] === "clone");
+  assert.deepEqual(clone?.command.slice(0, 5), [
+    "git", "clone", "--depth", "1", "https://worker.example/capabilities/git",
+  ]);
+  assert.equal(clone?.env?.GIT_CONFIG_VALUE_0, "Authorization: Bearer grant-token");
+  assert.equal(clone?.env?.GIT_CONFIG_VALUE_1, "Deos-Attempt: 00000000-0000-7000-8000-000000000001");
   assert.equal(JSON.stringify(factory.sandbox.commands).includes("secret-seed"), false);
   assert.equal(JSON.parse(factory.sandbox.files.get("/deos/run/job.json") ?? "{}").capabilityToken, "grant-token");
   const prompt = factory.sandbox.files.get("/deos/run/prompt.md") ?? "";
@@ -755,7 +795,7 @@ test("first planning visit renders and protects the exact least-privilege prompt
     state.factory.sandbox.commands.find(({ command }) => command[0] === "git" && command[1] === "clone")?.command,
     [
       "git", "clone", "--depth", "1",
-      "https://github.com/sachinkundu/deos-sample-project.git",
+      "https://worker.example/capabilities/git",
       "/deos/workspace/repository",
     ],
   );
@@ -788,7 +828,7 @@ test("pending-attempt startup clears a stale repository checkout before cloning"
     factory.sandbox.commands.slice(0, 2).map(({ command }) => command),
     [
       ["rm", "-rf", "--", "/deos/workspace/repository"],
-      ["git", "clone", "--depth", "1", "https://github.com/sachinkundu/deos.git", "/deos/workspace/repository"],
+      ["git", "clone", "--depth", "1", "https://worker.example/capabilities/git", "/deos/workspace/repository"],
     ],
   );
 });
@@ -1044,6 +1084,26 @@ test("non-zero supervisor exit persists failure evidence before cleanup", async 
   assert.equal(collector.verifiedDurable, 1);
   assert.equal(collector.verified, 1);
   assert.equal(factory.sandbox.destroyed, true);
+});
+
+test("failed attempt can retain a credential-free Sandbox until a durable cleanup deadline", async () => {
+  const { controller, factory, attempts, collector } = setup({ failureRetentionMs: 60 * 60_000 });
+  await controller.execute(run, "work", "work", definition);
+  factory.sandbox.supervisor.state = "exited";
+  factory.sandbox.supervisor.exitCode = 1;
+  collector.failureErrorCategory = "codex_exit_nonzero";
+
+  const observation = await controller.execute(run, "work", "work", definition);
+
+  assert.equal(observation.state, "completed");
+  assert.equal(attempts.latest?.state, "failed");
+  assert.equal(attempts.latest?.cleanup_state, "pending");
+  assert.equal(attempts.latest?.cleanup_hold_until, "2026-08-16T11:00:00.000Z");
+  assert.equal(attempts.latest?.cleanup_hold_reason, "debug_failure");
+  assert.equal(factory.sandbox.files.has("/root/.codex/auth.json"), false);
+  assert.equal(factory.sandbox.keepAlive, true);
+  assert.equal(factory.sandbox.destroyed, false);
+  assert.equal(collector.verified, 1);
 });
 
 test("failure evidence persistence error keeps the Sandbox recoverable", async () => {

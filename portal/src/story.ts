@@ -69,12 +69,10 @@ const artifactUrl = (attemptId: string, logicalName: string): string =>
 export class ReviewStoryReadStore {
   private readonly db: D1Database;
   private readonly artifacts: R2Bucket;
-  private readonly projectId: string;
 
-  constructor(db: D1Database, artifacts: R2Bucket, projectId: string) {
+  constructor(db: D1Database, artifacts: R2Bucket) {
     this.db = db;
     this.artifacts = artifacts;
-    this.projectId = projectId;
   }
 
   private async verifiedBytes(row: StoryArtifactRow): Promise<ArrayBuffer> {
@@ -107,11 +105,12 @@ export class ReviewStoryReadStore {
               work.head_sha, work.change_id
        FROM run_work_products work
        JOIN orchestration_runs run ON run.run_id = work.run_id
+       JOIN project_workflow_policies route ON route.project_id = run.project_id
        JOIN linear_issue_index issue
          ON issue.issue_id = run.issue_id AND issue.project_id = run.project_id
        WHERE work.repository = ? AND work.pull_request_number = ?
-         AND run.project_id = ? LIMIT 1`,
-    ).bind(repository, pullRequestNumber, this.projectId).first<GovernedPullRequestRow>();
+       LIMIT 1`,
+    ).bind(repository, pullRequestNumber).first<GovernedPullRequestRow>();
     if (governed === null) return null;
 
     const runId = governed.run_id;
@@ -331,13 +330,14 @@ export class ReviewStoryReadStore {
               artifact.media_type, artifact.byte_size, artifact.sha256
        FROM agent_attempts attempt
        JOIN orchestration_runs run ON run.run_id = attempt.run_id
+       JOIN project_workflow_policies route ON route.project_id = run.project_id
        JOIN artifact_manifests manifest
          ON manifest.manifest_id = attempt.manifest_id AND manifest.run_id = attempt.run_id
        JOIN artifacts artifact ON artifact.manifest_id = manifest.manifest_id
-       WHERE attempt.attempt_id = ? AND run.project_id = ?
-         AND manifest.state = 'complete' AND artifact.logical_name = ?
+       WHERE attempt.attempt_id = ? AND manifest.state = 'complete'
+         AND artifact.logical_name = ?
          AND artifact.policy_outcome = 'accepted' LIMIT 1`,
-    ).bind(attemptId, this.projectId, logicalName).first<StoryArtifactRow>();
+    ).bind(attemptId, logicalName).first<StoryArtifactRow>();
     if (row === null) throw new ReviewStoryNotFoundError();
     return { bytes: await this.verifiedBytes(row), mediaType: row.media_type, sha256: row.sha256 };
   }
