@@ -189,22 +189,24 @@ may be named by old events, runs, or audit rows.
 #### Settings layout concepts
 
 These mockups explore the same route model in the current DEOS visual system.
-They are review options, not a final layout choice.
+Human review selected option 3, **Project connection cards**, for implementation.
+The other two remain as design history.
 
-1. **Route rail and editor.** A compact route list stays visible beside the
+1. **Rejected: Route rail and editor.** A compact route list stays visible beside the
    selected route form. This favors quick movement between a modest number of
    routes.
 
    ![Route rail and editor mockup](mockups/settings-route-rail-editor.png)
 
-2. **Route table and side sheet.** A dense comparison table opens the selected
+2. **Rejected: Route table and side sheet.** A dense comparison table opens the selected
    route in a side sheet. This favors scanning and managing many routes.
 
    ![Route table and side sheet mockup](mockups/settings-route-table-side-sheet.png)
 
-3. **Project connection cards.** Route cards show each Linear-to-GitHub pairing
-   above one expanded editor. This makes the relationship easiest to see at a
-   glance.
+3. **Selected: Project connection cards.** Route cards show each
+   Linear-to-GitHub pairing above one expanded editor. This makes the
+   relationship easiest to see at a glance while keeping route controls on one
+   page.
 
    ![Project connection cards mockup](mockups/settings-project-connection-cards.png)
 
