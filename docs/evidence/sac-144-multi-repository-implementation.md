@@ -22,7 +22,7 @@ GitHub App access. The crop excludes account and Access identity details.
 - Python: 31 tests passed.
 - Ruff: passed.
 - Worker tests: 224 tests passed.
-- Portal tests: 31 tests passed.
+- Portal tests: 32 tests passed.
 - Root and portal TypeScript checks: passed.
 - Generated Worker binding checks: passed.
 - Portal production build: passed.
@@ -43,7 +43,7 @@ Migrations `0020_multi_repository_routes.sql`,
 `0021_concurrent_credential_leases.sql`, and
 `0022_sandbox_failure_retention.sql` are applied. Queue Worker version
 `82bf88e8-e405-49f0-a219-ec0413b4f092`, portal version
-`14d7898b-618b-4112-9ca2-54d09e6190f6`, and ingress version
+`42a5be63-f30c-41ea-990c-81def5544a99`, and ingress version
 `cdf86643-5b03-4678-9c9c-be146c1af6b2` are deployed. The remote credential
 table uses `(profile_id, attempt_id)` as its primary key, and the remote
 foreign-key check returns no failures.
@@ -75,6 +75,14 @@ other. Both issues use the exact shared title required by the change. The
 executable query and captured remote output are in
 [`sac-144-concurrent-route-canary.md`](sac-144-concurrent-route-canary.md).
 
+The portal originally read only the deployment seed `PROJECT_ID`, so the first
+route appeared while `SAC-146` was hidden. The deployed portal now admits reads
+through every row in `project_workflow_policies` and has no single-project
+binding. A signed-in Brave check searched `SAC-146`, loaded run `6`, and showed
+it waiting for human approval beside `SAC-145`.
+
+![Live portal showing SAC-146](assets/sac-144-portal-sac-146-live.png)
+
 The first second-route attempt then exposed a separate checkout defect: the
 Sandbox used anonymous Git transport even though the route had a frozen GitHub
 App installation. DEOS now exposes only read-only Git smart HTTP through the
@@ -93,12 +101,29 @@ Clean provider retries then crossed checkout and ran authors concurrently:
 The executable D1 record contains both route snapshots, attempt states,
 credential leases, and the empty foreign-key check.
 
-For the remaining canary retries, failed Sandboxes have a 60-minute debug hold.
+For the remaining canary retries, failed Sandboxes had a 60-minute debug hold.
 DEOS removes Codex auth first, records the exact Sandbox and expiry in D1, and
-lets scheduled cleanup destroy it after the hold. This is temporary and returns
-to zero before final cleanup proof.
+lets scheduled cleanup destroy it after the hold. The deployed default returned
+to zero after the clean canaries reached human review.
 
 During the first provider run, Settings disabled the second route at revision
 `3` and restored it at revision `4`. The already allocated run kept the second
 repository, revision `2`, and its original digest. This proves that an active
 edit succeeds without moving the run.
+
+## Completed provider proof
+
+The two clean provider-originated runs reached the same human gate on separate
+frozen repositories:
+
+| Issue | Run | Repository | Pull request | Head | Final state |
+| --- | ---: | --- | ---: | --- | --- |
+| `SAC-145` | 2 | `sachinkundu/deos-sample-project` | [#8](https://github.com/sachinkundu/deos-sample-project/pull/8) | `683a0317d06ad3262e625713f1b2a806bf676237` | `planning_review` / `awaiting_human` |
+| `SAC-146` | 6 | `sachinkundu/deos-sample-project-2` | [#1](https://github.com/sachinkundu/deos-sample-project-2/pull/1) | `47859e4e733effdfd5ea48b5e847998ee0eb3161` | `planning_review` / `awaiting_human` |
+
+D1 records successful or reconciled GitHub publication, trace-check, and
+Linear review-link receipts for both runs. Each run created seven agent
+attempts. All fourteen attempts have `cleanup_state='destroyed'`; none has a
+cleanup hold, and the remote foreign-key check is empty. The executable final
+read-back is appended to
+[`sac-144-concurrent-route-canary.md`](sac-144-concurrent-route-canary.md).

@@ -89,7 +89,7 @@
 - [x] 10.5 Deploy the portal binding and Settings UI. Check both through Cloudflare Access
 - [x] 10.6 Add and enable the second sample route in Settings. Read both routes back
 - [x] 10.7 Create this real issue in both sample projects: "create a simple text graphics generator which can create popular graphics on command line terminal"
-- [ ] 10.8 Run both issues and prove separate GitHub work, D1 runs, and provider receipts
+- [x] 10.8 Run both issues and prove separate GitHub work, D1 runs, and provider receipts
 - [x] 10.9 Change a route setting during active work and prove the save succeeds while that run stays fixed
 - [ ] 10.10 Prove all Sandboxes are removed. Add safe screenshots, command logs, and D1 proof to the code PR
 - [ ] 10.11 After both sample runs pass, add and enable the DEOS project with `sachinkundu/deos` as the third route without starting an issue
