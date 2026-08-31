@@ -69,6 +69,7 @@
 - [x] 8.3 Bind agent tools and provider rights to the frozen route, and reject other targets
 - [x] 8.4 Use the saved App install for merge, review, retry, checks, and repair work
 - [x] 8.5 Test route edits during author, review, and human gates without changing their target
+- [x] 8.6 Allow concurrent route agents to share the credential seed and reconcile refresh writes safely
 
 ## 9. Docs and Local Checks
 
@@ -81,13 +82,13 @@
 
 - [x] 10.1 Recheck the live Linear projects, GitHub App repos, rights, and saved test ids before deploy
 - [x] 10.2 Apply the remote D1 change and backfill active runs. Read each saved snapshot back
-- [ ] 10.3 Deploy the queue Worker and check route admin, setup, digests, and old run support
+- [x] 10.3 Deploy the queue Worker and check route admin, setup, digests, and old run support
 - [x] 10.4 Deploy D1 route admission while only the first sample route is enabled
-- [ ] 10.5 Deploy the portal binding and Settings UI. Check both through Cloudflare Access
-- [ ] 10.6 Add and enable the second sample route in Settings. Read both routes back
-- [ ] 10.7 Create this real issue in both sample projects: "create a simple text graphics generator which can create popular graphics on command line terminal"
+- [x] 10.5 Deploy the portal binding and Settings UI. Check both through Cloudflare Access
+- [x] 10.6 Add and enable the second sample route in Settings. Read both routes back
+- [x] 10.7 Create this real issue in both sample projects: "create a simple text graphics generator which can create popular graphics on command line terminal"
 - [ ] 10.8 Run both issues and prove separate GitHub work, D1 runs, and provider receipts
-- [ ] 10.9 Change a route setting during active work and prove the save succeeds while that run stays fixed
+- [x] 10.9 Change a route setting during active work and prove the save succeeds while that run stays fixed
 - [ ] 10.10 Prove all Sandboxes are removed. Add safe screenshots, command logs, and D1 proof to the code PR
 - [ ] 10.11 After both sample runs pass, add and enable the DEOS project with `sachinkundu/deos` as the third route without starting an issue
 - [ ] 10.12 Keep SAC-143 blocked until the two sample routes pass provider proof and this change is merged

@@ -8,6 +8,7 @@ import type { OrchestrationRunRecord } from "../src/orchestration-store.ts";
 import type { RunWorkProductRecord } from "../src/planning-store.ts";
 import { PlanningCandidateRejectedError } from "../src/planning-candidate.ts";
 import {
+  classifyRepositoryCheckoutFailure,
   SandboxAgentController,
   type AgentAttemptRecord,
   type AgentAttemptState,
@@ -30,6 +31,26 @@ const firstPlanningPromptArtifact = readFileSync(
 if (firstPlanningPromptArtifact === undefined) {
   throw new Error("first planning prompt artifact is missing its text block");
 }
+
+test("repository checkout errors become bounded safe categories", () => {
+  assert.equal(
+    classifyRepositoryCheckoutFailure("fatal: unable to access: Could not resolve host: github.com"),
+    "repository_checkout_dns_failed",
+  );
+  assert.equal(
+    classifyRepositoryCheckoutFailure("remote: Repository not found."),
+    "repository_checkout_missing",
+  );
+  assert.equal(
+    classifyRepositoryCheckoutFailure("fatal: could not read Username for 'https://github.com'"),
+    "repository_checkout_auth_required",
+  );
+  assert.equal(
+    classifyRepositoryCheckoutFailure("fatal: an unknown git failure"),
+    "repository_checkout_failed",
+  );
+});
+
 const definition = await loadWorkflowDefinition(
   `apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow

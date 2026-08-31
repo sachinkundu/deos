@@ -258,6 +258,31 @@ export interface SandboxView {
   destroy(): Promise<void>;
 }
 
+export const classifyRepositoryCheckoutFailure = (stderr: string): string => {
+  const detail = stderr.toLowerCase();
+  if (detail.includes("could not resolve host")) return "repository_checkout_dns_failed";
+  if (
+    detail.includes("failed to connect") || detail.includes("connection timed out") ||
+    detail.includes("connection reset") || detail.includes("network is unreachable")
+  ) return "repository_checkout_network_failed";
+  if (detail.includes("repository not found")) return "repository_checkout_missing";
+  if (
+    detail.includes("authentication failed") || detail.includes("could not read username") ||
+    detail.includes("terminal prompts disabled")
+  ) return "repository_checkout_auth_required";
+  if (detail.includes("returned error: 429") || detail.includes("rate limit")) {
+    return "repository_checkout_rate_limited";
+  }
+  if (detail.includes("returned error: 403")) return "repository_checkout_denied";
+  if (detail.includes("rpc failed") || detail.includes("http/2 stream")) {
+    return "repository_checkout_transport_failed";
+  }
+  if (detail.includes("remote branch") && detail.includes("not found")) {
+    return "repository_checkout_branch_missing";
+  }
+  return "repository_checkout_failed";
+};
+
 export interface SandboxFactory {
   get(sandboxId: string, options: { keepAlive: boolean }): SandboxView;
 }
@@ -626,7 +651,10 @@ export class SandboxAgentController {
         "/deos/workspace/repository",
       ], { cwd: "/deos/workspace", timeout: 10 * 60_000 });
       const cloneExit = await clone.waitForExit({ timeout: 10 * 60_000 });
-      if (cloneExit.code !== 0) throw new Error("repository checkout failed");
+      if (cloneExit.code !== 0) {
+        const output = await clone.output({ encoding: "utf8", timeout: 10_000, maxBytes: 8_192 });
+        throw new Error(classifyRepositoryCheckoutFailure(output.stderr));
+      }
       const branch = await sandbox.exec([
         "git", "switch", "-c", `deos/${attempt.attempt_id}`,
       ], { cwd: "/deos/workspace/repository", timeout: 60_000 });

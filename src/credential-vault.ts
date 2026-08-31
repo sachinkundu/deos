@@ -269,7 +269,7 @@ export class CredentialVault {
       leaseExpiresAt: new Date(now.getTime() + leaseDurationMs).toISOString(),
       now: now.toISOString(),
     });
-    if (!acquired) throw new Error("Codex credential profile is already leased");
+    if (!acquired) throw new Error("Codex credential lease already exists for this attempt");
     try {
       const plaintext = await decryptCredential(await object.text(), this.masterSecret);
       JSON.parse(plaintext);
@@ -295,6 +295,27 @@ export class CredentialVault {
         onlyIf: { etagMatches: lease.sourceEtag },
       });
       if (replaced === null) {
+        const current = await this.objects.get(lease.objectKey);
+        let validConcurrentRefresh = false;
+        if (current !== null && current.etag !== lease.sourceEtag) {
+          try {
+            JSON.parse(await decryptCredential(await current.text(), this.masterSecret));
+            validConcurrentRefresh = true;
+          } catch {
+            validConcurrentRefresh = false;
+          }
+        }
+        if (current !== null && validConcurrentRefresh) {
+          await this.leases.recordRefresh(
+            lease.profileId,
+            lease.attemptId,
+            "concurrent_refresh_preserved",
+            current.version,
+            current.etag,
+            this.now().toISOString(),
+          );
+          return;
+        }
         await this.leases.recordRefresh(
           lease.profileId,
           lease.attemptId,

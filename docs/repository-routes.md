@@ -18,6 +18,12 @@ Project connection cards show the project, repository, workflow state, GitHub ac
 
 A repository or App-install change turns off only the edited route. An active run does not block the save. Its repository, App installation, workflow gates, and review settings remain frozen. The new values apply to later runs.
 
+Agents on different routes may run at the same time. Each attempt reads the
+same protected Codex credential snapshot through its own checkout row. A
+refreshed credential replaces that snapshot only when its source ETag still
+matches. When another attempt already saved a valid refresh, the later writer
+keeps that winner instead of overwriting it or failing the agent.
+
 If Linear or GitHub is unavailable, saved routes remain visible. New pairing and unchecked enablement stay blocked until the live catalog or access check succeeds.
 
 ## GitHub access

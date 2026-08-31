@@ -150,3 +150,66 @@ def test_new_runs_can_store_a_complete_frozen_route() -> None:
                   route_digest
            FROM orchestration_runs WHERE run_id = 'run-1'"""
     ).fetchone() == ("owner/sample", "installation-1", 3, "route-digest")
+
+
+def test_credential_migration_preserves_a_lease_and_allows_concurrent_attempts() -> None:
+    database = sqlite3.connect(":memory:")
+    apply_migrations(database, through="0020_multi_repository_routes.sql")
+    now = "2026-08-31T08:00:00.000Z"
+    database.execute(
+        """INSERT INTO workflow_definitions
+           (definition_id, version, project_id, name, canonical_json, digest, created_at)
+           VALUES ('simple', 4, 'project-1', 'simple', '{}', 'definition-digest', ?)""",
+        (now,),
+    )
+    database.execute(
+        """INSERT INTO orchestration_runs
+           (run_id, correlation_id, run_sequence, project_id, issue_id, definition_id,
+            definition_version, definition_digest, workflow_instance_id, current_node,
+            current_visit_sequence, status, created_at, updated_at)
+           VALUES ('run-1', 'correlation-1', 1, 'project-1', 'issue-1', 'simple', 4,
+                   'definition-digest', 'workflow-1', 'author', 1, 'active', ?, ?)""",
+        (now, now),
+    )
+    for sequence in (1, 2):
+        database.execute(
+            """INSERT INTO agent_attempts
+               (attempt_id, sandbox_id, run_id, node_id, job_spec_json, job_spec_digest,
+                state, absolute_deadline, cleanup_state, created_at, updated_at)
+               VALUES (?, ?, 'run-1', 'author', '{}', ?, 'running', ?, 'pending', ?, ?)""",
+            (
+                f"attempt-{sequence}",
+                f"sandbox-{sequence}",
+                f"job-digest-{sequence}",
+                "2026-08-31T09:00:00.000Z",
+                now,
+                now,
+            ),
+        )
+    database.execute(
+        """INSERT INTO credential_leases
+           (profile_id, attempt_id, encrypted_object_key, object_version, object_etag,
+            lease_expires_at, created_at, updated_at)
+           VALUES ('controlled-trial', 'attempt-1', 'credentials/controlled-trial/auth.v1.enc',
+                   '1', 'etag-1', '2026-08-31T09:00:00.000Z', ?, ?)""",
+        (now, now),
+    )
+
+    database.executescript(Path("migrations/0021_concurrent_credential_leases.sql").read_text())
+    database.execute(
+        """INSERT INTO credential_leases
+           (profile_id, attempt_id, encrypted_object_key, object_version, object_etag,
+            lease_expires_at, created_at, updated_at)
+           VALUES ('controlled-trial', 'attempt-2', 'credentials/controlled-trial/auth.v1.enc',
+                   '1', 'etag-1', '2026-08-31T09:00:00.000Z', ?, ?)""",
+        (now, now),
+    )
+
+    assert database.execute(
+        """SELECT profile_id, attempt_id, object_etag
+           FROM credential_leases ORDER BY attempt_id"""
+    ).fetchall() == [
+        ("controlled-trial", "attempt-1", "etag-1"),
+        ("controlled-trial", "attempt-2", "etag-1"),
+    ]
+    assert database.execute("PRAGMA foreign_key_check").fetchall() == []

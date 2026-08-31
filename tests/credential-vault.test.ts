@@ -50,8 +50,8 @@ class LeaseStore implements CredentialLeaseStore {
   readonly refreshes: string[] = [];
 
   acquire(input: { profileId: string; attemptId: string }) {
-    if (this.active.has(input.profileId)) return Promise.resolve(false);
-    this.active.set(input.profileId, input.attemptId);
+    if (this.active.has(input.attemptId)) return Promise.resolve(false);
+    this.active.set(input.attemptId, input.profileId);
     return Promise.resolve(true);
   }
 
@@ -61,11 +61,11 @@ class LeaseStore implements CredentialLeaseStore {
   }
 
   async release(profileId: string, attemptId: string) {
-    if (this.active.get(profileId) === attemptId) this.active.delete(profileId);
+    if (this.active.get(attemptId) === profileId) this.active.delete(attemptId);
   }
 
   find(profileId: string, attemptId: string) {
-    if (this.active.get(profileId) !== attemptId) return Promise.resolve(null);
+    if (this.active.get(attemptId) !== profileId) return Promise.resolve(null);
     return Promise.resolve({
       profile_id: profileId,
       attempt_id: attemptId,
@@ -87,7 +87,7 @@ test("authenticated envelope round-trips and rejects the wrong key", async () =>
   );
 });
 
-test("vault leases one profile and conditionally preserves refreshed auth", async () => {
+test("vault leases one profile to concurrent attempts", async () => {
   const objects = new ObjectStore();
   const leases = new LeaseStore();
   const key = "credentials/trial/auth.v1.enc";
@@ -97,17 +97,44 @@ test("vault leases one profile and conditionally preserves refreshed auth", asyn
     version: "1",
   });
   const vault = new CredentialVault(objects, leases, MASTER, () => NOW);
-  const lease = await vault.acquire("trial", "attempt-1", 60_000);
+  const firstLease = await vault.acquire("trial", "attempt-1", 60_000);
+  const secondLease = await vault.acquire("trial", "attempt-2", 60_000);
   await assert.rejects(
-    vault.acquire("trial", "attempt-2", 60_000),
-    /already leased/,
+    vault.acquire("trial", "attempt-1", 60_000),
+    /already exists for this attempt/,
   );
-  await vault.replaceAndRelease(lease, JSON.stringify({ auth: "refreshed" }));
+  await vault.release(secondLease);
+  await vault.replaceAndRelease(firstLease, JSON.stringify({ auth: "refreshed" }));
 
   assert.deepEqual(leases.refreshes, ["replaced"]);
   assert.equal(leases.active.size, 0);
   const stored = objects.objects.get(key);
   assert.equal(await decryptCredential(stored?.value ?? "", MASTER), JSON.stringify({ auth: "refreshed" }));
+});
+
+test("concurrent refresh keeps the first valid compare-and-swap winner", async () => {
+  const objects = new ObjectStore();
+  const leases = new LeaseStore();
+  const key = "credentials/trial/auth.v1.enc";
+  objects.objects.set(key, {
+    value: await encryptCredential(JSON.stringify({ auth: "initial" }), MASTER),
+    etag: "etag-1",
+    version: "1",
+  });
+  const vault = new CredentialVault(objects, leases, MASTER, () => NOW);
+  const firstLease = await vault.acquire("trial", "attempt-1", 60_000);
+  const secondLease = await vault.acquire("trial", "attempt-2", 60_000);
+
+  await vault.replaceAndRelease(firstLease, JSON.stringify({ auth: "first-winner" }));
+  await vault.replaceAndRelease(secondLease, JSON.stringify({ auth: "second-loser" }));
+
+  assert.deepEqual(leases.refreshes, ["replaced", "concurrent_refresh_preserved"]);
+  assert.equal(leases.active.size, 0);
+  const stored = objects.objects.get(key);
+  assert.equal(
+    await decryptCredential(stored?.value ?? "", MASTER),
+    JSON.stringify({ auth: "first-winner" }),
+  );
 });
 
 test("conditional replacement failure is recorded and releases the lease", async () => {

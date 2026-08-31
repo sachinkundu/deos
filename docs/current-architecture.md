@@ -95,7 +95,13 @@ The lifecycle contract first deployed as definition version 4 separates Cloudfla
 
 Every agent node creates a UUIDv7 attempt and a derived Sandbox ID before provider calls. The pinned supervisor runs Codex with argv, fixed staging paths, JSONL output, a JSON result schema, a five-minute heartbeat, and a 24-hour absolute limit. The disposable Sandbox is the `danger-full-access` boundary; it contains no provider credential.
 
-ChatGPT auth is an encrypted, conditionally replaced R2 object protected by an exclusive D1 lease. Required outputs pass schema, size, and credential checks before checksum-verified create-only R2 writes. The Sandbox is destroyed before the manifest is re-read for final integrity verification.
+ChatGPT auth is an encrypted, conditionally replaced R2 object. Each attempt
+has its own D1 checkout row, so several Codex agents may read the same protected
+snapshot. Refreshed auth uses the source ETag as a compare-and-swap guard. A
+losing writer preserves only a newer valid encrypted winner. Required outputs
+pass schema, size, and credential checks before checksum-verified create-only
+R2 writes. The Sandbox is destroyed before the manifest is re-read for final
+integrity verification.
 
 Durable GitHub and Linear work products go through attempt-scoped capability endpoints. Each request is schema-checked, restricted to the trial repository or issue, and recorded under a stable operation identity. Ordinary successful agents require a non-empty mechanically captured receipt set that matches the structured result and D1's successful or reconciled operations for the same run and attempt. A typed OpenSpec job may instead complete with zero provider operations; if it attempts any external effect, the same exact receipt rule applies. GitHub uses a short-lived App installation token. Linear capabilities can write notes and artifact references but cannot mutate issue state. Workflow-owned transitions use the Linear app actor and are confirmed only by ordered signed-delivery evidence. Human-gate entry operations are scoped to the durable gate visit, so a same-visit retry reuses the provider operation while a later visit to the same gate creates a new one. Historical frozen definitions may still contain an external `system_action`; it requires a successful or reconciled receipt for its exact named action, and repository artifacts cannot prove a deployment or other provider effect.
 

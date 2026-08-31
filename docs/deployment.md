@@ -60,7 +60,13 @@ npx wrangler r2 object put \
   --content-type application/json
 ```
 
-Remove the temporary directory after verifying the object exists. Each attempt acquires an exclusive D1 lease, decrypts into `/root/.codex/auth.json`, preserves a refreshed file with conditional R2 replacement, deletes it before artifact collection, and releases the lease. A conditional conflict fails closed.
+Remove the temporary directory after verifying the object exists. Each attempt
+gets its own D1 checkout row and decrypts into `/root/.codex/auth.json`.
+Concurrent attempts may read the same protected snapshot. A refreshed file uses
+conditional R2 replacement. If another attempt already saved a newer valid
+encrypted file, the losing writer keeps it. Any other conditional conflict
+fails closed. The attempt deletes its local auth before artifact collection and
+releases its checkout row.
 
 ## Deploy disabled
 

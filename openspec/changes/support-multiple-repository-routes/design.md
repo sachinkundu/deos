@@ -213,6 +213,19 @@ The other two remain as design history.
 Each option shows GitHub App access, active-run state, and the rule that saved
 changes affect future runs while active work keeps its frozen setup.
 
+### 7. Let concurrent agents share one protected credential seed
+
+Each Sandbox attempt gets its own D1 credential checkout row. More than one
+attempt may read the same encrypted R2 auth snapshot, so agents on separate
+routes do not block each other at startup.
+
+An attempt that refreshes auth may replace the R2 object only when its source
+ETag is still current. If another attempt already stored a valid encrypted
+refresh, the losing writer keeps that winner and releases its own checkout. A
+failed conditional write with no newer valid object remains an error. This
+separates concurrent reads from the one guarded shared write without exposing
+the credential or letting a later finisher overwrite a newer refresh.
+
 ## Component Diagram
 
 ```mermaid
@@ -266,6 +279,10 @@ flowchart LR
 - **Old Settings revision:** reject only that route's save.
 - **Active run on the edited route:** save for later runs and keep the run fixed.
 - **Active run on another route:** save the edit and keep both runs fixed.
+- **Concurrent agent starts:** give each attempt a checkout of the same protected
+  credential snapshot; neither route waits for the other.
+- **Concurrent credential refreshes:** keep the first valid conditional-write
+  winner and safely release the losing checkout.
 - **Setup stops partway:** keep all route values and retry missing links by id.
 - **Internal admin call fails:** show a safe error and save no partial change.
 - **Bad provider reply:** store a safe class, not the raw reply.
