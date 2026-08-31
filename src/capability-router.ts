@@ -51,6 +51,7 @@ interface OpenRouterCapabilityRequest {
 export interface CapabilityRouterDependencies {
   store: CapabilityStore;
   github: GitHubCapabilityAdapter;
+  githubForInstallation?: (installationId: string) => GitHubCapabilityAdapter;
   linear: LinearCapabilityAdapter;
   planningStore?: Pick<D1PlanningStore, "findRunWorkProduct" | "recordPublication">;
   openrouter?: Pick<OpenRouterReviewClient, "review"> &
@@ -371,6 +372,7 @@ export class CapabilityRouter {
           claims.runId,
           claims.attemptId,
           claims.planningBranch,
+          context.githubInstallationId,
         );
       }
       if (asRecord(untrusted)?.action === "publish_planning_work_product") {
@@ -389,7 +391,7 @@ export class CapabilityRouter {
         input.repository !== claims.repository ||
         input.branch !== `deos/${claims.attemptId}`
       ) return this.denied(claims.runId, claims.attemptId, "github", untrusted);
-      return this.github(input, claims.runId, claims.attemptId);
+      return this.github(input, claims.runId, claims.attemptId, context.githubInstallationId);
     }
     if (path.endsWith("/linear")) {
       const input = parseLinearRequest(untrusted);
@@ -727,6 +729,7 @@ export class CapabilityRouter {
     runId: string,
     attemptId: string,
     planningBranch: string,
+    githubInstallationId: string | undefined,
   ): Promise<Response> {
     const planningStore = this.dependencies.planningStore;
     if (planningStore === undefined) return json(503, { error: "planning_store_unavailable" });
@@ -756,7 +759,7 @@ export class CapabilityRouter {
         recorded.remote_branch !== planningBranch || recorded.base_branch !== "main" ||
         recorded.change_id !== input.change
       ) throw new Error("recorded planning work product does not match the capability");
-      const receipt = await this.dependencies.github.publishPlanning({
+      const receipt = await this.githubAdapter(githubInstallationId).publishPlanning({
         repository: input.repository,
         branch: planningBranch,
         baseBranch: "main",
@@ -831,6 +834,7 @@ export class CapabilityRouter {
     input: GitHubCapabilityRequest,
     runId: string,
     attemptId: string,
+    githubInstallationId: string | undefined,
   ): Promise<Response> {
     const operationId = operationIdentity(
       runId,
@@ -852,7 +856,7 @@ export class CapabilityRouter {
       return json(200, this.receipt(operationId, operation.operation.state, operation.operation.provider_resource_id));
     }
     try {
-      const receipt = await this.dependencies.github.publish(input, operationId);
+      const receipt = await this.githubAdapter(githubInstallationId).publish(input, operationId);
       const state = receipt.reconciled ? "reconciled" : "succeeded";
       await this.dependencies.store.finish({
         operationId,
@@ -876,6 +880,14 @@ export class CapabilityRouter {
       this.emitProvider(runId, operationId, "failed", "github_response_ambiguous");
       return json(502, this.receipt(operationId, "manual_reconciliation_required", null));
     }
+  }
+
+  private githubAdapter(installationId: string | undefined): GitHubCapabilityAdapter {
+    if (this.dependencies.githubForInstallation === undefined) return this.dependencies.github;
+    if (installationId === undefined || !/^[1-9][0-9]{0,19}$/.test(installationId)) {
+      throw new Error("frozen GitHub App installation is missing");
+    }
+    return this.dependencies.githubForInstallation(installationId);
   }
 
   private async linear(

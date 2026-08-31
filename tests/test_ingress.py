@@ -4,7 +4,13 @@ import json
 from datetime import UTC, datetime, timedelta
 
 from deos.fakes import FakeQueue, FakeStateStore
-from deos.ingress import LinearIngress, LinearIngressConfig, LinearWebhookACL
+from deos.ingress import (
+    IngressRouteProof,
+    LinearIngress,
+    LinearIngressConfig,
+    LinearWebhookACL,
+    route_event_proof,
+)
 from deos.ports import DeliveryClassification
 
 SECRET = b"test-secret"
@@ -111,6 +117,39 @@ def test_missing_or_inconsistent_provider_labels_become_unavailable() -> None:
 
     assert result.classification == DeliveryClassification.RELEVANT
     assert queue.events[0].label_selection_evidence.status == "unavailable"
+
+
+def test_d1_route_proof_admits_enabled_start_and_keeps_active_run_fixed() -> None:
+    acl = LinearWebhookACL(
+        LinearIngressConfig(
+            signing_secret=SECRET,
+            relevant_project_ids=frozenset(),
+            relevant_transitions=frozenset(),
+        )
+    )
+    start, _ = acl.translate(make_body(project_id="project-1", state="Todo"))
+    later, _ = acl.translate(make_body(project_id="project-1", state="Human Review"))
+    route = IngressRouteProof("project-1", 3, "a" * 64, "Todo", True)
+    frozen = IngressRouteProof("project-1", 2, "b" * 64, "Todo", False)
+
+    assert route_event_proof(start, route) == route
+    assert route_event_proof(later, route) is None
+    assert route_event_proof(later, route, frozen) == frozen
+
+
+def test_unknown_and_disabled_routes_have_no_queue_proof() -> None:
+    acl = LinearWebhookACL(
+        LinearIngressConfig(
+            signing_secret=SECRET,
+            relevant_project_ids=frozenset(),
+            relevant_transitions=frozenset(),
+        )
+    )
+    event, _ = acl.translate(make_body(project_id="project-1", state="Todo"))
+    disabled = IngressRouteProof("project-1", 1, "a" * 64, "Todo", False)
+
+    assert route_event_proof(event, None) is None
+    assert route_event_proof(event, disabled) is None
 
     ingress, queue, _ = make_ingress()
     inconsistent = make_body(

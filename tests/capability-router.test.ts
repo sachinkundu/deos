@@ -43,6 +43,7 @@ class Store implements CapabilityStore {
     issueId: claims.issueId,
     projectId: "project-1",
     repository: claims.repository,
+    githubInstallationId: "154095438",
     attemptState: "running",
   };
 
@@ -162,10 +163,15 @@ const requestBody = {
 const setup = async () => {
   const store = new Store();
   const github = new GitHub();
+  const selectedInstallations: string[] = [];
   const linear = new Linear();
   const router = new CapabilityRouter({
     store,
     github: github as unknown as GitHubCapabilityAdapter,
+    githubForInstallation: (installationId) => {
+      selectedInstallations.push(installationId);
+      return github as unknown as GitHubCapabilityAdapter;
+    },
     linear: linear as unknown as LinearCapabilityAdapter,
     signingSecret: SECRET,
     now: () => NOW,
@@ -181,7 +187,7 @@ const setup = async () => {
       },
       body: JSON.stringify(body),
     }));
-  return { store, github, linear, router, token, invoke };
+  return { store, github, selectedInstallations, linear, router, token, invoke };
 };
 
 test("signed capability token is scoped and expires", async () => {
@@ -194,13 +200,14 @@ test("signed capability token is scoped and expires", async () => {
   );
 });
 
-test("allowed GitHub work product is executed once and duplicate returns the durable receipt", async () => {
-  const { invoke, github, store } = await setup();
+test("allowed GitHub work product uses the frozen install once and duplicate returns the durable receipt", async () => {
+  const { invoke, github, selectedInstallations, store } = await setup();
   const first = await invoke("github", requestBody);
   const second = await invoke("github", requestBody);
   assert.equal(first.status, 200);
   assert.equal(second.status, 200);
   assert.equal(github.calls, 1);
+  assert.deepEqual(selectedInstallations, ["154095438"]);
   assert.equal(store.operations.size, 1);
   const receipt = await second.json() as { state: string; providerResourceId: string };
   assert.equal(receipt.state, "succeeded");

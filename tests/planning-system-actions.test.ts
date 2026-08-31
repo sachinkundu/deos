@@ -11,6 +11,8 @@ const manifestDigest = "a".repeat(64);
 const run = {
   run_id: "workflow:project-1:issue-1:run:1",
   current_visit_sequence: 3,
+  route_repository: "sachinkundu/deos",
+  route_github_installation_id: "154095438",
 } as OrchestrationRunRecord;
 
 class OperationStore implements SystemActionStore {
@@ -99,22 +101,33 @@ class PlanningStore {
 const setup = () => {
   const operations = new OperationStore();
   const planning = new PlanningStore();
+  const selectedInstallations: string[] = [];
+  const github = {
+    mergePlanning: async (input: { expectedHeadSha: string }) => {
+      if (input.expectedHeadSha !== "head-sha") throw new Error("wrong head");
+      return {
+        pullRequestDatabaseId: "9001",
+        pullRequestNumber: 54,
+        mergeCommitSha: "merge-sha",
+        reconciled: false,
+      };
+    },
+  };
   const controller = new SystemActionController(operations, {
     planningStore: planning,
     now: () => NOW,
     github: {
-      mergePlanning: async (input) => {
-        if (input.expectedHeadSha !== "head-sha") throw new Error("wrong head");
-        return {
-          pullRequestDatabaseId: "9001",
-          pullRequestNumber: 54,
-          mergeCommitSha: "merge-sha",
-          reconciled: false,
-        };
-      },
+      mergePlanning: async () => { throw new Error("fixed installation fallback used"); },
+    },
+    githubForRun: (selectedRun) => {
+      if (selectedRun.route_github_installation_id === null || selectedRun.route_github_installation_id === undefined) {
+        throw new Error("frozen installation missing");
+      }
+      selectedInstallations.push(selectedRun.route_github_installation_id);
+      return github;
     },
   });
-  return { controller, operations, planning };
+  return { controller, operations, planning, selectedInstallations };
 };
 
 test("trusted merge completion records one durable provider receipt", async () => {
@@ -128,4 +141,5 @@ test("trusted merge completion records one durable provider receipt", async () =
   assert.equal(state.planning.record.merge_commit_sha, "merge-sha");
   assert.equal(state.planning.record.verification_operation_id, null);
   assert.equal([...state.operations.operations.values()].length, 1);
+  assert.deepEqual(state.selectedInstallations, ["154095438"]);
 });

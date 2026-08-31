@@ -18,8 +18,9 @@ header, or raw provider reply.
 - List queries use Relay paging. The route catalog uses `first`, `after`,
   `pageInfo.hasNextPage`, and `pageInfo.endCursor`. The documented default is 50
   rows when no page size is given.
-- The route catalog needs only project `id`, `name`, `url`, and team `id`,
-  `name`, and `key`.
+- The route catalog needs only project `id`, `name`, `url`, and the paged
+  `teams.nodes` values `id`, `name`, and `key`. A project may belong to more
+  than one team.
 - Webhooks sign the raw body with HMAC-SHA256 in `Linear-Signature`.
   `Linear-Timestamp` and body `webhookTimestamp` are Unix milliseconds.
   `Linear-Delivery` is the unique delivery id. Linear recommends a one-minute
@@ -38,7 +39,9 @@ Primary sources:
   the App client id or App id. JWT requests use `Authorization: Bearer`.
 - `GET /app/installations` uses the App JWT. Each row supplies the installation
   id, account, repository selection, permissions, suspension state, and an
-  installation settings URL.
+  installation settings URL. A personal install uses
+  `/settings/installations/{id}`. An organization install uses
+  `/organizations/{account}/settings/installations/{id}`.
 - `POST /app/installations/{installation_id}/access_tokens` uses the App JWT.
   The returned installation token expires after one hour. It cannot gain repos
   or rights that the installation lacks.

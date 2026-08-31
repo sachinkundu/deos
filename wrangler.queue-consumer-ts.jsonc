@@ -31,7 +31,8 @@
     "TRIAL_DISPATCH_ENABLED": "false",
     "CODEX_AUTH_PROFILE_ID": "controlled-trial",
     "CAPABILITY_BASE_URL": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities",
-    "PORTAL_BASE_URL": "https://deos.voxdez.com"
+    "PORTAL_BASE_URL": "https://deos.voxdez.com",
+    "ROUTE_ADMIN_ALLOWED_EMAIL": "sachinkundu@gmail.com"
   },
   "secrets": {
     "required": [

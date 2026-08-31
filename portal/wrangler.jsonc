@@ -27,6 +27,11 @@
     "binding": "ARTIFACTS",
     "bucket_name": "deos-sample-project-artifacts"
   }],
+  "services": [{
+    "binding": "ROUTE_ADMIN",
+    "service": "deos-queue-consumer-ts",
+    "entrypoint": "RouteAdmin"
+  }],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

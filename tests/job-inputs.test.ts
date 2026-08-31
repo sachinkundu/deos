@@ -60,6 +60,8 @@ test("materializer records the OpenSpec operation and latest cumulative patch re
     run_id: "workflow:project-1:issue-1:run:1",
     project_id: "project-1",
     issue_id: "issue-1",
+    route_repository: "sachinkundu/deos",
+    route_github_installation_id: "154095438",
   } as OrchestrationRunRecord;
   const job = {
     id: "openspec_continue",
@@ -138,6 +140,8 @@ test("materializer gives the next author trusted deterministic rejection feedbac
     run_id: "workflow:project-1:issue-1:run:1",
     project_id: "project-1",
     issue_id: "issue-1",
+    route_repository: "sachinkundu/deos-sample-project",
+    route_github_installation_id: "154095438",
   } as OrchestrationRunRecord, {
     id: "openspec_continue",
     promptFile: "prompts/openspec.md",
@@ -157,6 +161,7 @@ test("materializer gives the next author trusted deterministic rejection feedbac
 
 test("planning materializer allocates one run branch and bounds both feedback providers", async () => {
   let workProduct: Record<string, unknown> | null = null;
+  let reviewTarget: { repository: string; installationId: string } | null = null;
   const database = {
     prepare(sql: string) {
       let values: unknown[] = [];
@@ -224,10 +229,13 @@ test("planning materializer allocates one run branch and bounds both feedback pr
           },
         },
       }),
-      readGitHubReviewFeedback: async () => Array.from({ length: 60 }, (_, index) => ({
-        id: index,
-        body: `Review ${index}`,
-      })),
+      readGitHubReviewFeedback: async (repository, _pullRequestNumber, installationId) => {
+        reviewTarget = { repository, installationId };
+        return Array.from({ length: 60 }, (_, index) => ({
+          id: index,
+          body: `Review ${index}`,
+        }));
+      },
     },
   );
   const job = {
@@ -246,6 +254,8 @@ test("planning materializer allocates one run branch and bounds both feedback pr
     run_id: "workflow:project-1:issue-1:run:1",
     project_id: "project-1",
     issue_id: "issue-1",
+    route_repository: "sachinkundu/deos",
+    route_github_installation_id: "154095438",
   } as OrchestrationRunRecord, job);
   assert.equal(result.openspecChange, "sac-200");
   assert.match(result.planningWorkProduct?.remote_branch ?? "", /^deos\/planning\/[a-f0-9]{24}$/);
@@ -255,4 +265,8 @@ test("planning materializer allocates one run branch and bounds both feedback pr
   assert.equal(context.planning.feedback.linearComments.length, 20);
   assert.equal(context.planning.feedback.github.length, 50);
   assert.equal(context.repository.planningBranch, result.planningWorkProduct?.remote_branch);
+  assert.deepEqual(reviewTarget, {
+    repository: "sachinkundu/deos",
+    installationId: "154095438",
+  });
 });

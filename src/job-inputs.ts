@@ -51,6 +51,7 @@ interface JobInputDependencies {
   readGitHubReviewFeedback: (
     repository: string,
     pullRequestNumber: number,
+    installationId: string,
   ) => Promise<readonly Record<string, unknown>[]>;
 }
 
@@ -112,18 +113,24 @@ export class JobInputMaterializer {
     const planningWorkProduct = planningAuthor
       ? await this.allocatePlanningWorkProduct(run, openspecChange)
       : planningParticipant ? await new D1PlanningStore(this.database).findRunWorkProduct(run.run_id) : null;
-    const policy = planningWorkProduct === null
-      ? await this.database.prepare(
-          "SELECT trial_repository FROM project_workflow_policies WHERE project_id = ?",
-        ).bind(run.project_id).first<{ trial_repository: string }>()
-      : { trial_repository: planningWorkProduct.repository };
-    if (policy === null) throw new Error("job repository policy is missing");
+    const frozenRepository = run.route_repository;
+    const frozenInstallationId = run.route_github_installation_id;
+    if (frozenRepository === null || frozenRepository === undefined) {
+      throw new Error("job frozen repository is missing");
+    }
+    if (frozenInstallationId === null || frozenInstallationId === undefined) {
+      throw new Error("job frozen GitHub App installation is missing");
+    }
+    if (planningWorkProduct !== null && planningWorkProduct.repository !== frozenRepository) {
+      throw new Error("planning work product does not match the frozen route");
+    }
     const githubFeedback = planningWorkProduct?.pull_request_number === null ||
         planningWorkProduct?.pull_request_number === undefined
       ? []
       : (await this.readGitHubReviewFeedback(
           planningWorkProduct.repository,
           planningWorkProduct.pull_request_number,
+          frozenInstallationId,
         )).slice(-50);
     const bundle = {
       version: 1,
@@ -190,7 +197,7 @@ export class JobInputMaterializer {
     if (encoded.length > 128_000) throw new Error("materialized job inputs exceed the trusted limit");
     return {
       context: encoded,
-      repository: policy.trial_repository,
+      repository: frozenRepository,
       openspecChange,
       continuationPatch,
       planningWorkProduct,
@@ -254,13 +261,12 @@ export class JobInputMaterializer {
     run: OrchestrationRunRecord,
     changeId: string,
   ): Promise<RunWorkProductRecord> {
-    const policy = await this.database.prepare(
-      "SELECT trial_repository FROM project_workflow_policies WHERE project_id = ?",
-    ).bind(run.project_id).first<{ trial_repository: string }>();
-    if (policy === null) throw new Error("planning repository policy is missing");
+    if (run.route_repository === null || run.route_repository === undefined) {
+      throw new Error("planning frozen repository is missing");
+    }
     return new D1PlanningStore(this.database).allocateRunWorkProduct({
       runId: run.run_id,
-      repository: policy.trial_repository,
+      repository: run.route_repository,
       changeId,
       now: this.now().toISOString(),
     });

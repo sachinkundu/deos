@@ -1,8 +1,36 @@
 # Current orchestration architecture
 
-The authenticated Python ingress verifies the raw Linear body with HMAC-SHA256, treats `Linear-Timestamp` as milliseconds, deduplicates on `Linear-Delivery`, and enqueues every issue-state change for configured projects. It returns HTTP 200 for accepted, ignored, and duplicate deliveries.
+The authenticated Python ingress verifies the raw Linear body with HMAC-SHA256, treats `Linear-Timestamp` as milliseconds, and deduplicates on `Linear-Delivery`. After authentication, it finds the Linear project's repository route in D1. An enabled start event carries the route revision and digest into the delivery row and Queue message. A later event for active work carries the run's frozen proof. Unknown and disabled projects are recorded and acknowledged without queued work. Ingress returns HTTP 200 for accepted, ignored, and duplicate deliveries.
 
-The TypeScript Queue consumer loads an immutable workflow definition and project policy from D1. It allocates a monotonic issue run, derives a stable Cloudflare Workflow ID, records a pending dispatch intent, and reconciles by that ID before acknowledging the Queue. Later events enter a delivery-keyed D1 inbox and use one fixed Workflow event type.
+The TypeScript Queue consumer compares the queued proof with the current D1 route before checking GitHub. It verifies the saved GitHub App install, repository, and required rights. One guarded D1 insert allocates a monotonic issue run only while the same route remains enabled. That insert freezes the project name, repository, App install, route revision and digest, gate states, and control revisions. It then derives a stable Cloudflare Workflow ID, records a pending dispatch intent, and reconciles by that ID before acknowledging the Queue. Later events enter a delivery-keyed D1 inbox and use one fixed Workflow event type.
+
+## Repository routes and Settings
+
+Each `project_workflow_policies` row is one route from a Linear project to one GitHub repository. The Linear project id is the stable route id. D1 is the live route list, so adding another project and repository does not require a deploy. The checked deploy values seed the first route only when the list is empty and remain available for one rollback release.
+
+The Access-protected `/settings` page uses project connection cards. It shows every saved route, even when a live provider list is unavailable. A selected card exposes repository, workflow, review, access, and active-run controls. Repository and App-install changes turn off only that route. All saves use control revisions plus one shared route revision. They remain allowed during active work because the save affects only later runs.
+
+The portal has no provider secret. It passes the verified Access email through an internal service binding to the queue Worker's named `RouteAdmin` entrypoint. That entrypoint validates the operator and input again, lists Linear projects with the Linear app token, and lists all App-accessible repositories with short-lived GitHub installation tokens. Only safe ids, labels, rights, states, and GitHub settings links return to the portal. Access checks are append-only D1 audit rows; tokens, authorization headers, and raw provider replies are never stored or returned.
+
+```mermaid
+flowchart LR
+    O[Allowed operator] --> P[Settings page]
+    P --> A[Portal and Access check]
+    A -->|internal RouteAdmin binding| R[Trusted queue Worker]
+    R --> L[Linear project catalog]
+    R --> G[GitHub App installs and repos]
+    R --> D[(D1 route list)]
+    E[Signed Linear event] --> I[Python ingress]
+    I --> D
+    I --> Q[Queue with route proof]
+    Q --> R
+    R -->|atomic frozen route| W[Cloudflare Workflow]
+    W --> S[Sandbox agent]
+    S -->|attempt-scoped capability| R
+    R -->|frozen repo and install| G
+```
+
+Every repository checkout, planning work product, capability grant, review read, check, merge, retry, and repair uses the run's frozen repository and GitHub App installation. If Settings changes while GitHub access is being checked, the atomic insert rejects the old proof and records a safe stale-route result. If GitHub access disappears, DEOS disables only that route and starts no run or Sandbox.
 
 Cloudflare Workflow reloads D1 authority before every graph decision. The run's current node carries a monotonic visit sequence; each selected edge derives a stable traversal ID from its source visit. D1 advances the node and visit and inserts the matching transition row in one guarded transaction. An exact replay reuses that traversal without advancing, while a later genuine pass over the same edge has a new visit and row. Workflow-step telemetry carries both identities and reports `duplicate` only for the exact replay. An active run keeps its immutable definition version: if the deployed bundle advances, the Workflow restores the run's canonical definition from D1 and verifies its digest. Agent, system-action, human-gate, loop, and terminal nodes select only reviewed edges from `config/workflow.deos.yaml`. Agent output cannot name a Linear state or edge. Human approval requires a signed event from `actor.type == user` leaving the active `Human Review` gate; the provider's prior-state ID is authoritative when Linear omits the prior state name.
 

@@ -316,7 +316,7 @@ test("an authenticated issue search records the viewer before the read-only API 
   assert.deepEqual(queries, [PORTAL_SELECTS.issueByKey, PORTAL_MUTATIONS.recordIssueSearch]);
 });
 
-test("workflow control writes require only dispatch and revision", async () => {
+test("route workflow writes require only dispatch and revision", async () => {
   const env = {
     DB: {} as D1Database,
     ARTIFACTS: {} as R2Bucket,
@@ -326,13 +326,49 @@ test("workflow control writes require only dispatch and revision", async () => {
     ALLOWED_EMAIL: "sachinkundu@gmail.com",
     PROJECT_ID: "project-id",
   };
-  const response = await routePortalRequest(new Request("https://deos.example/api/settings/workflow", {
+  const response = await routePortalRequest(new Request("https://deos.example/api/settings/routes/project-id/workflow", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ dispatchEnabled: true, selectorEnabled: true, expectedRevision: 1 }),
   }), env, async () => ({ email: "sachinkundu@gmail.com" }));
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), { error: "invalid_request" });
+});
+
+test("route writes reject non-object and oversized JSON before the admin binding", async () => {
+  const env = {
+    DB: {} as D1Database,
+    ARTIFACTS: {} as R2Bucket,
+    ASSETS: { fetch: async () => new Response("portal") } as unknown as Fetcher,
+    ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
+    ACCESS_AUD: "aud",
+    ALLOWED_EMAIL: "sachinkundu@gmail.com",
+    PROJECT_ID: "project-id",
+  };
+  const authenticate = async () => ({ email: "sachinkundu@gmail.com" });
+  const invalid = await routePortalRequest(new Request("https://deos.example/api/settings/routes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "[]",
+  }), env, authenticate);
+  assert.equal(invalid.status, 400);
+  assert.deepEqual(await invalid.json(), { error: "invalid_request" });
+
+  const malformed = await routePortalRequest(new Request("https://deos.example/api/settings/routes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{",
+  }), env, authenticate);
+  assert.equal(malformed.status, 400);
+  assert.deepEqual(await malformed.json(), { error: "invalid_request" });
+
+  const tooLarge = await routePortalRequest(new Request("https://deos.example/api/settings/routes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectId: "x".repeat(4_200) }),
+  }), env, authenticate);
+  assert.equal(tooLarge.status, 413);
+  assert.deepEqual(await tooLarge.json(), { error: "request_too_large" });
 });
 
 test("transcript JSONL keeps exact numbered records for readable and raw views", () => {

@@ -4,6 +4,11 @@ import {
   runIdentity,
   workflowInstanceIdentity,
 } from "./orchestration-identity.ts";
+import {
+  D1RepositoryRouteStore,
+  repositoryRouteDigest,
+  type GitHubAccessState,
+} from "./repository-routes.ts";
 
 export type RunStatus =
   | "pending_dispatch"
@@ -52,25 +57,48 @@ export interface OrchestrationRunRecord {
   independent_review_provider?: string | null;
   independent_review_model?: string | null;
   independent_review_reasoning?: string | null;
+  route_project_name?: string | null;
+  route_repository?: string | null;
+  route_github_installation_id?: string | null;
+  route_revision?: number | null;
+  route_digest?: string | null;
+  route_start_state_name?: string | null;
+  route_human_gate_state_id?: string | null;
+  route_repository_revision?: number | null;
+  route_workflow_revision?: number | null;
+  route_review_revision?: number | null;
 }
 
 export interface ProjectWorkflowPolicyRecord {
   project_id: string;
+  linear_project_name?: string | null;
   definition_id: string;
   definition_version: number;
   definition_digest: string;
   trial_repository: string;
+  github_installation_id?: string | null;
   start_state_name: string;
   human_gate_state_id: string;
   dispatch_enabled: number;
   repository_revision: number;
   repository_updated_by: string;
   repository_updated_at: string;
+  workflow_revision?: number;
+  workflow_updated_by?: string;
+  workflow_updated_at?: string;
   independent_review_provider?: "openrouter";
   independent_review_model?: string | null;
   independent_review_revision?: number;
   independent_review_updated_by?: string;
   independent_review_updated_at?: string;
+  route_revision?: number;
+  route_digest?: string | null;
+  route_updated_by?: string;
+  route_updated_at?: string;
+  github_access_state?: "unchecked" | "passed" | "missing" | "weak_permissions" | "unavailable";
+  github_access_checked_at?: string | null;
+  github_access_permissions_digest?: string | null;
+  github_settings_url?: string | null;
   updated_at: string;
 }
 
@@ -246,14 +274,47 @@ export interface OrchestrationDispatchStore {
     deliveryId: string,
   ): Promise<DeliverySelectionEvidenceRecord | null>;
   findPolicy(projectId: string): Promise<ProjectWorkflowPolicyRecord | null>;
+  recordRouteDispatchResult?(input: {
+    resultId: string;
+    deliveryId: string;
+    projectId: string;
+    queuedRouteRevision: number | null;
+    queuedRouteDigest: string | null;
+    outcome: "stale_route" | "missing_route" | "disabled_route" | "access_denied";
+    safeErrorCategory: string | null;
+    recordedAt: string;
+  }): Promise<void>;
+  saveRouteAccessResult?(input: {
+    projectId: string;
+    repository: string;
+    installationId: string;
+    expectedRouteRevision: number;
+    expectedRouteDigest: string;
+    checkId: string;
+    requiredPermissionsDigest: string;
+    observedPermissionsDigest: string | null;
+    result: Exclude<GitHubAccessState, "unchecked">;
+    settingsUrl: string | null;
+    safeErrorCategory: string | null;
+    actorEmail: string;
+    now: string;
+  }): Promise<void>;
+  listPolicies?(): Promise<ProjectWorkflowPolicyRecord[]>;
+  linkDefinitionToPolicy?(input: {
+    projectId: string;
+    definition: LoadedWorkflowDefinition;
+    now: string;
+  }): Promise<void>;
   findActiveRun(projectId: string, issueId: string): Promise<OrchestrationRunRecord | null>;
   allocateRun(input: {
     projectId: string;
     issueId: string;
     definition: LoadedWorkflowDefinition;
     selection: RunSelectionEvidence;
+    routeRevision: number;
+    routeDigest: string;
     now: string;
-  }): Promise<{ run: OrchestrationRunRecord; created: boolean }>;
+  }): Promise<{ run: OrchestrationRunRecord; created: boolean } | null>;
   createDispatchIntent(
     run: OrchestrationRunRecord,
     sourceDeliveryId: string,
@@ -413,15 +474,9 @@ export class D1OrchestrationStore {
         `INSERT INTO project_workflow_policies
          (project_id, definition_id, definition_version, definition_digest, trial_repository,
           start_state_name, human_gate_state_id, dispatch_enabled, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(project_id) DO UPDATE SET
-           definition_id = excluded.definition_id,
-           definition_version = excluded.definition_version,
-           definition_digest = excluded.definition_digest,
-           start_state_name = excluded.start_state_name,
-           human_gate_state_id = excluded.human_gate_state_id,
-           dispatch_enabled = project_workflow_policies.dispatch_enabled,
-           updated_at = excluded.updated_at`,
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
+         WHERE NOT EXISTS (SELECT 1 FROM project_workflow_policies)
+         ON CONFLICT(project_id) DO NOTHING`,
       ).bind(
         input.projectId,
         definitionId,
@@ -533,6 +588,128 @@ export class D1OrchestrationStore {
     ).bind(projectId).first<ProjectWorkflowPolicyRecord>();
   }
 
+  async recordRouteDispatchResult(input: {
+    resultId: string;
+    deliveryId: string;
+    projectId: string;
+    queuedRouteRevision: number | null;
+    queuedRouteDigest: string | null;
+    outcome: "stale_route" | "missing_route" | "disabled_route" | "access_denied";
+    safeErrorCategory: string | null;
+    recordedAt: string;
+  }): Promise<void> {
+    await this.database.prepare(
+      `INSERT OR IGNORE INTO route_dispatch_results
+       (result_id, delivery_id, project_id, queued_route_revision, queued_route_digest,
+        outcome, safe_error_category, recorded_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      input.resultId,
+      input.deliveryId,
+      input.projectId,
+      input.queuedRouteRevision,
+      input.queuedRouteDigest,
+      input.outcome,
+      input.safeErrorCategory,
+      input.recordedAt,
+    ).run();
+  }
+
+  async saveRouteAccessResult(input: {
+    projectId: string;
+    repository: string;
+    installationId: string;
+    expectedRouteRevision: number;
+    expectedRouteDigest: string;
+    checkId: string;
+    requiredPermissionsDigest: string;
+    observedPermissionsDigest: string | null;
+    result: Exclude<GitHubAccessState, "unchecked">;
+    settingsUrl: string | null;
+    safeErrorCategory: string | null;
+    actorEmail: string;
+    now: string;
+  }): Promise<void> {
+    await new D1RepositoryRouteStore(this.database).saveAccessResult(input);
+  }
+
+  async listPolicies(): Promise<ProjectWorkflowPolicyRecord[]> {
+    const result = await this.database.prepare(
+      "SELECT * FROM project_workflow_policies ORDER BY project_id",
+    ).all<ProjectWorkflowPolicyRecord>();
+    return result.results;
+  }
+
+  async linkDefinitionToPolicy(input: {
+    projectId: string;
+    definition: LoadedWorkflowDefinition;
+    now: string;
+  }): Promise<void> {
+    const current = await this.findPolicy(input.projectId);
+    if (current === null) throw new Error("workflow route is missing");
+    if (
+      current.definition_id === input.definition.name &&
+      current.definition_version === input.definition.version &&
+      current.definition_digest === input.definition.digest
+    ) return;
+    if (
+      current.linear_project_name === undefined || current.linear_project_name === null ||
+      current.github_installation_id === undefined || current.github_installation_id === null ||
+      current.workflow_revision === undefined ||
+      current.independent_review_provider === undefined ||
+      current.independent_review_revision === undefined ||
+      current.route_revision === undefined || current.route_updated_by === undefined ||
+      current.route_updated_at === undefined || current.github_access_state === undefined
+    ) throw new Error("workflow route metadata is incomplete");
+    const digest = await repositoryRouteDigest({
+      project_id: current.project_id,
+      linear_project_name: current.linear_project_name,
+      definition_id: input.definition.name,
+      definition_version: input.definition.version,
+      definition_digest: input.definition.digest,
+      trial_repository: current.trial_repository,
+      github_installation_id: current.github_installation_id,
+      start_state_name: current.start_state_name,
+      human_gate_state_id: current.human_gate_state_id,
+      dispatch_enabled: current.dispatch_enabled,
+      repository_revision: current.repository_revision,
+      workflow_revision: current.workflow_revision,
+      independent_review_provider: current.independent_review_provider,
+      independent_review_model: current.independent_review_model ?? null,
+      independent_review_revision: current.independent_review_revision,
+      route_revision: current.route_revision + 1,
+      route_updated_by: current.route_updated_by,
+      route_updated_at: current.route_updated_at,
+      github_access_state: current.github_access_state,
+      github_access_checked_at: current.github_access_checked_at ?? null,
+      github_access_permissions_digest: current.github_access_permissions_digest ?? null,
+      github_settings_url: current.github_settings_url ?? null,
+    });
+    const result = await this.database.prepare(
+      `UPDATE project_workflow_policies
+       SET definition_id = ?, definition_version = ?, definition_digest = ?,
+           route_revision = route_revision + 1, route_digest = ?,
+           route_updated_by = 'deployment', route_updated_at = ?, updated_at = ?
+       WHERE project_id = ? AND route_revision = ?`,
+    ).bind(
+      input.definition.name,
+      input.definition.version,
+      input.definition.digest,
+      digest,
+      input.now,
+      input.now,
+      input.projectId,
+      current.route_revision,
+    ).run();
+    if ((result.meta.changes ?? 0) !== 1) throw new Error("workflow route definition link raced");
+    const saved = await this.findPolicy(input.projectId);
+    if (
+      saved?.definition_id !== input.definition.name ||
+      saved.definition_version !== input.definition.version ||
+      saved.definition_digest !== input.definition.digest || saved.route_digest !== digest
+    ) throw new Error("workflow route definition link read-back failed");
+  }
+
   findActiveRun(projectId: string, issueId: string): Promise<OrchestrationRunRecord | null> {
     return this.database.prepare(
       `SELECT * FROM orchestration_runs
@@ -562,8 +739,10 @@ export class D1OrchestrationStore {
     issueId: string;
     definition: LoadedWorkflowDefinition;
     selection: RunSelectionEvidence;
+    routeRevision: number;
+    routeDigest: string;
     now: string;
-  }): Promise<{ run: OrchestrationRunRecord; created: boolean }> {
+  }): Promise<{ run: OrchestrationRunRecord; created: boolean } | null> {
     const active = await this.findActiveRun(input.projectId, input.issueId);
     if (active !== null) return { run: active, created: false };
     const sequenceRow = await this.database.prepare(
@@ -585,8 +764,12 @@ export class D1OrchestrationStore {
       job.reasoning !== authorSettings?.reasoning)) {
       throw new Error("workflow author model settings are inconsistent");
     }
-    const policy = independentJobs.length === 0 ? null : await this.findPolicy(input.projectId);
-    if (independentJobs.length > 0 && !policy?.independent_review_model) {
+    const policy = await this.findPolicy(input.projectId);
+    if (
+      policy === null || policy.route_revision !== input.routeRevision ||
+      policy.route_digest !== input.routeDigest || policy.dispatch_enabled !== 1
+    ) return null;
+    if (independentJobs.length > 0 && !policy.independent_review_model) {
       throw new Error("independent review model setting is missing");
     }
     try {
@@ -598,13 +781,25 @@ export class D1OrchestrationStore {
           selection_evidence_json, selection_delivery_id, selection_observed_at,
           selection_provider_digest, author_model_provider, author_model, author_reasoning,
           independent_review_provider, independent_review_model, independent_review_reasoning,
+          route_project_name, route_repository, route_github_installation_id,
+          route_revision, route_digest, route_start_state_name, route_human_gate_state_id,
+          route_repository_revision, route_workflow_revision, route_review_revision,
           created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         SELECT ?, ?, ?, p.project_id, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                CASE WHEN ? = 0 THEN NULL ELSE p.independent_review_provider END,
+                CASE WHEN ? = 0 THEN NULL ELSE p.independent_review_model END,
+                ?, p.linear_project_name, p.trial_repository, p.github_installation_id,
+                p.route_revision, p.route_digest, p.start_state_name, p.human_gate_state_id,
+                p.repository_revision, p.workflow_revision, p.independent_review_revision, ?, ?
+         FROM project_workflow_policies p
+         WHERE p.project_id = ? AND p.dispatch_enabled = 1
+           AND p.route_revision = ? AND p.route_digest = ?
+           AND p.linear_project_name IS NOT NULL AND p.github_installation_id IS NOT NULL
+           AND p.route_digest IS NOT NULL`,
       ).bind(
         runId,
         correlationId,
         sequence,
-        input.projectId,
         input.issueId,
         input.definition.name,
         input.definition.version,
@@ -622,17 +817,20 @@ export class D1OrchestrationStore {
         authorSettings?.modelProvider ?? null,
         authorSettings?.model ?? null,
         authorSettings?.reasoning ?? null,
-        independentJobs.length === 0 ? null : "openrouter",
-        independentJobs.length === 0 ? null : policy?.independent_review_model ?? null,
+        independentJobs.length,
+        independentJobs.length,
         independentJobs[0]?.reasoning ?? null,
         input.now,
         input.now,
+        input.projectId,
+        input.routeRevision,
+        input.routeDigest,
       ).run();
       if (changes(result) === 1) {
         const created = await this.findRun(runId);
         if (created === null) throw new Error("created orchestration run is not readable");
         return { run: created, created: true };
-      }
+      } else return null;
     } catch {
       const raced = await this.findActiveRun(input.projectId, input.issueId);
       if (raced !== null) return { run: raced, created: false };

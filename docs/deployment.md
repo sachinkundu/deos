@@ -1,13 +1,16 @@
 # Cloudflare deployment and rollback
 
-DEOS has two deployable Workers sharing D1 and Queue resources:
+DEOS has three deployable Workers sharing D1 and Queue resources:
 
 - `deos-sample-project` is the small Python Linear webhook ingress.
 - `deos-queue-consumer-ts` owns dispatch, Cloudflare Workflow, Sandbox, provider capabilities, artifacts, and cleanup reconciliation.
+- `deos-workflow-portal` serves the Access-protected operator and Settings pages. Its internal `ROUTE_ADMIN` service binding calls the queue Worker's named `RouteAdmin` entrypoint without a public admin URL.
 
 The orchestration rollout is additive. Keep `TRIAL_DISPATCH_ENABLED` false while creating bindings, applying migrations, uploading secrets, and deploying the pinned Container image. Enabling a project policy in D1 is the separate canary action.
 
 Migration `0007_explicit_business_lifecycle.sql` is a guarded copy-and-swap of `orchestration_runs`, because SQLite cannot widen its status `CHECK` constraint in place. Before applying it remotely, export a D1 backup and record row counts, `PRAGMA foreign_key_check`, active-run uniqueness, and the current policy/definition digest. The migration preserves legacy version 3 `blocked` rows, includes both resumable statuses in the one-active-run index, and adds wait history plus completion-reconciliation records.
+
+Migration `0020_multi_repository_routes.sql` is additive. It expands each project policy into a complete repository route, adds safe GitHub installation and access-check records, stores event route proofs, and adds frozen route columns to runs. Apply it before deploying route-aware Workers. The queue Worker's scheduled setup then fills the current seed route and every active-run snapshot and reads them back. Stop the rollout if any active run still has a null repository, App installation, revision, or digest.
 
 ## Required resources
 
@@ -15,7 +18,8 @@ The checked Wrangler configurations name the existing D1 database, Queue, and pr
 
 - Workflow `deos-sandbox-codex-workflow` with entrypoint `DeosWorkflow`;
 - Durable Object class `Sandbox` and its pinned Container image;
-- a Queue consumer and fifteen-minute D1-known cleanup cron.
+- a Queue consumer and fifteen-minute D1-known cleanup cron; and
+- a named `RouteAdmin` Worker entrypoint for the portal's internal binding.
 
 The Sandbox package and image must remain on exact release `0.13.0-next.738.2`; the Docker base is also pinned by digest. The image also pins Codex `0.147.0` and OpenSpec `1.8.0`, and the Docker build verifies both CLIs. Run `npm run types:check` after every binding change.
 
@@ -34,6 +38,8 @@ CLEANUP_AUDIT_SECRET
 ```
 
 Set `LINEAR_APP_ACTOR_ID` to the actor ID observed for the Linear OAuth app, and `LINEAR_TEAM_ID` to the cleanup issue team. The checked configuration carries the verified non-secret IDs for this controlled workspace. The deploy script refuses to continue if a future configuration restores a `configure-before-*` sentinel. Prefer `GITHUB_APP_PRIVATE_KEY_PATH` so the PEM remains in its protected file rather than a shell environment variable.
+
+`GITHUB_INSTALLATION_ID`, `LINEAR_PROJECT_ID`, and `TRIAL_REPOSITORY` are first-route seed and rollback inputs. They are not the live route allowlist after D1 has a route. `ROUTE_ADMIN_ALLOWED_EMAIL` is non-secret queue Worker configuration and must equal the portal's allowed Access email.
 
 Provider credentials exist only in the trusted Worker. The Sandbox receives a short-lived, attempt-scoped capability token, never a Linear token, GitHub token, GitHub App key, Cloudflare token, or encryption key.
 
@@ -65,7 +71,7 @@ set +a
 ./scripts/deploy-orchestration.sh
 ```
 
-Then deploy ingress with `LINEAR_WEBHOOK_SECRET` using `./scripts/deploy-cloudflare.sh`. Inspect bindings and resources before enabling dispatch:
+Then deploy ingress with `LINEAR_WEBHOOK_SECRET` using `./scripts/deploy-cloudflare.sh`. Build and deploy the portal only after the queue Worker exposes `RouteAdmin`. Inspect bindings and resources before enabling dispatch:
 
 ```sh
 npx wrangler d1 migrations list DB --remote --config wrangler.queue-consumer-ts.jsonc
@@ -75,33 +81,32 @@ npx wrangler r2 object get deos-sample-project-artifacts/credentials/controlled-
 
 Do not print the downloaded credential object. A presence/head-style inspection is sufficient.
 
-## Canary enablement
-
-Enable only the configured test project after disabled deployment and one real Sandbox integration attempt succeed:
+For the route migration, also read back all current and active snapshots:
 
 ```sql
-UPDATE project_workflow_policies
-SET dispatch_enabled = 1, updated_at = datetime('now')
-WHERE project_id = '99426d9b-cda7-4db4-9136-692a95a0b090';
+SELECT project_id, linear_project_name, trial_repository, github_installation_id,
+       dispatch_enabled, route_revision, route_digest, github_access_state
+FROM project_workflow_policies ORDER BY project_id;
+
+SELECT run_id, project_id, route_repository, route_github_installation_id,
+       route_revision, route_digest
+FROM orchestration_runs
+WHERE status IN ('pending_dispatch', 'active', 'awaiting_human',
+                 'awaiting_capability', 'manual_reconciliation_required')
+ORDER BY run_id;
 ```
 
-Apply that statement through `wrangler d1 execute ... --remote --command`. Use Linear MCP to move a dedicated test issue to `In Progress`. The provider-originated delivery, not a locally signed payload, is the canary proof.
+## Canary enablement
+
+Use the Access-protected Settings page to add or edit routes. The repository picker contains only repositories returned by the DEOS GitHub App. A new route starts off. Recheck GitHub access, then enable only the intended canary route. Read the saved D1 row after each action. Do not enable a route with direct SQL because the Settings save also advances the guarded revisions and recomputes the route digest.
+
+Use Linear MCP to move a dedicated test issue to `In Progress`. The provider-originated delivery, not a locally signed payload, is the canary proof.
 
 For definition version 11, verify the registered canonical graph before enabling dispatch: `openspec_verify` must lead to `final_approval`, approval must lead directly to `sync_and_archive`, rejection must lead to `denied`, and the snapshot must contain neither `deploy` nor `release_finalization`. Use a deliberately small repository-local OpenSpec change. The run must wait for real authorized-human deliveries at its configured gates; an agent-originated or synthetic approval is not evidence.
 
 After final approval, inspect the `sync_and_archive` attempt's bounded `job_spec_json` for exact `/opsx:archive`, trusted change identity, and the latest continuation-patch reference. Require `state='completed'`, `cleanup_state='destroyed'`, a complete manifest, and a visit-aware transition from `sync_and_archive` to `done`. Retrieve the final `patch.diff` from R2 into a protected temporary location, verify its SHA-256 against D1, and inspect it for the archived change plus applicable main-spec synchronization. The same run must end with business status `succeeded`, and no attempt or transition may name `deploy` or `release_finalization`.
 
-When evidence capture is complete, disable dispatch and read it back:
-
-```sql
-UPDATE project_workflow_policies
-SET dispatch_enabled = 0, updated_at = datetime('now')
-WHERE project_id = '99426d9b-cda7-4db4-9136-692a95a0b090';
-
-SELECT project_id, definition_id, definition_version, dispatch_enabled
-FROM project_workflow_policies
-WHERE project_id = '99426d9b-cda7-4db4-9136-692a95a0b090';
-```
+When evidence capture is complete, disable the canary route in Settings and read back its project id, definition, route revision, route digest, and disabled state.
 
 Also confirm every canary attempt is terminal with `cleanup_state='destroyed'` and compare Cloudflare Sandbox inventory to D1 before declaring the proof complete.
 
@@ -124,6 +129,6 @@ The scheduled GitHub workflow reads `wrangler containers instances ... --json` a
 
 ## Rollback
 
-First disable project dispatch in D1. Queue deliveries remain authenticated and auditable but cannot create a new run. Existing Workflow mappings remain available for inspection.
+First disable each intended route through Settings and read it back. Queue deliveries remain authenticated and auditable but cannot create a new run. Existing Workflow mappings and their frozen repositories remain available for inspection. If Settings is unavailable, an exact-project D1 update that only changes `dispatch_enabled` to `0` is an emergency stop. It intentionally leaves the route proof stale; do not re-enable it until Settings has run a fresh access check and saved a new revision and digest.
 
 Then deploy the prior Worker version and point new policies back to the version 3 definition. The expanded schema is retained: migrations are not reversed, and existing version 4 runs are explicitly canceled or reconciled rather than downgraded. Never delete D1 rows, waits, reconciliation history, Workflow history, R2 manifests, or credential envelopes during rollback. For every nonterminal attempt, disable keep-alive, destroy its exact Sandbox ID, and verify `cleanup_state='destroyed'`. If provider inventory still shows a resource, submit it to `/cleanup-audit` and keep the generated Linear cleanup issue open until replacement evidence is recorded.

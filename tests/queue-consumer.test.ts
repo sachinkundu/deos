@@ -22,6 +22,7 @@ import {
   type WorkflowInboxRecord,
 } from "../src/orchestration-store.ts";
 import type { WorkflowObservation } from "../src/telemetry.ts";
+import { RepositoryRouteError } from "../src/repository-routes.ts";
 import type { LoadedWorkflowDefinition } from "../src/workflow-definition.ts";
 import { loadWorkflowDefinition } from "../src/workflow-definition.ts";
 
@@ -119,6 +120,15 @@ class FakeStore implements OrchestrationDispatchStore {
   readonly inbox = new Map<string, WorkflowInboxRecord>();
   readonly selectors = new Map<string, WorkflowDefinitionSelectorRecord>();
   readonly deliveryEvidence = new Map<string, DeliverySelectionEvidenceRecord>();
+  readonly routeDispatchResults: Array<{
+    outcome: "stale_route" | "missing_route" | "disabled_route" | "access_denied";
+    safeErrorCategory: string | null;
+  }> = [];
+  readonly routeAccessResults: Array<{
+    projectId: string;
+    result: "passed" | "missing" | "weak_permissions" | "unavailable";
+    safeErrorCategory: string | null;
+  }> = [];
   failEstablishedOnce = false;
   readonly issueIndex = new Map<string, { key: string; title: string; url: string }>();
 
@@ -143,16 +153,34 @@ class FakeStore implements OrchestrationDispatchStore {
     const existing = this.policies.get(input.projectId);
     this.policies.set(input.projectId, {
       project_id: input.projectId,
+      linear_project_name: existing?.linear_project_name ?? "Sample project",
       definition_id: input.definition.name,
       definition_version: input.definition.version,
       definition_digest: input.definition.digest,
       trial_repository: existing?.trial_repository ?? input.repository,
+      github_installation_id: existing?.github_installation_id ?? "154095438",
       start_state_name: input.startStateName,
       human_gate_state_id: input.humanGateStateId,
       dispatch_enabled: existing?.dispatch_enabled ?? (input.dispatchEnabled ? 1 : 0),
       repository_revision: existing?.repository_revision ?? 1,
       repository_updated_by: existing?.repository_updated_by ?? "deployment",
       repository_updated_at: existing?.repository_updated_at ?? input.now,
+      workflow_revision: existing?.workflow_revision ?? 1,
+      workflow_updated_by: existing?.workflow_updated_by ?? "deployment",
+      workflow_updated_at: existing?.workflow_updated_at ?? input.now,
+      independent_review_provider: existing?.independent_review_provider ?? "openrouter",
+      independent_review_model: existing?.independent_review_model ?? "deepseek/deepseek-v4-pro",
+      independent_review_revision: existing?.independent_review_revision ?? 1,
+      independent_review_updated_by: existing?.independent_review_updated_by ?? "deployment",
+      independent_review_updated_at: existing?.independent_review_updated_at ?? input.now,
+      route_revision: existing?.route_revision ?? 1,
+      route_digest: existing?.route_digest ?? "a".repeat(64),
+      route_updated_by: existing?.route_updated_by ?? "deployment",
+      route_updated_at: existing?.route_updated_at ?? input.now,
+      github_access_state: existing?.github_access_state ?? "passed",
+      github_access_checked_at: existing?.github_access_checked_at ?? input.now,
+      github_access_permissions_digest: existing?.github_access_permissions_digest ?? "b".repeat(64),
+      github_settings_url: existing?.github_settings_url ?? "https://github.com/settings/installations/154095438",
       updated_at: input.now,
     });
   }
@@ -193,6 +221,43 @@ class FakeStore implements OrchestrationDispatchStore {
     return Promise.resolve(this.policies.get(projectId) ?? null);
   }
 
+  async recordRouteDispatchResult(input: {
+    outcome: "stale_route" | "missing_route" | "disabled_route" | "access_denied";
+    safeErrorCategory: string | null;
+  }): Promise<void> {
+    this.routeDispatchResults.push({
+      outcome: input.outcome,
+      safeErrorCategory: input.safeErrorCategory,
+    });
+  }
+
+  async saveRouteAccessResult(input: {
+    projectId: string;
+    repository: string;
+    installationId: string;
+    expectedRouteRevision: number;
+    expectedRouteDigest: string;
+    result: "passed" | "missing" | "weak_permissions" | "unavailable";
+    safeErrorCategory: string | null;
+  }): Promise<void> {
+    const policy = this.policies.get(input.projectId);
+    if (
+      policy?.trial_repository !== input.repository ||
+      policy.github_installation_id !== input.installationId ||
+      policy.route_revision !== input.expectedRouteRevision ||
+      policy.route_digest !== input.expectedRouteDigest
+    ) throw new RepositoryRouteError("stale_repository_revision");
+    this.routeAccessResults.push({
+      projectId: input.projectId,
+      result: input.result,
+      safeErrorCategory: input.safeErrorCategory,
+    });
+    if (policy !== undefined) {
+      policy.github_access_state = input.result;
+      if (input.result !== "passed") policy.dispatch_enabled = 0;
+    }
+  }
+
   findActiveRun(projectId: string, issueId: string): Promise<OrchestrationRunRecord | null> {
     return Promise.resolve(
       this.runs.findLast(
@@ -215,8 +280,15 @@ class FakeStore implements OrchestrationDispatchStore {
     issueId: string;
     definition: LoadedWorkflowDefinition;
     selection: RunSelectionEvidence;
+    routeRevision: number;
+    routeDigest: string;
     now: string;
-  }): Promise<{ run: OrchestrationRunRecord; created: boolean }> {
+  }): Promise<{ run: OrchestrationRunRecord; created: boolean } | null> {
+    const policy = this.policies.get(input.projectId);
+    if (
+      policy?.route_revision !== input.routeRevision ||
+      policy.route_digest !== input.routeDigest || policy.dispatch_enabled !== 1
+    ) return null;
     const active = await this.findActiveRun(input.projectId, input.issueId);
     if (active !== null) return { run: active, created: false };
     const sequence = this.runs.filter(
@@ -242,6 +314,16 @@ class FakeStore implements OrchestrationDispatchStore {
       created_at: input.now,
       updated_at: input.now,
       terminal_at: null,
+      route_project_name: policy.linear_project_name ?? null,
+      route_repository: policy.trial_repository,
+      route_github_installation_id: policy.github_installation_id ?? null,
+      route_revision: policy.route_revision ?? null,
+      route_digest: policy.route_digest ?? null,
+      route_start_state_name: policy.start_state_name,
+      route_human_gate_state_id: policy.human_gate_state_id,
+      route_repository_revision: policy.repository_revision,
+      route_workflow_revision: policy.workflow_revision ?? null,
+      route_review_revision: policy.independent_review_revision ?? null,
       selection_kind: input.selection.kind,
       selection_value: input.selection.value,
       selection_label_name: input.selection.labelName,
@@ -360,6 +442,8 @@ const queueBody = (overrides: Partial<QueueBody> = {}): QueueBody => ({
   payload_digest: "sha256-payload-1",
   label_selection_evidence: { status: "available", labels: [] },
   label_selection_evidence_digest: "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+  route_revision: 1,
+  route_digest: "a".repeat(64),
   ...overrides,
 });
 
@@ -511,6 +595,101 @@ test("start delivery allocates one run and establishes one stable Workflow", asy
   assert.equal(store.intents.get(store.runs[0].run_id)?.state, "established");
   assert.equal(workflow.creates, 1);
   assert.equal(observations.at(-1)?.["deos.workflow.outcome"], "succeeded");
+});
+
+test("a stale queued route proof is audited and cannot allocate a run", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  const body = queueBody({ route_digest: "c".repeat(64) });
+
+  await runMessage(store, workflow, body);
+
+  assert.equal(store.runs.length, 0);
+  assert.equal(workflow.creates, 0);
+  assert.equal(store.inbox.get(body.source_delivery_id)?.state, "unmatched");
+  assert.deepEqual(store.routeDispatchResults, [{
+    outcome: "stale_route",
+    safeErrorCategory: "route_proof_mismatch",
+  }]);
+});
+
+test("repository access loss disables only that route before allocation", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  const body = queueBody();
+  const observations: WorkflowObservation[] = [];
+  seedEvidence(store, body);
+
+  await processQueueMessage(
+    { id: "message-access-loss", attempts: 1, body },
+    environment(workflow),
+    {
+      store,
+      definition,
+      now: () => new Date(NOW),
+      observe: (entry) => observations.push(entry),
+      lifecycle: () => {},
+      githubAccess: async () => ({
+        state: "missing",
+        repository: null,
+        settingsUrl: "https://github.com/settings/installations/154095438",
+        permissions: null,
+      }),
+    },
+  );
+
+  assert.equal(store.runs.length, 0);
+  assert.equal(workflow.creates, 0);
+  assert.equal(store.policies.get("project-1")?.dispatch_enabled, 0);
+  assert.deepEqual(store.routeAccessResults, [{
+    projectId: "project-1",
+    result: "missing",
+    safeErrorCategory: "github_route_access_denied",
+  }]);
+  assert.deepEqual(store.routeDispatchResults, [{
+    outcome: "access_denied",
+    safeErrorCategory: "github_route_access_denied",
+  }]);
+  assert.equal(observations.at(-1)?.["deos.workflow.outcome"], "succeeded");
+});
+
+test("a route edit during the live access check is audited and starts no run", async () => {
+  const store = new FakeStore();
+  const workflow = new FakeWorkflow();
+  const body = queueBody();
+  seedEvidence(store, body);
+
+  await processQueueMessage(
+    { id: "message-route-race", attempts: 1, body },
+    environment(workflow),
+    {
+      store,
+      definition,
+      now: () => new Date(NOW),
+      observe: () => {},
+      lifecycle: () => {},
+      githubAccess: async () => {
+        const policy = store.policies.get(body.project_id);
+        if (policy === undefined) throw new Error("route setup failed");
+        policy.trial_repository = "sachinkundu/deos-sample-project-2";
+        policy.route_revision = 2;
+        policy.route_digest = "b".repeat(64);
+        return {
+          state: "passed" as const,
+          repository: null,
+          settingsUrl: "https://github.com/settings/installations/154095438",
+          permissions: { metadata: "read", contents: "write", pull_requests: "write", checks: "write" },
+        };
+      },
+    },
+  );
+
+  assert.equal(store.runs.length, 0);
+  assert.equal(workflow.creates, 0);
+  assert.deepEqual(store.routeDispatchResults, [{
+    outcome: "stale_route",
+    safeErrorCategory: "route_changed_during_access_check",
+  }]);
 });
 
 test("labels and legacy selector state do not change the simple-traceability default", async () => {

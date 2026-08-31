@@ -26,6 +26,7 @@ import { AgentStageRetryController, D1AgentStageRetryStore } from "./stage-retry
 import { loadBundledWorkflowDefinitionRegistry } from "./workflow-bundle.ts";
 
 export { DeosWorkflow, Sandbox };
+export { RouteAdmin } from "./route-admin-entrypoint.ts";
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
   store: new D1CapabilityStore(env.DB),
@@ -36,6 +37,15 @@ const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
       appId: env.GITHUB_APP_ID,
       privateKey: env.GITHUB_APP_PRIVATE_KEY,
       installationId: env.GITHUB_INSTALLATION_ID,
+    }),
+  ),
+  githubForInstallation: (installationId) => new GitHubCapabilityAdapter(
+    env.GITHUB_API_URL,
+    new GitHubAppTokenProvider({
+      apiUrl: env.GITHUB_API_URL,
+      appId: env.GITHUB_APP_ID,
+      privateKey: env.GITHUB_APP_PRIVATE_KEY,
+      installationId,
     }),
   ),
   linear: new LinearCapabilityAdapter(env.LINEAR_API_URL, env.LINEAR_APP_ACCESS_TOKEN),

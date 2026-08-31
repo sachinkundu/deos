@@ -1,6 +1,5 @@
 import { verifyAccess } from "./auth.ts";
 import { PortalIssueSearchHistoryStore, PortalReadStore } from "./model.ts";
-import { RepositorySettingsError, RepositorySettingsStore } from "./settings.ts";
 import {
   TranscriptNotFoundError,
   TranscriptReadStore,
@@ -34,15 +33,56 @@ type PortalRuntimeEnv = Pick<Env, "DB" | "ARTIFACTS" | "ASSETS"> & {
   ALLOWED_EMAIL: string;
   PROJECT_ID: string;
   OPENROUTER_SUPPORTED_MODELS?: string;
+  ROUTE_ADMIN?: Service;
 };
 
-const supportedOpenRouterModels = (value: string): readonly string[] => {
-  const models = value.split(",").map((model) => model.trim()).filter(Boolean).sort();
-  if (
-    models.length === 0 || models.length > 50 || new Set(models).size !== models.length ||
-    models.some((model) => !/^[A-Za-z0-9_.:-]+\/[A-Za-z0-9_.:-]+$/.test(model))
-  ) throw new Error("supported model configuration is invalid");
-  return models;
+interface RouteAdminBinding {
+  overview(actorEmail: string): Promise<unknown>;
+  createRoute(actorEmail: string, input: unknown): Promise<unknown>;
+  saveRepository(actorEmail: string, input: unknown): Promise<unknown>;
+  saveWorkflow(actorEmail: string, input: unknown): Promise<unknown>;
+  saveReview(actorEmail: string, input: unknown): Promise<unknown>;
+  recheck(actorEmail: string, input: unknown): Promise<unknown>;
+}
+
+const routeAdmin = (env: PortalRuntimeEnv): RouteAdminBinding => {
+  if (env.ROUTE_ADMIN === undefined) throw new Error("route admin binding is unavailable");
+  return env.ROUTE_ADMIN as unknown as RouteAdminBinding;
+};
+
+const routeAdminError = (error: unknown): string | null => {
+  const value = error instanceof Error ? error.message : "";
+  const allowed = new Set([
+    "unauthorized_actor", "invalid_input", "provider_unavailable",
+    "project_not_available", "repository_not_available", "github_access_not_ready",
+    "unsupported_review_model", "route_not_found", "route_exists",
+    "stale_repository_revision", "stale_workflow_revision", "stale_review_revision",
+    "route_read_back_failed",
+  ]);
+  return allowed.has(value) ? value : null;
+};
+
+const exactBody = (body: Record<string, unknown>, keys: readonly string[]): boolean => {
+  const allowed = new Set(keys);
+  return Object.keys(body).every((key) => allowed.has(key));
+};
+
+const routeBody = async (request: Request): Promise<
+  | { state: "ready"; value: Record<string, unknown> }
+  | { state: "invalid" }
+  | { state: "too_large" }
+> => {
+  const text = await request.text();
+  if (new TextEncoder().encode(text).byteLength > 4_096) return { state: "too_large" };
+  let value: unknown;
+  try {
+    value = JSON.parse(text) as unknown;
+  } catch {
+    return { state: "invalid" };
+  }
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? { state: "ready", value: value as Record<string, unknown> }
+    : { state: "invalid" };
 };
 
 export const routePortalRequest = async (
@@ -83,82 +123,59 @@ export const routePortalRequest = async (
   }
   const store = new PortalReadStore(env.DB, env.PROJECT_ID);
   try {
-    if (url.pathname === "/api/settings/repository") {
-      const settings = new RepositorySettingsStore(env.DB);
+    if (url.pathname === "/api/settings/routes") {
       if (request.method === "GET") {
-        const value = await settings.read(env.PROJECT_ID);
-        return value === null ? json(404, { error: "settings_not_found" }) : json(200, value);
+        return json(200, await routeAdmin(env).overview(identity.email));
       }
-      if (request.method === "PUT") {
-        if (Number(request.headers.get("Content-Length") ?? "0") > 2_048) {
-          return json(413, { error: "request_too_large" });
-        }
-        const body = await request.json() as { repository?: unknown; expectedRevision?: unknown };
-        if (typeof body.repository !== "string" || !Number.isSafeInteger(body.expectedRevision)) {
-          return json(400, { error: "invalid_request" });
-        }
-        const value = await settings.save({
-          projectId: env.PROJECT_ID,
-          repository: body.repository,
-          expectedRevision: body.expectedRevision as number,
-          actorEmail: identity.email,
-          now: new Date().toISOString(),
-        });
-        return json(200, value);
-      }
-      return json(405, { error: "method_not_allowed" });
-    }
-    if (url.pathname === "/api/settings/workflow") {
-      const settings = new RepositorySettingsStore(env.DB);
-      if (request.method !== "PUT") return json(405, { error: "method_not_allowed" });
-      if (Number(request.headers.get("Content-Length") ?? "0") > 2_048) {
+      if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
+      if (Number(request.headers.get("Content-Length") ?? "0") > 4_096) {
         return json(413, { error: "request_too_large" });
       }
-      const body = await request.json() as {
-        dispatchEnabled?: unknown;
-        expectedRevision?: unknown;
-      };
-      if (
-        Object.keys(body).some((key) => !["dispatchEnabled", "expectedRevision"].includes(key)) ||
-        typeof body.dispatchEnabled !== "boolean" ||
-        !Number.isSafeInteger(body.expectedRevision)
-      ) return json(400, { error: "invalid_request" });
-      const value = await settings.saveWorkflowControls({
-        projectId: env.PROJECT_ID,
-        dispatchEnabled: body.dispatchEnabled,
-        expectedRevision: body.expectedRevision as number,
-        actorEmail: identity.email,
-        now: new Date().toISOString(),
-      });
+      const parsed = await routeBody(request);
+      if (parsed.state === "too_large") return json(413, { error: "request_too_large" });
+      if (parsed.state === "invalid") return json(400, { error: "invalid_request" });
+      if (!exactBody(parsed.value, ["projectId", "repository", "githubInstallationId"])) {
+        return json(400, { error: "invalid_request" });
+      }
+      return json(201, await routeAdmin(env).createRoute(identity.email, parsed.value));
+    }
+    const routeSettingsMatch = url.pathname.match(
+      /^\/api\/settings\/routes\/([A-Za-z0-9][A-Za-z0-9_-]{0,99})\/(repository|workflow|review|recheck)$/,
+    );
+    if (routeSettingsMatch !== null) {
+      const action = routeSettingsMatch[2];
+      const expectedMethod = action === "recheck" ? "POST" : "PUT";
+      if (request.method !== expectedMethod) return json(405, { error: "method_not_allowed" });
+      if (Number(request.headers.get("Content-Length") ?? "0") > 4_096) {
+        return json(413, { error: "request_too_large" });
+      }
+      const parsed = await routeBody(request);
+      if (parsed.state === "too_large") return json(413, { error: "request_too_large" });
+      if (parsed.state === "invalid") return json(400, { error: "invalid_request" });
+      const body = parsed.value;
+      const allowed = action === "repository"
+        ? ["repository", "githubInstallationId", "expectedRevision"]
+        : action === "workflow"
+          ? ["dispatchEnabled", "expectedRevision"]
+          : action === "review" ? ["model", "expectedRevision"] : [];
+      if (!exactBody(body, allowed)) return json(400, { error: "invalid_request" });
+      const input = { ...body, projectId: routeSettingsMatch[1] };
+      const admin = routeAdmin(env);
+      const value = action === "repository"
+        ? await admin.saveRepository(identity.email, input)
+        : action === "workflow"
+          ? await admin.saveWorkflow(identity.email, input)
+          : action === "review"
+            ? await admin.saveReview(identity.email, input)
+            : await admin.recheck(identity.email, { projectId: routeSettingsMatch[1] });
       return json(200, value);
     }
-    if (url.pathname === "/api/settings/independent-review") {
-      const settings = new RepositorySettingsStore(env.DB);
-      const models = supportedOpenRouterModels(env.OPENROUTER_SUPPORTED_MODELS ?? "");
-      if (request.method === "GET") {
-        const value = await settings.read(env.PROJECT_ID);
-        return value === null
-          ? json(404, { error: "settings_not_found" })
-          : json(200, { settings: value, models });
-      }
-      if (request.method !== "PUT") return json(405, { error: "method_not_allowed" });
-      if (Number(request.headers.get("Content-Length") ?? "0") > 2_048) {
-        return json(413, { error: "request_too_large" });
-      }
-      const body = await request.json() as { model?: unknown; expectedRevision?: unknown };
-      if (
-        Object.keys(body).some((key) => !["model", "expectedRevision"].includes(key)) ||
-        typeof body.model !== "string" || !Number.isSafeInteger(body.expectedRevision)
-      ) return json(400, { error: "invalid_request" });
-      const value = await settings.saveIndependentReviewModel({
-        projectId: env.PROJECT_ID,
-        model: body.model,
-        supportedModels: models,
-        expectedRevision: body.expectedRevision as number,
-        actorEmail: identity.email,
-        now: new Date().toISOString(),
-      });
-      return json(200, { settings: value, models });
+    if ([
+      "/api/settings/repository",
+      "/api/settings/workflow",
+      "/api/settings/independent-review",
+    ].includes(url.pathname)) {
+      return json(410, { error: "route_settings_required" });
     }
     const issueSearchHistoryMatch = url.pathname.match(/^\/api\/issues\/([A-Z][A-Z0-9]+-[1-9][0-9]*)\/search$/);
     if (issueSearchHistoryMatch !== null) {
@@ -265,15 +282,15 @@ export const routePortalRequest = async (
     if (error instanceof TraceReviewArtifactError) return json(503, { error: "review_artifact_unavailable" });
     if (error instanceof ReviewStoryNotFoundError) return json(404, { error: "process_artifact_not_found" });
     if (error instanceof ReviewStoryArtifactError) return json(503, { error: "process_artifact_unavailable" });
-    if (error instanceof RepositorySettingsError) {
-      const status = error.code === "invalid_repository" ? 400
-        : error.code === "settings_not_found" ? 404
-        : error.code === "invalid_independent_review_model" ? 400
-        : error.code === "active_run" || error.code === "stale_revision" ||
-          error.code === "stale_workflow_revision" ||
-          error.code === "stale_independent_review_revision" ? 409
+    const adminError = routeAdminError(error);
+    if (adminError !== null) {
+      const status = adminError === "invalid_input" || adminError === "unsupported_review_model" ? 400
+        : adminError === "route_not_found" || adminError.endsWith("_not_available") ? 404
+        : adminError === "unauthorized_actor" ? 403
+        : adminError === "route_exists" || adminError.startsWith("stale_") ||
+          adminError === "github_access_not_ready" ? 409
         : 503;
-      return json(status, { error: error.code });
+      return json(status, { error: adminError });
     }
     return json(503, { error: "portal_data_unavailable" });
   }

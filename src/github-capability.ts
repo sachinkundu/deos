@@ -74,6 +74,72 @@ export interface GitHubTokenProvider {
   token(): Promise<string>;
 }
 
+export interface GitHubRepositoryChoice {
+  repositoryId: string;
+  fullName: string;
+  defaultBranch: string;
+  private: boolean;
+  archived: boolean;
+  disabled: boolean;
+  installationId: string;
+  accountLogin: string;
+  permissions: Readonly<Record<string, string>>;
+  settingsUrl: string;
+  access: "ready" | "weak_permissions";
+}
+
+export interface GitHubInstallationChoice {
+  installationId: string;
+  accountLogin: string;
+  accountType: "User" | "Organization";
+  targetType: "User" | "Organization";
+  repositorySelection: "all" | "selected";
+  permissions: Readonly<Record<string, string>>;
+  settingsUrl: string;
+  suspended: boolean;
+  repositories: readonly GitHubRepositoryChoice[];
+}
+
+export interface GitHubRepositoryAccessCheck {
+  state: "passed" | "missing" | "weak_permissions";
+  repository: GitHubRepositoryChoice | null;
+  settingsUrl: string | null;
+  permissions: Readonly<Record<string, string>> | null;
+}
+
+const REQUIRED_ROUTE_PERMISSIONS = Object.freeze({
+  checks: "write",
+  contents: "write",
+  metadata: "read",
+  pull_requests: "write",
+} as const);
+
+const permissionRank = (value: string | undefined): number =>
+  value === "admin" ? 3 : value === "write" ? 2 : value === "read" ? 1 : 0;
+
+const routePermissionsReady = (permissions: Readonly<Record<string, string>>): boolean =>
+  Object.entries(REQUIRED_ROUTE_PERMISSIONS).every(([name, needed]) =>
+    permissionRank(permissions[name]) >= permissionRank(needed));
+
+const installationSettingsUrlReady = (
+  value: string,
+  installationId: string,
+  accountLogin: string,
+  targetType: "User" | "Organization",
+): boolean => {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.origin !== "https://github.com" || url.search !== "" || url.hash !== "") return false;
+  const expected = targetType === "Organization"
+    ? `/organizations/${accountLogin}/settings/installations/${installationId}`
+    : `/settings/installations/${installationId}`;
+  return url.pathname === expected;
+};
+
 const base64Url = (bytes: Uint8Array): string => {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -143,7 +209,7 @@ export class GitHubAppTokenProvider implements GitHubTokenProvider {
   }
 
   async token(): Promise<string> {
-    const jwt = await this.jwt();
+    const jwt = await this.appJwt();
     const response = await this.request(
       `${this.apiUrl}/app/installations/${encodeURIComponent(this.installationId)}/access_tokens`,
       {
@@ -164,7 +230,7 @@ export class GitHubAppTokenProvider implements GitHubTokenProvider {
     return payload.token;
   }
 
-  private async jwt(): Promise<string> {
+  async appJwt(): Promise<string> {
     const header = base64Url(new TextEncoder().encode(JSON.stringify({ alg: "RS256", typ: "JWT" })));
     const now = Math.floor(this.now().getTime() / 1000);
     const payload = base64Url(new TextEncoder().encode(JSON.stringify({
@@ -187,6 +253,229 @@ export class GitHubAppTokenProvider implements GitHubTokenProvider {
       new TextEncoder().encode(`${header}.${payload}`),
     );
     return `${header}.${payload}.${base64Url(new Uint8Array(signature))}`;
+  }
+}
+
+export class GitHubAppCatalog {
+  private readonly apiUrl: string;
+  private readonly appId: string;
+  private readonly privateKey: string;
+  private readonly request: typeof fetch;
+  private readonly now: () => Date;
+
+  constructor(input: {
+    apiUrl: string;
+    appId: string;
+    privateKey: string;
+    fetch?: typeof fetch;
+    now?: () => Date;
+  }) {
+    this.apiUrl = input.apiUrl.replace(/\/$/, "");
+    this.appId = input.appId;
+    this.privateKey = input.privateKey;
+    this.request = input.fetch ?? ((request, init) => fetch(request, init));
+    this.now = input.now ?? (() => new Date());
+  }
+
+  tokenProvider(installationId: string): GitHubAppTokenProvider {
+    if (!/^[1-9][0-9]{0,19}$/.test(installationId)) {
+      throw new Error("GitHub App installation id is invalid");
+    }
+    return new GitHubAppTokenProvider({
+      apiUrl: this.apiUrl,
+      appId: this.appId,
+      privateKey: this.privateKey,
+      installationId,
+      fetch: this.request,
+      now: this.now,
+    });
+  }
+
+  async list(): Promise<GitHubInstallationChoice[]> {
+    const jwtProvider = this.tokenProvider("1");
+    const jwt = await jwtProvider.appJwt();
+    const rawInstallations: unknown[] = [];
+    for (let page = 1; page <= 100; page += 1) {
+      const response = await this.request(
+        `${this.apiUrl}/app/installations?per_page=100&page=${page}`,
+        { headers: this.headers(jwt) },
+      );
+      if (!response.ok) throw new Error("GitHub App installation catalog is unavailable");
+      const payload = await response.json();
+      if (!Array.isArray(payload)) throw new Error("GitHub App installation catalog is invalid");
+      rawInstallations.push(...payload);
+      if (payload.length < 100) break;
+      if (page === 100) throw new Error("GitHub App installation catalog is too large");
+    }
+    const installations = await Promise.all(rawInstallations.map((value) => this.installation(value)));
+    const ids = installations.map((installation) => installation.installationId);
+    if (new Set(ids).size !== ids.length) throw new Error("GitHub App installation catalog has duplicates");
+    return installations.sort((left, right) =>
+      left.accountLogin.localeCompare(right.accountLogin) ||
+      left.installationId.localeCompare(right.installationId));
+  }
+
+  async checkRepository(
+    installationId: string,
+    fullName: string,
+  ): Promise<GitHubRepositoryAccessCheck> {
+    const installations = await this.list();
+    const installation = installations.find((item) => item.installationId === installationId);
+    if (installation === undefined) {
+      return { state: "missing", repository: null, settingsUrl: null, permissions: null };
+    }
+    const repository = installation.repositories.find((item) => item.fullName === fullName);
+    if (repository === undefined) {
+      return {
+        state: "missing",
+        repository: null,
+        settingsUrl: installation.settingsUrl,
+        permissions: installation.permissions,
+      };
+    }
+    return {
+      state: repository.access === "ready" ? "passed" : "weak_permissions",
+      repository,
+      settingsUrl: installation.settingsUrl,
+      permissions: installation.permissions,
+    };
+  }
+
+  private async installation(value: unknown): Promise<GitHubInstallationChoice> {
+    const item = value as {
+      id?: unknown;
+      account?: { login?: unknown; type?: unknown };
+      target_type?: unknown;
+      repository_selection?: unknown;
+      permissions?: unknown;
+      html_url?: unknown;
+      suspended_at?: unknown;
+    };
+    const installationId = typeof item.id === "number" && Number.isSafeInteger(item.id) && item.id > 0
+      ? String(item.id)
+      : null;
+    const accountType = item.account?.type;
+    const targetType = item.target_type;
+    const repositorySelection = item.repository_selection;
+    if (
+      installationId === null || typeof item.account?.login !== "string" ||
+      !["User", "Organization"].includes(String(accountType)) ||
+      !["User", "Organization"].includes(String(targetType)) ||
+      !["all", "selected"].includes(String(repositorySelection)) ||
+      typeof item.html_url !== "string" || !installationSettingsUrlReady(
+        item.html_url,
+        installationId,
+        item.account.login,
+        targetType as "User" | "Organization",
+      ) ||
+      typeof item.permissions !== "object" || item.permissions === null ||
+      Array.isArray(item.permissions)
+    ) throw new Error("GitHub App installation catalog is invalid");
+    const permissions = Object.fromEntries(Object.entries(item.permissions).map(([name, level]) => {
+      if (typeof level !== "string" || !["read", "write", "admin"].includes(level)) {
+        throw new Error("GitHub App installation permissions are invalid");
+      }
+      return [name, level];
+    }).sort(([left], [right]) => left.localeCompare(right)));
+    const repositories = await this.repositories(
+      installationId,
+      item.account.login,
+      permissions,
+      item.html_url,
+    );
+    return {
+      installationId,
+      accountLogin: item.account.login,
+      accountType: accountType as "User" | "Organization",
+      targetType: targetType as "User" | "Organization",
+      repositorySelection: repositorySelection as "all" | "selected",
+      permissions,
+      settingsUrl: item.html_url,
+      suspended: item.suspended_at !== null && item.suspended_at !== undefined,
+      repositories,
+    };
+  }
+
+  private async repositories(
+    installationId: string,
+    accountLogin: string,
+    permissions: Readonly<Record<string, string>>,
+    settingsUrl: string,
+  ): Promise<GitHubRepositoryChoice[]> {
+    const token = await this.tokenProvider(installationId).token();
+    const repositories: GitHubRepositoryChoice[] = [];
+    let expectedTotal: number | null = null;
+    for (let page = 1; page <= 100; page += 1) {
+      const response = await this.request(
+        `${this.apiUrl}/installation/repositories?per_page=100&page=${page}`,
+        { headers: this.headers(token) },
+      );
+      if (!response.ok) throw new Error("GitHub App repository catalog is unavailable");
+      const payload = await response.json() as { total_count?: unknown; repositories?: unknown };
+      if (
+        !Number.isSafeInteger(payload.total_count) || Number(payload.total_count) < 0 ||
+        !Array.isArray(payload.repositories)
+      ) throw new Error("GitHub App repository catalog is invalid");
+      expectedTotal ??= Number(payload.total_count);
+      if (expectedTotal !== Number(payload.total_count)) {
+        throw new Error("GitHub App repository catalog changed during paging");
+      }
+      for (const raw of payload.repositories) {
+        const repository = raw as {
+          id?: unknown;
+          full_name?: unknown;
+          default_branch?: unknown;
+          private?: unknown;
+          archived?: unknown;
+          disabled?: unknown;
+        };
+        if (
+          typeof repository.id !== "number" || !Number.isSafeInteger(repository.id) || repository.id <= 0 ||
+          typeof repository.full_name !== "string" ||
+          !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository.full_name) ||
+          typeof repository.default_branch !== "string" || repository.default_branch.length === 0 ||
+          typeof repository.private !== "boolean" || typeof repository.archived !== "boolean" ||
+          typeof repository.disabled !== "boolean"
+        ) throw new Error("GitHub App repository catalog is invalid");
+        repositories.push({
+          repositoryId: String(repository.id),
+          fullName: repository.full_name,
+          defaultBranch: repository.default_branch,
+          private: repository.private,
+          archived: repository.archived,
+          disabled: repository.disabled,
+          installationId,
+          accountLogin,
+          permissions,
+          settingsUrl,
+          access: routePermissionsReady(permissions) && !repository.archived && !repository.disabled
+            ? "ready"
+            : "weak_permissions",
+        });
+      }
+      if (repositories.length >= expectedTotal) break;
+      if (payload.repositories.length === 0 || page === 100) {
+        throw new Error("GitHub App repository catalog paging is incomplete");
+      }
+    }
+    if (repositories.length !== expectedTotal) {
+      throw new Error("GitHub App repository catalog count is invalid");
+    }
+    const ids = repositories.map((repository) => repository.repositoryId);
+    const names = repositories.map((repository) => repository.fullName);
+    if (new Set(ids).size !== ids.length || new Set(names).size !== names.length) {
+      throw new Error("GitHub App repository catalog has duplicates");
+    }
+    return repositories.sort((left, right) => left.fullName.localeCompare(right.fullName));
+  }
+
+  private headers(token: string): HeadersInit {
+    return {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "User-Agent": "deos-orchestrator",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
   }
 }
 
