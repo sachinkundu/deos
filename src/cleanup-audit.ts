@@ -9,6 +9,8 @@ interface CleanupCandidate {
   process_id: string | null;
   state: string | null;
   cleanup_state: string | null;
+  cleanup_hold_until: string | null;
+  cleanup_hold_reason: string | null;
 }
 
 interface CleanupWorkItem {
@@ -22,7 +24,7 @@ interface CleanupWorkItem {
 
 export interface CleanupAuditStore {
   knownLive(): Promise<CleanupCandidate[]>;
-  terminalPendingCleanup(): Promise<CleanupCandidate[]>;
+  terminalPendingCleanup(now: string): Promise<CleanupCandidate[]>;
   candidate(sandboxId: string): Promise<CleanupCandidate | null>;
   upsertWorkItem(candidate: CleanupCandidate, operationId: string, now: string): Promise<CleanupWorkItem>;
   markReported(sandboxId: string, linearResourceId: string, now: string): Promise<void>;
@@ -38,24 +40,28 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
 
   knownLive(): Promise<CleanupCandidate[]> {
     return this.database.prepare(
-      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state
+      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state,
+              cleanup_hold_until, cleanup_hold_reason
        FROM agent_attempts
        WHERE state IN ('pending', 'starting', 'running', 'collecting')`,
     ).all<CleanupCandidate>().then((result) => result.results);
   }
 
-  terminalPendingCleanup(): Promise<CleanupCandidate[]> {
+  terminalPendingCleanup(now: string): Promise<CleanupCandidate[]> {
     return this.database.prepare(
-      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state
+      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state,
+              cleanup_hold_until, cleanup_hold_reason
        FROM agent_attempts
        WHERE state IN ('completed', 'blocked', 'failed', 'interrupted', 'absolute_timeout', 'canceled')
-         AND cleanup_state <> 'destroyed'`,
-    ).all<CleanupCandidate>().then((result) => result.results);
+         AND cleanup_state <> 'destroyed'
+         AND (cleanup_hold_until IS NULL OR cleanup_hold_until <= ?)`,
+    ).bind(now).all<CleanupCandidate>().then((result) => result.results);
   }
 
   candidate(sandboxId: string): Promise<CleanupCandidate | null> {
     return this.database.prepare(
-      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state
+      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state,
+              cleanup_hold_until, cleanup_hold_reason
        FROM agent_attempts WHERE sandbox_id = ?`,
     ).bind(sandboxId).first<CleanupCandidate>();
   }
@@ -99,7 +105,9 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
     now: string,
   ): Promise<void> {
     await this.database.prepare(
-      `UPDATE agent_attempts SET cleanup_state = ?, cleanup_error_category = ?, updated_at = ?
+      `UPDATE agent_attempts
+       SET cleanup_state = ?, cleanup_error_category = ?, cleanup_hold_until = NULL,
+           cleanup_hold_reason = NULL, updated_at = ?
        WHERE attempt_id = ?`,
     ).bind(state, category, now, attemptId).run();
   }
@@ -141,12 +149,13 @@ export class CleanupAuditor {
   }
 
   async scheduled(): Promise<void> {
+    const now = this.now().toISOString();
     for (const candidate of await this.store.knownLive()) {
       const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: true });
       const process = candidate.process_id === null ? null : await sandbox.getProcess(candidate.process_id);
       if (process === null && candidate.state !== "pending") await this.report(candidate);
     }
-    for (const candidate of await this.store.terminalPendingCleanup()) {
+    for (const candidate of await this.store.terminalPendingCleanup(now)) {
       const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: false });
       try {
         await sandbox.setKeepAlive(false);
@@ -202,6 +211,8 @@ export class CleanupAuditor {
       if (known !== null && ["pending", "starting", "running", "collecting"].includes(known.state ?? "")) {
         continue;
       }
+      if (known?.cleanup_hold_until !== null && known?.cleanup_hold_until !== undefined &&
+        known.cleanup_hold_until > this.now().toISOString()) continue;
       if (known?.cleanup_state === "destroyed") continue;
       await this.report(known ?? {
         sandbox_id: sandboxId,
@@ -210,6 +221,8 @@ export class CleanupAuditor {
         process_id: null,
         state: null,
         cleanup_state: null,
+        cleanup_hold_until: null,
+        cleanup_hold_reason: null,
       });
       reported += 1;
     }

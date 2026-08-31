@@ -43,6 +43,13 @@ Set `LINEAR_APP_ACTOR_ID` to the actor ID observed for the Linear OAuth app, and
 
 `GITHUB_INSTALLATION_ID`, `LINEAR_PROJECT_ID`, and `TRIAL_REPOSITORY` are first-route seed and rollback inputs. They are not the live route allowlist after D1 has a route. `ROUTE_ADMIN_ALLOWED_EMAIL` is non-secret queue Worker configuration and must equal the portal's allowed Access email.
 
+`SANDBOX_FAILURE_RETENTION_MINUTES` is a temporary canary debug control. Keep it
+at `0` for normal operation. A positive value up to 1,440 retains only failed
+attempts until the D1 deadline; successful attempts still clean up at once.
+The controller removes Codex auth before recording the hold. The cleanup cron
+destroys the Sandbox after expiry. A hold preserves the Sandbox id but cannot
+guarantee that Cloudflare will keep the same idle container or local files.
+
 Provider credentials exist only in the trusted Worker. The Sandbox receives a short-lived, attempt-scoped capability token, never a Linear token, GitHub token, GitHub App key, Cloudflare token, or encryption key. Git checkout uses that capability against the Worker's read-only `git-upload-pack` proxy. The Worker validates the frozen route and adds a short-lived App token only to its upstream GitHub request.
 
 ## Credential bootstrap
@@ -117,6 +124,20 @@ After final approval, inspect the `sync_and_archive` attempt's bounded `job_spec
 When evidence capture is complete, disable the canary route in Settings and read back its project id, definition, route revision, route digest, and disabled state.
 
 Also confirm every canary attempt is terminal with `cleanup_state='destroyed'` and compare Cloudflare Sandbox inventory to D1 before declaring the proof complete.
+
+During an explicit debug window, list retained failures without reading job or
+artifact contents:
+
+```sql
+SELECT attempt_id, sandbox_id, run_id, state, cleanup_state,
+       cleanup_hold_until, cleanup_hold_reason
+FROM agent_attempts
+WHERE cleanup_hold_until IS NOT NULL
+ORDER BY cleanup_hold_until;
+```
+
+Return `SANDBOX_FAILURE_RETENTION_MINUTES` to `0`, deploy, and wait for every
+hold to expire before the final cleanup proof.
 
 ## Inspection
 

@@ -31,6 +31,7 @@
     "TRIAL_REPOSITORY": "sachinkundu/deos-sample-project",
     "TRIAL_DISPATCH_ENABLED": "false",
     "CODEX_AUTH_PROFILE_ID": "controlled-trial",
+    "SANDBOX_FAILURE_RETENTION_MINUTES": "60",
     "CAPABILITY_BASE_URL": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities",
     "PORTAL_BASE_URL": "https://deos.voxdez.com",
     "ROUTE_ADMIN_ALLOWED_EMAIL": "sachinkundu@gmail.com"

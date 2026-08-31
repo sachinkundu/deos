@@ -327,7 +327,7 @@ export class CapabilityRouter {
       context === null ||
       !(gitKind === null
         ? context.attemptState === "running"
-        : ["starting", "running"].includes(context.attemptState)) ||
+        : ["pending", "starting", "running"].includes(context.attemptState)) ||
       context.runId !== claims.runId ||
       context.repository !== claims.repository ||
       context.issueId !== claims.issueId

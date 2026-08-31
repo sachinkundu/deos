@@ -292,6 +292,8 @@ class AttemptStore implements AgentAttemptStore {
       manifest_id: null,
       cleanup_state: "pending",
       cleanup_error_category: null,
+      cleanup_hold_until: null,
+      cleanup_hold_reason: null,
       created_at: input.now,
       updated_at: input.now,
     };
@@ -358,6 +360,14 @@ class AttemptStore implements AgentAttemptStore {
   markCleanup(_attempt: string, state: "destroyed" | "failed") {
     this.cleanup = state;
     if (this.latest !== null) this.latest.cleanup_state = state;
+    return Promise.resolve();
+  }
+
+  markCleanupHold(_attempt: string, until: string, reason: "debug_failure") {
+    if (this.latest !== null) {
+      this.latest.cleanup_hold_until = until;
+      this.latest.cleanup_hold_reason = reason;
+    }
     return Promise.resolve();
   }
 }
@@ -578,6 +588,7 @@ interface SetupOptions {
   materializedContext?: string;
   candidateRejection?: PlanningCandidateRejectedError;
   reviewAcceptanceError?: Error;
+  failureRetentionMs?: number;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -597,6 +608,7 @@ const setup = (options: SetupOptions = {}) => {
       authProfileId: "trial",
       absoluteTimeoutMs: 24 * 60 * 60_000,
       heartbeatTimeoutMs: 5 * 60_000,
+      failureRetentionMs: options.failureRetentionMs ?? 0,
     },
     {
       now: clock,
@@ -1072,6 +1084,26 @@ test("non-zero supervisor exit persists failure evidence before cleanup", async 
   assert.equal(collector.verifiedDurable, 1);
   assert.equal(collector.verified, 1);
   assert.equal(factory.sandbox.destroyed, true);
+});
+
+test("failed attempt can retain a credential-free Sandbox until a durable cleanup deadline", async () => {
+  const { controller, factory, attempts, collector } = setup({ failureRetentionMs: 60 * 60_000 });
+  await controller.execute(run, "work", "work", definition);
+  factory.sandbox.supervisor.state = "exited";
+  factory.sandbox.supervisor.exitCode = 1;
+  collector.failureErrorCategory = "codex_exit_nonzero";
+
+  const observation = await controller.execute(run, "work", "work", definition);
+
+  assert.equal(observation.state, "completed");
+  assert.equal(attempts.latest?.state, "failed");
+  assert.equal(attempts.latest?.cleanup_state, "pending");
+  assert.equal(attempts.latest?.cleanup_hold_until, "2026-08-16T11:00:00.000Z");
+  assert.equal(attempts.latest?.cleanup_hold_reason, "debug_failure");
+  assert.equal(factory.sandbox.files.has("/root/.codex/auth.json"), false);
+  assert.equal(factory.sandbox.keepAlive, true);
+  assert.equal(factory.sandbox.destroyed, false);
+  assert.equal(collector.verified, 1);
 });
 
 test("failure evidence persistence error keeps the Sandbox recoverable", async () => {

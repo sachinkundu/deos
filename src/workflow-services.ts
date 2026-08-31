@@ -128,6 +128,10 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         authProfileId: env.CODEX_AUTH_PROFILE_ID,
         absoluteTimeoutMs: durationMs(definition.execution.attemptTimeout),
         heartbeatTimeoutMs: durationMs(definition.execution.heartbeatTimeout),
+        failureRetentionMs: Math.min(
+          24 * 60,
+          Math.max(0, Number.parseInt(env.SANDBOX_FAILURE_RETENTION_MINUTES, 10) || 0),
+        ) * 60_000,
       },
       {
         now: () => new Date(),

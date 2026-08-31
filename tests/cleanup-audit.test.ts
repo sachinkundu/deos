@@ -17,7 +17,12 @@ class Store implements CleanupAuditStore {
   live: any[] = [];
 
   knownLive() { return Promise.resolve(this.live); }
-  terminalPendingCleanup() { return Promise.resolve(this.terminal); }
+  terminalPendingCleanup(now: string) {
+    return Promise.resolve(this.terminal.filter((candidate) =>
+      candidate.cleanup_hold_until === null || candidate.cleanup_hold_until === undefined ||
+      candidate.cleanup_hold_until <= now
+    ));
+  }
   candidate(id: string) { return Promise.resolve(this.candidates.get(id) ?? null); }
   async upsertWorkItem(candidate: any, operationId: string, now: string) {
     const existing = this.work.get(candidate.sandbox_id);
@@ -142,6 +147,24 @@ test("known live Sandbox is excluded from external orphan reporting", async () =
   assert.equal(creates(), 0);
 });
 
+test("held failed Sandbox stays tracked and is excluded from external orphan reporting", async () => {
+  const { auditor, store, creates } = setup();
+  store.candidates.set(SANDBOX_ID, {
+    sandbox_id: SANDBOX_ID,
+    run_id: "run-1",
+    attempt_id: "attempt-1",
+    process_id: null,
+    state: "failed",
+    cleanup_state: "pending",
+    cleanup_hold_until: "2026-08-16T13:00:00.000Z",
+    cleanup_hold_reason: "debug_failure",
+  });
+  const response = await auditor.handle(inventoryRequest());
+  assert.equal(response.status, 200);
+  assert.equal((await response.json() as { reported: number }).reported, 0);
+  assert.equal(creates(), 0);
+});
+
 test("scheduled reconciliation destroys D1-known terminal Sandboxes", async () => {
   const { auditor, store, factory } = setup();
   const candidate = {
@@ -157,4 +180,23 @@ test("scheduled reconciliation destroys D1-known terminal Sandboxes", async () =
   await auditor.scheduled();
   assert.equal(factory.sandbox.destroyed, true);
   assert.equal(candidate.cleanup_state, "destroyed");
+});
+
+test("scheduled reconciliation waits for a failed Sandbox hold to expire", async () => {
+  const { auditor, store, factory } = setup();
+  const candidate = {
+    sandbox_id: SANDBOX_ID,
+    run_id: "run-1",
+    attempt_id: "attempt-1",
+    process_id: null,
+    state: "failed",
+    cleanup_state: "pending",
+    cleanup_hold_until: "2026-08-16T13:00:00.000Z",
+    cleanup_hold_reason: "debug_failure",
+  };
+  store.candidates.set(SANDBOX_ID, candidate);
+  store.terminal = [candidate];
+  await auditor.scheduled();
+  assert.equal(factory.sandbox.destroyed, false);
+  assert.equal(candidate.cleanup_state, "pending");
 });

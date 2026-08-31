@@ -45,6 +45,8 @@ export interface AgentAttemptRecord {
   manifest_id: string | null;
   cleanup_state: "pending" | "destroyed" | "failed";
   cleanup_error_category: string | null;
+  cleanup_hold_until?: string | null;
+  cleanup_hold_reason?: string | null;
   prompt_r2_key?: string | null;
   prompt_sha256?: string | null;
   created_at: string;
@@ -78,6 +80,7 @@ export interface AgentAttemptStore {
     now: string;
   }): Promise<void>;
   markCleanup(attemptId: string, state: "destroyed" | "failed", category: string | null, now: string): Promise<void>;
+  markCleanupHold(attemptId: string, until: string, reason: "debug_failure", now: string): Promise<void>;
 }
 
 const changes = (result: D1Result<unknown>): number => result.meta.changes ?? 0;
@@ -221,6 +224,21 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
        WHERE attempt_id = ?`,
     ).bind(state, category, now, attemptId).run();
   }
+
+  async markCleanupHold(
+    attemptId: string,
+    until: string,
+    reason: "debug_failure",
+    now: string,
+  ): Promise<void> {
+    const result = await this.database.prepare(
+      `UPDATE agent_attempts
+       SET cleanup_state = 'pending', cleanup_error_category = NULL,
+           cleanup_hold_until = ?, cleanup_hold_reason = ?, updated_at = ?
+       WHERE attempt_id = ? AND cleanup_state = 'pending'`,
+    ).bind(until, reason, now, attemptId).run();
+    if (changes(result) !== 1) throw new Error("Sandbox cleanup hold compare-and-set failed");
+  }
 }
 
 export interface SandboxProcessView {
@@ -296,6 +314,7 @@ export interface SandboxControllerConfig {
   authProfileId: string;
   absoluteTimeoutMs: number;
   heartbeatTimeoutMs: number;
+  failureRetentionMs: number;
 }
 
 export type AgentExecutionObservation =
@@ -852,7 +871,11 @@ export class SandboxAgentController {
               manifestId: collection.manifestId,
               now: this.dependencies.now().toISOString(),
             });
-            await this.cleanup(attempt, sandbox);
+            if (verificationMismatch || repeatedPatch) {
+              await this.cleanupFailure(attempt, sandbox);
+            } else {
+              await this.cleanup(attempt, sandbox);
+            }
             await collector.verifyAfterCleanup(collection);
             return {
               state: "completed",
@@ -929,7 +952,7 @@ export class SandboxAgentController {
           "post_collection_validation_failed",
           collection.manifestId,
         );
-        await this.cleanup(attempt, sandbox);
+        await this.cleanupFailure(attempt, sandbox);
         await collector.verifyAfterCleanup(collection);
         return this.failedObservation(attempt, "failed", collection.manifestId);
       }
@@ -1144,7 +1167,7 @@ export class SandboxAgentController {
       collection.safeErrorCategory,
       collection.manifestId,
     );
-    await this.cleanup(attempt, sandbox);
+    await this.cleanupFailure(attempt, sandbox);
     await collector.verifyAfterCleanup(collection);
     return collection.manifestId;
   }
@@ -1159,6 +1182,21 @@ export class SandboxAgentController {
     } catch {}
     await process.kill(9);
     await process.waitForExit({ timeout: 10_000 });
+  }
+
+  private async cleanupFailure(attempt: AgentAttemptRecord, sandbox: SandboxView): Promise<void> {
+    if (this.config.failureRetentionMs <= 0) {
+      await this.cleanup(attempt, sandbox);
+      return;
+    }
+    const now = this.dependencies.now();
+    await sandbox.setKeepAlive(true);
+    await this.attempts.markCleanupHold(
+      attempt.attempt_id,
+      new Date(now.getTime() + this.config.failureRetentionMs).toISOString(),
+      "debug_failure",
+      now.toISOString(),
+    );
   }
 
   private async cleanup(attempt: AgentAttemptRecord, sandbox: SandboxView): Promise<void> {

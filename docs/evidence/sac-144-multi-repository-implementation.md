@@ -21,7 +21,7 @@ GitHub App access. The crop excludes account and Access identity details.
 
 - Python: 31 tests passed.
 - Ruff: passed.
-- Worker tests: 221 tests passed.
+- Worker tests: 224 tests passed.
 - Portal tests: 31 tests passed.
 - Root and portal TypeScript checks: passed.
 - Generated Worker binding checks: passed.
@@ -79,7 +79,15 @@ Sandbox used anonymous Git transport even though the route had a frozen GitHub
 App installation. DEOS now exposes only read-only Git smart HTTP through the
 attempt capability. The trusted Worker validates the frozen route, adds the
 short-lived App token upstream, and never sends that token into the Sandbox.
+The first proxy canary showed that checkout occurs while the attempt is still
+`pending`, before its supervisor can move it to `running`. The proxy now admits
+only `pending`, `starting`, or `running` attempts with the exact frozen route.
 The next provider run is the proof for this repair.
+
+For the remaining canary retries, failed Sandboxes have a 60-minute debug hold.
+DEOS removes Codex auth first, records the exact Sandbox and expiry in D1, and
+lets scheduled cleanup destroy it after the hold. This is temporary and returns
+to zero before final cleanup proof.
 
 During the first provider run, Settings disabled the second route at revision
 `3` and restored it at revision `4`. The already allocated run kept the second

@@ -242,7 +242,7 @@ test("signed capability token is scoped and expires", async () => {
 
 test("repository checkout proxy accepts only the active frozen attempt", async () => {
   const active = await setup();
-  active.store.contextValue = { ...active.store.contextValue!, attemptState: "starting" };
+  active.store.contextValue = { ...active.store.contextValue!, attemptState: "pending" };
   const response = await active.invokeGit();
   assert.equal(response.status, 200);
   assert.equal(await response.text(), "git-proxy-response");

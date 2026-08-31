@@ -232,6 +232,19 @@ failed conditional write with no newer valid object remains an error. This
 separates concurrent reads from the one guarded shared write without exposing
 the credential or letting a later finisher overwrite a newer refresh.
 
+### 8. Retain failed canary Sandboxes for a bounded debug window
+
+Failure retention is an explicit deployment setting and is off by default.
+When enabled, DEOS stops the agent process, removes local Codex auth, preserves
+the failure artifacts, and records the exact Sandbox id, hold deadline, and
+reason in D1. The cleanup cron and external inventory audit respect an active
+hold. After the deadline, the normal cleanup path destroys the Sandbox and
+clears the hold. Successful attempts are never retained.
+
+The Sandbox id is durable authority; local files are best-effort debug state.
+Cloudflare may replace an idle or failed container before the hold ends, so a
+hold cannot replace R2 evidence.
+
 ## Component Diagram
 
 ```mermaid

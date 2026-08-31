@@ -71,6 +71,7 @@
 - [x] 8.5 Test route edits during author, review, and human gates without changing their target
 - [x] 8.6 Allow concurrent route agents to share the credential seed and reconcile refresh writes safely
 - [x] 8.7 Clone each frozen route through a read-only Worker proxy without giving the Sandbox a GitHub credential
+- [x] 8.8 Add an expiring, D1-tracked debug hold for failed canary Sandboxes while keeping success cleanup immediate
 
 ## 9. Docs and Local Checks
 
