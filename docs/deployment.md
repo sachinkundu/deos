@@ -12,6 +12,8 @@ Migration `0007_explicit_business_lifecycle.sql` is a guarded copy-and-swap of `
 
 Migration `0020_multi_repository_routes.sql` is additive. It expands each project policy into a complete repository route, adds safe GitHub installation and access-check records, stores event route proofs, and adds frozen route columns to runs. Apply it before deploying route-aware Workers. The queue Worker's scheduled setup then fills the current seed route and every active-run snapshot and reads them back. Stop the rollout if any active run still has a null repository, App installation, revision, or digest.
 
+The queue Worker seed carries both `LINEAR_PROJECT_ID` and `LINEAR_PROJECT_NAME`. The name is display and frozen-run context for the one legacy route; later routes receive their names from the live Linear catalog.
+
 ## Required resources
 
 The checked Wrangler configurations name the existing D1 database, Queue, and private R2 bucket. The TypeScript configuration additionally creates:

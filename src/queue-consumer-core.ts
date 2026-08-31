@@ -91,6 +91,7 @@ type WorkflowRegistrationEnv = Pick<
   QueueConsumerEnv,
   | "DB"
   | "LINEAR_PROJECT_ID"
+  | "LINEAR_PROJECT_NAME"
   | "LINEAR_START_STATE_NAME"
   | "LINEAR_HUMAN_APPROVAL_STATE_ID"
   | "TRIAL_REPOSITORY"
@@ -284,7 +285,7 @@ export const registerBundledWorkflowDefinitions = async (
     if (await routeStore.read(env.LINEAR_PROJECT_ID) !== null) {
       await routeStore.backfillLegacyRoute({
         projectId: env.LINEAR_PROJECT_ID,
-        projectName: env.LINEAR_PROJECT_ID,
+        projectName: env.LINEAR_PROJECT_NAME,
         githubInstallationId: env.GITHUB_INSTALLATION_ID,
         actorEmail: "deployment",
         now,

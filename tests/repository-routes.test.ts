@@ -455,6 +455,7 @@ test("deployment seed is created only for an empty route list", async () => {
   const environment = (database: SqliteD1Database): QueueConsumerEnv => ({
     DB: database as unknown as D1Database,
     LINEAR_PROJECT_ID: "seed-project",
+    LINEAR_PROJECT_NAME: "Seed project",
     LINEAR_START_STATE_NAME: "In Progress",
     LINEAR_HUMAN_APPROVAL_STATE_ID: "human-review",
     TRIAL_REPOSITORY: "sachinkundu/deos-sample-project",
@@ -470,10 +471,11 @@ test("deployment seed is created only for an empty route list", async () => {
       now: () => new Date(NOW),
     });
     assert.deepEqual(
-      empty.sqlite.prepare("SELECT project_id, trial_repository, github_installation_id FROM project_workflow_policies").all()
+      empty.sqlite.prepare("SELECT project_id, linear_project_name, trial_repository, github_installation_id FROM project_workflow_policies").all()
         .map((row) => ({ ...row })),
       [{
         project_id: "seed-project",
+        linear_project_name: "Seed project",
         trial_repository: "sachinkundu/deos-sample-project",
         github_installation_id: "154095438",
       }],
