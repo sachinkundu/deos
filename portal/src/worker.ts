@@ -31,7 +31,6 @@ type PortalRuntimeEnv = Pick<Env, "DB" | "ARTIFACTS" | "ASSETS"> & {
   ACCESS_TEAM_DOMAIN: string;
   ACCESS_AUD: string;
   ALLOWED_EMAIL: string;
-  PROJECT_ID: string;
   OPENROUTER_SUPPORTED_MODELS?: string;
   ROUTE_ADMIN?: Service;
 };
@@ -121,7 +120,7 @@ export const routePortalRequest = async (
     for (const [key, value] of Object.entries(securityHeaders)) headers.set(key, value);
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   }
-  const store = new PortalReadStore(env.DB, env.PROJECT_ID);
+  const store = new PortalReadStore(env.DB);
   try {
     if (url.pathname === "/api/settings/routes") {
       if (request.method === "GET") {
@@ -180,7 +179,7 @@ export const routePortalRequest = async (
     const issueSearchHistoryMatch = url.pathname.match(/^\/api\/issues\/([A-Z][A-Z0-9]+-[1-9][0-9]*)\/search$/);
     if (issueSearchHistoryMatch !== null) {
       if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
-      const recorded = await new PortalIssueSearchHistoryStore(env.DB, env.PROJECT_ID)
+      const recorded = await new PortalIssueSearchHistoryStore(env.DB)
         .record(identity.email, issueSearchHistoryMatch[1], new Date().toISOString());
       return recorded ? json(200, { recorded: true }) : json(404, { error: "issue_not_found" });
     }
@@ -198,7 +197,7 @@ export const routePortalRequest = async (
       /^\/api\/attempts\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/transcript(\.jsonl)?$/i,
     );
     if (transcriptMatch !== null) {
-      const transcript = await new TranscriptReadStore(env.DB, env.ARTIFACTS, env.PROJECT_ID)
+      const transcript = await new TranscriptReadStore(env.DB, env.ARTIFACTS)
         .read(transcriptMatch[1]);
       if (transcriptMatch[2] === ".jsonl") {
         return new Response(request.method === "HEAD" ? null : transcript.bytes, {
@@ -220,7 +219,7 @@ export const routePortalRequest = async (
     }
     const reviewArtifactMatch = url.pathname.match(/^\/api\/reviews\/([^/]+)\/artifacts\/([^/]+)$/);
     if (reviewArtifactMatch !== null) {
-      const artifact = await new TraceReviewReadStore(env.DB, env.ARTIFACTS, env.PROJECT_ID).artifact(
+      const artifact = await new TraceReviewReadStore(env.DB, env.ARTIFACTS).artifact(
         decodeURIComponent(reviewArtifactMatch[1]),
         decodeURIComponent(reviewArtifactMatch[2]),
       );
@@ -236,7 +235,7 @@ export const routePortalRequest = async (
     }
     const reviewMatch = url.pathname.match(/^\/api\/runs\/(.+)\/review$/);
     if (reviewMatch !== null) {
-      const result = await new TraceReviewReadStore(env.DB, env.ARTIFACTS, env.PROJECT_ID)
+      const result = await new TraceReviewReadStore(env.DB, env.ARTIFACTS)
         .projection(decodeURIComponent(reviewMatch[1]));
       return result === null ? json(404, { error: "run_not_found" }) : json(200, result);
     }
@@ -244,7 +243,7 @@ export const routePortalRequest = async (
       /^\/api\/process-attempts\/([0-9a-f-]{36})\/artifacts\/([^/]+)$/i,
     );
     if (processArtifactMatch !== null) {
-      const artifact = await new ReviewStoryReadStore(env.DB, env.ARTIFACTS, env.PROJECT_ID).artifact(
+      const artifact = await new ReviewStoryReadStore(env.DB, env.ARTIFACTS).artifact(
         processArtifactMatch[1],
         decodeURIComponent(processArtifactMatch[2]),
       );
@@ -262,7 +261,7 @@ export const routePortalRequest = async (
       /^\/api\/pull-requests\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/([1-9][0-9]*)\/review-story$/,
     );
     if (pullRequestStoryMatch !== null) {
-      const result = await new ReviewStoryReadStore(env.DB, env.ARTIFACTS, env.PROJECT_ID).projection(
+      const result = await new ReviewStoryReadStore(env.DB, env.ARTIFACTS).projection(
         `${pullRequestStoryMatch[1]}/${pullRequestStoryMatch[2]}`,
         Number(pullRequestStoryMatch[3]),
       );

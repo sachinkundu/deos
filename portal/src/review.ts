@@ -78,16 +78,13 @@ export class TraceReviewArtifactError extends Error {}
 export class TraceReviewReadStore {
   private readonly db: D1Database;
   private readonly artifacts: R2Bucket;
-  private readonly projectId: string;
 
   constructor(
     db: D1Database,
     artifacts: R2Bucket,
-    projectId: string,
   ) {
     this.db = db;
     this.artifacts = artifacts;
-    this.projectId = projectId;
   }
 
   async projection(runId: string): Promise<Record<string, unknown> | null> {
@@ -97,11 +94,12 @@ export class TraceReviewReadStore {
               issue.title, issue.linear_url, work.repository, work.pull_request_number,
               work.pull_request_url, work.head_sha
        FROM orchestration_runs run
+       JOIN project_workflow_policies route ON route.project_id = run.project_id
        JOIN linear_issue_index issue
          ON issue.issue_id = run.issue_id AND issue.project_id = run.project_id
        LEFT JOIN run_work_products work ON work.run_id = run.run_id
-       WHERE run.run_id = ? AND run.project_id = ? LIMIT 1`,
-    ).bind(runId, this.projectId).first<Record<string, unknown>>();
+       WHERE run.run_id = ? LIMIT 1`,
+    ).bind(runId).first<Record<string, unknown>>();
     if (run === null) return null;
     const [phases, reviews, candidates, bindings] = await Promise.all([
       this.db.prepare(
@@ -220,14 +218,15 @@ export class TraceReviewReadStore {
       `SELECT artifact.r2_key, artifact.media_type, artifact.sha256
        FROM trace_reviews review
        JOIN orchestration_runs run ON run.run_id = review.run_id
+       JOIN project_workflow_policies route ON route.project_id = run.project_id
        JOIN artifact_manifests manifest ON manifest.manifest_id = review.proof_manifest_id
        JOIN artifacts artifact ON artifact.manifest_id = manifest.manifest_id
        LEFT JOIN trace_reviews source ON source.review_id = review.reused_from_review_id
        WHERE review.review_id = ? AND (review.accepted = 1 OR source.accepted = 1)
-         AND run.project_id = ? AND manifest.state = 'complete'
-         AND artifact.logical_name = ? AND artifact.policy_outcome = 'accepted'
+         AND manifest.state = 'complete' AND artifact.logical_name = ?
+         AND artifact.policy_outcome = 'accepted'
        LIMIT 1`,
-    ).bind(reviewId, this.projectId, logicalName).first<{
+    ).bind(reviewId, logicalName).first<{
       r2_key: string;
       media_type: string;
       sha256: string;

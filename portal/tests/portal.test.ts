@@ -68,6 +68,13 @@ test("the Workflow Map issue inventory is not restricted to one workflow definit
   assert.doesNotMatch(PORTAL_SELECTS.workflowIssues, /definition_id\s*=/i);
 });
 
+test("portal reads are authorized by every configured project route", () => {
+  for (const name of ["workflowIssues", "simpleIssues", "issueSearch", "issueByKey", "run", "issueForRun", "transcript"] as const) {
+    assert.match(PORTAL_SELECTS[name], /JOIN project_workflow_policies route ON route\.project_id = (?:issue|run)\.project_id/);
+    assert.doesNotMatch(PORTAL_SELECTS[name], /(?:issue|run)\.project_id = \?/);
+  }
+});
+
 test("search history is a separate bounded mutation", () => {
   assert.match(PORTAL_MUTATIONS.recordIssueSearch, /^INSERT INTO portal_issue_search_history/);
   assert.match(PORTAL_MUTATIONS.recordIssueSearch, /VALUES \(\?, \?, \?, \?\)/);
@@ -84,7 +91,7 @@ test("search history resolves the exact recorded issue before saving the viewer 
           calls.push({ query, values });
           if (query === PORTAL_SELECTS.issueByKey) return { first: async () => ({
             issue_id: "issue-142",
-            project_id: "project-id",
+            project_id: "second-project-id",
             issue_key: "SAC-142",
             title: "Specify a calculator CLI",
             linear_url: "https://linear.example/SAC-142",
@@ -95,12 +102,12 @@ test("search history resolves the exact recorded issue before saving the viewer 
       };
     },
   } as unknown as D1Database;
-  const recorded = await new PortalIssueSearchHistoryStore(db, "project-id")
+  const recorded = await new PortalIssueSearchHistoryStore(db)
     .record("Person@Example.com", "sac-142", "2026-08-30T13:00:00Z");
   assert.equal(recorded, true);
   assert.deepEqual(calls.map((call) => call.values), [
-    ["project-id", "SAC-142"],
-    ["project-id", "person@example.com", "issue-142", "2026-08-30T13:00:00Z"],
+    ["SAC-142"],
+    ["second-project-id", "person@example.com", "issue-142", "2026-08-30T13:00:00Z"],
   ]);
 });
 
@@ -242,7 +249,6 @@ test("authentication runs before assets, route methods, or D1", async () => {
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
     ACCESS_AUD: "aud",
     ALLOWED_EMAIL: "sachinkundu@gmail.com",
-    PROJECT_ID: "project-id",
   };
   const denied = await routePortalRequest(new Request("https://deos.example/", { method: "POST" }), env, async () => { throw new Error("unauthorized"); });
   assert.equal(denied.status, 401);
@@ -266,7 +272,6 @@ test("browser routes map to explicit portal entries without SPA fallback", async
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
     ACCESS_AUD: "aud",
     ALLOWED_EMAIL: "sachinkundu@gmail.com",
-    PROJECT_ID: "project-id",
   };
   const authenticate = async () => ({ email: "sachinkundu@gmail.com" });
   assert.equal(await (await routePortalRequest(new Request("https://deos.example/"), env, authenticate)).text(), "/index.html");
@@ -306,7 +311,6 @@ test("an authenticated issue search records the viewer before the read-only API 
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
     ACCESS_AUD: "aud",
     ALLOWED_EMAIL: "sachinkundu@gmail.com",
-    PROJECT_ID: "project-id",
   };
   const response = await routePortalRequest(new Request("https://deos.example/api/issues/SAC-142/search", {
     method: "POST",
@@ -324,7 +328,6 @@ test("route workflow writes require only dispatch and revision", async () => {
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
     ACCESS_AUD: "aud",
     ALLOWED_EMAIL: "sachinkundu@gmail.com",
-    PROJECT_ID: "project-id",
   };
   const response = await routePortalRequest(new Request("https://deos.example/api/settings/routes/project-id/workflow", {
     method: "PUT",
@@ -343,7 +346,6 @@ test("route writes reject non-object and oversized JSON before the admin binding
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
     ACCESS_AUD: "aud",
     ALLOWED_EMAIL: "sachinkundu@gmail.com",
-    PROJECT_ID: "project-id",
   };
   const authenticate = async () => ({ email: "sachinkundu@gmail.com" });
   const invalid = await routePortalRequest(new Request("https://deos.example/api/settings/routes", {
@@ -394,9 +396,8 @@ test("attempt transcript reads only the D1-selected accepted object and verifies
     prepare(query: string) {
       assert.equal(query, PORTAL_SELECTS.transcript);
       return {
-        bind(id: string, projectId: string) {
+        bind(id: string) {
           assert.equal(id, attemptId);
-          assert.equal(projectId, "project-id");
           return { first: async () => ({
             attempt_id: attemptId,
             run_id: "workflow:project:issue:run:3",
@@ -418,7 +419,7 @@ test("attempt transcript reads only the D1-selected accepted object and verifies
       return { size: body.byteLength, arrayBuffer: async () => body.buffer };
     },
   } as unknown as R2Bucket;
-  const transcript = await new TranscriptReadStore(db, bucket, "project-id").read(attemptId);
+  const transcript = await new TranscriptReadStore(db, bucket).read(attemptId);
   assert.equal(requestedKey, objectKey);
   assert.equal(transcript.records.length, 1);
   assert.deepEqual(Object.keys(transcriptDto(transcript)).sort(), [
@@ -446,7 +447,7 @@ test("attempt transcript fails closed when the R2 body differs from D1", async (
   } as unknown as D1Database;
   const bucket = { get: async () => ({ size: body.byteLength, arrayBuffer: async () => body.buffer }) } as unknown as R2Bucket;
   await assert.rejects(
-    () => new TranscriptReadStore(db, bucket, "project-id").read("01a03852-9204-7612-bbb6-b76579f1462a"),
+    () => new TranscriptReadStore(db, bucket).read("01a03852-9204-7612-bbb6-b76579f1462a"),
     TranscriptUnavailableError,
   );
 });
@@ -458,9 +459,8 @@ test("review artifacts use the allowlist, D1-selected key, and exact hash", asyn
   let requestedKey = "";
   const db = {
     prepare() {
-      return { bind: (reviewId: string, projectId: string, logicalName: string) => {
+      return { bind: (reviewId: string, logicalName: string) => {
         assert.equal(reviewId, "review:01a03852-9204-7612-bbb6-b76579f1462a");
-        assert.equal(projectId, "project-id");
         assert.equal(logicalName, "candidate-inventory.json");
         return { first: async () => ({
           r2_key: "private/review/candidate-inventory.json",
@@ -474,14 +474,14 @@ test("review artifacts use the allowlist, D1-selected key, and exact hash", asyn
     requestedKey = key;
     return { arrayBuffer: async () => body.buffer };
   } } as unknown as R2Bucket;
-  const artifact = await new TraceReviewReadStore(db, bucket, "project-id").artifact(
+  const artifact = await new TraceReviewReadStore(db, bucket).artifact(
     "review:01a03852-9204-7612-bbb6-b76579f1462a",
     "candidate-inventory.json",
   );
   assert.equal(requestedKey, "private/review/candidate-inventory.json");
   assert.equal(artifact.sha256, digest);
   await assert.rejects(
-    () => new TraceReviewReadStore(db, bucket, "project-id").artifact(
+    () => new TraceReviewReadStore(db, bucket).artifact(
       "review:01a03852-9204-7612-bbb6-b76579f1462a",
       "provider-references.json",
     ),
@@ -504,7 +504,7 @@ test("review artifact hash mismatch fails closed", async () => {
     get: async () => ({ arrayBuffer: async () => body.buffer }),
   } as unknown as R2Bucket;
   await assert.rejects(
-    () => new TraceReviewReadStore(db, bucket, "project-id").artifact(
+    () => new TraceReviewReadStore(db, bucket).artifact(
       "review:01a03852-9204-7612-bbb6-b76579f1462a",
       "raw-review-output.json",
     ),

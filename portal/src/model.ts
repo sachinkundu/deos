@@ -86,9 +86,10 @@ export const PORTAL_SELECTS = Object.freeze({
     FROM portal_issue_search_history history
     JOIN linear_issue_index issue
       ON issue.issue_id = history.issue_id AND issue.project_id = history.project_id
+    JOIN project_workflow_policies route ON route.project_id = issue.project_id
     JOIN orchestration_runs run
       ON run.issue_id = issue.issue_id AND run.project_id = issue.project_id
-    WHERE issue.project_id = ? AND history.viewer_email = ? COLLATE NOCASE
+    WHERE history.viewer_email = ? COLLATE NOCASE
       AND run.run_sequence = (
         SELECT MAX(latest.run_sequence) FROM orchestration_runs latest
         WHERE latest.issue_id = run.issue_id AND latest.project_id = run.project_id
@@ -97,27 +98,37 @@ export const PORTAL_SELECTS = Object.freeze({
   simpleIssues: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
     issue.linear_url, issue.observed_at, run.run_id, run.run_sequence, run.status, run.updated_at
     FROM linear_issue_index issue
+    JOIN project_workflow_policies route ON route.project_id = issue.project_id
     JOIN orchestration_runs run
       ON run.issue_id = issue.issue_id AND run.project_id = issue.project_id
-    WHERE issue.project_id = ? AND run.definition_id = 'simple'
+    WHERE run.definition_id = 'simple'
       AND run.run_sequence = (
         SELECT MAX(latest.run_sequence) FROM orchestration_runs latest
         WHERE latest.issue_id = run.issue_id AND latest.project_id = run.project_id
           AND latest.definition_id = 'simple'
       )
     ORDER BY run.updated_at DESC, issue.issue_key LIMIT 50`,
-  issueSearch: `SELECT issue_id, project_id, issue_key, title, linear_url, observed_at
-    FROM linear_issue_index WHERE project_id = ? AND issue_key LIKE ? ESCAPE '\\'
-    ORDER BY observed_at DESC LIMIT 20`,
-  issueByKey: `SELECT issue_id, project_id, issue_key, title, linear_url, observed_at
-    FROM linear_issue_index WHERE project_id = ? AND issue_key = ? LIMIT 1`,
+  issueSearch: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
+    issue.linear_url, issue.observed_at
+    FROM linear_issue_index issue
+    JOIN project_workflow_policies route ON route.project_id = issue.project_id
+    WHERE issue.issue_key LIKE ? ESCAPE '\\'
+    ORDER BY issue.observed_at DESC LIMIT 20`,
+  issueByKey: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
+    issue.linear_url, issue.observed_at
+    FROM linear_issue_index issue
+    JOIN project_workflow_policies route ON route.project_id = issue.project_id
+    WHERE issue.issue_key = ? LIMIT 1`,
   runs: `SELECT run_id, run_sequence, definition_id, definition_version, definition_digest,
     current_node, current_visit_sequence, status, created_at, updated_at, terminal_at
     FROM orchestration_runs WHERE project_id = ? AND issue_id = ?
     ORDER BY run_sequence DESC`,
-  run: `SELECT run_id, run_sequence, definition_id, definition_version, definition_digest,
-    current_node, current_visit_sequence, status, created_at, updated_at, terminal_at
-    FROM orchestration_runs WHERE run_id = ? AND project_id = ? LIMIT 1`,
+  run: `SELECT run.run_id, run.run_sequence, run.definition_id, run.definition_version,
+    run.definition_digest, run.current_node, run.current_visit_sequence, run.status,
+    run.created_at, run.updated_at, run.terminal_at
+    FROM orchestration_runs run
+    JOIN project_workflow_policies route ON route.project_id = run.project_id
+    WHERE run.run_id = ? LIMIT 1`,
   definition: `SELECT canonical_json, digest FROM workflow_definitions
     WHERE definition_id = ? AND version = ? LIMIT 1`,
   transitions: `SELECT transition_id, from_node, to_node, from_visit_sequence,
@@ -157,9 +168,10 @@ export const PORTAL_SELECTS = Object.freeze({
   issueForRun: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
     issue.linear_url, issue.observed_at
     FROM orchestration_runs run
+    JOIN project_workflow_policies route ON route.project_id = run.project_id
     JOIN linear_issue_index issue
       ON issue.issue_id = run.issue_id AND issue.project_id = run.project_id
-    WHERE run.run_id = ? AND run.project_id = ? LIMIT 1`,
+    WHERE run.run_id = ? LIMIT 1`,
   workProduct: `SELECT repository, pull_request_number, pull_request_url,
     merge_commit_sha, verified_at FROM run_work_products WHERE run_id = ? LIMIT 1`,
   transcript: `SELECT attempt.attempt_id, attempt.run_id, attempt.node_id,
@@ -167,6 +179,7 @@ export const PORTAL_SELECTS = Object.freeze({
     artifact.byte_size, artifact.sha256
     FROM agent_attempts attempt
     JOIN orchestration_runs run ON run.run_id = attempt.run_id
+    JOIN project_workflow_policies route ON route.project_id = run.project_id
     JOIN linear_issue_index issue
       ON issue.issue_id = run.issue_id AND issue.project_id = run.project_id
     JOIN artifact_manifests manifest
@@ -178,7 +191,7 @@ export const PORTAL_SELECTS = Object.freeze({
       ON artifact.manifest_id = manifest.manifest_id
       AND artifact.logical_name = 'transcript.jsonl'
       AND artifact.policy_outcome = 'accepted'
-    WHERE attempt.attempt_id = ? AND run.project_id = ? LIMIT 1`,
+    WHERE attempt.attempt_id = ? LIMIT 1`,
 });
 
 export const PORTAL_MUTATIONS = Object.freeze({
@@ -209,18 +222,16 @@ const escapeLike = (value: string): string => value.replaceAll("\\", "\\\\").rep
 
 export class PortalReadStore {
   private readonly db: D1Database;
-  private readonly projectId: string;
 
-  constructor(db: D1Database, projectId: string) {
+  constructor(db: D1Database) {
     this.db = db;
-    this.projectId = projectId;
   }
 
   async searchIssues(query: string): Promise<PortalIssue[]> {
     const normalized = query.trim().toUpperCase();
     if (!/^[A-Z0-9-]{1,32}$/.test(normalized)) return [];
     const result = await this.db.prepare(PORTAL_SELECTS.issueSearch)
-      .bind(this.projectId, `${escapeLike(normalized)}%`).all<IssueRow>();
+      .bind(`${escapeLike(normalized)}%`).all<IssueRow>();
     return result.results.map(issueDto);
   }
 
@@ -230,7 +241,7 @@ export class PortalReadStore {
     status: string;
     updatedAt: string;
   }>> {
-    const result = await this.db.prepare(PORTAL_SELECTS.simpleIssues).bind(this.projectId).all<SimpleIssueRow>();
+    const result = await this.db.prepare(PORTAL_SELECTS.simpleIssues).all<SimpleIssueRow>();
     return result.results.map((row) => ({
       ...issueDto(row),
       runId: row.run_id,
@@ -247,7 +258,7 @@ export class PortalReadStore {
     updatedAt: string;
   }>> {
     const result = await this.db.prepare(PORTAL_SELECTS.workflowIssues)
-      .bind(this.projectId, viewerEmail.trim().toLowerCase()).all<SimpleIssueRow>();
+      .bind(viewerEmail.trim().toLowerCase()).all<SimpleIssueRow>();
     return result.results.map((row) => ({
       ...issueDto(row),
       runId: row.run_id,
@@ -259,7 +270,7 @@ export class PortalReadStore {
 
   private issue(key: string): Promise<IssueRow | null> {
     if (!keyPattern.test(key)) return Promise.resolve(null);
-    return this.db.prepare(PORTAL_SELECTS.issueByKey).bind(this.projectId, key).first<IssueRow>();
+    return this.db.prepare(PORTAL_SELECTS.issueByKey).bind(key).first<IssueRow>();
   }
 
   async runs(key: string): Promise<{ issue: PortalIssue; runs: Array<Record<string, unknown>> } | null> {
@@ -282,7 +293,7 @@ export class PortalReadStore {
 
   async projection(runId: string): Promise<Record<string, unknown> | null> {
     if (!/^workflow:[0-9a-f-]+:[0-9a-f-]+:run:[1-9][0-9]*$/i.test(runId)) return null;
-    const run = await this.db.prepare(PORTAL_SELECTS.run).bind(runId, this.projectId).first<RunRow>();
+    const run = await this.db.prepare(PORTAL_SELECTS.run).bind(runId).first<RunRow>();
     if (run === null) return null;
     const [definitionRow, transitionResult, attemptResult, waitResult, linkResult, issueRow, workProduct, reviewProof] = await Promise.all([
       this.db.prepare(PORTAL_SELECTS.definition).bind(run.definition_id, run.definition_version).first<DefinitionRow>(),
@@ -290,7 +301,7 @@ export class PortalReadStore {
       this.db.prepare(PORTAL_SELECTS.attempts).bind(runId).all<AttemptRow>(),
       this.db.prepare(PORTAL_SELECTS.waits).bind(runId).all<WaitRow>(),
       this.db.prepare(PORTAL_SELECTS.links).bind(runId).all<LinkRow>(),
-      this.db.prepare(PORTAL_SELECTS.issueForRun).bind(runId, this.projectId).first<IssueRow>(),
+      this.db.prepare(PORTAL_SELECTS.issueForRun).bind(runId).first<IssueRow>(),
       this.db.prepare(PORTAL_SELECTS.workProduct).bind(runId).first<WorkProductRow>(),
       this.db.prepare(
         "SELECT COUNT(*) AS count FROM trace_reviews WHERE run_id = ? AND accepted = 1",
@@ -423,11 +434,9 @@ export class PortalReadStore {
 
 export class PortalIssueSearchHistoryStore {
   private readonly db: D1Database;
-  private readonly projectId: string;
 
-  constructor(db: D1Database, projectId: string) {
+  constructor(db: D1Database) {
     this.db = db;
-    this.projectId = projectId;
   }
 
   async record(viewerEmail: string, issueKey: string, now: string): Promise<boolean> {
@@ -435,10 +444,10 @@ export class PortalIssueSearchHistoryStore {
     const normalizedEmail = viewerEmail.trim().toLowerCase();
     if (!keyPattern.test(normalizedKey) || normalizedEmail.length === 0) return false;
     const issue = await this.db.prepare(PORTAL_SELECTS.issueByKey)
-      .bind(this.projectId, normalizedKey).first<IssueRow>();
+      .bind(normalizedKey).first<IssueRow>();
     if (issue === null) return false;
     await this.db.prepare(PORTAL_MUTATIONS.recordIssueSearch)
-      .bind(this.projectId, normalizedEmail, issue.issue_id, now).run();
+      .bind(issue.project_id, normalizedEmail, issue.issue_id, now).run();
     return true;
   }
 }
