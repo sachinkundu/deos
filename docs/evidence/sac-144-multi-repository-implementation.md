@@ -39,9 +39,10 @@ The provider adapter tests prove paginated Linear project and GitHub App reposit
 
 ## Remote deployment and concurrency proof
 
-Migrations `0020_multi_repository_routes.sql` and
-`0021_concurrent_credential_leases.sql` are applied. Queue Worker version
-`b2695a38-4528-47d3-98f1-cec290ed0fa3`, portal version
+Migrations `0020_multi_repository_routes.sql`,
+`0021_concurrent_credential_leases.sql`, and
+`0022_sandbox_failure_retention.sql` are applied. Queue Worker version
+`82bf88e8-e405-49f0-a219-ec0413b4f092`, portal version
 `14d7898b-618b-4112-9ca2-54d09e6190f6`, and ingress version
 `cdf86643-5b03-4678-9c9c-be146c1af6b2` are deployed. The remote credential
 table uses `(profile_id, attempt_id)` as its primary key, and the remote
@@ -82,7 +83,15 @@ short-lived App token upstream, and never sends that token into the Sandbox.
 The first proxy canary showed that checkout occurs while the attempt is still
 `pending`, before its supervisor can move it to `running`. The proxy now admits
 only `pending`, `starting`, or `running` attempts with the exact frozen route.
-The next provider run is the proof for this repair.
+Clean provider retries then crossed checkout and ran authors concurrently:
+
+| Issue | Frozen repository | Attempt | State | Source ETag |
+| --- | --- | --- | --- | --- |
+| `SAC-145` run 2 | `sachinkundu/deos-sample-project` | `01a057a6-7d63-732c-b3a2-d4b711680f04` | `running` | `5ea175be0142249e55417d6d2f8f1d9e` |
+| `SAC-146` run 6 | `sachinkundu/deos-sample-project-2` | `01a057a3-e966-7420-9239-bafa747bbf41` | `running` | `5ea175be0142249e55417d6d2f8f1d9e` |
+
+The executable D1 record contains both route snapshots, attempt states,
+credential leases, and the empty foreign-key check.
 
 For the remaining canary retries, failed Sandboxes have a 60-minute debug hold.
 DEOS removes Codex auth first, records the exact Sandbox and expiry in D1, and
