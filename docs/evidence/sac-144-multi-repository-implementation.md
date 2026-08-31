@@ -70,7 +70,9 @@ time:
 | `SAC-147` run 1 | `sachinkundu/deos-sample-project` | `01a0577b-57f8-7ef2-87f9-205338109dde` | `running` | `acf2f1269c2346927821401d840296c4` |
 
 Each attempt had its own `credential_leases` row. Neither startup blocked the
-other. Both issues use the exact shared title required by the change.
+other. Both issues use the exact shared title required by the change. The
+executable query and captured remote output are in
+[`sac-144-concurrent-route-canary.md`](sac-144-concurrent-route-canary.md).
 
 During the first provider run, Settings disabled the second route at revision
 `3` and restored it at revision `4`. The already allocated run kept the second
