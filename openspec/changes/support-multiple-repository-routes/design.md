@@ -186,6 +186,31 @@ grant or remove GitHub access.
 Routes stay in D1 when disabled. This change does not hard-delete a route that
 may be named by old events, runs, or audit rows.
 
+#### Settings layout concepts
+
+These mockups explore the same route model in the current DEOS visual system.
+They are review options, not a final layout choice.
+
+1. **Route rail and editor.** A compact route list stays visible beside the
+   selected route form. This favors quick movement between a modest number of
+   routes.
+
+   ![Route rail and editor mockup](mockups/settings-route-rail-editor.png)
+
+2. **Route table and side sheet.** A dense comparison table opens the selected
+   route in a side sheet. This favors scanning and managing many routes.
+
+   ![Route table and side sheet mockup](mockups/settings-route-table-side-sheet.png)
+
+3. **Project connection cards.** Route cards show each Linear-to-GitHub pairing
+   above one expanded editor. This makes the relationship easiest to see at a
+   glance.
+
+   ![Project connection cards mockup](mockups/settings-project-connection-cards.png)
+
+Each option shows GitHub App access, active-run state, and the rule that saved
+changes affect future runs while active work keeps its frozen setup.
+
 ## Component Diagram
 
 ```mermaid
