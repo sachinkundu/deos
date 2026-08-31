@@ -26,20 +26,27 @@ active runs.
 
 ### Requirement: Select one repository route for each new run
 
-Dispatch SHALL find one enabled route from the event's Linear project. It
-SHALL do so before it makes a run. It SHALL copy the route id, route version,
-repo, App install, workflow, and review settings into the run. Later events
-SHALL use that fixed copy. A route edit MUST NOT move an active run.
+Dispatch SHALL find one enabled route from the event's Linear project. It SHALL
+check live App access before it makes a run. Run creation SHALL be one atomic D1
+operation that requires the route to stay enabled at the same revision and
+digest. That operation SHALL copy the route id, route revision, repo, App
+install, workflow, and review settings into the run. Later events SHALL use that
+fixed copy. A route edit MUST NOT move or change an active run.
 
 #### Scenario: Start event matches one enabled route
 
 - **WHEN** dispatch gets a start event with a current enabled route
-- **THEN** it makes a run with that route's repo, App install, workflow, and review settings
+- **THEN** one guarded D1 operation makes a run with that route's repo, App install, workflow, and review settings
 
 #### Scenario: Route changed before Queue consumption
 
 - **WHEN** queued route proof no longer matches D1
 - **THEN** dispatch saves a safe stale-route result and makes no run
+
+#### Scenario: Route changes during the live access check
+
+- **WHEN** a user saves or disables the route after dispatch reads it but before run creation
+- **THEN** the atomic D1 guard fails, dispatch saves a safe stale-route result, and no run or Sandbox starts
 
 #### Scenario: Route changes after run allocation
 

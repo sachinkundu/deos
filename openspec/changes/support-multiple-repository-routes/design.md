@@ -23,6 +23,8 @@ must not change.
 GitHub grants App access outside DEOS. One DEOS App can have many installs.
 Each install can expose many repos. DEOS may list that safe data with its App
 identity. The portal must never get the App key, an App JWT, or a repo token.
+The Settings page can use this list as the repo picker. It does not need one
+GitHub login or token for each route.
 
 ## Goals / Non-Goals
 
@@ -33,7 +35,7 @@ identity. The portal must never get the App key, an App JWT, or a repo token.
 - Add routes without a deploy.
 - Keep provider secrets in the trusted queue Worker.
 - Freeze all route data that can change a run's scope.
-- Let unrelated routes run and change settings at the same time.
+- Let any route change settings while active runs keep frozen data.
 - Keep old runs and the sample route safe during rollout.
 
 **Non-Goals:**
@@ -47,7 +49,22 @@ identity. The portal must never get the App key, an App JWT, or a repo token.
 
 ## Decisions
 
-### 1. Use the Linear project id as the route id
+### 1. Verify provider contracts and test resources first
+
+Implementation starts by reading the current primary contracts. This includes
+Linear project and webhook data, GitHub App installs, short-lived install
+tokens, repo lists, rights, and Cloudflare Worker bindings.
+
+Read-only live calls must then prove the real response shapes. They must also
+show that the current Linear app and DEOS GitHub App can reach usable test
+resources. The second sample project and repo must exist, and the App must have
+access, before provider adapter code starts.
+
+This keeps wire formats, time units, rights, paging, and errors grounded in the
+providers. Tests can then model the observed contracts. A fake-first adapter
+was rejected because passing tests would not prove the real provider shape.
+
+### 2. Use the Linear project id as the route id
 
 `project_workflow_policies` becomes the route list. Its `project_id` stays the
 stable key. One row links one project to one repo and its controls.
@@ -75,14 +92,18 @@ would also need an issue-level route choice, which is out of scope.
 We also ruled out a JSON route list and one D1 database per repo. Both would
 make safe edits, joins, and audit work harder.
 
-### 2. Freeze the full route on each new run
+### 3. Freeze the full route on each new run
 
 Ingress finds a route from the event's Linear project id. It reads only an
 enabled route. The queued event carries the project id, route revision, and a
 digest of all run-facing route data.
 
-Dispatch compares that proof with D1. A missing or changed route stops before
-run start.
+Dispatch compares that proof with D1, then checks live GitHub access. The final
+run insert is one atomic D1 operation. It requires the route to still be on with
+the same revision and digest. It also writes the frozen route snapshot.
+
+If Settings changes the route during the GitHub check, the D1 guard fails. DEOS
+records a safe stale-route result and starts no run or Sandbox.
 
 A new run stores this data:
 
@@ -105,7 +126,7 @@ This live check is needed even after a Settings check. GitHub access may change
 at any time. Reading current route data at each node was also rejected because
 it would let an active run drift.
 
-### 3. Keep workflow definitions global
+### 4. Keep workflow definitions global
 
 Workflow definitions stay as fixed global snapshots. Scheduled setup loads the
 bundle once. It saves each new definition once, then links it to every route.
@@ -120,7 +141,7 @@ allowlist.
 This avoids a deploy for each route change. It also avoids duplicate workflow
 snapshots.
 
-### 4. Put provider lookup behind an internal entrypoint
+### 5. Put provider lookup behind an internal entrypoint
 
 The queue Worker exports a named route-admin entrypoint. The portal calls it
 through an internal Worker binding. There is no public admin URL.
@@ -131,7 +152,8 @@ The binding grants call access, and the entrypoint still checks every input.
 
 The entrypoint owns route work that needs live provider data. It uses the
 current Linear app token to list projects. It uses the GitHub App key to list
-installs. Short-lived install tokens list repos and rights.
+all installs. Short-lived install tokens list every repo and its rights. The
+user can pair any listed repo with a Linear project.
 
 Route enablement runs a fresh GitHub check in the same trusted call as the
 guarded D1 save. A failed check cannot enable a route.
@@ -142,7 +164,7 @@ a GitHub settings link. Saved routes stay visible when a provider is down.
 We rejected secrets in the portal, a public admin API, and browser calls to the
 providers. Each choice would widen the trust boundary.
 
-### 5. Turn Settings into a route list and editor
+### 6. Turn Settings into a route list and editor
 
 The page loads saved routes first. The list shows each project, repo, workflow
 state, GitHub access state, and active-run count.
@@ -150,8 +172,9 @@ state, GitHub access state, and active-run count.
 An operator selects a route to open its current repo, workflow, and review
 cards. **Add route** uses the live Linear and GitHub lists.
 
-Each save uses that route's own revision. Active work locks only its route. It
-does not lock other routes.
+Each save uses that route's own revision. The user may save repo, workflow, or
+review changes while a run is active. The save changes only later runs. The
+active run keeps its frozen values.
 
 A repo or install change turns dispatch off for that route. A new live GitHub
 check must pass before the route can be enabled.
@@ -190,10 +213,11 @@ flowchart LR
 2. Ingress checks the raw request and finds the route in D1.
 3. It accepts an unknown or disabled route with HTTP 200, but starts no work.
 4. An enabled route adds its revision and digest to the queued event.
-5. Dispatch compares that proof with the current D1 row.
+5. Dispatch compares that proof with a current D1 route candidate.
 6. The GitHub adapter checks the App install, repo, and needed rights.
-7. Dispatch freezes the route and starts an independent run.
-8. All later nodes use that frozen data. Route edits affect only new runs.
+7. One D1 operation checks the same enabled revision and creates the run.
+8. That same operation freezes the route values on the run.
+9. All later nodes use that frozen data. Route edits affect only new runs.
 
 ## Minimal Data Model
 
@@ -209,11 +233,12 @@ flowchart LR
 
 - **Unknown or disabled project:** accept and record it, but start no work.
 - **Old route proof:** record the mismatch and start no run.
+- **Route changes during a GitHub check:** the atomic insert fails and starts no run.
 - **GitHub list is down:** keep saved routes visible and block enablement.
 - **GitHub access was removed:** mark that route down and start no Sandbox.
 - **Old Settings revision:** reject only that route's save.
-- **Active run on the same route:** reject its save and keep the run unchanged.
-- **Active run on another route:** allow the safe route save.
+- **Active run on the edited route:** save for later runs and keep the run fixed.
+- **Active run on another route:** save the edit and keep both runs fixed.
 - **Setup stops partway:** keep all route values and retry missing links by id.
 - **Internal admin call fails:** show a safe error and save no partial change.
 - **Bad provider reply:** store a safe class, not the raw reply.
@@ -221,6 +246,7 @@ flowchart LR
 ## Risks / Trade-offs
 
 - A live GitHub check adds time to run start. It runs once at that boundary.
+- A route can change during that check. Atomic D1 allocation rejects stale data.
 - One GitHub App may span many installs. Each route names only one install.
 - One project maps to one repo. A later selector is needed for more.
 - Old runs lack new frozen fields. We backfill active runs before rollout.
@@ -228,16 +254,22 @@ flowchart LR
 
 ## Migration Plan
 
-1. Add nullable route and run fields, plus the access audit table.
-2. Turn the sample policy into the first route and save its App install.
-3. Backfill all active runs, then read each saved snapshot back.
-4. Deploy the queue Worker with route admin and per-route GitHub tokens.
-5. Deploy ingress with D1 route lookup. Keep only the sample route enabled.
-6. Deploy the portal binding and the route-based Settings page.
-7. Add the DEOS project and `sachinkundu/deos` as a disabled route.
-8. Check its GitHub access, then enable it.
-9. Trigger real issues on both routes and prove separate durable work.
-10. Keep the old seed fields for one release as rollback input.
+1. Read the primary provider contracts and prove live read-only response shapes.
+2. Create the second sample Linear project and GitHub repo. Grant App access.
+3. Add nullable route and run fields, plus the access audit table.
+4. Turn the current sample policy into the first route and save its App install.
+5. Backfill all active runs, then read each saved snapshot back.
+6. Deploy the queue Worker with route admin and per-route GitHub tokens.
+7. Deploy ingress with D1 route lookup. Keep only the first sample route on.
+8. Deploy the portal binding and the route-based Settings page.
+9. Add and enable the second sample route through Settings.
+10. Create the same real issue in both sample projects: "create a simple text
+    graphics generator which can create popular graphics on command line
+    terminal".
+11. Prove separate durable work, fixed run data, receipts, and cleanup.
+12. Only after both pass, add the DEOS project and `sachinkundu/deos` as the
+    third route. Check and enable it, but do not run an issue yet.
+13. Keep the old seed fields for one release as rollback input.
 
 Rollback is additive. Disable new routes first. Do not roll back ingress while
 a new-route run still needs Linear events. Let those runs end or cancel them.

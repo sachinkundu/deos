@@ -36,15 +36,21 @@ Agents MUST NOT change Linear state.
 
 ### Requirement: Report GitHub App access for route settings
 
-Trusted provider code SHALL list the App installs and repos that DEOS can use.
-It SHALL show the install settings link and needed repo rights. It MUST keep the
-App key, App JWT, install token, auth headers, and raw replies away from the
-portal and browser.
+Trusted provider code SHALL list every App install and repo that the current
+DEOS GitHub App can use. Settings SHALL let the user pair any listed repo with
+a Linear project. Provider code SHALL show the install settings link and needed
+repo rights. It MUST keep the App key, App JWT, install token, auth headers, and
+raw replies away from the portal and browser.
 
 #### Scenario: Repository is accessible
 
 - **WHEN** an App install can use a repo with the needed rights
 - **THEN** the provider code returns safe repo, install, access, rights, and settings-link fields
+
+#### Scenario: App can use several repositories
+
+- **WHEN** the DEOS GitHub App has access to repos across one or more installs
+- **THEN** provider code returns every accessible repo as a route choice with its App install
 
 #### Scenario: Repository is outside the installation
 

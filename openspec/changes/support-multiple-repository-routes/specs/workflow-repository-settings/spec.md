@@ -6,7 +6,9 @@ The portal SHALL let the allowed Access user see and save any number of repo
 routes. Each route SHALL link one Linear project to one exact GitHub
 `owner/name` repo and one App install. A save SHALL use the route's shown edit
 number. The portal SHALL read the saved row back before it shows success. A new
-or changed route SHALL stay off until a live App access check passes.
+or changed route SHALL stay off until a live App access check passes. The portal
+SHALL allow a save while that route has active work. It MUST NOT change the
+active run.
 
 #### Scenario: Operator saves a repository
 
@@ -15,13 +17,13 @@ or changed route SHALL stay off until a live App access check passes.
 
 #### Scenario: Operator changes one repository route
 
-- **WHEN** the user saves another accessible repo and that route has no active work
+- **WHEN** the user saves another accessible repo with the current edit number
 - **THEN** D1 updates and turns off that route, raises its edit number, and changes no other route
 
 #### Scenario: A run is active
 
 - **WHEN** the user tries to change a route that has active work
-- **THEN** the portal rejects the save and keeps that route unchanged
+- **THEN** the portal saves the edit for later runs and the active run keeps its fixed route
 
 #### Scenario: Another route has active work
 
@@ -57,7 +59,7 @@ SHALL use that same fixed copy. Deploy values MUST NOT replace a D1 route.
 
 #### Scenario: Route changes after allocation
 
-- **WHEN** a user edits another route after a run starts
+- **WHEN** a user edits that route after a run starts
 - **THEN** the run keeps its fixed repo, App install, and workflow settings
 
 ### Requirement: Show each setting once
@@ -80,18 +82,18 @@ values. They MAY show the active-run count, save history, user, and App links.
 
 The portal SHALL save workflow dispatch for each route on its own. A save SHALL
 use the shown workflow edit number. It SHALL read the value back before success.
-The portal MUST reject a save while that route has active work. The portal MUST
-check current App access and needed repo rights before it turns a route on.
+The portal MUST check current App access and needed repo rights before it turns
+a route on. A save during active work SHALL affect only later runs.
 
 #### Scenario: Operator saves workflow controls
 
-- **WHEN** the user saves a current control for an idle route with valid App access
+- **WHEN** the user saves a current control for a route with valid App access
 - **THEN** D1 saves it, raises that route's workflow edit number, records the user and time, and changes no other route
 
 #### Scenario: A run starts before the control save
 
 - **WHEN** work on that route starts before the save reaches D1
-- **THEN** the portal rejects the save and keeps that route's control
+- **THEN** the portal saves the control for later runs and the active run keeps its fixed control
 
 #### Scenario: Active work exists only on another route
 
@@ -139,16 +141,16 @@ route.
 
 ### Requirement: Save review settings per route
 
-The portal SHALL save each route's review model with its own edit number and
-active-work guard. A new run SHALL copy that model from its route. An edit to
-one route MUST NOT change another route or an active run.
+The portal SHALL save each route's review model with its own edit number. A new
+run SHALL copy that model from its route. An edit to one route MUST NOT change
+another route or an active run.
 
 #### Scenario: Operator changes one review model
 
-- **WHEN** the user saves a supported model for an idle route with its current edit number
+- **WHEN** the user saves a supported model with the route's current edit number
 - **THEN** D1 saves and reads back that model and changes no other route
 
 #### Scenario: Route has active work
 
 - **WHEN** the user tries to change the review model for a route with active work
-- **THEN** the portal rejects the save and keeps that route's model
+- **THEN** the portal saves the model for later runs and the active run keeps its fixed model
