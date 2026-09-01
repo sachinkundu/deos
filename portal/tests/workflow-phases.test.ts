@@ -70,6 +70,24 @@ test("a visited current phase stays in progress until the run is terminal", () =
   assert.equal(phaseDisplayStatus(planning, "design", "active"), "Complete");
 });
 
+test("shared Human Review stays upcoming until both planning and design gates exist", () => {
+  const planningOnly = workflowPhases([
+    visit(1, "claim_issue", "claim"),
+    visit(2, "planning_review", "review", "plan"),
+    visit(3, "design_author", "design"),
+  ]).find((phase) => phase.id === "approval");
+  assert.ok(planningOnly);
+  assert.equal(phaseDisplayStatus(planningOnly, "design", "active"), "Upcoming");
+
+  const bothGates = workflowPhases([
+    visit(1, "planning_review", "review", "plan"),
+    visit(2, "design_review", "review", "design"),
+    visit(3, "merge_design_pr", "design_merge"),
+  ]).find((phase) => phase.id === "approval");
+  assert.ok(bothGates);
+  assert.equal(phaseDisplayStatus(bothGates, "design", "active"), "Complete");
+});
+
 test("a recovered terminal visit does not add a stopped phase or replace the current phase", () => {
   const visits = [
     visit(1, "claim_issue", "claim"),
@@ -133,11 +151,12 @@ test("human review collects and selects evidence from the preceding publication 
   const designLink = { url: "https://github.com/acme/repo/pull/11" };
   const visits = [
     { sequence: 5, nodeId: "publish_initial", gate: null, links: [planLink] },
-    { sequence: 6, nodeId: "planning_review", gate: { gate_kind: "plan" as const }, links: [] },
+    { sequence: 6, nodeId: "publish_author_response", gate: null, links: [] },
+    { sequence: 7, nodeId: "planning_review", gate: { gate_kind: "plan" as const }, links: [] },
     { sequence: 9, nodeId: "publish_design", gate: null, links: [designLink] },
     { sequence: 10, nodeId: "design_review", gate: { gate_kind: "design" as const }, links: [] },
   ];
   assert.deepEqual(approvalEvidenceLinks(visits), [planLink, designLink]);
-  assert.deepEqual(selectedApprovalEvidenceUrls(visits, 6), [planLink.url]);
+  assert.deepEqual(selectedApprovalEvidenceUrls(visits, 7), [planLink.url]);
   assert.deepEqual(selectedApprovalEvidenceUrls(visits, 10), [designLink.url]);
 });

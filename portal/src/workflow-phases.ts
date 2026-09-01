@@ -89,6 +89,10 @@ export const phaseDisplayStatus = (
   if (currentPhaseId === "stopped" && phase.id === failedPhaseId && terminalStatus !== null) return terminalStatus;
   const terminal = ["succeeded", "failed", "blocked", "denied", "canceled"].includes(runStatus);
   if (phase.id === currentPhaseId && !terminal) return "In progress";
+  if (phase.id === "approval") {
+    const gateKinds = new Set(phase.visits.flatMap((visit) => visit.gate?.gate_kind ?? []));
+    if (!gateKinds.has("plan") || !gateKinds.has("design")) return "Upcoming";
+  }
   return phase.visits.length > 0 ? "Complete" : "Upcoming";
 };
 
@@ -137,7 +141,8 @@ export const selectedApprovalEvidenceUrls = (
   if (selected === undefined) return [];
   const evidenceVisit = selected.gate === null ? selected : visits
     .filter((visit) =>
-      visit.sequence < selected.sequence && approvalPublicationKind(visit.nodeId) === selected.gate?.gate_kind
+      visit.sequence < selected.sequence && visit.links.length > 0 &&
+      approvalPublicationKind(visit.nodeId) === selected.gate?.gate_kind
     )
     .sort((left, right) => right.sequence - left.sequence)[0] ?? selected;
   return evidenceVisit.links.map((link) => link.url);
