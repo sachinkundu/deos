@@ -63,3 +63,15 @@ test("a visited current phase stays in progress until the run is terminal", () =
   assert.equal(phaseDisplayStatus(planning, "planning", "active"), "In progress");
   assert.equal(phaseDisplayStatus(planning, "design", "active"), "Complete");
 });
+
+test("a recovered terminal visit does not add a stopped phase or replace the current phase", () => {
+  const visits = [
+    visit(1, "claim_issue", "claim"),
+    { ...visit(2, "blocked", "stopped"), recovered: true },
+    visit(3, "planning_author", "planning"),
+  ];
+  assert.deepEqual(workflowPhases(visits).map((phase) => phase.id), [
+    "claim", "planning", "design", "complete",
+  ]);
+  assert.equal(latestPhaseId(visits), "planning");
+});

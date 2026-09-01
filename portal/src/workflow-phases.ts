@@ -4,6 +4,7 @@ export interface PhaseVisitLike {
   sequence: number;
   nodeId: string;
   stageId: string;
+  recovered?: boolean;
   gate: { gate_kind: "plan" | "design"; round: number; decision_outcome: string | null } | null;
 }
 
@@ -33,12 +34,13 @@ export const phaseForVisit = (visit: Pick<PhaseVisitLike, "nodeId" | "stageId" |
 };
 
 export const workflowPhases = (visits: PhaseVisitLike[]): WorkflowPhase[] => {
+  const visibleVisits = visits.filter((visit) => visit.recovered !== true);
   const order: WorkflowPhaseId[] = ["claim", "planning", "design", "complete"];
-  if (visits.some((visit) => phaseForVisit(visit) === "stopped")) order.push("stopped");
+  if (visibleVisits.some((visit) => phaseForVisit(visit) === "stopped")) order.push("stopped");
   return order.map((id) => ({
     id,
     label: PHASE_LABELS[id],
-    visits: visits.filter((visit) => phaseForVisit(visit) === id),
+    visits: visibleVisits.filter((visit) => phaseForVisit(visit) === id),
   }));
 };
 
@@ -48,7 +50,8 @@ export const isDesignStageWorkflow = (
 ): boolean => definitionVersion >= 17 && stages.some((stage) => stage.id === "design");
 
 export const latestPhaseId = (visits: PhaseVisitLike[]): WorkflowPhaseId | null => {
-  const latest = [...visits].sort((left, right) => right.sequence - left.sequence)[0];
+  const latest = visits.filter((visit) => visit.recovered !== true)
+    .sort((left, right) => right.sequence - left.sequence)[0];
   return latest === undefined ? null : phaseForVisit(latest);
 };
 

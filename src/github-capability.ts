@@ -1155,7 +1155,7 @@ export class GitHubCapabilityAdapter {
     const tree = await this.json(
       token,
       `/repos/${repository}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
-    ) as { truncated?: unknown; tree?: Array<{ path?: unknown; type?: unknown }> };
+    ) as { truncated?: unknown; tree?: Array<{ path?: unknown; type?: unknown; mode?: unknown }> };
     if (tree.truncated === true || !Array.isArray(tree.tree) || tree.tree.length > 100_000) {
       throw new Error("GitHub repository guidance tree is invalid or incomplete");
     }
@@ -1163,7 +1163,7 @@ export class GitHubCapabilityAdapter {
       path === "AGENTS.md" || path === "agents.md" || path === "architecture.md" ||
       /^architecture-[A-Za-z0-9_.-]+\.md$/.test(path) || path === "docs/current-architecture.md";
     const matches = tree.tree.filter((entry) => typeof entry.path === "string" && allowed(entry.path));
-    if (matches.some((entry) => entry.type !== "blob")) {
+    if (matches.some((entry) => entry.type !== "blob" || !["100644", "100755"].includes(String(entry.mode)))) {
       throw new Error("GitHub repository guidance contains an unsafe file type");
     }
     const paths = matches.map((entry) => String(entry.path)).sort();

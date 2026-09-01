@@ -358,6 +358,30 @@ test("GitHub design publication rejects an existing branch with out-of-scope cha
   assert.equal(writes, 0);
 });
 
+test("GitHub repository guidance rejects an allowlisted symlink before reading its target", async () => {
+  let contentReads = 0;
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/git/trees/")) {
+        return Response.json({
+          tree: [{ path: "AGENTS.md", type: "blob", mode: "120000" }],
+        });
+      }
+      if (path.includes("/contents/")) contentReads += 1;
+      return new Response("unexpected", { status: 500 });
+    } },
+  );
+
+  await assert.rejects(
+    adapter.readRepositoryGuidance("acme/sample", "a".repeat(40)),
+    /unsafe file type/,
+  );
+  assert.equal(contentReads, 0);
+});
+
 test("GitHub planning merge uses expected head SHA and reconciles a lost response", async () => {
   let merged = false;
   let mergeCalls = 0;
