@@ -35,7 +35,9 @@ test("GitHub adapter reconciles branch, file, and PR partial success by stable m
       return Response.json({ ref: "refs/heads/deos/attempt-1" });
     }
     if (path.includes("/contents/src/example.ts?")) {
-      return content === null ? new Response("", { status: 404 }) : Response.json({ sha: "file-sha", content: encode(content) });
+      return content === null
+        ? new Response("", { status: 404 })
+        : Response.json({ sha: "file-sha", content: encode(content), encoding: "base64" });
     }
     if (path.endsWith("/contents/src/example.ts") && init?.method === "PUT") {
       const body = JSON.parse(String(init.body)) as { content: string };
@@ -158,7 +160,7 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
       const file = files.get(filePath);
       return file === undefined
         ? new Response("", { status: 404 })
-        : Response.json({ sha: file.sha, content: encode(file.content) });
+        : Response.json({ sha: file.sha, content: encode(file.content), encoding: "base64" });
     }
     if (path.includes("/contents/") && method === "PUT") {
       const encodedPath = path.split("/contents/")[1];
@@ -428,7 +430,7 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
         });
       }
       if (path.includes(`/contents/${designPath}`)) {
-        return Response.json({ sha: "design-sha", content: encode(designContent) });
+        return Response.json({ sha: "design-sha", content: encode(designContent), encoding: "base64" });
       }
       if (path.endsWith("/pulls/7") && method === "PATCH") {
         const payload = JSON.parse(String(init?.body)) as { title: string; body: string };
@@ -504,7 +506,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
         });
       }
       if (path.includes(`/contents/${designPath}`)) {
-        return Response.json({ sha: "design-sha", content: encode(designContent) });
+        return Response.json({ sha: "design-sha", content: encode(designContent), encoding: "base64" });
       }
       if (path.endsWith("/pulls/7") && method === "GET") {
         pullReads += 1;
@@ -584,7 +586,7 @@ test("GitHub design publication discovers its head across bases and rejects a re
         });
       }
       if (path.includes(`/contents/${designPath}`)) {
-        return Response.json({ sha: "design-sha", content: encode(designContent) });
+        return Response.json({ sha: "design-sha", content: encode(designContent), encoding: "base64" });
       }
       if (path.includes("/pulls?state=all")) {
         discoveryPath = path;
@@ -662,7 +664,11 @@ test("GitHub repository guidance rejects malformed UTF-8", async () => {
         });
       }
       if (path.includes("/contents/AGENTS.md")) {
-        return Response.json({ sha: "guidance-sha", content: btoa(String.fromCharCode(0xc3, 0x28)) });
+        return Response.json({
+          sha: "guidance-sha",
+          content: btoa(String.fromCharCode(0xc3, 0x28)),
+          encoding: "base64",
+        });
       }
       return new Response("unexpected", { status: 500 });
     } },
@@ -671,6 +677,30 @@ test("GitHub repository guidance rejects malformed UTF-8", async () => {
   await assert.rejects(
     adapter.readRepositoryGuidance("acme/sample", "a".repeat(40)),
     /not valid UTF-8/,
+  );
+});
+
+test("GitHub repository guidance rejects content that is not returned as base64", async () => {
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/git/trees/")) {
+        return Response.json({
+          tree: [{ path: "AGENTS.md", type: "blob", mode: "100644" }],
+        });
+      }
+      if (path.includes("/contents/AGENTS.md")) {
+        return Response.json({ sha: "guidance-sha", content: "", encoding: "none" });
+      }
+      return new Response("unexpected", { status: 500 });
+    } },
+  );
+
+  await assert.rejects(
+    adapter.readRepositoryGuidance("acme/sample", "a".repeat(40)),
+    /content response is invalid/,
   );
 });
 

@@ -661,6 +661,18 @@ export class SystemActionController {
     if (["succeeded", "reconciled"].includes(operation.state) && workProduct.head_sha !== null) {
       return this.completed();
     }
+    if (
+      operation.state === "failed" && operation.safe_error_category === "design_review_feedback_changed" &&
+      workProduct.publication_operation_id === operationId && workProduct.pull_request_database_id !== null &&
+      workProduct.pull_request_number !== null && workProduct.pull_request_url !== null &&
+      workProduct.head_sha !== null
+    ) {
+      return {
+        kind: "system_action",
+        outcome: "review_feedback_changed",
+        providerReceiptsComplete: false,
+      };
+    }
     if (!["pending", "manual_reconciliation_required"].includes(operation.state)) return this.failed();
     const expectedOperationState = operation.state === "pending" ? "pending" : "manual_reconciliation_required";
     let providerConfirmed = false;
@@ -778,7 +790,56 @@ export class SystemActionController {
     if (["succeeded", "reconciled"].includes(operation.state) && workProduct.merge_commit_sha !== null) {
       return this.completed();
     }
-    if (!["pending", "manual_reconciliation_required"].includes(operation.state)) return this.failed();
+    if (operation.state === "manual_reconciliation_required") {
+      let pull;
+      try {
+        pull = await dependencies.github.readPullRequest(gate.repository, gate.pull_request_number);
+      } catch {
+        throw new Error("design merge requires provider reconciliation");
+      }
+      if (
+        pull.databaseId !== gate.pull_request_database_id || pull.number !== gate.pull_request_number ||
+        pull.url !== gate.pull_request_url || pull.baseBranch !== gate.base_branch ||
+        pull.headBranch !== gate.head_branch || pull.headSha !== gate.approved_head_sha
+      ) throw new Error("design merge requires provider reconciliation");
+      if (pull.merged) {
+        if (pull.mergeCommitSha === null) throw new Error("design merge requires provider reconciliation");
+        try {
+          await dependencies.designStore.recordMerge({
+            runId: run.run_id,
+            operationId,
+            expectedHeadSha: gate.approved_head_sha,
+            mergeCommitSha: pull.mergeCommitSha,
+            now: this.now().toISOString(),
+          });
+          const finished = await this.finishPlanningOperation({
+            operationId,
+            expected: "manual_reconciliation_required",
+            state: "reconciled",
+            providerResourceId: gate.pull_request_database_id,
+            safeErrorCategory: null,
+            now: this.now().toISOString(),
+          });
+          if (!finished) throw new Error("design merge reconciliation compare-and-set failed");
+        } catch {
+          throw new Error("design merge requires provider reconciliation");
+        }
+        return this.completed();
+      }
+      if (pull.state === "open") throw new Error("design merge requires provider reconciliation");
+      if (pull.state !== "closed") throw new Error("design merge requires provider reconciliation");
+      const finished = await this.finishPlanningOperation({
+        operationId,
+        expected: "manual_reconciliation_required",
+        state: "failed",
+        providerResourceId: gate.pull_request_database_id,
+        safeErrorCategory: "design_merge_rejected",
+        now: this.now().toISOString(),
+      });
+      if (!finished) throw new Error("design merge requires provider reconciliation");
+      return this.failed();
+    }
+    if (operation.state !== "pending") return this.failed();
     let providerConfirmed = false;
     try {
       const receipt = await dependencies.github.mergeDesign({
@@ -797,18 +858,16 @@ export class SystemActionController {
         mergeCommitSha: receipt.mergeCommitSha,
         now: this.now().toISOString(),
       });
-      const state = receipt.reconciled || operation.state !== "pending" ? "reconciled" : "succeeded";
-      if (operation.state !== state) {
-        const finished = await this.finishPlanningOperation({
-          operationId,
-          expected: operation.state,
-          state,
-          providerResourceId: receipt.pullRequestDatabaseId,
-          safeErrorCategory: null,
-          now: this.now().toISOString(),
-        });
-        if (!finished) throw new Error("design merge receipt compare-and-set failed");
-      }
+      const state = receipt.reconciled ? "reconciled" : "succeeded";
+      const finished = await this.finishPlanningOperation({
+        operationId,
+        expected: "pending",
+        state,
+        providerResourceId: receipt.pullRequestDatabaseId,
+        safeErrorCategory: null,
+        now: this.now().toISOString(),
+      });
+      if (!finished) throw new Error("design merge receipt compare-and-set failed");
       return this.completed();
     } catch (error) {
       const ambiguous = providerConfirmed ||
@@ -870,7 +929,7 @@ export class SystemActionController {
   }
 
   private requireDesignDependencies(run: OrchestrationRunRecord): {
-    github: Pick<GitHubCapabilityAdapter, "publishDesign" | "mergeDesign">;
+    github: Pick<GitHubCapabilityAdapter, "publishDesign" | "mergeDesign" | "readPullRequest">;
     designStore: Pick<
       D1DesignStore,
       "findWorkProduct" | "recordPublication" | "recordFeedbackChangedPublication" | "recordMerge"
@@ -880,12 +939,13 @@ export class SystemActionController {
     if (
       github === undefined || this.planning?.designStore === undefined ||
       this.store.beginPlanningOperation === undefined || this.store.finishPlanningOperation === undefined ||
-      github.publishDesign === undefined || github.mergeDesign === undefined
+      github.publishDesign === undefined || github.mergeDesign === undefined || github.readPullRequest === undefined
     ) throw new Error("design system-action dependencies are unavailable");
     return {
       github: {
         publishDesign: github.publishDesign.bind(github),
         mergeDesign: github.mergeDesign.bind(github),
+        readPullRequest: github.readPullRequest.bind(github),
       },
       designStore: this.planning.designStore,
     };

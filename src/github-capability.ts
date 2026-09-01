@@ -1480,9 +1480,12 @@ export class GitHubCapabilityAdapter {
       `/repos/${repository}/contents/${this.encodedPath(path)}?ref=${encodeURIComponent(ref)}`,
       undefined,
       allowNotFound,
-    ) as { sha?: string; content?: string } | null;
+    ) as { sha?: string; content?: string; encoding?: string } | null;
     if (value === null) return null;
-    if (typeof value.sha !== "string" || typeof value.content !== "string") {
+    if (
+      typeof value.sha !== "string" || typeof value.content !== "string" ||
+      value.encoding !== "base64"
+    ) {
       throw new Error("GitHub content response is invalid");
     }
     let content: string;

@@ -122,6 +122,8 @@ test("design publication reuses one PR and merge requires its approved gate head
   };
   let publishCalls = 0;
   let mergeCalls = 0;
+  let pullReads = 0;
+  let pullMerged = false;
   let mergeError: Error | null = null;
   const github = {
     publishDesign: async () => {
@@ -140,11 +142,27 @@ test("design publication reuses one PR and merge requires its approved gate head
       assert.equal(input.expectedHeadSha, headSha);
       mergeCalls += 1;
       if (mergeError !== null) throw mergeError;
+      pullMerged = true;
       return {
         pullRequestDatabaseId: "PR_node",
         pullRequestNumber: 21,
         mergeCommitSha: mergeSha,
         reconciled: false,
+      };
+    },
+    readPullRequest: async () => {
+      pullReads += 1;
+      return {
+        databaseId: "PR_node",
+        number: 21,
+        url: "https://github.com/acme/sample/pull/21",
+        state: pullMerged ? "closed" : "open",
+        draft: false,
+        merged: pullMerged,
+        mergeCommitSha: pullMerged ? mergeSha : null,
+        headBranch: work.remote_branch,
+        headSha,
+        baseBranch: "main",
       };
     },
   };
@@ -250,7 +268,8 @@ test("design publication reuses one PR and merge requires its approved gate head
   );
   assert.equal(mergeOperation()?.state, "reconciled");
   assert.equal(work.merge_commit_sha, mergeSha);
-  assert.equal(mergeCalls, 2);
+  assert.equal(mergeCalls, 1);
+  assert.equal(pullReads, 1);
 
   work.merge_operation_id = null;
   work.merge_commit_sha = null;
@@ -265,6 +284,28 @@ test("design publication reuses one PR and merge requires its approved gate head
     .at(-1);
   assert.equal(rejectedMergeOperation?.state, "failed");
   assert.equal(rejectedMergeOperation?.safe_error_category, "design_merge_rejected");
+
+  work.merge_operation_id = null;
+  work.merge_commit_sha = null;
+  pullMerged = false;
+  mergeError = new Error("GitHub provider request failed");
+  run.current_visit_sequence = 43;
+  await assert.rejects(
+    controller.execute(run, "merge_design_pr", "github.merge_design_pull_request"),
+    /design merge requires provider reconciliation/,
+  );
+  const mergeCallsBeforeReplay = mergeCalls;
+  await assert.rejects(
+    controller.execute(run, "merge_design_pr", "github.merge_design_pull_request"),
+    /design merge requires provider reconciliation/,
+  );
+  assert.equal(mergeCalls, mergeCallsBeforeReplay);
+  assert.equal(pullReads, 2);
+  const ambiguousMergeOperation = [...operations.records.values()]
+    .filter((record) => record.action === "github.merge_design_pull_request")
+    .at(-1);
+  assert.equal(ambiguousMergeOperation?.state, "manual_reconciliation_required");
+  assert.equal(ambiguousMergeOperation?.safe_error_category, "design_merge_unconfirmed");
 });
 
 test("design publication classifies added or deleted feedback after materialization as recoverable", async () => {
@@ -289,10 +330,12 @@ test("design publication classifies added or deleted feedback after materializat
     updated_at: NOW.toISOString(),
   };
   let providerMessage = "GitHub review reply manifest is incomplete";
+  let publishCalls = 0;
   const controller = new SystemActionController(operations, {
     planningStore: {} as never,
     github: {
       publishDesign: async () => {
+        publishCalls += 1;
         throw new GitHubReviewFeedbackChangedError(providerMessage, {
           pullRequestDatabaseId: "PR_node",
           pullRequestNumber: 21,
@@ -304,6 +347,7 @@ test("design publication classifies added or deleted feedback after materializat
         });
       },
       mergeDesign: async () => { throw new Error("unexpected merge"); },
+      readPullRequest: async () => { throw new Error("unexpected pull-request read"); },
     } as never,
     designStore: {
       findWorkProduct: async () => work,
@@ -362,6 +406,17 @@ test("design publication classifies added or deleted feedback after materializat
   assert.equal([...operations.records.values()][0]?.safe_error_category, "design_review_feedback_changed");
   assert.equal(work.pull_request_number, 21);
   assert.equal(work.head_sha, headSha);
+  assert.equal(publishCalls, 1);
+
+  assert.deepEqual(
+    await controller.execute(run, "publish_design", "github.publish_design_candidate"),
+    {
+      kind: "system_action",
+      outcome: "review_feedback_changed",
+      providerReceiptsComplete: false,
+    },
+  );
+  assert.equal(publishCalls, 1);
 
   providerMessage = "GitHub review reply targets an unknown human review thread";
   run.current_visit_sequence += 1;
