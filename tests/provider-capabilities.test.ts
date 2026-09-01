@@ -460,6 +460,80 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
   assert.equal(body, "Reviewed design");
 });
 
+test("GitHub design publication makes a lost final read reconcilable", async () => {
+  const baseCommit = "a".repeat(40);
+  const headCommit = "b".repeat(40);
+  const branch = "deos/design/sac-201-final-read";
+  const designPath = "openspec/changes/sac-201/design.md";
+  const designContent = "## Design\n";
+  let pullReads = 0;
+  let loseFinalRead = true;
+  const pull = {
+    id: 7001,
+    number: 7,
+    html_url: "https://github.com/acme/sample/pull/7",
+    state: "open",
+    draft: false,
+    merged: false,
+    merge_commit_sha: null,
+    title: "SAC-201: OpenSpec design",
+    body: "Reviewed design",
+    head: { ref: branch, sha: headCommit },
+    base: { ref: "main" },
+  };
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input, init) => {
+      const url = new URL(String(input));
+      const path = `${url.pathname}${url.search}`;
+      const method = init?.method ?? "GET";
+      if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-201-final-read")) {
+        return Response.json({ object: { sha: headCommit } });
+      }
+      if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
+        return Response.json({
+          status: "ahead",
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: baseCommit },
+          files: [{ filename: designPath }],
+        });
+      }
+      if (path.includes(`/contents/${designPath}`)) {
+        return Response.json({ sha: "design-sha", content: encode(designContent) });
+      }
+      if (path.endsWith("/pulls/7") && method === "GET") {
+        pullReads += 1;
+        if (loseFinalRead && pullReads === 3) {
+          loseFinalRead = false;
+          throw new Error("fetch failed");
+        }
+        return Response.json(pull);
+      }
+      if (path.endsWith("/pulls/7/comments?per_page=100")) return Response.json([]);
+      return new Response(`unexpected ${method} ${path}`, { status: 500 });
+    } },
+  );
+  const request = {
+    repository: "acme/sample",
+    branch,
+    baseBranch: "main" as const,
+    baseCommit,
+    change: "sac-201",
+    title: "SAC-201: OpenSpec design",
+    body: "Reviewed design",
+    content: designContent,
+    reviewReplies: [],
+    expectedPullRequestDatabaseId: "7001",
+    expectedPullRequestNumber: 7,
+  };
+
+  await assert.rejects(adapter.publishDesign(request, "operation-final-read"), /provider request failed/);
+  const receipt = await adapter.publishDesign(request, "operation-final-read");
+  assert.equal(receipt.pullRequestNumber, 7);
+  assert.equal(receipt.reconciled, true);
+});
+
 test("GitHub design publication rejects a closed pull request on its deterministic branch", async () => {
   const baseCommit = "a".repeat(40);
   const headCommit = "b".repeat(40);
@@ -571,9 +645,10 @@ test("GitHub repository guidance rejects malformed UTF-8", async () => {
   );
 });
 
-test("GitHub planning merge uses expected head SHA and reconciles a lost response", async () => {
+test("GitHub design merge reconciles lost mutation and final-read responses", async () => {
   let merged = false;
   let mergeCalls = 0;
+  let loseFinalRead = true;
   const pull = () => ({
     id: 9001,
     number: 54,
@@ -592,6 +667,10 @@ test("GitHub planning merge uses expected head SHA and reconciles a lost respons
       fetch: async (input, init) => {
         const path = new URL(String(input)).pathname;
         if (path.endsWith("/pulls/54") && (init?.method ?? "GET") === "GET") {
+          if (merged && loseFinalRead) {
+            loseFinalRead = false;
+            throw new Error("fetch failed");
+          }
           return Response.json(pull());
         }
         if (path.endsWith("/pulls/54/merge") && init?.method === "PUT") {
@@ -605,14 +684,16 @@ test("GitHub planning merge uses expected head SHA and reconciles a lost respons
       },
     },
   );
-  const receipt = await adapter.mergePlanning({
+  const request = {
     repository: "sachinkundu/deos",
     pullRequestNumber: 54,
     pullRequestDatabaseId: "9001",
-    baseBranch: "main",
+    baseBranch: "main" as const,
     headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
     expectedHeadSha: "head-sha",
-  });
+  };
+  await assert.rejects(adapter.mergeDesign(request), /provider request failed/);
+  const receipt = await adapter.mergeDesign(request);
   assert.equal(receipt.mergeCommitSha, "merge-sha");
   assert.equal(receipt.reconciled, true);
   assert.equal(mergeCalls, 1);

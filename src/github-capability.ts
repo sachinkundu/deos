@@ -1543,19 +1543,28 @@ export class GitHubCapabilityAdapter {
     options?: { method: "DELETE" | "PATCH" | "POST" | "PUT"; body: Record<string, unknown> },
     allowNotFound = false,
   ): Promise<unknown> {
-    const response = await this.request(`${this.apiUrl}${path}`, {
-      method: options?.method ?? "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-        "Content-Type": "application/json",
-        "User-Agent": "deos-orchestrator",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-      ...(options === undefined ? {} : { body: JSON.stringify(options.body) }),
-    });
+    let response: Response;
+    try {
+      response = await this.request(`${this.apiUrl}${path}`, {
+        method: options?.method ?? "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "Content-Type": "application/json",
+          "User-Agent": "deos-orchestrator",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        ...(options === undefined ? {} : { body: JSON.stringify(options.body) }),
+      });
+    } catch {
+      throw new Error("GitHub provider request failed");
+    }
     if (allowNotFound && response.status === 404) return null;
     if (!response.ok) throw new Error("GitHub provider request failed");
-    return response.json();
+    try {
+      return await response.json();
+    } catch {
+      throw new Error("GitHub provider response is ambiguous");
+    }
   }
 }
