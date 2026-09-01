@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   isDesignStageWorkflow,
   latestPhaseId,
+  phaseDisplayStatus,
   phaseForVisit,
   workflowPhases,
   type PhaseVisitLike,
@@ -50,4 +51,15 @@ test("the grouped view is selected only for a design-stage definition", () => {
   assert.equal(isDesignStageWorkflow(17, [{ id: "design" }]), true);
   assert.equal(isDesignStageWorkflow(16, [{ id: "design" }]), false);
   assert.equal(isDesignStageWorkflow(17, [{ id: "planning" }]), false);
+});
+
+test("a visited current phase stays in progress until the run is terminal", () => {
+  const phases = workflowPhases([
+    visit(1, "claim_issue", "claim"),
+    visit(2, "planning_author", "planning"),
+  ]);
+  const planning = phases.find((phase) => phase.id === "planning");
+  assert.ok(planning);
+  assert.equal(phaseDisplayStatus(planning, "planning", "active"), "In progress");
+  assert.equal(phaseDisplayStatus(planning, "design", "active"), "Complete");
 });

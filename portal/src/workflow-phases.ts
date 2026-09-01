@@ -52,3 +52,16 @@ export const latestPhaseId = (visits: PhaseVisitLike[]): WorkflowPhaseId | null 
   return latest === undefined ? null : phaseForVisit(latest);
 };
 
+export const phaseDisplayStatus = (
+  phase: WorkflowPhase,
+  currentPhaseId: WorkflowPhaseId | null,
+  runStatus: string,
+): "Succeeded" | "In progress" | "Complete" | "Upcoming" | "Failed" | "Blocked" | "Canceled" => {
+  if (phase.id === "complete" && runStatus === "succeeded") return "Succeeded";
+  if (phase.id === "stopped" && ["failed", "blocked", "canceled"].includes(runStatus)) {
+    return runStatus === "failed" ? "Failed" : runStatus === "blocked" ? "Blocked" : "Canceled";
+  }
+  const terminal = ["succeeded", "failed", "blocked", "denied", "canceled"].includes(runStatus);
+  if (phase.id === currentPhaseId && !terminal) return "In progress";
+  return phase.visits.length > 0 ? "Complete" : "Upcoming";
+};

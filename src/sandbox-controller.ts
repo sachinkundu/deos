@@ -1146,6 +1146,15 @@ export class SandboxAgentController {
       typeof durableJob.checkoutCommit !== "string" || !/^[a-f0-9]{40}$/.test(durableJob.checkoutCommit)
     ) throw new DesignCandidateRejectedError("trusted design candidate identity is invalid");
     const expectedPath = `openspec/changes/${durableJob.openspecChange}/design.md`;
+    const revision = await sandbox.exec(
+      ["git", "rev-parse", "HEAD"],
+      { cwd: "/deos/workspace/repository", timeout: 60_000 },
+    );
+    const revisionOutput = await revision.output({ encoding: "utf8", timeout: 60_000, maxBytes: 1_024 });
+    if (
+      revisionOutput.exitCode !== 0 || revisionOutput.truncated ||
+      revisionOutput.stdout.trim() !== durableJob.checkoutCommit
+    ) throw new DesignCandidateRejectedError("trusted design checkout no longer matches its frozen base");
     const status = await sandbox.exec(
       ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
       { cwd: "/deos/workspace/repository", timeout: 60_000 },

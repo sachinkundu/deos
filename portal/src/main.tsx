@@ -33,6 +33,7 @@ import type { TranscriptDto } from "./transcript-view.ts";
 import {
   isDesignStageWorkflow,
   latestPhaseId,
+  phaseDisplayStatus,
   phaseForVisit,
   workflowPhases,
   type WorkflowPhaseId,
@@ -363,11 +364,13 @@ function TraceabilityWorkflowMap({
           const expanded = expandedPhase === phase.id;
           const current = currentPhaseId === phase.id;
           const inspecting = inspectedPhaseId === phase.id && inspectedPhaseId !== currentPhaseId;
-          const successfulTerminal = phase.id === "complete" && projection.run.status === "succeeded";
-          const status = successfulTerminal ? "Succeeded" : phase.visits.length > 0 ? "Complete" : "Upcoming";
+          const status = phaseDisplayStatus(phase, currentPhaseId, projection.run.status);
+          const successfulTerminal = status === "Succeeded";
+          const phaseComplete = status === "Complete" || successfulTerminal ||
+            ["Failed", "Blocked", "Canceled"].includes(status);
           const product = phase.id === "planning" ? planningProduct : phase.id === "design" ? designProduct : null;
           return <article className={`workflow-phase ${expanded ? "expanded" : ""} ${current ? "current" : ""} ${inspecting ? "inspecting" : ""}`} key={phase.id}>
-            <span className="phase-spine-marker" aria-hidden="true">{phase.visits.length > 0 ? <Check weight="bold" /> : <Clock />}</span>
+            <span className={`phase-spine-marker ${status === "In progress" ? "active" : ""}`} aria-hidden="true">{phaseComplete ? <Check weight="bold" /> : <Clock />}</span>
             <div className="phase-summary-row">
               <button type="button" className="phase-summary" aria-expanded={expanded} onClick={() => openPhase(phase.id, phase.visits as Visit[])}>
                 <span className="phase-number">{index + 1}</span>

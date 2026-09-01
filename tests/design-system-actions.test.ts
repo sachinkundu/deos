@@ -77,6 +77,7 @@ test("design publication reuses one PR and merge requires its approved gate head
     updated_at: NOW.toISOString(),
   };
   let publicationWriteFailures = 0;
+  let mergeWriteFailures = 0;
   const designStore = {
     findWorkProduct: async () => work,
     recordPublication: async (input: {
@@ -98,6 +99,10 @@ test("design publication reuses one PR and merge requires its approved gate head
       return work;
     },
     recordMerge: async (input: { operationId: string; mergeCommitSha: string }) => {
+      if (mergeWriteFailures > 0) {
+        mergeWriteFailures -= 1;
+        throw new Error("design merge write failed");
+      }
       work.merge_operation_id = input.operationId;
       work.merge_commit_sha = input.mergeCommitSha;
       return work;
@@ -211,4 +216,25 @@ test("design publication reuses one PR and merge requires its approved gate head
   assert.equal([...operations.records.values()][0]?.state, "reconciled");
   assert.equal(work.head_sha, headSha);
   assert.equal(publishCalls, 2);
+
+  mergeWriteFailures = 1;
+  mergeCalls = 0;
+  run.current_visit_sequence = 41;
+  await assert.rejects(
+    controller.execute(run, "merge_design_pr", "github.merge_design_pull_request"),
+    /design merge requires provider reconciliation/,
+  );
+  const mergeOperation = () => [...operations.records.values()]
+    .find((record) => record.action === "github.merge_design_pull_request");
+  assert.equal(mergeOperation()?.state, "manual_reconciliation_required");
+  assert.equal(work.merge_commit_sha, null);
+  assert.equal(mergeCalls, 1);
+
+  assert.equal(
+    (await controller.execute(run, "merge_design_pr", "github.merge_design_pull_request")).outcome,
+    "completed",
+  );
+  assert.equal(mergeOperation()?.state, "reconciled");
+  assert.equal(work.merge_commit_sha, mergeSha);
+  assert.equal(mergeCalls, 2);
 });

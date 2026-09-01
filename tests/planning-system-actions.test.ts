@@ -69,6 +69,7 @@ class OperationStore implements SystemActionStore {
 }
 
 class PlanningStore {
+  verificationWriteFailures = 0;
   record: RunWorkProductRecord = {
     run_id: run.run_id,
     repository: "sachinkundu/deos",
@@ -106,6 +107,10 @@ class PlanningStore {
     verificationManifestJson: string;
     now: string;
   }) {
+    if (this.verificationWriteFailures > 0) {
+      this.verificationWriteFailures -= 1;
+      throw new Error("planning verification write failed");
+    }
     this.record.verification_operation_id = input.operationId;
     this.record.verified_merge_commit_sha = input.mergeCommitSha;
     this.record.verification_manifest_digest = input.verificationManifestDigest;
@@ -221,6 +226,30 @@ test("checked plan merge proves every accepted file at the reachable merge commi
   assert.equal(verified.outcome, "completed");
   assert.equal(state.planning.record.verified_merge_commit_sha, merge);
   assert.equal(state.planning.record.verification_manifest_digest?.length, 64);
+
+  state.planning.record.verification_operation_id = null;
+  state.planning.record.verified_merge_commit_sha = null;
+  state.planning.record.verification_manifest_digest = null;
+  state.planning.record.verification_manifest_json = null;
+  state.planning.verificationWriteFailures = 1;
+  const replayOperations = new OperationStore();
+  const replayController = new SystemActionController(replayOperations, {
+    planningStore: state.planning,
+    github: github as never,
+    now: () => NOW,
+  });
+  assert.equal(
+    (await replayController.execute(run, "verify_planning_merge", "github.verify_planning_merge")).outcome,
+    "failed",
+  );
+  assert.equal([...replayOperations.operations.values()][0]?.state, "failed");
+  assert.equal(state.planning.record.verified_merge_commit_sha, null);
+  assert.equal(
+    (await replayController.execute(run, "verify_planning_merge", "github.verify_planning_merge")).outcome,
+    "completed",
+  );
+  assert.equal([...replayOperations.operations.values()][0]?.state, "reconciled");
+  assert.equal(state.planning.record.verified_merge_commit_sha, merge);
 
   state.planning.record.verification_operation_id = null;
   state.planning.record.verified_merge_commit_sha = null;

@@ -532,6 +532,14 @@ export class SystemActionController {
         files: checked,
       });
       const verificationManifestDigest = await sha256Hex(verificationManifestJson);
+      await dependencies.planningStore.recordVerification({
+        runId: run.run_id,
+        operationId,
+        mergeCommitSha: workProduct.merge_commit_sha,
+        verificationManifestJson,
+        verificationManifestDigest,
+        now: this.now().toISOString(),
+      });
       const state = operation.state === "pending" ? "succeeded" : "reconciled";
       if (operation.state !== state) {
         const finished = await this.finishPlanningOperation({
@@ -544,14 +552,6 @@ export class SystemActionController {
         });
         if (!finished) throw new Error("planning verification receipt compare-and-set failed");
       }
-      await dependencies.planningStore.recordVerification({
-        runId: run.run_id,
-        operationId,
-        mergeCommitSha: workProduct.merge_commit_sha,
-        verificationManifestJson,
-        verificationManifestDigest,
-        now: this.now().toISOString(),
-      });
       return this.completed();
     } catch {
       if (operation.state === "pending") {
@@ -714,6 +714,7 @@ export class SystemActionController {
       return this.completed();
     }
     if (!["pending", "manual_reconciliation_required"].includes(operation.state)) return this.failed();
+    let providerConfirmed = false;
     try {
       const receipt = await dependencies.github.mergeDesign({
         repository: gate.repository,
@@ -722,6 +723,14 @@ export class SystemActionController {
         baseBranch: "main",
         headBranch: gate.head_branch,
         expectedHeadSha: gate.approved_head_sha,
+      });
+      providerConfirmed = true;
+      await dependencies.designStore.recordMerge({
+        runId: run.run_id,
+        operationId,
+        expectedHeadSha: gate.approved_head_sha,
+        mergeCommitSha: receipt.mergeCommitSha,
+        now: this.now().toISOString(),
       });
       const state = receipt.reconciled || operation.state !== "pending" ? "reconciled" : "succeeded";
       if (operation.state !== state) {
@@ -735,16 +744,10 @@ export class SystemActionController {
         });
         if (!finished) throw new Error("design merge receipt compare-and-set failed");
       }
-      await dependencies.designStore.recordMerge({
-        runId: run.run_id,
-        operationId,
-        expectedHeadSha: gate.approved_head_sha,
-        mergeCommitSha: receipt.mergeCommitSha,
-        now: this.now().toISOString(),
-      });
       return this.completed();
     } catch (error) {
-      const ambiguous = error instanceof Error && /ambiguous|provider request failed/i.test(error.message);
+      const ambiguous = providerConfirmed ||
+        (error instanceof Error && /ambiguous|provider request failed/i.test(error.message));
       if (operation.state === "pending") {
         await this.finishPlanningOperation({
           operationId,
