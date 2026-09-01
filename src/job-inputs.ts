@@ -80,6 +80,42 @@ const asObject = (value: unknown): Record<string, unknown> => {
   return value as Record<string, unknown>;
 };
 
+type ReviewFeedbackEntry = Record<string, unknown> & {
+  kind?: unknown;
+  id?: unknown;
+  body?: unknown;
+  authorType?: unknown;
+  replyToId?: unknown;
+};
+
+export const selectReviewFeedback = (
+  entries: readonly ReviewFeedbackEntry[],
+  limit = 50,
+): readonly ReviewFeedbackEntry[] => {
+  const comments = entries.filter((entry) => entry.kind === "review_comment" && Number.isSafeInteger(entry.id));
+  const roots = comments.filter((entry) => entry.replyToId === null && entry.authorType === "User");
+  const outstandingRootIds = new Set(roots.filter((root) => {
+    const rootId = Number(root.id);
+    const thread = comments.filter((entry) => entry.id === rootId || entry.replyToId === rootId);
+    const lastHumanId = Math.max(...thread
+      .filter((entry) => entry.authorType === "User")
+      .map((entry) => Number(entry.id)));
+    const lastAcknowledgmentId = Math.max(0, ...thread
+      .filter((entry) => entry.authorType === "Bot" && typeof entry.body === "string" &&
+        entry.body.includes("<!-- deos-review-reply:") && entry.body.includes(`:${rootId} -->`))
+      .map((entry) => Number(entry.id)));
+    return lastAcknowledgmentId < lastHumanId;
+  }).map((entry) => Number(entry.id)));
+  const required = entries.filter((entry) =>
+    outstandingRootIds.has(Number(entry.id)) || outstandingRootIds.has(Number(entry.replyToId))
+  );
+  if (required.length > limit) throw new Error("GitHub review feedback exceeds the trusted thread limit");
+  const requiredSet = new Set(required);
+  const remaining = entries.filter((entry) => !requiredSet.has(entry));
+  const selected = new Set([...required, ...remaining.slice(-(limit - required.length))]);
+  return Object.freeze(entries.filter((entry) => selected.has(entry)));
+};
+
 export const openSpecChangeIdentity = (identifier: string): string => {
   const change = identifier.toLowerCase();
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(change)) {
@@ -169,11 +205,11 @@ export class JobInputMaterializer {
     const githubFeedback = feedbackWorkProduct?.pull_request_number === null ||
         feedbackWorkProduct?.pull_request_number === undefined
       ? []
-      : (await this.readGitHubReviewFeedback(
+      : selectReviewFeedback(await this.readGitHubReviewFeedback(
           feedbackWorkProduct.repository,
           feedbackWorkProduct.pull_request_number,
           frozenInstallationId,
-        )).slice(-50);
+        ));
     const approvedPlan = designAuthor
       ? await this.approvedPlan(planningWorkProduct!, frozenInstallationId)
       : null;

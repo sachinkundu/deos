@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { JobInputMaterializer, openSpecChangeIdentity } from "../src/job-inputs.ts";
+import { JobInputMaterializer, openSpecChangeIdentity, selectReviewFeedback } from "../src/job-inputs.ts";
 import type { OrchestrationRunRecord } from "../src/orchestration-store.ts";
 import type { WorkflowJob } from "../src/workflow-definition.ts";
 
@@ -13,6 +13,19 @@ test("trusted Linear identifiers produce stable OpenSpec change identities", () 
 test("invalid Linear identifiers cannot become OpenSpec change identities", () => {
   assert.throws(() => openSpecChangeIdentity("SAC 123"), /cannot form an OpenSpec change identity/);
   assert.throws(() => openSpecChangeIdentity("SAC_123"), /cannot form an OpenSpec change identity/);
+});
+
+test("bounded design feedback retains every outstanding human review thread", () => {
+  const root = {
+    kind: "review_comment", id: 1, body: "Please revise this.", authorType: "User", replyToId: null,
+  };
+  const issueComments = Array.from({ length: 60 }, (_, index) => ({
+    kind: "issue_comment", id: 100 + index, body: `Issue comment ${index}`, authorType: "User", replyToId: null,
+  }));
+  const selected = selectReviewFeedback([root, ...issueComments]);
+  assert.equal(selected.length, 50);
+  assert.equal(selected.includes(root), true);
+  assert.equal(selected.some((entry) => entry.id === 159), true);
 });
 
 test("materializer records the OpenSpec operation and latest cumulative patch reference", async () => {

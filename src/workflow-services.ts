@@ -897,7 +897,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             body: [
               "DEOS could not prove the merged OpenSpec plan files.",
               "No design job was started.",
-              "Repair the recorded planning merge or its files, then retry the same verification step.",
+              "Repair the recorded planning merge or its files, then move this issue to In Progress.",
+              "That user action retries the same verification step without creating or merging another pull request.",
               "Safe category: planning_merge_files_unproved.",
             ].join("\n"),
           }, operationId);

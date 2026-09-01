@@ -68,7 +68,7 @@ const simplifiedStageForNode = (nodeId: string, definitionVersion: number): stri
   ].includes(nodeId)) return "independent_review";
   if (nodeId === "planning_review") return "review";
   if (nodeId === "design_review") return "review";
-  if (["merge_planning_pr", "verify_planning_merge"].includes(nodeId)) {
+  if (["merge_planning_pr", "verify_planning_merge", "planning_merge_repair_wait"].includes(nodeId)) {
     return definitionVersion >= 17 ? "plan_merge" : "merge";
   }
   if (["design_author", "publish_design", "start_new_design_round", "design_revision_author"].includes(nodeId)) {

@@ -145,7 +145,20 @@ spec:
     verify_planning_merge:
       type: system_action
       action: github.verify_planning_merge
-      edges: {completed: design_author, failed: system_action_failed}
+      edges: {completed: design_author, failed: planning_merge_repair_wait}
+    planning_merge_repair_wait:
+      type: wait
+      deosStatus: manual_reconciliation_required
+      resumeEvent:
+        type: linear.issue.state_changed
+        actorType: user
+        toState: In Progress
+        action: github.verify_planning_merge
+      cancelEvent:
+        type: linear.issue.state_changed
+        actorType: user
+        toState: Canceled
+      edges: {received: verify_planning_merge, canceled: canceled}
     design_author:
       type: agent
       job: design_author

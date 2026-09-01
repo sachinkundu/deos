@@ -244,6 +244,12 @@ test("traceability planning definition freezes reviewers and keeps publication t
   );
   assert.equal(definition.nodes.merge_planning_pr.edges.completed, "verify_planning_merge");
   assert.equal(definition.nodes.verify_planning_merge.edges.completed, "design_author");
+  assert.equal(definition.nodes.verify_planning_merge.edges.failed, "planning_merge_repair_wait");
+  const planningRepair = definition.nodes.planning_merge_repair_wait;
+  assert.equal(planningRepair.type, "wait");
+  assert.equal(planningRepair.type === "wait" ? planningRepair.deosStatus : null, "manual_reconciliation_required");
+  assert.equal(planningRepair.edges.received, "verify_planning_merge");
+  assert.equal(planningRepair.edges.canceled, "canceled");
   assert.equal(definition.jobs.design_author.operation?.instruction, "/opsx:continue");
   assert.deepEqual(definition.jobs.design_author.providerAccess, []);
   assert.equal(definition.nodes.design_author.edges.completed, "publish_design");
