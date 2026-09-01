@@ -37,6 +37,16 @@ export interface GitHubPlanningWorkProductReceipt {
   reconciled: boolean;
 }
 
+export class GitHubReviewFeedbackChangedError extends Error {
+  readonly receipt: GitHubPlanningWorkProductReceipt;
+
+  constructor(message: string, receipt: GitHubPlanningWorkProductReceipt) {
+    super(message);
+    this.name = "GitHubReviewFeedbackChangedError";
+    this.receipt = receipt;
+  }
+}
+
 export interface GitHubDesignWorkProductRequest {
   repository: string;
   branch: string;
@@ -971,13 +981,34 @@ export class GitHubCapabilityAdapter {
         confirmed.databaseId !== input.expectedPullRequestDatabaseId) ||
       (input.expectedPullRequestNumber !== undefined && confirmed.number !== input.expectedPullRequestNumber)
     ) throw new Error("GitHub design pull-request read-back mismatch");
-    const replies = await this.replyToReviewThreads(
-      token,
-      input.repository,
-      confirmed.number,
-      input.reviewReplies,
-      operationId,
-    );
+    let replies: { ids: readonly number[]; reconciled: boolean };
+    try {
+      replies = await this.replyToReviewThreads(
+        token,
+        input.repository,
+        confirmed.number,
+        input.reviewReplies,
+        operationId,
+      );
+    } catch (error) {
+      if (
+        error instanceof Error && [
+          "GitHub review reply manifest is incomplete",
+          "GitHub review reply targets an unknown human review thread",
+        ].includes(error.message)
+      ) {
+        throw new GitHubReviewFeedbackChangedError(error.message, {
+          pullRequestDatabaseId: confirmed.databaseId,
+          pullRequestNumber: confirmed.number,
+          pullRequestUrl: confirmed.url,
+          branch: input.branch,
+          headSha,
+          reviewReplyIds: [],
+          reconciled: true,
+        });
+      }
+      throw error;
+    }
     return {
       pullRequestDatabaseId: confirmed.databaseId,
       pullRequestNumber: confirmed.number,

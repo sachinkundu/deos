@@ -4,6 +4,7 @@ import test from "node:test";
 import type { OrchestrationRunRecord } from "../src/orchestration-store.ts";
 import { SystemActionController, type SystemActionStore } from "../src/system-actions.ts";
 import type { ProviderOperationRecord, ProviderOperationState } from "../src/linear-transition.ts";
+import { GitHubReviewFeedbackChangedError } from "../src/github-capability.ts";
 
 const NOW = new Date("2026-09-01T12:00:00.000Z");
 const baseCommit = "a".repeat(40);
@@ -259,13 +260,13 @@ test("design publication classifies added or deleted feedback after materializat
     base_commit: baseCommit,
     remote_branch: "deos/design/0123456789abcdef01234567",
     change_id: "sac-200",
-    pull_request_database_id: "PR_node",
-    pull_request_number: 21,
-    pull_request_url: "https://github.com/acme/sample/pull/21",
-    head_sha: headSha,
+    pull_request_database_id: null as string | null,
+    pull_request_number: null as number | null,
+    pull_request_url: null as string | null,
+    head_sha: null as string | null,
     design_manifest_digest: null,
     design_manifest_json: null,
-    publication_operation_id: "prior-publication",
+    publication_operation_id: null as string | null,
     merge_operation_id: null,
     merge_commit_sha: null,
     created_at: NOW.toISOString(),
@@ -275,12 +276,46 @@ test("design publication classifies added or deleted feedback after materializat
   const controller = new SystemActionController(operations, {
     planningStore: {} as never,
     github: {
-      publishDesign: async () => { throw new Error(providerMessage); },
+      publishDesign: async () => {
+        throw new GitHubReviewFeedbackChangedError(providerMessage, {
+          pullRequestDatabaseId: "PR_node",
+          pullRequestNumber: 21,
+          pullRequestUrl: "https://github.com/acme/sample/pull/21",
+          branch: work.remote_branch,
+          headSha,
+          reviewReplyIds: [],
+          reconciled: true,
+        });
+      },
       mergeDesign: async () => { throw new Error("unexpected merge"); },
     } as never,
     designStore: {
       findWorkProduct: async () => work,
       recordPublication: async () => { throw new Error("unexpected publication receipt"); },
+      recordFeedbackChangedPublication: async (input: {
+        pullRequestDatabaseId: string;
+        pullRequestNumber: number;
+        pullRequestUrl: string;
+        headSha: string;
+        operationId: string;
+        expectedOperationState: "pending" | "manual_reconciliation_required";
+      }) => {
+        const finished = await operations.finishPlanningOperation({
+          operationId: input.operationId,
+          expected: input.expectedOperationState,
+          state: "failed",
+          providerResourceId: input.pullRequestDatabaseId,
+          safeErrorCategory: "design_review_feedback_changed",
+          now: NOW.toISOString(),
+        });
+        if (!finished) throw new Error("unexpected feedback-change compare-and-set failure");
+        work.pull_request_database_id = input.pullRequestDatabaseId;
+        work.pull_request_number = input.pullRequestNumber;
+        work.pull_request_url = input.pullRequestUrl;
+        work.head_sha = input.headSha;
+        work.publication_operation_id = input.operationId;
+        return work;
+      },
       recordMerge: async () => { throw new Error("unexpected merge receipt"); },
     } as never,
     designCandidate: async () => ({
@@ -309,6 +344,8 @@ test("design publication classifies added or deleted feedback after materializat
   });
   assert.equal([...operations.records.values()][0]?.state, "failed");
   assert.equal([...operations.records.values()][0]?.safe_error_category, "design_review_feedback_changed");
+  assert.equal(work.pull_request_number, 21);
+  assert.equal(work.head_sha, headSha);
 
   providerMessage = "GitHub review reply targets an unknown human review thread";
   run.current_visit_sequence += 1;

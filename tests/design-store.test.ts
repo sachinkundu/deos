@@ -130,4 +130,39 @@ test("design publication atomically completes its operation, work product, and g
       .get(OPERATION_ID)?.count),
     2,
   );
+
+  const feedbackOperationId = `${RUN_ID}:system_action:publish_design:2`;
+  database.sqlite.prepare(
+    `INSERT INTO provider_operations
+     (operation_id, run_id, capability, action, sanitized_target, request_digest,
+      state, started_at, updated_at)
+     VALUES (?, ?, 'system_action', 'github.publish_design_candidate', 'design', ?,
+             'pending', ?, ?)`,
+  ).run(feedbackOperationId, RUN_ID, "f".repeat(64), NOW, NOW);
+  const feedbackChanged = await store.recordFeedbackChangedPublication({
+    runId: RUN_ID,
+    pullRequestDatabaseId: "PR_node",
+    pullRequestNumber: 21,
+    pullRequestUrl: "https://github.com/acme/sample/pull/21",
+    headSha: "b".repeat(40),
+    designDigest: "c".repeat(64),
+    operationId: feedbackOperationId,
+    expectedOperationState: "pending",
+    now: NOW,
+  });
+  assert.equal(feedbackChanged.pull_request_number, 21);
+  assert.equal(feedbackChanged.publication_operation_id, feedbackOperationId);
+  const feedbackOperation = database.sqlite.prepare(
+    `SELECT state, provider_resource_id, safe_error_category, completed_at
+     FROM provider_operations WHERE operation_id = ?`,
+  ).get(feedbackOperationId);
+  assert.equal(feedbackOperation?.state, "failed");
+  assert.equal(feedbackOperation?.provider_resource_id, "PR_node");
+  assert.equal(feedbackOperation?.safe_error_category, "design_review_feedback_changed");
+  assert.equal(feedbackOperation?.completed_at, NOW);
+  assert.equal(
+    Number(database.sqlite.prepare("SELECT COUNT(*) AS count FROM governed_work_links WHERE operation_id = ?")
+      .get(feedbackOperationId)?.count),
+    0,
+  );
 });

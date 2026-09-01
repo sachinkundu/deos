@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GitHubCapabilityAdapter } from "../src/github-capability.ts";
+import {
+  GitHubCapabilityAdapter,
+  GitHubReviewFeedbackChangedError,
+} from "../src/github-capability.ts";
 import { LinearCapabilityAdapter } from "../src/linear-capability.ts";
 
 const encode = (value: string): string => {
@@ -468,6 +471,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
   const designContent = "## Design\n";
   let pullReads = 0;
   let loseFinalRead = true;
+  let reviewComments: unknown[] = [];
   const pull = {
     id: 7001,
     number: 7,
@@ -483,7 +487,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
   };
   const adapter = new GitHubCapabilityAdapter(
     "https://api.github.test",
-    { token: async () => "installation-token" },
+    { token: async () => "installation-token", actorLogin: async () => "deos[bot]" },
     { fetch: async (input, init) => {
       const url = new URL(String(input));
       const path = `${url.pathname}${url.search}`;
@@ -510,7 +514,8 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
         }
         return Response.json(pull);
       }
-      if (path.endsWith("/pulls/7/comments?per_page=100")) return Response.json([]);
+      if (path.includes("/pulls?state=all&head=")) return Response.json([{ number: 7 }]);
+      if (path.endsWith("/pulls/7/comments?per_page=100")) return Response.json(reviewComments);
       return new Response(`unexpected ${method} ${path}`, { status: 500 });
     } },
   );
@@ -532,6 +537,24 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
   const receipt = await adapter.publishDesign(request, "operation-final-read");
   assert.equal(receipt.pullRequestNumber, 7);
   assert.equal(receipt.reconciled, true);
+
+  reviewComments = [{
+    id: 701,
+    in_reply_to_id: null,
+    body: "Please cover the retry path.",
+    user: { type: "User", login: "reviewer" },
+  }];
+  const {
+    expectedPullRequestDatabaseId: _databaseId,
+    expectedPullRequestNumber: _number,
+    ...unrecordedRequest
+  } = request;
+  await assert.rejects(
+    adapter.publishDesign(unrecordedRequest, "operation-feedback-changed"),
+    (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
+      error.receipt.pullRequestDatabaseId === "7001" && error.receipt.pullRequestNumber === 7 &&
+      error.receipt.headSha === headCommit,
+  );
 });
 
 test("GitHub design publication discovers its head across bases and rejects a retargeted pull request", async () => {

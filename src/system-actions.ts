@@ -1,6 +1,9 @@
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { ValidatedSystemOutcome } from "./workflow-evaluator.ts";
-import type { GitHubCapabilityAdapter } from "./github-capability.ts";
+import {
+  GitHubReviewFeedbackChangedError,
+  type GitHubCapabilityAdapter,
+} from "./github-capability.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
 import type { ProviderOperationRecord, ProviderOperationState } from "./linear-transition.ts";
 import type { D1PlanningStore, RunWorkProductRecord } from "./planning-store.ts";
@@ -173,7 +176,10 @@ interface PlanningSystemActionDependencies {
     identifier: string;
     url: string;
   } | null>;
-  designStore?: Pick<D1DesignStore, "findWorkProduct" | "recordPublication" | "recordMerge">;
+  designStore?: Pick<
+    D1DesignStore,
+    "findWorkProduct" | "recordPublication" | "recordFeedbackChangedPublication" | "recordMerge"
+  >;
   designCandidate?: (runId: string) => Promise<{
     candidateId: string;
     candidateDigest: string;
@@ -701,21 +707,21 @@ export class SystemActionController {
       });
       return this.completed();
     } catch (error) {
-      if (
-        error instanceof Error && [
-          "GitHub review reply manifest is incomplete",
-          "GitHub review reply targets an unknown human review thread",
-        ].includes(error.message)
-      ) {
-        const finished = await this.finishPlanningOperation({
+      if (error instanceof GitHubReviewFeedbackChangedError) {
+        if (error.receipt.branch !== workProduct.remote_branch) {
+          throw new Error("design feedback-change publication branch mismatch");
+        }
+        await dependencies.designStore.recordFeedbackChangedPublication({
+          runId: run.run_id,
+          pullRequestDatabaseId: error.receipt.pullRequestDatabaseId,
+          pullRequestNumber: error.receipt.pullRequestNumber,
+          pullRequestUrl: error.receipt.pullRequestUrl,
+          headSha: error.receipt.headSha,
+          designDigest: candidate.designDigest,
           operationId,
-          expected: expectedOperationState,
-          state: "failed",
-          providerResourceId: workProduct.pull_request_database_id,
-          safeErrorCategory: "design_review_feedback_changed",
+          expectedOperationState,
           now: this.now().toISOString(),
         });
-        if (!finished) throw new Error("design review feedback change receipt compare-and-set failed");
         return {
           kind: "system_action",
           outcome: "review_feedback_changed",
@@ -865,7 +871,10 @@ export class SystemActionController {
 
   private requireDesignDependencies(run: OrchestrationRunRecord): {
     github: Pick<GitHubCapabilityAdapter, "publishDesign" | "mergeDesign">;
-    designStore: Pick<D1DesignStore, "findWorkProduct" | "recordPublication" | "recordMerge">;
+    designStore: Pick<
+      D1DesignStore,
+      "findWorkProduct" | "recordPublication" | "recordFeedbackChangedPublication" | "recordMerge"
+    >;
   } {
     const github = this.planning?.githubForRun?.(run) ?? this.planning?.github;
     if (

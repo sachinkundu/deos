@@ -220,6 +220,80 @@ export class D1DesignStore {
     return stored;
   }
 
+  async recordFeedbackChangedPublication(input: {
+    runId: string;
+    pullRequestDatabaseId: string;
+    pullRequestNumber: number;
+    pullRequestUrl: string;
+    headSha: string;
+    designDigest: string;
+    operationId: string;
+    expectedOperationState: "pending" | "manual_reconciliation_required";
+    now: string;
+  }): Promise<DesignWorkProductRecord> {
+    const current = await this.findWorkProduct(input.runId);
+    if (
+      current === null || !shaPattern.test(input.headSha) || !digestPattern.test(input.designDigest) ||
+      input.pullRequestUrl !== `https://github.com/${current.repository}/pull/${input.pullRequestNumber}`
+    ) throw new Error("design feedback-change publication identity is invalid");
+    const manifestJson = JSON.stringify([{
+      path: `openspec/changes/${current.change_id}/design.md`,
+      sha256: input.designDigest,
+    }]);
+    const manifestDigest = await sha256Hex(manifestJson);
+    const operationUpdate = this.database.prepare(
+      `UPDATE provider_operations
+       SET state = 'failed', provider_resource_id = ?, safe_error_category = 'design_review_feedback_changed',
+           updated_at = ?, completed_at = ?
+       WHERE operation_id = ? AND run_id = ? AND capability = 'system_action'
+         AND action = 'github.publish_design_candidate' AND state = ?`,
+    ).bind(
+      input.pullRequestDatabaseId,
+      input.now,
+      input.now,
+      input.operationId,
+      input.runId,
+      input.expectedOperationState,
+    );
+    const update = this.database.prepare(
+      `UPDATE design_work_products
+       SET pull_request_database_id = ?, pull_request_number = ?, pull_request_url = ?, head_sha = ?,
+           design_manifest_digest = ?, design_manifest_json = ?, publication_operation_id = ?, updated_at = ?
+       WHERE run_id = ? AND (pull_request_database_id IS NULL OR pull_request_database_id = ?)
+         AND (pull_request_number IS NULL OR pull_request_number = ?)
+         AND (pull_request_url IS NULL OR pull_request_url = ?)`,
+    ).bind(
+      input.pullRequestDatabaseId, input.pullRequestNumber, input.pullRequestUrl, input.headSha,
+      manifestDigest, manifestJson, input.operationId, input.now, input.runId,
+      input.pullRequestDatabaseId, input.pullRequestNumber, input.pullRequestUrl,
+    );
+    const results = await this.database.batch([operationUpdate, update]);
+    if (changes(results[0]!) !== 1) {
+      throw new Error("design feedback-change operation compare-and-set failed");
+    }
+    if (changes(results[1]!) !== 1) throw new Error("design feedback-change publication identity mismatch");
+    const stored = await this.findWorkProduct(input.runId);
+    if (
+      stored?.pull_request_database_id !== input.pullRequestDatabaseId ||
+      stored.pull_request_number !== input.pullRequestNumber || stored.head_sha !== input.headSha ||
+      stored.publication_operation_id !== input.operationId
+    ) throw new Error("design feedback-change publication read-back mismatch");
+    const operation = await this.database.prepare(
+      `SELECT state, provider_resource_id, safe_error_category, completed_at
+       FROM provider_operations WHERE operation_id = ? AND run_id = ?`,
+    ).bind(input.operationId, input.runId).first<{
+      state: string;
+      provider_resource_id: string | null;
+      safe_error_category: string | null;
+      completed_at: string | null;
+    }>();
+    if (
+      operation?.state !== "failed" || operation.provider_resource_id !== input.pullRequestDatabaseId ||
+      operation.safe_error_category !== "design_review_feedback_changed" || operation.completed_at !== input.now
+    ) throw new Error("design feedback-change operation read-back mismatch");
+    return stored;
+  }
+
   async recordMerge(input: {
     runId: string;
     operationId: string;
