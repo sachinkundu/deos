@@ -250,7 +250,7 @@ test("design publication reuses one PR and merge requires its approved gate head
   assert.equal(mergeCalls, 2);
 });
 
-test("design publication classifies feedback added after materialization as recoverable", async () => {
+test("design publication classifies added or deleted feedback after materialization as recoverable", async () => {
   const operations = new Operations();
   const work = {
     run_id: "workflow:project:issue:run:late-feedback",
@@ -271,10 +271,11 @@ test("design publication classifies feedback added after materialization as reco
     created_at: NOW.toISOString(),
     updated_at: NOW.toISOString(),
   };
+  let providerMessage = "GitHub review reply manifest is incomplete";
   const controller = new SystemActionController(operations, {
     planningStore: {} as never,
     github: {
-      publishDesign: async () => { throw new Error("GitHub review reply manifest is incomplete"); },
+      publishDesign: async () => { throw new Error(providerMessage); },
       mergeDesign: async () => { throw new Error("unexpected merge"); },
     } as never,
     designStore: {
@@ -295,8 +296,9 @@ test("design publication classifies feedback added after materialization as reco
     issueContext: async () => ({ identifier: "SAC-200", url: "https://linear.app/deos/issue/SAC-200" }),
     now: () => NOW,
   });
+  const run = { run_id: work.run_id, current_visit_sequence: 42 } as OrchestrationRunRecord;
   const outcome = await controller.execute(
-    { run_id: work.run_id, current_visit_sequence: 42 } as OrchestrationRunRecord,
+    run,
     "publish_design",
     "github.publish_design_candidate",
   );
@@ -307,4 +309,14 @@ test("design publication classifies feedback added after materialization as reco
   });
   assert.equal([...operations.records.values()][0]?.state, "failed");
   assert.equal([...operations.records.values()][0]?.safe_error_category, "design_review_feedback_changed");
+
+  providerMessage = "GitHub review reply targets an unknown human review thread";
+  run.current_visit_sequence += 1;
+  assert.equal(
+    (await controller.execute(run, "publish_design", "github.publish_design_candidate")).outcome,
+    "review_feedback_changed",
+  );
+  const latest = [...operations.records.values()].at(-1);
+  assert.equal(latest?.state, "failed");
+  assert.equal(latest?.safe_error_category, "design_review_feedback_changed");
 });

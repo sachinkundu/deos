@@ -188,7 +188,7 @@ test("traceability planning definition freezes reviewers and keeps publication t
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
   assert.equal(definition.version, 17);
-  assert.equal(definition.nodes.publish_design.edges.review_feedback_changed, "start_new_design_round");
+  assert.equal(definition.nodes.publish_design.edges.review_feedback_changed, "design_revision_author");
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
   assert.ok(definition.jobs.planning_author.requiredOutputs.includes("review-replies.json"));

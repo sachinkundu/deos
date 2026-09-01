@@ -701,7 +701,12 @@ export class SystemActionController {
       });
       return this.completed();
     } catch (error) {
-      if (error instanceof Error && error.message === "GitHub review reply manifest is incomplete") {
+      if (
+        error instanceof Error && [
+          "GitHub review reply manifest is incomplete",
+          "GitHub review reply targets an unknown human review thread",
+        ].includes(error.message)
+      ) {
         const finished = await this.finishPlanningOperation({
           operationId,
           expected: expectedOperationState,

@@ -534,13 +534,14 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
   assert.equal(receipt.reconciled, true);
 });
 
-test("GitHub design publication rejects a closed pull request on its deterministic branch", async () => {
+test("GitHub design publication discovers its head across bases and rejects a retargeted pull request", async () => {
   const baseCommit = "a".repeat(40);
   const headCommit = "b".repeat(40);
   const branch = "deos/design/sac-202";
   const designPath = "openspec/changes/sac-202/design.md";
   const designContent = "## Design\n";
   let pullWrites = 0;
+  let discoveryPath = "";
   const adapter = new GitHubCapabilityAdapter(
     "https://api.github.test",
     { token: async () => "installation-token" },
@@ -562,7 +563,10 @@ test("GitHub design publication rejects a closed pull request on its determinist
       if (path.includes(`/contents/${designPath}`)) {
         return Response.json({ sha: "design-sha", content: encode(designContent) });
       }
-      if (path.includes("/pulls?state=all")) return Response.json([{ number: 8 }]);
+      if (path.includes("/pulls?state=all")) {
+        discoveryPath = path;
+        return Response.json([{ number: 8 }]);
+      }
       if (path.endsWith("/pulls/8") && method === "GET") {
         return Response.json({
           id: 8001,
@@ -575,7 +579,7 @@ test("GitHub design publication rejects a closed pull request on its determinist
           title: "SAC-202: OpenSpec design",
           body: "Reviewed design",
           head: { ref: branch, sha: headCommit },
-          base: { ref: "main" },
+          base: { ref: "release" },
         });
       }
       if (path.endsWith("/pulls") || (path.endsWith("/pulls/8") && method === "PATCH")) pullWrites += 1;
@@ -594,6 +598,8 @@ test("GitHub design publication rejects a closed pull request on its determinist
     content: designContent,
     reviewReplies: [],
   }, "operation-design"), /discovered design pull-request identity mismatch/);
+  assert.match(discoveryPath, /state=all&head=/);
+  assert.doesNotMatch(discoveryPath, /[?&]base=/);
   assert.equal(pullWrites, 0);
 });
 

@@ -166,7 +166,7 @@ spec:
     publish_design:
       type: system_action
       action: github.publish_design_candidate
-      edges: {completed: design_review, review_feedback_changed: start_new_design_round, failed: system_action_failed}
+      edges: {completed: design_review, review_feedback_changed: design_revision_author, failed: system_action_failed}
     design_review:
       type: human_gate
       linearState: Human Review

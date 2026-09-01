@@ -515,6 +515,31 @@ class WaitServices extends NodeServices {
   }
 }
 
+class InitialDesignFeedbackServices extends NodeServices {
+  private changed = false;
+
+  override executeSystemAction(
+    _run: OrchestrationRunRecord,
+    _nodeId: string,
+    action: string,
+  ): ReturnType<WorkflowNodeServices["executeSystemAction"]> {
+    this.systemActions.push(action);
+    if (action === "github.publish_design_candidate" && !this.changed) {
+      this.changed = true;
+      return Promise.resolve({
+        kind: "system_action" as const,
+        outcome: "review_feedback_changed" as const,
+        providerReceiptsComplete: false,
+      });
+    }
+    return Promise.resolve({
+      kind: "system_action" as const,
+      outcome: "completed" as const,
+      providerReceiptsComplete: true,
+    });
+  }
+}
+
 class MissingReceiptServices extends NodeServices {
   override executeAgent() {
     return Promise.resolve({
@@ -656,6 +681,31 @@ test("version 17 traverses checked planning and a revised design through distinc
     { deliveryId: "delivery-design-revision", outcome: "revision_requested" },
     { deliveryId: "delivery-design-merge", outcome: "merge_authorized" },
   ]);
+});
+
+test("version 17 recovers initial design publication feedback before any design gate exists", async () => {
+  const store = new RuntimeStore(makeRun(traceabilityDefinition));
+  const services = new InitialDesignFeedbackServices([
+    "completed", "pass", "pass", "completed", "pass", "completed", "completed",
+  ]);
+  store.inbox.set("delivery-plan-merge", inboxEvent("delivery-plan-merge", "user", "Merging"));
+  store.inbox.set("delivery-design-merge", inboxEvent("delivery-design-merge", "user", "Merging"));
+
+  const result = await new WorkflowOrchestrator(store, traceabilityDefinition, services, {
+    humanGateStateId: "human-state",
+    approvalStateNames: ["In Progress"],
+    rejectionStateNames: ["Canceled"],
+    now: () => new Date(NOW),
+  }).run(store.run.run_id, new FakeStep(["delivery-plan-merge", "delivery-design-merge"]));
+
+  assert.deepEqual(result, { outcome: "succeeded", runId: store.run.run_id });
+  assert.equal(
+    store.transitions.some(({ from_node, to_node }) =>
+      from_node === "publish_design" && to_node === "design_revision_author"),
+    true,
+  );
+  assert.equal(services.systemActions.includes("design.start_new_round"), false);
+  assert.equal(services.gateEntries, 2);
 });
 
 test("version 4 routes a successful agent result with missing receipts to its failure node", async () => {

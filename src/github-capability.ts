@@ -885,7 +885,7 @@ export class GitHubCapabilityAdapter {
     } else {
       reconciled = true;
     }
-    const pullsPath = `/repos/${input.repository}/pulls?state=all&base=${encodeURIComponent(input.baseBranch)}&head=${encodeURIComponent(`${owner}:${input.branch}`)}`;
+    const pullsPath = `/repos/${input.repository}/pulls?state=all&head=${encodeURIComponent(`${owner}:${input.branch}`)}`;
     let number: number | null = null;
     if (input.expectedPullRequestDatabaseId !== undefined || input.expectedPullRequestNumber !== undefined) {
       if (input.expectedPullRequestDatabaseId === undefined || input.expectedPullRequestNumber === undefined) {
