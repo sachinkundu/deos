@@ -538,6 +538,8 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
   const designContent = "## Design\n";
   let pullReads = 0;
   let replyPosts = 0;
+  let addFeedbackDuringReply = false;
+  let rewriteHeadDuringReply = false;
   let loseFinalRead = true;
   let reviewComments: Array<{
     id: number;
@@ -600,7 +602,15 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
       if (path.endsWith("/pulls/7/comments?per_page=100")) return Response.json(reviewComments);
       if (path.endsWith("/pulls/7/comments/701/replies") && method === "POST") {
         replyPosts += 1;
-        liveHeadSha = "c".repeat(40);
+        if (addFeedbackDuringReply) {
+          reviewComments.push({
+            id: 704,
+            in_reply_to_id: 701,
+            body: "Please include the late recovery case.",
+            user: { type: "User", login: "reviewer" },
+          });
+        }
+        if (rewriteHeadDuringReply) liveHeadSha = "c".repeat(40);
         return Response.json({
           id: 702,
           in_reply_to_id: 701,
@@ -666,6 +676,23 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
   );
   assert.equal(replyPosts, 0);
   reviewComments = reviewComments.filter((comment) => comment.id !== 703);
+  addFeedbackDuringReply = true;
+  await assert.rejects(
+    adapter.publishDesign({
+      ...request,
+      reviewReplies: [{
+        commentId: 701,
+        body: "Covered the retry path.",
+        latestHumanCommentId: 701,
+      }],
+    }, "operation-feedback-during-reply"),
+    (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
+      error.receipt.reviewReplyIds.length === 1,
+  );
+  assert.equal(replyPosts, 1);
+  addFeedbackDuringReply = false;
+  reviewComments = reviewComments.filter((comment) => comment.id !== 704);
+  rewriteHeadDuringReply = true;
   await assert.rejects(
     adapter.publishDesign({
       ...request,

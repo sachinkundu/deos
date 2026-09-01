@@ -37,6 +37,23 @@ test("bounded design feedback retains every outstanding human review thread", ()
   assert.equal(selected.includes(root), true);
   assert.equal(selected.includes(spoof), true);
   assert.equal(selected.some((entry) => entry.id === 159), true);
+
+  const threads = Array.from({ length: 26 }, (_, index) => {
+    const rootId = 1_000 + (index * 2);
+    return [
+      {
+        kind: "review_comment", id: rootId, body: `Root ${index}`,
+        authorType: "User", replyToId: null,
+      },
+      {
+        kind: "review_comment", id: rootId + 1, body: `Follow-up ${index}`,
+        authorType: "User", replyToId: rootId,
+      },
+    ];
+  }).flat();
+  const selectedThreads = selectReviewFeedback(threads);
+  assert.equal(selectedThreads.length, 52);
+  assert.deepEqual(selectedThreads, threads);
 });
 
 test("prior design context verifies the saved object hash and identity", async () => {

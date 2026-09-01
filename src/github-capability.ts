@@ -992,7 +992,7 @@ export class GitHubCapabilityAdapter {
         confirmed.databaseId !== input.expectedPullRequestDatabaseId) ||
       (input.expectedPullRequestNumber !== undefined && confirmed.number !== input.expectedPullRequestNumber)
     ) throw new Error("GitHub design pull-request read-back mismatch");
-    let replies: { ids: readonly number[]; reconciled: boolean };
+    let replies: { ids: readonly number[]; reconciled: boolean; humanSnapshot: string };
     try {
       replies = await this.replyToReviewThreads(
         token,
@@ -1036,6 +1036,18 @@ export class GitHubCapabilityAdapter {
       finalPull.baseBranch !== input.baseBranch || finalRaw.title !== input.title ||
       finalRaw.body !== input.body
     ) throw new Error("GitHub design pull-request final read-back mismatch");
+    const finalReviewComments = await this.reviewComments(token, input.repository, confirmed.number);
+    if (this.humanReviewSnapshot(finalReviewComments) !== replies.humanSnapshot) {
+      throw new GitHubReviewFeedbackChangedError("GitHub review reply thread snapshot changed", {
+        pullRequestDatabaseId: finalPull.databaseId,
+        pullRequestNumber: finalPull.number,
+        pullRequestUrl: finalPull.url,
+        branch: input.branch,
+        headSha,
+        reviewReplyIds: replies.ids,
+        reconciled: true,
+      });
+    }
     return {
       pullRequestDatabaseId: finalPull.databaseId,
       pullRequestNumber: finalPull.number,
@@ -1453,8 +1465,9 @@ export class GitHubCapabilityAdapter {
     pullRequestNumber: number,
     requestedReplies: readonly { commentId: number; body: string; latestHumanCommentId?: number }[],
     operationId: string,
-  ): Promise<{ ids: readonly number[]; reconciled: boolean }> {
+  ): Promise<{ ids: readonly number[]; reconciled: boolean; humanSnapshot: string }> {
     let comments = await this.reviewComments(token, repository, pullRequestNumber);
+    const humanSnapshot = this.humanReviewSnapshot(comments);
     const roots = new Map(comments
       .filter((comment) => comment.inReplyToId === null && comment.userType === "User")
       .map((comment) => [comment.id, comment]));
@@ -1525,7 +1538,19 @@ export class GitHubCapabilityAdapter {
         reconciled = true;
       }
     }
-    return { ids: Object.freeze(ids), reconciled };
+    return { ids: Object.freeze(ids), reconciled, humanSnapshot };
+  }
+
+  private humanReviewSnapshot(comments: readonly GitHubReviewComment[]): string {
+    return JSON.stringify(comments
+      .filter((comment) => comment.userType === "User")
+      .map((comment) => ({
+        id: comment.id,
+        inReplyToId: comment.inReplyToId,
+        body: comment.body,
+        userLogin: comment.userLogin,
+      }))
+      .sort((left, right) => left.id - right.id));
   }
 
   private encodedPath(path: string): string {

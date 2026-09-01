@@ -112,10 +112,16 @@ export const selectReviewFeedback = (
   const required = entries.filter((entry) =>
     outstandingRootIds.has(Number(entry.id)) || outstandingRootIds.has(Number(entry.replyToId))
   );
-  if (required.length > limit) throw new Error("GitHub review feedback exceeds the trusted thread limit");
+  if (outstandingRootIds.size > limit) {
+    throw new Error("GitHub review feedback exceeds the trusted thread limit");
+  }
   const requiredSet = new Set(required);
   const remaining = entries.filter((entry) => !requiredSet.has(entry));
-  const selected = new Set([...required, ...remaining.slice(-(limit - required.length))]);
+  const remainingLimit = Math.max(0, limit - required.length);
+  const selected = new Set([
+    ...required,
+    ...(remainingLimit === 0 ? [] : remaining.slice(-remainingLimit)),
+  ]);
   return Object.freeze(entries.filter((entry) => selected.has(entry)));
 };
 
