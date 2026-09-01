@@ -31,7 +31,7 @@ spec:
     implement: { type: agent, job: implement, edges: { completed: review, blocked: blocked, failed: blocked } }
     review: { type: agent, job: implement, edges: { approved: approval, changes_requested: implement, blocked: blocked, failed: blocked } }
     approval: { type: human_gate, linearState: Human Approval, edges: { approved: action, rejected: implement } }
-    action: { type: system_action, action: openspec.verify, edges: { completed: done, failed: blocked } }
+    action: { type: system_action, action: openspec.verify, edges: { completed: done, review_feedback_changed: openspec, failed: blocked } }
     openspec: { type: agent, job: openspec, edges: { completed: done, blocked: blocked, failed: blocked } }
     done: { type: terminal, outcome: succeeded }
     blocked: { type: terminal, outcome: blocked }
@@ -122,6 +122,15 @@ test("success paths fail closed until provider receipts are complete", () => {
   assert.throws(() => evaluateNodeOutcome(definition, "action", {
     kind: "system_action", outcome: "completed", providerReceiptsComplete: false,
   }), /missing provider receipts/);
+});
+
+test("a system action can route changed review feedback without claiming completion", () => {
+  const decision = evaluateNodeOutcome(definition, "action", {
+    kind: "system_action",
+    outcome: "review_feedback_changed",
+    providerReceiptsComplete: false,
+  });
+  assert.equal(decision.kind === "transition" ? decision.toNode : null, "openspec");
 });
 
 test("repository-local OpenSpec completion permits zero receipts but not incomplete attempted effects", () => {

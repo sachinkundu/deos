@@ -329,13 +329,19 @@ export class D1PlanningStore {
            verified_merge_commit_sha = ?, verification_manifest_digest = ?,
            verification_manifest_json = ?, updated_at = ?
        WHERE run_id = ? AND merge_commit_sha = ?
-         AND (verification_operation_id IS NULL OR verification_operation_id = ?)
+         AND (verification_operation_id IS NULL OR verification_operation_id = ? OR (
+           verified_merge_commit_sha = ? AND verification_manifest_digest = ?
+           AND verification_manifest_json = ?
+         ))
          AND (verified_merge_commit_sha IS NULL OR verified_merge_commit_sha = ?)
-         AND (verification_manifest_digest IS NULL OR verification_manifest_digest = ?)`,
+         AND (verification_manifest_digest IS NULL OR verification_manifest_digest = ?)
+         AND (verification_manifest_json IS NULL OR verification_manifest_json = ?)`,
     ).bind(
       input.operationId, input.now, input.mergeCommitSha, input.verificationManifestDigest,
       input.verificationManifestJson, input.now, input.runId, input.mergeCommitSha,
       input.operationId, input.mergeCommitSha, input.verificationManifestDigest,
+      input.verificationManifestJson, input.mergeCommitSha, input.verificationManifestDigest,
+      input.verificationManifestJson,
     ).run();
     if (changes(result) !== 1) throw new Error("planning merge verification identity mismatch");
     const stored = await this.findRunWorkProduct(input.runId);

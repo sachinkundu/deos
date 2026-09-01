@@ -249,3 +249,62 @@ test("design publication reuses one PR and merge requires its approved gate head
   assert.equal(work.merge_commit_sha, mergeSha);
   assert.equal(mergeCalls, 2);
 });
+
+test("design publication classifies feedback added after materialization as recoverable", async () => {
+  const operations = new Operations();
+  const work = {
+    run_id: "workflow:project:issue:run:late-feedback",
+    repository: "acme/sample",
+    base_branch: "main" as const,
+    base_commit: baseCommit,
+    remote_branch: "deos/design/0123456789abcdef01234567",
+    change_id: "sac-200",
+    pull_request_database_id: "PR_node",
+    pull_request_number: 21,
+    pull_request_url: "https://github.com/acme/sample/pull/21",
+    head_sha: headSha,
+    design_manifest_digest: null,
+    design_manifest_json: null,
+    publication_operation_id: "prior-publication",
+    merge_operation_id: null,
+    merge_commit_sha: null,
+    created_at: NOW.toISOString(),
+    updated_at: NOW.toISOString(),
+  };
+  const controller = new SystemActionController(operations, {
+    planningStore: {} as never,
+    github: {
+      publishDesign: async () => { throw new Error("GitHub review reply manifest is incomplete"); },
+      mergeDesign: async () => { throw new Error("unexpected merge"); },
+    } as never,
+    designStore: {
+      findWorkProduct: async () => work,
+      recordPublication: async () => { throw new Error("unexpected publication receipt"); },
+      recordMerge: async () => { throw new Error("unexpected merge receipt"); },
+    } as never,
+    designCandidate: async () => ({
+      candidateId: "design:attempt-late-feedback",
+      candidateDigest: "d".repeat(64),
+      change: work.change_id,
+      baseCommit,
+      path: `openspec/changes/${work.change_id}/design.md`,
+      content: "## Design\n",
+      designDigest: "e".repeat(64),
+      reviewReplies: [],
+    }),
+    issueContext: async () => ({ identifier: "SAC-200", url: "https://linear.app/deos/issue/SAC-200" }),
+    now: () => NOW,
+  });
+  const outcome = await controller.execute(
+    { run_id: work.run_id, current_visit_sequence: 42 } as OrchestrationRunRecord,
+    "publish_design",
+    "github.publish_design_candidate",
+  );
+  assert.deepEqual(outcome, {
+    kind: "system_action",
+    outcome: "review_feedback_changed",
+    providerReceiptsComplete: false,
+  });
+  assert.equal([...operations.records.values()][0]?.state, "failed");
+  assert.equal([...operations.records.values()][0]?.safe_error_category, "design_review_feedback_changed");
+});

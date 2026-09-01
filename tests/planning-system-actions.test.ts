@@ -17,6 +17,7 @@ const run = {
 
 class OperationStore implements SystemActionStore {
   readonly operations = new Map<string, ProviderOperationRecord>();
+  finishFailures = 0;
   prerequisites() { return Promise.resolve({ incompleteOperations: 0, actionReceipts: 0 }); }
   beginPlanningOperation(input: {
     operationId: string;
@@ -59,6 +60,10 @@ class OperationStore implements SystemActionStore {
   }) {
     const operation = this.operations.get(input.operationId);
     if (operation?.state !== input.expected) return Promise.resolve(false);
+    if (this.finishFailures > 0) {
+      this.finishFailures -= 1;
+      return Promise.resolve(false);
+    }
     operation.state = input.state;
     operation.provider_resource_id = input.providerResourceId;
     operation.safe_error_category = input.safeErrorCategory;
@@ -260,4 +265,86 @@ test("checked plan merge proves every accepted file at the reachable merge commi
   });
   const failed = await failedController.execute(run, "verify_planning_merge", "github.verify_planning_merge");
   assert.equal(failed.outcome, "failed");
+});
+
+test("a new verification visit adopts an intact receipt saved before operation completion failed", async () => {
+  const state = setup();
+  const head = "1".repeat(40);
+  const merge = "2".repeat(40);
+  const defaultHead = "3".repeat(40);
+  const files = [{
+    path: "openspec/changes/sac-200/proposal.md",
+    content: "## Why\n\nA clear plan helps.\n",
+  }, {
+    path: "openspec/changes/sac-200/.openspec.yaml",
+    content: "schema: spec-driven\n",
+  }, {
+    path: "openspec/changes/sac-200/specs/tool/spec.md",
+    content: "## ADDED Requirements\n",
+  }];
+  const digest = async (value: string) => {
+    const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+    return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  };
+  state.planning.record.head_sha = head;
+  state.planning.record.merge_commit_sha = merge;
+  state.planning.record.planning_manifest_json = JSON.stringify(await Promise.all(files.map(async (file) => ({
+    path: file.path,
+    sha256: await digest(file.content),
+    byteSize: new TextEncoder().encode(file.content).byteLength,
+  }))));
+  state.planning.record.planning_manifest_digest = await digest(state.planning.record.planning_manifest_json);
+  const github = {
+    readPullRequest: async () => ({
+      databaseId: "9001",
+      number: 54,
+      url: "https://github.com/sachinkundu/deos/pull/54",
+      state: "closed",
+      draft: false,
+      merged: true,
+      mergeCommitSha: merge,
+      headBranch: state.planning.record.remote_branch,
+      headSha: head,
+      baseBranch: "main",
+    }),
+    verifyCommitOnBranch: async () => ({ defaultHeadSha: defaultHead, reachable: true }),
+    readFileAtRef: async (_repository: string, path: string) => {
+      const file = files.find((entry) => entry.path === path);
+      if (file === undefined) throw new Error("missing");
+      return file.content;
+    },
+  };
+  const first = new SystemActionController(state.operations, {
+    planningStore: state.planning,
+    github: github as never,
+    now: () => NOW,
+  });
+  state.operations.finishFailures = 1;
+  assert.equal(
+    (await first.execute(run, "verify_planning_merge", "github.verify_planning_merge")).outcome,
+    "failed",
+  );
+  const originalOperationId = state.planning.record.verification_operation_id;
+  assert.notEqual(originalOperationId, null);
+
+  const resumedRun = { ...run, current_visit_sequence: run.current_visit_sequence + 1 };
+  const noProviderReplay = async () => { throw new Error("saved proof should avoid provider replay"); };
+  const resumed = new SystemActionController(state.operations, {
+    planningStore: state.planning,
+    github: {
+      readPullRequest: noProviderReplay,
+      verifyCommitOnBranch: noProviderReplay,
+      readFileAtRef: noProviderReplay,
+    } as never,
+    now: () => NOW,
+  });
+  assert.equal(
+    (await resumed.execute(resumedRun, "verify_planning_merge", "github.verify_planning_merge")).outcome,
+    "completed",
+  );
+  assert.notEqual(state.planning.record.verification_operation_id, originalOperationId);
+  assert.deepEqual(
+    [...state.operations.operations.values()].map((operation) => operation.state),
+    ["failed", "reconciled"],
+  );
 });

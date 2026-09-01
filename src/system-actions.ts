@@ -3,7 +3,7 @@ import type { ValidatedSystemOutcome } from "./workflow-evaluator.ts";
 import type { GitHubCapabilityAdapter } from "./github-capability.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
 import type { ProviderOperationRecord, ProviderOperationState } from "./linear-transition.ts";
-import type { D1PlanningStore } from "./planning-store.ts";
+import type { D1PlanningStore, RunWorkProductRecord } from "./planning-store.ts";
 import type { D1DesignStore, DesignWorkProductRecord } from "./design-store.ts";
 import type { HumanGateVisitRecord } from "./human-gate-store.ts";
 
@@ -34,6 +34,32 @@ const changes = (result: D1Result<unknown>): number => result.meta.changes ?? 0;
 const sha256Hex = async (value: string): Promise<string> => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+const shaPattern = /^[0-9a-f]{40}$/;
+
+const savedPlanningVerificationMatches = async (
+  workProduct: RunWorkProductRecord,
+): Promise<boolean> => {
+  if (
+    workProduct.pull_request_database_id === null || workProduct.pull_request_number === null ||
+    workProduct.head_sha === null || workProduct.merge_commit_sha === null ||
+    workProduct.planning_manifest_json === null || workProduct.verification_manifest_json === null ||
+    workProduct.verification_manifest_digest === null ||
+    workProduct.verified_merge_commit_sha !== workProduct.merge_commit_sha ||
+    await sha256Hex(workProduct.verification_manifest_json) !== workProduct.verification_manifest_digest
+  ) return false;
+  try {
+    const receipt = JSON.parse(workProduct.verification_manifest_json) as Record<string, unknown>;
+    return receipt.pullRequestDatabaseId === workProduct.pull_request_database_id &&
+      receipt.pullRequestNumber === workProduct.pull_request_number &&
+      receipt.approvedHeadSha === workProduct.head_sha &&
+      receipt.mergeCommitSha === workProduct.merge_commit_sha &&
+      typeof receipt.defaultHeadSha === "string" && shaPattern.test(receipt.defaultHeadSha) &&
+      JSON.stringify(receipt.files) === workProduct.planning_manifest_json;
+  } catch {
+    return false;
+  }
 };
 
 export class D1SystemActionStore implements SystemActionStore {
@@ -478,6 +504,26 @@ export class SystemActionController {
       return this.failed();
     }
     try {
+      if (await savedPlanningVerificationMatches(workProduct)) {
+        await dependencies.planningStore.recordVerification({
+          runId: run.run_id,
+          operationId,
+          mergeCommitSha: workProduct.merge_commit_sha,
+          verificationManifestJson: workProduct.verification_manifest_json!,
+          verificationManifestDigest: workProduct.verification_manifest_digest!,
+          now: this.now().toISOString(),
+        });
+        const finished = await this.finishPlanningOperation({
+          operationId,
+          expected: operation.state,
+          state: "reconciled",
+          providerResourceId: workProduct.merge_commit_sha,
+          safeErrorCategory: null,
+          now: this.now().toISOString(),
+        });
+        if (!finished) throw new Error("planning verification receipt reconciliation failed");
+        return this.completed();
+      }
       if (await sha256Hex(workProduct.planning_manifest_json) !== workProduct.planning_manifest_digest) {
         throw new Error("planning manifest digest mismatch");
       }
@@ -655,6 +701,22 @@ export class SystemActionController {
       });
       return this.completed();
     } catch (error) {
+      if (error instanceof Error && error.message === "GitHub review reply manifest is incomplete") {
+        const finished = await this.finishPlanningOperation({
+          operationId,
+          expected: expectedOperationState,
+          state: "failed",
+          providerResourceId: workProduct.pull_request_database_id,
+          safeErrorCategory: "design_review_feedback_changed",
+          now: this.now().toISOString(),
+        });
+        if (!finished) throw new Error("design review feedback change receipt compare-and-set failed");
+        return {
+          kind: "system_action",
+          outcome: "review_feedback_changed",
+          providerReceiptsComplete: false,
+        };
+      }
       const ambiguous = providerConfirmed ||
         (error instanceof Error && /ambiguous|provider request failed/i.test(error.message));
       if (operation.state === "pending") {
