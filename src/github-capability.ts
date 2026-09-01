@@ -890,6 +890,7 @@ export class GitHubCapabilityAdapter {
     }
     branch = await this.ref(token, input.repository, input.branch);
     if (branch === null) throw new Error("GitHub design branch is missing");
+    await this.assertDesignBaseCurrent(token, input.repository, input.baseCommit, input.baseBranch);
     await this.assertDesignOnlyBranch(token, input.repository, input.baseCommit, branch, path, false);
     const current = await this.readContent(token, input.repository, input.branch, path, true);
     if (current?.content !== input.content) {
@@ -1019,6 +1020,7 @@ export class GitHubCapabilityAdapter {
       }
       throw error;
     }
+    await this.assertDesignBaseCurrent(token, input.repository, input.baseCommit, input.baseBranch);
     const finalHeadSha = await this.ref(token, input.repository, input.branch);
     const finalRaw = await this.json(
       token,
@@ -1330,6 +1332,46 @@ export class GitHubCapabilityAdapter {
     if (requireDesign && (paths.length !== 1 || paths[0] !== designPath)) {
       throw new Error("GitHub design branch does not contain the required design change");
     }
+    if (requireDesign) {
+      const tree = await this.json(
+        token,
+        `/repos/${repository}/git/trees/${encodeURIComponent(headCommit)}?recursive=1`,
+      ) as {
+        truncated?: unknown;
+        tree?: Array<{ path?: unknown; type?: unknown; mode?: unknown }>;
+      };
+      if (tree.truncated === true || !Array.isArray(tree.tree) || tree.tree.length > 100_000) {
+        throw new Error("GitHub design branch tree is invalid or incomplete");
+      }
+      const entries = tree.tree.filter((entry) => entry.path === designPath);
+      if (
+        entries.length !== 1 || entries[0]!.type !== "blob" ||
+        !["100644", "100755"].includes(String(entries[0]!.mode))
+      ) throw new Error("GitHub design path is not a regular blob");
+    }
+  }
+
+  private async assertDesignBaseCurrent(
+    token: string,
+    repository: string,
+    baseCommit: string,
+    baseBranch: string,
+  ): Promise<void> {
+    const currentBase = await this.ref(token, repository, baseBranch);
+    if (currentBase === null) throw new Error("GitHub design base branch is missing");
+    if (currentBase === baseCommit) return;
+    const comparison = await this.json(
+      token,
+      `/repos/${repository}/compare/${encodeURIComponent(baseCommit)}...${encodeURIComponent(currentBase)}`,
+    ) as {
+      status?: unknown;
+      base_commit?: { sha?: unknown };
+      merge_base_commit?: { sha?: unknown };
+    };
+    if (
+      comparison.status !== "ahead" || comparison.base_commit?.sha !== baseCommit ||
+      comparison.merge_base_commit?.sha !== baseCommit
+    ) throw new Error("GitHub design base commit is not on the current base branch");
   }
 
   private async ref(

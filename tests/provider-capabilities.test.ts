@@ -348,9 +348,10 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
   });
 });
 
-test("GitHub design publication rejects an existing branch with out-of-scope changes", async () => {
+test("GitHub design publication rejects out-of-scope changes, renames, and a rewritten base", async () => {
   const baseCommit = "a".repeat(40);
   const headCommit = "b".repeat(40);
+  let liveBaseHead = baseCommit;
   let writes = 0;
   let comparedFiles: Array<{ filename: string; status: string; previous_filename?: string }> = [
     { filename: "openspec/changes/sac-200/design.md", status: "modified" },
@@ -363,6 +364,16 @@ test("GitHub design publication rejects an existing branch with out-of-scope cha
       const path = new URL(String(input)).pathname;
       if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-200")) {
         return Response.json({ object: { sha: headCommit } });
+      }
+      if (path.includes("/git/ref/heads/main")) {
+        return Response.json({ object: { sha: liveBaseHead } });
+      }
+      if (liveBaseHead !== baseCommit && path.includes(`/compare/${baseCommit}...${liveBaseHead}`)) {
+        return Response.json({
+          status: "diverged",
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: "e".repeat(40) },
+        });
       }
       if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
         return Response.json({
@@ -403,6 +414,19 @@ test("GitHub design publication rejects an existing branch with out-of-scope cha
     content: "## Design\n",
     reviewReplies: [],
   }, "operation-design-rename"), /design branch contains out-of-scope changes/);
+  comparedFiles = [{ filename: "openspec/changes/sac-200/design.md", status: "modified" }];
+  liveBaseHead = "d".repeat(40);
+  await assert.rejects(adapter.publishDesign({
+    repository: "acme/sample",
+    branch: "deos/design/sac-200",
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-200",
+    title: "SAC-200: OpenSpec design",
+    body: "Design only",
+    content: "## Design\n",
+    reviewReplies: [],
+  }, "operation-design-rewritten-base"), /base commit is not on the current base branch/);
   assert.equal(writes, 0);
 });
 
@@ -415,6 +439,7 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
   let title = "Old title";
   let body = "Old body";
   let patchCalls = 0;
+  let designMode = "100644";
   const pull = () => ({
     id: 7001,
     number: 7,
@@ -438,6 +463,9 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
       if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-201")) {
         return Response.json({ object: { sha: headCommit } });
       }
+      if (path.includes("/git/ref/heads/main")) {
+        return Response.json({ object: { sha: baseCommit } });
+      }
       if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
         return Response.json({
           status: "ahead",
@@ -448,6 +476,11 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
       }
       if (path.includes(`/contents/${designPath}`)) {
         return Response.json({ sha: "design-sha", content: encode(designContent), encoding: "base64" });
+      }
+      if (path.includes(`/git/trees/${headCommit}`)) {
+        return Response.json({
+          tree: [{ path: designPath, type: "blob", mode: designMode }],
+        });
       }
       if (path.endsWith("/pulls/7") && method === "PATCH") {
         const payload = JSON.parse(String(init?.body)) as { title: string; body: string };
@@ -480,6 +513,20 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
   assert.equal(patchCalls, 1);
   assert.equal(title, "SAC-201: OpenSpec design");
   assert.equal(body, "Reviewed design");
+  designMode = "120000";
+  await assert.rejects(adapter.publishDesign({
+    repository: "acme/sample",
+    branch,
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-201",
+    title: "SAC-201: OpenSpec design",
+    body: "Reviewed design",
+    content: designContent,
+    reviewReplies: [],
+    expectedPullRequestDatabaseId: "7001",
+    expectedPullRequestNumber: 7,
+  }, "operation-symlink"), /design path is not a regular blob/);
 });
 
 test("GitHub design publication makes a lost final read reconcilable", async () => {
@@ -515,6 +562,9 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
       if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-201-final-read")) {
         return Response.json({ object: { sha: liveHeadSha } });
       }
+      if (path.includes("/git/ref/heads/main")) {
+        return Response.json({ object: { sha: baseCommit } });
+      }
       if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
         return Response.json({
           status: "ahead",
@@ -525,6 +575,11 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
       }
       if (path.includes(`/contents/${designPath}`)) {
         return Response.json({ sha: "design-sha", content: encode(designContent), encoding: "base64" });
+      }
+      if (path.includes(`/git/trees/${headCommit}`)) {
+        return Response.json({
+          tree: [{ path: designPath, type: "blob", mode: "100644" }],
+        });
       }
       if (path.endsWith("/pulls/7") && method === "GET") {
         pullReads += 1;
@@ -610,6 +665,9 @@ test("GitHub design publication discovers its head across bases and rejects a re
       const method = init?.method ?? "GET";
       if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-202")) {
         return Response.json({ object: { sha: headCommit } });
+      }
+      if (path.includes("/git/ref/heads/main")) {
+        return Response.json({ object: { sha: baseCommit } });
       }
       if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
         return Response.json({
