@@ -148,7 +148,20 @@ export const selectReviewFeedback = (
         typeof entry.body === "string" &&
         entry.body.includes("<!-- deos-review-reply:") && entry.body.includes(`:${rootId} -->`))
       .map((entry) => Number(entry.id)));
-    return lastAcknowledgmentId < lastHumanId;
+    const lastHumanUpdatedAt = Math.max(0, ...thread
+      .filter((entry) => entry.authorType === "User" && typeof entry.updatedAt === "string")
+      .map((entry) => Date.parse(String(entry.updatedAt)))
+      .filter(Number.isFinite));
+    const lastAcknowledgmentUpdatedAt = Math.max(0, ...thread
+      .filter((entry) => entry.authorType === "Bot" && entry.trustedAcknowledgmentAuthor === true &&
+        typeof entry.body === "string" &&
+        entry.body.includes("<!-- deos-review-reply:") && entry.body.includes(`:${rootId} -->`) &&
+        typeof entry.updatedAt === "string")
+      .map((entry) => Date.parse(String(entry.updatedAt)))
+      .filter(Number.isFinite));
+    return lastAcknowledgmentId < lastHumanId ||
+      (lastHumanUpdatedAt > 0 && lastAcknowledgmentUpdatedAt > 0 &&
+        lastAcknowledgmentUpdatedAt < lastHumanUpdatedAt);
   }).map((entry) => Number(entry.id)));
   const required = entries.filter((entry) =>
     outstandingRootIds.has(Number(entry.id)) || outstandingRootIds.has(Number(entry.replyToId))

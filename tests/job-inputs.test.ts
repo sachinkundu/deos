@@ -56,6 +56,20 @@ test("bounded design feedback retains every outstanding human review thread", ()
   assert.equal(selectedThreads.length, 52);
   assert.deepEqual(selectedThreads, threads);
 
+  const editedRoot = {
+    kind: "review_comment", id: 300, body: "Edited after the reply.", authorType: "User",
+    replyToId: null, updatedAt: "2026-09-01T10:10:00Z",
+  };
+  const earlierAcknowledgment = {
+    kind: "review_comment", id: 301, body: "Done. <!-- deos-review-reply:operation:300 -->",
+    authorType: "Bot", trustedAcknowledgmentAuthor: true, replyToId: 300,
+    updatedAt: "2026-09-01T10:05:00Z",
+  };
+  assert.deepEqual(selectReviewFeedback([editedRoot, earlierAcknowledgment]), [
+    editedRoot,
+    earlierAcknowledgment,
+  ]);
+
   const serialized = serializeReviewFeedback({
     ...root,
     body: `${"quoted \"feedback\"\n".repeat(500)}final instruction`,

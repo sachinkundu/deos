@@ -716,6 +716,28 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
   assert.equal(replyPosts, 1);
   addFeedbackDuringReply = false;
   reviewComments = reviewComments.filter((comment) => comment.id !== 704);
+  reviewComments[0]!.body = "Please cover the retry path after this edit.";
+  reviewComments[0]!.updated_at = "2026-09-01T10:20:00Z";
+  reviewComments.push({
+    id: 705,
+    in_reply_to_id: 701,
+    body: "Earlier response. <!-- deos-review-reply:earlier-operation:701 -->",
+    user: { type: "Bot", login: "deos[bot]" },
+    updated_at: "2026-09-01T10:15:00Z",
+  });
+  await adapter.publishDesign({
+    ...request,
+    reviewReplies: [{
+      commentId: 701,
+      body: "Covered the edited retry request.",
+      latestHumanCommentId: 701,
+      latestHumanCommentUpdatedAt: "2026-09-01T10:20:00Z",
+    }],
+  }, "operation-edited-acknowledged-thread");
+  assert.equal(replyPosts, 2);
+  reviewComments = reviewComments.filter((comment) => comment.id !== 705);
+  reviewComments[0]!.body = "Please cover the retry path.";
+  reviewComments[0]!.updated_at = "2026-09-01T10:00:00.000Z";
   rewriteHeadDuringReply = true;
   await assert.rejects(
     adapter.publishDesign({

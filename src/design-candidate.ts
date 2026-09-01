@@ -172,7 +172,6 @@ const checkedReplies = (value: readonly DesignReviewReply[]): readonly DesignRev
       !Number.isSafeInteger(reply.latestHumanCommentId) || reply.latestHumanCommentId < reply.commentId ||
       typeof reply.latestHumanCommentUpdatedAt !== "string" ||
       Number.isNaN(Date.parse(reply.latestHumanCommentUpdatedAt)) ||
-      new Date(reply.latestHumanCommentUpdatedAt).toISOString() !== reply.latestHumanCommentUpdatedAt ||
       typeof reply.body !== "string" || reply.body.trim() !== reply.body ||
       reply.body.length < 1 || reply.body.length > 1_000 || reply.body.includes("<!--")
     ) throw new DesignCandidateRejectedError("design review reply is invalid");

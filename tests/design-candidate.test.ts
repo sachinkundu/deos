@@ -54,7 +54,7 @@ test("design candidate binds one design path, base, sections, replies, and diges
     commentId: 42,
     body: "Added the missing failure path.",
     latestHumanCommentId: 45,
-    latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
+    latestHumanCommentUpdatedAt: "2026-09-01T10:00:00Z",
   };
   const first = await build({ reviewReplies: [reply] });
   const replay = await build({ reviewReplies: [reply] });

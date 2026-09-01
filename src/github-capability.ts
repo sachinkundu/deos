@@ -1566,7 +1566,17 @@ export class GitHubCapabilityAdapter {
       const lastAcknowledgmentId = Math.max(0, ...thread
         .filter((comment) => isAcknowledgment(comment, rootId))
         .map((comment) => comment.id));
-      return lastAcknowledgmentId < lastHumanId;
+      const lastHumanUpdatedAt = Math.max(0, ...thread
+        .filter((comment) => comment.userType === "User" && comment.updatedAt !== null)
+        .map((comment) => Date.parse(comment.updatedAt!))
+        .filter(Number.isFinite));
+      const lastAcknowledgmentUpdatedAt = Math.max(0, ...thread
+        .filter((comment) => isAcknowledgment(comment, rootId) && comment.updatedAt !== null)
+        .map((comment) => Date.parse(comment.updatedAt!))
+        .filter(Number.isFinite));
+      return lastAcknowledgmentId < lastHumanId ||
+        (lastHumanUpdatedAt > 0 && lastAcknowledgmentUpdatedAt > 0 &&
+          lastAcknowledgmentUpdatedAt < lastHumanUpdatedAt);
     });
     if (outstanding.length > 50) throw new Error("GitHub outstanding review threads exceed the trusted limit");
     if (outstanding.some((commentId) => !requested.has(commentId))) {
