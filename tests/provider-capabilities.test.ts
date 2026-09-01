@@ -728,6 +728,58 @@ test("GitHub design merge reconciles lost mutation and final-read responses", as
   assert.equal(mergeCalls, 1);
 });
 
+test("GitHub design merge distinguishes a rejection response from a server failure", async () => {
+  let mergeCalls = 0;
+  let mergeStatus = 409;
+  const pull = {
+    id: 9001,
+    number: 54,
+    html_url: "https://github.com/sachinkundu/deos/pull/54",
+    state: "open",
+    draft: false,
+    merged: false,
+    merge_commit_sha: null,
+    head: { ref: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa", sha: "head-sha" },
+    base: { ref: "main" },
+  };
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    {
+      fetch: async (input, init) => {
+        const path = new URL(String(input)).pathname;
+        if (path.endsWith("/pulls/54") && (init?.method ?? "GET") === "GET") {
+          return Response.json(pull);
+        }
+        if (path.endsWith("/pulls/54/merge") && init?.method === "PUT") {
+          mergeCalls += 1;
+          return Response.json({ message: "Merge failed" }, { status: mergeStatus });
+        }
+        return new Response("unexpected", { status: 500 });
+      },
+    },
+  );
+
+  await assert.rejects(adapter.mergeDesign({
+    repository: "sachinkundu/deos",
+    pullRequestNumber: 54,
+    pullRequestDatabaseId: "9001",
+    baseBranch: "main",
+    headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
+    expectedHeadSha: "head-sha",
+  }), /merge was rejected/);
+  mergeStatus = 500;
+  await assert.rejects(adapter.mergeDesign({
+    repository: "sachinkundu/deos",
+    pullRequestNumber: 54,
+    pullRequestDatabaseId: "9001",
+    baseBranch: "main",
+    headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
+    expectedHeadSha: "head-sha",
+  }), /merge response is ambiguous/);
+  assert.equal(mergeCalls, 2);
+});
+
 test("GitHub trace review check is exact-head, stable, and read back", async () => {
   const calls: Array<{ method: string; path: string }> = [];
   let created = false;

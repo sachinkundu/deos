@@ -537,6 +537,16 @@ interface GitHubCapabilityDependencies {
   fetch: typeof fetch;
 }
 
+class GitHubProviderHttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super("GitHub provider request failed");
+    this.name = "GitHubProviderHttpError";
+    this.status = status;
+  }
+}
+
 export class GitHubCapabilityAdapter {
   private readonly apiUrl: string;
   private readonly tokens: GitHubTokenProvider;
@@ -1158,12 +1168,14 @@ export class GitHubCapabilityAdapter {
     }
     if (before.state !== "open") throw new Error("GitHub planning pull request is closed without merge");
     let response: { merged?: boolean; sha?: string } | null = null;
+    let rejected = false;
     try {
       response = await this.json(token, `/repos/${input.repository}/pulls/${input.pullRequestNumber}/merge`, {
         method: "PUT",
         body: { sha: input.expectedHeadSha },
       }) as { merged?: boolean; sha?: string };
-    } catch {
+    } catch (error) {
+      rejected = error instanceof GitHubProviderHttpError && [405, 409, 422].includes(error.status);
       // Read-back below distinguishes a committed merge from a rejected request.
     }
     const after = this.parsePull(await this.json(
@@ -1172,7 +1184,7 @@ export class GitHubCapabilityAdapter {
     ));
     this.assertPlanningPullIdentity(after, input);
     if (!after.merged || after.mergeCommitSha === null) {
-      throw new Error(response?.merged === false
+      throw new Error(response?.merged === false || rejected
         ? "GitHub planning merge was rejected"
         : "GitHub planning merge response is ambiguous");
     }
@@ -1591,7 +1603,7 @@ export class GitHubCapabilityAdapter {
       throw new Error("GitHub provider request failed");
     }
     if (allowNotFound && response.status === 404) return null;
-    if (!response.ok) throw new Error("GitHub provider request failed");
+    if (!response.ok) throw new GitHubProviderHttpError(response.status);
     try {
       return await response.json();
     } catch {

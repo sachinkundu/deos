@@ -122,6 +122,7 @@ test("design publication reuses one PR and merge requires its approved gate head
   };
   let publishCalls = 0;
   let mergeCalls = 0;
+  let mergeError: Error | null = null;
   const github = {
     publishDesign: async () => {
       publishCalls += 1;
@@ -138,6 +139,7 @@ test("design publication reuses one PR and merge requires its approved gate head
     mergeDesign: async (input: { expectedHeadSha: string }) => {
       assert.equal(input.expectedHeadSha, headSha);
       mergeCalls += 1;
+      if (mergeError !== null) throw mergeError;
       return {
         pullRequestDatabaseId: "PR_node",
         pullRequestNumber: 21,
@@ -249,6 +251,20 @@ test("design publication reuses one PR and merge requires its approved gate head
   assert.equal(mergeOperation()?.state, "reconciled");
   assert.equal(work.merge_commit_sha, mergeSha);
   assert.equal(mergeCalls, 2);
+
+  work.merge_operation_id = null;
+  work.merge_commit_sha = null;
+  mergeError = new Error("GitHub planning merge was rejected");
+  run.current_visit_sequence = 42;
+  assert.equal(
+    (await controller.execute(run, "merge_design_pr", "github.merge_design_pull_request")).outcome,
+    "failed",
+  );
+  const rejectedMergeOperation = [...operations.records.values()]
+    .filter((record) => record.action === "github.merge_design_pull_request")
+    .at(-1);
+  assert.equal(rejectedMergeOperation?.state, "failed");
+  assert.equal(rejectedMergeOperation?.safe_error_category, "design_merge_rejected");
 });
 
 test("design publication classifies added or deleted feedback after materialization as recoverable", async () => {
