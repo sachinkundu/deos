@@ -546,6 +546,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
     in_reply_to_id: number | null;
     body: string;
     user: { type: string; login: string };
+    updated_at: string;
   }> = [];
   const pull = {
     id: 7001,
@@ -608,6 +609,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
             in_reply_to_id: 701,
             body: "Please include the late recovery case.",
             user: { type: "User", login: "reviewer" },
+            updated_at: "2026-09-01T10:15:00.000Z",
           });
         }
         if (rewriteHeadDuringReply) liveHeadSha = "c".repeat(40);
@@ -644,6 +646,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
     in_reply_to_id: null,
     body: "Please cover the retry path.",
     user: { type: "User", login: "reviewer" },
+    updated_at: "2026-09-01T10:00:00.000Z",
   }];
   const {
     expectedPullRequestDatabaseId: _databaseId,
@@ -661,6 +664,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
     in_reply_to_id: 701,
     body: "Please also cover timeout recovery.",
     user: { type: "User", login: "reviewer" },
+    updated_at: "2026-09-01T10:05:00.000Z",
   });
   await assert.rejects(
     adapter.publishDesign({
@@ -669,6 +673,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
         commentId: 701,
         body: "Covered the retry path.",
         latestHumanCommentId: 701,
+        latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
       }],
     }, "operation-stale-thread-snapshot"),
     (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
@@ -676,6 +681,24 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
   );
   assert.equal(replyPosts, 0);
   reviewComments = reviewComments.filter((comment) => comment.id !== 703);
+  reviewComments[0]!.body = "Please cover retry and cancellation paths.";
+  reviewComments[0]!.updated_at = "2026-09-01T10:10:00.000Z";
+  await assert.rejects(
+    adapter.publishDesign({
+      ...request,
+      reviewReplies: [{
+        commentId: 701,
+        body: "Covered the retry path.",
+        latestHumanCommentId: 701,
+        latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
+      }],
+    }, "operation-edited-thread-snapshot"),
+    (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
+      error.message === "GitHub review reply thread snapshot changed",
+  );
+  assert.equal(replyPosts, 0);
+  reviewComments[0]!.body = "Please cover the retry path.";
+  reviewComments[0]!.updated_at = "2026-09-01T10:00:00.000Z";
   addFeedbackDuringReply = true;
   await assert.rejects(
     adapter.publishDesign({
@@ -684,6 +707,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
         commentId: 701,
         body: "Covered the retry path.",
         latestHumanCommentId: 701,
+        latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
       }],
     }, "operation-feedback-during-reply"),
     (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
@@ -700,6 +724,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
         commentId: 701,
         body: "Covered the retry path.",
         latestHumanCommentId: 701,
+        latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
       }],
     }, "operation-reply-race"),
     /final read-back mismatch/,
@@ -855,6 +880,8 @@ test("GitHub repository guidance rejects content that is not returned as base64"
 });
 
 test("GitHub design merge reconciles lost mutation and final-read responses", async () => {
+  const baseCommit = "a".repeat(40);
+  const designPath = "openspec/changes/sac-201/design.md";
   let merged = false;
   let mergeCalls = 0;
   let loseFinalRead = true;
@@ -875,6 +902,20 @@ test("GitHub design merge reconciles lost mutation and final-read responses", as
     {
       fetch: async (input, init) => {
         const path = new URL(String(input)).pathname;
+        if (path.includes("/git/ref/heads/main")) {
+          return Response.json({ object: { sha: baseCommit } });
+        }
+        if (path.includes(`/compare/${baseCommit}...head-sha`)) {
+          return Response.json({
+            status: "ahead",
+            base_commit: { sha: baseCommit },
+            merge_base_commit: { sha: baseCommit },
+            files: [{ filename: designPath, status: "modified" }],
+          });
+        }
+        if (path.includes("/git/trees/head-sha")) {
+          return Response.json({ tree: [{ path: designPath, type: "blob", mode: "100644" }] });
+        }
         if (path.endsWith("/pulls/54") && (init?.method ?? "GET") === "GET") {
           if (merged && loseFinalRead) {
             loseFinalRead = false;
@@ -900,6 +941,8 @@ test("GitHub design merge reconciles lost mutation and final-read responses", as
     baseBranch: "main" as const,
     headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
     expectedHeadSha: "head-sha",
+    baseCommit,
+    change: "sac-201",
   };
   await assert.rejects(adapter.mergeDesign(request), /provider request failed/);
   const receipt = await adapter.mergeDesign(request);
@@ -909,6 +952,9 @@ test("GitHub design merge reconciles lost mutation and final-read responses", as
 });
 
 test("GitHub design merge distinguishes a rejection response from a server failure", async () => {
+  const baseCommit = "a".repeat(40);
+  const designPath = "openspec/changes/sac-201/design.md";
+  let baseHead = baseCommit;
   let mergeCalls = 0;
   let mergeStatus = 409;
   const pull = {
@@ -928,6 +974,27 @@ test("GitHub design merge distinguishes a rejection response from a server failu
     {
       fetch: async (input, init) => {
         const path = new URL(String(input)).pathname;
+        if (path.includes("/git/ref/heads/main")) {
+          return Response.json({ object: { sha: baseHead } });
+        }
+        if (path.includes(`/compare/${baseCommit}...head-sha`)) {
+          return Response.json({
+            status: "ahead",
+            base_commit: { sha: baseCommit },
+            merge_base_commit: { sha: baseCommit },
+            files: [{ filename: designPath, status: "modified" }],
+          });
+        }
+        if (path.includes(`/compare/${baseCommit}...${baseHead}`)) {
+          return Response.json({
+            status: "diverged",
+            base_commit: { sha: baseCommit },
+            merge_base_commit: { sha: "f".repeat(40) },
+          });
+        }
+        if (path.includes("/git/trees/head-sha")) {
+          return Response.json({ tree: [{ path: designPath, type: "blob", mode: "100644" }] });
+        }
         if (path.endsWith("/pulls/54") && (init?.method ?? "GET") === "GET") {
           return Response.json(pull);
         }
@@ -947,6 +1014,8 @@ test("GitHub design merge distinguishes a rejection response from a server failu
     baseBranch: "main",
     headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
     expectedHeadSha: "head-sha",
+    baseCommit,
+    change: "sac-201",
   }), /merge was rejected/);
   mergeStatus = 500;
   await assert.rejects(adapter.mergeDesign({
@@ -956,7 +1025,21 @@ test("GitHub design merge distinguishes a rejection response from a server failu
     baseBranch: "main",
     headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
     expectedHeadSha: "head-sha",
+    baseCommit,
+    change: "sac-201",
   }), /merge response is ambiguous/);
+  assert.equal(mergeCalls, 2);
+  baseHead = "c".repeat(40);
+  await assert.rejects(adapter.mergeDesign({
+    repository: "sachinkundu/deos",
+    pullRequestNumber: 54,
+    pullRequestDatabaseId: "9001",
+    baseBranch: "main",
+    headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
+    expectedHeadSha: "head-sha",
+    baseCommit,
+    change: "sac-201",
+  }), /base commit is not on the current base branch/);
   assert.equal(mergeCalls, 2);
 });
 

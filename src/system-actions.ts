@@ -188,7 +188,12 @@ interface PlanningSystemActionDependencies {
     path: string;
     content: string;
     designDigest: string;
-    reviewReplies: readonly { commentId: number; body: string; latestHumanCommentId: number }[];
+    reviewReplies: readonly {
+      commentId: number;
+      body: string;
+      latestHumanCommentId: number;
+      latestHumanCommentUpdatedAt: string;
+    }[];
   } | null>;
   gateVisit?: (runId: string, gateKind: "plan" | "design") => Promise<HumanGateVisitRecord | null>;
   planningMergeRepairNotice?: (
@@ -849,6 +854,8 @@ export class SystemActionController {
         baseBranch: "main",
         headBranch: gate.head_branch,
         expectedHeadSha: gate.approved_head_sha,
+        baseCommit: workProduct.base_commit,
+        change: workProduct.change_id,
       });
       providerConfirmed = true;
       await dependencies.designStore.recordMerge({

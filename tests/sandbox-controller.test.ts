@@ -1043,6 +1043,7 @@ test("design completion binds replies to the latest materialized human thread co
           replyToId: null,
           authorType: "User",
           body: "Cover retry behavior.",
+          updatedAt: "2026-09-01T09:00:00.000Z",
         }) },
         { data: JSON.stringify({
           kind: "review_comment",
@@ -1057,6 +1058,7 @@ test("design completion binds replies to the latest materialized human thread co
           replyToId: 701,
           authorType: "User",
           body: "Also cover timeout recovery.",
+          updatedAt: "2026-09-01T10:00:00.000Z",
         }) },
       ],
     },
@@ -1098,6 +1100,7 @@ test("design completion binds replies to the latest materialized human thread co
       commentId: 701,
       body: "Covered retry and timeout recovery.",
       latestHumanCommentId: 703,
+      latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
     }],
   );
 });

@@ -56,7 +56,12 @@ export interface GitHubDesignWorkProductRequest {
   body: string;
   change: string;
   content: string;
-  reviewReplies: readonly { commentId: number; body: string; latestHumanCommentId: number }[];
+  reviewReplies: readonly {
+    commentId: number;
+    body: string;
+    latestHumanCommentId: number;
+    latestHumanCommentUpdatedAt: string;
+  }[];
   expectedPullRequestDatabaseId?: string;
   expectedPullRequestNumber?: number;
 }
@@ -67,6 +72,7 @@ interface GitHubReviewComment {
   body: string;
   userType: string;
   userLogin: string;
+  updatedAt: string | null;
 }
 
 export interface GitHubPlanningMergeReceipt {
@@ -1059,8 +1065,64 @@ export class GitHubCapabilityAdapter {
     };
   }
 
-  mergeDesign(input: Parameters<GitHubCapabilityAdapter["mergePlanning"]>[0]): Promise<GitHubPlanningMergeReceipt> {
-    return this.mergePlanning(input);
+  async mergeDesign(input: Parameters<GitHubCapabilityAdapter["mergePlanning"]>[0] & {
+    baseCommit: string;
+    change: string;
+  }): Promise<GitHubPlanningMergeReceipt> {
+    const token = await this.tokens.token();
+    const before = this.parsePull(await this.json(
+      token,
+      `/repos/${input.repository}/pulls/${input.pullRequestNumber}`,
+    ));
+    this.assertPlanningPullIdentity(before, input);
+    if (before.merged) {
+      if (before.mergeCommitSha === null) throw new Error("GitHub merged pull request has no merge commit");
+      return {
+        pullRequestDatabaseId: before.databaseId,
+        pullRequestNumber: before.number,
+        mergeCommitSha: before.mergeCommitSha,
+        reconciled: true,
+      };
+    }
+    if (before.state !== "open") throw new Error("GitHub design pull request is closed without merge");
+    await this.assertDesignOnlyBranch(
+      token,
+      input.repository,
+      input.baseCommit,
+      input.expectedHeadSha,
+      `openspec/changes/${input.change}/design.md`,
+      true,
+    );
+    await this.assertDesignBaseCurrent(token, input.repository, input.baseCommit, input.baseBranch);
+    let response: { merged?: boolean; sha?: string } | null = null;
+    let rejected = false;
+    try {
+      response = await this.json(token, `/repos/${input.repository}/pulls/${input.pullRequestNumber}/merge`, {
+        method: "PUT",
+        body: { sha: input.expectedHeadSha },
+      }) as { merged?: boolean; sha?: string };
+    } catch (error) {
+      rejected = error instanceof GitHubProviderHttpError && [405, 409, 422].includes(error.status);
+    }
+    const after = this.parsePull(await this.json(
+      token,
+      `/repos/${input.repository}/pulls/${input.pullRequestNumber}`,
+    ));
+    this.assertPlanningPullIdentity(after, input);
+    if (!after.merged || after.mergeCommitSha === null) {
+      throw new Error(response?.merged === false || rejected
+        ? "GitHub design merge was rejected"
+        : "GitHub design merge response is ambiguous");
+    }
+    if (typeof response?.sha === "string" && response.sha !== after.mergeCommitSha) {
+      throw new Error("GitHub design merge SHA mismatch");
+    }
+    return {
+      pullRequestDatabaseId: after.databaseId,
+      pullRequestNumber: after.number,
+      mergeCommitSha: after.mergeCommitSha,
+      reconciled: response?.merged !== true,
+    };
   }
 
   async upsertTraceReviewCheck(input: {
@@ -1422,6 +1484,7 @@ export class GitHubCapabilityAdapter {
         in_reply_to_id?: unknown;
         body?: unknown;
         user?: { type?: unknown; login?: unknown };
+        updated_at?: unknown;
       };
       if (
         typeof comment.id !== "number" || !Number.isSafeInteger(comment.id) ||
@@ -1436,6 +1499,7 @@ export class GitHubCapabilityAdapter {
         body: comment.body,
         userType: comment.user.type,
         userLogin: comment.user.login,
+        updatedAt: typeof comment.updated_at === "string" ? comment.updated_at : null,
       };
     });
   }
@@ -1463,7 +1527,12 @@ export class GitHubCapabilityAdapter {
     token: string,
     repository: string,
     pullRequestNumber: number,
-    requestedReplies: readonly { commentId: number; body: string; latestHumanCommentId?: number }[],
+    requestedReplies: readonly {
+      commentId: number;
+      body: string;
+      latestHumanCommentId?: number;
+      latestHumanCommentUpdatedAt?: string;
+    }[],
     operationId: string,
   ): Promise<{ ids: readonly number[]; reconciled: boolean; humanSnapshot: string }> {
     let comments = await this.reviewComments(token, repository, pullRequestNumber);
@@ -1483,12 +1552,17 @@ export class GitHubCapabilityAdapter {
       comment.userLogin.toLowerCase() === actorLogin.toLowerCase() &&
       comment.body.includes("<!-- deos-review-reply:") && comment.body.includes(`:${rootId} -->`);
     const latestHumanCommentIds = new Map<number, number>();
+    const latestHumanCommentUpdatedAts = new Map<number, string | null>();
     const outstanding = [...roots.keys()].filter((rootId) => {
       const thread = comments.filter((comment) => comment.id === rootId || comment.inReplyToId === rootId);
       const lastHumanId = Math.max(...thread
         .filter((comment) => comment.userType === "User")
         .map((comment) => comment.id));
       latestHumanCommentIds.set(rootId, lastHumanId);
+      latestHumanCommentUpdatedAts.set(
+        rootId,
+        thread.find((comment) => comment.id === lastHumanId)?.updatedAt ?? null,
+      );
       const lastAcknowledgmentId = Math.max(0, ...thread
         .filter((comment) => isAcknowledgment(comment, rootId))
         .map((comment) => comment.id));
@@ -1500,7 +1574,8 @@ export class GitHubCapabilityAdapter {
     }
     if (requestedReplies.some((reply) =>
       reply.latestHumanCommentId !== undefined &&
-      latestHumanCommentIds.get(reply.commentId) !== reply.latestHumanCommentId
+      (latestHumanCommentIds.get(reply.commentId) !== reply.latestHumanCommentId ||
+        latestHumanCommentUpdatedAts.get(reply.commentId) !== reply.latestHumanCommentUpdatedAt)
     )) {
       throw new Error("GitHub review reply thread snapshot changed");
     }
@@ -1549,6 +1624,7 @@ export class GitHubCapabilityAdapter {
         inReplyToId: comment.inReplyToId,
         body: comment.body,
         userLogin: comment.userLogin,
+        updatedAt: comment.updatedAt,
       }))
       .sort((left, right) => left.id - right.id));
   }

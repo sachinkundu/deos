@@ -13,6 +13,7 @@ export interface DesignReviewReply {
   commentId: number;
   body: string;
   latestHumanCommentId: number;
+  latestHumanCommentUpdatedAt: string;
 }
 
 export interface DesignReviewReplyDraft {
@@ -25,6 +26,7 @@ interface DesignReviewFeedbackSnapshotEntry {
   id?: unknown;
   authorType?: unknown;
   replyToId?: unknown;
+  updatedAt?: unknown;
 }
 
 export const bindDesignReviewReplies = (
@@ -44,13 +46,21 @@ export const bindDesignReviewReplies = (
     if (root === undefined) {
       throw new DesignCandidateRejectedError("trusted design review replies are invalid");
     }
-    const latestHumanCommentId = Math.max(...comments
+    const humanComments = comments
       .filter((entry) =>
         entry.authorType === "User" &&
         (entry.id === reply.commentId || entry.replyToId === reply.commentId)
-      )
-      .map((entry) => Number(entry.id)));
-    return Object.freeze({ ...reply, latestHumanCommentId });
+      );
+    const latestHumanCommentId = Math.max(...humanComments.map((entry) => Number(entry.id)));
+    const latestHumanComment = humanComments.find((entry) => entry.id === latestHumanCommentId);
+    if (typeof latestHumanComment?.updatedAt !== "string") {
+      throw new DesignCandidateRejectedError("trusted design review replies are invalid");
+    }
+    return Object.freeze({
+      ...reply,
+      latestHumanCommentId,
+      latestHumanCommentUpdatedAt: latestHumanComment.updatedAt,
+    });
   }));
 };
 
@@ -160,6 +170,9 @@ const checkedReplies = (value: readonly DesignReviewReply[]): readonly DesignRev
     if (
       !Number.isSafeInteger(reply.commentId) || reply.commentId <= 0 || seen.has(reply.commentId) ||
       !Number.isSafeInteger(reply.latestHumanCommentId) || reply.latestHumanCommentId < reply.commentId ||
+      typeof reply.latestHumanCommentUpdatedAt !== "string" ||
+      Number.isNaN(Date.parse(reply.latestHumanCommentUpdatedAt)) ||
+      new Date(reply.latestHumanCommentUpdatedAt).toISOString() !== reply.latestHumanCommentUpdatedAt ||
       typeof reply.body !== "string" || reply.body.trim() !== reply.body ||
       reply.body.length < 1 || reply.body.length > 1_000 || reply.body.includes("<!--")
     ) throw new DesignCandidateRejectedError("design review reply is invalid");
@@ -168,6 +181,7 @@ const checkedReplies = (value: readonly DesignReviewReply[]): readonly DesignRev
       commentId: reply.commentId,
       body: reply.body,
       latestHumanCommentId: reply.latestHumanCommentId,
+      latestHumanCommentUpdatedAt: reply.latestHumanCommentUpdatedAt,
     });
   }));
 };

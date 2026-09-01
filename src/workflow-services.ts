@@ -865,7 +865,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               typeof reply === "object" && reply !== null &&
               Number.isSafeInteger((reply as { commentId?: unknown }).commentId) &&
               typeof (reply as { body?: unknown }).body === "string" &&
-              Number.isSafeInteger((reply as { latestHumanCommentId?: unknown }).latestHumanCommentId)
+              Number.isSafeInteger((reply as { latestHumanCommentId?: unknown }).latestHumanCommentId) &&
+              typeof (reply as { latestHumanCommentUpdatedAt?: unknown }).latestHumanCommentUpdatedAt === "string"
             )
           ) throw new Error("trusted design candidate identity mismatch");
           return {
@@ -880,6 +881,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               commentId: number;
               body: string;
               latestHumanCommentId: number;
+              latestHumanCommentUpdatedAt: string;
             }>,
           };
         },
