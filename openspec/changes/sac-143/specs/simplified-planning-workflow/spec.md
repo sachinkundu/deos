@@ -66,33 +66,33 @@ For each changed root review thread, the trusted post SHALL add one short reply.
 
 ### Requirement: End only after the design merge is checked
 
-The current default flow SHALL end with success only after a trusted step reads back the approved design merge. It SHALL prove that the saved design pull request was merged to the default branch and that the approved design is present at the merge commit. The merge and check SHALL be safe to retry. The flow SHALL keep durable GitHub and repo proof.
+The current default flow SHALL end with success only after an allowed person approves the design merge and the trusted GitHub action completes. The action SHALL check the saved pull request and approved head, ask GitHub to merge it, and read the pull request back once. The read shall require a merged result and merge commit. DEOS SHALL check its saved gate visit, pull request, head, and action receipt. It MUST NOT add a later provider check that downloads the design or asks GitHub or Linear to prove their work. The action SHALL be safe to retry.
 
-#### Scenario: Design pull request is merged and checked
+#### Scenario: Approved design merge completes
 
-- **WHEN** GitHub shows the saved design pull request as merged to the default branch and the approved design is present at that merge commit.
-- **THEN** the flow saves the merge and check proof and ends with success.
+- **WHEN** the active design gate has merge approval and the saved pull request and head match that visit.
+- **THEN** the trusted action asks for the merge, reads back a merged result and merge commit once, saves its receipt, and the flow ends with success.
 
-#### Scenario: Design merge reply is not clear
+#### Scenario: Design merge action is tried again
 
-- **WHEN** the design merge call times out or its reply is lost.
-- **THEN** the trusted step reads back the saved design pull request and default branch before a retry and does not merge it twice.
+- **WHEN** the trusted design merge action is retried after a timeout or lost reply.
+- **THEN** it uses the same saved action and pull request and does not ask for a second merge.
 
-#### Scenario: Design pull request cannot be merged with care
+#### Scenario: Saved merge facts do not match
 
-- **WHEN** the saved design pull request is closed with no merge, has the wrong base or head, has a conflict, or fails merge policy.
-- **THEN** the flow saves a safe failure and does not claim success.
+- **WHEN** the active gate visit, saved pull request, approved head, or trusted action receipt is absent or does not match.
+- **THEN** DEOS saves a safe failure and does not claim success.
 
-#### Scenario: Design merge lacks file proof
+#### Scenario: GitHub does not accept the merge
 
-- **WHEN** GitHub shows a design merge but the approved design cannot be found at its default branch commit.
-- **THEN** the flow asks for repair and does not end with success.
+- **WHEN** the trusted action does not get a merged result and merge commit from its one read back.
+- **THEN** the action fails and the flow does not end with success.
 
 ## MODIFIED Requirements
 
 ### Requirement: Merge only after an explicit human decision
 
-The current default flow SHALL treat each `Human Review` visit as one named gate. At the plan gate, the allowed choices SHALL be ask for a plan change, approve the plan merge, or stop the run. At the design gate, they SHALL be ask for a design change, approve the design merge, or stop the run. Only the approved path for the active gate SHALL call its trusted GitHub merge step. An agent result, review note, or provider comment MUST NOT approve a merge.
+The current default flow SHALL treat each `Human Review` visit as one named logical gate. Plan and design review SHALL use one visible human approval stage, but their visits, choices, and saved pull requests SHALL stay distinct. At the plan gate, the allowed choices SHALL be ask for a plan change, approve the plan merge, or stop the run. At the design gate, they SHALL be ask for a design change, approve the design merge, or stop the run. Only the approved path for the active gate SHALL call its trusted GitHub merge step. An agent result, review note, or provider comment MUST NOT approve a merge.
 
 #### Scenario: Merge is authorized
 
