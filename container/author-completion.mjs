@@ -23,6 +23,9 @@ export const safePlanningPath = (change, path) => {
     /^specs\/[a-z0-9]+(?:-[a-z0-9]+)*\/spec\.md$/.test(relative);
 };
 
+export const safeDesignPath = (change, path) =>
+  path === `openspec/changes/${change}/design.md`;
+
 const command = (args, cwd, timeout = 120_000) => new Promise((resolve, reject) => {
   const child = spawn(args[0], args.slice(1), {
     cwd,
@@ -191,6 +194,69 @@ export const authorCorrectionPrompt = (check, round, maximumRepairs) => [
   "Do not start a semantic review. Return completed only when the named plan is valid.",
 ].join("\n");
 
+export const designCorrectionPrompt = (check, round, maximumRepairs) => [
+  "The trusted design completion hook rejected this completion.",
+  `This is in-place correction ${round} of ${maximumRepairs}. Stay in this same session and checkout.`,
+  "Fix only the exact deterministic failures below. Preserve the approved proposal and specs.",
+  ...check.failures.map((failure) => `- ${failure}`),
+  "Do not write tasks or implementation code. Return completed only when design.md is valid.",
+].join("\n");
+
+export const runDesignCompletionCheck = async ({ cwd, change, execute = command }) => {
+  if (!safeChange(change)) throw new Error("design completion change identity is invalid");
+  const expectedPath = `openspec/changes/${change}/design.md`;
+  const failures = [];
+  const status = await execute(
+    ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    cwd,
+    60_000,
+  );
+  if (status.code !== 0 || status.truncated) {
+    throw new Error("design completion could not inspect changed paths");
+  }
+  const changedPaths = changedPathsFromPorcelain(status.stdout);
+  if (changedPaths.length !== 1 || changedPaths[0] !== expectedPath) {
+    failures.push(`Keep exactly one changed path: ${expectedPath}.`);
+  }
+  let content = "";
+  try {
+    const metadata = await lstat(`${cwd}/${expectedPath}`);
+    if (!metadata.isFile() || metadata.isSymbolicLink()) {
+      failures.push(`Replace ${expectedPath} with a regular file.`);
+    } else {
+      content = await readFile(`${cwd}/${expectedPath}`, "utf8");
+    }
+  } catch (error) {
+    if (error?.code === "ENOENT") failures.push(`Create ${expectedPath}.`);
+    else throw error;
+  }
+  const badLine = content.split("\n").findIndex((line) => /[ \t]+$/.test(line));
+  if (badLine >= 0) failures.push(`Remove trailing whitespace from ${expectedPath}:${badLine + 1}.`);
+  if (content.length > 0 && !content.endsWith("\n")) failures.push(`Add a final newline to ${expectedPath}.`);
+  for (const section of ["Component diagram", "Event flow", "Minimal data model", "Failure modes"]) {
+    if (!content.toLowerCase().includes(`## ${section.toLowerCase()}`)) {
+      failures.push(`Add the ${section} section to ${expectedPath}.`);
+    }
+  }
+  const strict = await execute(["openspec", "validate", change, "--strict"], cwd, 120_000);
+  if (strict.code !== 0 || strict.truncated) {
+    const detail = concise(`${strict.stdout}\n${strict.stderr}`) || "the command returned no details";
+    failures.push(`Fix strict OpenSpec validation: ${detail}.`);
+  }
+  return Object.freeze({
+    ok: failures.length === 0,
+    allowedPaths: changedPaths.length === 1 && changedPaths[0] === expectedPath ? "passed" : "failed",
+    strictOpenSpec: strict.code === 0 && !strict.truncated ? "passed" : "failed",
+    whitespace: failures.some((failure) => /whitespace|final newline/.test(failure)) ? "failed" : "passed",
+    requiredSections: failures.some((failure) => failure.startsWith("Add the ")) ? "failed" : "passed",
+    readability: "not_applicable",
+    changedPaths: Object.freeze(changedPaths),
+    filePaths: Object.freeze(content.length === 0 ? [] : [expectedPath]),
+    readabilityByFile: Object.freeze({}),
+    failures: Object.freeze(failures),
+  });
+};
+
 export const runBoundedAuthorCompletion = async ({
   initialCheck,
   initialResult,
@@ -198,6 +264,7 @@ export const runBoundedAuthorCompletion = async ({
   maximumRepairs,
   resume,
   check,
+  correctionPrompt = authorCorrectionPrompt,
   now = () => new Date().toISOString(),
 }) => {
   let currentCheck = initialCheck;
@@ -206,7 +273,7 @@ export const runBoundedAuthorCompletion = async ({
   for (let repair = 1; !currentCheck.ok && repair <= maximumRepairs; repair += 1) {
     result = await resume({
       sessionId,
-      prompt: authorCorrectionPrompt(currentCheck, repair, maximumRepairs),
+      prompt: correctionPrompt(currentCheck, repair, maximumRepairs),
     });
     if (result.code !== 0 || result.outcome !== "completed") break;
     currentCheck = await check();

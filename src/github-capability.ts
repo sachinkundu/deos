@@ -37,6 +37,20 @@ export interface GitHubPlanningWorkProductReceipt {
   reconciled: boolean;
 }
 
+export interface GitHubDesignWorkProductRequest {
+  repository: string;
+  branch: string;
+  baseBranch: "main";
+  baseCommit: string;
+  title: string;
+  body: string;
+  change: string;
+  content: string;
+  reviewReplies: readonly { commentId: number; body: string }[];
+  expectedPullRequestDatabaseId?: string;
+  expectedPullRequestNumber?: number;
+}
+
 interface GitHubReviewComment {
   id: number;
   inReplyToId: number | null;
@@ -49,6 +63,16 @@ export interface GitHubPlanningMergeReceipt {
   pullRequestNumber: number;
   mergeCommitSha: string;
   reconciled: boolean;
+}
+
+export interface GitHubCommitReachability {
+  defaultHeadSha: string;
+  reachable: boolean;
+}
+
+export interface GitHubGuidanceFile {
+  path: string;
+  content: string;
 }
 
 export interface GitHubPlanningPullRequest {
@@ -802,6 +826,131 @@ export class GitHubCapabilityAdapter {
     };
   }
 
+  async publishDesign(
+    input: GitHubDesignWorkProductRequest,
+    operationId: string,
+  ): Promise<GitHubPlanningWorkProductReceipt> {
+    if (!/^[a-f0-9]{40}$/.test(input.baseCommit)) throw new Error("GitHub design base commit is invalid");
+    const path = `openspec/changes/${input.change}/design.md`;
+    const token = await this.tokens.token();
+    const [owner] = input.repository.split("/");
+    let branch = await this.ref(token, input.repository, input.branch, true);
+    let reconciled = branch !== null;
+    if (branch === null) {
+      try {
+        await this.json(token, `/repos/${input.repository}/git/refs`, {
+          method: "POST",
+          body: { ref: `refs/heads/${input.branch}`, sha: input.baseCommit },
+        });
+      } catch {
+        branch = await this.ref(token, input.repository, input.branch, true);
+        if (branch === null) throw new Error("GitHub design branch creation is ambiguous");
+        reconciled = true;
+      }
+    }
+    const current = await this.readContent(token, input.repository, input.branch, path, true);
+    if (current?.content !== input.content) {
+      await this.writeContent(
+        token,
+        input.repository,
+        input.branch,
+        path,
+        input.content,
+        operationId,
+        current?.sha,
+      );
+    } else {
+      reconciled = true;
+    }
+    const pullsPath = `/repos/${input.repository}/pulls?state=open&base=${encodeURIComponent(input.baseBranch)}&head=${encodeURIComponent(`${owner}:${input.branch}`)}`;
+    let number: number | null = null;
+    if (input.expectedPullRequestDatabaseId !== undefined || input.expectedPullRequestNumber !== undefined) {
+      if (input.expectedPullRequestDatabaseId === undefined || input.expectedPullRequestNumber === undefined) {
+        throw new Error("GitHub recorded design pull-request identity is incomplete");
+      }
+      const recorded = this.parsePull(await this.json(
+        token,
+        `/repos/${input.repository}/pulls/${input.expectedPullRequestNumber}`,
+      ));
+      if (
+        recorded.databaseId !== input.expectedPullRequestDatabaseId || recorded.state !== "open" ||
+        recorded.draft || recorded.merged || recorded.headBranch !== input.branch ||
+        recorded.baseBranch !== input.baseBranch
+      ) throw new Error("GitHub recorded design pull-request identity mismatch");
+      number = recorded.number;
+      reconciled = true;
+    } else {
+      const pulls = await this.json(token, pullsPath) as Array<{ number?: unknown }>;
+      if (!Array.isArray(pulls) || pulls.length > 1) {
+        throw new Error("GitHub design pull-request selection is ambiguous");
+      }
+      if (pulls.length === 1) {
+        if (typeof pulls[0]!.number !== "number") throw new Error("GitHub design pull-request response is invalid");
+        number = pulls[0]!.number;
+        reconciled = true;
+      }
+    }
+    if (number === null) {
+      try {
+        const created = await this.json(token, `/repos/${input.repository}/pulls`, {
+          method: "POST",
+          body: { title: input.title, body: input.body, head: input.branch, base: input.baseBranch, draft: false },
+        }) as { number?: unknown };
+        if (typeof created.number !== "number") throw new Error("GitHub design pull-request response is invalid");
+        number = created.number;
+      } catch {
+        const pulls = await this.json(token, pullsPath) as Array<{ number?: unknown }>;
+        if (!Array.isArray(pulls) || pulls.length !== 1 || typeof pulls[0]!.number !== "number") {
+          throw new Error("GitHub design pull-request creation is ambiguous");
+        }
+        number = pulls[0]!.number;
+        reconciled = true;
+      }
+    }
+    const currentPull = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as {
+      title?: unknown;
+      body?: unknown;
+    };
+    if (currentPull.title !== input.title || currentPull.body !== input.body) {
+      await this.json(token, `/repos/${input.repository}/pulls/${number}`, {
+        method: "PATCH",
+        body: { title: input.title, body: input.body },
+      });
+    }
+    const headSha = await this.ref(token, input.repository, input.branch);
+    if (headSha === null) throw new Error("GitHub design branch read-back is missing");
+    const confirmed = this.parsePull(await this.json(token, `/repos/${input.repository}/pulls/${number}`));
+    const design = await this.readContent(token, input.repository, headSha, path, false);
+    if (
+      confirmed.state !== "open" || confirmed.draft || confirmed.merged ||
+      confirmed.headBranch !== input.branch || confirmed.headSha !== headSha ||
+      confirmed.baseBranch !== input.baseBranch || design?.content !== input.content ||
+      (input.expectedPullRequestDatabaseId !== undefined &&
+        confirmed.databaseId !== input.expectedPullRequestDatabaseId) ||
+      (input.expectedPullRequestNumber !== undefined && confirmed.number !== input.expectedPullRequestNumber)
+    ) throw new Error("GitHub design pull-request read-back mismatch");
+    const replies = await this.replyToReviewThreads(
+      token,
+      input.repository,
+      confirmed.number,
+      input.reviewReplies,
+      operationId,
+    );
+    return {
+      pullRequestDatabaseId: confirmed.databaseId,
+      pullRequestNumber: confirmed.number,
+      pullRequestUrl: confirmed.url,
+      branch: input.branch,
+      headSha,
+      reviewReplyIds: replies.ids,
+      reconciled: reconciled || replies.reconciled,
+    };
+  }
+
+  mergeDesign(input: Parameters<GitHubCapabilityAdapter["mergePlanning"]>[0]): Promise<GitHubPlanningMergeReceipt> {
+    return this.mergePlanning(input);
+  }
+
   async upsertTraceReviewCheck(input: {
     repository: string;
     headSha: string;
@@ -962,6 +1111,70 @@ export class GitHubCapabilityAdapter {
     const file = await this.readContent(token, repository, ref, path, false);
     if (file === null) throw new Error("GitHub planning file is missing");
     return file.content;
+  }
+
+  async readPullRequest(repository: string, pullRequestNumber: number): Promise<GitHubPlanningPullRequest> {
+    const token = await this.tokens.token();
+    return this.parsePull(await this.json(
+      token,
+      `/repos/${repository}/pulls/${pullRequestNumber}`,
+    ));
+  }
+
+  async verifyCommitOnBranch(
+    repository: string,
+    commitSha: string,
+    branch: string,
+  ): Promise<GitHubCommitReachability> {
+    const token = await this.tokens.token();
+    const defaultHeadSha = await this.ref(token, repository, branch);
+    if (defaultHeadSha === null) throw new Error("GitHub default branch is missing");
+    const comparison = await this.json(
+      token,
+      `/repos/${repository}/compare/${encodeURIComponent(commitSha)}...${encodeURIComponent(defaultHeadSha)}`,
+    ) as { status?: unknown; base_commit?: { sha?: unknown }; merge_base_commit?: { sha?: unknown } };
+    if (
+      typeof comparison.status !== "string" ||
+      typeof comparison.base_commit?.sha !== "string" ||
+      typeof comparison.merge_base_commit?.sha !== "string"
+    ) throw new Error("GitHub commit reachability response is invalid");
+    return {
+      defaultHeadSha,
+      reachable: comparison.base_commit.sha === commitSha &&
+        comparison.merge_base_commit.sha === commitSha &&
+        ["ahead", "identical"].includes(comparison.status),
+    };
+  }
+
+  async readRepositoryGuidance(repository: string, ref: string): Promise<readonly GitHubGuidanceFile[]> {
+    const token = await this.tokens.token();
+    const tree = await this.json(
+      token,
+      `/repos/${repository}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
+    ) as { truncated?: unknown; tree?: Array<{ path?: unknown; type?: unknown }> };
+    if (tree.truncated === true || !Array.isArray(tree.tree) || tree.tree.length > 100_000) {
+      throw new Error("GitHub repository guidance tree is invalid or incomplete");
+    }
+    const allowed = (path: string): boolean =>
+      path === "AGENTS.md" || path === "agents.md" || path === "architecture.md" ||
+      /^architecture-[A-Za-z0-9_.-]+\.md$/.test(path) || path === "docs/current-architecture.md";
+    const matches = tree.tree.filter((entry) => typeof entry.path === "string" && allowed(entry.path));
+    if (matches.some((entry) => entry.type !== "blob")) {
+      throw new Error("GitHub repository guidance contains an unsafe file type");
+    }
+    const paths = matches.map((entry) => String(entry.path)).sort();
+    if (new Set(paths).size !== paths.length || paths.length > 32) {
+      throw new Error("GitHub repository guidance inventory is invalid");
+    }
+    const files = await Promise.all(paths.map(async (path) => ({
+      path,
+      content: (await this.readContent(token, repository, ref, path, false))!.content,
+    })));
+    const total = files.reduce((sum, file) => sum + new TextEncoder().encode(file.content).byteLength, 0);
+    if (total > 64_000 || files.some((file) => file.content.includes("\u0000"))) {
+      throw new Error("GitHub repository guidance exceeds the trusted text limit");
+    }
+    return Object.freeze(files.map((file) => Object.freeze(file)));
   }
 
   async readRef(repository: string, branch: string): Promise<string> {

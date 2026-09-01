@@ -12,6 +12,7 @@ import evidenceVerificationPrompt from "../config/prompts/evidence-verification.
 import openSpecPrompt from "../config/prompts/openspec.md";
 import openSpecPlanningPrompt from "../config/prompts/openspec-planning.md";
 import openSpecPlanningAuthorPrompt from "../config/prompts/openspec-planning-author.md";
+import openSpecDesignAuthorPrompt from "../config/prompts/openspec-design-author.md";
 import traceabilityReviewPrompt from "../config/prompts/openspec-traceability-review.md";
 import traceabilityRecheckPrompt from "../config/prompts/openspec-traceability-recheck.md";
 import agentResultSchema from "../config/schemas/agent-result-v1.json";
@@ -34,6 +35,7 @@ const prompts: Readonly<Record<string, string>> = Object.freeze({
   "prompts/openspec.md": openSpecPrompt,
   "prompts/openspec-planning.md": openSpecPlanningPrompt,
   "prompts/openspec-planning-author.md": openSpecPlanningAuthorPrompt,
+  "prompts/openspec-design-author.md": openSpecDesignAuthorPrompt,
   "prompts/openspec-traceability-review.md": traceabilityReviewPrompt,
   "prompts/openspec-traceability-recheck.md": traceabilityRecheckPrompt,
 });

@@ -270,3 +270,121 @@ test("planning materializer allocates one run branch and bounds both feedback pr
     installationId: "154095438",
   });
 });
+
+test("design materializer anchors checked plan files and guidance to one exact merge commit", async () => {
+  const mergeCommit = "a".repeat(40);
+  const manifest = [
+    { path: "openspec/changes/sac-201/.openspec.yaml", sha256: "1".repeat(64), byteSize: 20 },
+    { path: "openspec/changes/sac-201/proposal.md", sha256: "2".repeat(64), byteSize: 30 },
+    { path: "openspec/changes/sac-201/specs/search/spec.md", sha256: "3".repeat(64), byteSize: 40 },
+  ];
+  const planning = {
+    run_id: "workflow:project-1:issue-1:run:1",
+    repository: "sachinkundu/deos-sample-project",
+    base_branch: "main",
+    remote_branch: "deos/planning/0123456789abcdef01234567",
+    change_id: "sac-201",
+    pull_request_database_id: "plan-node",
+    pull_request_number: 10,
+    pull_request_url: "https://github.com/sachinkundu/deos-sample-project/pull/10",
+    head_sha: "b".repeat(40),
+    planning_manifest_digest: "4".repeat(64),
+    planning_manifest_json: JSON.stringify(manifest),
+    latest_publication_operation_id: "publish-plan",
+    merge_operation_id: "merge-plan",
+    merge_commit_sha: mergeCommit,
+    verification_operation_id: "verify-plan",
+    verified_at: "2026-09-01T10:00:00.000Z",
+    verified_merge_commit_sha: mergeCommit,
+    verification_manifest_digest: "5".repeat(64),
+    verification_manifest_json: "{}",
+    created_at: "now",
+    updated_at: "now",
+  };
+  let design: Record<string, unknown> | null = null;
+  const database = {
+    prepare(sql: string) {
+      let values: unknown[] = [];
+      return {
+        bind(...bound: unknown[]) { values = bound; return this; },
+        all() { return Promise.resolve({ results: [] }); },
+        run() {
+          if (sql.includes("INSERT OR IGNORE INTO design_work_products") && design === null) {
+            design = {
+              run_id: values[0], repository: values[1], base_branch: "main",
+              base_commit: values[2], remote_branch: values[3], change_id: values[4],
+              pull_request_database_id: null, pull_request_number: null, pull_request_url: null,
+              head_sha: null, design_manifest_digest: null, design_manifest_json: null,
+              publication_operation_id: null, merge_operation_id: null, merge_commit_sha: null,
+              created_at: values[5], updated_at: values[6],
+            };
+          }
+          return Promise.resolve({ meta: { changes: 1 } });
+        },
+        first() {
+          if (sql.includes("SELECT * FROM run_work_products")) return Promise.resolve(planning);
+          if (sql.includes("SELECT * FROM design_work_products")) return Promise.resolve(design);
+          return Promise.resolve(null);
+        },
+      };
+    },
+  } as unknown as D1Database;
+  const readRefs: string[] = [];
+  const materializer = new JobInputMaterializer(
+    database,
+    {} as R2Bucket,
+    "https://api.linear.app/graphql",
+    "test-token",
+    {
+      fetch: async () => Response.json({ data: { issue: {
+        id: "issue-1",
+        identifier: "SAC-201",
+        title: "Design search summary CLI",
+        description: "Search Google and summarize articles.",
+        url: "https://linear.example/SAC-201",
+        state: { id: "state", name: "In Progress" },
+        project: { id: "project-1", name: "DEOS Sample" },
+        comments: { nodes: [] },
+      } } }),
+      readGitHubFile: async (_repository, path, ref) => {
+        readRefs.push(ref);
+        return `checked ${path}\n`;
+      },
+      readGitHubGuidance: async (_repository, ref) => {
+        readRefs.push(ref);
+        return [{ path: "AGENTS.md", content: "Keep the CLI small.\n" }];
+      },
+    },
+  );
+  const result = await materializer.materialize({
+    run_id: planning.run_id,
+    project_id: "project-1",
+    issue_id: "issue-1",
+    route_repository: planning.repository,
+    route_github_installation_id: "154095438",
+  } as OrchestrationRunRecord, {
+    id: "design_author",
+    promptFile: "prompts/openspec-design-author.md",
+    prompt: "Design.",
+    inputs: ["linear_issue", "openspec_change", "design_context"],
+    context: ["approved_planning_merge", "prior_design", "design_pull_request"],
+    resultSchemaFile: "schemas/result.json",
+    resultSchema: { $id: "https://deos.dev/result.json", type: "object" },
+    requiredOutputs: [],
+    agentRole: "author",
+    modelProvider: "codex",
+    model: "gpt-5.6-sol",
+    reasoning: "high",
+    permissionProfile: "repository_write",
+    providerAccess: [],
+    operation: { kind: "openspec", instruction: "/opsx:continue" },
+  });
+  assert.equal(result.checkoutCommit, mergeCommit);
+  assert.equal(result.continuationPatch, null);
+  assert.match(result.designWorkProduct?.remote_branch ?? "", /^deos\/design\/[a-f0-9]{24}$/);
+  assert.deepEqual(new Set(readRefs), new Set([mergeCommit]));
+  const context = JSON.parse(result.context);
+  assert.equal(context.design.approvedPlan.length, 3);
+  assert.equal(context.design.guidance.files[0].path, "AGENTS.md");
+  assert.equal(context.design.baseCommit, mergeCommit);
+});

@@ -4,7 +4,7 @@ This is the living, repository-level architecture index. The detailed as-built r
 
 DEOS receives authenticated Linear webhooks in a Python Worker, deduplicates them by `Linear-Delivery`, records them in D1, and hands relevant events to a TypeScript Queue consumer. The consumer owns the immutable versioned graph, stable issue/run/Workflow identities, D1 transitions and inbox, Cloudflare Workflow execution, isolated Sandbox attempts, provider capability receipts, artifact manifests, and cleanup reconciliation.
 
-Project policy selects the full delivery graph by default. An enabled, repository-scoped selector can choose the smaller `simple` planning graph when a provider-originated issue carries the configured `simple-workflow` label. Both graphs use the same trusted execution, evidence, and cleanup boundaries.
+Project policy selects the frozen `simple-traceability` graph for new default runs. Version 17 creates a reviewed proposal and delta specs, merges and verifies that plan, then creates a separate reviewed design pull request. Versions through 16 keep their saved terminal edge after the planning merge. All graphs use the same trusted execution, evidence, and cleanup boundaries.
 
 D1 is the business-state and audit authority. Cloudflare Workflow status is executor evidence. The typed lifecycle first deployed as definition version 4 and is reconciled into the active version 11 graph:
 
@@ -47,7 +47,17 @@ and a test Linear project provide provider-originated integration proof.
   the flow.
 - **Human approval:** the workflow moves the issue into the configured Linear
   board column `Human Review` and waits. A configured transition out of that
-  column resumes the run; no Worker infers approval from issue text.
+  column resumes the run; no Worker infers approval from issue text. Version 17
+  saves distinct plan and design gate visits. Each visit binds one pull request
+  and approved head before Linear enters the shared column.
+- **Checked plan to design:** trusted code merges the approved planning head,
+  proves the accepted proposal and spec hashes at the reachable merge commit,
+  and starts the design Sandbox at that exact commit. The design job can change
+  only the named `design.md` and has no provider capability.
+- **Separate design publication:** a deterministic `deos/design/<run-hash>`
+  branch and one ready pull request carry design revisions. Trusted code posts
+  idempotent replies to affected root review threads and leaves them open. A
+  design merge requires the saved design gate head.
 - **Cloudflare persistence:** D1 stores deliveries, project policy, workflow
   runs, transitions, and audit records. Queue provides the durable handoff.
 - **Stable workflow identity:** the deterministic identifier
@@ -148,6 +158,14 @@ transition is valid.
   and completion state for one attempt.
 - `provider_operation`: stable operation identity, scope, status, and trusted
   provider receipt for an attempt.
+- `run_work_products`: the planning branch, pull request, accepted manifest,
+  merge receipt, and checked-merge receipt for one run.
+- `design_work_products`: the checked base commit, deterministic design branch,
+  design pull request, manifest, publication receipt, and merge receipt.
+- `design_candidates`: immutable, hash-checked R2 identities for accepted
+  `design.md` revisions.
+- `human_gate_visits`: visit-scoped plan or design authority, including the
+  exact pull request, branch, approved head, round, delivery, and decision.
 - `cleanup_work_item`: stable Sandbox identity, cleanup state, Linear operation
   and resource references, bounded error category, and last attempt time.
 - `telemetry observation`: time, service, stage, outcome, correlation ID,
@@ -171,6 +189,10 @@ durable source of workflow and audit state.
 | Queue publication fails | The delivery remains recorded in D1 and telemetry reports `queue_publish_failed`. |
 | Queue correlation is missing or invalid | Fail consumption with `correlation_mismatch`; do not create or advance workflow state. |
 | Consumer D1 operation fails | Emit `d1_operation_failed` and throw so Queue retry policy applies. |
+| Merged plan files cannot be proved | Record `planning_merge_files_unproved`, post one bounded repair note, and start no design attempt. A retry reuses the same verification identity. |
+| Design candidate changes another path | Record `invalid_design_candidate`; publish no branch or pull request and do not enter Human Review. |
+| Human event belongs to an older gate visit | Keep the delivery auditable, but do not claim the closed visit or mutate the active run. |
+| Design publication or merge response is ambiguous | Re-read only the deterministic branch and saved pull request. Reconcile the same provider operation or fail safely without creating another pull request. |
 | Linear update fails | Emit a bounded transport, HTTP, or GraphQL error category and throw so Queue retry policy applies. |
 | Worker stops after a stage starts | No false terminal success is emitted; a later attempt remains under the same correlation ID. |
 | D1-known Sandbox cleanup fails | The Worker records the cleanup failure and retries from the scheduled cron without waking a missing Sandbox process. |

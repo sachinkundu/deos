@@ -1,6 +1,7 @@
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { WorkflowJob } from "./workflow-definition.ts";
 import { D1PlanningStore, type RunWorkProductRecord } from "./planning-store.ts";
+import { D1DesignStore, type DesignWorkProductRecord } from "./design-store.ts";
 
 interface LinearIssueContext {
   id: string;
@@ -43,6 +44,8 @@ export interface MaterializedJobInput {
   openspecChange: string;
   continuationPatch: ContinuationPatchReference | null;
   planningWorkProduct: RunWorkProductRecord | null;
+  designWorkProduct: DesignWorkProductRecord | null;
+  checkoutCommit: string | null;
 }
 
 interface JobInputDependencies {
@@ -53,6 +56,17 @@ interface JobInputDependencies {
     pullRequestNumber: number,
     installationId: string,
   ) => Promise<readonly Record<string, unknown>[]>;
+  readGitHubFile: (
+    repository: string,
+    path: string,
+    ref: string,
+    installationId: string,
+  ) => Promise<string>;
+  readGitHubGuidance: (
+    repository: string,
+    ref: string,
+    installationId: string,
+  ) => Promise<readonly { path: string; content: string }[]>;
 }
 
 const bounded = (value: string, maximum: number): string =>
@@ -81,6 +95,8 @@ export class JobInputMaterializer {
   private readonly request: typeof fetch;
   private readonly now: () => Date;
   private readonly readGitHubReviewFeedback: JobInputDependencies["readGitHubReviewFeedback"];
+  private readonly readGitHubFile: JobInputDependencies["readGitHubFile"];
+  private readonly readGitHubGuidance: JobInputDependencies["readGitHubGuidance"];
 
   constructor(
     database: D1Database,
@@ -96,6 +112,10 @@ export class JobInputMaterializer {
     this.request = dependencies.fetch ?? ((input, init) => fetch(input, init));
     this.now = dependencies.now ?? (() => new Date());
     this.readGitHubReviewFeedback = dependencies.readGitHubReviewFeedback ?? (async () => []);
+    this.readGitHubFile = dependencies.readGitHubFile ?? (async () => {
+      throw new Error("trusted GitHub file reader is unavailable");
+    });
+    this.readGitHubGuidance = dependencies.readGitHubGuidance ?? (async () => []);
   }
 
   async materialize(run: OrchestrationRunRecord, job: WorkflowJob): Promise<MaterializedJobInput> {
@@ -105,10 +125,15 @@ export class JobInputMaterializer {
     }
     const priorAttempts = await this.priorAttempts(run.run_id);
     const openspecChange = openSpecChangeIdentity(issue.identifier);
-    const continuationPatch = await this.continuationPatch(run.run_id);
-    const planningAuthor = job.capabilities?.includes("github.publish_planning_work_product") === true ||
-      (job.agentRole === "author" && job.inputs.includes("openspec_change"));
-    const planningParticipant = planningAuthor || job.agentRole === "reviewer" ||
+    const designAuthor = job.inputs.includes("design_context");
+    const continuationPatch = designAuthor
+      ? await this.designContinuationPatch(run.run_id)
+      : await this.continuationPatch(run.run_id);
+    const planningAuthor = !designAuthor && (
+      job.capabilities?.includes("github.publish_planning_work_product") === true ||
+      (job.agentRole === "author" && job.inputs.includes("openspec_change"))
+    );
+    const planningParticipant = designAuthor || planningAuthor || job.agentRole === "reviewer" ||
       job.context.includes("planning_pull_request") || job.inputs.includes("traceability_feedback");
     const planningWorkProduct = planningAuthor
       ? await this.allocatePlanningWorkProduct(run, openspecChange)
@@ -124,14 +149,37 @@ export class JobInputMaterializer {
     if (planningWorkProduct !== null && planningWorkProduct.repository !== frozenRepository) {
       throw new Error("planning work product does not match the frozen route");
     }
-    const githubFeedback = planningWorkProduct?.pull_request_number === null ||
-        planningWorkProduct?.pull_request_number === undefined
+    let designWorkProduct: DesignWorkProductRecord | null = null;
+    if (designAuthor) {
+      if (
+        planningWorkProduct === null || planningWorkProduct.merge_commit_sha === null ||
+        planningWorkProduct.verified_merge_commit_sha !== planningWorkProduct.merge_commit_sha ||
+        planningWorkProduct.verification_operation_id === null
+      ) throw new Error("checked planning merge is required for design allocation");
+      designWorkProduct = await new D1DesignStore(this.database).allocate({
+        runId: run.run_id,
+        repository: frozenRepository,
+        baseCommit: planningWorkProduct.merge_commit_sha,
+        changeId: openspecChange,
+        now: this.now().toISOString(),
+      });
+    }
+    const feedbackWorkProduct = designAuthor ? designWorkProduct : planningWorkProduct;
+    const githubFeedback = feedbackWorkProduct?.pull_request_number === null ||
+        feedbackWorkProduct?.pull_request_number === undefined
       ? []
       : (await this.readGitHubReviewFeedback(
-          planningWorkProduct.repository,
-          planningWorkProduct.pull_request_number,
+          feedbackWorkProduct.repository,
+          feedbackWorkProduct.pull_request_number,
           frozenInstallationId,
         )).slice(-50);
+    const approvedPlan = designAuthor
+      ? await this.approvedPlan(planningWorkProduct!, frozenInstallationId)
+      : null;
+    const repositoryGuidance = designAuthor
+      ? await this.readGitHubGuidance(frozenRepository, designWorkProduct!.base_commit, frozenInstallationId)
+      : [];
+    const priorDesign = designAuthor ? await this.priorDesign(run.run_id) : null;
     const bundle = {
       version: 1,
       declaredInputs: job.inputs,
@@ -183,6 +231,28 @@ export class JobInputMaterializer {
           })),
         },
       },
+      design: designWorkProduct === null ? null : {
+        baseCommit: designWorkProduct.base_commit,
+        branch: designWorkProduct.remote_branch,
+        pullRequest: designWorkProduct.pull_request_number === null ? null : {
+          databaseId: designWorkProduct.pull_request_database_id,
+          number: designWorkProduct.pull_request_number,
+          url: designWorkProduct.pull_request_url,
+          headSha: designWorkProduct.head_sha,
+        },
+        approvedPlan,
+        priorDesign,
+        guidance: {
+          files: repositoryGuidance.map((file) => ({
+            path: file.path,
+            content: bounded(file.content, 32_000),
+          })),
+          missingOptionalFilesAreNotInvented: true,
+        },
+        feedback: githubFeedback.map((entry) => ({
+          data: bounded(JSON.stringify(entry), 4_000),
+        })),
+      },
       repository: {
         checkout: "/deos/workspace/repository",
         branch: "deos/{attemptId}",
@@ -201,7 +271,53 @@ export class JobInputMaterializer {
       openspecChange,
       continuationPatch,
       planningWorkProduct,
+      designWorkProduct,
+      checkoutCommit: designWorkProduct?.base_commit ?? null,
     };
+  }
+
+  private async approvedPlan(
+    planning: RunWorkProductRecord,
+    installationId: string,
+  ): Promise<readonly { path: string; content: string; sha256: string; byteSize: number }[]> {
+    if (planning.merge_commit_sha === null || planning.planning_manifest_json === null) {
+      throw new Error("approved planning manifest is missing");
+    }
+    const manifest = JSON.parse(planning.planning_manifest_json) as Array<{
+      path: string;
+      sha256: string;
+      byteSize: number;
+    }>;
+    if (!Array.isArray(manifest) || manifest.length < 3 || manifest.length > 48) {
+      throw new Error("approved planning manifest is invalid");
+    }
+    const files = await Promise.all(manifest.map(async (entry) => ({
+      ...entry,
+      content: await this.readGitHubFile(
+        planning.repository,
+        entry.path,
+        planning.merge_commit_sha!,
+        installationId,
+      ),
+    })));
+    if (files.reduce((sum, file) => sum + new TextEncoder().encode(file.content).byteLength, 0) > 96_000) {
+      throw new Error("approved plan context exceeds the trusted limit");
+    }
+    return Object.freeze(files.map((file) => Object.freeze(file)));
+  }
+
+  private async priorDesign(runId: string): Promise<Record<string, unknown> | null> {
+    const row = await this.database.prepare(
+      `SELECT candidate_r2_key FROM design_candidates
+       WHERE run_id = ? AND state = 'validated'
+       ORDER BY round DESC, created_at DESC, candidate_id DESC LIMIT 1`,
+    ).bind(runId).first<{ candidate_r2_key: string }>();
+    if (row === null) return null;
+    const object = await this.artifacts.get(row.candidate_r2_key);
+    if (object === null) throw new Error("prior design candidate is missing");
+    const text = await object.text();
+    if (text.length > 1_100_000) throw new Error("prior design candidate exceeds the trusted limit");
+    return asObject(JSON.parse(text));
   }
 
   private async traceabilityFeedback(runId: string): Promise<Record<string, unknown> | null> {
@@ -342,6 +458,23 @@ export class JobInputMaterializer {
          AND COALESCE(json_extract(a.job_spec_json, '$.agentRole'), 'author') <> 'reviewer'
        ORDER BY m.completed_at DESC, a.attempt_id DESC
        LIMIT 1`,
+    ).bind(runId).first<ContinuationPatchRow>().then((row) => row === null ? null : ({
+      attemptId: row.attempt_id,
+      manifestId: row.manifest_id,
+      r2Key: row.r2_key,
+      sha256: row.sha256,
+    }));
+  }
+
+  private designContinuationPatch(runId: string): Promise<ContinuationPatchReference | null> {
+    return this.database.prepare(
+      `SELECT a.attempt_id, m.manifest_id, f.r2_key, f.sha256
+       FROM agent_attempts a
+       JOIN artifact_manifests m ON m.manifest_id = a.manifest_id
+       JOIN artifacts f ON f.manifest_id = m.manifest_id AND f.logical_name = 'patch.diff'
+       WHERE a.run_id = ? AND a.node_id IN ('design_author', 'design_revision_author')
+         AND a.state = 'completed' AND m.state = 'complete'
+       ORDER BY m.completed_at DESC, a.attempt_id DESC LIMIT 1`,
     ).bind(runId).first<ContinuationPatchRow>().then((row) => row === null ? null : ({
       attemptId: row.attempt_id,
       manifestId: row.manifest_id,

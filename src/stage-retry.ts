@@ -6,12 +6,16 @@ export type AgentStageRetryKind = "same_definition" | "compatible_tail";
 export type AgentStageRetryNode =
   | "planning_revision_author"
   | "independent_discovery"
-  | "independent_recheck";
+  | "independent_recheck"
+  | "design_author"
+  | "design_revision_author";
 
 const agentStageRetryNodes = new Set<unknown>([
   "planning_revision_author",
   "independent_discovery",
   "independent_recheck",
+  "design_author",
+  "design_revision_author",
 ]);
 
 const isAgentStageRetryNode = (value: unknown): value is AgentStageRetryNode =>

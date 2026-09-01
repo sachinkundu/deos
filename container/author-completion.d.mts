@@ -11,7 +11,8 @@ export interface AuthorCompletionCheck {
   allowedPaths: "passed" | "failed";
   strictOpenSpec: "passed" | "failed";
   whitespace: "passed" | "failed";
-  readability: "passed" | "failed";
+  readability: "passed" | "failed" | "not_applicable";
+  requiredSections?: "passed" | "failed";
   changedPaths: readonly string[];
   filePaths: readonly string[];
   readabilityByFile: Readonly<Record<string, { fleschReadingEase: number; fleschKincaidGrade: number }>>;
@@ -19,6 +20,7 @@ export interface AuthorCompletionCheck {
 }
 
 export function safePlanningPath(change: string, path: string): boolean;
+export function safeDesignPath(change: string, path: string): boolean;
 export function changedPathsFromPorcelain(value: string): string[];
 export function runAuthorCompletionCheck(input: {
   cwd: string;
@@ -30,6 +32,16 @@ export function authorCorrectionPrompt(
   round: number,
   maximumRepairs: number,
 ): string;
+export function designCorrectionPrompt(
+  check: AuthorCompletionCheck,
+  round: number,
+  maximumRepairs: number,
+): string;
+export function runDesignCompletionCheck(input: {
+  cwd: string;
+  change: string;
+  execute?: (args: string[], cwd: string, timeout?: number) => Promise<CommandResult>;
+}): Promise<AuthorCompletionCheck>;
 export function runBoundedAuthorCompletion(input: {
   initialCheck: AuthorCompletionCheck;
   initialResult: { code: number | null; signal: string | null; outcome: string | null };
@@ -41,6 +53,11 @@ export function runBoundedAuthorCompletion(input: {
     outcome: string | null;
   }>;
   check: () => Promise<AuthorCompletionCheck>;
+  correctionPrompt?: (
+    check: AuthorCompletionCheck,
+    round: number,
+    maximumRepairs: number,
+  ) => string;
   now?: () => string;
 }): Promise<{
   check: AuthorCompletionCheck;

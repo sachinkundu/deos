@@ -31,6 +31,18 @@ export const TRACEABILITY_STAGES = [
   { id: "stopped", label: "Stopped" },
 ] as const;
 
+export const TRACEABILITY_DESIGN_STAGES = [
+  { id: "claim", label: "Claim issue" },
+  { id: "planning", label: "Create planning PR" },
+  { id: "independent_review", label: "Independent review" },
+  { id: "review", label: "Human approval" },
+  { id: "plan_merge", label: "Merge plan & check" },
+  { id: "design", label: "Create design PR" },
+  { id: "design_merge", label: "Merge design & check" },
+  { id: "complete", label: "Completed" },
+  { id: "stopped", label: "Stopped" },
+] as const;
+
 type PresentationStage = { id: string; label: string };
 
 const stageLabel = (stageId: string): string => {
@@ -38,7 +50,7 @@ const stageLabel = (stageId: string): string => {
   return words.length === 0 ? "Workflow stage" : `${words[0].toUpperCase()}${words.slice(1)}`;
 };
 
-const simplifiedStageForNode = (nodeId: string): string => {
+const simplifiedStageForNode = (nodeId: string, definitionVersion: number): string => {
   if (nodeId === "claim_issue") return "claim";
   if (
     nodeId === "openspec_planning" || nodeId === "planning_author" ||
@@ -55,7 +67,14 @@ const simplifiedStageForNode = (nodeId: string): string => {
     "publish_author_response",
   ].includes(nodeId)) return "independent_review";
   if (nodeId === "planning_review") return "review";
-  if (["merge_planning_pr", "verify_planning_merge"].includes(nodeId)) return "merge";
+  if (nodeId === "design_review") return "review";
+  if (["merge_planning_pr", "verify_planning_merge"].includes(nodeId)) {
+    return definitionVersion >= 17 ? "plan_merge" : "merge";
+  }
+  if (["design_author", "publish_design", "start_new_design_round", "design_revision_author"].includes(nodeId)) {
+    return "design";
+  }
+  if (nodeId === "merge_design_pr") return "design_merge";
   if (nodeId === "done") return "complete";
   if (["blocked", "denied", "canceled", "agent_blocked", "agent_failed", "system_action_failed"].includes(nodeId)) {
     return "stopped";
@@ -80,7 +99,7 @@ const fullStageForNode = (nodeId: string): string => {
 
 const stageForNode = (definition: LoadedWorkflowDefinition, nodeId: string): string => {
   if (definition.name === "simple" || definition.name === "simple-traceability") {
-    return simplifiedStageForNode(nodeId);
+    return simplifiedStageForNode(nodeId, definition.version);
   }
   if (definition.name === "openspec-delivery") return fullStageForNode(nodeId);
   return nodeId;
@@ -90,7 +109,7 @@ const configuredStages = (definition: LoadedWorkflowDefinition): readonly Presen
   definition.name === "simple"
     ? SIMPLE_STAGES
     : definition.name === "simple-traceability"
-      ? TRACEABILITY_STAGES
+      ? definition.version >= 17 ? TRACEABILITY_DESIGN_STAGES : TRACEABILITY_STAGES
       : definition.name === "openspec-delivery"
         ? STAGES
         : [];

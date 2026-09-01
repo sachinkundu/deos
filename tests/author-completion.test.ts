@@ -9,6 +9,7 @@ import {
   changedPathsFromPorcelain,
   runAuthorCompletionCheck,
   runBoundedAuthorCompletion,
+  runDesignCompletionCheck,
 } from "../container/author-completion.mjs";
 
 const CHANGE = "add-review";
@@ -140,4 +141,41 @@ test("bounded completion resumes the exact session and never allocates another a
   assert.equal(completed.rounds.length, 2);
   assert.deepEqual(resumes.map(({ sessionId }) => sessionId), ["session-123"]);
   assert.match(resumes[0].prompt, /in-place correction 1 of 2/);
+});
+
+test("design completion allows only design.md and requires all design sections", async () => {
+  const designPath = `${ROOT}/design.md`;
+  const execute = async (args: string[]) => {
+    if (args[0] === "git") {
+      return { code: 0, signal: null, truncated: false, stdout: `?? ${designPath}\0`, stderr: "" };
+    }
+    return { code: 0, signal: null, truncated: false, stdout: "Change is valid\n", stderr: "" };
+  };
+  const cwd = await mkdtemp(join(tmpdir(), "deos-design-completion-"));
+  try {
+    await mkdir(`${cwd}/${ROOT}`, { recursive: true });
+    await writeFile(`${cwd}/${designPath}`, [
+      "## Component diagram",
+      "",
+      "A calls B.",
+      "",
+      "## Event flow",
+      "",
+      "The event is saved.",
+      "",
+      "## Minimal data model",
+      "",
+      "One row stores one review.",
+      "",
+      "## Failure modes",
+      "",
+      "A wrong head fails closed.",
+      "",
+    ].join("\n"));
+    const checked = await runDesignCompletionCheck({ cwd, change: CHANGE, execute });
+    assert.equal(checked.ok, true);
+    assert.deepEqual(checked.changedPaths, [designPath]);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
 });

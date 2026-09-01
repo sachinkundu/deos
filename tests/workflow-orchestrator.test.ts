@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import type {
@@ -142,6 +143,28 @@ spec:
     schemas: {
       "schemas/result.json": JSON.stringify({ $id: "https://deos.dev/result.json", type: "object" }),
     },
+  },
+);
+
+const traceabilityDefinition = await loadWorkflowDefinition(
+  readFileSync(new URL("../config/workflow.simple-traceability.yaml", import.meta.url), "utf8"),
+  {
+    prompts: Object.fromEntries([
+      "openspec-planning-author.md",
+      "openspec-traceability-review.md",
+      "openspec-traceability-recheck.md",
+      "openspec-design-author.md",
+    ].map((name) => [
+      `prompts/${name}`,
+      readFileSync(new URL(`../config/prompts/${name}`, import.meta.url), "utf8"),
+    ])),
+    schemas: Object.fromEntries([
+      "agent-result-v1.json",
+      "trace-agent-result-v1.json",
+    ].map((name) => [
+      `schemas/${name}`,
+      readFileSync(new URL(`../config/schemas/${name}`, import.meta.url), "utf8"),
+    ])),
   },
 );
 
@@ -581,6 +604,50 @@ test("simple graph cancellation reaches no merge action", async () => {
   assert.equal(result.outcome, "canceled");
   assert.equal(store.transitions.some(({ to_node }) => to_node === "merge"), false);
   assert.deepEqual(services.systemActions, ["linear.delegate_and_start"]);
+});
+
+test("version 17 traverses checked planning and a revised design through distinct gates", async () => {
+  const store = new RuntimeStore(makeRun(traceabilityDefinition));
+  const services = new NodeServices([
+    "completed", "pass", "pass", "completed", "pass", "completed", "completed",
+  ]);
+  store.inbox.set("delivery-plan-merge", inboxEvent("delivery-plan-merge", "user", "Merging"));
+  store.inbox.set("delivery-design-revision", inboxEvent("delivery-design-revision", "user", "In Progress"));
+  store.inbox.set("delivery-design-merge", inboxEvent("delivery-design-merge", "user", "Merging"));
+
+  const result = await new WorkflowOrchestrator(store, traceabilityDefinition, services, {
+    humanGateStateId: "human-state",
+    approvalStateNames: ["In Progress"],
+    rejectionStateNames: ["Canceled"],
+    now: () => new Date(NOW),
+  }).run(store.run.run_id, new FakeStep([
+    "delivery-plan-merge", "delivery-design-revision", "delivery-design-merge",
+  ]));
+
+  assert.deepEqual(result, { outcome: "succeeded", runId: store.run.run_id });
+  assert.deepEqual(
+    store.transitions.filter(({ from_node }) =>
+      from_node === "planning_review" || from_node === "design_review")
+      .map(({ from_node, to_node }) => [from_node, to_node]),
+    [
+      ["planning_review", "merge_planning_pr"],
+      ["design_review", "start_new_design_round"],
+      ["design_review", "merge_design_pr"],
+    ],
+  );
+  assert.deepEqual(services.systemActions, [
+    "linear.delegate_and_start",
+    "github.publish_planning_candidate",
+    "github.publish_planning_candidate",
+    "traceability.publish_author_response",
+    "github.merge_planning_pull_request",
+    "github.verify_planning_merge",
+    "github.publish_design_candidate",
+    "design.start_new_round",
+    "github.publish_design_candidate",
+    "github.merge_design_pull_request",
+  ]);
+  assert.equal(services.gateEntries, 3);
 });
 
 test("version 4 routes a successful agent result with missing receipts to its failure node", async () => {

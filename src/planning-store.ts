@@ -113,6 +113,9 @@ export interface RunWorkProductRecord {
   merge_commit_sha: string | null;
   verification_operation_id: string | null;
   verified_at: string | null;
+  verified_merge_commit_sha: string | null;
+  verification_manifest_digest: string | null;
+  verification_manifest_json: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -304,6 +307,43 @@ export class D1PlanningStore {
     if (stored?.merge_commit_sha !== input.mergeCommitSha) {
       throw new Error("planning merge read-back mismatch");
     }
+    return stored;
+  }
+
+  async recordVerification(input: {
+    runId: string;
+    operationId: string;
+    mergeCommitSha: string;
+    verificationManifestJson: string;
+    verificationManifestDigest: string;
+    now: string;
+  }): Promise<RunWorkProductRecord> {
+    if (
+      !shaPattern.test(input.mergeCommitSha) ||
+      !digestPattern.test(input.verificationManifestDigest) ||
+      await sha256Hex(input.verificationManifestJson) !== input.verificationManifestDigest
+    ) throw new Error("planning merge verification receipt is invalid");
+    const result = await this.database.prepare(
+      `UPDATE run_work_products
+       SET verification_operation_id = ?, verified_at = ?,
+           verified_merge_commit_sha = ?, verification_manifest_digest = ?,
+           verification_manifest_json = ?, updated_at = ?
+       WHERE run_id = ? AND merge_commit_sha = ?
+         AND (verification_operation_id IS NULL OR verification_operation_id = ?)
+         AND (verified_merge_commit_sha IS NULL OR verified_merge_commit_sha = ?)
+         AND (verification_manifest_digest IS NULL OR verification_manifest_digest = ?)`,
+    ).bind(
+      input.operationId, input.now, input.mergeCommitSha, input.verificationManifestDigest,
+      input.verificationManifestJson, input.now, input.runId, input.mergeCommitSha,
+      input.operationId, input.mergeCommitSha, input.verificationManifestDigest,
+    ).run();
+    if (changes(result) !== 1) throw new Error("planning merge verification identity mismatch");
+    const stored = await this.findRunWorkProduct(input.runId);
+    if (
+      stored?.verified_merge_commit_sha !== input.mergeCommitSha ||
+      stored.verification_manifest_digest !== input.verificationManifestDigest ||
+      stored.verification_operation_id !== input.operationId
+    ) throw new Error("planning merge verification read-back mismatch");
     return stored;
   }
 

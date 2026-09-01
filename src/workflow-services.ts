@@ -27,12 +27,14 @@ import {
   SandboxArtifactReaderAdapter,
 } from "./sandbox-platform.ts";
 import { D1SystemActionStore, SystemActionController } from "./system-actions.ts";
+import { D1HumanGateStore } from "./human-gate-store.ts";
 import type { WorkflowNodeServices } from "./workflow-orchestrator.ts";
 import type { HumanGateWorkflowNode, LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import { writeLifecycleObservation } from "./lifecycle-telemetry.ts";
 import { JobInputMaterializer } from "./job-inputs.ts";
 import { D1ProviderReceiptVerifier } from "./capability-store.ts";
 import { D1PlanningStore } from "./planning-store.ts";
+import { D1DesignStore } from "./design-store.ts";
 import { GitHubAppTokenProvider, GitHubCapabilityAdapter } from "./github-capability.ts";
 import { LinearCapabilityAdapter } from "./linear-capability.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
@@ -55,6 +57,11 @@ import {
 } from "./trace-review.ts";
 import bettaViewBundleManifest from "../vendor/bettaview/bundle-manifest.json" with { type: "json" };
 import { AGENT_HARNESS, AGENT_HARNESS_VERSION } from "./agent-harness.ts";
+import {
+  buildDesignCandidate,
+  persistDesignCandidateEvidence,
+  DesignCandidateRejectedError,
+} from "./design-candidate.ts";
 
 const durationMs = (value: string): number => {
   const match = value.match(/^(\d+(?:\.\d+)?)(ms|s|m|h|d)$/);
@@ -118,6 +125,26 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               installationId,
             }),
           ).readReviewFeedback(repository, pullRequestNumber),
+        readGitHubFile: (repository, path, ref, installationId) =>
+          new GitHubCapabilityAdapter(
+            env.GITHUB_API_URL,
+            new GitHubAppTokenProvider({
+              apiUrl: env.GITHUB_API_URL,
+              appId: env.GITHUB_APP_ID,
+              privateKey: env.GITHUB_APP_PRIVATE_KEY,
+              installationId,
+            }),
+          ).readFileAtRef(repository, path, ref),
+        readGitHubGuidance: (repository, ref, installationId) =>
+          new GitHubCapabilityAdapter(
+            env.GITHUB_API_URL,
+            new GitHubAppTokenProvider({
+              apiUrl: env.GITHUB_API_URL,
+              appId: env.GITHUB_APP_ID,
+              privateKey: env.GITHUB_APP_PRIVATE_KEY,
+              installationId,
+            }),
+          ).readRepositoryGuidance(repository, ref),
       },
     );
     this.agents = new SandboxAgentController(
@@ -212,6 +239,65 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           }
           const evidence = await persistCandidateEvidence(env.ARTIFACTS, built);
           await new D1TraceReviewStore(env.DB).recordCandidate(evidence);
+        },
+        persistDesignCandidate: async ({
+          run,
+          attempt,
+          baseCommit,
+          change,
+          path,
+          content,
+          reviewReplies,
+        }) => {
+          const latest = await env.DB.prepare(
+            "SELECT COALESCE(MAX(round), 0) AS round FROM design_candidates WHERE run_id = ?",
+          ).bind(run.run_id).first<{ round: number }>();
+          const round = (latest?.round ?? 0) + 1;
+          let built;
+          try {
+            built = await buildDesignCandidate({
+              candidateId: `design:${attempt.attempt_id}`,
+              runId: run.run_id,
+              round,
+              sourceAttemptId: attempt.attempt_id,
+              baseCommit,
+              change,
+              path,
+              content,
+              reviewReplies,
+              strictOpenSpecCheck: async () => {},
+              checkedAt: new Date().toISOString(),
+            });
+          } catch (error) {
+            throw new DesignCandidateRejectedError(
+              error instanceof Error ? error.message : "trusted design candidate was rejected",
+            );
+          }
+          const duplicate = await env.DB.prepare(
+            `SELECT candidate_id FROM design_candidates
+             WHERE run_id = ? AND candidate_digest = ? LIMIT 1`,
+          ).bind(run.run_id, built.candidate.candidateDigest).first<{ candidate_id: string }>();
+          if (duplicate !== null) {
+            throw new DesignCandidateRejectedError("design candidate has no semantic changes");
+          }
+          const evidence = await persistDesignCandidateEvidence(env.ARTIFACTS, built);
+          await new D1DesignStore(env.DB).recordCandidate({
+            candidate_id: built.candidate.candidateId,
+            run_id: built.candidate.runId,
+            round: built.candidate.round,
+            source_attempt_id: built.candidate.sourceAttemptId,
+            base_commit: built.candidate.baseCommit,
+            change_id: built.candidate.change,
+            design_digest: built.candidate.designDigest,
+            candidate_digest: built.candidate.candidateDigest,
+            candidate_r2_key: evidence.candidateR2Key,
+            candidate_sha256: evidence.candidateSha256,
+            validation_r2_key: evidence.validationR2Key,
+            validation_sha256: evidence.validationSha256,
+            state: "validated",
+            created_at: built.validation.checkedAt,
+            accepted_at: built.validation.checkedAt,
+          });
         },
         acceptTraceReview: async ({ run, attempt, job, collection }) => {
           const candidate = await env.DB.prepare(
@@ -667,6 +753,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         ),
         githubForRun: (run) => githubForRun(env, run),
         planningStore: new D1PlanningStore(env.DB),
+        designStore: new D1DesignStore(env.DB),
         planningCandidate: async (runId) => {
           const row = await env.DB.prepare(
             `SELECT candidate_id, candidate_digest, change_id, candidate_r2_key,
@@ -714,6 +801,100 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             reviewDispositions: candidate.reviewDispositions ?? [],
             reviewContextId: candidate.reviewContextId ?? null,
           };
+        },
+        designCandidate: async (runId) => {
+          const row = await env.DB.prepare(
+            `SELECT candidate_id, candidate_digest, change_id, base_commit, design_digest,
+                    candidate_r2_key, candidate_sha256
+             FROM design_candidates WHERE run_id = ? AND state = 'validated'
+             ORDER BY round DESC, created_at DESC, candidate_id DESC LIMIT 1`,
+          ).bind(runId).first<{
+            candidate_id: string;
+            candidate_digest: string;
+            change_id: string;
+            base_commit: string;
+            design_digest: string;
+            candidate_r2_key: string;
+            candidate_sha256: string;
+          }>();
+          if (row === null) return null;
+          const object = await env.ARTIFACTS.get(row.candidate_r2_key);
+          if (object === null) throw new Error("trusted design candidate is missing");
+          const text = await object.text();
+          if (await sha256Hex(text) !== row.candidate_sha256) {
+            throw new Error("trusted design candidate hash mismatch");
+          }
+          const candidate = JSON.parse(text) as {
+            candidateId?: unknown;
+            candidateDigest?: unknown;
+            change?: unknown;
+            baseCommit?: unknown;
+            path?: unknown;
+            content?: unknown;
+            designDigest?: unknown;
+            reviewReplies?: unknown;
+          };
+          if (
+            candidate.candidateId !== row.candidate_id ||
+            candidate.candidateDigest !== row.candidate_digest ||
+            candidate.change !== row.change_id || candidate.baseCommit !== row.base_commit ||
+            candidate.designDigest !== row.design_digest || typeof candidate.path !== "string" ||
+            typeof candidate.content !== "string" || !Array.isArray(candidate.reviewReplies)
+          ) throw new Error("trusted design candidate identity mismatch");
+          return {
+            candidateId: candidate.candidateId,
+            candidateDigest: candidate.candidateDigest,
+            change: candidate.change,
+            baseCommit: candidate.baseCommit,
+            path: candidate.path,
+            content: candidate.content,
+            designDigest: candidate.designDigest,
+            reviewReplies: candidate.reviewReplies as Array<{ commentId: number; body: string }>,
+          };
+        },
+        gateVisit: (runId, gateKind) => env.DB.prepare(
+          `SELECT * FROM human_gate_visits WHERE run_id = ? AND gate_kind = ?
+           ORDER BY visit_sequence DESC LIMIT 1`,
+        ).bind(runId, gateKind).first<import("./human-gate-store.ts").HumanGateVisitRecord>(),
+        planningMergeRepairNotice: async (run, verificationOperationId) => {
+          const operationId = operationIdentity(
+            run.run_id,
+            "system_action",
+            `planning-merge-repair:${verificationOperationId}`,
+            run.current_visit_sequence,
+          );
+          const store = new D1SystemActionStore(env.DB);
+          const operation = await store.beginPlanningOperation({
+            operationId,
+            runId: run.run_id,
+            action: "linear.post_planning_merge_repair",
+            requestDigest: await sha256Hex(JSON.stringify({
+              issueId: run.issue_id,
+              category: "planning_merge_files_unproved",
+            })),
+            now: new Date().toISOString(),
+          });
+          if (["succeeded", "reconciled"].includes(operation.state)) return;
+          const receipt = await new LinearCapabilityAdapter(
+            env.LINEAR_API_URL,
+            env.LINEAR_APP_ACCESS_TOKEN,
+          ).upsertNote({
+            issueId: run.issue_id,
+            body: [
+              "DEOS could not prove the merged OpenSpec plan files.",
+              "No design job was started.",
+              "Repair the recorded planning merge or its files, then retry the same verification step.",
+              "Safe category: planning_merge_files_unproved.",
+            ].join("\n"),
+          }, operationId);
+          await store.finishPlanningOperation({
+            operationId,
+            expected: operation.state,
+            state: receipt.reconciled ? "reconciled" : "succeeded",
+            providerResourceId: receipt.commentId,
+            safeErrorCategory: null,
+            now: new Date().toISOString(),
+          });
         },
         issueContext: (runId) => env.DB.prepare(
           `SELECT issue.issue_key AS identifier, issue.linear_url AS url
@@ -904,7 +1085,17 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
   }
 
   ensureHumanGate(run: OrchestrationRunRecord, node: HumanGateWorkflowNode) {
-    return this.linear.ensureHumanGate(run, node);
+    const gateKind = node.id === "planning_review"
+      ? "plan"
+      : node.id === "design_review" ? "design" : null;
+    if (gateKind === null) return this.linear.ensureHumanGate(run, node);
+    return new D1HumanGateStore(this.env.DB).bind({
+      runId: run.run_id,
+      visitSequence: run.current_visit_sequence,
+      nodeId: node.id,
+      gateKind,
+      now: new Date().toISOString(),
+    }).then(() => this.linear.ensureHumanGate(run, node));
   }
 
   async restoreHumanGate(

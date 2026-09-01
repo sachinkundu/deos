@@ -76,6 +76,35 @@ interface WorkProductRow {
   verified_at: string | null;
 }
 
+interface DesignWorkProductRow {
+  repository: string;
+  base_commit: string;
+  pull_request_number: number | null;
+  pull_request_url: string | null;
+  head_sha: string | null;
+  merge_commit_sha: string | null;
+}
+
+interface GateVisitRow {
+  visit_sequence: number;
+  node_id: string;
+  gate_kind: "plan" | "design";
+  work_type: "proposal_and_specs" | "design";
+  round: number;
+  state: string;
+  repository: string;
+  pull_request_number: number;
+  pull_request_url: string;
+  approved_head_sha: string;
+  decision_outcome: string | null;
+}
+
+export const safeGateVisit = (gate: GateVisitRow | undefined): GateVisitRow | null =>
+  gate !== undefined &&
+    gate.pull_request_url === `https://github.com/${gate.repository}/pull/${gate.pull_request_number}`
+    ? gate
+    : null;
+
 export const isRecoveredTerminalVisit = (stageId: string | undefined, causeType: string | undefined): boolean =>
   ["stopped", "terminal"].includes(stageId ?? "") &&
   ["operator_retry", "operator_reconciliation"].includes(causeType ?? "");
@@ -174,6 +203,12 @@ export const PORTAL_SELECTS = Object.freeze({
     WHERE run.run_id = ? LIMIT 1`,
   workProduct: `SELECT repository, pull_request_number, pull_request_url,
     merge_commit_sha, verified_at FROM run_work_products WHERE run_id = ? LIMIT 1`,
+  designWorkProduct: `SELECT repository, base_commit, pull_request_number,
+    pull_request_url, head_sha, merge_commit_sha
+    FROM design_work_products WHERE run_id = ? LIMIT 1`,
+  gateVisits: `SELECT visit_sequence, node_id, gate_kind, work_type, round, state,
+    repository, pull_request_number, pull_request_url, approved_head_sha, decision_outcome
+    FROM human_gate_visits WHERE run_id = ? ORDER BY visit_sequence`,
   transcript: `SELECT attempt.attempt_id, attempt.run_id, attempt.node_id,
     run.run_sequence, issue.issue_key, artifact.r2_key, artifact.media_type,
     artifact.byte_size, artifact.sha256
@@ -295,7 +330,8 @@ export class PortalReadStore {
     if (!/^workflow:[0-9a-f-]+:[0-9a-f-]+:run:[1-9][0-9]*$/i.test(runId)) return null;
     const run = await this.db.prepare(PORTAL_SELECTS.run).bind(runId).first<RunRow>();
     if (run === null) return null;
-    const [definitionRow, transitionResult, attemptResult, waitResult, linkResult, issueRow, workProduct, reviewProof] = await Promise.all([
+    const [definitionRow, transitionResult, attemptResult, waitResult, linkResult, issueRow,
+      workProduct, designWorkProduct, gateVisitResult, reviewProof] = await Promise.all([
       this.db.prepare(PORTAL_SELECTS.definition).bind(run.definition_id, run.definition_version).first<DefinitionRow>(),
       this.db.prepare(PORTAL_SELECTS.transitions).bind(runId).all<TransitionRow>(),
       this.db.prepare(PORTAL_SELECTS.attempts).bind(runId).all<AttemptRow>(),
@@ -303,6 +339,8 @@ export class PortalReadStore {
       this.db.prepare(PORTAL_SELECTS.links).bind(runId).all<LinkRow>(),
       this.db.prepare(PORTAL_SELECTS.issueForRun).bind(runId).first<IssueRow>(),
       this.db.prepare(PORTAL_SELECTS.workProduct).bind(runId).first<WorkProductRow>(),
+      this.db.prepare(PORTAL_SELECTS.designWorkProduct).bind(runId).first<DesignWorkProductRow>(),
+      this.db.prepare(PORTAL_SELECTS.gateVisits).bind(runId).all<GateVisitRow>(),
       this.db.prepare(
         "SELECT COUNT(*) AS count FROM trace_reviews WHERE run_id = ? AND accepted = 1",
       ).bind(runId).first<{ count: number }>(),
@@ -321,9 +359,13 @@ export class PortalReadStore {
       } catch {
         return false;
       }
-      const governedRepository = workProduct?.repository;
+      const governedRepositories = new Set([
+        workProduct?.repository,
+        designWorkProduct?.repository,
+      ].filter((value): value is string => typeof value === "string"));
       return destination.origin === "https://github.com" &&
-        (governedRepository === undefined || destination.pathname.startsWith(`/${governedRepository}/`)) &&
+        (governedRepositories.size === 0 || [...governedRepositories].some((repository) =>
+          destination.pathname.startsWith(`/${repository}/`))) &&
         link.label.length > 0 && link.label.length <= 500;
     });
     const visits = [{
@@ -375,6 +417,7 @@ export class PortalReadStore {
           url: link.url,
           createdAt: link.created_at,
         })),
+        gate: safeGateVisit(gateVisitResult.results.find((gate) => gate.visit_sequence === visit.sequence)),
       };
     });
     const visibleHistory = history.filter((visit) => !visit.recovered);
@@ -423,6 +466,44 @@ export class PortalReadStore {
             verified: workProduct.verified_at !== null,
           }
         : null,
+      workProducts: {
+        planning: workProduct !== null && workProduct.pull_request_number !== null &&
+            workProduct.pull_request_url ===
+              `https://github.com/${workProduct.repository}/pull/${workProduct.pull_request_number}`
+          ? {
+              number: workProduct.pull_request_number,
+              url: workProduct.pull_request_url,
+              status: workProduct.merge_commit_sha === null ? "Open" : "Merged",
+              verified: workProduct.verified_at !== null,
+            }
+          : null,
+        design: designWorkProduct !== null && designWorkProduct.pull_request_number !== null &&
+            designWorkProduct.pull_request_url ===
+              `https://github.com/${designWorkProduct.repository}/pull/${designWorkProduct.pull_request_number}`
+          ? {
+              number: designWorkProduct.pull_request_number,
+              url: designWorkProduct.pull_request_url,
+              status: designWorkProduct.merge_commit_sha === null ? "Open" : "Merged",
+              headSha: designWorkProduct.head_sha,
+              baseCommit: designWorkProduct.base_commit,
+            }
+          : null,
+      },
+      gateVisits: gateVisitResult.results.map((gate) => ({
+        visitSequence: gate.visit_sequence,
+        nodeId: gate.node_id,
+        gateKind: gate.gate_kind,
+        workType: gate.work_type,
+        round: gate.round,
+        state: gate.state,
+        pullRequest: gate.pull_request_url ===
+            `https://github.com/${gate.repository}/pull/${gate.pull_request_number}`
+          ? { number: gate.pull_request_number, url: gate.pull_request_url }
+          : null,
+        approvedHeadSha: gate.approved_head_sha,
+        decision: gate.decision_outcome,
+        active: gate.visit_sequence === run.current_visit_sequence,
+      })),
       unlinked: {
         attempts: attemptResult.results.filter((attempt) => attempt.visit_sequence === null).length,
         waits: waitResult.results.filter((wait) => wait.visit_sequence === null).length,

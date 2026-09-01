@@ -86,6 +86,9 @@ class PlanningStore {
     merge_commit_sha: null,
     verification_operation_id: null,
     verified_at: null,
+    verified_merge_commit_sha: null,
+    verification_manifest_digest: null,
+    verification_manifest_json: null,
     created_at: NOW.toISOString(),
     updated_at: NOW.toISOString(),
   };
@@ -94,6 +97,20 @@ class PlanningStore {
     this.record.merge_operation_id = input.operationId;
     this.record.merge_commit_sha = input.mergeCommitSha;
     this.record.updated_at = input.now;
+    return Promise.resolve(this.record);
+  }
+  recordVerification(input: {
+    operationId: string;
+    mergeCommitSha: string;
+    verificationManifestDigest: string;
+    verificationManifestJson: string;
+    now: string;
+  }) {
+    this.record.verification_operation_id = input.operationId;
+    this.record.verified_merge_commit_sha = input.mergeCommitSha;
+    this.record.verification_manifest_digest = input.verificationManifestDigest;
+    this.record.verification_manifest_json = input.verificationManifestJson;
+    this.record.verified_at = input.now;
     return Promise.resolve(this.record);
   }
 }
@@ -112,12 +129,18 @@ const setup = () => {
         reconciled: false,
       };
     },
+    readPullRequest: async () => { throw new Error("unexpected pull-request read"); },
+    verifyCommitOnBranch: async () => { throw new Error("unexpected commit verification"); },
+    readFileAtRef: async () => { throw new Error("unexpected file read"); },
   };
   const controller = new SystemActionController(operations, {
     planningStore: planning,
     now: () => NOW,
     github: {
       mergePlanning: async () => { throw new Error("fixed installation fallback used"); },
+      readPullRequest: async () => { throw new Error("fixed installation fallback used"); },
+      verifyCommitOnBranch: async () => { throw new Error("fixed installation fallback used"); },
+      readFileAtRef: async () => { throw new Error("fixed installation fallback used"); },
     },
     githubForRun: (selectedRun) => {
       if (selectedRun.route_github_installation_id === null || selectedRun.route_github_installation_id === undefined) {
@@ -142,4 +165,70 @@ test("trusted merge completion records one durable provider receipt", async () =
   assert.equal(state.planning.record.verification_operation_id, null);
   assert.equal([...state.operations.operations.values()].length, 1);
   assert.deepEqual(state.selectedInstallations, ["154095438"]);
+});
+
+test("checked plan merge proves every accepted file at the reachable merge commit", async () => {
+  const state = setup();
+  const head = "1".repeat(40);
+  const merge = "2".repeat(40);
+  const fileContents = new Map([
+    ["openspec/changes/sac-200/.openspec.yaml", "schema: spec-driven\n"],
+    ["openspec/changes/sac-200/proposal.md", "## Why\n\nA clear plan helps.\n"],
+    ["openspec/changes/sac-200/specs/tool/spec.md", "## ADDED Requirements\n"],
+  ]);
+  const digest = async (value: string) => {
+    const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+    return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  };
+  state.planning.record.head_sha = head;
+  state.planning.record.merge_commit_sha = merge;
+  state.planning.record.planning_manifest_json = JSON.stringify(await Promise.all(
+    [...fileContents].map(async ([path, content]) => ({
+      path,
+      sha256: await digest(content),
+      byteSize: new TextEncoder().encode(content).byteLength,
+    })),
+  ));
+  state.planning.record.planning_manifest_digest = await digest(state.planning.record.planning_manifest_json);
+  const github = {
+    readPullRequest: async () => ({
+      databaseId: "9001",
+      number: 54,
+      url: "https://github.com/sachinkundu/deos/pull/54",
+      state: "closed",
+      draft: false,
+      merged: true,
+      mergeCommitSha: merge,
+      headBranch: state.planning.record.remote_branch,
+      headSha: head,
+      baseBranch: "main",
+    }),
+    verifyCommitOnBranch: async () => ({ defaultHeadSha: "3".repeat(40), reachable: true }),
+    readFileAtRef: async (_repository: string, path: string, ref: string) => {
+      assert.equal(ref, merge);
+      const content = fileContents.get(path);
+      if (content === undefined) throw new Error("missing");
+      return content;
+    },
+  };
+  const controller = new SystemActionController(state.operations, {
+    planningStore: state.planning,
+    github: github as never,
+    githubForRun: () => github as never,
+    now: () => NOW,
+  });
+  const verified = await controller.execute(run, "verify_planning_merge", "github.verify_planning_merge");
+  assert.equal(verified.outcome, "completed");
+  assert.equal(state.planning.record.verified_merge_commit_sha, merge);
+  assert.equal(state.planning.record.verification_manifest_digest?.length, 64);
+
+  state.planning.record.verification_operation_id = null;
+  state.planning.record.verified_merge_commit_sha = null;
+  const failedController = new SystemActionController(new OperationStore(), {
+    planningStore: state.planning,
+    github: { ...github, readFileAtRef: async () => "changed" } as never,
+    now: () => NOW,
+  });
+  const failed = await failedController.execute(run, "verify_planning_merge", "github.verify_planning_merge");
+  assert.equal(failed.outcome, "failed");
 });

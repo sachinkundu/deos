@@ -144,6 +144,25 @@ test("a failed planning revision author can request a same-definition retry", as
   assert.equal(store.preparedRetryNode, "planning_revision_author");
 });
 
+test("failed design authors can retry without returning to planning", async () => {
+  for (const retryNode of ["design_author", "design_revision_author"] as const) {
+    const store = new FakeRetryStore();
+    const controller = new AgentStageRetryController(
+      store,
+      new FakeWorkflow(),
+      "operator-secret",
+      TARGET_DEFINITION,
+      () => NOW,
+      () => {},
+    );
+
+    const response = await controller.handle(request("operator-secret", retryNode));
+
+    assert.equal(response.status, 202);
+    assert.equal(store.preparedRetryNode, retryNode);
+  }
+});
+
 test("failed agent stage retry creates a replacement and is authenticated, audited, and idempotent", async () => {
   const store = new FakeRetryStore();
   const workflows = new FakeWorkflow();

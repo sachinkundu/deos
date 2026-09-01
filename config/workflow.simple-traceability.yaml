@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: simple-traceability
-  version: 16
+  version: 17
 spec:
   start: claim_issue
   execution:
@@ -61,6 +61,19 @@ spec:
       permissionProfile: review_read_only
       providerAccess: [model.openrouter_review]
       reviewMode: discovery
+    design_author:
+      promptFile: prompts/openspec-design-author.md
+      inputs: [linear_issue, openspec_change, design_context]
+      context: [approved_planning_merge, prior_design, design_pull_request]
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, review-replies.json, author-completion.json]
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: repository_write
+      providerAccess: []
+      operation: {kind: openspec, instruction: /opsx:continue}
   nodes:
     claim_issue:
       type: system_action
@@ -128,6 +141,41 @@ spec:
     merge_planning_pr:
       type: system_action
       action: github.merge_planning_pull_request
+      edges: {completed: verify_planning_merge, failed: system_action_failed}
+    verify_planning_merge:
+      type: system_action
+      action: github.verify_planning_merge
+      edges: {completed: design_author, failed: system_action_failed}
+    design_author:
+      type: agent
+      job: design_author
+      edges: {completed: publish_design, invalid_design_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+    publish_design:
+      type: system_action
+      action: github.publish_design_candidate
+      edges: {completed: design_review, failed: system_action_failed}
+    design_review:
+      type: human_gate
+      linearState: Human Review
+      decisions:
+        revision_requested: In Progress
+        merge_authorized: Merging
+        canceled: Canceled
+      edges:
+        revision_requested: start_new_design_round
+        merge_authorized: merge_design_pr
+        canceled: canceled
+    start_new_design_round:
+      type: system_action
+      action: design.start_new_round
+      edges: {completed: design_revision_author, failed: system_action_failed}
+    design_revision_author:
+      type: agent
+      job: design_author
+      edges: {completed: publish_design, invalid_design_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+    merge_design_pr:
+      type: system_action
+      action: github.merge_design_pull_request
       edges: {completed: done, failed: system_action_failed}
     done: {type: terminal, deosStatus: succeeded, executorAction: return}
     canceled: {type: terminal, deosStatus: canceled, executorAction: return}

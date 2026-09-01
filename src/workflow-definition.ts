@@ -137,13 +137,15 @@ const SYSTEM_ACTIONS = new Set([
   "openspec.sync_and_archive",
   "linear.delegate_and_start",
   "github.merge_planning_pull_request",
+  "github.verify_planning_merge",
   "github.publish_planning_candidate",
+  "github.publish_design_candidate",
+  "github.merge_design_pull_request",
+  "design.start_new_round",
   "traceability.start_new_round",
   "traceability.publish_author_response",
 ]);
-const RETIRED_SYSTEM_ACTIONS = new Set([
-  "github.verify_planning_merge",
-]);
+const RETIRED_SYSTEM_ACTIONS = new Set<string>();
 const AGENT_CAPABILITY_ACTIONS = new Set([
   "github.publish_planning_work_product",
 ]);

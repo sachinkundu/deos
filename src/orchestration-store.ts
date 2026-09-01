@@ -234,6 +234,11 @@ export interface PersistedWaitInput {
   cancelEventDigest: string;
 }
 
+export interface HumanGateDecisionInput {
+  deliveryId: string;
+  outcome: "revision_requested" | "merge_authorized" | "canceled";
+}
+
 export interface OrchestrationDispatchStore {
   upsertIssueIndex(input: {
     issueId: string;
@@ -396,6 +401,7 @@ export interface WorkflowRuntimeStore {
     providerOperationId: string | null;
     now: string;
     wait?: PersistedWaitInput;
+    humanGateDecision?: HumanGateDecisionInput;
     terminalCause?: string | null;
   }): Promise<TransitionCommitResult>;
 }
@@ -1107,37 +1113,50 @@ export class D1OrchestrationStore {
     providerOperationId: string | null;
     now: string;
     wait?: PersistedWaitInput;
+    humanGateDecision?: HumanGateDecisionInput;
     terminalCause?: string | null;
   }): Promise<TransitionCommitResult> {
     const nextVisitSequence = input.expectedVisitSequence + 1;
+    const gateGuard = input.humanGateDecision === undefined
+      ? ""
+      : ` AND EXISTS (
+            SELECT 1 FROM human_gate_visits gate
+            WHERE gate.run_id = ? AND gate.visit_sequence = ? AND gate.node_id = ?
+              AND gate.state = 'open' AND gate.decision_delivery_id IS NULL
+          )`;
+    const runUpdate = this.database.prepare(
+      `UPDATE orchestration_runs
+       SET previous_node = current_node, current_node = ?, current_visit_sequence = ?,
+           last_transition_id = ?, status = ?, gate_origin_node = ?,
+           updated_at = ?, terminal_at = CASE WHEN ? IN ${finalStatuses} THEN ? ELSE NULL END,
+           terminal_cause = CASE WHEN ? = 'failed' THEN ? ELSE NULL END
+       WHERE run_id = ? AND current_node = ? AND current_visit_sequence = ? AND status = ?
+         AND NOT EXISTS (
+           SELECT 1 FROM workflow_transitions_v2 WHERE transition_id = ?
+         )${gateGuard}`,
+    );
+    const runBindings: unknown[] = [
+      input.nextNode,
+      nextVisitSequence,
+      input.transitionId,
+      input.nextStatus,
+      input.gateOriginNode,
+      input.now,
+      input.nextStatus,
+      input.now,
+      input.nextStatus,
+      input.terminalCause ?? null,
+      input.runId,
+      input.expectedNode,
+      input.expectedVisitSequence,
+      input.expectedStatus,
+      input.transitionId,
+    ];
+    if (input.humanGateDecision !== undefined) {
+      runBindings.push(input.runId, input.expectedVisitSequence, input.expectedNode);
+    }
     const statements = [
-      this.database.prepare(
-        `UPDATE orchestration_runs
-         SET previous_node = current_node, current_node = ?, current_visit_sequence = ?,
-             last_transition_id = ?, status = ?, gate_origin_node = ?,
-             updated_at = ?, terminal_at = CASE WHEN ? IN ${finalStatuses} THEN ? ELSE NULL END,
-             terminal_cause = CASE WHEN ? = 'failed' THEN ? ELSE NULL END
-         WHERE run_id = ? AND current_node = ? AND current_visit_sequence = ? AND status = ?
-           AND NOT EXISTS (
-             SELECT 1 FROM workflow_transitions_v2 WHERE transition_id = ?
-           )`,
-      ).bind(
-        input.nextNode,
-        nextVisitSequence,
-        input.transitionId,
-        input.nextStatus,
-        input.gateOriginNode,
-        input.now,
-        input.nextStatus,
-        input.now,
-        input.nextStatus,
-        input.terminalCause ?? null,
-        input.runId,
-        input.expectedNode,
-        input.expectedVisitSequence,
-        input.expectedStatus,
-        input.transitionId,
-      ),
+      runUpdate.bind(...runBindings),
       this.database.prepare(
         `INSERT OR IGNORE INTO workflow_transitions_v2
          (transition_id, run_id, from_node, to_node, from_visit_sequence,
@@ -1169,6 +1188,24 @@ export class D1OrchestrationStore {
         input.transitionId,
       ),
     ];
+    if (input.humanGateDecision !== undefined) {
+      statements.push(this.database.prepare(
+        `UPDATE human_gate_visits
+         SET state = ?, decision_delivery_id = ?, decision_outcome = ?, decided_at = ?
+         WHERE run_id = ? AND visit_sequence = ? AND node_id = ? AND state = 'open'
+           AND decision_delivery_id IS NULL
+           AND EXISTS (SELECT 1 FROM workflow_transitions_v2 WHERE transition_id = ?)`,
+      ).bind(
+        input.humanGateDecision.outcome,
+        input.humanGateDecision.deliveryId,
+        input.humanGateDecision.outcome,
+        input.now,
+        input.runId,
+        input.expectedVisitSequence,
+        input.expectedNode,
+        input.transitionId,
+      ));
+    }
     if (input.wait !== undefined) {
       statements.push(this.database.prepare(
         `INSERT OR IGNORE INTO workflow_waits
@@ -1197,8 +1234,11 @@ export class D1OrchestrationStore {
     const transition = await this.database.prepare(
       "SELECT * FROM workflow_transitions_v2 WHERE transition_id = ?",
     ).bind(input.transitionId).first<WorkflowTransitionRecord>();
-    const waitChanged = input.wait === undefined || changes(results[2]) === 1;
-    if (changes(results[0]) === 1 && changes(results[1]) === 1 && waitChanged) {
+    const waitIndex = input.wait === undefined ? -1 : 2 + (input.humanGateDecision === undefined ? 0 : 1);
+    const gateIndex = input.humanGateDecision === undefined ? -1 : 2;
+    const waitChanged = waitIndex === -1 || changes(results[waitIndex]!) === 1;
+    const gateChanged = gateIndex === -1 || changes(results[gateIndex]!) === 1;
+    if (changes(results[0]) === 1 && changes(results[1]) === 1 && waitChanged && gateChanged) {
       if (transition === null) throw new Error("committed workflow transition is not readable");
       return { outcome: "committed", transition };
     }
@@ -1230,6 +1270,19 @@ export class D1OrchestrationStore {
           wait.cancel_event_digest === input.wait.cancelEventDigest &&
           wait.cause_reference === input.causeReference;
         if (!exactWait) throw new Error("workflow wait identity conflict");
+      }
+      if (input.humanGateDecision !== undefined) {
+        const gate = await this.database.prepare(
+          `SELECT decision_delivery_id, decision_outcome FROM human_gate_visits
+           WHERE run_id = ? AND visit_sequence = ?`,
+        ).bind(input.runId, input.expectedVisitSequence).first<{
+          decision_delivery_id: string | null;
+          decision_outcome: string | null;
+        }>();
+        if (
+          gate?.decision_delivery_id !== input.humanGateDecision.deliveryId ||
+          gate.decision_outcome !== input.humanGateDecision.outcome
+        ) throw new Error("human gate decision identity conflict");
       }
       return { outcome: "replayed", transition };
     }

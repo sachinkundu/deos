@@ -115,6 +115,9 @@ class PlanningStore {
     merge_commit_sha: null,
     verification_operation_id: null,
     verified_at: null,
+    verified_merge_commit_sha: null,
+    verification_manifest_digest: null,
+    verification_manifest_json: null,
     created_at: NOW.toISOString(),
     updated_at: NOW.toISOString(),
   };
