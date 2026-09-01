@@ -35,9 +35,11 @@ import {
   isPlanningAuthorVisit,
   latestPhaseId,
   authorVisitStatus,
+  approvalEvidenceLinks,
   phaseDisplayStatus,
   phaseForVisit,
   stoppedPhaseSourceId,
+  selectedApprovalEvidenceUrls,
   workflowPhases,
   type WorkflowPhaseId,
 } from "./workflow-phases.ts";
@@ -286,9 +288,8 @@ function TraceabilityWorkflowMap({
   const designMergeVisit = latestVisitFor(designVisits, (visit) => visit.nodeId === "merge_design_pr");
   const planningGates = projection.gateVisits.filter((gate) => gate.gateKind === "plan");
   const designGates = projection.gateVisits.filter((gate) => gate.gateKind === "design");
-  const approvalLinks = [...new Map(
-    approvalVisits.flatMap((visit) => visit.links).map((link) => [link.url, link]),
-  ).values()];
+  const approvalLinks = approvalEvidenceLinks(projection.history);
+  const selectedApprovalLinks = new Set(selectedApprovalEvidenceUrls(projection.history, selectedVisit));
   const planningProduct = projection.workProducts.planning;
   const designProduct = projection.workProducts.design;
 
@@ -444,7 +445,7 @@ function TraceabilityWorkflowMap({
         {inspectedPhase?.id === "approval" && <>
           <details open><summary>Planning decisions</summary>{planningGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
           <details open><summary>Design decisions</summary>{designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
-          {approvalLinks.length > 0 && <details open><summary>Review links</summary>{approvalLinks.map((link) => <p key={link.url} className={detail?.links.some((selected) => selected.url === link.url) ? "selected-evidence" : ""}><a href={link.url} target="_blank" rel="noreferrer"><GitPullRequest /> {link.label}</a></p>)}</details>}
+          {approvalLinks.length > 0 && <details open><summary>Review links</summary>{approvalLinks.map((link) => <p key={link.url} className={selectedApprovalLinks.has(link.url) ? "selected-evidence" : ""}><a href={link.url} target="_blank" rel="noreferrer"><GitPullRequest /> {link.label}</a></p>)}</details>}
         </>}
         {inspectedPhase?.id === "design" && <details open><summary>Review rounds</summary>{designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>}
         {inspectorProduct && <details open><summary>Artifacts</summary><p><a href={inspectorProduct.url} target="_blank" rel="noreferrer"><GitPullRequest /> PR #{inspectorProduct.number}</a></p><p>{inspectorProduct === planningProduct ? "Proposal and complete specs" : "design.md"}</p></details>}

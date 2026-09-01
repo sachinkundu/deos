@@ -14,6 +14,13 @@ export interface WorkflowPhase {
   visits: PhaseVisitLike[];
 }
 
+export interface ApprovalEvidenceVisitLike {
+  sequence: number;
+  nodeId: string;
+  gate: { gate_kind: "plan" | "design" } | null;
+  links: readonly { url: string }[];
+}
+
 const PHASE_LABELS: Record<WorkflowPhaseId, string> = {
   claim: "Claim issue",
   planning: "Planning",
@@ -100,3 +107,29 @@ export const isPlanningAuthorVisit = (visit: Pick<PhaseVisitLike, "nodeId">): bo
   "planning_independent_response",
   "planning_revision_author",
 ].includes(visit.nodeId);
+
+const approvalPublicationKind = (nodeId: string): "plan" | "design" | null =>
+  ["publish_initial", "publish_update", "publish_author_response", "publish_planning_candidate"].includes(nodeId)
+    ? "plan"
+    : ["publish_design", "publish_design_candidate"].includes(nodeId) ? "design" : null;
+
+export const approvalEvidenceLinks = <Link extends { url: string }>(
+  visits: readonly (Omit<ApprovalEvidenceVisitLike, "links"> & { links: readonly Link[] })[],
+): readonly Link[] => [...new Map(visits
+  .filter((visit) => visit.gate !== null || approvalPublicationKind(visit.nodeId) !== null)
+  .flatMap((visit) => visit.links)
+  .map((link) => [link.url, link])).values()];
+
+export const selectedApprovalEvidenceUrls = (
+  visits: readonly ApprovalEvidenceVisitLike[],
+  selectedSequence: number | null,
+): readonly string[] => {
+  const selected = visits.find((visit) => visit.sequence === selectedSequence);
+  if (selected === undefined) return [];
+  const evidenceVisit = selected.gate === null ? selected : visits
+    .filter((visit) =>
+      visit.sequence < selected.sequence && approvalPublicationKind(visit.nodeId) === selected.gate?.gate_kind
+    )
+    .sort((left, right) => right.sequence - left.sequence)[0] ?? selected;
+  return evidenceVisit.links.map((link) => link.url);
+};

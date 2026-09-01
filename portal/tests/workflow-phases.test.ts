@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  approvalEvidenceLinks,
   authorVisitStatus,
   isDesignStageWorkflow,
   isPlanningAuthorVisit,
@@ -8,6 +9,7 @@ import {
   phaseDisplayStatus,
   phaseForVisit,
   stoppedPhaseSourceId,
+  selectedApprovalEvidenceUrls,
   workflowPhases,
   type PhaseVisitLike,
 } from "../src/workflow-phases.ts";
@@ -108,4 +110,18 @@ test("the substantive phase that stops retains its terminal failure status", () 
   assert.equal(phaseDisplayStatus(stopped, "stopped", "failed", "design"), "Failed");
   assert.equal(phaseDisplayStatus(design, "stopped", "blocked", "design"), "Blocked");
   assert.equal(phaseDisplayStatus(design, "stopped", "canceled", "design"), "Canceled");
+});
+
+test("human review collects and selects evidence from the preceding publication visit", () => {
+  const planLink = { url: "https://github.com/acme/repo/pull/10" };
+  const designLink = { url: "https://github.com/acme/repo/pull/11" };
+  const visits = [
+    { sequence: 5, nodeId: "publish_initial", gate: null, links: [planLink] },
+    { sequence: 6, nodeId: "planning_review", gate: { gate_kind: "plan" as const }, links: [] },
+    { sequence: 9, nodeId: "publish_design", gate: null, links: [designLink] },
+    { sequence: 10, nodeId: "design_review", gate: { gate_kind: "design" as const }, links: [] },
+  ];
+  assert.deepEqual(approvalEvidenceLinks(visits), [planLink, designLink]);
+  assert.deepEqual(selectedApprovalEvidenceUrls(visits, 6), [planLink.url]);
+  assert.deepEqual(selectedApprovalEvidenceUrls(visits, 10), [designLink.url]);
 });

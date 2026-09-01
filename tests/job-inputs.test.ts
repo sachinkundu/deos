@@ -286,6 +286,7 @@ test("planning materializer allocates one run branch and bounds both feedback pr
 
 test("design materializer anchors checked plan files and guidance to one exact merge commit", async () => {
   const mergeCommit = "a".repeat(40);
+  const guidanceContent = `${"Repository rule. ".repeat(2_500)}\n`;
   const manifest = [
     { path: "openspec/changes/sac-201/.openspec.yaml", sha256: "1".repeat(64), byteSize: 20 },
     { path: "openspec/changes/sac-201/proposal.md", sha256: "2".repeat(64), byteSize: 30 },
@@ -365,7 +366,7 @@ test("design materializer anchors checked plan files and guidance to one exact m
       },
       readGitHubGuidance: async (_repository, ref) => {
         readRefs.push(ref);
-        return [{ path: "AGENTS.md", content: "Keep the CLI small.\n" }];
+        return [{ path: "AGENTS.md", content: guidanceContent }];
       },
     },
   );
@@ -399,5 +400,7 @@ test("design materializer anchors checked plan files and guidance to one exact m
   const context = JSON.parse(result.context);
   assert.equal(context.design.approvedPlan.length, 3);
   assert.equal(context.design.guidance.files[0].path, "AGENTS.md");
+  assert.equal(context.design.guidance.files[0].content, guidanceContent);
+  assert.equal(context.design.guidance.files[0].content.includes("[truncated"), false);
   assert.equal(context.design.baseCommit, mergeCommit);
 });

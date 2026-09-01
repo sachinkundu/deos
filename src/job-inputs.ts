@@ -282,7 +282,7 @@ export class JobInputMaterializer {
         guidance: {
           files: repositoryGuidance.map((file) => ({
             path: file.path,
-            content: bounded(file.content, 32_000),
+            content: file.content,
           })),
           missingOptionalFilesAreNotInvented: true,
         },
