@@ -7,6 +7,7 @@ import {
   latestPhaseId,
   phaseDisplayStatus,
   phaseForVisit,
+  stoppedPhaseSourceId,
   workflowPhases,
   type PhaseVisitLike,
 } from "../src/workflow-phases.ts";
@@ -89,4 +90,22 @@ test("an unfinished author visit stays in progress until the run is terminal", (
 test("planning author selection includes revisions and excludes independent final trace", () => {
   assert.equal(isPlanningAuthorVisit(visit(8, "planning_revision_author", "planning")), true);
   assert.equal(isPlanningAuthorVisit(visit(10, "final_trace", "independent_review")), false);
+});
+
+test("the substantive phase that stops retains its terminal failure status", () => {
+  const visits = [
+    visit(1, "claim_issue", "claim"),
+    visit(2, "design_author", "design"),
+    visit(3, "agent_failed", "stopped"),
+  ];
+  const phases = workflowPhases(visits);
+  const design = phases.find((phase) => phase.id === "design");
+  const stopped = phases.find((phase) => phase.id === "stopped");
+  assert.ok(design);
+  assert.ok(stopped);
+  assert.equal(stoppedPhaseSourceId(visits), "design");
+  assert.equal(phaseDisplayStatus(design, "stopped", "failed", "design"), "Failed");
+  assert.equal(phaseDisplayStatus(stopped, "stopped", "failed", "design"), "Failed");
+  assert.equal(phaseDisplayStatus(design, "stopped", "blocked", "design"), "Blocked");
+  assert.equal(phaseDisplayStatus(design, "stopped", "canceled", "design"), "Canceled");
 });

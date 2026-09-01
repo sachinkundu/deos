@@ -55,15 +55,31 @@ export const latestPhaseId = (visits: PhaseVisitLike[]): WorkflowPhaseId | null 
   return latest === undefined ? null : phaseForVisit(latest);
 };
 
+export const stoppedPhaseSourceId = (visits: PhaseVisitLike[]): WorkflowPhaseId | null => {
+  const phases = visits.filter((visit) => visit.recovered !== true)
+    .sort((left, right) => right.sequence - left.sequence)
+    .map(phaseForVisit);
+  if (phases[0] !== "stopped") return null;
+  return phases.find((phase) => phase !== null && phase !== "stopped" && phase !== "complete") ?? null;
+};
+
+const terminalPhaseStatus = (
+  runStatus: string,
+): "Failed" | "Blocked" | "Canceled" | null =>
+  runStatus === "failed" ? "Failed"
+    : ["blocked", "denied"].includes(runStatus) ? "Blocked"
+      : runStatus === "canceled" ? "Canceled" : null;
+
 export const phaseDisplayStatus = (
   phase: WorkflowPhase,
   currentPhaseId: WorkflowPhaseId | null,
   runStatus: string,
+  failedPhaseId: WorkflowPhaseId | null = null,
 ): "Succeeded" | "In progress" | "Complete" | "Upcoming" | "Failed" | "Blocked" | "Canceled" => {
   if (phase.id === "complete" && runStatus === "succeeded") return "Succeeded";
-  if (phase.id === "stopped" && ["failed", "blocked", "canceled"].includes(runStatus)) {
-    return runStatus === "failed" ? "Failed" : runStatus === "blocked" ? "Blocked" : "Canceled";
-  }
+  const terminalStatus = terminalPhaseStatus(runStatus);
+  if (phase.id === "stopped" && terminalStatus !== null) return terminalStatus;
+  if (currentPhaseId === "stopped" && phase.id === failedPhaseId && terminalStatus !== null) return terminalStatus;
   const terminal = ["succeeded", "failed", "blocked", "denied", "canceled"].includes(runStatus);
   if (phase.id === currentPhaseId && !terminal) return "In progress";
   return phase.visits.length > 0 ? "Complete" : "Upcoming";
