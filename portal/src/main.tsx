@@ -32,6 +32,7 @@ import { TranscriptViewer } from "./TranscriptViewer.tsx";
 import type { TranscriptDto } from "./transcript-view.ts";
 import {
   isDesignStageWorkflow,
+  isPlanningAuthorVisit,
   latestPhaseId,
   authorVisitStatus,
   phaseDisplayStatus,
@@ -275,9 +276,7 @@ function TraceabilityWorkflowMap({
   const independentVisits = planningVisits.filter((visit) => [
     "independent_discovery", "independent_recheck", "planning_independent_response", "final_trace",
   ].includes(visit.nodeId));
-  const planningAuthorVisit = latestVisitFor(planningVisits, (visit) => [
-    "planning_author", "planning_self_repair", "planning_independent_response", "final_trace",
-  ].includes(visit.nodeId));
+  const planningAuthorVisit = latestVisitFor(planningVisits, isPlanningAuthorVisit);
   const planningReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "planning_review");
   const planningMergeVisit = latestVisitFor(planningVisits, (visit) => ["verify_planning_merge", "merge_planning_pr"].includes(visit.nodeId));
   const designAuthorVisit = latestVisitFor(designVisits, (visit) => ["design_revision_author", "design_author"].includes(visit.nodeId));

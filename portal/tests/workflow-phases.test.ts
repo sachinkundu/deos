@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   authorVisitStatus,
   isDesignStageWorkflow,
+  isPlanningAuthorVisit,
   latestPhaseId,
   phaseDisplayStatus,
   phaseForVisit,
@@ -83,4 +84,9 @@ test("an unfinished author visit stays in progress until the run is terminal", (
   assert.equal(authorVisitStatus({ leftAt: "2026-09-01T12:00:00.000Z" }, "active"), "Complete");
   assert.equal(authorVisitStatus({ leftAt: null }, "failed"), "Complete");
   assert.equal(authorVisitStatus(null, "active"), "Upcoming");
+});
+
+test("planning author selection includes revisions and excludes independent final trace", () => {
+  assert.equal(isPlanningAuthorVisit(visit(8, "planning_revision_author", "planning")), true);
+  assert.equal(isPlanningAuthorVisit(visit(10, "final_trace", "independent_review")), false);
 });

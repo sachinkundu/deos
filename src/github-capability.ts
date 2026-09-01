@@ -1360,12 +1360,17 @@ export class GitHubCapabilityAdapter {
     if (typeof value.sha !== "string" || typeof value.content !== "string") {
       throw new Error("GitHub content response is invalid");
     }
-    return {
-      sha: value.sha,
-      content: new TextDecoder().decode(
-        Uint8Array.from(atob(value.content.replace(/\s/g, "")), (character) => character.charCodeAt(0)),
-      ),
-    };
+    let content: string;
+    try {
+      const bytes = Uint8Array.from(
+        atob(value.content.replace(/\s/g, "")),
+        (character) => character.charCodeAt(0),
+      );
+      content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes);
+    } catch {
+      throw new Error("GitHub content response is not valid UTF-8");
+    }
+    return { sha: value.sha, content };
   }
 
   private async writeContent(

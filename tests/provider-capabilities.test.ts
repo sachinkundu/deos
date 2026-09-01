@@ -382,6 +382,30 @@ test("GitHub repository guidance rejects an allowlisted symlink before reading i
   assert.equal(contentReads, 0);
 });
 
+test("GitHub repository guidance rejects malformed UTF-8", async () => {
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/git/trees/")) {
+        return Response.json({
+          tree: [{ path: "AGENTS.md", type: "blob", mode: "100644" }],
+        });
+      }
+      if (path.includes("/contents/AGENTS.md")) {
+        return Response.json({ sha: "guidance-sha", content: btoa(String.fromCharCode(0xc3, 0x28)) });
+      }
+      return new Response("unexpected", { status: 500 });
+    } },
+  );
+
+  await assert.rejects(
+    adapter.readRepositoryGuidance("acme/sample", "a".repeat(40)),
+    /not valid UTF-8/,
+  );
+});
+
 test("GitHub planning merge uses expected head SHA and reconciles a lost response", async () => {
   let merged = false;
   let mergeCalls = 0;

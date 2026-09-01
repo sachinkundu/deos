@@ -77,3 +77,10 @@ export const authorVisitStatus = (
   const terminal = ["succeeded", "failed", "blocked", "denied", "canceled"].includes(runStatus);
   return visit.leftAt === null && !terminal ? "In progress" : "Complete";
 };
+
+export const isPlanningAuthorVisit = (visit: Pick<PhaseVisitLike, "nodeId">): boolean => [
+  "planning_author",
+  "planning_self_repair",
+  "planning_independent_response",
+  "planning_revision_author",
+].includes(visit.nodeId);
