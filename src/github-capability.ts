@@ -915,20 +915,33 @@ export class GitHubCapabilityAdapter {
       body?: unknown;
     };
     if (currentPull.title !== input.title || currentPull.body !== input.body) {
-      await this.json(token, `/repos/${input.repository}/pulls/${number}`, {
-        method: "PATCH",
-        body: { title: input.title, body: input.body },
-      });
+      try {
+        await this.json(token, `/repos/${input.repository}/pulls/${number}`, {
+          method: "PATCH",
+          body: { title: input.title, body: input.body },
+        });
+      } catch {
+        const after = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as {
+          title?: unknown;
+          body?: unknown;
+        };
+        if (after.title !== input.title || after.body !== input.body) {
+          throw new Error("GitHub design pull-request update is ambiguous");
+        }
+        reconciled = true;
+      }
     }
     const headSha = await this.ref(token, input.repository, input.branch);
     if (headSha === null) throw new Error("GitHub design branch read-back is missing");
     await this.assertDesignOnlyBranch(token, input.repository, input.baseCommit, headSha, path, true);
-    const confirmed = this.parsePull(await this.json(token, `/repos/${input.repository}/pulls/${number}`));
+    const confirmedRaw = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as Record<string, unknown>;
+    const confirmed = this.parsePull(confirmedRaw);
     const design = await this.readContent(token, input.repository, headSha, path, false);
     if (
       confirmed.state !== "open" || confirmed.draft || confirmed.merged ||
       confirmed.headBranch !== input.branch || confirmed.headSha !== headSha ||
       confirmed.baseBranch !== input.baseBranch || design?.content !== input.content ||
+      confirmedRaw.title !== input.title || confirmedRaw.body !== input.body ||
       (input.expectedPullRequestDatabaseId !== undefined &&
         confirmed.databaseId !== input.expectedPullRequestDatabaseId) ||
       (input.expectedPullRequestNumber !== undefined && confirmed.number !== input.expectedPullRequestNumber)
@@ -1028,10 +1041,10 @@ export class GitHubCapabilityAdapter {
   async readReviewFeedback(repository: string, pullRequestNumber: number): Promise<readonly Record<string, unknown>[]> {
     const token = await this.tokens.token();
     const [reviews, reviewComments, issueComments] = await Promise.all([
-      this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}/reviews?per_page=50`),
-      this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}/comments?per_page=100`),
-      this.json(token, `/repos/${repository}/issues/${pullRequestNumber}/comments?per_page=50`),
-    ]) as [unknown[], unknown[], unknown[]];
+      this.pagedList(token, `/repos/${repository}/pulls/${pullRequestNumber}/reviews`, 50, "review"),
+      this.pagedList(token, `/repos/${repository}/pulls/${pullRequestNumber}/comments`, 100, "review-comment"),
+      this.pagedList(token, `/repos/${repository}/issues/${pullRequestNumber}/comments`, 50, "issue-comment"),
+    ]);
     const pick = (kind: string, entries: unknown[]): Record<string, unknown>[] => entries.map((value) => {
       const entry = value as Record<string, unknown>;
       const user = entry.user as Record<string, unknown> | undefined;
@@ -1244,13 +1257,12 @@ export class GitHubCapabilityAdapter {
     repository: string,
     pullRequestNumber: number,
   ): Promise<readonly GitHubReviewComment[]> {
-    const value = await this.json(
+    const value = await this.pagedList(
       token,
-      `/repos/${repository}/pulls/${pullRequestNumber}/comments?per_page=100`,
+      `/repos/${repository}/pulls/${pullRequestNumber}/comments`,
+      100,
+      "review-comment",
     );
-    if (!Array.isArray(value) || value.length >= 100) {
-      throw new Error("GitHub review-comment list is invalid or incomplete");
-    }
     return value.map((entry) => {
       const comment = entry as {
         id?: unknown;
@@ -1271,6 +1283,25 @@ export class GitHubCapabilityAdapter {
         userType: comment.user.type,
       };
     });
+  }
+
+  private async pagedList(
+    token: string,
+    path: string,
+    perPage: number,
+    label: string,
+  ): Promise<unknown[]> {
+    const values: unknown[] = [];
+    for (let page = 1; ; page += 1) {
+      const suffix = page === 1 ? `?per_page=${perPage}` : `?per_page=${perPage}&page=${page}`;
+      const batch = await this.json(token, `${path}${suffix}`);
+      if (!Array.isArray(batch) || batch.length > perPage) {
+        throw new Error(`GitHub ${label} list is invalid`);
+      }
+      values.push(...batch);
+      if (batch.length < perPage) return values;
+      if (values.length >= 10_000) throw new Error(`GitHub ${label} list exceeds the trusted limit`);
+    }
   }
 
   private async replyToReviewThreads(
@@ -1303,6 +1334,7 @@ export class GitHubCapabilityAdapter {
         .map((comment) => comment.id));
       return lastAcknowledgmentId < lastHumanId;
     });
+    if (outstanding.length > 50) throw new Error("GitHub outstanding review threads exceed the trusted limit");
     if (outstanding.some((commentId) => !requested.has(commentId))) {
       throw new Error("GitHub review reply manifest is incomplete");
     }

@@ -208,7 +208,10 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
       return Response.json(pull);
     }
     if (path.endsWith("/pulls/54/comments?per_page=100") && method === "GET") {
-      return Response.json(reviewComments);
+      return Response.json(reviewComments.slice(0, 100));
+    }
+    if (path.endsWith("/pulls/54/comments?per_page=100&page=2") && method === "GET") {
+      return Response.json(reviewComments.slice(100, 200));
     }
     if (path.endsWith("/pulls/54/reviews?per_page=50") && method === "GET") {
       return Response.json([]);
@@ -254,6 +257,12 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     reviewReplies: [],
   }, "operation-1");
   reviewComments.push(
+    ...Array.from({ length: 100 }, (_, index) => ({
+      id: 1_000 + index,
+      in_reply_to_id: 999,
+      body: `Earlier bot context ${index}`,
+      user: { type: "Bot", login: "deos-app[bot]" },
+    })),
     { id: 101, body: "Use temperature here.", user: { type: "User", login: "reviewer" } },
     { id: 102, body: "Accept five as well as 5.", user: { type: "User", login: "reviewer" } },
   );
@@ -356,6 +365,82 @@ test("GitHub design publication rejects an existing branch with out-of-scope cha
     reviewReplies: [],
   }, "operation-design"), /design branch contains out-of-scope changes/);
   assert.equal(writes, 0);
+});
+
+test("GitHub design publication reconciles an accepted metadata update with a lost response", async () => {
+  const baseCommit = "a".repeat(40);
+  const headCommit = "b".repeat(40);
+  const branch = "deos/design/sac-201";
+  const designPath = "openspec/changes/sac-201/design.md";
+  const designContent = "## Design\n";
+  let title = "Old title";
+  let body = "Old body";
+  let patchCalls = 0;
+  const pull = () => ({
+    id: 7001,
+    number: 7,
+    html_url: "https://github.com/acme/sample/pull/7",
+    state: "open",
+    draft: false,
+    merged: false,
+    merge_commit_sha: null,
+    title,
+    body,
+    head: { ref: branch, sha: headCommit },
+    base: { ref: "main" },
+  });
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input, init) => {
+      const url = new URL(String(input));
+      const path = `${url.pathname}${url.search}`;
+      const method = init?.method ?? "GET";
+      if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-201")) {
+        return Response.json({ object: { sha: headCommit } });
+      }
+      if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
+        return Response.json({
+          status: "ahead",
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: baseCommit },
+          files: [{ filename: designPath }],
+        });
+      }
+      if (path.includes(`/contents/${designPath}`)) {
+        return Response.json({ sha: "design-sha", content: encode(designContent) });
+      }
+      if (path.endsWith("/pulls/7") && method === "PATCH") {
+        const payload = JSON.parse(String(init?.body)) as { title: string; body: string };
+        title = payload.title;
+        body = payload.body;
+        patchCalls += 1;
+        throw new Error("metadata response lost");
+      }
+      if (path.endsWith("/pulls/7") && method === "GET") return Response.json(pull());
+      if (path.endsWith("/pulls/7/comments?per_page=100")) return Response.json([]);
+      return new Response(`unexpected ${method} ${path}`, { status: 500 });
+    } },
+  );
+
+  const receipt = await adapter.publishDesign({
+    repository: "acme/sample",
+    branch,
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-201",
+    title: "SAC-201: OpenSpec design",
+    body: "Reviewed design",
+    content: designContent,
+    reviewReplies: [],
+    expectedPullRequestDatabaseId: "7001",
+    expectedPullRequestNumber: 7,
+  }, "operation-design");
+  assert.equal(receipt.reconciled, true);
+  assert.equal(receipt.pullRequestNumber, 7);
+  assert.equal(patchCalls, 1);
+  assert.equal(title, "SAC-201: OpenSpec design");
+  assert.equal(body, "Reviewed design");
 });
 
 test("GitHub repository guidance rejects an allowlisted symlink before reading its target", async () => {
