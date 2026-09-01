@@ -1,8 +1,13 @@
 ## ADDED Requirements
 
-### Requirement: Keep the plan and design gates apart
+### Requirement: Keep plan and design gate visits apart
 
-The flow SHALL save which human gate is active for each visit. It SHALL also save the pull request and work type bound to that gate. A human choice SHALL use only the edges and saved pull request for that visit. The plan gate and design gate MAY use the same Linear states, but they MUST NOT share merge or change work.
+The flow SHALL save which logical human gate is active for each visit. It SHALL also save the pull request and work type bound to that gate. A human choice SHALL use only the edges and saved pull request for that visit. The plan and design gates MAY use the same Linear states and visible human approval stage. They MUST NOT share visits, choices, pull requests, merge work, or change work.
+
+#### Scenario: Both gates share one visible stage
+
+- **WHEN** the saved graph has plan and design review visits.
+- **THEN** the workflow view maps both visits to one human approval stage while the saved gate for each visit stays distinct.
 
 #### Scenario: Plan change is asked for
 
