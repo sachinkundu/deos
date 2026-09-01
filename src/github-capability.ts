@@ -1019,12 +1019,26 @@ export class GitHubCapabilityAdapter {
       }
       throw error;
     }
+    const finalHeadSha = await this.ref(token, input.repository, input.branch);
+    const finalRaw = await this.json(
+      token,
+      `/repos/${input.repository}/pulls/${confirmed.number}`,
+    ) as Record<string, unknown>;
+    const finalPull = this.parsePull(finalRaw);
+    if (
+      finalHeadSha !== headSha || finalPull.databaseId !== confirmed.databaseId ||
+      finalPull.number !== confirmed.number || finalPull.url !== confirmed.url ||
+      finalPull.state !== "open" || finalPull.draft || finalPull.merged ||
+      finalPull.headBranch !== input.branch || finalPull.headSha !== headSha ||
+      finalPull.baseBranch !== input.baseBranch || finalRaw.title !== input.title ||
+      finalRaw.body !== input.body
+    ) throw new Error("GitHub design pull-request final read-back mismatch");
     return {
-      pullRequestDatabaseId: confirmed.databaseId,
-      pullRequestNumber: confirmed.number,
-      pullRequestUrl: confirmed.url,
+      pullRequestDatabaseId: finalPull.databaseId,
+      pullRequestNumber: finalPull.number,
+      pullRequestUrl: finalPull.url,
       branch: input.branch,
-      headSha,
+      headSha: finalPull.headSha,
       reviewReplyIds: replies.ids,
       reconciled: reconciled || replies.reconciled,
     };

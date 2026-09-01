@@ -485,6 +485,7 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
 test("GitHub design publication makes a lost final read reconcilable", async () => {
   const baseCommit = "a".repeat(40);
   const headCommit = "b".repeat(40);
+  let liveHeadSha = headCommit;
   const branch = "deos/design/sac-201-final-read";
   const designPath = "openspec/changes/sac-201/design.md";
   const designContent = "## Design\n";
@@ -512,7 +513,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
       const path = `${url.pathname}${url.search}`;
       const method = init?.method ?? "GET";
       if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-201-final-read")) {
-        return Response.json({ object: { sha: headCommit } });
+        return Response.json({ object: { sha: liveHeadSha } });
       }
       if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
         return Response.json({
@@ -531,10 +532,19 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
           loseFinalRead = false;
           throw new Error("fetch failed");
         }
+        pull.head.sha = liveHeadSha;
         return Response.json(pull);
       }
       if (path.includes("/pulls?state=all&head=")) return Response.json([{ number: 7 }]);
       if (path.endsWith("/pulls/7/comments?per_page=100")) return Response.json(reviewComments);
+      if (path.endsWith("/pulls/7/comments/701/replies") && method === "POST") {
+        liveHeadSha = "c".repeat(40);
+        return Response.json({
+          id: 702,
+          in_reply_to_id: 701,
+          user: { type: "Bot", login: "deos[bot]" },
+        });
+      }
       return new Response(`unexpected ${method} ${path}`, { status: 500 });
     } },
   );
@@ -573,6 +583,13 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
     (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
       error.receipt.pullRequestDatabaseId === "7001" && error.receipt.pullRequestNumber === 7 &&
       error.receipt.headSha === headCommit,
+  );
+  await assert.rejects(
+    adapter.publishDesign({
+      ...request,
+      reviewReplies: [{ commentId: 701, body: "Covered the retry path." }],
+    }, "operation-reply-race"),
+    /final read-back mismatch/,
   );
 });
 
