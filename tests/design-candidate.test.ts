@@ -5,6 +5,7 @@ import {
   buildDesignCandidate,
   DesignCandidateRejectedError,
   isStoredDesignCandidateReplay,
+  recoverDesignCandidateCheckedAt,
 } from "../src/design-candidate.ts";
 
 const content = `## Context
@@ -84,4 +85,17 @@ test("a saved source attempt reuses its round and exact candidate identity", asy
   };
   assert.equal(isStoredDesignCandidateReplay(stored, built.candidate), true);
   assert.equal(isStoredDesignCandidateReplay({ ...stored, round: 3 }, built.candidate), false);
+});
+
+test("candidate replay recovers the validation timestamp written before D1", async () => {
+  const built = await build({ checkedAt: "2026-09-01T10:05:00.000Z" });
+  const bucket = {
+    get: async (key: string) => key.endsWith("candidate-validation.json") ? {
+      text: async () => JSON.stringify(built.validation),
+    } : null,
+  } as unknown as R2Bucket;
+  assert.equal(
+    await recoverDesignCandidateCheckedAt(bucket, built.candidate.runId, built.candidate.candidateId),
+    built.validation.checkedAt,
+  );
 });

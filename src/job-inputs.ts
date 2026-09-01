@@ -3,6 +3,7 @@ import type { WorkflowJob } from "./workflow-definition.ts";
 import { D1PlanningStore, type RunWorkProductRecord } from "./planning-store.ts";
 import { D1DesignStore, type DesignWorkProductRecord } from "./design-store.ts";
 import { DESIGN_CANDIDATE_CONTEXT_LIMIT } from "./design-candidate.ts";
+import { sha256Hex } from "./trace-review.ts";
 
 interface LinearIssueContext {
   id: string;
@@ -114,6 +115,40 @@ export const selectReviewFeedback = (
   const remaining = entries.filter((entry) => !requiredSet.has(entry));
   const selected = new Set([...required, ...remaining.slice(-(limit - required.length))]);
   return Object.freeze(entries.filter((entry) => selected.has(entry)));
+};
+
+interface PriorDesignCandidateIdentity {
+  candidate_id: string;
+  run_id: string;
+  round: number;
+  source_attempt_id: string;
+  base_commit: string;
+  change_id: string;
+  design_digest: string;
+  candidate_digest: string;
+  candidate_sha256: string;
+}
+
+export const verifyPriorDesignCandidate = async (
+  text: string,
+  row: PriorDesignCandidateIdentity,
+): Promise<Record<string, unknown>> => {
+  if (new TextEncoder().encode(text).byteLength > DESIGN_CANDIDATE_CONTEXT_LIMIT) {
+    throw new Error("prior design candidate exceeds the trusted limit");
+  }
+  if (await sha256Hex(text) !== row.candidate_sha256) {
+    throw new Error("prior design candidate hash mismatch");
+  }
+  const candidate = asObject(JSON.parse(text));
+  if (
+    candidate.version !== 1 || candidate.candidateId !== row.candidate_id ||
+    candidate.runId !== row.run_id || candidate.round !== row.round ||
+    candidate.sourceAttemptId !== row.source_attempt_id || candidate.baseCommit !== row.base_commit ||
+    candidate.change !== row.change_id || candidate.designDigest !== row.design_digest ||
+    candidate.candidateDigest !== row.candidate_digest ||
+    candidate.path !== `openspec/changes/${row.change_id}/design.md`
+  ) throw new Error("prior design candidate identity mismatch");
+  return candidate;
 };
 
 export const openSpecChangeIdentity = (identifier: string): string => {
@@ -345,18 +380,16 @@ export class JobInputMaterializer {
 
   private async priorDesign(runId: string): Promise<Record<string, unknown> | null> {
     const row = await this.database.prepare(
-      `SELECT candidate_r2_key FROM design_candidates
+      `SELECT candidate_id, run_id, round, source_attempt_id, base_commit, change_id,
+              design_digest, candidate_digest, candidate_r2_key, candidate_sha256
+       FROM design_candidates
        WHERE run_id = ? AND state = 'validated'
        ORDER BY round DESC, created_at DESC, candidate_id DESC LIMIT 1`,
-    ).bind(runId).first<{ candidate_r2_key: string }>();
+    ).bind(runId).first<PriorDesignCandidateIdentity & { candidate_r2_key: string }>();
     if (row === null) return null;
     const object = await this.artifacts.get(row.candidate_r2_key);
     if (object === null) throw new Error("prior design candidate is missing");
-    const text = await object.text();
-    if (new TextEncoder().encode(text).byteLength > DESIGN_CANDIDATE_CONTEXT_LIMIT) {
-      throw new Error("prior design candidate exceeds the trusted limit");
-    }
-    return asObject(JSON.parse(text));
+    return verifyPriorDesignCandidate(await object.text(), row);
   }
 
   private async traceabilityFeedback(runId: string): Promise<Record<string, unknown> | null> {

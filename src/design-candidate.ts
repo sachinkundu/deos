@@ -49,6 +49,45 @@ export interface DesignCandidateEvidence {
   validationSha256: string;
 }
 
+export const designCandidateEvidenceKeys = (runId: string, candidateId: string): {
+  candidateR2Key: string;
+  validationR2Key: string;
+} => {
+  const prefix = `runs/${encodeURIComponent(runId)}/design-candidates/${candidateId}`;
+  return {
+    candidateR2Key: `${prefix}/design-candidate.json`,
+    validationR2Key: `${prefix}/candidate-validation.json`,
+  };
+};
+
+export const recoverDesignCandidateCheckedAt = async (
+  bucket: R2Bucket,
+  runId: string,
+  candidateId: string,
+): Promise<string | null> => {
+  const { validationR2Key } = designCandidateEvidenceKeys(runId, candidateId);
+  const object = await bucket.get(validationR2Key);
+  if (object === null) return null;
+  const text = await object.text();
+  if (new TextEncoder().encode(text).byteLength > 4_096) {
+    throw new Error("design candidate validation evidence is invalid");
+  }
+  let validation: Partial<DesignCandidateValidation>;
+  try {
+    validation = JSON.parse(text) as Partial<DesignCandidateValidation>;
+  } catch {
+    throw new Error("design candidate validation evidence is invalid");
+  }
+  if (
+    validation.version !== 1 || validation.candidateId !== candidateId ||
+    validation.allowedPaths !== "passed" || validation.strictOpenSpec !== "passed" ||
+    validation.whitespace !== "passed" || validation.requiredSections !== "passed" ||
+    typeof validation.checkedAt !== "string" ||
+    new Date(validation.checkedAt).toISOString() !== validation.checkedAt
+  ) throw new Error("design candidate validation evidence is invalid");
+  return validation.checkedAt;
+};
+
 export interface StoredDesignCandidateIdentity {
   candidate_id: string;
   run_id: string;
@@ -190,9 +229,10 @@ export const persistDesignCandidateEvidence = async (
   bucket: R2Bucket,
   input: { candidate: DesignCandidate; validation: DesignCandidateValidation },
 ): Promise<DesignCandidateEvidence> => {
-  const prefix = `runs/${encodeURIComponent(input.candidate.runId)}/design-candidates/${input.candidate.candidateId}`;
-  const candidateR2Key = `${prefix}/design-candidate.json`;
-  const validationR2Key = `${prefix}/candidate-validation.json`;
+  const { candidateR2Key, validationR2Key } = designCandidateEvidenceKeys(
+    input.candidate.runId,
+    input.candidate.candidateId,
+  );
   const candidateBytes = encode(input.candidate);
   const validationBytes = encode(input.validation);
   const candidateSha256 = await sha256Hex(candidateBytes);

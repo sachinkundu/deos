@@ -865,7 +865,7 @@ export class GitHubCapabilityAdapter {
     } else {
       reconciled = true;
     }
-    const pullsPath = `/repos/${input.repository}/pulls?state=open&base=${encodeURIComponent(input.baseBranch)}&head=${encodeURIComponent(`${owner}:${input.branch}`)}`;
+    const pullsPath = `/repos/${input.repository}/pulls?state=all&base=${encodeURIComponent(input.baseBranch)}&head=${encodeURIComponent(`${owner}:${input.branch}`)}`;
     let number: number | null = null;
     if (input.expectedPullRequestDatabaseId !== undefined || input.expectedPullRequestNumber !== undefined) {
       if (input.expectedPullRequestDatabaseId === undefined || input.expectedPullRequestNumber === undefined) {
@@ -910,10 +910,15 @@ export class GitHubCapabilityAdapter {
         reconciled = true;
       }
     }
-    const currentPull = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as {
+    const currentPull = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as Record<string, unknown> & {
       title?: unknown;
       body?: unknown;
     };
+    const currentIdentity = this.parsePull(currentPull);
+    if (
+      currentIdentity.state !== "open" || currentIdentity.draft || currentIdentity.merged ||
+      currentIdentity.headBranch !== input.branch || currentIdentity.baseBranch !== input.baseBranch
+    ) throw new Error("GitHub discovered design pull-request identity mismatch");
     if (currentPull.title !== input.title || currentPull.body !== input.body) {
       try {
         await this.json(token, `/repos/${input.repository}/pulls/${number}`, {

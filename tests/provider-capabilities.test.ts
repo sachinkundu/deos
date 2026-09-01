@@ -443,6 +443,69 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
   assert.equal(body, "Reviewed design");
 });
 
+test("GitHub design publication rejects a closed pull request on its deterministic branch", async () => {
+  const baseCommit = "a".repeat(40);
+  const headCommit = "b".repeat(40);
+  const branch = "deos/design/sac-202";
+  const designPath = "openspec/changes/sac-202/design.md";
+  const designContent = "## Design\n";
+  let pullWrites = 0;
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input, init) => {
+      const url = new URL(String(input));
+      const path = `${url.pathname}${url.search}`;
+      const method = init?.method ?? "GET";
+      if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-202")) {
+        return Response.json({ object: { sha: headCommit } });
+      }
+      if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
+        return Response.json({
+          status: "ahead",
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: baseCommit },
+          files: [{ filename: designPath }],
+        });
+      }
+      if (path.includes(`/contents/${designPath}`)) {
+        return Response.json({ sha: "design-sha", content: encode(designContent) });
+      }
+      if (path.includes("/pulls?state=all")) return Response.json([{ number: 8 }]);
+      if (path.endsWith("/pulls/8") && method === "GET") {
+        return Response.json({
+          id: 8001,
+          number: 8,
+          html_url: "https://github.com/acme/sample/pull/8",
+          state: "closed",
+          draft: false,
+          merged: false,
+          merge_commit_sha: null,
+          title: "SAC-202: OpenSpec design",
+          body: "Reviewed design",
+          head: { ref: branch, sha: headCommit },
+          base: { ref: "main" },
+        });
+      }
+      if (path.endsWith("/pulls") || (path.endsWith("/pulls/8") && method === "PATCH")) pullWrites += 1;
+      return new Response(`unexpected ${method} ${path}`, { status: 500 });
+    } },
+  );
+
+  await assert.rejects(adapter.publishDesign({
+    repository: "acme/sample",
+    branch,
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-202",
+    title: "SAC-202: OpenSpec design",
+    body: "Reviewed design",
+    content: designContent,
+    reviewReplies: [],
+  }, "operation-design"), /discovered design pull-request identity mismatch/);
+  assert.equal(pullWrites, 0);
+});
+
 test("GitHub repository guidance rejects an allowlisted symlink before reading its target", async () => {
   let contentReads = 0;
   const adapter = new GitHubCapabilityAdapter(

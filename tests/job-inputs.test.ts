@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { JobInputMaterializer, openSpecChangeIdentity, selectReviewFeedback } from "../src/job-inputs.ts";
+import {
+  JobInputMaterializer,
+  openSpecChangeIdentity,
+  selectReviewFeedback,
+  verifyPriorDesignCandidate,
+} from "../src/job-inputs.ts";
+import { sha256Hex } from "../src/trace-review.ts";
 import type { OrchestrationRunRecord } from "../src/orchestration-store.ts";
 import type { WorkflowJob } from "../src/workflow-definition.ts";
 
@@ -26,6 +32,39 @@ test("bounded design feedback retains every outstanding human review thread", ()
   assert.equal(selected.length, 50);
   assert.equal(selected.includes(root), true);
   assert.equal(selected.some((entry) => entry.id === 159), true);
+});
+
+test("prior design context verifies the saved object hash and identity", async () => {
+  const candidate = {
+    version: 1,
+    candidateId: "design:attempt-1",
+    runId: "workflow:project:issue:run:1",
+    round: 1,
+    sourceAttemptId: "attempt-1",
+    baseCommit: "a".repeat(40),
+    change: "sac-201",
+    path: "openspec/changes/sac-201/design.md",
+    designDigest: "b".repeat(64),
+    candidateDigest: "c".repeat(64),
+  };
+  const text = JSON.stringify(candidate);
+  const row = {
+    candidate_id: candidate.candidateId,
+    run_id: candidate.runId,
+    round: candidate.round,
+    source_attempt_id: candidate.sourceAttemptId,
+    base_commit: candidate.baseCommit,
+    change_id: candidate.change,
+    design_digest: candidate.designDigest,
+    candidate_digest: candidate.candidateDigest,
+    candidate_sha256: await sha256Hex(text),
+  };
+  assert.deepEqual(await verifyPriorDesignCandidate(text, row), candidate);
+  await assert.rejects(verifyPriorDesignCandidate(`${text}\n`, row), /hash mismatch/);
+  await assert.rejects(
+    verifyPriorDesignCandidate(text, { ...row, candidate_sha256: await sha256Hex(text), candidate_id: "design:other" }),
+    /identity mismatch/,
+  );
 });
 
 test("materializer records the OpenSpec operation and latest cumulative patch reference", async () => {

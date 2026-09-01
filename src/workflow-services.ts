@@ -62,6 +62,7 @@ import {
   persistDesignCandidateEvidence,
   DesignCandidateRejectedError,
   isStoredDesignCandidateReplay,
+  recoverDesignCandidateCheckedAt,
   type StoredDesignCandidateIdentity,
 } from "./design-candidate.ts";
 
@@ -263,6 +264,9 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             ).bind(run.run_id).first<{ round: number }>()
             : null;
           const round = existing?.round ?? (latest?.round ?? 0) + 1;
+          const checkedAt = existing?.accepted_at ?? existing?.created_at ??
+            await recoverDesignCandidateCheckedAt(env.ARTIFACTS, run.run_id, candidateId) ??
+            new Date().toISOString();
           let built;
           try {
             built = await buildDesignCandidate({
@@ -276,7 +280,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               content,
               reviewReplies,
               strictOpenSpecCheck: async () => {},
-              checkedAt: existing?.accepted_at ?? existing?.created_at ?? new Date().toISOString(),
+              checkedAt,
             });
           } catch (error) {
             throw new DesignCandidateRejectedError(
@@ -284,8 +288,11 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             );
           }
           if (existing !== null) {
-            if (isStoredDesignCandidateReplay(existing, built.candidate)) return;
-            throw new DesignCandidateRejectedError("design candidate attempt identity mismatch");
+            if (!isStoredDesignCandidateReplay(existing, built.candidate)) {
+              throw new DesignCandidateRejectedError("design candidate attempt identity mismatch");
+            }
+            await persistDesignCandidateEvidence(env.ARTIFACTS, built);
+            return;
           }
           const duplicate = await env.DB.prepare(
             `SELECT candidate_id FROM design_candidates
