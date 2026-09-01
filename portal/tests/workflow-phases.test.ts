@@ -83,10 +83,26 @@ test("a recovered terminal visit does not add a stopped phase or replace the cur
 });
 
 test("an unfinished author visit stays in progress until the run is terminal", () => {
-  assert.equal(authorVisitStatus({ leftAt: null }, "active"), "In progress");
-  assert.equal(authorVisitStatus({ leftAt: "2026-09-01T12:00:00.000Z" }, "active"), "Complete");
-  assert.equal(authorVisitStatus({ leftAt: null }, "failed"), "Complete");
+  assert.equal(authorVisitStatus({ leftAt: null, attempts: [] }, "active"), "In progress");
+  assert.equal(authorVisitStatus({ leftAt: "2026-09-01T12:00:00.000Z", attempts: [] }, "active"), "Complete");
+  assert.equal(authorVisitStatus({ leftAt: null, attempts: [] }, "failed"), "Complete");
   assert.equal(authorVisitStatus(null, "active"), "Upcoming");
+});
+
+test("planning and design author failures remain visible in their nested substeps", () => {
+  const ended = "2026-09-01T12:00:00.000Z";
+  assert.equal(authorVisitStatus({
+    leftAt: ended,
+    attempts: [{ state: "completed", outcome: "failed" }],
+  }, "failed"), "Failed");
+  assert.equal(authorVisitStatus({
+    leftAt: ended,
+    attempts: [{ state: "completed", outcome: "invalid_design_candidate" }],
+  }, "failed"), "Failed");
+  assert.equal(authorVisitStatus({
+    leftAt: ended,
+    attempts: [{ state: "completed", outcome: "blocked" }],
+  }, "blocked"), "Blocked");
 });
 
 test("planning author selection includes revisions and excludes independent final trace", () => {

@@ -292,6 +292,10 @@ function TraceabilityWorkflowMap({
   const selectedApprovalLinks = new Set(selectedApprovalEvidenceUrls(projection.history, selectedVisit));
   const planningProduct = projection.workProducts.planning;
   const designProduct = projection.workProducts.design;
+  const planningAuthorStatus = authorVisitStatus(planningAuthorVisit, projection.run.status);
+  const designAuthorStatus = authorVisitStatus(designAuthorVisit, projection.run.status);
+  const authorStatusClass = (status: typeof planningAuthorStatus): string =>
+    status === "In progress" ? "active" : ["Failed", "Blocked"].includes(status) ? "failed" : "";
 
   const selectSubstep = (id: string, visit: Visit | null) => {
     setExpandedSubstep((current) => current === id ? null : id);
@@ -325,7 +329,7 @@ function TraceabilityWorkflowMap({
       onClick={() => selectSubstep("planning_author", planningAuthorVisit)}
     >
       <span className="substep-heading"><span className="substep-icon"><UserCircle /></span><strong>Planning author</strong>{expandedSubstep === "planning_author" ? <CaretDown /> : <CaretRight />}</span>
-      <span className={`substep-status ${authorVisitStatus(planningAuthorVisit, projection.run.status) === "In progress" ? "active" : ""}`}>{authorVisitStatus(planningAuthorVisit, projection.run.status)}</span>
+      <span className={`substep-status ${authorStatusClass(planningAuthorStatus)}`}>{planningAuthorStatus}</span>
       {expandedSubstep === "planning_author" && <span className="author-review-details">
         <span><CheckCircle weight="fill" /><strong>Self review</strong><small>{selfReviewVisits.length > 1 ? "Repaired and rechecked" : "All checks passed"}</small></span>
         <span><CheckCircle weight="fill" /><strong>Independent review</strong><small>{independentVisits.length > 1 ? "Response checked" : "Ready for human review"}</small></span>
@@ -342,7 +346,7 @@ function TraceabilityWorkflowMap({
     <p className="phase-note">The same design PR is reused across review rounds.</p>
     <button type="button" className={`phase-substep ${expandedSubstep === "design_author" ? "selected" : ""}`} onClick={() => selectSubstep("design_author", designAuthorVisit)}>
       <span className="substep-heading"><span className="substep-icon"><UserCircle /></span><strong>Design author</strong></span>
-      <span className={`substep-status ${authorVisitStatus(designAuthorVisit, projection.run.status) === "In progress" ? "active" : ""}`}>{authorVisitStatus(designAuthorVisit, projection.run.status)}</span>
+      <span className={`substep-status ${authorStatusClass(designAuthorStatus)}`}>{designAuthorStatus}</span>
     </button>
     <div className="approved-edge"><ArrowRight weight="bold" /><span>after Human Review</span></div>
     <button type="button" className={`phase-substep terminal ${expandedSubstep === "design_merge" ? "selected" : ""}`} onClick={() => selectSubstep("design_merge", designMergeVisit)}>

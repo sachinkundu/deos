@@ -65,4 +65,5 @@ button { color:inherit; }
 .inspector-status.active{color:var(--blue)}
 .phase-substep.active{border-color:var(--blue)}
 .substep-status.active{color:var(--blue);background:var(--blue-soft)}
+.substep-status.failed{color:var(--amber);background:rgba(169,103,8,.12)}
 .phase-inspector .selected-evidence a{color:var(--blue)}

@@ -93,10 +93,19 @@ export const phaseDisplayStatus = (
 };
 
 export const authorVisitStatus = (
-  visit: { leftAt: string | null } | null,
+  visit: {
+    leftAt: string | null;
+    attempts: readonly { state: string; outcome: string | null }[];
+  } | null,
   runStatus: string,
-): "In progress" | "Complete" | "Upcoming" => {
+): "In progress" | "Complete" | "Upcoming" | "Failed" | "Blocked" => {
   if (visit === null) return "Upcoming";
+  const attempt = visit.attempts.at(-1);
+  if (attempt?.outcome === "blocked") return "Blocked";
+  if (
+    attempt?.state === "failed" ||
+    ["failed", "invalid_candidate", "invalid_design_candidate"].includes(attempt?.outcome ?? "")
+  ) return "Failed";
   const terminal = ["succeeded", "failed", "blocked", "denied", "canceled"].includes(runStatus);
   return visit.leftAt === null && !terminal ? "In progress" : "Complete";
 };
