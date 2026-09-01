@@ -1291,7 +1291,7 @@ export class GitHubCapabilityAdapter {
       status?: unknown;
       base_commit?: { sha?: unknown };
       merge_base_commit?: { sha?: unknown };
-      files?: Array<{ filename?: unknown }>;
+      files?: Array<{ filename?: unknown; status?: unknown; previous_filename?: unknown }>;
     };
     if (
       !["ahead", "identical"].includes(String(comparison.status)) ||
@@ -1299,10 +1299,18 @@ export class GitHubCapabilityAdapter {
       !Array.isArray(comparison.files)
     ) throw new Error("GitHub design branch comparison is invalid");
     const paths = comparison.files.map((file) => file.filename);
-    if (paths.some((path) => typeof path !== "string") || new Set(paths).size !== paths.length) {
+    if (
+      comparison.files.some((file) =>
+        typeof file.filename !== "string" || typeof file.status !== "string" ||
+        (file.status === "renamed" && typeof file.previous_filename !== "string")) ||
+      new Set(paths).size !== paths.length
+    ) {
       throw new Error("GitHub design branch file inventory is invalid");
     }
-    if (paths.some((path) => path !== designPath)) {
+    const previousPaths = comparison.files
+      .filter((file) => file.status === "renamed")
+      .map((file) => file.previous_filename);
+    if ([...paths, ...previousPaths].some((path) => path !== designPath)) {
       throw new Error("GitHub design branch contains out-of-scope changes");
     }
     if (requireDesign && (paths.length !== 1 || paths[0] !== designPath)) {

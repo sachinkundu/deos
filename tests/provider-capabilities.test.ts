@@ -352,6 +352,10 @@ test("GitHub design publication rejects an existing branch with out-of-scope cha
   const baseCommit = "a".repeat(40);
   const headCommit = "b".repeat(40);
   let writes = 0;
+  let comparedFiles: Array<{ filename: string; status: string; previous_filename?: string }> = [
+    { filename: "openspec/changes/sac-200/design.md", status: "modified" },
+    { filename: "src/unrelated.ts", status: "modified" },
+  ];
   const adapter = new GitHubCapabilityAdapter(
     "https://api.github.test",
     { token: async () => "installation-token" },
@@ -365,10 +369,7 @@ test("GitHub design publication rejects an existing branch with out-of-scope cha
           status: "ahead",
           base_commit: { sha: baseCommit },
           merge_base_commit: { sha: baseCommit },
-          files: [
-            { filename: "openspec/changes/sac-200/design.md" },
-            { filename: "src/unrelated.ts" },
-          ],
+          files: comparedFiles,
         });
       }
       if (init?.method === "PUT") writes += 1;
@@ -386,6 +387,22 @@ test("GitHub design publication rejects an existing branch with out-of-scope cha
     content: "## Design\n",
     reviewReplies: [],
   }, "operation-design"), /design branch contains out-of-scope changes/);
+  comparedFiles = [{
+    filename: "openspec/changes/sac-200/design.md",
+    status: "renamed",
+    previous_filename: "src/unrelated.ts",
+  }];
+  await assert.rejects(adapter.publishDesign({
+    repository: "acme/sample",
+    branch: "deos/design/sac-200",
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-200",
+    title: "SAC-200: OpenSpec design",
+    body: "Design only",
+    content: "## Design\n",
+    reviewReplies: [],
+  }, "operation-design-rename"), /design branch contains out-of-scope changes/);
   assert.equal(writes, 0);
 });
 
@@ -426,7 +443,7 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
           status: "ahead",
           base_commit: { sha: baseCommit },
           merge_base_commit: { sha: baseCommit },
-          files: [{ filename: designPath }],
+          files: [{ filename: designPath, status: "modified" }],
         });
       }
       if (path.includes(`/contents/${designPath}`)) {
@@ -502,7 +519,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
           status: "ahead",
           base_commit: { sha: baseCommit },
           merge_base_commit: { sha: baseCommit },
-          files: [{ filename: designPath }],
+          files: [{ filename: designPath, status: "modified" }],
         });
       }
       if (path.includes(`/contents/${designPath}`)) {
@@ -582,7 +599,7 @@ test("GitHub design publication discovers its head across bases and rejects a re
           status: "ahead",
           base_commit: { sha: baseCommit },
           merge_base_commit: { sha: baseCommit },
-          files: [{ filename: designPath }],
+          files: [{ filename: designPath, status: "modified" }],
         });
       }
       if (path.includes(`/contents/${designPath}`)) {
