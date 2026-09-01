@@ -1,0 +1,53 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  isDesignStageWorkflow,
+  latestPhaseId,
+  phaseForVisit,
+  workflowPhases,
+  type PhaseVisitLike,
+} from "../src/workflow-phases.ts";
+
+const visit = (
+  sequence: number,
+  nodeId: string,
+  stageId: string,
+  gateKind: "plan" | "design" | null = null,
+): PhaseVisitLike => ({
+  sequence,
+  nodeId,
+  stageId,
+  gate: gateKind === null ? null : { gate_kind: gateKind, round: 1, decision_outcome: null },
+});
+
+test("version 17 folds granular nodes into progressive planning and design phases", () => {
+  const visits = [
+    visit(1, "claim_issue", "claim"),
+    visit(2, "planning_author", "planning"),
+    visit(7, "independent_discovery", "independent_review"),
+    visit(12, "planning_review", "review", "plan"),
+    visit(14, "verify_planning_merge", "plan_merge"),
+    visit(15, "design_author", "design"),
+    visit(17, "design_review", "review", "design"),
+    visit(22, "merge_design_pr", "design_merge"),
+    visit(23, "done", "complete"),
+  ];
+  assert.deepEqual(workflowPhases(visits).map((phase) => [phase.id, phase.visits.length]), [
+    ["claim", 1],
+    ["planning", 4],
+    ["design", 3],
+    ["complete", 1],
+  ]);
+  assert.equal(latestPhaseId(visits), "complete");
+});
+
+test("gate kind disambiguates the shared Human Review presentation stage", () => {
+  assert.equal(phaseForVisit(visit(12, "planning_review", "review", "plan")), "planning");
+  assert.equal(phaseForVisit(visit(17, "design_review", "review", "design")), "design");
+});
+
+test("the grouped view is selected only for a design-stage definition", () => {
+  assert.equal(isDesignStageWorkflow(17, [{ id: "design" }]), true);
+  assert.equal(isDesignStageWorkflow(16, [{ id: "design" }]), false);
+  assert.equal(isDesignStageWorkflow(17, [{ id: "planning" }]), false);
+});

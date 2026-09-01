@@ -1,30 +1,44 @@
 const issue = {
-  key: "SAC-122",
-  title: "Canary: SAC-121 PR #46 reconciled lifecycle v11 E2E",
-  url: "https://linear.app/deos/issue/SAC-122/canary-sac-121-pr-46-reconciled-lifecycle-v11-e2e",
-  observedAt: "2026-08-19T10:22:15.220Z",
+  key: "SAC-148",
+  title: "Create a Google search summary CLI",
+  url: "https://linear.app/sachinkundu/issue/SAC-148/create-a-google-search-summary-cli",
+  observedAt: "2026-09-01T09:39:21.413Z",
 };
 
 const run = {
   id: "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:6936d743-0000-4000-8000-000000000000:run:1",
-  sequence: 1,
+  sequence: 2,
   status: "succeeded",
-  definitionVersion: 11,
-  startedAt: "2026-08-19T09:03:10.000Z",
-  updatedAt: "2026-08-19T10:22:15.220Z",
-  endedAt: "2026-08-19T10:22:15.220Z",
+  definitionVersion: 17,
+  startedAt: "2026-09-01T08:37:48.520Z",
+  updatedAt: "2026-09-01T09:39:21.413Z",
+  endedAt: "2026-09-01T09:39:21.413Z",
 };
 
 const nodes = [
-  ["requirements", "Requirements", "requirements"],
-  ["openspec_specs", "OpenSpec specs", "specification"],
-  ["ddd_architecture", "DDD architecture", "architecture"],
-  ["openspec_tasks", "Implementation plan", "implementation_plan"],
-  ["implementation", "Implementation", "implementation"],
-  ["code_review", "Code review", "validation"],
-  ["final_approval", "Final approval", "approval"],
-  ["sync_and_archive", "Sync and archive", "release"],
-  ["done", "Done", "completed"],
+  ["claim_issue", "Claim issue", "claim"],
+  ["planning_author", "Planning author", "planning"],
+  ["self_discovery", "Self discovery", "planning"],
+  ["planning_self_repair", "Planning self repair", "planning"],
+  ["self_recheck_before_publish", "Self recheck before publish", "planning"],
+  ["publish_initial", "Publish initial", "planning"],
+  ["independent_discovery", "Independent discovery", "independent_review"],
+  ["planning_independent_response", "Planning independent response", "independent_review"],
+  ["publish_update", "Publish update", "independent_review"],
+  ["final_trace", "Final trace", "independent_review"],
+  ["publish_author_response", "Publish author response", "independent_review"],
+  ["planning_review", "Planning review", "review"],
+  ["merge_planning_pr", "Merge planning PR", "plan_merge"],
+  ["verify_planning_merge", "Verify planning merge", "plan_merge"],
+  ["design_author", "Design author", "design"],
+  ["publish_design", "Publish design", "design"],
+  ["design_review", "Design review", "review"],
+  ["start_new_design_round", "Start new design round", "design"],
+  ["design_revision_author", "Design revision author", "design"],
+  ["publish_design", "Publish design", "design"],
+  ["design_review", "Design review", "review"],
+  ["merge_design_pr", "Merge design PR", "design_merge"],
+  ["done", "Done", "complete"],
 ] as const;
 
 const demoAttemptId = "11111111-1111-4111-8111-111111111111";
@@ -34,33 +48,59 @@ const history = nodes.map(([nodeId, label, stageId], index) => ({
   nodeId,
   label,
   stageId,
-  cycle: nodeId === "code_review" ? 2 : 1,
-  state: "completed",
-  enteredAt: new Date(Date.parse(run.startedAt) + index * 9 * 60_000).toISOString(),
-  leftAt: new Date(Date.parse(run.startedAt) + (index + 1) * 9 * 60_000).toISOString(),
-  attempts: ["requirements", "requirements_review", "ddd_architecture", "implementation", "code_review"].includes(nodeId)
+  cycle: nodeId === "design_review" || nodeId === "publish_design"
+    ? nodes.slice(0, index).filter(([prior]) => prior === nodeId).length + 1
+    : 1,
+  recovered: false,
+  state: nodeId === "done" ? "succeeded" : "completed",
+  enteredAt: new Date(Date.parse(run.startedAt) + index * 160_000).toISOString(),
+  leftAt: new Date(Date.parse(run.startedAt) + (index + 1) * 160_000).toISOString(),
+  attempts: ["planning_author", "self_discovery", "planning_self_repair", "independent_discovery", "planning_independent_response", "final_trace", "design_author", "design_revision_author"].includes(nodeId)
     ? [{
         id: demoAttemptId,
         state: "completed",
-        outcome: "approved",
+        outcome: nodeId === "self_discovery" ? "findings" : "completed",
         startedAt: run.startedAt,
         endedAt: run.endedAt,
-        transcriptAvailable: nodeId === "requirements",
+        transcriptAvailable: nodeId === "planning_author",
       }]
     : [],
-  waits: nodeId === "final_approval" ? [{ state: "consumed", startedAt: run.startedAt, endedAt: run.endedAt }] : [],
-  links: nodeId === "implementation" ? [{ kind: "pull_request", label: "Pull request #46", url: "https://github.com/sachinkundu/deos/pull/46", createdAt: run.endedAt }] : [],
+  waits: nodeId === "planning_review" || nodeId === "design_review" ? [{ state: "consumed", startedAt: run.startedAt, endedAt: run.endedAt }] : [],
+  links: nodeId === "planning_review"
+    ? [{ kind: "pull_request", label: "Planning PR #9", url: "https://github.com/sachinkundu/deos-sample-project/pull/9", createdAt: run.endedAt }]
+    : nodeId === "design_review"
+      ? [{ kind: "pull_request", label: "Design PR #10", url: "https://github.com/sachinkundu/deos-sample-project/pull/10", createdAt: run.endedAt }]
+      : [],
+  gate: nodeId === "planning_review" ? {
+    gate_kind: "plan" as const,
+    work_type: "proposal_and_specs" as const,
+    round: 1,
+    state: "merge_authorized",
+    pull_request_number: 9,
+    pull_request_url: "https://github.com/sachinkundu/deos-sample-project/pull/9",
+    approved_head_sha: "35aa71b906cd136226cc3ba8ba2bea27c97263a5",
+    decision_outcome: "merge_authorized",
+  } : nodeId === "design_review" ? {
+    gate_kind: "design" as const,
+    work_type: "design" as const,
+    round: nodes.slice(0, index).filter(([prior]) => prior === "design_review").length + 1,
+    state: index < 20 ? "revision_requested" : "merge_authorized",
+    pull_request_number: 10,
+    pull_request_url: "https://github.com/sachinkundu/deos-sample-project/pull/10",
+    approved_head_sha: index < 20 ? "c5064912660502b5b1af15bf4fe856976a72e238" : "4ce31c516c55ed434348cdebfe2a09002952d3d7",
+    decision_outcome: index < 20 ? "revision_requested" : "merge_authorized",
+  } : null,
 }));
 
 const stageLabels = {
-  requirements: "Requirements",
-  specification: "Specification",
-  architecture: "Architecture",
-  implementation_plan: "Implementation plan",
-  implementation: "Implementation",
-  validation: "Validation",
-  release: "Release",
-  completed: "Workflow completed",
+  claim: "Claim issue",
+  planning: "Create planning PR",
+  independent_review: "Independent review",
+  review: "Human approval",
+  plan_merge: "Merge plan & check",
+  design: "Create design PR",
+  design_merge: "Merge design & check",
+  complete: "Completed",
 } as const;
 
 export const demoApi = (path: string): unknown => {
@@ -159,6 +199,39 @@ export const demoApi = (path: string): unknown => {
     connections: [],
     history,
     unlinked: { attempts: 0, waits: 0 },
+    reviewAvailable: true,
+    pullRequest: {
+      number: 9,
+      url: "https://github.com/sachinkundu/deos-sample-project/pull/9",
+      status: "Merged",
+      verified: true,
+    },
+    workProducts: {
+      planning: {
+        number: 9,
+        url: "https://github.com/sachinkundu/deos-sample-project/pull/9",
+        status: "Merged",
+        verified: true,
+      },
+      design: {
+        number: 10,
+        url: "https://github.com/sachinkundu/deos-sample-project/pull/10",
+        status: "Merged",
+        headSha: "4ce31c516c55ed434348cdebfe2a09002952d3d7",
+        baseCommit: "b050aa44f6382ade94a4ee4723825d74d02cd633",
+      },
+    },
+    gateVisits: history.filter((visit) => visit.gate !== null).map((visit) => ({
+      visitSequence: visit.sequence,
+      gateKind: visit.gate!.gate_kind,
+      workType: visit.gate!.work_type,
+      round: visit.gate!.round,
+      state: visit.gate!.state,
+      pullRequest: { number: visit.gate!.pull_request_number, url: visit.gate!.pull_request_url },
+      approvedHeadSha: visit.gate!.approved_head_sha,
+      decision: visit.gate!.decision_outcome,
+      active: false,
+    })),
   };
   if (path === `/api/attempts/${demoAttemptId}/transcript`) {
     const values = [
