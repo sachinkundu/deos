@@ -74,6 +74,47 @@ interface JobInputDependencies {
 const bounded = (value: string, maximum: number): string =>
   value.length <= maximum ? value : `${value.slice(0, maximum)}\n[truncated by trusted input materializer]`;
 
+const REVIEW_FEEDBACK_TRUNCATION = "\n[truncated by trusted input materializer]";
+
+export const serializeReviewFeedback = (
+  entry: ReviewFeedbackEntry,
+  maximum = 4_000,
+): string => {
+  const encoded = JSON.stringify(entry);
+  if (encoded.length <= maximum) return encoded;
+  const body = typeof entry.body === "string" ? entry.body : "";
+  const fit = (base: ReviewFeedbackEntry): string | null => {
+    let lower = 0;
+    let upper = body.length;
+    let best: string | null = null;
+    while (lower <= upper) {
+      const middle = Math.floor((lower + upper) / 2);
+      const candidate = JSON.stringify({
+        ...base,
+        body: `${body.slice(0, middle)}${REVIEW_FEEDBACK_TRUNCATION}`,
+      });
+      if (candidate.length <= maximum) {
+        best = candidate;
+        lower = middle + 1;
+      } else {
+        upper = middle - 1;
+      }
+    }
+    return best;
+  };
+  const boundedFullEntry = fit(entry);
+  if (boundedFullEntry !== null) return boundedFullEntry;
+  const boundedIdentity = fit({
+    kind: entry.kind,
+    id: entry.id,
+    authorType: entry.authorType,
+    trustedAcknowledgmentAuthor: entry.trustedAcknowledgmentAuthor,
+    replyToId: entry.replyToId,
+  });
+  if (boundedIdentity === null) throw new Error("GitHub review feedback entry exceeds the trusted limit");
+  return boundedIdentity;
+};
+
 const asObject = (value: unknown): Record<string, unknown> => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error("prior agent result is not an object");
@@ -307,7 +348,7 @@ export class JobInputMaterializer {
               updatedAt: comment.updatedAt,
             })),
           github: githubFeedback.map((entry) => ({
-            data: bounded(JSON.stringify(entry), 4_000),
+            data: serializeReviewFeedback(entry),
           })),
         },
       },
@@ -330,7 +371,7 @@ export class JobInputMaterializer {
           missingOptionalFilesAreNotInvented: true,
         },
         feedback: githubFeedback.map((entry) => ({
-          data: bounded(JSON.stringify(entry), 4_000),
+          data: serializeReviewFeedback(entry),
         })),
       },
       repository: {

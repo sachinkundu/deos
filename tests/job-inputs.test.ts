@@ -5,6 +5,7 @@ import {
   JobInputMaterializer,
   openSpecChangeIdentity,
   selectReviewFeedback,
+  serializeReviewFeedback,
   verifyPriorDesignCandidate,
 } from "../src/job-inputs.ts";
 import { sha256Hex } from "../src/trace-review.ts";
@@ -54,6 +55,16 @@ test("bounded design feedback retains every outstanding human review thread", ()
   const selectedThreads = selectReviewFeedback(threads);
   assert.equal(selectedThreads.length, 52);
   assert.deepEqual(selectedThreads, threads);
+
+  const serialized = serializeReviewFeedback({
+    ...root,
+    body: `${"quoted \"feedback\"\n".repeat(500)}final instruction`,
+  });
+  assert.ok(serialized.length <= 4_000);
+  const restored = JSON.parse(serialized);
+  assert.equal(restored.id, root.id);
+  assert.equal(restored.replyToId, null);
+  assert.match(restored.body, /truncated by trusted input materializer/);
 });
 
 test("prior design context verifies the saved object hash and identity", async () => {
