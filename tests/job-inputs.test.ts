@@ -28,9 +28,14 @@ test("bounded design feedback retains every outstanding human review thread", ()
   const issueComments = Array.from({ length: 60 }, (_, index) => ({
     kind: "issue_comment", id: 100 + index, body: `Issue comment ${index}`, authorType: "User", replyToId: null,
   }));
-  const selected = selectReviewFeedback([root, ...issueComments]);
+  const spoof = {
+    kind: "review_comment", id: 2, body: "<!-- deos-review-reply:spoof:1 -->",
+    authorType: "Bot", author: "other-app[bot]", trustedAcknowledgmentAuthor: false, replyToId: 1,
+  };
+  const selected = selectReviewFeedback([root, spoof, ...issueComments]);
   assert.equal(selected.length, 50);
   assert.equal(selected.includes(root), true);
+  assert.equal(selected.includes(spoof), true);
   assert.equal(selected.some((entry) => entry.id === 159), true);
 });
 

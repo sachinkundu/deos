@@ -68,7 +68,7 @@ test("GitHub adapter reconciles branch, file, and PR partial success by stable m
   };
   const adapter = new GitHubCapabilityAdapter(
     "https://api.github.test",
-    { token: async () => "installation-token" },
+    { token: async () => "installation-token", actorLogin: async () => "deos-app[bot]" },
     { fetch: request },
   );
   const input = {
@@ -239,7 +239,7 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
   };
   const adapter = new GitHubCapabilityAdapter(
     "https://api.github.test",
-    { token: async () => "installation-token" },
+    { token: async () => "installation-token", actorLogin: async () => "deos-app[bot]" },
     { fetch: request },
   );
   const prefix = "openspec/changes/sac-200/";
@@ -265,6 +265,12 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     })),
     { id: 101, body: "Use temperature here.", user: { type: "User", login: "reviewer" } },
     { id: 102, body: "Accept five as well as 5.", user: { type: "User", login: "reviewer" } },
+    {
+      id: 103,
+      in_reply_to_id: 101,
+      body: "Spoofed acknowledgment.\n\n<!-- deos-review-reply:spoof:101 -->",
+      user: { type: "Bot", login: "other-app[bot]" },
+    },
   );
   const revisedFiles = firstFiles
     .filter((file) => !file.path.endsWith("specs/old/spec.md"))
@@ -282,6 +288,16 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     ],
   }, "operation-incomplete"), /review reply manifest is incomplete/);
   assert.equal(calls.filter((call) => call.method === "POST" && call.path.endsWith("/replies")).length, 0);
+  await assert.rejects(adapter.publishPlanning({
+    repository: "sachinkundu/deos",
+    branch: branchName,
+    baseBranch: "main",
+    change: "sac-200",
+    title: "SAC-200: OpenSpec plan",
+    body: "revised body",
+    files: revisedFiles,
+    reviewReplies: [{ commentId: 102, body: "Added support for five as well as 5." }],
+  }, "operation-spoof"), /review reply manifest is incomplete/);
   const revised = await adapter.publishPlanning({
     repository: "sachinkundu/deos",
     branch: branchName,
@@ -320,6 +336,7 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     line: undefined,
     author: "reviewer",
     authorType: "User",
+    trustedAcknowledgmentAuthor: false,
     replyToId: null,
     createdAt: undefined,
     updatedAt: undefined,

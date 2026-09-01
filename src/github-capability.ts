@@ -56,6 +56,7 @@ interface GitHubReviewComment {
   inReplyToId: number | null;
   body: string;
   userType: string;
+  userLogin: string;
 }
 
 export interface GitHubPlanningMergeReceipt {
@@ -96,6 +97,7 @@ export interface GitHubCheckRunReceipt {
 
 export interface GitHubTokenProvider {
   token(): Promise<string>;
+  actorLogin?(): Promise<string>;
 }
 
 export interface GitHubRepositoryChoice {
@@ -252,6 +254,24 @@ export class GitHubAppTokenProvider implements GitHubTokenProvider {
       throw new Error("GitHub App installation token response is invalid");
     }
     return payload.token;
+  }
+
+  async actorLogin(): Promise<string> {
+    const jwt = await this.appJwt();
+    const response = await this.request(`${this.apiUrl}/app`, {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "deos-orchestrator",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
+    if (!response.ok) throw new Error("GitHub App identity request failed");
+    const payload = await response.json() as { slug?: unknown };
+    if (typeof payload.slug !== "string" || !/^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/.test(payload.slug)) {
+      throw new Error("GitHub App identity response is invalid");
+    }
+    return `${payload.slug}[bot]`;
   }
 
   async appJwt(): Promise<string> {
@@ -1050,6 +1070,12 @@ export class GitHubCapabilityAdapter {
       this.pagedList(token, `/repos/${repository}/pulls/${pullRequestNumber}/comments`, 100, "review-comment"),
       this.pagedList(token, `/repos/${repository}/issues/${pullRequestNumber}/comments`, 50, "issue-comment"),
     ]);
+    const markerComments = reviewComments.filter((value) => {
+      const entry = value as { body?: unknown; user?: { type?: unknown } };
+      return entry.user?.type === "Bot" && typeof entry.body === "string" &&
+        entry.body.includes("<!-- deos-review-reply:");
+    });
+    const actorLogin = markerComments.length === 0 ? null : await this.trustedActorLogin();
     const pick = (kind: string, entries: unknown[]): Record<string, unknown>[] => entries.map((value) => {
       const entry = value as Record<string, unknown>;
       const user = entry.user as Record<string, unknown> | undefined;
@@ -1062,6 +1088,8 @@ export class GitHubCapabilityAdapter {
         line: entry.line,
         author: user?.login,
         authorType: user?.type,
+        trustedAcknowledgmentAuthor: actorLogin !== null && user?.type === "Bot" &&
+          typeof user.login === "string" && user.login.toLowerCase() === actorLogin.toLowerCase(),
         replyToId: typeof entry.in_reply_to_id === "number" ? entry.in_reply_to_id : null,
         createdAt: entry.created_at,
         updatedAt: entry.updated_at,
@@ -1273,11 +1301,12 @@ export class GitHubCapabilityAdapter {
         id?: unknown;
         in_reply_to_id?: unknown;
         body?: unknown;
-        user?: { type?: unknown };
+        user?: { type?: unknown; login?: unknown };
       };
       if (
         typeof comment.id !== "number" || !Number.isSafeInteger(comment.id) ||
         typeof comment.body !== "string" || typeof comment.user?.type !== "string" ||
+        typeof comment.user.login !== "string" ||
         (comment.in_reply_to_id !== undefined && comment.in_reply_to_id !== null &&
           typeof comment.in_reply_to_id !== "number")
       ) throw new Error("GitHub review-comment response is invalid");
@@ -1286,6 +1315,7 @@ export class GitHubCapabilityAdapter {
         inReplyToId: typeof comment.in_reply_to_id === "number" ? comment.in_reply_to_id : null,
         body: comment.body,
         userType: comment.user.type,
+        userLogin: comment.user.login,
       };
     });
   }
@@ -1326,8 +1356,10 @@ export class GitHubCapabilityAdapter {
     }
     const marker = (commentId: number): string =>
       `<!-- deos-review-reply:${operationId}:${commentId} -->`;
+    const actorLogin = roots.size === 0 ? null : await this.trustedActorLogin();
     const isAcknowledgment = (comment: GitHubReviewComment, rootId: number): boolean =>
-      comment.inReplyToId === rootId && comment.userType === "Bot" &&
+      actorLogin !== null && comment.inReplyToId === rootId && comment.userType === "Bot" &&
+      comment.userLogin.toLowerCase() === actorLogin.toLowerCase() &&
       comment.body.includes("<!-- deos-review-reply:") && comment.body.includes(`:${rootId} -->`);
     const outstanding = [...roots.keys()].filter((rootId) => {
       const thread = comments.filter((comment) => comment.id === rootId || comment.inReplyToId === rootId);
@@ -1359,15 +1391,19 @@ export class GitHubCapabilityAdapter {
           token,
           `/repos/${repository}/pulls/${pullRequestNumber}/comments/${reply.commentId}/replies`,
           { method: "POST", body: { body } },
-        ) as { id?: unknown; in_reply_to_id?: unknown };
-        if (typeof created.id !== "number" || created.in_reply_to_id !== reply.commentId) {
+        ) as { id?: unknown; in_reply_to_id?: unknown; user?: { type?: unknown; login?: unknown } };
+        if (
+          typeof created.id !== "number" || created.in_reply_to_id !== reply.commentId ||
+          created.user?.type !== "Bot" || typeof created.user.login !== "string" ||
+          created.user.login.toLowerCase() !== actorLogin?.toLowerCase()
+        ) {
           throw new Error("GitHub review reply response is invalid");
         }
         ids.push(created.id);
       } catch {
         comments = await this.reviewComments(token, repository, pullRequestNumber);
         const after = comments.find((comment) =>
-          comment.inReplyToId === reply.commentId && comment.body.includes(marker(reply.commentId)));
+          isAcknowledgment(comment, reply.commentId) && comment.body.includes(marker(reply.commentId)));
         if (after === undefined) throw new Error("GitHub review reply is ambiguous");
         ids.push(after.id);
         reconciled = true;
@@ -1378,6 +1414,15 @@ export class GitHubCapabilityAdapter {
 
   private encodedPath(path: string): string {
     return path.split("/").map(encodeURIComponent).join("/");
+  }
+
+  private async trustedActorLogin(): Promise<string> {
+    if (this.tokens.actorLogin === undefined) throw new Error("GitHub App actor identity is unavailable");
+    const login = await this.tokens.actorLogin();
+    if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,98}[A-Za-z0-9])?\[bot\]$/.test(login)) {
+      throw new Error("GitHub App actor identity is invalid");
+    }
+    return login;
   }
 
   private async readContent(

@@ -86,6 +86,7 @@ type ReviewFeedbackEntry = Record<string, unknown> & {
   id?: unknown;
   body?: unknown;
   authorType?: unknown;
+  trustedAcknowledgmentAuthor?: unknown;
   replyToId?: unknown;
 };
 
@@ -102,7 +103,8 @@ export const selectReviewFeedback = (
       .filter((entry) => entry.authorType === "User")
       .map((entry) => Number(entry.id)));
     const lastAcknowledgmentId = Math.max(0, ...thread
-      .filter((entry) => entry.authorType === "Bot" && typeof entry.body === "string" &&
+      .filter((entry) => entry.authorType === "Bot" && entry.trustedAcknowledgmentAuthor === true &&
+        typeof entry.body === "string" &&
         entry.body.includes("<!-- deos-review-reply:") && entry.body.includes(`:${rootId} -->`))
       .map((entry) => Number(entry.id)));
     return lastAcknowledgmentId < lastHumanId;
