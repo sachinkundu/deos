@@ -1032,6 +1032,76 @@ test("design completion rejects a checkout that moved away from its frozen base"
   assert.match(state.attempts.latest?.result_detail ?? "", /checkout no longer matches its frozen base/);
 });
 
+test("design completion binds replies to the latest materialized human thread comment", async () => {
+  const checkoutCommit = "1".repeat(40);
+  const materializedContext = JSON.stringify({
+    design: {
+      feedback: [
+        { data: JSON.stringify({
+          kind: "review_comment",
+          id: 701,
+          replyToId: null,
+          authorType: "User",
+          body: "Cover retry behavior.",
+        }) },
+        { data: JSON.stringify({
+          kind: "review_comment",
+          id: 702,
+          replyToId: 701,
+          authorType: "Bot",
+          body: "Earlier response.",
+        }) },
+        { data: JSON.stringify({
+          kind: "review_comment",
+          id: 703,
+          replyToId: 701,
+          authorType: "User",
+          body: "Also cover timeout recovery.",
+        }) },
+      ],
+    },
+  });
+  const state = setup({ checkoutCommit, materializedContext });
+  const designRun = {
+    ...run,
+    definition_id: "simple-traceability",
+    definition_version: 17,
+    current_visit_sequence: 15,
+    author_model_provider: "codex",
+    author_model: "gpt-5.6-sol",
+    author_reasoning: "high",
+  } as OrchestrationRunRecord;
+
+  await state.controller.execute(designRun, "design_author", "design_author", designAuthorDefinition);
+  const designPath = "openspec/changes/sac-1/design.md";
+  state.factory.sandbox.statusOutput = ` M ${designPath}\0`;
+  state.factory.sandbox.files.set(`/deos/workspace/repository/${designPath}`, "## Design\n");
+  state.factory.sandbox.files.set(
+    "/deos/output/review-replies.json",
+    JSON.stringify([{ commentId: 701, body: "Covered retry and timeout recovery." }]),
+  );
+  state.factory.sandbox.supervisor.state = "exited";
+  state.collector.receiptIds = [];
+
+  const observation = await state.controller.execute(
+    designRun,
+    "design_author",
+    "design_author",
+    designAuthorDefinition,
+  );
+
+  assert.equal(observation.state, "completed");
+  assert.equal(state.designCandidates.length, 1);
+  assert.deepEqual(
+    (state.designCandidates[0] as { reviewReplies: unknown }).reviewReplies,
+    [{
+      commentId: 701,
+      body: "Covered retry and timeout recovery.",
+      latestHumanCommentId: 703,
+    }],
+  );
+});
+
 test("native archive fails closed before allocation when no cumulative patch exists", async () => {
   const { controller, attempts, factory } = setup();
 

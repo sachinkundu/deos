@@ -537,8 +537,14 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
   const designPath = "openspec/changes/sac-201/design.md";
   const designContent = "## Design\n";
   let pullReads = 0;
+  let replyPosts = 0;
   let loseFinalRead = true;
-  let reviewComments: unknown[] = [];
+  let reviewComments: Array<{
+    id: number;
+    in_reply_to_id: number | null;
+    body: string;
+    user: { type: string; login: string };
+  }> = [];
   const pull = {
     id: 7001,
     number: 7,
@@ -593,6 +599,7 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
       if (path.includes("/pulls?state=all&head=")) return Response.json([{ number: 7 }]);
       if (path.endsWith("/pulls/7/comments?per_page=100")) return Response.json(reviewComments);
       if (path.endsWith("/pulls/7/comments/701/replies") && method === "POST") {
+        replyPosts += 1;
         liveHeadSha = "c".repeat(40);
         return Response.json({
           id: 702,
@@ -639,10 +646,34 @@ test("GitHub design publication makes a lost final read reconcilable", async () 
       error.receipt.pullRequestDatabaseId === "7001" && error.receipt.pullRequestNumber === 7 &&
       error.receipt.headSha === headCommit,
   );
+  reviewComments.push({
+    id: 703,
+    in_reply_to_id: 701,
+    body: "Please also cover timeout recovery.",
+    user: { type: "User", login: "reviewer" },
+  });
   await assert.rejects(
     adapter.publishDesign({
       ...request,
-      reviewReplies: [{ commentId: 701, body: "Covered the retry path." }],
+      reviewReplies: [{
+        commentId: 701,
+        body: "Covered the retry path.",
+        latestHumanCommentId: 701,
+      }],
+    }, "operation-stale-thread-snapshot"),
+    (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
+      error.message === "GitHub review reply thread snapshot changed",
+  );
+  assert.equal(replyPosts, 0);
+  reviewComments = reviewComments.filter((comment) => comment.id !== 703);
+  await assert.rejects(
+    adapter.publishDesign({
+      ...request,
+      reviewReplies: [{
+        commentId: 701,
+        body: "Covered the retry path.",
+        latestHumanCommentId: 701,
+      }],
     }, "operation-reply-race"),
     /final read-back mismatch/,
   );

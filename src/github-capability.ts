@@ -56,7 +56,7 @@ export interface GitHubDesignWorkProductRequest {
   body: string;
   change: string;
   content: string;
-  reviewReplies: readonly { commentId: number; body: string }[];
+  reviewReplies: readonly { commentId: number; body: string; latestHumanCommentId: number }[];
   expectedPullRequestDatabaseId?: string;
   expectedPullRequestNumber?: number;
 }
@@ -1006,6 +1006,7 @@ export class GitHubCapabilityAdapter {
         error instanceof Error && [
           "GitHub review reply manifest is incomplete",
           "GitHub review reply targets an unknown human review thread",
+          "GitHub review reply thread snapshot changed",
         ].includes(error.message)
       ) {
         throw new GitHubReviewFeedbackChangedError(error.message, {
@@ -1450,7 +1451,7 @@ export class GitHubCapabilityAdapter {
     token: string,
     repository: string,
     pullRequestNumber: number,
-    requestedReplies: readonly { commentId: number; body: string }[],
+    requestedReplies: readonly { commentId: number; body: string; latestHumanCommentId?: number }[],
     operationId: string,
   ): Promise<{ ids: readonly number[]; reconciled: boolean }> {
     let comments = await this.reviewComments(token, repository, pullRequestNumber);
@@ -1468,11 +1469,13 @@ export class GitHubCapabilityAdapter {
       actorLogin !== null && comment.inReplyToId === rootId && comment.userType === "Bot" &&
       comment.userLogin.toLowerCase() === actorLogin.toLowerCase() &&
       comment.body.includes("<!-- deos-review-reply:") && comment.body.includes(`:${rootId} -->`);
+    const latestHumanCommentIds = new Map<number, number>();
     const outstanding = [...roots.keys()].filter((rootId) => {
       const thread = comments.filter((comment) => comment.id === rootId || comment.inReplyToId === rootId);
       const lastHumanId = Math.max(...thread
         .filter((comment) => comment.userType === "User")
         .map((comment) => comment.id));
+      latestHumanCommentIds.set(rootId, lastHumanId);
       const lastAcknowledgmentId = Math.max(0, ...thread
         .filter((comment) => isAcknowledgment(comment, rootId))
         .map((comment) => comment.id));
@@ -1481,6 +1484,12 @@ export class GitHubCapabilityAdapter {
     if (outstanding.length > 50) throw new Error("GitHub outstanding review threads exceed the trusted limit");
     if (outstanding.some((commentId) => !requested.has(commentId))) {
       throw new Error("GitHub review reply manifest is incomplete");
+    }
+    if (requestedReplies.some((reply) =>
+      reply.latestHumanCommentId !== undefined &&
+      latestHumanCommentIds.get(reply.commentId) !== reply.latestHumanCommentId
+    )) {
+      throw new Error("GitHub review reply thread snapshot changed");
     }
 
     const ids: number[] = [];

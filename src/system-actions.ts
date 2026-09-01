@@ -188,7 +188,7 @@ interface PlanningSystemActionDependencies {
     path: string;
     content: string;
     designDigest: string;
-    reviewReplies: readonly { commentId: number; body: string }[];
+    reviewReplies: readonly { commentId: number; body: string; latestHumanCommentId: number }[];
   } | null>;
   gateVisit?: (runId: string, gateKind: "plan" | "design") => Promise<HumanGateVisitRecord | null>;
   planningMergeRepairNotice?: (

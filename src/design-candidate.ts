@@ -12,7 +12,47 @@ export class DesignCandidateRejectedError extends Error {
 export interface DesignReviewReply {
   commentId: number;
   body: string;
+  latestHumanCommentId: number;
 }
+
+export interface DesignReviewReplyDraft {
+  commentId: number;
+  body: string;
+}
+
+interface DesignReviewFeedbackSnapshotEntry {
+  kind?: unknown;
+  id?: unknown;
+  authorType?: unknown;
+  replyToId?: unknown;
+}
+
+export const bindDesignReviewReplies = (
+  replies: readonly DesignReviewReplyDraft[],
+  feedback: readonly DesignReviewFeedbackSnapshotEntry[],
+): readonly DesignReviewReply[] => {
+  if (!Array.isArray(replies) || !Array.isArray(feedback)) {
+    throw new DesignCandidateRejectedError("trusted design review replies are invalid");
+  }
+  const comments = feedback.filter((entry) =>
+    entry.kind === "review_comment" && Number.isSafeInteger(entry.id)
+  );
+  return Object.freeze(replies.map((reply) => {
+    const root = comments.find((entry) =>
+      entry.id === reply.commentId && entry.replyToId === null && entry.authorType === "User"
+    );
+    if (root === undefined) {
+      throw new DesignCandidateRejectedError("trusted design review replies are invalid");
+    }
+    const latestHumanCommentId = Math.max(...comments
+      .filter((entry) =>
+        entry.authorType === "User" &&
+        (entry.id === reply.commentId || entry.replyToId === reply.commentId)
+      )
+      .map((entry) => Number(entry.id)));
+    return Object.freeze({ ...reply, latestHumanCommentId });
+  }));
+};
 
 export interface DesignCandidate {
   version: 1;
@@ -119,11 +159,16 @@ const checkedReplies = (value: readonly DesignReviewReply[]): readonly DesignRev
   return Object.freeze(value.map((reply) => {
     if (
       !Number.isSafeInteger(reply.commentId) || reply.commentId <= 0 || seen.has(reply.commentId) ||
+      !Number.isSafeInteger(reply.latestHumanCommentId) || reply.latestHumanCommentId < reply.commentId ||
       typeof reply.body !== "string" || reply.body.trim() !== reply.body ||
       reply.body.length < 1 || reply.body.length > 1_000 || reply.body.includes("<!--")
     ) throw new DesignCandidateRejectedError("design review reply is invalid");
     seen.add(reply.commentId);
-    return Object.freeze({ commentId: reply.commentId, body: reply.body });
+    return Object.freeze({
+      commentId: reply.commentId,
+      body: reply.body,
+      latestHumanCommentId: reply.latestHumanCommentId,
+    });
   }));
 };
 

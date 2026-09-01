@@ -6,7 +6,11 @@ import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { ValidatedAgentOutcome } from "./workflow-evaluator.ts";
 import type { LoadedWorkflowDefinition, WorkflowJob } from "./workflow-definition.ts";
 import { PlanningCandidateRejectedError } from "./planning-candidate.ts";
-import { DesignCandidateRejectedError } from "./design-candidate.ts";
+import {
+  bindDesignReviewReplies,
+  DesignCandidateRejectedError,
+  type DesignReviewReply,
+} from "./design-candidate.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
 import type {
   ContinuationPatchReference,
@@ -369,7 +373,7 @@ interface SandboxControllerDependencies {
     change: string;
     path: string;
     content: string;
-    reviewReplies: readonly { commentId: number; body: string }[];
+    reviewReplies: readonly DesignReviewReply[];
   }) => Promise<void>;
   acceptTraceReview?: (input: {
     run: OrchestrationRunRecord;
@@ -1139,6 +1143,7 @@ export class SandboxAgentController {
     const durableJob = JSON.parse(attempt.job_spec_json) as {
       openspecChange?: unknown;
       checkoutCommit?: unknown;
+      materializedContext?: unknown;
     };
     if (
       typeof durableJob.openspecChange !== "string" ||
@@ -1190,12 +1195,29 @@ export class SandboxAgentController {
     if (validationOutput.exitCode !== 0 || validationOutput.truncated) {
       throw new DesignCandidateRejectedError("trusted strict OpenSpec design validation failed");
     }
-    let reviewReplies: readonly { commentId: number; body: string }[];
+    let reviewReplies: readonly DesignReviewReply[];
     try {
-      reviewReplies = JSON.parse((await sandbox.readFile("/deos/output/review-replies.json", {
+      const replyDrafts = JSON.parse((await sandbox.readFile("/deos/output/review-replies.json", {
         encoding: "utf8",
-      })).content) as typeof reviewReplies;
-      if (!Array.isArray(reviewReplies)) throw new Error("not an array");
+      })).content) as readonly { commentId: number; body: string }[];
+      if (!Array.isArray(replyDrafts)) throw new Error("invalid review replies");
+      if (replyDrafts.length === 0) {
+        reviewReplies = Object.freeze([]);
+      } else {
+        const materialized = typeof durableJob.materializedContext === "string"
+          ? JSON.parse(durableJob.materializedContext) as {
+              design?: { feedback?: Array<{ data?: unknown }> } | null;
+            }
+          : null;
+        if (!Array.isArray(materialized?.design?.feedback)) {
+          throw new Error("invalid review snapshot");
+        }
+        const feedback = materialized.design.feedback.map((entry) => {
+          if (typeof entry.data !== "string") throw new Error("invalid review snapshot entry");
+          return JSON.parse(entry.data) as Record<string, unknown>;
+        });
+        reviewReplies = bindDesignReviewReplies(replyDrafts, feedback);
+      }
     } catch {
       throw new DesignCandidateRejectedError("trusted design review replies are invalid");
     }

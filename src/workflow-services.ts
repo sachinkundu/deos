@@ -860,7 +860,13 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             candidate.candidateDigest !== row.candidate_digest ||
             candidate.change !== row.change_id || candidate.baseCommit !== row.base_commit ||
             candidate.designDigest !== row.design_digest || typeof candidate.path !== "string" ||
-            typeof candidate.content !== "string" || !Array.isArray(candidate.reviewReplies)
+            typeof candidate.content !== "string" || !Array.isArray(candidate.reviewReplies) ||
+            !candidate.reviewReplies.every((reply) =>
+              typeof reply === "object" && reply !== null &&
+              Number.isSafeInteger((reply as { commentId?: unknown }).commentId) &&
+              typeof (reply as { body?: unknown }).body === "string" &&
+              Number.isSafeInteger((reply as { latestHumanCommentId?: unknown }).latestHumanCommentId)
+            )
           ) throw new Error("trusted design candidate identity mismatch");
           return {
             candidateId: candidate.candidateId,
@@ -870,7 +876,11 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             path: candidate.path,
             content: candidate.content,
             designDigest: candidate.designDigest,
-            reviewReplies: candidate.reviewReplies as Array<{ commentId: number; body: string }>,
+            reviewReplies: candidate.reviewReplies as Array<{
+              commentId: number;
+              body: string;
+              latestHumanCommentId: number;
+            }>,
           };
         },
         gateVisit: (runId, gateKind) => env.DB.prepare(

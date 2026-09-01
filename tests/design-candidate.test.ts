@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  bindDesignReviewReplies,
   buildDesignCandidate,
   DesignCandidateRejectedError,
   isStoredDesignCandidateReplay,
@@ -49,8 +50,9 @@ const build = (overrides: Partial<Parameters<typeof buildDesignCandidate>[0]> = 
   });
 
 test("design candidate binds one design path, base, sections, replies, and digest", async () => {
-  const first = await build({ reviewReplies: [{ commentId: 42, body: "Added the missing failure path." }] });
-  const replay = await build({ reviewReplies: [{ commentId: 42, body: "Added the missing failure path." }] });
+  const reply = { commentId: 42, body: "Added the missing failure path.", latestHumanCommentId: 45 };
+  const first = await build({ reviewReplies: [reply] });
+  const replay = await build({ reviewReplies: [reply] });
   assert.equal(first.candidate.path, "openspec/changes/sac-200/design.md");
   assert.equal(first.candidate.designDigest.length, 64);
   assert.equal(first.candidate.candidateDigest, replay.candidate.candidateDigest);
@@ -61,10 +63,35 @@ test("design candidate rejects extra paths, missing sections, whitespace, and un
   await assert.rejects(build({ path: "openspec/changes/sac-200/tasks.md" }), DesignCandidateRejectedError);
   await assert.rejects(build({ content: content.replace("## Failure modes\n", "") }), /required section/);
   await assert.rejects(build({ content: content.replace("Use the approved plan.", "Use the approved plan. ") }), /whitespace/);
-  await assert.rejects(build({ reviewReplies: [{ commentId: 42, body: "<!-- hidden -->" }] }), /review reply/);
+  await assert.rejects(build({
+    reviewReplies: [{ commentId: 42, body: "<!-- hidden -->", latestHumanCommentId: 42 }],
+  }), /review reply/);
+  await assert.rejects(build({
+    reviewReplies: [{ commentId: 42, body: "Updated.", latestHumanCommentId: 41 }],
+  }), /review reply/);
   await assert.rejects(
     build({ content: content.replace("Use the approved plan.", `Use the approved plan.\n\n${"x".repeat(32_000)}`) }),
     /revision context limit/,
+  );
+});
+
+test("design review replies bind to the latest human comment in the materialized thread", () => {
+  const replies = bindDesignReviewReplies(
+    [{ commentId: 42, body: "Covered both review comments." }],
+    [
+      { kind: "review_comment", id: 42, replyToId: null, authorType: "User" },
+      { kind: "review_comment", id: 44, replyToId: 42, authorType: "Bot" },
+      { kind: "review_comment", id: 45, replyToId: 42, authorType: "User" },
+    ],
+  );
+  assert.deepEqual(replies, [{
+    commentId: 42,
+    body: "Covered both review comments.",
+    latestHumanCommentId: 45,
+  }]);
+  assert.throws(
+    () => bindDesignReviewReplies([{ commentId: 43, body: "Unknown thread." }], []),
+    DesignCandidateRejectedError,
   );
 });
 
