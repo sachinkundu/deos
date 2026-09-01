@@ -848,6 +848,9 @@ export class GitHubCapabilityAdapter {
         reconciled = true;
       }
     }
+    branch = await this.ref(token, input.repository, input.branch);
+    if (branch === null) throw new Error("GitHub design branch is missing");
+    await this.assertDesignOnlyBranch(token, input.repository, input.baseCommit, branch, path, false);
     const current = await this.readContent(token, input.repository, input.branch, path, true);
     if (current?.content !== input.content) {
       await this.writeContent(
@@ -919,6 +922,7 @@ export class GitHubCapabilityAdapter {
     }
     const headSha = await this.ref(token, input.repository, input.branch);
     if (headSha === null) throw new Error("GitHub design branch read-back is missing");
+    await this.assertDesignOnlyBranch(token, input.repository, input.baseCommit, headSha, path, true);
     const confirmed = this.parsePull(await this.json(token, `/repos/${input.repository}/pulls/${number}`));
     const design = await this.readContent(token, input.repository, headSha, path, false);
     if (
@@ -1181,6 +1185,40 @@ export class GitHubCapabilityAdapter {
     const value = await this.ref(await this.tokens.token(), repository, branch);
     if (value === null) throw new Error("GitHub ref is missing");
     return value;
+  }
+
+  private async assertDesignOnlyBranch(
+    token: string,
+    repository: string,
+    baseCommit: string,
+    headCommit: string,
+    designPath: string,
+    requireDesign: boolean,
+  ): Promise<void> {
+    const comparison = await this.json(
+      token,
+      `/repos/${repository}/compare/${encodeURIComponent(baseCommit)}...${encodeURIComponent(headCommit)}`,
+    ) as {
+      status?: unknown;
+      base_commit?: { sha?: unknown };
+      merge_base_commit?: { sha?: unknown };
+      files?: Array<{ filename?: unknown }>;
+    };
+    if (
+      !["ahead", "identical"].includes(String(comparison.status)) ||
+      comparison.base_commit?.sha !== baseCommit || comparison.merge_base_commit?.sha !== baseCommit ||
+      !Array.isArray(comparison.files)
+    ) throw new Error("GitHub design branch comparison is invalid");
+    const paths = comparison.files.map((file) => file.filename);
+    if (paths.some((path) => typeof path !== "string") || new Set(paths).size !== paths.length) {
+      throw new Error("GitHub design branch file inventory is invalid");
+    }
+    if (paths.some((path) => path !== designPath)) {
+      throw new Error("GitHub design branch contains out-of-scope changes");
+    }
+    if (requireDesign && (paths.length !== 1 || paths[0] !== designPath)) {
+      throw new Error("GitHub design branch does not contain the required design change");
+    }
   }
 
   private async ref(

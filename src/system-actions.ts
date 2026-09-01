@@ -610,6 +610,7 @@ export class SystemActionController {
       return this.completed();
     }
     if (!["pending", "manual_reconciliation_required"].includes(operation.state)) return this.failed();
+    let providerConfirmed = false;
     try {
       const receipt = await dependencies.github.publishDesign({
         repository: workProduct.repository,
@@ -637,6 +638,17 @@ export class SystemActionController {
           expectedPullRequestNumber: workProduct.pull_request_number ?? undefined,
         }),
       }, operationId);
+      providerConfirmed = true;
+      await dependencies.designStore.recordPublication({
+        runId: run.run_id,
+        pullRequestDatabaseId: receipt.pullRequestDatabaseId,
+        pullRequestNumber: receipt.pullRequestNumber,
+        pullRequestUrl: receipt.pullRequestUrl,
+        headSha: receipt.headSha,
+        designDigest: candidate.designDigest,
+        operationId,
+        now: this.now().toISOString(),
+      });
       const state = receipt.reconciled || operation.state !== "pending" ? "reconciled" : "succeeded";
       if (operation.state !== state) {
         const finished = await this.finishPlanningOperation({
@@ -649,19 +661,10 @@ export class SystemActionController {
         });
         if (!finished) throw new Error("design publication receipt compare-and-set failed");
       }
-      await dependencies.designStore.recordPublication({
-        runId: run.run_id,
-        pullRequestDatabaseId: receipt.pullRequestDatabaseId,
-        pullRequestNumber: receipt.pullRequestNumber,
-        pullRequestUrl: receipt.pullRequestUrl,
-        headSha: receipt.headSha,
-        designDigest: candidate.designDigest,
-        operationId,
-        now: this.now().toISOString(),
-      });
       return this.completed();
     } catch (error) {
-      const ambiguous = error instanceof Error && /ambiguous|provider request failed/i.test(error.message);
+      const ambiguous = providerConfirmed ||
+        (error instanceof Error && /ambiguous|provider request failed/i.test(error.message));
       if (operation.state === "pending") {
         await this.finishPlanningOperation({
           operationId,

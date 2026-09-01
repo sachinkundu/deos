@@ -317,6 +317,47 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
   });
 });
 
+test("GitHub design publication rejects an existing branch with out-of-scope changes", async () => {
+  const baseCommit = "a".repeat(40);
+  const headCommit = "b".repeat(40);
+  let writes = 0;
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input, init) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-200")) {
+        return Response.json({ object: { sha: headCommit } });
+      }
+      if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
+        return Response.json({
+          status: "ahead",
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: baseCommit },
+          files: [
+            { filename: "openspec/changes/sac-200/design.md" },
+            { filename: "src/unrelated.ts" },
+          ],
+        });
+      }
+      if (init?.method === "PUT") writes += 1;
+      return new Response("unexpected", { status: 500 });
+    } },
+  );
+  await assert.rejects(adapter.publishDesign({
+    repository: "acme/sample",
+    branch: "deos/design/sac-200",
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-200",
+    title: "SAC-200: OpenSpec design",
+    body: "Design only",
+    content: "## Design\n",
+    reviewReplies: [],
+  }, "operation-design"), /design branch contains out-of-scope changes/);
+  assert.equal(writes, 0);
+});
+
 test("GitHub planning merge uses expected head SHA and reconciles a lost response", async () => {
   let merged = false;
   let mergeCalls = 0;

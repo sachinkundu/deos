@@ -76,6 +76,7 @@ test("design publication reuses one PR and merge requires its approved gate head
     created_at: NOW.toISOString(),
     updated_at: NOW.toISOString(),
   };
+  let publicationWriteFailures = 0;
   const designStore = {
     findWorkProduct: async () => work,
     recordPublication: async (input: {
@@ -85,6 +86,10 @@ test("design publication reuses one PR and merge requires its approved gate head
       headSha: string;
       operationId: string;
     }) => {
+      if (publicationWriteFailures > 0) {
+        publicationWriteFailures -= 1;
+        throw new Error("design publication write failed");
+      }
       work.pull_request_database_id = input.pullRequestDatabaseId;
       work.pull_request_number = input.pullRequestNumber;
       work.pull_request_url = input.pullRequestUrl;
@@ -178,5 +183,32 @@ test("design publication reuses one PR and merge requires its approved gate head
   assert.equal((await controller.execute(run, "merge_design_pr", "github.merge_design_pull_request")).outcome, "completed");
   assert.equal(work.merge_commit_sha, mergeSha);
   assert.equal(mergeCalls, 1);
-});
 
+  operations.records.clear();
+  work.pull_request_database_id = null;
+  work.pull_request_number = null;
+  work.pull_request_url = null;
+  work.head_sha = null;
+  work.publication_operation_id = null;
+  work.merge_operation_id = null;
+  work.merge_commit_sha = null;
+  publicationWriteFailures = 1;
+  publishCalls = 0;
+  run.current_visit_sequence = 40;
+
+  await assert.rejects(
+    controller.execute(run, "publish_design", "github.publish_design_candidate"),
+    /trusted design publication requires provider reconciliation/,
+  );
+  assert.equal([...operations.records.values()][0]?.state, "manual_reconciliation_required");
+  assert.equal(work.head_sha, null);
+  assert.equal(publishCalls, 1);
+
+  assert.equal(
+    (await controller.execute(run, "publish_design", "github.publish_design_candidate")).outcome,
+    "completed",
+  );
+  assert.equal([...operations.records.values()][0]?.state, "reconciled");
+  assert.equal(work.head_sha, headSha);
+  assert.equal(publishCalls, 2);
+});
