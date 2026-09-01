@@ -64,4 +64,5 @@ button { color:inherit; }
 .phase-spine-marker.active{border-color:var(--blue);color:var(--blue)}
 .inspector-status.active{color:var(--blue)}
 .phase-substep.active{border-color:var(--blue)}
+.substep-status.active{color:var(--blue);background:var(--blue-soft)}
 .phase-inspector .selected-evidence a{color:var(--blue)}

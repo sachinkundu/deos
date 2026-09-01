@@ -61,6 +61,10 @@ test("design candidate rejects extra paths, missing sections, whitespace, and un
   await assert.rejects(build({ content: content.replace("## Failure modes\n", "") }), /required section/);
   await assert.rejects(build({ content: content.replace("Use the approved plan.", "Use the approved plan. ") }), /whitespace/);
   await assert.rejects(build({ reviewReplies: [{ commentId: 42, body: "<!-- hidden -->" }] }), /review reply/);
+  await assert.rejects(
+    build({ content: content.replace("Use the approved plan.", `Use the approved plan.\n\n${"x".repeat(32_000)}`) }),
+    /revision context limit/,
+  );
 });
 
 test("a saved source attempt reuses its round and exact candidate identity", async () => {

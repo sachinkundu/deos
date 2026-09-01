@@ -68,3 +68,12 @@ export const phaseDisplayStatus = (
   if (phase.id === currentPhaseId && !terminal) return "In progress";
   return phase.visits.length > 0 ? "Complete" : "Upcoming";
 };
+
+export const authorVisitStatus = (
+  visit: { leftAt: string | null } | null,
+  runStatus: string,
+): "In progress" | "Complete" | "Upcoming" => {
+  if (visit === null) return "Upcoming";
+  const terminal = ["succeeded", "failed", "blocked", "denied", "canceled"].includes(runStatus);
+  return visit.leftAt === null && !terminal ? "In progress" : "Complete";
+};

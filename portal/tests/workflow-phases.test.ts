@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  authorVisitStatus,
   isDesignStageWorkflow,
   latestPhaseId,
   phaseDisplayStatus,
@@ -75,4 +76,11 @@ test("a recovered terminal visit does not add a stopped phase or replace the cur
     "claim", "planning", "approval", "design", "complete",
   ]);
   assert.equal(latestPhaseId(visits), "planning");
+});
+
+test("an unfinished author visit stays in progress until the run is terminal", () => {
+  assert.equal(authorVisitStatus({ leftAt: null }, "active"), "In progress");
+  assert.equal(authorVisitStatus({ leftAt: "2026-09-01T12:00:00.000Z" }, "active"), "Complete");
+  assert.equal(authorVisitStatus({ leftAt: null }, "failed"), "Complete");
+  assert.equal(authorVisitStatus(null, "active"), "Upcoming");
 });

@@ -2,6 +2,7 @@ import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { WorkflowJob } from "./workflow-definition.ts";
 import { D1PlanningStore, type RunWorkProductRecord } from "./planning-store.ts";
 import { D1DesignStore, type DesignWorkProductRecord } from "./design-store.ts";
+import { DESIGN_CANDIDATE_CONTEXT_LIMIT } from "./design-candidate.ts";
 
 interface LinearIssueContext {
   id: string;
@@ -316,7 +317,9 @@ export class JobInputMaterializer {
     const object = await this.artifacts.get(row.candidate_r2_key);
     if (object === null) throw new Error("prior design candidate is missing");
     const text = await object.text();
-    if (text.length > 1_100_000) throw new Error("prior design candidate exceeds the trusted limit");
+    if (new TextEncoder().encode(text).byteLength > DESIGN_CANDIDATE_CONTEXT_LIMIT) {
+      throw new Error("prior design candidate exceeds the trusted limit");
+    }
     return asObject(JSON.parse(text));
   }
 

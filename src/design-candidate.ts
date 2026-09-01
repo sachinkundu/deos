@@ -1,5 +1,7 @@
 import { sha256Hex } from "./trace-review.ts";
 
+export const DESIGN_CANDIDATE_CONTEXT_LIMIT = 32_000;
+
 export class DesignCandidateRejectedError extends Error {
   constructor(message: string) {
     super(message);
@@ -105,9 +107,11 @@ export const buildDesignCandidate = async (input: {
     !Number.isSafeInteger(input.round) || input.round < 1 ||
     !/^[0-9a-f]{40}$/.test(input.baseCommit) ||
     !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.change) || input.path !== expectedPath ||
-    typeof input.content !== "string" || input.content.trim().length === 0 ||
-    new TextEncoder().encode(input.content).byteLength > 1_000_000) {
+    typeof input.content !== "string" || input.content.trim().length === 0) {
     throw new DesignCandidateRejectedError("design candidate identity is invalid");
+  }
+  if (new TextEncoder().encode(input.content).byteLength > DESIGN_CANDIDATE_CONTEXT_LIMIT) {
+    throw new DesignCandidateRejectedError("design candidate exceeds the revision context limit");
   }
   if (!input.content.endsWith("\n") || input.content.split("\n").some((line) => /[ \t]+$/.test(line))) {
     throw new DesignCandidateRejectedError("design candidate has whitespace errors");
@@ -128,7 +132,7 @@ export const buildDesignCandidate = async (input: {
     designDigest,
     reviewReplies,
   }));
-  const candidate: DesignCandidate = Object.freeze({
+  const candidateValue: DesignCandidate = {
     version: 1,
     candidateId: input.candidateId,
     runId: input.runId,
@@ -142,7 +146,11 @@ export const buildDesignCandidate = async (input: {
     designDigest,
     reviewReplies,
     candidateDigest,
-  });
+  };
+  if (new TextEncoder().encode(JSON.stringify(candidateValue)).byteLength > DESIGN_CANDIDATE_CONTEXT_LIMIT) {
+    throw new DesignCandidateRejectedError("design candidate exceeds the revision context limit");
+  }
+  const candidate: DesignCandidate = Object.freeze(candidateValue);
   return {
     candidate,
     validation: Object.freeze({
