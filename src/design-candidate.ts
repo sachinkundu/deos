@@ -47,6 +47,29 @@ export interface DesignCandidateEvidence {
   validationSha256: string;
 }
 
+export interface StoredDesignCandidateIdentity {
+  candidate_id: string;
+  run_id: string;
+  round: number;
+  source_attempt_id: string;
+  base_commit: string;
+  change_id: string;
+  design_digest: string;
+  candidate_digest: string;
+  state: string;
+  created_at: string;
+  accepted_at: string | null;
+}
+
+export const isStoredDesignCandidateReplay = (
+  stored: StoredDesignCandidateIdentity,
+  candidate: DesignCandidate,
+): boolean => stored.candidate_id === candidate.candidateId && stored.run_id === candidate.runId &&
+  stored.round === candidate.round && stored.source_attempt_id === candidate.sourceAttemptId &&
+  stored.base_commit === candidate.baseCommit && stored.change_id === candidate.change &&
+  stored.design_digest === candidate.designDigest && stored.candidate_digest === candidate.candidateDigest &&
+  stored.state === "validated" && stored.accepted_at !== null;
+
 const requiredSections = ["component diagram", "event flow", "minimal data model", "failure modes"];
 
 const checkedReplies = (value: readonly DesignReviewReply[]): readonly DesignReviewReply[] => {
@@ -176,4 +199,3 @@ export const persistDesignCandidateEvidence = async (
     validationSha256,
   });
 };
-

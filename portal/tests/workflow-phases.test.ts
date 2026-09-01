@@ -35,16 +35,17 @@ test("version 17 folds granular nodes into progressive planning and design phase
   ];
   assert.deepEqual(workflowPhases(visits).map((phase) => [phase.id, phase.visits.length]), [
     ["claim", 1],
-    ["planning", 4],
-    ["design", 3],
+    ["planning", 3],
+    ["approval", 2],
+    ["design", 2],
     ["complete", 1],
   ]);
   assert.equal(latestPhaseId(visits), "complete");
 });
 
 test("gate kind disambiguates the shared Human Review presentation stage", () => {
-  assert.equal(phaseForVisit(visit(12, "planning_review", "review", "plan")), "planning");
-  assert.equal(phaseForVisit(visit(17, "design_review", "review", "design")), "design");
+  assert.equal(phaseForVisit(visit(12, "planning_review", "review", "plan")), "approval");
+  assert.equal(phaseForVisit(visit(17, "design_review", "review", "design")), "approval");
 });
 
 test("the grouped view is selected only for a design-stage definition", () => {
@@ -71,7 +72,7 @@ test("a recovered terminal visit does not add a stopped phase or replace the cur
     visit(3, "planning_author", "planning"),
   ];
   assert.deepEqual(workflowPhases(visits).map((phase) => phase.id), [
-    "claim", "planning", "design", "complete",
+    "claim", "planning", "approval", "design", "complete",
   ]);
   assert.equal(latestPhaseId(visits), "planning");
 });

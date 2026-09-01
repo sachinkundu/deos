@@ -61,6 +61,8 @@ import {
   buildDesignCandidate,
   persistDesignCandidateEvidence,
   DesignCandidateRejectedError,
+  isStoredDesignCandidateReplay,
+  type StoredDesignCandidateIdentity,
 } from "./design-candidate.ts";
 
 const durationMs = (value: string): number => {
@@ -249,14 +251,22 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           content,
           reviewReplies,
         }) => {
-          const latest = await env.DB.prepare(
-            "SELECT COALESCE(MAX(round), 0) AS round FROM design_candidates WHERE run_id = ?",
-          ).bind(run.run_id).first<{ round: number }>();
-          const round = (latest?.round ?? 0) + 1;
+          const candidateId = `design:${attempt.attempt_id}`;
+          const existing = await env.DB.prepare(
+            `SELECT candidate_id, run_id, round, source_attempt_id, base_commit, change_id,
+                    design_digest, candidate_digest, state, created_at, accepted_at
+             FROM design_candidates WHERE candidate_id = ?`,
+          ).bind(candidateId).first<StoredDesignCandidateIdentity>();
+          const latest = existing === null
+            ? await env.DB.prepare(
+              "SELECT COALESCE(MAX(round), 0) AS round FROM design_candidates WHERE run_id = ?",
+            ).bind(run.run_id).first<{ round: number }>()
+            : null;
+          const round = existing?.round ?? (latest?.round ?? 0) + 1;
           let built;
           try {
             built = await buildDesignCandidate({
-              candidateId: `design:${attempt.attempt_id}`,
+              candidateId,
               runId: run.run_id,
               round,
               sourceAttemptId: attempt.attempt_id,
@@ -266,12 +276,16 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               content,
               reviewReplies,
               strictOpenSpecCheck: async () => {},
-              checkedAt: new Date().toISOString(),
+              checkedAt: existing?.accepted_at ?? existing?.created_at ?? new Date().toISOString(),
             });
           } catch (error) {
             throw new DesignCandidateRejectedError(
               error instanceof Error ? error.message : "trusted design candidate was rejected",
             );
+          }
+          if (existing !== null) {
+            if (isStoredDesignCandidateReplay(existing, built.candidate)) return;
+            throw new DesignCandidateRejectedError("design candidate attempt identity mismatch");
           }
           const duplicate = await env.DB.prepare(
             `SELECT candidate_id FROM design_candidates

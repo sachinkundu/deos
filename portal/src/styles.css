@@ -63,3 +63,5 @@ button { color:inherit; }
 .phase-substep{gap:8px;padding:9px 11px}.phase-substep.compact .substep-meta{grid-column:1;grid-row:2;padding-left:34px}.phase-substep.compact .substep-status{grid-column:2;grid-row:2;justify-self:end}.substep-icon{width:26px;height:26px}.substep-icon svg{width:16px}.author-review-details{margin-top:1px}.author-review-details>span{padding:6px 2px}.author-review-details svg{width:14px}.shared-loop{min-height:38px}.shared-loop svg{width:22px}.shared-loop small{margin-top:1px}.approved-edge{min-height:30px}.approved-edge svg{width:18px}
 .phase-spine-marker.active{border-color:var(--blue);color:var(--blue)}
 .inspector-status.active{color:var(--blue)}
+.phase-substep.active{border-color:var(--blue)}
+.phase-inspector .selected-evidence a{color:var(--blue)}

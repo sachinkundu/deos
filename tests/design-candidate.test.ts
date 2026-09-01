@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildDesignCandidate,
   DesignCandidateRejectedError,
+  isStoredDesignCandidateReplay,
 } from "../src/design-candidate.ts";
 
 const content = `## Context
@@ -62,3 +63,21 @@ test("design candidate rejects extra paths, missing sections, whitespace, and un
   await assert.rejects(build({ reviewReplies: [{ commentId: 42, body: "<!-- hidden -->" }] }), /review reply/);
 });
 
+test("a saved source attempt reuses its round and exact candidate identity", async () => {
+  const built = await build({ round: 2, checkedAt: "2026-09-01T10:05:00.000Z" });
+  const stored = {
+    candidate_id: built.candidate.candidateId,
+    run_id: built.candidate.runId,
+    round: 2,
+    source_attempt_id: built.candidate.sourceAttemptId,
+    base_commit: built.candidate.baseCommit,
+    change_id: built.candidate.change,
+    design_digest: built.candidate.designDigest,
+    candidate_digest: built.candidate.candidateDigest,
+    state: "validated",
+    created_at: built.validation.checkedAt,
+    accepted_at: built.validation.checkedAt,
+  };
+  assert.equal(isStoredDesignCandidateReplay(stored, built.candidate), true);
+  assert.equal(isStoredDesignCandidateReplay({ ...stored, round: 3 }, built.candidate), false);
+});

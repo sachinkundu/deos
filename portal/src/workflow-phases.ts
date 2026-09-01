@@ -1,4 +1,4 @@
-export type WorkflowPhaseId = "claim" | "planning" | "design" | "complete" | "stopped";
+export type WorkflowPhaseId = "claim" | "planning" | "approval" | "design" | "complete" | "stopped";
 
 export interface PhaseVisitLike {
   sequence: number;
@@ -17,6 +17,7 @@ export interface WorkflowPhase {
 const PHASE_LABELS: Record<WorkflowPhaseId, string> = {
   claim: "Claim issue",
   planning: "Planning",
+  approval: "Human Review",
   design: "Design",
   complete: "Completed",
   stopped: "Stopped",
@@ -24,8 +25,7 @@ const PHASE_LABELS: Record<WorkflowPhaseId, string> = {
 
 export const phaseForVisit = (visit: Pick<PhaseVisitLike, "nodeId" | "stageId" | "gate">): WorkflowPhaseId | null => {
   if (visit.stageId === "claim") return "claim";
-  if (visit.nodeId === "planning_review" || visit.gate?.gate_kind === "plan") return "planning";
-  if (visit.nodeId === "design_review" || visit.gate?.gate_kind === "design") return "design";
+  if (["planning_review", "design_review"].includes(visit.nodeId) || visit.gate !== null) return "approval";
   if (["planning", "independent_review", "plan_merge"].includes(visit.stageId)) return "planning";
   if (["design", "design_merge"].includes(visit.stageId)) return "design";
   if (visit.stageId === "complete") return "complete";
@@ -35,7 +35,7 @@ export const phaseForVisit = (visit: Pick<PhaseVisitLike, "nodeId" | "stageId" |
 
 export const workflowPhases = (visits: PhaseVisitLike[]): WorkflowPhase[] => {
   const visibleVisits = visits.filter((visit) => visit.recovered !== true);
-  const order: WorkflowPhaseId[] = ["claim", "planning", "design", "complete"];
+  const order: WorkflowPhaseId[] = ["claim", "planning", "approval", "design", "complete"];
   if (visibleVisits.some((visit) => phaseForVisit(visit) === "stopped")) order.push("stopped");
   return order.map((id) => ({
     id,

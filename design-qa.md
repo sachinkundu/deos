@@ -10,10 +10,10 @@
 ## Review
 
 - Visual hierarchy: passed. The current workflow step remains visible while a different phase is marked as inspected.
-- Progressive disclosure: passed. Planning and Design open independently. Planning author contains the self-review and independent-review detail rows. Visit history stays collapsed until requested.
-- Review loop: passed. One shared bidirectional connector communicates submit and revision flow. Approval exits to Merge & verify.
+- Progressive disclosure: passed. Planning, Human Review, and Design open independently. Planning author contains the self-review and independent-review detail rows. Visit history stays collapsed until requested.
+- Review loop: passed. One shared Human Review phase keeps the planning decision and both design decisions. One bidirectional connector communicates approval and return-to-author flow. The selected gate controls which work product appears in the inspector.
 - Scope: passed. Publish visits remain in the underlying chronology but are not rendered as workflow nodes. No future implementation or deployment phases are invented.
-- Evidence access: passed. Phase artifacts and pull requests remain available from the summary and inspector.
+- Evidence access: passed. The shared Human Review summary keeps both pull requests. Planning and design decisions retain their saved rounds and outcomes. The selected review exposes its matching work product in the inspector.
 - Responsive behavior: passed at 1487x1058, 760x900, and 390x844. No horizontal document overflow was observed.
 - Interaction and accessibility: passed. Disclosure controls expose expanded state, keyboard focus is visible, and all browser console warnings and errors were empty.
 
