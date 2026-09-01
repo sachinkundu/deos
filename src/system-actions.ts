@@ -610,6 +610,7 @@ export class SystemActionController {
       return this.completed();
     }
     if (!["pending", "manual_reconciliation_required"].includes(operation.state)) return this.failed();
+    const expectedOperationState = operation.state === "pending" ? "pending" : "manual_reconciliation_required";
     let providerConfirmed = false;
     try {
       const receipt = await dependencies.github.publishDesign({
@@ -639,6 +640,7 @@ export class SystemActionController {
         }),
       }, operationId);
       providerConfirmed = true;
+      const state = receipt.reconciled || operation.state !== "pending" ? "reconciled" : "succeeded";
       await dependencies.designStore.recordPublication({
         runId: run.run_id,
         pullRequestDatabaseId: receipt.pullRequestDatabaseId,
@@ -647,20 +649,10 @@ export class SystemActionController {
         headSha: receipt.headSha,
         designDigest: candidate.designDigest,
         operationId,
+        expectedOperationState,
+        operationState: state,
         now: this.now().toISOString(),
       });
-      const state = receipt.reconciled || operation.state !== "pending" ? "reconciled" : "succeeded";
-      if (operation.state !== state) {
-        const finished = await this.finishPlanningOperation({
-          operationId,
-          expected: operation.state,
-          state,
-          providerResourceId: receipt.pullRequestDatabaseId,
-          safeErrorCategory: null,
-          now: this.now().toISOString(),
-        });
-        if (!finished) throw new Error("design publication receipt compare-and-set failed");
-      }
       return this.completed();
     } catch (error) {
       const ambiguous = providerConfirmed ||

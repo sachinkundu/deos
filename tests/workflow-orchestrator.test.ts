@@ -196,6 +196,7 @@ class RuntimeStore implements WorkflowRuntimeStore {
   readonly waits = new Map<string, WorkflowWaitRecord>();
   readonly waitDeliveries: Array<{ deliveryId: string; decision: string }> = [];
   readonly transitions: Array<WorkflowTransitionRecord> = [];
+  readonly humanGateDecisions: Array<Parameters<WorkflowRuntimeStore["compareAndSetNode"]>[0]["humanGateDecision"]> = [];
   reads = 0;
   staleTransitionAtNode: string | null = null;
 
@@ -322,6 +323,7 @@ class RuntimeStore implements WorkflowRuntimeStore {
     ) {
       return Promise.resolve({ outcome: "stale" as const });
     }
+    if (input.actorType === "user") this.humanGateDecisions.push(input.humanGateDecision);
     const transition: WorkflowTransitionRecord = {
       transition_id: input.transitionId,
       run_id: input.runId,
@@ -555,6 +557,7 @@ test("Workflow reloads D1 authority and continues through agents, a gate, and sy
     ["verify", "done"],
   ]);
   assert.equal(store.transitions[2].actor_type, "user");
+  assert.deepEqual(store.humanGateDecisions, [undefined]);
   assert.equal(store.reads >= 5, true);
   assert.equal(services.gateEntries, 1);
 });
@@ -648,6 +651,11 @@ test("version 17 traverses checked planning and a revised design through distinc
     "github.merge_design_pull_request",
   ]);
   assert.equal(services.gateEntries, 3);
+  assert.deepEqual(store.humanGateDecisions, [
+    { deliveryId: "delivery-plan-merge", outcome: "merge_authorized" },
+    { deliveryId: "delivery-design-revision", outcome: "revision_requested" },
+    { deliveryId: "delivery-design-merge", outcome: "merge_authorized" },
+  ]);
 });
 
 test("version 4 routes a successful agent result with missing receipts to its failure node", async () => {

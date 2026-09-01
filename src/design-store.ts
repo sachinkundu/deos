@@ -100,6 +100,8 @@ export class D1DesignStore {
     headSha: string;
     designDigest: string;
     operationId: string;
+    expectedOperationState: "pending" | "manual_reconciliation_required";
+    operationState: "succeeded" | "reconciled";
     now: string;
   }): Promise<DesignWorkProductRecord> {
     const current = await this.findWorkProduct(input.runId);
@@ -107,6 +109,10 @@ export class D1DesignStore {
       input.pullRequestUrl !== `https://github.com/${current.repository}/pull/${input.pullRequestNumber}`) {
       throw new Error("design publication identity is invalid");
     }
+    if (
+      (input.expectedOperationState === "pending" && !["succeeded", "reconciled"].includes(input.operationState)) ||
+      (input.expectedOperationState === "manual_reconciliation_required" && input.operationState !== "reconciled")
+    ) throw new Error("design publication operation transition is invalid");
     const manifestJson = JSON.stringify([{
       path: `openspec/changes/${current.change_id}/design.md`,
       sha256: input.designDigest,
@@ -124,6 +130,21 @@ export class D1DesignStore {
         url: `https://github.com/${current.repository}/blob/${input.headSha}/openspec/changes/${current.change_id}/design.md`,
       }),
     ]);
+    const operationUpdate = this.database.prepare(
+      `UPDATE provider_operations
+       SET state = ?, provider_resource_id = ?, safe_error_category = NULL,
+           updated_at = ?, completed_at = ?
+       WHERE operation_id = ? AND run_id = ? AND capability = 'system_action'
+         AND action = 'github.publish_design_candidate' AND state = ?`,
+    ).bind(
+      input.operationState,
+      input.pullRequestDatabaseId,
+      input.now,
+      input.now,
+      input.operationId,
+      input.runId,
+      input.expectedOperationState,
+    );
     const update = this.database.prepare(
       `UPDATE design_work_products
        SET pull_request_database_id = ?, pull_request_number = ?, pull_request_url = ?, head_sha = ?,
@@ -162,15 +183,29 @@ export class D1DesignStore {
       input.operationId,
       input.runId,
     ));
-    const results = await this.database.batch([update, ...linkStatements]);
-    if (changes(results[0]!) !== 1) throw new Error("design publication identity mismatch");
-    if (results.slice(1).some((result) => changes(result) !== 1)) {
+    const results = await this.database.batch([operationUpdate, update, ...linkStatements]);
+    if (changes(results[0]!) !== 1) throw new Error("design publication operation compare-and-set failed");
+    if (changes(results[1]!) !== 1) throw new Error("design publication identity mismatch");
+    if (results.slice(2).some((result) => changes(result) !== 1)) {
       throw new Error("design publication governed-link write failed");
     }
     const stored = await this.findWorkProduct(input.runId);
     if (stored?.head_sha !== input.headSha || stored.publication_operation_id !== input.operationId) {
       throw new Error("design publication read-back mismatch");
     }
+    const recordedOperation = await this.database.prepare(
+      `SELECT state, provider_resource_id, completed_at FROM provider_operations
+       WHERE operation_id = ? AND run_id = ?`,
+    ).bind(input.operationId, input.runId).first<{
+      state: string;
+      provider_resource_id: string | null;
+      completed_at: string | null;
+    }>();
+    if (
+      recordedOperation?.state !== input.operationState ||
+      recordedOperation.provider_resource_id !== input.pullRequestDatabaseId ||
+      recordedOperation.completed_at !== input.now
+    ) throw new Error("design publication operation read-back mismatch");
     const recordedLinks = await this.database.prepare(
       `SELECT kind, label, url FROM governed_work_links
        WHERE run_id = ? AND operation_id = ? ORDER BY kind, label`,

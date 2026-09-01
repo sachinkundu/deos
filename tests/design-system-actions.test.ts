@@ -86,11 +86,22 @@ test("design publication reuses one PR and merge requires its approved gate head
       pullRequestUrl: string;
       headSha: string;
       operationId: string;
+      expectedOperationState: "pending" | "manual_reconciliation_required";
+      operationState: "succeeded" | "reconciled";
     }) => {
       if (publicationWriteFailures > 0) {
         publicationWriteFailures -= 1;
         throw new Error("design publication write failed");
       }
+      const finished = await operations.finishPlanningOperation({
+        operationId: input.operationId,
+        expected: input.expectedOperationState,
+        state: input.operationState,
+        providerResourceId: input.pullRequestDatabaseId,
+        safeErrorCategory: null,
+        now: NOW.toISOString(),
+      });
+      if (!finished) throw new Error("design publication atomic operation update failed");
       work.pull_request_database_id = input.pullRequestDatabaseId;
       work.pull_request_number = input.pullRequestNumber;
       work.pull_request_url = input.pullRequestUrl;

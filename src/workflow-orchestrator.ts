@@ -515,7 +515,7 @@ export class WorkflowOrchestrator {
       providerOperationId: null,
       now: this.now().toISOString(),
       wait,
-      humanGateDecision: decision.actorType === "user" &&
+      humanGateDecision: run.definition_version >= 17 && decision.actorType === "user" &&
           ["revision_requested", "merge_authorized", "canceled"].includes(decision.outcome)
         ? {
             deliveryId: decision.causeReference,

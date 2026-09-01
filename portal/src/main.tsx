@@ -345,6 +345,11 @@ function TraceabilityWorkflowMap({
   </div>;
 
   const inspectedPhase = phases.find((phase) => phase.id === inspectedPhaseId) ?? currentPhase;
+  const inspectorStatus = inspectedPhase === null
+    ? "Upcoming"
+    : phaseDisplayStatus(inspectedPhase, currentPhaseId, projection.run.status);
+  const inspectorComplete = inspectorStatus === "Complete" || inspectorStatus === "Succeeded" ||
+    ["Failed", "Blocked", "Canceled"].includes(inspectorStatus);
   const inspectorTitle = expandedSubstep === "planning_author" ? "Planning author"
     : expandedSubstep === "planning_review" ? "Human review"
       : expandedSubstep === "planning_merge" ? "Merge & verify"
@@ -394,7 +399,9 @@ function TraceabilityWorkflowMap({
       <aside className="phase-inspector" aria-label="Inspected workflow detail">
         <span className="eyebrow">{inspectedPhaseId === currentPhaseId ? "Current step" : "Inspecting"}</span>
         <h3>{inspectorTitle}</h3>
-        <span className="inspector-status"><CheckCircle weight="fill" />Complete</span>
+        <span className={`inspector-status ${inspectorStatus === "In progress" ? "active" : ""}`}>
+          {inspectorComplete ? <CheckCircle weight="fill" /> : <Clock />}{inspectorStatus}
+        </span>
         <dl className="inspector-summary">
           <div><dt>Phase</dt><dd>{inspectedPhase?.label ?? "—"}</dd></div>
           <div><dt>Workflow step</dt><dd>{currentPhase?.label ?? "—"}</dd></div>
