@@ -4,7 +4,12 @@ import { access, appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } f
 import { spawn } from "node:child_process";
 import { finished } from "node:stream/promises";
 
-import { runAuthorCompletionCheck, runBoundedAuthorCompletion } from "./author-completion.mjs";
+import {
+  designCorrectionPrompt,
+  runAuthorCompletionCheck,
+  runBoundedAuthorCompletion,
+  runDesignCompletionCheck,
+} from "./author-completion.mjs";
 import { captureRepositoryPatch } from "./patch-capture.mjs";
 
 const RUN_ROOT = "/deos/run";
@@ -174,6 +179,7 @@ const main = async () => {
   const planningAuthor = job.agentRole === "author" &&
     typeof job.openspecChange === "string" &&
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(job.openspecChange);
+  const designAuthor = planningAuthor && job.designOnly === true;
   const tracker = sessionTracker();
   let activePid = null;
   const heartbeat = async () => atomicJson(HEARTBEAT_PATH, {
@@ -220,7 +226,10 @@ const main = async () => {
     const sessionId = tracker.finish();
     if (sessionId === null) throw new Error("author completion session identity is missing");
     const bounded = await runBoundedAuthorCompletion({
-      initialCheck: await runAuthorCompletionCheck({ cwd: job.cwd, change: job.openspecChange }),
+      initialCheck: await (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)({
+        cwd: job.cwd,
+        change: job.openspecChange,
+      }),
       initialResult: { ...result, outcome: "completed" },
       sessionId,
       maximumRepairs: MAXIMUM_AUTHOR_COMPLETION_REPAIRS,
@@ -228,7 +237,11 @@ const main = async () => {
         const resumed = await run(correctionPrompt, exactSessionId);
         return { ...resumed, outcome: await resultOutcome() };
       },
-      check: () => runAuthorCompletionCheck({ cwd: job.cwd, change: job.openspecChange }),
+      check: () => (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)({
+        cwd: job.cwd,
+        change: job.openspecChange,
+      }),
+      correctionPrompt: designAuthor ? designCorrectionPrompt : undefined,
     });
     result = bounded.result;
     const check = bounded.check;

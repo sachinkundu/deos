@@ -100,6 +100,8 @@ def test_trace_review_storage_is_additive_and_secret_free() -> None:
         "SELECT sql FROM sqlite_schema WHERE name = 'agent_stage_retries'"
     ).fetchone()[0]
     assert "planning_revision_author" in retry_sql
+    assert "design_author" in retry_sql
+    assert "design_revision_author" in retry_sql
     all_columns = {
         row[1]
         for table in (

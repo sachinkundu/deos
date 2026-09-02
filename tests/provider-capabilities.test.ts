@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GitHubCapabilityAdapter } from "../src/github-capability.ts";
+import {
+  GitHubCapabilityAdapter,
+  GitHubReviewFeedbackChangedError,
+} from "../src/github-capability.ts";
 import { LinearCapabilityAdapter } from "../src/linear-capability.ts";
 
 const encode = (value: string): string => {
@@ -32,7 +35,9 @@ test("GitHub adapter reconciles branch, file, and PR partial success by stable m
       return Response.json({ ref: "refs/heads/deos/attempt-1" });
     }
     if (path.includes("/contents/src/example.ts?")) {
-      return content === null ? new Response("", { status: 404 }) : Response.json({ sha: "file-sha", content: encode(content) });
+      return content === null
+        ? new Response("", { status: 404 })
+        : Response.json({ sha: "file-sha", content: encode(content), encoding: "base64" });
     }
     if (path.endsWith("/contents/src/example.ts") && init?.method === "PUT") {
       const body = JSON.parse(String(init.body)) as { content: string };
@@ -68,7 +73,7 @@ test("GitHub adapter reconciles branch, file, and PR partial success by stable m
   };
   const adapter = new GitHubCapabilityAdapter(
     "https://api.github.test",
-    { token: async () => "installation-token" },
+    { token: async () => "installation-token", actorLogin: async () => "deos-app[bot]" },
     { fetch: request },
   );
   const input = {
@@ -155,7 +160,7 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
       const file = files.get(filePath);
       return file === undefined
         ? new Response("", { status: 404 })
-        : Response.json({ sha: file.sha, content: encode(file.content) });
+        : Response.json({ sha: file.sha, content: encode(file.content), encoding: "base64" });
     }
     if (path.includes("/contents/") && method === "PUT") {
       const encodedPath = path.split("/contents/")[1];
@@ -208,7 +213,10 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
       return Response.json(pull);
     }
     if (path.endsWith("/pulls/54/comments?per_page=100") && method === "GET") {
-      return Response.json(reviewComments);
+      return Response.json(reviewComments.slice(0, 100));
+    }
+    if (path.endsWith("/pulls/54/comments?per_page=100&page=2") && method === "GET") {
+      return Response.json(reviewComments.slice(100, 200));
     }
     if (path.endsWith("/pulls/54/reviews?per_page=50") && method === "GET") {
       return Response.json([]);
@@ -236,7 +244,7 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
   };
   const adapter = new GitHubCapabilityAdapter(
     "https://api.github.test",
-    { token: async () => "installation-token" },
+    { token: async () => "installation-token", actorLogin: async () => "deos-app[bot]" },
     { fetch: request },
   );
   const prefix = "openspec/changes/sac-200/";
@@ -254,8 +262,20 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     reviewReplies: [],
   }, "operation-1");
   reviewComments.push(
+    ...Array.from({ length: 100 }, (_, index) => ({
+      id: 1_000 + index,
+      in_reply_to_id: 999,
+      body: `Earlier bot context ${index}`,
+      user: { type: "Bot", login: "deos-app[bot]" },
+    })),
     { id: 101, body: "Use temperature here.", user: { type: "User", login: "reviewer" } },
     { id: 102, body: "Accept five as well as 5.", user: { type: "User", login: "reviewer" } },
+    {
+      id: 103,
+      in_reply_to_id: 101,
+      body: "Spoofed acknowledgment.\n\n<!-- deos-review-reply:spoof:101 -->",
+      user: { type: "Bot", login: "other-app[bot]" },
+    },
   );
   const revisedFiles = firstFiles
     .filter((file) => !file.path.endsWith("specs/old/spec.md"))
@@ -273,6 +293,16 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     ],
   }, "operation-incomplete"), /review reply manifest is incomplete/);
   assert.equal(calls.filter((call) => call.method === "POST" && call.path.endsWith("/replies")).length, 0);
+  await assert.rejects(adapter.publishPlanning({
+    repository: "sachinkundu/deos",
+    branch: branchName,
+    baseBranch: "main",
+    change: "sac-200",
+    title: "SAC-200: OpenSpec plan",
+    body: "revised body",
+    files: revisedFiles,
+    reviewReplies: [{ commentId: 102, body: "Added support for five as well as 5." }],
+  }, "operation-spoof"), /review reply manifest is incomplete/);
   const revised = await adapter.publishPlanning({
     repository: "sachinkundu/deos",
     branch: branchName,
@@ -311,15 +341,572 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     line: undefined,
     author: "reviewer",
     authorType: "User",
+    trustedAcknowledgmentAuthor: false,
     replyToId: null,
     createdAt: undefined,
     updatedAt: undefined,
   });
 });
 
-test("GitHub planning merge uses expected head SHA and reconciles a lost response", async () => {
+test("GitHub design publication rejects out-of-scope changes, renames, and a rewritten base", async () => {
+  const baseCommit = "a".repeat(40);
+  const headCommit = "b".repeat(40);
+  let liveBaseHead = baseCommit;
+  let writes = 0;
+  let comparedFiles: Array<{ filename: string; status: string; previous_filename?: string }> = [
+    { filename: "openspec/changes/sac-200/design.md", status: "modified" },
+    { filename: "src/unrelated.ts", status: "modified" },
+  ];
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input, init) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-200")) {
+        return Response.json({ object: { sha: headCommit } });
+      }
+      if (path.includes("/git/ref/heads/main")) {
+        return Response.json({ object: { sha: liveBaseHead } });
+      }
+      if (liveBaseHead !== baseCommit && path.includes(`/compare/${baseCommit}...${liveBaseHead}`)) {
+        return Response.json({
+          status: "diverged",
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: "e".repeat(40) },
+        });
+      }
+      if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
+        return Response.json({
+          status: "ahead",
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: baseCommit },
+          files: comparedFiles,
+        });
+      }
+      if (init?.method === "PUT") writes += 1;
+      return new Response("unexpected", { status: 500 });
+    } },
+  );
+  await assert.rejects(adapter.publishDesign({
+    repository: "acme/sample",
+    branch: "deos/design/sac-200",
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-200",
+    title: "SAC-200: OpenSpec design",
+    body: "Design only",
+    content: "## Design\n",
+    reviewReplies: [],
+  }, "operation-design"), /design branch contains out-of-scope changes/);
+  comparedFiles = [{
+    filename: "openspec/changes/sac-200/design.md",
+    status: "renamed",
+    previous_filename: "src/unrelated.ts",
+  }];
+  await assert.rejects(adapter.publishDesign({
+    repository: "acme/sample",
+    branch: "deos/design/sac-200",
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-200",
+    title: "SAC-200: OpenSpec design",
+    body: "Design only",
+    content: "## Design\n",
+    reviewReplies: [],
+  }, "operation-design-rename"), /design branch contains out-of-scope changes/);
+  comparedFiles = [{ filename: "openspec/changes/sac-200/design.md", status: "modified" }];
+  liveBaseHead = "d".repeat(40);
+  await assert.rejects(adapter.publishDesign({
+    repository: "acme/sample",
+    branch: "deos/design/sac-200",
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-200",
+    title: "SAC-200: OpenSpec design",
+    body: "Design only",
+    content: "## Design\n",
+    reviewReplies: [],
+  }, "operation-design-rewritten-base"), /base commit is not on the current base branch/);
+  assert.equal(writes, 0);
+});
+
+test("GitHub design publication reconciles an accepted metadata update with a lost response", async () => {
+  const baseCommit = "a".repeat(40);
+  const headCommit = "b".repeat(40);
+  const branch = "deos/design/sac-201";
+  const designPath = "openspec/changes/sac-201/design.md";
+  const designContent = "## Design\n";
+  let title = "Old title";
+  let body = "Old body";
+  let patchCalls = 0;
+  let designMode = "100644";
+  const pull = () => ({
+    id: 7001,
+    number: 7,
+    html_url: "https://github.com/acme/sample/pull/7",
+    state: "open",
+    draft: false,
+    merged: false,
+    merge_commit_sha: null,
+    title,
+    body,
+    head: { ref: branch, sha: headCommit },
+    base: { ref: "main" },
+  });
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input, init) => {
+      const url = new URL(String(input));
+      const path = `${url.pathname}${url.search}`;
+      const method = init?.method ?? "GET";
+      if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-201")) {
+        return Response.json({ object: { sha: headCommit } });
+      }
+      if (path.includes("/git/ref/heads/main")) {
+        return Response.json({ object: { sha: baseCommit } });
+      }
+      if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
+        return Response.json({
+          status: "ahead",
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: baseCommit },
+          files: [{ filename: designPath, status: "modified" }],
+        });
+      }
+      if (path.includes(`/contents/${designPath}`)) {
+        return Response.json({ sha: "design-sha", content: encode(designContent), encoding: "base64" });
+      }
+      if (path.includes(`/git/trees/${headCommit}`)) {
+        return Response.json({
+          tree: [{ path: designPath, type: "blob", mode: designMode }],
+        });
+      }
+      if (path.endsWith("/pulls/7") && method === "PATCH") {
+        const payload = JSON.parse(String(init?.body)) as { title: string; body: string };
+        title = payload.title;
+        body = payload.body;
+        patchCalls += 1;
+        throw new Error("metadata response lost");
+      }
+      if (path.endsWith("/pulls/7") && method === "GET") return Response.json(pull());
+      if (path.endsWith("/pulls/7/comments?per_page=100")) return Response.json([]);
+      return new Response(`unexpected ${method} ${path}`, { status: 500 });
+    } },
+  );
+
+  const receipt = await adapter.publishDesign({
+    repository: "acme/sample",
+    branch,
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-201",
+    title: "SAC-201: OpenSpec design",
+    body: "Reviewed design",
+    content: designContent,
+    reviewReplies: [],
+    expectedPullRequestDatabaseId: "7001",
+    expectedPullRequestNumber: 7,
+  }, "operation-design");
+  assert.equal(receipt.reconciled, true);
+  assert.equal(receipt.pullRequestNumber, 7);
+  assert.equal(patchCalls, 1);
+  assert.equal(title, "SAC-201: OpenSpec design");
+  assert.equal(body, "Reviewed design");
+  designMode = "120000";
+  await assert.rejects(adapter.publishDesign({
+    repository: "acme/sample",
+    branch,
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-201",
+    title: "SAC-201: OpenSpec design",
+    body: "Reviewed design",
+    content: designContent,
+    reviewReplies: [],
+    expectedPullRequestDatabaseId: "7001",
+    expectedPullRequestNumber: 7,
+  }, "operation-symlink"), /design path is not a regular blob/);
+});
+
+test("GitHub design publication makes a lost final read reconcilable", async () => {
+  const baseCommit = "a".repeat(40);
+  const headCommit = "b".repeat(40);
+  let liveHeadSha = headCommit;
+  const branch = "deos/design/sac-201-final-read";
+  const designPath = "openspec/changes/sac-201/design.md";
+  const designContent = "## Design\n";
+  let pullReads = 0;
+  let replyPosts = 0;
+  let addFeedbackDuringReply = false;
+  let rewriteHeadDuringReply = false;
+  let loseFinalRead = true;
+  let reviewComments: Array<{
+    id: number;
+    in_reply_to_id: number | null;
+    body: string;
+    user: { type: string; login: string };
+    updated_at: string;
+  }> = [];
+  const pull = {
+    id: 7001,
+    number: 7,
+    html_url: "https://github.com/acme/sample/pull/7",
+    state: "open",
+    draft: false,
+    merged: false,
+    merge_commit_sha: null,
+    title: "SAC-201: OpenSpec design",
+    body: "Reviewed design",
+    head: { ref: branch, sha: headCommit },
+    base: { ref: "main" },
+  };
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token", actorLogin: async () => "deos[bot]" },
+    { fetch: async (input, init) => {
+      const url = new URL(String(input));
+      const path = `${url.pathname}${url.search}`;
+      const method = init?.method ?? "GET";
+      if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-201-final-read")) {
+        return Response.json({ object: { sha: liveHeadSha } });
+      }
+      if (path.includes("/git/ref/heads/main")) {
+        return Response.json({ object: { sha: baseCommit } });
+      }
+      if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
+        return Response.json({
+          status: "ahead",
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: baseCommit },
+          files: [{ filename: designPath, status: "modified" }],
+        });
+      }
+      if (path.includes(`/contents/${designPath}`)) {
+        return Response.json({ sha: "design-sha", content: encode(designContent), encoding: "base64" });
+      }
+      if (path.includes(`/git/trees/${headCommit}`)) {
+        return Response.json({
+          tree: [{ path: designPath, type: "blob", mode: "100644" }],
+        });
+      }
+      if (path.endsWith("/pulls/7") && method === "GET") {
+        pullReads += 1;
+        if (loseFinalRead && pullReads === 3) {
+          loseFinalRead = false;
+          throw new Error("fetch failed");
+        }
+        pull.head.sha = liveHeadSha;
+        return Response.json(pull);
+      }
+      if (path.includes("/pulls?state=all&head=")) return Response.json([{ number: 7 }]);
+      if (path.endsWith("/pulls/7/comments?per_page=100")) return Response.json(reviewComments);
+      if (path.endsWith("/pulls/7/comments/701/replies") && method === "POST") {
+        replyPosts += 1;
+        if (addFeedbackDuringReply) {
+          reviewComments.push({
+            id: 704,
+            in_reply_to_id: 701,
+            body: "Please include the late recovery case.",
+            user: { type: "User", login: "reviewer" },
+            updated_at: "2026-09-01T10:15:00.000Z",
+          });
+        }
+        if (rewriteHeadDuringReply) liveHeadSha = "c".repeat(40);
+        return Response.json({
+          id: 702,
+          in_reply_to_id: 701,
+          user: { type: "Bot", login: "deos[bot]" },
+        });
+      }
+      return new Response(`unexpected ${method} ${path}`, { status: 500 });
+    } },
+  );
+  const request = {
+    repository: "acme/sample",
+    branch,
+    baseBranch: "main" as const,
+    baseCommit,
+    change: "sac-201",
+    title: "SAC-201: OpenSpec design",
+    body: "Reviewed design",
+    content: designContent,
+    reviewReplies: [],
+    expectedPullRequestDatabaseId: "7001",
+    expectedPullRequestNumber: 7,
+  };
+
+  await assert.rejects(adapter.publishDesign(request, "operation-final-read"), /provider request failed/);
+  const receipt = await adapter.publishDesign(request, "operation-final-read");
+  assert.equal(receipt.pullRequestNumber, 7);
+  assert.equal(receipt.reconciled, true);
+
+  reviewComments = [{
+    id: 701,
+    in_reply_to_id: null,
+    body: "Please cover the retry path.",
+    user: { type: "User", login: "reviewer" },
+    updated_at: "2026-09-01T10:00:00.000Z",
+  }];
+  const {
+    expectedPullRequestDatabaseId: _databaseId,
+    expectedPullRequestNumber: _number,
+    ...unrecordedRequest
+  } = request;
+  await assert.rejects(
+    adapter.publishDesign(unrecordedRequest, "operation-feedback-changed"),
+    (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
+      error.receipt.pullRequestDatabaseId === "7001" && error.receipt.pullRequestNumber === 7 &&
+      error.receipt.headSha === headCommit,
+  );
+  reviewComments.push({
+    id: 703,
+    in_reply_to_id: 701,
+    body: "Please also cover timeout recovery.",
+    user: { type: "User", login: "reviewer" },
+    updated_at: "2026-09-01T10:05:00.000Z",
+  });
+  await assert.rejects(
+    adapter.publishDesign({
+      ...request,
+      reviewReplies: [{
+        commentId: 701,
+        body: "Covered the retry path.",
+        latestHumanCommentId: 701,
+        latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
+      }],
+    }, "operation-stale-thread-snapshot"),
+    (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
+      error.message === "GitHub review reply thread snapshot changed",
+  );
+  assert.equal(replyPosts, 0);
+  reviewComments = reviewComments.filter((comment) => comment.id !== 703);
+  reviewComments[0]!.body = "Please cover retry and cancellation paths.";
+  reviewComments[0]!.updated_at = "2026-09-01T10:10:00.000Z";
+  await assert.rejects(
+    adapter.publishDesign({
+      ...request,
+      reviewReplies: [{
+        commentId: 701,
+        body: "Covered the retry path.",
+        latestHumanCommentId: 701,
+        latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
+      }],
+    }, "operation-edited-thread-snapshot"),
+    (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
+      error.message === "GitHub review reply thread snapshot changed",
+  );
+  assert.equal(replyPosts, 0);
+  reviewComments[0]!.body = "Please cover the retry path.";
+  reviewComments[0]!.updated_at = "2026-09-01T10:00:00.000Z";
+  addFeedbackDuringReply = true;
+  await assert.rejects(
+    adapter.publishDesign({
+      ...request,
+      reviewReplies: [{
+        commentId: 701,
+        body: "Covered the retry path.",
+        latestHumanCommentId: 701,
+        latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
+      }],
+    }, "operation-feedback-during-reply"),
+    (error: unknown) => error instanceof GitHubReviewFeedbackChangedError &&
+      error.receipt.reviewReplyIds.length === 1,
+  );
+  assert.equal(replyPosts, 1);
+  addFeedbackDuringReply = false;
+  reviewComments = reviewComments.filter((comment) => comment.id !== 704);
+  reviewComments[0]!.body = "Please cover the retry path after this edit.";
+  reviewComments[0]!.updated_at = "2026-09-01T10:20:00Z";
+  reviewComments.push({
+    id: 705,
+    in_reply_to_id: 701,
+    body: "Earlier response. <!-- deos-review-reply:earlier-operation:701 -->",
+    user: { type: "Bot", login: "deos[bot]" },
+    updated_at: "2026-09-01T10:15:00Z",
+  });
+  await adapter.publishDesign({
+    ...request,
+    reviewReplies: [{
+      commentId: 701,
+      body: "Covered the edited retry request.",
+      latestHumanCommentId: 701,
+      latestHumanCommentUpdatedAt: "2026-09-01T10:20:00Z",
+    }],
+  }, "operation-edited-acknowledged-thread");
+  assert.equal(replyPosts, 2);
+  reviewComments = reviewComments.filter((comment) => comment.id !== 705);
+  reviewComments[0]!.body = "Please cover the retry path.";
+  reviewComments[0]!.updated_at = "2026-09-01T10:00:00.000Z";
+  rewriteHeadDuringReply = true;
+  await assert.rejects(
+    adapter.publishDesign({
+      ...request,
+      reviewReplies: [{
+        commentId: 701,
+        body: "Covered the retry path.",
+        latestHumanCommentId: 701,
+        latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
+      }],
+    }, "operation-reply-race"),
+    /final read-back mismatch/,
+  );
+});
+
+test("GitHub design publication discovers its head across bases and rejects a retargeted pull request", async () => {
+  const baseCommit = "a".repeat(40);
+  const headCommit = "b".repeat(40);
+  const branch = "deos/design/sac-202";
+  const designPath = "openspec/changes/sac-202/design.md";
+  const designContent = "## Design\n";
+  let pullWrites = 0;
+  let discoveryPath = "";
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input, init) => {
+      const url = new URL(String(input));
+      const path = `${url.pathname}${url.search}`;
+      const method = init?.method ?? "GET";
+      if (path.includes("/git/ref/heads/deos%2Fdesign%2Fsac-202")) {
+        return Response.json({ object: { sha: headCommit } });
+      }
+      if (path.includes("/git/ref/heads/main")) {
+        return Response.json({ object: { sha: baseCommit } });
+      }
+      if (path.includes(`/compare/${baseCommit}...${headCommit}`)) {
+        return Response.json({
+          status: "ahead",
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: baseCommit },
+          files: [{ filename: designPath, status: "modified" }],
+        });
+      }
+      if (path.includes(`/contents/${designPath}`)) {
+        return Response.json({ sha: "design-sha", content: encode(designContent), encoding: "base64" });
+      }
+      if (path.includes("/pulls?state=all")) {
+        discoveryPath = path;
+        return Response.json([{ number: 8 }]);
+      }
+      if (path.endsWith("/pulls/8") && method === "GET") {
+        return Response.json({
+          id: 8001,
+          number: 8,
+          html_url: "https://github.com/acme/sample/pull/8",
+          state: "closed",
+          draft: false,
+          merged: false,
+          merge_commit_sha: null,
+          title: "SAC-202: OpenSpec design",
+          body: "Reviewed design",
+          head: { ref: branch, sha: headCommit },
+          base: { ref: "release" },
+        });
+      }
+      if (path.endsWith("/pulls") || (path.endsWith("/pulls/8") && method === "PATCH")) pullWrites += 1;
+      return new Response(`unexpected ${method} ${path}`, { status: 500 });
+    } },
+  );
+
+  await assert.rejects(adapter.publishDesign({
+    repository: "acme/sample",
+    branch,
+    baseBranch: "main",
+    baseCommit,
+    change: "sac-202",
+    title: "SAC-202: OpenSpec design",
+    body: "Reviewed design",
+    content: designContent,
+    reviewReplies: [],
+  }, "operation-design"), /discovered design pull-request identity mismatch/);
+  assert.match(discoveryPath, /state=all&head=/);
+  assert.doesNotMatch(discoveryPath, /[?&]base=/);
+  assert.equal(pullWrites, 0);
+});
+
+test("GitHub repository guidance rejects an allowlisted symlink before reading its target", async () => {
+  let contentReads = 0;
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/git/trees/")) {
+        return Response.json({
+          tree: [{ path: "AGENTS.md", type: "blob", mode: "120000" }],
+        });
+      }
+      if (path.includes("/contents/")) contentReads += 1;
+      return new Response("unexpected", { status: 500 });
+    } },
+  );
+
+  await assert.rejects(
+    adapter.readRepositoryGuidance("acme/sample", "a".repeat(40)),
+    /unsafe file type/,
+  );
+  assert.equal(contentReads, 0);
+});
+
+test("GitHub repository guidance rejects malformed UTF-8", async () => {
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/git/trees/")) {
+        return Response.json({
+          tree: [{ path: "AGENTS.md", type: "blob", mode: "100644" }],
+        });
+      }
+      if (path.includes("/contents/AGENTS.md")) {
+        return Response.json({
+          sha: "guidance-sha",
+          content: btoa(String.fromCharCode(0xc3, 0x28)),
+          encoding: "base64",
+        });
+      }
+      return new Response("unexpected", { status: 500 });
+    } },
+  );
+
+  await assert.rejects(
+    adapter.readRepositoryGuidance("acme/sample", "a".repeat(40)),
+    /not valid UTF-8/,
+  );
+});
+
+test("GitHub repository guidance rejects content that is not returned as base64", async () => {
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    { fetch: async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/git/trees/")) {
+        return Response.json({
+          tree: [{ path: "AGENTS.md", type: "blob", mode: "100644" }],
+        });
+      }
+      if (path.includes("/contents/AGENTS.md")) {
+        return Response.json({ sha: "guidance-sha", content: "", encoding: "none" });
+      }
+      return new Response("unexpected", { status: 500 });
+    } },
+  );
+
+  await assert.rejects(
+    adapter.readRepositoryGuidance("acme/sample", "a".repeat(40)),
+    /content response is invalid/,
+  );
+});
+
+test("GitHub design merge reconciles lost mutation and final-read responses", async () => {
+  const baseCommit = "a".repeat(40);
+  const designPath = "openspec/changes/sac-201/design.md";
   let merged = false;
   let mergeCalls = 0;
+  let loseFinalRead = true;
   const pull = () => ({
     id: 9001,
     number: 54,
@@ -337,7 +924,25 @@ test("GitHub planning merge uses expected head SHA and reconciles a lost respons
     {
       fetch: async (input, init) => {
         const path = new URL(String(input)).pathname;
+        if (path.includes("/git/ref/heads/main")) {
+          return Response.json({ object: { sha: baseCommit } });
+        }
+        if (path.includes(`/compare/${baseCommit}...head-sha`)) {
+          return Response.json({
+            status: "ahead",
+            base_commit: { sha: baseCommit },
+            merge_base_commit: { sha: baseCommit },
+            files: [{ filename: designPath, status: "modified" }],
+          });
+        }
+        if (path.includes("/git/trees/head-sha")) {
+          return Response.json({ tree: [{ path: designPath, type: "blob", mode: "100644" }] });
+        }
         if (path.endsWith("/pulls/54") && (init?.method ?? "GET") === "GET") {
+          if (merged && loseFinalRead) {
+            loseFinalRead = false;
+            throw new Error("fetch failed");
+          }
           return Response.json(pull());
         }
         if (path.endsWith("/pulls/54/merge") && init?.method === "PUT") {
@@ -351,17 +956,113 @@ test("GitHub planning merge uses expected head SHA and reconciles a lost respons
       },
     },
   );
-  const receipt = await adapter.mergePlanning({
+  const request = {
+    repository: "sachinkundu/deos",
+    pullRequestNumber: 54,
+    pullRequestDatabaseId: "9001",
+    baseBranch: "main" as const,
+    headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
+    expectedHeadSha: "head-sha",
+    baseCommit,
+    change: "sac-201",
+  };
+  await assert.rejects(adapter.mergeDesign(request), /provider request failed/);
+  const receipt = await adapter.mergeDesign(request);
+  assert.equal(receipt.mergeCommitSha, "merge-sha");
+  assert.equal(receipt.reconciled, true);
+  assert.equal(mergeCalls, 1);
+});
+
+test("GitHub design merge distinguishes a rejection response from a server failure", async () => {
+  const baseCommit = "a".repeat(40);
+  const designPath = "openspec/changes/sac-201/design.md";
+  let baseHead = baseCommit;
+  let mergeCalls = 0;
+  let mergeStatus = 409;
+  const pull = {
+    id: 9001,
+    number: 54,
+    html_url: "https://github.com/sachinkundu/deos/pull/54",
+    state: "open",
+    draft: false,
+    merged: false,
+    merge_commit_sha: null,
+    head: { ref: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa", sha: "head-sha" },
+    base: { ref: "main" },
+  };
+  const adapter = new GitHubCapabilityAdapter(
+    "https://api.github.test",
+    { token: async () => "installation-token" },
+    {
+      fetch: async (input, init) => {
+        const path = new URL(String(input)).pathname;
+        if (path.includes("/git/ref/heads/main")) {
+          return Response.json({ object: { sha: baseHead } });
+        }
+        if (path.includes(`/compare/${baseCommit}...head-sha`)) {
+          return Response.json({
+            status: "ahead",
+            base_commit: { sha: baseCommit },
+            merge_base_commit: { sha: baseCommit },
+            files: [{ filename: designPath, status: "modified" }],
+          });
+        }
+        if (path.includes(`/compare/${baseCommit}...${baseHead}`)) {
+          return Response.json({
+            status: "diverged",
+            base_commit: { sha: baseCommit },
+            merge_base_commit: { sha: "f".repeat(40) },
+          });
+        }
+        if (path.includes("/git/trees/head-sha")) {
+          return Response.json({ tree: [{ path: designPath, type: "blob", mode: "100644" }] });
+        }
+        if (path.endsWith("/pulls/54") && (init?.method ?? "GET") === "GET") {
+          return Response.json(pull);
+        }
+        if (path.endsWith("/pulls/54/merge") && init?.method === "PUT") {
+          mergeCalls += 1;
+          return Response.json({ message: "Merge failed" }, { status: mergeStatus });
+        }
+        return new Response("unexpected", { status: 500 });
+      },
+    },
+  );
+
+  await assert.rejects(adapter.mergeDesign({
     repository: "sachinkundu/deos",
     pullRequestNumber: 54,
     pullRequestDatabaseId: "9001",
     baseBranch: "main",
     headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
     expectedHeadSha: "head-sha",
-  });
-  assert.equal(receipt.mergeCommitSha, "merge-sha");
-  assert.equal(receipt.reconciled, true);
-  assert.equal(mergeCalls, 1);
+    baseCommit,
+    change: "sac-201",
+  }), /merge was rejected/);
+  mergeStatus = 500;
+  await assert.rejects(adapter.mergeDesign({
+    repository: "sachinkundu/deos",
+    pullRequestNumber: 54,
+    pullRequestDatabaseId: "9001",
+    baseBranch: "main",
+    headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
+    expectedHeadSha: "head-sha",
+    baseCommit,
+    change: "sac-201",
+  }), /merge response is ambiguous/);
+  assert.equal(mergeCalls, 2);
+  baseHead = "c".repeat(40);
+  await assert.rejects(adapter.mergeDesign({
+    repository: "sachinkundu/deos",
+    pullRequestNumber: 54,
+    pullRequestDatabaseId: "9001",
+    baseBranch: "main",
+    headBranch: "deos/planning/aaaaaaaaaaaaaaaaaaaaaaaa",
+    expectedHeadSha: "head-sha",
+    baseCommit,
+    change: "sac-201",
+  }), /base commit is not on the current base branch/);
+  assert.equal(mergeCalls, 2);
 });
 
 test("GitHub trace review check is exact-head, stable, and read back", async () => {

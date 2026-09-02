@@ -210,6 +210,43 @@ spec:
   },
 );
 
+const designAuthorDefinition = await loadWorkflowDefinition(
+  `apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata: { name: simple-traceability, version: 4 }
+spec:
+  start: design_author
+  execution: { attemptTimeout: 24h, heartbeatTimeout: 5m, codexSandboxMode: danger-full-access }
+  jobs:
+    design_author:
+      promptFile: prompts/design-author.md
+      inputs: [openspec_change, design_context]
+      context: [planning_pull_request]
+      resultSchema: schemas/result.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, review-replies.json]
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: repository_write
+      providerAccess: []
+      operation: {kind: openspec, instruction: /opsx:continue}
+  nodes:
+    design_author: { type: agent, job: design_author, edges: { completed: done, invalid_candidate: design_author, blocked: blocked, failed: blocked } }
+    done: { type: terminal, outcome: succeeded }
+    blocked: { type: terminal, outcome: blocked }
+`,
+  {
+    prompts: { "prompts/design-author.md": "Write only the reviewed design." },
+    schemas: {
+      "schemas/result.json": JSON.stringify({
+        $id: "https://deos.dev/design-author-test.json",
+        type: "object",
+      }),
+    },
+  },
+);
+
 const reviewerDefinition = await loadWorkflowDefinition(
   `apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
@@ -420,6 +457,8 @@ class Sandbox implements SandboxView {
   keepAlive = false;
   destroyed = false;
   repositoryExists = false;
+  revision = "1".repeat(40);
+  statusOutput = "";
   readonly deletedPaths: string[] = [];
 
   mkdir() { return Promise.resolve({}); }
@@ -464,7 +503,8 @@ class Sandbox implements SandboxView {
         "openspec/changes/sac-1/specs/review-step/spec.md",
       ].join("\n") + "\n";
     }
-    if (command[0] === "git" && command[1] === "rev-parse") process.stdout = "1".repeat(40) + "\n";
+    if (command[0] === "git" && command[1] === "rev-parse") process.stdout = `${this.revision}\n`;
+    if (command[0] === "git" && command[1] === "status") process.stdout = this.statusOutput;
     return Promise.resolve(process);
   }
 
@@ -586,6 +626,7 @@ interface SetupOptions {
   patchContent?: string;
   planningWorkProduct?: Partial<RunWorkProductRecord> | null;
   materializedContext?: string;
+  checkoutCommit?: string | null;
   candidateRejection?: PlanningCandidateRejectedError;
   reviewAcceptanceError?: Error;
   failureRetentionMs?: number;
@@ -599,6 +640,7 @@ const setup = (options: SetupOptions = {}) => {
   const collector = new Collector();
   collector.sandbox = factory.sandbox;
   const protectedPrompts = new Map<string, string>();
+  const designCandidates: unknown[] = [];
   const grantCalls: unknown[][] = [];
   const controller = new SandboxAgentController(
     attempts,
@@ -641,10 +683,15 @@ const setup = (options: SetupOptions = {}) => {
               merge_commit_sha: null,
               verification_operation_id: null,
               verified_at: null,
+              verified_merge_commit_sha: null,
+              verification_manifest_digest: null,
+              verification_manifest_json: null,
               created_at: NOW.toISOString(),
               updated_at: NOW.toISOString(),
               ...options.planningWorkProduct,
             },
+        designWorkProduct: null,
+        checkoutCommit: options.checkoutCommit ?? null,
       }),
       readContinuationPatch: async () => options.patchContent ?? "# No repository changes in this attempt.\n",
       capabilityGrant: async (...args) => {
@@ -670,13 +717,16 @@ const setup = (options: SetupOptions = {}) => {
       persistPlanningCandidate: async () => {
         if (options.candidateRejection !== undefined) throw options.candidateRejection;
       },
+      persistDesignCandidate: async (input) => {
+        designCandidates.push(input);
+      },
       acceptTraceReview: async ({ collection }) => {
         if (options.reviewAcceptanceError !== undefined) throw options.reviewAcceptanceError;
         return String(collection.result.reviewOutcome ?? "pass");
       },
     },
   );
-  return { attempts, factory, credentials, collector, controller, protectedPrompts, grantCalls };
+  return { attempts, factory, credentials, collector, controller, protectedPrompts, grantCalls, designCandidates };
 };
 
 test("controller stages fixed paths and starts the argv supervisor without provider credentials", async () => {
@@ -949,6 +999,110 @@ test("OpenSpec attempt records and prompts the frozen instruction and trusted ch
   assert.match(prompt, /Native OpenSpec instruction: \/opsx:continue/);
   assert.match(prompt, /OpenSpec change identity: sac-1/);
   assert.doesNotMatch(prompt, /Review jobs must publish their review outcome and actionable feedback/);
+});
+
+test("design completion rejects a checkout that moved away from its frozen base", async () => {
+  const checkoutCommit = "1".repeat(40);
+  const state = setup({ checkoutCommit });
+  const designRun = {
+    ...run,
+    definition_id: "simple-traceability",
+    definition_version: 17,
+    current_visit_sequence: 15,
+    author_model_provider: "codex",
+    author_model: "gpt-5.6-sol",
+    author_reasoning: "high",
+  } as OrchestrationRunRecord;
+
+  await state.controller.execute(designRun, "design_author", "design_author", designAuthorDefinition);
+  state.factory.sandbox.revision = "2".repeat(40);
+  state.factory.sandbox.supervisor.state = "exited";
+
+  const observation = await state.controller.execute(
+    designRun,
+    "design_author",
+    "design_author",
+    designAuthorDefinition,
+  );
+
+  assert.equal(observation.state, "completed");
+  assert.equal(observation.state === "completed" ? observation.outcome.outcome : null, "failed");
+  assert.equal(state.designCandidates.length, 0);
+  assert.equal(state.attempts.latest?.result_class, "author_completion_verification_mismatch");
+  assert.match(state.attempts.latest?.result_detail ?? "", /checkout no longer matches its frozen base/);
+});
+
+test("design completion binds replies to the latest materialized human thread comment", async () => {
+  const checkoutCommit = "1".repeat(40);
+  const materializedContext = JSON.stringify({
+    design: {
+      feedback: [
+        { data: JSON.stringify({
+          kind: "review_comment",
+          id: 701,
+          replyToId: null,
+          authorType: "User",
+          body: "Cover retry behavior.",
+          updatedAt: "2026-09-01T09:00:00.000Z",
+        }) },
+        { data: JSON.stringify({
+          kind: "review_comment",
+          id: 702,
+          replyToId: 701,
+          authorType: "Bot",
+          body: "Earlier response.",
+        }) },
+        { data: JSON.stringify({
+          kind: "review_comment",
+          id: 703,
+          replyToId: 701,
+          authorType: "User",
+          body: "Also cover timeout recovery.",
+          updatedAt: "2026-09-01T10:00:00.000Z",
+        }) },
+      ],
+    },
+  });
+  const state = setup({ checkoutCommit, materializedContext });
+  const designRun = {
+    ...run,
+    definition_id: "simple-traceability",
+    definition_version: 17,
+    current_visit_sequence: 15,
+    author_model_provider: "codex",
+    author_model: "gpt-5.6-sol",
+    author_reasoning: "high",
+  } as OrchestrationRunRecord;
+
+  await state.controller.execute(designRun, "design_author", "design_author", designAuthorDefinition);
+  const designPath = "openspec/changes/sac-1/design.md";
+  state.factory.sandbox.statusOutput = ` M ${designPath}\0`;
+  state.factory.sandbox.files.set(`/deos/workspace/repository/${designPath}`, "## Design\n");
+  state.factory.sandbox.files.set(
+    "/deos/output/review-replies.json",
+    JSON.stringify([{ commentId: 701, body: "Covered retry and timeout recovery." }]),
+  );
+  state.factory.sandbox.supervisor.state = "exited";
+  state.collector.receiptIds = [];
+
+  const observation = await state.controller.execute(
+    designRun,
+    "design_author",
+    "design_author",
+    designAuthorDefinition,
+  );
+
+  assert.equal(observation.state, "completed");
+  assert.equal(state.designCandidates.length, 1);
+  assert.deepEqual(
+    (state.designCandidates[0] as { reviewReplies: unknown }).reviewReplies,
+    [{
+      commentId: 701,
+      body: "Covered retry and timeout recovery.",
+      latestHumanCommentId: 703,
+      latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
+    }],
+  );
 });
 
 test("native archive fails closed before allocation when no cumulative patch exists", async () => {

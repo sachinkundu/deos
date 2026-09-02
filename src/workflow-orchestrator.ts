@@ -515,6 +515,13 @@ export class WorkflowOrchestrator {
       providerOperationId: null,
       now: this.now().toISOString(),
       wait,
+      humanGateDecision: run.definition_version >= 17 && decision.actorType === "user" &&
+          ["revision_requested", "merge_authorized", "canceled"].includes(decision.outcome)
+        ? {
+            deliveryId: decision.causeReference,
+            outcome: decision.outcome as "revision_requested" | "merge_authorized" | "canceled",
+          }
+        : undefined,
       terminalCause: target.type === "failure" ? target.cause : null,
     });
     if (result.outcome === "stale") {

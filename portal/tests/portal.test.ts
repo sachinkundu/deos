@@ -4,6 +4,7 @@ import { exportJWK, generateKeyPair, SignJWT, createLocalJWKSet } from "jose";
 import { verifyAccess } from "../src/auth.ts";
 import {
   isRecoveredTerminalVisit,
+  safeGateVisit,
   PortalIssueSearchHistoryStore,
   PORTAL_MUTATIONS,
   PORTAL_SELECTS,
@@ -118,6 +119,25 @@ test("only an operator-recovered terminal visit is excluded from the final workf
   assert.equal(isRecoveredTerminalVisit("planning", "operator_retry"), false);
 });
 
+test("gate links fail closed unless the saved repository and pull request match exactly", () => {
+  const gate = {
+    visit_sequence: 20,
+    node_id: "design_review",
+    gate_kind: "design" as const,
+    work_type: "design" as const,
+    round: 1,
+    state: "open",
+    repository: "sachinkundu/deos-sample-project",
+    pull_request_number: 14,
+    pull_request_url: "https://github.com/sachinkundu/deos-sample-project/pull/14",
+    approved_head_sha: "a".repeat(40),
+    decision_outcome: null,
+  };
+  assert.deepEqual(safeGateVisit(gate), gate);
+  assert.equal(safeGateVisit({ ...gate, pull_request_url: "https://example.test/pull/14" }), null);
+  assert.equal(safeGateVisit(undefined), null);
+});
+
 test("repository settings accept only exact owner and repository names", () => {
   assert.equal(normalizeRepository(" sachinkundu/deos-sample-project "), "sachinkundu/deos-sample-project");
   for (const value of ["deos", "https://github.com/sachinkundu/deos", "owner/repo/extra", "owner/re po"]) {
@@ -204,6 +224,35 @@ test("the SAC-142 workflow version and future nodes receive a complete dynamic p
   assert.equal(manifest.get("done"), "complete");
   assert.deepEqual(presentationStagesForDefinition(definition).map((stage) => stage.id), [
     "claim", "planning", "review", "complete", "future_provider_gate",
+  ]);
+});
+
+test("version 17 presents two gates with distinct checked merge and design stages", () => {
+  const nodeIds = [
+    "claim_issue", "planning_author", "independent_discovery", "planning_review",
+    "merge_planning_pr", "verify_planning_merge", "design_author", "publish_design",
+    "design_review", "start_new_design_round", "design_revision_author",
+    "merge_design_pr", "done",
+  ];
+  const definition = {
+    digest: "design-stage-digest",
+    name: "simple-traceability",
+    version: 17,
+    start: "claim_issue",
+    nodes: Object.fromEntries(nodeIds.map((id, index) => [id, {
+      id,
+      edges: index + 1 < nodeIds.length ? { completed: nodeIds[index + 1] } : {},
+    }])),
+  } as unknown as LoadedWorkflowDefinition;
+  const manifest = validatePresentationManifest(definition);
+  assert.equal(manifest.get("planning_review"), "review");
+  assert.equal(manifest.get("design_review"), "review");
+  assert.equal(manifest.get("merge_planning_pr"), "plan_merge");
+  assert.equal(manifest.get("design_author"), "design");
+  assert.equal(manifest.get("merge_design_pr"), "design_merge");
+  assert.deepEqual(presentationStagesForDefinition(definition).map((stage) => stage.label), [
+    "Claim issue", "Create planning PR", "Independent review", "Human approval",
+    "Merge plan & check", "Create design PR", "Merge design & check", "Completed",
   ]);
 });
 

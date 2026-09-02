@@ -1,9 +1,14 @@
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { ValidatedSystemOutcome } from "./workflow-evaluator.ts";
-import type { GitHubCapabilityAdapter } from "./github-capability.ts";
+import {
+  GitHubReviewFeedbackChangedError,
+  type GitHubCapabilityAdapter,
+} from "./github-capability.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
 import type { ProviderOperationRecord, ProviderOperationState } from "./linear-transition.ts";
-import type { D1PlanningStore } from "./planning-store.ts";
+import type { D1PlanningStore, RunWorkProductRecord } from "./planning-store.ts";
+import type { D1DesignStore, DesignWorkProductRecord } from "./design-store.ts";
+import type { HumanGateVisitRecord } from "./human-gate-store.ts";
 
 export interface SystemActionStore {
   prerequisites(runId: string, action: string): Promise<{
@@ -32,6 +37,32 @@ const changes = (result: D1Result<unknown>): number => result.meta.changes ?? 0;
 const sha256Hex = async (value: string): Promise<string> => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+const shaPattern = /^[0-9a-f]{40}$/;
+
+const savedPlanningVerificationMatches = async (
+  workProduct: RunWorkProductRecord,
+): Promise<boolean> => {
+  if (
+    workProduct.pull_request_database_id === null || workProduct.pull_request_number === null ||
+    workProduct.head_sha === null || workProduct.merge_commit_sha === null ||
+    workProduct.planning_manifest_json === null || workProduct.verification_manifest_json === null ||
+    workProduct.verification_manifest_digest === null ||
+    workProduct.verified_merge_commit_sha !== workProduct.merge_commit_sha ||
+    await sha256Hex(workProduct.verification_manifest_json) !== workProduct.verification_manifest_digest
+  ) return false;
+  try {
+    const receipt = JSON.parse(workProduct.verification_manifest_json) as Record<string, unknown>;
+    return receipt.pullRequestDatabaseId === workProduct.pull_request_database_id &&
+      receipt.pullRequestNumber === workProduct.pull_request_number &&
+      receipt.approvedHeadSha === workProduct.head_sha &&
+      receipt.mergeCommitSha === workProduct.merge_commit_sha &&
+      typeof receipt.defaultHeadSha === "string" && shaPattern.test(receipt.defaultHeadSha) &&
+      JSON.stringify(receipt.files) === workProduct.planning_manifest_json;
+  } catch {
+    return false;
+  }
 };
 
 export class D1SystemActionStore implements SystemActionStore {
@@ -118,15 +149,15 @@ export class D1SystemActionStore implements SystemActionStore {
 interface PlanningSystemActionDependencies {
   github: Pick<
     GitHubCapabilityAdapter,
-    "mergePlanning"
-  > & Partial<Pick<GitHubCapabilityAdapter, "publishPlanning">>;
+    "mergePlanning" | "readPullRequest" | "verifyCommitOnBranch" | "readFileAtRef"
+  > & Partial<Pick<GitHubCapabilityAdapter, "publishPlanning" | "publishDesign" | "mergeDesign">>;
   githubForRun?: (run: OrchestrationRunRecord) => Pick<
     GitHubCapabilityAdapter,
-    "mergePlanning"
-  > & Partial<Pick<GitHubCapabilityAdapter, "publishPlanning">>;
+    "mergePlanning" | "readPullRequest" | "verifyCommitOnBranch" | "readFileAtRef"
+  > & Partial<Pick<GitHubCapabilityAdapter, "publishPlanning" | "publishDesign" | "mergeDesign">>;
   planningStore: Pick<
     D1PlanningStore,
-    "findRunWorkProduct" | "recordMerge"
+    "findRunWorkProduct" | "recordMerge" | "recordVerification"
   > & Partial<Pick<D1PlanningStore, "recordPublication">>;
   planningCandidate?: (runId: string) => Promise<{
     candidateId: string;
@@ -145,6 +176,30 @@ interface PlanningSystemActionDependencies {
     identifier: string;
     url: string;
   } | null>;
+  designStore?: Pick<
+    D1DesignStore,
+    "findWorkProduct" | "recordPublication" | "recordFeedbackChangedPublication" | "recordMerge"
+  >;
+  designCandidate?: (runId: string) => Promise<{
+    candidateId: string;
+    candidateDigest: string;
+    change: string;
+    baseCommit: string;
+    path: string;
+    content: string;
+    designDigest: string;
+    reviewReplies: readonly {
+      commentId: number;
+      body: string;
+      latestHumanCommentId: number;
+      latestHumanCommentUpdatedAt: string;
+    }[];
+  } | null>;
+  gateVisit?: (runId: string, gateKind: "plan" | "design") => Promise<HumanGateVisitRecord | null>;
+  planningMergeRepairNotice?: (
+    run: OrchestrationRunRecord,
+    verificationOperationId: string,
+  ) => Promise<void>;
   now?: () => Date;
 }
 
@@ -169,6 +224,18 @@ export class SystemActionController {
     }
     if (action === "github.publish_planning_candidate") {
       return this.publishPlanning(run, nodeId, action);
+    }
+    if (action === "github.verify_planning_merge") {
+      return this.verifyPlanningMerge(run, nodeId, action);
+    }
+    if (action === "github.publish_design_candidate") {
+      return this.publishDesign(run, nodeId, action);
+    }
+    if (action === "github.merge_design_pull_request") {
+      return this.mergeDesign(run, nodeId, action);
+    }
+    if (action === "design.start_new_round") {
+      return this.startDesignRound(run, nodeId, action);
     }
     const prerequisites = await this.store.prerequisites(run.run_id, action);
     const completed = prerequisites.incompleteOperations === 0 && prerequisites.actionReceipts > 0;
@@ -319,12 +386,25 @@ export class SystemActionController {
     action: string,
   ): Promise<ValidatedSystemOutcome> {
     const dependencies = this.requirePlanningDependencies(run);
-    const workProduct = await dependencies.planningStore.findRunWorkProduct(run.run_id);
+    const [workProduct, gate] = await Promise.all([
+      dependencies.planningStore.findRunWorkProduct(run.run_id),
+      run.definition_version >= 17
+        ? this.planning?.gateVisit?.(run.run_id, "plan") ?? Promise.resolve(null)
+        : Promise.resolve(null),
+    ]);
     if (
       workProduct === null || workProduct.pull_request_database_id === null ||
       workProduct.pull_request_number === null || workProduct.head_sha === null ||
       workProduct.planning_manifest_digest === null ||
       workProduct.latest_publication_operation_id === null
+    ) return this.failed();
+    if (
+      run.definition_version >= 17 && (
+        gate === null || gate.state !== "merge_authorized" ||
+        gate.pull_request_database_id !== workProduct.pull_request_database_id ||
+        gate.pull_request_number !== workProduct.pull_request_number ||
+        gate.head_branch !== workProduct.remote_branch || gate.approved_head_sha !== workProduct.head_sha
+      )
     ) return this.failed();
     const operationId = operationIdentity(
       run.run_id,
@@ -396,6 +476,451 @@ export class SystemActionController {
     }
   }
 
+  private async verifyPlanningMerge(
+    run: OrchestrationRunRecord,
+    nodeId: string,
+    action: string,
+  ): Promise<ValidatedSystemOutcome> {
+    const dependencies = this.requirePlanningDependencies(run);
+    const workProduct = await dependencies.planningStore.findRunWorkProduct(run.run_id);
+    if (
+      workProduct === null || workProduct.pull_request_database_id === null ||
+      workProduct.pull_request_number === null || workProduct.head_sha === null ||
+      workProduct.merge_commit_sha === null || workProduct.planning_manifest_json === null ||
+      workProduct.planning_manifest_digest === null
+    ) return this.failed();
+    const operationId = operationIdentity(
+      run.run_id,
+      "system_action",
+      `${nodeId}:${action}:${workProduct.merge_commit_sha}`,
+      run.current_visit_sequence,
+    );
+    const operation = await this.beginPlanningOperation(
+      operationId,
+      run.run_id,
+      action,
+      await sha256Hex(JSON.stringify({
+        repository: workProduct.repository,
+        pullRequestNumber: workProduct.pull_request_number,
+        approvedHeadSha: workProduct.head_sha,
+        mergeCommitSha: workProduct.merge_commit_sha,
+        manifestDigest: workProduct.planning_manifest_digest,
+      })),
+    );
+    if (
+      ["succeeded", "reconciled"].includes(operation.state) &&
+      workProduct.verified_merge_commit_sha === workProduct.merge_commit_sha
+    ) return this.completed();
+    if (!["pending", "failed", "manual_reconciliation_required"].includes(operation.state)) {
+      return this.failed();
+    }
+    try {
+      if (await savedPlanningVerificationMatches(workProduct)) {
+        await dependencies.planningStore.recordVerification({
+          runId: run.run_id,
+          operationId,
+          mergeCommitSha: workProduct.merge_commit_sha,
+          verificationManifestJson: workProduct.verification_manifest_json!,
+          verificationManifestDigest: workProduct.verification_manifest_digest!,
+          now: this.now().toISOString(),
+        });
+        const finished = await this.finishPlanningOperation({
+          operationId,
+          expected: operation.state,
+          state: "reconciled",
+          providerResourceId: workProduct.merge_commit_sha,
+          safeErrorCategory: null,
+          now: this.now().toISOString(),
+        });
+        if (!finished) throw new Error("planning verification receipt reconciliation failed");
+        return this.completed();
+      }
+      if (await sha256Hex(workProduct.planning_manifest_json) !== workProduct.planning_manifest_digest) {
+        throw new Error("planning manifest digest mismatch");
+      }
+      const manifest = JSON.parse(workProduct.planning_manifest_json) as Array<{
+        path?: unknown;
+        sha256?: unknown;
+        byteSize?: unknown;
+      }>;
+      if (!Array.isArray(manifest) || manifest.length < 3 || manifest.length > 48) {
+        throw new Error("planning manifest is invalid");
+      }
+      const pull = await dependencies.github.readPullRequest(
+        workProduct.repository,
+        workProduct.pull_request_number,
+      );
+      if (
+        pull.databaseId !== workProduct.pull_request_database_id || pull.number !== workProduct.pull_request_number ||
+        pull.baseBranch !== workProduct.base_branch || pull.headBranch !== workProduct.remote_branch ||
+        pull.headSha !== workProduct.head_sha || !pull.merged ||
+        pull.mergeCommitSha !== workProduct.merge_commit_sha
+      ) throw new Error("planning merged pull-request identity mismatch");
+      const reachable = await dependencies.github.verifyCommitOnBranch(
+        workProduct.repository,
+        workProduct.merge_commit_sha,
+        workProduct.base_branch,
+      );
+      if (!reachable.reachable) throw new Error("planning merge commit is not on the default branch");
+      const checked: Array<{ path: string; sha256: string; byteSize: number }> = [];
+      for (const raw of manifest) {
+        if (
+          typeof raw.path !== "string" || typeof raw.sha256 !== "string" ||
+          typeof raw.byteSize !== "number" || !Number.isSafeInteger(raw.byteSize)
+        ) throw new Error("planning manifest entry is invalid");
+        const content = await dependencies.github.readFileAtRef(
+          workProduct.repository,
+          raw.path,
+          workProduct.merge_commit_sha,
+        );
+        const digest = await sha256Hex(content);
+        const byteSize = new TextEncoder().encode(content).byteLength;
+        if (digest !== raw.sha256 || byteSize !== raw.byteSize) {
+          throw new Error("planning merge file hash mismatch");
+        }
+        checked.push({ path: raw.path, sha256: digest, byteSize });
+      }
+      const verificationManifestJson = JSON.stringify({
+        pullRequestDatabaseId: pull.databaseId,
+        pullRequestNumber: pull.number,
+        approvedHeadSha: workProduct.head_sha,
+        mergeCommitSha: workProduct.merge_commit_sha,
+        defaultHeadSha: reachable.defaultHeadSha,
+        files: checked,
+      });
+      const verificationManifestDigest = await sha256Hex(verificationManifestJson);
+      await dependencies.planningStore.recordVerification({
+        runId: run.run_id,
+        operationId,
+        mergeCommitSha: workProduct.merge_commit_sha,
+        verificationManifestJson,
+        verificationManifestDigest,
+        now: this.now().toISOString(),
+      });
+      const state = operation.state === "pending" ? "succeeded" : "reconciled";
+      if (operation.state !== state) {
+        const finished = await this.finishPlanningOperation({
+          operationId,
+          expected: operation.state,
+          state,
+          providerResourceId: workProduct.merge_commit_sha,
+          safeErrorCategory: null,
+          now: this.now().toISOString(),
+        });
+        if (!finished) throw new Error("planning verification receipt compare-and-set failed");
+      }
+      return this.completed();
+    } catch {
+      if (operation.state === "pending") {
+        await this.finishPlanningOperation({
+          operationId,
+          expected: "pending",
+          state: "failed",
+          providerResourceId: workProduct.merge_commit_sha,
+          safeErrorCategory: "planning_merge_files_unproved",
+          now: this.now().toISOString(),
+        });
+      }
+      await this.planning?.planningMergeRepairNotice?.(run, operationId);
+      return this.failed();
+    }
+  }
+
+  private async publishDesign(
+    run: OrchestrationRunRecord,
+    nodeId: string,
+    action: string,
+  ): Promise<ValidatedSystemOutcome> {
+    const dependencies = this.requireDesignDependencies(run);
+    if (this.planning?.designCandidate === undefined || this.planning.issueContext === undefined) {
+      throw new Error("trusted design publication dependencies are unavailable");
+    }
+    const [workProduct, candidate, issue] = await Promise.all([
+      dependencies.designStore.findWorkProduct(run.run_id),
+      this.planning.designCandidate(run.run_id),
+      this.planning.issueContext(run.run_id),
+    ]);
+    if (
+      workProduct === null || candidate === null || issue === null ||
+      candidate.change !== workProduct.change_id || candidate.baseCommit !== workProduct.base_commit ||
+      candidate.path !== `openspec/changes/${workProduct.change_id}/design.md`
+    ) return this.failed();
+    const operationId = operationIdentity(
+      run.run_id,
+      "system_action",
+      `${nodeId}:${action}:${candidate.candidateDigest}`,
+      run.current_visit_sequence,
+    );
+    const operation = await this.beginPlanningOperation(
+      operationId,
+      run.run_id,
+      action,
+      await sha256Hex(JSON.stringify({
+        candidateId: candidate.candidateId,
+        candidateDigest: candidate.candidateDigest,
+        repository: workProduct.repository,
+        branch: workProduct.remote_branch,
+        baseCommit: workProduct.base_commit,
+      })),
+    );
+    if (["succeeded", "reconciled"].includes(operation.state) && workProduct.head_sha !== null) {
+      return this.completed();
+    }
+    if (
+      operation.state === "failed" && operation.safe_error_category === "design_review_feedback_changed" &&
+      workProduct.publication_operation_id === operationId && workProduct.pull_request_database_id !== null &&
+      workProduct.pull_request_number !== null && workProduct.pull_request_url !== null &&
+      workProduct.head_sha !== null
+    ) {
+      return {
+        kind: "system_action",
+        outcome: "review_feedback_changed",
+        providerReceiptsComplete: false,
+      };
+    }
+    if (!["pending", "manual_reconciliation_required"].includes(operation.state)) return this.failed();
+    const expectedOperationState = operation.state === "pending" ? "pending" : "manual_reconciliation_required";
+    let providerConfirmed = false;
+    try {
+      const receipt = await dependencies.github.publishDesign({
+        repository: workProduct.repository,
+        branch: workProduct.remote_branch,
+        baseBranch: "main",
+        baseCommit: workProduct.base_commit,
+        change: workProduct.change_id,
+        title: `${issue.identifier}: OpenSpec design`,
+        body: [
+          `Linear: [${issue.identifier}](${issue.url})`,
+          `OpenSpec change: ${workProduct.change_id}`,
+          "",
+          "## Review notes",
+          "- Review design.md against the approved proposal and delta specs.",
+          "- This PR contains design only. Tasks and implementation are out of scope.",
+          "",
+          "## Validation",
+          `- openspec validate ${workProduct.change_id} --strict — passed`,
+          "- Trusted design path and section checks — passed",
+        ].join("\n"),
+        content: candidate.content,
+        reviewReplies: candidate.reviewReplies,
+        ...(workProduct.pull_request_database_id === null ? {} : {
+          expectedPullRequestDatabaseId: workProduct.pull_request_database_id,
+          expectedPullRequestNumber: workProduct.pull_request_number ?? undefined,
+        }),
+      }, operationId);
+      providerConfirmed = true;
+      const state = receipt.reconciled || operation.state !== "pending" ? "reconciled" : "succeeded";
+      await dependencies.designStore.recordPublication({
+        runId: run.run_id,
+        pullRequestDatabaseId: receipt.pullRequestDatabaseId,
+        pullRequestNumber: receipt.pullRequestNumber,
+        pullRequestUrl: receipt.pullRequestUrl,
+        headSha: receipt.headSha,
+        designDigest: candidate.designDigest,
+        operationId,
+        expectedOperationState,
+        operationState: state,
+        now: this.now().toISOString(),
+      });
+      return this.completed();
+    } catch (error) {
+      if (error instanceof GitHubReviewFeedbackChangedError) {
+        if (error.receipt.branch !== workProduct.remote_branch) {
+          throw new Error("design feedback-change publication branch mismatch");
+        }
+        await dependencies.designStore.recordFeedbackChangedPublication({
+          runId: run.run_id,
+          pullRequestDatabaseId: error.receipt.pullRequestDatabaseId,
+          pullRequestNumber: error.receipt.pullRequestNumber,
+          pullRequestUrl: error.receipt.pullRequestUrl,
+          headSha: error.receipt.headSha,
+          designDigest: candidate.designDigest,
+          operationId,
+          expectedOperationState,
+          now: this.now().toISOString(),
+        });
+        return {
+          kind: "system_action",
+          outcome: "review_feedback_changed",
+          providerReceiptsComplete: false,
+        };
+      }
+      const ambiguous = providerConfirmed ||
+        (error instanceof Error && /ambiguous|provider request failed/i.test(error.message));
+      if (operation.state === "pending") {
+        await this.finishPlanningOperation({
+          operationId,
+          expected: "pending",
+          state: ambiguous ? "manual_reconciliation_required" : "failed",
+          providerResourceId: workProduct.pull_request_database_id,
+          safeErrorCategory: ambiguous ? "design_publish_unconfirmed" : "design_publish_rejected",
+          now: this.now().toISOString(),
+        });
+      }
+      if (ambiguous) throw new Error("trusted design publication requires provider reconciliation");
+      return this.failed();
+    }
+  }
+
+  private async mergeDesign(
+    run: OrchestrationRunRecord,
+    nodeId: string,
+    action: string,
+  ): Promise<ValidatedSystemOutcome> {
+    const dependencies = this.requireDesignDependencies(run);
+    if (this.planning?.gateVisit === undefined) throw new Error("design gate binding reader is unavailable");
+    const [workProduct, gate] = await Promise.all([
+      dependencies.designStore.findWorkProduct(run.run_id),
+      this.planning.gateVisit(run.run_id, "design"),
+    ]);
+    if (
+      workProduct === null || gate === null || gate.state !== "merge_authorized" ||
+      workProduct.pull_request_database_id !== gate.pull_request_database_id ||
+      workProduct.pull_request_number !== gate.pull_request_number ||
+      workProduct.remote_branch !== gate.head_branch || workProduct.head_sha !== gate.approved_head_sha ||
+      workProduct.head_sha === null
+    ) return this.failed();
+    const operationId = operationIdentity(run.run_id, "system_action", `${nodeId}:${action}`, run.current_visit_sequence);
+    const operation = await this.beginPlanningOperation(
+      operationId,
+      run.run_id,
+      action,
+      await sha256Hex(JSON.stringify({
+        repository: gate.repository,
+        pullRequestDatabaseId: gate.pull_request_database_id,
+        pullRequestNumber: gate.pull_request_number,
+        approvedHeadSha: gate.approved_head_sha,
+      })),
+    );
+    if (["succeeded", "reconciled"].includes(operation.state) && workProduct.merge_commit_sha !== null) {
+      return this.completed();
+    }
+    if (operation.state === "manual_reconciliation_required") {
+      let pull;
+      try {
+        pull = await dependencies.github.readPullRequest(gate.repository, gate.pull_request_number);
+      } catch {
+        throw new Error("design merge requires provider reconciliation");
+      }
+      if (
+        pull.databaseId !== gate.pull_request_database_id || pull.number !== gate.pull_request_number ||
+        pull.url !== gate.pull_request_url || pull.baseBranch !== gate.base_branch ||
+        pull.headBranch !== gate.head_branch || pull.headSha !== gate.approved_head_sha
+      ) throw new Error("design merge requires provider reconciliation");
+      if (pull.merged) {
+        if (pull.mergeCommitSha === null) throw new Error("design merge requires provider reconciliation");
+        try {
+          await dependencies.designStore.recordMerge({
+            runId: run.run_id,
+            operationId,
+            expectedHeadSha: gate.approved_head_sha,
+            mergeCommitSha: pull.mergeCommitSha,
+            now: this.now().toISOString(),
+          });
+          const finished = await this.finishPlanningOperation({
+            operationId,
+            expected: "manual_reconciliation_required",
+            state: "reconciled",
+            providerResourceId: gate.pull_request_database_id,
+            safeErrorCategory: null,
+            now: this.now().toISOString(),
+          });
+          if (!finished) throw new Error("design merge reconciliation compare-and-set failed");
+        } catch {
+          throw new Error("design merge requires provider reconciliation");
+        }
+        return this.completed();
+      }
+      if (pull.state === "open") throw new Error("design merge requires provider reconciliation");
+      if (pull.state !== "closed") throw new Error("design merge requires provider reconciliation");
+      const finished = await this.finishPlanningOperation({
+        operationId,
+        expected: "manual_reconciliation_required",
+        state: "failed",
+        providerResourceId: gate.pull_request_database_id,
+        safeErrorCategory: "design_merge_rejected",
+        now: this.now().toISOString(),
+      });
+      if (!finished) throw new Error("design merge requires provider reconciliation");
+      return this.failed();
+    }
+    if (operation.state !== "pending") return this.failed();
+    let providerConfirmed = false;
+    try {
+      const receipt = await dependencies.github.mergeDesign({
+        repository: gate.repository,
+        pullRequestNumber: gate.pull_request_number,
+        pullRequestDatabaseId: gate.pull_request_database_id,
+        baseBranch: "main",
+        headBranch: gate.head_branch,
+        expectedHeadSha: gate.approved_head_sha,
+        baseCommit: workProduct.base_commit,
+        change: workProduct.change_id,
+      });
+      providerConfirmed = true;
+      await dependencies.designStore.recordMerge({
+        runId: run.run_id,
+        operationId,
+        expectedHeadSha: gate.approved_head_sha,
+        mergeCommitSha: receipt.mergeCommitSha,
+        now: this.now().toISOString(),
+      });
+      const state = receipt.reconciled ? "reconciled" : "succeeded";
+      const finished = await this.finishPlanningOperation({
+        operationId,
+        expected: "pending",
+        state,
+        providerResourceId: receipt.pullRequestDatabaseId,
+        safeErrorCategory: null,
+        now: this.now().toISOString(),
+      });
+      if (!finished) throw new Error("design merge receipt compare-and-set failed");
+      return this.completed();
+    } catch (error) {
+      const ambiguous = providerConfirmed ||
+        (error instanceof Error && /ambiguous|provider request failed/i.test(error.message));
+      if (operation.state === "pending") {
+        await this.finishPlanningOperation({
+          operationId,
+          expected: "pending",
+          state: ambiguous ? "manual_reconciliation_required" : "failed",
+          providerResourceId: gate.pull_request_database_id,
+          safeErrorCategory: ambiguous ? "design_merge_unconfirmed" : "design_merge_rejected",
+          now: this.now().toISOString(),
+        });
+      }
+      if (ambiguous) throw new Error("design merge requires provider reconciliation");
+      return this.failed();
+    }
+  }
+
+  private async startDesignRound(
+    run: OrchestrationRunRecord,
+    nodeId: string,
+    action: string,
+  ): Promise<ValidatedSystemOutcome> {
+    if (this.planning?.gateVisit === undefined) throw new Error("design gate binding reader is unavailable");
+    const gate = await this.planning.gateVisit(run.run_id, "design");
+    if (gate?.state !== "revision_requested") return this.failed();
+    const operationId = operationIdentity(run.run_id, "system_action", `${nodeId}:${action}`, run.current_visit_sequence);
+    const operation = await this.beginPlanningOperation(
+      operationId,
+      run.run_id,
+      action,
+      await sha256Hex(JSON.stringify({ visitSequence: gate.visit_sequence, approvedHeadSha: gate.approved_head_sha })),
+    );
+    if (["succeeded", "reconciled"].includes(operation.state)) return this.completed();
+    const finished = await this.finishPlanningOperation({
+      operationId,
+      expected: operation.state,
+      state: "succeeded",
+      providerResourceId: `design-round-after:${gate.visit_sequence}`,
+      safeErrorCategory: null,
+      now: this.now().toISOString(),
+    });
+    return finished ? this.completed() : this.failed();
+  }
+
   private requirePlanningDependencies(
     run: OrchestrationRunRecord,
   ): Required<Pick<PlanningSystemActionDependencies, "github" | "planningStore">> {
@@ -407,6 +932,29 @@ export class SystemActionController {
     return {
       github: this.planning.githubForRun?.(run) ?? this.planning.github,
       planningStore: this.planning.planningStore,
+    };
+  }
+
+  private requireDesignDependencies(run: OrchestrationRunRecord): {
+    github: Pick<GitHubCapabilityAdapter, "publishDesign" | "mergeDesign" | "readPullRequest">;
+    designStore: Pick<
+      D1DesignStore,
+      "findWorkProduct" | "recordPublication" | "recordFeedbackChangedPublication" | "recordMerge"
+    >;
+  } {
+    const github = this.planning?.githubForRun?.(run) ?? this.planning?.github;
+    if (
+      github === undefined || this.planning?.designStore === undefined ||
+      this.store.beginPlanningOperation === undefined || this.store.finishPlanningOperation === undefined ||
+      github.publishDesign === undefined || github.mergeDesign === undefined || github.readPullRequest === undefined
+    ) throw new Error("design system-action dependencies are unavailable");
+    return {
+      github: {
+        publishDesign: github.publishDesign.bind(github),
+        mergeDesign: github.mergeDesign.bind(github),
+        readPullRequest: github.readPullRequest.bind(github),
+      },
+      designStore: this.planning.designStore,
     };
   }
 

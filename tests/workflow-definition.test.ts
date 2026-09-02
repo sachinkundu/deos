@@ -27,6 +27,7 @@ const promptPaths = [
   "openspec.md",
   "openspec-planning.md",
   "openspec-planning-author.md",
+  "openspec-design-author.md",
   "openspec-traceability-review.md",
   "openspec-traceability-recheck.md",
 ];
@@ -45,6 +46,12 @@ const bundle = (): WorkflowBundleSources => ({
       readFileSync(new URL(`../config/schemas/${name}`, import.meta.url), "utf8"),
     ]),
   ),
+});
+
+test("production bundle includes the version 17 design prompt", () => {
+  const source = readFileSync(new URL("../src/workflow-bundle.ts", import.meta.url), "utf8");
+  assert.match(source, /import openSpecDesignAuthorPrompt from .*openspec-design-author\.md/);
+  assert.match(source, /"prompts\/openspec-design-author\.md": openSpecDesignAuthorPrompt/);
 });
 
 const waitDefinitionSource = `apiVersion: deos.dev/v1alpha1
@@ -180,7 +187,8 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 16);
+  assert.equal(definition.version, 17);
+  assert.equal(definition.nodes.publish_design.edges.review_feedback_changed, "design_revision_author");
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
   assert.ok(definition.jobs.planning_author.requiredOutputs.includes("review-replies.json"));
@@ -235,7 +243,31 @@ test("traceability planning definition freezes reviewers and keeps publication t
       "planning_review",
     ],
   );
-  assert.equal(definition.nodes.merge_planning_pr.edges.completed, "done");
+  assert.equal(definition.nodes.merge_planning_pr.edges.completed, "verify_planning_merge");
+  assert.equal(definition.nodes.verify_planning_merge.edges.completed, "design_author");
+  assert.equal(definition.nodes.verify_planning_merge.edges.failed, "planning_merge_repair_wait");
+  const planningRepair = definition.nodes.planning_merge_repair_wait;
+  assert.equal(planningRepair.type, "wait");
+  assert.equal(planningRepair.type === "wait" ? planningRepair.deosStatus : null, "manual_reconciliation_required");
+  assert.equal(planningRepair.edges.received, "verify_planning_merge");
+  assert.equal(planningRepair.edges.canceled, "canceled");
+  assert.equal(definition.jobs.design_author.operation?.instruction, "/opsx:continue");
+  assert.deepEqual(definition.jobs.design_author.providerAccess, []);
+  assert.equal(definition.nodes.design_author.edges.completed, "publish_design");
+  assert.equal(definition.nodes.publish_design.edges.completed, "design_review");
+  assert.deepEqual(
+    definition.nodes.design_review.type === "human_gate" ? definition.nodes.design_review.decisions : null,
+    {
+      revision_requested: "In Progress",
+      merge_authorized: "Merging",
+      canceled: "Canceled",
+    },
+  );
+  assert.equal(definition.nodes.design_review.edges.revision_requested, "start_new_design_round");
+  assert.equal(definition.nodes.start_new_design_round.edges.completed, "design_revision_author");
+  assert.equal(definition.nodes.design_revision_author.edges.completed, "publish_design");
+  assert.equal(definition.nodes.design_review.edges.merge_authorized, "merge_design_pr");
+  assert.equal(definition.nodes.merge_design_pr.edges.completed, "done");
   assert.equal(Object.hasOwn(definition.jobs, "independent_recheck"), false);
   assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(definition), definition.digest), definition);
 });
@@ -288,8 +320,8 @@ spec:
   assert.equal(restored.nodes.deploy.type, "system_action");
 });
 
-test("restores the retired planning verifier only from an immutable stored definition", async () => {
-  const retired = `apiVersion: deos.dev/v1alpha1
+test("loads and restores the active checked planning merge action", async () => {
+  const checked = `apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata: { name: legacy-planning, version: 13 }
 spec:
@@ -304,16 +336,13 @@ spec:
     done: { type: terminal, deosStatus: succeeded, executorAction: return }
     failed: { type: failure, deosStatus: failed, executorAction: throw, cause: planning_failed }
 `;
-  await assert.rejects(
-    loadWorkflowDefinition(retired, { prompts: {}, schemas: {} }),
-    /unsupported action github\.verify_planning_merge/,
-  );
   const stored = await loadWorkflowDefinition(
-    retired,
+    checked,
     { prompts: {}, schemas: {} },
-    { allowRetiredSystemActions: true },
   );
 
+  assert.equal(stored.nodes.verify.type === "system_action" && stored.nodes.verify.action,
+    "github.verify_planning_merge");
   assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(stored), stored.digest), stored);
 });
 

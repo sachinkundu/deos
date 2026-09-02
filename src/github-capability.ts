@@ -37,11 +37,42 @@ export interface GitHubPlanningWorkProductReceipt {
   reconciled: boolean;
 }
 
+export class GitHubReviewFeedbackChangedError extends Error {
+  readonly receipt: GitHubPlanningWorkProductReceipt;
+
+  constructor(message: string, receipt: GitHubPlanningWorkProductReceipt) {
+    super(message);
+    this.name = "GitHubReviewFeedbackChangedError";
+    this.receipt = receipt;
+  }
+}
+
+export interface GitHubDesignWorkProductRequest {
+  repository: string;
+  branch: string;
+  baseBranch: "main";
+  baseCommit: string;
+  title: string;
+  body: string;
+  change: string;
+  content: string;
+  reviewReplies: readonly {
+    commentId: number;
+    body: string;
+    latestHumanCommentId: number;
+    latestHumanCommentUpdatedAt: string;
+  }[];
+  expectedPullRequestDatabaseId?: string;
+  expectedPullRequestNumber?: number;
+}
+
 interface GitHubReviewComment {
   id: number;
   inReplyToId: number | null;
   body: string;
   userType: string;
+  userLogin: string;
+  updatedAt: string | null;
 }
 
 export interface GitHubPlanningMergeReceipt {
@@ -49,6 +80,16 @@ export interface GitHubPlanningMergeReceipt {
   pullRequestNumber: number;
   mergeCommitSha: string;
   reconciled: boolean;
+}
+
+export interface GitHubCommitReachability {
+  defaultHeadSha: string;
+  reachable: boolean;
+}
+
+export interface GitHubGuidanceFile {
+  path: string;
+  content: string;
 }
 
 export interface GitHubPlanningPullRequest {
@@ -72,6 +113,7 @@ export interface GitHubCheckRunReceipt {
 
 export interface GitHubTokenProvider {
   token(): Promise<string>;
+  actorLogin?(): Promise<string>;
 }
 
 export interface GitHubRepositoryChoice {
@@ -228,6 +270,24 @@ export class GitHubAppTokenProvider implements GitHubTokenProvider {
       throw new Error("GitHub App installation token response is invalid");
     }
     return payload.token;
+  }
+
+  async actorLogin(): Promise<string> {
+    const jwt = await this.appJwt();
+    const response = await this.request(`${this.apiUrl}/app`, {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "deos-orchestrator",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
+    if (!response.ok) throw new Error("GitHub App identity request failed");
+    const payload = await response.json() as { slug?: unknown };
+    if (typeof payload.slug !== "string" || !/^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/.test(payload.slug)) {
+      throw new Error("GitHub App identity response is invalid");
+    }
+    return `${payload.slug}[bot]`;
   }
 
   async appJwt(): Promise<string> {
@@ -481,6 +541,16 @@ export class GitHubAppCatalog {
 
 interface GitHubCapabilityDependencies {
   fetch: typeof fetch;
+}
+
+class GitHubProviderHttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super("GitHub provider request failed");
+    this.name = "GitHubProviderHttpError";
+    this.status = status;
+  }
 }
 
 export class GitHubCapabilityAdapter {
@@ -802,6 +872,259 @@ export class GitHubCapabilityAdapter {
     };
   }
 
+  async publishDesign(
+    input: GitHubDesignWorkProductRequest,
+    operationId: string,
+  ): Promise<GitHubPlanningWorkProductReceipt> {
+    if (!/^[a-f0-9]{40}$/.test(input.baseCommit)) throw new Error("GitHub design base commit is invalid");
+    const path = `openspec/changes/${input.change}/design.md`;
+    const token = await this.tokens.token();
+    const [owner] = input.repository.split("/");
+    let branch = await this.ref(token, input.repository, input.branch, true);
+    let reconciled = branch !== null;
+    if (branch === null) {
+      try {
+        await this.json(token, `/repos/${input.repository}/git/refs`, {
+          method: "POST",
+          body: { ref: `refs/heads/${input.branch}`, sha: input.baseCommit },
+        });
+      } catch {
+        branch = await this.ref(token, input.repository, input.branch, true);
+        if (branch === null) throw new Error("GitHub design branch creation is ambiguous");
+        reconciled = true;
+      }
+    }
+    branch = await this.ref(token, input.repository, input.branch);
+    if (branch === null) throw new Error("GitHub design branch is missing");
+    await this.assertDesignBaseCurrent(token, input.repository, input.baseCommit, input.baseBranch);
+    await this.assertDesignOnlyBranch(token, input.repository, input.baseCommit, branch, path, false);
+    const current = await this.readContent(token, input.repository, input.branch, path, true);
+    if (current?.content !== input.content) {
+      await this.writeContent(
+        token,
+        input.repository,
+        input.branch,
+        path,
+        input.content,
+        operationId,
+        current?.sha,
+      );
+    } else {
+      reconciled = true;
+    }
+    const pullsPath = `/repos/${input.repository}/pulls?state=all&head=${encodeURIComponent(`${owner}:${input.branch}`)}`;
+    let number: number | null = null;
+    if (input.expectedPullRequestDatabaseId !== undefined || input.expectedPullRequestNumber !== undefined) {
+      if (input.expectedPullRequestDatabaseId === undefined || input.expectedPullRequestNumber === undefined) {
+        throw new Error("GitHub recorded design pull-request identity is incomplete");
+      }
+      const recorded = this.parsePull(await this.json(
+        token,
+        `/repos/${input.repository}/pulls/${input.expectedPullRequestNumber}`,
+      ));
+      if (
+        recorded.databaseId !== input.expectedPullRequestDatabaseId || recorded.state !== "open" ||
+        recorded.draft || recorded.merged || recorded.headBranch !== input.branch ||
+        recorded.baseBranch !== input.baseBranch
+      ) throw new Error("GitHub recorded design pull-request identity mismatch");
+      number = recorded.number;
+      reconciled = true;
+    } else {
+      const pulls = await this.json(token, pullsPath) as Array<{ number?: unknown }>;
+      if (!Array.isArray(pulls) || pulls.length > 1) {
+        throw new Error("GitHub design pull-request selection is ambiguous");
+      }
+      if (pulls.length === 1) {
+        if (typeof pulls[0]!.number !== "number") throw new Error("GitHub design pull-request response is invalid");
+        number = pulls[0]!.number;
+        reconciled = true;
+      }
+    }
+    if (number === null) {
+      try {
+        const created = await this.json(token, `/repos/${input.repository}/pulls`, {
+          method: "POST",
+          body: { title: input.title, body: input.body, head: input.branch, base: input.baseBranch, draft: false },
+        }) as { number?: unknown };
+        if (typeof created.number !== "number") throw new Error("GitHub design pull-request response is invalid");
+        number = created.number;
+      } catch {
+        const pulls = await this.json(token, pullsPath) as Array<{ number?: unknown }>;
+        if (!Array.isArray(pulls) || pulls.length !== 1 || typeof pulls[0]!.number !== "number") {
+          throw new Error("GitHub design pull-request creation is ambiguous");
+        }
+        number = pulls[0]!.number;
+        reconciled = true;
+      }
+    }
+    const currentPull = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as Record<string, unknown> & {
+      title?: unknown;
+      body?: unknown;
+    };
+    const currentIdentity = this.parsePull(currentPull);
+    if (
+      currentIdentity.state !== "open" || currentIdentity.draft || currentIdentity.merged ||
+      currentIdentity.headBranch !== input.branch || currentIdentity.baseBranch !== input.baseBranch
+    ) throw new Error("GitHub discovered design pull-request identity mismatch");
+    if (currentPull.title !== input.title || currentPull.body !== input.body) {
+      try {
+        await this.json(token, `/repos/${input.repository}/pulls/${number}`, {
+          method: "PATCH",
+          body: { title: input.title, body: input.body },
+        });
+      } catch {
+        const after = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as {
+          title?: unknown;
+          body?: unknown;
+        };
+        if (after.title !== input.title || after.body !== input.body) {
+          throw new Error("GitHub design pull-request update is ambiguous");
+        }
+        reconciled = true;
+      }
+    }
+    const headSha = await this.ref(token, input.repository, input.branch);
+    if (headSha === null) throw new Error("GitHub design branch read-back is missing");
+    await this.assertDesignOnlyBranch(token, input.repository, input.baseCommit, headSha, path, true);
+    const confirmedRaw = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as Record<string, unknown>;
+    const confirmed = this.parsePull(confirmedRaw);
+    const design = await this.readContent(token, input.repository, headSha, path, false);
+    if (
+      confirmed.state !== "open" || confirmed.draft || confirmed.merged ||
+      confirmed.headBranch !== input.branch || confirmed.headSha !== headSha ||
+      confirmed.baseBranch !== input.baseBranch || design?.content !== input.content ||
+      confirmedRaw.title !== input.title || confirmedRaw.body !== input.body ||
+      (input.expectedPullRequestDatabaseId !== undefined &&
+        confirmed.databaseId !== input.expectedPullRequestDatabaseId) ||
+      (input.expectedPullRequestNumber !== undefined && confirmed.number !== input.expectedPullRequestNumber)
+    ) throw new Error("GitHub design pull-request read-back mismatch");
+    let replies: { ids: readonly number[]; reconciled: boolean; humanSnapshot: string };
+    try {
+      replies = await this.replyToReviewThreads(
+        token,
+        input.repository,
+        confirmed.number,
+        input.reviewReplies,
+        operationId,
+      );
+    } catch (error) {
+      if (
+        error instanceof Error && [
+          "GitHub review reply manifest is incomplete",
+          "GitHub review reply targets an unknown human review thread",
+          "GitHub review reply thread snapshot changed",
+        ].includes(error.message)
+      ) {
+        throw new GitHubReviewFeedbackChangedError(error.message, {
+          pullRequestDatabaseId: confirmed.databaseId,
+          pullRequestNumber: confirmed.number,
+          pullRequestUrl: confirmed.url,
+          branch: input.branch,
+          headSha,
+          reviewReplyIds: [],
+          reconciled: true,
+        });
+      }
+      throw error;
+    }
+    await this.assertDesignBaseCurrent(token, input.repository, input.baseCommit, input.baseBranch);
+    const finalHeadSha = await this.ref(token, input.repository, input.branch);
+    const finalRaw = await this.json(
+      token,
+      `/repos/${input.repository}/pulls/${confirmed.number}`,
+    ) as Record<string, unknown>;
+    const finalPull = this.parsePull(finalRaw);
+    if (
+      finalHeadSha !== headSha || finalPull.databaseId !== confirmed.databaseId ||
+      finalPull.number !== confirmed.number || finalPull.url !== confirmed.url ||
+      finalPull.state !== "open" || finalPull.draft || finalPull.merged ||
+      finalPull.headBranch !== input.branch || finalPull.headSha !== headSha ||
+      finalPull.baseBranch !== input.baseBranch || finalRaw.title !== input.title ||
+      finalRaw.body !== input.body
+    ) throw new Error("GitHub design pull-request final read-back mismatch");
+    const finalReviewComments = await this.reviewComments(token, input.repository, confirmed.number);
+    if (this.humanReviewSnapshot(finalReviewComments) !== replies.humanSnapshot) {
+      throw new GitHubReviewFeedbackChangedError("GitHub review reply thread snapshot changed", {
+        pullRequestDatabaseId: finalPull.databaseId,
+        pullRequestNumber: finalPull.number,
+        pullRequestUrl: finalPull.url,
+        branch: input.branch,
+        headSha,
+        reviewReplyIds: replies.ids,
+        reconciled: true,
+      });
+    }
+    return {
+      pullRequestDatabaseId: finalPull.databaseId,
+      pullRequestNumber: finalPull.number,
+      pullRequestUrl: finalPull.url,
+      branch: input.branch,
+      headSha: finalPull.headSha,
+      reviewReplyIds: replies.ids,
+      reconciled: reconciled || replies.reconciled,
+    };
+  }
+
+  async mergeDesign(input: Parameters<GitHubCapabilityAdapter["mergePlanning"]>[0] & {
+    baseCommit: string;
+    change: string;
+  }): Promise<GitHubPlanningMergeReceipt> {
+    const token = await this.tokens.token();
+    const before = this.parsePull(await this.json(
+      token,
+      `/repos/${input.repository}/pulls/${input.pullRequestNumber}`,
+    ));
+    this.assertPlanningPullIdentity(before, input);
+    if (before.merged) {
+      if (before.mergeCommitSha === null) throw new Error("GitHub merged pull request has no merge commit");
+      return {
+        pullRequestDatabaseId: before.databaseId,
+        pullRequestNumber: before.number,
+        mergeCommitSha: before.mergeCommitSha,
+        reconciled: true,
+      };
+    }
+    if (before.state !== "open") throw new Error("GitHub design pull request is closed without merge");
+    await this.assertDesignOnlyBranch(
+      token,
+      input.repository,
+      input.baseCommit,
+      input.expectedHeadSha,
+      `openspec/changes/${input.change}/design.md`,
+      true,
+    );
+    await this.assertDesignBaseCurrent(token, input.repository, input.baseCommit, input.baseBranch);
+    let response: { merged?: boolean; sha?: string } | null = null;
+    let rejected = false;
+    try {
+      response = await this.json(token, `/repos/${input.repository}/pulls/${input.pullRequestNumber}/merge`, {
+        method: "PUT",
+        body: { sha: input.expectedHeadSha },
+      }) as { merged?: boolean; sha?: string };
+    } catch (error) {
+      rejected = error instanceof GitHubProviderHttpError && [405, 409, 422].includes(error.status);
+    }
+    const after = this.parsePull(await this.json(
+      token,
+      `/repos/${input.repository}/pulls/${input.pullRequestNumber}`,
+    ));
+    this.assertPlanningPullIdentity(after, input);
+    if (!after.merged || after.mergeCommitSha === null) {
+      throw new Error(response?.merged === false || rejected
+        ? "GitHub design merge was rejected"
+        : "GitHub design merge response is ambiguous");
+    }
+    if (typeof response?.sha === "string" && response.sha !== after.mergeCommitSha) {
+      throw new Error("GitHub design merge SHA mismatch");
+    }
+    return {
+      pullRequestDatabaseId: after.databaseId,
+      pullRequestNumber: after.number,
+      mergeCommitSha: after.mergeCommitSha,
+      reconciled: response?.merged !== true,
+    };
+  }
+
   async upsertTraceReviewCheck(input: {
     repository: string;
     headSha: string;
@@ -875,10 +1198,16 @@ export class GitHubCapabilityAdapter {
   async readReviewFeedback(repository: string, pullRequestNumber: number): Promise<readonly Record<string, unknown>[]> {
     const token = await this.tokens.token();
     const [reviews, reviewComments, issueComments] = await Promise.all([
-      this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}/reviews?per_page=50`),
-      this.json(token, `/repos/${repository}/pulls/${pullRequestNumber}/comments?per_page=100`),
-      this.json(token, `/repos/${repository}/issues/${pullRequestNumber}/comments?per_page=50`),
-    ]) as [unknown[], unknown[], unknown[]];
+      this.pagedList(token, `/repos/${repository}/pulls/${pullRequestNumber}/reviews`, 50, "review"),
+      this.pagedList(token, `/repos/${repository}/pulls/${pullRequestNumber}/comments`, 100, "review-comment"),
+      this.pagedList(token, `/repos/${repository}/issues/${pullRequestNumber}/comments`, 50, "issue-comment"),
+    ]);
+    const markerComments = reviewComments.filter((value) => {
+      const entry = value as { body?: unknown; user?: { type?: unknown } };
+      return entry.user?.type === "Bot" && typeof entry.body === "string" &&
+        entry.body.includes("<!-- deos-review-reply:");
+    });
+    const actorLogin = markerComments.length === 0 ? null : await this.trustedActorLogin();
     const pick = (kind: string, entries: unknown[]): Record<string, unknown>[] => entries.map((value) => {
       const entry = value as Record<string, unknown>;
       const user = entry.user as Record<string, unknown> | undefined;
@@ -891,6 +1220,8 @@ export class GitHubCapabilityAdapter {
         line: entry.line,
         author: user?.login,
         authorType: user?.type,
+        trustedAcknowledgmentAuthor: actorLogin !== null && user?.type === "Bot" &&
+          typeof user.login === "string" && user.login.toLowerCase() === actorLogin.toLowerCase(),
         replyToId: typeof entry.in_reply_to_id === "number" ? entry.in_reply_to_id : null,
         createdAt: entry.created_at,
         updatedAt: entry.updated_at,
@@ -928,12 +1259,14 @@ export class GitHubCapabilityAdapter {
     }
     if (before.state !== "open") throw new Error("GitHub planning pull request is closed without merge");
     let response: { merged?: boolean; sha?: string } | null = null;
+    let rejected = false;
     try {
       response = await this.json(token, `/repos/${input.repository}/pulls/${input.pullRequestNumber}/merge`, {
         method: "PUT",
         body: { sha: input.expectedHeadSha },
       }) as { merged?: boolean; sha?: string };
-    } catch {
+    } catch (error) {
+      rejected = error instanceof GitHubProviderHttpError && [405, 409, 422].includes(error.status);
       // Read-back below distinguishes a committed merge from a rejected request.
     }
     const after = this.parsePull(await this.json(
@@ -942,7 +1275,7 @@ export class GitHubCapabilityAdapter {
     ));
     this.assertPlanningPullIdentity(after, input);
     if (!after.merged || after.mergeCommitSha === null) {
-      throw new Error(response?.merged === false
+      throw new Error(response?.merged === false || rejected
         ? "GitHub planning merge was rejected"
         : "GitHub planning merge response is ambiguous");
     }
@@ -964,10 +1297,156 @@ export class GitHubCapabilityAdapter {
     return file.content;
   }
 
+  async readPullRequest(repository: string, pullRequestNumber: number): Promise<GitHubPlanningPullRequest> {
+    const token = await this.tokens.token();
+    return this.parsePull(await this.json(
+      token,
+      `/repos/${repository}/pulls/${pullRequestNumber}`,
+    ));
+  }
+
+  async verifyCommitOnBranch(
+    repository: string,
+    commitSha: string,
+    branch: string,
+  ): Promise<GitHubCommitReachability> {
+    const token = await this.tokens.token();
+    const defaultHeadSha = await this.ref(token, repository, branch);
+    if (defaultHeadSha === null) throw new Error("GitHub default branch is missing");
+    const comparison = await this.json(
+      token,
+      `/repos/${repository}/compare/${encodeURIComponent(commitSha)}...${encodeURIComponent(defaultHeadSha)}`,
+    ) as { status?: unknown; base_commit?: { sha?: unknown }; merge_base_commit?: { sha?: unknown } };
+    if (
+      typeof comparison.status !== "string" ||
+      typeof comparison.base_commit?.sha !== "string" ||
+      typeof comparison.merge_base_commit?.sha !== "string"
+    ) throw new Error("GitHub commit reachability response is invalid");
+    return {
+      defaultHeadSha,
+      reachable: comparison.base_commit.sha === commitSha &&
+        comparison.merge_base_commit.sha === commitSha &&
+        ["ahead", "identical"].includes(comparison.status),
+    };
+  }
+
+  async readRepositoryGuidance(repository: string, ref: string): Promise<readonly GitHubGuidanceFile[]> {
+    const token = await this.tokens.token();
+    const tree = await this.json(
+      token,
+      `/repos/${repository}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
+    ) as { truncated?: unknown; tree?: Array<{ path?: unknown; type?: unknown; mode?: unknown }> };
+    if (tree.truncated === true || !Array.isArray(tree.tree) || tree.tree.length > 100_000) {
+      throw new Error("GitHub repository guidance tree is invalid or incomplete");
+    }
+    const allowed = (path: string): boolean =>
+      path === "AGENTS.md" || path === "agents.md" || path === "architecture.md" ||
+      /^architecture-[A-Za-z0-9_.-]+\.md$/.test(path) || path === "docs/current-architecture.md";
+    const matches = tree.tree.filter((entry) => typeof entry.path === "string" && allowed(entry.path));
+    if (matches.some((entry) => entry.type !== "blob" || !["100644", "100755"].includes(String(entry.mode)))) {
+      throw new Error("GitHub repository guidance contains an unsafe file type");
+    }
+    const paths = matches.map((entry) => String(entry.path)).sort();
+    if (new Set(paths).size !== paths.length || paths.length > 32) {
+      throw new Error("GitHub repository guidance inventory is invalid");
+    }
+    const files = await Promise.all(paths.map(async (path) => ({
+      path,
+      content: (await this.readContent(token, repository, ref, path, false))!.content,
+    })));
+    const total = files.reduce((sum, file) => sum + new TextEncoder().encode(file.content).byteLength, 0);
+    if (total > 64_000 || files.some((file) => file.content.includes("\u0000"))) {
+      throw new Error("GitHub repository guidance exceeds the trusted text limit");
+    }
+    return Object.freeze(files.map((file) => Object.freeze(file)));
+  }
+
   async readRef(repository: string, branch: string): Promise<string> {
     const value = await this.ref(await this.tokens.token(), repository, branch);
     if (value === null) throw new Error("GitHub ref is missing");
     return value;
+  }
+
+  private async assertDesignOnlyBranch(
+    token: string,
+    repository: string,
+    baseCommit: string,
+    headCommit: string,
+    designPath: string,
+    requireDesign: boolean,
+  ): Promise<void> {
+    const comparison = await this.json(
+      token,
+      `/repos/${repository}/compare/${encodeURIComponent(baseCommit)}...${encodeURIComponent(headCommit)}`,
+    ) as {
+      status?: unknown;
+      base_commit?: { sha?: unknown };
+      merge_base_commit?: { sha?: unknown };
+      files?: Array<{ filename?: unknown; status?: unknown; previous_filename?: unknown }>;
+    };
+    if (
+      !["ahead", "identical"].includes(String(comparison.status)) ||
+      comparison.base_commit?.sha !== baseCommit || comparison.merge_base_commit?.sha !== baseCommit ||
+      !Array.isArray(comparison.files)
+    ) throw new Error("GitHub design branch comparison is invalid");
+    const paths = comparison.files.map((file) => file.filename);
+    if (
+      comparison.files.some((file) =>
+        typeof file.filename !== "string" || typeof file.status !== "string" ||
+        (file.status === "renamed" && typeof file.previous_filename !== "string")) ||
+      new Set(paths).size !== paths.length
+    ) {
+      throw new Error("GitHub design branch file inventory is invalid");
+    }
+    const previousPaths = comparison.files
+      .filter((file) => file.status === "renamed")
+      .map((file) => file.previous_filename);
+    if ([...paths, ...previousPaths].some((path) => path !== designPath)) {
+      throw new Error("GitHub design branch contains out-of-scope changes");
+    }
+    if (requireDesign && (paths.length !== 1 || paths[0] !== designPath)) {
+      throw new Error("GitHub design branch does not contain the required design change");
+    }
+    if (requireDesign) {
+      const tree = await this.json(
+        token,
+        `/repos/${repository}/git/trees/${encodeURIComponent(headCommit)}?recursive=1`,
+      ) as {
+        truncated?: unknown;
+        tree?: Array<{ path?: unknown; type?: unknown; mode?: unknown }>;
+      };
+      if (tree.truncated === true || !Array.isArray(tree.tree) || tree.tree.length > 100_000) {
+        throw new Error("GitHub design branch tree is invalid or incomplete");
+      }
+      const entries = tree.tree.filter((entry) => entry.path === designPath);
+      if (
+        entries.length !== 1 || entries[0]!.type !== "blob" ||
+        !["100644", "100755"].includes(String(entries[0]!.mode))
+      ) throw new Error("GitHub design path is not a regular blob");
+    }
+  }
+
+  private async assertDesignBaseCurrent(
+    token: string,
+    repository: string,
+    baseCommit: string,
+    baseBranch: string,
+  ): Promise<void> {
+    const currentBase = await this.ref(token, repository, baseBranch);
+    if (currentBase === null) throw new Error("GitHub design base branch is missing");
+    if (currentBase === baseCommit) return;
+    const comparison = await this.json(
+      token,
+      `/repos/${repository}/compare/${encodeURIComponent(baseCommit)}...${encodeURIComponent(currentBase)}`,
+    ) as {
+      status?: unknown;
+      base_commit?: { sha?: unknown };
+      merge_base_commit?: { sha?: unknown };
+    };
+    if (
+      comparison.status !== "ahead" || comparison.base_commit?.sha !== baseCommit ||
+      comparison.merge_base_commit?.sha !== baseCommit
+    ) throw new Error("GitHub design base commit is not on the current base branch");
   }
 
   private async ref(
@@ -993,23 +1472,24 @@ export class GitHubCapabilityAdapter {
     repository: string,
     pullRequestNumber: number,
   ): Promise<readonly GitHubReviewComment[]> {
-    const value = await this.json(
+    const value = await this.pagedList(
       token,
-      `/repos/${repository}/pulls/${pullRequestNumber}/comments?per_page=100`,
+      `/repos/${repository}/pulls/${pullRequestNumber}/comments`,
+      100,
+      "review-comment",
     );
-    if (!Array.isArray(value) || value.length >= 100) {
-      throw new Error("GitHub review-comment list is invalid or incomplete");
-    }
     return value.map((entry) => {
       const comment = entry as {
         id?: unknown;
         in_reply_to_id?: unknown;
         body?: unknown;
-        user?: { type?: unknown };
+        user?: { type?: unknown; login?: unknown };
+        updated_at?: unknown;
       };
       if (
         typeof comment.id !== "number" || !Number.isSafeInteger(comment.id) ||
         typeof comment.body !== "string" || typeof comment.user?.type !== "string" ||
+        typeof comment.user.login !== "string" ||
         (comment.in_reply_to_id !== undefined && comment.in_reply_to_id !== null &&
           typeof comment.in_reply_to_id !== "number")
       ) throw new Error("GitHub review-comment response is invalid");
@@ -1018,18 +1498,45 @@ export class GitHubCapabilityAdapter {
         inReplyToId: typeof comment.in_reply_to_id === "number" ? comment.in_reply_to_id : null,
         body: comment.body,
         userType: comment.user.type,
+        userLogin: comment.user.login,
+        updatedAt: typeof comment.updated_at === "string" ? comment.updated_at : null,
       };
     });
+  }
+
+  private async pagedList(
+    token: string,
+    path: string,
+    perPage: number,
+    label: string,
+  ): Promise<unknown[]> {
+    const values: unknown[] = [];
+    for (let page = 1; ; page += 1) {
+      const suffix = page === 1 ? `?per_page=${perPage}` : `?per_page=${perPage}&page=${page}`;
+      const batch = await this.json(token, `${path}${suffix}`);
+      if (!Array.isArray(batch) || batch.length > perPage) {
+        throw new Error(`GitHub ${label} list is invalid`);
+      }
+      values.push(...batch);
+      if (batch.length < perPage) return values;
+      if (values.length >= 10_000) throw new Error(`GitHub ${label} list exceeds the trusted limit`);
+    }
   }
 
   private async replyToReviewThreads(
     token: string,
     repository: string,
     pullRequestNumber: number,
-    requestedReplies: readonly { commentId: number; body: string }[],
+    requestedReplies: readonly {
+      commentId: number;
+      body: string;
+      latestHumanCommentId?: number;
+      latestHumanCommentUpdatedAt?: string;
+    }[],
     operationId: string,
-  ): Promise<{ ids: readonly number[]; reconciled: boolean }> {
+  ): Promise<{ ids: readonly number[]; reconciled: boolean; humanSnapshot: string }> {
     let comments = await this.reviewComments(token, repository, pullRequestNumber);
+    const humanSnapshot = this.humanReviewSnapshot(comments);
     const roots = new Map(comments
       .filter((comment) => comment.inReplyToId === null && comment.userType === "User")
       .map((comment) => [comment.id, comment]));
@@ -1039,21 +1546,48 @@ export class GitHubCapabilityAdapter {
     }
     const marker = (commentId: number): string =>
       `<!-- deos-review-reply:${operationId}:${commentId} -->`;
+    const actorLogin = roots.size === 0 ? null : await this.trustedActorLogin();
     const isAcknowledgment = (comment: GitHubReviewComment, rootId: number): boolean =>
-      comment.inReplyToId === rootId && comment.userType === "Bot" &&
+      actorLogin !== null && comment.inReplyToId === rootId && comment.userType === "Bot" &&
+      comment.userLogin.toLowerCase() === actorLogin.toLowerCase() &&
       comment.body.includes("<!-- deos-review-reply:") && comment.body.includes(`:${rootId} -->`);
+    const latestHumanCommentIds = new Map<number, number>();
+    const latestHumanCommentUpdatedAts = new Map<number, string | null>();
     const outstanding = [...roots.keys()].filter((rootId) => {
       const thread = comments.filter((comment) => comment.id === rootId || comment.inReplyToId === rootId);
       const lastHumanId = Math.max(...thread
         .filter((comment) => comment.userType === "User")
         .map((comment) => comment.id));
+      latestHumanCommentIds.set(rootId, lastHumanId);
+      latestHumanCommentUpdatedAts.set(
+        rootId,
+        thread.find((comment) => comment.id === lastHumanId)?.updatedAt ?? null,
+      );
       const lastAcknowledgmentId = Math.max(0, ...thread
         .filter((comment) => isAcknowledgment(comment, rootId))
         .map((comment) => comment.id));
-      return lastAcknowledgmentId < lastHumanId;
+      const lastHumanUpdatedAt = Math.max(0, ...thread
+        .filter((comment) => comment.userType === "User" && comment.updatedAt !== null)
+        .map((comment) => Date.parse(comment.updatedAt!))
+        .filter(Number.isFinite));
+      const lastAcknowledgmentUpdatedAt = Math.max(0, ...thread
+        .filter((comment) => isAcknowledgment(comment, rootId) && comment.updatedAt !== null)
+        .map((comment) => Date.parse(comment.updatedAt!))
+        .filter(Number.isFinite));
+      return lastAcknowledgmentId < lastHumanId ||
+        (lastHumanUpdatedAt > 0 && lastAcknowledgmentUpdatedAt > 0 &&
+          lastAcknowledgmentUpdatedAt < lastHumanUpdatedAt);
     });
+    if (outstanding.length > 50) throw new Error("GitHub outstanding review threads exceed the trusted limit");
     if (outstanding.some((commentId) => !requested.has(commentId))) {
       throw new Error("GitHub review reply manifest is incomplete");
+    }
+    if (requestedReplies.some((reply) =>
+      reply.latestHumanCommentId !== undefined &&
+      (latestHumanCommentIds.get(reply.commentId) !== reply.latestHumanCommentId ||
+        latestHumanCommentUpdatedAts.get(reply.commentId) !== reply.latestHumanCommentUpdatedAt)
+    )) {
+      throw new Error("GitHub review reply thread snapshot changed");
     }
 
     const ids: number[] = [];
@@ -1071,25 +1605,51 @@ export class GitHubCapabilityAdapter {
           token,
           `/repos/${repository}/pulls/${pullRequestNumber}/comments/${reply.commentId}/replies`,
           { method: "POST", body: { body } },
-        ) as { id?: unknown; in_reply_to_id?: unknown };
-        if (typeof created.id !== "number" || created.in_reply_to_id !== reply.commentId) {
+        ) as { id?: unknown; in_reply_to_id?: unknown; user?: { type?: unknown; login?: unknown } };
+        if (
+          typeof created.id !== "number" || created.in_reply_to_id !== reply.commentId ||
+          created.user?.type !== "Bot" || typeof created.user.login !== "string" ||
+          created.user.login.toLowerCase() !== actorLogin?.toLowerCase()
+        ) {
           throw new Error("GitHub review reply response is invalid");
         }
         ids.push(created.id);
       } catch {
         comments = await this.reviewComments(token, repository, pullRequestNumber);
         const after = comments.find((comment) =>
-          comment.inReplyToId === reply.commentId && comment.body.includes(marker(reply.commentId)));
+          isAcknowledgment(comment, reply.commentId) && comment.body.includes(marker(reply.commentId)));
         if (after === undefined) throw new Error("GitHub review reply is ambiguous");
         ids.push(after.id);
         reconciled = true;
       }
     }
-    return { ids: Object.freeze(ids), reconciled };
+    return { ids: Object.freeze(ids), reconciled, humanSnapshot };
+  }
+
+  private humanReviewSnapshot(comments: readonly GitHubReviewComment[]): string {
+    return JSON.stringify(comments
+      .filter((comment) => comment.userType === "User")
+      .map((comment) => ({
+        id: comment.id,
+        inReplyToId: comment.inReplyToId,
+        body: comment.body,
+        userLogin: comment.userLogin,
+        updatedAt: comment.updatedAt,
+      }))
+      .sort((left, right) => left.id - right.id));
   }
 
   private encodedPath(path: string): string {
     return path.split("/").map(encodeURIComponent).join("/");
+  }
+
+  private async trustedActorLogin(): Promise<string> {
+    if (this.tokens.actorLogin === undefined) throw new Error("GitHub App actor identity is unavailable");
+    const login = await this.tokens.actorLogin();
+    if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,98}[A-Za-z0-9])?\[bot\]$/.test(login)) {
+      throw new Error("GitHub App actor identity is invalid");
+    }
+    return login;
   }
 
   private async readContent(
@@ -1104,17 +1664,25 @@ export class GitHubCapabilityAdapter {
       `/repos/${repository}/contents/${this.encodedPath(path)}?ref=${encodeURIComponent(ref)}`,
       undefined,
       allowNotFound,
-    ) as { sha?: string; content?: string } | null;
+    ) as { sha?: string; content?: string; encoding?: string } | null;
     if (value === null) return null;
-    if (typeof value.sha !== "string" || typeof value.content !== "string") {
+    if (
+      typeof value.sha !== "string" || typeof value.content !== "string" ||
+      value.encoding !== "base64"
+    ) {
       throw new Error("GitHub content response is invalid");
     }
-    return {
-      sha: value.sha,
-      content: new TextDecoder().decode(
-        Uint8Array.from(atob(value.content.replace(/\s/g, "")), (character) => character.charCodeAt(0)),
-      ),
-    };
+    let content: string;
+    try {
+      const bytes = Uint8Array.from(
+        atob(value.content.replace(/\s/g, "")),
+        (character) => character.charCodeAt(0),
+      );
+      content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes);
+    } catch {
+      throw new Error("GitHub content response is not valid UTF-8");
+    }
+    return { sha: value.sha, content };
   }
 
   private async writeContent(
@@ -1205,19 +1773,28 @@ export class GitHubCapabilityAdapter {
     options?: { method: "DELETE" | "PATCH" | "POST" | "PUT"; body: Record<string, unknown> },
     allowNotFound = false,
   ): Promise<unknown> {
-    const response = await this.request(`${this.apiUrl}${path}`, {
-      method: options?.method ?? "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-        "Content-Type": "application/json",
-        "User-Agent": "deos-orchestrator",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-      ...(options === undefined ? {} : { body: JSON.stringify(options.body) }),
-    });
+    let response: Response;
+    try {
+      response = await this.request(`${this.apiUrl}${path}`, {
+        method: options?.method ?? "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "Content-Type": "application/json",
+          "User-Agent": "deos-orchestrator",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        ...(options === undefined ? {} : { body: JSON.stringify(options.body) }),
+      });
+    } catch {
+      throw new Error("GitHub provider request failed");
+    }
     if (allowNotFound && response.status === 404) return null;
-    if (!response.ok) throw new Error("GitHub provider request failed");
-    return response.json();
+    if (!response.ok) throw new GitHubProviderHttpError(response.status);
+    try {
+      return await response.json();
+    } catch {
+      throw new Error("GitHub provider response is ambiguous");
+    }
   }
 }
