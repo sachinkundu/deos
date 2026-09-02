@@ -373,11 +373,17 @@ test("planning materializer allocates one run branch and bounds both feedback pr
 test("design materializer anchors checked plan files and guidance to one exact merge commit", async () => {
   const mergeCommit = "a".repeat(40);
   const guidanceContent = `${"Repository rule. ".repeat(2_500)}\n`;
-  const manifest = [
-    { path: "openspec/changes/sac-201/.openspec.yaml", sha256: "1".repeat(64), byteSize: 20 },
-    { path: "openspec/changes/sac-201/proposal.md", sha256: "2".repeat(64), byteSize: 30 },
-    { path: "openspec/changes/sac-201/specs/search/spec.md", sha256: "3".repeat(64), byteSize: 40 },
+  const planPaths = [
+    "openspec/changes/sac-201/.openspec.yaml",
+    "openspec/changes/sac-201/proposal.md",
+    "openspec/changes/sac-201/specs/search/spec.md",
   ];
+  const planContents = Object.fromEntries(planPaths.map((path) => [path, `checked ${path}\n`]));
+  const manifest = await Promise.all(planPaths.map(async (path) => ({
+    path,
+    sha256: await sha256Hex(planContents[path]!),
+    byteSize: new TextEncoder().encode(planContents[path]!).byteLength,
+  })));
   const planning = {
     run_id: "workflow:project-1:issue-1:run:1",
     repository: "sachinkundu/deos-sample-project",
@@ -448,7 +454,7 @@ test("design materializer anchors checked plan files and guidance to one exact m
       } } }),
       readGitHubFile: async (_repository, path, ref) => {
         readRefs.push(ref);
-        return `checked ${path}\n`;
+        return planContents[path] ?? `checked ${path}\n`;
       },
       readGitHubGuidance: async (_repository, ref) => {
         readRefs.push(ref);

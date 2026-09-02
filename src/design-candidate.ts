@@ -77,6 +77,12 @@ export interface DesignCandidate {
   byteSize: number;
   designDigest: string;
   reviewReplies: readonly DesignReviewReply[];
+  reviewDispositions: readonly {
+    findingId: string;
+    status: "applied" | "declined" | "no_change";
+    reason: string;
+  }[];
+  reviewContextId: string | null;
   candidateDigest: string;
 }
 
@@ -185,6 +191,31 @@ const checkedReplies = (value: readonly DesignReviewReply[]): readonly DesignRev
   }));
 };
 
+const checkedDispositions = (value: readonly {
+  findingId: string;
+  status: "applied" | "declined" | "no_change";
+  reason: string;
+}[]): readonly {
+  findingId: string;
+  status: "applied" | "declined" | "no_change";
+  reason: string;
+}[] => {
+  if (!Array.isArray(value) || value.length > 100) {
+    throw new DesignCandidateRejectedError("design review dispositions are invalid");
+  }
+  const seen = new Set<string>();
+  return Object.freeze([...value].sort((left, right) => left.findingId.localeCompare(right.findingId)).map((item) => {
+    if (
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.findingId) || seen.has(item.findingId) ||
+      !["applied", "declined", "no_change"].includes(item.status) ||
+      typeof item.reason !== "string" || item.reason.trim() !== item.reason ||
+      item.reason.length < 1 || item.reason.length > 4_000
+    ) throw new DesignCandidateRejectedError("design review disposition is invalid");
+    seen.add(item.findingId);
+    return Object.freeze({ ...item });
+  }));
+};
+
 export const buildDesignCandidate = async (input: {
   candidateId: string;
   runId: string;
@@ -195,6 +226,12 @@ export const buildDesignCandidate = async (input: {
   path: string;
   content: string;
   reviewReplies: readonly DesignReviewReply[];
+  reviewDispositions?: readonly {
+    findingId: string;
+    status: "applied" | "declined" | "no_change";
+    reason: string;
+  }[];
+  reviewContextId?: string | null;
   strictOpenSpecCheck: () => Promise<void>;
   checkedAt: string;
 }): Promise<{ candidate: DesignCandidate; validation: DesignCandidateValidation }> => {
@@ -219,6 +256,11 @@ export const buildDesignCandidate = async (input: {
   }
   await input.strictOpenSpecCheck();
   const reviewReplies = checkedReplies(input.reviewReplies);
+  const reviewDispositions = checkedDispositions(input.reviewDispositions ?? []);
+  const reviewContextId = input.reviewContextId ?? null;
+  if (reviewContextId !== null && !/^design-review:[A-Za-z0-9:._-]{3,512}$/.test(reviewContextId)) {
+    throw new DesignCandidateRejectedError("design review context identity is invalid");
+  }
   const designDigest = await sha256Hex(input.content);
   const byteSize = new TextEncoder().encode(input.content).byteLength;
   const candidateDigest = await sha256Hex(JSON.stringify({
@@ -228,6 +270,8 @@ export const buildDesignCandidate = async (input: {
     byteSize,
     designDigest,
     reviewReplies,
+    reviewDispositions,
+    reviewContextId,
   }));
   const candidateValue: DesignCandidate = {
     version: 1,
@@ -242,6 +286,8 @@ export const buildDesignCandidate = async (input: {
     byteSize,
     designDigest,
     reviewReplies,
+    reviewDispositions,
+    reviewContextId,
     candidateDigest,
   };
   if (new TextEncoder().encode(JSON.stringify(candidateValue)).byteLength > DESIGN_CANDIDATE_CONTEXT_LIMIT) {

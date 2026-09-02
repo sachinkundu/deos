@@ -30,8 +30,14 @@ const promptPaths = [
   "openspec-design-author.md",
   "openspec-traceability-review.md",
   "openspec-traceability-recheck.md",
+  "openspec-design-review.md",
 ];
-const schemaPaths = ["agent-result-v1.json", "review-result-v1.json", "trace-agent-result-v1.json"];
+const schemaPaths = [
+  "agent-result-v1.json",
+  "review-result-v1.json",
+  "trace-agent-result-v1.json",
+  "design-review-result-v1.json",
+];
 
 const bundle = (): WorkflowBundleSources => ({
   prompts: Object.fromEntries(
@@ -48,10 +54,11 @@ const bundle = (): WorkflowBundleSources => ({
   ),
 });
 
-test("production bundle includes the version 17 design prompt", () => {
+test("production bundle includes the version 19 design review prompts", () => {
   const source = readFileSync(new URL("../src/workflow-bundle.ts", import.meta.url), "utf8");
   assert.match(source, /import openSpecDesignAuthorPrompt from .*openspec-design-author\.md/);
   assert.match(source, /"prompts\/openspec-design-author\.md": openSpecDesignAuthorPrompt/);
+  assert.match(source, /"prompts\/openspec-design-review\.md": designReviewPrompt/);
 });
 
 const waitDefinitionSource = `apiVersion: deos.dev/v1alpha1
@@ -187,7 +194,7 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 17);
+  assert.equal(definition.version, 19);
   assert.equal(definition.nodes.publish_design.edges.review_feedback_changed, "design_revision_author");
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
@@ -253,8 +260,16 @@ test("traceability planning definition freezes reviewers and keeps publication t
   assert.equal(planningRepair.edges.canceled, "canceled");
   assert.equal(definition.jobs.design_author.operation?.instruction, "/opsx:continue");
   assert.deepEqual(definition.jobs.design_author.providerAccess, []);
-  assert.equal(definition.nodes.design_author.edges.completed, "publish_design");
-  assert.equal(definition.nodes.publish_design.edges.completed, "design_review");
+  assert.equal(definition.nodes.design_author.edges.completed, "design_self_review");
+  assert.equal(definition.jobs.design_self_review.reviewKind, "design");
+  assert.equal(definition.jobs.design_self_review.modelProvider, "codex");
+  assert.equal(definition.nodes.design_self_review.edges.pass, "publish_design");
+  assert.equal(definition.nodes.design_self_review.edges.concerns, "design_self_response");
+  assert.equal(definition.nodes.publish_design.edges.completed, "design_independent_review");
+  assert.equal(definition.jobs.design_independent_review.reviewKind, "design");
+  assert.equal(definition.jobs.design_independent_review.modelProvider, "openrouter");
+  assert.equal(definition.nodes.design_independent_review.edges.pass, "design_review");
+  assert.equal(definition.nodes.design_independent_review.edges.concerns, "design_independent_response");
   assert.deepEqual(
     definition.nodes.design_review.type === "human_gate" ? definition.nodes.design_review.decisions : null,
     {
@@ -265,7 +280,8 @@ test("traceability planning definition freezes reviewers and keeps publication t
   );
   assert.equal(definition.nodes.design_review.edges.revision_requested, "start_new_design_round");
   assert.equal(definition.nodes.start_new_design_round.edges.completed, "design_revision_author");
-  assert.equal(definition.nodes.design_revision_author.edges.completed, "publish_design");
+  assert.equal(definition.nodes.design_revision_author.edges.completed, "publish_design_revision");
+  assert.equal(definition.nodes.publish_design_revision.edges.completed, "design_independent_review");
   assert.equal(definition.nodes.design_review.edges.merge_authorized, "merge_design_pr");
   assert.equal(definition.nodes.merge_design_pr.edges.completed, "done");
   assert.equal(Object.hasOwn(definition.jobs, "independent_recheck"), false);

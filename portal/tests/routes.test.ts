@@ -7,6 +7,7 @@ test("portal paths select one explicit view", () => {
   assert.equal(portalPageFromPath("/"), "workflow");
   assert.equal(portalPageFromPath("/settings"), "settings");
   assert.equal(portalPageFromPath("/settings/"), "settings");
+  assert.equal(portalPageFromPath("/runs/workflow%3Aa%3Ab%3Arun%3A1/design-review"), "design-review");
   assert.equal(portalPageFromPath("/future-tool"), "not-found");
 });
 

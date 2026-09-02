@@ -18,6 +18,14 @@ import {
   TraceReviewReadStore,
 } from "../src/review.ts";
 import {
+  DesignReviewArtifactError,
+  designReviewFreshness,
+  designReviewSelfStatus,
+  supportsDesignReview,
+  DesignReviewNotFoundError,
+  DesignReviewReadStore,
+} from "../src/design-review.ts";
+import {
   parseTranscriptJsonl,
   TranscriptReadStore,
   TranscriptUnavailableError,
@@ -326,11 +334,12 @@ test("browser routes map to explicit portal entries without SPA fallback", async
   assert.equal(await (await routePortalRequest(new Request("https://deos.example/"), env, authenticate)).text(), "/index.html");
   assert.equal(await (await routePortalRequest(new Request("https://deos.example/settings"), env, authenticate)).text(), "/settings.html");
   assert.equal(await (await routePortalRequest(new Request("https://deos.example/settings/"), env, authenticate)).text(), "/settings.html");
+  assert.equal(await (await routePortalRequest(new Request("https://deos.example/runs/workflow%3Aa%3Ab%3Arun%3A1/design-review"), env, authenticate)).text(), "/settings.html");
   assert.equal(await (await routePortalRequest(new Request("https://deos.example/assets/app.js"), env, authenticate)).text(), "/assets/app.js");
   const unknown = await routePortalRequest(new Request("https://deos.example/future-tool"), env, authenticate);
   assert.equal(unknown.status, 404);
   assert.deepEqual(await unknown.json(), { error: "route_not_found" });
-  assert.deepEqual(paths, ["/index.html", "/settings.html", "/settings.html", "/assets/app.js"]);
+  assert.deepEqual(paths, ["/index.html", "/settings.html", "/settings.html", "/settings.html", "/assets/app.js"]);
 });
 
 test("an authenticated issue search records the viewer before the read-only API guard", async () => {
@@ -559,4 +568,126 @@ test("review artifact hash mismatch fails closed", async () => {
     ),
     TraceReviewArtifactError,
   );
+});
+
+test("design review artifacts use an allowlist and verify the D1-selected R2 hash", async () => {
+  const body = new TextEncoder().encode('{"version":1}\n');
+  const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", body)))
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  let requestedKey = "";
+  const db = {
+    prepare() {
+      return { bind: (reviewId: string, logicalName: string) => {
+        assert.equal(reviewId, "design-review:01a03852-9204-7612-bbb6-b76579f1462a");
+        assert.equal(logicalName, "normalized-review.json");
+        return { first: async () => ({
+          r2_key: "private/design-review/normalized-review.json",
+          media_type: "application/json",
+          sha256: digest,
+        }) };
+      } };
+    },
+  } as unknown as D1Database;
+  const bucket = { get: async (key: string) => {
+    requestedKey = key;
+    return { arrayBuffer: async () => body.buffer };
+  } } as unknown as R2Bucket;
+  const store = new DesignReviewReadStore(db, bucket);
+  const artifact = await store.artifact(
+    "design-review:01a03852-9204-7612-bbb6-b76579f1462a",
+    "normalized-review.json",
+  );
+  assert.equal(requestedKey, "private/design-review/normalized-review.json");
+  assert.equal(artifact.sha256, digest);
+  await assert.rejects(
+    () => store.artifact(
+      "design-review:01a03852-9204-7612-bbb6-b76579f1462a",
+      "provider-references.jsonl",
+    ),
+    DesignReviewNotFoundError,
+  );
+});
+
+test("design review artifact hash mismatch fails closed", async () => {
+  const db = { prepare: () => ({ bind: () => ({ first: async () => ({
+    r2_key: "private/design-review/raw-review-output.json",
+    media_type: "application/json",
+    sha256: "0".repeat(64),
+  }) }) }) } as unknown as D1Database;
+  const bucket = { get: async () => ({ arrayBuffer: async () => new TextEncoder().encode("changed").buffer }) } as unknown as R2Bucket;
+  await assert.rejects(
+    () => new DesignReviewReadStore(db, bucket).artifact(
+      "design-review:01a03852-9204-7612-bbb6-b76579f1462a",
+      "raw-review-output.json",
+    ),
+    DesignReviewArtifactError,
+  );
+});
+
+test("design review presentation distinguishes current, stale, historical, and later-round self state", () => {
+  assert.equal(supportsDesignReview(18), false);
+  assert.equal(supportsDesignReview(19), true);
+  assert.equal(designReviewSelfStatus(1), "required");
+  assert.equal(designReviewSelfStatus(0), "not_required");
+  assert.equal(designReviewFreshness({
+    phase: "self", round: 1, reviewedHeadSha: null, currentHeadSha: "b".repeat(40),
+    hasInitialIndependentReview: true,
+  }), "historical");
+  assert.equal(designReviewFreshness({
+    phase: "independent", round: 1, reviewedHeadSha: "a".repeat(40), currentHeadSha: "b".repeat(40),
+    hasInitialIndependentReview: true,
+  }), "stale");
+  assert.equal(designReviewFreshness({
+    phase: "independent", round: 2, reviewedHeadSha: "b".repeat(40), currentHeadSha: "b".repeat(40),
+    hasInitialIndependentReview: true,
+  }), "current");
+});
+
+test("design review API projection keeps failed attempts and later-round readiness visible", async () => {
+  const head = "b".repeat(40);
+  const runId = "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:60f49205-c6d8-4972-a9e6-73cdf5432941:run:1";
+  const db = {
+    prepare(sql: string) {
+      return { bind: () => ({
+        first: async () => sql.includes("FROM orchestration_runs run") ? {
+          run_id: runId, status: "awaiting_human", definition_version: 19,
+          issue_key: "SAC-151", title: "Set a wallpaper", head_sha: head,
+        } : null,
+        all: async () => {
+          if (sql.includes("FROM design_review_rounds WHERE")) return { results: [{
+            round_id: "round-2", round_no: 2, kind: "human_revision", self_required: 0,
+            status: "ready_for_human", response_turns: 1, outside_model: "outside/model",
+          }] };
+          if (sql.includes("FROM design_review_attempts attempt")) return { results: [{
+            review_attempt_id: "design-review:01a03852-9204-7612-bbb6-b76579f1462a",
+            round_id: "round-2", round_no: 2, phase: "independent",
+            input_sha256: "a".repeat(64), candidate_id: "design:candidate", head_sha: head,
+            model_provider: "openrouter", model: "outside/model", reasoning: "high",
+            outcome: "failed", evidence_manifest_id: null, accepted: 0,
+            created_at: "2026-09-02T12:00:00.000Z", completed_at: "2026-09-02T12:01:00.000Z",
+          }] };
+          if (sql.includes("FROM design_review_findings")) return { results: [] };
+          if (sql.includes("FROM design_review_dispositions")) return { results: [] };
+          if (sql.includes("FROM design_gate_bindings")) return { results: [{
+            visit_sequence: 20, round_id: "round-2", head_sha: head,
+          }] };
+          throw new Error(`unexpected query: ${sql}`);
+        },
+      }) };
+    },
+  } as unknown as D1Database;
+  const projection = await new DesignReviewReadStore(db, {} as R2Bucket).projection(runId) as {
+    supported: boolean;
+    rounds: Array<{ selfStatus: string; status: string }>;
+    attempts: Array<{ outcome: string; accepted: boolean; freshness: string }>;
+    gateBindings: unknown[];
+  };
+  assert.equal(projection.supported, true);
+  assert.deepEqual(projection.rounds.map((round) => [round.selfStatus, round.status]), [
+    ["not_required", "ready_for_human"],
+  ]);
+  assert.deepEqual(projection.attempts.map((attempt) => [attempt.outcome, attempt.accepted, attempt.freshness]), [
+    ["failed", false, "current"],
+  ]);
+  assert.equal(projection.gateBindings.length, 1);
 });

@@ -4,6 +4,11 @@ import { D1PlanningStore, type RunWorkProductRecord } from "./planning-store.ts"
 import { D1DesignStore, type DesignWorkProductRecord } from "./design-store.ts";
 import { DESIGN_CANDIDATE_CONTEXT_LIMIT } from "./design-candidate.ts";
 import { sha256Hex } from "./trace-review.ts";
+import {
+  canonicalDesignReviewJson,
+  validateDesignReviewInput,
+  type DesignReviewInput,
+} from "./design-review.ts";
 
 interface LinearIssueContext {
   id: string;
@@ -260,14 +265,18 @@ export class JobInputMaterializer {
     const priorAttempts = await this.priorAttempts(run.run_id);
     const openspecChange = openSpecChangeIdentity(issue.identifier);
     const designAuthor = job.inputs.includes("design_context");
-    const continuationPatch = designAuthor
+    const designReviewer = job.agentRole === "reviewer" && job.reviewKind === "design";
+    const designParticipant = designAuthor || designReviewer;
+    const continuationPatch = designReviewer
+      ? null
+      : designAuthor
       ? await this.designContinuationPatch(run.run_id)
       : await this.continuationPatch(run.run_id);
     const planningAuthor = !designAuthor && (
       job.capabilities?.includes("github.publish_planning_work_product") === true ||
       (job.agentRole === "author" && job.inputs.includes("openspec_change"))
     );
-    const planningParticipant = designAuthor || planningAuthor || job.agentRole === "reviewer" ||
+    const planningParticipant = designParticipant || planningAuthor || job.agentRole === "reviewer" ||
       job.context.includes("planning_pull_request") || job.inputs.includes("traceability_feedback");
     const planningWorkProduct = planningAuthor
       ? await this.allocatePlanningWorkProduct(run, openspecChange)
@@ -284,19 +293,22 @@ export class JobInputMaterializer {
       throw new Error("planning work product does not match the frozen route");
     }
     let designWorkProduct: DesignWorkProductRecord | null = null;
-    if (designAuthor) {
+    if (designParticipant) {
       if (
         planningWorkProduct === null || planningWorkProduct.merge_commit_sha === null ||
         planningWorkProduct.verified_merge_commit_sha !== planningWorkProduct.merge_commit_sha ||
         planningWorkProduct.verification_operation_id === null
       ) throw new Error("checked planning merge is required for design allocation");
-      designWorkProduct = await new D1DesignStore(this.database).allocate({
-        runId: run.run_id,
-        repository: frozenRepository,
-        baseCommit: planningWorkProduct.merge_commit_sha,
-        changeId: openspecChange,
-        now: this.now().toISOString(),
-      });
+      designWorkProduct = designAuthor
+        ? await new D1DesignStore(this.database).allocate({
+          runId: run.run_id,
+          repository: frozenRepository,
+          baseCommit: planningWorkProduct.merge_commit_sha,
+          changeId: openspecChange,
+          now: this.now().toISOString(),
+        })
+        : await new D1DesignStore(this.database).findWorkProduct(run.run_id);
+      if (designWorkProduct === null) throw new Error("design review work product is missing");
     }
     const feedbackWorkProduct = designAuthor ? designWorkProduct : planningWorkProduct;
     const githubFeedback = feedbackWorkProduct?.pull_request_number === null ||
@@ -307,13 +319,25 @@ export class JobInputMaterializer {
           feedbackWorkProduct.pull_request_number,
           frozenInstallationId,
         ));
-    const approvedPlan = designAuthor
+    const approvedPlan = designParticipant
       ? await this.approvedPlan(planningWorkProduct!, frozenInstallationId)
       : null;
-    const repositoryGuidance = designAuthor
+    const repositoryGuidance = designParticipant
       ? await this.readGitHubGuidance(frozenRepository, designWorkProduct!.base_commit, frozenInstallationId)
       : [];
-    const priorDesign = designAuthor ? await this.priorDesign(run.run_id) : null;
+    const priorDesign = designParticipant ? await this.priorDesign(run.run_id) : null;
+    const designReview = designReviewer
+      ? await this.designReviewInput({
+        run,
+        job,
+        planning: planningWorkProduct!,
+        design: designWorkProduct!,
+        candidate: priorDesign!,
+        approvedPlan: approvedPlan!,
+        guidance: repositoryGuidance,
+        installationId: frozenInstallationId,
+      })
+      : null;
     const bundle = {
       version: 1,
       declaredInputs: job.inputs,
@@ -396,6 +420,10 @@ export class JobInputMaterializer {
       traceabilityFeedback: job.inputs.includes("traceability_feedback")
         ? await this.traceabilityFeedback(run.run_id)
         : null,
+      designReview,
+      designReviewFeedback: job.inputs.includes("design_review_feedback")
+        ? await this.designReviewFeedback(run.run_id)
+        : null,
     };
     const encoded = JSON.stringify(bundle);
     if (encoded.length > 128_000) throw new Error("materialized job inputs exceed the trusted limit");
@@ -408,6 +436,113 @@ export class JobInputMaterializer {
       designWorkProduct,
       checkoutCommit: designWorkProduct?.base_commit ?? null,
     };
+  }
+
+  private async designReviewInput(input: {
+    run: OrchestrationRunRecord;
+    job: WorkflowJob;
+    planning: RunWorkProductRecord;
+    design: DesignWorkProductRecord;
+    candidate: Record<string, unknown>;
+    approvedPlan: readonly { path: string; content: string; sha256: string; byteSize: number }[];
+    guidance: readonly { path: string; content: string }[];
+    installationId: string;
+  }): Promise<Record<string, unknown>> {
+    const phase = input.job.modelProvider === "openrouter" ? "independent" as const : "self" as const;
+    const candidateId = String(input.candidate.candidateId ?? "");
+    const candidateDigest = String(input.candidate.candidateDigest ?? "");
+    const candidatePath = String(input.candidate.path ?? "");
+    const candidateContent = String(input.candidate.content ?? "");
+    const round = Number(input.candidate.round);
+    if (
+      !candidateId.startsWith("design:") || !/^[a-f0-9]{64}$/.test(candidateDigest) ||
+      candidatePath !== `openspec/changes/${input.design.change_id}/design.md` ||
+      !Number.isSafeInteger(round) || round < 1
+    ) throw new Error("design review candidate identity is invalid");
+    let designContent = candidateContent;
+    let approvedPlan = input.approvedPlan;
+    if (phase === "independent") {
+      if (
+        input.design.pull_request_database_id === null || input.design.head_sha === null ||
+        input.design.design_manifest_json === null
+      ) throw new Error("independent design review pull request is missing");
+      designContent = await this.readGitHubFile(
+        input.design.repository,
+        candidatePath,
+        input.design.head_sha,
+        input.installationId,
+      );
+      if (await sha256Hex(designContent) !== String(input.candidate.designDigest ?? "")) {
+        throw new Error("published design does not match the selected candidate");
+      }
+      approvedPlan = Object.freeze(await Promise.all(input.approvedPlan.map(async (file) => {
+        const content = await this.readGitHubFile(
+          input.design.repository,
+          file.path,
+          input.design.head_sha!,
+          input.installationId,
+        );
+        if (
+          await sha256Hex(content) !== file.sha256 ||
+          new TextEncoder().encode(content).byteLength !== file.byteSize
+        ) throw new Error("published approved plan does not match its checked merge");
+        return Object.freeze({ ...file, content });
+      })));
+    }
+    const guidance = await Promise.all(input.guidance.map(async (file) => ({
+      path: file.path,
+      content: file.content,
+      sha256: await sha256Hex(file.content),
+    })));
+    guidance.sort((left, right) => left.path.localeCompare(right.path));
+    const guidanceManifestSha256 = await sha256Hex(canonicalDesignReviewJson(
+      guidance.map(({ path, sha256 }) => ({ path, sha256 })),
+    ));
+    const sources = [
+      ...approvedPlan.map(({ path, content, sha256 }) => ({ path, content, sha256 })),
+      { path: candidatePath, content: designContent, sha256: await sha256Hex(designContent) },
+      ...guidance,
+    ].sort((left, right) => left.path.localeCompare(right.path));
+    const reviewInput: DesignReviewInput = {
+      version: 1,
+      runId: input.run.run_id,
+      round,
+      phase,
+      candidateId,
+      candidateSha256: candidateDigest,
+      approvedPlanManifestSha256: input.planning.planning_manifest_digest ?? "",
+      baseCommit: input.design.base_commit,
+      guidanceManifestSha256,
+      sources: sources.map(({ path, sha256 }) => ({ path, sha256 })),
+      modelProvider: input.job.modelProvider ?? "codex",
+      model: input.job.model ?? "",
+      reasoning: input.job.reasoning ?? "",
+      pullRequestDatabaseId: phase === "independent" ? input.design.pull_request_database_id : null,
+      headSha: phase === "independent" ? input.design.head_sha : null,
+    };
+    const validated = await validateDesignReviewInput(reviewInput);
+    const inputR2Key = `runs/${encodeURIComponent(input.run.run_id)}/design-reviews/inputs/${validated.inputSha256}.json`;
+    const existing = await this.artifacts.get(inputR2Key);
+    if (existing === null) {
+      await this.artifacts.put(inputR2Key, validated.encoded, {
+        onlyIf: { etagDoesNotMatch: "*" },
+        httpMetadata: { contentType: "application/json" },
+        customMetadata: { sha256: validated.inputSha256, policy: "deos-design-review-input-v1" },
+      });
+    } else if (await sha256Hex(await existing.text()) !== validated.inputSha256) {
+      throw new Error("design review input object conflict");
+    }
+    const readBack = await this.artifacts.get(inputR2Key);
+    if (readBack === null || await sha256Hex(await readBack.text()) !== validated.inputSha256) {
+      throw new Error("design review input read-back failed");
+    }
+    return Object.freeze({
+      input: validated.input,
+      inputSha256: validated.inputSha256,
+      inputR2Key,
+      phase,
+      sources: Object.freeze(sources.map((source) => Object.freeze(source))),
+    });
   }
 
   private async approvedPlan(
@@ -434,10 +569,68 @@ export class JobInputMaterializer {
         installationId,
       ),
     })));
+    for (const file of files) {
+      if (
+        await sha256Hex(file.content) !== file.sha256 ||
+        new TextEncoder().encode(file.content).byteLength !== file.byteSize
+      ) throw new Error("approved planning file does not match its checked manifest");
+    }
     if (files.reduce((sum, file) => sum + new TextEncoder().encode(file.content).byteLength, 0) > 96_000) {
       throw new Error("approved plan context exceeds the trusted limit");
     }
     return Object.freeze(files.map((file) => Object.freeze(file)));
+  }
+
+  private async designReviewFeedback(runId: string): Promise<Record<string, unknown> | null> {
+    const review = await this.database.prepare(
+      `SELECT attempt.review_attempt_id, attempt.phase, attempt.input_sha256,
+              attempt.candidate_id, attempt.pr_database_id, attempt.head_sha,
+              attempt.outcome, attempt.completed_at
+       FROM design_review_attempts attempt
+       JOIN design_review_rounds round ON round.round_id = attempt.round_id
+       WHERE round.run_id = ? AND attempt.accepted = 1 AND attempt.outcome = 'concerns'
+         AND round.round_no = (
+           SELECT MAX(current.round_no) FROM design_review_rounds current WHERE current.run_id = ?
+         )
+       ORDER BY round.round_no DESC, attempt.completed_at DESC, attempt.review_attempt_id DESC LIMIT 1`,
+    ).bind(runId, runId).first<{
+      review_attempt_id: string;
+      phase: string;
+      input_sha256: string;
+      candidate_id: string;
+      pr_database_id: string | null;
+      head_sha: string | null;
+      outcome: string;
+      completed_at: string;
+    }>();
+    if (review === null) return null;
+    const findings = await this.database.prepare(
+      `SELECT finding_id, severity, category, message, source_ranges_json
+       FROM design_review_findings WHERE review_attempt_id = ? ORDER BY finding_id`,
+    ).bind(review.review_attempt_id).all<{
+      finding_id: string;
+      severity: string;
+      category: string;
+      message: string;
+      source_ranges_json: string;
+    }>();
+    return Object.freeze({
+      reviewAttemptId: review.review_attempt_id,
+      phase: review.phase,
+      inputSha256: review.input_sha256,
+      candidateId: review.candidate_id,
+      pullRequestDatabaseId: review.pr_database_id,
+      headSha: review.head_sha,
+      outcome: review.outcome,
+      completedAt: review.completed_at,
+      findings: Object.freeze(findings.results.map((finding) => Object.freeze({
+        id: finding.finding_id,
+        severity: finding.severity,
+        category: finding.category,
+        message: finding.message,
+        sourceRanges: JSON.parse(finding.source_ranges_json),
+      }))),
+    });
   }
 
   private async priorDesign(runId: string): Promise<Record<string, unknown> | null> {

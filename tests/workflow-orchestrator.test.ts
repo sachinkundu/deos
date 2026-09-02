@@ -154,6 +154,7 @@ const traceabilityDefinition = await loadWorkflowDefinition(
       "openspec-traceability-review.md",
       "openspec-traceability-recheck.md",
       "openspec-design-author.md",
+      "openspec-design-review.md",
     ].map((name) => [
       `prompts/${name}`,
       readFileSync(new URL(`../config/prompts/${name}`, import.meta.url), "utf8"),
@@ -161,6 +162,7 @@ const traceabilityDefinition = await loadWorkflowDefinition(
     schemas: Object.fromEntries([
       "agent-result-v1.json",
       "trace-agent-result-v1.json",
+      "design-review-result-v1.json",
     ].map((name) => [
       `schemas/${name}`,
       readFileSync(new URL(`../config/schemas/${name}`, import.meta.url), "utf8"),
@@ -634,10 +636,11 @@ test("simple graph cancellation reaches no merge action", async () => {
   assert.deepEqual(services.systemActions, ["linear.delegate_and_start"]);
 });
 
-test("version 17 traverses checked planning and a revised design through distinct gates", async () => {
+test("version 19 reviews the first and revised design before distinct human gates", async () => {
   const store = new RuntimeStore(makeRun(traceabilityDefinition));
   const services = new NodeServices([
-    "completed", "pass", "pass", "completed", "pass", "completed", "completed",
+    "completed", "pass", "pass", "completed", "pass",
+    "completed", "pass", "pass", "completed", "pass",
   ]);
   store.inbox.set("delivery-plan-merge", inboxEvent("delivery-plan-merge", "user", "Merging"));
   store.inbox.set("delivery-design-revision", inboxEvent("delivery-design-revision", "user", "In Progress"));
@@ -683,10 +686,11 @@ test("version 17 traverses checked planning and a revised design through distinc
   ]);
 });
 
-test("version 17 recovers initial design publication feedback before any design gate exists", async () => {
+test("version 19 recovers initial design publication feedback before any design gate exists", async () => {
   const store = new RuntimeStore(makeRun(traceabilityDefinition));
   const services = new InitialDesignFeedbackServices([
-    "completed", "pass", "pass", "completed", "pass", "completed", "completed",
+    "completed", "pass", "pass", "completed", "pass",
+    "completed", "pass", "completed", "pass",
   ]);
   store.inbox.set("delivery-plan-merge", inboxEvent("delivery-plan-merge", "user", "Merging"));
   store.inbox.set("delivery-design-merge", inboxEvent("delivery-design-merge", "user", "Merging"));

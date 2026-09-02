@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deos.dev/schemas/design-review-result-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["outcome", "reviewOutcome", "summary", "findingCount", "providerReceipts"],
+  "properties": {
+    "outcome": { "type": "string", "enum": ["completed", "blocked", "failed"] },
+    "reviewOutcome": { "type": "string", "enum": ["pass", "concerns"] },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "findingCount": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "providerReceipts": { "type": "array", "items": { "type": "string" } }
+  }
+}

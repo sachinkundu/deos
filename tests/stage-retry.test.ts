@@ -144,8 +144,11 @@ test("a failed planning revision author can request a same-definition retry", as
   assert.equal(store.preparedRetryNode, "planning_revision_author");
 });
 
-test("failed design authors can retry without returning to planning", async () => {
-  for (const retryNode of ["design_author", "design_revision_author"] as const) {
+test("failed design author and review stages can retry without returning to planning", async () => {
+  for (const retryNode of [
+    "design_author", "design_revision_author", "design_self_review",
+    "design_independent_review", "design_self_response", "design_independent_response",
+  ] as const) {
     const store = new FakeRetryStore();
     const controller = new AgentStageRetryController(
       store,

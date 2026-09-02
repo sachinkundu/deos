@@ -760,6 +760,76 @@ function ReviewTracePage({ runId }: { runId: string }) {
   </section>;
 }
 
+interface DesignReviewProjection {
+  run: Record<string, unknown>;
+  supported: boolean;
+  rounds: Array<Record<string, unknown> & { round_no: number; selfStatus: string }>;
+  attempts: Array<{
+    id: string;
+    round: number;
+    phase: string;
+    inputSha256: string;
+    candidateId: string;
+    reviewedHeadSha: string | null;
+    reviewer: { provider: string; model: string; reasoning: string };
+    outcome: string;
+    accepted: boolean;
+    freshness: "current" | "stale" | "historical" | "private";
+    completedAt: string | null;
+    findings: Array<{
+      id: string;
+      severity: string;
+      category: string;
+      message: string;
+      sourceRanges: Array<{ path: string; startLine: number; endLine: number }>;
+      disposition: null | { disposition: string; reason: string };
+    }>;
+    artifacts: ReviewArtifact[];
+  }>;
+  gateBindings: Array<Record<string, unknown>>;
+}
+
+function DesignReviewPage({ runId }: { runId: string }) {
+  const [proof, setProof] = useState<DesignReviewProjection | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    void api<DesignReviewProjection>(`/api/runs/${encodeURIComponent(runId)}/design-review`, controller.signal)
+      .then(setProof)
+      .catch((cause) => {
+        if (!(cause instanceof DOMException && cause.name === "AbortError")) {
+          setError(cause instanceof Error ? cause.message : "The design review proof could not be loaded.");
+        }
+      });
+    return () => controller.abort();
+  }, [runId]);
+  if (error) return <section className="empty-state"><WarningCircle /><h1>Design review unavailable</h1><p>{error}</p></section>;
+  if (proof === null) return <section className="empty-state"><SpinnerGap className="spin" /><h1>Loading design review</h1></section>;
+  const issueKey = typeof proof.run.issue_key === "string" ? proof.run.issue_key : "Linear issue";
+  const issueTitle = typeof proof.run.title === "string" ? proof.run.title : "";
+  const issueUrl = typeof proof.run.linear_url === "string" ? proof.run.linear_url : null;
+  const pullRequestUrl = typeof proof.run.pull_request_url === "string" ? proof.run.pull_request_url : null;
+  if (!proof.supported) return <section className="empty-state"><WarningCircle /><h1>Design review not required</h1><p>This run uses a workflow definition from before semantic design review was introduced.</p></section>;
+  return <section className="review-page">
+    <div className="settings-heading"><div><span className="eyebrow">Protected workflow proof</span><h1>OpenSpec design review</h1><p>Accepted D1 state and hash-verified R2 evidence for the exact reviewed design head.</p></div><GitPullRequest /></div>
+    <article className="settings-card">
+      <div className="card-heading"><div><span className="eyebrow">Reviewed work</span><h2>{issueKey}: {issueTitle}</h2></div><span className="guard">{String(proof.run.status ?? "unknown")}</span></div>
+      <dl><div><dt>Run</dt><dd><code>{runId}</code></dd></div><div><dt>Current design head</dt><dd><code>{typeof proof.run.head_sha === "string" ? proof.run.head_sha.slice(0, 12) : "Not published"}</code></dd></div><div><dt>Review rounds</dt><dd>{proof.rounds.length}</dd></div><div><dt>Gate bindings</dt><dd>{proof.gateBindings.length}</dd></div></dl>
+      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={pullRequestUrl} target="_blank" rel="noreferrer">Open design PR <ArrowSquareOut /></a>}</div>
+    </article>
+    <div className="review-summary-grid">{proof.rounds.map((round) => <article className="review-phase" key={String(round.round_id)}><span className="eyebrow">Round {round.round_no} · {human(String(round.kind))}</span><h2>{human(String(round.status))}</h2><dl><div><dt>Self-check</dt><dd>{human(round.selfStatus)}</dd></div><div><dt>Author responses</dt><dd>{String(round.response_turns)} / 3</dd></div><div><dt>Outside model</dt><dd>{String(round.outside_model)}</dd></div></dl></article>)}</div>
+    <ol className="review-timeline">{proof.attempts.map((attempt, index) => <li key={attempt.id} className={`review-event ${attempt.outcome}`}>
+      <div className="review-event-index">{index + 1}</div><div className="review-event-body">
+        <div className="card-heading"><div><span className="eyebrow">Round {attempt.round} · {human(attempt.phase)}</span><h2>{human(attempt.outcome)}</h2></div><span className="guard">{human(attempt.freshness)}</span></div>
+        <p>Reviewer {attempt.reviewer.provider} · {attempt.reviewer.model} · {attempt.reviewer.reasoning}. This evidence is not human approval.</p>
+        <dl><div><dt>Input</dt><dd><code>{attempt.inputSha256.slice(0, 16)}…</code></dd></div><div><dt>Candidate</dt><dd><code>{attempt.candidateId.slice(0, 20)}…</code></dd></div><div><dt>Head</dt><dd><code>{attempt.reviewedHeadSha?.slice(0, 12) ?? "private candidate"}</code></dd></div><div><dt>Finished</dt><dd>{attempt.completedAt ? formatTime(attempt.completedAt) : "Failed or running"}</dd></div></dl>
+        {attempt.findings.length > 0 && <div className="review-findings"><h3>Design concerns</h3>{attempt.findings.map((finding) => <article key={finding.id}><strong>{finding.id}</strong><span>{finding.disposition ? human(finding.disposition.disposition) : human(finding.severity)}</span><p>{finding.message}</p>{finding.disposition && <p><strong>Author:</strong> {finding.disposition.reason}</p>}<div className="review-artifacts">{finding.sourceRanges.map((range, rangeIndex) => <code key={rangeIndex}>{range.path}:{range.startLine}-{range.endLine}</code>)}</div></article>)}</div>}
+        <div className="review-artifacts">{attempt.artifacts.map((artifact) => <a href={artifact.url} key={artifact.name} target="_blank" rel="noreferrer">{artifact.name} <ArrowSquareOut /></a>)}</div>
+      </div>
+    </li>)}</ol>
+  </section>;
+}
+
 function App() {
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("deos-theme") as Theme | null) ?? "system");
   const [query, setQuery] = useState(() => localStorage.getItem("deos-issue") ?? "SAC-148");
@@ -787,7 +857,7 @@ function App() {
     return () => window.removeEventListener("popstate", restoreRoute);
   }, []);
 
-  const navigate = useCallback((next: Exclude<PortalPage, "not-found" | "review">) => {
+  const navigate = useCallback((next: "workflow" | "settings") => {
     const path = portalPathForPage(next);
     if (window.location.pathname !== path) window.history.pushState({}, "", path);
     setPage(next);
@@ -876,7 +946,7 @@ function App() {
       </div>
     </aside>}
     <main className={page !== "workflow" ? "main settings-main" : "main"}>
-      {page === "settings" ? <SettingsPanel /> : page === "review" ? <ReviewTracePage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "not-found" ? <section className="empty-state"><WarningCircle /><h1>Page not found</h1><p>This portal route is not registered.</p><button className="route-action" type="button" onClick={() => navigate("workflow")}>Go to workflows</button></section> : <>
+      {page === "settings" ? <SettingsPanel /> : page === "review" ? <ReviewTracePage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "design-review" ? <DesignReviewPage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "not-found" ? <section className="empty-state"><WarningCircle /><h1>Page not found</h1><p>This portal route is not registered.</p><button className="route-action" type="button" onClick={() => navigate("workflow")}>Go to workflows</button></section> : <>
       {poll.staged && <div className="update-banner"><span><ArrowClockwise /> Confirmed workflow data is ready.</span><button type="button" onClick={() => setPoll(applyStaged)}>Apply update</button></div>}
       {poll.error && <div className="error-banner"><WarningCircle />{poll.error}<button type="button" onClick={() => runId && void loadProjection(runId)}>Retry</button></div>}
       {selectedIssue && <section className="issue-header">

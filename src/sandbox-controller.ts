@@ -374,6 +374,12 @@ interface SandboxControllerDependencies {
     path: string;
     content: string;
     reviewReplies: readonly DesignReviewReply[];
+    reviewDispositions: readonly {
+      findingId: string;
+      status: "applied" | "declined" | "no_change";
+      reason: string;
+    }[];
+    reviewContextId: string | null;
   }) => Promise<void>;
   acceptTraceReview?: (input: {
     run: OrchestrationRunRecord;
@@ -381,7 +387,23 @@ interface SandboxControllerDependencies {
     job: WorkflowJob;
     collection: ArtifactCollectionResult;
   }) => Promise<string | void>;
+  acceptDesignReview?: (input: {
+    run: OrchestrationRunRecord;
+    attempt: AgentAttemptRecord;
+    job: WorkflowJob;
+    collection: ArtifactCollectionResult;
+  }) => Promise<string | void>;
+  recordDesignReviewFailure?: (input: {
+    attempt: AgentAttemptRecord;
+    job: WorkflowJob;
+    manifestId: string | null;
+  }) => Promise<void>;
   reuseTraceReview?: (
+    run: OrchestrationRunRecord,
+    nodeId: string,
+    job: WorkflowJob,
+  ) => Promise<AgentExecutionObservation | null>;
+  reuseDesignReview?: (
     run: OrchestrationRunRecord,
     nodeId: string,
     job: WorkflowJob,
@@ -427,8 +449,11 @@ export class SandboxAgentController {
     const configuredJob = definition.jobs[jobId];
     if (configuredJob === undefined) throw new Error(`workflow job ${jobId} is missing`);
     const job = this.runtimeJob(run, configuredJob);
-    if (job.agentRole === "reviewer" && this.dependencies.reuseTraceReview !== undefined) {
-      const reused = await this.dependencies.reuseTraceReview(run, nodeId, job);
+    if (job.agentRole === "reviewer") {
+      const reuse = job.reviewKind === "design"
+        ? this.dependencies.reuseDesignReview
+        : this.dependencies.reuseTraceReview;
+      const reused = reuse === undefined ? null : await reuse(run, nodeId, job);
       if (reused !== null) return reused;
     }
     let attempt = await this.attempts.findLatest(run.run_id, nodeId);
@@ -530,6 +555,7 @@ export class SandboxAgentController {
       reasoning: job.reasoning ?? null,
       permissionProfile: job.permissionProfile ?? null,
       providerAccess: job.providerAccess ?? [],
+      reviewKind: job.reviewKind ?? "traceability",
       reviewMode: job.reviewMode ?? null,
       continuationPatch: materialized.continuationPatch,
       checkoutCommit: materialized.checkoutCommit,
@@ -589,6 +615,7 @@ export class SandboxAgentController {
         reasoning?: unknown;
         permissionProfile?: unknown;
         providerAccess?: unknown;
+        reviewKind?: unknown;
       };
       if (typeof durableJob.materializedContext !== "string") {
         throw new Error("materialized job context is missing");
@@ -606,14 +633,16 @@ export class SandboxAgentController {
         )
       ) throw new Error("OpenSpec job identity is invalid");
       const planningJob = job.capabilities?.includes("github.publish_planning_work_product") === true;
-      const designJob = job.inputs.includes("design_context");
+      const designAuthorJob = job.inputs.includes("design_context");
+      const designJob = designAuthorJob || job.reviewKind === "design";
       if (job.agentRole !== undefined && (
         durableJob.agentRole !== job.agentRole || durableJob.agentHarness !== AGENT_HARNESS ||
         durableJob.agentHarnessVersion !== AGENT_HARNESS_VERSION ||
         durableJob.modelProvider !== job.modelProvider ||
         durableJob.model !== job.model || durableJob.reasoning !== job.reasoning ||
         durableJob.permissionProfile !== job.permissionProfile ||
-        JSON.stringify(durableJob.providerAccess) !== JSON.stringify(job.providerAccess ?? [])
+        JSON.stringify(durableJob.providerAccess) !== JSON.stringify(job.providerAccess ?? []) ||
+        durableJob.reviewKind !== (job.reviewKind ?? "traceability")
       )) throw new Error("saved agent model configuration is invalid");
       if (
         planningJob &&
@@ -670,9 +699,10 @@ export class SandboxAgentController {
         model: job.model ?? null,
         reasoning: job.reasoning ?? null,
         permissionProfile: job.permissionProfile ?? null,
+        reviewKind: job.reviewKind ?? "traceability",
         reviewMode: job.reviewMode ?? null,
         openspecChange: typeof durableJob.openspecChange === "string" ? durableJob.openspecChange : null,
-        designOnly: designJob,
+        designOnly: designAuthorJob,
         materializedContext: durableJob.materializedContext,
       };
       await sandbox.writeFile("/deos/run/job.json", JSON.stringify(stagedJob), { encoding: "utf8" });
@@ -948,10 +978,17 @@ export class SandboxAgentController {
         }
       }
       if (job.agentRole === "reviewer") {
-        if (this.dependencies.acceptTraceReview === undefined) {
-          throw new Error("trusted trace review accepter is unavailable");
+        if (job.reviewKind === "design") {
+          if (this.dependencies.acceptDesignReview === undefined) {
+            throw new Error("trusted design review accepter is unavailable");
+          }
+          resultClass = await this.dependencies.acceptDesignReview({ run, attempt, job, collection }) ?? resultClass;
+        } else {
+          if (this.dependencies.acceptTraceReview === undefined) {
+            throw new Error("trusted trace review accepter is unavailable");
+          }
+          resultClass = await this.dependencies.acceptTraceReview({ run, attempt, job, collection }) ?? resultClass;
         }
-        resultClass = await this.dependencies.acceptTraceReview({ run, attempt, job, collection }) ?? resultClass;
       }
       const state = resultClass === "blocked" ? "blocked" : resultClass === "failed" ? "failed" : "completed";
       await this.attempts.finish({
@@ -984,6 +1021,13 @@ export class SandboxAgentController {
       };
     } catch {
       if (collection !== null) {
+        if (job.reviewKind === "design") {
+          await this.dependencies.recordDesignReviewFailure?.({
+            attempt,
+            job,
+            manifestId: collection.manifestId,
+          });
+        }
         await this.attempts.finish({
           attemptId: attempt.attempt_id,
           expected: "collecting",
@@ -1221,6 +1265,39 @@ export class SandboxAgentController {
     } catch {
       throw new DesignCandidateRejectedError("trusted design review replies are invalid");
     }
+    let reviewDispositions: readonly {
+      findingId: string;
+      status: "applied" | "declined" | "no_change";
+      reason: string;
+    }[] = [];
+    let reviewContextId: string | null = null;
+    if (run.definition_id === "simple-traceability" && run.definition_version >= 19) {
+      try {
+        reviewDispositions = JSON.parse((await sandbox.readFile("/deos/output/design-dispositions.json", {
+          encoding: "utf8",
+        })).content) as typeof reviewDispositions;
+        if (!Array.isArray(reviewDispositions)) throw new Error("not an array");
+        const materialized = typeof durableJob.materializedContext === "string"
+          ? JSON.parse(durableJob.materializedContext) as {
+              designReviewFeedback?: {
+                reviewAttemptId?: unknown;
+                findings?: Array<{ id?: unknown }>;
+              } | null;
+            }
+          : null;
+        const expectedIds = (materialized?.designReviewFeedback?.findings ?? []).map((finding) => finding.id);
+        reviewContextId = typeof materialized?.designReviewFeedback?.reviewAttemptId === "string"
+          ? materialized.designReviewFeedback.reviewAttemptId
+          : null;
+        if (
+          expectedIds.some((id) => typeof id !== "string") ||
+          JSON.stringify(reviewDispositions.map((item) => item.findingId).sort()) !==
+            JSON.stringify([...expectedIds].sort())
+        ) throw new Error("wrong disposition set");
+      } catch {
+        throw new DesignCandidateRejectedError("trusted design review dispositions are invalid");
+      }
+    }
     const content = (await sandbox.readFile(`/deos/workspace/repository/${expectedPath}`, {
       encoding: "utf8",
     })).content;
@@ -1232,6 +1309,8 @@ export class SandboxAgentController {
       path: expectedPath,
       content,
       reviewReplies,
+      reviewDispositions,
+      reviewContextId,
     });
   }
 
@@ -1310,6 +1389,13 @@ export class SandboxAgentController {
       manifestId: collection.manifestId,
       now: this.dependencies.now().toISOString(),
     });
+    if (job.reviewKind === "design") {
+      await this.dependencies.recordDesignReviewFailure?.({
+        attempt,
+        job,
+        manifestId: collection.manifestId,
+      });
+    }
     this.emitForAttempt(
       attempt,
       "artifact.manifest",

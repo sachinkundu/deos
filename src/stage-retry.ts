@@ -8,7 +8,11 @@ export type AgentStageRetryNode =
   | "independent_discovery"
   | "independent_recheck"
   | "design_author"
-  | "design_revision_author";
+  | "design_revision_author"
+  | "design_self_review"
+  | "design_independent_review"
+  | "design_self_response"
+  | "design_independent_response";
 
 const agentStageRetryNodes = new Set<unknown>([
   "planning_revision_author",
@@ -16,6 +20,10 @@ const agentStageRetryNodes = new Set<unknown>([
   "independent_recheck",
   "design_author",
   "design_revision_author",
+  "design_self_review",
+  "design_independent_review",
+  "design_self_response",
+  "design_independent_response",
 ]);
 
 const isAgentStageRetryNode = (value: unknown): value is AgentStageRetryNode =>

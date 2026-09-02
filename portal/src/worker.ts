@@ -12,6 +12,11 @@ import {
   TraceReviewReadStore,
 } from "./review.ts";
 import {
+  DesignReviewArtifactError,
+  DesignReviewNotFoundError,
+  DesignReviewReadStore,
+} from "./design-review.ts";
+import {
   ReviewStoryArtifactError,
   ReviewStoryNotFoundError,
   ReviewStoryReadStore,
@@ -107,8 +112,8 @@ export const routePortalRequest = async (
       ? "/index.html"
       : url.pathname === "/settings" || url.pathname === "/settings/"
         ? "/settings.html"
-        : /^\/runs\/.+\/review\/?$/.test(url.pathname)
-          ? "/index.html"
+        : /^\/runs\/.+\/(?:review|design-review)\/?$/.test(url.pathname)
+          ? "/settings.html"
         : url.pathname.startsWith("/assets/")
           ? url.pathname
           : null;
@@ -233,6 +238,24 @@ export const routePortalRequest = async (
         },
       });
     }
+    const designReviewArtifactMatch = url.pathname.match(/^\/api\/design-reviews\/([^/]+)\/artifacts\/([^/]+)$/);
+    if (designReviewArtifactMatch !== null) {
+      const artifact = await new DesignReviewReadStore(env.DB, env.ARTIFACTS).artifact(
+        decodeURIComponent(designReviewArtifactMatch[1]),
+        decodeURIComponent(designReviewArtifactMatch[2]),
+      );
+      return new Response(request.method === "HEAD" ? null : artifact.bytes, {
+        status: 200,
+        headers: { ...securityHeaders, "Content-Type": artifact.mediaType,
+          "Content-Length": String(artifact.bytes.byteLength), "X-Content-SHA256": artifact.sha256 },
+      });
+    }
+    const designReviewMatch = url.pathname.match(/^\/api\/runs\/(.+)\/design-review$/);
+    if (designReviewMatch !== null) {
+      const result = await new DesignReviewReadStore(env.DB, env.ARTIFACTS)
+        .projection(decodeURIComponent(designReviewMatch[1]));
+      return result === null ? json(404, { error: "run_not_found" }) : json(200, result);
+    }
     const reviewMatch = url.pathname.match(/^\/api\/runs\/(.+)\/review$/);
     if (reviewMatch !== null) {
       const result = await new TraceReviewReadStore(env.DB, env.ARTIFACTS)
@@ -279,6 +302,8 @@ export const routePortalRequest = async (
     if (error instanceof TranscriptUnavailableError) return json(503, { error: "transcript_unavailable" });
     if (error instanceof TraceReviewNotFoundError) return json(404, { error: "review_artifact_not_found" });
     if (error instanceof TraceReviewArtifactError) return json(503, { error: "review_artifact_unavailable" });
+    if (error instanceof DesignReviewNotFoundError) return json(404, { error: "design_review_artifact_not_found" });
+    if (error instanceof DesignReviewArtifactError) return json(503, { error: "design_review_artifact_unavailable" });
     if (error instanceof ReviewStoryNotFoundError) return json(404, { error: "process_artifact_not_found" });
     if (error instanceof ReviewStoryArtifactError) return json(503, { error: "process_artifact_unavailable" });
     const adminError = routeAdminError(error);

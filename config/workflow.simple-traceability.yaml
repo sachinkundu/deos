@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: simple-traceability
-  version: 17
+  version: 19
 spec:
   start: claim_issue
   execution:
@@ -63,10 +63,10 @@ spec:
       reviewMode: discovery
     design_author:
       promptFile: prompts/openspec-design-author.md
-      inputs: [linear_issue, openspec_change, design_context]
+      inputs: [linear_issue, openspec_change, design_context, design_review_feedback]
       context: [approved_planning_merge, prior_design, design_pull_request]
       resultSchema: schemas/agent-result-v1.json
-      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, review-replies.json, author-completion.json]
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, review-replies.json, design-dispositions.json, author-completion.json]
       agentRole: author
       modelProvider: codex
       model: gpt-5.6-sol
@@ -74,6 +74,34 @@ spec:
       permissionProfile: repository_write
       providerAccess: []
       operation: {kind: openspec, instruction: /opsx:continue}
+    design_self_review:
+      promptFile: prompts/openspec-design-review.md
+      inputs: [openspec_change, design_review]
+      context: [approved_planning_merge, prior_design]
+      resultSchema: schemas/design-review-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, raw-review-output.json, normalized-review.json, design-review-input.json, candidate-inventory.json, review-validation.txt]
+      agentRole: reviewer
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: []
+      reviewKind: design
+      reviewMode: discovery
+    design_independent_review:
+      promptFile: prompts/openspec-design-review.md
+      inputs: [openspec_change, design_review]
+      context: [approved_planning_merge, design_pull_request]
+      resultSchema: schemas/design-review-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, raw-review-output.json, normalized-review.json, design-review-input.json, candidate-inventory.json, review-validation.txt]
+      agentRole: reviewer
+      modelProvider: openrouter
+      model: configured-at-run-allocation
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: [model.openrouter_review]
+      reviewKind: design
+      reviewMode: discovery
   nodes:
     claim_issue:
       type: system_action
@@ -162,11 +190,35 @@ spec:
     design_author:
       type: agent
       job: design_author
-      edges: {completed: publish_design, invalid_design_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+      edges: {completed: design_self_review, invalid_design_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+    design_self_review:
+      type: agent
+      job: design_self_review
+      edges: {pass: publish_design, concerns: design_self_response, blocked: agent_blocked, failed: agent_failed}
+    design_self_response:
+      type: agent
+      job: design_author
+      edges: {completed: design_self_review, invalid_design_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
     publish_design:
       type: system_action
       action: github.publish_design_candidate
-      edges: {completed: design_review, review_feedback_changed: design_revision_author, failed: system_action_failed}
+      edges: {completed: design_independent_review, unchanged: design_independent_review, review_feedback_changed: design_revision_author, failed: system_action_failed}
+    design_independent_review:
+      type: agent
+      job: design_independent_review
+      edges: {pass: design_review, concerns: design_independent_response, blocked: agent_blocked, failed: agent_failed}
+    design_independent_response:
+      type: agent
+      job: design_author
+      edges: {completed: publish_design_response, invalid_design_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+    publish_design_response:
+      type: system_action
+      action: github.publish_design_candidate
+      edges: {completed: design_final_review, unchanged: design_review, review_feedback_changed: design_revision_author, failed: system_action_failed}
+    design_final_review:
+      type: agent
+      job: design_independent_review
+      edges: {pass: design_review, concerns: design_independent_response, blocked: agent_blocked, failed: agent_failed}
     design_review:
       type: human_gate
       linearState: Human Review
@@ -185,7 +237,11 @@ spec:
     design_revision_author:
       type: agent
       job: design_author
-      edges: {completed: publish_design, invalid_design_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+      edges: {completed: publish_design_revision, invalid_design_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+    publish_design_revision:
+      type: system_action
+      action: github.publish_design_candidate
+      edges: {completed: design_independent_review, unchanged: design_independent_review, review_feedback_changed: design_revision_author, failed: system_action_failed}
     merge_design_pr:
       type: system_action
       action: github.merge_design_pull_request

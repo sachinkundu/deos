@@ -15,9 +15,11 @@ import openSpecPlanningAuthorPrompt from "../config/prompts/openspec-planning-au
 import openSpecDesignAuthorPrompt from "../config/prompts/openspec-design-author.md";
 import traceabilityReviewPrompt from "../config/prompts/openspec-traceability-review.md";
 import traceabilityRecheckPrompt from "../config/prompts/openspec-traceability-recheck.md";
+import designReviewPrompt from "../config/prompts/openspec-design-review.md";
 import agentResultSchema from "../config/schemas/agent-result-v1.json";
 import reviewResultSchema from "../config/schemas/review-result-v1.json";
 import traceAgentResultSchema from "../config/schemas/trace-agent-result-v1.json";
+import designReviewResultSchema from "../config/schemas/design-review-result-v1.json";
 import { loadWorkflowDefinition, type LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import { DEFAULT_WORKFLOW_DEFINITION_ID } from "./workflow-default.ts";
 
@@ -38,12 +40,14 @@ const prompts: Readonly<Record<string, string>> = Object.freeze({
   "prompts/openspec-design-author.md": openSpecDesignAuthorPrompt,
   "prompts/openspec-traceability-review.md": traceabilityReviewPrompt,
   "prompts/openspec-traceability-recheck.md": traceabilityRecheckPrompt,
+  "prompts/openspec-design-review.md": designReviewPrompt,
 });
 
 const schemas: Readonly<Record<string, string>> = Object.freeze({
   "schemas/agent-result-v1.json": JSON.stringify(agentResultSchema),
   "schemas/review-result-v1.json": JSON.stringify(reviewResultSchema),
   "schemas/trace-agent-result-v1.json": JSON.stringify(traceAgentResultSchema),
+  "schemas/design-review-result-v1.json": JSON.stringify(designReviewResultSchema),
 });
 
 const workflowSources = Object.freeze([workflowSource, simpleWorkflowSource, traceabilityWorkflowSource]);
