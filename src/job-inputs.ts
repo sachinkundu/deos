@@ -398,7 +398,6 @@ export class JobInputMaterializer {
         : null,
     };
     const encoded = JSON.stringify(bundle);
-    if (encoded.length > 128_000) throw new Error("materialized job inputs exceed the trusted limit");
     return {
       context: encoded,
       repository: frozenRepository,
@@ -434,9 +433,6 @@ export class JobInputMaterializer {
         installationId,
       ),
     })));
-    if (files.reduce((sum, file) => sum + new TextEncoder().encode(file.content).byteLength, 0) > 96_000) {
-      throw new Error("approved plan context exceeds the trusted limit");
-    }
     return Object.freeze(files.map((file) => Object.freeze(file)));
   }
 
@@ -489,9 +485,6 @@ export class JobInputMaterializer {
     ]);
     if (sidecar === null || inventory === null) throw new Error("traceability feedback artifacts are missing");
     const [sidecarText, inventoryText] = await Promise.all([sidecar.text(), inventory.text()]);
-    if (sidecarText.length + inventoryText.length > 96_000) {
-      throw new Error("traceability feedback exceeds the trusted limit");
-    }
     return {
       reviewId: row.review_id,
       phase: row.phase,

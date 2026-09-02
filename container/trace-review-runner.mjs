@@ -169,7 +169,11 @@ const asObject = (value, label) => {
 };
 
 const recheckJudgment = async ({ job, inventory, temporary }) => {
-  const materialized = asObject(JSON.parse(job.materializedContext), "materialized review input");
+  const materializedText = await readFile(job.materializedContextPath, "utf8");
+  if (sha256(materializedText) !== job.materializedContextSha256) {
+    throw new Error("materialized review input digest mismatch");
+  }
+  const materialized = asObject(JSON.parse(materializedText), "materialized review input");
   const feedback = asObject(materialized.traceabilityFeedback, "traceability feedback");
   const baseline = asObject(feedback.inventory, "baseline inventory");
   if (!Array.isArray(baseline.findings) || typeof baseline.findingSetDigest !== "string") {
@@ -390,7 +394,9 @@ const main = async () => {
     !["codex", "openrouter"].includes(job.modelProvider) ||
     typeof job.model !== "string" || typeof job.reasoning !== "string" ||
     !["discovery", "recheck"].includes(job.reviewMode) ||
-    typeof job.materializedContext !== "string" ||
+    job.materializedContextPath !== "/deos/run/inputs/job-inputs.json" ||
+    typeof job.materializedContextSha256 !== "string" ||
+    !/^[a-f0-9]{64}$/.test(job.materializedContextSha256) ||
     typeof job.openspecChange !== "string" ||
     !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(job.openspecChange)
   ) throw new Error("trace review job contract is invalid");
