@@ -25,6 +25,7 @@ import {
   codexSessionId,
   MAXIMUM_PROOF_REPAIRS,
   parseCodexFinalMessage,
+  proofRepairPrompt,
   reviewPromptWithSchema,
   reviewResultPayload,
   runBoundedProofReview,
@@ -423,13 +424,23 @@ const main = async () => {
       directionalResults[direction] = await runBoundedProofReview({
         maximumRepairs: MAXIMUM_PROOF_REPAIRS,
         generate: async ({ attempt, prior, failure, sessionId }) => {
+          const basePrompt = buildDirectionalJudgePrompt({
+            inventory,
+            instructions,
+            direction,
+            repair: null,
+          });
+          const reviewPrompt = attempt === 0
+            ? basePrompt
+            : proofRepairPrompt({
+                basePrompt,
+                prior,
+                failure,
+                repair: attempt,
+                maximumRepairs: MAXIMUM_PROOF_REPAIRS,
+              });
           const prompt = reviewPromptWithSchema(
-            buildDirectionalJudgePrompt({
-              inventory,
-              instructions,
-              direction,
-              repair: attempt === 0 ? null : { error: failure, judgment: prior },
-            }),
+            reviewPrompt,
             schemaSource,
             job.modelProvider,
           );

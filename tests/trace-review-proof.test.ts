@@ -21,6 +21,12 @@ test("Codex final-message parsing accepts raw and fenced JSON", () => {
     parseCodexFinalMessage(`\`\`\`json\n${JSON.stringify(result)}\n\`\`\``),
     result,
   );
+  assert.deepEqual(
+    parseCodexFinalMessage(`I corrected only the proof form.\n\n\`\`\`json\n${JSON.stringify(result)}\n\`\`\``),
+    result,
+  );
+  const ambiguous = `\`\`\`json\n${JSON.stringify(result)}\n\`\`\`\n\`\`\`json\n${JSON.stringify(result)}\n\`\`\``;
+  assert.equal(parseCodexFinalMessage(ambiguous), ambiguous);
   assert.equal(parseCodexFinalMessage("not JSON"), "not JSON");
 });
 
@@ -142,6 +148,8 @@ test("Codex review session identity is exact and repair prompt is bounded", () =
     maximumRepairs: 2,
   });
   assert.match(prompt, /Keep every prior finding byte-for-byte identical/);
+  assert.match(prompt, /prior semantic review is complete/);
+  assert.match(prompt, /Correct only links, ranges, hashes, quotes, or other proof form/);
   assert.match(prompt, /link is not bidirectional/);
 });
 
