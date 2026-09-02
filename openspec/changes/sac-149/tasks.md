@@ -40,8 +40,8 @@
 ## 6. Validation, deployment, and live canary
 
 - [x] 6.1 Run TypeScript, Python, schema, formatting, OpenSpec, migration, and Worker dry-run validation.
-- [ ] 6.2 Deploy the additive migration, Worker, portal, and a new workflow definition without mutating runs frozen to older definitions.
-- [ ] 6.3 Register and select the new definition only after remote read-back confirms its graph, digest, selectors, and policy state.
-- [ ] 6.4 Create a routed sample-project canary for a readable CLI that fetches wallpapers from Bing and Unsplash and applies them on Ubuntu GNOME.
+- [x] 6.2 Deploy the additive migration, Worker, portal, and a new workflow definition without mutating runs frozen to older definitions.
+- [x] 6.3 Register and select the new definition only after remote read-back confirms its graph, digest, selectors, and policy state.
+- [x] 6.4 Create a routed sample-project canary for a readable CLI that fetches wallpapers from Bing and Unsplash and applies them on Ubuntu GNOME.
 - [ ] 6.5 Follow the canary through private self-check, exact-head independent review, human design approval, implementation, tests, and terminal workflow state.
 - [ ] 6.6 Capture provider-originated Linear and GitHub state, D1/R2 evidence, sandbox cleanup, CLI test output, and visual proof for the final implementation PR.
