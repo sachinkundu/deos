@@ -279,6 +279,10 @@ export interface OrchestrationDispatchStore {
     deliveryId: string,
   ): Promise<DeliverySelectionEvidenceRecord | null>;
   findPolicy(projectId: string): Promise<ProjectWorkflowPolicyRecord | null>;
+  findDefinitionSnapshot(
+    definitionId: string,
+    version: number,
+  ): Promise<WorkflowDefinitionSnapshot | null>;
   recordRouteDispatchResult?(input: {
     resultId: string;
     deliveryId: string;

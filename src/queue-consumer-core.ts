@@ -13,6 +13,7 @@ import {
   writeObservation,
 } from "./telemetry.ts";
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
+import { restoreWorkflowDefinition } from "./workflow-definition.ts";
 import { type LifecycleWriter, writeLifecycleObservation } from "./lifecycle-telemetry.ts";
 import { DEFAULT_WORKFLOW_DEFINITION_ID } from "./workflow-default.ts";
 import { D1RepositoryRouteStore, RepositoryRouteError } from "./repository-routes.ts";
@@ -257,6 +258,22 @@ const routeLaterEvent = async (
   await store.markInboxState(event.source_delivery_id, "pending", "sent", now);
 };
 
+const resolveReleasedDefinition = async (
+  store: OrchestrationDispatchStore,
+  bundled: Readonly<Record<string, LoadedWorkflowDefinition>>,
+  definitionId: string,
+  version: number,
+  digest: string,
+): Promise<LoadedWorkflowDefinition> => {
+  const candidate = bundled[definitionId];
+  if (candidate?.version === version && candidate.digest === digest) return candidate;
+  const snapshot = await store.findDefinitionSnapshot(definitionId, version);
+  if (snapshot === null || snapshot.digest !== digest) {
+    throw new CategorizedWorkflowError("unexpected_failure");
+  }
+  return restoreWorkflowDefinition(snapshot.canonical_json, digest);
+};
+
 export const registerBundledWorkflowDefinitions = async (
   env: WorkflowRegistrationEnv,
   dependencies: Partial<RegistrationDependencies> = {},
@@ -331,8 +348,6 @@ export const processQueueMessage = async (
       ? await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry()
       : Object.freeze({ [dependencies.definition.name]: dependencies.definition })
   );
-  const definition = dependencies.definition ?? bundled[DEFAULT_WORKFLOW_DEFINITION_ID];
-  if (definition === undefined) throw new Error("default workflow definition is unavailable");
   const now = (dependencies.now ?? (() => new Date()))().toISOString();
   const lifecycle = dependencies.lifecycle ?? writeLifecycleObservation;
   const event = message.body;
@@ -351,12 +366,6 @@ export const processQueueMessage = async (
       storedEvidence.label_selection_evidence_digest !== evidenceDigest ||
       event.label_selection_evidence_digest !== evidenceDigest
     ) throw new CategorizedWorkflowError("correlation_mismatch");
-    await registerBundledWorkflowDefinitions(env, {
-      store,
-      definitions: bundled,
-      defaultDefinition: definition,
-      now: dependencies.now,
-    });
     await store.upsertIssueIndex({
       issueId: event.issue_id,
       projectId: event.project_id,
@@ -388,6 +397,13 @@ export const processQueueMessage = async (
       policy.dispatch_enabled === 1 &&
       event.transition === policy.start_state_name
     ) {
+      const policyDefinition = await resolveReleasedDefinition(
+        store,
+        bundled,
+        policy.definition_id,
+        policy.definition_version,
+        policy.definition_digest,
+      );
       if (
         !Number.isSafeInteger(event.route_revision) || event.route_revision <= 0 ||
         !/^[a-f0-9]{64}$/.test(event.route_digest) ||
@@ -505,15 +521,14 @@ export const processQueueMessage = async (
       if (selectorMatches.length > 1) throw new CategorizedWorkflowError("correlation_mismatch");
       const selected = selectorMatches[0];
       const selectedDefinition = selected === undefined
-        ? definition
-        : bundled[selected.selector!.definition_id];
-      if (
-        selectedDefinition === undefined ||
-        (selected !== undefined && (
-          selectedDefinition.version !== selected.selector!.definition_version ||
-          selectedDefinition.digest !== selected.selector!.definition_digest
-        ))
-      ) throw new CategorizedWorkflowError("unexpected_failure");
+        ? policyDefinition
+        : await resolveReleasedDefinition(
+          store,
+          bundled,
+          selected.selector!.definition_id,
+          selected.selector!.definition_version,
+          selected.selector!.definition_digest,
+        );
       const selection = selected === undefined ? {
         kind: "default",
         value: "project_policy",

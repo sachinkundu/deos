@@ -48,7 +48,7 @@ const bundle = (): WorkflowBundleSources => ({
   ),
 });
 
-test("production bundle includes the version 17 design prompt", () => {
+test("production bundle includes the version 18 design prompt", () => {
   const source = readFileSync(new URL("../src/workflow-bundle.ts", import.meta.url), "utf8");
   assert.match(source, /import openSpecDesignAuthorPrompt from .*openspec-design-author\.md/);
   assert.match(source, /"prompts\/openspec-design-author\.md": openSpecDesignAuthorPrompt/);
@@ -187,7 +187,7 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 17);
+  assert.equal(definition.version, 18);
   assert.equal(definition.nodes.publish_design.edges.review_feedback_changed, "design_revision_author");
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);

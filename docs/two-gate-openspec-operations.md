@@ -1,6 +1,6 @@
 # Two-gate OpenSpec operations
 
-New `simple-traceability` version 17 runs have two separate approval gates.
+New `simple-traceability` version 18 runs have two separate approval gates.
 The first gate reviews the proposal and delta specs. The second gate reviews
 `design.md`. Both use the Linear state `Human Review`, but D1 stores a distinct
 visit, pull request, and approved head for each gate.
@@ -38,11 +38,11 @@ visit, pull request, and approved head for each gate.
 1. Disable dispatch for the sample-project route.
 2. Apply migrations in numeric order.
 3. Deploy the Queue consumer Worker and its Workflow binding.
-4. Run scheduled registration and read back version 17 plus its digest.
+4. Run the orchestration release command. It stages immutable definitions, deploys and verifies the Worker at 100% traffic, then atomically activates version 18 across the project policies.
 5. Deploy the portal and confirm its Access policy still protects the API.
 6. Enable only the sample-project route for the canary.
 
-To roll back, disable sample-project dispatch first. Existing version 17 runs
+To roll back, disable sample-project dispatch first. Existing version 18 runs
 must keep their frozen definition. Restore the previous default definition only
 for new runs. Do not delete design rows, candidates, gate visits, provider
 operations, or R2 evidence. Re-enable dispatch only after route and definition

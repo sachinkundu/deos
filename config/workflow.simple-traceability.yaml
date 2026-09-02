@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: simple-traceability
-  version: 17
+  version: 18
 spec:
   start: claim_issue
   execution:

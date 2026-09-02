@@ -120,6 +120,8 @@ class FakeStore implements OrchestrationDispatchStore {
   readonly inbox = new Map<string, WorkflowInboxRecord>();
   readonly selectors = new Map<string, WorkflowDefinitionSelectorRecord>();
   readonly deliveryEvidence = new Map<string, DeliverySelectionEvidenceRecord>();
+  readonly definitions = new Map<string, LoadedWorkflowDefinition>();
+  registrationCalls = 0;
   readonly routeDispatchResults: Array<{
     outcome: "stale_route" | "missing_route" | "disabled_route" | "access_denied";
     safeErrorCategory: string | null;
@@ -150,6 +152,8 @@ class FakeStore implements OrchestrationDispatchStore {
     dispatchEnabled: boolean;
     now: string;
   }): Promise<void> {
+    this.registrationCalls += 1;
+    this.definitions.set(`${input.definition.name}:${input.definition.version}`, input.definition);
     const existing = this.policies.get(input.projectId);
     this.policies.set(input.projectId, {
       project_id: input.projectId,
@@ -185,7 +189,12 @@ class FakeStore implements OrchestrationDispatchStore {
     });
   }
 
-  async registerDefinition(): Promise<void> {}
+  async registerDefinition(input: {
+    definition: LoadedWorkflowDefinition;
+  }): Promise<void> {
+    this.registrationCalls += 1;
+    this.definitions.set(`${input.definition.name}:${input.definition.version}`, input.definition);
+  }
 
   async registerSelector(input: {
     projectId: string;
@@ -219,6 +228,16 @@ class FakeStore implements OrchestrationDispatchStore {
 
   findPolicy(projectId: string): Promise<ProjectWorkflowPolicyRecord | null> {
     return Promise.resolve(this.policies.get(projectId) ?? null);
+  }
+
+  findDefinitionSnapshot(definitionId: string, version: number) {
+    const definition = this.definitions.get(`${definitionId}:${version}`);
+    return Promise.resolve(definition === undefined ? null : {
+      definition_id: definition.name,
+      version: definition.version,
+      canonical_json: JSON.stringify(definition),
+      digest: definition.digest,
+    });
   }
 
   async recordRouteDispatchResult(input: {
@@ -463,6 +482,24 @@ const environment = (workflow: FakeWorkflow): QueueConsumerEnv => ({
   TRIAL_DISPATCH_ENABLED: "true",
 } as unknown as QueueConsumerEnv);
 
+const seedReleasedDefinition = async (
+  store: FakeStore,
+  workflow: FakeWorkflow,
+  releasedDefinition = definition,
+): Promise<void> => {
+  if (store.policies.has("project-1")) return;
+  const env = environment(workflow);
+  await store.registerDefinitionAndPolicy({
+    definition: releasedDefinition,
+    projectId: env.LINEAR_PROJECT_ID,
+    repository: env.TRIAL_REPOSITORY,
+    startStateName: env.LINEAR_START_STATE_NAME,
+    humanGateStateId: env.LINEAR_HUMAN_APPROVAL_STATE_ID,
+    dispatchEnabled: true,
+    now: NOW,
+  });
+};
+
 test("scheduled registration makes simple-traceability the default", async () => {
   const store = new FakeStore();
   const env = environment(new FakeWorkflow());
@@ -525,6 +562,7 @@ const runMessage = async (
   attempts = 1,
 ): Promise<WorkflowObservation[]> => {
   const observations: WorkflowObservation[] = [];
+  await seedReleasedDefinition(store, workflow);
   seedEvidence(store, body);
   await processQueueMessage(
     { id: `message-${attempts}`, attempts, body },
@@ -559,6 +597,18 @@ const runSelectedMessage = async (input: {
     transition: "Todo",
     label_selection_evidence: evidence,
     label_selection_evidence_digest: evidenceDigest,
+  });
+  await registerBundledWorkflowDefinitions(({
+    ...environment(input.workflow),
+    LINEAR_START_STATE_NAME: "Todo",
+  } as unknown as QueueConsumerEnv), {
+    store: input.store,
+    definitions: {
+      [definition.name]: definition,
+      simple: simpleDefinition,
+      "simple-traceability": traceabilityDefinition,
+    },
+    now: () => new Date(NOW),
   });
   seedEvidence(input.store, body);
   if (input.storedDigest !== undefined) {
@@ -618,6 +668,7 @@ test("repository access loss disables only that route before allocation", async 
   const workflow = new FakeWorkflow();
   const body = queueBody();
   const observations: WorkflowObservation[] = [];
+  await seedReleasedDefinition(store, workflow);
   seedEvidence(store, body);
 
   await processQueueMessage(
@@ -657,6 +708,7 @@ test("a route edit during the live access check is audited and starts no run", a
   const store = new FakeStore();
   const workflow = new FakeWorkflow();
   const body = queueBody();
+  await seedReleasedDefinition(store, workflow);
   seedEvidence(store, body);
 
   await processQueueMessage(
@@ -819,6 +871,7 @@ test("later active-run event is inboxed and sent once", async () => {
   const store = new FakeStore();
   const workflow = new FakeWorkflow();
   await runMessage(store, workflow);
+  const releaseRegistrationCalls = store.registrationCalls;
   const later = queueBody({
     event_id: "delivery-2",
     source_delivery_id: "delivery-2",
@@ -836,6 +889,7 @@ test("later active-run event is inboxed and sent once", async () => {
     { type: "linear-event", payload: { deliveryId: "delivery-2" } },
   ]);
   assert.equal(store.inbox.get("delivery-2")?.state, "sent");
+  assert.equal(store.registrationCalls, releaseRegistrationCalls);
 });
 
 test("later waiting-run event is sent to the same instance without a replacement", async () => {

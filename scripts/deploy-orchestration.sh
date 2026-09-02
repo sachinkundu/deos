@@ -82,4 +82,4 @@ else
   npx wrangler secret put GITHUB_APP_PRIVATE_KEY --config "$config_path" < "$GITHUB_APP_PRIVATE_KEY_PATH"
 fi
 
-npx wrangler deploy --config "$config_path" --containers-rollout gradual
+npm run release:orchestration -- "$config_path"

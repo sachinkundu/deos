@@ -77,6 +77,10 @@ releases its checkout row.
 
 ## Deploy disabled
 
+The orchestration release command is the only supported Worker release path. It first validates and stages every immutable definition in D1. It stops before deployment if a `(definition_id, version)` already has different content or if a version moves backward. It then deploys the Worker, requires the deployment read-back to show one version at 100% traffic, and finally advances every policy using the default definition in one compare-and-set D1 statement. Queue and scheduled handlers never register definitions. Existing runs continue from their frozen D1 snapshots.
+
+The Worker deployment and D1 policy update are separate provider operations, so they cannot share a literal cross-service transaction. The ordering makes the release failure-atomic: before the final D1 compare-and-set, new runs remain on the old definition and the newly deployed Worker can restore it from D1. Disabled legacy selectors are updated only after policy activation; the release stops if any selector for the default definition is enabled.
+
 With a Docker-compatible daemon available:
 
 ```sh

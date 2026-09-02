@@ -38,7 +38,7 @@ Repository-local OpenSpec progression is encoded as typed agent jobs carrying on
 
 ## OpenSpec traceability review flow
 
-The bundle contains `simple-traceability` version 17 as the project default. The legacy `DEOS Traceability` selector remains registered but disabled, so ordinary eligible issues enter traceability without requiring a label. The immutable definition snapshot and digest are still frozen when each run is allocated. The initial planning candidate keeps its author self-review, while a later human-requested revision publishes the author's update and returns to external exact-head review without repeating that self-review. Every author response is published before one final independent trace is generated for the exact head that enters the planning Human Review gate.
+The bundle contains `simple-traceability` version 18 as the project default. The legacy `DEOS Traceability` selector remains registered but disabled, so ordinary eligible issues enter traceability without requiring a label. The immutable definition snapshot and digest are still frozen when each run is allocated. The initial planning candidate keeps its author self-review, while a later human-requested revision publishes the author's update and returns to external exact-head review without repeating that self-review. Every author response is published before one final independent trace is generated for the exact head that enters the planning Human Review gate.
 
 ```mermaid
 flowchart LR

@@ -6,7 +6,6 @@ import { GitHubGitProxy } from "./github-git-proxy.ts";
 import { LinearCapabilityAdapter } from "./linear-capability.ts";
 import {
   processQueueBatch,
-  registerBundledWorkflowDefinitions,
   type QueueBody,
   type QueueConsumerEnv,
 } from "./queue-consumer-core.ts";
@@ -121,7 +120,6 @@ export default {
     );
   },
   async scheduled(_controller, env) {
-    await registerBundledWorkflowDefinitions(env as unknown as QueueConsumerEnv);
     await cleanupAuditor(env).scheduled();
     await completionReconciler(env).scheduled();
   },

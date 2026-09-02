@@ -6,6 +6,7 @@
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "types:check": "wrangler types worker-configuration.d.ts --include-runtime false --config wrangler.queue-consumer-ts.jsonc --check",
+    "release:orchestration": "node --experimental-strip-types scripts/release-orchestration.ts",
     "portal:build": "npm --prefix prototypes/sac-123-workflow-view run build:portal && vite build --config portal/vite.settings.config.ts",
     "portal:build:full-workflow": "vite build --config portal/vite.config.ts",
     "portal:typecheck": "tsc --noEmit -p portal/tsconfig.json",
