@@ -25,6 +25,10 @@ import { D1R2ProviderDiagnosticStore } from "./provider-diagnostics.ts";
 import { D1R2OpenRouterResponseStore } from "./openrouter-response-store.ts";
 import { AgentStageRetryController, D1AgentStageRetryStore } from "./stage-retry.ts";
 import { loadBundledWorkflowDefinitionRegistry } from "./workflow-bundle.ts";
+import {
+  D1WorkflowRuntimeRecoveryStore,
+  WorkflowRuntimeRecoveryController,
+} from "./workflow-runtime-recovery.ts";
 
 export { DeosWorkflow, Sandbox };
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
@@ -105,12 +109,22 @@ const stageRetryController = async (env: Env): Promise<AgentStageRetryController
   );
 };
 
+const workflowRuntimeRecoveryController = (env: Env): WorkflowRuntimeRecoveryController =>
+  new WorkflowRuntimeRecoveryController(
+    new D1WorkflowRuntimeRecoveryStore(env.DB),
+    env.ORCHESTRATION_WORKFLOW as unknown as QueueConsumerEnv["ORCHESTRATION_WORKFLOW"],
+    env.STAGE_RETRY_SECRET,
+  );
+
 export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
     if (path === "/cleanup-audit") return cleanupAuditor(env).handle(request);
     if (path === "/cleanup-attempts") return cleanupAuditor(env).handleDestroy(request);
     if (path === "/stage-retries") return (await stageRetryController(env)).handle(request);
+    if (path === "/workflow-runtime-recoveries") {
+      return workflowRuntimeRecoveryController(env).handle(request);
+    }
     if (!path.startsWith("/capabilities/")) return new Response("not found", { status: 404 });
     return capabilityRouter(env).handle(request);
   },
