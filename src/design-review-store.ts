@@ -50,7 +50,11 @@ export interface DesignReviewAttemptRecord {
 }
 
 export class D1DesignReviewStore {
-  constructor(private readonly database: D1Database) {}
+  private readonly database: D1Database;
+
+  constructor(database: D1Database) {
+    this.database = database;
+  }
 
   findRound(runId: string, roundNo: number): Promise<DesignReviewRoundRecord | null> {
     return this.database.prepare(
@@ -254,9 +258,9 @@ export class D1DesignReviewStore {
   async incrementResponseTurn(roundId: string, now: string): Promise<number> {
     const result = await this.database.prepare(
       `UPDATE design_review_rounds SET response_turns = response_turns + 1, updated_at = ?
-       WHERE round_id = ? AND response_turns < 3 AND status IN ('active', 'human_revision')`,
+       WHERE round_id = ? AND status IN ('active', 'human_revision')`,
     ).bind(now, roundId).run();
-    if (changes(result) !== 1) throw new Error("design review response limit is exhausted");
+    if (changes(result) !== 1) throw new Error("design review round cannot accept a response");
     const row = await this.database.prepare(
       "SELECT response_turns FROM design_review_rounds WHERE round_id = ?",
     ).bind(roundId).first<{ response_turns: number }>();

@@ -9,7 +9,33 @@ import {
   validateDesignReviewResult,
   type DesignReviewInput,
 } from "../src/design-review.ts";
+import { D1DesignReviewStore } from "../src/design-review-store.ts";
 import { designReviewOutputSchema } from "../container/design-review-schema.mjs";
+
+test("design review rounds accept every response without a local turn ceiling", async () => {
+  let responseTurns = 3;
+  const database = {
+    prepare(query: string) {
+      return {
+        bind() {
+          return {
+            async run() {
+              assert.doesNotMatch(query, /response_turns\s*</);
+              responseTurns += 1;
+              return { meta: { changes: 1 } };
+            },
+            async first() {
+              return { response_turns: responseTurns };
+            },
+          };
+        },
+      };
+    },
+  } as unknown as D1Database;
+  const store = new D1DesignReviewStore(database);
+  assert.equal(await store.incrementResponseTurn("round-1", "2026-09-03T00:00:00Z"), 4);
+  assert.equal(await store.incrementResponseTurn("round-1", "2026-09-03T00:01:00Z"), 5);
+});
 
 test("Codex design review schema types every constrained property", () => {
   assert.equal(designReviewOutputSchema.properties.version.type, "integer");
