@@ -8,6 +8,15 @@ import {
   validateDesignReviewResult,
   type DesignReviewInput,
 } from "../src/design-review.ts";
+import { designReviewOutputSchema } from "../container/design-review-schema.mjs";
+
+test("Codex design review schema types every constrained property", () => {
+  assert.equal(designReviewOutputSchema.properties.version.type, "integer");
+  assert.equal(designReviewOutputSchema.properties.phase.type, "string");
+  assert.equal(designReviewOutputSchema.properties.outcome.type, "string");
+  assert.equal(designReviewOutputSchema.properties.findings.items.properties.severity.type, "string");
+  assert.equal(designReviewOutputSchema.properties.findings.items.properties.category.type, "string");
+});
 
 const input = (phase: "self" | "independent" = "self"): DesignReviewInput => ({
   version: 1,

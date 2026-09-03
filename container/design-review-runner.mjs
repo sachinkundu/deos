@@ -14,6 +14,7 @@ import {
   reviewPromptWithSchema,
   runBoundedProofReview,
 } from "./trace-review-proof.mjs";
+import { designReviewOutputSchema } from "./design-review-schema.mjs";
 
 const OUTPUT_ROOT = "/deos/output";
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -142,34 +143,7 @@ const main = async () => {
       !SHA256.test(source.sha256) || sha256(source.content) !== source.sha256
     ) throw new Error("materialized design review source changed");
   }
-  const schema = {
-    type: "object",
-    additionalProperties: false,
-    required: ["version", "inputSha256", "phase", "outcome", "summary", "findings"],
-    properties: {
-      version: { const: 1 },
-      inputSha256: { type: "string", pattern: "^[a-f0-9]{64}$" },
-      phase: { enum: ["self", "independent"] },
-      outcome: { enum: ["pass", "concerns"] },
-      summary: { type: "string", minLength: 1, maxLength: 4000 },
-      findings: {
-        type: "array", maxItems: 100, items: {
-          type: "object", additionalProperties: false,
-          required: ["id", "severity", "category", "message", "sourceRanges"],
-          properties: {
-            id: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-            severity: { enum: [...severities] }, category: { enum: [...categories] },
-            message: { type: "string", minLength: 1, maxLength: 4000 },
-            sourceRanges: { type: "array", minItems: 1, maxItems: 16, items: {
-              type: "object", additionalProperties: false,
-              required: ["path", "startLine", "endLine"],
-              properties: { path: { type: "string" }, startLine: { type: "integer", minimum: 1 }, endLine: { type: "integer", minimum: 1 } },
-            } },
-          },
-        },
-      },
-    },
-  };
+  const schema = designReviewOutputSchema;
   const temporary = await mkdtemp(path.join(os.tmpdir(), "deos-design-review-"));
   try {
     const schemaPath = path.join(temporary, "schema.json");
