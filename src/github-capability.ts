@@ -1412,16 +1412,15 @@ export class GitHubCapabilityAdapter {
       throw new Error("GitHub repository guidance contains an unsafe file type");
     }
     const paths = matches.map((entry) => String(entry.path)).sort();
-    if (new Set(paths).size !== paths.length || paths.length > 32) {
+    if (new Set(paths).size !== paths.length) {
       throw new Error("GitHub repository guidance inventory is invalid");
     }
     const files = await Promise.all(paths.map(async (path) => ({
       path,
       content: (await this.readContent(token, repository, ref, path, false))!.content,
     })));
-    const total = files.reduce((sum, file) => sum + new TextEncoder().encode(file.content).byteLength, 0);
-    if (total > 64_000 || files.some((file) => file.content.includes("\u0000"))) {
-      throw new Error("GitHub repository guidance exceeds the trusted text limit");
+    if (files.some((file) => file.content.includes("\u0000"))) {
+      throw new Error("GitHub repository guidance contains invalid text");
     }
     return Object.freeze(files.map((file) => Object.freeze(file)));
   }
@@ -1643,7 +1642,6 @@ export class GitHubCapabilityAdapter {
         (lastHumanUpdatedAt > 0 && lastAcknowledgmentUpdatedAt > 0 &&
           lastAcknowledgmentUpdatedAt < lastHumanUpdatedAt);
     });
-    if (outstanding.length > 50) throw new Error("GitHub outstanding review threads exceed the trusted limit");
     if (outstanding.some((commentId) => !requested.has(commentId))) {
       throw new Error("GitHub review reply manifest is incomplete");
     }

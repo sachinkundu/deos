@@ -76,15 +76,16 @@ export const designReviewSha256 = async (value: string): Promise<string> => {
 
 export const canonicalDesignReviewJson = (value: unknown): string => JSON.stringify(canonicalize(value));
 
-const boundedText = (value: string, label: string, maximum = 4_000): void => {
+const validText = (value: string, label: string, maximum?: number): void => {
   if (
-    value.trim() !== value || value.length === 0 || value.length > maximum ||
+    value.trim() !== value || value.length === 0 ||
+    (maximum !== undefined && value.length > maximum) ||
     /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value)
   ) throw new Error(`${label} is invalid`);
 };
 
 const validateSources = (sources: readonly DesignReviewSource[]): readonly DesignReviewSource[] => {
-  if (sources.length < 2 || sources.length > 64) throw new Error("design review sources are invalid");
+  if (sources.length < 2) throw new Error("design review sources are invalid");
   const sorted = [...sources].sort((left, right) => left.path.localeCompare(right.path));
   const seen = new Set<string>();
   for (const source of sorted) {
@@ -109,8 +110,8 @@ export const validateDesignReviewInput = async (
     !SHA256.test(input.candidateSha256) || !SHA256.test(input.approvedPlanManifestSha256) ||
     !HEAD_SHA.test(input.baseCommit) || !SHA256.test(input.guidanceManifestSha256)
   ) throw new Error("design review input identity is invalid");
-  boundedText(input.model, "design review model", 240);
-  boundedText(input.reasoning, "design review reasoning", 80);
+  validText(input.model, "design review model", 240);
+  validText(input.reasoning, "design review reasoning", 80);
   if (input.phase === "self") {
     if (input.modelProvider !== "codex" || input.pullRequestDatabaseId !== null || input.headSha !== null) {
       throw new Error("self design review input is invalid");
@@ -132,8 +133,8 @@ export const validateDesignReviewResult = (
     result.version !== 1 || result.inputSha256 !== expected.inputSha256 ||
     result.phase !== expected.phase || !DESIGN_REVIEW_OUTCOMES.includes(result.outcome)
   ) throw new Error("design review result identity is invalid");
-  boundedText(result.summary, "design review summary");
-  if (!Array.isArray(result.findings) || result.findings.length > 100) {
+  validText(result.summary, "design review summary");
+  if (!Array.isArray(result.findings)) {
     throw new Error("design review finding inventory is invalid");
   }
   const seen = new Set<string>();
@@ -144,8 +145,8 @@ export const validateDesignReviewResult = (
       !DESIGN_FINDING_CATEGORIES.includes(finding.category)
     ) throw new Error("design review finding identity is invalid");
     seen.add(finding.id);
-    boundedText(finding.message, `design review finding ${finding.id}`);
-    if (!Array.isArray(finding.sourceRanges) || finding.sourceRanges.length === 0 || finding.sourceRanges.length > 16) {
+    validText(finding.message, `design review finding ${finding.id}`);
+    if (!Array.isArray(finding.sourceRanges) || finding.sourceRanges.length === 0) {
       throw new Error(`design review finding ${finding.id} ranges are invalid`);
     }
     const sourceRanges = finding.sourceRanges.map((range: DesignFindingRange) => {
@@ -179,7 +180,7 @@ export const validateDesignReviewDispositions = (
     if (!DESIGN_DISPOSITIONS.includes(disposition.status)) {
       throw new Error(`design review disposition ${disposition.findingId} is invalid`);
     }
-    boundedText(disposition.reason, `design review disposition ${disposition.findingId}`);
+    validText(disposition.reason, `design review disposition ${disposition.findingId}`);
     return Object.freeze({ ...disposition });
   }));
 };

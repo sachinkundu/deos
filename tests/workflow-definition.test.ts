@@ -54,7 +54,7 @@ const bundle = (): WorkflowBundleSources => ({
   ),
 });
 
-test("production bundle includes the version 19 design review prompts", () => {
+test("production bundle includes the version 20 design review prompts", () => {
   const source = readFileSync(new URL("../src/workflow-bundle.ts", import.meta.url), "utf8");
   assert.match(source, /import openSpecDesignAuthorPrompt from .*openspec-design-author\.md/);
   assert.match(source, /"prompts\/openspec-design-author\.md": openSpecDesignAuthorPrompt/);
@@ -94,7 +94,7 @@ test("loads the reviewed workflow bundle and resolves prompts and schemas", asyn
   const definition = await loadWorkflowDefinition(source, bundle());
 
   assert.equal(definition.name, "openspec-delivery");
-  assert.equal(definition.version, 11);
+  assert.equal(definition.version, 12);
   assert.equal(definition.start, "requirements");
   assert.equal(definition.execution.codexSandboxMode, "danger-full-access");
   assert.equal(definition.nodes.requirements.type, "agent");
@@ -127,13 +127,13 @@ test("canonical workflow digest is stable", async () => {
   const first = await loadWorkflowDefinition(source, bundle());
   const second = await loadWorkflowDefinition(source, bundle());
   assert.equal(first.digest, second.digest);
-  assert.equal(first.digest, "e85de9ed70c046cfe07a1611b1e0a1c2678cd58dbcfe8edc9ea73856bb6b86c3");
+  assert.equal(first.digest, "7cb898d36fd4a6f247c1dbbbeecc2136661c7e6825d96cf4497959167a87404b");
 });
 
 test("simple definition bundles the approved planning prompt and exact three-way graph", async () => {
   const definition = await loadWorkflowDefinition(simpleSource, bundle());
   assert.equal(definition.name, "simple");
-  assert.equal(definition.version, 5);
+  assert.equal(definition.version, 6);
   assert.equal(definition.start, "claim_issue");
   assert.equal(definition.digest.length, 64);
   assert.deepEqual(definition.jobs.openspec_planning.capabilities, [
@@ -194,7 +194,7 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 19);
+  assert.equal(definition.version, 20);
   assert.equal(definition.nodes.publish_design.edges.review_feedback_changed, "design_revision_author");
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);

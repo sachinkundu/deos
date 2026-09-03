@@ -30,3 +30,8 @@ The view SHALL show no self-check for a later design round. It SHALL mark proof 
 
 - **WHEN** a saved run uses a frozen graph from before design review checks were added.
 - **THEN** the view shows the old graph and does not invent review work or proof.
+
+#### Scenario: Complete context reaches a provider boundary
+
+- **WHEN** valid review context is accepted locally but a provider or platform rejects it.
+- **THEN** the workflow records the provider operation, failure class, and safe diagnostic needed to identify the real boundary.

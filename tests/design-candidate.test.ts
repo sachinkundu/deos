@@ -84,10 +84,16 @@ test("design candidate rejects extra paths, missing sections, whitespace, and un
       latestHumanCommentUpdatedAt: "2026-09-01T10:00:00.000Z",
     }],
   }), /review reply/);
-  await assert.rejects(
-    build({ content: content.replace("Use the approved plan.", `Use the approved plan.\n\n${"x".repeat(32_000)}`) }),
-    /revision context limit/,
+});
+
+test("design candidate preserves complete content beyond the former local ceiling", async () => {
+  const largeContent = content.replace(
+    "Use the approved plan.",
+    `Use the approved plan.\n\n${"A clear design note.\n".repeat(8_000)}`,
   );
+  const result = await build({ content: largeContent });
+  assert.equal(result.candidate.content, largeContent);
+  assert.ok(result.candidate.byteSize > 128_000);
 });
 
 test("design review replies bind to the latest human comment in the materialized thread", () => {

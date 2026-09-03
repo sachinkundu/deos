@@ -6,7 +6,7 @@
   "required": ["outcome", "summary", "feedback", "providerReceipts"],
   "properties": {
     "outcome": {"enum": ["approved", "changes_requested", "certified", "blocked", "failed"]},
-    "summary": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "summary": {"type": "string", "minLength": 1},
     "feedback": {"type": "array", "items": {"type": "string"}},
     "providerReceipts": {"type": "array", "items": {"type": "string"}}
   }

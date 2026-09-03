@@ -56,7 +56,7 @@ export const governedPlanningLinks = (input: {
   } catch {
     throw new Error("planning publication manifest is invalid");
   }
-  if (!Array.isArray(untrusted) || untrusted.length < 3 || untrusted.length > 48) {
+  if (!Array.isArray(untrusted) || untrusted.length < 3) {
     throw new Error("planning publication manifest is invalid");
   }
   const entries: PlanningManifestEntry[] = [];

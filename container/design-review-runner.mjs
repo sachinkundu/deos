@@ -89,8 +89,7 @@ const validate = (raw, review) => {
     result.version !== 1 || result.inputSha256 !== review.inputSha256 ||
     result.phase !== review.phase || !["pass", "concerns"].includes(result.outcome) ||
     typeof result.summary !== "string" || result.summary.trim() !== result.summary ||
-    result.summary.length < 1 || result.summary.length > 4_000 || !Array.isArray(result.findings) ||
-    result.findings.length > 100
+    result.summary.length < 1 || !Array.isArray(result.findings)
   ) throw new Error("design review result identity is invalid");
   const sourceLines = new Map(review.sources.map((source) => [source.path, source.content.split("\n").length]));
   const seen = new Set();
@@ -100,9 +99,8 @@ const validate = (raw, review) => {
       typeof finding.id !== "string" || !SAFE_ID.test(finding.id) || seen.has(finding.id) ||
       !severities.has(finding.severity) || !categories.has(finding.category) ||
       typeof finding.message !== "string" || finding.message.trim() !== finding.message ||
-      finding.message.length < 1 || finding.message.length > 4_000 ||
-      !Array.isArray(finding.sourceRanges) || finding.sourceRanges.length < 1 ||
-      finding.sourceRanges.length > 16
+      finding.message.length < 1 ||
+      !Array.isArray(finding.sourceRanges) || finding.sourceRanges.length < 1
     ) throw new Error("design review finding is invalid");
     seen.add(finding.id);
     for (const rawRange of finding.sourceRanges) {
@@ -133,7 +131,7 @@ const main = async () => {
   const review = asObject(materialized.designReview, "materialized design review");
   if (
     !SHA256.test(review.inputSha256) || !["self", "independent"].includes(review.phase) ||
-    !Array.isArray(review.sources) || review.sources.length < 2 || review.sources.length > 64 ||
+    !Array.isArray(review.sources) || review.sources.length < 2 ||
     (review.phase === "self") !== (job.modelProvider === "codex")
   ) throw new Error("materialized design review identity is invalid");
   for (const rawSource of review.sources) {
@@ -210,7 +208,7 @@ const main = async () => {
     await writeFile(`${OUTPUT_ROOT}/review-validation.txt`, [
       `validated input ${review.inputSha256}`,
       `validated ${review.sources.length} exact source digests`,
-      `validated ${reviewed.accepted.findings.length} bounded findings`,
+      `validated ${reviewed.accepted.findings.length} findings`,
       `proof repairs ${reviewed.proofRepairCount}`,
     ].join("\n") + "\n");
     const providerReceipts = job.modelProvider === "openrouter" ? await collectOpenRouterReceipts(job) : [];

@@ -120,8 +120,8 @@ export const sha256Hex = async (value: string | Uint8Array): Promise<string> => 
     .join("");
 };
 
-const assertSafeText = (value: string, label: string, maximum = 4_000): void => {
-  if (value.trim() !== value || value.length === 0 || value.length > maximum) {
+const assertSafeText = (value: string, label: string, maximum?: number): void => {
+  if (value.trim() !== value || value.length === 0 || (maximum !== undefined && value.length > maximum)) {
     throw new Error(`${label} is invalid`);
   }
 };
@@ -135,7 +135,7 @@ const assertRange = (range: FindingRange, label: string): void => {
 };
 
 export const validateReviewedSources = (sources: readonly ReviewedSource[]): readonly ReviewedSource[] => {
-  if (sources.length < 2 || sources.length > 64) throw new Error("reviewed source list is invalid");
+  if (sources.length < 2) throw new Error("reviewed source list is invalid");
   const sorted = [...sources].sort((left, right) => left.path.localeCompare(right.path));
   const seen = new Set<string>();
   for (const source of sorted) {
@@ -158,7 +158,7 @@ const validateFinding = (finding: TraceFinding, seen: Set<string>): TraceFinding
   }
   assertSafeText(finding.message, `finding ${finding.id} message`);
   assertSafeText(finding.capability, `finding ${finding.id} capability`, 240);
-  if (finding.allowedRanges.length === 0 || finding.allowedRanges.length > 16) {
+  if (finding.allowedRanges.length === 0) {
     throw new Error(`finding ${finding.id} ranges are invalid`);
   }
   finding.allowedRanges.forEach((range, index) => assertRange(range, `finding ${finding.id} range ${index}`));
@@ -166,7 +166,6 @@ const validateFinding = (finding: TraceFinding, seen: Set<string>): TraceFinding
 };
 
 export const normalizeFindingSet = (findings: readonly TraceFinding[]): readonly TraceFinding[] => {
-  if (findings.length > 100) throw new Error("finding set is too large");
   const seen = new Set<string>();
   return Object.freeze(
     [...findings]
@@ -246,7 +245,7 @@ export const validateClosedSetRecheck = async (
       throw new Error(`finding ${resolution.findingId} has an invalid status`);
     }
     assertSafeText(resolution.rationale, `finding ${resolution.findingId} rationale`);
-    if (resolution.currentEvidence.length === 0 || resolution.currentEvidence.length > 32) {
+    if (resolution.currentEvidence.length === 0) {
       throw new Error(`finding ${resolution.findingId} evidence is invalid`);
     }
     resolution.currentEvidence.forEach((range, index) =>

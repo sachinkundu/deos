@@ -321,7 +321,6 @@ async function prepareBatchComment(token, context, draft, sourceCache) {
 export async function publishBatchReview(token, body) {
   const { prUrl, headSha, event = "COMMENT", comments } = body;
   if (!Array.isArray(comments) || comments.length === 0) throw new Error("Add at least one comment before publishing.");
-  if (comments.length > 50) throw new Error("Publish at most 50 comments in one review.");
   if (!["COMMENT", "APPROVE", "REQUEST_CHANGES"].includes(event)) throw new Error("Unsupported review state.");
   const context = await pullContext(token, prUrl);
   assertHead(context.pr, headSha);

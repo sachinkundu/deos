@@ -7,10 +7,9 @@ export const designReviewOutputSchema = Object.freeze({
     inputSha256: { type: "string", pattern: "^[a-f0-9]{64}$" },
     phase: { type: "string", enum: ["self", "independent"] },
     outcome: { type: "string", enum: ["pass", "concerns"] },
-    summary: { type: "string", minLength: 1, maxLength: 4000 },
+    summary: { type: "string", minLength: 1 },
     findings: {
       type: "array",
-      maxItems: 100,
       items: {
         type: "object",
         additionalProperties: false,
@@ -22,11 +21,10 @@ export const designReviewOutputSchema = Object.freeze({
             type: "string",
             enum: ["correctness", "completeness", "consistency", "security", "operability"],
           },
-          message: { type: "string", minLength: 1, maxLength: 4000 },
+          message: { type: "string", minLength: 1 },
           sourceRanges: {
             type: "array",
             minItems: 1,
-            maxItems: 16,
             items: {
               type: "object",
               additionalProperties: false,

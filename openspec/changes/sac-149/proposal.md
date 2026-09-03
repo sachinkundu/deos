@@ -9,6 +9,7 @@ People can now review a design before it is merged. Yet no other agent checks th
 - Skip the self-check for each later design change. Review the exact changed pull request head before a person sees it again.
 - Give each outside concern to the design author. Save whether it was applied, declined, or needed no text change. If the design changes, review the new head before a person sees it.
 - Save each result with the design, approved plan, repo base, model, round, and exact pull request head. Mark the proof stale when those facts change.
+- Preserve complete valid planning, design, and review context. Do not reject, truncate, or omit it because of an unmeasured local byte, character, file-count, finding-count, or reply-count ceiling.
 - Let a person see the result, proof, and exact pull request head that was checked. Do not start the design gate until the needed proof is valid and current.
 - Only a real person can approve the design merge. An agent result, review result, check, or comment cannot approve it.
 

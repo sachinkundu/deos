@@ -141,7 +141,7 @@ const collectOpenRouterReceipts = async (job) => {
   const body = await response.json();
   if (
     !response.ok || typeof body !== "object" || body === null ||
-    !Array.isArray(body.receipts) || body.receipts.length === 0 || body.receipts.length > 100
+    !Array.isArray(body.receipts) || body.receipts.length === 0
   ) {
     throw new Error("trusted OpenRouter receipt lookup failed");
   }

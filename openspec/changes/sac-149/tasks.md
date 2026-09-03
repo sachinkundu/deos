@@ -45,3 +45,4 @@
 - [x] 6.4 Create a routed sample-project canary for a readable CLI that fetches wallpapers from Bing and Unsplash and applies them on Ubuntu GNOME.
 - [ ] 6.5 Follow the canary through private self-check, exact-head independent review, human design approval, implementation, tests, and terminal workflow state.
 - [ ] 6.6 Capture provider-originated Linear and GitHub state, D1/R2 evidence, sandbox cleanup, CLI test output, and visual proof for the final implementation PR.
+- [x] 6.7 Remove arbitrary local content-size and item-count ceilings from valid planning, design, and review context, preserve complete inputs, and expose actual provider or platform failures.

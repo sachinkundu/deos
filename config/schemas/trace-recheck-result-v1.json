@@ -12,7 +12,6 @@
     },
     "resolutions": {
       "type": "array",
-      "maxItems": 100,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -32,11 +31,10 @@
             "type": "string",
             "enum": ["fixed", "partially_fixed", "still_present", "cannot_verify"]
           },
-          "rationale": { "type": "string", "minLength": 1, "maxLength": 4000 },
+          "rationale": { "type": "string", "minLength": 1 },
           "currentEvidence": {
             "type": "array",
             "minItems": 1,
-            "maxItems": 32,
             "items": {
               "type": "object",
               "additionalProperties": false,

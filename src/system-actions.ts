@@ -550,7 +550,7 @@ export class SystemActionController {
         sha256?: unknown;
         byteSize?: unknown;
       }>;
-      if (!Array.isArray(manifest) || manifest.length < 3 || manifest.length > 48) {
+      if (!Array.isArray(manifest) || manifest.length < 3) {
         throw new Error("planning manifest is invalid");
       }
       const pull = await dependencies.github.readPullRequest(

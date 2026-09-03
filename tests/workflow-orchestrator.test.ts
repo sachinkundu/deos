@@ -636,7 +636,7 @@ test("simple graph cancellation reaches no merge action", async () => {
   assert.deepEqual(services.systemActions, ["linear.delegate_and_start"]);
 });
 
-test("version 19 reviews the first and revised design before distinct human gates", async () => {
+test("version 20 reviews the first and revised design before distinct human gates", async () => {
   const store = new RuntimeStore(makeRun(traceabilityDefinition));
   const services = new NodeServices([
     "completed", "pass", "pass", "completed", "pass",
@@ -686,7 +686,7 @@ test("version 19 reviews the first and revised design before distinct human gate
   ]);
 });
 
-test("version 19 recovers initial design publication feedback before any design gate exists", async () => {
+test("version 20 recovers initial design publication feedback before any design gate exists", async () => {
   const store = new RuntimeStore(makeRun(traceabilityDefinition));
   const services = new InitialDesignFeedbackServices([
     "completed", "pass", "pass", "completed", "pass",

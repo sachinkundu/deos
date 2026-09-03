@@ -2,7 +2,6 @@ import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { WorkflowJob } from "./workflow-definition.ts";
 import { D1PlanningStore, type RunWorkProductRecord } from "./planning-store.ts";
 import { D1DesignStore, type DesignWorkProductRecord } from "./design-store.ts";
-import { DESIGN_CANDIDATE_CONTEXT_LIMIT } from "./design-candidate.ts";
 import { sha256Hex } from "./trace-review.ts";
 import {
   canonicalDesignReviewJson,
@@ -76,49 +75,9 @@ interface JobInputDependencies {
   ) => Promise<readonly { path: string; content: string }[]>;
 }
 
-const bounded = (value: string, maximum: number): string =>
-  value.length <= maximum ? value : `${value.slice(0, maximum)}\n[truncated by trusted input materializer]`;
-
-const REVIEW_FEEDBACK_TRUNCATION = "\n[truncated by trusted input materializer]";
-
 export const serializeReviewFeedback = (
   entry: ReviewFeedbackEntry,
-  maximum = 4_000,
-): string => {
-  const encoded = JSON.stringify(entry);
-  if (encoded.length <= maximum) return encoded;
-  const body = typeof entry.body === "string" ? entry.body : "";
-  const fit = (base: ReviewFeedbackEntry): string | null => {
-    let lower = 0;
-    let upper = body.length;
-    let best: string | null = null;
-    while (lower <= upper) {
-      const middle = Math.floor((lower + upper) / 2);
-      const candidate = JSON.stringify({
-        ...base,
-        body: `${body.slice(0, middle)}${REVIEW_FEEDBACK_TRUNCATION}`,
-      });
-      if (candidate.length <= maximum) {
-        best = candidate;
-        lower = middle + 1;
-      } else {
-        upper = middle - 1;
-      }
-    }
-    return best;
-  };
-  const boundedFullEntry = fit(entry);
-  if (boundedFullEntry !== null) return boundedFullEntry;
-  const boundedIdentity = fit({
-    kind: entry.kind,
-    id: entry.id,
-    authorType: entry.authorType,
-    trustedAcknowledgmentAuthor: entry.trustedAcknowledgmentAuthor,
-    replyToId: entry.replyToId,
-  });
-  if (boundedIdentity === null) throw new Error("GitHub review feedback entry exceeds the trusted limit");
-  return boundedIdentity;
-};
+): string => JSON.stringify(entry);
 
 const asObject = (value: unknown): Record<string, unknown> => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -138,51 +97,7 @@ type ReviewFeedbackEntry = Record<string, unknown> & {
 
 export const selectReviewFeedback = (
   entries: readonly ReviewFeedbackEntry[],
-  limit = 50,
-): readonly ReviewFeedbackEntry[] => {
-  const comments = entries.filter((entry) => entry.kind === "review_comment" && Number.isSafeInteger(entry.id));
-  const roots = comments.filter((entry) => entry.replyToId === null && entry.authorType === "User");
-  const outstandingRootIds = new Set(roots.filter((root) => {
-    const rootId = Number(root.id);
-    const thread = comments.filter((entry) => entry.id === rootId || entry.replyToId === rootId);
-    const lastHumanId = Math.max(...thread
-      .filter((entry) => entry.authorType === "User")
-      .map((entry) => Number(entry.id)));
-    const lastAcknowledgmentId = Math.max(0, ...thread
-      .filter((entry) => entry.authorType === "Bot" && entry.trustedAcknowledgmentAuthor === true &&
-        typeof entry.body === "string" &&
-        entry.body.includes("<!-- deos-review-reply:") && entry.body.includes(`:${rootId} -->`))
-      .map((entry) => Number(entry.id)));
-    const lastHumanUpdatedAt = Math.max(0, ...thread
-      .filter((entry) => entry.authorType === "User" && typeof entry.updatedAt === "string")
-      .map((entry) => Date.parse(String(entry.updatedAt)))
-      .filter(Number.isFinite));
-    const lastAcknowledgmentUpdatedAt = Math.max(0, ...thread
-      .filter((entry) => entry.authorType === "Bot" && entry.trustedAcknowledgmentAuthor === true &&
-        typeof entry.body === "string" &&
-        entry.body.includes("<!-- deos-review-reply:") && entry.body.includes(`:${rootId} -->`) &&
-        typeof entry.updatedAt === "string")
-      .map((entry) => Date.parse(String(entry.updatedAt)))
-      .filter(Number.isFinite));
-    return lastAcknowledgmentId < lastHumanId ||
-      (lastHumanUpdatedAt > 0 && lastAcknowledgmentUpdatedAt > 0 &&
-        lastAcknowledgmentUpdatedAt < lastHumanUpdatedAt);
-  }).map((entry) => Number(entry.id)));
-  const required = entries.filter((entry) =>
-    outstandingRootIds.has(Number(entry.id)) || outstandingRootIds.has(Number(entry.replyToId))
-  );
-  if (outstandingRootIds.size > limit) {
-    throw new Error("GitHub review feedback exceeds the trusted thread limit");
-  }
-  const requiredSet = new Set(required);
-  const remaining = entries.filter((entry) => !requiredSet.has(entry));
-  const remainingLimit = Math.max(0, limit - required.length);
-  const selected = new Set([
-    ...required,
-    ...(remainingLimit === 0 ? [] : remaining.slice(-remainingLimit)),
-  ]);
-  return Object.freeze(entries.filter((entry) => selected.has(entry)));
-};
+): readonly ReviewFeedbackEntry[] => Object.freeze([...entries]);
 
 interface PriorDesignCandidateIdentity {
   candidate_id: string;
@@ -200,9 +115,6 @@ export const verifyPriorDesignCandidate = async (
   text: string,
   row: PriorDesignCandidateIdentity,
 ): Promise<Record<string, unknown>> => {
-  if (new TextEncoder().encode(text).byteLength > DESIGN_CANDIDATE_CONTEXT_LIMIT) {
-    throw new Error("prior design candidate exceeds the trusted limit");
-  }
   if (await sha256Hex(text) !== row.candidate_sha256) {
     throw new Error("prior design candidate hash mismatch");
   }
@@ -345,18 +257,17 @@ export class JobInputMaterializer {
       linearIssue: {
         id: issue.id,
         identifier: issue.identifier,
-        title: bounded(issue.title, 500),
-        description: issue.description === null ? null : bounded(issue.description, 20_000),
+        title: issue.title,
+        description: issue.description,
         url: issue.url,
         state: issue.state,
         project: issue.project,
       },
       sharedWorkingNotes: issue.comments.nodes
         .filter((comment) => comment.body.includes("<!-- deos-operation:"))
-        .slice(-20)
         .map((comment) => ({
           id: comment.id,
-          body: bounded(comment.body, 4_000),
+          body: comment.body,
           updatedAt: comment.updatedAt,
         })),
       priorAttempts,
@@ -378,10 +289,9 @@ export class JobInputMaterializer {
         feedback: {
           linearComments: issue.comments.nodes
             .filter((comment) => !comment.body.includes("<!-- deos-operation:"))
-            .slice(-20)
             .map((comment) => ({
               id: comment.id,
-              body: bounded(comment.body, 4_000),
+              body: comment.body,
               updatedAt: comment.updatedAt,
             })),
           github: githubFeedback.map((entry) => ({
@@ -426,7 +336,6 @@ export class JobInputMaterializer {
         : null,
     };
     const encoded = JSON.stringify(bundle);
-    if (encoded.length > 128_000) throw new Error("materialized job inputs exceed the trusted limit");
     return {
       context: encoded,
       repository: frozenRepository,
@@ -557,7 +466,7 @@ export class JobInputMaterializer {
       sha256: string;
       byteSize: number;
     }>;
-    if (!Array.isArray(manifest) || manifest.length < 3 || manifest.length > 48) {
+    if (!Array.isArray(manifest) || manifest.length < 3) {
       throw new Error("approved planning manifest is invalid");
     }
     const files = await Promise.all(manifest.map(async (entry) => ({
@@ -574,9 +483,6 @@ export class JobInputMaterializer {
         await sha256Hex(file.content) !== file.sha256 ||
         new TextEncoder().encode(file.content).byteLength !== file.byteSize
       ) throw new Error("approved planning file does not match its checked manifest");
-    }
-    if (files.reduce((sum, file) => sum + new TextEncoder().encode(file.content).byteLength, 0) > 96_000) {
-      throw new Error("approved plan context exceeds the trusted limit");
     }
     return Object.freeze(files.map((file) => Object.freeze(file)));
   }
@@ -682,9 +588,6 @@ export class JobInputMaterializer {
     ]);
     if (sidecar === null || inventory === null) throw new Error("traceability feedback artifacts are missing");
     const [sidecarText, inventoryText] = await Promise.all([sidecar.text(), inventory.text()]);
-    if (sidecarText.length + inventoryText.length > 96_000) {
-      throw new Error("traceability feedback exceeds the trusted limit");
-    }
     return {
       reviewId: row.review_id,
       phase: row.phase,
@@ -752,8 +655,7 @@ export class JobInputMaterializer {
        FROM agent_attempts a
        JOIN artifact_manifests m ON m.manifest_id = a.manifest_id
        WHERE a.run_id = ? AND m.state = 'complete'
-       ORDER BY m.completed_at ASC, a.attempt_id ASC
-       LIMIT 20`,
+       ORDER BY m.completed_at ASC, a.attempt_id ASC`,
     ).bind(runId).all<PriorAttemptRow>();
     const attempts: Array<Record<string, unknown>> = [];
     for (const row of result.results) {
@@ -761,7 +663,6 @@ export class JobInputMaterializer {
       const object = await this.artifacts.get(resultKey);
       if (object === null) throw new Error("prior agent result artifact is missing");
       const text = await object.text();
-      if (text.length > 20_000) throw new Error("prior agent result exceeds the trusted limit");
       attempts.push({
         nodeId: row.node_id,
         attemptId: row.attempt_id,

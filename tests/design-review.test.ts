@@ -109,7 +109,39 @@ test("design result validation keeps a closed finding inventory", async () => {
   }), /outcome does not match/);
 });
 
-test("every outside concern requires exactly one bounded author disposition", () => {
+test("design result validation preserves large finding inventories and messages", async () => {
+  const trusted = await validateDesignReviewInput(input());
+  const sourcePath = "openspec/changes/sac-200/design.md";
+  const ranges = Array.from({ length: 20 }, (_, index) => ({
+    path: sourcePath,
+    startLine: index + 1,
+    endLine: index + 1,
+  }));
+  const findings = Array.from({ length: 120 }, (_, index) => ({
+    id: `finding-${index}`,
+    severity: "medium" as const,
+    category: "completeness" as const,
+    message: `${"Complete review context. ".repeat(220)}Finding ${index}.`,
+    sourceRanges: ranges,
+  }));
+  const result = validateDesignReviewResult({
+    version: 1,
+    inputSha256: trusted.inputSha256,
+    phase: "self",
+    outcome: "concerns",
+    summary: "Complete findings were preserved.",
+    findings,
+  }, {
+    inputSha256: trusted.inputSha256,
+    phase: "self",
+    sourcePaths: new Set(trusted.input.sources.map((source) => source.path)),
+  });
+  assert.equal(result.findings.length, 120);
+  assert.equal(result.findings[0]?.sourceRanges.length, 20);
+  assert.ok(result.findings[0]!.message.length > 4_000);
+});
+
+test("every outside concern requires exactly one author disposition", () => {
   const findings = [{ id: "finding-a" }, { id: "finding-b" }];
   const dispositions = validateDesignReviewDispositions(findings, [
     { findingId: "finding-b", status: "declined", reason: "The invariant already covers it." },

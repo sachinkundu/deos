@@ -83,6 +83,22 @@ Proof SHALL be current only while those saved facts still match. A changed desig
 - **WHEN** the plan hashes or design base no longer match the review input.
 - **THEN** DEOS does not claim that the old result checks the new design context.
 
+### Requirement: Preserve complete valid review context
+
+DEOS SHALL carry the complete valid design, approved plan, repository guidance, review feedback, findings, dispositions, and prior attempts through the design review flow. It MUST NOT reject, truncate, sample, or omit that material solely because it crosses a locally chosen byte, character, file-count, finding-count, range-count, or reply-count ceiling.
+
+A future content ceiling MUST name a measured provider or platform constraint and preserve a clear failure that identifies that boundary. Operational protections for untrusted ingress, credentials, process output, and sandbox artifact collection MAY remain when they do not silently change valid review context.
+
+#### Scenario: A large design remains valid context
+
+- **WHEN** a valid design or its valid review history is larger than an earlier local ceiling.
+- **THEN** DEOS preserves the complete material and continues until a real provider or platform boundary is reached.
+
+#### Scenario: A provider rejects the complete context
+
+- **WHEN** a provider or platform cannot accept the complete valid context.
+- **THEN** DEOS records that actual boundary and does not replace it with a smaller unexplained local limit.
+
 ### Requirement: Show the checked design and its proof
 
 An allowed person SHALL be able to see each design review result, its evidence, and the exact pull request head that was checked. The view SHALL mark stale proof and SHALL make clear when a later round did not need a self-check. It MUST NOT claim that a review result is human approval.
