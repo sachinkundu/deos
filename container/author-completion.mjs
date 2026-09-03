@@ -82,8 +82,7 @@ export const changedPathsFromPorcelain = (value) => {
 const concise = (value) => value
   .replace(/[\u0000-\u001f\u007f]+/g, " ")
   .replace(/\s+/g, " ")
-  .trim()
-  .slice(0, 1_000);
+  .trim();
 
 export const runAuthorCompletionCheck = async ({ cwd, change, execute = command }) => {
   if (!safeChange(change)) throw new Error("author completion change identity is invalid");

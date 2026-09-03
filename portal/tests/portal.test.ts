@@ -443,6 +443,14 @@ test("transcript JSONL keeps exact numbered records for readable and raw views",
   assert.equal(activityForRecord(records[1]!).title, "Tool call · read_file");
 });
 
+test("transcript JSONL preserves every record beyond the former local ceiling", () => {
+  const text = Array.from({ length: 10_001 }, (_, index) =>
+    JSON.stringify({ type: "status", index, message: `Update ${index}` })).join("\n");
+  const records = parseTranscriptJsonl(text);
+  assert.equal(records.length, 10_001);
+  assert.equal(records.at(-1)?.value.index, 10_000);
+});
+
 test("attempt transcript reads only the D1-selected accepted object and verifies integrity", async () => {
   const attemptId = "01a03852-9204-7612-bbb6-b76579f1462a";
   const objectKey = "runs/private/attempts/transcript.jsonl";

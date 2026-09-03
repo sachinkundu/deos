@@ -1319,8 +1319,9 @@ test("successful agent output without durable provider receipts fails closed", a
   assert.equal(observation.state === "completed" ? observation.outcome.providerReceiptsComplete : true, false);
 });
 
-test("post-collection validation failure preserves the completed manifest", async () => {
-  const state = setup({ reviewAcceptanceError: new Error("trusted review evidence is invalid") });
+test("post-collection validation failure preserves the completed manifest and full error", async () => {
+  const detail = `trusted review evidence is invalid: ${"context ".repeat(200)}`;
+  const state = setup({ reviewAcceptanceError: new Error(detail) });
   const traceRun = {
     ...run,
     project_id: "project-1",
@@ -1344,6 +1345,7 @@ test("post-collection validation failure preserves the completed manifest", asyn
   assert.equal(state.collector.failureCollections, 0);
   assert.equal(state.attempts.latest?.state, "failed");
   assert.equal(state.attempts.latest?.result_class, "post_collection_validation_failed");
+  assert.equal(state.attempts.latest?.result_detail, detail.trim());
   assert.equal(state.attempts.latest?.manifest_id, "manifest:attempt-1");
   assert.equal(state.factory.sandbox.destroyed, true);
 });

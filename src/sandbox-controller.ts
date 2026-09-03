@@ -1019,8 +1019,12 @@ export class SandboxAgentController {
           providerReceiptsComplete,
         },
       };
-    } catch {
+    } catch (error) {
       if (collection !== null) {
+        const resultDetail = this.safeResultDetail(
+          error instanceof Error ? error.message : "post-collection validation failed",
+          false,
+        );
         if (job.reviewKind === "design") {
           await this.dependencies.recordDesignReviewFailure?.({
             attempt,
@@ -1033,6 +1037,7 @@ export class SandboxAgentController {
           expected: "collecting",
           state: "failed",
           resultClass: "post_collection_validation_failed",
+          resultDetail,
           manifestId: collection.manifestId,
           now: this.dependencies.now().toISOString(),
         });
@@ -1332,7 +1337,7 @@ export class SandboxAgentController {
     const detail = repeatedPatch
       ? `Rejected plan bytes match the prior invalid candidate. Trusted check: ${normalized}`
       : normalized;
-    return detail.slice(0, 1_000);
+    return detail;
   }
 
   private async finishFailure(
