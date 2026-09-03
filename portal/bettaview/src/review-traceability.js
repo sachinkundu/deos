@@ -410,12 +410,13 @@ function runProcess(command, args, { cwd, input, forwardOutput = false } = {}) {
     const child = spawn(command, args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
+    const retainTail = (current, chunk) => `${current}${chunk}`.slice(-65_536);
     child.stdout.on("data", (chunk) => {
-      stdout += chunk;
+      stdout = retainTail(stdout, chunk);
       if (forwardOutput) process.stderr.write(chunk);
     });
     child.stderr.on("data", (chunk) => {
-      stderr += chunk;
+      stderr = retainTail(stderr, chunk);
       if (forwardOutput) process.stderr.write(chunk);
     });
     child.on("error", reject);
