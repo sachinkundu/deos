@@ -144,9 +144,10 @@ test("a saved source attempt reuses its round and exact candidate identity", asy
 
 test("candidate replay recovers the validation timestamp written before D1", async () => {
   const built = await build({ checkedAt: "2026-09-01T10:05:00.000Z" });
+  const completeValidation = { ...built.validation, diagnosticContext: "v".repeat(8_000) };
   const bucket = {
     get: async (key: string) => key.endsWith("candidate-validation.json") ? {
-      text: async () => JSON.stringify(built.validation),
+      text: async () => JSON.stringify(completeValidation),
     } : null,
   } as unknown as R2Bucket;
   assert.equal(

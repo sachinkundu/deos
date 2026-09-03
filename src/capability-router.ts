@@ -114,7 +114,7 @@ const parseGitHubRequest = (value: unknown): GitHubCapabilityRequest | null => {
     if (
       file === null ||
       !exactKeys(file, ["path", "content"]) ||
-      !nonEmpty(file.path, 500) ||
+      !nonEmpty(file.path) ||
       typeof file.content !== "string" ||
       file.path.startsWith("/") || file.path.includes("..") ||
       file.path === ".env" || file.path.startsWith(".github/workflows/") ||
@@ -160,7 +160,7 @@ const parsePlanningRequest = (value: unknown): PlanningPublicationRequest | null
     const file = asRecord(value);
     if (
       file === null || !exactKeys(file, ["path", "content"]) ||
-      !nonEmpty(file.path, 500) || typeof file.content !== "string"
+      !nonEmpty(file.path) || typeof file.content !== "string"
     ) return null;
     files.push({ path: file.path, content: file.content });
   }

@@ -123,9 +123,6 @@ export const recoverDesignCandidateCheckedAt = async (
   const object = await bucket.get(validationR2Key);
   if (object === null) return null;
   const text = await object.text();
-  if (new TextEncoder().encode(text).byteLength > 4_096) {
-    throw new Error("design candidate validation evidence is invalid");
-  }
   let validation: Partial<DesignCandidateValidation>;
   try {
     validation = JSON.parse(text) as Partial<DesignCandidateValidation>;
