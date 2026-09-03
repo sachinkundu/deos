@@ -13,6 +13,7 @@ COPY container/author-completion.mjs /deos/bin/author-completion.mjs
 COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs
 COPY container/trace-review-runner.mjs /deos/bin/trace-review-runner.mjs
 COPY container/design-review-runner.mjs /deos/bin/design-review-runner.mjs
+COPY container/design-review-schema.mjs /deos/bin/design-review-schema.mjs
 COPY container/patch-capture.mjs /deos/bin/patch-capture.mjs
 COPY shared/planning-language.mjs /deos/shared/planning-language.mjs
 COPY vendor/bettaview/ /deos/bettaview/

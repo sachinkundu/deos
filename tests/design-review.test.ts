@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -16,6 +17,14 @@ test("Codex design review schema types every constrained property", () => {
   assert.equal(designReviewOutputSchema.properties.outcome.type, "string");
   assert.equal(designReviewOutputSchema.properties.findings.items.properties.severity.type, "string");
   assert.equal(designReviewOutputSchema.properties.findings.items.properties.category.type, "string");
+});
+
+test("Sandbox image bundles the design review schema beside its runner", async () => {
+  const dockerfile = await readFile(new URL("../Dockerfile", import.meta.url), "utf8");
+  assert.match(
+    dockerfile,
+    /COPY container\/design-review-schema\.mjs \/deos\/bin\/design-review-schema\.mjs/,
+  );
 });
 
 const input = (phase: "self" | "independent" = "self"): DesignReviewInput => ({
