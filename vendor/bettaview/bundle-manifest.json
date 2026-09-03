@@ -1,7 +1,7 @@
 {
-  "bundleVersion": "bettaview-openspec-traceability-directional-v4-2026-08-28",
-  "sourceRepository": "sachinkundu/bettaview",
-  "sourceRevision": "de22c3cf9a95285647bbf31cac1d6242bef6142a",
+  "bundleVersion": "bettaview-openspec-traceability-directional-v4-blank-lines-2026-09-03",
+  "sourceRepository": "sachinkundu/deos",
+  "sourceRevision": "e24cc29e6f6785d5ced1c0019af0602100fc8e97",
   "files": [
     {
       "path": ".agents/skills/review-openspec-traceability/references/claims.md",
@@ -9,7 +9,7 @@
     },
     {
       "path": "bin/materialize-traceability.js",
-      "sha256": "34f0f499968d9afc89f7dd58d93beb61e5d43b775e741fa774321b3f7c6515f8"
+      "sha256": "2bd228e99173df98d96b5e679bf345060de27cea06045d01ccece48e72f68df4"
     },
     {
       "path": "bin/review-traceability.js",
