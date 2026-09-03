@@ -59,7 +59,7 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const HEAD_SHA = /^[a-f0-9]{40}$/;
 const SAFE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const RUN_ID = /^[A-Za-z0-9:._-]{3,512}$/;
-const SOURCE_PATH = /^(?:openspec\/changes\/[a-z0-9]+(?:-[a-z0-9]+)*\/(?:proposal\.md|design\.md|specs\/[a-z0-9]+(?:-[a-z0-9]+)*\/spec\.md)|(?:AGENTS|agents)\.md|architecture(?:-[A-Za-z0-9_.-]+)?\.md|docs\/current-architecture\.md)$/;
+const SOURCE_PATH = /^(?:openspec\/changes\/[a-z0-9]+(?:-[a-z0-9]+)*\/(?:\.openspec\.yaml|proposal\.md|design\.md|specs\/[a-z0-9]+(?:-[a-z0-9]+)*\/spec\.md)|(?:AGENTS|agents)\.md|architecture(?:-[A-Za-z0-9_.-]+)?\.md|docs\/current-architecture\.md)$/;
 
 const canonicalize = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(canonicalize);

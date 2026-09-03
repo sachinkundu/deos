@@ -20,6 +20,7 @@ const input = (phase: "self" | "independent" = "self"): DesignReviewInput => ({
   baseCommit: "c".repeat(40),
   guidanceManifestSha256: "d".repeat(64),
   sources: [
+    { path: "openspec/changes/sac-200/.openspec.yaml", sha256: "0".repeat(64) },
     { path: "openspec/changes/sac-200/proposal.md", sha256: "e".repeat(64) },
     { path: "openspec/changes/sac-200/design.md", sha256: "f".repeat(64) },
   ],
@@ -45,6 +46,16 @@ test("canonical design review inputs bind model, context, and exact head", async
   await assert.rejects(
     validateDesignReviewInput({ ...input("self"), modelProvider: "openrouter" }),
     /self design review input is invalid/,
+  );
+  await assert.rejects(
+    validateDesignReviewInput({
+      ...input(),
+      sources: [
+        ...input().sources,
+        { path: "openspec/changes/sac-200/.env", sha256: "1".repeat(64) },
+      ],
+    }),
+    /design review source is invalid/,
   );
 });
 
