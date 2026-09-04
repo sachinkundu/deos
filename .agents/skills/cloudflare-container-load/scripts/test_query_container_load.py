@@ -36,18 +36,21 @@ class QueryContainerLoadTests(unittest.TestCase):
                 "started_at": "2026-08-31T11:00:01Z",
                 "ended_at": "2026-08-31T11:01:00Z",
                 "updated_at": "2026-08-31T11:01:00Z",
+                "cleanup_state": "destroyed",
             },
             {
                 "created_at": "2026-08-31T11:00:30Z",
                 "started_at": "2026-08-31T11:00:31Z",
                 "ended_at": "2026-08-31T11:02:00Z",
                 "updated_at": "2026-08-31T11:02:00Z",
+                "cleanup_state": "destroyed",
             },
             {
                 "created_at": "2026-08-31T11:01:00Z",
                 "started_at": "2026-08-31T11:01:01Z",
                 "ended_at": "2026-08-31T11:03:00Z",
                 "updated_at": "2026-08-31T11:03:00Z",
+                "cleanup_state": "destroyed",
             },
         ]
 
@@ -55,6 +58,7 @@ class QueryContainerLoadTests(unittest.TestCase):
             rows,
             start_key="created_at",
             open_states={"pending", "starting", "running", "collecting"},
+            end_after_cleanup=True,
         )
 
         self.assertEqual(peak, 2)
@@ -82,6 +86,7 @@ class QueryContainerLoadTests(unittest.TestCase):
             rows,
             start_key="created_at",
             open_states={"pending", "starting", "running", "collecting"},
+            end_after_cleanup=True,
         )
 
         self.assertEqual(peak, 2)
@@ -108,6 +113,7 @@ class QueryContainerLoadTests(unittest.TestCase):
             rows,
             start_key="created_at",
             open_states={"pending", "starting", "running", "collecting"},
+            end_after_cleanup=True,
         )
         running, _ = audit.peak_overlap(
             rows,
@@ -117,6 +123,35 @@ class QueryContainerLoadTests(unittest.TestCase):
 
         self.assertEqual(allocated, 2)
         self.assertEqual(running, 1)
+
+    def test_allocated_peak_ends_only_after_destroyed_cleanup(self) -> None:
+        rows = [
+            {
+                "state": "completed",
+                "cleanup_state": "failed",
+                "created_at": "2026-08-31T11:00:00Z",
+                "started_at": "2026-08-31T11:00:01Z",
+                "ended_at": "2026-08-31T11:01:00Z",
+                "updated_at": "2026-08-31T11:01:05Z",
+            },
+            {
+                "state": "running",
+                "cleanup_state": "pending",
+                "created_at": "2026-08-31T11:02:00Z",
+                "started_at": "2026-08-31T11:02:01Z",
+                "ended_at": None,
+                "updated_at": "2026-08-31T11:02:02Z",
+            },
+        ]
+
+        allocated, _ = audit.peak_overlap(
+            rows,
+            start_key="created_at",
+            open_states={"pending", "starting", "running", "collecting"},
+            end_after_cleanup=True,
+        )
+
+        self.assertEqual(allocated, 2)
 
     def test_minute_peak_counts_distinct_instances(self) -> None:
         rows = [

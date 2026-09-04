@@ -35,7 +35,7 @@ CAPACITY_RE = re.compile(
 )
 ATTEMPT_SQL = """
 SELECT a.attempt_id, a.run_id, a.node_id, a.state, a.created_at, a.started_at,
-       a.ended_at, a.updated_at, a.result_class, a.result_detail,
+       a.ended_at, a.updated_at, a.result_class, a.result_detail, a.cleanup_state,
        COALESCE(stage_retry.source_workflow_instance_id,
                 runtime_recovery.source_workflow_instance_id,
                 r.workflow_instance_id) AS attempt_workflow_instance_id
@@ -202,7 +202,11 @@ def container_application(config: Path, expected_name: str, *, token: str) -> di
 
 
 def peak_overlap(
-    rows: Iterable[Mapping[str, Any]], *, start_key: str, open_states: set[str]
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    start_key: str,
+    open_states: set[str],
+    end_after_cleanup: bool = False,
 ) -> tuple[int, datetime | None]:
     events: list[tuple[datetime, int]] = []
     now = datetime.now(UTC)
@@ -210,14 +214,22 @@ def peak_overlap(
         start_value = row.get(start_key)
         if not isinstance(start_value, str) or not start_value:
             continue
-        end_value = row.get("ended_at")
         start = parse_iso(start_value)
-        if isinstance(end_value, str) and end_value:
+        updated_value = row.get("updated_at")
+        end_value = row.get("ended_at")
+        if end_after_cleanup and row.get("cleanup_state") == "destroyed":
+            end = (
+                parse_iso(updated_value)
+                if isinstance(updated_value, str) and updated_value
+                else now
+            )
+        elif end_after_cleanup:
+            end = now
+        elif isinstance(end_value, str) and end_value:
             end = parse_iso(end_value)
         elif row.get("state") in open_states:
             end = now
         else:
-            updated_value = row.get("updated_at")
             end = (
                 parse_iso(updated_value)
                 if isinstance(updated_value, str) and updated_value
@@ -423,6 +435,7 @@ def audit(arguments: argparse.Namespace) -> dict[str, Any]:
         attempts,
         start_key="created_at",
         open_states={"pending", "starting", "running", "collecting"},
+        end_after_cleanup=True,
     )
     running_peak, running_at = peak_overlap(
         attempts,
