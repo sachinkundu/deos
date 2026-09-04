@@ -19,6 +19,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 GRAPHQL_URL = "https://api.cloudflare.com/client/v4/graphql"
+GRAPHQL_LIMIT = 10_000
 ACCOUNT_ID_RE = re.compile(r'"account_id"\s*:\s*"([0-9a-fA-F]{32})"')
 WORKER_NAME_RE = re.compile(r'"name"\s*:\s*"([^"\n]+)"')
 MAX_INSTANCES_RE = re.compile(r'"max_instances"\s*:\s*(\d+)')
@@ -35,9 +36,17 @@ CAPACITY_RE = re.compile(
 ATTEMPT_SQL = """
 SELECT a.attempt_id, a.run_id, a.node_id, a.state, a.created_at, a.started_at,
        a.ended_at, a.updated_at, a.result_class, a.result_detail,
-       r.workflow_instance_id
+       COALESCE(stage_retry.source_workflow_instance_id,
+                runtime_recovery.source_workflow_instance_id,
+                r.workflow_instance_id) AS attempt_workflow_instance_id
 FROM agent_attempts AS a
 LEFT JOIN orchestration_runs AS r ON r.run_id = a.run_id
+LEFT JOIN agent_stage_retries AS stage_retry
+  ON stage_retry.run_id = a.run_id
+ AND stage_retry.from_visit_sequence = a.visit_sequence
+LEFT JOIN workflow_runtime_recoveries AS runtime_recovery
+  ON runtime_recovery.run_id = a.run_id
+ AND runtime_recovery.from_visit_sequence = a.visit_sequence
 ORDER BY a.created_at
 """.strip()
 
@@ -187,9 +196,19 @@ def peak_overlap(
         start_value = row.get(start_key)
         if not isinstance(start_value, str) or not start_value:
             continue
-        end_value = row.get("ended_at") or row.get("updated_at")
+        end_value = row.get("ended_at")
         start = parse_iso(start_value)
-        end = parse_iso(end_value) if isinstance(end_value, str) and end_value else now
+        if isinstance(end_value, str) and end_value:
+            end = parse_iso(end_value)
+        elif row.get("state") in {"pending", "starting", "running"}:
+            end = now
+        else:
+            updated_value = row.get("updated_at")
+            end = (
+                parse_iso(updated_value)
+                if isinstance(updated_value, str) and updated_value
+                else now
+            )
         if end < start:
             continue
         events.extend(((start, 1), (end, -1)))
@@ -216,63 +235,83 @@ def start_delays(rows: Iterable[Mapping[str, Any]]) -> tuple[float | None, str |
     return max(candidates) if candidates else (None, None)
 
 
-def graphql_rows(
+def graphql_window(
     *, account_id: str, token: str, application_id: str, start: datetime, end: datetime
 ) -> list[dict[str, Any]]:
     query = """
-query ContainerLoad($accountTag: String!, $filter: AccountContainersMetricsAdaptiveGroupsFilter_InputObject!) {
+query ContainerLoad($accountTag: String!, $limit: Int!, $filter: AccountContainersMetricsAdaptiveGroupsFilter_InputObject!) {
   viewer {
     accounts(filter: {accountTag: $accountTag}) {
-      containersMetricsAdaptiveGroups(limit: 10000, filter: $filter, orderBy: [datetimeMinute_ASC]) {
+      containersMetricsAdaptiveGroups(limit: $limit, filter: $filter, orderBy: [datetimeMinute_ASC]) {
         dimensions { datetimeMinute instanceId applicationId }
       }
     }
   }
 }
 """.strip()
+    body = json.dumps(
+        {
+            "query": query,
+            "variables": {
+                "accountTag": account_id,
+                "limit": GRAPHQL_LIMIT,
+                "filter": {
+                    "applicationId": application_id,
+                    "datetime_geq": iso(start),
+                    "datetime_lt": iso(end),
+                },
+            },
+        }
+    ).encode("utf-8")
+    request = Request(
+        GRAPHQL_URL,
+        data=body,
+        method="POST",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+    )
+    try:
+        with urlopen(request, timeout=30) as response:
+            payload = json.load(response)
+    except HTTPError as exc:
+        raise AuditError(f"Cloudflare analytics query failed with HTTP {exc.code}") from exc
+    except URLError as exc:
+        raise AuditError("Cloudflare analytics query could not reach the API") from exc
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise AuditError("Cloudflare analytics returned non-JSON output") from exc
+    if not isinstance(payload, Mapping) or payload.get("errors"):
+        raise AuditError("Cloudflare analytics returned an unsuccessful response")
+    try:
+        rows = payload["data"]["viewer"]["accounts"][0]["containersMetricsAdaptiveGroups"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise AuditError("Cloudflare analytics response has no container rows") from exc
+    if not isinstance(rows, list):
+        raise AuditError("Cloudflare analytics container rows are malformed")
+    return [dict(row) for row in rows if isinstance(row, Mapping)]
+
+
+def graphql_rows(
+    *, account_id: str, token: str, application_id: str, start: datetime, end: datetime
+) -> list[dict[str, Any]]:
+    def collect(window_start: datetime, window_end: datetime) -> list[dict[str, Any]]:
+        rows = graphql_window(
+            account_id=account_id,
+            token=token,
+            application_id=application_id,
+            start=window_start,
+            end=window_end,
+        )
+        if len(rows) < GRAPHQL_LIMIT:
+            return rows
+        if window_end - window_start <= timedelta(minutes=1):
+            raise AuditError("Cloudflare analytics reached its row limit within one minute")
+        midpoint = window_start + (window_end - window_start) / 2
+        return collect(window_start, midpoint) + collect(midpoint, window_end)
+
     all_rows: list[dict[str, Any]] = []
     cursor = start
     while cursor < end:
         chunk_end = min(cursor + timedelta(days=7), end)
-        body = json.dumps(
-            {
-                "query": query,
-                "variables": {
-                    "accountTag": account_id,
-                    "filter": {
-                        "applicationId": application_id,
-                        "datetime_geq": iso(cursor),
-                        "datetime_lt": iso(chunk_end),
-                    },
-                },
-            }
-        ).encode("utf-8")
-        request = Request(
-            GRAPHQL_URL,
-            data=body,
-            method="POST",
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        )
-        try:
-            with urlopen(request, timeout=30) as response:
-                payload = json.load(response)
-        except HTTPError as exc:
-            raise AuditError(f"Cloudflare analytics query failed with HTTP {exc.code}") from exc
-        except URLError as exc:
-            raise AuditError("Cloudflare analytics query could not reach the API") from exc
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise AuditError("Cloudflare analytics returned non-JSON output") from exc
-        if not isinstance(payload, Mapping) or payload.get("errors"):
-            raise AuditError("Cloudflare analytics returned an unsuccessful response")
-        try:
-            rows = payload["data"]["viewer"]["accounts"][0][
-                "containersMetricsAdaptiveGroups"
-            ]
-        except (KeyError, IndexError, TypeError) as exc:
-            raise AuditError("Cloudflare analytics response has no container rows") from exc
-        if len(rows) >= 10000:
-            raise AuditError("Cloudflare analytics reached its row limit; shorten the query chunk")
-        all_rows.extend(dict(row) for row in rows if isinstance(row, Mapping))
+        all_rows.extend(collect(cursor, chunk_end))
         cursor = chunk_end
     return all_rows
 
@@ -300,7 +339,8 @@ def workflow_capacity_check(
     startup = [
         row
         for row in rows
-        if row.get("result_class") == "startup_failed" and row.get("workflow_instance_id")
+        if row.get("result_class") == "startup_failed"
+        and row.get("attempt_workflow_instance_id")
     ]
     if not startup or not workflow_name:
         return 0, [], 0
@@ -315,7 +355,7 @@ def workflow_capacity_check(
                 "instances",
                 "describe",
                 workflow_name,
-                str(row["workflow_instance_id"]),
+                str(row["attempt_workflow_instance_id"]),
                 "--config",
                 str(config),
                 "--truncate-output-limit",

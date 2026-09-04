@@ -56,6 +56,28 @@ class QueryContainerLoadTests(unittest.TestCase):
         self.assertEqual(peak, 2)
         self.assertEqual(at, datetime(2026, 8, 31, 11, 0, 30, tzinfo=UTC))
 
+    def test_peak_overlap_keeps_live_attempt_open_until_audit(self) -> None:
+        rows = [
+            {
+                "state": "running",
+                "created_at": "2026-08-31T11:00:00Z",
+                "started_at": "2026-08-31T11:00:01Z",
+                "ended_at": None,
+                "updated_at": "2026-08-31T11:00:05Z",
+            },
+            {
+                "state": "pending",
+                "created_at": "2026-08-31T11:01:00Z",
+                "started_at": None,
+                "ended_at": None,
+                "updated_at": "2026-08-31T11:01:00Z",
+            },
+        ]
+
+        peak, _ = audit.peak_overlap(rows, start_key="created_at")
+
+        self.assertEqual(peak, 2)
+
     def test_minute_peak_counts_distinct_instances(self) -> None:
         rows = [
             {"dimensions": {"datetimeMinute": "2026-08-31T11:59:00Z", "instanceId": "a"}},
@@ -67,6 +89,25 @@ class QueryContainerLoadTests(unittest.TestCase):
 
         self.assertEqual(peak, 2)
         self.assertEqual(at, "2026-08-31T11:59:00Z")
+
+    def test_graphql_rows_splits_a_saturated_window(self) -> None:
+        start = datetime(2026, 8, 31, 0, 0, tzinfo=UTC)
+        end = datetime(2026, 9, 1, 0, 0, tzinfo=UTC)
+        saturated = [{"dimensions": {}}] * audit.GRAPHQL_LIMIT
+        left = [{"dimensions": {"instanceId": "left"}}]
+        right = [{"dimensions": {"instanceId": "right"}}]
+
+        with patch.object(audit, "graphql_window", side_effect=[saturated, left, right]) as query:
+            rows = audit.graphql_rows(
+                account_id="a" * 32,
+                token="token",
+                application_id="app",
+                start=start,
+                end=end,
+            )
+
+        self.assertEqual(rows, left + right)
+        self.assertEqual(query.call_count, 3)
 
     def test_dotenv_does_not_execute_shell_content(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
