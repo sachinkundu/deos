@@ -54,7 +54,7 @@ test("resolves and displays an evidence-backed semantic review", async () => {
   assert.match(formatTraceability(traceability), /^semantic review: pass[\s\S]*proposal coverage:[\s\S]*proposal\.md:7-7[\s\S]*↓ supports[\s\S]*findings: 0$/);
 });
 
-test("materializes a bidirectional version 3 sidecar from line IDs", async (t) => {
+test("materializes a bidirectional version 3 sidecar when evidence includes a blank line", async (t) => {
   const copy = await mutableFixture();
   t.after(copy.cleanup);
   const judgmentFile = path.join(path.dirname(copy.changeDirectory), "judgment.json");
@@ -86,7 +86,7 @@ test("materializes a bidirectional version 3 sidecar from line IDs", async (t) =
       judgment: passingJudgment,
       links: [{
         id: "resume-job",
-        proposalLines: [7],
+        proposalLines: [7, 8],
         specStartLine: 3,
         judgment: passingJudgment,
       }],
@@ -98,6 +98,15 @@ test("materializes a bidirectional version 3 sidecar from line IDs", async (t) =
   const traceability = await loadTraceability(copy.changeDirectory);
   assert.equal(traceability.version, 3);
   assert.deepEqual(traceability.proposalStatements[0].requirementLinks, ["resume-job"]);
+  assert.deepEqual(traceability.links[0].proposalEvidence.map(({ startLine, endLine, quote }) => ({
+    startLine,
+    endLine,
+    quote,
+  })), [{
+    startLine: 7,
+    endLine: 7,
+    quote: "- Resume a paused job from its saved checkpoint.",
+  }]);
 });
 
 test("continues to read a valid version 2 semantic sidecar", async (t) => {

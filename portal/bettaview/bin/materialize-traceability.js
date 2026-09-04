@@ -19,17 +19,23 @@ const judgment = JSON.parse(await readFile(judgmentFile, "utf8"));
 const proposalSource = await readFile(path.join(changeDirectory, "proposal.md"), "utf8");
 const proposalLines = splitSourceLines(proposalSource);
 const digest = (source) => createHash("sha256").update(source).digest("hex");
-const proposalEvidence = (lineNumbers, label) => lineNumbers.map((line) => {
-  if (!Number.isInteger(line) || line < 1 || line > proposalLines.length) {
-    throw new Error(`${label} contains invalid proposal line ${JSON.stringify(line)}`);
+const proposalEvidence = (lineNumbers, label) => {
+  for (const line of lineNumbers) {
+    if (!Number.isInteger(line) || line < 1 || line > proposalLines.length) {
+      throw new Error(`${label} contains invalid proposal line ${JSON.stringify(line)}`);
+    }
   }
-  return {
+
+  return [...new Set(lineNumbers)]
+    .sort((left, right) => left - right)
+    .filter((line) => proposalLines[line - 1].trim().length > 0)
+    .map((line) => ({
     file: "proposal.md",
     startLine: line,
     endLine: line,
     quote: proposalLines[line - 1],
-  };
-});
+  }));
+};
 const proposalRangeEvidence = (range) => ({
   file: "proposal.md",
   startLine: range.startLine,
