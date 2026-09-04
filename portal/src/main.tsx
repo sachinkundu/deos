@@ -28,6 +28,7 @@ import {
 import { applyStaged, receivePoll, type PollState } from "./polling.ts";
 import { directionalClaimPresentation } from "./directional-claim.ts";
 import { portalPageFromPath, portalPathForPage, reviewRunIdFromPath, type PortalPage } from "./routes.ts";
+import { bettaViewUrl, pullRequestActions } from "./review-actions.ts";
 import { TranscriptViewer } from "./TranscriptViewer.tsx";
 import type { TranscriptDto } from "./transcript-view.ts";
 import {
@@ -199,10 +200,16 @@ const formatDuration = (startedAt: string, endedAt: string | null): string => {
   return remainingSeconds === 0 ? `${minutes} min` : `${minutes} min ${remainingSeconds} sec`;
 };
 
-const bettaViewUrl = (pullRequestUrl: string): string =>
-  `https://bettaview.voxdez.com/?pr=${encodeURIComponent(pullRequestUrl)}`;
-
 const human = (value: string): string => value.replaceAll("_", " ");
+
+function PullRequestActions({ url, githubLabel }: { url: string; githubLabel: string }) {
+  return <>{pullRequestActions(url, githubLabel).map((action) => <a
+    key={action.kind}
+    href={action.url}
+    target="_blank"
+    rel="noreferrer"
+  >{action.kind === "github" ? <GitPullRequest /> : <Eye />}{action.label}</a>)}</>;
+}
 
 function ThemeControl({ theme, setTheme }: { theme: Theme; setTheme: (theme: Theme) => void }) {
   return <div className="theme-control" aria-label="Color theme">
@@ -418,11 +425,11 @@ function TraceabilityWorkflowMap({
               {product && <div className="phase-artifacts">
                 <a href={product.url} target="_blank" rel="noreferrer"><FileText />{phase.id === "planning" ? "Proposal" : "design.md"}</a>
                 {phase.id === "planning" && <a href={product.url} target="_blank" rel="noreferrer"><ListChecks />Specs</a>}
-                <a href={product.url} target="_blank" rel="noreferrer"><GitPullRequest />PR #{product.number}</a>
+                <PullRequestActions url={product.url} githubLabel={`PR #${product.number}`} />
               </div>}
               {phase.id === "approval" && <div className="phase-artifacts">
-                {planningProduct && <a href={planningProduct.url} target="_blank" rel="noreferrer"><GitPullRequest />Plan PR #{planningProduct.number}</a>}
-                {designProduct && <a href={designProduct.url} target="_blank" rel="noreferrer"><GitPullRequest />Design PR #{designProduct.number}</a>}
+                {planningProduct && <PullRequestActions url={planningProduct.url} githubLabel={`Plan PR #${planningProduct.number}`} />}
+                {designProduct && <PullRequestActions url={designProduct.url} githubLabel={`Design PR #${designProduct.number}`} />}
               </div>}
             </div>
             {expanded && phase.id === "planning" && renderPlanning()}
@@ -449,10 +456,10 @@ function TraceabilityWorkflowMap({
         {inspectedPhase?.id === "approval" && <>
           <details open><summary>Planning decisions</summary>{planningGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
           <details open><summary>Design decisions</summary>{designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
-          {approvalLinks.length > 0 && <details open><summary>Review links</summary>{approvalLinks.map((link) => <p key={link.url} className={selectedApprovalLinks.has(link.url) ? "selected-evidence" : ""}><a href={link.url} target="_blank" rel="noreferrer"><GitPullRequest /> {link.label}</a></p>)}</details>}
+          {approvalLinks.length > 0 && <details open><summary>Review links</summary>{approvalLinks.map((link) => <p key={link.url} className={selectedApprovalLinks.has(link.url) ? "selected-evidence" : ""}><a href={link.url} target="_blank" rel="noreferrer"><GitPullRequest /> {link.label}</a>{link.kind === "pull_request" && <a href={bettaViewUrl(link.url)} target="_blank" rel="noreferrer"><Eye /> Open in BettaView</a>}</p>)}</details>}
         </>}
         {inspectedPhase?.id === "design" && <details open><summary>Review rounds</summary>{designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>}
-        {inspectorProduct && <details open><summary>Artifacts</summary><p><a href={inspectorProduct.url} target="_blank" rel="noreferrer"><GitPullRequest /> PR #{inspectorProduct.number}</a></p><p>{inspectorProduct === planningProduct ? "Proposal and complete specs" : "design.md"}</p></details>}
+        {inspectorProduct && <details open><summary>Artifacts</summary><p><PullRequestActions url={inspectorProduct.url} githubLabel={`PR #${inspectorProduct.number}`} /></p><p>{inspectorProduct === planningProduct ? "Proposal and complete specs" : "design.md"}</p></details>}
         {inspectorAttempts.length > 0 && <details><summary>Transcript</summary>{inspectorAttempts.map((attempt) => <button className="inspector-action" type="button" key={attempt.id} onClick={() => onOpenTranscript(attempt.id)}>View transcript</button>)}</details>}
       </aside>
     </div>
@@ -910,7 +917,7 @@ function App() {
               {detail.gate && <div className="gate-visit-card">
                 <span className="eyebrow">{human(detail.gate.gate_kind)} gate · round {detail.gate.round}</span>
                 <dl><div><dt>Work</dt><dd>{human(detail.gate.work_type)}</dd></div><div><dt>Decision</dt><dd>{human(detail.gate.decision_outcome ?? detail.gate.state)}</dd></div><div><dt>Approved head</dt><dd><code>{detail.gate.approved_head_sha.slice(0, 12)}</code></dd></div></dl>
-                <a className="review-trace-link" href={detail.gate.pull_request_url} target="_blank" rel="noreferrer">Open PR #{detail.gate.pull_request_number} <ArrowSquareOut /></a>
+                <div className="planning-pr-actions"><a className="review-trace-link" href={detail.gate.pull_request_url} target="_blank" rel="noreferrer">Open PR #{detail.gate.pull_request_number} <ArrowSquareOut /></a><a className="review-trace-link" href={bettaViewUrl(detail.gate.pull_request_url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a></div>
               </div>}
               {(["planning", "plan_merge"].includes(detail.stageId) && projection.workProducts.planning) && <div className="planning-pr-actions">
                 <a className="review-trace-link" href={projection.workProducts.planning.url} target="_blank" rel="noreferrer">Open planning PR <ArrowSquareOut /></a>
