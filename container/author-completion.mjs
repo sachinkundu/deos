@@ -11,7 +11,6 @@ import {
 } from "../shared/planning-language.mjs";
 
 const MAXIMUM_COMMAND_BYTES = 64 * 1024;
-const MAXIMUM_FILES = 64;
 
 const safeChange = (value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 
@@ -83,8 +82,7 @@ export const changedPathsFromPorcelain = (value) => {
 const concise = (value) => value
   .replace(/[\u0000-\u001f\u007f]+/g, " ")
   .replace(/\s+/g, " ")
-  .trim()
-  .slice(0, 1_000);
+  .trim();
 
 export const runAuthorCompletionCheck = async ({ cwd, change, execute = command }) => {
   if (!safeChange(change)) throw new Error("author completion change identity is invalid");
@@ -114,8 +112,8 @@ export const runAuthorCompletionCheck = async ({ cwd, change, execute = command 
     throw new Error("author completion could not inspect the planning files");
   }
   const paths = inventory.stdout.split("\n").filter(Boolean).sort();
-  if (paths.length > MAXIMUM_FILES || new Set(paths).size !== paths.length) {
-    failures.push(`Keep at most ${MAXIMUM_FILES} unique files in ${root}.`);
+  if (new Set(paths).size !== paths.length) {
+    failures.push(`Keep unique files in ${root}.`);
   }
   const invalidPaths = paths.filter((path) => !safePlanningPath(change, path));
   if (invalidPaths.length > 0) {

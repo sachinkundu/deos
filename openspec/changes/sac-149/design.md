@@ -4,7 +4,7 @@ The current design path already creates a validated `design.md` candidate, store
 its immutable evidence, publishes one deterministic design pull request, and
 waits at a user-only design gate. The planning merge commit is the immutable
 base for the design job. Its service-authored context contains the approved plan,
-an optional prior design, bounded review feedback, and allowlisted repository
+an optional prior design, complete review feedback, and allowlisted repository
 guidance from that commit.
 
 This change inserts semantic checks between design authoring and every visit to
@@ -133,7 +133,7 @@ final independent result.
 1. A signed Linear delivery from `actor.type == user` that moves the active
    design gate from `Human Review` to `In Progress` closes that gate visit and
    allocates the next monotonic design round on the same pull request.
-2. The revision author receives the prior design and bounded root-thread review
+2. The revision author receives the prior design and all root-thread review
    items. Its candidate and one short reply per affected root thread pass the
    normal completion checks. The trusted adapter publishes the candidate and
    posts replies idempotently without resolving threads.
@@ -144,7 +144,7 @@ final independent result.
    from steps 6–8 above. Only current independent proof can create the next
    design gate binding.
 
-An unchanged revision is allowed when every bounded review item has an explicit
+An unchanged revision is allowed when every review item has an explicit
 reply explaining why no design change was made. It still receives a fresh
 independent result for the current head and new round; old proof is not promoted
 to the new visit.
@@ -238,6 +238,21 @@ Raw evidence continues to use an allowlisted, hash-verifying route with
 safe status and a protected link; they do not embed prompts, raw provider text,
 credentials, or approval language.
 
+### 7. Preserve complete authored and review context
+
+Trusted workflow code does not impose local byte, character, file-count,
+finding-count, range-count, or reply-count ceilings on otherwise valid planning,
+design, and review material. It passes complete context forward and lets an
+actual provider or platform boundary produce an observable failure. A new
+ceiling requires measured evidence for that boundary and a clear diagnostic.
+
+This decision does not remove protections for untrusted ingress, credentials,
+process output, sandbox artifact collection, provider pagination completeness,
+or the three-turn semantic repair policy. Those protect a resource or authority
+boundary rather than shortening valid workflow context. If workflow context
+approaches a durable-store boundary, large values move to hash-checked R2
+objects instead of being silently truncated.
+
 ## Minimal Data Model
 
 The names below are logical D1 records. They may share existing review storage
@@ -248,8 +263,8 @@ primitives, but these keys and constraints must remain visible to trusted code.
 | `design_candidates` (existing) | `candidate_id`, `run_id`, `round_no`, `design_sha256`, `plan_manifest_sha256`, `base_commit`, `guidance_manifest_sha256`, `r2_key`, `validation_receipt_id`, `created_by_attempt`; candidate identity and R2 key are immutable and unique. |
 | `design_review_rounds` | `round_id`, `run_id`, monotonic `round_no`, `kind` (`initial` or `human_revision`), `self_required`, frozen author/outside model settings, `status`; unique on `(run_id, round_no)`. |
 | `design_review_attempts` | `attempt_id`, `round_id`, `phase` (`self` or `independent`), `input_sha256`, `candidate_id`, nullable `pr_database_id` and `head_sha`, model and reasoning identity, `outcome`, evidence manifest key and digest, timestamps; index the input digest for exact-result reuse, while keeping each retry as a distinct attempt. A guarded accepted-result link allows only one current accepted proof for a phase and input. |
-| `design_review_findings` | `attempt_id`, stable `finding_id`, bounded message and source ranges, severity/category; unique on `(attempt_id, finding_id)` and immutable after acceptance. |
-| `design_review_dispositions` | `attempt_id`, `finding_id`, `author_attempt_id`, enum `applied`/`declined`/`no_change`, bounded reason, resulting candidate ID; exactly one active disposition per finding. |
+| `design_review_findings` | `attempt_id`, stable `finding_id`, complete message and source ranges, severity/category; unique on `(attempt_id, finding_id)` and immutable after acceptance. |
+| `design_review_dispositions` | `attempt_id`, `finding_id`, `author_attempt_id`, enum `applied`/`declined`/`no_change`, complete reason, resulting candidate ID; exactly one active disposition per finding. |
 | `design_gate_binding` | Existing gate-visit identity plus `round_id`, `pr_database_id`, `head_sha`, nullable accepted self attempt, accepted independent attempt, and input digest. Insert only through the eligibility transaction; immutable for that visit. |
 
 Attempt rows record failed and invalid executions as history, but only an
@@ -268,7 +283,7 @@ boolean supplied by an agent.
 | Model channel is unavailable or times out | Record the failed attempt and keep the gate ineligible. A stage retry may allocate a new attempt only after cleanup is complete; it must reuse the same frozen input and model setting. |
 | GitHub publication has an ambiguous result | Reconcile through the deterministic branch, pull request, and operation identity, then read back the head. Never start independent review from an unconfirmed write response. |
 | Pull request head changes during or after independent review | The compare-and-set acceptance loses, the result remains historical/stale, and the Worker rereads the head. An unexpected path or changed plan file fails closed; an allowed design update requires a fresh review. |
-| An author omits or duplicates a disposition | Reject the response and do not update the pull request or enter the gate. Declines remain valid when complete and bounded. |
+| An author omits or duplicates a disposition | Reject the response and do not update the pull request or enter the gate. Declines remain valid when complete. |
 | An author response changes the design | Publish to the same pull request, invalidate current-head eligibility, and independently review the confirmed new head. Exhaustion of the response bound reaches a typed failure rather than bypassing review. |
 | Approved-plan, base, guidance, or saved model data no longer matches | Mark dependent proof stale and prevent a gate binding. Do not silently refresh the context inside the round. |
 | R2 evidence read-back or D1 digest verification fails | Do not accept the attempt or expose its raw evidence. Preserve the integrity failure for operator retry or reconciliation. |
@@ -296,6 +311,9 @@ boolean supplied by an agent.
 - **More evidence can expose sensitive repository context** → Keep raw inputs
   in hash-checked R2, serve them only through the protected no-store route, and
   publish bounded summaries.
+- **Complete context can expose a real provider or storage boundary** → Record
+  that boundary and its safe provider evidence. Use streaming or hash-checked R2
+  references when needed instead of adding an unmeasured local ceiling.
 
 ## Migration Plan
 

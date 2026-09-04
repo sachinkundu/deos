@@ -113,7 +113,7 @@ test("planning publication rejects missing, stale-scope, and forbidden files", a
   }), CONTEXT), /planning_readability_invalid/);
 });
 
-test("planning publication accepts bounded review acknowledgments and rejects unsafe reply data", async () => {
+test("planning publication accepts complete review acknowledgments and rejects unsafe reply data", async () => {
   const validated = await validatePlanningPublication(request({
     reviewReplies: [
       { commentId: 101, body: "Updated the term to temperature as requested." },

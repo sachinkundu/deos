@@ -129,8 +129,8 @@ export const buildPlanningCandidate = async (
   if (!Number.isSafeInteger(input.round) || input.round < 1) throw new Error("candidate round is invalid");
   if (!/^[0-9a-f]{40}$/.test(input.baseCommit)) throw new Error("candidate base commit is invalid");
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.change)) throw new Error("candidate change is invalid");
-  if (input.files.length < 3 || input.files.length > 64) throw new Error("candidate file count is invalid");
-  if (!Array.isArray(input.reviewReplies) || input.reviewReplies.length > 50) {
+  if (input.files.length < 3) throw new Error("candidate file count is invalid");
+  if (!Array.isArray(input.reviewReplies)) {
     throw new Error("candidate review replies are invalid");
   }
   const replyIds = new Set<number>();
@@ -138,12 +138,12 @@ export const buildPlanningCandidate = async (
     if (
       !Number.isSafeInteger(reply.commentId) || reply.commentId <= 0 || replyIds.has(reply.commentId) ||
       typeof reply.body !== "string" || reply.body.trim() !== reply.body ||
-      reply.body.length < 1 || reply.body.length > 1_000 || reply.body.includes("<!--")
+      reply.body.length < 1 || reply.body.includes("<!--")
     ) throw new Error("candidate review reply is invalid");
     replyIds.add(reply.commentId);
     return Object.freeze({ commentId: reply.commentId, body: reply.body });
   });
-  if (!Array.isArray(input.reviewDispositions) || input.reviewDispositions.length > 100) {
+  if (!Array.isArray(input.reviewDispositions)) {
     throw new Error("candidate review dispositions are invalid");
   }
   const dispositionIds = new Set<string>();
@@ -154,7 +154,7 @@ export const buildPlanningCandidate = async (
       dispositionIds.has(disposition.itemId) ||
       !["applied", "declined", "no_change"].includes(disposition.status) ||
       typeof disposition.reason !== "string" || disposition.reason.trim() !== disposition.reason ||
-      disposition.reason.length < 1 || disposition.reason.length > 2_000 ||
+      disposition.reason.length < 1 ||
       disposition.reason.includes("<!--")
     ) throw new Error("candidate review disposition is invalid");
     dispositionIds.add(disposition.itemId);
@@ -174,7 +174,7 @@ export const buildPlanningCandidate = async (
   for (const file of files) {
     if (
       seen.has(file.path) || !safePath(input.change, file.path) ||
-      typeof file.content !== "string" || new TextEncoder().encode(file.content).byteLength > 1_000_000
+      typeof file.content !== "string"
     ) throw new Error("candidate contains an invalid file");
     seen.add(file.path);
   }

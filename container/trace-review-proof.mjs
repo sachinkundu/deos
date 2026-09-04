@@ -20,10 +20,10 @@ export const parseCodexFinalMessage = (message) => {
   try {
     return JSON.parse(trimmed);
   } catch {
-    const fenced = trimmed.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/i);
-    if (fenced) {
+    const fenced = [...trimmed.matchAll(/```(?:json)?\s*\n([\s\S]*?)\n```/gi)];
+    if (fenced.length === 1) {
       try {
-        return JSON.parse(fenced[1]);
+        return JSON.parse(fenced[0][1]);
       } catch {
         // Preserve the original value so deterministic validation reports the failure.
       }

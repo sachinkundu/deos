@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: openspec-delivery
-  version: 11
+  version: 12
 spec:
   start: requirements
   execution:

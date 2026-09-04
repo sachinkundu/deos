@@ -371,8 +371,8 @@ export class ArtifactCollector {
           } catch {
             throw new Error("provider-references.json is invalid JSON");
           }
-          if (!Array.isArray(parsed) || parsed.length > 100) {
-            throw new Error("provider-references.json must be a bounded array");
+          if (!Array.isArray(parsed)) {
+            throw new Error("provider-references.json must be an array");
           }
           providerReceipts = Object.freeze(parsed.map((value, index) => {
             const reference = asRecord(value, `provider reference ${index}`);

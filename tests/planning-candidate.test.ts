@@ -71,6 +71,34 @@ test("trusted candidate hashes exact repository bytes after deterministic checks
   assert.equal(result.validation.strictOpenSpec, "passed");
 });
 
+test("trusted candidate preserves large files and complete spec inventories", async () => {
+  const specs = Array.from({ length: 65 }, (_, index) => ({
+    path: `openspec/changes/add-review/specs/review-step-${index}/spec.md`,
+    content: easySpec,
+  }));
+  const largeMetadata = `${"schema: spec-driven\n# Complete metadata.\n".repeat(30_000)}`;
+  const result = await buildPlanningCandidate({
+    candidateId: "candidate:12345678",
+    runId: "project:run:12345678",
+    round: 1,
+    sourceAttemptId: "attempt-12345678",
+    baseCommit: "1".repeat(40),
+    change: "add-review",
+    files: [
+      { path: "openspec/changes/add-review/.openspec.yaml", content: largeMetadata },
+      { path: "openspec/changes/add-review/proposal.md", content: easyProposal },
+      ...specs,
+    ],
+    reviewReplies: [],
+    reviewDispositions: [],
+    reviewContextId: null,
+    strictOpenSpecCheck: async () => {},
+    checkedAt: "2026-08-27T08:00:00.000Z",
+  });
+  assert.equal(result.candidate.files.length, 67);
+  assert.ok(result.candidate.files[0]!.byteSize > 1_000_000);
+});
+
 test("trusted candidate rejects files outside the standard OpenSpec plan", async () => {
   await assert.rejects(buildPlanningCandidate({
     candidateId: "candidate:12345678",

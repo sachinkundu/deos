@@ -104,6 +104,24 @@ test("completion check rejects a changed file outside the named plan", async () 
   }
 });
 
+test("completion check preserves complete validation details", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "deos-author-detail-"));
+  const detail = `validation failed: ${"complete context ".repeat(120)}`;
+  try {
+    await mkdir(`${cwd}/${ROOT}/specs/review-step`, { recursive: true });
+    await writeFile(`${cwd}/${ROOT}/.openspec.yaml`, "schema: spec-driven\n");
+    await writeFile(`${cwd}/${ROOT}/proposal.md`, easyProposal);
+    await writeFile(`${cwd}/${ROOT}/specs/review-step/spec.md`, easySpec);
+    const execute = async (args: string[]) => args[0] === "openspec"
+      ? { code: 1, signal: null, truncated: false, stdout: "", stderr: detail }
+      : fakeCommand(args);
+    const checked = await runAuthorCompletionCheck({ cwd, change: CHANGE, execute });
+    assert.ok(checked.failures.some((failure) => failure.includes(detail.trim())));
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test("porcelain parser keeps both sides of a rename", () => {
   assert.deepEqual(
     changedPathsFromPorcelain("R  openspec/changes/add-review/proposal.md\0old-proposal.md\0"),

@@ -22,7 +22,7 @@ test("invalid Linear identifiers cannot become OpenSpec change identities", () =
   assert.throws(() => openSpecChangeIdentity("SAC_123"), /cannot form an OpenSpec change identity/);
 });
 
-test("bounded design feedback retains every outstanding human review thread", () => {
+test("design feedback preserves every complete review entry", () => {
   const root = {
     kind: "review_comment", id: 1, body: "Please revise this.", authorType: "User", replyToId: null,
   };
@@ -34,7 +34,7 @@ test("bounded design feedback retains every outstanding human review thread", ()
     authorType: "Bot", author: "other-app[bot]", trustedAcknowledgmentAuthor: false, replyToId: 1,
   };
   const selected = selectReviewFeedback([root, spoof, ...issueComments]);
-  assert.equal(selected.length, 50);
+  assert.equal(selected.length, 62);
   assert.equal(selected.includes(root), true);
   assert.equal(selected.includes(spoof), true);
   assert.equal(selected.some((entry) => entry.id === 159), true);
@@ -74,11 +74,11 @@ test("bounded design feedback retains every outstanding human review thread", ()
     ...root,
     body: `${"quoted \"feedback\"\n".repeat(500)}final instruction`,
   });
-  assert.ok(serialized.length <= 4_000);
+  assert.ok(serialized.length > 4_000);
   const restored = JSON.parse(serialized);
   assert.equal(restored.id, root.id);
   assert.equal(restored.replyToId, null);
-  assert.match(restored.body, /truncated by trusted input materializer/);
+  assert.equal(restored.body, `${"quoted \"feedback\"\n".repeat(500)}final instruction`);
 });
 
 test("prior design context verifies the saved object hash and identity", async () => {
@@ -258,7 +258,7 @@ test("materializer gives the next author trusted deterministic rejection feedbac
   assert.match(context.priorAttempts[0].trustedResultDetail, /reading ease 48\.84/);
 });
 
-test("planning materializer allocates one run branch and bounds both feedback providers", async () => {
+test("planning materializer allocates one run branch and preserves both feedback providers", async () => {
   let workProduct: Record<string, unknown> | null = null;
   let reviewTarget: { repository: string; installationId: string } | null = null;
   const database = {
@@ -361,8 +361,8 @@ test("planning materializer allocates one run branch and bounds both feedback pr
   const context = JSON.parse(result.context);
   assert.deepEqual(context.openspec, { change: "sac-200", instruction: null });
   assert.equal(context.planning.pullRequest.number, 54);
-  assert.equal(context.planning.feedback.linearComments.length, 20);
-  assert.equal(context.planning.feedback.github.length, 50);
+  assert.equal(context.planning.feedback.linearComments.length, 25);
+  assert.equal(context.planning.feedback.github.length, 60);
   assert.equal(context.repository.planningBranch, result.planningWorkProduct?.remote_branch);
   assert.deepEqual(reviewTarget, {
     repository: "sachinkundu/deos",
@@ -373,11 +373,17 @@ test("planning materializer allocates one run branch and bounds both feedback pr
 test("design materializer anchors checked plan files and guidance to one exact merge commit", async () => {
   const mergeCommit = "a".repeat(40);
   const guidanceContent = `${"Repository rule. ".repeat(2_500)}\n`;
-  const manifest = [
-    { path: "openspec/changes/sac-201/.openspec.yaml", sha256: "1".repeat(64), byteSize: 20 },
-    { path: "openspec/changes/sac-201/proposal.md", sha256: "2".repeat(64), byteSize: 30 },
-    { path: "openspec/changes/sac-201/specs/search/spec.md", sha256: "3".repeat(64), byteSize: 40 },
+  const planPaths = [
+    "openspec/changes/sac-201/.openspec.yaml",
+    "openspec/changes/sac-201/proposal.md",
+    "openspec/changes/sac-201/specs/search/spec.md",
   ];
+  const planContents = Object.fromEntries(planPaths.map((path) => [path, `checked ${path}\n`]));
+  const manifest = await Promise.all(planPaths.map(async (path) => ({
+    path,
+    sha256: await sha256Hex(planContents[path]!),
+    byteSize: new TextEncoder().encode(planContents[path]!).byteLength,
+  })));
   const planning = {
     run_id: "workflow:project-1:issue-1:run:1",
     repository: "sachinkundu/deos-sample-project",
@@ -448,7 +454,7 @@ test("design materializer anchors checked plan files and guidance to one exact m
       } } }),
       readGitHubFile: async (_repository, path, ref) => {
         readRefs.push(ref);
-        return `checked ${path}\n`;
+        return planContents[path] ?? `checked ${path}\n`;
       },
       readGitHubGuidance: async (_repository, ref) => {
         readRefs.push(ref);

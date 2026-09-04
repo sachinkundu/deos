@@ -15,12 +15,12 @@
   "properties": {
     "outcome": { "type": "string", "enum": ["completed", "blocked", "failed"] },
     "reviewOutcome": { "type": "string", "enum": ["pass", "findings"] },
-    "summary": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "summary": { "type": "string", "minLength": 1 },
     "findingSetDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-    "findingCount": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "findingCount": { "type": "integer", "minimum": 0 },
     "proofRepairCount": { "type": "integer", "minimum": 0, "maximum": 4 },
-    "confirmedLinkCount": { "type": "integer", "minimum": 0, "maximum": 1000 },
-    "disputedLinkCount": { "type": "integer", "minimum": 0, "maximum": 1000 },
+    "confirmedLinkCount": { "type": "integer", "minimum": 0 },
+    "disputedLinkCount": { "type": "integer", "minimum": 0 },
     "providerReceipts": { "type": "array", "items": { "type": "string" } }
   }
 }

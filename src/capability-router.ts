@@ -81,8 +81,9 @@ const exactKeys = (record: Record<string, unknown>, allowed: readonly string[]):
   return Object.keys(record).every((key) => set.has(key));
 };
 
-const nonEmpty = (value: unknown, maximum = 10_000): value is string =>
-  typeof value === "string" && value.length > 0 && value.length <= maximum;
+const nonEmpty = (value: unknown, maximum?: number): value is string =>
+  typeof value === "string" && value.length > 0 &&
+  (maximum === undefined || value.length <= maximum);
 
 const operationKey = (value: unknown): value is string =>
   typeof value === "string" && /^[a-z0-9][a-z0-9._-]{0,79}$/.test(value);
@@ -102,9 +103,9 @@ const parseGitHubRequest = (value: unknown): GitHubCapabilityRequest | null => {
     !nonEmpty(request.branch, 200) ||
     request.baseBranch !== "main" ||
     !nonEmpty(request.title, 256) ||
-    typeof request.body !== "string" || request.body.length > 20_000 ||
+    typeof request.body !== "string" ||
     !Array.isArray(request.files) ||
-    request.files.length < 1 || request.files.length > 20
+    request.files.length < 1
   ) return null;
   const files: Array<{ path: string; content: string }> = [];
   const paths = new Set<string>();
@@ -113,8 +114,8 @@ const parseGitHubRequest = (value: unknown): GitHubCapabilityRequest | null => {
     if (
       file === null ||
       !exactKeys(file, ["path", "content"]) ||
-      !nonEmpty(file.path, 500) ||
-      typeof file.content !== "string" || file.content.length > 1_000_000 ||
+      !nonEmpty(file.path) ||
+      typeof file.content !== "string" ||
       file.path.startsWith("/") || file.path.includes("..") ||
       file.path === ".env" || file.path.startsWith(".github/workflows/") ||
       paths.has(file.path)
@@ -150,17 +151,16 @@ const parsePlanningRequest = (value: unknown): PlanningPublicationRequest | null
     request.baseBranch !== "main" ||
     !nonEmpty(request.change, 100) ||
     !nonEmpty(request.title, 256) ||
-    typeof request.body !== "string" || request.body.length > 20_000 ||
-    !Array.isArray(request.files) || request.files.length < 1 || request.files.length > 50 ||
-    !Array.isArray(request.reviewReplies) || request.reviewReplies.length > 50
+    typeof request.body !== "string" ||
+    !Array.isArray(request.files) || request.files.length < 1 ||
+    !Array.isArray(request.reviewReplies)
   ) return null;
   const files: Array<{ path: string; content: string }> = [];
   for (const value of request.files) {
     const file = asRecord(value);
     if (
       file === null || !exactKeys(file, ["path", "content"]) ||
-      !nonEmpty(file.path, 500) || typeof file.content !== "string" ||
-      file.content.length > 1_000_000
+      !nonEmpty(file.path) || typeof file.content !== "string"
     ) return null;
     files.push({ path: file.path, content: file.content });
   }
@@ -170,7 +170,7 @@ const parsePlanningRequest = (value: unknown): PlanningPublicationRequest | null
     if (
       reply === null || !exactKeys(reply, ["commentId", "body"]) ||
       !Number.isSafeInteger(reply.commentId) || Number(reply.commentId) <= 0 ||
-      !nonEmpty(reply.body, 1_000)
+      !nonEmpty(reply.body)
     ) return null;
     reviewReplies.push({ commentId: Number(reply.commentId), body: reply.body });
   }
@@ -197,7 +197,7 @@ const parseLinearRequest = (value: unknown): LinearCapabilityRequest | null => {
     !["upsert_working_note", "attach_artifact_reference"].includes(String(request.action)) ||
     !operationKey(request.operationKey) ||
     !nonEmpty(request.issueId, 200) ||
-    !nonEmpty(request.body, 20_000)
+    !nonEmpty(request.body)
   ) return null;
   return {
     version: 1,
@@ -218,7 +218,7 @@ const parseOpenRouterRequest = (value: unknown): OpenRouterCapabilityRequest | n
     request.version !== 1 || request.action !== "openrouter_trace_review" ||
     !nonEmpty(request.model, 240) || !nonEmpty(request.reasoning, 80) ||
     !["discovery", "recheck"].includes(String(request.mode)) ||
-    request.repairAttempt !== 0 || !nonEmpty(request.prompt, 1_000_000)
+    request.repairAttempt !== 0 || !nonEmpty(request.prompt)
   ) return null;
   return {
     version: 1,
@@ -245,7 +245,7 @@ const parseOpenRouterResponsesRequest = (
   ) return null;
   const encoded = JSON.stringify(request);
   if (
-    encoded.length === 0 || encoded.length > 3_000_000 ||
+    encoded.length === 0 ||
     /\bsk-or-v1-[A-Za-z0-9_-]{12,}\b/.test(encoded) ||
     /\bBearer\s+[A-Za-z0-9._~+/-]{20,}=*\b/i.test(encoded)
   ) return null;

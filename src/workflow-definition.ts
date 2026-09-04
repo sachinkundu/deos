@@ -36,6 +36,7 @@ export interface WorkflowJob {
   reasoning?: string;
   permissionProfile?: "repository_write" | "review_read_only";
   providerAccess?: readonly "model.openrouter_review"[];
+  reviewKind?: "traceability" | "design";
   reviewMode?: "discovery" | "recheck";
   operation: OpenSpecJobOperation | null;
 }
@@ -384,7 +385,7 @@ export const loadWorkflowDefinition = async (
       [
         "promptFile", "inputs", "context", "resultSchema", "requiredOutputs", "capabilities",
         "agentRole", "modelProvider", "model", "reasoning", "permissionProfile",
-        "providerAccess", "reviewMode", "operation",
+        "providerAccess", "reviewKind", "reviewMode", "operation",
       ],
       label,
     );
@@ -442,8 +443,16 @@ export const loadWorkflowDefinition = async (
         if (!(job.reviewMode === "discovery" || job.reviewMode === "recheck")) {
           throw new Error(`${label}.reviewMode is required for a reviewer`);
         }
+        if (job.reviewKind !== undefined && !(job.reviewKind === "traceability" || job.reviewKind === "design")) {
+          throw new Error(`${label}.reviewKind is invalid`);
+        }
+        if (job.reviewKind === "design" && job.reviewMode !== "discovery") {
+          throw new Error(`${label} design review must use discovery mode`);
+        }
       } else if (job.reviewMode !== undefined) {
         throw new Error(`${label}.reviewMode is only valid for a reviewer`);
+      } else if (job.reviewKind !== undefined) {
+        throw new Error(`${label}.reviewKind is only valid for a reviewer`);
       }
       agentConfiguration = {
         agentRole: job.agentRole as "author" | "reviewer",
@@ -465,6 +474,7 @@ export const loadWorkflowDefinition = async (
       requiredOutputs: stringArray(job, "requiredOutputs", label),
       ...(capabilities.length === 0 ? {} : { capabilities: Object.freeze([...capabilities]) }),
       ...agentConfiguration,
+      ...(job.reviewKind === undefined ? {} : { reviewKind: job.reviewKind as "traceability" | "design" }),
       ...(job.reviewMode === undefined ? {} : { reviewMode: job.reviewMode as "discovery" | "recheck" }),
       operation: parseJobOperation(job.operation, label),
     });
@@ -641,7 +651,7 @@ export const restoreWorkflowDefinition = async (
       [
         "id", "promptFile", "prompt", "inputs", "context", "resultSchemaFile",
         "resultSchema", "requiredOutputs", "capabilities", "agentRole", "modelProvider",
-        "model", "reasoning", "permissionProfile", "providerAccess", "reviewMode", "operation",
+        "model", "reasoning", "permissionProfile", "providerAccess", "reviewMode", "reviewKind", "operation",
       ],
       label,
     );
@@ -667,6 +677,7 @@ export const restoreWorkflowDefinition = async (
         permissionProfile: stringValue(job, "permissionProfile", label),
         providerAccess: stringArray(job, "providerAccess", label, false),
         ...(job.reviewMode === undefined ? {} : { reviewMode: stringValue(job, "reviewMode", label) }),
+        ...(job.reviewKind === undefined ? {} : { reviewKind: stringValue(job, "reviewKind", label) }),
       }),
       ...(job.operation === null ? {} : { operation: asRecord(job.operation, `${label}.operation`) }),
     };

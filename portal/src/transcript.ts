@@ -1,7 +1,5 @@
 import { PORTAL_SELECTS } from "./model.ts";
 
-const MAX_TRANSCRIPT_BYTES = 4 * 1024 * 1024;
-const MAX_TRANSCRIPT_RECORDS = 10_000;
 const ACCEPTED_MEDIA_TYPES = new Set([
   "application/json",
   "application/jsonl",
@@ -47,7 +45,6 @@ const hex = (value: ArrayBuffer): string => Array.from(new Uint8Array(value))
 
 export const parseTranscriptJsonl = (text: string): TranscriptRecord[] => {
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (lines.length > MAX_TRANSCRIPT_RECORDS) throw new TranscriptUnavailableError("transcript is too large");
   return lines.map((raw, index) => {
     const value: unknown = JSON.parse(raw);
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -76,7 +73,6 @@ export class TranscriptReadStore {
     if (row === null) throw new TranscriptNotFoundError("transcript not found");
     if (
       !Number.isSafeInteger(row.byte_size) || row.byte_size < 0 ||
-      row.byte_size > MAX_TRANSCRIPT_BYTES ||
       !/^[0-9a-f]{64}$/i.test(row.sha256) ||
       !ACCEPTED_MEDIA_TYPES.has(row.media_type.toLowerCase())
     ) throw new TranscriptUnavailableError("transcript metadata is invalid");

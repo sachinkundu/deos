@@ -65,6 +65,14 @@ import {
   recoverDesignCandidateCheckedAt,
   type StoredDesignCandidateIdentity,
 } from "./design-candidate.ts";
+import { D1DesignReviewStore } from "./design-review-store.ts";
+import {
+  validateDesignReviewDispositions,
+  validateDesignReviewInput,
+  validateDesignReviewResult,
+  type DesignReviewInput,
+  type DesignReviewResult,
+} from "./design-review.ts";
 
 const durationMs = (value: string): number => {
   const match = value.match(/^(\d+(?:\.\d+)?)(ms|s|m|h|d)$/);
@@ -251,6 +259,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           path,
           content,
           reviewReplies,
+          reviewDispositions,
+          reviewContextId,
         }) => {
           const candidateId = `design:${attempt.attempt_id}`;
           const existing = await env.DB.prepare(
@@ -258,12 +268,20 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
                     design_digest, candidate_digest, state, created_at, accepted_at
              FROM design_candidates WHERE candidate_id = ?`,
           ).bind(candidateId).first<StoredDesignCandidateIdentity>();
-          const latest = existing === null
-            ? await env.DB.prepare(
-              "SELECT COALESCE(MAX(round), 0) AS round FROM design_candidates WHERE run_id = ?",
-            ).bind(run.run_id).first<{ round: number }>()
-            : null;
-          const round = existing?.round ?? (latest?.round ?? 0) + 1;
+          const reviewStore = new D1DesignReviewStore(env.DB);
+          const latestRound = await env.DB.prepare(
+            "SELECT COALESCE(MAX(round_no), 0) AS round FROM design_review_rounds WHERE run_id = ?",
+          ).bind(run.run_id).first<{ round: number }>();
+          const round = existing?.round ?? Math.max(1, latestRound?.round ?? 0);
+          const reviewRound = await reviewStore.ensureRound({
+            runId: run.run_id,
+            roundNo: round,
+            authorModel: run.author_model ?? "",
+            authorReasoning: run.author_reasoning ?? "",
+            outsideModel: run.independent_review_model ?? "",
+            outsideReasoning: run.independent_review_reasoning ?? "",
+            now: new Date().toISOString(),
+          });
           const checkedAt = existing?.accepted_at ?? existing?.created_at ??
             await recoverDesignCandidateCheckedAt(env.ARTIFACTS, run.run_id, candidateId) ??
             new Date().toISOString();
@@ -279,6 +297,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               path,
               content,
               reviewReplies,
+              reviewDispositions,
+              reviewContextId,
               strictOpenSpecCheck: async () => {},
               checkedAt,
             });
@@ -293,6 +313,60 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             }
             await persistDesignCandidateEvidence(env.ARTIFACTS, built);
             return;
+          }
+          let feedback: {
+            review_attempt_id: string;
+            phase: "self" | "independent";
+            candidate_id: string;
+            design_digest: string;
+            head_sha: string | null;
+          } | null = null;
+          if (reviewContextId !== null) {
+            feedback = await env.DB.prepare(
+              `SELECT review.review_attempt_id, review.phase, review.candidate_id, review.head_sha,
+                      candidate.design_digest
+               FROM design_review_attempts review
+               JOIN design_candidates candidate ON candidate.candidate_id = review.candidate_id
+               WHERE review.review_attempt_id = ? AND review.round_id = ? AND review.accepted = 1
+                 AND review.outcome = 'concerns'`,
+            ).bind(reviewContextId, reviewRound.round_id).first<{
+              review_attempt_id: string;
+              phase: "self" | "independent";
+              candidate_id: string;
+              design_digest: string;
+              head_sha: string | null;
+            }>();
+            if (feedback === null) throw new DesignCandidateRejectedError("design review feedback is stale");
+            const findings = await env.DB.prepare(
+              `SELECT finding_id AS id FROM design_review_findings
+               WHERE review_attempt_id = ? ORDER BY finding_id`,
+            ).bind(reviewContextId).all<{ id: string }>();
+            validateDesignReviewDispositions(findings.results, reviewDispositions);
+            await reviewStore.incrementResponseTurn(reviewRound.round_id, new Date().toISOString());
+            if (feedback.phase === "self" && built.candidate.designDigest === feedback.design_digest) {
+              throw new DesignCandidateRejectedError("self-check concern requires a revised design candidate");
+            }
+            if (feedback.phase === "independent" && built.candidate.designDigest === feedback.design_digest) {
+              await reviewStore.recordDispositions({
+                reviewAttemptId: feedback.review_attempt_id,
+                authorAttemptId: attempt.attempt_id,
+                resultingCandidateId: feedback.candidate_id,
+                dispositions: reviewDispositions,
+                now: new Date().toISOString(),
+              });
+              const response = { applied: 0, declined: 0, no_change: 0 };
+              for (const disposition of reviewDispositions) response[disposition.status] += 1;
+              if (!await this.syncDesignReviewProviders({
+                run,
+                reviewAttemptId: feedback.review_attempt_id,
+                phase: "independent",
+                outcome: "concerns",
+                findingCount: reviewDispositions.length,
+                headSha: feedback.head_sha,
+                authorResponse: response,
+              })) throw new Error("design review author-response provider proof is incomplete");
+              return;
+            }
           }
           const duplicate = await env.DB.prepare(
             `SELECT candidate_id FROM design_candidates
@@ -318,6 +392,165 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             state: "validated",
             created_at: built.validation.checkedAt,
             accepted_at: built.validation.checkedAt,
+          });
+          if (feedback?.phase === "independent") {
+            await reviewStore.recordDispositions({
+              reviewAttemptId: feedback.review_attempt_id,
+              authorAttemptId: attempt.attempt_id,
+              resultingCandidateId: built.candidate.candidateId,
+              dispositions: reviewDispositions,
+              now: new Date().toISOString(),
+            });
+            const response = { applied: 0, declined: 0, no_change: 0 };
+            for (const disposition of reviewDispositions) response[disposition.status] += 1;
+            if (!await this.syncDesignReviewProviders({
+              run,
+              reviewAttemptId: feedback.review_attempt_id,
+              phase: "independent",
+              outcome: "concerns",
+              findingCount: reviewDispositions.length,
+              headSha: feedback.head_sha,
+              authorResponse: response,
+            })) throw new Error("design review author-response provider proof is incomplete");
+          }
+        },
+        acceptDesignReview: async ({ run, attempt, job, collection }) => {
+          const durable = JSON.parse(attempt.job_spec_json) as { materializedContext?: unknown };
+          if (typeof durable.materializedContext !== "string") {
+            throw new Error("design review materialized context is missing");
+          }
+          const materialized = JSON.parse(durable.materializedContext) as {
+            designReview?: {
+              input?: DesignReviewInput;
+              inputSha256?: string;
+              inputR2Key?: string;
+              phase?: "self" | "independent";
+            } | null;
+          };
+          const saved = materialized.designReview;
+          if (
+            saved?.input === undefined || typeof saved.inputSha256 !== "string" ||
+            typeof saved.inputR2Key !== "string" || saved.phase === undefined
+          ) throw new Error("design review saved input is invalid");
+          const validatedInput = await validateDesignReviewInput(saved.input);
+          if (
+            validatedInput.inputSha256 !== saved.inputSha256 ||
+            validatedInput.input.model !== job.model || validatedInput.input.reasoning !== job.reasoning ||
+            validatedInput.input.modelProvider !== job.modelProvider || validatedInput.input.phase !== saved.phase
+          ) throw new Error("design review saved input changed");
+          const inputObject = await env.ARTIFACTS.get(saved.inputR2Key);
+          if (inputObject === null || await sha256Hex(await inputObject.text()) !== saved.inputSha256) {
+            throw new Error("design review input evidence read-back failed");
+          }
+          const normalizedReceipt = await env.DB.prepare(
+            `SELECT r2_key, sha256 FROM artifacts
+             WHERE manifest_id = ? AND logical_name = 'normalized-review.json'`,
+          ).bind(collection.manifestId).first<{ r2_key: string; sha256: string }>();
+          if (normalizedReceipt === null) throw new Error("normalized design review evidence is missing");
+          const normalizedObject = await env.ARTIFACTS.get(normalizedReceipt.r2_key);
+          if (normalizedObject === null) throw new Error("normalized design review object is missing");
+          const normalizedText = await normalizedObject.text();
+          if (await sha256Hex(normalizedText) !== normalizedReceipt.sha256) {
+            throw new Error("normalized design review evidence hash mismatch");
+          }
+          const result = validateDesignReviewResult(JSON.parse(normalizedText) as DesignReviewResult, {
+            inputSha256: saved.inputSha256,
+            phase: saved.phase,
+            sourcePaths: new Set(validatedInput.input.sources.map((source) => source.path)),
+          });
+          if (
+            collection.result.reviewOutcome !== result.outcome ||
+            Number(collection.result.findingCount) !== result.findings.length
+          ) throw new Error("design review result summary mismatch");
+          const store = new D1DesignReviewStore(env.DB);
+          const round = await store.ensureRound({
+            runId: run.run_id,
+            roundNo: validatedInput.input.round,
+            authorModel: run.author_model ?? "",
+            authorReasoning: run.author_reasoning ?? "",
+            outsideModel: run.independent_review_model ?? "",
+            outsideReasoning: run.independent_review_reasoning ?? "",
+            now: new Date().toISOString(),
+          });
+          const accepted = await store.findAcceptedInput(saved.inputSha256);
+          const reviewAttemptId = accepted?.review_attempt_id ?? `design-review:${attempt.attempt_id}`;
+          if (accepted === null) {
+            await store.acceptAttempt({
+              reviewAttemptId,
+              roundId: round.round_id,
+              agentAttemptId: attempt.attempt_id,
+              phase: saved.phase,
+              inputSha256: saved.inputSha256,
+              inputR2Key: saved.inputR2Key,
+              candidateId: validatedInput.input.candidateId,
+              prDatabaseId: validatedInput.input.pullRequestDatabaseId,
+              headSha: validatedInput.input.headSha,
+              modelProvider: validatedInput.input.modelProvider,
+              model: validatedInput.input.model,
+              reasoning: validatedInput.input.reasoning,
+              outcome: result.outcome,
+              evidenceManifestId: collection.manifestId,
+              evidenceR2Key: normalizedReceipt.r2_key,
+              evidenceSha256: normalizedReceipt.sha256,
+              findings: result.findings,
+              now: new Date().toISOString(),
+            });
+          } else if (
+            accepted.round_id !== round.round_id || accepted.phase !== saved.phase ||
+            accepted.candidate_id !== validatedInput.input.candidateId ||
+            accepted.pr_database_id !== validatedInput.input.pullRequestDatabaseId ||
+            accepted.head_sha !== validatedInput.input.headSha || accepted.outcome !== result.outcome
+          ) {
+            throw new Error("accepted design review replay changed identity");
+          }
+          const providerProof = await this.syncDesignReviewProviders({
+            run,
+            reviewAttemptId,
+            phase: saved.phase,
+            outcome: result.outcome,
+            findingCount: result.findings.length,
+            headSha: validatedInput.input.headSha,
+          });
+          if (!providerProof) throw new Error("design review provider proof is incomplete");
+          return result.outcome;
+        },
+        recordDesignReviewFailure: async ({ attempt, job, manifestId }) => {
+          const durable = JSON.parse(attempt.job_spec_json) as { materializedContext?: unknown };
+          if (typeof durable.materializedContext !== "string") return;
+          const context = JSON.parse(durable.materializedContext) as {
+            designReview?: {
+              input?: DesignReviewInput;
+              inputSha256?: string;
+              inputR2Key?: string;
+              phase?: "self" | "independent";
+            } | null;
+          };
+          const saved = context.designReview;
+          if (
+            saved?.input === undefined || typeof saved.inputSha256 !== "string" ||
+            typeof saved.inputR2Key !== "string" || saved.phase === undefined
+          ) return;
+          const validated = await validateDesignReviewInput(saved.input);
+          if (
+            validated.inputSha256 !== saved.inputSha256 || validated.input.phase !== saved.phase ||
+            validated.input.modelProvider !== job.modelProvider || validated.input.model !== job.model ||
+            validated.input.reasoning !== job.reasoning
+          ) throw new Error("failed design review input changed");
+          await new D1DesignReviewStore(env.DB).recordFailedAttempt({
+            reviewAttemptId: `design-review:${attempt.attempt_id}`,
+            roundId: `design-round:${attempt.run_id}:${validated.input.round}`,
+            agentAttemptId: attempt.attempt_id,
+            phase: saved.phase,
+            inputSha256: saved.inputSha256,
+            inputR2Key: saved.inputR2Key,
+            candidateId: validated.input.candidateId,
+            prDatabaseId: validated.input.pullRequestDatabaseId,
+            headSha: validated.input.headSha,
+            modelProvider: validated.input.modelProvider,
+            model: validated.input.model,
+            reasoning: validated.input.reasoning,
+            evidenceManifestId: manifestId,
+            now: new Date().toISOString(),
           });
         },
         acceptTraceReview: async ({ run, attempt, job, collection }) => {
@@ -757,6 +990,44 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             },
           };
         },
+        reuseDesignReview: async (run, _nodeId, job) => {
+          const materialized = await jobInputs.materialize(run, job);
+          const context = JSON.parse(materialized.context) as {
+            designReview?: { inputSha256?: string; phase?: "self" | "independent" } | null;
+          };
+          const saved = context.designReview;
+          if (typeof saved?.inputSha256 !== "string" || saved.phase === undefined) return null;
+          const accepted = await new D1DesignReviewStore(env.DB).findAcceptedInput(saved.inputSha256);
+          if (accepted === null) return null;
+          if (
+            accepted.phase !== saved.phase || accepted.model_provider !== job.modelProvider ||
+            accepted.model !== job.model || accepted.reasoning !== job.reasoning ||
+            !["pass", "concerns"].includes(accepted.outcome) || accepted.evidence_manifest_id === null
+          ) throw new Error("reusable design review identity mismatch");
+          const findingCount = await env.DB.prepare(
+            "SELECT COUNT(*) AS count FROM design_review_findings WHERE review_attempt_id = ?",
+          ).bind(accepted.review_attempt_id).first<{ count: number }>();
+          if (!await this.syncDesignReviewProviders({
+            run,
+            reviewAttemptId: accepted.review_attempt_id,
+            phase: accepted.phase,
+            outcome: accepted.outcome as "pass" | "concerns",
+            findingCount: findingCount?.count ?? 0,
+            headSha: accepted.head_sha,
+          })) throw new Error("reused design review provider proof is incomplete");
+          return {
+            state: "completed",
+            attemptId: accepted.agent_attempt_id,
+            sandboxId: null,
+            manifestId: accepted.evidence_manifest_id,
+            outcome: {
+              kind: "agent",
+              outcome: accepted.outcome,
+              providerReceiptsPresent: accepted.model_provider === "openrouter",
+              providerReceiptsComplete: true,
+            },
+          };
+        },
         lifecycle: writeLifecycleObservation,
       },
     );
@@ -854,6 +1125,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             content?: unknown;
             designDigest?: unknown;
             reviewReplies?: unknown;
+            reviewDispositions?: unknown;
+            reviewContextId?: unknown;
           };
           if (
             candidate.candidateId !== row.candidate_id ||
@@ -867,7 +1140,9 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               typeof (reply as { body?: unknown }).body === "string" &&
               Number.isSafeInteger((reply as { latestHumanCommentId?: unknown }).latestHumanCommentId) &&
               typeof (reply as { latestHumanCommentUpdatedAt?: unknown }).latestHumanCommentUpdatedAt === "string"
-            )
+            ) || !(candidate.reviewDispositions === undefined || Array.isArray(candidate.reviewDispositions)) ||
+            !(candidate.reviewContextId === undefined || candidate.reviewContextId === null ||
+              typeof candidate.reviewContextId === "string")
           ) throw new Error("trusted design candidate identity mismatch");
           return {
             candidateId: candidate.candidateId,
@@ -883,12 +1158,34 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               latestHumanCommentId: number;
               latestHumanCommentUpdatedAt: string;
             }>,
+            reviewDispositions: (candidate.reviewDispositions ?? []) as Array<{
+              findingId: string;
+              status: "applied" | "declined" | "no_change";
+              reason: string;
+            }>,
+            reviewContextId: candidate.reviewContextId ?? null,
           };
         },
         gateVisit: (runId, gateKind) => env.DB.prepare(
           `SELECT * FROM human_gate_visits WHERE run_id = ? AND gate_kind = ?
            ORDER BY visit_sequence DESC LIMIT 1`,
         ).bind(runId, gateKind).first<import("./human-gate-store.ts").HumanGateVisitRecord>(),
+        startDesignReviewRound: async (run) => {
+          const row = await env.DB.prepare(
+            "SELECT COALESCE(MAX(round_no), 0) + 1 AS round_no FROM design_review_rounds WHERE run_id = ?",
+          ).bind(run.run_id).first<{ round_no: number }>();
+          if (row === null) throw new Error("next design review round is unavailable");
+          await new D1DesignReviewStore(env.DB).ensureRound({
+            runId: run.run_id,
+            roundNo: row.round_no,
+            authorModel: run.author_model ?? "",
+            authorReasoning: run.author_reasoning ?? "",
+            outsideModel: run.independent_review_model ?? "",
+            outsideReasoning: run.independent_review_reasoning ?? "",
+            now: new Date().toISOString(),
+          });
+          return row.round_no;
+        },
         planningMergeRepairNotice: async (run, verificationOperationId) => {
           const operationId = operationIdentity(
             run.run_id,
@@ -1118,18 +1415,34 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     return { kind: "system_action" as const, outcome: "completed" as const, providerReceiptsComplete: true };
   }
 
-  ensureHumanGate(run: OrchestrationRunRecord, node: HumanGateWorkflowNode) {
+  async ensureHumanGate(run: OrchestrationRunRecord, node: HumanGateWorkflowNode) {
     const gateKind = node.id === "planning_review"
       ? "plan"
       : node.id === "design_review" ? "design" : null;
     if (gateKind === null) return this.linear.ensureHumanGate(run, node);
-    return new D1HumanGateStore(this.env.DB).bind({
+    const designReviews = new D1DesignReviewStore(this.env.DB);
+    if (
+      gateKind === "design" && run.definition_id === "simple-traceability" &&
+      run.definition_version >= 19 && !await designReviews.eligible(run.run_id)
+    ) throw new Error("design human gate requires current exact-head review proof");
+    await new D1HumanGateStore(this.env.DB).bind({
       runId: run.run_id,
       visitSequence: run.current_visit_sequence,
       nodeId: node.id,
       gateKind,
       now: new Date().toISOString(),
-    }).then(() => this.linear.ensureHumanGate(run, node));
+    });
+    if (
+      gateKind === "design" && run.definition_id === "simple-traceability" &&
+      run.definition_version >= 19
+    ) {
+      await designReviews.bindGate({
+        runId: run.run_id,
+        visitSequence: run.current_visit_sequence,
+        now: new Date().toISOString(),
+      });
+    }
+    return this.linear.ensureHumanGate(run, node);
   }
 
   async restoreHumanGate(
@@ -1149,6 +1462,128 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     event: Parameters<WorkflowNodeServices["observeHumanGateDelivery"]>[3],
   ) {
     return this.linear.observeHumanGateDelivery(operation, event);
+  }
+
+  private async syncDesignReviewProviders(input: {
+    run: OrchestrationRunRecord;
+    reviewAttemptId: string;
+    phase: "self" | "independent";
+    outcome: "pass" | "concerns";
+    findingCount: number;
+    headSha: string | null;
+    authorResponse?: { applied: number; declined: number; no_change: number };
+  }): Promise<boolean> {
+    const detailsUrl = `${this.env.PORTAL_BASE_URL.replace(/\/$/, "")}/runs/${encodeURIComponent(input.run.run_id)}/design-review`;
+    const operations = new D1SystemActionStore(this.env.DB);
+    let complete = true;
+    if (input.headSha !== null) {
+      const work = await new D1DesignStore(this.env.DB).findWorkProduct(input.run.run_id);
+      if (work?.head_sha !== input.headSha) return false;
+      const operationId = operationIdentity(
+        input.run.run_id,
+        "system_action",
+        `design-review-check:${input.authorResponse ? "response:" : ""}${input.reviewAttemptId}`,
+        1,
+      );
+      const operation = await operations.beginPlanningOperation({
+        operationId,
+        runId: input.run.run_id,
+        action: "github.upsert_design_review_check",
+        requestDigest: await sha256Hex(JSON.stringify({ ...input, detailsUrl })),
+        now: new Date().toISOString(),
+      });
+      if (operation.state === "pending") {
+        try {
+          const receipt = await githubForRun(this.env, input.run).upsertDesignReviewCheck({
+            repository: work.repository,
+            headSha: input.headSha,
+            externalId: `deos-design:${input.run.run_id}:${input.reviewAttemptId}`,
+            detailsUrl,
+            title: input.authorResponse
+              ? "Design concerns accounted for"
+              : input.outcome === "pass" ? "Design review passed" : "Design review found concerns",
+            summary: input.authorResponse
+              ? `${input.findingCount} concern(s): ${input.authorResponse.applied} applied, ${input.authorResponse.declined} declined, and ${input.authorResponse.no_change} needed no text change. Proof is bound to ${input.headSha}.`
+              : `${input.findingCount} concern(s). This is agent review evidence, not human approval. Exact reviewed head: ${input.headSha}.`,
+            conclusion: input.authorResponse || input.outcome === "pass" ? "success" : "neutral",
+          });
+          await operations.finishPlanningOperation({
+            operationId,
+            expected: "pending",
+            state: receipt.reconciled ? "reconciled" : "succeeded",
+            providerResourceId: receipt.checkRunId,
+            safeErrorCategory: null,
+            now: new Date().toISOString(),
+          });
+        } catch {
+          complete = false;
+          await operations.finishPlanningOperation({
+            operationId,
+            expected: "pending",
+            state: "manual_reconciliation_required",
+            providerResourceId: null,
+            safeErrorCategory: "design_review_check_unconfirmed",
+            now: new Date().toISOString(),
+          });
+        }
+      } else if (!["succeeded", "reconciled"].includes(operation.state)) complete = false;
+    }
+    const linearId = operationIdentity(
+      input.run.run_id,
+      "system_action",
+      `design-review-link:${input.authorResponse ? "response:" : ""}${input.reviewAttemptId}`,
+      1,
+    );
+    const linear = await operations.beginPlanningOperation({
+      operationId: linearId,
+      runId: input.run.run_id,
+      action: "linear.upsert_design_review_link",
+      requestDigest: await sha256Hex(JSON.stringify({
+        issueId: input.run.issue_id,
+        phase: input.phase,
+        outcome: input.outcome,
+        findingCount: input.findingCount,
+        headSha: input.headSha,
+        authorResponse: input.authorResponse ?? null,
+        detailsUrl,
+      })),
+      now: new Date().toISOString(),
+    });
+    if (linear.state === "pending") {
+      try {
+        const receipt = await new LinearCapabilityAdapter(
+          this.env.LINEAR_API_URL,
+          this.env.LINEAR_APP_ACCESS_TOKEN,
+        ).upsertStatus({
+          issueId: input.run.issue_id,
+          markerId: `design-review:${input.run.run_id}`,
+          body: input.authorResponse
+            ? `DEOS design review: every concern is accounted for. ${input.authorResponse.applied} applied, ${input.authorResponse.declined} declined, and ${input.authorResponse.no_change} needed no text change. [View protected proof](${detailsUrl}).`
+            : input.phase === "self"
+              ? `DEOS design review: private self-check ${input.outcome === "pass" ? "passed" : `found ${input.findingCount} concern(s)`}. [View protected proof](${detailsUrl}).`
+              : `DEOS design review: independent review of ${input.headSha} ${input.outcome === "pass" ? "passed" : `found ${input.findingCount} concern(s)`}. This is not human approval. [View protected proof](${detailsUrl}).`,
+        });
+        await operations.finishPlanningOperation({
+          operationId: linearId,
+          expected: "pending",
+          state: receipt.reconciled ? "reconciled" : "succeeded",
+          providerResourceId: receipt.commentId,
+          safeErrorCategory: null,
+          now: new Date().toISOString(),
+        });
+      } catch {
+        complete = false;
+        await operations.finishPlanningOperation({
+          operationId: linearId,
+          expected: "pending",
+          state: "manual_reconciliation_required",
+          providerResourceId: null,
+          safeErrorCategory: "design_review_link_unconfirmed",
+          now: new Date().toISOString(),
+        });
+      }
+    } else if (!["succeeded", "reconciled"].includes(linear.state)) complete = false;
+    return complete;
   }
 
   private async syncTraceReviewProviders(input: {

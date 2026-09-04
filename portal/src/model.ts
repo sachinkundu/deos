@@ -123,7 +123,7 @@ export const PORTAL_SELECTS = Object.freeze({
         SELECT MAX(latest.run_sequence) FROM orchestration_runs latest
         WHERE latest.issue_id = run.issue_id AND latest.project_id = run.project_id
       )
-    ORDER BY history.searched_at DESC, issue.issue_key LIMIT 50`,
+    ORDER BY history.searched_at DESC, issue.issue_key`,
   simpleIssues: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
     issue.linear_url, issue.observed_at, run.run_id, run.run_sequence, run.status, run.updated_at
     FROM linear_issue_index issue
@@ -136,13 +136,13 @@ export const PORTAL_SELECTS = Object.freeze({
         WHERE latest.issue_id = run.issue_id AND latest.project_id = run.project_id
           AND latest.definition_id = 'simple'
       )
-    ORDER BY run.updated_at DESC, issue.issue_key LIMIT 50`,
+    ORDER BY run.updated_at DESC, issue.issue_key`,
   issueSearch: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
     issue.linear_url, issue.observed_at
     FROM linear_issue_index issue
     JOIN project_workflow_policies route ON route.project_id = issue.project_id
     WHERE issue.issue_key LIKE ? ESCAPE '\\'
-    ORDER BY issue.observed_at DESC LIMIT 20`,
+    ORDER BY issue.observed_at DESC`,
   issueByKey: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
     issue.linear_url, issue.observed_at
     FROM linear_issue_index issue
@@ -366,7 +366,7 @@ export class PortalReadStore {
       return destination.origin === "https://github.com" &&
         (governedRepositories.size === 0 || [...governedRepositories].some((repository) =>
           destination.pathname.startsWith(`/${repository}/`))) &&
-        link.label.length > 0 && link.label.length <= 500;
+        link.label.length > 0;
     });
     const visits = [{
       sequence: 1,

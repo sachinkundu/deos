@@ -146,7 +146,7 @@ const parseBody = (
   const notes = lines.slice(4, reviewOrderIndex - 1);
   if (
     notes.length < 1 || notes.length > 3 ||
-    notes.some((line) => !line.startsWith("- ") || line.length < 12 || line.length > 260)
+    notes.some((line) => !line.startsWith("- ") || line.length < 12)
   ) invalid("planning_body_invalid");
   const noteText = notes.map((line) => line.slice(2));
   if (noteText.some((note) => note.split(/[.!?]+/).filter((part) => part.trim()).length !== 1)) {
@@ -165,7 +165,7 @@ const parseBody = (
   const validation = lines.slice(reviewOrderIndex + expectedReviewOrder.length);
   if (
     validation.length < 1 ||
-    validation.some((line) => !line.startsWith("- ") || !line.includes(" — ") || line.length > 500)
+    validation.some((line) => !line.startsWith("- ") || !line.includes(" — "))
   ) invalid("planning_validation_evidence_invalid");
   return noteText;
 };
@@ -184,9 +184,8 @@ export const validatePlanningPublication = async (
     request.baseBranch !== "main" ||
     !safeChange(request.change) ||
     request.title !== `${context.issueIdentifier}: OpenSpec plan` ||
-    request.body.length > 20_000 ||
-    request.files.length < 3 || request.files.length > 48 ||
-    !Array.isArray(request.reviewReplies) || request.reviewReplies.length > 50
+    request.files.length < 3 ||
+    !Array.isArray(request.reviewReplies)
   ) invalid("planning_request_invalid");
 
   const reviewCommentIds = new Set<number>();
@@ -194,7 +193,7 @@ export const validatePlanningPublication = async (
     if (
       !Number.isSafeInteger(reply.commentId) || reply.commentId <= 0 ||
       reviewCommentIds.has(reply.commentId) ||
-      typeof reply.body !== "string" || reply.body.length < 1 || reply.body.length > 1_000 ||
+      typeof reply.body !== "string" || reply.body.length < 1 ||
       reply.body.trim() !== reply.body || reply.body.includes("<!--") || reply.body.includes("-->")
     ) invalid("planning_review_replies_invalid");
     reviewCommentIds.add(reply.commentId);
@@ -205,7 +204,6 @@ export const validatePlanningPublication = async (
   const relative = sortedFiles.map((file) => {
     if (
       seen.has(file.path) ||
-      file.content.length > 1_000_000 ||
       typeof file.content !== "string"
     ) invalid("planning_files_invalid");
     seen.add(file.path);

@@ -194,8 +194,15 @@ interface PlanningSystemActionDependencies {
       latestHumanCommentId: number;
       latestHumanCommentUpdatedAt: string;
     }[];
+    reviewDispositions?: readonly {
+      findingId: string;
+      status: "applied" | "declined" | "no_change";
+      reason: string;
+    }[];
+    reviewContextId?: string | null;
   } | null>;
   gateVisit?: (runId: string, gateKind: "plan" | "design") => Promise<HumanGateVisitRecord | null>;
+  startDesignReviewRound?: (run: OrchestrationRunRecord) => Promise<number>;
   planningMergeRepairNotice?: (
     run: OrchestrationRunRecord,
     verificationOperationId: string,
@@ -543,7 +550,7 @@ export class SystemActionController {
         sha256?: unknown;
         byteSize?: unknown;
       }>;
-      if (!Array.isArray(manifest) || manifest.length < 3 || manifest.length > 48) {
+      if (!Array.isArray(manifest) || manifest.length < 3) {
         throw new Error("planning manifest is invalid");
       }
       const pull = await dependencies.github.readPullRequest(
@@ -645,6 +652,19 @@ export class SystemActionController {
       candidate.change !== workProduct.change_id || candidate.baseCommit !== workProduct.base_commit ||
       candidate.path !== `openspec/changes/${workProduct.change_id}/design.md`
     ) return this.failed();
+    if (
+      workProduct.head_sha !== null && candidate.reviewReplies.length === 0 &&
+      (candidate.reviewDispositions?.length ?? 0) > 0 && workProduct.design_manifest_json !== null
+    ) {
+      const manifest = JSON.parse(workProduct.design_manifest_json) as Array<{ sha256?: unknown }>;
+      if (manifest.length === 1 && manifest[0]?.sha256 === candidate.designDigest) {
+        return {
+          kind: "system_action",
+          outcome: "unchanged",
+          providerReceiptsComplete: true,
+        };
+      }
+    }
     const operationId = operationIdentity(
       run.run_id,
       "system_action",
@@ -910,6 +930,12 @@ export class SystemActionController {
       await sha256Hex(JSON.stringify({ visitSequence: gate.visit_sequence, approvedHeadSha: gate.approved_head_sha })),
     );
     if (["succeeded", "reconciled"].includes(operation.state)) return this.completed();
+    if (run.definition_id === "simple-traceability" && run.definition_version >= 19) {
+      if (this.planning?.startDesignReviewRound === undefined) {
+        throw new Error("design review round allocator is unavailable");
+      }
+      await this.planning.startDesignReviewRound(run);
+    }
     const finished = await this.finishPlanningOperation({
       operationId,
       expected: operation.state,

@@ -12,6 +12,8 @@ COPY container/supervisor.mjs /deos/bin/supervisor.mjs
 COPY container/author-completion.mjs /deos/bin/author-completion.mjs
 COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs
 COPY container/trace-review-runner.mjs /deos/bin/trace-review-runner.mjs
+COPY container/design-review-runner.mjs /deos/bin/design-review-runner.mjs
+COPY container/design-review-schema.mjs /deos/bin/design-review-schema.mjs
 COPY container/patch-capture.mjs /deos/bin/patch-capture.mjs
 COPY shared/planning-language.mjs /deos/shared/planning-language.mjs
 COPY vendor/bettaview/ /deos/bettaview/
@@ -21,6 +23,7 @@ COPY container/deos-github /usr/local/bin/deos-github
 COPY container/deos-linear /usr/local/bin/deos-linear
 
 RUN chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin/trace-review-runner.mjs \
+      /deos/bin/design-review-runner.mjs \
       /usr/local/bin/deos-github /usr/local/bin/deos-linear \
     && codex --version \
     && openspec --version

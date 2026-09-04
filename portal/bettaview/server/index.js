@@ -394,7 +394,6 @@ app.post("/api/comments/batch", async (request, response, next) => {
   try {
     const { prUrl, headSha, event = "COMMENT", comments } = request.body;
     if (!Array.isArray(comments) || comments.length === 0) throw new Error("Add at least one comment before publishing.");
-    if (comments.length > 50) throw new Error("Publish at most 50 comments in one review.");
     if (!["COMMENT", "APPROVE", "REQUEST_CHANGES"].includes(event)) throw new Error("Unsupported review state.");
     const context = await pullContext(prUrl);
     assertHead(context.pr, headSha);

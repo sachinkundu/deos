@@ -58,6 +58,28 @@ test("OpenRouter review pins model, reasoning, and strict JSON schema without ex
   assert.equal(JSON.stringify(sent).includes("secret-key"), false);
 });
 
+test("OpenRouter review preserves successful responses beyond the former local ceiling", async () => {
+  const client = new OpenRouterReviewClient({
+    apiKey: "secret-key-that-is-long-enough",
+    supportedModels: ["vendor/allowed"],
+    fetcher: async () => Response.json({
+      id: "request-large",
+      model: "vendor/allowed",
+      padding: "x".repeat(2_100_000),
+      choices: [{ message: { content: "{\"ok\":true}" } }],
+    }),
+  });
+  const result = await client.review({
+    model: "vendor/allowed",
+    reasoning: "high",
+    prompt: "Review this exact plan.",
+    schemaName: "trace_review",
+    schema: { type: "object", properties: { ok: { type: "boolean" } } },
+  });
+  assert.deepEqual(result.result, { ok: true });
+  assert.equal(result.providerRequestId, "request-large");
+});
+
 test("OpenRouter HTTP failures retain actionable safe fields and a protected raw body", async () => {
   const client = new OpenRouterReviewClient({
     apiKey: "secret-key-that-is-long-enough",
@@ -175,6 +197,28 @@ test("OpenRouter Responses proxy forwards a Codex tool loop without exposing its
   assert.equal(captured.store, false);
   assert.equal(captured.provider, undefined);
   assert.equal(JSON.stringify(sent).includes("secret-key"), false);
+});
+
+test("OpenRouter Responses proxy preserves successful streams beyond the former local ceiling", async () => {
+  const client = new OpenRouterReviewClient({
+    apiKey: "secret-key-that-is-long-enough",
+    apiUrl: "https://openrouter.example/api/v1",
+    supportedModels: ["vendor/allowed"],
+    fetcher: async () => new Response([
+      `: ${"x".repeat(10_100_000)}`,
+      "event: response.completed",
+      "data: {\"response\":{\"id\":\"resp-large\"}}",
+      "",
+    ].join("\n"), { headers: { "Content-Type": "text/event-stream" } }),
+  });
+  const response = await client.proxyResponses({
+    model: "vendor/allowed",
+    input: "Inspect the complete repository context.",
+    stream: true,
+    tools: [],
+  });
+  assert.equal(response.providerRequestId, "resp-large");
+  assert.ok(response.body.length > 10_000_000);
 });
 
 test("supported model settings are bounded and deterministic", () => {

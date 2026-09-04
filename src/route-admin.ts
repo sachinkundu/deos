@@ -110,7 +110,7 @@ const normalizeRevision = (value: unknown): number => {
 const parseModels = (value: string): readonly string[] => {
   const models = value.split(",").map((model) => model.trim()).filter(Boolean).sort();
   if (
-    models.length === 0 || models.length > 50 || new Set(models).size !== models.length ||
+    models.length === 0 || new Set(models).size !== models.length ||
     models.some((model) => !/^[A-Za-z0-9_.:-]+\/[A-Za-z0-9_.:-]+$/.test(model))
   ) throw new Error("supported review model configuration is invalid");
   return Object.freeze(models);

@@ -1,7 +1,5 @@
 import { sha256Hex } from "./trace-review.ts";
 
-export const DESIGN_CANDIDATE_CONTEXT_LIMIT = 32_000;
-
 export class DesignCandidateRejectedError extends Error {
   constructor(message: string) {
     super(message);
@@ -77,6 +75,12 @@ export interface DesignCandidate {
   byteSize: number;
   designDigest: string;
   reviewReplies: readonly DesignReviewReply[];
+  reviewDispositions: readonly {
+    findingId: string;
+    status: "applied" | "declined" | "no_change";
+    reason: string;
+  }[];
+  reviewContextId: string | null;
   candidateDigest: string;
 }
 
@@ -119,9 +123,6 @@ export const recoverDesignCandidateCheckedAt = async (
   const object = await bucket.get(validationR2Key);
   if (object === null) return null;
   const text = await object.text();
-  if (new TextEncoder().encode(text).byteLength > 4_096) {
-    throw new Error("design candidate validation evidence is invalid");
-  }
   let validation: Partial<DesignCandidateValidation>;
   try {
     validation = JSON.parse(text) as Partial<DesignCandidateValidation>;
@@ -164,7 +165,7 @@ export const isStoredDesignCandidateReplay = (
 const requiredSections = ["component diagram", "event flow", "minimal data model", "failure modes"];
 
 const checkedReplies = (value: readonly DesignReviewReply[]): readonly DesignReviewReply[] => {
-  if (!Array.isArray(value) || value.length > 50) throw new DesignCandidateRejectedError("design review replies are invalid");
+  if (!Array.isArray(value)) throw new DesignCandidateRejectedError("design review replies are invalid");
   const seen = new Set<number>();
   return Object.freeze(value.map((reply) => {
     if (
@@ -173,7 +174,7 @@ const checkedReplies = (value: readonly DesignReviewReply[]): readonly DesignRev
       typeof reply.latestHumanCommentUpdatedAt !== "string" ||
       Number.isNaN(Date.parse(reply.latestHumanCommentUpdatedAt)) ||
       typeof reply.body !== "string" || reply.body.trim() !== reply.body ||
-      reply.body.length < 1 || reply.body.length > 1_000 || reply.body.includes("<!--")
+      reply.body.length < 1 || reply.body.includes("<!--")
     ) throw new DesignCandidateRejectedError("design review reply is invalid");
     seen.add(reply.commentId);
     return Object.freeze({
@@ -182,6 +183,31 @@ const checkedReplies = (value: readonly DesignReviewReply[]): readonly DesignRev
       latestHumanCommentId: reply.latestHumanCommentId,
       latestHumanCommentUpdatedAt: reply.latestHumanCommentUpdatedAt,
     });
+  }));
+};
+
+const checkedDispositions = (value: readonly {
+  findingId: string;
+  status: "applied" | "declined" | "no_change";
+  reason: string;
+}[]): readonly {
+  findingId: string;
+  status: "applied" | "declined" | "no_change";
+  reason: string;
+}[] => {
+  if (!Array.isArray(value)) {
+    throw new DesignCandidateRejectedError("design review dispositions are invalid");
+  }
+  const seen = new Set<string>();
+  return Object.freeze([...value].sort((left, right) => left.findingId.localeCompare(right.findingId)).map((item) => {
+    if (
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.findingId) || seen.has(item.findingId) ||
+      !["applied", "declined", "no_change"].includes(item.status) ||
+      typeof item.reason !== "string" || item.reason.trim() !== item.reason ||
+      item.reason.length < 1
+    ) throw new DesignCandidateRejectedError("design review disposition is invalid");
+    seen.add(item.findingId);
+    return Object.freeze({ ...item });
   }));
 };
 
@@ -195,6 +221,12 @@ export const buildDesignCandidate = async (input: {
   path: string;
   content: string;
   reviewReplies: readonly DesignReviewReply[];
+  reviewDispositions?: readonly {
+    findingId: string;
+    status: "applied" | "declined" | "no_change";
+    reason: string;
+  }[];
+  reviewContextId?: string | null;
   strictOpenSpecCheck: () => Promise<void>;
   checkedAt: string;
 }): Promise<{ candidate: DesignCandidate; validation: DesignCandidateValidation }> => {
@@ -207,9 +239,6 @@ export const buildDesignCandidate = async (input: {
     typeof input.content !== "string" || input.content.trim().length === 0) {
     throw new DesignCandidateRejectedError("design candidate identity is invalid");
   }
-  if (new TextEncoder().encode(input.content).byteLength > DESIGN_CANDIDATE_CONTEXT_LIMIT) {
-    throw new DesignCandidateRejectedError("design candidate exceeds the revision context limit");
-  }
   if (!input.content.endsWith("\n") || input.content.split("\n").some((line) => /[ \t]+$/.test(line))) {
     throw new DesignCandidateRejectedError("design candidate has whitespace errors");
   }
@@ -219,6 +248,11 @@ export const buildDesignCandidate = async (input: {
   }
   await input.strictOpenSpecCheck();
   const reviewReplies = checkedReplies(input.reviewReplies);
+  const reviewDispositions = checkedDispositions(input.reviewDispositions ?? []);
+  const reviewContextId = input.reviewContextId ?? null;
+  if (reviewContextId !== null && !/^design-review:[A-Za-z0-9:._-]{3,512}$/.test(reviewContextId)) {
+    throw new DesignCandidateRejectedError("design review context identity is invalid");
+  }
   const designDigest = await sha256Hex(input.content);
   const byteSize = new TextEncoder().encode(input.content).byteLength;
   const candidateDigest = await sha256Hex(JSON.stringify({
@@ -228,6 +262,8 @@ export const buildDesignCandidate = async (input: {
     byteSize,
     designDigest,
     reviewReplies,
+    reviewDispositions,
+    reviewContextId,
   }));
   const candidateValue: DesignCandidate = {
     version: 1,
@@ -242,11 +278,10 @@ export const buildDesignCandidate = async (input: {
     byteSize,
     designDigest,
     reviewReplies,
+    reviewDispositions,
+    reviewContextId,
     candidateDigest,
   };
-  if (new TextEncoder().encode(JSON.stringify(candidateValue)).byteLength > DESIGN_CANDIDATE_CONTEXT_LIMIT) {
-    throw new DesignCandidateRejectedError("design candidate exceeds the revision context limit");
-  }
   const candidate: DesignCandidate = Object.freeze(candidateValue);
   return {
     candidate,

@@ -169,6 +169,13 @@ const readBoundedText = async (
   return { text, truncated, sha256: await sha256Hex(text) };
 };
 
+const readCompleteText = async (
+  response: Response,
+): Promise<{ text: string; truncated: false; sha256: string }> => {
+  const text = await response.text();
+  return { text, truncated: false, sha256: await sha256Hex(text) };
+};
+
 const retryableStatus = (status: number): boolean =>
   [408, 429, 500, 502, 503, 524, 529].includes(status);
 
@@ -221,7 +228,7 @@ const diagnosticFromBody = (
 export const parseSupportedOpenRouterModels = (value: string): readonly string[] => {
   const models = value.split(",").map((model) => model.trim()).filter(Boolean);
   if (
-    models.length === 0 || models.length > 50 ||
+    models.length === 0 ||
     models.some((model) => !/^[A-Za-z0-9_.:-]+\/[A-Za-z0-9_.:-]+$/.test(model)) ||
     new Set(models).size !== models.length
   ) throw new Error("supported OpenRouter model list is invalid");
@@ -274,7 +281,7 @@ export class OpenRouterReviewClient {
   async review(input: OpenRouterReviewRequest): Promise<OpenRouterReviewResponse> {
     if (!this.supportedModels.has(input.model)) throw new Error("OpenRouter model is not supported");
     if (!/^[a-z][a-z0-9_-]{2,63}$/.test(input.schemaName)) throw new Error("review schema name is invalid");
-    if (input.prompt.length === 0 || input.prompt.length > 1_000_000) throw new Error("review prompt is invalid");
+    if (input.prompt.length === 0) throw new Error("review prompt is invalid");
     let response: Response;
     try {
       response = await this.fetcher(`${this.apiUrl}/chat/completions`, {
@@ -299,7 +306,9 @@ export class OpenRouterReviewClient {
     } catch (error) {
       throw new OpenRouterReviewError("OpenRouter transport failed", transportFailureDiagnostic(error));
     }
-    const raw = await readBoundedText(response, response.ok ? 2_000_000 : 16_384);
+    const raw = response.ok
+      ? await readCompleteText(response)
+      : await readBoundedText(response, 16_384);
     if (raw.truncated) {
       let partialBody: Record<string, unknown> | null = null;
       try {
@@ -404,7 +413,9 @@ export class OpenRouterReviewClient {
     } catch (error) {
       throw new OpenRouterReviewError("OpenRouter transport failed", transportFailureDiagnostic(error));
     }
-    const raw = await readBoundedText(response, response.ok ? 10_000_000 : 16_384);
+    const raw = response.ok
+      ? await readCompleteText(response)
+      : await readBoundedText(response, 16_384);
     let parsed: Record<string, unknown> | null = null;
     if (!raw.truncated && raw.text.length > 0) {
       try {
