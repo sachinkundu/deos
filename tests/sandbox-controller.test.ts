@@ -298,10 +298,15 @@ const run = {
 
 class AttemptStore implements AgentAttemptStore {
   latest: AgentAttemptRecord | null = null;
+  retrySource: AgentAttemptRecord | null = null;
   cleanup: string | null = null;
 
   findLatest() {
     return Promise.resolve(this.latest);
+  }
+
+  findRetrySource() {
+    return Promise.resolve(this.retrySource);
   }
 
   create(input: {
@@ -656,6 +661,7 @@ const setup = (options: SetupOptions = {}) => {
   const protectedPrompts = new Map<string, string>();
   const designCandidates: unknown[] = [];
   const grantCalls: unknown[][] = [];
+  let materializeCalls = 0;
   const controller = new SandboxAgentController(
     attempts,
     factory,
@@ -670,7 +676,9 @@ const setup = (options: SetupOptions = {}) => {
       now: clock,
       attemptId: () => "00000000-0000-7000-8000-000000000001",
       wait: options.wait,
-      materializeContext: async () => ({
+      materializeContext: async () => {
+        materializeCalls += 1;
+        return ({
         context: options.materializedContext ?? JSON.stringify({
           linearIssue: { id: "issue-1", title: "Bounded test task" },
           repository: { branch: "deos/{attemptId}" },
@@ -707,7 +715,8 @@ const setup = (options: SetupOptions = {}) => {
             },
         designWorkProduct: null,
         checkoutCommit: options.checkoutCommit ?? null,
-      }),
+        });
+      },
       readContinuationPatch: async () => options.patchContent ?? "# No repository changes in this attempt.\n",
       capabilityGrant: async (...args) => {
         grantCalls.push(args);
@@ -741,7 +750,17 @@ const setup = (options: SetupOptions = {}) => {
       },
     },
   );
-  return { attempts, factory, credentials, collector, controller, protectedPrompts, grantCalls, designCandidates };
+  return {
+    attempts,
+    factory,
+    credentials,
+    collector,
+    controller,
+    protectedPrompts,
+    grantCalls,
+    designCandidates,
+    materializeCalls: () => materializeCalls,
+  };
 };
 
 test("controller stages fixed paths and starts the argv supervisor without provider credentials", async () => {
@@ -770,6 +789,92 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.match(prompt, /Review jobs must publish their review outcome and actionable feedback/);
   assert.match(prompt, /\^\[a-z0-9\]\[a-z0-9\._-\]\{0,79\}\$/);
   assert.match(prompt, /requirements-publish-v1/);
+});
+
+test("stage retry preserves the failed attempt's frozen input with a new attempt identity", async () => {
+  const state = setup({ materializedContext: JSON.stringify({ source: "fresh-provider-read" }) });
+  const sourceJobSpec = JSON.stringify({
+    version: 1,
+    attemptId: "source-attempt",
+    sandboxId: "source-sandbox",
+    runId: run.run_id,
+    nodeId: "work",
+    visitSequence: 3,
+    jobId: "work",
+    repository: "sachinkundu/deos",
+    promptDigest: "source-prompt-digest",
+    resultSchemaId: "https://deos.dev/agent-result.json",
+    requiredOutputs: ["transcript.jsonl", "result.json"],
+    materializedContext: JSON.stringify({ source: "frozen-failed-attempt" }),
+    openspecInstruction: null,
+    openspecChange: null,
+    planningBranch: null,
+    capabilities: [],
+    agentRole: null,
+    agentHarness: null,
+    agentHarnessVersion: null,
+    modelProvider: null,
+    model: null,
+    reasoning: null,
+    permissionProfile: null,
+    providerAccess: [],
+    reviewKind: "traceability",
+    reviewMode: null,
+    continuationPatch: null,
+    checkoutCommit: null,
+    deadline: "2026-08-16T10:00:00.000Z",
+  });
+  const sourceDigest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(sourceJobSpec),
+  ).then((value) => [...new Uint8Array(value)]
+    .map((byte) => byte.toString(16).padStart(2, "0")).join(""));
+  const sourceAttempt: AgentAttemptRecord = {
+    attempt_id: "source-attempt",
+    sandbox_id: "source-sandbox",
+    run_id: run.run_id,
+    node_id: "work",
+    visit_sequence: 3,
+    job_spec_json: sourceJobSpec,
+    job_spec_digest: sourceDigest,
+    process_id: "source-process",
+    process_runtime_id: "source-runtime",
+    state: "failed",
+    started_at: "2026-08-16T09:00:00.000Z",
+    heartbeat_at: "2026-08-16T09:30:00.000Z",
+    absolute_deadline: "2026-08-16T10:00:00.000Z",
+    ended_at: "2026-08-16T09:40:00.000Z",
+    result_class: "model_channel_unavailable",
+    result_detail: null,
+    manifest_id: null,
+    cleanup_state: "destroyed",
+    cleanup_error_category: null,
+    created_at: "2026-08-16T09:00:00.000Z",
+    updated_at: "2026-08-16T09:40:00.000Z",
+  };
+  state.attempts.latest = sourceAttempt;
+  state.attempts.retrySource = sourceAttempt;
+
+  const observation = await state.controller.execute(
+    { ...run, current_visit_sequence: 5, updated_at: "2026-08-16T10:00:00.000Z" },
+    "work",
+    "work",
+    definition,
+  );
+
+  assert.equal(observation.state, "running");
+  assert.equal(state.materializeCalls(), 0);
+  assert.notEqual(state.attempts.latest?.attempt_id, sourceAttempt.attempt_id);
+  const retried = JSON.parse(state.attempts.latest?.job_spec_json ?? "{}");
+  const source = JSON.parse(sourceJobSpec);
+  assert.equal(retried.materializedContext, source.materializedContext);
+  assert.equal(retried.modelProvider, source.modelProvider);
+  assert.equal(retried.model, source.model);
+  assert.equal(retried.reasoning, source.reasoning);
+  assert.equal(retried.retrySourceAttemptId, sourceAttempt.attempt_id);
+  assert.equal(retried.retrySourceJobSpecDigest, sourceAttempt.job_spec_digest);
+  assert.equal(retried.visitSequence, 5);
+  assert.notEqual(retried.deadline, source.deadline);
 });
 
 test("first planning visit renders and protects the exact least-privilege prompt", async () => {

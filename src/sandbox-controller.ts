@@ -60,6 +60,11 @@ export interface AgentAttemptRecord {
 
 export interface AgentAttemptStore {
   findLatest(runId: string, nodeId: string): Promise<AgentAttemptRecord | null>;
+  findRetrySource(
+    runId: string,
+    nodeId: string,
+    visitSequence: number,
+  ): Promise<AgentAttemptRecord | null>;
   create(input: {
     attemptId: string;
     sandboxId: string;
@@ -102,6 +107,29 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
       `SELECT * FROM agent_attempts WHERE run_id = ? AND node_id = ?
        ORDER BY created_at DESC, attempt_id DESC LIMIT 1`,
     ).bind(runId, nodeId).first<AgentAttemptRecord>();
+  }
+
+  findRetrySource(
+    runId: string,
+    nodeId: string,
+    visitSequence: number,
+  ): Promise<AgentAttemptRecord | null> {
+    return this.database.prepare(
+      `SELECT source.*
+       FROM agent_stage_retries AS retry
+       JOIN orchestration_runs AS run ON run.run_id = retry.run_id
+       JOIN agent_attempts AS source
+         ON source.attempt_id = retry.failed_attempt_id AND source.run_id = retry.run_id
+       WHERE retry.run_id = ? AND retry.retry_node = ? AND retry.to_visit_sequence = ?
+         AND retry.target_workflow_instance_id = run.workflow_instance_id
+         AND run.current_node = retry.retry_node
+         AND run.current_visit_sequence = retry.to_visit_sequence
+         AND run.status = 'active'
+         AND source.node_id = retry.retry_node
+         AND source.visit_sequence = retry.from_visit_sequence - 1
+         AND source.state IN ('failed', 'interrupted', 'absolute_timeout')
+         AND source.cleanup_state = 'destroyed'`,
+    ).bind(runId, nodeId, visitSequence).first<AgentAttemptRecord>();
   }
 
   async create(input: {
@@ -527,8 +555,37 @@ export class SandboxAgentController {
     nodeId: string,
     job: WorkflowJob,
   ): Promise<AgentAttemptRecord> {
-    const materialized = await this.dependencies.materializeContext(run, job);
-    const repository = materialized.repository;
+    const retrySource = await this.attempts.findRetrySource(
+      run.run_id,
+      nodeId,
+      run.current_visit_sequence,
+    );
+    let frozenRetrySpec: Record<string, unknown> | null = null;
+    if (retrySource !== null) {
+      if (await sha256Hex(retrySource.job_spec_json) !== retrySource.job_spec_digest) {
+        throw new Error("retry source job specification digest mismatch");
+      }
+      const parsed = JSON.parse(retrySource.job_spec_json) as unknown;
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new Error("retry source job specification is invalid");
+      }
+      frozenRetrySpec = parsed as Record<string, unknown>;
+      if (
+        frozenRetrySpec.version !== 1 || frozenRetrySpec.runId !== run.run_id ||
+        frozenRetrySpec.nodeId !== nodeId || frozenRetrySpec.jobId !== job.id ||
+        typeof frozenRetrySpec.materializedContext !== "string" ||
+        frozenRetrySpec.modelProvider !== (job.modelProvider ?? null) ||
+        frozenRetrySpec.model !== (job.model ?? null) ||
+        frozenRetrySpec.reasoning !== (job.reasoning ?? null)
+      ) throw new Error("retry source job specification identity mismatch");
+    }
+    const materialized = frozenRetrySpec === null
+      ? await this.dependencies.materializeContext(run, job)
+      : null;
+    const repository = frozenRetrySpec === null
+      ? materialized!.repository
+      : frozenRetrySpec.repository;
+    if (typeof repository !== "string") throw new Error("trial repository is invalid");
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
       throw new Error("trial repository is invalid");
     }
@@ -536,10 +593,13 @@ export class SandboxAgentController {
     const sandboxId = await sandboxIdentity(attemptId);
     const now = this.dependencies.now();
     const deadline = new Date(now.getTime() + this.config.absoluteTimeoutMs).toISOString();
+    const continuationPatch = frozenRetrySpec === null
+      ? materialized!.continuationPatch
+      : frozenRetrySpec.continuationPatch;
     if (
       job.operation?.kind === "openspec" &&
       job.operation.instruction === "/opsx:archive" &&
-      materialized.continuationPatch === null
+      continuationPatch === null
     ) {
       throw new Error("OpenSpec archive requires a cumulative continuation patch");
     }
@@ -555,10 +615,14 @@ export class SandboxAgentController {
       promptDigest: await sha256Hex(job.prompt),
       resultSchemaId: job.resultSchema.$id,
       requiredOutputs: job.requiredOutputs,
-      materializedContext: materialized.context,
+      materializedContext: frozenRetrySpec?.materializedContext ?? materialized!.context,
       openspecInstruction: job.operation?.instruction ?? null,
-      openspecChange: job.inputs.includes("openspec_change") ? materialized.openspecChange : null,
-      planningBranch: materialized.planningWorkProduct?.remote_branch ?? null,
+      openspecChange: frozenRetrySpec === null
+        ? (job.inputs.includes("openspec_change") ? materialized!.openspecChange : null)
+        : (frozenRetrySpec.openspecChange ?? null),
+      planningBranch: frozenRetrySpec === null
+        ? materialized!.planningWorkProduct?.remote_branch ?? null
+        : frozenRetrySpec.planningBranch ?? null,
       capabilities: job.capabilities ?? [],
       agentRole: job.agentRole ?? null,
       agentHarness: job.agentRole === undefined ? null : AGENT_HARNESS,
@@ -570,8 +634,16 @@ export class SandboxAgentController {
       providerAccess: job.providerAccess ?? [],
       reviewKind: job.reviewKind ?? "traceability",
       reviewMode: job.reviewMode ?? null,
-      continuationPatch: materialized.continuationPatch,
-      checkoutCommit: materialized.checkoutCommit,
+      continuationPatch,
+      checkoutCommit: frozenRetrySpec === null
+        ? materialized!.checkoutCommit
+        : frozenRetrySpec.checkoutCommit ?? null,
+      ...(retrySource === null
+        ? {}
+        : {
+            retrySourceAttemptId: retrySource.attempt_id,
+            retrySourceJobSpecDigest: retrySource.job_spec_digest,
+          }),
       deadline,
     };
     const jobSpecJson = JSON.stringify(durableJob);

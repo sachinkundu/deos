@@ -3,6 +3,7 @@ import type { WorkflowBinding, WorkflowInstanceHandle } from "./queue-consumer-c
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import {
   isAgentStageRetryNode,
+  RETRYABLE_AGENT_ATTEMPT_STATES,
   type AgentStageRetryNode,
 } from "./stage-retry-contract.ts";
 
@@ -274,7 +275,9 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
     const source = await this.source(input.runId, input.failedAttemptId, input.targetDefinition);
     if (
       source === null || source.attempt_node !== input.retryNode ||
-      !["failed", "interrupted"].includes(source.attempt_state) ||
+      !RETRYABLE_AGENT_ATTEMPT_STATES.includes(
+        source.attempt_state as (typeof RETRYABLE_AGENT_ATTEMPT_STATES)[number],
+      ) ||
       source.cleanup_state !== "destroyed" || source.is_latest_attempt !== 1 ||
       source.source_delivery_id === null
     ) throw new Error("stage_retry_not_eligible");
@@ -341,7 +344,8 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
          AND run.status = 'failed' AND run.terminal_cause = 'agent_execution_failed'
          AND attempt.attempt_id = ? AND attempt.node_id = ?
          AND attempt.visit_sequence = run.current_visit_sequence - 1
-         AND attempt.state IN ('failed', 'interrupted') AND attempt.cleanup_state = 'destroyed'
+         AND attempt.state IN ('failed', 'interrupted', 'absolute_timeout')
+         AND attempt.cleanup_state = 'destroyed'
          AND COALESCE(run.selection_delivery_id, intent.source_delivery_id) IS NOT NULL
          AND NOT EXISTS (
            SELECT 1 FROM agent_attempts AS later

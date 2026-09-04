@@ -17,6 +17,12 @@ export type AgentStageRetryNode =
   | "design_independent_response"
   | "design_final_review";
 
+export const RETRYABLE_AGENT_ATTEMPT_STATES = [
+  "failed",
+  "interrupted",
+  "absolute_timeout",
+] as const;
+
 const agentStageRetryNodes = new Set<unknown>([
   "planning_author",
   "self_discovery",

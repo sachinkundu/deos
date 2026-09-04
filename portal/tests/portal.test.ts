@@ -153,6 +153,10 @@ test("portal retry is shown only for the exact cleaned failed agent visit", () =
     failedAttemptId: "attempt-1",
     retryNode: "self_discovery",
   });
+  assert.deepEqual(portalRunRetry(run, [{ ...attempt, state: "absolute_timeout" }], [transition], null), {
+    failedAttemptId: "attempt-1",
+    retryNode: "self_discovery",
+  });
   assert.equal(portalRunRetry(run, [{ ...attempt, cleanup_state: "pending" }], [transition], null), null);
   assert.equal(portalRunRetry({ ...run, terminal_cause: "policy_failed" }, [attempt], [transition], null), null);
   assert.equal(portalRunRetry(run, [attempt], [{ ...transition, cause_reference: "other" }], null), null);

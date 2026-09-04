@@ -1,5 +1,8 @@
 import { restoreWorkflowDefinition } from "../../src/workflow-definition.ts";
-import { isAgentStageRetryNode } from "../../src/stage-retry-contract.ts";
+import {
+  isAgentStageRetryNode,
+  RETRYABLE_AGENT_ATTEMPT_STATES,
+} from "../../src/stage-retry-contract.ts";
 import { presentationStagesForDefinition, validatePresentationManifest } from "./manifests.ts";
 
 interface IssueRow {
@@ -86,7 +89,9 @@ export const portalRunRetry = (
   );
   return run.status === "failed" && run.current_node === "agent_failed" &&
       run.terminal_cause === "agent_execution_failed" && failedAttempt !== undefined &&
-      ["failed", "interrupted"].includes(failedAttempt.state) &&
+      RETRYABLE_AGENT_ATTEMPT_STATES.includes(
+        failedAttempt.state as (typeof RETRYABLE_AGENT_ATTEMPT_STATES)[number],
+      ) &&
       failedAttempt.cleanup_state === "destroyed" && isAgentStageRetryNode(failedAttempt.node_id) &&
       hasExactFailedExit
     ? { failedAttemptId: failedAttempt.attempt_id, retryNode: failedAttempt.node_id }
