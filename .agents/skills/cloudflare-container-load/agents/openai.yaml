@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cloudflare Container Load"
+  short_description: "Show peak DEOS container demand and capacity failures"
+  default_prompt: "Use $cloudflare-container-load to show our historical maximum container load and check for capacity-related failures."
