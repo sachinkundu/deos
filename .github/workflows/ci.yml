@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   python:
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest-2-vcpu
     strategy:
       matrix:
         python-version: ["3.11", "3.14"]
@@ -39,7 +39,7 @@ jobs:
         run: python -m compileall -q src tests
 
   typescript:
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest-2-vcpu
 
     steps:
       - name: Check out repository
