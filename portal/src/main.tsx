@@ -80,6 +80,7 @@ interface Projection {
   history: Visit[];
   unlinked: { attempts: number; waits: number };
   reviewAvailable: boolean;
+  retry: { failedAttemptId: string; retryNode: string } | null;
   pullRequest: { number: number; url: string; status: string; verified: boolean } | null;
   workProducts: {
     planning: { number: number; url: string; status: string; verified: boolean } | null;
@@ -183,6 +184,27 @@ const routeMutation = async <T,>(
     throw new Error(messages[body.error ?? ""] ?? "The route could not be saved.");
   }
   return body;
+};
+
+const retryMutation = async (
+  path: string,
+  input: { failedAttemptId: string; retryNode: string },
+): Promise<void> => {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const body = await response.json() as { error?: string };
+  if (!response.ok) {
+    const messages: Record<string, string> = {
+      stage_retry_not_eligible: "This run changed and can no longer be continued from that step.",
+      stage_retry_identity_mismatch: "This failed attempt no longer matches the current run.",
+      workflow_replacement_not_established: "Cloudflare did not start the continuation yet. Try again safely.",
+      workflow_replacement_ambiguous: "Cloudflare did not confirm the continuation. Try again safely.",
+    };
+    throw new Error(messages[body.error ?? ""] ?? "The workflow could not be continued.");
+  }
 };
 
 const formatTime = (value: string | null): string => value === null
@@ -848,6 +870,8 @@ function App() {
   const [selectedVisit, setSelectedVisit] = useState<number | null>(null);
   const [transcriptAttempt, setTranscriptAttempt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const [page, setPage] = useState<PortalPage>(() => portalPageFromPath(window.location.pathname));
   const requestRef = useRef<AbortController | null>(null);
   const workflowLoadedRef = useRef(false);
@@ -896,6 +920,7 @@ function App() {
       setRunId(first);
       setSelectedVisit(null);
       setTranscriptAttempt(null);
+      setRetryMessage(null);
       setPoll({ applied: null, staged: null, error: null });
       if (first) await loadProjection(first, true);
     } catch (error) {
@@ -935,6 +960,23 @@ function App() {
   const secondRow = [...(projection?.stages.slice(4) ?? [])].reverse();
   const groupedWorkflow = projection !== null && isDesignStageWorkflow(projection.run.definitionVersion, projection.stages);
 
+  const continueRun = useCallback(async () => {
+    if (projection?.retry === null || projection === null || !runId) return;
+    const step = human(projection.retry.retryNode);
+    if (!window.confirm(`Retry this run from ${step}? Completed work will be kept.`)) return;
+    setRetrying(true);
+    setRetryMessage(null);
+    try {
+      await retryMutation(`/api/runs/${encodeURIComponent(runId)}/retry`, projection.retry);
+      setRetryMessage(`Retry started from ${step}. Completed work was kept.`);
+      await loadProjection(runId, true);
+    } catch (error) {
+      setRetryMessage(error instanceof Error ? error.message : "The workflow could not be continued.");
+    } finally {
+      setRetrying(false);
+    }
+  }, [loadProjection, projection, runId]);
+
   return <div className="shell">
     <header className="topbar">
       <div className="brand"><span className="brand-mark">D</span><div><strong>DEOS</strong><small>Workflow portal</small></div></div>
@@ -956,12 +998,13 @@ function App() {
       {page === "settings" ? <SettingsPanel /> : page === "review" ? <ReviewTracePage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "design-review" ? <DesignReviewPage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "not-found" ? <section className="empty-state"><WarningCircle /><h1>Page not found</h1><p>This portal route is not registered.</p><button className="route-action" type="button" onClick={() => navigate("workflow")}>Go to workflows</button></section> : <>
       {poll.staged && <div className="update-banner"><span><ArrowClockwise /> Confirmed workflow data is ready.</span><button type="button" onClick={() => setPoll(applyStaged)}>Apply update</button></div>}
       {poll.error && <div className="error-banner"><WarningCircle />{poll.error}<button type="button" onClick={() => runId && void loadProjection(runId)}>Retry</button></div>}
+      {retryMessage && <div className="retry-message" aria-live="polite"><ArrowClockwise />{retryMessage}</div>}
       {selectedIssue && <section className="issue-header">
         <div><span className="eyebrow">{selectedIssue.key}</span><h1>{selectedIssue.title}</h1><a href={selectedIssue.url} target="_blank" rel="noreferrer">Open issue <ArrowSquareOut /></a></div>
-        <div className="run-control"><label htmlFor="run">Workflow run</label><select id="run" value={runId} onChange={(event) => { setRunId(event.target.value); setSelectedVisit(null); setTranscriptAttempt(null); void loadProjection(event.target.value, true); }}>{runs.map((run) => <option value={run.id} key={run.id}>Run {run.sequence} · {human(run.status)}</option>)}</select></div>
+        <div className="run-control"><label htmlFor="run">Workflow run</label><select id="run" value={runId} onChange={(event) => { setRunId(event.target.value); setSelectedVisit(null); setTranscriptAttempt(null); setRetryMessage(null); void loadProjection(event.target.value, true); }}>{runs.map((run) => <option value={run.id} key={run.id}>Run {run.sequence} · {human(run.status)}</option>)}</select></div>
       </section>}
       {projection ? <>
-        <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span></div><span>Fresh as of {formatTime(projection.run.freshness)}</span></section>
+        <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : "Retry failed step"}</button>}</div></section>
         {groupedWorkflow ? <TraceabilityWorkflowMap
           projection={projection}
           selectedVisit={selectedVisit}

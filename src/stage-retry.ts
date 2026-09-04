@@ -1,33 +1,15 @@
 import { workflowInstanceIdentity } from "./orchestration-identity.ts";
 import type { WorkflowBinding, WorkflowInstanceHandle } from "./queue-consumer-core.ts";
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
+import {
+  isAgentStageRetryNode,
+  RETRYABLE_AGENT_ATTEMPT_STATES,
+  type AgentStageRetryNode,
+} from "./stage-retry-contract.ts";
+
+export { isAgentStageRetryNode, type AgentStageRetryNode } from "./stage-retry-contract.ts";
 
 export type AgentStageRetryKind = "same_definition" | "compatible_tail";
-export type AgentStageRetryNode =
-  | "planning_revision_author"
-  | "independent_discovery"
-  | "independent_recheck"
-  | "design_author"
-  | "design_revision_author"
-  | "design_self_review"
-  | "design_independent_review"
-  | "design_self_response"
-  | "design_independent_response";
-
-const agentStageRetryNodes = new Set<unknown>([
-  "planning_revision_author",
-  "independent_discovery",
-  "independent_recheck",
-  "design_author",
-  "design_revision_author",
-  "design_self_review",
-  "design_independent_review",
-  "design_self_response",
-  "design_independent_response",
-]);
-
-const isAgentStageRetryNode = (value: unknown): value is AgentStageRetryNode =>
-  agentStageRetryNodes.has(value);
 
 export interface AgentStageRetryRecord {
   retry_id: string;
@@ -55,6 +37,9 @@ export interface AgentStageRetryRecord {
   target_workflow_instance_id: string | null;
   source_delivery_id: string | null;
   workflow_instance_id?: string;
+  current_node?: string;
+  current_visit_sequence?: number;
+  run_status?: string;
 }
 
 export interface AgentStageRetryStore {
@@ -179,7 +164,8 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
 
   private find(failedAttemptId: string): Promise<AgentStageRetryRecord | null> {
     return this.database.prepare(
-      `SELECT retry.*, run.workflow_instance_id
+      `SELECT retry.*, run.workflow_instance_id, run.current_node,
+              run.current_visit_sequence, run.status AS run_status
        FROM agent_stage_retries AS retry
        JOIN orchestration_runs AS run ON run.run_id = retry.run_id
        WHERE retry.failed_attempt_id = ?`,
@@ -242,7 +228,17 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
          ON intent.run_id = run.run_id AND intent.workflow_instance_id = run.workflow_instance_id
        WHERE run.run_id = ? AND attempt.attempt_id = ?
          AND run.current_node = 'agent_failed' AND run.status = 'failed'
-         AND run.terminal_cause = 'agent_execution_failed'`,
+         AND run.terminal_cause = 'agent_execution_failed'
+         AND attempt.visit_sequence = run.current_visit_sequence - 1
+         AND EXISTS (
+           SELECT 1 FROM workflow_transitions_v2 AS failed_exit
+           WHERE failed_exit.run_id = run.run_id
+             AND failed_exit.from_node = attempt.node_id
+             AND failed_exit.to_node = 'agent_failed'
+             AND failed_exit.from_visit_sequence = attempt.visit_sequence
+             AND failed_exit.to_visit_sequence = run.current_visit_sequence
+             AND failed_exit.cause_reference = 'agent:' || attempt.node_id || ':failed'
+         )`,
     ).bind(
       targetDefinition.name,
       targetDefinition.version,
@@ -265,12 +261,23 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
       if (existing.run_id !== input.runId || existing.retry_node !== input.retryNode) {
         throw new Error("stage_retry_identity_mismatch");
       }
+      if (
+        existing.state === "pending" &&
+        (
+          existing.workflow_instance_id !== existing.target_workflow_instance_id ||
+          existing.current_node !== existing.retry_node ||
+          existing.current_visit_sequence !== existing.to_visit_sequence ||
+          existing.run_status !== "active"
+        )
+      ) throw new Error("stage_retry_not_eligible");
       return existing;
     }
     const source = await this.source(input.runId, input.failedAttemptId, input.targetDefinition);
     if (
       source === null || source.attempt_node !== input.retryNode ||
-      !["failed", "interrupted"].includes(source.attempt_state) ||
+      !RETRYABLE_AGENT_ATTEMPT_STATES.includes(
+        source.attempt_state as (typeof RETRYABLE_AGENT_ATTEMPT_STATES)[number],
+      ) ||
       source.cleanup_state !== "destroyed" || source.is_latest_attempt !== 1 ||
       source.source_delivery_id === null
     ) throw new Error("stage_retry_not_eligible");
@@ -336,13 +343,24 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
          AND run.current_visit_sequence = ? AND run.current_node = 'agent_failed'
          AND run.status = 'failed' AND run.terminal_cause = 'agent_execution_failed'
          AND attempt.attempt_id = ? AND attempt.node_id = ?
-         AND attempt.state IN ('failed', 'interrupted') AND attempt.cleanup_state = 'destroyed'
+         AND attempt.visit_sequence = run.current_visit_sequence - 1
+         AND attempt.state IN ('failed', 'interrupted', 'absolute_timeout')
+         AND attempt.cleanup_state = 'destroyed'
          AND COALESCE(run.selection_delivery_id, intent.source_delivery_id) IS NOT NULL
          AND NOT EXISTS (
            SELECT 1 FROM agent_attempts AS later
            WHERE later.run_id = run.run_id AND later.node_id = attempt.node_id
              AND (later.created_at > attempt.created_at OR
                   (later.created_at = attempt.created_at AND later.attempt_id > attempt.attempt_id))
+         )
+         AND EXISTS (
+           SELECT 1 FROM workflow_transitions_v2 AS failed_exit
+           WHERE failed_exit.run_id = run.run_id
+             AND failed_exit.from_node = attempt.node_id
+             AND failed_exit.to_node = 'agent_failed'
+             AND failed_exit.from_visit_sequence = attempt.visit_sequence
+             AND failed_exit.to_visit_sequence = run.current_visit_sequence
+             AND failed_exit.cause_reference = 'agent:' || attempt.node_id || ':failed'
          )
          ${upgradeGuard}`,
     );
