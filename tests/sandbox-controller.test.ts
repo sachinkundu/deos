@@ -46,6 +46,12 @@ test("repository checkout errors become bounded safe categories", () => {
     "repository_checkout_auth_required",
   );
   assert.equal(
+    classifyRepositoryCheckoutFailure(
+      "fatal: unable to access 'https://worker.example/capabilities/git/': The requested URL returned error: 502",
+    ),
+    "repository_checkout_transport_failed",
+  );
+  assert.equal(
     classifyRepositoryCheckoutFailure("fatal: an unknown git failure"),
     "repository_checkout_failed",
   );
@@ -415,6 +421,7 @@ class Process implements SandboxProcessView {
   state: "running" | "exited" | "error" = "running";
   exitCode = 0;
   stdout = "";
+  stderr = "";
   killed = false;
 
   constructor(id: string, pid: number) {
@@ -435,7 +442,7 @@ class Process implements SandboxProcessView {
   output() {
     return Promise.resolve({
       stdout: this.stdout,
-      stderr: "",
+      stderr: this.stderr,
       exitCode: this.exitCode,
       timedOut: false,
       truncated: false,
@@ -459,6 +466,7 @@ class Sandbox implements SandboxView {
   repositoryExists = false;
   revision = "1".repeat(40);
   statusOutput = "";
+  readonly cloneFailureStderr: string[] = [];
   readonly deletedPaths: string[] = [];
 
   mkdir() { return Promise.resolve({}); }
@@ -493,7 +501,12 @@ class Sandbox implements SandboxView {
       this.repositoryExists = false;
     }
     if (command[0] === "git" && command[1] === "clone") {
-      if (this.repositoryExists) process.exitCode = 128;
+      const failure = this.cloneFailureStderr.shift();
+      if (failure !== undefined) {
+        process.exitCode = 128;
+        process.stderr = failure;
+        this.repositoryExists = true;
+      } else if (this.repositoryExists) process.exitCode = 128;
       else this.repositoryExists = true;
     }
     if (command[0] === "git" && command[1] === "ls-files") {
@@ -616,6 +629,7 @@ class Collector {
 
 interface SetupOptions {
   clock?: () => Date;
+  wait?: (delayMs: number) => Promise<void>;
   repository?: string;
   continuationPatch?: {
     attemptId: string;
@@ -655,6 +669,7 @@ const setup = (options: SetupOptions = {}) => {
     {
       now: clock,
       attemptId: () => "00000000-0000-7000-8000-000000000001",
+      wait: options.wait,
       materializeContext: async () => ({
         context: options.materializedContext ?? JSON.stringify({
           linearIssue: { id: "issue-1", title: "Bounded test task" },
@@ -880,6 +895,75 @@ test("pending-attempt startup clears a stale repository checkout before cloning"
       ["rm", "-rf", "--", "/deos/workspace/repository"],
       ["git", "clone", "--depth", "1", "https://worker.example/capabilities/git", "/deos/workspace/repository"],
     ],
+  );
+});
+
+test("transient repository checkout failures retry with exponential backoff", async () => {
+  const delays: number[] = [];
+  const state = setup({ wait: async (delayMs) => { delays.push(delayMs); } });
+  state.factory.sandbox.cloneFailureStderr.push(
+    "fatal: unable to access 'https://worker.example/capabilities/git/': The requested URL returned error: 502",
+  );
+
+  const observation = await state.controller.execute(run, "work", "work", definition);
+
+  assert.equal(observation.state, "running");
+  assert.equal(state.attempts.latest?.state, "running");
+  assert.deepEqual(delays, [5_000]);
+  assert.equal(
+    state.factory.sandbox.commands.filter(({ command }) =>
+      command[0] === "git" && command[1] === "clone").length,
+    2,
+  );
+  assert.equal(
+    state.factory.sandbox.commands.filter(({ command }) =>
+      command[0] === "rm" && command.at(-1) === "/deos/workspace/repository").length,
+    2,
+  );
+  assert.equal(state.collector.failureCollections, 0);
+});
+
+test("transient repository checkout failure becomes terminal after bounded retries", async () => {
+  const delays: number[] = [];
+  const state = setup({ wait: async (delayMs) => { delays.push(delayMs); } });
+  state.collector.failureErrorCategory = "startup_failed";
+  state.factory.sandbox.cloneFailureStderr.push(
+    "fatal: unable to access 'https://worker.example/capabilities/git/': The requested URL returned error: 502",
+    "fatal: unable to access 'https://worker.example/capabilities/git/': The requested URL returned error: 502",
+    "fatal: unable to access 'https://worker.example/capabilities/git/': The requested URL returned error: 502",
+  );
+
+  await assert.rejects(
+    state.controller.execute(run, "work", "work", definition),
+    /repository_checkout_transport_failed/,
+  );
+
+  assert.deepEqual(delays, [5_000, 10_000]);
+  assert.equal(
+    state.factory.sandbox.commands.filter(({ command }) =>
+      command[0] === "git" && command[1] === "clone").length,
+    3,
+  );
+  assert.equal(state.attempts.latest?.state, "failed");
+  assert.equal(state.attempts.latest?.result_class, "startup_failed");
+  assert.equal(state.factory.sandbox.destroyed, true);
+});
+
+test("permanent repository checkout failures do not retry", async () => {
+  const delays: number[] = [];
+  const state = setup({ wait: async (delayMs) => { delays.push(delayMs); } });
+  state.factory.sandbox.cloneFailureStderr.push("remote: Repository not found.");
+
+  await assert.rejects(
+    state.controller.execute(run, "work", "work", definition),
+    /repository_checkout_missing/,
+  );
+
+  assert.deepEqual(delays, []);
+  assert.equal(
+    state.factory.sandbox.commands.filter(({ command }) =>
+      command[0] === "git" && command[1] === "clone").length,
+    1,
   );
 });
 

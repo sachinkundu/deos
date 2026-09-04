@@ -297,7 +297,10 @@ export const classifyRepositoryCheckoutFailure = (stderr: string): string => {
     return "repository_checkout_rate_limited";
   }
   if (detail.includes("returned error: 403")) return "repository_checkout_denied";
-  if (detail.includes("rpc failed") || detail.includes("http/2 stream")) {
+  if (
+    detail.includes("returned error: 502") || detail.includes("rpc failed") ||
+    detail.includes("http/2 stream")
+  ) {
     return "repository_checkout_transport_failed";
   }
   if (detail.includes("remote branch") && detail.includes("not found")) {
@@ -305,6 +308,15 @@ export const classifyRepositoryCheckoutFailure = (stderr: string): string => {
   }
   return "repository_checkout_failed";
 };
+
+const RETRYABLE_REPOSITORY_CHECKOUT_FAILURES = new Set([
+  "repository_checkout_dns_failed",
+  "repository_checkout_network_failed",
+  "repository_checkout_rate_limited",
+  "repository_checkout_transport_failed",
+]);
+const REPOSITORY_CHECKOUT_MAX_ATTEMPTS = 3;
+const REPOSITORY_CHECKOUT_BASE_BACKOFF_MS = 5_000;
 
 export interface SandboxFactory {
   get(sandboxId: string, options: { keepAlive: boolean }): SandboxView;
@@ -335,6 +347,7 @@ export type AgentExecutionObservation =
 interface SandboxControllerDependencies {
   now: () => Date;
   attemptId: () => string;
+  wait?: (delayMs: number) => Promise<void>;
   materializeContext: (run: OrchestrationRunRecord, job: WorkflowJob) => Promise<MaterializedJobInput>;
   readContinuationPatch: (reference: ContinuationPatchReference) => Promise<string>;
   capabilityGrant: (
@@ -706,33 +719,7 @@ export class SandboxAgentController {
         materializedContext: durableJob.materializedContext,
       };
       await sandbox.writeFile("/deos/run/job.json", JSON.stringify(stagedJob), { encoding: "utf8" });
-      const resetCheckout = await sandbox.exec([
-        "rm", "-rf", "--", "/deos/workspace/repository",
-      ], { cwd: "/deos/workspace", timeout: 60_000 });
-      if ((await resetCheckout.waitForExit({ timeout: 60_000 })).code !== 0) {
-        throw new Error("repository workspace reset failed");
-      }
-      const clone = await sandbox.exec([
-        "git", "clone", "--depth", "1",
-        `${grant.url}/git`,
-        "/deos/workspace/repository",
-      ], {
-        cwd: "/deos/workspace",
-        timeout: 10 * 60_000,
-        env: {
-          GIT_CONFIG_COUNT: "2",
-          GIT_CONFIG_KEY_0: "http.extraHeader",
-          GIT_CONFIG_VALUE_0: `Authorization: Bearer ${grant.token}`,
-          GIT_CONFIG_KEY_1: "http.extraHeader",
-          GIT_CONFIG_VALUE_1: `Deos-Attempt: ${attempt.attempt_id}`,
-          GIT_TERMINAL_PROMPT: "0",
-        },
-      });
-      const cloneExit = await clone.waitForExit({ timeout: 10 * 60_000 });
-      if (cloneExit.code !== 0) {
-        const output = await clone.output({ encoding: "utf8", timeout: 10_000, maxBytes: 8_192 });
-        throw new Error(classifyRepositoryCheckoutFailure(output.stderr));
-      }
+      await this.cloneRepository(sandbox, attempt, grant);
       if (designJob) {
         if (typeof durableJob.checkoutCommit !== "string" || !/^[a-f0-9]{40}$/.test(durableJob.checkoutCommit)) {
           throw new Error("design checkout commit is invalid");
@@ -791,6 +778,48 @@ export class SandboxAgentController {
       if (lease !== null) await this.credentials.release(lease);
       await this.finishFailure(attempt, sandbox, job, "failed", "startup_failed", supervisor);
       throw error;
+    }
+  }
+
+  private async cloneRepository(
+    sandbox: SandboxView,
+    attempt: AgentAttemptRecord,
+    grant: CapabilityGrant,
+  ): Promise<void> {
+    for (let attemptNumber = 1; attemptNumber <= REPOSITORY_CHECKOUT_MAX_ATTEMPTS; attemptNumber += 1) {
+      const resetCheckout = await sandbox.exec([
+        "rm", "-rf", "--", "/deos/workspace/repository",
+      ], { cwd: "/deos/workspace", timeout: 60_000 });
+      if ((await resetCheckout.waitForExit({ timeout: 60_000 })).code !== 0) {
+        throw new Error("repository workspace reset failed");
+      }
+      const clone = await sandbox.exec([
+        "git", "clone", "--depth", "1",
+        `${grant.url}/git`,
+        "/deos/workspace/repository",
+      ], {
+        cwd: "/deos/workspace",
+        timeout: 10 * 60_000,
+        env: {
+          GIT_CONFIG_COUNT: "2",
+          GIT_CONFIG_KEY_0: "http.extraHeader",
+          GIT_CONFIG_VALUE_0: `Authorization: Bearer ${grant.token}`,
+          GIT_CONFIG_KEY_1: "http.extraHeader",
+          GIT_CONFIG_VALUE_1: `Deos-Attempt: ${attempt.attempt_id}`,
+          GIT_TERMINAL_PROMPT: "0",
+        },
+      });
+      const cloneExit = await clone.waitForExit({ timeout: 10 * 60_000 });
+      if (cloneExit.code === 0) return;
+
+      const output = await clone.output({ encoding: "utf8", timeout: 10_000, maxBytes: 8_192 });
+      const category = classifyRepositoryCheckoutFailure(output.stderr);
+      const canRetry = RETRYABLE_REPOSITORY_CHECKOUT_FAILURES.has(category) &&
+        attemptNumber < REPOSITORY_CHECKOUT_MAX_ATTEMPTS;
+      if (!canRetry) throw new Error(category);
+
+      const backoffMs = REPOSITORY_CHECKOUT_BASE_BACKOFF_MS * 2 ** (attemptNumber - 1);
+      await (this.dependencies.wait ?? ((delayMs) => scheduler.wait(delayMs)))(backoffMs);
     }
   }
 
