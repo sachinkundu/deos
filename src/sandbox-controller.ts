@@ -297,7 +297,10 @@ export const classifyRepositoryCheckoutFailure = (stderr: string): string => {
     return "repository_checkout_rate_limited";
   }
   if (detail.includes("returned error: 403")) return "repository_checkout_denied";
-  if (detail.includes("rpc failed") || detail.includes("http/2 stream")) {
+  if (
+    detail.includes("returned error: 502") || detail.includes("rpc failed") ||
+    detail.includes("http/2 stream")
+  ) {
     return "repository_checkout_transport_failed";
   }
   if (detail.includes("remote branch") && detail.includes("not found")) {

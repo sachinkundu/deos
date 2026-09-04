@@ -85,3 +85,23 @@ test("Git proxy rejects invalid targets and hides upstream error bodies", async 
   assert.equal(upstream.status, 403);
   assert.equal((await upstream.text()).includes("provider secret detail"), false);
 });
+
+test("Git proxy normalizes transient upstream failures to HTTP 502", async () => {
+  const proxy = new GitHubGitProxy({
+    tokenProvider: () => new TokenProvider(),
+    fetch: () => Promise.resolve(new Response("temporary provider failure", { status: 429 })),
+  });
+  const request = new Request(
+    "https://deos.example/capabilities/git/info/refs?service=git-upload-pack",
+  );
+
+  const response = await proxy.proxy({
+    request,
+    repository: "sachinkundu/deos-sample-project-2",
+    installationId: "154095438",
+    kind: "advertisement",
+  });
+
+  assert.equal(response.status, 502);
+  assert.equal((await response.text()).includes("temporary provider failure"), false);
+});

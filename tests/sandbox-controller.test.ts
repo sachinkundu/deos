@@ -46,6 +46,12 @@ test("repository checkout errors become bounded safe categories", () => {
     "repository_checkout_auth_required",
   );
   assert.equal(
+    classifyRepositoryCheckoutFailure(
+      "fatal: unable to access 'https://worker.example/capabilities/git/': The requested URL returned error: 502",
+    ),
+    "repository_checkout_transport_failed",
+  );
+  assert.equal(
     classifyRepositoryCheckoutFailure("fatal: an unknown git failure"),
     "repository_checkout_failed",
   );
@@ -896,7 +902,7 @@ test("transient repository checkout failures retry with exponential backoff", as
   const delays: number[] = [];
   const state = setup({ wait: async (delayMs) => { delays.push(delayMs); } });
   state.factory.sandbox.cloneFailureStderr.push(
-    "error: RPC failed; HTTP/2 stream 5 was not closed cleanly",
+    "fatal: unable to access 'https://worker.example/capabilities/git/': The requested URL returned error: 502",
   );
 
   const observation = await state.controller.execute(run, "work", "work", definition);
@@ -922,9 +928,9 @@ test("transient repository checkout failure becomes terminal after bounded retri
   const state = setup({ wait: async (delayMs) => { delays.push(delayMs); } });
   state.collector.failureErrorCategory = "startup_failed";
   state.factory.sandbox.cloneFailureStderr.push(
-    "error: RPC failed",
-    "error: HTTP/2 stream 5 was not closed cleanly",
-    "error: RPC failed",
+    "fatal: unable to access 'https://worker.example/capabilities/git/': The requested URL returned error: 502",
+    "fatal: unable to access 'https://worker.example/capabilities/git/': The requested URL returned error: 502",
+    "fatal: unable to access 'https://worker.example/capabilities/git/': The requested URL returned error: 502",
   );
 
   await assert.rejects(
