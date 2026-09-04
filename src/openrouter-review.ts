@@ -169,6 +169,13 @@ const readBoundedText = async (
   return { text, truncated, sha256: await sha256Hex(text) };
 };
 
+const readCompleteText = async (
+  response: Response,
+): Promise<{ text: string; truncated: false; sha256: string }> => {
+  const text = await response.text();
+  return { text, truncated: false, sha256: await sha256Hex(text) };
+};
+
 const retryableStatus = (status: number): boolean =>
   [408, 429, 500, 502, 503, 524, 529].includes(status);
 
@@ -299,7 +306,9 @@ export class OpenRouterReviewClient {
     } catch (error) {
       throw new OpenRouterReviewError("OpenRouter transport failed", transportFailureDiagnostic(error));
     }
-    const raw = await readBoundedText(response, response.ok ? 2_000_000 : 16_384);
+    const raw = response.ok
+      ? await readCompleteText(response)
+      : await readBoundedText(response, 16_384);
     if (raw.truncated) {
       let partialBody: Record<string, unknown> | null = null;
       try {
@@ -404,7 +413,9 @@ export class OpenRouterReviewClient {
     } catch (error) {
       throw new OpenRouterReviewError("OpenRouter transport failed", transportFailureDiagnostic(error));
     }
-    const raw = await readBoundedText(response, response.ok ? 10_000_000 : 16_384);
+    const raw = response.ok
+      ? await readCompleteText(response)
+      : await readBoundedText(response, 16_384);
     let parsed: Record<string, unknown> | null = null;
     if (!raw.truncated && raw.text.length > 0) {
       try {
