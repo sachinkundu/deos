@@ -187,6 +187,7 @@ export const validateDesignReviewDispositions = (
 
 export const designReviewGateEligible = (input: {
   selfRequired: boolean;
+  selfWaived: boolean;
   selfAccepted: { candidateId: string; outcome: string } | null;
   publishedCandidateId: string;
   independentAccepted: {
@@ -201,7 +202,7 @@ export const designReviewGateEligible = (input: {
   currentHeadSha: string;
   unresolvedAttempts: number;
 }): boolean =>
-  (!input.selfRequired || (
+  (!input.selfRequired || input.selfWaived || (
     input.selfAccepted !== null && input.selfAccepted.outcome === "pass"
   )) &&
   input.independentAccepted?.candidateId === input.publishedCandidateId &&

@@ -258,9 +258,9 @@ export class D1DesignReviewStore {
   async incrementResponseTurn(roundId: string, now: string): Promise<number> {
     const result = await this.database.prepare(
       `UPDATE design_review_rounds SET response_turns = response_turns + 1, updated_at = ?
-       WHERE round_id = ? AND status IN ('active', 'human_revision')`,
+       WHERE round_id = ? AND response_turns < 3 AND status IN ('active', 'human_revision')`,
     ).bind(now, roundId).run();
-    if (changes(result) !== 1) throw new Error("design review round cannot accept a response");
+    if (changes(result) !== 1) throw new Error("design review response limit is exhausted");
     const row = await this.database.prepare(
       "SELECT response_turns FROM design_review_rounds WHERE round_id = ?",
     ).bind(roundId).first<{ response_turns: number }>();
@@ -291,6 +291,13 @@ export class D1DesignReviewStore {
       head_sha: string | null;
     }>();
     if (current?.pull_request_database_id === null || current?.head_sha === null || current === null) return false;
+    const waiver = await this.database.prepare(
+      `SELECT operation_id FROM provider_operations
+       WHERE run_id = ? AND capability = 'workflow.operator_override'
+         AND action = 'design.self_review_waiver' AND sanitized_target = ?
+         AND provider_resource_id = ? AND state IN ('succeeded', 'reconciled')
+       ORDER BY completed_at DESC LIMIT 1`,
+    ).bind(runId, current.round_id, current.candidate_id).first<{ operation_id: string }>();
     const self = await this.database.prepare(
       `SELECT candidate_id, outcome, model, reasoning FROM design_review_attempts
        WHERE round_id = ? AND phase = 'self' AND accepted = 1
@@ -317,7 +324,7 @@ export class D1DesignReviewStore {
       reasoning: string;
     }>();
     if (
-      (current.self_required === 1 && (
+      (current.self_required === 1 && waiver === null && (
         self?.model !== current.author_model || self.reasoning !== current.author_reasoning
       )) || independent?.model !== current.outside_model ||
       independent.reasoning !== current.outside_reasoning
@@ -329,6 +336,7 @@ export class D1DesignReviewStore {
     ).bind(runId).first<{ count: number }>();
     return designReviewGateEligible({
       selfRequired: current.self_required === 1,
+      selfWaived: waiver !== null,
       selfAccepted: self === null ? null : { candidateId: self.candidate_id, outcome: self.outcome },
       publishedCandidateId: current.candidate_id,
       independentAccepted: independent === null ? null : {
@@ -376,7 +384,17 @@ export class D1DesignReviewStore {
       self_review_attempt_id: string | null;
       candidate_id: string;
     }>();
-    if (proof === null || (proof.self_required === 1 && proof.self_review_attempt_id === null)) {
+    const waiver = proof === null ? null : await this.database.prepare(
+      `SELECT operation_id FROM provider_operations
+       WHERE run_id = ? AND capability = 'workflow.operator_override'
+         AND action = 'design.self_review_waiver' AND sanitized_target = ?
+         AND provider_resource_id = ? AND state IN ('succeeded', 'reconciled')
+       ORDER BY completed_at DESC LIMIT 1`,
+    ).bind(input.runId, proof.round_id, proof.candidate_id).first<{ operation_id: string }>();
+    if (
+      proof === null ||
+      (proof.self_required === 1 && proof.self_review_attempt_id === null && waiver === null)
+    ) {
       throw new Error("design review gate proof disappeared");
     }
     const results = await this.database.batch([

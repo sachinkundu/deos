@@ -12,15 +12,16 @@ import {
 import { D1DesignReviewStore } from "../src/design-review-store.ts";
 import { designReviewOutputSchema } from "../container/design-review-schema.mjs";
 
-test("design review rounds accept every response without a local turn ceiling", async () => {
-  let responseTurns = 3;
+test("design review rounds stop after three author responses", async () => {
+  let responseTurns = 2;
   const database = {
     prepare(query: string) {
       return {
         bind() {
           return {
             async run() {
-              assert.doesNotMatch(query, /response_turns\s*</);
+              assert.match(query, /response_turns\s*<\s*3/);
+              if (responseTurns >= 3) return { meta: { changes: 0 } };
               responseTurns += 1;
               return { meta: { changes: 1 } };
             },
@@ -33,8 +34,11 @@ test("design review rounds accept every response without a local turn ceiling", 
     },
   } as unknown as D1Database;
   const store = new D1DesignReviewStore(database);
-  assert.equal(await store.incrementResponseTurn("round-1", "2026-09-03T00:00:00Z"), 4);
-  assert.equal(await store.incrementResponseTurn("round-1", "2026-09-03T00:01:00Z"), 5);
+  assert.equal(await store.incrementResponseTurn("round-1", "2026-09-03T00:00:00Z"), 3);
+  await assert.rejects(
+    store.incrementResponseTurn("round-1", "2026-09-03T00:01:00Z"),
+    /response limit is exhausted/,
+  );
 });
 
 test("Codex design review schema types every constrained property", () => {
@@ -183,6 +187,7 @@ test("every outside concern requires exactly one author disposition", () => {
 test("design gate eligibility requires current exact-head proof and complete accounting", () => {
   const eligible = {
     selfRequired: true,
+    selfWaived: false,
     selfAccepted: { candidateId: "design:1", outcome: "pass" },
     publishedCandidateId: "design:1",
     independentAccepted: {
@@ -213,6 +218,11 @@ test("design gate eligibility requires current exact-head proof and complete acc
     ...eligible,
     selfAccepted: { candidateId: "design:1", outcome: "concerns" },
   }), false);
+  assert.equal(designReviewGateEligible({
+    ...eligible,
+    selfWaived: true,
+    selfAccepted: { candidateId: "design:1", outcome: "concerns" },
+  }), true);
   assert.equal(designReviewGateEligible({
     ...eligible,
     selfRequired: false,
