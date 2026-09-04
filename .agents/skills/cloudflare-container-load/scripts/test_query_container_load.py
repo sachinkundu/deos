@@ -51,7 +51,11 @@ class QueryContainerLoadTests(unittest.TestCase):
             },
         ]
 
-        peak, at = audit.peak_overlap(rows, start_key="created_at")
+        peak, at = audit.peak_overlap(
+            rows,
+            start_key="created_at",
+            open_states={"pending", "starting", "running", "collecting"},
+        )
 
         self.assertEqual(peak, 2)
         self.assertEqual(at, datetime(2026, 8, 31, 11, 0, 30, tzinfo=UTC))
@@ -74,9 +78,45 @@ class QueryContainerLoadTests(unittest.TestCase):
             },
         ]
 
-        peak, _ = audit.peak_overlap(rows, start_key="created_at")
+        peak, _ = audit.peak_overlap(
+            rows,
+            start_key="created_at",
+            open_states={"pending", "starting", "running", "collecting"},
+        )
 
         self.assertEqual(peak, 2)
+
+    def test_allocated_peak_keeps_collecting_open_but_running_peak_closes_it(self) -> None:
+        rows = [
+            {
+                "state": "collecting",
+                "created_at": "2026-08-31T11:00:00Z",
+                "started_at": "2026-08-31T11:00:01Z",
+                "ended_at": None,
+                "updated_at": "2026-08-31T11:01:00Z",
+            },
+            {
+                "state": "running",
+                "created_at": "2026-08-31T11:02:00Z",
+                "started_at": "2026-08-31T11:02:01Z",
+                "ended_at": None,
+                "updated_at": "2026-08-31T11:02:02Z",
+            },
+        ]
+
+        allocated, _ = audit.peak_overlap(
+            rows,
+            start_key="created_at",
+            open_states={"pending", "starting", "running", "collecting"},
+        )
+        running, _ = audit.peak_overlap(
+            rows,
+            start_key="started_at",
+            open_states={"pending", "starting", "running"},
+        )
+
+        self.assertEqual(allocated, 2)
+        self.assertEqual(running, 1)
 
     def test_minute_peak_counts_distinct_instances(self) -> None:
         rows = [
@@ -130,6 +170,13 @@ class QueryContainerLoadTests(unittest.TestCase):
             token = audit.api_token(Path(directory) / ".env")
 
         self.assertEqual(token, "environment-token")
+
+    def test_command_environment_passes_token_without_dropping_existing_values(self) -> None:
+        with patch.dict("os.environ", {"EXISTING": "kept"}, clear=True):
+            environment = audit.command_environment("secret-token")
+
+        self.assertEqual(environment["EXISTING"], "kept")
+        self.assertEqual(environment["CLOUDFLARE_API_TOKEN"], "secret-token")
 
     def test_capacity_match_is_bounded_to_failure_text(self) -> None:
         self.assertIsNotNone(audit.CAPACITY_RE.search("maximum instance limit reached"))

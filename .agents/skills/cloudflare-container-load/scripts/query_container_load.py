@@ -139,8 +139,20 @@ def api_token(env_file: Path) -> str:
     return token
 
 
-def command_json(command: Sequence[str]) -> Any:
-    completed = subprocess.run(command, check=False, capture_output=True, text=True)
+def command_environment(token: str) -> dict[str, str]:
+    environment = os.environ.copy()
+    environment["CLOUDFLARE_API_TOKEN"] = token
+    return environment
+
+
+def command_json(command: Sequence[str], *, token: str) -> Any:
+    completed = subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+        env=command_environment(token),
+    )
     if completed.returncode != 0:
         sanitized = ANSI_RE.sub("", completed.stderr or completed.stdout).strip().splitlines()
         detail = next((line.strip() for line in sanitized if "ERROR" in line), "command failed")
@@ -151,7 +163,7 @@ def command_json(command: Sequence[str]) -> Any:
         raise AuditError("command returned non-JSON output") from exc
 
 
-def d1_attempts(config: Path, database: str) -> list[dict[str, Any]]:
+def d1_attempts(config: Path, database: str, *, token: str) -> list[dict[str, Any]]:
     payload = command_json(
         [
             "npx",
@@ -165,7 +177,8 @@ def d1_attempts(config: Path, database: str) -> list[dict[str, Any]]:
             "--command",
             ATTEMPT_SQL,
             "--json",
-        ]
+        ],
+        token=token,
     )
     if not isinstance(payload, list) or not payload:
         raise AuditError("D1 returned an unexpected response")
@@ -175,9 +188,10 @@ def d1_attempts(config: Path, database: str) -> list[dict[str, Any]]:
     return [dict(row) for row in rows if isinstance(row, Mapping)]
 
 
-def container_application(config: Path, expected_name: str) -> dict[str, Any]:
+def container_application(config: Path, expected_name: str, *, token: str) -> dict[str, Any]:
     payload = command_json(
-        ["npx", "wrangler", "containers", "list", "--json", "--config", str(config)]
+        ["npx", "wrangler", "containers", "list", "--json", "--config", str(config)],
+        token=token,
     )
     if not isinstance(payload, list):
         raise AuditError("container list returned an unexpected response")
@@ -188,7 +202,7 @@ def container_application(config: Path, expected_name: str) -> dict[str, Any]:
 
 
 def peak_overlap(
-    rows: Iterable[Mapping[str, Any]], *, start_key: str
+    rows: Iterable[Mapping[str, Any]], *, start_key: str, open_states: set[str]
 ) -> tuple[int, datetime | None]:
     events: list[tuple[datetime, int]] = []
     now = datetime.now(UTC)
@@ -200,7 +214,7 @@ def peak_overlap(
         start = parse_iso(start_value)
         if isinstance(end_value, str) and end_value:
             end = parse_iso(end_value)
-        elif row.get("state") in {"pending", "starting", "running"}:
+        elif row.get("state") in open_states:
             end = now
         else:
             updated_value = row.get("updated_at")
@@ -334,7 +348,11 @@ def minute_peak(rows: Iterable[Mapping[str, Any]]) -> tuple[int, str | None]:
 
 
 def workflow_capacity_check(
-    rows: Iterable[Mapping[str, Any]], *, config: Path, workflow_name: str | None
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    config: Path,
+    workflow_name: str | None,
+    token: str,
 ) -> tuple[int, list[str], int]:
     startup = [
         row
@@ -364,6 +382,7 @@ def workflow_capacity_check(
             check=False,
             capture_output=True,
             text=True,
+            env=command_environment(token),
         )
         if completed.returncode != 0:
             continue
@@ -378,10 +397,15 @@ def workflow_capacity_check(
 def audit(arguments: argparse.Namespace) -> dict[str, Any]:
     config = arguments.config.resolve()
     values = config_values(config)
-    attempts = d1_attempts(config, arguments.database)
+    token = api_token(arguments.env_file)
+    attempts = d1_attempts(config, arguments.database, token=token)
     if not attempts:
         raise AuditError("D1 contains no agent attempts")
-    application = container_application(config, arguments.application_name or f"{values['worker_name']}-sandbox")
+    application = container_application(
+        config,
+        arguments.application_name or f"{values['worker_name']}-sandbox",
+        token=token,
+    )
     app_id = application.get("id")
     if not isinstance(app_id, str):
         raise AuditError("container application has no ID")
@@ -390,13 +414,21 @@ def audit(arguments: argparse.Namespace) -> dict[str, Any]:
     end = datetime.now(UTC)
     metrics = graphql_rows(
         account_id=values["account_id"],
-        token=api_token(arguments.env_file),
+        token=token,
         application_id=app_id,
         start=start,
         end=end,
     )
-    allocated_peak, allocated_at = peak_overlap(attempts, start_key="created_at")
-    running_peak, running_at = peak_overlap(attempts, start_key="started_at")
+    allocated_peak, allocated_at = peak_overlap(
+        attempts,
+        start_key="created_at",
+        open_states={"pending", "starting", "running", "collecting"},
+    )
+    running_peak, running_at = peak_overlap(
+        attempts,
+        start_key="started_at",
+        open_states={"pending", "starting", "running"},
+    )
     provider_peak, provider_at = minute_peak(metrics)
     delay_seconds, delay_attempt = start_delays(attempts)
     durable_capacity_matches = [
@@ -409,7 +441,10 @@ def audit(arguments: argparse.Namespace) -> dict[str, Any]:
     workflow_checked = 0
     if arguments.check_workflow_errors:
         startup_total, workflow_matches, workflow_checked = workflow_capacity_check(
-            attempts, config=config, workflow_name=values["workflow_name"]
+            attempts,
+            config=config,
+            workflow_name=values["workflow_name"],
+            token=token,
         )
     result_classes = Counter(
         str(row["result_class"]) for row in attempts if row.get("result_class")
