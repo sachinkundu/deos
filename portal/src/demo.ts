@@ -200,6 +200,7 @@ export const demoApi = (path: string): unknown => {
     history,
     unlinked: { attempts: 0, waits: 0 },
     reviewAvailable: true,
+    retry: null,
     pullRequest: {
       number: 9,
       url: "https://github.com/sachinkundu/deos-sample-project/pull/9",

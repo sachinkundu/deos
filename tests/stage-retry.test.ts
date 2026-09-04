@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+import { parse as parseYaml } from "yaml";
 
 import {
   AgentStageRetryController,
+  isAgentStageRetryNode,
   planStageRetryDefinition,
   type AgentStageRetryRecord,
   type AgentStageRetryStore,
@@ -126,6 +129,17 @@ const request = (
   }),
 });
 
+test("every agent stage in the current workflow is explicitly retryable", () => {
+  const workflow = parseYaml(readFileSync("config/workflow.simple-traceability.yaml", "utf8")) as {
+    spec: { nodes: Record<string, { type: string }> };
+  };
+  const agentNodes = Object.entries(workflow.spec.nodes)
+    .filter(([, node]) => node.type === "agent")
+    .map(([nodeId]) => nodeId);
+  assert.ok(agentNodes.length > 0);
+  assert.deepEqual(agentNodes.filter((nodeId) => !isAgentStageRetryNode(nodeId)), []);
+});
+
 test("a failed planning revision author can request a same-definition retry", async () => {
   const store = new FakeRetryStore();
   const workflows = new FakeWorkflow();
@@ -144,10 +158,34 @@ test("a failed planning revision author can request a same-definition retry", as
   assert.equal(store.preparedRetryNode, "planning_revision_author");
 });
 
+test("failed planning agent stages can request a same-definition retry", async () => {
+  for (const retryNode of [
+    "planning_author", "self_discovery", "planning_self_repair",
+    "self_recheck_before_publish", "self_recheck_after_publish",
+    "planning_independent_response", "final_trace",
+  ] as const) {
+    const store = new FakeRetryStore();
+    const controller = new AgentStageRetryController(
+      store,
+      new FakeWorkflow(),
+      "operator-secret",
+      TARGET_DEFINITION,
+      () => NOW,
+      () => {},
+    );
+
+    const response = await controller.handle(request("operator-secret", retryNode));
+
+    assert.equal(response.status, 202);
+    assert.equal(store.preparedRetryNode, retryNode);
+  }
+});
+
 test("failed design author and review stages can retry without returning to planning", async () => {
   for (const retryNode of [
     "design_author", "design_revision_author", "design_self_review",
     "design_independent_review", "design_self_response", "design_independent_response",
+    "design_final_review",
   ] as const) {
     const store = new FakeRetryStore();
     const controller = new AgentStageRetryController(

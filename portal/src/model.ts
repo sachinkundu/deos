@@ -1,4 +1,5 @@
 import { restoreWorkflowDefinition } from "../../src/workflow-definition.ts";
+import { isAgentStageRetryNode } from "../../src/stage-retry-contract.ts";
 import { presentationStagesForDefinition, validatePresentationManifest } from "./manifests.ts";
 
 interface IssueRow {
@@ -22,6 +23,7 @@ interface RunRow {
   created_at: string;
   updated_at: string;
   terminal_at: string | null;
+  terminal_cause: string | null;
 }
 
 interface DefinitionRow { canonical_json: string; digest: string }
@@ -32,6 +34,7 @@ interface TransitionRow {
   from_visit_sequence: number;
   to_visit_sequence: number;
   cause_type: string;
+  cause_reference: string | null;
   occurred_at: string;
 }
 interface AttemptRow {
@@ -45,7 +48,50 @@ interface AttemptRow {
   transcript_available: number;
   transcript_byte_size: number | null;
   transcript_sha256: string | null;
+  cleanup_state: string;
 }
+interface RetryRow {
+  failed_attempt_id: string;
+  retry_node: string;
+  state: string;
+  to_visit_sequence: number;
+}
+
+export interface PortalRunRetry {
+  failedAttemptId: string;
+  retryNode: string;
+}
+
+export const portalRunRetry = (
+  run: Pick<RunRow, "status" | "current_node" | "current_visit_sequence" | "terminal_cause">,
+  attempts: readonly Pick<AttemptRow, "attempt_id" | "visit_sequence" | "node_id" | "state" | "cleanup_state">[],
+  transitions: readonly Pick<TransitionRow, "from_node" | "to_node" | "from_visit_sequence" | "to_visit_sequence" | "cause_reference">[],
+  retryRow: RetryRow | null,
+): PortalRunRetry | null => {
+  if (
+    retryRow?.state === "pending" && isAgentStageRetryNode(retryRow.retry_node) &&
+    run.status === "active" && run.current_node === retryRow.retry_node &&
+    run.current_visit_sequence === retryRow.to_visit_sequence
+  ) {
+    return { failedAttemptId: retryRow.failed_attempt_id, retryNode: retryRow.retry_node };
+  }
+  const failedAttempt = [...attempts].reverse().find((attempt) =>
+    attempt.visit_sequence === run.current_visit_sequence - 1
+  );
+  const hasExactFailedExit = failedAttempt !== undefined && transitions.some((transition) =>
+    transition.from_node === failedAttempt.node_id && transition.to_node === "agent_failed" &&
+    transition.from_visit_sequence === failedAttempt.visit_sequence &&
+    transition.to_visit_sequence === run.current_visit_sequence &&
+    transition.cause_reference === `agent:${failedAttempt.node_id}:failed`
+  );
+  return run.status === "failed" && run.current_node === "agent_failed" &&
+      run.terminal_cause === "agent_execution_failed" && failedAttempt !== undefined &&
+      ["failed", "interrupted"].includes(failedAttempt.state) &&
+      failedAttempt.cleanup_state === "destroyed" && isAgentStageRetryNode(failedAttempt.node_id) &&
+      hasExactFailedExit
+    ? { failedAttemptId: failedAttempt.attempt_id, retryNode: failedAttempt.node_id }
+    : null;
+};
 interface WaitRow {
   visit_sequence: number | null;
   node_id: string;
@@ -149,22 +195,24 @@ export const PORTAL_SELECTS = Object.freeze({
     JOIN project_workflow_policies route ON route.project_id = issue.project_id
     WHERE issue.issue_key = ? LIMIT 1`,
   runs: `SELECT run_id, run_sequence, definition_id, definition_version, definition_digest,
-    current_node, current_visit_sequence, status, created_at, updated_at, terminal_at
+    current_node, current_visit_sequence, status, created_at, updated_at, terminal_at,
+    terminal_cause
     FROM orchestration_runs WHERE project_id = ? AND issue_id = ?
     ORDER BY run_sequence DESC`,
   run: `SELECT run.run_id, run.run_sequence, run.definition_id, run.definition_version,
     run.definition_digest, run.current_node, run.current_visit_sequence, run.status,
-    run.created_at, run.updated_at, run.terminal_at
+    run.created_at, run.updated_at, run.terminal_at, run.terminal_cause
     FROM orchestration_runs run
     JOIN project_workflow_policies route ON route.project_id = run.project_id
     WHERE run.run_id = ? LIMIT 1`,
   definition: `SELECT canonical_json, digest FROM workflow_definitions
     WHERE definition_id = ? AND version = ? LIMIT 1`,
   transitions: `SELECT transition_id, from_node, to_node, from_visit_sequence,
-    to_visit_sequence, cause_type, occurred_at FROM workflow_transitions_v2
+    to_visit_sequence, cause_type, cause_reference, occurred_at FROM workflow_transitions_v2
     WHERE run_id = ? ORDER BY from_visit_sequence, transition_id`,
   attempts: `SELECT attempt.attempt_id, attempt.visit_sequence, attempt.node_id,
     attempt.state, attempt.result_class, attempt.created_at, attempt.ended_at,
+    attempt.cleanup_state,
     EXISTS (
       SELECT 1 FROM artifact_manifests manifest
       JOIN artifacts artifact ON artifact.manifest_id = manifest.manifest_id
@@ -190,6 +238,9 @@ export const PORTAL_SELECTS = Object.freeze({
         AND artifact.policy_outcome = 'accepted' LIMIT 1) AS transcript_sha256
     FROM agent_attempts attempt WHERE attempt.run_id = ?
     ORDER BY attempt.created_at, attempt.attempt_id`,
+  retryForRun: `SELECT failed_attempt_id, retry_node, state, to_visit_sequence
+    FROM agent_stage_retries WHERE run_id = ?
+    ORDER BY created_at DESC, retry_id DESC LIMIT 1`,
   waits: `SELECT visit_sequence, node_id, status, created_at, consumed_at
     FROM workflow_waits WHERE run_id = ? ORDER BY created_at, wait_id`,
   links: `SELECT visit_sequence, kind, label, url, created_at FROM governed_work_links
@@ -331,7 +382,7 @@ export class PortalReadStore {
     const run = await this.db.prepare(PORTAL_SELECTS.run).bind(runId).first<RunRow>();
     if (run === null) return null;
     const [definitionRow, transitionResult, attemptResult, waitResult, linkResult, issueRow,
-      workProduct, designWorkProduct, gateVisitResult, reviewProof] = await Promise.all([
+      workProduct, designWorkProduct, gateVisitResult, reviewProof, retryRow] = await Promise.all([
       this.db.prepare(PORTAL_SELECTS.definition).bind(run.definition_id, run.definition_version).first<DefinitionRow>(),
       this.db.prepare(PORTAL_SELECTS.transitions).bind(runId).all<TransitionRow>(),
       this.db.prepare(PORTAL_SELECTS.attempts).bind(runId).all<AttemptRow>(),
@@ -344,6 +395,7 @@ export class PortalReadStore {
       this.db.prepare(
         "SELECT COUNT(*) AS count FROM trace_reviews WHERE run_id = ? AND accepted = 1",
       ).bind(runId).first<{ count: number }>(),
+      this.db.prepare(PORTAL_SELECTS.retryForRun).bind(runId).first<RetryRow>(),
     ]);
     if (definitionRow === null || definitionRow.digest !== run.definition_digest || issueRow === null) {
       throw new Error("workflow definition unavailable");
@@ -436,6 +488,7 @@ export class PortalReadStore {
         to: mapping.get(target),
         outcome,
       })));
+    const retry = portalRunRetry(run, attemptResult.results, transitions, retryRow);
     return {
       issue: issueDto(issueRow),
       run: {
@@ -509,6 +562,7 @@ export class PortalReadStore {
         waits: waitResult.results.filter((wait) => wait.visit_sequence === null).length,
       },
       reviewAvailable: (reviewProof?.count ?? 0) > 0,
+      retry,
     };
   }
 }

@@ -47,6 +47,7 @@ interface RouteAdminBinding {
   saveWorkflow(actorEmail: string, input: unknown): Promise<unknown>;
   saveReview(actorEmail: string, input: unknown): Promise<unknown>;
   recheck(actorEmail: string, input: unknown): Promise<unknown>;
+  retryRun(actorEmail: string, input: unknown): Promise<unknown>;
 }
 
 const routeAdmin = (env: PortalRuntimeEnv): RouteAdminBinding => {
@@ -61,7 +62,10 @@ const routeAdminError = (error: unknown): string | null => {
     "project_not_available", "repository_not_available", "github_access_not_ready",
     "unsupported_review_model", "route_not_found", "route_exists",
     "stale_repository_revision", "stale_workflow_revision", "stale_review_revision",
-    "route_read_back_failed",
+    "route_read_back_failed", "invalid_stage_retry", "stage_retry_not_eligible",
+    "stage_retry_identity_mismatch", "stage_retry_read_back_failed",
+    "stage_retry_observation_read_back_failed", "stage_retry_target_instance_missing",
+    "workflow_replacement_not_established", "workflow_replacement_ambiguous",
   ]);
   return allowed.has(value) ? value : null;
 };
@@ -180,6 +184,22 @@ export const routePortalRequest = async (
       "/api/settings/independent-review",
     ].includes(url.pathname)) {
       return json(410, { error: "route_settings_required" });
+    }
+    const retryRunMatch = url.pathname.match(/^\/api\/runs\/(.+)\/retry$/);
+    if (retryRunMatch !== null) {
+      if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
+      if (Number(request.headers.get("Content-Length") ?? "0") > 4_096) {
+        return json(413, { error: "request_too_large" });
+      }
+      const parsed = await routeBody(request);
+      if (parsed.state === "too_large") return json(413, { error: "request_too_large" });
+      if (parsed.state === "invalid" || !exactBody(parsed.value, ["failedAttemptId", "retryNode"])) {
+        return json(400, { error: "invalid_request" });
+      }
+      return json(202, await routeAdmin(env).retryRun(identity.email, {
+        runId: decodeURIComponent(retryRunMatch[1]),
+        ...parsed.value,
+      }));
     }
     const issueSearchHistoryMatch = url.pathname.match(/^\/api\/issues\/([A-Z][A-Z0-9]+-[1-9][0-9]*)\/search$/);
     if (issueSearchHistoryMatch !== null) {
@@ -309,10 +329,12 @@ export const routePortalRequest = async (
     const adminError = routeAdminError(error);
     if (adminError !== null) {
       const status = adminError === "invalid_input" || adminError === "unsupported_review_model" ? 400
+        : adminError === "invalid_stage_retry" ? 400
         : adminError === "route_not_found" || adminError.endsWith("_not_available") ? 404
         : adminError === "unauthorized_actor" ? 403
         : adminError === "route_exists" || adminError.startsWith("stale_") ||
-          adminError === "github_access_not_ready" ? 409
+          adminError === "github_access_not_ready" || adminError === "stage_retry_not_eligible" ||
+          adminError === "stage_retry_identity_mismatch" ? 409
         : 503;
       return json(status, { error: adminError });
     }

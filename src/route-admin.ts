@@ -34,6 +34,13 @@ export class RouteAdminError extends Error {
   }
 }
 
+export const authorizeRouteAdminActor = (actorEmail: unknown, allowedEmail: string): void => {
+  if (
+    typeof actorEmail !== "string" ||
+    actorEmail.toLowerCase() !== allowedEmail.toLowerCase()
+  ) throw new RouteAdminError("unauthorized_actor");
+};
+
 export interface RouteProviderCatalog<T> {
   state: "ready" | "unavailable";
   values: readonly T[];
@@ -335,9 +342,7 @@ export class RouteAdminService {
   }
 
   private actor(value: string): void {
-    if (typeof value !== "string" || value.toLowerCase() !== this.env.ROUTE_ADMIN_ALLOWED_EMAIL.toLowerCase()) {
-      throw new RouteAdminError("unauthorized_actor");
-    }
+    authorizeRouteAdminActor(value, this.env.ROUTE_ADMIN_ALLOWED_EMAIL);
   }
 
   private repositoryInput(input: RouteRepositoryInput, withRevision = false): RouteRepositoryInput {

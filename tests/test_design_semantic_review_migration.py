@@ -157,6 +157,38 @@ def test_design_review_retry_nodes_are_additive() -> None:
     assert value.execute("SELECT COUNT(*) FROM agent_stage_retries").fetchone() == (4,)
 
 
+def test_current_agent_stages_are_additive_retry_nodes() -> None:
+    value = database()
+    seed(value)
+    nodes = (
+        "planning_author", "self_discovery", "planning_self_repair",
+        "self_recheck_before_publish", "self_recheck_after_publish",
+        "planning_revision_author", "independent_discovery", "independent_recheck",
+        "planning_independent_response", "final_trace", "design_author",
+        "design_revision_author", "design_self_review", "design_independent_review",
+        "design_self_response", "design_independent_response", "design_final_review",
+    )
+    for index, node in enumerate(nodes, start=1):
+        attempt_id = f"agent-failed-{index}"
+        value.execute(
+            """INSERT INTO agent_attempts
+               (attempt_id, sandbox_id, run_id, node_id, job_spec_json, job_spec_digest,
+                state, absolute_deadline, created_at, updated_at)
+               VALUES (?, ?, 'run-1', ?, '{}', 'digest', 'failed', 'later', ?, ?)""",
+            (attempt_id, f"retry-sandbox-{index}", node, f"now-{index}", f"now-{index}"),
+        )
+        value.execute(
+            """INSERT INTO agent_stage_retries
+               (retry_id, run_id, failed_attempt_id, retry_node, from_visit_sequence,
+                to_visit_sequence, transition_id, state, requested_by, created_at, updated_at)
+               VALUES (?, 'run-1', ?, ?, ?, ?, ?, 'pending', 'operator', ?, ?)""",
+            (f"retry-{index}", attempt_id, node, index, index + 1,
+             f"transition-{index}", f"now-{index}", f"now-{index}"),
+        )
+    assert value.execute("SELECT COUNT(*) FROM agent_stage_retries").fetchone() == (len(nodes),)
+    assert value.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
 def test_unbounded_design_review_migration_preserves_existing_rows() -> None:
     value = sqlite3.connect(":memory:")
     value.execute("PRAGMA foreign_keys = ON")

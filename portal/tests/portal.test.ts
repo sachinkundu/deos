@@ -4,6 +4,7 @@ import { exportJWK, generateKeyPair, SignJWT, createLocalJWKSet } from "jose";
 import { verifyAccess } from "../src/auth.ts";
 import {
   isRecoveredTerminalVisit,
+  portalRunRetry,
   safeGateVisit,
   PortalIssueSearchHistoryStore,
   PORTAL_MUTATIONS,
@@ -125,6 +126,56 @@ test("only an operator-recovered terminal visit is excluded from the final workf
   assert.equal(isRecoveredTerminalVisit("stopped", "operator_reconciliation"), true);
   assert.equal(isRecoveredTerminalVisit("stopped", "workflow"), false);
   assert.equal(isRecoveredTerminalVisit("planning", "operator_retry"), false);
+});
+
+test("portal retry is shown only for the exact cleaned failed agent visit", () => {
+  const run = {
+    status: "failed",
+    current_node: "agent_failed",
+    current_visit_sequence: 4,
+    terminal_cause: "agent_execution_failed",
+  };
+  const attempt = {
+    attempt_id: "attempt-1",
+    visit_sequence: 3,
+    node_id: "self_discovery",
+    state: "failed",
+    cleanup_state: "destroyed",
+  };
+  const transition = {
+    from_node: "self_discovery",
+    to_node: "agent_failed",
+    from_visit_sequence: 3,
+    to_visit_sequence: 4,
+    cause_reference: "agent:self_discovery:failed",
+  };
+  assert.deepEqual(portalRunRetry(run, [attempt], [transition], null), {
+    failedAttemptId: "attempt-1",
+    retryNode: "self_discovery",
+  });
+  assert.equal(portalRunRetry(run, [{ ...attempt, cleanup_state: "pending" }], [transition], null), null);
+  assert.equal(portalRunRetry({ ...run, terminal_cause: "policy_failed" }, [attempt], [transition], null), null);
+  assert.equal(portalRunRetry(run, [attempt], [{ ...transition, cause_reference: "other" }], null), null);
+});
+
+test("a pending provider continuation remains safely retryable", () => {
+  const run = {
+    status: "active",
+    current_node: "self_discovery",
+    current_visit_sequence: 5,
+    terminal_cause: null,
+  };
+  const retry = {
+    failed_attempt_id: "attempt-1",
+    retry_node: "self_discovery",
+    state: "pending",
+    to_visit_sequence: 5,
+  };
+  assert.deepEqual(portalRunRetry(run, [], [], retry), {
+    failedAttemptId: "attempt-1",
+    retryNode: "self_discovery",
+  });
+  assert.equal(portalRunRetry({ ...run, current_visit_sequence: 6 }, [], [], retry), null);
 });
 
 test("gate links fail closed unless the saved repository and pull request match exactly", () => {
@@ -394,6 +445,39 @@ test("route workflow writes require only dispatch and revision", async () => {
   }), env, async () => ({ email: "sachinkundu@gmail.com" }));
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), { error: "invalid_request" });
+});
+
+test("an authenticated run retry passes only the failed attempt identity to the trusted binding", async () => {
+  const calls: unknown[] = [];
+  const env = {
+    DB: {} as D1Database,
+    ARTIFACTS: {} as R2Bucket,
+    ASSETS: { fetch: async () => new Response("portal") } as unknown as Fetcher,
+    ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
+    ACCESS_AUD: "aud",
+    ALLOWED_EMAIL: "sachinkundu@gmail.com",
+    ROUTE_ADMIN: {
+      retryRun: async (actorEmail: string, input: unknown) => {
+        calls.push({ actorEmail, input });
+        return { retryId: "stage-retry:attempt-1", state: "established" };
+      },
+    } as unknown as Service,
+  };
+  const runId = "workflow:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb:run:1";
+  const response = await routePortalRequest(new Request(
+    `https://deos.example/api/runs/${encodeURIComponent(runId)}/retry`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ failedAttemptId: "attempt-1", retryNode: "self_discovery" }),
+    },
+  ), env, async () => ({ email: "sachinkundu@gmail.com" }));
+
+  assert.equal(response.status, 202);
+  assert.deepEqual(calls, [{
+    actorEmail: "sachinkundu@gmail.com",
+    input: { runId, failedAttemptId: "attempt-1", retryNode: "self_discovery" },
+  }]);
 });
 
 test("route writes reject non-object and oversized JSON before the admin binding", async () => {
