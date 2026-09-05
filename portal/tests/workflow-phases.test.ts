@@ -8,8 +8,10 @@ import {
   latestPhaseId,
   phaseDisplayStatus,
   phaseForVisit,
+  planningSubstepForNode,
   stoppedPhaseSourceId,
   selectedApprovalEvidenceUrls,
+  workflowStatusTone,
   workflowPhases,
   type PhaseVisitLike,
 } from "../src/workflow-phases.ts";
@@ -126,6 +128,24 @@ test("planning and design author failures remain visible in their nested substep
 test("planning author selection includes revisions and excludes independent final trace", () => {
   assert.equal(isPlanningAuthorVisit(visit(8, "planning_revision_author", "planning")), true);
   assert.equal(isPlanningAuthorVisit(visit(10, "final_trace", "independent_review")), false);
+});
+
+test("planning review nodes identify the exact nested substep", () => {
+  assert.equal(planningSubstepForNode("planning_self_repair"), "planning_author");
+  assert.equal(planningSubstepForNode("self_discovery"), "self_review");
+  assert.equal(planningSubstepForNode("self_recheck_before_publish"), "self_review");
+  assert.equal(planningSubstepForNode("independent_discovery"), "independent_review");
+  assert.equal(planningSubstepForNode("final_trace"), "independent_review");
+});
+
+test("terminal failures never inherit the success status tone", () => {
+  assert.equal(workflowStatusTone("Complete"), "succeeded");
+  assert.equal(workflowStatusTone("Succeeded"), "succeeded");
+  assert.equal(workflowStatusTone("In progress"), "active");
+  assert.equal(workflowStatusTone("Failed"), "failed");
+  assert.equal(workflowStatusTone("Blocked"), "failed");
+  assert.equal(workflowStatusTone("Canceled"), "failed");
+  assert.equal(workflowStatusTone("Upcoming"), "upcoming");
 });
 
 test("the substantive phase that stops retains its terminal failure status", () => {

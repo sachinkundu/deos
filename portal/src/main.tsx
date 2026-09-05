@@ -39,8 +39,10 @@ import {
   approvalEvidenceLinks,
   phaseDisplayStatus,
   phaseForVisit,
+  planningSubstepForNode,
   stoppedPhaseSourceId,
   selectedApprovalEvidenceUrls,
+  workflowStatusTone,
   workflowPhases,
   type WorkflowPhaseId,
 } from "./workflow-phases.ts";
@@ -224,6 +226,29 @@ const formatDuration = (startedAt: string, endedAt: string | null): string => {
 
 const human = (value: string): string => value.replaceAll("_", " ");
 
+const workflowStepLabel = (nodeId: string): string => ({
+  planning_author: "Planning author",
+  planning_self_repair: "Planning repair",
+  planning_independent_response: "Planning response to independent review",
+  planning_revision_author: "Planning revision",
+  self_discovery: "Author self-review",
+  self_recheck_before_publish: "Author self-review recheck",
+  self_recheck_after_publish: "Author self-review after publishing",
+  independent_discovery: "Independent review",
+  independent_recheck: "Independent review recheck",
+  final_trace: "Final independent trace check",
+  publish_initial: "Publish planning candidate",
+  done: "Completed",
+}[nodeId] ?? human(nodeId));
+
+const visitOutcomeSummary = (visit: Visit | null, status: string): string => {
+  if (visit === null) return "Not started";
+  const attempt = visit.attempts.at(-1);
+  if (attempt?.outcome) return human(attempt.outcome);
+  if (attempt?.state) return human(attempt.state);
+  return status;
+};
+
 function PullRequestActions({ url, githubLabel }: { url: string; githubLabel: string }) {
   return <>{pullRequestActions(url, githubLabel).map((action) => <a
     key={action.kind}
@@ -279,22 +304,33 @@ function TraceabilityWorkflowMap({
   const currentPhaseId = latestPhaseId(projection.history);
   const failedPhaseId = stoppedPhaseSourceId(projection.history);
   const currentPhase = phases.find((phase) => phase.id === currentPhaseId) ?? null;
+  const failedLeafVisit = [...projection.history].reverse().find((visit) =>
+    phaseForVisit(visit) !== "stopped" &&
+    workflowStatusTone(authorVisitStatus(visit, projection.run.status)) === "failed"
+  ) ?? null;
+  const latestLeafVisit = [...projection.history].reverse().find((visit) => phaseForVisit(visit) !== "stopped") ?? null;
+  const currentLeafVisit = currentPhaseId === "stopped" ? failedLeafVisit : latestLeafVisit;
+  const currentLeafStatus = authorVisitStatus(currentLeafVisit, projection.run.status);
   const detail = projection.history.find((visit) => visit.sequence === selectedVisit) ?? null;
   const detailPhaseId = detail === null ? null : phaseForVisit(detail);
   const inspectedPhaseId = expandedPhase ?? detailPhaseId ?? currentPhaseId;
 
   useEffect(() => {
-    setExpandedPhase(null);
-    setExpandedSubstep(null);
+    const stopped = ["failed", "blocked", "denied", "canceled"].includes(projection.run.status);
+    setExpandedPhase(stopped ? failedPhaseId : null);
+    setExpandedSubstep(stopped && failedPhaseId === "planning" && failedLeafVisit !== null
+      ? planningSubstepForNode(failedLeafVisit.nodeId)
+      : null);
+    if (stopped && failedLeafVisit !== null) onSelectVisit(failedLeafVisit.sequence);
     setHistoryOpen(false);
-  }, [projection.run.id]);
+  }, [projection.run.id, projection.run.status, failedPhaseId, failedLeafVisit?.nodeId, onSelectVisit]);
 
   const openPhase = (phaseId: WorkflowPhaseId, visits: Visit[]) => {
     const expandable = phaseId === "planning" || phaseId === "approval" || phaseId === "design";
     const next = expandable && expandedPhase !== phaseId ? phaseId : null;
     const latest = visits.at(-1);
     setExpandedPhase(next);
-    setExpandedSubstep(next === "planning" ? "planning_author"
+    setExpandedSubstep(next === "planning" ? planningSubstepForNode(latest?.nodeId ?? "planning_author")
       : next === "approval" ? (latest?.gate?.gate_kind === "design" ? "design_review" : "planning_review")
         : next === "design" ? "design_author" : null);
     if (latest !== undefined) onSelectVisit(latest.sequence);
@@ -310,6 +346,8 @@ function TraceabilityWorkflowMap({
     "independent_discovery", "independent_recheck", "planning_independent_response", "final_trace",
   ].includes(visit.nodeId));
   const planningAuthorVisit = latestVisitFor(planningVisits, isPlanningAuthorVisit);
+  const selfReviewVisit = selfReviewVisits.at(-1) ?? null;
+  const independentReviewVisit = independentVisits.at(-1) ?? null;
   const planningReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "planning_review");
   const planningMergeVisit = latestVisitFor(planningVisits, (visit) => ["verify_planning_merge", "merge_planning_pr"].includes(visit.nodeId));
   const designAuthorVisit = latestVisitFor(designVisits, (visit) => ["design_revision_author", "design_author"].includes(visit.nodeId));
@@ -322,9 +360,9 @@ function TraceabilityWorkflowMap({
   const planningProduct = projection.workProducts.planning;
   const designProduct = projection.workProducts.design;
   const planningAuthorStatus = authorVisitStatus(planningAuthorVisit, projection.run.status);
+  const selfReviewStatus = authorVisitStatus(selfReviewVisit, projection.run.status);
+  const independentReviewStatus = authorVisitStatus(independentReviewVisit, projection.run.status);
   const designAuthorStatus = authorVisitStatus(designAuthorVisit, projection.run.status);
-  const authorStatusClass = (status: typeof planningAuthorStatus): string =>
-    status === "In progress" ? "active" : ["Failed", "Blocked"].includes(status) ? "failed" : "";
 
   const selectSubstep = (id: string, visit: Visit | null) => {
     setExpandedSubstep((current) => current === id ? null : id);
@@ -350,19 +388,33 @@ function TraceabilityWorkflowMap({
   };
 
   const renderPlanning = () => <div className="phase-drill" aria-label="Planning details">
-    <p className="phase-note">Authoring includes self and independent review.</p>
+    <p className="phase-note">Each planning check reports its own live or failed state.</p>
     <button
       type="button"
       className={`phase-substep ${expandedSubstep === "planning_author" ? "selected" : ""}`}
       aria-expanded={expandedSubstep === "planning_author"}
       onClick={() => selectSubstep("planning_author", planningAuthorVisit)}
     >
-      <span className="substep-heading"><span className="substep-icon"><UserCircle /></span><strong>Planning author</strong>{expandedSubstep === "planning_author" ? <CaretDown /> : <CaretRight />}</span>
-      <span className={`substep-status ${authorStatusClass(planningAuthorStatus)}`}>{planningAuthorStatus}</span>
-      {expandedSubstep === "planning_author" && <span className="author-review-details">
-        <span><CheckCircle weight="fill" /><strong>Self review</strong><small>{selfReviewVisits.length > 1 ? "Repaired and rechecked" : "All checks passed"}</small></span>
-        <span><CheckCircle weight="fill" /><strong>Independent review</strong><small>{independentVisits.length > 1 ? "Response checked" : "Ready for human review"}</small></span>
-      </span>}
+      <span className="substep-heading"><span className="substep-icon"><UserCircle /></span><span className="substep-copy"><strong>Planning author</strong><small>{visitOutcomeSummary(planningAuthorVisit, planningAuthorStatus)}</small></span>{expandedSubstep === "planning_author" ? <CaretDown /> : <CaretRight />}</span>
+      <span className={`substep-status ${workflowStatusTone(planningAuthorStatus)}`}>{planningAuthorStatus}</span>
+    </button>
+    <button
+      type="button"
+      className={`phase-substep ${expandedSubstep === "self_review" ? "selected" : ""}`}
+      aria-expanded={expandedSubstep === "self_review"}
+      onClick={() => selectSubstep("self_review", selfReviewVisit)}
+    >
+      <span className="substep-heading"><span className="substep-icon"><CheckCircle /></span><span className="substep-copy"><strong>Author self-review</strong><small>{visitOutcomeSummary(selfReviewVisit, selfReviewStatus)}</small></span>{expandedSubstep === "self_review" ? <CaretDown /> : <CaretRight />}</span>
+      <span className={`substep-status ${workflowStatusTone(selfReviewStatus)}`}>{selfReviewStatus}</span>
+    </button>
+    <button
+      type="button"
+      className={`phase-substep ${expandedSubstep === "independent_review" ? "selected" : ""}`}
+      aria-expanded={expandedSubstep === "independent_review"}
+      onClick={() => selectSubstep("independent_review", independentReviewVisit)}
+    >
+      <span className="substep-heading"><span className="substep-icon"><Eye /></span><span className="substep-copy"><strong>Independent review</strong><small>{visitOutcomeSummary(independentReviewVisit, independentReviewStatus)}</small></span>{expandedSubstep === "independent_review" ? <CaretDown /> : <CaretRight />}</span>
+      <span className={`substep-status ${workflowStatusTone(independentReviewStatus)}`}>{independentReviewStatus}</span>
     </button>
     <div className="approved-edge"><ArrowRight weight="bold" /><span>after Human Review</span></div>
     <button type="button" className={`phase-substep terminal ${expandedSubstep === "planning_merge" ? "selected" : ""}`} onClick={() => selectSubstep("planning_merge", planningMergeVisit)}>
@@ -375,7 +427,7 @@ function TraceabilityWorkflowMap({
     <p className="phase-note">The same design PR is reused across review rounds.</p>
     <button type="button" className={`phase-substep ${expandedSubstep === "design_author" ? "selected" : ""}`} onClick={() => selectSubstep("design_author", designAuthorVisit)}>
       <span className="substep-heading"><span className="substep-icon"><UserCircle /></span><strong>Design author</strong></span>
-      <span className={`substep-status ${authorStatusClass(designAuthorStatus)}`}>{designAuthorStatus}</span>
+      <span className={`substep-status ${workflowStatusTone(designAuthorStatus)}`}>{designAuthorStatus}</span>
     </button>
     <div className="approved-edge"><ArrowRight weight="bold" /><span>after Human Review</span></div>
     <button type="button" className={`phase-substep terminal ${expandedSubstep === "design_merge" ? "selected" : ""}`} onClick={() => selectSubstep("design_merge", designMergeVisit)}>
@@ -402,18 +454,25 @@ function TraceabilityWorkflowMap({
   </div>;
 
   const inspectedPhase = phases.find((phase) => phase.id === inspectedPhaseId) ?? currentPhase;
-  const inspectorStatus = inspectedPhase === null
-    ? "Upcoming"
-    : phaseDisplayStatus(inspectedPhase, currentPhaseId, projection.run.status, failedPhaseId);
-  const inspectorComplete = inspectorStatus === "Complete" || inspectorStatus === "Succeeded" ||
-    ["Failed", "Blocked", "Canceled"].includes(inspectorStatus);
+  const inspectorStatus = expandedSubstep === "planning_author" ? planningAuthorStatus
+    : expandedSubstep === "self_review" ? selfReviewStatus
+      : expandedSubstep === "independent_review" ? independentReviewStatus
+        : expandedSubstep === "design_author" ? designAuthorStatus
+          : inspectedPhase === null
+            ? "Upcoming"
+            : phaseDisplayStatus(inspectedPhase, currentPhaseId, projection.run.status, failedPhaseId);
+  const inspectorTone = workflowStatusTone(inspectorStatus);
+  const inspectorComplete = inspectorTone === "succeeded";
+  const inspectorFailed = inspectorTone === "failed";
   const inspectorTitle = expandedSubstep === "planning_author" ? "Planning author"
-    : expandedSubstep === "planning_review" ? "Human review"
-      : expandedSubstep === "planning_merge" ? "Merge & verify"
-        : expandedSubstep === "design_author" ? "Design author"
-          : expandedSubstep === "design_review" ? "Human review"
-            : expandedSubstep === "design_merge" ? "Merge & verify"
-              : inspectedPhase?.label ?? "Workflow";
+    : expandedSubstep === "self_review" ? "Author self-review"
+      : expandedSubstep === "independent_review" ? "Independent review"
+        : expandedSubstep === "planning_review" ? "Human review"
+          : expandedSubstep === "planning_merge" ? "Merge & verify"
+            : expandedSubstep === "design_author" ? "Design author"
+              : expandedSubstep === "design_review" ? "Human review"
+                : expandedSubstep === "design_merge" ? "Merge & verify"
+                  : inspectedPhase?.label ?? "Workflow";
   const inspectorProduct = expandedSubstep === "planning_review" ? planningProduct
     : expandedSubstep === "design_review" ? designProduct
       : inspectedPhase?.id === "planning" ? planningProduct : inspectedPhase?.id === "design" ? designProduct : null;
@@ -421,7 +480,7 @@ function TraceabilityWorkflowMap({
 
   return <section className="workflow-panel phase-workflow-panel" aria-labelledby="workflow-title">
     <div className="section-heading phase-heading"><div><span className="eyebrow">Current run</span><h2 id="workflow-title">Workflow map</h2></div><span>Open a phase, then drill into its evidence</span></div>
-    <div className="current-step-banner"><span>Current step</span><strong>{currentPhase?.label ?? "Unknown"}</strong></div>
+    <div className="current-step-banner"><span>{currentPhaseId === "stopped" ? "Failed step" : "Current step"}</span><strong className={workflowStatusTone(currentLeafStatus)}>{currentLeafVisit === null ? currentPhase?.label ?? "Unknown" : workflowStepLabel(currentLeafVisit.nodeId)}</strong></div>
     <div className="phase-workspace">
       <div className="phase-map">
         {phases.filter((phase) => phase.visits.length > 0 || phase.id !== "stopped").map((phase, index) => {
@@ -433,13 +492,13 @@ function TraceabilityWorkflowMap({
           const phaseComplete = status === "Complete" || successfulTerminal ||
             ["Failed", "Blocked", "Canceled"].includes(status);
           const product = phase.id === "planning" ? planningProduct : phase.id === "design" ? designProduct : null;
-          return <article className={`workflow-phase ${expanded ? "expanded" : ""} ${current ? "current" : ""} ${inspecting ? "inspecting" : ""}`} key={phase.id}>
-            <span className={`phase-spine-marker ${status === "In progress" ? "active" : ""}`} aria-hidden="true">{["Failed", "Blocked", "Canceled"].includes(status) ? <WarningCircle weight="fill" /> : phaseComplete ? <Check weight="bold" /> : <Clock />}</span>
+          return <article className={`workflow-phase ${workflowStatusTone(status)} ${expanded ? "expanded" : ""} ${current ? "current" : ""} ${inspecting ? "inspecting" : ""}`} key={phase.id}>
+            <span className={`phase-spine-marker ${workflowStatusTone(status)}`} aria-hidden="true">{["Failed", "Blocked", "Canceled"].includes(status) ? <WarningCircle weight="fill" /> : phaseComplete ? <Check weight="bold" /> : <Clock />}</span>
             <div className="phase-summary-row">
               <button type="button" className="phase-summary" aria-expanded={expanded} onClick={() => openPhase(phase.id, phase.visits as Visit[])}>
                 <span className="phase-number">{index + 1}</span>
                 <span className="phase-summary-copy"><strong>{phase.label}</strong><small>{phase.visits.length} visit{phase.visits.length === 1 ? "" : "s"} · {phaseOutcome(phase.id)}</small></span>
-                <span className={`phase-status ${successfulTerminal ? "succeeded" : ""}`}>{status}</span>
+                <span className={`phase-status ${workflowStatusTone(status)}`}>{status}</span>
                 {inspecting && <span className="inspecting-pill">Inspecting</span>}
                 {current && <span className="current-pill">Current step</span>}
                 {(phase.id === "planning" || phase.id === "approval" || phase.id === "design") && (expanded ? <CaretDown /> : <CaretRight />)}
@@ -463,17 +522,17 @@ function TraceabilityWorkflowMap({
       <aside className="phase-inspector" aria-label="Inspected workflow detail">
         <span className="eyebrow">{inspectedPhaseId === currentPhaseId ? "Current step" : "Inspecting"}</span>
         <h3>{inspectorTitle}</h3>
-        <span className={`inspector-status ${inspectorStatus === "In progress" ? "active" : ""}`}>
-          {inspectorComplete ? <CheckCircle weight="fill" /> : <Clock />}{inspectorStatus}
+        <span className={`inspector-status ${inspectorTone}`}>
+          {inspectorFailed ? <WarningCircle weight="fill" /> : inspectorComplete ? <CheckCircle weight="fill" /> : <Clock />}{inspectorStatus}
         </span>
         <dl className="inspector-summary">
           <div><dt>Phase</dt><dd>{inspectedPhase?.label ?? "—"}</dd></div>
-          <div><dt>Workflow step</dt><dd>{currentPhase?.label ?? "—"}</dd></div>
+          <div><dt>Workflow step</dt><dd>{detail === null ? currentPhase?.label ?? "—" : workflowStepLabel(detail.nodeId)}</dd></div>
           <div><dt>Phase visits</dt><dd>{inspectedPhase?.visits.length ?? 0}</dd></div>
         </dl>
         {inspectedPhase?.id === "planning" && <>
-          <details open><summary>Self review</summary><p>{selfReviewVisits.length > 1 ? "The plan was repaired and passed its bounded recheck." : "All checks passed."}</p></details>
-          <details open><summary>Independent review</summary><p>{independentVisits.length > 1 ? "The response and final trace were checked before human review." : "Ready for human review."}</p></details>
+          <details open><summary>Self review</summary><p>{selfReviewStatus}: {visitOutcomeSummary(selfReviewVisit, selfReviewStatus)}.</p></details>
+          <details open><summary>Independent review</summary><p>{independentReviewStatus}: {visitOutcomeSummary(independentReviewVisit, independentReviewStatus)}.</p></details>
         </>}
         {inspectedPhase?.id === "approval" && <>
           <details open><summary>Planning decisions</summary>{planningGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
@@ -1004,7 +1063,7 @@ function App() {
         <div className="run-control"><label htmlFor="run">Workflow run</label><select id="run" value={runId} onChange={(event) => { setRunId(event.target.value); setSelectedVisit(null); setTranscriptAttempt(null); setRetryMessage(null); void loadProjection(event.target.value, true); }}>{runs.map((run) => <option value={run.id} key={run.id}>Run {run.sequence} · {human(run.status)}</option>)}</select></div>
       </section>}
       {projection ? <>
-        <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : "Retry failed step"}</button>}</div></section>
+        <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : `Retry ${workflowStepLabel(projection.retry.retryNode)}`}</button>}</div></section>
         {groupedWorkflow ? <TraceabilityWorkflowMap
           projection={projection}
           selectedVisit={selectedVisit}

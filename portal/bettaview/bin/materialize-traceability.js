@@ -157,8 +157,11 @@ const directionalLinks = judgment.directionalLinks === undefined
 const findings = judgment.findings.map((finding) => {
   const spec = specByCapability.get(finding.capability);
   if (!spec) throw new Error(`Finding ${finding.id} names unknown capability ${finding.capability}`);
-  const block = spec.blocks.find((candidate) => candidate.startLine === finding.specStartLine);
-  if (!block) throw new Error(`No Requirement starts at ${spec.file}:${finding.specStartLine}`);
+  // Findings may cite the exact offending line; the sidecar still retains its complete Requirement block.
+  const block = spec.blocks.find((candidate) =>
+    candidate.startLine <= finding.specStartLine && finding.specStartLine <= candidate.endLine
+  );
+  if (!block) throw new Error(`No Requirement contains ${spec.file}:${finding.specStartLine}`);
   return {
     id: finding.id,
     type: finding.type,
