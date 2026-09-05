@@ -1,6 +1,6 @@
 import { workflowInstanceIdentity } from "./orchestration-identity.ts";
 import type { WorkflowBinding, WorkflowInstanceHandle } from "./queue-consumer-core.ts";
-import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
+import { restoreWorkflowDefinition, type LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import {
   isAgentStageRetryNode,
   RETRYABLE_AGENT_ATTEMPT_STATES,
@@ -61,6 +61,7 @@ export interface AgentStageRetryStore {
 }
 
 interface StageRetrySource {
+  source_canonical_json?: string;
   run_id: string;
   definition_id: string;
   definition_version: number;
@@ -115,7 +116,7 @@ export const planStageRetryDefinition = async (
     | "has_validated_candidate"
     | "has_published_entry"
     | "has_failed_exit"
-  >,
+  > & { source_canonical_json?: string },
   retryNode: AgentStageRetryRecord["retry_node"],
   targetDefinition: LoadedWorkflowDefinition,
 ): Promise<StageRetryDefinitionPlan> => {
@@ -125,6 +126,33 @@ export const planStageRetryDefinition = async (
     sourceDefinitionDigest: source.definition_digest,
     sourceWorkflowInstanceId: source.workflow_instance_id,
   };
+  if (source.definition_id === 'simple-traceability' && source.definition_version === 20 &&
+      ['design_self_response', 'design_self_review'].includes(retryNode) && targetDefinition.version === 21) {
+    if (source.target_registered !== 1 || !source.source_canonical_json) {
+      throw new Error('stage_retry_not_eligible');
+    }
+    const old = await restoreWorkflowDefinition(source.source_canonical_json, source.definition_digest);
+    // The only graph change allowed for a saved v20 run is the limit-exit edge.
+    const expected = JSON.parse(JSON.stringify(targetDefinition));
+    if (expected.name !== old.name || expected.nodes.design_self_review.edges.limit_reached !== 'publish_design') {
+      throw new Error('stage_retry_not_eligible');
+    }
+    expected.version = old.version;
+    expected.digest = old.digest;
+    delete expected.nodes.design_self_review.edges.limit_reached;
+    const normalize = (value: unknown): unknown => Array.isArray(value) ? value.map(normalize)
+      : value !== null && typeof value === 'object'
+        ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, nested]) => [key, normalize(nested)])) : value;
+    if (JSON.stringify(normalize(old)) !== JSON.stringify(normalize(expected))) {
+      throw new Error('stage_retry_not_eligible');
+    }
+    return { ...base, retryKind: 'compatible_tail', targetDefinitionId: targetDefinition.name,
+      targetDefinitionVersion: targetDefinition.version, targetDefinitionDigest: targetDefinition.digest,
+      targetWorkflowInstanceId: await workflowInstanceIdentity(
+        `${source.run_id}:design-limit-upgrade:${source.current_visit_sequence + 1}:${targetDefinition.digest}`),
+    };
+  }
   if (!compatibleTailRequested(source, retryNode)) {
     return {
       ...base,
@@ -178,7 +206,8 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
     targetDefinition: LoadedWorkflowDefinition,
   ): Promise<StageRetrySource | null> {
     return this.database.prepare(
-      `SELECT run.run_id, run.definition_id, run.definition_version, run.definition_digest,
+      `SELECT source.canonical_json AS source_canonical_json,
+              run.run_id, run.definition_id, run.definition_version, run.definition_digest,
               run.workflow_instance_id, run.current_visit_sequence,
               COALESCE(run.selection_delivery_id, intent.source_delivery_id) AS source_delivery_id,
               attempt.attempt_id, attempt.node_id AS attempt_node,
@@ -284,7 +313,13 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
     const plan = await planStageRetryDefinition(source, input.retryNode, input.targetDefinition);
     const retryId = `stage-retry:${input.failedAttemptId}`;
     const transitionId = `transition:${retryId}`;
-    const upgradeGuard = plan.retryKind === "compatible_tail"
+    const designLimitUpgrade = plan.retryKind === 'compatible_tail' && plan.sourceDefinitionVersion === 20;
+    const upgradeGuard = designLimitUpgrade
+      ? `AND run.definition_id = 'simple-traceability' AND run.definition_version = 20
+         AND ? IN ('design_self_response', 'design_self_review')
+         AND EXISTS (SELECT 1 FROM workflow_definitions AS target
+           WHERE target.definition_id = ? AND target.version = ? AND target.digest = ?)`
+      : plan.retryKind === "compatible_tail"
       ? `AND run.definition_id = 'simple-traceability' AND run.definition_version = 11
          AND ? = 'independent_discovery'
          AND EXISTS (

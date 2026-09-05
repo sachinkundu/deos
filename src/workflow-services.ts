@@ -342,7 +342,19 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
                WHERE review_attempt_id = ? ORDER BY finding_id`,
             ).bind(reviewContextId).all<{ id: string }>();
             validateDesignReviewDispositions(findings.results, reviewDispositions);
-            await reviewStore.incrementResponseTurn(reviewRound.round_id, new Date().toISOString());
+            // New definitions stop before dispatching another self-review. Accept an
+            // already-dispatched response (including a retry from v20) at the cap.
+            if (run.definition_version >= 21 && feedback.phase === 'independent') {
+              const prior = await env.DB.prepare(
+                `SELECT COUNT(DISTINCT disposition.author_attempt_id) AS turns
+                 FROM design_review_dispositions disposition JOIN design_review_attempts review
+                   ON review.review_attempt_id = disposition.review_attempt_id
+                 WHERE review.round_id = ? AND review.phase = 'independent'`,
+              ).bind(reviewRound.round_id).first<{ turns: number }>();
+              if ((prior?.turns ?? 0) >= 3) throw new Error('design independent review response limit is exhausted');
+            }
+            await reviewStore.incrementResponseTurn(reviewRound.round_id, new Date().toISOString(),
+              run.definition_version >= 21);
             if (feedback.phase === "self" && built.candidate.designDigest === feedback.design_digest) {
               throw new DesignCandidateRejectedError("self-check concern requires a revised design candidate");
             }
@@ -393,6 +405,15 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             created_at: built.validation.checkedAt,
             accepted_at: built.validation.checkedAt,
           });
+          if (feedback?.phase === "self") {
+            await reviewStore.recordDispositions({
+              reviewAttemptId: feedback.review_attempt_id,
+              authorAttemptId: attempt.attempt_id,
+              resultingCandidateId: built.candidate.candidateId,
+              dispositions: reviewDispositions,
+              now: new Date().toISOString(),
+            });
+          }
           if (feedback?.phase === "independent") {
             await reviewStore.recordDispositions({
               reviewAttemptId: feedback.review_attempt_id,
@@ -990,7 +1011,16 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             },
           };
         },
-        reuseDesignReview: async (run, _nodeId, job) => {
+        reuseDesignReview: async (run, nodeId, job) => {
+          if (run.definition_id === 'simple-traceability' && run.definition_version >= 21 &&
+              nodeId === 'design_self_review' &&
+              await new D1DesignReviewStore(env.DB).finishSelfReviewAtLimit(run.run_id, new Date().toISOString())) {
+            return {
+              state: 'completed', attemptId: null, sandboxId: null, manifestId: null,
+              outcome: { kind: 'agent', outcome: 'limit_reached',
+                providerReceiptsPresent: false, providerReceiptsComplete: true },
+            };
+          }
           const materialized = await jobInputs.materialize(run, job);
           const context = JSON.parse(materialized.context) as {
             designReview?: { inputSha256?: string; phase?: "self" | "independent" } | null;

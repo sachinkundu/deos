@@ -194,7 +194,7 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 20);
+  assert.equal(definition.version, 21);
   assert.equal(definition.nodes.publish_design.edges.review_feedback_changed, "design_revision_author");
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);

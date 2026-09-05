@@ -1,5 +1,6 @@
 import {
   designReviewGateEligible,
+  designReviewSha256,
   type DesignReviewDisposition,
   type DesignReviewFinding,
   type DesignReviewOutcome,
@@ -255,10 +256,10 @@ export class D1DesignReviewStore {
     }
   }
 
-  async incrementResponseTurn(roundId: string, now: string): Promise<number> {
+  async incrementResponseTurn(roundId: string, now: string, allowLimitExit = false): Promise<number> {
     const result = await this.database.prepare(
-      `UPDATE design_review_rounds SET response_turns = response_turns + 1, updated_at = ?
-       WHERE round_id = ? AND response_turns < 3 AND status IN ('active', 'human_revision')`,
+      `UPDATE design_review_rounds SET response_turns = ${allowLimitExit ? 'MIN(response_turns + 1, 3)' : 'response_turns + 1'}, updated_at = ?
+       WHERE round_id = ? ${allowLimitExit ? '' : 'AND response_turns < 3'} AND status IN ('active', 'human_revision')`,
     ).bind(now, roundId).run();
     if (changes(result) !== 1) throw new Error("design review response limit is exhausted");
     const row = await this.database.prepare(
@@ -266,6 +267,40 @@ export class D1DesignReviewStore {
     ).bind(roundId).first<{ response_turns: number }>();
     if (row === null) throw new Error("design review round is missing");
     return row.response_turns;
+  }
+
+  // A durable exit receipt preserves the actual review outcome (concerns).
+  // Only validated responses from completed, cleaned attempts count toward the cap.
+  async finishSelfReviewAtLimit(runId: string, now: string): Promise<boolean> {
+    const current = await this.database.prepare(
+      `SELECT round.round_id, candidate.candidate_id, candidate.source_attempt_id
+       FROM design_review_rounds round
+       JOIN design_candidates candidate ON candidate.run_id = round.run_id
+         AND candidate.round = round.round_no AND candidate.state = 'validated'
+       JOIN agent_attempts author ON author.attempt_id = candidate.source_attempt_id
+       WHERE round.run_id = ? AND round.status IN ('active', 'human_revision')
+         AND author.state = 'completed' AND author.cleanup_state = 'destroyed'
+         AND (SELECT COUNT(DISTINCT response.attempt_id) FROM agent_attempts response
+              JOIN design_candidates saved ON saved.source_attempt_id = response.attempt_id
+              WHERE response.run_id = round.run_id AND saved.round = round.round_no
+                AND saved.state = 'validated' AND response.node_id = 'design_self_response'
+                AND response.state = 'completed' AND response.cleanup_state = 'destroyed') >= 3
+         AND NOT EXISTS (SELECT 1 FROM agent_attempts live WHERE live.run_id = round.run_id
+              AND live.state IN ('pending', 'starting', 'running', 'collecting'))
+       ORDER BY round.round_no DESC, candidate.created_at DESC, candidate.candidate_id DESC LIMIT 1`,
+    ).bind(runId).first<{ round_id: string; candidate_id: string; source_attempt_id: string }>();
+    if (current === null) return false;
+    const operationId = `design-self-limit:${current.round_id}:${current.candidate_id}`;
+    await this.database.prepare(
+      `INSERT OR IGNORE INTO provider_operations
+       (operation_id, run_id, attempt_id, capability, action, sanitized_target,
+        request_digest, state, provider_resource_id, started_at, updated_at, completed_at)
+       VALUES (?, ?, ?, 'workflow.review_limit', 'design.self_review_limit', ?, ?,
+               'succeeded', ?, ?, ?, ?)`,
+    ).bind(operationId, runId, current.source_attempt_id, current.round_id,
+      await designReviewSha256(`${current.round_id}:${current.candidate_id}:3`),
+      current.candidate_id, now, now, now).run();
+    return true;
   }
 
   async eligible(runId: string): Promise<boolean> {
@@ -293,9 +328,11 @@ export class D1DesignReviewStore {
     if (current?.pull_request_database_id === null || current?.head_sha === null || current === null) return false;
     const waiver = await this.database.prepare(
       `SELECT operation_id FROM provider_operations
-       WHERE run_id = ? AND capability = 'workflow.operator_override'
-         AND action = 'design.self_review_waiver' AND sanitized_target = ?
-         AND provider_resource_id = ? AND state IN ('succeeded', 'reconciled')
+       WHERE run_id = ? AND sanitized_target = ?
+         AND ((capability = 'workflow.operator_override' AND action = 'design.self_review_waiver'
+               AND provider_resource_id = ?)
+           OR (capability = 'workflow.review_limit' AND action = 'design.self_review_limit'))
+         AND state IN ('succeeded', 'reconciled')
        ORDER BY completed_at DESC LIMIT 1`,
     ).bind(runId, current.round_id, current.candidate_id).first<{ operation_id: string }>();
     const self = await this.database.prepare(
@@ -386,9 +423,11 @@ export class D1DesignReviewStore {
     }>();
     const waiver = proof === null ? null : await this.database.prepare(
       `SELECT operation_id FROM provider_operations
-       WHERE run_id = ? AND capability = 'workflow.operator_override'
-         AND action = 'design.self_review_waiver' AND sanitized_target = ?
-         AND provider_resource_id = ? AND state IN ('succeeded', 'reconciled')
+       WHERE run_id = ? AND sanitized_target = ?
+         AND ((capability = 'workflow.operator_override' AND action = 'design.self_review_waiver'
+               AND provider_resource_id = ?)
+           OR (capability = 'workflow.review_limit' AND action = 'design.self_review_limit'))
+         AND state IN ('succeeded', 'reconciled')
        ORDER BY completed_at DESC LIMIT 1`,
     ).bind(input.runId, proof.round_id, proof.candidate_id).first<{ operation_id: string }>();
     if (
