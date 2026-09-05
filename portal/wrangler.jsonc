@@ -30,6 +30,9 @@
     "binding": "ROUTE_ADMIN",
     "service": "deos-queue-consumer-ts",
     "entrypoint": "RouteAdmin"
+  }, {
+    "binding": "RETRY_ADMIN",
+    "service": "deos-queue-consumer-ts"
   }],
   "assets": {
     "directory": "./dist",

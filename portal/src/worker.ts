@@ -38,6 +38,8 @@ type PortalRuntimeEnv = Pick<Env, "DB" | "ARTIFACTS" | "ASSETS"> & {
   ALLOWED_EMAIL: string;
   OPENROUTER_SUPPORTED_MODELS?: string;
   ROUTE_ADMIN?: Service;
+  RETRY_ADMIN?: Fetcher;
+  STAGE_RETRY_SECRET?: string;
 };
 
 interface RouteAdminBinding {
@@ -47,12 +49,42 @@ interface RouteAdminBinding {
   saveWorkflow(actorEmail: string, input: unknown): Promise<unknown>;
   saveReview(actorEmail: string, input: unknown): Promise<unknown>;
   recheck(actorEmail: string, input: unknown): Promise<unknown>;
-  retryRun(actorEmail: string, input: unknown): Promise<unknown>;
 }
 
 const routeAdmin = (env: PortalRuntimeEnv): RouteAdminBinding => {
   if (env.ROUTE_ADMIN === undefined) throw new Error("route admin binding is unavailable");
   return env.ROUTE_ADMIN as unknown as RouteAdminBinding;
+};
+
+const retryRun = async (
+  env: PortalRuntimeEnv,
+  actorEmail: string,
+  input: { runId: string; failedAttemptId: unknown; retryNode: unknown },
+): Promise<unknown> => {
+  if (env.RETRY_ADMIN === undefined || env.STAGE_RETRY_SECRET === undefined) {
+    throw new Error("retry admin binding is unavailable");
+  }
+  const response = await env.RETRY_ADMIN.fetch(new Request("https://retry-admin.internal/stage-retries", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.STAGE_RETRY_SECRET}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ version: 1, ...input, requestedBy: actorEmail }),
+  }));
+  const body = await response.json() as {
+    error?: string;
+    retry?: { retry_id: string; run_id: string; retry_node: string; state: string };
+  };
+  if (!response.ok || body.retry === undefined) {
+    throw new Error(body.error ?? "stage_retry_failed");
+  }
+  return {
+    retryId: body.retry.retry_id,
+    runId: body.retry.run_id,
+    retryNode: body.retry.retry_node,
+    state: body.retry.state,
+  };
 };
 
 const routeAdminError = (error: unknown): string | null => {
@@ -196,9 +228,10 @@ export const routePortalRequest = async (
       if (parsed.state === "invalid" || !exactBody(parsed.value, ["failedAttemptId", "retryNode"])) {
         return json(400, { error: "invalid_request" });
       }
-      return json(202, await routeAdmin(env).retryRun(identity.email, {
+      return json(202, await retryRun(env, identity.email, {
         runId: decodeURIComponent(retryRunMatch[1]),
-        ...parsed.value,
+        failedAttemptId: parsed.value.failedAttemptId,
+        retryNode: parsed.value.retryNode,
       }));
     }
     const issueSearchHistoryMatch = url.pathname.match(/^\/api\/issues\/([A-Z][A-Z0-9]+-[1-9][0-9]*)\/search$/);
