@@ -109,6 +109,60 @@ test("materializes a bidirectional version 3 sidecar when evidence includes a bl
   }]);
 });
 
+test("materializes a finding that cites the exact line inside its requirement", async (t) => {
+  const copy = await mutableFixture();
+  t.after(copy.cleanup);
+  const judgmentFile = path.join(path.dirname(copy.changeDirectory), "judgment.json");
+  const judgment = {
+    coverage: "sufficient",
+    scope: "in_scope",
+    minimality: "over_specified",
+    rationale: "The requirement contains behavior that the proposal does not declare.",
+  };
+  await writeFile(judgmentFile, JSON.stringify({
+    change: "sample-change",
+    review: {
+      kind: "semantic-spec-review",
+      reviewer: { type: "llm", name: "codex-cli", version: "fixture" },
+      promptVersion: "openspec-semantic-traceability-bidirectional-v2",
+      reviewedAt: "2026-09-05T12:00:00Z",
+      overall: "findings",
+    },
+    passingJudgment: judgment,
+    proposalStatements: [{
+      proposalLine: 7,
+      requirementLinkIds: ["resume-job"],
+      coverage: "sufficient",
+      rationale: "The requirement implements the proposal statement.",
+    }],
+    capabilities: [{
+      path: "job-resume",
+      capabilityLine: 13,
+      judgment,
+      links: [{
+        id: "resume-job",
+        proposalLines: [7],
+        specStartLine: 3,
+        judgment,
+      }],
+    }],
+    findings: [{
+      id: "resume-result-is-over-specified",
+      type: "over_specified",
+      message: "The result promises more behavior than the proposal declares.",
+      capability: "job-resume",
+      proposalLines: [7],
+      specStartLine: 8,
+    }],
+  }, null, 2));
+
+  await execFileAsync(process.execPath, [materializer, copy.changeDirectory, judgmentFile]);
+  const traceability = await loadTraceability(copy.changeDirectory);
+  assert.equal(traceability.findings[0].spec.startLine, 3);
+  assert.equal(traceability.findings[0].spec.endLine, 8);
+  assert.match(traceability.findings[0].spec.text, /THEN.*execution continues/);
+});
+
 test("continues to read a valid version 2 semantic sidecar", async (t) => {
   const copy = await mutableFixture();
   t.after(copy.cleanup);

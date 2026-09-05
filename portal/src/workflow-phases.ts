@@ -21,6 +21,17 @@ export interface ApprovalEvidenceVisitLike {
   links: readonly { url: string }[];
 }
 
+export type WorkflowDisplayStatus =
+  | "Succeeded"
+  | "In progress"
+  | "Complete"
+  | "Upcoming"
+  | "Failed"
+  | "Blocked"
+  | "Canceled";
+
+export type WorkflowStatusTone = "succeeded" | "active" | "failed" | "upcoming";
+
 const PHASE_LABELS: Record<WorkflowPhaseId, string> = {
   claim: "Claim issue",
   planning: "Planning",
@@ -82,7 +93,7 @@ export const phaseDisplayStatus = (
   currentPhaseId: WorkflowPhaseId | null,
   runStatus: string,
   failedPhaseId: WorkflowPhaseId | null = null,
-): "Succeeded" | "In progress" | "Complete" | "Upcoming" | "Failed" | "Blocked" | "Canceled" => {
+): WorkflowDisplayStatus => {
   if (phase.id === "complete" && runStatus === "succeeded") return "Succeeded";
   const terminalStatus = terminalPhaseStatus(runStatus);
   if (phase.id === "stopped" && terminalStatus !== null) return terminalStatus;
@@ -95,6 +106,21 @@ export const phaseDisplayStatus = (
   }
   return phase.visits.length > 0 ? "Complete" : "Upcoming";
 };
+
+export const workflowStatusTone = (status: string): WorkflowStatusTone =>
+  status === "In progress" ? "active"
+    : ["Failed", "Blocked", "Canceled"].includes(status) ? "failed"
+      : ["Complete", "Succeeded", "Approved"].includes(status) ? "succeeded"
+        : "upcoming";
+
+export const planningSubstepForNode = (
+  nodeId: string,
+): "planning_author" | "self_review" | "independent_review" =>
+  ["self_discovery", "self_recheck_before_publish", "self_recheck_after_publish"].includes(nodeId)
+    ? "self_review"
+    : ["independent_discovery", "independent_recheck", "final_trace"].includes(nodeId)
+      ? "independent_review"
+      : "planning_author";
 
 export const authorVisitStatus = (
   visit: {
@@ -121,10 +147,22 @@ export const isPlanningAuthorVisit = (visit: Pick<PhaseVisitLike, "nodeId">): bo
   "planning_revision_author",
 ].includes(visit.nodeId);
 
+export const isDesignAuthorVisit = (visit: Pick<PhaseVisitLike, "nodeId">): boolean => [
+  "design_author",
+  "design_self_response",
+  "design_independent_response",
+  "design_revision_author",
+].includes(visit.nodeId);
+
 const approvalPublicationKind = (nodeId: string): "plan" | "design" | null =>
   ["publish_initial", "publish_update", "publish_author_response", "publish_planning_candidate"].includes(nodeId)
     ? "plan"
-    : ["publish_design", "publish_design_candidate"].includes(nodeId) ? "design" : null;
+    : [
+      "publish_design",
+      "publish_design_candidate",
+      "publish_design_response",
+      "publish_design_revision",
+    ].includes(nodeId) ? "design" : null;
 
 export const approvalEvidenceLinks = <Link extends { url: string }>(
   visits: readonly (Omit<ApprovalEvidenceVisitLike, "links"> & { links: readonly Link[] })[],

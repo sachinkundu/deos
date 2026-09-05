@@ -2,6 +2,7 @@
 set -euo pipefail
 
 config_path="${1:-wrangler.queue-consumer-ts.jsonc}"
+portal_config_path="${2:-portal/wrangler.jsonc}"
 
 required_secrets=(
   LINEAR_APP_ACCESS_TOKEN
@@ -10,6 +11,8 @@ required_secrets=(
   CODEX_AUTH_ENCRYPTION_KEY
   CAPABILITY_SIGNING_SECRET
   CLEANUP_AUDIT_SECRET
+  STAGE_RETRY_SECRET
+  OPENROUTER_API_KEY
 )
 
 for secret_name in "${required_secrets[@]}"; do
@@ -18,6 +21,11 @@ for secret_name in "${required_secrets[@]}"; do
     exit 1
   fi
 done
+
+if [[ ! -f "$portal_config_path" ]]; then
+  echo "Portal Wrangler config not found: ${portal_config_path}" >&2
+  exit 1
+fi
 
 if [[ -z "${GITHUB_APP_PRIVATE_KEY:-}" && -z "${GITHUB_APP_PRIVATE_KEY_PATH:-}" ]]; then
   echo "Required secret is not set: GITHUB_APP_PRIVATE_KEY or GITHUB_APP_PRIVATE_KEY_PATH" >&2
@@ -75,6 +83,9 @@ npx wrangler d1 migrations apply DB --remote --config "$config_path"
 for secret_name in "${required_secrets[@]}"; do
   printf '%s' "${!secret_name}" | npx wrangler secret put "$secret_name" --config "$config_path"
 done
+
+printf '%s' "$STAGE_RETRY_SECRET" |
+  npx wrangler secret put STAGE_RETRY_SECRET --config "$portal_config_path"
 
 if [[ -n "${GITHUB_APP_PRIVATE_KEY:-}" ]]; then
   printf '%s' "$GITHUB_APP_PRIVATE_KEY" | npx wrangler secret put GITHUB_APP_PRIVATE_KEY --config "$config_path"

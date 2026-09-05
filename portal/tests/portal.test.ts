@@ -293,8 +293,10 @@ test("the SAC-142 workflow version and future nodes receive a complete dynamic p
 test("version 17 presents two gates with distinct checked merge and design stages", () => {
   const nodeIds = [
     "claim_issue", "planning_author", "independent_discovery", "planning_review",
-    "merge_planning_pr", "verify_planning_merge", "design_author", "publish_design",
-    "design_review", "start_new_design_round", "design_revision_author",
+    "merge_planning_pr", "verify_planning_merge", "design_author", "design_self_review",
+    "design_self_response", "publish_design", "design_independent_review",
+    "design_independent_response", "publish_design_response", "design_final_review",
+    "design_review", "start_new_design_round", "design_revision_author", "publish_design_revision",
     "merge_design_pr", "done",
   ];
   const definition = {
@@ -312,6 +314,13 @@ test("version 17 presents two gates with distinct checked merge and design stage
   assert.equal(manifest.get("design_review"), "review");
   assert.equal(manifest.get("merge_planning_pr"), "plan_merge");
   assert.equal(manifest.get("design_author"), "design");
+  assert.equal(manifest.get("design_self_review"), "design");
+  assert.equal(manifest.get("design_self_response"), "design");
+  assert.equal(manifest.get("design_independent_review"), "design");
+  assert.equal(manifest.get("design_independent_response"), "design");
+  assert.equal(manifest.get("publish_design_response"), "design");
+  assert.equal(manifest.get("design_final_review"), "design");
+  assert.equal(manifest.get("publish_design_revision"), "design");
   assert.equal(manifest.get("merge_design_pr"), "design_merge");
   assert.deepEqual(presentationStagesForDefinition(definition).map((stage) => stage.label), [
     "Claim issue", "Create planning PR", "Independent review", "Human approval",
@@ -451,8 +460,8 @@ test("route workflow writes require only dispatch and revision", async () => {
   assert.deepEqual(await response.json(), { error: "invalid_request" });
 });
 
-test("an authenticated run retry passes only the failed attempt identity to the trusted binding", async () => {
-  const calls: unknown[] = [];
+test("an authenticated run retry passes only the failed attempt identity to the private retry service", async () => {
+  const calls: Array<{ url: string; authorization: string | null; body: unknown }> = [];
   const env = {
     DB: {} as D1Database,
     ARTIFACTS: {} as R2Bucket,
@@ -460,12 +469,22 @@ test("an authenticated run retry passes only the failed attempt identity to the 
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com",
     ACCESS_AUD: "aud",
     ALLOWED_EMAIL: "sachinkundu@gmail.com",
-    ROUTE_ADMIN: {
-      retryRun: async (actorEmail: string, input: unknown) => {
-        calls.push({ actorEmail, input });
-        return { retryId: "stage-retry:attempt-1", state: "established" };
+    STAGE_RETRY_SECRET: "test-retry-secret",
+    RETRY_ADMIN: {
+      fetch: async (request: Request) => {
+        calls.push({
+          url: request.url,
+          authorization: request.headers.get("Authorization"),
+          body: await request.json(),
+        });
+        return Response.json({ retry: {
+          retry_id: "stage-retry:attempt-1",
+          run_id: "workflow:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb:run:1",
+          retry_node: "self_discovery",
+          state: "established",
+        } }, { status: 202 });
       },
-    } as unknown as Service,
+    } as unknown as Fetcher,
   };
   const runId = "workflow:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb:run:1";
   const response = await routePortalRequest(new Request(
@@ -478,10 +497,22 @@ test("an authenticated run retry passes only the failed attempt identity to the 
   ), env, async () => ({ email: "sachinkundu@gmail.com" }));
 
   assert.equal(response.status, 202);
-  assert.deepEqual(calls, [{
-    actorEmail: "sachinkundu@gmail.com",
-    input: { runId, failedAttemptId: "attempt-1", retryNode: "self_discovery" },
-  }]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://retry-admin.internal/stage-retries");
+  assert.equal(calls[0].authorization, "Bearer test-retry-secret");
+  assert.deepEqual(calls[0].body, {
+    version: 1,
+    runId,
+    failedAttemptId: "attempt-1",
+    retryNode: "self_discovery",
+    requestedBy: "sachinkundu@gmail.com",
+  });
+  assert.deepEqual(await response.json(), {
+    retryId: "stage-retry:attempt-1",
+    runId,
+    retryNode: "self_discovery",
+    state: "established",
+  });
 });
 
 test("route writes reject non-object and oversized JSON before the admin binding", async () => {

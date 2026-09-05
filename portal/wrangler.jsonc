@@ -17,6 +17,9 @@
     "ALLOWED_EMAIL": "sachinkundu@gmail.com",
     "OPENROUTER_SUPPORTED_MODELS": "deepseek/deepseek-v4-pro"
   },
+  "secrets": {
+    "required": ["STAGE_RETRY_SECRET"]
+  },
   "d1_databases": [{
     "binding": "DB",
     "database_name": "deos-sample-project",
@@ -30,6 +33,9 @@
     "binding": "ROUTE_ADMIN",
     "service": "deos-queue-consumer-ts",
     "entrypoint": "RouteAdmin"
+  }, {
+    "binding": "RETRY_ADMIN",
+    "service": "deos-queue-consumer-ts"
   }],
   "assets": {
     "directory": "./dist",

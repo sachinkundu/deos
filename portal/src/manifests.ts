@@ -71,7 +71,19 @@ const simplifiedStageForNode = (nodeId: string, definitionVersion: number): stri
   if (["merge_planning_pr", "verify_planning_merge", "planning_merge_repair_wait"].includes(nodeId)) {
     return definitionVersion >= 17 ? "plan_merge" : "merge";
   }
-  if (["design_author", "publish_design", "start_new_design_round", "design_revision_author"].includes(nodeId)) {
+  if ([
+    "design_author",
+    "design_self_review",
+    "design_self_response",
+    "publish_design",
+    "design_independent_review",
+    "design_independent_response",
+    "publish_design_response",
+    "design_final_review",
+    "start_new_design_round",
+    "design_revision_author",
+    "publish_design_revision",
+  ].includes(nodeId)) {
     return "design";
   }
   if (nodeId === "merge_design_pr") return "design_merge";

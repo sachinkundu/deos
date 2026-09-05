@@ -37,7 +37,13 @@ GITHUB_INSTALLATION_ID
 CODEX_AUTH_ENCRYPTION_KEY
 CAPABILITY_SIGNING_SECRET
 CLEANUP_AUDIT_SECRET
+STAGE_RETRY_SECRET
+OPENROUTER_API_KEY
 ```
+
+The same `STAGE_RETRY_SECRET` is installed on the portal Worker so its private
+service binding can request an authenticated same-run retry. The orchestration
+deploy script uploads that shared value to both Workers.
 
 Set `LINEAR_APP_ACTOR_ID` to the actor ID observed for the Linear OAuth app, and `LINEAR_TEAM_ID` to the cleanup issue team. The checked configuration carries the verified non-secret IDs for this controlled workspace. The deploy script refuses to continue if a future configuration restores a `configure-before-*` sentinel. Prefer `GITHUB_APP_PRIVATE_KEY_PATH` so the PEM remains in its protected file rather than a shell environment variable.
 
