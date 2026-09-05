@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   approvalEvidenceLinks,
   authorVisitStatus,
+  isDesignAuthorVisit,
   isDesignStageWorkflow,
   isPlanningAuthorVisit,
   latestPhaseId,
@@ -130,6 +131,14 @@ test("planning author selection includes revisions and excludes independent fina
   assert.equal(isPlanningAuthorVisit(visit(10, "final_trace", "independent_review")), false);
 });
 
+test("design author selection follows response and revision visits", () => {
+  assert.equal(isDesignAuthorVisit(visit(19, "design_author", "design")), true);
+  assert.equal(isDesignAuthorVisit(visit(21, "design_self_response", "design")), true);
+  assert.equal(isDesignAuthorVisit(visit(24, "design_independent_response", "design")), true);
+  assert.equal(isDesignAuthorVisit(visit(27, "design_revision_author", "design")), true);
+  assert.equal(isDesignAuthorVisit(visit(22, "design_self_review", "design")), false);
+});
+
 test("planning review nodes identify the exact nested substep", () => {
   assert.equal(planningSubstepForNode("planning_self_repair"), "planning_author");
   assert.equal(planningSubstepForNode("self_discovery"), "self_review");
@@ -174,9 +183,10 @@ test("human review collects and selects evidence from the preceding publication 
     { sequence: 6, nodeId: "publish_author_response", gate: null, links: [] },
     { sequence: 7, nodeId: "planning_review", gate: { gate_kind: "plan" as const }, links: [] },
     { sequence: 9, nodeId: "publish_design", gate: null, links: [designLink] },
-    { sequence: 10, nodeId: "design_review", gate: { gate_kind: "design" as const }, links: [] },
+    { sequence: 10, nodeId: "publish_design_response", gate: null, links: [designLink] },
+    { sequence: 11, nodeId: "design_review", gate: { gate_kind: "design" as const }, links: [] },
   ];
   assert.deepEqual(approvalEvidenceLinks(visits), [planLink, designLink]);
   assert.deepEqual(selectedApprovalEvidenceUrls(visits, 7), [planLink.url]);
-  assert.deepEqual(selectedApprovalEvidenceUrls(visits, 10), [designLink.url]);
+  assert.deepEqual(selectedApprovalEvidenceUrls(visits, 11), [designLink.url]);
 });

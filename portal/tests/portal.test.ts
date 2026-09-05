@@ -293,8 +293,10 @@ test("the SAC-142 workflow version and future nodes receive a complete dynamic p
 test("version 17 presents two gates with distinct checked merge and design stages", () => {
   const nodeIds = [
     "claim_issue", "planning_author", "independent_discovery", "planning_review",
-    "merge_planning_pr", "verify_planning_merge", "design_author", "publish_design",
-    "design_review", "start_new_design_round", "design_revision_author",
+    "merge_planning_pr", "verify_planning_merge", "design_author", "design_self_review",
+    "design_self_response", "publish_design", "design_independent_review",
+    "design_independent_response", "publish_design_response", "design_final_review",
+    "design_review", "start_new_design_round", "design_revision_author", "publish_design_revision",
     "merge_design_pr", "done",
   ];
   const definition = {
@@ -312,6 +314,13 @@ test("version 17 presents two gates with distinct checked merge and design stage
   assert.equal(manifest.get("design_review"), "review");
   assert.equal(manifest.get("merge_planning_pr"), "plan_merge");
   assert.equal(manifest.get("design_author"), "design");
+  assert.equal(manifest.get("design_self_review"), "design");
+  assert.equal(manifest.get("design_self_response"), "design");
+  assert.equal(manifest.get("design_independent_review"), "design");
+  assert.equal(manifest.get("design_independent_response"), "design");
+  assert.equal(manifest.get("publish_design_response"), "design");
+  assert.equal(manifest.get("design_final_review"), "design");
+  assert.equal(manifest.get("publish_design_revision"), "design");
   assert.equal(manifest.get("merge_design_pr"), "design_merge");
   assert.deepEqual(presentationStagesForDefinition(definition).map((stage) => stage.label), [
     "Claim issue", "Create planning PR", "Independent review", "Human approval",

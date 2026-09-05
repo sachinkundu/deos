@@ -147,10 +147,22 @@ export const isPlanningAuthorVisit = (visit: Pick<PhaseVisitLike, "nodeId">): bo
   "planning_revision_author",
 ].includes(visit.nodeId);
 
+export const isDesignAuthorVisit = (visit: Pick<PhaseVisitLike, "nodeId">): boolean => [
+  "design_author",
+  "design_self_response",
+  "design_independent_response",
+  "design_revision_author",
+].includes(visit.nodeId);
+
 const approvalPublicationKind = (nodeId: string): "plan" | "design" | null =>
   ["publish_initial", "publish_update", "publish_author_response", "publish_planning_candidate"].includes(nodeId)
     ? "plan"
-    : ["publish_design", "publish_design_candidate"].includes(nodeId) ? "design" : null;
+    : [
+      "publish_design",
+      "publish_design_candidate",
+      "publish_design_response",
+      "publish_design_revision",
+    ].includes(nodeId) ? "design" : null;
 
 export const approvalEvidenceLinks = <Link extends { url: string }>(
   visits: readonly (Omit<ApprovalEvidenceVisitLike, "links"> & { links: readonly Link[] })[],

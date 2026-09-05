@@ -36,6 +36,7 @@ import {
   isPlanningAuthorVisit,
   latestPhaseId,
   authorVisitStatus,
+  isDesignAuthorVisit,
   approvalEvidenceLinks,
   phaseDisplayStatus,
   phaseForVisit,
@@ -350,7 +351,7 @@ function TraceabilityWorkflowMap({
   const independentReviewVisit = independentVisits.at(-1) ?? null;
   const planningReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "planning_review");
   const planningMergeVisit = latestVisitFor(planningVisits, (visit) => ["verify_planning_merge", "merge_planning_pr"].includes(visit.nodeId));
-  const designAuthorVisit = latestVisitFor(designVisits, (visit) => ["design_revision_author", "design_author"].includes(visit.nodeId));
+  const designAuthorVisit = latestVisitFor(designVisits, isDesignAuthorVisit);
   const designReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "design_review");
   const designMergeVisit = latestVisitFor(designVisits, (visit) => visit.nodeId === "merge_design_pr");
   const planningGates = projection.gateVisits.filter((gate) => gate.gateKind === "plan");
