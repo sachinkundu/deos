@@ -145,6 +145,7 @@ test("planning review nodes identify the exact nested substep", () => {
   assert.equal(planningSubstepForNode("self_recheck_before_publish"), "self_review");
   assert.equal(planningSubstepForNode("independent_discovery"), "independent_review");
   assert.equal(planningSubstepForNode("final_trace"), "independent_review");
+  assert.equal(planningSubstepForNode("planning_independent_response"), "planning_author");
 });
 
 test("terminal failures never inherit the success status tone", () => {

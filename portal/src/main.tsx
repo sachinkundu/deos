@@ -33,7 +33,6 @@ import { TranscriptViewer } from "./TranscriptViewer.tsx";
 import type { TranscriptDto } from "./transcript-view.ts";
 import {
   isDesignStageWorkflow,
-  isPlanningAuthorVisit,
   latestPhaseId,
   authorVisitStatus,
   isDesignAuthorVisit,
@@ -340,15 +339,18 @@ function TraceabilityWorkflowMap({
   const planningVisits = phases.find((phase) => phase.id === "planning")?.visits as Visit[] | undefined ?? [];
   const approvalVisits = phases.find((phase) => phase.id === "approval")?.visits as Visit[] | undefined ?? [];
   const designVisits = phases.find((phase) => phase.id === "design")?.visits as Visit[] | undefined ?? [];
-  const selfReviewVisits = planningVisits.filter((visit) => [
-    "self_discovery", "planning_self_repair", "self_recheck_before_publish", "self_recheck_after_publish",
-  ].includes(visit.nodeId));
-  const independentVisits = planningVisits.filter((visit) => [
-    "independent_discovery", "independent_recheck", "planning_independent_response", "final_trace",
-  ].includes(visit.nodeId));
-  const planningAuthorVisit = latestVisitFor(planningVisits, isPlanningAuthorVisit);
-  const selfReviewVisit = selfReviewVisits.at(-1) ?? null;
-  const independentReviewVisit = independentVisits.at(-1) ?? null;
+  const planningAuthorVisit = latestVisitFor(
+    planningVisits,
+    (visit) => planningSubstepForNode(visit.nodeId) === "planning_author",
+  );
+  const selfReviewVisit = latestVisitFor(
+    planningVisits,
+    (visit) => planningSubstepForNode(visit.nodeId) === "self_review",
+  );
+  const independentReviewVisit = latestVisitFor(
+    planningVisits,
+    (visit) => planningSubstepForNode(visit.nodeId) === "independent_review",
+  );
   const planningReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "planning_review");
   const planningMergeVisit = latestVisitFor(planningVisits, (visit) => ["verify_planning_merge", "merge_planning_pr"].includes(visit.nodeId));
   const designAuthorVisit = latestVisitFor(designVisits, isDesignAuthorVisit);
