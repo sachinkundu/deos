@@ -163,7 +163,10 @@ test("OpenRouter default transport calls fetch as a function", async () => {
   }
 });
 
-test("OpenRouter Responses proxy forwards a Codex tool loop without exposing its key", async () => {
+const reviewText = { format: { type: "json_schema", name: "review", strict: false,
+  schema: { type: "object", properties: { outcome: { type: "string" } }, required: ["outcome"], additionalProperties: false } } };
+
+test("OpenRouter Responses proxy enforces schema routing without losing the Codex tool loop", async () => {
   let sent: Record<string, unknown> | null = null;
   let authorization = "";
   const client = new OpenRouterReviewClient({
@@ -188,6 +191,8 @@ test("OpenRouter Responses proxy forwards a Codex tool loop without exposing its
     model: "vendor/allowed",
     input: "Inspect package.json with a shell tool.",
     stream: true,
+    text: reviewText,
+    provider: { require_parameters: false, only: ["untrusted-host"] },
     tools: [{ type: "function", name: "exec", parameters: { type: "object" } }],
   });
   assert.equal(response.providerRequestId, "resp-1");
@@ -195,7 +200,10 @@ test("OpenRouter Responses proxy forwards a Codex tool loop without exposing its
   assert.equal(authorization, "Bearer secret-key-that-is-long-enough");
   const captured = sent as unknown as Record<string, unknown>;
   assert.equal(captured.store, false);
-  assert.equal(captured.provider, undefined);
+  assert.deepEqual(captured.provider, { require_parameters: true });
+  assert.deepEqual(captured.text, { format: { ...reviewText.format, strict: true } });
+  assert.equal(reviewText.format.strict, false);
+  assert.deepEqual(captured.tools, [{ type: "function", name: "exec", parameters: { type: "object" } }]);
   assert.equal(JSON.stringify(sent).includes("secret-key"), false);
 });
 
@@ -214,11 +222,25 @@ test("OpenRouter Responses proxy preserves successful streams beyond the former 
   const response = await client.proxyResponses({
     model: "vendor/allowed",
     input: "Inspect the complete repository context.",
+    text: reviewText,
     stream: true,
     tools: [],
   });
   assert.equal(response.providerRequestId, "resp-large");
   assert.ok(response.body.length > 10_000_000);
+});
+
+test("a missing or non-schema review format fails before any provider request", async () => {
+  const client = new OpenRouterReviewClient({
+    apiKey: "secret-key-that-is-long-enough", apiUrl: "https://openrouter.example/api/v1",
+    supportedModels: ["vendor/allowed"],
+    fetcher: async () => { throw new Error("must not contact provider"); },
+  });
+  for (const text of [undefined, { format: { type: "text" } }, { format: { type: "json_object" } },
+    { format: { type: "json_schema", name: "review" } }]) {
+    await assert.rejects(client.proxyResponses({ model: "vendor/allowed", input: "review", text }),
+      /requires a JSON output schema/);
+  }
 });
 
 test("supported model settings are bounded and deterministic", () => {

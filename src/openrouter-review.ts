@@ -394,6 +394,12 @@ export class OpenRouterReviewClient {
     if (model === null || !this.supportedModels.has(model)) {
       throw new Error("OpenRouter model is not supported");
     }
+    const text = nullableRecord(input.text);
+    const format = nullableRecord(text?.format);
+    if (format?.type !== "json_schema" || nullableRecord(format.schema) === null ||
+        boundedString(format.name, 100) === null) {
+      throw new Error("OpenRouter review requires a JSON output schema");
+    }
     let response: Response;
     try {
       response = await this.fetcher(`${this.apiUrl}/responses`, {
@@ -407,7 +413,10 @@ export class OpenRouterReviewClient {
           ...input,
           model,
           store: false,
-          provider: undefined,
+          text: { ...text, format: { ...format, strict: true } },
+          // Host policy, not a model-controlled routing preference. Unsupported
+          // providers must reject routing rather than silently ignore the schema.
+          provider: { require_parameters: true },
         }),
       });
     } catch (error) {
