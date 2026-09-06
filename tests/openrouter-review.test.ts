@@ -192,15 +192,19 @@ test("OpenRouter Responses proxy enforces schema routing without losing the Code
     input: "Inspect package.json with a shell tool.",
     stream: true,
     text: reviewText,
+    parallel_tool_calls: false,
     provider: { require_parameters: false, only: ["untrusted-host"] },
-    tools: [{ type: "function", name: "exec", parameters: { type: "object" } }],
+    tools: [{ type: "function", name: "exec", parameters: { type: "object" } },
+      { type: "web_search" }, { type: "web_search_preview" },
+      { type: "web_search_preview_2025_03_11" }, { type: "openrouter:web_search" }],
   });
   assert.equal(response.providerRequestId, "resp-1");
   assert.equal(response.contentType, "text/event-stream");
   assert.equal(authorization, "Bearer secret-key-that-is-long-enough");
   const captured = sent as unknown as Record<string, unknown>;
   assert.equal(captured.store, false);
-  assert.deepEqual(captured.provider, { require_parameters: true });
+  assert.equal("parallel_tool_calls" in captured, false);
+  assert.deepEqual(captured.provider, { require_parameters: true, only: ["baidu"] });
   assert.deepEqual(captured.text, { format: { ...reviewText.format, strict: true } });
   assert.equal(reviewText.format.strict, false);
   assert.deepEqual(captured.tools, [{ type: "function", name: "exec", parameters: { type: "object" } }]);
@@ -240,6 +244,15 @@ test("a missing or non-schema review format fails before any provider request", 
     { format: { type: "json_schema", name: "review" } }]) {
     await assert.rejects(client.proxyResponses({ model: "vendor/allowed", input: "review", text }),
       /requires a JSON output schema/);
+  }
+});
+
+test("independent reviews reject forced hosted search before contacting a provider", async () => {
+  const client = new OpenRouterReviewClient({ apiKey: "secret-key-that-is-long-enough",
+    supportedModels: ["vendor/allowed"], fetcher: async () => { throw new Error("must not contact provider"); } });
+  for (const type of ["web_search", "web_search_preview", "web_search_preview_2025_03_11", "openrouter:web_search"]) {
+    await assert.rejects(client.proxyResponses({ model: "vendor/allowed", input: "review", text: reviewText,
+      tool_choice: { type } }), /Hosted web search is disabled/);
   }
 });
 
