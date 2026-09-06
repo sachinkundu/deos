@@ -36,6 +36,7 @@ import {
   latestPhaseId,
   authorVisitStatus,
   isDesignAuthorVisit,
+  designSubstepForNode,
   approvalEvidenceLinks,
   phaseDisplayStatus,
   phaseForVisit,
@@ -243,6 +244,9 @@ const workflowStepLabel = (nodeId: string): string => ({
 
 const visitOutcomeSummary = (visit: Visit | null, status: string): string => {
   if (visit === null) return "Not started";
+  if (visit.nodeId === "design_self_review" && visit.leftAt !== null && visit.attempts.length === 0) {
+    return "Continued without a new review job";
+  }
   const attempt = visit.attempts.at(-1);
   if (attempt?.outcome) return human(attempt.outcome);
   if (attempt?.state) return human(attempt.state);
@@ -320,7 +324,8 @@ function TraceabilityWorkflowMap({
     setExpandedPhase(stopped ? failedPhaseId : null);
     setExpandedSubstep(stopped && failedPhaseId === "planning" && failedLeafVisit !== null
       ? planningSubstepForNode(failedLeafVisit.nodeId)
-      : null);
+      : stopped && failedPhaseId === "design" && failedLeafVisit !== null
+        ? designSubstepForNode(failedLeafVisit.nodeId) : null);
     if (stopped && failedLeafVisit !== null) onSelectVisit(failedLeafVisit.sequence);
     setHistoryOpen(false);
   }, [projection.run.id, projection.run.status, failedPhaseId, failedLeafVisit?.nodeId, onSelectVisit]);
@@ -332,7 +337,7 @@ function TraceabilityWorkflowMap({
     setExpandedPhase(next);
     setExpandedSubstep(next === "planning" ? planningSubstepForNode(latest?.nodeId ?? "planning_author")
       : next === "approval" ? (latest?.gate?.gate_kind === "design" ? "design_review" : "planning_review")
-        : next === "design" ? "design_author" : null);
+        : next === "design" ? designSubstepForNode(latest?.nodeId ?? "design_author") : null);
     if (latest !== undefined) onSelectVisit(latest.sequence);
   };
 
@@ -354,6 +359,8 @@ function TraceabilityWorkflowMap({
   const planningReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "planning_review");
   const planningMergeVisit = latestVisitFor(planningVisits, (visit) => ["verify_planning_merge", "merge_planning_pr"].includes(visit.nodeId));
   const designAuthorVisit = latestVisitFor(designVisits, isDesignAuthorVisit);
+  const designSelfReviewVisit = latestVisitFor(designVisits, (visit) => designSubstepForNode(visit.nodeId) === "design_self_review");
+  const designIndependentReviewVisit = latestVisitFor(designVisits, (visit) => designSubstepForNode(visit.nodeId) === "design_independent_review");
   const designReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "design_review");
   const designMergeVisit = latestVisitFor(designVisits, (visit) => visit.nodeId === "merge_design_pr");
   const planningGates = projection.gateVisits.filter((gate) => gate.gateKind === "plan");
@@ -366,6 +373,13 @@ function TraceabilityWorkflowMap({
   const selfReviewStatus = authorVisitStatus(selfReviewVisit, projection.run.status);
   const independentReviewStatus = authorVisitStatus(independentReviewVisit, projection.run.status);
   const designAuthorStatus = authorVisitStatus(designAuthorVisit, projection.run.status);
+  const designSelfReviewStatus = authorVisitStatus(designSelfReviewVisit, projection.run.status);
+  const designIndependentReviewStatus = authorVisitStatus(designIndependentReviewVisit, projection.run.status);
+  const designSteps = [
+    { id: "design_author", label: "Design author", visit: designAuthorVisit, status: designAuthorStatus, icon: <UserCircle /> },
+    { id: "design_self_review", label: "Author self-review", visit: designSelfReviewVisit, status: designSelfReviewStatus, icon: <CheckCircle /> },
+    { id: "design_independent_review", label: "Independent review", visit: designIndependentReviewVisit, status: designIndependentReviewStatus, icon: <Eye /> },
+  ];
 
   const selectSubstep = (id: string, visit: Visit | null) => {
     setExpandedSubstep((current) => current === id ? null : id);
@@ -378,7 +392,7 @@ function TraceabilityWorkflowMap({
     setExpandedPhase(phaseId);
     setExpandedSubstep(phaseId === "approval"
       ? (visit.gate?.gate_kind === "design" ? "design_review" : "planning_review")
-      : null);
+      : phaseId === "design" ? designSubstepForNode(visit.nodeId) : null);
   };
 
   const phaseOutcome = (phaseId: WorkflowPhaseId): string => {
@@ -427,11 +441,11 @@ function TraceabilityWorkflowMap({
   </div>;
 
   const renderDesign = () => <div className="phase-drill" aria-label="Design details">
-    <p className="phase-note">The same design PR is reused across review rounds.</p>
-    <button type="button" className={`phase-substep ${expandedSubstep === "design_author" ? "selected" : ""}`} onClick={() => selectSubstep("design_author", designAuthorVisit)}>
-      <span className="substep-heading"><span className="substep-icon"><UserCircle /></span><strong>Design author</strong></span>
-      <span className={`substep-status ${workflowStatusTone(designAuthorStatus)}`}>{designAuthorStatus}</span>
-    </button>
+    <p className="phase-note">Each design check reports its own state. Author responses and revisions appear under Design author. The same PR is reused.</p>
+    {designSteps.map((step) => <button key={step.id} type="button" className={`phase-substep ${expandedSubstep === step.id ? "selected" : ""}`} aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
+      <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong><small>{visitOutcomeSummary(step.visit, step.status)}</small></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
+      <span className={`substep-status ${workflowStatusTone(step.status)}`}>{step.status}</span>
+    </button>)}
     <div className="approved-edge"><ArrowRight weight="bold" /><span>after Human Review</span></div>
     <button type="button" className={`phase-substep terminal ${expandedSubstep === "design_merge" ? "selected" : ""}`} onClick={() => selectSubstep("design_merge", designMergeVisit)}>
       <span className="substep-heading"><span className="substep-icon"><GitMerge /></span><strong>Merge &amp; verify</strong></span>
@@ -457,17 +471,18 @@ function TraceabilityWorkflowMap({
   </div>;
 
   const inspectedPhase = phases.find((phase) => phase.id === inspectedPhaseId) ?? currentPhase;
-  const inspectorStatus = expandedSubstep === "planning_author" ? planningAuthorStatus
+  const selectedDesignStep = designSteps.find((step) => step.id === expandedSubstep);
+  const inspectorStatus = selectedDesignStep?.status ?? (expandedSubstep === "planning_author" ? planningAuthorStatus
     : expandedSubstep === "self_review" ? selfReviewStatus
       : expandedSubstep === "independent_review" ? independentReviewStatus
         : expandedSubstep === "design_author" ? designAuthorStatus
           : inspectedPhase === null
             ? "Upcoming"
-            : phaseDisplayStatus(inspectedPhase, currentPhaseId, projection.run.status, failedPhaseId);
+            : phaseDisplayStatus(inspectedPhase, currentPhaseId, projection.run.status, failedPhaseId));
   const inspectorTone = workflowStatusTone(inspectorStatus);
   const inspectorComplete = inspectorTone === "succeeded";
   const inspectorFailed = inspectorTone === "failed";
-  const inspectorTitle = expandedSubstep === "planning_author" ? "Planning author"
+  const inspectorTitle = selectedDesignStep?.label ?? (expandedSubstep === "planning_author" ? "Planning author"
     : expandedSubstep === "self_review" ? "Author self-review"
       : expandedSubstep === "independent_review" ? "Independent review"
         : expandedSubstep === "planning_review" ? "Human review"
@@ -475,11 +490,12 @@ function TraceabilityWorkflowMap({
             : expandedSubstep === "design_author" ? "Design author"
               : expandedSubstep === "design_review" ? "Human review"
                 : expandedSubstep === "design_merge" ? "Merge & verify"
-                  : inspectedPhase?.label ?? "Workflow";
+                  : inspectedPhase?.label ?? "Workflow");
   const inspectorProduct = expandedSubstep === "planning_review" ? planningProduct
     : expandedSubstep === "design_review" ? designProduct
       : inspectedPhase?.id === "planning" ? planningProduct : inspectedPhase?.id === "design" ? designProduct : null;
-  const inspectorAttempts = detail?.attempts.filter((attempt) => attempt.transcriptAvailable) ?? [];
+  const inspectorVisit = selectedDesignStep === undefined ? detail : selectedDesignStep.visit;
+  const inspectorAttempts = inspectorVisit?.attempts.filter((attempt) => attempt.transcriptAvailable) ?? [];
 
   return <section className="workflow-panel phase-workflow-panel" aria-labelledby="workflow-title">
     <div className="section-heading phase-heading"><div><span className="eyebrow">Current run</span><h2 id="workflow-title">Workflow map</h2></div><span>Open a phase, then drill into its evidence</span></div>
@@ -530,7 +546,7 @@ function TraceabilityWorkflowMap({
         </span>
         <dl className="inspector-summary">
           <div><dt>Phase</dt><dd>{inspectedPhase?.label ?? "—"}</dd></div>
-          <div><dt>Workflow step</dt><dd>{detail === null ? currentPhase?.label ?? "—" : workflowStepLabel(detail.nodeId)}</dd></div>
+          <div><dt>Workflow step</dt><dd>{inspectorVisit === null ? "Not started" : workflowStepLabel(inspectorVisit.nodeId)}</dd></div>
           <div><dt>Phase visits</dt><dd>{inspectedPhase?.visits.length ?? 0}</dd></div>
         </dl>
         {inspectedPhase?.id === "planning" && <>
@@ -542,7 +558,11 @@ function TraceabilityWorkflowMap({
           <details open><summary>Design decisions</summary>{designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
           {approvalLinks.length > 0 && <details open><summary>Review links</summary>{approvalLinks.map((link) => <p key={link.url} className={selectedApprovalLinks.has(link.url) ? "selected-evidence" : ""}><a href={link.url} target="_blank" rel="noreferrer"><GitPullRequest /> {link.label}</a>{link.kind === "pull_request" && <a href={bettaViewUrl(link.url)} target="_blank" rel="noreferrer"><Eye /> Open in BettaView</a>}</p>)}</details>}
         </>}
-        {inspectedPhase?.id === "design" && <details open><summary>Review rounds</summary>{designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>}
+        {inspectedPhase?.id === "design" && <>
+          <details open><summary>Self review</summary><p>{designSelfReviewStatus}: {visitOutcomeSummary(designSelfReviewVisit, designSelfReviewStatus)}.</p></details>
+          <details open><summary>Independent review</summary><p>{designIndependentReviewStatus}: {visitOutcomeSummary(designIndependentReviewVisit, designIndependentReviewStatus)}.</p></details>
+          <details open><summary>Human review rounds</summary>{designGates.length === 0 ? <p>Not reached yet.</p> : designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
+        </>}
         {inspectorProduct && <details open><summary>Artifacts</summary><p><PullRequestActions url={inspectorProduct.url} githubLabel={`PR #${inspectorProduct.number}`} /></p><p>{inspectorProduct === planningProduct ? "Proposal and complete specs" : "design.md"}</p></details>}
         {inspectorAttempts.length > 0 && <details><summary>Transcript</summary>{inspectorAttempts.map((attempt) => <button className="inspector-action" type="button" key={attempt.id} onClick={() => onOpenTranscript(attempt.id)}>View transcript</button>)}</details>}
       </aside>

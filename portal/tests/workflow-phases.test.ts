@@ -4,6 +4,7 @@ import {
   approvalEvidenceLinks,
   authorVisitStatus,
   isDesignAuthorVisit,
+  designSubstepForNode,
   isDesignStageWorkflow,
   isPlanningAuthorVisit,
   latestPhaseId,
@@ -146,6 +147,28 @@ test("planning review nodes identify the exact nested substep", () => {
   assert.equal(planningSubstepForNode("independent_discovery"), "independent_review");
   assert.equal(planningSubstepForNode("final_trace"), "independent_review");
   assert.equal(planningSubstepForNode("planning_independent_response"), "planning_author");
+});
+
+test("design checks, rechecks, responses and merges select their own substeps", () => {
+  for (const node of ["design_author", "design_self_response", "design_independent_response", "design_revision_author"]) {
+    assert.equal(designSubstepForNode(node), "design_author");
+  }
+  assert.equal(designSubstepForNode("design_self_review"), "design_self_review");
+  assert.equal(designSubstepForNode("design_independent_review"), "design_independent_review");
+  assert.equal(designSubstepForNode("design_final_review"), "design_independent_review");
+  assert.equal(designSubstepForNode("merge_design_pr"), "design_merge");
+});
+
+test("design author completion does not hide a running or failed independent review", () => {
+  const author = { leftAt: "2026-09-06T12:00:00Z", attempts: [{ state: "completed", outcome: "completed" }] };
+  const review = { leftAt: null, attempts: [{ state: "running", outcome: null }] };
+  assert.equal(authorVisitStatus(author, "active"), "Complete");
+  assert.equal(authorVisitStatus(review, "active"), "In progress");
+  const failed = { leftAt: "2026-09-06T12:10:00Z", attempts: [{ state: "failed", outcome: "failed" }] };
+  assert.equal(authorVisitStatus(author, "failed"), "Complete");
+  assert.equal(workflowStatusTone(authorVisitStatus(failed, "failed")), "failed");
+  assert.equal(authorVisitStatus({ leftAt: author.leftAt, attempts: [] }, "active"), "Complete");
+  assert.equal(authorVisitStatus(null, "active"), "Upcoming");
 });
 
 test("terminal failures never inherit the success status tone", () => {

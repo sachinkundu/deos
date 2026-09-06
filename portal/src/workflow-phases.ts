@@ -154,6 +154,13 @@ export const isDesignAuthorVisit = (visit: Pick<PhaseVisitLike, "nodeId">): bool
   "design_revision_author",
 ].includes(visit.nodeId);
 
+export const designSubstepForNode = (
+  nodeId: string,
+): "design_author" | "design_self_review" | "design_independent_review" | "design_merge" =>
+  nodeId === "design_self_review" ? "design_self_review"
+    : ["design_independent_review", "design_final_review"].includes(nodeId) ? "design_independent_review"
+      : nodeId === "merge_design_pr" ? "design_merge" : "design_author";
+
 const approvalPublicationKind = (nodeId: string): "plan" | "design" | null =>
   ["publish_initial", "publish_update", "publish_author_response", "publish_planning_candidate"].includes(nodeId)
     ? "plan"
