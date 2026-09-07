@@ -151,8 +151,8 @@ the bounded manual occurrence-repair path described below; it cannot consume
 an unrelated webhook.
 
 After raw-body signature verification, ingress extracts provider fields into
-the delivery inbox. A delivery proves an attempted move only when all of these
-equal the saved attempt facts:
+the delivery inbox. For an app-authored finalizer mutation, a delivery proves
+the attempted move only when all of these equal the saved attempt facts:
 
 - issue id;
 - app actor id;
@@ -161,6 +161,19 @@ equal the saved attempt facts:
 - provider transition correlator and resulting occurrence token; and
 - provider issue revision greater than the saved source delivery revision and
   no earlier than the claimed operation.
+
+Manual occurrence repair uses a separate exact matcher because it has no app
+operation to correlate. At repair start, the authenticated operator selects
+the Linear user who will perform the sequence. The trusted service resolves
+that provider identity, verifies that it is a `user` with access to the issue's
+workspace, and freezes its provider id as `repair_actor_id`; the id is not
+learned from the first webhook. Every accepted repair delivery must have
+`actor.type == user` and `actor.id == repair_actor_id`. It must also match the
+saved issue, exact prior occurrence, required next-state rule, and a provider
+revision above the repair inbox high-water mark. A two-delivery repair requires
+both deliveries to match the same saved actor and form one uninterrupted
+occurrence chain. App-authored evidence cannot satisfy the repair matcher, and
+user-authored repair evidence cannot satisfy the app-attempt matcher.
 
 The delivery's `Linear-Delivery` remains the inbox idempotency key. A local
 operation id, arrival time, payload timestamp, target-state match, or actor
@@ -202,6 +215,8 @@ An attempt follows this explicit lifecycle:
 allocated
   -> preflight_failed_no_call
   -> matched_done -> awaiting_terminal_read -> complete
+  -> awaiting_evidence -> superseded_by_manual_done_occurrence
+                       -> awaiting_terminal_read -> complete
   -> claimed -> applied -> awaiting_evidence -> awaiting_terminal_read -> complete
              |          -> awaiting_provider_redelivery -> awaiting_terminal_read
              |                                          -> awaiting_evidence
@@ -228,8 +243,10 @@ correlator identify the exact event, but that event has not arrived. An
 otherwise it remains `still_unknown`. A matched redelivery advances directly
 to `awaiting_terminal_read`. If the event is unavailable, starting manual
 occurrence repair changes the attempt back to `awaiting_evidence` for the new
-user-authored sequence. `complete` means its accepted evidence and final
-observation have been committed with the action.
+user-authored sequence. An `allocated` attempt can enter `awaiting_evidence`
+with null call timestamps only through authenticated conflict repair after a
+fresh non-Done baseline is saved. `complete` means its accepted evidence and
+final observation have been committed with the action.
 
 The action status is a summary of the current attempt and the operator path.
 Every status change occurs in the same guarded D1 transaction as the attempt
@@ -242,7 +259,7 @@ change that causes it:
 | `awaiting_reconciliation` | The attempt is `uncertain` or `still_unknown`, so only same-key lookup, replay, read, or event recovery may run. Proven application returns to `in_flight`; proven `no_effect` moves to `retryable_failure`; exhausted recovery can enter `manual_done_occurrence_repair`. |
 | `awaiting_provider_redelivery` | The attempt is also `awaiting_provider_redelivery`; a Done occurrence and exact correlator are saved, but the signed event is missing. A matched event moves the action to `in_flight` for the terminal read. An unavailable event can move it to `manual_done_occurrence_repair`. |
 | `manual_done_occurrence_repair` | An authenticated repair is open and the attempt is `awaiting_evidence` for its saved user-authored sequence. Complete repair returns to `in_flight` for the terminal read. A broken sequence stays here with a typed repair fault. |
-| `conflict` | A fresh read differs from the frozen source occurrence and is not an acceptable Done occurrence. Only an authenticated retry after staff repair can leave this status. |
+| `conflict` | A fresh read differs from the frozen source occurrence and is not an acceptable Done occurrence. The finalizer never restores or writes over it. An authenticated conflict-repair start either accepts a fresh Done occurrence through `matched_done` when no call may have escaped, or freezes the current non-Done occurrence and enters `manual_done_occurrence_repair` for an explicit user-authored move to Done. Choosing to preserve the current state leaves the action in `conflict`. |
 | `retryable_failure` | No call escaped, provider proof says `no_effect`, or a later read or terminal step failed safely. A permitted staff retry reuses the action and either reopens the same attempt or allocates the next one under the rules below. |
 | `succeeded` | The attempt is `complete`, the graph is at `done`, and the run outcome is `succeeded`. This status is terminal. |
 
@@ -297,12 +314,14 @@ monotonic DEOS runs.
    unclear effect changes the action to `awaiting_reconciliation`; a proved
    no-effect outcome that is safe to retry changes it to `retryable_failure`.
 6. Signed webhook ingress preserves the existing HMAC, millisecond timestamp,
-   `Linear-Delivery`, and HTTP 200 rules. For a delivery that passes the exact
-   matching rule above, the inbox transaction creates or reuses a durable
-   dispatch intent keyed by `(delivery_id, action_key,
-   provider_operation_id)`. The dispatcher sends the fixed event to the run's
-   recorded Workflow instance. The finalizer wakes only when both action key
-   and provider correlator match, then reloads and verifies the inbox row.
+   `Linear-Delivery`, and HTTP 200 rules. For a delivery that passes either the
+   app-attempt or manual-repair exact matcher above, the inbox transaction
+   creates or reuses a durable dispatch intent keyed by `(delivery_id,
+   action_key, evidence_key)`, where `evidence_key` is the provider operation id
+   for an app attempt or the repair id for a manual sequence. The dispatcher
+   sends the fixed event to the run's recorded Workflow instance. The finalizer
+   wakes only when the action key and the applicable provider correlator or
+   repair id match, then reloads and verifies the inbox row and actor fields.
 7. Duplicate delivery or dispatch reuses the intent. The existing dispatch
    reconciler retries unsent intents. Cron also finds an action whose matched
    delivery is already in the inbox and recreates a missing intent without
@@ -329,23 +348,32 @@ monotonic DEOS runs.
    changes the attempt to `awaiting_terminal_read` and the action to
    `in_flight`; an unavailable event can enter manual occurrence repair.
 10. If the event has expired, cannot be redelivered, its correlator cannot be
-    recovered, or a `still_unknown` attempt has exhausted bounded provider
-    reconciliation, staff can start `manual_done_occurrence_repair`. The
-    guarded recovery transaction requires the action to be awaiting evidence
-    or the attempt to be `still_unknown`, proves there is no open transport
-    request, takes a fresh read of the current occurrence, moves a
-    `still_unknown` attempt to `awaiting_evidence`, and saves the state id,
-    occurrence token, issue revision, inbox high-water mark, and a repair id.
-    It makes no Linear mutation. If the baseline is the ambiguous Done
+    recovered, a `still_unknown` attempt has exhausted bounded provider
+    reconciliation, or a pre-call source mismatch put the action in `conflict`,
+    staff can start `manual_done_occurrence_repair`. The guarded recovery
+    transaction requires one of those exact states, proves there is no open
+    transport request, takes a fresh read of the current occurrence, and saves
+    the state id, occurrence token, issue revision, inbox high-water mark,
+    repair id, and provider-verified `repair_actor_id`. A conflict is eligible
+    only when no call may have escaped. If its fresh read is already Done, the
+    transaction uses `matched_done` instead. If it is non-Done, the operator
+    explicitly chooses the user-authored completion path, the allocated attempt
+    enters `awaiting_evidence`, and the action enters
+    `manual_done_occurrence_repair`; choosing to preserve the newer state leaves
+    `conflict` unchanged. A `still_unknown` attempt also enters
+    `awaiting_evidence`. The transaction makes no Linear mutation. If the
+    baseline is the ambiguous Done
     occurrence, the protected view instructs staff to make a deliberate
     user-authored move away from it and then back to Done. The matcher requires
-    those two later, ordered, correctly signed deliveries for the saved issue
-    from the same `actor.type == user`. If the baseline is already non-Done
-    because the call had no effect or a later change superseded it, the matcher
-    instead requires one later signed user transition from that exact baseline
-    occurrence to a new Done occurrence. In both cases, an authenticated
-    person chooses the state change; DEOS does not overwrite newer intent. The
-    new Done occurrence cannot be the old unconfirmed effect, so the attempt is
+    those two later, ordered, correctly signed deliveries for the saved issue;
+    both must have `actor.type == user` and `actor.id == repair_actor_id`. If the
+    baseline is already non-Done because the call had no effect, a conflict was
+    explicitly accepted for completion, or a later change superseded it, the
+    matcher instead requires one later signed user transition from that exact
+    baseline occurrence to a new Done occurrence by the same saved actor. In
+    both cases, an authenticated person chooses the state change; DEOS does not
+    overwrite newer intent. The new Done occurrence cannot be the old
+    unconfirmed effect, so the attempt is
     marked `superseded_by_manual_done_occurrence`, not falsely confirmed or
     `no_effect`; no completed review, merge, or agent work is repeated.
 11. After operation and exact-delivery evidence, the complete manual occurrence
@@ -399,7 +427,7 @@ records.
 | `status` | `pending`, `in_flight`, `awaiting_reconciliation`, `awaiting_provider_redelivery`, `manual_done_occurrence_repair`, `conflict`, `retryable_failure`, or `succeeded`. |
 | `next_attempt_number` | Guarded attempt allocator. |
 | `last_observed_state_id`, `last_observed_occurrence_token`, `last_observed_issue_revision`, `last_observed_at` | Denormalized support index for the latest read. |
-| `repair_id`, `repair_baseline_state_id`, `repair_baseline_occurrence_token`, `repair_inbox_high_water`, `repair_actor_id`, `repair_leave_delivery_id`, `repair_done_delivery_id` | Nullable manual occurrence-repair guard and evidence; the leave delivery is required only for a Done baseline. |
+| `repair_id`, `repair_baseline_state_id`, `repair_baseline_occurrence_token`, `repair_inbox_high_water`, `repair_actor_id`, `repair_leave_delivery_id`, `repair_done_delivery_id` | Nullable manual occurrence-repair guard and evidence. `repair_actor_id` is the immutable provider user id resolved and verified at repair start and must match every accepted repair delivery; the leave delivery is required only for a Done baseline. |
 | `failure_code`, `failure_detail`, `recovery_path` | Bounded, non-secret operator information. |
 | `created_at`, `updated_at`, `completed_at` | Audit and reconciliation timestamps. |
 
@@ -411,7 +439,7 @@ records.
 | `provider_operation_id`, `provider_idempotency_key` | Stable identity for all transport requests reconciling this attempt. |
 | `claim_state` | `allocated`, `preflight_failed_no_call`, `matched_done`, `claimed`, `uncertain`, `applied`, `no_effect`, `still_unknown`, `awaiting_evidence`, `awaiting_provider_redelivery`, `awaiting_terminal_read`, `superseded_by_manual_done_occurrence`, or `complete`. |
 | `call_claimed_at`, `call_started_at`, `call_outcome`, `call_finished_at` | Mutation claim and bounded result; null claim/start proves a preflight failure or matched-Done path made no call. |
-| `provider_transition_id`, `result_occurrence_token`, `result_issue_revision`, `delivery_id` | Exact provider correlation and signed-delivery evidence. |
+| `app_actor_id`, `provider_transition_id`, `result_occurrence_token`, `result_issue_revision`, `delivery_id` | Exact app identity, provider correlation, and signed-delivery evidence. |
 | `settled_at`, `created_at`, `updated_at` | Retry guard and chronology. |
 
 `linear_done_observations` is append-only for every provider read:
@@ -468,6 +496,20 @@ another call. If state or occurrence differs, retry refreshes the conflict and
 does not overwrite it. Returning to the same state id creates a new occurrence
 and does not clear the conflict.
 
+Conflict recovery therefore does not ask staff to recreate the frozen source
+occurrence; that occurrence cannot be recreated. The protected view shows the
+saved source and fresh current occurrence and offers two audited choices. Staff
+may preserve the newer state, which leaves the run and action open in
+`conflict`. Or, after deciding the completed DEOS work should be reflected as
+Done, staff start conflict repair and select the provider-verified Linear user
+who will make the change. With no possibly effective app call, a fresh Done
+state uses the two-read `matched_done` path; a fresh non-Done state becomes the
+manual-repair baseline and requires one later, correctly signed transition by
+that saved actor from the exact baseline to a new Done occurrence. The matched
+delivery and terminal read complete the same attempt. If any call may have
+escaped, the action must first use operation reconciliation or the ambiguous
+manual-repair path and cannot use this conflict shortcut.
+
 The recovery URL is a relative, Access-protected run path generated by trusted
 code, with no bearer token in D1. The portal uses an internal service binding
 and receives neither Linear credentials nor raw provider replies. Redelivery
@@ -493,8 +535,11 @@ mutation.
   `matched_done`, make no mutation, then require a second strongly consistent
   terminal read of the same occurrence before committing success.
 - **Current state or occurrence differs from the frozen source** -> Append the
-  observation, preserve the newer occurrence, and require staff repair.
-  Re-entry into the same state id remains a conflict.
+  observation and preserve the newer occurrence. Staff either leave the action
+  in conflict or explicitly start conflict repair: accept a fresh Done through
+  `matched_done`, or freeze a fresh non-Done baseline and require one exact
+  signed user move by `repair_actor_id` to Done. Re-entry into the same source
+  state id remains a conflict and never authorizes an app mutation.
 - **Conditional mutation reports a compare mismatch** -> The provider made no
   write. Append the mandatory read and classify the attempt as already Done,
   conflict, or provider-proved `no_effect`; never automatically call again.
@@ -524,6 +569,12 @@ mutation.
 - **Manual occurrence repair is incomplete or interleaved by another state
   change** -> Do not accept it. Refresh the baseline under another authenticated
   recovery action; never splice deliveries from different sequences or actors.
+- **A repair delivery has the wrong actor type or id** -> Retain it in the
+  inbox, but do not advance the repair. Every accepted delivery must be
+  user-authored by the frozen, provider-verified `repair_actor_id`.
+- **The selected repair actor cannot be resolved as an authorized Linear
+  user** -> Do not open the repair or accept any delivery. Save a typed repair
+  configuration fault and let staff select a verifiable actor.
 - **A stale Done read predates accepted evidence** -> Reject it for terminal
   success and perform a new `terminal_read` after evidence.
 - **A later inbox revision exists at terminal commit** -> Reject the commit,
@@ -558,9 +609,10 @@ mutation.
   another mutation, retry dispatch or redelivery, and retain manual occurrence
   repair for expired or persistently unknowable evidence.
 - **[Risk] Manual occurrence repair asks staff to make one or two deliberate
-  Linear state changes** -> Restrict it to unavailable evidence, require an
-  audited baseline plus the exact signed user event sequence, and never rerun
-  completed workflow work or represent the old operation as confirmed.
+  Linear state changes** -> Restrict it to unavailable evidence or explicit
+  conflict recovery, require an audited baseline plus the exact signed event
+  sequence from the provider-verified user, and never rerun completed workflow
+  work or represent an old operation as confirmed.
 - **[Risk] Additive action, attempt, and observation rows increase D1 writes**
   -> Keep one compact logical row and append bounded attempt and read facts;
   reuse existing transport and inbox history and store no raw provider bodies.
@@ -599,9 +651,9 @@ mutation.
    ambiguous applied and no-effect calls, persistently `still_unknown` manual
    repair, correlator mismatch, replay-only correlator recovery, same-state
    re-entry, compare mismatch, missing and expired delivery, manual occurrence
-   repair, stale Done observation, later provider revision, lost dispatch,
-   concurrent claim, premature Workflow completion, replacement retry, and
-   terminal conflict.
+   repair, conflict repair, wrong repair actor, stale Done observation, later
+   provider revision, lost dispatch, concurrent claim, premature Workflow
+   completion, replacement retry, and terminal conflict.
 6. Before enabling the definition, use the real test issue to capture
    provider-originated proof: the app actor performs the conditional move, a
    stale occurrence is rejected without changing the issue, a lost response
