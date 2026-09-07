@@ -24,7 +24,7 @@ import {
   codexReviewArgs,
   codexSessionId,
   MAXIMUM_PROOF_REPAIRS,
-  parseCodexFinalMessage,
+  recoverCodexReview,
   proofRepairPrompt,
   reviewPromptWithSchema,
   reviewResultPayload,
@@ -63,11 +63,11 @@ const run = (command, args, options = {}) => new Promise((resolve, reject) => {
   let stdout = "";
   let stderr = "";
   child.stdout.on("data", (chunk) => {
-    stdout = `${stdout}${chunk}`.slice(-1_000_000);
+    stdout += chunk;
     if (options.forward) process.stdout.write(chunk);
   });
   child.stderr.on("data", (chunk) => {
-    stderr = `${stderr}${chunk}`.slice(-1_000_000);
+    stderr += chunk;
     if (options.forward) process.stderr.write(chunk);
   });
   child.once("error", reject);
@@ -118,7 +118,10 @@ const codexJudgment = async ({
     throw new Error("proof repair resumed a different reviewer session");
   }
   const finalMessage = await readFile(destination, "utf8");
-  const result = parseCodexFinalMessage(finalMessage);
+  const outputSchema = JSON.parse(await readFile(schema, "utf8"));
+  const recovered = recoverCodexReview(execution.stdout, finalMessage, outputSchema.required ?? []);
+  process.stderr.write(`review JSON source: offset=${recovered.messageOffset}, recovered=${recovered.recovered}\n`);
+  const result = recovered.raw;
   return {
     result,
     sessionId: observedSessionId,

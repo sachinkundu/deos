@@ -194,7 +194,7 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 21);
+  assert.equal(definition.version, 22);
   assert.equal(definition.nodes.publish_design.edges.review_feedback_changed, "design_revision_author");
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
@@ -215,12 +215,14 @@ test("traceability planning definition freezes reviewers and keeps publication t
   assert.equal(definition.nodes.planning_author.edges.completed, "self_discovery");
   assert.equal(definition.nodes.start_new_review_round.edges.completed, "planning_revision_author");
   assert.equal(definition.nodes.planning_revision_author.type, "agent");
-  assert.equal(definition.nodes.planning_revision_author.edges.completed, "publish_update");
+  assert.equal(definition.nodes.planning_revision_author.edges.completed, "publish_planning_revision");
+  assert.equal(definition.nodes.publish_planning_revision.edges.completed, "independent_discovery");
   assert.equal(definition.nodes.planning_author.edges.invalid_candidate, "agent_failed");
   assert.equal(definition.nodes.planning_self_repair.edges.invalid_candidate, "agent_failed");
   assert.equal(definition.nodes.planning_independent_response.edges.invalid_candidate, "agent_failed");
   assert.equal(definition.nodes.independent_discovery.edges.pass, "planning_independent_response");
-  assert.equal(definition.nodes.publish_update.edges.completed, "final_trace");
+  assert.equal(definition.nodes.publish_update.edges.completed, "publish_author_response");
+  assert.equal(definition.nodes.publish_design_response.edges.completed, "design_review");
   assert.equal(definition.nodes.final_trace.type, "agent");
   assert.equal(definition.nodes.final_trace.type === "agent" ? definition.nodes.final_trace.job : null, "independent_discovery");
   assert.deepEqual(definition.nodes.final_trace.edges, {
@@ -238,14 +240,12 @@ test("traceability planning definition freezes reviewers and keeps publication t
       definition.nodes.start_new_review_round.edges.completed,
       definition.nodes.planning_revision_author.edges.completed,
       definition.nodes.publish_update.edges.completed,
-      definition.nodes.final_trace.edges.pass,
       definition.nodes.publish_author_response.edges.completed,
     ],
     [
       "start_new_review_round",
       "planning_revision_author",
-      "publish_update",
-      "final_trace",
+      "publish_planning_revision",
       "publish_author_response",
       "planning_review",
     ],

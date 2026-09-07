@@ -1453,8 +1453,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     const designReviews = new D1DesignReviewStore(this.env.DB);
     if (
       gateKind === "design" && run.definition_id === "simple-traceability" &&
-      run.definition_version >= 19 && !await designReviews.eligible(run.run_id)
-    ) throw new Error("design human gate requires current exact-head review proof");
+      run.definition_version >= 19 && !await designReviews.eligible(run.run_id, run.definition_version >= 22)
+    ) throw new Error("design human gate requires accepted review and author response proof");
     await new D1HumanGateStore(this.env.DB).bind({
       runId: run.run_id,
       visitSequence: run.current_visit_sequence,
@@ -1470,6 +1470,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         runId: run.run_id,
         visitSequence: run.current_visit_sequence,
         now: new Date().toISOString(),
+        singleIndependentCycle: run.definition_version >= 22,
       });
     }
     return this.linear.ensureHumanGate(run, node);

@@ -34,7 +34,7 @@ export const parseCodexFinalMessage = (message) => {
 
 // Recover only from the last three assistant messages of the completed turn.
 // Tool output, reasoning, and messages from previous turns are never candidates.
-export const recoverCodexReview = (stdout, finalMessage) => {
+export const recoverCodexReview = (stdout, finalMessage, fields = ["findings"]) => {
   let messages = [];
   let completed = false;
   for (const line of stdout.split("\n")) {
@@ -49,7 +49,8 @@ export const recoverCodexReview = (stdout, finalMessage) => {
   if (completed) {
     for (const [offset, message] of messages.slice(-3).reverse().entries()) {
       const raw = parseCodexFinalMessage(message);
-      if (raw !== null && typeof raw === "object" && !Array.isArray(raw) && Array.isArray(raw.findings)) {
+      if (raw !== null && typeof raw === "object" && !Array.isArray(raw) &&
+          fields.every(field => Object.hasOwn(raw, field))) {
         return { raw, messageOffset: offset, recovered: offset > 0 };
       }
     }

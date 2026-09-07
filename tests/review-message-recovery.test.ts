@@ -29,3 +29,15 @@ test("does not backtrack through an incomplete turn and prefers newest review", 
   const newer = { outcome: "pass", findings: [] };
   assert.deepEqual(recoverCodexReview(transcript([JSON.stringify(review), JSON.stringify(newer)]), JSON.stringify(newer)).raw, newer);
 });
+
+test("planning directional reviews and self-rechecks recover their own JSON structures", () => {
+  for (const review of [
+    { proposalStatements: [{ proposalLine: 1, coverage: "sufficient" }] },
+    { capabilities: [{ path: "spec.md", links: [] }] },
+    { mode: "recheck", baselineFindingSetDigest: "digest", resolutions: [] },
+  ]) {
+    const result = recoverCodexReview(transcript([JSON.stringify(review), "Review complete"]),
+      "Review complete", Object.keys(review));
+    assert.deepEqual(result, { raw: review, messageOffset: 1, recovered: true });
+  }
+});

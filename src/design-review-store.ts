@@ -303,7 +303,42 @@ export class D1DesignReviewStore {
     return true;
   }
 
-  async eligible(runId: string): Promise<boolean> {
+  // A review is of the pre-response design. Preserve that evidence while binding
+  // the human gate to the published author response, without another model call.
+  private async authorResponseReview(runId: string): Promise<string | null> {
+    const row = await this.database.prepare(
+      `SELECT review.review_attempt_id
+       FROM design_review_rounds round
+       JOIN design_candidates candidate ON candidate.run_id = round.run_id
+         AND candidate.round = round.round_no AND candidate.state = 'validated'
+       JOIN agent_attempts author ON author.attempt_id = candidate.source_attempt_id
+         AND author.state = 'completed' AND author.cleanup_state = 'destroyed'
+       JOIN design_work_products work ON work.run_id = round.run_id
+         AND json_extract(work.design_manifest_json, '$[0].sha256') = candidate.design_digest
+       JOIN design_review_attempts review ON review.round_id = round.round_id
+         AND review.phase = 'independent' AND review.accepted = 1 AND review.outcome = 'concerns'
+         AND review.pr_database_id = work.pull_request_database_id
+       WHERE round.run_id = ? AND round.status IN ('active', 'human_revision', 'ready_for_human')
+         AND candidate.candidate_id = (SELECT candidate_id FROM design_candidates
+           WHERE run_id = round.run_id AND round = round.round_no AND state = 'validated'
+           ORDER BY created_at DESC, candidate_id DESC LIMIT 1)
+         AND review.review_attempt_id = (SELECT review_attempt_id FROM design_review_attempts
+           WHERE round_id = round.round_id AND phase = 'independent' AND accepted = 1
+           ORDER BY completed_at DESC LIMIT 1)
+         AND EXISTS (SELECT 1 FROM design_review_findings WHERE review_attempt_id = review.review_attempt_id)
+         AND NOT EXISTS (SELECT 1 FROM design_review_findings finding
+           WHERE finding.review_attempt_id = review.review_attempt_id AND NOT EXISTS (
+             SELECT 1 FROM design_review_dispositions disposition
+             WHERE disposition.review_attempt_id = review.review_attempt_id
+               AND disposition.finding_id = finding.finding_id
+               AND disposition.resulting_candidate_id = candidate.candidate_id
+               AND disposition.author_attempt_id = author.attempt_id))
+       ORDER BY round.round_no DESC LIMIT 1`,
+    ).bind(runId).first<{ review_attempt_id: string }>();
+    return row?.review_attempt_id ?? null;
+  }
+
+  async eligible(runId: string, singleIndependentCycle = false): Promise<boolean> {
     const current = await this.database.prepare(
       `SELECT round.round_id, round.self_required, round.author_model, round.author_reasoning,
               round.outside_model, round.outside_reasoning, candidate.candidate_id,
@@ -372,6 +407,8 @@ export class D1DesignReviewStore {
          AND state IN ('pending', 'starting', 'running', 'collecting')`,
     ).bind(runId).first<{ count: number }>();
     return designReviewGateEligible({
+      authorResponseAccepted: singleIndependentCycle &&
+        await this.authorResponseReview(runId) !== null,
       selfRequired: current.self_required === 1,
       selfWaived: waiver !== null,
       selfAccepted: self === null ? null : { candidateId: self.candidate_id, outcome: self.outcome },
@@ -390,8 +427,9 @@ export class D1DesignReviewStore {
     });
   }
 
-  async bindGate(input: { runId: string; visitSequence: number; now: string }): Promise<void> {
-    if (!await this.eligible(input.runId)) throw new Error("design review proof is not current");
+  async bindGate(input: { runId: string; visitSequence: number; now: string; singleIndependentCycle?: boolean }): Promise<void> {
+    if (!await this.eligible(input.runId, input.singleIndependentCycle)) throw new Error("design review proof is not current");
+    const responseReview = input.singleIndependentCycle ? await this.authorResponseReview(input.runId) : null;
     const proof = await this.database.prepare(
       `SELECT round.round_id, round.self_required, work.pull_request_database_id,
               work.head_sha, independent.review_attempt_id AS independent_review_attempt_id,
@@ -403,15 +441,15 @@ export class D1DesignReviewStore {
         AND candidate.round = round.round_no AND candidate.state = 'validated'
        JOIN design_review_attempts independent ON independent.round_id = round.round_id
         AND independent.phase = 'independent' AND independent.accepted = 1
-        AND independent.candidate_id = candidate.candidate_id
         AND independent.pr_database_id = work.pull_request_database_id
-        AND independent.head_sha = work.head_sha
+        AND ((independent.candidate_id = candidate.candidate_id AND independent.head_sha = work.head_sha)
+          OR independent.review_attempt_id = ?)
        LEFT JOIN design_review_attempts self ON self.round_id = round.round_id
         AND self.phase = 'self' AND self.accepted = 1 AND self.outcome = 'pass'
        WHERE round.run_id = ?
        ORDER BY round.round_no DESC, candidate.created_at DESC,
                 independent.completed_at DESC LIMIT 1`,
-    ).bind(input.runId).first<{
+    ).bind(responseReview, input.runId).first<{
       round_id: string;
       self_required: number;
       pull_request_database_id: string;

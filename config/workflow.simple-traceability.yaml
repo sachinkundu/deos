@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: simple-traceability
-  version: 21
+  version: 22
 spec:
   start: claim_issue
   execution:
@@ -114,7 +114,11 @@ spec:
     planning_revision_author:
       type: agent
       job: planning_author
-      edges: {completed: publish_update, invalid_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+      edges: {completed: publish_planning_revision, invalid_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+    publish_planning_revision:
+      type: system_action
+      action: github.publish_planning_candidate
+      edges: {completed: independent_discovery, failed: system_action_failed}
     self_discovery:
       type: agent
       job: self_discovery
@@ -142,8 +146,9 @@ spec:
     publish_update:
       type: system_action
       action: github.publish_planning_candidate
-      edges: {completed: final_trace, failed: system_action_failed}
+      edges: {completed: publish_author_response, failed: system_action_failed}
     final_trace:
+      # Retained for saved retry identities; normal v22 paths never dispatch it.
       type: agent
       job: independent_discovery
       edges: {pass: publish_author_response, findings: publish_author_response, needs_judgment: publish_author_response, proof_conflict: publish_author_response, blocked: agent_blocked, failed: agent_failed}
@@ -214,8 +219,9 @@ spec:
     publish_design_response:
       type: system_action
       action: github.publish_design_candidate
-      edges: {completed: design_final_review, unchanged: design_review, review_feedback_changed: design_revision_author, failed: system_action_failed}
+      edges: {completed: design_review, unchanged: design_review, review_feedback_changed: design_revision_author, failed: system_action_failed}
     design_final_review:
+      # Retained for saved retry identities; normal v22 paths never dispatch it.
       type: agent
       job: design_independent_review
       edges: {pass: design_review, concerns: design_independent_response, blocked: agent_blocked, failed: agent_failed}
