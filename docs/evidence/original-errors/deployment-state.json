@@ -1,0 +1,13 @@
+{
+  "workerVersion": "2739ce10-4b9c-445b-bdf3-4d4ede7d0652",
+  "workerTrafficPercent": 100,
+  "portalVersion": "fa817ce3-c413-435f-8c92-efa70780e704",
+  "portalTrafficPercent": 100,
+  "ingressVersion": "a51a6f99-9256-4088-ac3e-a5a941d61ace",
+  "containerImage": "sha256:b8c1bd7171c1eac0a3477ce515d436cf5749290feef4a32442cb881c17a4d6bc",
+  "healthyContainerInstances": 4,
+  "failedContainerInstances": 0,
+  "sac160State": "failed",
+  "sac160Node": "system_action_failed",
+  "sac160UpdatedAt": "2026-09-07T13:30:18.732Z"
+}
