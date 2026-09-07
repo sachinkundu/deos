@@ -143,6 +143,23 @@ export const routePortalRequest = async (
     return json(message === "forbidden" ? 403 : 401, { error: message === "authentication unavailable" ? "authentication_unavailable" : "unauthorized" });
   }
   const url = new URL(request.url);
+  const detailPage = url.pathname.match(/^\/failure-detail\/([0-9a-f-]{36})$/i);
+  if (detailPage !== null && request.method === "GET") {
+    const escape = (text: string): string => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    let text: string;
+    let status = 200;
+    try {
+      const row = await env.DB.prepare("SELECT detail_r2_key FROM workflow_errors WHERE error_id = ?")
+        .bind(detailPage[1]).first<{ detail_r2_key: string }>();
+      if (row === null) throw new Error("Original error not found");
+      const object = await env.ARTIFACTS.get(row.detail_r2_key);
+      if (object === null) throw new Error(`Original error object is missing: ${row.detail_r2_key}`);
+      text = JSON.stringify(JSON.parse(await object.text()), null, 2);
+    } catch (error) { status = 503; text = errorText(error); }
+    return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><title>DEOS original error</title><body><h1>Original error</h1><p>Full saved message, stack, causes, and provider details.</p><pre>${escape(text)}</pre></body></html>`, {
+      status, headers: { ...securityHeaders, "Content-Type": "text/html; charset=utf-8" },
+    });
+  }
   if (!url.pathname.startsWith("/api/")) {
     if (!["GET", "HEAD"].includes(request.method)) return json(405, { error: "method_not_allowed" });
     const assetPath = url.pathname === "/"

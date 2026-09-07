@@ -509,7 +509,7 @@ export class PortalReadStore {
       FROM agent_attempts WHERE run_id = ? AND state IN ('failed', 'timed_out', 'rejected')
       ORDER BY updated_at DESC`).bind(runId).all();
     return {
-      errors: errorRows.results.map((row) => ({ ...row, detailUrl: `/api/diagnostics/${row.id}` })),
+      errors: errorRows.results.map((row) => ({ ...row, detailUrl: `/failure-detail/${row.id}` })),
       legacyErrors: [...legacyErrors.results, ...attemptErrors.results],
       issue: issueDto(issueRow),
       run: {
