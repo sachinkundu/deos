@@ -203,7 +203,11 @@ allocated
   -> preflight_failed_no_call
   -> matched_done -> awaiting_terminal_read -> complete
   -> claimed -> applied -> awaiting_evidence -> awaiting_terminal_read -> complete
+             |          -> awaiting_provider_redelivery -> awaiting_terminal_read
+             |                                          -> awaiting_evidence
+             |                                             -> superseded_by_manual_done_occurrence
              -> uncertain -> applied | no_effect | still_unknown
+                          -> awaiting_provider_redelivery
              -> no_effect
 still_unknown -> awaiting_evidence -> superseded_by_manual_done_occurrence
               -> awaiting_terminal_read -> complete
@@ -216,21 +220,43 @@ saved Done state changes it to `matched_done` only when the action has no prior
 possibly effective call; this is settled no-call evidence and leads to a new
 terminal read without waiting for a mutation webhook. A definitive
 conditional mismatch or rejection becomes settled `no_effect`. An ambiguous
-call remains `uncertain` or `still_unknown` and is not settled. `complete`
-means its accepted evidence and final observation have been committed with
-the action.
+call remains `uncertain` or `still_unknown` and is not settled. An `applied`
+attempt first enters `awaiting_evidence` while normal signed delivery is
+pending. It enters `awaiting_provider_redelivery` when a Done read and a saved
+correlator identify the exact event, but that event has not arrived. An
+`uncertain` attempt may enter the same state only after it has that correlator;
+otherwise it remains `still_unknown`. A matched redelivery advances directly
+to `awaiting_terminal_read`. If the event is unavailable, starting manual
+occurrence repair changes the attempt back to `awaiting_evidence` for the new
+user-authored sequence. `complete` means its accepted evidence and final
+observation have been committed with the action.
+
+The action status is a summary of the current attempt and the operator path.
+Every status change occurs in the same guarded D1 transaction as the attempt
+change that causes it:
+
+| Action status | Entry and exit rule |
+| --- | --- |
+| `pending` | The action exists, but no call is claimed. It covers a new `allocated` attempt and the no-call `matched_done` path. Claiming a call moves it to `in_flight`; a settled preflight fault moves it to `retryable_failure`. |
+| `in_flight` | The current attempt is `claimed`, `applied`, `awaiting_evidence` without a manual repair, or `awaiting_terminal_read`, and the Workflow can still make local progress. A call with an unclear result moves it to `awaiting_reconciliation`. A missing exact event moves it to `awaiting_provider_redelivery`. |
+| `awaiting_reconciliation` | The attempt is `uncertain` or `still_unknown`, so only same-key lookup, replay, read, or event recovery may run. Proven application returns to `in_flight`; proven `no_effect` moves to `retryable_failure`; exhausted recovery can enter `manual_done_occurrence_repair`. |
+| `awaiting_provider_redelivery` | The attempt is also `awaiting_provider_redelivery`; a Done occurrence and exact correlator are saved, but the signed event is missing. A matched event moves the action to `in_flight` for the terminal read. An unavailable event can move it to `manual_done_occurrence_repair`. |
+| `manual_done_occurrence_repair` | An authenticated repair is open and the attempt is `awaiting_evidence` for its saved user-authored sequence. Complete repair returns to `in_flight` for the terminal read. A broken sequence stays here with a typed repair fault. |
+| `conflict` | A fresh read differs from the frozen source occurrence and is not an acceptable Done occurrence. Only an authenticated retry after staff repair can leave this status. |
+| `retryable_failure` | No call escaped, provider proof says `no_effect`, or a later read or terminal step failed safely. A permitted staff retry reuses the action and either reopens the same attempt or allocates the next one under the rules below. |
+| `succeeded` | The attempt is `complete`, the graph is at `done`, and the run outcome is `succeeded`. This status is terminal. |
 
 An exact Workflow replay reuses any open `allocated`, `claimed`, `uncertain`,
-`applied`, `awaiting_evidence`, `matched_done`, or `awaiting_terminal_read`
-attempt. It does not allocate another number or issue a different logical
-mutation. Only initial entry or an authenticated staff retry after a settled
-`preflight_failed_no_call` or `no_effect` attempt may allocate the next
-attempt. A persistently `still_unknown` attempt never permits a second app
-mutation; after bounded same-key lookup, replay, and exact-event recovery are
-exhausted, an authenticated operator may move that same attempt into
-`awaiting_evidence` by starting manual occurrence repair. This makes recovery
-from preflight failures and unknowable effects explicit without risking a
-second call after an ambiguous effect.
+`applied`, `awaiting_evidence`, `awaiting_provider_redelivery`, `matched_done`,
+or `awaiting_terminal_read` attempt. It does not allocate another number or
+issue a different logical mutation. Only initial entry or an authenticated
+staff retry after a settled `preflight_failed_no_call` or `no_effect` attempt
+may allocate the next attempt. A persistently `still_unknown` attempt never
+permits a second app mutation; after bounded same-key lookup, replay, and
+exact-event recovery are exhausted, an authenticated operator may move that
+same attempt into `awaiting_evidence` by starting manual occurrence repair.
+This makes recovery from preflight failures and unknowable effects explicit
+without risking a second call after an ambiguous effect.
 
 The existing provider-operation log retains every bounded transport result
 for exact-idempotency replay or operation-status lookup. Append-only
@@ -244,28 +270,32 @@ monotonic DEOS runs.
 1. The Workflow advances through a reviewed edge into
    `finalize_linear_done`. A guarded transaction reloads D1 authority, creates
    or reuses the action under its stable key, and allocates or reloads the
-   initial `allocated` attempt.
+   initial `allocated` attempt. The action is `pending`.
 2. The adapter resolves the saved `Done` target for the issue's Linear team and
    stores its provider id. A missing or ambiguous target settles the attempt as
    `preflight_failed_no_call`, saves a configuration fault, and performs no
-   mutation.
+   mutation. The action becomes `retryable_failure`.
 3. The adapter performs a strongly consistent pre-call issue read and appends
    the state id, occurrence token, and issue revision. A failed read settles
-   the attempt as `preflight_failed_no_call`. If the action has no prior
-   possibly effective call and the issue is already in the saved Done state,
-   it atomically changes the attempt to `matched_done`, saves that no-call
-   evidence, and proceeds to a new `terminal_read`. If state or occurrence
-   differs from the frozen source occurrence, it records a conflict and makes
-   no call.
+   the attempt as `preflight_failed_no_call` and the action as
+   `retryable_failure`. If the action has no prior possibly effective call and
+   the issue is already in the saved Done state, it atomically changes the
+   attempt to `matched_done`, saves that no-call evidence, and proceeds to a
+   new `terminal_read`. If state or occurrence differs from the frozen source
+   occurrence, it records the attempt observation, changes the action to
+   `conflict`, and makes no call.
 4. If both source values match, D1 atomically changes the attempt from
    `allocated` to `claimed` and sets `call_claimed_at`. The trusted adapter asks
    Linear to move the issue to the saved Done state using the app actor, the
    attempt's idempotency key, and the provider's atomic compare over source
-   state plus occurrence. It stores every bounded request result.
+   state plus occurrence. It stores every bounded request result. The same
+   claim transaction changes the action from `pending` to `in_flight`.
 5. After every call outcome, including rejection or timeout, the adapter reads
    the issue and appends an observation linked to the same attempt. A failed
    read is retained and never converted into success. A compare mismatch
-   cannot write and becomes already Done or conflict only after this read.
+   cannot write and becomes already Done or conflict only after this read. An
+   unclear effect changes the action to `awaiting_reconciliation`; a proved
+   no-effect outcome that is safe to retry changes it to `retryable_failure`.
 6. Signed webhook ingress preserves the existing HMAC, millisecond timestamp,
    `Linear-Delivery`, and HTTP 200 rules. For a delivery that passes the exact
    matching rule above, the inbox transaction creates or reuses a durable
@@ -281,18 +311,23 @@ monotonic DEOS runs.
    verified operation lookup or exact-key replay classifies it as applied,
    rejected/no-effect, or still unknown. `no_effect` permits a later
    staff-authorized attempt only if a fresh read still shows the exact frozen
-   source occurrence. `applied` saves the provider correlator and waits for the
-   exact signed delivery. `still_unknown` prohibits another mutation. After
-   bounded provider lookup, same-key replay, retained-event lookup, and
-   redelivery are exhausted, an authenticated operator may start manual
-   occurrence repair on that same `still_unknown` attempt; the guarded
-   transition changes it to `awaiting_evidence` and never classifies the old
-   call as applied or no-effect.
+   source occurrence. While the result is `uncertain` or `still_unknown`, the
+   action is `awaiting_reconciliation`. `applied` saves the provider correlator
+   and returns the action to `in_flight` while it waits for the exact signed
+   delivery. Provider-proved `no_effect` changes it to `retryable_failure`.
+   `still_unknown` prohibits another mutation. After bounded provider lookup,
+   same-key replay, retained-event lookup, and redelivery are exhausted, an
+   authenticated operator may start manual occurrence repair on that same
+   `still_unknown` attempt; the guarded transition changes the attempt to
+   `awaiting_evidence` and the action to `manual_done_occurrence_repair`. It
+   never classifies the old call as applied or no-effect.
 9. If an applied or possibly effective call is read in Done but its exact
    delivery is absent, the action records the correlator when available and
-   enters `awaiting_provider_redelivery`. Authorized staff may request lookup
-   or redelivery of that exact retained event. Only its correctly signed
-   request can prove the old attempt.
+   both the attempt and action enter `awaiting_provider_redelivery`. Authorized
+   staff may request lookup or redelivery of that exact retained event. Only
+   its correctly signed request can prove the old attempt. A matched event
+   changes the attempt to `awaiting_terminal_read` and the action to
+   `in_flight`; an unavailable event can enter manual occurrence repair.
 10. If the event has expired, cannot be redelivered, its correlator cannot be
     recovered, or a `still_unknown` attempt has exhausted bounded provider
     reconciliation, staff can start `manual_done_occurrence_repair`. The
@@ -316,16 +351,16 @@ monotonic DEOS runs.
 11. After operation and exact-delivery evidence, the complete manual occurrence
     repair, or a `matched_done` no-call observation is stored, the finalizer
     changes the attempt to `awaiting_terminal_read` and performs a new strongly
-    consistent `terminal_read`. This read must start after the accepted
-    evidence, second repair delivery, or `matched_done` observation. For an
-    attempted or repaired move it must return the exact Done occurrence and
-    monotonic issue revision established by that evidence. For `matched_done`,
-    it must return the same Done occurrence observed by the no-call read with a
-    revision no older than that observation. A Done read taken earlier in the
-    attempt cannot be reused.
+    consistent `terminal_read`. The same transaction changes the action to
+    `in_flight`. This read must start after the accepted evidence, second repair
+    delivery, or `matched_done` observation. For an attempted or repaired move
+    it must return the exact Done occurrence and monotonic issue revision
+    established by that evidence. For `matched_done`, it must return the same
+    Done occurrence observed by the no-call read with a revision no older than
+    that observation. A Done read taken earlier in the attempt cannot be reused.
 12. One guarded D1 batch accepts only that `terminal_read`, verifies that no
     inbox state-change row for the issue has a later provider revision, marks
-    the attempt complete and the action succeeded, advances the graph to
+    the attempt `complete` and the action `succeeded`, advances the graph to
     `done`, and commits the run's `succeeded` business outcome. A provider
     change after the terminal read is a new external action outside this
     completion boundary; a change already visible at or before the read cannot
@@ -374,7 +409,7 @@ records.
 | --- | --- |
 | `action_key`, `attempt_number` | Composite primary key and replay identity. |
 | `provider_operation_id`, `provider_idempotency_key` | Stable identity for all transport requests reconciling this attempt. |
-| `claim_state` | `allocated`, `preflight_failed_no_call`, `matched_done`, `claimed`, `uncertain`, `applied`, `no_effect`, `still_unknown`, `awaiting_evidence`, `awaiting_terminal_read`, `superseded_by_manual_done_occurrence`, or `complete`. |
+| `claim_state` | `allocated`, `preflight_failed_no_call`, `matched_done`, `claimed`, `uncertain`, `applied`, `no_effect`, `still_unknown`, `awaiting_evidence`, `awaiting_provider_redelivery`, `awaiting_terminal_read`, `superseded_by_manual_done_occurrence`, or `complete`. |
 | `call_claimed_at`, `call_started_at`, `call_outcome`, `call_finished_at` | Mutation claim and bounded result; null claim/start proves a preflight failure or matched-Done path made no call. |
 | `provider_transition_id`, `result_occurrence_token`, `result_issue_revision`, `delivery_id` | Exact provider correlation and signed-delivery evidence. |
 | `settled_at`, `created_at`, `updated_at` | Retry guard and chronology. |
