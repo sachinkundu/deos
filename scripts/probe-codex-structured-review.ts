@@ -14,6 +14,9 @@ const model = "deepseek/deepseek-v4-pro";
 const directory = mkdtempSync(`${tmpdir()}/deos-codex-contract-`);
 writeFileSync(`${directory}/schema.json`, JSON.stringify(designReviewOutputSchema));
 const env = parseEnv(readFileSync(".env", "utf8"));
+// Diagnostic-only endpoint comparison; production routing is unchanged.
+const probeProvider = process.env.PROBE_PROVIDER;
+assert.ok(probeProvider === undefined || ["baidu", "venice", "fireworks"].includes(probeProvider));
 const client = new OpenRouterReviewClient({
   apiKey: env.OPENROUTER_API_KEY ?? "", supportedModels: [model],
   fetcher: (url, init) => {
@@ -24,11 +27,12 @@ const client = new OpenRouterReviewClient({
     assert.equal(body.text.format.strict, true);
     assert.deepEqual(body.text.format.schema, designReviewOutputSchema);
     assert.deepEqual(body.provider, { require_parameters: true, only: ["baidu"] });
-    // Inspect only: do not rewrite the production adapter's request in this test.
-    return fetch(url, { ...init, signal: AbortSignal.timeout(180_000) });
+    // Default verifies production unchanged. Comparison mode changes only the host.
+    if (probeProvider) body.provider.only = [probeProvider];
+    return fetch(url, { ...init, ...(probeProvider ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(180_000) });
   },
 });
-console.log(JSON.stringify({ harness: "0.147.0", model, workflowStarted: false }));
+console.log(JSON.stringify({ harness: "0.147.0", model, provider: probeProvider ?? "baidu", workflowStarted: false }));
 const marker = randomUUID();
 writeFileSync(`${directory}/probe-input.txt`, marker);
 let toolCalls = 0;

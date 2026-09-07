@@ -6,6 +6,17 @@ Run from the repository root before deploying review transport changes:
 node --experimental-strip-types scripts/probe-codex-structured-review.ts
 ```
 
+To compare another endpoint without changing production routing:
+
+```sh
+PROBE_PROVIDER=venice node --experimental-strip-types scripts/probe-codex-structured-review.ts
+PROBE_PROVIDER=fireworks node --experimental-strip-types scripts/probe-codex-structured-review.ts
+```
+
+Comparison mode changes only `provider.only` after checking the production
+request. It preserves the model, schema, tools, streaming, and strict parameter
+requirement. Without `PROBE_PROVIDER`, the request is forwarded unchanged.
+
 This is a small paid OpenRouter test, not an offline dry run. It uses the
 repository's `.env` key, the production Codex version (0.147.0), the production
 argument builder, and the exact design-review output schema. The API key stays
@@ -39,3 +50,17 @@ This proves the request contract with a real model, not the quality or success
 of a full design review. Verify backend activation separately. SAC-156 remains
 an operator-controlled retry. If the pinned endpoint is unavailable, fail
 routing rather than silently fall back to an unverified host.
+
+## Endpoint comparison: 2026-09-07
+
+Both comparisons retained disabled hosted search and the strict review schema.
+Only the allowed provider changed. Each endpoint was tested twice.
+
+- Venice completed both requests but made zero fixture-read tool calls. The
+  preflight failed both times. Generation receipts:
+  `gen-1788757727-XPPvNvfgrsYYNehcqi42` and
+  `gen-1788757784-v5a75MMJdnkSNVgfrLco`.
+- Fireworks returned HTTP 404 (`Provider returned error`) both times, before a
+  completed response. These failures do not prove permanent incompatibility.
+- Neither endpoint qualifies for the review allowlist from these tests.
+  Production routing was not changed.
