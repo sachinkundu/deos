@@ -215,7 +215,9 @@ An attempt follows this explicit lifecycle:
 allocated
   -> preflight_failed_no_call
   -> matched_done -> awaiting_terminal_read -> complete
-  -> awaiting_evidence -> superseded_by_manual_done_occurrence
+  -> awaiting_evidence (authenticated conflict repair after a fresh
+                        non-Done baseline only)
+                       -> superseded_by_manual_done_occurrence
                        -> awaiting_terminal_read -> complete
   -> claimed -> applied -> awaiting_evidence -> awaiting_terminal_read -> complete
              |          -> awaiting_provider_redelivery -> awaiting_terminal_read
@@ -260,7 +262,7 @@ change that causes it:
 | `awaiting_provider_redelivery` | The attempt is also `awaiting_provider_redelivery`; a Done occurrence and exact correlator are saved, but the signed event is missing. A matched event moves the action to `in_flight` for the terminal read. An unavailable event can move it to `manual_done_occurrence_repair`. |
 | `manual_done_occurrence_repair` | An authenticated repair is open and the attempt is `awaiting_evidence` for its saved user-authored sequence. Complete repair returns to `in_flight` for the terminal read. A broken sequence stays here with a typed repair fault. |
 | `conflict` | A fresh read differs from the frozen source occurrence and is not an acceptable Done occurrence. The finalizer never restores or writes over it. An authenticated conflict-repair start either accepts a fresh Done occurrence through `matched_done` when no call may have escaped, or freezes the current non-Done occurrence and enters `manual_done_occurrence_repair` for an explicit user-authored move to Done. Choosing to preserve the current state leaves the action in `conflict`. |
-| `retryable_failure` | No call escaped, provider proof says `no_effect`, or a later read or terminal step failed safely. A permitted staff retry reuses the action and either reopens the same attempt or allocates the next one under the rules below. |
+| `retryable_failure` | No call escaped, provider proof says `no_effect`, or a later read or terminal step failed safely. A permitted staff retry reuses the action. It resumes the current open attempt after a later read or terminal-step fault, and allocates the next attempt only after settled `preflight_failed_no_call` or provider-proved `no_effect`. |
 | `succeeded` | The attempt is `complete`, the graph is at `done`, and the run outcome is `succeeded`. This status is terminal. |
 
 An exact Workflow replay reuses any open `allocated`, `claimed`, `uncertain`,
@@ -386,6 +388,10 @@ monotonic DEOS runs.
     established by that evidence. For `matched_done`, it must return the same
     Done occurrence observed by the no-call read with a revision no older than
     that observation. A Done read taken earlier in the attempt cannot be reused.
+    If the terminal read fails or is malformed, the transaction retains
+    `awaiting_terminal_read`, changes the action to `retryable_failure`, and
+    appends the failed observation. An authenticated retry resumes the same
+    attempt and performs only a new terminal read.
 12. One guarded D1 batch accepts only that `terminal_read`, verifies that no
     inbox state-change row for the issue has a later provider revision, marks
     the attempt `complete` and the action `succeeded`, advances the graph to
@@ -469,11 +475,16 @@ an immutable link without creating another source of truth.
 
 The authenticated stage-retry route gets a finalizer-only eligibility branch.
 It accepts the run id and action identity, verifies the run remains at the same
-node and visit, and records the operator transition in the D1 batch that
-allocates a permitted next attempt. A `preflight_failed_no_call` attempt is
-settled because its null claim and start prove no mutation escaped. A timed-out
-operation is not settled; retry first performs lookup or exact-key replay on
-that same attempt. Only provider-proved `no_effect` permits another attempt.
+node and visit, and records the operator transition in the same guarded D1
+batch that either resumes the current open attempt or allocates a permitted
+next attempt. A later read or terminal-read fault leaves the attempt open;
+retry resumes its saved claim state and attempt number and performs only the
+missing read or reconciliation step. It does not reopen a settled attempt or
+issue another mutation. A `preflight_failed_no_call` attempt is settled
+because its null claim and start prove no mutation escaped, so an authenticated
+retry allocates the next attempt. A timed-out operation is not settled; retry
+first performs lookup or exact-key replay on that same attempt. Only
+provider-proved `no_effect` permits another attempt.
 
 The replacement Workflow reloads the current node, so upstream nodes do not
 execute again. Eligibility accepts a normally running finalizer and the
@@ -534,6 +545,12 @@ mutation.
 - **Pre-call read shows Done and no call may have escaped** -> Record
   `matched_done`, make no mutation, then require a second strongly consistent
   terminal read of the same occurrence before committing success.
+- **The terminal read after `matched_done` fails or is malformed** -> Keep the
+  attempt in `awaiting_terminal_read`, set the action to `retryable_failure`,
+  append the failed observation, and leave the run at the finalizer. An
+  authenticated retry resumes that same attempt and performs only a new
+  strongly consistent terminal read; it allocates no attempt and makes no
+  Linear mutation.
 - **Current state or occurrence differs from the frozen source** -> Append the
   observation and preserve the newer occurrence. Staff either leave the action
   in conflict or explicitly start conflict repair: accept a fresh Done through
