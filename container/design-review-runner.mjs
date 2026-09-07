@@ -10,6 +10,7 @@ import {
   codexSessionId,
   MAXIMUM_PROOF_REPAIRS,
   parseCodexFinalMessage,
+  recoverCodexReview,
   proofRepairPrompt,
   reviewPromptWithSchema,
   runBoundedProofReview,
@@ -39,7 +40,7 @@ const run = (command, args, options = {}) => new Promise((resolve, reject) => {
   let stdout = "";
   let stderr = "";
   child.stdout.on("data", (chunk) => {
-    stdout = `${stdout}${chunk}`.slice(-1_000_000);
+    stdout = `${stdout}${chunk}`;
     process.stdout.write(chunk);
   });
   child.stderr.on("data", (chunk) => {
@@ -190,8 +191,10 @@ const main = async () => {
         if (sessionId !== null && observedSessionId !== sessionId) {
           throw new Error("design proof repair changed reviewer session");
         }
+        const recovered = recoverCodexReview(execution.stdout, await readFile(resultPath, "utf8"));
+        process.stderr.write(`Review JSON source: ${JSON.stringify({ messageOffset: recovered.messageOffset, recovered: recovered.recovered })}\n`);
         return {
-          raw: parseCodexFinalMessage(await readFile(resultPath, "utf8")),
+          raw: recovered.raw,
           sessionId: observedSessionId,
         };
       },
