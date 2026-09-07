@@ -73,3 +73,9 @@ button { color:inherit; }
 .inspector-status.failed{color:var(--danger)}
 .phase-inspector .selected-evidence a{color:var(--blue)}
 .phase-inspector p a+a{margin-left:10px}
+
+.failure-panel { border: 1px solid #d75b60; border-left: 5px solid #d75b60; border-radius: 12px; padding: 20px; margin: 18px 0; background: color-mix(in srgb, #d75b60 7%, var(--panel, transparent)); }
+.failure-panel h2 { margin-top: 0; }
+.failure-panel h3 { font-size: 14px; }
+.failure-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.6 ui-monospace, monospace; }
+.failure-panel article + article { border-top: 1px solid #d75b6050; margin-top: 18px; padding-top: 12px; }

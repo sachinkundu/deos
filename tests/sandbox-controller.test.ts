@@ -1538,7 +1538,7 @@ test("post-collection validation failure preserves the completed manifest and fu
   assert.equal(state.collector.failureCollections, 0);
   assert.equal(state.attempts.latest?.state, "failed");
   assert.equal(state.attempts.latest?.result_class, "post_collection_validation_failed");
-  assert.equal(state.attempts.latest?.result_detail, detail.trim());
+  assert.equal(state.attempts.latest?.result_detail, detail);
   assert.equal(state.attempts.latest?.manifest_id, "manifest:attempt-1");
   assert.equal(state.factory.sandbox.destroyed, true);
 });

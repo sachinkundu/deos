@@ -494,7 +494,23 @@ export class PortalReadStore {
         outcome,
       })));
     const retry = portalRunRetry(run, attemptResult.results, transitions, retryRow);
+    const errorRows = await this.db.prepare(`SELECT error_id AS id, node_id AS nodeId,
+      step_name AS step, location, message, occurred_at AS occurredAt
+      FROM workflow_errors WHERE run_id = ? ORDER BY occurred_at DESC`).bind(runId).all();
+    const legacyErrors = await this.db.prepare(`SELECT operation.operation_id AS id,
+      operation.action AS step, operation.safe_error_category AS category,
+      diagnostic.safe_message AS message, operation.updated_at AS occurredAt
+      FROM provider_operations operation LEFT JOIN diagnostics diagnostic
+        ON diagnostic.diagnostic_id = operation.diagnostic_id
+      WHERE operation.run_id = ? AND operation.state IN ('failed', 'manual_reconciliation_required')
+      ORDER BY operation.updated_at DESC`).bind(runId).all();
+    const attemptErrors = await this.db.prepare(`SELECT attempt_id AS id, node_id AS step,
+      result_detail AS message, result_class AS category, updated_at AS occurredAt
+      FROM agent_attempts WHERE run_id = ? AND state IN ('failed', 'timed_out', 'rejected')
+      ORDER BY updated_at DESC`).bind(runId).all();
     return {
+      errors: errorRows.results.map((row) => ({ ...row, detailUrl: `/api/errors/${row.id}` })),
+      legacyErrors: [...legacyErrors.results, ...attemptErrors.results],
       issue: issueDto(issueRow),
       run: {
         id: run.run_id,
@@ -509,6 +525,7 @@ export class PortalReadStore {
         updatedAt: run.updated_at,
         endedAt: run.terminal_at,
         freshness: run.updated_at,
+        terminalCause: run.terminal_cause,
       },
       stages,
       connections,

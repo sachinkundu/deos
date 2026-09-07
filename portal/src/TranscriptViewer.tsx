@@ -1,3 +1,4 @@
+import { errorText } from "../../src/error-details.ts";
 import { useEffect, useMemo, useState } from "react";
 import {
   Check,
@@ -42,7 +43,7 @@ export function TranscriptViewer({ attemptId, loadTranscript, onClose }: Transcr
       .then(setTranscript)
       .catch((reason: unknown) => {
         if (!(reason instanceof DOMException && reason.name === "AbortError")) {
-          setError(reason instanceof Error ? reason.message : "The transcript could not be loaded.");
+          setError(errorText(reason));
         }
       });
     return () => controller.abort();

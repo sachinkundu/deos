@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 export const REQUIRED_GITHUB_PERMISSIONS = Object.freeze({
   checks: "write",
   contents: "write",
@@ -338,8 +339,9 @@ export class D1RepositoryRouteStore {
       ]);
       if ((results[0]?.meta.changes ?? 0) !== 1) throw new RepositoryRouteError("route_exists");
     } catch (error) {
+      recordCaughtError(error, "src/repository-routes.ts:340");
       if (error instanceof RepositoryRouteError) throw error;
-      if (await this.read(input.projectId) !== null) throw new RepositoryRouteError("route_exists");
+      if (await this.read(input.projectId) !== null) throw Object.assign(new RepositoryRouteError("route_exists"), { cause: error });
       throw error;
     }
     const saved = await this.readView(input.projectId);

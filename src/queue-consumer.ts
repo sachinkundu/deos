@@ -1,4 +1,6 @@
 import { CapabilityRouter } from "./capability-router.ts";
+import { verifyCapabilityToken } from "./capability-auth.ts";
+import { captureWorkflowErrors } from "./error-context.ts";
 import { D1CapabilityStore } from "./capability-store.ts";
 import { DeosWorkflow } from "./deos-workflow.ts";
 import { GitHubAppTokenProvider, GitHubCapabilityAdapter } from "./github-capability.ts";
@@ -126,7 +128,13 @@ export default {
       return workflowRuntimeRecoveryController(env).handle(request);
     }
     if (!path.startsWith("/capabilities/")) return new Response("not found", { status: 404 });
-    return capabilityRouter(env).handle(request);
+    // Only verified claims may associate diagnostics with a workflow.
+    const token = (request.headers.get("Authorization") ?? "").replace(/^Bearer /, "");
+    let claims;
+    try { claims = await verifyCapabilityToken(token, env.CAPABILITY_SIGNING_SECRET, Date.now()); }
+    catch { return capabilityRouter(env).handle(request); }
+    return captureWorkflowErrors(env.DB, env.ARTIFACTS, claims.runId, path,
+      () => capabilityRouter(env).handle(request));
   },
   queue(batch, env) {
     return processQueueBatch(

@@ -1,3 +1,4 @@
+import { errorText } from "../../src/error-details.ts";
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -77,8 +78,11 @@ interface Visit {
     decision_outcome: string | null;
   } | null;
 }
+interface FailureDetail { id: string; nodeId?: string; step: string; message: string | null; category?: string; occurredAt: string; detailUrl?: string }
 interface Projection {
-  run: Run & { freshness: string };
+  errors?: FailureDetail[];
+  legacyErrors?: FailureDetail[];
+  run: Run & { freshness: string; currentNode: string; terminalCause?: string | null };
   stages: Stage[];
   history: Visit[];
   unlinked: { attempts: number; waits: number };
@@ -157,7 +161,7 @@ const api = async <T,>(path: string, signal?: AbortSignal): Promise<T> => {
     return demoApi(path) as T;
   }
   const response = await fetch(path, { signal, headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error(response.status === 404 ? "No matching workflow was found." : "The portal could not refresh its data.");
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
   return response.json() as Promise<T>;
 };
 
@@ -171,7 +175,7 @@ const routeMutation = async <T,>(
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const body = await response.json() as T & { error?: string };
+  const body = await response.json() as T & { error?: string; message?: string };
   if (!response.ok) {
     const messages: Record<string, string> = {
       stale_repository_revision: "This repository changed in another session. Reload and try again.",
@@ -184,7 +188,7 @@ const routeMutation = async <T,>(
       repository_not_available: "Choose a repository from the live GitHub App list.",
       unsupported_review_model: "Choose a supported review model.",
     };
-    throw new Error(messages[body.error ?? ""] ?? "The route could not be saved.");
+    throw new Error(body.message ?? messages[body.error ?? ""] ?? body.error ?? "The route could not be saved.");
   }
   return body;
 };
@@ -198,7 +202,7 @@ const retryMutation = async (
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const body = await response.json() as { error?: string };
+  const body = await response.json() as { error?: string; message?: string };
   if (!response.ok) {
     const messages: Record<string, string> = {
       stage_retry_not_eligible: "This run changed and can no longer be continued from that step.",
@@ -206,7 +210,7 @@ const retryMutation = async (
       workflow_replacement_not_established: "Cloudflare did not start the continuation yet. Try again safely.",
       workflow_replacement_ambiguous: "Cloudflare did not confirm the continuation. Try again safely.",
     };
-    throw new Error(messages[body.error ?? ""] ?? "The workflow could not be continued.");
+    throw new Error(body.message ?? messages[body.error ?? ""] ?? body.error ?? "The workflow could not be continued.");
   }
 };
 
@@ -608,7 +612,7 @@ function SettingsPanel() {
       setSelectedId(route?.projectId ?? null);
       if (route !== null) syncDraft(route);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Settings could not be loaded.");
+      setMessage(errorText(error));
     } finally { setBusy(false); }
   }, [selectedId, syncDraft]);
 
@@ -633,7 +637,7 @@ function SettingsPanel() {
       setAdding(false);
       setMessage(success);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The route could not be saved.");
+      setMessage(errorText(error));
     } finally { setBusy(false); }
   };
 
@@ -797,7 +801,7 @@ function ReviewTracePage({ runId }: { runId: string }) {
       })
       .catch((cause) => {
         if (!(cause instanceof DOMException && cause.name === "AbortError")) {
-          setError(cause instanceof Error ? cause.message : "The review trace could not be loaded.");
+          setError(errorText(cause));
         }
       });
     return () => controller.abort();
@@ -909,7 +913,7 @@ function DesignReviewPage({ runId }: { runId: string }) {
       .then(setProof)
       .catch((cause) => {
         if (!(cause instanceof DOMException && cause.name === "AbortError")) {
-          setError(cause instanceof Error ? cause.message : "The design review proof could not be loaded.");
+          setError(errorText(cause));
         }
       });
     return () => controller.abort();
@@ -938,6 +942,27 @@ function DesignReviewPage({ runId }: { runId: string }) {
         <div className="review-artifacts">{attempt.artifacts.map((artifact) => <a href={artifact.url} key={artifact.name} target="_blank" rel="noreferrer">{artifact.name} <ArrowSquareOut /></a>)}</div>
       </div>
     </li>)}</ol>
+  </section>;
+}
+
+function RunErrors({ projection }: { projection: Projection }) {
+  const errors = projection.errors ?? [];
+  const legacy = projection.legacyErrors ?? [];
+  const failed = ["failed", "blocked", "denied"].includes(projection.run.status);
+  if (!failed && errors.length === 0 && legacy.length === 0) return null;
+  return <section className="failure-panel" role={failed ? "alert" : "region"} aria-label="Workflow errors">
+    <h2>{failed ? "Workflow failed" : "Recorded errors"}</h2>
+    {failed && <p>Stopped at <strong>{workflowStepLabel(projection.run.currentNode)}</strong>{projection.run.terminalCause ? ` · ${projection.run.terminalCause}` : ""}</p>}
+    {errors.map((error) => <article key={error.id}>
+      <h3>{workflowStepLabel(error.step)} · {formatTime(error.occurredAt)}</h3>
+      <pre>{error.message}</pre>
+      {error.detailUrl && <a href={error.detailUrl} target="_blank" rel="noreferrer">Full original error, stack and causes</a>}
+    </article>)}
+    {legacy.map((error) => <article key={error.id}>
+      <h3>{workflowStepLabel(error.step)} · {formatTime(error.occurredAt)}</h3>
+      <pre>{error.message || `${error.category ?? "Failure"} — the original error was not recorded by this version of DEOS.`}</pre>
+    </article>)}
+    {failed && errors.length === 0 && legacy.length === 0 && <p>The original error was not recorded by this version of DEOS.</p>}
   </section>;
 }
 
@@ -986,7 +1011,7 @@ function App() {
       setSelectedVisit((current) => current ?? next.history.at(-1)?.sequence ?? null);
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) {
-        setPoll((current) => ({ ...current, error: error instanceof Error ? error.message : "Refresh failed." }));
+        setPoll((current) => ({ ...current, error: errorText(error) }));
       }
     }
   }, []);
@@ -1006,7 +1031,7 @@ function App() {
       setPoll({ applied: null, staged: null, error: null });
       if (first) await loadProjection(first, true);
     } catch (error) {
-      setPoll({ applied: null, staged: null, error: error instanceof Error ? error.message : "Issue lookup failed." });
+      setPoll({ applied: null, staged: null, error: errorText(error) });
     } finally { setBusy(false); }
   }, [loadProjection]);
 
@@ -1018,7 +1043,7 @@ function App() {
       const exact = result.issues.find((issue) => issue.key === query.trim().toUpperCase());
       if (exact) await selectIssue(exact);
     } catch (error) {
-      setPoll((current) => ({ ...current, error: error instanceof Error ? error.message : "Issue search failed." }));
+      setPoll((current) => ({ ...current, error: errorText(error) }));
     } finally { setBusy(false); }
   }, [query, selectIssue]);
 
@@ -1053,7 +1078,7 @@ function App() {
       setRetryMessage(`Retry started from ${step}. Completed work was kept.`);
       await loadProjection(runId, true);
     } catch (error) {
-      setRetryMessage(error instanceof Error ? error.message : "The workflow could not be continued.");
+      setRetryMessage(errorText(error));
     } finally {
       setRetrying(false);
     }
@@ -1087,6 +1112,7 @@ function App() {
       </section>}
       {projection ? <>
         <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : `Retry ${workflowStepLabel(projection.retry.retryNode)}`}</button>}</div></section>
+        <RunErrors projection={projection} />
         {groupedWorkflow ? <TraceabilityWorkflowMap
           projection={projection}
           selectedVisit={selectedVisit}

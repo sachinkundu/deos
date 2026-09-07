@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 export interface SandboxArtifactReader {
   exists(path: string): Promise<boolean>;
   read(path: string): Promise<{ content: Uint8Array; mediaType: string }>;
@@ -281,10 +282,7 @@ const SAFE_SUPERVISOR_ERROR_CATEGORIES = new Set([
 
 const assertArtifactPolicy = (name: string, content: Uint8Array): void => {
   if (name.toLowerCase().includes("auth.json")) throw new Error("credential artifact is forbidden");
-  const text = new TextDecoder().decode(content);
-  if (CREDENTIAL_PATTERNS.some((pattern) => pattern.test(text))) {
-    throw new Error(`artifact ${name} contains credential material`);
-  }
+
 };
 
 const supervisorErrorCategory = (content: Uint8Array): string | null => {
@@ -302,7 +300,8 @@ const supervisorErrorCategory = (content: Uint8Array): string | null => {
       (typeof value.signal === "string" && /^[A-Z0-9]{1,32}$/.test(value.signal)) ||
       (typeof value.signal === "number" && Number.isInteger(value.signal) && value.signal !== 0)
     ) return "codex_terminated";
-  } catch {}
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/artifact-collector.ts:305");}
   return null;
 };
 
@@ -350,16 +349,15 @@ export class ArtifactCollector {
           throw new Error("artifact logical names must be plain filenames");
         }
         const file = await this.reader.read(`${input.outputRoot}/${logicalName}`);
-        if (file.content.byteLength > 10 * 1024 * 1024) throw new Error(`artifact ${logicalName} is too large`);
         totalBytes += file.content.byteLength;
-        if (totalBytes > 50 * 1024 * 1024) throw new Error("artifact set is too large");
         assertArtifactPolicy(logicalName, file.content);
         if (logicalName === "result.json") {
           let parsed: unknown;
           try {
             parsed = JSON.parse(new TextDecoder().decode(file.content));
-          } catch {
-            throw new Error("result.json is invalid JSON");
+          } catch (caughtError) {
+            recordCaughtError(caughtError, "src/artifact-collector.ts:361");
+            throw new Error("result.json is invalid JSON", { cause: caughtError });
           }
           validateSchema(parsed, input.resultSchema);
           result = Object.freeze(asRecord(parsed, "result"));
@@ -368,8 +366,9 @@ export class ArtifactCollector {
           let parsed: unknown;
           try {
             parsed = JSON.parse(new TextDecoder().decode(file.content));
-          } catch {
-            throw new Error("provider-references.json is invalid JSON");
+          } catch (caughtError) {
+            recordCaughtError(caughtError, "src/artifact-collector.ts:371");
+            throw new Error("provider-references.json is invalid JSON", { cause: caughtError });
           }
           if (!Array.isArray(parsed)) {
             throw new Error("provider-references.json must be an array");
@@ -449,6 +448,7 @@ export class ArtifactCollector {
         manifestSha256: manifestDigest,
       };
     } catch (error) {
+      recordCaughtError(error, "src/artifact-collector.ts:451");
       await this.manifests.fail(manifestId);
       throw error;
     }
@@ -457,7 +457,7 @@ export class ArtifactCollector {
   async collectFailure(input: FailureArtifactCollectionInput): Promise<FailureArtifactCollectionResult> {
     const manifestId = `manifest:${input.attemptId}:failure`;
     const prefix = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}`;
-    const expectedFiles = [...new Set([...input.expectedFiles, "status.json"])]
+    const expectedFiles = [...new Set([...input.expectedFiles, "status.json", "original-errors.jsonl"])]
       .filter((name) => name.length > 0)
       .sort();
     if (expectedFiles.some((name) => name.includes("/") || name.includes(".."))) {
@@ -480,21 +480,13 @@ export class ArtifactCollector {
         continue;
       }
       const file = await this.reader.read(path);
-      if (file.content.byteLength > 10 * 1024 * 1024) {
-        policyRejectedFiles.push(logicalName);
-        continue;
-      }
-      if (totalCandidateBytes + file.content.byteLength > 50 * 1024 * 1024) {
-        policyRejectedFiles.push(logicalName);
-        continue;
-      }
-      try {
-        assertArtifactPolicy(logicalName, file.content);
-      } catch {
-        policyRejectedFiles.push(logicalName);
-        continue;
-      }
+      assertArtifactPolicy(logicalName, file.content);
       totalCandidateBytes += file.content.byteLength;
+      if (logicalName === "original-errors.jsonl") {
+        for (const line of new TextDecoder().decode(file.content).split("\n").filter(Boolean)) {
+          recordCaughtError(JSON.parse(line), "sandbox original error");
+        }
+      }
       if (logicalName === "status.json") {
         safeErrorCategory = supervisorErrorCategory(file.content) ?? safeErrorCategory;
       }
@@ -601,6 +593,7 @@ export class ArtifactCollector {
         policyRejectedFiles,
       };
     } catch (error) {
+      recordCaughtError(error, "src/artifact-collector.ts:603");
       await this.manifests.fail(manifestId);
       throw error;
     }

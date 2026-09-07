@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import { WorkflowEntrypoint, type WorkflowStep } from "cloudflare:workers";
 import { NonRetryableError } from "cloudflare:workflows";
 
@@ -13,16 +14,21 @@ import {
 import { CloudflareWorkflowServices } from "./workflow-services.ts";
 import { writeLifecycleObservation } from "./lifecycle-telemetry.ts";
 import { normalizeWorkflowDuration } from "./workflow-duration.ts";
+import { captureWorkflowErrors } from "./error-context.ts";
 
 class CloudflareWorkflowStep implements WorkflowStepLike {
   private readonly step: WorkflowStep;
 
-  constructor(step: WorkflowStep) {
+  private readonly db: D1Database;
+  private readonly bucket: R2Bucket;
+  private readonly runId: string;
+  constructor(step: WorkflowStep, db: D1Database, bucket: R2Bucket, runId: string) {
+    this.db = db; this.bucket = bucket; this.runId = runId;
     this.step = step;
   }
 
   do<T>(name: string, callback: () => Promise<T>): Promise<T> {
-    return this.step.do(name, callback as never) as Promise<T>;
+    return this.step.do(name, (() => captureWorkflowErrors(this.db, this.bucket, this.runId, name, callback)) as never) as Promise<T>;
   }
 
   waitForEvent<T>(
@@ -42,6 +48,14 @@ export class DeosWorkflow extends WorkflowEntrypoint<Env, WorkflowStartParameter
       payload: Readonly<WorkflowStartParameters>;
       instanceId: string;
     }>,
+    step: WorkflowStep,
+  ): Promise<unknown> {
+    return captureWorkflowErrors(this.env.DB, this.env.ARTIFACTS, event.payload.runId, "workflow runtime",
+      () => this.runCaptured(event, step));
+  }
+
+  private async runCaptured(
+    event: Readonly<{ payload: Readonly<WorkflowStartParameters>; instanceId: string }>,
     step: WorkflowStep,
   ): Promise<unknown> {
     const store = new D1OrchestrationStore(this.env.DB);
@@ -77,10 +91,11 @@ export class DeosWorkflow extends WorkflowEntrypoint<Env, WorkflowStartParameter
       },
     );
     try {
-      return await orchestrator.run(event.payload.runId, new CloudflareWorkflowStep(step));
+      return await orchestrator.run(event.payload.runId, new CloudflareWorkflowStep(step, this.env.DB, this.env.ARTIFACTS, event.payload.runId));
     } catch (error) {
+      recordCaughtError(error, "src/deos-workflow.ts:81");
       if (error instanceof WorkflowFailureError) {
-        throw new NonRetryableError(error.safeCause);
+        throw Object.assign(new NonRetryableError(error.message), { cause: error });
       }
       throw error;
     }

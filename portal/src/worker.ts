@@ -1,3 +1,4 @@
+import { errorDetails, errorText } from "../../src/error-details.ts";
 import { verifyAccess } from "./auth.ts";
 import { PortalIssueSearchHistoryStore, PortalReadStore } from "./model.ts";
 import {
@@ -88,7 +89,7 @@ const retryRun = async (
 };
 
 const routeAdminError = (error: unknown): string | null => {
-  const value = error instanceof Error ? error.message : "";
+  const value = errorText(error);
   const allowed = new Set([
     "unauthorized_actor", "invalid_input", "provider_unavailable",
     "project_not_available", "repository_not_available", "github_access_not_ready",
@@ -138,7 +139,7 @@ export const routePortalRequest = async (
       allowedEmail: env.ALLOWED_EMAIL,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "unauthorized";
+    const message = errorText(error);
     return json(message === "forbidden" ? 403 : 401, { error: message === "authentication unavailable" ? "authentication_unavailable" : "unauthorized" });
   }
   const url = new URL(request.url);
@@ -343,6 +344,15 @@ export const routePortalRequest = async (
       );
       return result === null ? json(404, { error: "governed_pull_request_not_found" }) : json(200, result);
     }
+    const errorMatch = url.pathname.match(/^\/api\/errors\/([0-9a-f-]{36})$/i);
+    if (errorMatch !== null && request.method === "GET") {
+      const row = await env.DB.prepare("SELECT detail_r2_key FROM workflow_errors WHERE error_id = ?")
+        .bind(errorMatch[1]).first<{ detail_r2_key: string }>();
+      if (row === null) return json(404, { error: "Original error not found" });
+      const detail = await env.ARTIFACTS.get(row.detail_r2_key);
+      if (detail === null) return json(404, { error: `Original error object is missing: ${row.detail_r2_key}` });
+      return json(200, JSON.parse(await detail.text()));
+    }
     const runMatch = url.pathname.match(/^\/api\/runs\/(.+)$/);
     if (runMatch !== null) {
       const result = await store.projection(decodeURIComponent(runMatch[1]));
@@ -350,15 +360,15 @@ export const routePortalRequest = async (
     }
     return json(404, { error: "route_not_found" });
   } catch (error) {
-    if (error instanceof SyntaxError) return json(400, { error: "invalid_request" });
-    if (error instanceof TranscriptNotFoundError) return json(404, { error: "transcript_not_found" });
-    if (error instanceof TranscriptUnavailableError) return json(503, { error: "transcript_unavailable" });
-    if (error instanceof TraceReviewNotFoundError) return json(404, { error: "review_artifact_not_found" });
-    if (error instanceof TraceReviewArtifactError) return json(503, { error: "review_artifact_unavailable" });
-    if (error instanceof DesignReviewNotFoundError) return json(404, { error: "design_review_artifact_not_found" });
-    if (error instanceof DesignReviewArtifactError) return json(503, { error: "design_review_artifact_unavailable" });
-    if (error instanceof ReviewStoryNotFoundError) return json(404, { error: "process_artifact_not_found" });
-    if (error instanceof ReviewStoryArtifactError) return json(503, { error: "process_artifact_unavailable" });
+    if (error instanceof SyntaxError) return json(400, { detail: errorDetails(error), message: errorText(error), error: "invalid_request" });
+    if (error instanceof TranscriptNotFoundError) return json(404, { detail: errorDetails(error), message: errorText(error), error: "transcript_not_found" });
+    if (error instanceof TranscriptUnavailableError) return json(503, { detail: errorDetails(error), message: errorText(error), error: "transcript_unavailable" });
+    if (error instanceof TraceReviewNotFoundError) return json(404, { detail: errorDetails(error), message: errorText(error), error: "review_artifact_not_found" });
+    if (error instanceof TraceReviewArtifactError) return json(503, { detail: errorDetails(error), message: errorText(error), error: "review_artifact_unavailable" });
+    if (error instanceof DesignReviewNotFoundError) return json(404, { detail: errorDetails(error), message: errorText(error), error: "design_review_artifact_not_found" });
+    if (error instanceof DesignReviewArtifactError) return json(503, { detail: errorDetails(error), message: errorText(error), error: "design_review_artifact_unavailable" });
+    if (error instanceof ReviewStoryNotFoundError) return json(404, { detail: errorDetails(error), message: errorText(error), error: "process_artifact_not_found" });
+    if (error instanceof ReviewStoryArtifactError) return json(503, { detail: errorDetails(error), message: errorText(error), error: "process_artifact_unavailable" });
     const adminError = routeAdminError(error);
     if (adminError !== null) {
       const status = adminError === "invalid_input" || adminError === "unsupported_review_model" ? 400
@@ -369,9 +379,9 @@ export const routePortalRequest = async (
           adminError === "github_access_not_ready" || adminError === "stage_retry_not_eligible" ||
           adminError === "stage_retry_identity_mismatch" ? 409
         : 503;
-      return json(status, { error: adminError });
+      return json(status, { detail: errorDetails(error), message: errorText(error), error: adminError });
     }
-    return json(503, { error: "portal_data_unavailable" });
+    return json(503, { detail: errorDetails(error), message: errorText(error), error: "portal_data_unavailable" });
   }
 };
 

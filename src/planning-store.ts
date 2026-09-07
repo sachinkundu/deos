@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 const sha256Hex = async (value: string): Promise<string> => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -53,8 +54,9 @@ export const governedPlanningLinks = (input: {
   let untrusted: unknown;
   try {
     untrusted = JSON.parse(input.planningManifestJson);
-  } catch {
-    throw new Error("planning publication manifest is invalid");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/planning-store.ts:56");
+    throw new Error("planning publication manifest is invalid", { cause: caughtError });
   }
   if (!Array.isArray(untrusted) || untrusted.length < 3) {
     throw new Error("planning publication manifest is invalid");

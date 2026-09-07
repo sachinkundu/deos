@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import { sha256Hex } from "./trace-review.ts";
 
 export class DesignCandidateRejectedError extends Error {
@@ -126,8 +127,9 @@ export const recoverDesignCandidateCheckedAt = async (
   let validation: Partial<DesignCandidateValidation>;
   try {
     validation = JSON.parse(text) as Partial<DesignCandidateValidation>;
-  } catch {
-    throw new Error("design candidate validation evidence is invalid");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/design-candidate.ts:129");
+    throw new Error("design candidate validation evidence is invalid", { cause: caughtError });
   }
   if (
     validation.version !== 1 || validation.candidateId !== candidateId ||

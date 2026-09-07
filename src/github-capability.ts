@@ -1,3 +1,5 @@
+import { responseError, readResponseText } from "./error-details.ts";
+import { recordCaughtError } from "./error-context.ts";
 export interface GitHubWorkProductRequest {
   repository: string;
   branch: string;
@@ -172,7 +174,8 @@ const installationSettingsUrlReady = (
   let url: URL;
   try {
     url = new URL(value);
-  } catch {
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/github-capability.ts:175");
     return false;
   }
   if (url.origin !== "https://github.com" || url.search !== "" || url.hash !== "") return false;
@@ -264,7 +267,7 @@ export class GitHubAppTokenProvider implements GitHubTokenProvider {
         },
       },
     );
-    if (!response.ok) throw new Error("GitHub App installation token request failed");
+    if (!response.ok) throw await responseError("GitHub App installation token request failed", response);
     const payload = await response.json() as { token?: string };
     if (typeof payload.token !== "string" || payload.token.length === 0) {
       throw new Error("GitHub App installation token response is invalid");
@@ -282,7 +285,7 @@ export class GitHubAppTokenProvider implements GitHubTokenProvider {
         "X-GitHub-Api-Version": "2022-11-28",
       },
     });
-    if (!response.ok) throw new Error("GitHub App identity request failed");
+    if (!response.ok) throw await responseError("GitHub App identity request failed", response);
     const payload = await response.json() as { slug?: unknown };
     if (typeof payload.slug !== "string" || !/^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/.test(payload.slug)) {
       throw new Error("GitHub App identity response is invalid");
@@ -360,7 +363,7 @@ export class GitHubAppCatalog {
         `${this.apiUrl}/app/installations?per_page=100&page=${page}`,
         { headers: this.headers(jwt) },
       );
-      if (!response.ok) throw new Error("GitHub App installation catalog is unavailable");
+      if (!response.ok) throw await responseError("GitHub App installation catalog is unavailable", response);
       const payload = await response.json();
       if (!Array.isArray(payload)) throw new Error("GitHub App installation catalog is invalid");
       rawInstallations.push(...payload);
@@ -470,7 +473,7 @@ export class GitHubAppCatalog {
         `${this.apiUrl}/installation/repositories?per_page=100&page=${page}`,
         { headers: this.headers(token) },
       );
-      if (!response.ok) throw new Error("GitHub App repository catalog is unavailable");
+      if (!response.ok) throw await responseError("GitHub App repository catalog is unavailable", response);
       const payload = await response.json() as { total_count?: unknown; repositories?: unknown };
       if (
         !Number.isSafeInteger(payload.total_count) || Number(payload.total_count) < 0 ||
@@ -546,9 +549,12 @@ interface GitHubCapabilityDependencies {
 class GitHubProviderHttpError extends Error {
   readonly status: number;
 
-  constructor(status: number) {
-    super("GitHub provider request failed");
+  readonly responseBody: string;
+  readonly responseHeaders: Record<string, string>;
+  constructor(status: number, responseBody: string, responseHeaders: Record<string, string>) {
+    super(`GitHub provider request failed: HTTP ${status}: ${responseBody}`);
     this.name = "GitHubProviderHttpError";
+    this.responseBody = responseBody; this.responseHeaders = responseHeaders;
     this.status = status;
   }
 }
@@ -618,7 +624,8 @@ export class GitHubCapabilityAdapter {
             ...(current?.sha === undefined ? {} : { sha: current.sha }),
           },
         });
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:621");
         const after = await this.json(
           token,
           `${contentPath}?ref=${encodeURIComponent(input.branch)}`,
@@ -628,7 +635,7 @@ export class GitHubCapabilityAdapter {
         const afterContent = after?.content === undefined
           ? null
           : new TextDecoder().decode(Uint8Array.from(atob(after.content.replace(/\s/g, "")), (c) => c.charCodeAt(0)));
-        if (afterContent !== file.content) throw new Error("GitHub file write is ambiguous");
+        if (afterContent !== file.content) throw new Error("GitHub file write is ambiguous", { cause: caughtError });
         reconciled = true;
       }
     }
@@ -653,10 +660,11 @@ export class GitHubCapabilityAdapter {
           `/repos/${input.repository}/pulls/${existing.number}`,
           { method: "PATCH", body: { body: updatedBody } },
         ) as typeof pull;
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:656");
         const after = await this.json(token, pullsPath) as typeof pulls;
         pull = after.find((candidate) => candidate.body?.includes(marker));
-        if (pull === undefined) throw new Error("GitHub pull request update is ambiguous");
+        if (pull === undefined) throw new Error("GitHub pull request update is ambiguous", { cause: caughtError });
       }
       reconciled = true;
     } else if (pull === undefined) {
@@ -671,10 +679,11 @@ export class GitHubCapabilityAdapter {
             draft: true,
           },
         }) as typeof pull;
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:674");
         const after = await this.json(token, pullsPath) as typeof pulls;
         pull = after.find((candidate) => candidate.body?.includes(marker));
-        if (pull === undefined) throw new Error("GitHub pull request creation is ambiguous");
+        if (pull === undefined) throw new Error("GitHub pull request creation is ambiguous", { cause: caughtError });
         reconciled = true;
       }
     } else {
@@ -706,9 +715,10 @@ export class GitHubCapabilityAdapter {
           method: "POST",
           body: { ref: `refs/heads/${input.branch}`, sha: base },
         });
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:709");
         branch = await this.ref(token, input.repository, input.branch, true);
-        if (branch === null) throw new Error("GitHub planning branch creation is ambiguous");
+        if (branch === null) throw new Error("GitHub planning branch creation is ambiguous", { cause: caughtError });
         reconciled = true;
       }
       branch = await this.ref(token, input.repository, input.branch);
@@ -754,9 +764,10 @@ export class GitHubCapabilityAdapter {
             branch: input.branch,
           },
         });
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:757");
         if (await this.readContent(token, input.repository, input.branch, path, true) !== null) {
-          throw new Error("GitHub stale planning file deletion is ambiguous");
+          throw new Error("GitHub stale planning file deletion is ambiguous", { cause: caughtError });
         }
         reconciled = true;
       }
@@ -807,10 +818,11 @@ export class GitHubCapabilityAdapter {
             draft: false,
           },
         }));
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:810");
         pulls = await this.json(token, pullsPath) as unknown[];
         if (!Array.isArray(pulls) || pulls.length !== 1) {
-          throw new Error("GitHub planning pull-request creation is ambiguous");
+          throw new Error("GitHub planning pull-request creation is ambiguous", { cause: caughtError });
         }
         number = pullNumber(pulls[0]);
         reconciled = true;
@@ -829,13 +841,14 @@ export class GitHubCapabilityAdapter {
           `/repos/${input.repository}/pulls/${number}`,
           { method: "PATCH", body: { title: input.title, body: input.body } },
         );
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:832");
         const afterRaw = await this.json(
           token,
           `/repos/${input.repository}/pulls/${number}`,
         ) as { title?: unknown; body?: unknown };
         if (afterRaw.title !== input.title || afterRaw.body !== input.body) {
-          throw new Error("GitHub planning pull-request update is ambiguous");
+          throw new Error("GitHub planning pull-request update is ambiguous", { cause: caughtError });
         }
       }
     }
@@ -888,9 +901,10 @@ export class GitHubCapabilityAdapter {
           method: "POST",
           body: { ref: `refs/heads/${input.branch}`, sha: input.baseCommit },
         });
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:891");
         branch = await this.ref(token, input.repository, input.branch, true);
-        if (branch === null) throw new Error("GitHub design branch creation is ambiguous");
+        if (branch === null) throw new Error("GitHub design branch creation is ambiguous", { cause: caughtError });
         reconciled = true;
       }
     }
@@ -948,10 +962,11 @@ export class GitHubCapabilityAdapter {
         }) as { number?: unknown };
         if (typeof created.number !== "number") throw new Error("GitHub design pull-request response is invalid");
         number = created.number;
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:951");
         const pulls = await this.json(token, pullsPath) as Array<{ number?: unknown }>;
         if (!Array.isArray(pulls) || pulls.length !== 1 || typeof pulls[0]!.number !== "number") {
-          throw new Error("GitHub design pull-request creation is ambiguous");
+          throw new Error("GitHub design pull-request creation is ambiguous", { cause: caughtError });
         }
         number = pulls[0]!.number;
         reconciled = true;
@@ -972,13 +987,14 @@ export class GitHubCapabilityAdapter {
           method: "PATCH",
           body: { title: input.title, body: input.body },
         });
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:975");
         const after = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as {
           title?: unknown;
           body?: unknown;
         };
         if (after.title !== input.title || after.body !== input.body) {
-          throw new Error("GitHub design pull-request update is ambiguous");
+          throw new Error("GitHub design pull-request update is ambiguous", { cause: caughtError });
         }
         reconciled = true;
       }
@@ -1008,6 +1024,7 @@ export class GitHubCapabilityAdapter {
         operationId,
       );
     } catch (error) {
+      recordCaughtError(error, "src/github-capability.ts:1010");
       if (
         error instanceof Error && [
           "GitHub review reply manifest is incomplete",
@@ -1015,7 +1032,7 @@ export class GitHubCapabilityAdapter {
           "GitHub review reply thread snapshot changed",
         ].includes(error.message)
       ) {
-        throw new GitHubReviewFeedbackChangedError(error.message, {
+        throw Object.assign(new GitHubReviewFeedbackChangedError(error.message, {
           pullRequestDatabaseId: confirmed.databaseId,
           pullRequestNumber: confirmed.number,
           pullRequestUrl: confirmed.url,
@@ -1023,7 +1040,7 @@ export class GitHubCapabilityAdapter {
           headSha,
           reviewReplyIds: [],
           reconciled: true,
-        });
+        }), { cause: error });
       }
       throw error;
     }
@@ -1102,6 +1119,7 @@ export class GitHubCapabilityAdapter {
         body: { sha: input.expectedHeadSha },
       }) as { merged?: boolean; sha?: string };
     } catch (error) {
+      recordCaughtError(error, "src/github-capability.ts:1104");
       rejected = error instanceof GitHubProviderHttpError && [405, 409, 422].includes(error.status);
     }
     const after = this.parsePull(await this.json(
@@ -1164,14 +1182,15 @@ export class GitHubCapabilityAdapter {
       ) as { id?: number };
       if (typeof response.id !== "number") throw new Error("GitHub Check Run response is invalid");
       id = response.id;
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/github-capability.ts:1167");
       const after = await this.json(
         token,
         `/repos/${input.repository}/commits/${input.headSha}/check-runs?check_name=${encodeURIComponent(name)}`,
       ) as { check_runs?: Array<{ id?: number; external_id?: string }> };
       const recovered = after.check_runs?.filter((check) => check.external_id === input.externalId) ?? [];
       if (recovered.length !== 1 || typeof recovered[0]?.id !== "number") {
-        throw new Error("GitHub Check Run write is ambiguous");
+        throw new Error("GitHub Check Run write is ambiguous", { cause: caughtError });
       }
       id = recovered[0].id;
       reconciled = true;
@@ -1232,14 +1251,15 @@ export class GitHubCapabilityAdapter {
       ) as { id?: number };
       if (typeof response.id !== "number") throw new Error("GitHub design Check Run response is invalid");
       id = response.id;
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/github-capability.ts:1235");
       const after = await this.json(
         token,
         `/repos/${input.repository}/commits/${input.headSha}/check-runs?check_name=${encodeURIComponent(name)}`,
       ) as { check_runs?: Array<{ id?: number; external_id?: string }> };
       const recovered = after.check_runs?.filter((check) => check.external_id === input.externalId) ?? [];
       if (recovered.length !== 1 || typeof recovered[0]?.id !== "number") {
-        throw new Error("GitHub design Check Run write is ambiguous");
+        throw new Error("GitHub design Check Run write is ambiguous", { cause: caughtError });
       }
       id = recovered[0].id;
       reconciled = true;
@@ -1331,6 +1351,7 @@ export class GitHubCapabilityAdapter {
         body: { sha: input.expectedHeadSha },
       }) as { merged?: boolean; sha?: string };
     } catch (error) {
+      recordCaughtError(error, "src/github-capability.ts:1333");
       rejected = error instanceof GitHubProviderHttpError && [405, 409, 422].includes(error.status);
       // Read-back below distinguishes a committed merge from a rejected request.
     }
@@ -1677,11 +1698,12 @@ export class GitHubCapabilityAdapter {
           throw new Error("GitHub review reply response is invalid");
         }
         ids.push(created.id);
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/github-capability.ts:1680");
         comments = await this.reviewComments(token, repository, pullRequestNumber);
         const after = comments.find((comment) =>
           isAcknowledgment(comment, reply.commentId) && comment.body.includes(marker(reply.commentId)));
-        if (after === undefined) throw new Error("GitHub review reply is ambiguous");
+        if (after === undefined) throw new Error("GitHub review reply is ambiguous", { cause: caughtError });
         ids.push(after.id);
         reconciled = true;
       }
@@ -1742,8 +1764,9 @@ export class GitHubCapabilityAdapter {
         (character) => character.charCodeAt(0),
       );
       content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes);
-    } catch {
-      throw new Error("GitHub content response is not valid UTF-8");
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/github-capability.ts:1745");
+      throw new Error("GitHub content response is not valid UTF-8", { cause: caughtError });
     }
     return { sha: value.sha, content };
   }
@@ -1768,9 +1791,10 @@ export class GitHubCapabilityAdapter {
           ...(currentSha === undefined ? {} : { sha: currentSha }),
         },
       });
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/github-capability.ts:1771");
       const after = await this.readContent(token, repository, branch, path, true);
-      if (after?.content !== content) throw new Error("GitHub planning file write is ambiguous");
+      if (after?.content !== content) throw new Error("GitHub planning file write is ambiguous", { cause: caughtError });
     }
   }
 
@@ -1849,15 +1873,18 @@ export class GitHubCapabilityAdapter {
         },
         ...(options === undefined ? {} : { body: JSON.stringify(options.body) }),
       });
-    } catch {
-      throw new Error("GitHub provider request failed");
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/github-capability.ts:1852");
+      throw new Error("GitHub provider request failed", { cause: caughtError });
     }
     if (allowNotFound && response.status === 404) return null;
-    if (!response.ok) throw new GitHubProviderHttpError(response.status);
+    if (!response.ok) throw new GitHubProviderHttpError(response.status, await readResponseText(response), Object.fromEntries(response.headers));
+    const originalBody = await readResponseText(response);
     try {
-      return await response.json();
-    } catch {
-      throw new Error("GitHub provider response is ambiguous");
+      return JSON.parse(originalBody);
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/github-capability.ts:1859");
+      throw Object.assign(new Error("GitHub provider response is ambiguous", { cause: caughtError }), { responseBody: originalBody, status: response.status, responseHeaders: Object.fromEntries(response.headers) });
     }
   }
 }

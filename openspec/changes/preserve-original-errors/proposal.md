@@ -8,10 +8,10 @@ Debugging SAC-156 required repeated paid runs because error wrappers dropped pro
 - Carry those details and their diagnostic reference through provider adapters, retries, process runners, workflow state, and the authenticated portal.
 - Remove application-imposed size caps on diagnostic and artifact capture. If the real runtime or storage provider rejects evidence, report that exact failure and keep recoverable evidence.
 - Record original and secondary failures together, including failures while reading streams, saving diagnostics, validating output, or cleaning up.
-- Apply the same error behavior to local replay tools. Keep credentials out of public output without dropping the useful error.
+- Apply the same error behavior to local replay tools. Keep the operator portal authenticated and preserve error text verbatim.
 - **BREAKING**: provider-facing proxy failures retain the upstream status when available instead of always becoming 502 or a later generic 409. Historical diagnostics stay readable; missing historical detail is reported as unavailable.
 
-Non-goals: changing review findings or schemas, adding workflow retries, bypassing human gates, changing timeouts, deploying the portal, or replaying SAC-156 as part of this planning stage.
+Non-goals: changing review findings or schemas, adding workflow retries, bypassing human gates, changing timeouts, retrying or advancing SAC-156 or SAC-160.
 
 ## Capabilities
 
@@ -28,3 +28,5 @@ Non-goals: changing review findings or schemas, adding workflow retries, bypassi
 Affected areas include OpenRouter Responses and Chat adapters, GitHub and Linear adapters, capability replay, protected diagnostic storage, runner and supervisor failures, artifact collection, workflow summaries, portal error retrieval, and local preflight/replay tools.
 
 This changes existing TypeScript and JavaScript components; a language migration is not required. Storage use can grow because evidence is no longer silently truncated. The related incident is SAC-156; no issue state or current run is changed.
+
+The user explicitly requested implementation and deployment on 2026-09-07. The portal must show errors visibly for every failure; no new planning pause is required for this change.

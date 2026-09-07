@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./original-errors.mjs";
 export const MAXIMUM_PROOF_REPAIRS = 2;
 
 const canonicalize = (value) => Array.isArray(value)
@@ -19,12 +20,14 @@ export const parseCodexFinalMessage = (message) => {
   const trimmed = message.trim();
   try {
     return JSON.parse(trimmed);
-  } catch {
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "container/trace-review-proof.mjs:22");
     const fenced = [...trimmed.matchAll(/```(?:json)?\s*\n([\s\S]*?)\n```/gi)];
     if (fenced.length === 1) {
       try {
         return JSON.parse(fenced[0][1]);
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "container/trace-review-proof.mjs:27");
         // Preserve the original value so deterministic validation reports the failure.
       }
     }
@@ -39,7 +42,8 @@ export const recoverCodexReview = (stdout, finalMessage, fields = ["findings"]) 
   let completed = false;
   for (const line of stdout.split("\n")) {
     let event;
-    try { event = JSON.parse(line); } catch { continue; }
+    try { event = JSON.parse(line); } catch (caughtError) {
+      recordCaughtError(caughtError, "container/trace-review-proof.mjs:42"); continue; }
     if (event.type === "turn.started") { messages = []; completed = false; }
     if (event.type === "turn.failed") completed = false;
     if (event.type === "item.completed" && event.item?.type === "agent_message" &&
@@ -128,7 +132,8 @@ export const codexSessionId = (stdout) => {
       return event.type === "thread.started" && typeof event.thread_id === "string"
         ? [event.thread_id]
         : [];
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "container/trace-review-proof.mjs:131");
       return [];
     }
   });
@@ -270,6 +275,7 @@ export const runBoundedProofReview = async ({ maximumRepairs, generate, validate
         validatorFailures,
       };
     } catch (error) {
+      recordCaughtError(error, "container/trace-review-proof.mjs:272");
       failure = error instanceof Error ? error.message : "proof validation failed";
       validatorFailures.push(failure);
       prior = raw;

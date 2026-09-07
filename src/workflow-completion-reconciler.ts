@@ -1,3 +1,4 @@
+import { responseError } from "./error-details.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 
@@ -231,9 +232,9 @@ export class LinearCommentOperatorNotice implements LinearOperatorNotice {
       },
       body: JSON.stringify({ query, variables }),
     });
-    if (!response.ok) throw new Error("Linear lifecycle notice request failed");
+    if (!response.ok) throw await responseError("Linear lifecycle notice request failed", response);
     const payload = await response.json() as { errors?: unknown[] };
-    if (payload.errors?.length) throw new Error("Linear lifecycle notice GraphQL request failed");
+    if (payload.errors?.length) throw new Error(`Linear lifecycle notice GraphQL request failed: ${JSON.stringify(payload.errors)}`, { cause: payload });
     return payload;
   }
 }

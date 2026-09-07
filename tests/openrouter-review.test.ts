@@ -107,7 +107,7 @@ test("OpenRouter HTTP failures retain actionable safe fields and a protected raw
       assert.equal(error.diagnostic.httpStatus, 400);
       assert.equal(error.diagnostic.providerCode, "400");
       assert.equal(error.diagnostic.providerType, "invalid_request_error");
-      assert.equal(error.diagnostic.providerMessage, "Invalid schema using Bearer [redacted]");
+      assert.equal(error.diagnostic.providerMessage, "Invalid schema using Bearer sk-or-v1-abcdefghijklmnop");
       assert.equal(error.diagnostic.providerRequestId, "request-error-1");
       assert.equal(error.diagnostic.requestMayHaveSucceeded, false);
       assert.equal(error.diagnostic.retryable, false);

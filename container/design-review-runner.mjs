@@ -44,7 +44,7 @@ const run = (command, args, options = {}) => new Promise((resolve, reject) => {
     process.stdout.write(chunk);
   });
   child.stderr.on("data", (chunk) => {
-    stderr = `${stderr}${chunk}`.slice(-1_000_000);
+    stderr = `${stderr}${chunk}`;
     process.stderr.write(chunk);
   });
   child.once("error", reject);
@@ -204,6 +204,7 @@ const main = async () => {
 };
 
 main().catch((error) => {
+  recordCaughtError(error, "runner fatal");
   process.stderr.write(`design review failed: ${error.message}\n`);
   process.exitCode = 1;
 });

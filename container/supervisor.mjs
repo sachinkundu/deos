@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { recordCaughtError } from "./original-errors.mjs";
 import { createWriteStream } from "node:fs";
 import { access, appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
@@ -43,7 +44,8 @@ const trustedCapture = async (name) => {
       if (!replace) {
         try {
           await access(destination);
-        } catch {
+        } catch (caughtError) {
+          recordCaughtError(caughtError, "container/supervisor.mjs:46");
           shouldWrite = true;
         }
       }
@@ -70,6 +72,7 @@ const finalizeMechanicalOutputs = async (job) => {
       .filter(Boolean);
     references = lines.map((line) => JSON.parse(line));
   } catch (error) {
+    recordCaughtError(error, "container/supervisor.mjs:72");
     if (error?.code !== "ENOENT") throw error;
   }
   await atomicJson(PROVIDER_REFERENCES_PATH, references);
@@ -79,7 +82,8 @@ const resultOutcome = async () => {
   try {
     const result = JSON.parse(await readFile(RESULT_PATH, "utf8"));
     return typeof result.outcome === "string" ? result.outcome : null;
-  } catch {
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "container/supervisor.mjs:82");
     return null;
   }
 };
@@ -115,7 +119,8 @@ const sessionTracker = () => {
       if (event.type !== "thread.started" || typeof event.thread_id !== "string") return;
       if (sessionId !== null && sessionId !== event.thread_id) conflict = true;
       sessionId ??= event.thread_id;
-    } catch {}
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "container/supervisor.mjs:118");}
   };
   return {
     observe(chunk) {
@@ -195,11 +200,13 @@ const main = async () => {
     if (activePid === null) return;
     try {
       process.kill(-activePid, "SIGTERM");
-    } catch {}
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "container/supervisor.mjs:198");}
     setTimeout(() => {
       try {
         process.kill(-activePid, "SIGKILL");
-      } catch {}
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "container/supervisor.mjs:202");}
     }, 10_000).unref();
   }, Math.max(0, deadline - Date.now()));
   const run = async (childPrompt, resumeSessionId = null) => {
@@ -312,7 +319,8 @@ const main = async () => {
   process.exitCode = result.code ?? (timedOut ? 124 : 1);
 };
 
-main().catch(async () => {
+main().catch(async (error) => {
+  recordCaughtError(error, "supervisor fatal");
   try {
     await mkdir(OUTPUT_ROOT, { recursive: true, mode: 0o700 });
     await atomicJson(STATUS_PATH, {
@@ -320,6 +328,7 @@ main().catch(async () => {
       signal: null,
       timedOut: false,
       safeErrorCategory: "supervisor_failed",
+      originalError: { message: String(error), stack: error?.stack, cause: error?.cause ? String(error.cause) : null },
       completedAt: new Date().toISOString(),
     });
   } finally {

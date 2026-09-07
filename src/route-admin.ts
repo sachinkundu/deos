@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import {
   GitHubAppCatalog,
   type GitHubInstallationChoice,
@@ -362,8 +363,9 @@ export class RouteAdminService {
   private async projects(): Promise<LinearProjectChoice[]> {
     try {
       return await this.linear.listProjects();
-    } catch {
-      throw new RouteAdminError("provider_unavailable");
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/route-admin.ts:365");
+      throw Object.assign(new RouteAdminError("provider_unavailable"), { cause: caughtError });
     }
   }
 
@@ -372,8 +374,9 @@ export class RouteAdminService {
       const installations = await this.github.list();
       await this.observeInstallations(installations);
       return installations;
-    } catch {
-      throw new RouteAdminError("provider_unavailable");
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/route-admin.ts:375");
+      throw Object.assign(new RouteAdminError("provider_unavailable"), { cause: caughtError });
     }
   }
 
@@ -397,7 +400,8 @@ export class RouteAdminService {
   ): Promise<GitHubRepositoryAccessCheck | { state: "unavailable"; repository: null; settingsUrl: null; permissions: null }> {
     try {
       return await this.github.checkRepository(installationId, repository);
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/route-admin.ts:400");
       return { state: "unavailable", repository: null, settingsUrl: null, permissions: null };
     }
   }
@@ -458,7 +462,8 @@ export class RouteAdminService {
   }
 
   private storeError(error: unknown): Error {
-    return error instanceof RepositoryRouteError ? new RouteAdminError(error.code) :
-      error instanceof Error ? error : new Error("route admin operation failed");
+    recordCaughtError(error, "route administration");
+    return error instanceof RepositoryRouteError ? Object.assign(new RouteAdminError(error.code), { cause: error }) :
+      error instanceof Error ? error : new Error(String(error), { cause: error });
   }
 }

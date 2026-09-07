@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import {
   correlationIdentity,
@@ -837,10 +838,11 @@ export class D1OrchestrationStore {
         if (created === null) throw new Error("created orchestration run is not readable");
         return { run: created, created: true };
       } else return null;
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/orchestration-store.ts:840");
       const raced = await this.findActiveRun(input.projectId, input.issueId);
       if (raced !== null) return { run: raced, created: false };
-      throw new Error("orchestration run allocation failed without a readable winner");
+      throw new Error("orchestration run allocation failed without a readable winner", { cause: caughtError });
     }
     throw new Error("orchestration run allocation did not create a row");
   }

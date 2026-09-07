@@ -1,3 +1,5 @@
+import { responseError } from "./error-details.ts";
+import { recordCaughtError } from "./error-context.ts";
 export interface LinearNoteRequest {
   issueId: string;
   body: string;
@@ -69,9 +71,10 @@ export class LinearCapabilityAdapter {
         throw new Error("Linear comment response is invalid");
       }
       return { commentId: id, reconciled: false };
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/linear-capability.ts:72");
       const reconciled = await this.findComment(input.issueId, marker);
-      if (reconciled === null) throw new Error("Linear comment creation is ambiguous");
+      if (reconciled === null) throw new Error("Linear comment creation is ambiguous", { cause: caughtError });
       return { commentId: reconciled, reconciled: true };
     }
   }
@@ -100,9 +103,10 @@ export class LinearCapabilityAdapter {
           throw new Error("Linear status comment response is invalid");
         }
         return { commentId: id, reconciled: false };
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/linear-capability.ts:103");
         const recovered = await this.findCommentRecord(input.issueId, marker);
-        if (recovered?.body !== desired) throw new Error("Linear status comment creation is ambiguous");
+        if (recovered?.body !== desired) throw new Error("Linear status comment creation is ambiguous", { cause: caughtError });
         return { commentId: recovered.id, reconciled: true };
       }
     }
@@ -120,10 +124,11 @@ export class LinearCapabilityAdapter {
         throw new Error("Linear status comment update response is invalid");
       }
       return { commentId: existing.id, reconciled: false };
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/linear-capability.ts:123");
       const recovered = await this.findCommentRecord(input.issueId, marker);
       if (recovered?.id !== existing.id || recovered.body !== desired) {
-        throw new Error("Linear status comment update is ambiguous");
+        throw new Error("Linear status comment update is ambiguous", { cause: caughtError });
       }
       return { commentId: existing.id, reconciled: true };
     }
@@ -259,9 +264,9 @@ export class LinearCapabilityAdapter {
       },
       body: JSON.stringify({ query, variables }),
     });
-    if (!response.ok) throw new Error("Linear capability request failed");
+    if (!response.ok) throw await responseError("Linear capability request failed", response);
     const payload = await response.json() as { errors?: unknown[] };
-    if (payload.errors?.length) throw new Error("Linear capability GraphQL request failed");
+    if (payload.errors?.length) throw new Error(`Linear capability GraphQL request failed: ${JSON.stringify(payload.errors)}`, { cause: payload });
     return payload;
   }
 }

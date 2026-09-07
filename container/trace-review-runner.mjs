@@ -503,6 +503,7 @@ const main = async () => {
 };
 
 main().catch((error) => {
+  recordCaughtError(error, "runner fatal");
   process.stderr.write(`trace review failed: ${error.message}\n`);
   process.exitCode = 1;
 });
