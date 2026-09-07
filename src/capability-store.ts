@@ -145,6 +145,7 @@ export interface ProviderReceiptVerifier {
     runId: string,
     attemptId: string,
     operationIds?: readonly string[],
+    modelCallsAreDiagnostic?: boolean,
   ): Promise<boolean>;
   hasAny(runId: string, attemptId: string): Promise<boolean>;
 }
@@ -160,7 +161,18 @@ export class D1ProviderReceiptVerifier implements ProviderReceiptVerifier {
     runId: string,
     attemptId: string,
     operationIds?: readonly string[],
+    modelCallsAreDiagnostic = false,
   ): Promise<boolean> {
+    if (modelCallsAreDiagnostic) {
+      const writes = await this.database.prepare(
+        `SELECT operation_id FROM provider_operations
+         WHERE run_id = ? AND attempt_id = ? AND capability <> 'model'`,
+      ).bind(runId, attemptId).all<{ operation_id: string }>();
+      if (writes.results.length === 0) return true;
+      // Verify writes with their existing rules, but without model diagnostics
+      // contributing to the all-operations completeness check below.
+      operationIds = writes.results.map(row => row.operation_id);
+    }
     const uniqueIds = operationIds === undefined ? undefined : [...new Set(operationIds)];
     if (uniqueIds !== undefined && (uniqueIds.length === 0 || uniqueIds.length !== operationIds?.length)) {
       return false;
@@ -174,7 +186,8 @@ export class D1ProviderReceiptVerifier implements ProviderReceiptVerifier {
          COALESCE(SUM(CASE WHEN state IN ('succeeded', 'reconciled') THEN 1 ELSE 0 END), 0) AS successfulCount,
          (SELECT COUNT(*) FROM provider_operations
           WHERE run_id = ? AND attempt_id = ?
-            AND state NOT IN ('succeeded', 'reconciled')) AS incompleteCount
+            AND state NOT IN ('succeeded', 'reconciled')
+            ${modelCallsAreDiagnostic ? "AND capability <> 'model'" : ""}) AS incompleteCount
        FROM provider_operations
        WHERE run_id = ? AND attempt_id = ?${selectedClause}`,
     ).bind(

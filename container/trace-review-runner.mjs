@@ -24,7 +24,7 @@ import {
   codexReviewArgs,
   codexSessionId,
   MAXIMUM_PROOF_REPAIRS,
-  parseCodexFinalMessage,
+  recoverCodexReview,
   proofRepairPrompt,
   reviewPromptWithSchema,
   reviewResultPayload,
@@ -63,11 +63,11 @@ const run = (command, args, options = {}) => new Promise((resolve, reject) => {
   let stdout = "";
   let stderr = "";
   child.stdout.on("data", (chunk) => {
-    stdout = `${stdout}${chunk}`.slice(-1_000_000);
+    stdout += chunk;
     if (options.forward) process.stdout.write(chunk);
   });
   child.stderr.on("data", (chunk) => {
-    stderr = `${stderr}${chunk}`.slice(-1_000_000);
+    stderr += chunk;
     if (options.forward) process.stderr.write(chunk);
   });
   child.once("error", reject);
@@ -118,48 +118,20 @@ const codexJudgment = async ({
     throw new Error("proof repair resumed a different reviewer session");
   }
   const finalMessage = await readFile(destination, "utf8");
-  const result = parseCodexFinalMessage(finalMessage);
+  const outputSchema = JSON.parse(await readFile(schema, "utf8"));
+  const recovered = recoverCodexReview(execution.stdout, finalMessage, outputSchema.required ?? []);
+  process.stderr.write(`review JSON source: offset=${recovered.messageOffset}, recovered=${recovered.recovered}\n`);
+  const result = recovered.raw;
   return {
     result,
     sessionId: observedSessionId,
   };
 };
 
-const collectOpenRouterReceipts = async (job) => {
-  const response = await fetch(`${job.capabilityUrl}/model-review/receipts`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${job.capabilityToken}`,
-      "Content-Type": "application/json",
-      "Deos-Attempt": job.attemptId,
-    },
-    body: JSON.stringify({
-      version: 1,
-      action: "list_openrouter_review_receipts",
-    }),
-  });
-  const body = await response.json();
-  if (
-    !response.ok || typeof body !== "object" || body === null ||
-    !Array.isArray(body.receipts) || body.receipts.length === 0
-  ) {
-    throw new Error("trusted OpenRouter receipt lookup failed");
-  }
-  const receipts = body.receipts.map((value) => {
-    const receipt = asObject(value, "OpenRouter provider receipt");
-    if (
-      receipt.capability !== "model" || typeof receipt.operationId !== "string" ||
-      !["succeeded", "reconciled"].includes(receipt.state) ||
-      !(receipt.providerResourceId === null || typeof receipt.providerResourceId === "string")
-    ) throw new Error("OpenRouter provider receipt is invalid");
-    return receipt;
-  });
-  await writeFile(
-    `${OUTPUT_ROOT}/provider-references.jsonl`,
-    `${receipts.map((receipt) => JSON.stringify(receipt)).join("\n")}\n`,
-    { mode: 0o600 },
-  );
-  return receipts.map((receipt) => receipt.operationId);
+const collectOpenRouterReceipts = async () => {
+  // Model calls are diagnostics, not write receipts or workflow prerequisites.
+  await writeFile(`${OUTPUT_ROOT}/provider-references.jsonl`, "", { mode: 0o600 });
+  return [];
 };
 
 const asObject = (value, label) => {

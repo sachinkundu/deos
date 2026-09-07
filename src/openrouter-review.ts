@@ -394,6 +394,21 @@ export class OpenRouterReviewClient {
     if (model === null || !this.supportedModels.has(model)) {
       throw new Error("OpenRouter model is not supported");
     }
+    const text = nullableRecord(input.text);
+    const format = nullableRecord(text?.format);
+    if (format?.type !== "json_schema" || nullableRecord(format.schema) === null ||
+        boundedString(format.name, 100) === null) {
+      throw new Error("OpenRouter review requires a JSON output schema");
+    }
+    const isHostedSearch = (tool: unknown): boolean => {
+      const type = nullableRecord(tool)?.type;
+      return typeof type === "string" &&
+        (type === "web_search" || type.startsWith("web_search_preview") ||
+          type === "openrouter:web_search");
+    };
+    if (isHostedSearch(input.tool_choice)) {
+      throw new Error("Hosted web search is disabled for independent reviews");
+    }
     let response: Response;
     try {
       response = await this.fetcher(`${this.apiUrl}/responses`, {
@@ -407,7 +422,18 @@ export class OpenRouterReviewClient {
           ...input,
           model,
           store: false,
-          provider: undefined,
+          // Keep old containers compatible without enabling hosted search. The
+          // independent reviewer reads its supplied sources using local tools.
+          tools: Array.isArray(input.tools) ? input.tools.filter((tool) => !isHostedSearch(tool)) : input.tools,
+          // DeepSeek endpoints reject this optional Codex parameter even when
+          // false. Keep schema routing strict; omit the unsupported parameter.
+          parallel_tool_calls: undefined,
+          text: { ...text, format: { ...format, strict: true } },
+          // Host policy, not a model-controlled routing preference. Unsupported
+          // providers must reject routing rather than silently ignore the schema.
+          // Pin the endpoint proven with the real Codex tool + schema contract.
+          // Model-level structured-output support alone is not enough.
+          provider: { require_parameters: true, only: ["baidu"] },
         }),
       });
     } catch (error) {

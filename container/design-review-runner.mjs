@@ -10,6 +10,7 @@ import {
   codexSessionId,
   MAXIMUM_PROOF_REPAIRS,
   parseCodexFinalMessage,
+  recoverCodexReview,
   proofRepairPrompt,
   reviewPromptWithSchema,
   runBoundedProofReview,
@@ -39,7 +40,7 @@ const run = (command, args, options = {}) => new Promise((resolve, reject) => {
   let stdout = "";
   let stderr = "";
   child.stdout.on("data", (chunk) => {
-    stdout = `${stdout}${chunk}`.slice(-1_000_000);
+    stdout = `${stdout}${chunk}`;
     process.stdout.write(chunk);
   });
   child.stderr.on("data", (chunk) => {
@@ -53,34 +54,10 @@ const run = (command, args, options = {}) => new Promise((resolve, reject) => {
   child.stdin.end(options.input);
 });
 
-const collectOpenRouterReceipts = async (job) => {
-  const response = await fetch(`${job.capabilityUrl}/model-review/receipts`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${job.capabilityToken}`,
-      "Content-Type": "application/json",
-      "Deos-Attempt": job.attemptId,
-    },
-    body: JSON.stringify({ version: 1, action: "list_openrouter_review_receipts" }),
-  });
-  const body = await response.json();
-  if (!response.ok || typeof body !== "object" || body === null || !Array.isArray(body.receipts)) {
-    throw new Error("trusted OpenRouter receipt lookup failed");
-  }
-  const receipts = body.receipts.map((value) => {
-    const receipt = asObject(value, "OpenRouter provider receipt");
-    if (
-      receipt.capability !== "model" || typeof receipt.operationId !== "string" ||
-      !["succeeded", "reconciled"].includes(receipt.state)
-    ) throw new Error("OpenRouter provider receipt is invalid");
-    return receipt;
-  });
-  await writeFile(
-    `${OUTPUT_ROOT}/provider-references.jsonl`,
-    `${receipts.map((receipt) => JSON.stringify(receipt)).join("\n")}\n`,
-    { mode: 0o600 },
-  );
-  return receipts.map((receipt) => receipt.operationId);
+const collectOpenRouterReceipts = async () => {
+  // Model calls are diagnostics, not write receipts or workflow prerequisites.
+  await writeFile(`${OUTPUT_ROOT}/provider-references.jsonl`, "", { mode: 0o600 });
+  return [];
 };
 
 const validate = (raw, review) => {
@@ -190,8 +167,10 @@ const main = async () => {
         if (sessionId !== null && observedSessionId !== sessionId) {
           throw new Error("design proof repair changed reviewer session");
         }
+        const recovered = recoverCodexReview(execution.stdout, await readFile(resultPath, "utf8"));
+        process.stderr.write(`Review JSON source: ${JSON.stringify({ messageOffset: recovered.messageOffset, recovered: recovered.recovered })}\n`);
         return {
-          raw: parseCodexFinalMessage(await readFile(resultPath, "utf8")),
+          raw: recovered.raw,
           sessionId: observedSessionId,
         };
       },

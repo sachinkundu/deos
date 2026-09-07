@@ -786,7 +786,7 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.match(prompt, /publish_work_product/);
   assert.match(prompt, /copy the response's exact operationId into result\.json providerReceipts/);
   assert.match(prompt, /result\.json list must exactly match provider-references\.json/);
-  assert.match(prompt, /Review jobs must publish their review outcome and actionable feedback/);
+  assert.doesNotMatch(prompt, /Review jobs must publish their review outcome and actionable feedback/);
   assert.match(prompt, /\^\[a-z0-9\]\[a-z0-9\._-\]\{0,79\}\$/);
   assert.match(prompt, /requirements-publish-v1/);
 });
@@ -1520,6 +1520,10 @@ test("post-collection validation failure preserves the completed manifest and fu
     author_reasoning: "high",
   } as OrchestrationRunRecord;
   await state.controller.execute(traceRun, "self_discovery", "self_discovery", reviewerDefinition);
+  const reviewPrompt = state.factory.sandbox.files.get("/deos/run/prompt.md") ?? "";
+  assert.match(reviewPrompt, /Review only\. Return your review as the final JSON object/);
+  assert.match(reviewPrompt, /Do not publish Linear notes/);
+  assert.doesNotMatch(reviewPrompt, /For a Linear working note|For GitHub work|Before finalizing this job, publish|Create validation\.txt/);
   state.factory.sandbox.supervisor.state = "exited";
   state.factory.sandbox.files.set("/root/.codex/auth.json", '{"auth":"refreshed"}');
 

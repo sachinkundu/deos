@@ -201,13 +201,17 @@ export const designReviewGateEligible = (input: {
   currentPrDatabaseId: string;
   currentHeadSha: string;
   unresolvedAttempts: number;
+  authorResponseAccepted?: boolean;
 }): boolean =>
   (!input.selfRequired || input.selfWaived || (
     input.selfAccepted !== null && input.selfAccepted.outcome === "pass"
   )) &&
-  input.independentAccepted?.candidateId === input.publishedCandidateId &&
+  input.independentAccepted !== null &&
+  (input.authorResponseAccepted === true || (
+    input.independentAccepted.candidateId === input.publishedCandidateId &&
+    input.independentAccepted.headSha === input.currentHeadSha
+  )) &&
   input.independentAccepted.prDatabaseId === input.currentPrDatabaseId &&
-  input.independentAccepted.headSha === input.currentHeadSha &&
   ["pass", "concerns"].includes(input.independentAccepted.outcome) &&
   input.independentAccepted.findingCount === input.independentAccepted.dispositionCount &&
   input.unresolvedAttempts === 0;

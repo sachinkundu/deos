@@ -32,6 +32,32 @@ export const parseCodexFinalMessage = (message) => {
   }
 };
 
+// Recover only from the last three assistant messages of the completed turn.
+// Tool output, reasoning, and messages from previous turns are never candidates.
+export const recoverCodexReview = (stdout, finalMessage, fields = ["findings"]) => {
+  let messages = [];
+  let completed = false;
+  for (const line of stdout.split("\n")) {
+    let event;
+    try { event = JSON.parse(line); } catch { continue; }
+    if (event.type === "turn.started") { messages = []; completed = false; }
+    if (event.type === "turn.failed") completed = false;
+    if (event.type === "item.completed" && event.item?.type === "agent_message" &&
+        typeof event.item.text === "string") messages.push(event.item.text);
+    if (event.type === "turn.completed") completed = true;
+  }
+  if (completed) {
+    for (const [offset, message] of messages.slice(-3).reverse().entries()) {
+      const raw = parseCodexFinalMessage(message);
+      if (raw !== null && typeof raw === "object" && !Array.isArray(raw) &&
+          fields.every(field => Object.hasOwn(raw, field))) {
+        return { raw, messageOffset: offset, recovered: offset > 0 };
+      }
+    }
+  }
+  return { raw: parseCodexFinalMessage(finalMessage), messageOffset: null, recovered: false };
+};
+
 export const reviewPromptWithSchema = (prompt, schema, provider) => provider === "openrouter"
   ? [
       prompt.trim(),
@@ -229,9 +255,10 @@ export const runBoundedProofReview = async ({ maximumRepairs, generate, validate
     const raw = generated.raw;
     rawJudgments.push(raw);
     const fingerprint = findingSetFingerprint(raw);
-    firstFindingSet ??= fingerprint;
+    // Unreadable output is unknown, not an empty review.
+    if (Array.isArray(raw?.findings)) firstFindingSet ??= fingerprint;
     try {
-      if (attempt > 0 && fingerprint !== firstFindingSet) {
+      if (attempt > 0 && firstFindingSet !== null && fingerprint !== firstFindingSet) {
         throw new Error("proof repair changed the base finding set");
       }
       const accepted = await validate(raw, attempt);

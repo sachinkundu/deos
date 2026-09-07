@@ -636,10 +636,10 @@ test("simple graph cancellation reaches no merge action", async () => {
   assert.deepEqual(services.systemActions, ["linear.delegate_and_start"]);
 });
 
-test("version 20 reviews the first and revised design before distinct human gates", async () => {
+test("one independent cycle precedes each distinct human gate", async () => {
   const store = new RuntimeStore(makeRun(traceabilityDefinition));
   const services = new NodeServices([
-    "completed", "pass", "pass", "completed", "pass",
+    "completed", "pass", "pass", "completed",
     "completed", "pass", "pass", "completed", "pass",
   ]);
   store.inbox.set("delivery-plan-merge", inboxEvent("delivery-plan-merge", "user", "Merging"));
@@ -686,10 +686,30 @@ test("version 20 reviews the first and revised design before distinct human gate
   ]);
 });
 
-test("version 20 recovers initial design publication feedback before any design gate exists", async () => {
+test("planning and design concerns each receive one author response with no second reviewer", async () => {
+  const store = new RuntimeStore(makeRun(traceabilityDefinition));
+  const services = new NodeServices([
+    "completed", "pass", "findings", "completed",
+    "completed", "pass", "concerns", "completed",
+  ]);
+  store.inbox.set("delivery-plan-merge", inboxEvent("delivery-plan-merge", "user", "Merging"));
+  store.inbox.set("delivery-design-cancel", inboxEvent("delivery-design-cancel", "user", "Canceled"));
+  await new WorkflowOrchestrator(store, traceabilityDefinition, services, {
+    humanGateStateId: "human-state", approvalStateNames: ["In Progress"],
+    rejectionStateNames: ["Canceled"], now: () => new Date(NOW),
+  }).run(store.run.run_id, new FakeStep(["delivery-plan-merge", "delivery-design-cancel"]));
+  const visits = store.transitions.map(({ to_node }) => to_node);
+  assert.equal(visits.filter(node => node === "independent_discovery").length, 1);
+  assert.equal(visits.filter(node => node === "design_independent_review").length, 1);
+  assert.equal(visits.includes("final_trace"), false);
+  assert.equal(visits.includes("design_final_review"), false);
+  assert.equal(services.gateEntries, 2);
+});
+
+test("recovers initial design publication feedback before any design gate exists", async () => {
   const store = new RuntimeStore(makeRun(traceabilityDefinition));
   const services = new InitialDesignFeedbackServices([
-    "completed", "pass", "pass", "completed", "pass",
+    "completed", "pass", "pass", "completed",
     "completed", "pass", "completed", "pass",
   ]);
   store.inbox.set("delivery-plan-merge", inboxEvent("delivery-plan-merge", "user", "Merging"));
