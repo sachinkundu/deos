@@ -11,7 +11,7 @@ A finished DEOS workflow can leave its Linear issue open. The issue should show 
 
 ### Non-goals
 
-- Do not move issues to Done for failed, blocked, denied, or canceled workflows.
+- If a pull request is not approved and the workflow is canceled, do not send the Done request. This step leaves the issue in its current Linear state. The same rule applies to failed, blocked, or denied workflows.
 - Do not prove that Linear applied the update or repair an issue that stays open.
 
 ## Capabilities
