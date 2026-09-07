@@ -1,3 +1,7 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { captureErrors, recordCaughtError } from "../src/error-context.ts";
@@ -63,3 +67,23 @@ test("interrupted response keeps the received prefix, status, headers and origin
     return true;
   });
 });
+
+
+for (const runner of ["trace-review-runner.mjs", "design-review-runner.mjs"]) {
+  test(`${runner} records its actual startup exception`, () => {
+    const root = mkdtempSync(join(tmpdir(), "deos-runner-errors-"));
+    try {
+      const missingJob = join(root, "missing-job.json");
+      const result = spawnSync(process.execPath, [new URL(`../container/${runner}`, import.meta.url).pathname], {
+        env: { ...process.env, DEOS_JOB_PATH: missingJob, DEOS_ERROR_OUTPUT_ROOT: root }, encoding: "utf8",
+      });
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, /ENOENT/);
+      assert.doesNotMatch(result.stderr, /recordCaughtError is not defined/);
+      const saved = JSON.parse(readFileSync(join(root, "original-errors.jsonl"), "utf8").trim());
+      assert.match(saved.message, /ENOENT/);
+      assert.ok(saved.message.includes(missingJob));
+      assert.match(saved.detail, /stack|ENOENT/);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+}

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { recordCaughtError } from "./original-errors.mjs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -97,7 +98,7 @@ const validate = (raw, review) => {
 };
 
 const main = async () => {
-  const job = JSON.parse(await readFile("/deos/run/job.json", "utf8"));
+  const job = JSON.parse(await readFile(process.env.DEOS_JOB_PATH ?? "/deos/run/job.json", "utf8"));
   if (
     job.agentRole !== "reviewer" || job.reviewKind !== "design" || job.reviewMode !== "discovery" ||
     job.permissionProfile !== "review_read_only" || !["codex", "openrouter"].includes(job.modelProvider) ||
