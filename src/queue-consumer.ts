@@ -1,3 +1,4 @@
+import { D1StageRetryStore } from "./publication-stage-retry.ts";
 import { CapabilityRouter } from "./capability-router.ts";
 import { verifyCapabilityToken } from "./capability-auth.ts";
 import { captureWorkflowErrors } from "./error-context.ts";
@@ -25,7 +26,7 @@ import { D1PlanningStore } from "./planning-store.ts";
 import { OpenRouterReviewClient, parseSupportedOpenRouterModels } from "./openrouter-review.ts";
 import { D1R2ProviderDiagnosticStore } from "./provider-diagnostics.ts";
 import { D1R2OpenRouterResponseStore } from "./openrouter-response-store.ts";
-import { AgentStageRetryController, D1AgentStageRetryStore } from "./stage-retry.ts";
+import { AgentStageRetryController } from "./stage-retry.ts";
 import { loadBundledWorkflowDefinitionRegistry } from "./workflow-bundle.ts";
 import {
   D1WorkflowRuntimeRecoveryStore,
@@ -104,7 +105,7 @@ const stageRetryController = async (env: Env): Promise<AgentStageRetryController
   const targetDefinition = definitions["simple-traceability"];
   if (targetDefinition === undefined) throw new Error("traceability workflow definition is missing");
   return new AgentStageRetryController(
-    new D1AgentStageRetryStore(env.DB),
+    new D1StageRetryStore(env.DB),
     env.ORCHESTRATION_WORKFLOW as unknown as QueueConsumerEnv["ORCHESTRATION_WORKFLOW"],
     env.STAGE_RETRY_SECRET,
     targetDefinition,

@@ -6,6 +6,8 @@ import {
   isAgentStageRetryNode,
   RETRYABLE_AGENT_ATTEMPT_STATES,
   type AgentStageRetryNode,
+  type StageRetryNode,
+  isStageRetryNode,
 } from "./stage-retry-contract.ts";
 
 export { isAgentStageRetryNode, type AgentStageRetryNode } from "./stage-retry-contract.ts";
@@ -16,7 +18,7 @@ export interface AgentStageRetryRecord {
   retry_id: string;
   run_id: string;
   failed_attempt_id: string;
-  retry_node: AgentStageRetryNode;
+  retry_node: StageRetryNode;
   retry_kind: AgentStageRetryKind;
   from_visit_sequence: number;
   to_visit_sequence: number;
@@ -674,7 +676,7 @@ export class AgentStageRetryController {
     if (
       value.version !== 1 || typeof value.runId !== "string" || value.runId.length === 0 ||
       typeof value.failedAttemptId !== "string" || value.failedAttemptId.length === 0 ||
-      !isAgentStageRetryNode(value.retryNode) ||
+      !isStageRetryNode(value.retryNode) ||
       typeof value.requestedBy !== "string" || !/^[a-zA-Z0-9._@-]{1,100}$/.test(value.requestedBy)
     ) return json(400, { error: "invalid_stage_retry" });
 

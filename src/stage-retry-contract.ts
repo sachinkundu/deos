@@ -45,3 +45,19 @@ const agentStageRetryNodes = new Set<unknown>([
 
 export const isAgentStageRetryNode = (value: unknown): value is AgentStageRetryNode =>
   agentStageRetryNodes.has(value);
+
+// Publication retries reuse the accepted candidate; they do not rerun its author.
+export const publicationRetryActions = {
+  publish_initial: "github.publish_planning_candidate",
+  publish_update: "github.publish_planning_candidate",
+  publish_planning_revision: "github.publish_planning_candidate",
+  publish_design: "github.publish_design_candidate",
+  publish_design_response: "github.publish_design_candidate",
+  publish_design_revision: "github.publish_design_candidate",
+} as const;
+export type PublicationRetryNode = keyof typeof publicationRetryActions;
+export type StageRetryNode = AgentStageRetryNode | PublicationRetryNode;
+export const isPublicationRetryNode = (value: unknown): value is PublicationRetryNode =>
+  typeof value === "string" && Object.hasOwn(publicationRetryActions, value);
+export const isStageRetryNode = (value: unknown): value is StageRetryNode =>
+  isAgentStageRetryNode(value) || isPublicationRetryNode(value);

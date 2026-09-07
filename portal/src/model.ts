@@ -1,6 +1,9 @@
 import { restoreWorkflowDefinition } from "../../src/workflow-definition.ts";
 import {
   isAgentStageRetryNode,
+  isStageRetryNode,
+  isPublicationRetryNode,
+  publicationRetryActions,
   RETRYABLE_AGENT_ATTEMPT_STATES,
 } from "../../src/stage-retry-contract.ts";
 import { presentationStagesForDefinition, validatePresentationManifest } from "./manifests.ts";
@@ -68,15 +71,25 @@ export interface PortalRunRetry {
 export const portalRunRetry = (
   run: Pick<RunRow, "status" | "current_node" | "current_visit_sequence" | "terminal_cause">,
   attempts: readonly Pick<AttemptRow, "attempt_id" | "visit_sequence" | "node_id" | "state" | "cleanup_state">[],
-  transitions: readonly Pick<TransitionRow, "from_node" | "to_node" | "from_visit_sequence" | "to_visit_sequence" | "cause_reference">[],
+  transitions: readonly (Pick<TransitionRow, "from_node" | "to_node" | "from_visit_sequence" | "to_visit_sequence" | "cause_reference"> & { transition_id?: string })[],
   retryRow: RetryRow | null,
 ): PortalRunRetry | null => {
   if (
-    retryRow?.state === "pending" && isAgentStageRetryNode(retryRow.retry_node) &&
+    retryRow?.state === "pending" && isStageRetryNode(retryRow.retry_node) &&
     run.status === "active" && run.current_node === retryRow.retry_node &&
     run.current_visit_sequence === retryRow.to_visit_sequence
   ) {
     return { failedAttemptId: retryRow.failed_attempt_id, retryNode: retryRow.retry_node };
+  }
+  if (run.status === "failed" && run.current_node === "system_action_failed" &&
+      run.terminal_cause === "system_action_invariant_failed") {
+    const failedExit = transitions.find((t) =>
+      t.to_node === run.current_node && t.to_visit_sequence === run.current_visit_sequence &&
+      t.from_visit_sequence === run.current_visit_sequence - 1 &&
+      isPublicationRetryNode(t.from_node) &&
+      t.cause_reference === `system:${publicationRetryActions[t.from_node]}:failed`);
+    return failedExit?.transition_id
+      ? { failedAttemptId: failedExit.transition_id, retryNode: failedExit.from_node } : null;
   }
   const failedAttempt = [...attempts].reverse().find((attempt) =>
     attempt.visit_sequence === run.current_visit_sequence - 1
@@ -244,7 +257,7 @@ export const PORTAL_SELECTS = Object.freeze({
     FROM agent_attempts attempt WHERE attempt.run_id = ?
     ORDER BY attempt.created_at, attempt.attempt_id`,
   retryForRun: `SELECT failed_attempt_id, retry_node, state, to_visit_sequence
-    FROM agent_stage_retries WHERE run_id = ?
+    FROM (SELECT * FROM agent_stage_retries UNION ALL SELECT * FROM publication_stage_retries) WHERE run_id = ?
     ORDER BY created_at DESC, retry_id DESC LIMIT 1`,
   waits: `SELECT visit_sequence, node_id, status, created_at, consumed_at
     FROM workflow_waits WHERE run_id = ? ORDER BY created_at, wait_id`,
