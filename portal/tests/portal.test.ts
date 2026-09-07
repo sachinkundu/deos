@@ -827,7 +827,7 @@ test("authenticated diagnostic reads return original detail and retrieval errors
     ASSETS: {} as Fetcher,
     ACCESS_TEAM_DOMAIN: "deos-test.cloudflareaccess.com", ACCESS_AUD: "aud", ALLOWED_EMAIL: "sachinkundu@gmail.com",
   };
-  const request = new Request("https://deos.example/api/errors/00000000-0000-4000-8000-000000000001");
+  const request = new Request("https://deos.example/api/diagnostics/00000000-0000-4000-8000-000000000001");
   const authenticate = async () => ({ email: "sachinkundu@gmail.com" });
   const response = await routePortalRequest(request, env, authenticate);
   assert.equal(response.status, 200);

@@ -344,7 +344,7 @@ export const routePortalRequest = async (
       );
       return result === null ? json(404, { error: "governed_pull_request_not_found" }) : json(200, result);
     }
-    const errorMatch = url.pathname.match(/^\/api\/errors\/([0-9a-f-]{36})$/i);
+    const errorMatch = url.pathname.match(/^\/api\/diagnostics\/([0-9a-f-]{36})$/i);
     if (errorMatch !== null && request.method === "GET") {
       const row = await env.DB.prepare("SELECT detail_r2_key FROM workflow_errors WHERE error_id = ?")
         .bind(errorMatch[1]).first<{ detail_r2_key: string }>();
