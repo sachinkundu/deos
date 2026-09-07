@@ -23,7 +23,12 @@ DEOS MUST NOT add its own record or receipt for this call. It MUST NOT read the 
 - **WHEN** the Done call has any other error or reaches the retry limit
 - **THEN** the workflow stays `succeeded`, and DEOS does not check, record, or repair the Linear state
 
+#### Scenario: A canceled workflow leaves the issue as it is
+
+- **WHEN** a pull request is not approved and the workflow records `canceled` as its final result
+- **THEN** DEOS does not send the Linear Done request, and this step leaves the source issue in its current Linear state
+
 #### Scenario: Other terminal outcomes do not send the request
 
-- **WHEN** a workflow ends with a failed, blocked, denied, or canceled outcome
+- **WHEN** a workflow ends with a failed, blocked, or denied outcome
 - **THEN** DEOS does not send the Linear Done request for that outcome
