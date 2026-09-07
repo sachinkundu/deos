@@ -78,6 +78,17 @@ could bypass graph gates. Letting cron or the portal close any apparently
 finished issue was rejected because that would detach the move from the frozen
 definition and its exact success proofs.
 
+### Retain proof and recovery instead of fire-and-forget
+
+A fire-and-forget mutation was reconsidered after review. It is rejected for
+this design because the approved requirements make the final Linear read,
+saved call result, stable retry identity, state-conflict preservation, and
+recoverable open run observable behavior. Returning success immediately after
+sending the mutation could leave Linear unchanged while DEOS reports success,
+and a blind repeat could overwrite a later human state. Removing those
+guarantees requires an upstream proposal and spec amendment followed by a new
+design pass; this design revision does not alter approved planning artifacts.
+
 ### Put one finalizer immediately before terminal success
 
 Each applicable immutable workflow definition gets a named system-action node,
@@ -224,7 +235,6 @@ allocated
              |                                          -> awaiting_evidence
              |                                             -> superseded_by_manual_done_occurrence
              -> uncertain -> applied | no_effect | still_unknown
-                          -> awaiting_provider_redelivery
              -> no_effect
 still_unknown -> awaiting_evidence -> superseded_by_manual_done_occurrence
               -> awaiting_terminal_read -> complete
@@ -241,8 +251,9 @@ call remains `uncertain` or `still_unknown` and is not settled. An `applied`
 attempt first enters `awaiting_evidence` while normal signed delivery is
 pending. It enters `awaiting_provider_redelivery` when a Done read and a saved
 correlator identify the exact event, but that event has not arrived. An
-`uncertain` attempt may enter the same state only after it has that correlator;
-otherwise it remains `still_unknown`. A matched redelivery advances directly
+`uncertain` attempt cannot enter that state directly. Reconciliation must
+first classify it as `applied` and persist the correlator; otherwise it remains
+`still_unknown`. A matched redelivery advances directly
 to `awaiting_terminal_read`. If the event is unavailable, starting manual
 occurrence repair changes the attempt back to `awaiting_evidence` for the new
 user-authored sequence. An `allocated` attempt can enter `awaiting_evidence`
@@ -551,6 +562,12 @@ mutation.
   authenticated retry resumes that same attempt and performs only a new
   strongly consistent terminal read; it allocates no attempt and makes no
   Linear mutation.
+- **The terminal read after app-attempt evidence or manual-repair evidence
+  fails or is malformed** -> Keep the same attempt in
+  `awaiting_terminal_read`, set the action to `retryable_failure`, append the
+  failed observation, and leave the run at the finalizer. An authenticated
+  retry performs only a new terminal read; it does not allocate an attempt,
+  repeat the repair, or make another Linear mutation.
 - **Current state or occurrence differs from the frozen source** -> Append the
   observation and preserve the newer occurrence. Staff either leave the action
   in conflict or explicitly start conflict repair: accept a fresh Done through
