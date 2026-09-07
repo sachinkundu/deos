@@ -31,7 +31,7 @@ The temporary provider probe Worker has been deleted. The error record is retain
 
 ## Checks
 
-- 300 Worker tests passed.
+- 302 Worker tests passed.
 - 61 portal tests passed.
 - 38 Python tests passed.
 - TypeScript, portal types, generated binding checks, Python lint, and strict OpenSpec validation passed.

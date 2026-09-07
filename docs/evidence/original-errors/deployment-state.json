@@ -1,10 +1,10 @@
 {
-  "workerVersion": "2739ce10-4b9c-445b-bdf3-4d4ede7d0652",
+  "workerVersion": "c7e2e6ee-5f2c-4b16-a01f-45992adbb779",
   "workerTrafficPercent": 100,
   "portalVersion": "fa817ce3-c413-435f-8c92-efa70780e704",
   "portalTrafficPercent": 100,
   "ingressVersion": "a51a6f99-9256-4088-ac3e-a5a941d61ace",
-  "containerImage": "sha256:b8c1bd7171c1eac0a3477ce515d436cf5749290feef4a32442cb881c17a4d6bc",
+  "containerImage": "sha256:39c3bc98bfbd51f6da275b0c8470b79317fcc53efb71bd3ec8422df57a948053",
   "healthyContainerInstances": 4,
   "failedContainerInstances": 0,
   "sac160State": "failed",
