@@ -128,41 +128,10 @@ const codexJudgment = async ({
   };
 };
 
-const collectOpenRouterReceipts = async (job) => {
-  const response = await fetch(`${job.capabilityUrl}/model-review/receipts`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${job.capabilityToken}`,
-      "Content-Type": "application/json",
-      "Deos-Attempt": job.attemptId,
-    },
-    body: JSON.stringify({
-      version: 1,
-      action: "list_openrouter_review_receipts",
-    }),
-  });
-  const body = await response.json();
-  if (
-    !response.ok || typeof body !== "object" || body === null ||
-    !Array.isArray(body.receipts) || body.receipts.length === 0
-  ) {
-    throw new Error("trusted OpenRouter receipt lookup failed");
-  }
-  const receipts = body.receipts.map((value) => {
-    const receipt = asObject(value, "OpenRouter provider receipt");
-    if (
-      receipt.capability !== "model" || typeof receipt.operationId !== "string" ||
-      !["succeeded", "reconciled"].includes(receipt.state) ||
-      !(receipt.providerResourceId === null || typeof receipt.providerResourceId === "string")
-    ) throw new Error("OpenRouter provider receipt is invalid");
-    return receipt;
-  });
-  await writeFile(
-    `${OUTPUT_ROOT}/provider-references.jsonl`,
-    `${receipts.map((receipt) => JSON.stringify(receipt)).join("\n")}\n`,
-    { mode: 0o600 },
-  );
-  return receipts.map((receipt) => receipt.operationId);
+const collectOpenRouterReceipts = async () => {
+  // Model calls are diagnostics, not write receipts or workflow prerequisites.
+  await writeFile(`${OUTPUT_ROOT}/provider-references.jsonl`, "", { mode: 0o600 });
+  return [];
 };
 
 const asObject = (value, label) => {

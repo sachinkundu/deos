@@ -499,8 +499,7 @@ export class CapabilityRouter {
     attemptId: string,
   ): Promise<Response> {
     if (
-      this.dependencies.openrouter?.proxyResponses === undefined ||
-      this.dependencies.openrouterResponses === undefined
+      this.dependencies.openrouter?.proxyResponses === undefined
     ) {
       return json(503, { error: "openrouter_adapter_unavailable" });
     }
@@ -508,10 +507,12 @@ export class CapabilityRouter {
     const operationId = operationIdentity(
       runId,
       "capability",
-      `model:openrouter_responses:${attemptId}:${requestDigest.slice(0, 24)}`,
+      `model:openrouter_responses:${attemptId}:${crypto.randomUUID()}`,
       1,
     );
-    const operation = await this.dependencies.store.begin({
+    // Each harness call is independent. Diagnostic persistence never controls
+    // whether a model request may run or whether its response can be returned.
+    try { await this.dependencies.store.begin({
       operationId,
       runId,
       attemptId,
@@ -520,33 +521,12 @@ export class CapabilityRouter {
       sanitizedTarget: String(input.model),
       requestDigest,
       now: this.now().toISOString(),
-    });
-    const replay = await this.dependencies.openrouterResponses.get(operationId);
-    if (replay !== null) {
-      if (["pending", "manual_reconciliation_required"].includes(operation.operation.state)) {
-        await this.dependencies.store.finish({
-          operationId,
-          expected: operation.operation.state,
-          state: "reconciled",
-          providerResourceId: replay.providerRequestId,
-          safeErrorCategory: null,
-          now: this.now().toISOString(),
-        });
-      }
-      this.emitProvider(runId, operationId, "reconciled");
-      return this.openRouterResponse(replay);
-    }
-    if (operation.operation.state !== "pending" || !operation.created) {
-      return json(409, {
-        error: "model_response_replay_unavailable",
-        operationId,
-        state: operation.operation.state,
-        diagnosticId: operation.operation.diagnostic_id,
-      });
+    }); } catch (error) {
+      console.error("OpenRouter diagnostic start failed", error);
     }
     try {
       const response = await this.dependencies.openrouter.proxyResponses(input);
-      await this.dependencies.openrouterResponses.put({
+      try { await this.dependencies.openrouterResponses?.put({
         operationId,
         ...response,
         now: this.now().toISOString(),
@@ -559,7 +539,10 @@ export class CapabilityRouter {
         safeErrorCategory: null,
         now: this.now().toISOString(),
       });
-      if (!changed) throw new Error("OpenRouter Responses receipt compare-and-set failed");
+      if (!changed) console.error("OpenRouter diagnostic completion was not saved", operationId);
+      } catch (error) {
+        console.error("OpenRouter response diagnostic save failed", error);
+      }
       this.emitProvider(runId, operationId, "succeeded");
       return this.openRouterResponse({ operationId, ...response });
     } catch (error) {
@@ -590,18 +573,17 @@ export class CapabilityRouter {
           }));
         }
       }
-      const state = diagnostic?.requestMayHaveSucceeded === false
-        ? "failed"
-        : "manual_reconciliation_required";
-      await this.dependencies.store.finish({
+      try { await this.dependencies.store.finish({
         operationId,
         expected: "pending",
-        state,
+        state: "failed",
         providerResourceId: null,
         safeErrorCategory,
         diagnosticId,
         now,
-      });
+      }); } catch (saveError) {
+        console.error("OpenRouter failure diagnostic save failed", saveError);
+      }
       console.error(JSON.stringify({
         message: "openrouter Responses proxy failed",
         runId,
@@ -620,7 +602,7 @@ export class CapabilityRouter {
       this.emitProvider(runId, operationId, "failed", safeErrorCategory);
       return json(502, {
         error: {
-          message: `DEOS OpenRouter proxy failed (${safeErrorCategory})`,
+          message: error instanceof Error ? error.message : String(error),
           type: "deos_provider_error",
           code: safeErrorCategory,
           diagnostic_id: diagnosticId,

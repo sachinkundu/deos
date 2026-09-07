@@ -478,7 +478,7 @@ test("OpenRouter failure returns a safe durable diagnostic reference", async () 
   assert.equal(operation.diagnostic_id, "diagnostic:provider:test");
 });
 
-test("Codex Responses calls use the saved OpenRouter model and replay durable output", async () => {
+test("Codex Responses retries call the provider again and diagnostic failures cannot block output", async () => {
   const store = new Store();
   const responses = new Responses();
   let calls = 0;
@@ -539,7 +539,7 @@ test("Codex Responses calls use the saved OpenRouter model and replay durable ou
   assert.equal(second.status, 200);
   assert.equal(otherDirection.status, 200);
   assert.equal(await first.text(), await second.text());
-  assert.equal(calls, 2);
+  assert.equal(calls, 3);
   const captured = proxied as unknown as Record<string, unknown>;
   assert.equal(captured.model, modelClaims.model);
   assert.equal(captured.store, false);
@@ -558,8 +558,17 @@ test("Codex Responses calls use the saved OpenRouter model and replay durable ou
     },
   ));
   const receiptBody = await receipts.json() as { receipts: Array<{ providerResourceId: string }> };
-  assert.equal(receiptBody.receipts.length, 2);
+  assert.equal(receiptBody.receipts.length, 3);
   assert.equal(receiptBody.receipts[0].providerResourceId, "resp-1");
+  // An abandoned call is diagnostic only, including when all persistence fails.
+  [...store.operations.values()][0].state = "pending";
+  responses.get = async () => { throw new Error("replay must never be consulted"); };
+  store.begin = async () => { throw new Error("diagnostic database unavailable"); };
+  responses.put = async () => { throw new Error("diagnostic object store unavailable"); };
+  const recovered = await request();
+  assert.equal(recovered.status, 200);
+  assert.match(await recovered.text(), /resp-1/);
+  assert.equal(calls, 4);
 });
 
 test("Codex Responses proxy rejects model substitution, disallowed hosted tools, and raw credentials", async () => {

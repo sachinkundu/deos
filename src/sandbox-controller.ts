@@ -1021,11 +1021,12 @@ export class SandboxAgentController {
         resultReceiptIds.length === mechanicalReceiptIds.length &&
         resultReceiptIds.every((value) =>
           typeof value === "string" && mechanicalReceiptIds.includes(value));
-      const providerReceiptsComplete = declaredReceiptsMatch &&
+      const providerReceiptsComplete = (job.agentRole === "reviewer" || declaredReceiptsMatch) &&
         await this.dependencies.providerReceipts.verify(
           attempt.run_id,
           attempt.attempt_id,
-          mechanicalReceiptIds,
+          job.agentRole === "reviewer" ? undefined : mechanicalReceiptIds,
+          job.agentRole === "reviewer",
         );
       if (job.agentRole === "author" && job.inputs.includes("openspec_change")) {
         try {
@@ -1591,7 +1592,8 @@ export class SandboxAgentController {
         outcome,
         providerReceiptsPresent,
         providerReceiptsComplete: attempt.manifest_id !== null &&
-          await this.dependencies.providerReceipts.verify(attempt.run_id, attempt.attempt_id),
+          await this.dependencies.providerReceipts.verify(attempt.run_id, attempt.attempt_id,
+            undefined, JSON.parse(attempt.job_spec_json).agentRole === "reviewer"),
       },
     };
   }
