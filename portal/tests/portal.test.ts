@@ -820,7 +820,7 @@ test("design review API projection keeps failed attempts and later-round readine
 });
 
 test("authenticated diagnostic reads return original detail and retrieval errors", async () => {
-  const original = { name: "ProviderResponseError", message: "Exact GitHub rejection", responseBody: "complete body", cause: { message: "root cause" } };
+  const original = { name: "ProviderResponseError", message: "Exact GitHub rejection <script>not executable</script>", responseBody: "complete body", cause: { message: "root cause" } };
   const env = {
     DB: { prepare: () => ({ bind: () => ({ first: async () => ({ detail_r2_key: "original-errors/proof.json" }) }) }) } as unknown as D1Database,
     ARTIFACTS: { get: async () => ({ text: async () => JSON.stringify(original) }) } as unknown as R2Bucket,
@@ -832,6 +832,12 @@ test("authenticated diagnostic reads return original detail and retrieval errors
   const response = await routePortalRequest(request, env, authenticate);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), original);
+  const page = await routePortalRequest(new Request(request.url.replace("/api/diagnostics/", "/failure-detail/")), env, authenticate);
+  assert.equal(page.status, 200);
+  const html = await page.text();
+  assert.match(html, /&lt;script&gt;not executable&lt;\/script&gt;/);
+  assert.doesNotMatch(html, /<script>/);
+
   const failed = await routePortalRequest(request, { ...env,
     ARTIFACTS: { get: async () => { throw new Error("R2 original read failure"); } } as unknown as R2Bucket,
   }, authenticate);
