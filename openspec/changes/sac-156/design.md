@@ -236,8 +236,10 @@ allocated
              |                                             -> superseded_by_manual_done_occurrence
              -> uncertain -> applied | no_effect | still_unknown
              -> no_effect
-still_unknown -> awaiting_evidence -> superseded_by_manual_done_occurrence
-              -> awaiting_terminal_read -> complete
+still_unknown
+  -> awaiting_evidence
+     -> superseded_by_manual_done_occurrence
+        -> awaiting_terminal_read -> complete
 ```
 
 `allocated` means no mutation claim exists. Target-resolution or pre-call-read
@@ -258,8 +260,15 @@ to `awaiting_terminal_read`. If the event is unavailable, starting manual
 occurrence repair changes the attempt back to `awaiting_evidence` for the new
 user-authored sequence. An `allocated` attempt can enter `awaiting_evidence`
 with null call timestamps only through authenticated conflict repair after a
-fresh non-Done baseline is saved. `complete` means its accepted evidence and
-final observation have been committed with the action.
+fresh non-Done baseline is saved. Every transition into `awaiting_evidence`
+sets `evidence_mode` in the same guarded transaction: `app_transition` for an
+applied app call, or `manual_occurrence_repair` for an authenticated repair.
+The exact matcher selects its rules from that field and rejects an
+`awaiting_evidence` attempt whose mode is null or inconsistent with its saved
+operation or repair facts. Leaving `awaiting_evidence` clears the active mode;
+a later manual-repair entry on the same attempt sets the repair mode instead.
+`complete` means its accepted evidence and final observation have been
+committed with the action.
 
 The action status is a summary of the current attempt and the operator path.
 Every status change occurs in the same guarded D1 transaction as the attempt
@@ -353,13 +362,15 @@ monotonic DEOS runs.
    `still_unknown` attempt; the guarded transition changes the attempt to
    `awaiting_evidence` and the action to `manual_done_occurrence_repair`. It
    never classifies the old call as applied or no-effect.
-9. If an applied or possibly effective call is read in Done but its exact
-   delivery is absent, the action records the correlator when available and
-   both the attempt and action enter `awaiting_provider_redelivery`. Authorized
-   staff may request lookup or redelivery of that exact retained event. Only
-   its correctly signed request can prove the old attempt. A matched event
-   changes the attempt to `awaiting_terminal_read` and the action to
-   `in_flight`; an unavailable event can enter manual occurrence repair.
+9. If an attempt classified as `applied` is read in Done and its saved
+   correlator identifies an exact delivery that is absent, both the attempt and
+   action enter `awaiting_provider_redelivery`. An `uncertain` or
+   `still_unknown` attempt cannot enter this state; step 8 must first classify
+   it as `applied` and save the correlator. Authorized staff may request lookup
+   or redelivery of that exact retained event. Only its correctly signed
+   request can prove the old attempt. A matched event changes the attempt to
+   `awaiting_terminal_read` and the action to `in_flight`; an unavailable event
+   can enter manual occurrence repair.
 10. If the event has expired, cannot be redelivered, its correlator cannot be
     recovered, a `still_unknown` attempt has exhausted bounded provider
     reconciliation, or a pre-call source mismatch put the action in `conflict`,
@@ -455,6 +466,7 @@ records.
 | `action_key`, `attempt_number` | Composite primary key and replay identity. |
 | `provider_operation_id`, `provider_idempotency_key` | Stable identity for all transport requests reconciling this attempt. |
 | `claim_state` | `allocated`, `preflight_failed_no_call`, `matched_done`, `claimed`, `uncertain`, `applied`, `no_effect`, `still_unknown`, `awaiting_evidence`, `awaiting_provider_redelivery`, `awaiting_terminal_read`, `superseded_by_manual_done_occurrence`, or `complete`. |
+| `evidence_mode` | Nullable active matcher discriminator. It MUST be `app_transition` or `manual_occurrence_repair` while `claim_state` is `awaiting_evidence`, and null in every other state. Guarded transitions set or clear it atomically with `claim_state`. |
 | `call_claimed_at`, `call_started_at`, `call_outcome`, `call_finished_at` | Mutation claim and bounded result; null claim/start proves a preflight failure or matched-Done path made no call. |
 | `app_actor_id`, `provider_transition_id`, `result_occurrence_token`, `result_issue_revision`, `delivery_id` | Exact app identity, provider correlation, and signed-delivery evidence. |
 | `settled_at`, `created_at`, `updated_at` | Retry guard and chronology. |
