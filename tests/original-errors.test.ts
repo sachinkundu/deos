@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
@@ -74,7 +74,14 @@ for (const runner of ["trace-review-runner.mjs", "design-review-runner.mjs"]) {
     const root = mkdtempSync(join(tmpdir(), "deos-runner-errors-"));
     try {
       const missingJob = join(root, "missing-job.json");
-      const result = spawnSync(process.execPath, [new URL(`../container/${runner}`, import.meta.url).pathname], {
+      const loader = join(root, "container-paths.mjs");
+      const vendor = new URL("../vendor/bettaview/", import.meta.url).href;
+      writeFileSync(loader, `import { registerHooks } from "node:module";
+        registerHooks({ resolve(specifier, context, next) {
+          return next(specifier.startsWith("/deos/bettaview/")
+            ? ${JSON.stringify(vendor)} + specifier.slice("/deos/bettaview/".length) : specifier, context);
+        } });`);
+      const result = spawnSync(process.execPath, ["--import", loader, new URL(`../container/${runner}`, import.meta.url).pathname], {
         env: { ...process.env, DEOS_JOB_PATH: missingJob, DEOS_ERROR_OUTPUT_ROOT: root }, encoding: "utf8",
       });
       assert.equal(result.status, 1);
