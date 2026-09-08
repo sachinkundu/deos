@@ -39,12 +39,10 @@ import {
   authorVisitStatus,
   isDesignAuthorVisit,
   designSubstepForNode,
-  approvalEvidenceLinks,
   phaseDisplayStatus,
   phaseForVisit,
   planningSubstepForNode,
   stoppedPhaseSourceId,
-  selectedApprovalEvidenceUrls,
   workflowStatusTone,
   workflowPhases,
   type WorkflowPhaseId,
@@ -370,8 +368,6 @@ function TraceabilityWorkflowMap({
   const designMergeVisit = latestVisitFor(designVisits, (visit) => visit.nodeId === "merge_design_pr");
   const planningGates = projection.gateVisits.filter((gate) => gate.gateKind === "plan");
   const designGates = projection.gateVisits.filter((gate) => gate.gateKind === "design");
-  const approvalLinks = approvalEvidenceLinks(projection.history);
-  const selectedApprovalLinks = new Set(selectedApprovalEvidenceUrls(projection.history, selectedVisit));
   const planningProduct = projection.workProducts.planning;
   const designProduct = projection.workProducts.design;
   const planningAuthorStatus = authorVisitStatus(planningAuthorVisit, projection.run.status);
@@ -475,33 +471,6 @@ function TraceabilityWorkflowMap({
     </button>
   </div>;
 
-  const inspectedPhase = phases.find((phase) => phase.id === inspectedPhaseId) ?? currentPhase;
-  const selectedDesignStep = designSteps.find((step) => step.id === expandedSubstep);
-  const inspectorStatus = selectedDesignStep?.status ?? (expandedSubstep === "planning_author" ? planningAuthorStatus
-    : expandedSubstep === "self_review" ? selfReviewStatus
-      : expandedSubstep === "independent_review" ? independentReviewStatus
-        : expandedSubstep === "design_author" ? designAuthorStatus
-          : inspectedPhase === null
-            ? "Upcoming"
-            : phaseDisplayStatus(inspectedPhase, currentPhaseId, projection.run.status, failedPhaseId));
-  const inspectorTone = workflowStatusTone(inspectorStatus);
-  const inspectorComplete = inspectorTone === "succeeded";
-  const inspectorFailed = inspectorTone === "failed";
-  const inspectorTitle = selectedDesignStep?.label ?? (expandedSubstep === "planning_author" ? "Planning author"
-    : expandedSubstep === "self_review" ? "Author self-review"
-      : expandedSubstep === "independent_review" ? "Independent review"
-        : expandedSubstep === "planning_review" ? "Human review"
-          : expandedSubstep === "planning_merge" ? "Merge & verify"
-            : expandedSubstep === "design_author" ? "Design author"
-              : expandedSubstep === "design_review" ? "Human review"
-                : expandedSubstep === "design_merge" ? "Merge & verify"
-                  : inspectedPhase?.label ?? "Workflow");
-  const inspectorProduct = expandedSubstep === "planning_review" ? planningProduct
-    : expandedSubstep === "design_review" ? designProduct
-      : inspectedPhase?.id === "planning" ? planningProduct : inspectedPhase?.id === "design" ? designProduct : null;
-  const inspectorVisit = selectedDesignStep === undefined ? detail : selectedDesignStep.visit;
-  const inspectorAttempts = inspectorVisit?.attempts.filter((attempt) => attempt.transcriptAvailable) ?? [];
-
   return <section className="workflow-panel phase-workflow-panel" aria-labelledby="workflow-title">
     <div className="section-heading phase-heading"><div><span className="eyebrow">Current run</span><h2 id="workflow-title">Workflow map</h2></div><span>Open a phase, then drill into its evidence</span></div>
     <div className="current-step-banner"><span>{currentPhaseId === "stopped" ? "Failed step" : "Current step"}</span><strong className={workflowStatusTone(currentLeafStatus)}>{currentLeafVisit === null ? currentPhase?.label ?? "Unknown" : workflowStepLabel(currentLeafVisit.nodeId)}</strong></div>
@@ -543,34 +512,6 @@ function TraceabilityWorkflowMap({
           </article>;
         })}
       </div>
-      <aside className="phase-inspector" aria-label="Inspected workflow detail">
-        <span className="eyebrow">{inspectedPhaseId === currentPhaseId ? "Current step" : "Inspecting"}</span>
-        <h3>{inspectorTitle}</h3>
-        <span className={`inspector-status ${inspectorTone}`}>
-          {inspectorFailed ? <WarningCircle weight="fill" /> : inspectorComplete ? <CheckCircle weight="fill" /> : <Clock />}{inspectorStatus}
-        </span>
-        <dl className="inspector-summary">
-          <div><dt>Phase</dt><dd>{inspectedPhase?.label ?? "—"}</dd></div>
-          <div><dt>Workflow step</dt><dd>{inspectorVisit === null ? "Not started" : workflowStepLabel(inspectorVisit.nodeId)}</dd></div>
-          <div><dt>Phase visits</dt><dd>{inspectedPhase?.visits.length ?? 0}</dd></div>
-        </dl>
-        {inspectedPhase?.id === "planning" && <>
-          <details open><summary>Self review</summary><p>{selfReviewStatus}: {visitOutcomeSummary(selfReviewVisit, selfReviewStatus)}.</p></details>
-          <details open><summary>Independent review</summary><p>{independentReviewStatus}: {visitOutcomeSummary(independentReviewVisit, independentReviewStatus)}.</p></details>
-        </>}
-        {inspectedPhase?.id === "approval" && <>
-          <details open><summary>Planning decisions</summary>{planningGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
-          <details open><summary>Design decisions</summary>{designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
-          {approvalLinks.length > 0 && <details open><summary>Review links</summary>{approvalLinks.map((link) => <p key={link.url} className={selectedApprovalLinks.has(link.url) ? "selected-evidence" : ""}><a href={link.url} target="_blank" rel="noreferrer"><GitPullRequest /> {link.label}</a>{link.kind === "pull_request" && <a href={bettaViewUrl(link.url)} target="_blank" rel="noreferrer"><Eye /> Open in BettaView</a>}</p>)}</details>}
-        </>}
-        {inspectedPhase?.id === "design" && <>
-          <details open><summary>Self review</summary><p>{designSelfReviewStatus}: {visitOutcomeSummary(designSelfReviewVisit, designSelfReviewStatus)}.</p></details>
-          <details open><summary>Independent review</summary><p>{designIndependentReviewStatus}: {visitOutcomeSummary(designIndependentReviewVisit, designIndependentReviewStatus)}.</p></details>
-          <details open><summary>Human review rounds</summary>{designGates.length === 0 ? <p>Not reached yet.</p> : designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
-        </>}
-        {inspectorProduct && <details open><summary>Artifacts</summary><p><PullRequestActions url={inspectorProduct.url} githubLabel={`PR #${inspectorProduct.number}`} /></p><p>{inspectorProduct === planningProduct ? "Proposal and complete specs" : "design.md"}</p></details>}
-        {inspectorAttempts.length > 0 && <details><summary>Transcript</summary>{inspectorAttempts.map((attempt) => <button className="inspector-action" type="button" key={attempt.id} onClick={() => onOpenTranscript(attempt.id)}>View transcript</button>)}</details>}
-      </aside>
     </div>
     <div className="phase-history">
       <button type="button" aria-expanded={historyOpen} onClick={() => setHistoryOpen((open) => !open)}><Clock /><span><strong>Visit history</strong> · {projection.history.length} events</span>{historyOpen ? <CaretDown /> : <CaretRight />}</button>
