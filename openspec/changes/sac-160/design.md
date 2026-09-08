@@ -81,7 +81,9 @@ boundary and retry ownership.
    client. The client remains responsible for its established state-name
    resolution and provider wire contract. The implementation must verify that
    contract against Linear's primary documentation before changing the client.
-5. A successful response ends the notifier. A client error classified as a
+5. A successful response ends the notifier immediately. The notifier does not
+   wait five seconds, read the issue state, or wait for a returning Linear
+   webhook before deciding whether to retry. A client error classified as a
    known, safe transient Linear failure may be retried twice, for three total
    attempts in that notifier invocation. The counter is process-local and is
    not restored after a process restart or an exact Workflow replay.
@@ -98,6 +100,12 @@ one place. An exact replay after an abrupt stop is different: it re-enters the
 notifier because D1 proves the same success traversal, and it may repeat the
 whole three-attempt local budget. No replay is scheduled merely to repair the
 Linear state.
+
+If Linear emits a signed delivery for the resulting `Done` change, it follows
+the existing authenticated ingress and Queue path. That delivery is useful as
+out-of-band provider proof, but the notifier does not wait for, correlate, or
+read it as an acknowledgement. A delayed or absent delivery therefore cannot
+start another Done attempt.
 
 ## Decisions
 
@@ -158,8 +166,17 @@ is the least harmful duplicate, and the plan explicitly accepts the absence of
 confirmation and repair. A stale or different terminal traversal cannot use an
 already-successful run as a reason to notify.
 
-Adding an idempotency ledger or checking the issue state would close that gap,
-but each is excluded by the specification.
+A five-second delay followed by an issue-state query is rejected because it is
+the later state check explicitly excluded by the approved specification. Using
+the returning signed Linear delivery as an acknowledgement is also rejected:
+the delivery is asynchronous, its absence is ambiguous, and correlating it to
+control another attempt would require the receipt or durable retry state that
+the plan forbids. The delivery may still prove the integration externally
+during validation; production control flow never consumes it as confirmation.
+
+Adding an idempotency ledger, polling the issue, or gating retries on inbound
+delivery would close part of that gap, but each is excluded by the
+specification.
 
 ## Minimal Data Model
 
@@ -188,6 +205,7 @@ them.
 | The same terminal-success traversal replays after its D1 commit | Derive `exact_replay` from the existing transition row and call the notifier again; do not add a delivery record. |
 | The guarded transition loses authority, conflicts, or observes success from a different traversal | Classify it as ineligible, do not call the notifier, and use the existing terminal-transition behavior. |
 | The Linear request returns success | Trust the response, stop immediately, and return normally without confirmation. |
+| The request returns success but the corresponding signed Linear delivery is delayed or absent | Do not poll, wait, or retry; inbound delivery is evidence only and does not control the notifier. |
 | The client returns a contract-verified safe transient error | Retry locally while attempts remain; after attempt 3, discard the error. |
 | Linear rejects authentication, authorization, target-state resolution, validation, or another non-transient condition | Do not retry; discard the error and keep `succeeded`. |
 | The client returns an unknown error or throws unexpectedly | Treat it as non-retryable at the notifier boundary; keep `succeeded`. |
@@ -206,6 +224,9 @@ them.
 - [An exact replay receives a fresh local retry budget] → Admit only the
   same stable success traversal, never schedule replay for a Linear failure,
   and accept bounded-per-execution rather than durable retry accounting.
+- [A returning signed delivery can be delayed or absent] → Use it only for
+  out-of-band implementation evidence; never make runtime retry behavior depend
+  on observing it.
 - [Retries extend the executor's tail after the result is visible] → Commit
   success first, cap work at three attempts, and retain the client's bounded
   request timeout.
