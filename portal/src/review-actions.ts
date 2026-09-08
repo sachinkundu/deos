@@ -11,6 +11,8 @@ export const pullRequestActions = (
   pullRequestUrl: string,
   githubLabel: string,
 ): readonly PullRequestAction[] => Object.freeze([
-  Object.freeze({ kind: "github", label: githubLabel, url: pullRequestUrl }),
   Object.freeze({ kind: "bettaview", label: "Open in BettaView", url: bettaViewUrl(pullRequestUrl) }),
 ]);
+
+export const reviewDestination = (url: string): string =>
+  /^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+(?:[/?#]|$)/.test(url) ? bettaViewUrl(url) : url;

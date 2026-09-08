@@ -1,3 +1,4 @@
+import { reviewDestination } from "./review-actions.ts";
 import { separateErrors } from "./error-state.ts";
 import { errorText } from "../../src/error-details.ts";
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -497,8 +498,6 @@ function TraceabilityWorkflowMap({
                 {(phase.id === "planning" || phase.id === "approval" || phase.id === "design") && (expanded ? <CaretDown /> : <CaretRight />)}
               </button>
               {product && <div className="phase-artifacts">
-                <a href={product.url} target="_blank" rel="noreferrer"><FileText />{phase.id === "planning" ? "Proposal" : "design.md"}</a>
-                {phase.id === "planning" && <a href={product.url} target="_blank" rel="noreferrer"><ListChecks />Specs</a>}
                 <PullRequestActions url={product.url} githubLabel={`PR #${product.number}`} />
               </div>}
               {phase.id === "approval" && <div className="phase-artifacts">
@@ -761,7 +760,7 @@ function ReviewTracePage({ runId }: { runId: string }) {
     <article className="settings-card">
       <div className="card-heading"><div><span className="eyebrow">Reviewed work</span><h2>{issueKey}: {issueTitle}</h2></div><span className="guard">{String(trace.run.status ?? "unknown")}</span></div>
       <dl><div><dt>Run</dt><dd><code>{runId}</code></dd></div><div><dt>Current PR head</dt><dd><code>{liveHead?.slice(0, 12) ?? "Not published"}</code></dd></div><div><dt>Current plan</dt><dd><code>{latestCandidate?.digest.slice(0, 16) ?? "—"}</code></dd></div><div><dt>Head bindings</dt><dd>{trace.headBindings.length}</dd></div></dl>
-      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={pullRequestUrl} target="_blank" rel="noreferrer">Open planning PR <ArrowSquareOut /></a>}</div>
+      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={bettaViewUrl(pullRequestUrl)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>}</div>
     </article>
     <div className="review-summary-grid">
       {trace.phases.map((phase) => <article className="review-phase" key={`${phase.round}:${phase.stage}`}>
@@ -810,7 +809,7 @@ function ReviewTracePage({ runId }: { runId: string }) {
             </article>;
           })}</div>}
           {review.conflictingReviewId && <p className="guard-note">This result conflicts with {review.conflictingReviewId}. Human judgment is required.</p>}
-          <div className="review-artifacts">{review.artifacts.map((artifact) => <a href={artifact.url} key={artifact.name} target="_blank" rel="noreferrer">{artifact.name} <ArrowSquareOut /></a>)}</div>
+          <div className="review-artifacts">{review.artifacts.map((artifact) => <a href={reviewDestination(artifact.url)} key={artifact.name} target="_blank" rel="noreferrer">{artifact.name} <ArrowSquareOut /></a>)}</div>
         </div>
       </li>;
     })}</ol>
@@ -872,7 +871,7 @@ function DesignReviewPage({ runId }: { runId: string }) {
     <article className="settings-card">
       <div className="card-heading"><div><span className="eyebrow">Reviewed work</span><h2>{issueKey}: {issueTitle}</h2></div><span className="guard">{String(proof.run.status ?? "unknown")}</span></div>
       <dl><div><dt>Run</dt><dd><code>{runId}</code></dd></div><div><dt>Current design head</dt><dd><code>{typeof proof.run.head_sha === "string" ? proof.run.head_sha.slice(0, 12) : "Not published"}</code></dd></div><div><dt>Review rounds</dt><dd>{proof.rounds.length}</dd></div><div><dt>Gate bindings</dt><dd>{proof.gateBindings.length}</dd></div></dl>
-      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={pullRequestUrl} target="_blank" rel="noreferrer">Open design PR <ArrowSquareOut /></a>}</div>
+      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={bettaViewUrl(pullRequestUrl)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>}</div>
     </article>
     <div className="review-summary-grid">{proof.rounds.map((round) => <article className="review-phase" key={String(round.round_id)}><span className="eyebrow">Round {round.round_no} · {human(String(round.kind))}</span><h2>{human(String(round.status))}</h2><dl><div><dt>Self-check</dt><dd>{human(round.selfStatus)}</dd></div><div><dt>Author responses</dt><dd>{String(round.response_turns)}</dd></div><div><dt>Outside model</dt><dd>{String(round.outside_model)}</dd></div></dl></article>)}</div>
     <ol className="review-timeline">{proof.attempts.map((attempt, index) => <li key={attempt.id} className={`review-event ${attempt.outcome}`}>
@@ -881,7 +880,7 @@ function DesignReviewPage({ runId }: { runId: string }) {
         <p>Reviewer {attempt.reviewer.provider} · {attempt.reviewer.model} · {attempt.reviewer.reasoning}. This evidence is not human approval.</p>
         <dl><div><dt>Input</dt><dd><code>{attempt.inputSha256.slice(0, 16)}…</code></dd></div><div><dt>Candidate</dt><dd><code>{attempt.candidateId.slice(0, 20)}…</code></dd></div><div><dt>Head</dt><dd><code>{attempt.reviewedHeadSha?.slice(0, 12) ?? "private candidate"}</code></dd></div><div><dt>Finished</dt><dd>{attempt.completedAt ? formatTime(attempt.completedAt) : "Failed or running"}</dd></div></dl>
         {attempt.findings.length > 0 && <div className="review-findings"><h3>Design concerns</h3>{attempt.findings.map((finding) => <article key={finding.id}><strong>{finding.id}</strong><span>{finding.disposition ? human(finding.disposition.disposition) : human(finding.severity)}</span><p>{finding.message}</p>{finding.disposition && <p><strong>Author:</strong> {finding.disposition.reason}</p>}<div className="review-artifacts">{finding.sourceRanges.map((range, rangeIndex) => <code key={rangeIndex}>{range.path}:{range.startLine}-{range.endLine}</code>)}</div></article>)}</div>}
-        <div className="review-artifacts">{attempt.artifacts.map((artifact) => <a href={artifact.url} key={artifact.name} target="_blank" rel="noreferrer">{artifact.name} <ArrowSquareOut /></a>)}</div>
+        <div className="review-artifacts">{attempt.artifacts.map((artifact) => <a href={reviewDestination(artifact.url)} key={artifact.name} target="_blank" rel="noreferrer">{artifact.name} <ArrowSquareOut /></a>)}</div>
       </div>
     </li>)}</ol>
   </section>;
@@ -1080,19 +1079,19 @@ function App() {
               <dl><div><dt>Started</dt><dd>{formatTime(detail.enteredAt)}</dd></div><div><dt>Duration</dt><dd>{formatDuration(detail.enteredAt, detail.leftAt)}</dd></div></dl>
               {(transcriptAttempts.length > 0 || detail.links.length > 0) && <div className="evidence-grid">
                 {transcriptAttempts.length > 0 && <div><h3>Transcript</h3>{transcriptAttempts.map((attempt) => <div className="attempt-row" key={attempt.id}><button type="button" onClick={() => setTranscriptAttempt(attempt.id)}>View transcript</button></div>)}</div>}
-                {detail.links.length > 0 && <div><h3>Links</h3>{detail.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>)}</div>}
+                {detail.links.length > 0 && <div><h3>Links</h3>{detail.links.map((link) => <a key={link.url} href={reviewDestination(link.url)} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>)}</div>}
               </div>}
               {detail.gate && <div className="gate-visit-card">
                 <span className="eyebrow">{human(detail.gate.gate_kind)} gate · round {detail.gate.round}</span>
                 <dl><div><dt>Work</dt><dd>{human(detail.gate.work_type)}</dd></div><div><dt>Decision</dt><dd>{human(detail.gate.decision_outcome ?? detail.gate.state)}</dd></div><div><dt>Approved head</dt><dd><code>{detail.gate.approved_head_sha.slice(0, 12)}</code></dd></div></dl>
-                <div className="planning-pr-actions"><a className="review-trace-link" href={detail.gate.pull_request_url} target="_blank" rel="noreferrer">Open PR #{detail.gate.pull_request_number} <ArrowSquareOut /></a><a className="review-trace-link" href={bettaViewUrl(detail.gate.pull_request_url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a></div>
+                <div className="planning-pr-actions"><a className="review-trace-link" href={bettaViewUrl(detail.gate.pull_request_url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a></div>
               </div>}
               {(["planning", "plan_merge"].includes(detail.stageId) && projection.workProducts.planning) && <div className="planning-pr-actions">
-                <a className="review-trace-link" href={projection.workProducts.planning.url} target="_blank" rel="noreferrer">Open planning PR <ArrowSquareOut /></a>
+                
                 <a className="review-trace-link" href={bettaViewUrl(projection.workProducts.planning.url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>
               </div>}
               {(["design", "design_merge"].includes(detail.stageId) && projection.workProducts.design) && <div className="planning-pr-actions">
-                <a className="review-trace-link" href={projection.workProducts.design.url} target="_blank" rel="noreferrer">Open design PR <ArrowSquareOut /></a>
+                
                 <a className="review-trace-link" href={bettaViewUrl(projection.workProducts.design.url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>
               </div>}
             </div>}
