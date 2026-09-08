@@ -137,3 +137,6 @@ button { color:inherit; }
 .workflow-phase[data-phase="design"] > .phase-drill { padding-top: 14px; }
 
 .branching-flow .review-action { padding: 0 16px 14px; }
+
+.branching-flow .phase-summary-row > .phase-summary { flex: 1 0 100%; width: 100%; }
+.branching-flow .phase-summary-row > .phase-artifacts { flex: 1 0 100%; flex-wrap: wrap; padding: 0 16px 12px 54px; }
