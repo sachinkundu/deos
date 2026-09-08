@@ -380,8 +380,9 @@ input:focus, textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px 
 .thread-meta { display: flex; justify-content: space-between; gap: 8px; padding: 10px 12px; background: var(--subtle); color: var(--muted); font-size: calc(16px + var(--thread-small-growth, 0px)); }
 .thread-location { min-width: 0; display: flex; align-items: center; gap: 6px; }
 .thread-position-index { flex: 0 0 auto; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--green-solid); color: var(--on-solid); font-size: calc(16px + var(--thread-small-growth, 0px)); font-weight: 700; }
-.comment { display: grid; grid-template-columns: 32px 1fr; gap: 11px; padding: 15px 13px; border-bottom: 1px solid var(--separator); }
-.comment p { margin: 6px 0 0; font-size: calc(16px + var(--thread-font-growth, 0px)); line-height: 1.55; white-space: pre-wrap; }
+.comment { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 11px; padding: 15px 13px; border-bottom: 1px solid var(--separator); }
+.comment > div { min-width: 0; overflow-wrap: anywhere; }
+.comment p { margin: 6px 0 0; font-size: calc(16px + var(--thread-font-growth, 0px)); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .avatar { width: calc(32px + var(--thread-badge-growth, 0px)); height: calc(32px + var(--thread-badge-growth, 0px)); display: grid; place-items: center; border-radius: 50%; background: var(--green-solid); color: var(--on-solid); font-size: calc(16px + var(--thread-small-growth, 0px)); font-weight: 700; }
 .annotation-thumb { display: block; max-width: 100%; margin-top: 10px; border-radius: 7px; border: 1px solid var(--line); }
 .annotation-state { display: flex; justify-content: space-between; padding: 10px 12px; background: var(--quote); font-size: calc(16px + var(--thread-small-growth, 0px)); }
