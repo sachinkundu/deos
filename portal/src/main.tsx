@@ -308,6 +308,30 @@ function TraceabilityWorkflowMap({
   const [expandedPhase, setExpandedPhase] = useState<WorkflowPhaseId | null>(null);
   const [expandedSubstep, setExpandedSubstep] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const flowMap = useRef<HTMLDivElement>(null);
+  const [reviewPaths, setReviewPaths] = useState<Array<{ kind: string; path: string }>>([]);
+  useEffect(() => {
+    const map = flowMap.current;
+    if (!map) return;
+    const update = () => {
+      const bounds = map.getBoundingClientRect();
+      const review = map.querySelector('[data-phase="approval"]')?.getBoundingClientRect();
+      if (!review) return;
+      setReviewPaths(["planning", "design"].flatMap(kind => {
+        const stage = map.querySelector(`[data-phase="${kind}"]`)?.getBoundingClientRect();
+        if (!stage || review.left <= stage.right) return [];
+        const x = stage.right - bounds.left, y = stage.top + 32 - bounds.top;
+        const endX = review.left - bounds.left, endY = review.top + review.height / 2 - bounds.top;
+        const bend = x + (endX - x) / 2;
+        return [{kind, path: `M ${x} ${y} H ${bend} L ${endX - 14} ${endY} H ${endX}`}];
+      }));
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(map);
+    map.querySelectorAll('[data-phase]').forEach(node => observer.observe(node));
+    update();
+    return () => observer.disconnect();
+  }, []);
   const phases = useMemo(() => workflowPhases(projection.history), [projection.history]);
   const currentPhaseId = latestPhaseId(projection.history);
   const failedPhaseId = stoppedPhaseSourceId(projection.history);
@@ -319,9 +343,6 @@ function TraceabilityWorkflowMap({
   const latestLeafVisit = [...projection.history].reverse().find((visit) => phaseForVisit(visit) !== "stopped") ?? null;
   const currentLeafVisit = currentPhaseId === "stopped" ? failedLeafVisit : latestLeafVisit;
   const currentLeafStatus = authorVisitStatus(currentLeafVisit, projection.run.status);
-  const detail = projection.history.find((visit) => visit.sequence === selectedVisit) ?? null;
-  const detailPhaseId = detail === null ? null : phaseForVisit(detail);
-  const inspectedPhaseId = expandedPhase ?? detailPhaseId ?? currentPhaseId;
 
   useEffect(() => {
     const stopped = ["failed", "blocked", "denied", "canceled"].includes(projection.run.status);
@@ -443,45 +464,53 @@ function TraceabilityWorkflowMap({
     </button>)}
   </div>;
 
+  const activeGate = projection.gateVisits.find(gate => gate.active);
+  const reviewKind = activeGate?.gateKind ?? (currentPhaseId === "design" || projection.run.currentNode === "design_review"
+    ? "design" : projection.gateVisits.at(-1)?.gateKind ?? "plan");
+  const reviewPhase = reviewKind === "plan" ? "planning" : "design";
+  const reviewProduct = reviewKind === "plan" ? planningProduct : designProduct;
   const renderApproval = () => <div className="phase-drill" aria-label="Human Review details">
-    <p className="phase-note">Planning and design decisions share this phase.</p>
+    <div className="review-context" aria-label="Current review context">
+      <span className={reviewKind === "plan" ? "selected" : ""}>Planning</span>
+      <span className={reviewKind === "design" ? "selected" : ""}>Design</span>
+    </div>
+    <p className="phase-note">{activeGate ? `Your ${reviewKind === "plan" ? "planning" : "design"} decision is needed.` : `Waiting for ${reviewKind === "plan" ? "planning" : "design"} to reach review.`}</p>
     <div className="shared-loop" aria-label="Approve forward or return to the author"><ArrowsDownUp weight="bold" /><span><strong>Approve forward</strong><small>Revision returns to the author</small></span></div>
-    <button type="button" className={`phase-substep ${expandedSubstep === "planning_review" ? "selected" : ""} ${planningGates.some((gate) => gate.active) ? "active" : ""}`} aria-expanded={expandedSubstep === "planning_review"} onClick={() => selectSubstep("planning_review", planningReviewVisit)}>
+    {reviewKind === "plan" && <button type="button" className={`phase-substep ${expandedSubstep === "planning_review" ? "selected" : ""} ${planningGates.some((gate) => gate.active) ? "active" : ""}`} aria-expanded={expandedSubstep === "planning_review"} onClick={() => selectSubstep("planning_review", planningReviewVisit)}>
       <span className="substep-heading"><span className="substep-icon"><Eye /></span><strong>Planning review</strong>{expandedSubstep === "planning_review" ? <CaretDown /> : <CaretRight />}</span>
       <span className="substep-meta">{planningGates.length} saved visit{planningGates.length === 1 ? "" : "s"}</span>
       <span className="substep-status">{gateOutcomeLabel(planningGates.at(-1)?.decision ?? null)}</span>
       {expandedSubstep === "planning_review" && <span className="author-review-details gate-rounds">{planningGates.map((gate) => <span key={gate.visitSequence}><strong>Round {gate.round}</strong><small>{gateOutcomeLabel(gate.decision)}</small></span>)}</span>}
-    </button>
-    <button type="button" className={`phase-substep ${expandedSubstep === "design_review" ? "selected" : ""} ${designGates.some((gate) => gate.active) ? "active" : ""}`} aria-expanded={expandedSubstep === "design_review"} onClick={() => selectSubstep("design_review", designReviewVisit)}>
+    </button>}
+    {reviewKind === "design" && <button type="button" className={`phase-substep ${expandedSubstep === "design_review" ? "selected" : ""} ${designGates.some((gate) => gate.active) ? "active" : ""}`} aria-expanded={expandedSubstep === "design_review"} onClick={() => selectSubstep("design_review", designReviewVisit)}>
       <span className="substep-heading"><span className="substep-icon"><Eye /></span><strong>Design review</strong>{expandedSubstep === "design_review" ? <CaretDown /> : <CaretRight />}</span>
       <span className="substep-meta">{designGates.length} saved visit{designGates.length === 1 ? "" : "s"}</span>
       <span className="substep-status">{gateOutcomeLabel(designGates.at(-1)?.decision ?? null)}</span>
       {expandedSubstep === "design_review" && <span className="author-review-details gate-rounds">{designGates.map((gate) => <span key={gate.visitSequence}><strong>Round {gate.round}</strong><small>{gateOutcomeLabel(gate.decision)}</small></span>)}</span>}
-    </button>
+    </button>}
   </div>;
 
   return <section className="workflow-panel phase-workflow-panel" aria-labelledby="workflow-title">
     <div className="section-heading phase-heading"><div><span className="eyebrow">Current run</span><h2 id="workflow-title">Workflow map</h2></div><span>Open a phase, then drill into its evidence</span></div>
     <div className="current-step-banner"><span>{currentPhaseId === "stopped" ? "Failed step" : "Current step"}</span><strong className={workflowStatusTone(currentLeafStatus)}>{currentLeafVisit === null ? currentPhase?.label ?? "Unknown" : workflowStepLabel(currentLeafVisit.nodeId)}</strong></div>
     <div className="phase-workspace">
-      <div className="phase-map">
+      <div className="phase-map branching-flow" ref={flowMap}>
+        <svg className="review-connectors" aria-hidden="true"><defs><marker id="review-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" /></marker></defs>{reviewPaths.map(edge => <path key={edge.kind} d={edge.path} className={edge.kind === reviewPhase ? "active" : ""} markerEnd="url(#review-arrow)" />)}</svg>
         {phases.filter((phase) => phase.visits.length > 0 || phase.id !== "stopped").map((phase, index) => {
           const expanded = expandedPhase === phase.id;
           const current = currentPhaseId === phase.id;
-          const inspecting = inspectedPhaseId === phase.id && inspectedPhaseId !== currentPhaseId;
           const status = phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId);
           const successfulTerminal = status === "Succeeded";
           const phaseComplete = status === "Complete" || successfulTerminal ||
             ["Failed", "Blocked", "Canceled"].includes(status);
           const product = phase.id === "planning" ? planningProduct : phase.id === "design" ? designProduct : null;
-          return <article className={`workflow-phase ${workflowStatusTone(status)} ${expanded ? "expanded" : ""} ${current ? "current" : ""} ${inspecting ? "inspecting" : ""}`} key={phase.id}>
+          return <article className={`workflow-phase ${workflowStatusTone(status)} ${expanded ? "expanded" : ""} ${current ? "current" : ""} ${phase.id === "approval" ? "review-decision" : ""}`} key={phase.id} data-phase={phase.id}>
             <span className={`phase-spine-marker ${workflowStatusTone(status)}`} aria-hidden="true">{["Failed", "Blocked", "Canceled"].includes(status) ? <WarningCircle weight="fill" /> : phaseComplete ? <Check weight="bold" /> : <Clock />}</span>
             <div className="phase-summary-row">
               <button type="button" className="phase-summary" aria-expanded={expanded} onClick={() => openPhase(phase.id, phase.visits as Visit[])}>
-                <span className="phase-number">{index + 1}</span>
+                <span className={`phase-number ${phase.id === "approval" ? "decision-diamond" : ""}`}>{phase.id === "approval" ? <Eye /> : phase.id === "design" ? 3 : phase.id === "complete" ? 4 : index + 1}</span>
                 <span className="phase-summary-copy"><strong>{phase.label}</strong><small>{phase.visits.length} visit{phase.visits.length === 1 ? "" : "s"} · {phaseOutcome(phase.id)}</small></span>
                 <span className={`phase-status ${workflowStatusTone(status)}`}>{status}</span>
-                {inspecting && <span className="inspecting-pill">Inspecting</span>}
                 {current && <span className="current-pill">Current step</span>}
                 {(phase.id === "planning" || phase.id === "approval" || phase.id === "design") && (expanded ? <CaretDown /> : <CaretRight />)}
               </button>
@@ -489,12 +518,11 @@ function TraceabilityWorkflowMap({
                 <PullRequestActions url={product.url} githubLabel={`PR #${product.number}`} />
               </div>}
               {phase.id === "approval" && <div className="phase-artifacts">
-                {planningProduct && <PullRequestActions url={planningProduct.url} githubLabel={`Plan PR #${planningProduct.number}`} />}
-                {designProduct && <PullRequestActions url={designProduct.url} githubLabel={`Design PR #${designProduct.number}`} />}
+                {reviewProduct && <PullRequestActions url={reviewProduct.url} githubLabel="Review" />}
               </div>}
             </div>
             {expanded && phase.id === "planning" && renderPlanning()}
-            {expanded && phase.id === "approval" && renderApproval()}
+            {phase.id === "approval" && renderApproval()}
             {expanded && phase.id === "design" && renderDesign()}
           </article>;
         })}
