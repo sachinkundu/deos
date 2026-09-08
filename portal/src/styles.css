@@ -135,3 +135,5 @@ button { color:inherit; }
 
 .workflow-phase[data-phase="planning"] > .phase-drill,
 .workflow-phase[data-phase="design"] > .phase-drill { padding-top: 14px; }
+
+.branching-flow .review-action { padding: 0 16px 14px; }

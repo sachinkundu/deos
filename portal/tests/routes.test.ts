@@ -38,6 +38,6 @@ test("the deployed workflow inspector offers GitHub and BettaView PR links", () 
   );
   const portalSource = readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8");
   assert.match(actionsSource, /https:\/\/bettaview\.voxdez\.com\/\?pr=/);
-  assert.match(actionsSource, /Open in BettaView/);
+  assert.match(actionsSource, /BettaView PR#/);
   assert.match(portalSource, /pullRequestActions/);
 });

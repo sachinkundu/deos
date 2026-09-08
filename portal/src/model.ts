@@ -1,3 +1,4 @@
+import { stageArtifactLinks } from "./artifact-links.ts";
 import { restoreWorkflowDefinition } from "../../src/workflow-definition.ts";
 import {
   isAgentStageRetryNode,
@@ -133,6 +134,9 @@ interface SimpleIssueRow extends IssueRow {
 }
 
 interface WorkProductRow {
+  change_id: string;
+  head_sha: string | null;
+  planning_manifest_json: string | null;
   repository: string;
   pull_request_number: number | null;
   pull_request_url: string | null;
@@ -141,6 +145,7 @@ interface WorkProductRow {
 }
 
 interface DesignWorkProductRow {
+  change_id: string;
   repository: string;
   base_commit: string;
   pull_request_number: number | null;
@@ -270,9 +275,9 @@ export const PORTAL_SELECTS = Object.freeze({
     JOIN linear_issue_index issue
       ON issue.issue_id = run.issue_id AND issue.project_id = run.project_id
     WHERE run.run_id = ? LIMIT 1`,
-  workProduct: `SELECT repository, pull_request_number, pull_request_url,
+  workProduct: `SELECT change_id, head_sha, planning_manifest_json, repository, pull_request_number, pull_request_url,
     merge_commit_sha, verified_at FROM run_work_products WHERE run_id = ? LIMIT 1`,
-  designWorkProduct: `SELECT repository, base_commit, pull_request_number,
+  designWorkProduct: `SELECT change_id, repository, base_commit, pull_request_number,
     pull_request_url, head_sha, merge_commit_sha
     FROM design_work_products WHERE run_id = ? LIMIT 1`,
   gateVisits: `SELECT visit_sequence, node_id, gate_kind, work_type, round, state,
@@ -564,6 +569,7 @@ export class PortalReadStore {
               url: workProduct.pull_request_url,
               status: workProduct.merge_commit_sha === null ? "Open" : "Merged",
               verified: workProduct.verified_at !== null,
+              artifacts: stageArtifactLinks(workProduct, "planning"),
             }
           : null,
         design: designWorkProduct !== null && designWorkProduct.pull_request_number !== null &&
@@ -575,6 +581,7 @@ export class PortalReadStore {
               status: designWorkProduct.merge_commit_sha === null ? "Open" : "Merged",
               headSha: designWorkProduct.head_sha,
               baseCommit: designWorkProduct.base_commit,
+              artifacts: stageArtifactLinks(designWorkProduct, "design"),
             }
           : null,
       },

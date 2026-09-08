@@ -31,7 +31,7 @@ import {
 import { applyStaged, receivePoll, type PollState } from "./polling.ts";
 import { directionalClaimPresentation } from "./directional-claim.ts";
 import { portalPageFromPath, portalPathForPage, reviewRunIdFromPath, type PortalPage } from "./routes.ts";
-import { bettaViewUrl, pullRequestActions } from "./review-actions.ts";
+import { bettaViewUrl, bettaViewLabel, pullRequestActions } from "./review-actions.ts";
 import { TranscriptViewer } from "./TranscriptViewer.tsx";
 import type { TranscriptDto } from "./transcript-view.ts";
 import {
@@ -90,8 +90,8 @@ interface Projection {
   retry: { failedAttemptId: string; retryNode: string } | null;
   pullRequest: { number: number; url: string; status: string; verified: boolean } | null;
   workProducts: {
-    planning: { number: number; url: string; status: string; verified: boolean } | null;
-    design: { number: number; url: string; status: string; headSha: string | null; baseCommit: string } | null;
+    planning: { artifacts?: Array<{label: string; url: string}>; number: number; url: string; status: string; verified: boolean } | null;
+    design: { artifacts?: Array<{label: string; url: string}>; number: number; url: string; status: string; headSha: string | null; baseCommit: string } | null;
   };
   gateVisits: Array<{
     visitSequence: number;
@@ -440,11 +440,9 @@ function TraceabilityWorkflowMap({
     ? "design" : projection.gateVisits.at(-1)?.gateKind ?? "plan");
   const reviewPhase = reviewKind === "plan" ? "planning" : "design";
   const reviewProduct = reviewKind === "plan" ? planningProduct : designProduct;
-  const reviewComplete = phases.some(phase => phase.id === reviewPhase && phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId) === "Complete");
-  const renderApproval = () => <div className="phase-drill" aria-label="Human Review details">
-    <p className="phase-note">{activeGate ? "Ready for your review." : reviewComplete ? "Approved." : "Nothing to review yet."}</p>
-    {activeGate && reviewProduct && <PullRequestActions url={reviewProduct.url} githubLabel="Review" />}
-  </div>;
+  const renderApproval = () => activeGate && reviewProduct ? <div className="phase-artifacts review-action">
+    <PullRequestActions url={reviewProduct.url} githubLabel="Review" />
+  </div> : null;
 
   return <section className="workflow-panel phase-workflow-panel" aria-labelledby="workflow-title">
     <div className="section-heading phase-heading"><div><span className="eyebrow">Current run</span><h2 id="workflow-title">Workflow map</h2></div><span>Open a phase, then drill into its evidence</span></div>
@@ -477,6 +475,7 @@ function TraceabilityWorkflowMap({
               </button>}
               {product && <div className="phase-artifacts">
                 <PullRequestActions url={product.url} githubLabel={`PR #${product.number}`} />
+                {product.artifacts?.map(artifact => <a key={artifact.url} href={artifact.url} target="_blank" rel="noreferrer"><FileText />{artifact.label}</a>)}
               </div>}
 
             </div>
@@ -735,7 +734,7 @@ function ReviewTracePage({ runId }: { runId: string }) {
     <article className="settings-card">
       <div className="card-heading"><div><span className="eyebrow">Reviewed work</span><h2>{issueKey}: {issueTitle}</h2></div><span className="guard">{String(trace.run.status ?? "unknown")}</span></div>
       <dl><div><dt>Run</dt><dd><code>{runId}</code></dd></div><div><dt>Current PR head</dt><dd><code>{liveHead?.slice(0, 12) ?? "Not published"}</code></dd></div><div><dt>Current plan</dt><dd><code>{latestCandidate?.digest.slice(0, 16) ?? "—"}</code></dd></div><div><dt>Head bindings</dt><dd>{trace.headBindings.length}</dd></div></dl>
-      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={bettaViewUrl(pullRequestUrl)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>}</div>
+      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={bettaViewUrl(pullRequestUrl)} target="_blank" rel="noreferrer">{bettaViewLabel(pullRequestUrl)} <ArrowSquareOut /></a>}</div>
     </article>
     <div className="review-summary-grid">
       {trace.phases.map((phase) => <article className="review-phase" key={`${phase.round}:${phase.stage}`}>
@@ -846,7 +845,7 @@ function DesignReviewPage({ runId }: { runId: string }) {
     <article className="settings-card">
       <div className="card-heading"><div><span className="eyebrow">Reviewed work</span><h2>{issueKey}: {issueTitle}</h2></div><span className="guard">{String(proof.run.status ?? "unknown")}</span></div>
       <dl><div><dt>Run</dt><dd><code>{runId}</code></dd></div><div><dt>Current design head</dt><dd><code>{typeof proof.run.head_sha === "string" ? proof.run.head_sha.slice(0, 12) : "Not published"}</code></dd></div><div><dt>Review rounds</dt><dd>{proof.rounds.length}</dd></div><div><dt>Gate bindings</dt><dd>{proof.gateBindings.length}</dd></div></dl>
-      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={bettaViewUrl(pullRequestUrl)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>}</div>
+      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={bettaViewUrl(pullRequestUrl)} target="_blank" rel="noreferrer">{bettaViewLabel(pullRequestUrl)} <ArrowSquareOut /></a>}</div>
     </article>
     <div className="review-summary-grid">{proof.rounds.map((round) => <article className="review-phase" key={String(round.round_id)}><span className="eyebrow">Round {round.round_no} · {human(String(round.kind))}</span><h2>{human(String(round.status))}</h2><dl><div><dt>Self-check</dt><dd>{human(round.selfStatus)}</dd></div><div><dt>Author responses</dt><dd>{String(round.response_turns)}</dd></div><div><dt>Outside model</dt><dd>{String(round.outside_model)}</dd></div></dl></article>)}</div>
     <ol className="review-timeline">{proof.attempts.map((attempt, index) => <li key={attempt.id} className={`review-event ${attempt.outcome}`}>
@@ -1059,15 +1058,15 @@ function App() {
               {detail.gate && <div className="gate-visit-card">
                 <span className="eyebrow">{human(detail.gate.gate_kind)} gate · round {detail.gate.round}</span>
                 <dl><div><dt>Work</dt><dd>{human(detail.gate.work_type)}</dd></div><div><dt>Decision</dt><dd>{human(detail.gate.decision_outcome ?? detail.gate.state)}</dd></div><div><dt>Approved head</dt><dd><code>{detail.gate.approved_head_sha.slice(0, 12)}</code></dd></div></dl>
-                <div className="planning-pr-actions"><a className="review-trace-link" href={bettaViewUrl(detail.gate.pull_request_url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a></div>
+                <div className="planning-pr-actions"><a className="review-trace-link" href={bettaViewUrl(detail.gate.pull_request_url)} target="_blank" rel="noreferrer">{bettaViewLabel(detail.gate.pull_request_url)} <ArrowSquareOut /></a></div>
               </div>}
               {(["planning", "plan_merge"].includes(detail.stageId) && projection.workProducts.planning) && <div className="planning-pr-actions">
                 
-                <a className="review-trace-link" href={bettaViewUrl(projection.workProducts.planning.url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>
+                <a className="review-trace-link" href={bettaViewUrl(projection.workProducts.planning.url)} target="_blank" rel="noreferrer">{bettaViewLabel(projection.workProducts.planning.url)} <ArrowSquareOut /></a>
               </div>}
               {(["design", "design_merge"].includes(detail.stageId) && projection.workProducts.design) && <div className="planning-pr-actions">
                 
-                <a className="review-trace-link" href={bettaViewUrl(projection.workProducts.design.url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>
+                <a className="review-trace-link" href={bettaViewUrl(projection.workProducts.design.url)} target="_blank" rel="noreferrer">{bettaViewLabel(projection.workProducts.design.url)} <ArrowSquareOut /></a>
               </div>}
             </div>}
           </section>
