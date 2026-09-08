@@ -145,7 +145,7 @@ button { color:inherit; }
 @keyframes node-breathe {
   0%, 100% {
     border-color: var(--blue);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--blue) 18%, transparent), inset 0 0 8px color-mix(in srgb, var(--blue) 4%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cyan) 18%, transparent), 0 0 8px color-mix(in srgb, var(--blue) 16%, transparent), inset 0 0 8px color-mix(in srgb, var(--cyan) 4%, transparent);
   }
   50% {
     border-color: var(--cyan);
@@ -153,7 +153,7 @@ button { color:inherit; }
   }
 }
 .workflow-phase.is-breathing,
-.phase-substep.is-breathing { animation: node-breathe 2.2s ease-in-out infinite; }
+.phase-substep.is-breathing { animation: node-breathe 4s cubic-bezier(0.37, 0, 0.63, 1) infinite; }
 .phase-substep.is-breathing .substep-icon { color: var(--active-text); background: var(--active-soft); }
 @media (prefers-reduced-motion: reduce) {
   .workflow-phase.is-breathing,
