@@ -415,7 +415,6 @@ function TraceabilityWorkflowMap({
   };
 
   const renderPlanning = () => <div className="phase-drill" aria-label="Planning details">
-    <p className="phase-note">Each planning check reports its own live or failed state.</p>
     <button
       type="button"
       className={`phase-substep ${expandedSubstep === "planning_author" ? "selected" : ""}`}
@@ -446,7 +445,6 @@ function TraceabilityWorkflowMap({
   </div>;
 
   const renderDesign = () => <div className="phase-drill" aria-label="Design details">
-    <p className="phase-note">Each design check reports its own state. Author responses and revisions appear under Design author. The same PR is reused.</p>
     {designSteps.map((step) => <button key={step.id} type="button" className={`phase-substep ${expandedSubstep === step.id ? "selected" : ""}`} aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
       <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong><small>{visitOutcomeSummary(step.visit, step.status)}</small></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
       <span className={`substep-status ${workflowStatusTone(step.status)}`}>{step.status}</span>
