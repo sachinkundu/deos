@@ -420,7 +420,7 @@ function TraceabilityWorkflowMap({
     { id: "self_review", label: "Self-review", visit: selfReviewVisit, status: selfReviewStatus, icon: <CheckCircle /> },
     { id: "independent_review", label: "Independent review", visit: independentReviewVisit, status: independentReviewStatus, icon: <Eye /> },
   ];
-  const renderStep = (step: typeof planningSteps[number]) => <button key={step.id} type="button" className={`phase-substep ${expandedSubstep === step.id ? "selected" : ""}`} aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
+  const renderStep = (step: typeof planningSteps[number]) => <button key={step.id} type="button" className={`phase-substep ${step.status === "In progress" ? "is-breathing" : ""} ${expandedSubstep === step.id ? "selected" : ""}`} aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
     <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong><small>{visitOutcomeSummary(step.visit, step.status)}</small></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
     <span className={`substep-status ${workflowStatusTone(step.status)}`}>{step.status}</span>
   </button>;
@@ -463,7 +463,7 @@ function TraceabilityWorkflowMap({
           const phaseComplete = status === "Complete" || successfulTerminal ||
             ["Failed", "Blocked", "Canceled"].includes(status);
           const product = phase.id === "planning" ? planningProduct : phase.id === "design" ? designProduct : null;
-          return <article className={`workflow-phase ${workflowStatusTone(status)} ${expanded ? "expanded" : ""} ${current ? "current" : ""} ${phase.id === "approval" ? "review-decision" : ""}`} key={phase.id} data-phase={phase.id}>
+          return <article className={`workflow-phase ${workflowStatusTone(status)} ${expanded ? "expanded" : ""} ${current && !["Failed", "Blocked", "Canceled"].includes(status) ? "current is-breathing" : ""} ${phase.id === "approval" ? "review-decision" : ""}`} key={phase.id} data-phase={phase.id}>
             <span className={`phase-spine-marker ${workflowStatusTone(status)}`} aria-hidden="true">{["Failed", "Blocked", "Canceled"].includes(status) ? <WarningCircle weight="fill" /> : phaseComplete ? <Check weight="bold" /> : <Clock />}</span>
             <div className="phase-summary-row">
               {phase.id === "approval" ? <div className="phase-summary"><span className="phase-number decision-diamond"><Eye /></span><span className="phase-summary-copy"><strong>Human Review</strong><small>{reviewKind === "plan" ? "Planning" : "Design"}</small></span></div> : <button type="button" className="phase-summary" aria-expanded={expanded} onClick={() => openPhase(phase.id, phase.visits as Visit[])}>

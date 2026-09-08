@@ -140,3 +140,11 @@ button { color:inherit; }
 
 .branching-flow .phase-summary-row > .phase-summary { flex: 1 0 100%; width: 100%; }
 .branching-flow .phase-summary-row > .phase-artifacts { flex: 1 0 100%; flex-wrap: wrap; padding: 0 16px 12px 54px; }
+
+.branching-flow .review-action { padding-top: 12px; }
+@keyframes node-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--blue) 8%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue) 20%, transparent), 0 0 16px color-mix(in srgb, var(--blue) 12%, transparent); }
+}
+.is-breathing { animation: node-breathe 3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .is-breathing { animation: none; } }

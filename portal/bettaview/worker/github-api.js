@@ -30,13 +30,23 @@ const allowedAttributes = {
   th: ["align"],
 };
 
-function cleanRenderedMarkdown(html) {
+export function cleanRenderedMarkdown(html, { owner, repo, path, ref }) {
+  const repositoryRoot = `https://github.com/${owner}/${repo}/blob/${ref}/`;
+  const documentUrl = repositoryRoot + path.split("/").map(encodeURIComponent).join("/");
   return sanitizeHtml(html, {
     allowedTags,
     allowedAttributes,
     allowedSchemes: ["http", "https", "mailto"],
     transformTags: {
-      a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
+      a: (tagName, attributes) => {
+        const href = attributes.href;
+        if (href && !href.startsWith("#") && !/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href)) {
+          attributes.href = href.startsWith("/")
+            ? new URL(href.slice(1), repositoryRoot).href
+            : new URL(href, documentUrl).href;
+        }
+        return { tagName, attribs: { ...attributes, rel: "noopener noreferrer", target: "_blank" } };
+      },
     },
   });
 }
@@ -176,7 +186,7 @@ export async function loadPullRequest(token, prUrl, env, accessToken) {
         deletions: file.deletions,
         source,
         sourceFingerprint: await sha256(source),
-        html: cleanRenderedMarkdown(rendered),
+        html: cleanRenderedMarkdown(rendered, { owner, repo, path: file.filename, ref: context.pr.head.sha }),
         changedLines: [...changedLinesFromPatch(file.patch)],
         mermaidBlocks: extractMermaidBlocks(source),
       };
