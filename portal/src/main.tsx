@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import {
   ArrowClockwise,
   ArrowRight,
+  ArrowsLeftRight,
   ArrowUUpLeft,
   CaretDown,
   CaretRight,
@@ -386,8 +387,8 @@ function TraceabilityWorkflowMap({
   const designSelfReviewStatus = authorVisitStatus(designSelfReviewVisit, projection.run.status);
   const designIndependentReviewStatus = authorVisitStatus(designIndependentReviewVisit, projection.run.status);
   const designSteps = [
-    { id: "design_author", label: "Design author", visit: designAuthorVisit, status: designAuthorStatus, icon: <UserCircle /> },
-    { id: "design_self_review", label: "Author self-review", visit: designSelfReviewVisit, status: designSelfReviewStatus, icon: <CheckCircle /> },
+    { id: "design_author", label: "Author", visit: designAuthorVisit, status: designAuthorStatus, icon: <UserCircle /> },
+    { id: "design_self_review", label: "Self-review", visit: designSelfReviewVisit, status: designSelfReviewStatus, icon: <CheckCircle /> },
     { id: "design_independent_review", label: "Independent review", visit: designIndependentReviewVisit, status: designIndependentReviewStatus, icon: <Eye /> },
   ];
 
@@ -414,42 +415,25 @@ function TraceabilityWorkflowMap({
     return "Workflow stopped";
   };
 
-  const renderPlanning = () => <div className="phase-drill" aria-label="Planning details">
-    <button
-      type="button"
-      className={`phase-substep ${expandedSubstep === "planning_author" ? "selected" : ""}`}
-      aria-expanded={expandedSubstep === "planning_author"}
-      onClick={() => selectSubstep("planning_author", planningAuthorVisit)}
-    >
-      <span className="substep-heading"><span className="substep-icon"><UserCircle /></span><span className="substep-copy"><strong>Planning author</strong><small>{visitOutcomeSummary(planningAuthorVisit, planningAuthorStatus)}</small></span>{expandedSubstep === "planning_author" ? <CaretDown /> : <CaretRight />}</span>
-      <span className={`substep-status ${workflowStatusTone(planningAuthorStatus)}`}>{planningAuthorStatus}</span>
-    </button>
-    <button
-      type="button"
-      className={`phase-substep ${expandedSubstep === "self_review" ? "selected" : ""}`}
-      aria-expanded={expandedSubstep === "self_review"}
-      onClick={() => selectSubstep("self_review", selfReviewVisit)}
-    >
-      <span className="substep-heading"><span className="substep-icon"><CheckCircle /></span><span className="substep-copy"><strong>Author self-review</strong><small>{visitOutcomeSummary(selfReviewVisit, selfReviewStatus)}</small></span>{expandedSubstep === "self_review" ? <CaretDown /> : <CaretRight />}</span>
-      <span className={`substep-status ${workflowStatusTone(selfReviewStatus)}`}>{selfReviewStatus}</span>
-    </button>
-    <button
-      type="button"
-      className={`phase-substep ${expandedSubstep === "independent_review" ? "selected" : ""}`}
-      aria-expanded={expandedSubstep === "independent_review"}
-      onClick={() => selectSubstep("independent_review", independentReviewVisit)}
-    >
-      <span className="substep-heading"><span className="substep-icon"><Eye /></span><span className="substep-copy"><strong>Independent review</strong><small>{visitOutcomeSummary(independentReviewVisit, independentReviewStatus)}</small></span>{expandedSubstep === "independent_review" ? <CaretDown /> : <CaretRight />}</span>
-      <span className={`substep-status ${workflowStatusTone(independentReviewStatus)}`}>{independentReviewStatus}</span>
-    </button>
+  const planningSteps = [
+    { id: "planning_author", label: "Author", visit: planningAuthorVisit, status: planningAuthorStatus, icon: <UserCircle /> },
+    { id: "self_review", label: "Self-review", visit: selfReviewVisit, status: selfReviewStatus, icon: <CheckCircle /> },
+    { id: "independent_review", label: "Independent review", visit: independentReviewVisit, status: independentReviewStatus, icon: <Eye /> },
+  ];
+  const renderStep = (step: typeof planningSteps[number]) => <button key={step.id} type="button" className={`phase-substep ${expandedSubstep === step.id ? "selected" : ""}`} aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
+    <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong><small>{visitOutcomeSummary(step.visit, step.status)}</small></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
+    <span className={`substep-status ${workflowStatusTone(step.status)}`}>{step.status}</span>
+  </button>;
+  const renderPhaseSteps = (label: string, steps: typeof planningSteps) => <div className="phase-drill" aria-label={`${label} details`}>
+    <div className="author-review-row">
+      {renderStep(steps[0])}
+      <ArrowsLeftRight className="author-review-arrow" aria-label="Author and self-review" />
+      {renderStep(steps[1])}
+    </div>
+    {renderStep(steps[2])}
   </div>;
-
-  const renderDesign = () => <div className="phase-drill" aria-label="Design details">
-    {designSteps.map((step) => <button key={step.id} type="button" className={`phase-substep ${expandedSubstep === step.id ? "selected" : ""}`} aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
-      <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong><small>{visitOutcomeSummary(step.visit, step.status)}</small></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
-      <span className={`substep-status ${workflowStatusTone(step.status)}`}>{step.status}</span>
-    </button>)}
-  </div>;
+  const renderPlanning = () => renderPhaseSteps("Planning", planningSteps);
+  const renderDesign = () => renderPhaseSteps("Design", designSteps);
 
   const activeGate = projection.gateVisits.find(gate => gate.active);
   const reviewKind = activeGate?.gateKind ?? (currentPhaseId === "design" || projection.run.currentNode === "design_review"

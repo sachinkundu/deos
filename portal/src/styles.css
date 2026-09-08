@@ -121,3 +121,14 @@ button { color:inherit; }
   .branching-flow > [data-phase="stopped"] { grid-row: 6; }
   .review-connectors { display: none; }
 }
+
+.author-review-row { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); align-items: stretch; gap: 6px; }
+.author-review-arrow { width: 24px; height: 24px; align-self: center; color: var(--muted); }
+.author-review-row .phase-substep { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.author-review-row .substep-heading { min-width: 0; }
+.author-review-row .substep-copy { min-width: 0; overflow-wrap: anywhere; }
+.author-review-row .substep-status { justify-self: start; }
+@media (max-width: 600px) {
+  .author-review-row .substep-icon { display: none; }
+  .author-review-row .phase-substep { padding: 8px; }
+}
