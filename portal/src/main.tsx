@@ -395,15 +395,6 @@ function TraceabilityWorkflowMap({
       : phaseId === "design" ? designSubstepForNode(visit.nodeId) : null);
   };
 
-  const phaseOutcome = (phaseId: WorkflowPhaseId): string => {
-    if (phaseId === "claim") return "Issue claimed";
-    if (phaseId === "planning") return planningProduct?.verified ? "Proposal + specs merged" : "Proposal + specs";
-    if (phaseId === "approval") return "Planning + design decisions";
-    if (phaseId === "design") return designProduct?.status === "Merged" ? "Design merged" : "Design work";
-    if (phaseId === "complete") return human(projection.run.status);
-    return "Workflow stopped";
-  };
-
   const planningSteps = [
     { id: "planning_author", label: "Author", visit: planningAuthorVisit, status: planningAuthorStatus, icon: <UserCircle /> },
     { id: "self_review", label: "Self-review", visit: selfReviewVisit, status: selfReviewStatus, icon: <CheckCircle /> },
@@ -457,7 +448,7 @@ function TraceabilityWorkflowMap({
             <div className="phase-summary-row">
               {phase.id === "approval" ? <div className="phase-summary"><span className="phase-number decision-diamond"><Eye /></span><span className="phase-summary-copy"><strong>Human Review</strong><small>{reviewKind === "plan" ? "Planning" : "Design"}</small></span></div> : <button type="button" className="phase-summary" aria-expanded={expanded} onClick={() => openPhase(phase.id, phase.visits as Visit[])}>
                 <span className="phase-number">{phase.id === "design" ? 3 : phase.id === "complete" ? 4 : index + 1}</span>
-                <span className="phase-summary-copy"><strong>{phase.label}</strong><small>{phaseOutcome(phase.id)}</small></span>
+                <span className="phase-summary-copy"><strong>{phase.label}</strong></span>
                 <span className={`phase-status ${workflowStatusTone(status)}`}>{status}</span>
                 {current && <span className="current-pill">Current step</span>}
                 {(phase.id === "planning" || phase.id === "design") && (expanded ? <CaretDown /> : <CaretRight />)}
