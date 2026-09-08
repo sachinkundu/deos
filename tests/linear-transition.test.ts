@@ -413,3 +413,65 @@ test("conflicting human state or delegate stops work before mutation", async () 
     assert.equal(store.operations.values().next().value?.safe_error_category, "linear_claim_conflict");
   }
 });
+
+const doneClient = (request: typeof fetch, store = new OperationStore()) =>
+  new LinearTransitionController(store, { ...config, teamId: "team-1" }, { fetch: request });
+const doneStateResponse = () => Response.json({
+  data: { workflowStates: { nodes: [{ id: "done-state", name: "Done" }] } },
+});
+
+test("Done resolves the team state and assigns once with timeout, no issue reads or operations", async () => {
+  const store = new OperationStore();
+  const queries: string[] = [];
+  const client = doneClient(async (_url, init) => {
+    assert.ok(init?.signal);
+    assert.equal(init?.headers && (init.headers as Record<string, string>).Authorization, "Bearer test-token");
+    const body = JSON.parse(String(init?.body));
+    queries.push(body.query);
+    if (queries.length === 1) {
+      assert.deepEqual(body.variables, { teamId: "team-1", name: "Done" });
+      return doneStateResponse();
+    }
+    assert.deepEqual(body.variables, { id: "issue-1", stateId: "done-state" });
+    return Response.json({ data: { issueUpdate: { success: true } } });
+  }, store);
+  assert.deepEqual(await client.requestDone("issue-1"), { outcome: "succeeded" });
+  assert.equal(queries.length, 2);
+  assert.equal(store.operations.size, 0);
+  assert.ok(queries.every((query) => !/\bissue\s*\(/.test(query)));
+});
+
+for (const [label, status, errors, retryable] of [
+  ["rate limited", 400, [{ extensions: { code: "RATELIMITED" } }], true],
+  ["GraphQL rate limited", 200, [{ extensions: { code: "RATELIMITED" } }], true],
+  ["mixed failure", 400, [{ extensions: { code: "RATELIMITED" } }, { extensions: { code: "FORBIDDEN" } }], false],
+  ["unknown", 200, [{ message: "unknown" }], false],
+  ["auth", 401, [{ extensions: { code: "AUTHENTICATION_ERROR" } }], false],
+  ["server failure", 503, [], false],
+] as const) {
+  test(`Done classifies ${label} conservatively`, async () => {
+    let count = 0;
+    const client = doneClient(async () => ++count === 1
+      ? doneStateResponse()
+      : Response.json({ errors }, { status }));
+    assert.deepEqual(await client.requestDone("issue-1"), { outcome: "failed", retryable });
+    assert.equal(count, 2);
+  });
+}
+
+for (const response of [
+  () => { throw new Error("network lost"); },
+  () => { throw new DOMException("timeout", "TimeoutError"); },
+  () => new Response("not JSON"),
+  () => Response.json({ data: { workflowStates: { nodes: [] } } }),
+  () => Response.json({ data: { workflowStates: { nodes: [
+    { id: "a", name: "Done" }, { id: "b", name: "Done" },
+  ] } } }),
+]) {
+  test("Done stops on ambiguous transport or invalid state resolution", async () => {
+    let count = 0;
+    const client = doneClient(async () => { count += 1; return response(); });
+    assert.deepEqual(await client.requestDone("issue-1"), { outcome: "failed", retryable: false });
+    assert.equal(count, 1);
+  });
+}

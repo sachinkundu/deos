@@ -33,6 +33,7 @@ export interface WorkflowStepLike {
 }
 
 export interface WorkflowNodeServices {
+  requestLinearDone(issueId: string): Promise<import("./linear-transition.ts").LinearTransitionRequestResult>;
   executeAgent(
     run: OrchestrationRunRecord,
     nodeId: string,
@@ -442,8 +443,8 @@ export class WorkflowOrchestrator {
     }
     const target = this.definition.nodes[decision.toNode];
     if (target === undefined) throw new WorkflowFailureError("wait_target_missing");
-    const consumed = await step.do(`consume-wait:${claimed.delivery_id}`, async () =>
-      this.store.consumeWait({
+    const consumed = await step.do(`consume-wait:${claimed.delivery_id}`, async () => {
+      const result = await this.store.consumeWait({
         waitId: wait.wait_id,
         runId: run.run_id,
         deliveryId: claimed.delivery_id,
@@ -458,7 +459,12 @@ export class WorkflowOrchestrator {
         actorId: claimed.actor_id,
         actorType: claimed.actor_type,
         now: this.now().toISOString(),
-      }));
+      });
+      if (result.outcome !== "stale" && target.type === "terminal" && target.outcome === "succeeded") {
+        await this.notifySuccess(run, decision.toNode, transitionIdentity(run.run_id, run.current_visit_sequence));
+      }
+      return result.outcome !== "stale";
+    });
     if (!consumed) {
       await this.store.recordWaitDelivery({
         deliveryId: claimed.delivery_id,
@@ -528,6 +534,9 @@ export class WorkflowOrchestrator {
       await this.requireRun(run.run_id);
       return { transitioned: false };
     }
+    if (target.type === "terminal" && target.outcome === "succeeded") {
+      await this.notifySuccess(run, decision.toNode, transitionId);
+    }
     this.options.lifecycle?.({
       stage: "workflow.step",
       outcome: result.outcome === "committed" ? "succeeded" : "duplicate",
@@ -539,6 +548,27 @@ export class WorkflowOrchestrator {
       traversalId: transitionId,
     });
     return { transitioned: true };
+  }
+
+  private async notifySuccess(
+    source: OrchestrationRunRecord,
+    terminalNode: string,
+    transitionId: string,
+  ): Promise<void> {
+    // Every exit is best effort, including an unexpected service/store throw.
+    // No Workflow retry, durable receipt, or later reconciliation is requested.
+    try {
+      const current = await this.store.findRun(source.run_id);
+      if (current?.status !== "succeeded" || current.current_node !== terminalNode ||
+          current.current_visit_sequence !== source.current_visit_sequence + 1 ||
+          current.last_transition_id !== transitionId || current.issue_id !== source.issue_id) return;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const result = await this.services.requestLinearDone(source.issue_id);
+        if (result.outcome === "succeeded" || !result.retryable) return;
+      }
+    } catch {
+      // Success is already authoritative; provider errors must never escape.
+    }
   }
 
   private evaluateExecutionOutcome(
