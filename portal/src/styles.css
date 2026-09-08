@@ -143,8 +143,19 @@ button { color:inherit; }
 
 .branching-flow .review-action { padding-top: 12px; }
 @keyframes node-breathe {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--blue) 8%, transparent); }
-  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue) 20%, transparent), 0 0 16px color-mix(in srgb, var(--blue) 12%, transparent); }
+  0%, 100% {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--blue) 18%, transparent), inset 0 0 8px color-mix(in srgb, var(--blue) 4%, transparent);
+  }
+  50% {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--cyan) 35%, transparent), 0 0 24px color-mix(in srgb, var(--blue) 42%, transparent), inset 0 0 20px color-mix(in srgb, var(--cyan) 14%, transparent);
+  }
 }
-.is-breathing { animation: node-breathe 3s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .is-breathing { animation: none; } }
+.workflow-phase.is-breathing,
+.phase-substep.is-breathing { animation: node-breathe 2.2s ease-in-out infinite; }
+.phase-substep.is-breathing .substep-icon { color: var(--active-text); background: var(--active-soft); }
+@media (prefers-reduced-motion: reduce) {
+  .workflow-phase.is-breathing,
+  .phase-substep.is-breathing { animation: none; border-color: var(--cyan); box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan) 30%, transparent); }
+}
