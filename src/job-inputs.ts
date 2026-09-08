@@ -1,3 +1,4 @@
+import { responseError } from "./error-details.ts";
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { WorkflowJob } from "./workflow-definition.ts";
 import { D1PlanningStore, type RunWorkProductRecord } from "./planning-store.ts";
@@ -637,13 +638,13 @@ export class JobInputMaterializer {
         variables: { id: issueId },
       }),
     });
-    if (!response.ok) throw new Error("Linear job input request failed");
+    if (!response.ok) throw await responseError("Linear job input request failed", response);
     const payload = await response.json() as {
       data?: { issue?: LinearIssueContext | null };
       errors?: unknown[];
     };
     if (payload.errors?.length || payload.data?.issue === null || payload.data?.issue === undefined) {
-      throw new Error("Linear job input GraphQL response is invalid");
+      throw new Error(`Linear job input GraphQL response is invalid: ${JSON.stringify(payload)}`, { cause: payload });
     }
     return payload.data.issue;
   }

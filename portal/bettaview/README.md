@@ -1,5 +1,9 @@
 # BettaView
 
+This is the maintained production app for **bettaview.voxdez.com**. For live UI
+and API changes, work here in DEOS, not in the historical standalone BettaView
+repository. See [production build and deployment instructions](../../AGENTS.md#production-bettaview-and-portal).
+
 BettaView is a Phase 1 experiment for reviewing GitHub pull request Markdown in
 rendered form while keeping comments and review state native to GitHub.
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import traceback
 from datetime import UTC, datetime
 from typing import Any
 
@@ -94,6 +95,7 @@ class Default(WorkerEntrypoint):
                 .run()
             )
         except Exception:
+            traceback.print_exc()
             if relevant:
                 emit_observation(
                     _observation(
@@ -113,6 +115,7 @@ class Default(WorkerEntrypoint):
                     )
                     stored_correlation = _row_value(stored, "correlation_id")
                 except Exception:
+                    traceback.print_exc()
                     emit_observation(
                         _observation(
                             event,
@@ -167,6 +170,7 @@ class Default(WorkerEntrypoint):
                 contentType="json",
             )
         except Exception:
+            traceback.print_exc()
             emit_observation(
                 _observation(event, run_id, "queue.publish", "failed", "queue_publish_failed")
             )

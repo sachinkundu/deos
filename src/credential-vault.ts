@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 export interface CredentialLeaseStore {
   acquire(input: {
     profileId: string;
@@ -207,8 +208,9 @@ export const decryptCredential = async (encoded: string, masterSecret: string): 
   let envelope: EncryptedEnvelope;
   try {
     envelope = JSON.parse(encoded) as EncryptedEnvelope;
-  } catch {
-    throw new Error("credential envelope is invalid");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/credential-vault.ts:210");
+    throw new Error("credential envelope is invalid", { cause: caughtError });
   }
   if (envelope.version !== 1 || !envelope.salt || !envelope.iv || !envelope.ciphertext) {
     throw new Error("credential envelope is unsupported");
@@ -223,8 +225,9 @@ export const decryptCredential = async (encoded: string, masterSecret: string): 
       base64ToBytes(envelope.ciphertext),
     );
     return new TextDecoder().decode(plaintext);
-  } catch {
-    throw new Error("credential envelope authentication failed");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/credential-vault.ts:226");
+    throw new Error("credential envelope authentication failed", { cause: caughtError });
   }
 };
 
@@ -282,6 +285,7 @@ export class CredentialVault {
         plaintext,
       };
     } catch (error) {
+      recordCaughtError(error, "src/credential-vault.ts:284");
       await this.leases.release(profileId, attemptId);
       throw error;
     }
@@ -301,7 +305,8 @@ export class CredentialVault {
           try {
             JSON.parse(await decryptCredential(await current.text(), this.masterSecret));
             validConcurrentRefresh = true;
-          } catch {
+          } catch (caughtError) {
+            recordCaughtError(caughtError, "src/credential-vault.ts:304");
             validConcurrentRefresh = false;
           }
         }

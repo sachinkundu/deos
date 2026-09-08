@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { ValidatedSystemOutcome } from "./workflow-evaluator.ts";
 import {
@@ -60,7 +61,8 @@ const savedPlanningVerificationMatches = async (
       receipt.mergeCommitSha === workProduct.merge_commit_sha &&
       typeof receipt.defaultHeadSha === "string" && shaPattern.test(receipt.defaultHeadSha) &&
       JSON.stringify(receipt.files) === workProduct.planning_manifest_json;
-  } catch {
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/system-actions.ts:63");
     return false;
   }
 };
@@ -371,6 +373,7 @@ export class SystemActionController {
       });
       return this.completed();
     } catch (error) {
+      recordCaughtError(error, "src/system-actions.ts:373");
       const ambiguous = error instanceof Error && /ambiguous|provider request failed/i.test(error.message);
       if (operation.state === "pending") {
         await this.finishPlanningOperation({
@@ -382,7 +385,7 @@ export class SystemActionController {
           now: this.now().toISOString(),
         });
       }
-      if (ambiguous) throw new Error("trusted planning publication requires provider reconciliation");
+      if (ambiguous) throw new Error("trusted planning publication requires provider reconciliation", { cause: error });
       return this.failed();
     }
   }
@@ -466,6 +469,7 @@ export class SystemActionController {
       });
       return this.completed();
     } catch (error) {
+      recordCaughtError(error, "src/system-actions.ts:468");
       const ambiguous = error instanceof Error &&
         /ambiguous|provider request failed/i.test(error.message);
       if (operation.state === "pending") {
@@ -478,7 +482,7 @@ export class SystemActionController {
           now: this.now().toISOString(),
         });
       }
-      if (ambiguous) throw new Error("planning merge requires provider reconciliation");
+      if (ambiguous) throw new Error("planning merge requires provider reconciliation", { cause: error });
       return this.failed();
     }
   }
@@ -617,7 +621,8 @@ export class SystemActionController {
         if (!finished) throw new Error("planning verification receipt compare-and-set failed");
       }
       return this.completed();
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/system-actions.ts:620");
       if (operation.state === "pending") {
         await this.finishPlanningOperation({
           operationId,
@@ -744,9 +749,10 @@ export class SystemActionController {
       });
       return this.completed();
     } catch (error) {
+      recordCaughtError(error, "src/system-actions.ts:746");
       if (error instanceof GitHubReviewFeedbackChangedError) {
         if (error.receipt.branch !== workProduct.remote_branch) {
-          throw new Error("design feedback-change publication branch mismatch");
+          throw new Error("design feedback-change publication branch mismatch", { cause: error });
         }
         await dependencies.designStore.recordFeedbackChangedPublication({
           runId: run.run_id,
@@ -777,7 +783,7 @@ export class SystemActionController {
           now: this.now().toISOString(),
         });
       }
-      if (ambiguous) throw new Error("trusted design publication requires provider reconciliation");
+      if (ambiguous) throw new Error("trusted design publication requires provider reconciliation", { cause: error });
       return this.failed();
     }
   }
@@ -819,8 +825,9 @@ export class SystemActionController {
       let pull;
       try {
         pull = await dependencies.github.readPullRequest(gate.repository, gate.pull_request_number);
-      } catch {
-        throw new Error("design merge requires provider reconciliation");
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/system-actions.ts:822");
+        throw new Error("design merge requires provider reconciliation", { cause: caughtError });
       }
       if (
         pull.databaseId !== gate.pull_request_database_id || pull.number !== gate.pull_request_number ||
@@ -846,8 +853,9 @@ export class SystemActionController {
             now: this.now().toISOString(),
           });
           if (!finished) throw new Error("design merge reconciliation compare-and-set failed");
-        } catch {
-          throw new Error("design merge requires provider reconciliation");
+        } catch (caughtError) {
+          recordCaughtError(caughtError, "src/system-actions.ts:849");
+          throw new Error("design merge requires provider reconciliation", { cause: caughtError });
         }
         return this.completed();
       }
@@ -897,6 +905,7 @@ export class SystemActionController {
       if (!finished) throw new Error("design merge receipt compare-and-set failed");
       return this.completed();
     } catch (error) {
+      recordCaughtError(error, "src/system-actions.ts:899");
       const ambiguous = providerConfirmed ||
         (error instanceof Error && /ambiguous|provider request failed/i.test(error.message));
       if (operation.state === "pending") {
@@ -909,7 +918,7 @@ export class SystemActionController {
           now: this.now().toISOString(),
         });
       }
-      if (ambiguous) throw new Error("design merge requires provider reconciliation");
+      if (ambiguous) throw new Error("design merge requires provider reconciliation", { cause: error });
       return this.failed();
     }
   }

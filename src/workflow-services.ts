@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import {
   ArtifactCollector,
   D1ArtifactManifestStore,
@@ -236,9 +237,10 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               checkedAt: new Date().toISOString(),
             });
           } catch (error) {
-            throw new PlanningCandidateRejectedError(
+            recordCaughtError(error, "src/workflow-services.ts:238");
+            throw Object.assign(new PlanningCandidateRejectedError(
               error instanceof Error ? error.message : "trusted planning candidate was rejected",
-            );
+            ), { cause: error });
           }
           const duplicate = await env.DB.prepare(
             `SELECT candidate_id FROM planning_candidates
@@ -303,9 +305,10 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               checkedAt,
             });
           } catch (error) {
-            throw new DesignCandidateRejectedError(
+            recordCaughtError(error, "src/workflow-services.ts:305");
+            throw Object.assign(new DesignCandidateRejectedError(
               error instanceof Error ? error.message : "trusted design candidate was rejected",
-            );
+            ), { cause: error });
           }
           if (existing !== null) {
             if (!isStoredDesignCandidateReplay(existing, built.candidate)) {
@@ -1551,7 +1554,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             safeErrorCategory: null,
             now: new Date().toISOString(),
           });
-        } catch {
+        } catch (caughtError) {
+          recordCaughtError(caughtError, "src/workflow-services.ts:1549");
           complete = false;
           await operations.finishPlanningOperation({
             operationId,
@@ -1607,7 +1611,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           safeErrorCategory: null,
           now: new Date().toISOString(),
         });
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/workflow-services.ts:1605");
         complete = false;
         await operations.finishPlanningOperation({
           operationId: linearId,
@@ -1689,7 +1694,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               safeErrorCategory: null,
               now: new Date().toISOString(),
             });
-          } catch {
+          } catch (caughtError) {
+            recordCaughtError(caughtError, "src/workflow-services.ts:1687");
             complete = false;
             await operations.finishPlanningOperation({
               operationId,
@@ -1744,7 +1750,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           safeErrorCategory: null,
           now: new Date().toISOString(),
         });
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/workflow-services.ts:1742");
         complete = false;
         await operations.finishPlanningOperation({
           operationId: linearOperationId,

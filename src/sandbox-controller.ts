@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import type { ArtifactCollectionResult, ArtifactCollector } from "./artifact-collector.ts";
 import type { CredentialLease, CredentialVault } from "./credential-vault.ts";
 import type { ProviderReceiptVerifier } from "./capability-store.ts";
@@ -847,6 +848,7 @@ export class SandboxAgentController {
       this.emit(run, attempt, "sandbox.attempt", "running");
       return { state: "running", attemptId: attempt.attempt_id, sandboxId: attempt.sandbox_id };
     } catch (error) {
+      recordCaughtError(error, "src/sandbox-controller.ts:849");
       if (lease !== null) await this.credentials.release(lease);
       await this.finishFailure(attempt, sandbox, job, "failed", "startup_failed", supervisor);
       throw error;
@@ -946,7 +948,8 @@ export class SandboxAgentController {
           throw new Error("heartbeat identity mismatch");
         }
         observedAt = heartbeat.observedAt;
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/sandbox-controller.ts:949");
         observedAt = attempt.heartbeat_at ?? attempt.started_at ?? attempt.created_at;
       }
       if (this.dependencies.now().getTime() - Date.parse(observedAt) > this.config.heartbeatTimeoutMs) {
@@ -1036,6 +1039,7 @@ export class SandboxAgentController {
             await this.capturePlanningCandidate(run, attempt, sandbox);
           }
         } catch (error) {
+          recordCaughtError(error, "src/sandbox-controller.ts:1038");
           if (error instanceof PlanningCandidateRejectedError || error instanceof DesignCandidateRejectedError) {
             const verificationMismatch = run.definition_id === "simple-traceability" &&
               run.definition_version >= 6;
@@ -1122,6 +1126,7 @@ export class SandboxAgentController {
         },
       };
     } catch (error) {
+      recordCaughtError(error, "src/sandbox-controller.ts:1124");
       if (collection !== null) {
         const resultDetail = this.safeResultDetail(
           error instanceof Error ? error.message : "post-collection validation failed",
@@ -1222,8 +1227,9 @@ export class SandboxAgentController {
       reviewReplies = JSON.parse((await sandbox.readFile("/deos/output/review-replies.json", {
         encoding: "utf8",
       })).content) as readonly { commentId: number; body: string }[];
-    } catch {
-      throw new PlanningCandidateRejectedError("trusted planning review replies are invalid");
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/sandbox-controller.ts:1225");
+      throw Object.assign(new PlanningCandidateRejectedError("trusted planning review replies are invalid"), { cause: caughtError });
     }
     let reviewDispositions: readonly {
       itemId: string;
@@ -1258,8 +1264,9 @@ export class SandboxAgentController {
           JSON.stringify(reviewDispositions.map((item) => item.itemId).sort()) !==
             JSON.stringify([...expectedIds].sort())
         ) throw new Error("wrong disposition set");
-      } catch {
-        throw new PlanningCandidateRejectedError("trusted external review dispositions are invalid");
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/sandbox-controller.ts:1261");
+        throw Object.assign(new PlanningCandidateRejectedError("trusted external review dispositions are invalid"), { cause: caughtError });
       }
     }
     const revision = await sandbox.exec(
@@ -1369,8 +1376,9 @@ export class SandboxAgentController {
         });
         reviewReplies = bindDesignReviewReplies(replyDrafts, feedback);
       }
-    } catch {
-      throw new DesignCandidateRejectedError("trusted design review replies are invalid");
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/sandbox-controller.ts:1372");
+      throw Object.assign(new DesignCandidateRejectedError("trusted design review replies are invalid"), { cause: caughtError });
     }
     let reviewDispositions: readonly {
       findingId: string;
@@ -1401,8 +1409,9 @@ export class SandboxAgentController {
           JSON.stringify(reviewDispositions.map((item) => item.findingId).sort()) !==
             JSON.stringify([...expectedIds].sort())
         ) throw new Error("wrong disposition set");
-      } catch {
-        throw new DesignCandidateRejectedError("trusted design review dispositions are invalid");
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/sandbox-controller.ts:1404");
+        throw Object.assign(new DesignCandidateRejectedError("trusted design review dispositions are invalid"), { cause: caughtError });
       }
     }
     const content = (await sandbox.readFile(`/deos/workspace/repository/${expectedPath}`, {
@@ -1435,7 +1444,7 @@ export class SandboxAgentController {
   }
 
   private safeResultDetail(message: string, repeatedPatch: boolean): string {
-    const normalized = message.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+    const normalized = message;
     const detail = repeatedPatch
       ? `Rejected plan bytes match the prior invalid candidate. Trusted check: ${normalized}`
       : normalized;
@@ -1453,11 +1462,13 @@ export class SandboxAgentController {
     if (process !== null) await this.stopProcess(process);
     try {
       await sandbox.deleteFile("/root/.codex/auth.json");
-    } catch {}
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/sandbox-controller.ts:1456");}
     try {
       const lease = await this.credentials.resume(this.config.authProfileId, attempt.attempt_id);
       await this.credentials.release(lease);
-    } catch {}
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/sandbox-controller.ts:1460");}
     if (attempt.state !== "collecting") {
       const changed = await this.attempts.setState(
         attempt.attempt_id,
@@ -1480,6 +1491,7 @@ export class SandboxAgentController {
       });
       await collector.verifyDurable(collection);
     } catch (error) {
+      recordCaughtError(error, "src/sandbox-controller.ts:1482");
       this.emitForAttempt(
         attempt,
         "artifact.manifest",
@@ -1529,7 +1541,8 @@ export class SandboxAgentController {
     try {
       const exit = await process.waitForExit({ timeout: 10_000 });
       if (!exit.timedOut) return;
-    } catch {}
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/sandbox-controller.ts:1532");}
     await process.kill(9);
     await process.waitForExit({ timeout: 10_000 });
   }
@@ -1560,7 +1573,8 @@ export class SandboxAgentController {
         this.dependencies.now().toISOString(),
       );
       this.emitForAttempt(attempt, "sandbox.cleanup", "succeeded");
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/sandbox-controller.ts:1563");
       await this.attempts.markCleanup(
         attempt.attempt_id,
         "failed",
@@ -1568,7 +1582,7 @@ export class SandboxAgentController {
         this.dependencies.now().toISOString(),
       );
       this.emitForAttempt(attempt, "sandbox.cleanup", "failed", "sandbox_destroy_failed");
-      throw new Error("Sandbox destruction failed");
+      throw new Error("Sandbox destruction failed", { cause: caughtError });
     }
   }
 

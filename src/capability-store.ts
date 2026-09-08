@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import type { ProviderOperationRecord, ProviderOperationState } from "./linear-transition.ts";
 
 export interface CapabilityContext {
@@ -235,7 +236,8 @@ export class D1ProviderReceiptVerifier implements ProviderReceiptVerifier {
     let manifest: unknown;
     try {
       manifest = JSON.parse(workProduct.planning_manifest_json);
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/capability-store.ts:238");
       return false;
     }
     if (!Array.isArray(manifest)) return false;

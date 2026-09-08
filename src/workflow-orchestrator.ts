@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import { transitionIdentity, visitIdentity } from "./orchestration-identity.ts";
 import type {
   OrchestrationRunRecord,
@@ -190,7 +191,8 @@ export class WorkflowOrchestrator {
               `agent-event:${execution.attemptId}`,
               { type: "linear-event", timeout: this.definition.execution.heartbeatTimeout },
             );
-          } catch {
+          } catch (caughtError) {
+            recordCaughtError(caughtError, "src/workflow-orchestrator.ts:192");
             // A timeout is the durable heartbeat checkpoint; the next loop
             // reloads D1 and reconciles the exact Sandbox/process identities.
           }
@@ -407,7 +409,8 @@ export class WorkflowOrchestrator {
         `linear-event:${node.id}:${wait.wait_id}`,
         { type: "linear-event", timeout: "365d" },
       );
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/workflow-orchestrator.ts:409");
       return;
     }
     const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
@@ -579,6 +582,7 @@ export class WorkflowOrchestrator {
     try {
       decision = evaluateNodeOutcome(this.definition, nodeId, outcome);
     } catch (error) {
+      recordCaughtError(error, "src/workflow-orchestrator.ts:551");
       if (this.definition.version < 4) throw error;
       decision = outcome.kind === "agent"
         ? evaluateNodeOutcome(this.definition, nodeId, {

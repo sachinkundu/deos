@@ -1,3 +1,4 @@
+import { captureErrors } from "../src/error-context.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -107,7 +108,7 @@ test("OpenRouter HTTP failures retain actionable safe fields and a protected raw
       assert.equal(error.diagnostic.httpStatus, 400);
       assert.equal(error.diagnostic.providerCode, "400");
       assert.equal(error.diagnostic.providerType, "invalid_request_error");
-      assert.equal(error.diagnostic.providerMessage, "Invalid schema using Bearer [redacted]");
+      assert.equal(error.diagnostic.providerMessage, "Invalid schema using Bearer sk-or-v1-abcdefghijklmnop");
       assert.equal(error.diagnostic.providerRequestId, "request-error-1");
       assert.equal(error.diagnostic.requestMayHaveSucceeded, false);
       assert.equal(error.diagnostic.retryable, false);
@@ -260,4 +261,18 @@ test("supported model settings are bounded and deterministic", () => {
   assert.deepEqual(parseSupportedOpenRouterModels("b/model,a/model"), ["a/model", "b/model"]);
   assert.throws(() => parseSupportedOpenRouterModels(""), /invalid/);
   assert.throws(() => parseSupportedOpenRouterModels("a/model,a/model"), /invalid/);
+});
+
+ test("valid SSE heartbeat responses do not record JSON parser errors", async () => {
+  const client = new OpenRouterReviewClient({
+    apiKey: "test-secret-long-enough", apiUrl: "https://openrouter.example/api/v1", supportedModels: ["vendor/allowed"],
+    fetcher: async () => new Response(': heartbeat\n\ndata: {"response":{"id":"resp-ok"}}\n\n',
+      {headers:{"Content-Type":"text/event-stream; charset=utf-8"}}),
+  });
+  const errors: unknown[] = [];
+  const result = await captureErrors(async caught => { errors.push(...caught); }, () => client.proxyResponses({
+    model:"vendor/allowed", input:"Review", stream:true, text:reviewText,
+  }));
+  assert.equal(result.providerRequestId,"resp-ok");
+  assert.deepEqual(errors,[]);
 });

@@ -1,3 +1,4 @@
+import { errorText } from "../src/error-details.ts";
 // Paid diagnostic: one original review turn; no workflow writes, validation, or repair.
 import { createServer } from "node:http";
 import { spawn, spawnSync } from "node:child_process";
@@ -106,12 +107,13 @@ const server = createServer(async (req, res) => {
     console.log(JSON.stringify({ request: requests, providerRequestId: response.providerRequestId, elapsedSeconds: Math.round((Date.now() - started) / 1000) }));
     res.writeHead(response.status, { "content-type": response.contentType }); res.end(response.body);
   } catch (error) {
-    failure = error instanceof Error ? error.message : "Request failed";
+    failure = errorText(error);
+    save(`original-error-${requests}.json`, failure);
     if (error instanceof OpenRouterReviewError) {
       save(`error-${requests}.json`, JSON.stringify(error.diagnostic, null, 2));
       console.log(JSON.stringify({ providerError: error.diagnostic }));
     }
-    res.writeHead(502); res.end("Local diagnostic stopped"); child?.kill();
+    res.writeHead(error instanceof OpenRouterReviewError ? error.diagnostic.httpStatus ?? 502 : 502); res.end(failure); child?.kill();
   }
 });
 await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));

@@ -464,13 +464,13 @@ test("OpenRouter failure returns a safe durable diagnostic reference", async () 
       }),
     },
   ));
-  assert.equal(response.status, 502);
+  assert.equal(response.status, 400);
   const body = await response.json() as Record<string, unknown>;
   assert.equal(body.state, "failed");
   assert.equal(body.safeErrorCategory, "openrouter_http_400");
   assert.equal(body.diagnosticId, "diagnostic:provider:test");
-  assert.equal(JSON.stringify(body).includes("secret"), false);
-  assert.equal(JSON.stringify(body).includes("Invalid JSON schema"), false);
+  assert.equal(JSON.stringify(body).includes("secret"), true);
+  assert.equal(JSON.stringify(body).includes("Invalid JSON schema"), true);
   assert.equal(diagnostics.length, 1);
   const operation = [...store.operations.values()][0];
   assert.equal(operation.state, "failed");

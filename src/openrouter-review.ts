@@ -1,3 +1,6 @@
+import { errorDetails, readResponseText } from "./error-details.ts";
+import { responseError } from "./error-details.ts";
+import { recordCaughtError } from "./error-context.ts";
 export interface OpenRouterModelSummary {
   id: string;
   name: string;
@@ -36,6 +39,7 @@ export type OpenRouterFailureStage =
   | "structured_json";
 
 export interface OpenRouterFailureDiagnostic {
+  responseHeaders?: Record<string, string>;
   stage: OpenRouterFailureStage;
   httpStatus: number | null;
   providerCode: string | null;
@@ -76,34 +80,15 @@ const nullableRecord = (value: unknown): Record<string, unknown> | null =>
 
 const boundedString = (value: unknown, maximum = 2_000): string | null =>
   typeof value === "string" && value.length > 0
-    ? value.slice(0, maximum)
+    ? value
     : null;
 
-const safeProviderMessage = (value: unknown): string | null => {
-  const message = boundedString(value);
-  if (message === null) return null;
-  return message
-    .replace(/Bearer\s+[^\s"']+/gi, "Bearer [redacted]")
-    .replace(/\b(?:sk|or)-[A-Za-z0-9_-]{12,}\b/g, "[redacted]")
-    .replace(
-      /("(?:api[_-]?key|authorization|token|secret)"\s*:\s*")[^"]+("\s*)/gi,
-      "$1[redacted]$2",
-    );
-};
+const safeProviderMessage = (value: unknown): string | null =>
+  typeof value === "string" ? value : null;
 
 const transportFailureDiagnostic = (error: unknown): OpenRouterFailureDiagnostic => {
-  const record = error instanceof Error
-    ? { name: error.name, message: error.message, cause: error.cause }
-    : { name: "UnknownError", message: String(error), cause: null };
-  let raw: string;
-  try {
-    raw = JSON.stringify(record, (_key, value) =>
-      value instanceof Error
-        ? { name: value.name, message: value.message, cause: value.cause }
-        : value) ?? "{}";
-  } catch {
-    raw = JSON.stringify({ name: record.name, message: record.message });
-  }
+  const raw = JSON.stringify(errorDetails(error));
+
   return {
     stage: "transport",
     httpStatus: null,
@@ -116,13 +101,13 @@ const transportFailureDiagnostic = (error: unknown): OpenRouterFailureDiagnostic
     responseTruncated: false,
     requestMayHaveSucceeded: true,
     retryable: true,
-    rawResponseBody: raw.slice(0, 16_384),
+    rawResponseBody: raw,
   };
 };
 
 const providerScalar = (value: unknown): string | null =>
   typeof value === "string" || typeof value === "number"
-    ? String(value).slice(0, 240)
+    ? String(value)
     : null;
 
 const sha256Hex = async (value: string): Promise<string> => {
@@ -130,49 +115,15 @@ const sha256Hex = async (value: string): Promise<string> => {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 };
 
-const readBoundedText = async (
-  response: Response,
-  maximumBytes: number,
-): Promise<{ text: string; truncated: boolean; sha256: string | null }> => {
-  if (response.body === null) return { text: "", truncated: false, sha256: await sha256Hex("") };
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let received = 0;
-  let truncated = false;
-  while (true) {
-    const next = await reader.read();
-    if (next.done) break;
-    const remaining = maximumBytes - received;
-    if (remaining <= 0) {
-      truncated = true;
-      await reader.cancel();
-      break;
-    }
-    const accepted = next.value.byteLength > remaining
-      ? next.value.slice(0, remaining)
-      : next.value;
-    chunks.push(accepted);
-    received += accepted.byteLength;
-    if (accepted.byteLength !== next.value.byteLength) {
-      truncated = true;
-      await reader.cancel();
-      break;
-    }
-  }
-  const bytes = new Uint8Array(received);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  const text = new TextDecoder().decode(bytes);
-  return { text, truncated, sha256: await sha256Hex(text) };
+const readBoundedText = async (response: Response, _maximum = 0): Promise<{ text: string; truncated: boolean; sha256: string }> => {
+  const text = await readResponseText(response);
+  return { text, truncated: false, sha256: await sha256Hex(text) };
 };
 
 const readCompleteText = async (
   response: Response,
 ): Promise<{ text: string; truncated: false; sha256: string }> => {
-  const text = await response.text();
+  const text = await readResponseText(response);
   return { text, truncated: false, sha256: await sha256Hex(text) };
 };
 
@@ -194,7 +145,8 @@ const responseIdFromSse = (text: string): string | null => {
       const response = nullableRecord(event?.response);
       const id = boundedString(response?.id, 240) ?? boundedString(event?.id, 240);
       if (id !== null) return id;
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/openrouter-review.ts:197");
       // Ignore non-JSON SSE comments and keep looking for a response identifier.
     }
   }
@@ -211,6 +163,7 @@ const diagnosticFromBody = (
   const providerError = nullableRecord(body?.error);
   return {
     stage,
+    responseHeaders: Object.fromEntries(response.headers),
     httpStatus: response.status,
     providerCode: providerScalar(providerError?.code),
     providerType: boundedString(providerError?.type, 240),
@@ -259,7 +212,7 @@ export class OpenRouterReviewClient {
       method: "GET",
       headers: { Authorization: `Bearer ${this.apiKey}`, Accept: "application/json" },
     });
-    if (!response.ok) throw new Error("OpenRouter model discovery failed");
+    if (!response.ok) throw await responseError("OpenRouter model discovery failed", response);
     const body = asRecord(await response.json(), "OpenRouter model response");
     if (!Array.isArray(body.data)) throw new Error("OpenRouter model response is invalid");
     const models = body.data.flatMap((value): OpenRouterModelSummary[] => {
@@ -304,7 +257,8 @@ export class OpenRouterReviewClient {
         }),
       });
     } catch (error) {
-      throw new OpenRouterReviewError("OpenRouter transport failed", transportFailureDiagnostic(error));
+      recordCaughtError(error, "src/openrouter-review.ts:306");
+      throw Object.assign(new OpenRouterReviewError("OpenRouter transport failed", transportFailureDiagnostic(error)), { cause: error });
     }
     const raw = response.ok
       ? await readCompleteText(response)
@@ -313,7 +267,8 @@ export class OpenRouterReviewClient {
       let partialBody: Record<string, unknown> | null = null;
       try {
         partialBody = nullableRecord(JSON.parse(raw.text));
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/openrouter-review.ts:316");
         // A bounded prefix is commonly not complete JSON. The encrypted diagnostic
         // retains that prefix and its hash without exposing it to the caller.
       }
@@ -325,11 +280,12 @@ export class OpenRouterReviewClient {
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw.text);
-    } catch {
-      throw new OpenRouterReviewError(
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/openrouter-review.ts:328");
+      throw Object.assign(new OpenRouterReviewError(
         response.ok ? "OpenRouter response JSON is invalid" : `OpenRouter HTTP ${response.status}`,
         diagnosticFromBody(response, response.ok ? "response_json" : "http", null, raw, response.ok),
-      );
+      ), { cause: caughtError });
     }
     const body = nullableRecord(parsed);
     if (!response.ok) {
@@ -341,11 +297,12 @@ export class OpenRouterReviewClient {
     let rawResponse: Record<string, unknown>;
     try {
       rawResponse = asRecord(body, "OpenRouter review response");
-    } catch {
-      throw new OpenRouterReviewError(
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/openrouter-review.ts:344");
+      throw Object.assign(new OpenRouterReviewError(
         "OpenRouter response contract is invalid",
         diagnosticFromBody(response, "response_contract", body, raw, true),
-      );
+      ), { cause: caughtError });
     }
     if (!Array.isArray(rawResponse.choices) || rawResponse.choices.length !== 1) {
       throw new OpenRouterReviewError(
@@ -358,11 +315,12 @@ export class OpenRouterReviewClient {
     try {
       choice = asRecord(rawResponse.choices[0], "OpenRouter review choice");
       message = asRecord(choice.message, "OpenRouter review message");
-    } catch {
-      throw new OpenRouterReviewError(
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/openrouter-review.ts:361");
+      throw Object.assign(new OpenRouterReviewError(
         "OpenRouter response message contract is invalid",
         diagnosticFromBody(response, "response_contract", rawResponse, raw, true),
-      );
+      ), { cause: caughtError });
     }
     if (typeof message.content !== "string" || message.content.length === 0) {
       throw new OpenRouterReviewError(
@@ -373,11 +331,12 @@ export class OpenRouterReviewClient {
     let result: Readonly<Record<string, unknown>>;
     try {
       result = Object.freeze(asRecord(JSON.parse(message.content), "OpenRouter structured result"));
-    } catch {
-      throw new OpenRouterReviewError(
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/openrouter-review.ts:376");
+      throw Object.assign(new OpenRouterReviewError(
         "OpenRouter structured result is not valid JSON",
         diagnosticFromBody(response, "structured_json", rawResponse, raw, true),
-      );
+      ), { cause: caughtError });
     }
     return Object.freeze({
       model: typeof rawResponse.model === "string" ? rawResponse.model : input.model,
@@ -437,16 +396,19 @@ export class OpenRouterReviewClient {
         }),
       });
     } catch (error) {
-      throw new OpenRouterReviewError("OpenRouter transport failed", transportFailureDiagnostic(error));
+      recordCaughtError(error, "src/openrouter-review.ts:439");
+      throw Object.assign(new OpenRouterReviewError("OpenRouter transport failed", transportFailureDiagnostic(error)), { cause: error });
     }
     const raw = response.ok
       ? await readCompleteText(response)
       : await readBoundedText(response, 16_384);
     let parsed: Record<string, unknown> | null = null;
-    if (!raw.truncated && raw.text.length > 0) {
+    if (!raw.truncated && raw.text.length > 0 &&
+        !response.headers.get("content-type")?.toLowerCase().includes("text/event-stream")) {
       try {
         parsed = nullableRecord(JSON.parse(raw.text));
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/openrouter-review.ts:449");
         // Streaming Responses are SSE rather than one JSON document.
       }
     }

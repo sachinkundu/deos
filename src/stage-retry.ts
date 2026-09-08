@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import { workflowInstanceIdentity } from "./orchestration-identity.ts";
 import type { WorkflowBinding, WorkflowInstanceHandle } from "./queue-consumer-core.ts";
 import { restoreWorkflowDefinition, type LoadedWorkflowDefinition } from "./workflow-definition.ts";
@@ -5,6 +6,8 @@ import {
   isAgentStageRetryNode,
   RETRYABLE_AGENT_ATTEMPT_STATES,
   type AgentStageRetryNode,
+  type StageRetryNode,
+  isStageRetryNode,
 } from "./stage-retry-contract.ts";
 
 export { isAgentStageRetryNode, type AgentStageRetryNode } from "./stage-retry-contract.ts";
@@ -15,7 +18,7 @@ export interface AgentStageRetryRecord {
   retry_id: string;
   run_id: string;
   failed_attempt_id: string;
-  retry_node: AgentStageRetryNode;
+  retry_node: StageRetryNode;
   retry_kind: AgentStageRetryKind;
   from_visit_sequence: number;
   to_visit_sequence: number;
@@ -633,7 +636,8 @@ export class AgentStageRetryController {
     const id = this.targetWorkflowInstanceId(retry);
     try {
       return await this.workflows.get(id) as ObservableInstance;
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/stage-retry.ts:636");
       // Creation uses the durable target ID, so an ambiguous response is safe to reconcile.
     }
     try {
@@ -643,7 +647,8 @@ export class AgentStageRetryController {
       }]);
       const handle = created.find((instance) => instance.id === id);
       if (handle !== undefined) return handle as ObservableInstance;
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/stage-retry.ts:646");
       // The provider may have created the instance before the response failed.
     }
     return await this.workflows.get(id) as ObservableInstance;
@@ -657,7 +662,8 @@ export class AgentStageRetryController {
     let body: unknown;
     try {
       body = await request.json();
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/stage-retry.ts:660");
       return json(400, { error: "invalid_json" });
     }
     if (
@@ -670,7 +676,7 @@ export class AgentStageRetryController {
     if (
       value.version !== 1 || typeof value.runId !== "string" || value.runId.length === 0 ||
       typeof value.failedAttemptId !== "string" || value.failedAttemptId.length === 0 ||
-      !isAgentStageRetryNode(value.retryNode) ||
+      !isStageRetryNode(value.retryNode) ||
       typeof value.requestedBy !== "string" || !/^[a-zA-Z0-9._@-]{1,100}$/.test(value.requestedBy)
     ) return json(400, { error: "invalid_stage_retry" });
 
@@ -685,6 +691,7 @@ export class AgentStageRetryController {
         now: this.now().toISOString(),
       });
     } catch (error) {
+      recordCaughtError(error, "src/stage-retry.ts:687");
       const category = error instanceof Error ? error.message : "stage_retry_failed";
       return json(category === "stage_retry_identity_mismatch" ? 409 : 422, { error: category });
     }
@@ -719,12 +726,14 @@ export class AgentStageRetryController {
       });
       this.observe(this.observation(retry, "established", { workflowStatus: after.status }));
       return json(202, { retry });
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/stage-retry.ts:722");
       let status: string | null = null;
       try {
         const instance = await this.workflows.get(targetId) as ObservableInstance;
         status = (await instance.status()).status;
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/stage-retry.ts:727");
         // The durable pending row makes an ambiguous provider response retryable.
       }
       if (status !== null && !terminalWorkflowStatuses.has(status)) {

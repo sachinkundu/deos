@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import type { OpenRouterFailureDiagnostic } from "./openrouter-review.ts";
 
 export interface ProviderDiagnosticWriter {
@@ -84,8 +85,9 @@ export const decryptProviderDiagnostic = async (
   let envelope: EncryptedEnvelope;
   try {
     envelope = JSON.parse(encoded) as EncryptedEnvelope;
-  } catch {
-    throw new Error("provider diagnostic envelope is invalid");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/provider-diagnostics.ts:87");
+    throw new Error("provider diagnostic envelope is invalid", { cause: caughtError });
   }
   if (envelope.version !== 1 || !envelope.salt || !envelope.iv || !envelope.ciphertext) {
     throw new Error("provider diagnostic envelope is unsupported");
@@ -104,8 +106,9 @@ export const decryptProviderDiagnostic = async (
       base64ToBytes(envelope.ciphertext),
     );
     return new TextDecoder().decode(plaintext);
-  } catch {
-    throw new Error("provider diagnostic decryption failed");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/provider-diagnostics.ts:107");
+    throw new Error("provider diagnostic decryption failed", { cause: caughtError });
   }
 };
 

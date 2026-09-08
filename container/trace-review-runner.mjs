@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { recordCaughtError } from "./original-errors.mjs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import {
@@ -355,7 +356,7 @@ const reviewInventory = (traceability, change) => {
 };
 
 const main = async () => {
-  const job = JSON.parse(await readFile("/deos/run/job.json", "utf8"));
+  const job = JSON.parse(await readFile(process.env.DEOS_JOB_PATH ?? "/deos/run/job.json", "utf8"));
   if (
     job.agentRole !== "reviewer" || job.agentHarness !== "codex" ||
     job.agentHarnessVersion !== "0.147.0" ||
@@ -503,6 +504,7 @@ const main = async () => {
 };
 
 main().catch((error) => {
+  recordCaughtError(error, "runner fatal");
   process.stderr.write(`trace review failed: ${error.message}\n`);
   process.exitCode = 1;
 });

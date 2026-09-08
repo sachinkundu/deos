@@ -81,7 +81,7 @@ test("GitHub App catalog pages safe installations and repositories without cross
   assert.equal(calls.filter((call) => call.path.startsWith("/installation/repositories")).length, 2);
 });
 
-test("GitHub App catalog returns a bounded error instead of a provider body", async () => {
+test("GitHub App catalog preserves the original provider rejection", async () => {
   const catalog = new GitHubAppCatalog({
     apiUrl: "https://api.github.test",
     appId: "1234",
@@ -89,8 +89,8 @@ test("GitHub App catalog returns a bounded error instead of a provider body", as
     fetch: async () => new Response("secret provider body", { status: 503 }),
   });
   await assert.rejects(catalog.list(), (error: unknown) => {
-    assert.equal((error as Error).message, "GitHub App installation catalog is unavailable");
-    assert.doesNotMatch((error as Error).message, /secret provider body/);
+    assert.match((error as Error).message, /GitHub App installation catalog is unavailable/);
+    assert.match((error as Error).message, /secret provider body/);
     return true;
   });
 });

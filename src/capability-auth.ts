@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 export interface CapabilityClaims {
   version: 1;
   issuer: "deos";
@@ -83,8 +84,9 @@ export const verifyCapabilityToken = async (
   let claims: CapabilityClaims;
   try {
     claims = JSON.parse(new TextDecoder().decode(base64UrlDecode(encoded))) as CapabilityClaims;
-  } catch {
-    throw new Error("capability token payload is invalid");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/capability-auth.ts:86");
+    throw new Error("capability token payload is invalid", { cause: caughtError });
   }
   if (
     claims.version !== 1 ||

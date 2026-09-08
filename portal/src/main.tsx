@@ -1,10 +1,13 @@
+import { reviewDestination } from "./review-actions.ts";
+import { separateErrors } from "./error-state.ts";
+import { errorText } from "../../src/error-details.ts";
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowClockwise,
   ArrowRight,
+  ArrowsLeftRight,
   ArrowUUpLeft,
-  ArrowsDownUp,
   CaretDown,
   CaretRight,
   Check,
@@ -28,7 +31,7 @@ import {
 import { applyStaged, receivePoll, type PollState } from "./polling.ts";
 import { directionalClaimPresentation } from "./directional-claim.ts";
 import { portalPageFromPath, portalPathForPage, reviewRunIdFromPath, type PortalPage } from "./routes.ts";
-import { bettaViewUrl, pullRequestActions } from "./review-actions.ts";
+import { bettaViewUrl, bettaViewLabel, pullRequestActions } from "./review-actions.ts";
 import { TranscriptViewer } from "./TranscriptViewer.tsx";
 import type { TranscriptDto } from "./transcript-view.ts";
 import {
@@ -37,12 +40,10 @@ import {
   authorVisitStatus,
   isDesignAuthorVisit,
   designSubstepForNode,
-  approvalEvidenceLinks,
   phaseDisplayStatus,
   phaseForVisit,
   planningSubstepForNode,
   stoppedPhaseSourceId,
-  selectedApprovalEvidenceUrls,
   workflowStatusTone,
   workflowPhases,
   type WorkflowPhaseId,
@@ -77,8 +78,11 @@ interface Visit {
     decision_outcome: string | null;
   } | null;
 }
+interface FailureDetail { visitSequence?: number; id: string; nodeId?: string; step: string; message: string | null; category?: string; occurredAt: string; detailUrl?: string }
 interface Projection {
-  run: Run & { freshness: string };
+  errors?: FailureDetail[];
+  legacyErrors?: FailureDetail[];
+  run: Run & { freshness: string; currentNode: string; terminalCause?: string | null; currentVisitSequence?: number; failureStartedAt?: string };
   stages: Stage[];
   history: Visit[];
   unlinked: { attempts: number; waits: number };
@@ -86,8 +90,8 @@ interface Projection {
   retry: { failedAttemptId: string; retryNode: string } | null;
   pullRequest: { number: number; url: string; status: string; verified: boolean } | null;
   workProducts: {
-    planning: { number: number; url: string; status: string; verified: boolean } | null;
-    design: { number: number; url: string; status: string; headSha: string | null; baseCommit: string } | null;
+    planning: { artifacts?: Array<{label: string; url: string}>; number: number; url: string; status: string; verified: boolean } | null;
+    design: { artifacts?: Array<{label: string; url: string}>; number: number; url: string; status: string; headSha: string | null; baseCommit: string } | null;
   };
   gateVisits: Array<{
     visitSequence: number;
@@ -157,7 +161,7 @@ const api = async <T,>(path: string, signal?: AbortSignal): Promise<T> => {
     return demoApi(path) as T;
   }
   const response = await fetch(path, { signal, headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error(response.status === 404 ? "No matching workflow was found." : "The portal could not refresh its data.");
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
   return response.json() as Promise<T>;
 };
 
@@ -171,7 +175,7 @@ const routeMutation = async <T,>(
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const body = await response.json() as T & { error?: string };
+  const body = await response.json() as T & { error?: string; message?: string };
   if (!response.ok) {
     const messages: Record<string, string> = {
       stale_repository_revision: "This repository changed in another session. Reload and try again.",
@@ -184,7 +188,7 @@ const routeMutation = async <T,>(
       repository_not_available: "Choose a repository from the live GitHub App list.",
       unsupported_review_model: "Choose a supported review model.",
     };
-    throw new Error(messages[body.error ?? ""] ?? "The route could not be saved.");
+    throw new Error(body.message ?? messages[body.error ?? ""] ?? body.error ?? "The route could not be saved.");
   }
   return body;
 };
@@ -198,7 +202,7 @@ const retryMutation = async (
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const body = await response.json() as { error?: string };
+  const body = await response.json() as { error?: string; message?: string };
   if (!response.ok) {
     const messages: Record<string, string> = {
       stage_retry_not_eligible: "This run changed and can no longer be continued from that step.",
@@ -206,7 +210,7 @@ const retryMutation = async (
       workflow_replacement_not_established: "Cloudflare did not start the continuation yet. Try again safely.",
       workflow_replacement_ambiguous: "Cloudflare did not confirm the continuation. Try again safely.",
     };
-    throw new Error(messages[body.error ?? ""] ?? "The workflow could not be continued.");
+    throw new Error(body.message ?? messages[body.error ?? ""] ?? body.error ?? "The workflow could not be continued.");
   }
 };
 
@@ -279,16 +283,11 @@ function StageCard({ stage, onSelect }: { stage: Stage; onSelect: () => void }) 
   return <button type="button" className={`stage-card ${stage.state}`} onClick={onSelect}>
     <span className="stage-icon">{stage.state === "complete" ? <Check weight="bold" /> : stage.state === "active" ? <SpinnerGap /> : <Clock />}</span>
     <span className="stage-copy"><strong>{stage.label}</strong><small>{stage.state === "active" ? "Active now" : stage.state === "complete" ? "Complete" : "Upcoming"}</small></span>
-    {stage.visits > 1 && <span className="cycle"><ArrowUUpLeft /> {stage.visits}</span>}
   </button>;
 }
 
 const latestVisitFor = (visits: Visit[], predicate: (visit: Visit) => boolean): Visit | null =>
   [...visits].reverse().find(predicate) ?? null;
-
-const gateOutcomeLabel = (outcome: string | null): string => outcome === "revision_requested"
-  ? "Changes requested"
-  : outcome === "merge_authorized" ? "Approved" : human(outcome ?? "waiting");
 
 function TraceabilityWorkflowMap({
   projection,
@@ -304,6 +303,30 @@ function TraceabilityWorkflowMap({
   const [expandedPhase, setExpandedPhase] = useState<WorkflowPhaseId | null>(null);
   const [expandedSubstep, setExpandedSubstep] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const flowMap = useRef<HTMLDivElement>(null);
+  const [reviewPaths, setReviewPaths] = useState<Array<{ kind: string; path: string }>>([]);
+  useEffect(() => {
+    const map = flowMap.current;
+    if (!map) return;
+    const update = () => {
+      const bounds = map.getBoundingClientRect();
+      const review = map.querySelector('[data-phase="approval"]')?.getBoundingClientRect();
+      if (!review) return;
+      setReviewPaths(["planning", "design"].flatMap(kind => {
+        const stage = map.querySelector(`[data-phase="${kind}"]`)?.getBoundingClientRect();
+        if (!stage || review.left <= stage.right) return [];
+        const x = stage.right - bounds.left, y = stage.top + 32 - bounds.top;
+        const endX = review.left - bounds.left, endY = review.top + review.height / 2 - bounds.top;
+        const bend = x + (endX - x) / 2;
+        return [{kind, path: `M ${x} ${y} H ${bend} L ${endX - 14} ${endY} H ${endX}`}];
+      }));
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(map);
+    map.querySelectorAll('[data-phase]').forEach(node => observer.observe(node));
+    update();
+    return () => observer.disconnect();
+  }, []);
   const phases = useMemo(() => workflowPhases(projection.history), [projection.history]);
   const currentPhaseId = latestPhaseId(projection.history);
   const failedPhaseId = stoppedPhaseSourceId(projection.history);
@@ -315,9 +338,6 @@ function TraceabilityWorkflowMap({
   const latestLeafVisit = [...projection.history].reverse().find((visit) => phaseForVisit(visit) !== "stopped") ?? null;
   const currentLeafVisit = currentPhaseId === "stopped" ? failedLeafVisit : latestLeafVisit;
   const currentLeafStatus = authorVisitStatus(currentLeafVisit, projection.run.status);
-  const detail = projection.history.find((visit) => visit.sequence === selectedVisit) ?? null;
-  const detailPhaseId = detail === null ? null : phaseForVisit(detail);
-  const inspectedPhaseId = expandedPhase ?? detailPhaseId ?? currentPhaseId;
 
   useEffect(() => {
     const stopped = ["failed", "blocked", "denied", "canceled"].includes(projection.run.status);
@@ -342,7 +362,6 @@ function TraceabilityWorkflowMap({
   };
 
   const planningVisits = phases.find((phase) => phase.id === "planning")?.visits as Visit[] | undefined ?? [];
-  const approvalVisits = phases.find((phase) => phase.id === "approval")?.visits as Visit[] | undefined ?? [];
   const designVisits = phases.find((phase) => phase.id === "design")?.visits as Visit[] | undefined ?? [];
   const planningAuthorVisit = latestVisitFor(
     planningVisits,
@@ -356,17 +375,9 @@ function TraceabilityWorkflowMap({
     planningVisits,
     (visit) => planningSubstepForNode(visit.nodeId) === "independent_review",
   );
-  const planningReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "planning_review");
-  const planningMergeVisit = latestVisitFor(planningVisits, (visit) => ["verify_planning_merge", "merge_planning_pr"].includes(visit.nodeId));
   const designAuthorVisit = latestVisitFor(designVisits, isDesignAuthorVisit);
   const designSelfReviewVisit = latestVisitFor(designVisits, (visit) => designSubstepForNode(visit.nodeId) === "design_self_review");
   const designIndependentReviewVisit = latestVisitFor(designVisits, (visit) => designSubstepForNode(visit.nodeId) === "design_independent_review");
-  const designReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "design_review");
-  const designMergeVisit = latestVisitFor(designVisits, (visit) => visit.nodeId === "merge_design_pr");
-  const planningGates = projection.gateVisits.filter((gate) => gate.gateKind === "plan");
-  const designGates = projection.gateVisits.filter((gate) => gate.gateKind === "design");
-  const approvalLinks = approvalEvidenceLinks(projection.history);
-  const selectedApprovalLinks = new Set(selectedApprovalEvidenceUrls(projection.history, selectedVisit));
   const planningProduct = projection.workProducts.planning;
   const designProduct = projection.workProducts.design;
   const planningAuthorStatus = authorVisitStatus(planningAuthorVisit, projection.run.status);
@@ -376,8 +387,8 @@ function TraceabilityWorkflowMap({
   const designSelfReviewStatus = authorVisitStatus(designSelfReviewVisit, projection.run.status);
   const designIndependentReviewStatus = authorVisitStatus(designIndependentReviewVisit, projection.run.status);
   const designSteps = [
-    { id: "design_author", label: "Design author", visit: designAuthorVisit, status: designAuthorStatus, icon: <UserCircle /> },
-    { id: "design_self_review", label: "Author self-review", visit: designSelfReviewVisit, status: designSelfReviewStatus, icon: <CheckCircle /> },
+    { id: "design_author", label: "Author", visit: designAuthorVisit, status: designAuthorStatus, icon: <UserCircle /> },
+    { id: "design_self_review", label: "Self-review", visit: designSelfReviewVisit, status: designSelfReviewStatus, icon: <CheckCircle /> },
     { id: "design_independent_review", label: "Independent review", visit: designIndependentReviewVisit, status: designIndependentReviewStatus, icon: <Eye /> },
   ];
 
@@ -404,171 +415,79 @@ function TraceabilityWorkflowMap({
     return "Workflow stopped";
   };
 
-  const renderPlanning = () => <div className="phase-drill" aria-label="Planning details">
-    <p className="phase-note">Each planning check reports its own live or failed state.</p>
-    <button
-      type="button"
-      className={`phase-substep ${expandedSubstep === "planning_author" ? "selected" : ""}`}
-      aria-expanded={expandedSubstep === "planning_author"}
-      onClick={() => selectSubstep("planning_author", planningAuthorVisit)}
-    >
-      <span className="substep-heading"><span className="substep-icon"><UserCircle /></span><span className="substep-copy"><strong>Planning author</strong><small>{visitOutcomeSummary(planningAuthorVisit, planningAuthorStatus)}</small></span>{expandedSubstep === "planning_author" ? <CaretDown /> : <CaretRight />}</span>
-      <span className={`substep-status ${workflowStatusTone(planningAuthorStatus)}`}>{planningAuthorStatus}</span>
-    </button>
-    <button
-      type="button"
-      className={`phase-substep ${expandedSubstep === "self_review" ? "selected" : ""}`}
-      aria-expanded={expandedSubstep === "self_review"}
-      onClick={() => selectSubstep("self_review", selfReviewVisit)}
-    >
-      <span className="substep-heading"><span className="substep-icon"><CheckCircle /></span><span className="substep-copy"><strong>Author self-review</strong><small>{visitOutcomeSummary(selfReviewVisit, selfReviewStatus)}</small></span>{expandedSubstep === "self_review" ? <CaretDown /> : <CaretRight />}</span>
-      <span className={`substep-status ${workflowStatusTone(selfReviewStatus)}`}>{selfReviewStatus}</span>
-    </button>
-    <button
-      type="button"
-      className={`phase-substep ${expandedSubstep === "independent_review" ? "selected" : ""}`}
-      aria-expanded={expandedSubstep === "independent_review"}
-      onClick={() => selectSubstep("independent_review", independentReviewVisit)}
-    >
-      <span className="substep-heading"><span className="substep-icon"><Eye /></span><span className="substep-copy"><strong>Independent review</strong><small>{visitOutcomeSummary(independentReviewVisit, independentReviewStatus)}</small></span>{expandedSubstep === "independent_review" ? <CaretDown /> : <CaretRight />}</span>
-      <span className={`substep-status ${workflowStatusTone(independentReviewStatus)}`}>{independentReviewStatus}</span>
-    </button>
-    <div className="approved-edge"><ArrowRight weight="bold" /><span>after Human Review</span></div>
-    <button type="button" className={`phase-substep terminal ${expandedSubstep === "planning_merge" ? "selected" : ""}`} onClick={() => selectSubstep("planning_merge", planningMergeVisit)}>
-      <span className="substep-heading"><span className="substep-icon"><GitMerge /></span><strong>Merge &amp; verify</strong></span>
-      <span className="substep-meta">{planningProduct?.verified ? `Verified via PR #${planningProduct.number}` : "Waiting for checked merge"}</span>
-    </button>
+  const planningSteps = [
+    { id: "planning_author", label: "Author", visit: planningAuthorVisit, status: planningAuthorStatus, icon: <UserCircle /> },
+    { id: "self_review", label: "Self-review", visit: selfReviewVisit, status: selfReviewStatus, icon: <CheckCircle /> },
+    { id: "independent_review", label: "Independent review", visit: independentReviewVisit, status: independentReviewStatus, icon: <Eye /> },
+  ];
+  const renderStep = (step: typeof planningSteps[number]) => <button key={step.id} type="button" className={`phase-substep ${step.status === "In progress" ? "is-breathing" : ""} ${expandedSubstep === step.id ? "selected" : ""}`} aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
+    <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong><small>{visitOutcomeSummary(step.visit, step.status)}</small></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
+    <span className={`substep-status ${workflowStatusTone(step.status)}`}>{step.status}</span>
+  </button>;
+  const renderPhaseSteps = (label: string, steps: typeof planningSteps) => <div className="phase-drill" aria-label={`${label} details`}>
+    <div className="author-review-row">
+      {renderStep(steps[0])}
+      <ArrowsLeftRight className="author-review-arrow" aria-label="Author and self-review" />
+      {renderStep(steps[1])}
+    </div>
+    {renderStep(steps[2])}
   </div>;
+  const renderPlanning = () => renderPhaseSteps("Planning", planningSteps);
+  const renderDesign = () => renderPhaseSteps("Design", designSteps);
 
-  const renderDesign = () => <div className="phase-drill" aria-label="Design details">
-    <p className="phase-note">Each design check reports its own state. Author responses and revisions appear under Design author. The same PR is reused.</p>
-    {designSteps.map((step) => <button key={step.id} type="button" className={`phase-substep ${expandedSubstep === step.id ? "selected" : ""}`} aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
-      <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong><small>{visitOutcomeSummary(step.visit, step.status)}</small></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
-      <span className={`substep-status ${workflowStatusTone(step.status)}`}>{step.status}</span>
-    </button>)}
-    <div className="approved-edge"><ArrowRight weight="bold" /><span>after Human Review</span></div>
-    <button type="button" className={`phase-substep terminal ${expandedSubstep === "design_merge" ? "selected" : ""}`} onClick={() => selectSubstep("design_merge", designMergeVisit)}>
-      <span className="substep-heading"><span className="substep-icon"><GitMerge /></span><strong>Merge &amp; verify</strong></span>
-      <span className="substep-meta">{designProduct?.status === "Merged" ? `Merged via PR #${designProduct.number}` : "Waiting for merge"}</span>
-    </button>
-  </div>;
-
-  const renderApproval = () => <div className="phase-drill" aria-label="Human Review details">
-    <p className="phase-note">Planning and design decisions share this phase.</p>
-    <div className="shared-loop" aria-label="Approve forward or return to the author"><ArrowsDownUp weight="bold" /><span><strong>Approve forward</strong><small>Revision returns to the author</small></span></div>
-    <button type="button" className={`phase-substep ${expandedSubstep === "planning_review" ? "selected" : ""} ${planningGates.some((gate) => gate.active) ? "active" : ""}`} aria-expanded={expandedSubstep === "planning_review"} onClick={() => selectSubstep("planning_review", planningReviewVisit)}>
-      <span className="substep-heading"><span className="substep-icon"><Eye /></span><strong>Planning review</strong>{expandedSubstep === "planning_review" ? <CaretDown /> : <CaretRight />}</span>
-      <span className="substep-meta">{planningGates.length} saved visit{planningGates.length === 1 ? "" : "s"}</span>
-      <span className="substep-status">{gateOutcomeLabel(planningGates.at(-1)?.decision ?? null)}</span>
-      {expandedSubstep === "planning_review" && <span className="author-review-details gate-rounds">{planningGates.map((gate) => <span key={gate.visitSequence}><strong>Round {gate.round}</strong><small>{gateOutcomeLabel(gate.decision)}</small></span>)}</span>}
-    </button>
-    <button type="button" className={`phase-substep ${expandedSubstep === "design_review" ? "selected" : ""} ${designGates.some((gate) => gate.active) ? "active" : ""}`} aria-expanded={expandedSubstep === "design_review"} onClick={() => selectSubstep("design_review", designReviewVisit)}>
-      <span className="substep-heading"><span className="substep-icon"><Eye /></span><strong>Design review</strong>{expandedSubstep === "design_review" ? <CaretDown /> : <CaretRight />}</span>
-      <span className="substep-meta">{designGates.length} saved visit{designGates.length === 1 ? "" : "s"}</span>
-      <span className="substep-status">{gateOutcomeLabel(designGates.at(-1)?.decision ?? null)}</span>
-      {expandedSubstep === "design_review" && <span className="author-review-details gate-rounds">{designGates.map((gate) => <span key={gate.visitSequence}><strong>Round {gate.round}</strong><small>{gateOutcomeLabel(gate.decision)}</small></span>)}</span>}
-    </button>
-  </div>;
-
-  const inspectedPhase = phases.find((phase) => phase.id === inspectedPhaseId) ?? currentPhase;
-  const selectedDesignStep = designSteps.find((step) => step.id === expandedSubstep);
-  const inspectorStatus = selectedDesignStep?.status ?? (expandedSubstep === "planning_author" ? planningAuthorStatus
-    : expandedSubstep === "self_review" ? selfReviewStatus
-      : expandedSubstep === "independent_review" ? independentReviewStatus
-        : expandedSubstep === "design_author" ? designAuthorStatus
-          : inspectedPhase === null
-            ? "Upcoming"
-            : phaseDisplayStatus(inspectedPhase, currentPhaseId, projection.run.status, failedPhaseId));
-  const inspectorTone = workflowStatusTone(inspectorStatus);
-  const inspectorComplete = inspectorTone === "succeeded";
-  const inspectorFailed = inspectorTone === "failed";
-  const inspectorTitle = selectedDesignStep?.label ?? (expandedSubstep === "planning_author" ? "Planning author"
-    : expandedSubstep === "self_review" ? "Author self-review"
-      : expandedSubstep === "independent_review" ? "Independent review"
-        : expandedSubstep === "planning_review" ? "Human review"
-          : expandedSubstep === "planning_merge" ? "Merge & verify"
-            : expandedSubstep === "design_author" ? "Design author"
-              : expandedSubstep === "design_review" ? "Human review"
-                : expandedSubstep === "design_merge" ? "Merge & verify"
-                  : inspectedPhase?.label ?? "Workflow");
-  const inspectorProduct = expandedSubstep === "planning_review" ? planningProduct
-    : expandedSubstep === "design_review" ? designProduct
-      : inspectedPhase?.id === "planning" ? planningProduct : inspectedPhase?.id === "design" ? designProduct : null;
-  const inspectorVisit = selectedDesignStep === undefined ? detail : selectedDesignStep.visit;
-  const inspectorAttempts = inspectorVisit?.attempts.filter((attempt) => attempt.transcriptAvailable) ?? [];
+  const activeGate = projection.gateVisits.find(gate => gate.active);
+  const reviewKind = activeGate?.gateKind ?? (currentPhaseId === "design" || projection.run.currentNode === "design_review"
+    ? "design" : projection.gateVisits.at(-1)?.gateKind ?? "plan");
+  const reviewPhase = reviewKind === "plan" ? "planning" : "design";
+  const reviewProduct = reviewKind === "plan" ? planningProduct : designProduct;
+  const renderApproval = () => activeGate && reviewProduct ? <div className="phase-artifacts review-action">
+    <PullRequestActions url={reviewProduct.url} githubLabel="Review" />
+  </div> : null;
 
   return <section className="workflow-panel phase-workflow-panel" aria-labelledby="workflow-title">
     <div className="section-heading phase-heading"><div><span className="eyebrow">Current run</span><h2 id="workflow-title">Workflow map</h2></div><span>Open a phase, then drill into its evidence</span></div>
     <div className="current-step-banner"><span>{currentPhaseId === "stopped" ? "Failed step" : "Current step"}</span><strong className={workflowStatusTone(currentLeafStatus)}>{currentLeafVisit === null ? currentPhase?.label ?? "Unknown" : workflowStepLabel(currentLeafVisit.nodeId)}</strong></div>
     <div className="phase-workspace">
-      <div className="phase-map">
+      <div className="phase-map branching-flow" ref={flowMap}>
+        <svg className="review-connectors" aria-hidden="true"><defs>{["complete", "active", "upcoming"].map(tone => <marker key={tone} id={`review-arrow-${tone}`} className={tone} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>)}</defs>{reviewPaths.map(edge => {
+          const phase = phases.find(phase => phase.id === edge.kind);
+          const complete = phase && phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId) === "Complete";
+          const tone = complete ? "complete" : edge.kind === reviewPhase ? "active" : "upcoming";
+          return <path key={edge.kind} d={edge.path} className={tone} markerEnd={`url(#review-arrow-${tone})`} />;
+        })}</svg>
         {phases.filter((phase) => phase.visits.length > 0 || phase.id !== "stopped").map((phase, index) => {
           const expanded = expandedPhase === phase.id;
           const current = currentPhaseId === phase.id;
-          const inspecting = inspectedPhaseId === phase.id && inspectedPhaseId !== currentPhaseId;
           const status = phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId);
           const successfulTerminal = status === "Succeeded";
           const phaseComplete = status === "Complete" || successfulTerminal ||
             ["Failed", "Blocked", "Canceled"].includes(status);
           const product = phase.id === "planning" ? planningProduct : phase.id === "design" ? designProduct : null;
-          return <article className={`workflow-phase ${workflowStatusTone(status)} ${expanded ? "expanded" : ""} ${current ? "current" : ""} ${inspecting ? "inspecting" : ""}`} key={phase.id}>
+          return <article className={`workflow-phase ${workflowStatusTone(status)} ${expanded ? "expanded" : ""} ${current && !["Failed", "Blocked", "Canceled"].includes(status) ? "current is-breathing" : ""} ${phase.id === "approval" ? "review-decision" : ""}`} key={phase.id} data-phase={phase.id}>
             <span className={`phase-spine-marker ${workflowStatusTone(status)}`} aria-hidden="true">{["Failed", "Blocked", "Canceled"].includes(status) ? <WarningCircle weight="fill" /> : phaseComplete ? <Check weight="bold" /> : <Clock />}</span>
             <div className="phase-summary-row">
-              <button type="button" className="phase-summary" aria-expanded={expanded} onClick={() => openPhase(phase.id, phase.visits as Visit[])}>
-                <span className="phase-number">{index + 1}</span>
-                <span className="phase-summary-copy"><strong>{phase.label}</strong><small>{phase.visits.length} visit{phase.visits.length === 1 ? "" : "s"} · {phaseOutcome(phase.id)}</small></span>
+              {phase.id === "approval" ? <div className="phase-summary"><span className="phase-number decision-diamond"><Eye /></span><span className="phase-summary-copy"><strong>Human Review</strong><small>{reviewKind === "plan" ? "Planning" : "Design"}</small></span></div> : <button type="button" className="phase-summary" aria-expanded={expanded} onClick={() => openPhase(phase.id, phase.visits as Visit[])}>
+                <span className="phase-number">{phase.id === "design" ? 3 : phase.id === "complete" ? 4 : index + 1}</span>
+                <span className="phase-summary-copy"><strong>{phase.label}</strong><small>{phaseOutcome(phase.id)}</small></span>
                 <span className={`phase-status ${workflowStatusTone(status)}`}>{status}</span>
-                {inspecting && <span className="inspecting-pill">Inspecting</span>}
                 {current && <span className="current-pill">Current step</span>}
-                {(phase.id === "planning" || phase.id === "approval" || phase.id === "design") && (expanded ? <CaretDown /> : <CaretRight />)}
-              </button>
+                {(phase.id === "planning" || phase.id === "design") && (expanded ? <CaretDown /> : <CaretRight />)}
+              </button>}
               {product && <div className="phase-artifacts">
-                <a href={product.url} target="_blank" rel="noreferrer"><FileText />{phase.id === "planning" ? "Proposal" : "design.md"}</a>
-                {phase.id === "planning" && <a href={product.url} target="_blank" rel="noreferrer"><ListChecks />Specs</a>}
                 <PullRequestActions url={product.url} githubLabel={`PR #${product.number}`} />
+                {product.artifacts?.map(artifact => <a key={artifact.url} href={artifact.url} target="_blank" rel="noreferrer"><FileText />{artifact.label}</a>)}
               </div>}
-              {phase.id === "approval" && <div className="phase-artifacts">
-                {planningProduct && <PullRequestActions url={planningProduct.url} githubLabel={`Plan PR #${planningProduct.number}`} />}
-                {designProduct && <PullRequestActions url={designProduct.url} githubLabel={`Design PR #${designProduct.number}`} />}
-              </div>}
+
             </div>
             {expanded && phase.id === "planning" && renderPlanning()}
-            {expanded && phase.id === "approval" && renderApproval()}
+            {phase.id === "approval" && renderApproval()}
             {expanded && phase.id === "design" && renderDesign()}
           </article>;
         })}
       </div>
-      <aside className="phase-inspector" aria-label="Inspected workflow detail">
-        <span className="eyebrow">{inspectedPhaseId === currentPhaseId ? "Current step" : "Inspecting"}</span>
-        <h3>{inspectorTitle}</h3>
-        <span className={`inspector-status ${inspectorTone}`}>
-          {inspectorFailed ? <WarningCircle weight="fill" /> : inspectorComplete ? <CheckCircle weight="fill" /> : <Clock />}{inspectorStatus}
-        </span>
-        <dl className="inspector-summary">
-          <div><dt>Phase</dt><dd>{inspectedPhase?.label ?? "—"}</dd></div>
-          <div><dt>Workflow step</dt><dd>{inspectorVisit === null ? "Not started" : workflowStepLabel(inspectorVisit.nodeId)}</dd></div>
-          <div><dt>Phase visits</dt><dd>{inspectedPhase?.visits.length ?? 0}</dd></div>
-        </dl>
-        {inspectedPhase?.id === "planning" && <>
-          <details open><summary>Self review</summary><p>{selfReviewStatus}: {visitOutcomeSummary(selfReviewVisit, selfReviewStatus)}.</p></details>
-          <details open><summary>Independent review</summary><p>{independentReviewStatus}: {visitOutcomeSummary(independentReviewVisit, independentReviewStatus)}.</p></details>
-        </>}
-        {inspectedPhase?.id === "approval" && <>
-          <details open><summary>Planning decisions</summary>{planningGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
-          <details open><summary>Design decisions</summary>{designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
-          {approvalLinks.length > 0 && <details open><summary>Review links</summary>{approvalLinks.map((link) => <p key={link.url} className={selectedApprovalLinks.has(link.url) ? "selected-evidence" : ""}><a href={link.url} target="_blank" rel="noreferrer"><GitPullRequest /> {link.label}</a>{link.kind === "pull_request" && <a href={bettaViewUrl(link.url)} target="_blank" rel="noreferrer"><Eye /> Open in BettaView</a>}</p>)}</details>}
-        </>}
-        {inspectedPhase?.id === "design" && <>
-          <details open><summary>Self review</summary><p>{designSelfReviewStatus}: {visitOutcomeSummary(designSelfReviewVisit, designSelfReviewStatus)}.</p></details>
-          <details open><summary>Independent review</summary><p>{designIndependentReviewStatus}: {visitOutcomeSummary(designIndependentReviewVisit, designIndependentReviewStatus)}.</p></details>
-          <details open><summary>Human review rounds</summary>{designGates.length === 0 ? <p>Not reached yet.</p> : designGates.map((gate) => <p key={gate.visitSequence}><strong>Round {gate.round}:</strong> {gateOutcomeLabel(gate.decision)}</p>)}</details>
-        </>}
-        {inspectorProduct && <details open><summary>Artifacts</summary><p><PullRequestActions url={inspectorProduct.url} githubLabel={`PR #${inspectorProduct.number}`} /></p><p>{inspectorProduct === planningProduct ? "Proposal and complete specs" : "design.md"}</p></details>}
-        {inspectorAttempts.length > 0 && <details><summary>Transcript</summary>{inspectorAttempts.map((attempt) => <button className="inspector-action" type="button" key={attempt.id} onClick={() => onOpenTranscript(attempt.id)}>View transcript</button>)}</details>}
-      </aside>
     </div>
     <div className="phase-history">
-      <button type="button" aria-expanded={historyOpen} onClick={() => setHistoryOpen((open) => !open)}><Clock /><span><strong>Visit history</strong> · {projection.history.length} events</span>{historyOpen ? <CaretDown /> : <CaretRight />}</button>
+      <button type="button" aria-expanded={historyOpen} onClick={() => setHistoryOpen((open) => !open)}><Clock /><span><strong>History</strong></span>{historyOpen ? <CaretDown /> : <CaretRight />}</button>
       {historyOpen && <ol>{[...projection.history].reverse().map((visit) => <li key={visit.sequence}><button type="button" className={selectedVisit === visit.sequence ? "selected" : ""} onClick={() => inspectVisit(visit)}><span>{visit.sequence}</span><strong>{human(visit.label)}</strong><small>{formatTime(visit.enteredAt)}</small></button></li>)}</ol>}
     </div>
   </section>;
@@ -608,7 +527,7 @@ function SettingsPanel() {
       setSelectedId(route?.projectId ?? null);
       if (route !== null) syncDraft(route);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Settings could not be loaded.");
+      setMessage(errorText(error));
     } finally { setBusy(false); }
   }, [selectedId, syncDraft]);
 
@@ -633,7 +552,7 @@ function SettingsPanel() {
       setAdding(false);
       setMessage(success);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The route could not be saved.");
+      setMessage(errorText(error));
     } finally { setBusy(false); }
   };
 
@@ -797,7 +716,7 @@ function ReviewTracePage({ runId }: { runId: string }) {
       })
       .catch((cause) => {
         if (!(cause instanceof DOMException && cause.name === "AbortError")) {
-          setError(cause instanceof Error ? cause.message : "The review trace could not be loaded.");
+          setError(errorText(cause));
         }
       });
     return () => controller.abort();
@@ -815,7 +734,7 @@ function ReviewTracePage({ runId }: { runId: string }) {
     <article className="settings-card">
       <div className="card-heading"><div><span className="eyebrow">Reviewed work</span><h2>{issueKey}: {issueTitle}</h2></div><span className="guard">{String(trace.run.status ?? "unknown")}</span></div>
       <dl><div><dt>Run</dt><dd><code>{runId}</code></dd></div><div><dt>Current PR head</dt><dd><code>{liveHead?.slice(0, 12) ?? "Not published"}</code></dd></div><div><dt>Current plan</dt><dd><code>{latestCandidate?.digest.slice(0, 16) ?? "—"}</code></dd></div><div><dt>Head bindings</dt><dd>{trace.headBindings.length}</dd></div></dl>
-      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={pullRequestUrl} target="_blank" rel="noreferrer">Open planning PR <ArrowSquareOut /></a>}</div>
+      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={bettaViewUrl(pullRequestUrl)} target="_blank" rel="noreferrer">{bettaViewLabel(pullRequestUrl)} <ArrowSquareOut /></a>}</div>
     </article>
     <div className="review-summary-grid">
       {trace.phases.map((phase) => <article className="review-phase" key={`${phase.round}:${phase.stage}`}>
@@ -864,7 +783,7 @@ function ReviewTracePage({ runId }: { runId: string }) {
             </article>;
           })}</div>}
           {review.conflictingReviewId && <p className="guard-note">This result conflicts with {review.conflictingReviewId}. Human judgment is required.</p>}
-          <div className="review-artifacts">{review.artifacts.map((artifact) => <a href={artifact.url} key={artifact.name} target="_blank" rel="noreferrer">{artifact.name} <ArrowSquareOut /></a>)}</div>
+          <div className="review-artifacts">{review.artifacts.map((artifact) => <a href={reviewDestination(artifact.url)} key={artifact.name} target="_blank" rel="noreferrer">{artifact.name} <ArrowSquareOut /></a>)}</div>
         </div>
       </li>;
     })}</ol>
@@ -909,7 +828,7 @@ function DesignReviewPage({ runId }: { runId: string }) {
       .then(setProof)
       .catch((cause) => {
         if (!(cause instanceof DOMException && cause.name === "AbortError")) {
-          setError(cause instanceof Error ? cause.message : "The design review proof could not be loaded.");
+          setError(errorText(cause));
         }
       });
     return () => controller.abort();
@@ -926,7 +845,7 @@ function DesignReviewPage({ runId }: { runId: string }) {
     <article className="settings-card">
       <div className="card-heading"><div><span className="eyebrow">Reviewed work</span><h2>{issueKey}: {issueTitle}</h2></div><span className="guard">{String(proof.run.status ?? "unknown")}</span></div>
       <dl><div><dt>Run</dt><dd><code>{runId}</code></dd></div><div><dt>Current design head</dt><dd><code>{typeof proof.run.head_sha === "string" ? proof.run.head_sha.slice(0, 12) : "Not published"}</code></dd></div><div><dt>Review rounds</dt><dd>{proof.rounds.length}</dd></div><div><dt>Gate bindings</dt><dd>{proof.gateBindings.length}</dd></div></dl>
-      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={pullRequestUrl} target="_blank" rel="noreferrer">Open design PR <ArrowSquareOut /></a>}</div>
+      <div className="review-artifacts">{issueUrl && <a href={issueUrl} target="_blank" rel="noreferrer">Open Linear issue <ArrowSquareOut /></a>}{pullRequestUrl && <a href={bettaViewUrl(pullRequestUrl)} target="_blank" rel="noreferrer">{bettaViewLabel(pullRequestUrl)} <ArrowSquareOut /></a>}</div>
     </article>
     <div className="review-summary-grid">{proof.rounds.map((round) => <article className="review-phase" key={String(round.round_id)}><span className="eyebrow">Round {round.round_no} · {human(String(round.kind))}</span><h2>{human(String(round.status))}</h2><dl><div><dt>Self-check</dt><dd>{human(round.selfStatus)}</dd></div><div><dt>Author responses</dt><dd>{String(round.response_turns)}</dd></div><div><dt>Outside model</dt><dd>{String(round.outside_model)}</dd></div></dl></article>)}</div>
     <ol className="review-timeline">{proof.attempts.map((attempt, index) => <li key={attempt.id} className={`review-event ${attempt.outcome}`}>
@@ -935,9 +854,35 @@ function DesignReviewPage({ runId }: { runId: string }) {
         <p>Reviewer {attempt.reviewer.provider} · {attempt.reviewer.model} · {attempt.reviewer.reasoning}. This evidence is not human approval.</p>
         <dl><div><dt>Input</dt><dd><code>{attempt.inputSha256.slice(0, 16)}…</code></dd></div><div><dt>Candidate</dt><dd><code>{attempt.candidateId.slice(0, 20)}…</code></dd></div><div><dt>Head</dt><dd><code>{attempt.reviewedHeadSha?.slice(0, 12) ?? "private candidate"}</code></dd></div><div><dt>Finished</dt><dd>{attempt.completedAt ? formatTime(attempt.completedAt) : "Failed or running"}</dd></div></dl>
         {attempt.findings.length > 0 && <div className="review-findings"><h3>Design concerns</h3>{attempt.findings.map((finding) => <article key={finding.id}><strong>{finding.id}</strong><span>{finding.disposition ? human(finding.disposition.disposition) : human(finding.severity)}</span><p>{finding.message}</p>{finding.disposition && <p><strong>Author:</strong> {finding.disposition.reason}</p>}<div className="review-artifacts">{finding.sourceRanges.map((range, rangeIndex) => <code key={rangeIndex}>{range.path}:{range.startLine}-{range.endLine}</code>)}</div></article>)}</div>}
-        <div className="review-artifacts">{attempt.artifacts.map((artifact) => <a href={artifact.url} key={artifact.name} target="_blank" rel="noreferrer">{artifact.name} <ArrowSquareOut /></a>)}</div>
+        <div className="review-artifacts">{attempt.artifacts.map((artifact) => <a href={reviewDestination(artifact.url)} key={artifact.name} target="_blank" rel="noreferrer">{artifact.name} <ArrowSquareOut /></a>)}</div>
       </div>
     </li>)}</ol>
+  </section>;
+}
+
+function RunErrors({ projection }: { projection: Projection }) {
+  const all = [...(projection.errors ?? []), ...(projection.legacyErrors ?? [])];
+  const { failed, current, historical } = separateErrors(all, projection.run);
+  const renderError = (error: FailureDetail) => <article key={error.id}>
+    <h3>{workflowStepLabel(error.step)} · {formatTime(error.occurredAt)}</h3>
+    <pre>{error.message || `${error.category ?? "Failure"} — the original error was not recorded by this version of DEOS.`}</pre>
+    {error.detailUrl && <a href={error.detailUrl} target="_blank" rel="noreferrer">Full original error, stack and causes</a>}
+  </article>;
+  const status = projection.run.status;
+  const heading = status === "active" ? "Workflow running"
+    : status === "succeeded" ? "Workflow completed"
+    : status === "awaiting_human" ? "Waiting for your review"
+    : failed ? "Workflow stopped" : `Workflow ${human(status)}`;
+  return <section className={`failure-panel ${failed ? "" : "run-health"}`} role={failed ? "alert" : "region"} aria-label="Current workflow status">
+    <h2>{heading}</h2>
+    <p>{failed ? "Stopped at" : "Current step:"} <strong>{workflowStepLabel(projection.run.currentNode)}</strong></p>
+    {current.map(renderError)}
+    {failed && current.length === 0 && <p>{projection.run.terminalCause ? `${projection.run.terminalCause} — ` : ""}The original error for this failure was not recorded.</p>}
+    {historical.length > 0 && <details className="error-history">
+      <summary>Earlier errors and diagnostics ({historical.length})</summary>
+      <p>These records are retained for investigation. They do not describe the current workflow status.</p>
+      {historical.map(renderError)}
+    </details>}
   </section>;
 }
 
@@ -986,7 +931,7 @@ function App() {
       setSelectedVisit((current) => current ?? next.history.at(-1)?.sequence ?? null);
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) {
-        setPoll((current) => ({ ...current, error: error instanceof Error ? error.message : "Refresh failed." }));
+        setPoll((current) => ({ ...current, error: errorText(error) }));
       }
     }
   }, []);
@@ -1006,7 +951,7 @@ function App() {
       setPoll({ applied: null, staged: null, error: null });
       if (first) await loadProjection(first, true);
     } catch (error) {
-      setPoll({ applied: null, staged: null, error: error instanceof Error ? error.message : "Issue lookup failed." });
+      setPoll({ applied: null, staged: null, error: errorText(error) });
     } finally { setBusy(false); }
   }, [loadProjection]);
 
@@ -1018,7 +963,7 @@ function App() {
       const exact = result.issues.find((issue) => issue.key === query.trim().toUpperCase());
       if (exact) await selectIssue(exact);
     } catch (error) {
-      setPoll((current) => ({ ...current, error: error instanceof Error ? error.message : "Issue search failed." }));
+      setPoll((current) => ({ ...current, error: errorText(error) }));
     } finally { setBusy(false); }
   }, [query, selectIssue]);
 
@@ -1053,7 +998,7 @@ function App() {
       setRetryMessage(`Retry started from ${step}. Completed work was kept.`);
       await loadProjection(runId, true);
     } catch (error) {
-      setRetryMessage(error instanceof Error ? error.message : "The workflow could not be continued.");
+      setRetryMessage(errorText(error));
     } finally {
       setRetrying(false);
     }
@@ -1087,6 +1032,7 @@ function App() {
       </section>}
       {projection ? <>
         <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : `Retry ${workflowStepLabel(projection.retry.retryNode)}`}</button>}</div></section>
+        <RunErrors projection={projection} />
         {groupedWorkflow ? <TraceabilityWorkflowMap
           projection={projection}
           selectedVisit={selectedVisit}
@@ -1107,25 +1053,25 @@ function App() {
               <dl><div><dt>Started</dt><dd>{formatTime(detail.enteredAt)}</dd></div><div><dt>Duration</dt><dd>{formatDuration(detail.enteredAt, detail.leftAt)}</dd></div></dl>
               {(transcriptAttempts.length > 0 || detail.links.length > 0) && <div className="evidence-grid">
                 {transcriptAttempts.length > 0 && <div><h3>Transcript</h3>{transcriptAttempts.map((attempt) => <div className="attempt-row" key={attempt.id}><button type="button" onClick={() => setTranscriptAttempt(attempt.id)}>View transcript</button></div>)}</div>}
-                {detail.links.length > 0 && <div><h3>Links</h3>{detail.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>)}</div>}
+                {detail.links.length > 0 && <div><h3>Links</h3>{detail.links.map((link) => <a key={link.url} href={reviewDestination(link.url)} target="_blank" rel="noreferrer"><GitPullRequest />{link.label}</a>)}</div>}
               </div>}
               {detail.gate && <div className="gate-visit-card">
                 <span className="eyebrow">{human(detail.gate.gate_kind)} gate · round {detail.gate.round}</span>
                 <dl><div><dt>Work</dt><dd>{human(detail.gate.work_type)}</dd></div><div><dt>Decision</dt><dd>{human(detail.gate.decision_outcome ?? detail.gate.state)}</dd></div><div><dt>Approved head</dt><dd><code>{detail.gate.approved_head_sha.slice(0, 12)}</code></dd></div></dl>
-                <div className="planning-pr-actions"><a className="review-trace-link" href={detail.gate.pull_request_url} target="_blank" rel="noreferrer">Open PR #{detail.gate.pull_request_number} <ArrowSquareOut /></a><a className="review-trace-link" href={bettaViewUrl(detail.gate.pull_request_url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a></div>
+                <div className="planning-pr-actions"><a className="review-trace-link" href={bettaViewUrl(detail.gate.pull_request_url)} target="_blank" rel="noreferrer">{bettaViewLabel(detail.gate.pull_request_url)} <ArrowSquareOut /></a></div>
               </div>}
               {(["planning", "plan_merge"].includes(detail.stageId) && projection.workProducts.planning) && <div className="planning-pr-actions">
-                <a className="review-trace-link" href={projection.workProducts.planning.url} target="_blank" rel="noreferrer">Open planning PR <ArrowSquareOut /></a>
-                <a className="review-trace-link" href={bettaViewUrl(projection.workProducts.planning.url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>
+
+                <a className="review-trace-link" href={bettaViewUrl(projection.workProducts.planning.url)} target="_blank" rel="noreferrer">{bettaViewLabel(projection.workProducts.planning.url)} <ArrowSquareOut /></a>
               </div>}
               {(["design", "design_merge"].includes(detail.stageId) && projection.workProducts.design) && <div className="planning-pr-actions">
-                <a className="review-trace-link" href={projection.workProducts.design.url} target="_blank" rel="noreferrer">Open design PR <ArrowSquareOut /></a>
-                <a className="review-trace-link" href={bettaViewUrl(projection.workProducts.design.url)} target="_blank" rel="noreferrer">Open in BettaView <ArrowSquareOut /></a>
+
+                <a className="review-trace-link" href={bettaViewUrl(projection.workProducts.design.url)} target="_blank" rel="noreferrer">{bettaViewLabel(projection.workProducts.design.url)} <ArrowSquareOut /></a>
               </div>}
             </div>}
           </section>
           <section className="history-panel">
-            <div className="section-heading"><div><span className="eyebrow">Chronology</span><h2>Visit history</h2></div><span>{projection.history.length} visits</span></div>
+            <div className="section-heading"><div><span className="eyebrow">Chronology</span><h2>History</h2></div></div>
             <ol className="history-list">{[...projection.history].reverse().map((visit) => <li key={visit.sequence}><button type="button" className={detail?.sequence === visit.sequence ? "selected" : ""} onClick={() => setSelectedVisit(visit.sequence)}><span className="history-number">{visit.sequence}</span><span><strong>{visit.label}</strong><small>{formatTime(visit.enteredAt)}{visit.cycle > 1 ? ` · cycle ${visit.cycle}` : ""}</small></span><span className="history-state">{human(visit.state)}</span></button></li>)}</ol>
           </section>
         </div></>}

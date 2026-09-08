@@ -329,7 +329,7 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
   const postedReplies = calls.filter((call) => call.method === "POST" && call.path.endsWith("/replies"));
   assert.equal(postedReplies.length, 2);
   assert.match(String(postedReplies[0].body?.body), /Updated the term to temperature/);
-  assert.match(String(postedReplies[0].body?.body), /deos-review-reply:operation-2:101/);
+  assert.equal(String(postedReplies[0].body?.body).includes("<!-- deos-"), false);
   assert.equal(calls.some((call) => call.path.includes("resolve")), false);
   const feedback = await adapter.readReviewFeedback("sachinkundu/deos", 54);
   assert.deepEqual(feedback.find((entry) => entry.id === 101), {
@@ -1121,13 +1121,13 @@ test("Linear note adapter reconciles an ambiguous create without any state mutat
   let ambiguous = true;
   const queries: string[] = [];
   const request: typeof fetch = async (_input, init) => {
-    const body = JSON.parse(String(init?.body)) as { query: string; variables: { body?: string } };
+    const body = JSON.parse(String(init?.body)) as { query: string; variables: { body?: string; commentId: string } };
     queries.push(body.query);
     assert.equal(body.query.includes("issueUpdate"), false);
     if (body.query.includes("query DeosIssueComments")) {
       return Response.json({ data: { issue: { comments: { nodes: comments } } } });
     }
-    comments.push({ id: "comment-7", body: body.variables.body ?? "" });
+    comments.push({ id: body.variables.commentId, body: body.variables.body ?? "" });
     if (ambiguous) {
       ambiguous = false;
       throw new Error("comment response lost");
@@ -1141,13 +1141,14 @@ test("Linear note adapter reconciles an ambiguous create without any state mutat
   );
   const first = await adapter.upsertNote({ issueId: "issue-1", body: "Working note" }, "operation-7");
   const second = await adapter.upsertNote({ issueId: "issue-1", body: "Working note" }, "operation-7");
-  assert.deepEqual(first, { commentId: "comment-7", reconciled: true });
-  assert.deepEqual(second, { commentId: "comment-7", reconciled: true });
+  assert.deepEqual(first, { commentId: comments[0].id, reconciled: true });
+  assert.deepEqual(second, { commentId: comments[0].id, reconciled: true });
   assert.equal(comments.length, 1);
+  assert.equal(comments[0].body, "Working note");
   assert.equal(queries.some((query) => query.includes("stateId")), false);
 });
 
-test("Linear trace status updates one marked comment in place", async () => {
+test("Linear trace status updates one plain-text comment in place", async () => {
   const comments: Array<{ id: string; body: string }> = [];
   let creates = 0;
   let updates = 0;
@@ -1157,21 +1158,21 @@ test("Linear trace status updates one marked comment in place", async () => {
     { fetch: async (_input, init) => {
       const request = JSON.parse(String(init?.body)) as {
         query: string;
-        variables: { body?: string; id?: string };
+        variables: { body?: string; id?: string; commentId: string };
       };
       if (request.query.includes("query DeosIssueComments")) {
         return Response.json({ data: { issue: { comments: { nodes: comments } } } });
       }
       if (request.query.includes("commentCreate")) {
         creates += 1;
-        comments.push({ id: "comment-status", body: request.variables.body ?? "" });
-        return Response.json({ data: { commentCreate: { success: true, comment: { id: "comment-status" } } } });
+        comments.push({ id: request.variables.commentId, body: request.variables.body ?? "" });
+        return Response.json({ data: { commentCreate: { success: true, comment: { id: comments[0].id } } } });
       }
       if (request.query.includes("commentUpdate")) {
         updates += 1;
-        assert.equal(request.variables.id, "comment-status");
-        comments[0] = { id: "comment-status", body: request.variables.body ?? "" };
-        return Response.json({ data: { commentUpdate: { success: true, comment: { id: "comment-status" } } } });
+        assert.equal(request.variables.id, comments[0].id);
+        comments[0] = { id: comments[0].id, body: request.variables.body ?? "" };
+        return Response.json({ data: { commentUpdate: { success: true, comment: { id: comments[0].id } } } });
       }
       return new Response("unexpected", { status: 500 });
     } },
@@ -1186,6 +1187,6 @@ test("Linear trace status updates one marked comment in place", async () => {
   assert.equal(creates, 1);
   assert.equal(updates, 1);
   assert.equal(comments.length, 1);
-  assert.match(comments[0]?.body ?? "", /Review passed/);
+  assert.equal(comments[0]?.body, "Review passed.");
   assert.equal(replay.reconciled, true);
 });

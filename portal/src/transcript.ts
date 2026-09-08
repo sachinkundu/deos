@@ -95,7 +95,7 @@ export class TranscriptReadStore {
       records = parseTranscriptJsonl(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
     } catch (error) {
       if (error instanceof TranscriptUnavailableError) throw error;
-      throw new TranscriptUnavailableError("transcript JSONL is invalid");
+      throw Object.assign(new TranscriptUnavailableError("transcript JSONL is invalid"), { cause: error });
     }
     return {
       attemptId: row.attempt_id,

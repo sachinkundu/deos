@@ -1,3 +1,5 @@
+import { responseError } from "./error-details.ts";
+import { recordCaughtError } from "./error-context.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
 import type { SandboxFactory } from "./sandbox-controller.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
@@ -191,7 +193,8 @@ export class CleanupAuditor {
             this.now().toISOString(),
           );
         }
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/cleanup-audit.ts:194");
         if (candidate.attempt_id !== null) {
           await this.store.markAttemptCleanup(
             candidate.attempt_id,
@@ -214,7 +217,8 @@ export class CleanupAuditor {
     let body: unknown;
     try {
       body = await request.json();
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/cleanup-audit.ts:217");
       return Response.json({ error: "invalid_json" }, { status: 400 });
     }
     if (
@@ -266,7 +270,8 @@ export class CleanupAuditor {
     let body: unknown;
     try {
       body = JSON.parse(text) as unknown;
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/cleanup-audit.ts:269");
       return Response.json({ error: "invalid_json" }, { status: 400 });
     }
     if (
@@ -322,7 +327,8 @@ export class CleanupAuditor {
         null,
         this.now().toISOString(),
       );
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/cleanup-audit.ts:325");
       await this.store.markAttemptCleanup(
         candidate.attempt_id,
         "failed",
@@ -409,7 +415,7 @@ export class CleanupAuditor {
       },
       body: JSON.stringify({ query, variables }),
     });
-    if (!response.ok) throw new Error("Linear cleanup request failed");
+    if (!response.ok) throw await responseError("Linear cleanup request failed", response);
     const payload = await response.json() as { errors?: unknown[] };
     if (payload.errors?.length) throw new Error("Linear cleanup GraphQL request failed");
     return payload;

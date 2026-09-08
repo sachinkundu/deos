@@ -372,16 +372,16 @@ test("an unassignable Linear app fails with a bounded diagnostic", async () => {
   );
 });
 
-test("a Linear HTTP failure exposes only the bounded status", async () => {
+test("a Linear HTTP failure preserves status and original body", async () => {
   const store = new OperationStore();
   const controller = new LinearTransitionController(store, config, {
     now: () => new Date(NOW),
-    fetch: async () => new Response(null, { status: 401 }),
+    fetch: async () => new Response("Original Linear rejection", { status: 401 }),
   });
 
   await assert.rejects(
     () => controller.ensureWorkStarted(run, "claim_issue"),
-    { message: "Linear request failed (401)" },
+    { message: "Linear request failed (401) HTTP 401: Original Linear rejection" },
   );
   assert.equal(store.operations.size, 0);
 });

@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import { workflowInstanceIdentity } from "./orchestration-identity.ts";
 import type { WorkflowBinding, WorkflowInstanceHandle } from "./queue-consumer-core.ts";
 
@@ -235,7 +236,8 @@ export class WorkflowRuntimeRecoveryController {
   ): Promise<ObservableInstance> {
     try {
       return await this.workflows.get(recovery.target_workflow_instance_id) as ObservableInstance;
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/workflow-runtime-recovery.ts:238");
       // A durable target ID makes an ambiguous create safe to reconcile.
     }
     try {
@@ -245,7 +247,8 @@ export class WorkflowRuntimeRecoveryController {
       }]);
       const handle = created.find((instance) => instance.id === recovery.target_workflow_instance_id);
       if (handle !== undefined) return handle as ObservableInstance;
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/workflow-runtime-recovery.ts:248");
       // The provider may have created the instance before the response failed.
     }
     return await this.workflows.get(recovery.target_workflow_instance_id) as ObservableInstance;
@@ -259,7 +262,8 @@ export class WorkflowRuntimeRecoveryController {
     let body: unknown;
     try {
       body = await request.json();
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/workflow-runtime-recovery.ts:262");
       return json(400, { error: "invalid_json" });
     }
     if (
@@ -283,7 +287,8 @@ export class WorkflowRuntimeRecoveryController {
       if ((await source.status()).status !== "errored") {
         return json(409, { error: "source_workflow_not_errored" });
       }
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/workflow-runtime-recovery.ts:286");
       return json(422, { error: "source_workflow_status_unavailable" });
     }
 
@@ -298,6 +303,7 @@ export class WorkflowRuntimeRecoveryController {
         now: this.now().toISOString(),
       });
     } catch (error) {
+      recordCaughtError(error, "src/workflow-runtime-recovery.ts:300");
       const category = error instanceof Error ? error.message : "workflow_runtime_recovery_failed";
       return json(category === "workflow_runtime_recovery_identity_mismatch" ? 409 : 422, {
         error: category,
@@ -328,7 +334,8 @@ export class WorkflowRuntimeRecoveryController {
         now: this.now().toISOString(),
       });
       return json(202, { recovery });
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/workflow-runtime-recovery.ts:331");
       await this.store.observe({
         recoveryId: recovery.recovery_id,
         state: "pending",

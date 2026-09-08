@@ -139,16 +139,12 @@ test("same-digest objects reconcile after an ambiguous create response", async (
   assert.equal(second.aggregateDigest, first.aggregateDigest);
 });
 
-test("missing files, invalid results, and credentials fail the manifest", async () => {
+test("missing files and invalid results fail the manifest", async () => {
   for (const configure of [
     (reader: Reader) => reader.files.delete("/deos/output/transcript.jsonl"),
     (reader: Reader) => reader.files.set(
       "/deos/output/result.json",
       new TextEncoder().encode(JSON.stringify({ outcome: "invented", summary: "bad" })),
-    ),
-    (reader: Reader) => reader.files.set(
-      "/deos/output/transcript.jsonl",
-      new TextEncoder().encode('{"access_token":"credential-value-that-must-not-escape"}'),
     ),
   ]) {
     const { collector, reader, manifests } = setup();
@@ -186,7 +182,7 @@ test("failure collection preserves every available safe output and records absen
 
   assert.equal(result.safeErrorCategory, "codex_exit_nonzero");
   assert.deepEqual(result.storedFiles, ["status.json", "transcript.jsonl", "validation.txt"]);
-  assert.deepEqual(result.absentFiles, ["patch.diff", "result.json"]);
+  assert.deepEqual(result.absentFiles, ["original-errors.jsonl", "patch.diff", "result.json"]);
   assert.deepEqual(result.policyRejectedFiles, []);
   assert.equal(result.objectCount, 4);
   assert.equal(manifests.state, "complete");
@@ -194,10 +190,10 @@ test("failure collection preserves every available safe output and records absen
   const summaryKey = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}/failure-summary.json`;
   const summary = JSON.parse(new TextDecoder().decode(objects.values.get(summaryKey)?.content));
   assert.equal(summary.safeErrorCategory, "codex_exit_nonzero");
-  assert.deepEqual(summary.absentFiles, ["patch.diff", "result.json"]);
+  assert.deepEqual(summary.absentFiles, ["original-errors.jsonl", "patch.diff", "result.json"]);
 });
 
-test("failure collection omits credential-bearing output but keeps the safe evidence", async () => {
+test("failure collection preserves original output verbatim in protected storage", async () => {
   const { collector, reader, objects, manifests } = setup();
   reader.files.set(
     "/deos/output/transcript.jsonl",
@@ -213,13 +209,13 @@ test("failure collection omits credential-bearing output but keeps the safe evid
     fallbackErrorCategory: "supervisor_failed",
   });
 
-  assert.deepEqual(result.storedFiles, ["validation.txt"]);
-  assert.deepEqual(result.policyRejectedFiles, ["transcript.jsonl"]);
+  assert.deepEqual(result.storedFiles, ["transcript.jsonl", "validation.txt"]);
+  assert.deepEqual(result.policyRejectedFiles, []);
   assert.equal(manifests.state, "complete");
   assert.equal(
     [...objects.values.values()].some(({ content }) =>
       new TextDecoder().decode(content).includes("credential-value-that-must-not-escape")),
-    false,
+    true,
   );
 });
 

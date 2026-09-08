@@ -1,3 +1,5 @@
+import { errorDetails } from "./error-details.ts";
+import { recordCaughtError } from "./error-context.ts";
 import { verifyCapabilityToken } from "./capability-auth.ts";
 import type { CapabilityStore } from "./capability-store.ts";
 import type {
@@ -316,7 +318,8 @@ export class CapabilityRouter {
     let claims;
     try {
       claims = await verifyCapabilityToken(token, this.dependencies.signingSecret, this.now().getTime());
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/capability-router.ts:319");
       return json(401, { error: "invalid_capability" });
     }
     if (request.headers.get("Deos-Attempt") !== claims.attemptId) {
@@ -346,7 +349,8 @@ export class CapabilityRouter {
           installationId: context.githubInstallationId,
           kind: gitKind,
         });
-      } catch {
+      } catch (caughtError) {
+        recordCaughtError(caughtError, "src/capability-router.ts:349");
         return new Response("repository checkout adapter failed\n", {
           status: 502,
           headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" },
@@ -357,7 +361,8 @@ export class CapabilityRouter {
     let untrusted: unknown;
     try {
       untrusted = await request.json();
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/capability-router.ts:360");
       return json(400, { error: "invalid_json" });
     }
     if (path.endsWith("/github")) {
@@ -379,7 +384,8 @@ export class CapabilityRouter {
         let issue;
         try {
           issue = await this.dependencies.linear.readPublicationContext(claims.issueId);
-        } catch {
+        } catch (caughtError) {
+          recordCaughtError(caughtError, "src/capability-router.ts:382");
           return json(502, { error: "planning_context_unavailable" });
         }
         let validated: ValidatedPlanningPublication;
@@ -391,6 +397,7 @@ export class CapabilityRouter {
             issueDescription: issue.description,
           });
         } catch (error) {
+          recordCaughtError(error, "src/capability-router.ts:393");
           return this.denied(
             claims.runId,
             claims.attemptId,
@@ -522,6 +529,7 @@ export class CapabilityRouter {
       requestDigest,
       now: this.now().toISOString(),
     }); } catch (error) {
+      recordCaughtError(error, "src/capability-router.ts:524");
       console.error("OpenRouter diagnostic start failed", error);
     }
     try {
@@ -541,11 +549,13 @@ export class CapabilityRouter {
       });
       if (!changed) console.error("OpenRouter diagnostic completion was not saved", operationId);
       } catch (error) {
+        recordCaughtError(error, "src/capability-router.ts:543");
         console.error("OpenRouter response diagnostic save failed", error);
       }
       this.emitProvider(runId, operationId, "succeeded");
       return this.openRouterResponse({ operationId, ...response });
     } catch (error) {
+      recordCaughtError(error, "src/capability-router.ts:548");
       const diagnostic = error instanceof OpenRouterReviewError ? error.diagnostic : null;
       const safeErrorCategory = diagnostic === null
         ? "openrouter_adapter_error"
@@ -563,7 +573,8 @@ export class CapabilityRouter {
             diagnostic,
             now,
           });
-        } catch {
+        } catch (caughtError) {
+          recordCaughtError(caughtError, "src/capability-router.ts:566");
           console.error(JSON.stringify({
             message: "openrouter diagnostic write failed",
             runId,
@@ -582,6 +593,7 @@ export class CapabilityRouter {
         diagnosticId,
         now,
       }); } catch (saveError) {
+        recordCaughtError(saveError, "src/capability-router.ts:584");
         console.error("OpenRouter failure diagnostic save failed", saveError);
       }
       console.error(JSON.stringify({
@@ -600,7 +612,8 @@ export class CapabilityRouter {
         requestMayHaveSucceeded: diagnostic?.requestMayHaveSucceeded ?? true,
       }));
       this.emitProvider(runId, operationId, "failed", safeErrorCategory);
-      return json(502, {
+      return json(diagnostic?.httpStatus ?? 502, {
+        originalError: errorDetails(error),
         error: {
           message: error instanceof Error ? error.message : String(error),
           type: "deos_provider_error",
@@ -677,6 +690,7 @@ export class CapabilityRouter {
         result: response.result,
       });
     } catch (error) {
+      recordCaughtError(error, "src/capability-router.ts:679");
       const diagnostic = error instanceof OpenRouterReviewError ? error.diagnostic : null;
       const safeErrorCategory = diagnostic === null
         ? "openrouter_adapter_error"
@@ -694,7 +708,8 @@ export class CapabilityRouter {
             diagnostic,
             now,
           });
-        } catch {
+        } catch (caughtError) {
+          recordCaughtError(caughtError, "src/capability-router.ts:697");
           console.error(JSON.stringify({
             message: "openrouter diagnostic write failed",
             runId,
@@ -732,7 +747,8 @@ export class CapabilityRouter {
         requestMayHaveSucceeded: diagnostic?.requestMayHaveSucceeded ?? true,
       }));
       this.emitProvider(runId, operationId, "failed", safeErrorCategory);
-      return json(502, {
+      return json(diagnostic?.httpStatus ?? 502, {
+        originalError: errorDetails(error),
         ...this.receipt(operationId, state, null),
         safeErrorCategory,
         diagnosticId,
@@ -830,7 +846,8 @@ export class CapabilityRouter {
         headSha: receipt.headSha,
         manifestDigest: input.manifestDigest,
       });
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/capability-router.ts:833");
       if (operation.operation.state === "pending") {
         await this.dependencies.store.finish({
           operationId,
@@ -842,7 +859,7 @@ export class CapabilityRouter {
         });
       }
       this.emitProvider(runId, operationId, "failed", "github_response_ambiguous");
-      return json(502, this.receipt(operationId, "manual_reconciliation_required", null));
+      return json(502, { ...this.receipt(operationId, "manual_reconciliation_required", null), originalError: errorDetails(caughtError) });
     }
   }
 
@@ -884,7 +901,8 @@ export class CapabilityRouter {
       });
       this.emitProvider(runId, operationId, state);
       return json(200, this.receipt(operationId, state, receipt.pullRequestId, receipt.pullRequestUrl));
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/capability-router.ts:887");
       await this.dependencies.store.finish({
         operationId,
         expected: "pending",
@@ -894,7 +912,7 @@ export class CapabilityRouter {
         now: this.now().toISOString(),
       });
       this.emitProvider(runId, operationId, "failed", "github_response_ambiguous");
-      return json(502, this.receipt(operationId, "manual_reconciliation_required", null));
+      return json(502, { ...this.receipt(operationId, "manual_reconciliation_required", null), originalError: errorDetails(caughtError) });
     }
   }
 
@@ -943,7 +961,8 @@ export class CapabilityRouter {
       });
       this.emitProvider(runId, operationId, state);
       return json(200, this.receipt(operationId, state, receipt.commentId));
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/capability-router.ts:946");
       await this.dependencies.store.finish({
         operationId,
         expected: "pending",
@@ -953,7 +972,7 @@ export class CapabilityRouter {
         now: this.now().toISOString(),
       });
       this.emitProvider(runId, operationId, "failed", "linear_response_ambiguous");
-      return json(502, this.receipt(operationId, "manual_reconciliation_required", null));
+      return json(502, { ...this.receipt(operationId, "manual_reconciliation_required", null), originalError: errorDetails(caughtError) });
     }
   }
 

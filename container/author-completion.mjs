@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./original-errors.mjs";
 import { lstat, readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 
@@ -134,6 +135,7 @@ export const runAuthorCompletionCheck = async ({ cwd, change, execute = command 
     try {
       metadata = await lstat(absolutePath);
     } catch (error) {
+      recordCaughtError(error, "container/author-completion.mjs:136");
       if (error?.code === "ENOENT") {
         failures.push(`Restore ${path}.`);
         continue;
@@ -225,6 +227,7 @@ export const runDesignCompletionCheck = async ({ cwd, change, execute = command 
       content = await readFile(`${cwd}/${expectedPath}`, "utf8");
     }
   } catch (error) {
+    recordCaughtError(error, "container/author-completion.mjs:227");
     if (error?.code === "ENOENT") failures.push(`Create ${expectedPath}.`);
     else throw error;
   }

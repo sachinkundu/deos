@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import { correlationIdentity } from "./orchestration-identity.ts";
 import {
   D1OrchestrationStore,
@@ -194,7 +195,8 @@ const locateOrCreateInstance = async (
 ): Promise<WorkflowInstanceHandle> => {
   try {
     return await binding.get(run.workflow_instance_id);
-  } catch {
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/queue-consumer-core.ts:197");
     // A failed lookup is not proof of absence. Creation uses the same stable id,
     // and every ambiguous create response is reconciled with another lookup.
   }
@@ -205,13 +207,15 @@ const locateOrCreateInstance = async (
     }]);
     const handle = created.find((instance) => instance.id === run.workflow_instance_id);
     if (handle !== undefined) return handle;
-  } catch {
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/queue-consumer-core.ts:208");
     // The provider may have committed creation before returning an error.
   }
   try {
     return await binding.get(run.workflow_instance_id);
-  } catch {
-    throw new CategorizedWorkflowError("unexpected_failure");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/queue-consumer-core.ts:213");
+    throw Object.assign(new CategorizedWorkflowError("unexpected_failure"), { cause: caughtError });
   }
 };
 
@@ -234,6 +238,7 @@ const establishDispatch = async (
     await locateOrCreateInstance(binding, run, event.source_delivery_id);
     await store.markDispatchAttempt(run.run_id, "established", now);
   } catch (error) {
+    recordCaughtError(error, "src/queue-consumer-core.ts:236");
     await store.markDispatchAttempt(run.run_id, "failed", now, errorCategory(error));
     throw error;
   }
@@ -432,12 +437,14 @@ export const processQueueMessage = async (
             repository: null,
             settingsUrl: policy.github_settings_url ?? null,
             permissions: REQUIRED_GITHUB_PERMISSIONS,
-        })))(policy.github_installation_id, policy.trial_repository).catch(() => ({
+        })))(policy.github_installation_id, policy.trial_repository).catch((error) => {
+          recordCaughtError(error, "repository access check");
+          return ({
             state: "unavailable" as const,
             repository: null,
             settingsUrl: policy.github_settings_url ?? null,
             permissions: null,
-          }));
+          }); });
       const requiredPermissionsDigest = await permissionsDigest(REQUIRED_GITHUB_PERMISSIONS);
       const observedPermissionsDigest = access.permissions === null
         ? null
@@ -463,6 +470,7 @@ export const processQueueMessage = async (
           now,
         });
       } catch (error) {
+        recordCaughtError(error, "src/queue-consumer-core.ts:465");
         if (error instanceof RepositoryRouteError && error.code === "stale_repository_revision") {
           await store.recordRouteDispatchResult?.({
             resultId: `${event.source_delivery_id}:stale-route`,
@@ -569,6 +577,7 @@ export const processQueueMessage = async (
       await store.insertInboxEvent(toInboxEvent(event, null), now);
     }
   } catch (error) {
+    recordCaughtError(error, "src/queue-consumer-core.ts:571");
     emit(observe, base, {
       stage: "queue.consume",
       outcome: "failed",
@@ -587,8 +596,9 @@ export const processQueueBatch = async (
     await env.DB.prepare(
       "INSERT INTO queue_consumptions (consumption_id, batch_size, received_at) VALUES (?, ?, ?)",
     ).bind(crypto.randomUUID(), batch.messages.length, new Date().toISOString()).run();
-  } catch {
-    throw new CategorizedWorkflowError("d1_operation_failed");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/queue-consumer-core.ts:590");
+    throw Object.assign(new CategorizedWorkflowError("d1_operation_failed"), { cause: caughtError });
   }
   for (const message of batch.messages) await processQueueMessage(message, env);
 };

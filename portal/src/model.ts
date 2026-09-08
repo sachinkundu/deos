@@ -1,6 +1,10 @@
+import { stageArtifactLinks } from "./artifact-links.ts";
 import { restoreWorkflowDefinition } from "../../src/workflow-definition.ts";
 import {
   isAgentStageRetryNode,
+  isStageRetryNode,
+  isPublicationRetryNode,
+  publicationRetryActions,
   RETRYABLE_AGENT_ATTEMPT_STATES,
 } from "../../src/stage-retry-contract.ts";
 import { presentationStagesForDefinition, validatePresentationManifest } from "./manifests.ts";
@@ -68,15 +72,25 @@ export interface PortalRunRetry {
 export const portalRunRetry = (
   run: Pick<RunRow, "status" | "current_node" | "current_visit_sequence" | "terminal_cause">,
   attempts: readonly Pick<AttemptRow, "attempt_id" | "visit_sequence" | "node_id" | "state" | "cleanup_state">[],
-  transitions: readonly Pick<TransitionRow, "from_node" | "to_node" | "from_visit_sequence" | "to_visit_sequence" | "cause_reference">[],
+  transitions: readonly (Pick<TransitionRow, "from_node" | "to_node" | "from_visit_sequence" | "to_visit_sequence" | "cause_reference"> & { transition_id?: string })[],
   retryRow: RetryRow | null,
 ): PortalRunRetry | null => {
   if (
-    retryRow?.state === "pending" && isAgentStageRetryNode(retryRow.retry_node) &&
+    retryRow?.state === "pending" && isStageRetryNode(retryRow.retry_node) &&
     run.status === "active" && run.current_node === retryRow.retry_node &&
     run.current_visit_sequence === retryRow.to_visit_sequence
   ) {
     return { failedAttemptId: retryRow.failed_attempt_id, retryNode: retryRow.retry_node };
+  }
+  if (run.status === "failed" && run.current_node === "system_action_failed" &&
+      run.terminal_cause === "system_action_invariant_failed") {
+    const failedExit = transitions.find((t) =>
+      t.to_node === run.current_node && t.to_visit_sequence === run.current_visit_sequence &&
+      t.from_visit_sequence === run.current_visit_sequence - 1 &&
+      isPublicationRetryNode(t.from_node) &&
+      t.cause_reference === `system:${publicationRetryActions[t.from_node]}:failed`);
+    return failedExit?.transition_id
+      ? { failedAttemptId: failedExit.transition_id, retryNode: failedExit.from_node } : null;
   }
   const failedAttempt = [...attempts].reverse().find((attempt) =>
     attempt.visit_sequence === run.current_visit_sequence - 1
@@ -120,6 +134,9 @@ interface SimpleIssueRow extends IssueRow {
 }
 
 interface WorkProductRow {
+  change_id: string;
+  head_sha: string | null;
+  planning_manifest_json: string | null;
   repository: string;
   pull_request_number: number | null;
   pull_request_url: string | null;
@@ -128,6 +145,7 @@ interface WorkProductRow {
 }
 
 interface DesignWorkProductRow {
+  change_id: string;
   repository: string;
   base_commit: string;
   pull_request_number: number | null;
@@ -244,7 +262,7 @@ export const PORTAL_SELECTS = Object.freeze({
     FROM agent_attempts attempt WHERE attempt.run_id = ?
     ORDER BY attempt.created_at, attempt.attempt_id`,
   retryForRun: `SELECT failed_attempt_id, retry_node, state, to_visit_sequence
-    FROM agent_stage_retries WHERE run_id = ?
+    FROM (SELECT * FROM agent_stage_retries UNION ALL SELECT * FROM publication_stage_retries) WHERE run_id = ?
     ORDER BY created_at DESC, retry_id DESC LIMIT 1`,
   waits: `SELECT visit_sequence, node_id, status, created_at, consumed_at
     FROM workflow_waits WHERE run_id = ? ORDER BY created_at, wait_id`,
@@ -257,9 +275,9 @@ export const PORTAL_SELECTS = Object.freeze({
     JOIN linear_issue_index issue
       ON issue.issue_id = run.issue_id AND issue.project_id = run.project_id
     WHERE run.run_id = ? LIMIT 1`,
-  workProduct: `SELECT repository, pull_request_number, pull_request_url,
+  workProduct: `SELECT change_id, head_sha, planning_manifest_json, repository, pull_request_number, pull_request_url,
     merge_commit_sha, verified_at FROM run_work_products WHERE run_id = ? LIMIT 1`,
-  designWorkProduct: `SELECT repository, base_commit, pull_request_number,
+  designWorkProduct: `SELECT change_id, repository, base_commit, pull_request_number,
     pull_request_url, head_sha, merge_commit_sha
     FROM design_work_products WHERE run_id = ? LIMIT 1`,
   gateVisits: `SELECT visit_sequence, node_id, gate_kind, work_type, round, state,
@@ -494,7 +512,23 @@ export class PortalReadStore {
         outcome,
       })));
     const retry = portalRunRetry(run, attemptResult.results, transitions, retryRow);
+    const errorRows = await this.db.prepare(`SELECT error_id AS id, node_id AS nodeId,
+      visit_sequence AS visitSequence, step_name AS step, location, message, occurred_at AS occurredAt
+      FROM workflow_errors WHERE run_id = ? ORDER BY occurred_at DESC`).bind(runId).all();
+    const legacyErrors = await this.db.prepare(`SELECT operation.operation_id AS id,
+      operation.action AS step, operation.safe_error_category AS category,
+      diagnostic.safe_message AS message, operation.updated_at AS occurredAt
+      FROM provider_operations operation LEFT JOIN diagnostics diagnostic
+        ON diagnostic.diagnostic_id = operation.diagnostic_id
+      WHERE operation.run_id = ? AND operation.state IN ('failed', 'manual_reconciliation_required')
+      ORDER BY operation.updated_at DESC`).bind(runId).all();
+    const attemptErrors = await this.db.prepare(`SELECT attempt_id AS id, node_id AS step,
+      result_detail AS message, result_class AS category, updated_at AS occurredAt
+      FROM agent_attempts WHERE run_id = ? AND state IN ('failed', 'timed_out', 'rejected')
+      ORDER BY updated_at DESC`).bind(runId).all();
     return {
+      errors: errorRows.results.map((row) => ({ ...row, detailUrl: `/failure-detail/${row.id}` })),
+      legacyErrors: [...legacyErrors.results, ...attemptErrors.results],
       issue: issueDto(issueRow),
       run: {
         id: run.run_id,
@@ -509,6 +543,8 @@ export class PortalReadStore {
         updatedAt: run.updated_at,
         endedAt: run.terminal_at,
         freshness: run.updated_at,
+        terminalCause: run.terminal_cause,
+        failureStartedAt: transitions.find(t => t.to_visit_sequence === run.current_visit_sequence - 1)?.occurred_at ?? run.created_at,
       },
       stages,
       connections,
@@ -533,6 +569,7 @@ export class PortalReadStore {
               url: workProduct.pull_request_url,
               status: workProduct.merge_commit_sha === null ? "Open" : "Merged",
               verified: workProduct.verified_at !== null,
+              artifacts: stageArtifactLinks(workProduct, "planning"),
             }
           : null,
         design: designWorkProduct !== null && designWorkProduct.pull_request_number !== null &&
@@ -544,6 +581,7 @@ export class PortalReadStore {
               status: designWorkProduct.merge_commit_sha === null ? "Open" : "Merged",
               headSha: designWorkProduct.head_sha,
               baseCommit: designWorkProduct.base_commit,
+              artifacts: stageArtifactLinks(designWorkProduct, "design"),
             }
           : null,
       },

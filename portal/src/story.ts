@@ -1,3 +1,4 @@
+import { errorText } from "../../src/error-details.ts";
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const ATTEMPT_ID = /^[0-9a-f-]{36}$/i;
 
@@ -210,7 +211,7 @@ export class ReviewStoryReadStore {
         const values = inlineByAttempt.get(row.attempt_id) ?? {};
         values[row.logical_name] = {
           unavailable: true,
-          reason: error instanceof Error ? error.message : "artifact verification failed",
+          reason: errorText(error),
         };
         inlineByAttempt.set(row.attempt_id, values);
       }
@@ -251,7 +252,7 @@ export class ReviewStoryReadStore {
           acceptedTrace = {
             reviewId: traceReview.review_id,
             unavailable: true,
-            reason: error instanceof Error ? error.message : "trace verification failed",
+            reason: errorText(error),
           };
         }
       }

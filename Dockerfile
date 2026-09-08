@@ -8,6 +8,7 @@ RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/be
     && chmod 700 /deos/auth \
     && chmod 755 /deos/bin /deos/shared /deos/staging /deos/jobs
 
+COPY container/original-errors.mjs /deos/bin/original-errors.mjs
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
 COPY container/author-completion.mjs /deos/bin/author-completion.mjs
 COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs

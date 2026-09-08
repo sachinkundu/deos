@@ -1,3 +1,5 @@
+import { responseError } from "./error-details.ts";
+import { recordCaughtError } from "./error-context.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
 import type {
   OrchestrationRunRecord,
@@ -167,8 +169,8 @@ class LinearGraphqlError extends Error {
   readonly safeCategory: string;
   readonly retryable: boolean;
 
-  constructor(safeCategory: string, retryable = false) {
-    super("Linear GraphQL request failed");
+  constructor(safeCategory: string, errors: unknown, retryable = false) {
+    super(`Linear GraphQL request failed: ${JSON.stringify(errors)}`, { cause: errors });
     this.name = "LinearGraphqlError";
     this.safeCategory = safeCategory;
     this.retryable = retryable;
@@ -395,6 +397,7 @@ export class LinearTransitionController {
         return this.workStartFailed();
       }
     } catch (error) {
+      recordCaughtError(error, "src/linear-transition.ts:358");
       const readBack = await this.readIssueState(run.issue_id);
       if (
         readBack.id === this.config.workStateId &&
@@ -554,7 +557,8 @@ export class LinearTransitionController {
         );
         return { providerOperationId: operationId, state: "manual_reconciliation_required" };
       }
-    } catch {
+    } catch (caughtError) {
+      recordCaughtError(caughtError, "src/linear-transition.ts:518");
       await this.store.setState(
         operationId,
         "pending",
@@ -623,19 +627,20 @@ export class LinearTransitionController {
       body: JSON.stringify({ query, variables }),
       ...(bounded ? { signal: AbortSignal.timeout(10_000) } : {}),
     });
-    if (!response.ok && !bounded) throw new Error(`Linear request failed (${response.status})`);
-    const payload = await response.json() as { errors?: LinearGraphqlFailure[] };
+    if (!response.ok && !bounded) throw await responseError(`Linear request failed (${response.status})`, response);
+    const payload = await response.clone().json() as { errors?: LinearGraphqlFailure[] };
     if (payload.errors?.length) {
       // Linear documents RATELIMITED (including HTTP 400) as a rejected
       // request. Mixed/unknown errors and ambiguous transport failures are unsafe.
       // https://linear.app/developers/rate-limiting
       throw new LinearGraphqlError(
         safeLinearErrorCategory(payload.errors),
+        payload.errors,
         bounded && (response.status === 400 || response.ok) &&
           payload.errors.every((error) => error.extensions?.code === "RATELIMITED"),
       );
     }
-    if (!response.ok) throw new Error(`Linear request failed (${response.status})`);
+    if (!response.ok) throw await responseError(`Linear request failed (${response.status})`, response);
     return payload;
   }
 }

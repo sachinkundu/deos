@@ -47,3 +47,19 @@ Do not describe synthetic ingress as end-to-end provider verification.
 For the maintained provider-proof procedure, evidence hierarchy, and PR
 packaging guidance, read
 [`docs/linear-cloudflare-e2e-lessons.md`](docs/linear-cloudflare-e2e-lessons.md).
+
+## Production BettaView and portal
+
+- The live `bettaview.voxdez.com` app is maintained in this repository at
+  `portal/bettaview/`. Start all live BettaView UI and API work there.
+- `/Users/sachin/code/bettaview` is the historical standalone experiment.
+  Building it or copying its `dist` does not deploy the live site. Do not use it
+  for production changes or deployment.
+- Install BettaView dependencies with `npm ci --prefix portal/bettaview`.
+  Build from the DEOS root with `npm run bettaview:build`; deploy with
+  `npx wrangler deploy --config portal/bettaview/wrangler.jsonc`.
+- The separate DEOS workflow portal uses `npm run portal:build` and
+  `npx wrangler deploy --config portal/wrangler.jsonc`.
+- Read back the deployed version at 100% traffic and verify the live browser.
+  A local build or upload alone does not prove activation.
+- The hash-pinned workflow trace runner is separate from the BettaView web app.

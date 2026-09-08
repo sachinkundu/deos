@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { recordCaughtError } from "./original-errors.mjs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -44,7 +45,7 @@ const run = (command, args, options = {}) => new Promise((resolve, reject) => {
     process.stdout.write(chunk);
   });
   child.stderr.on("data", (chunk) => {
-    stderr = `${stderr}${chunk}`.slice(-1_000_000);
+    stderr = `${stderr}${chunk}`;
     process.stderr.write(chunk);
   });
   child.once("error", reject);
@@ -97,7 +98,7 @@ const validate = (raw, review) => {
 };
 
 const main = async () => {
-  const job = JSON.parse(await readFile("/deos/run/job.json", "utf8"));
+  const job = JSON.parse(await readFile(process.env.DEOS_JOB_PATH ?? "/deos/run/job.json", "utf8"));
   if (
     job.agentRole !== "reviewer" || job.reviewKind !== "design" || job.reviewMode !== "discovery" ||
     job.permissionProfile !== "review_read_only" || !["codex", "openrouter"].includes(job.modelProvider) ||
@@ -204,6 +205,7 @@ const main = async () => {
 };
 
 main().catch((error) => {
+  recordCaughtError(error, "runner fatal");
   process.stderr.write(`design review failed: ${error.message}\n`);
   process.exitCode = 1;
 });

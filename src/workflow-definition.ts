@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import { parse } from "yaml";
 
 export const WORKFLOW_API_VERSION = "deos.dev/v1alpha1" as const;
@@ -306,8 +307,9 @@ const parseSchema = (source: string, path: string): Readonly<Record<string, unkn
   let parsed: unknown;
   try {
     parsed = JSON.parse(source);
-  } catch {
-    throw new Error(`schema ${path} is not valid JSON`);
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/workflow-definition.ts:309");
+    throw new Error(`schema ${path} is not valid JSON`, { cause: caughtError });
   }
   const schema = asRecord(parsed, `schema ${path}`);
   if (schema.type !== "object" || typeof schema.$id !== "string") {
@@ -338,8 +340,9 @@ export const loadWorkflowDefinition = async (
   let parsed: unknown;
   try {
     parsed = parse(source);
-  } catch {
-    throw new Error("workflow definition is not valid YAML");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/workflow-definition.ts:341");
+    throw new Error("workflow definition is not valid YAML", { cause: caughtError });
   }
   const root = asRecord(parsed, "workflow");
   assertAllowedKeys(root, ["apiVersion", "kind", "metadata", "spec"], "workflow");
@@ -621,8 +624,9 @@ export const restoreWorkflowDefinition = async (
   let parsed: unknown;
   try {
     parsed = JSON.parse(source);
-  } catch {
-    throw new Error("stored workflow definition is not valid JSON");
+  } catch (caughtError) {
+    recordCaughtError(caughtError, "src/workflow-definition.ts:624");
+    throw new Error("stored workflow definition is not valid JSON", { cause: caughtError });
   }
   const stored = asRecord(parsed, "stored workflow");
   assertAllowedKeys(
