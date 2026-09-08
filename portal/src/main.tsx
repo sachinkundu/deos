@@ -246,17 +246,6 @@ const workflowStepLabel = (nodeId: string): string => ({
   done: "Completed",
 }[nodeId] ?? human(nodeId));
 
-const visitOutcomeSummary = (visit: Visit | null, status: string): string => {
-  if (visit === null) return "Not started";
-  if (visit.nodeId === "design_self_review" && visit.leftAt !== null && visit.attempts.length === 0) {
-    return "Continued without a new review job";
-  }
-  const attempt = visit.attempts.at(-1);
-  if (attempt?.outcome) return human(attempt.outcome);
-  if (attempt?.state) return human(attempt.state);
-  return status;
-};
-
 function PullRequestActions({ url, githubLabel }: { url: string; githubLabel: string }) {
   return <>{pullRequestActions(url, githubLabel).map((action) => <a
     key={action.kind}
@@ -421,7 +410,7 @@ function TraceabilityWorkflowMap({
     { id: "independent_review", label: "Independent review", visit: independentReviewVisit, status: independentReviewStatus, icon: <Eye /> },
   ];
   const renderStep = (step: typeof planningSteps[number]) => <button key={step.id} type="button" className={`phase-substep ${step.status === "In progress" ? "is-breathing" : ""} ${expandedSubstep === step.id ? "selected" : ""}`} aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
-    <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong><small>{visitOutcomeSummary(step.visit, step.status)}</small></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
+    <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
     <span className={`substep-status ${workflowStatusTone(step.status)}`}>{step.status}</span>
   </button>;
   const renderPhaseSteps = (label: string, steps: typeof planningSteps) => <div className="phase-drill" aria-label={`${label} details`}>
