@@ -14,4 +14,4 @@
 
 - [x] 3.1 Run backend checks and strict OpenSpec validation.
 - [x] 3.2 Exercise the deployed path using SAC-160 where safe; capture ordered provider deliveries and unchanged D1 success, plus a controlled failure.
-- [ ] 3.3 Capture visual and executable evidence and publish the implementation PR linked to PRs 88 and 89.
+- [x] 3.3 Capture visual and executable evidence and publish the implementation PR linked to PRs 88 and 89.
