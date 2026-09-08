@@ -20,17 +20,17 @@ The system SHALL serve two portal sites. One SHALL be live. One SHALL be staging
 
 ### Requirement: Name each site clearly
 
-Each portal SHALL show a clear site name. The name SHALL state if the site is live or staging.
+The production portal SHALL use `deos.voxdez.com`. The staging portal SHALL use `deos-staging.voxdez.com`. Each portal SHALL show a clear site name. The name SHALL state if the site is production or staging.
 
 #### Scenario: Person opens staging
 
 - **WHEN** a person views the staging portal
-- **THEN** the portal clearly says that the site is staging
+- **THEN** `deos-staging.voxdez.com` clearly says that the site is staging
 
 #### Scenario: Person opens live
 
 - **WHEN** a person views the live portal
-- **THEN** the portal clearly says that the site is live
+- **THEN** `deos.voxdez.com` clearly says that the site is production
 
 ### Requirement: Share the same portal data
 
@@ -48,33 +48,33 @@ Both sites SHALL use the same D1 and R2 stores. They SHALL use the same GitHub a
 
 ### Requirement: Release reviewed work by choice
 
-GitHub CI SHALL deploy `main` to staging after all checks pass. It SHALL deploy live only from the release branch. A person MUST choose when reviewed work moves from `main` to that branch. A push to `main` MUST NOT start a live deploy.
+The repo SHALL define a GitHub release pipeline in code. Only that pipeline SHALL deploy production, and it SHALL deploy only from the release branch. A person MUST choose when reviewed work moves from `main` to that branch. A push to `main` MUST NOT start a production deploy. Staging MAY deploy from `main` through GitHub CI, a DEOS workflow, or a manual Wrangler deploy.
 
-#### Scenario: Staging checks pass
+#### Scenario: Main is ready for staging
 
-- **WHEN** a change on `main` passes all checks for staging
-- **THEN** the release flow deploys that change to staging and leaves live as it is
+- **WHEN** a change on `main` is ready to test
+- **THEN** GitHub CI, a DEOS workflow, or Wrangler can deploy it to staging and leave production as it is
 
 #### Scenario: Person starts a release
 
 - **WHEN** a person chooses to move reviewed staging work to the release branch
-- **THEN** the release flow can deploy that branch to the live site
+- **THEN** the GitHub release pipeline can deploy that branch to production
 
 #### Scenario: No release is chosen
 
 - **WHEN** `main` changes but no one moves that work to the release branch
-- **THEN** the live site keeps the prior release
+- **THEN** production keeps the prior release
 
 ### Requirement: Keep the last live release on a failed deploy
 
-GitHub CI SHALL keep the last good live release in place when a check or deploy fails. A failed staging check or deploy MUST NOT replace the live site.
+The GitHub release pipeline SHALL keep the last good production release in place when its check or deploy fails. A failed staging check or deploy, from any allowed path, MUST NOT replace the production site.
 
 #### Scenario: Staging deploy fails
 
 - **WHEN** a staging check or deploy fails
-- **THEN** the live site stays open on its last release
+- **THEN** the production site stays open on its last release
 
 #### Scenario: Live deploy fails
 
 - **WHEN** a deploy from the release branch fails
-- **THEN** the prior live release stays open
+- **THEN** the prior production release stays open
