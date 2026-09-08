@@ -132,3 +132,6 @@ button { color:inherit; }
   .author-review-row .substep-icon { display: none; }
   .author-review-row .phase-substep { padding: 8px; }
 }
+
+.workflow-phase[data-phase="planning"] > .phase-drill,
+.workflow-phase[data-phase="design"] > .phase-drill { padding-top: 14px; }
