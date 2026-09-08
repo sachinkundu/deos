@@ -269,14 +269,14 @@ class RuntimeStore implements WorkflowRuntimeStore {
     return Promise.resolve(true);
   }
 
-  consumeWait(input: Parameters<WorkflowRuntimeStore["consumeWait"]>[0]): Promise<boolean> {
+  consumeWait(input: Parameters<WorkflowRuntimeStore["consumeWait"]>[0]): ReturnType<WorkflowRuntimeStore["consumeWait"]> {
     const wait = this.waits.get(input.waitId);
     if (
       wait?.status !== "awaiting" ||
       this.run.current_node !== input.expectedNode ||
       this.run.current_visit_sequence !== input.expectedVisitSequence ||
       this.run.status !== input.expectedStatus
-    ) return Promise.resolve(false);
+    ) return Promise.resolve({ outcome: "stale" });
     wait.status = input.outcome === "canceled" ? "canceled" : "consumed";
     wait.consumed_delivery_id = input.deliveryId;
     this.run.previous_node = input.expectedNode;
@@ -288,10 +288,19 @@ class RuntimeStore implements WorkflowRuntimeStore {
       deliveryId: input.deliveryId,
       decision: input.outcome === "canceled" ? "canceled" : "resumed",
     });
-    return Promise.resolve(true);
+    const transition: WorkflowTransitionRecord = {
+      transition_id: input.transitionId, run_id: input.runId,
+      from_node: input.expectedNode, to_node: input.nextNode,
+      from_visit_sequence: input.expectedVisitSequence, to_visit_sequence: input.expectedVisitSequence + 1,
+      cause_type: "linear_event", cause_reference: input.deliveryId,
+      actor_id: input.actorId, actor_type: input.actorType,
+      provider_operation_id: null, occurred_at: input.now,
+    };
+    this.transitions.push(transition);
+    return Promise.resolve({ outcome: "committed", transition });
   }
 
-  compareAndSetNode(input: Parameters<WorkflowRuntimeStore["compareAndSetNode"]>[0]) {
+  compareAndSetNode(input: Parameters<WorkflowRuntimeStore["compareAndSetNode"]>[0]): ReturnType<WorkflowRuntimeStore["compareAndSetNode"]> {
     const existing = this.transitions.find(({ transition_id }) =>
       transition_id === input.transitionId);
     if (existing !== undefined) {
@@ -425,7 +434,7 @@ class InterruptingStep extends FakeStep {
 class RacingRuntimeStore extends RuntimeStore {
   raced = false;
 
-  consumeWait(input: Parameters<WorkflowRuntimeStore["consumeWait"]>[0]): Promise<boolean> {
+  consumeWait(input: Parameters<WorkflowRuntimeStore["consumeWait"]>[0]): ReturnType<WorkflowRuntimeStore["consumeWait"]> {
     if (this.raced) return super.consumeWait(input);
     this.raced = true;
     const wait = this.waits.get(input.waitId);
@@ -437,11 +446,16 @@ class RacingRuntimeStore extends RuntimeStore {
     this.run.current_visit_sequence += 1;
     this.run.last_transition_id = input.transitionId;
     this.run.status = input.nextStatus;
-    return Promise.resolve(false);
+    return Promise.resolve({ outcome: "stale" });
   }
 }
 
 class NodeServices implements WorkflowNodeServices {
+  doneRequests: string[] = [];
+  async requestLinearDone(issueId: string): ReturnType<WorkflowNodeServices["requestLinearDone"]> {
+    this.doneRequests.push(issueId);
+    return { outcome: "succeeded" as const };
+  }
   readonly agentOutcomes: string[];
   gateEntries = 0;
   repairs = 0;
@@ -1033,4 +1047,106 @@ test("a typed failure commits DEOS failed before surfacing an executor error", a
   );
   assert.equal(store.run.current_node, "failed");
   assert.equal(store.run.status, "failed");
+});
+
+for (const [name, outcomes, expected] of [
+  ["success", [{ outcome: "succeeded" }], 1],
+  ["safe retry then success", [{ outcome: "failed", retryable: true }, { outcome: "succeeded" }], 2],
+  ["exhausted", [{ outcome: "failed", retryable: true }], 3],
+  ["permanent", [{ outcome: "failed", retryable: false }], 1],
+  ["unexpected throw", [null], 1],
+] as const) {
+  test(`success notification: ${name} keeps the committed outcome`, async () => {
+    const store = new RuntimeStore({ ...makeRun(definition), current_node: "verify", status: "active" });
+    const services = new NodeServices();
+    let calls = 0;
+    services.requestLinearDone = async (issueId) => {
+      assert.equal(store.run.status, "succeeded");
+      assert.equal(store.run.current_node, "done");
+      assert.equal(store.transitions.length, 1);
+      assert.equal(issueId, store.run.issue_id);
+      const result = outcomes[Math.min(calls++, outcomes.length - 1)];
+      if (result === null) throw new Error("provider unexpectedly threw");
+      return result;
+    };
+    assert.equal((await orchestrator(store, services).run(store.run.run_id, new FakeStep([]))).outcome, "succeeded");
+    assert.equal(calls, expected);
+    assert.equal(store.transitions.length, 1);
+  });
+}
+
+test("exact terminal traversal replay gets a fresh local budget; stale traversal cannot notify", async () => {
+  const source = { ...makeRun(definition), current_node: "verify", status: "active" as const };
+  const store = new RuntimeStore({ ...source });
+  const services = new NodeServices();
+  const instance = orchestrator(store, services);
+  const decision = { kind: "transition" as const, fromNode: "verify", toNode: "done", outcome: "completed",
+    actorType: "system", actorId: null, causeReference: "openspec.verify", contractViolation: false };
+  // Execute the same callback that a Workflow step replays after an abrupt stop.
+  await instance["commitOutcome"](source, decision);
+  assert.equal(services.doneRequests.length, 1);
+  await instance["commitOutcome"](source, decision);
+  assert.equal(services.doneRequests.length, 2);
+  assert.equal(store.transitions.length, 1);
+  store.run.status = "canceled";
+  await instance["commitOutcome"](source, decision);
+  assert.equal(services.doneRequests.length, 2);
+  await assert.rejects(instance["commitOutcome"](source, { ...decision, causeReference: "other" }));
+  assert.equal(services.doneRequests.length, 2);
+});
+
+test("losing the success guard skips Done even when another traversal succeeded", async () => {
+  const store = new RuntimeStore({ ...makeRun(definition), current_node: "verify", status: "active" });
+  store.staleTransitionAtNode = "verify";
+  const services = new NodeServices();
+  await orchestrator(store, services).run(store.run.run_id, new FakeStep([]));
+  assert.equal(services.doneRequests.length, 0);
+});
+
+for (const outcome of ["canceled", "failed", "blocked", "denied"] as const) {
+  test(`${outcome} never calls Done`, async () => {
+    const selected = { ...definition, nodes: { ...definition.nodes, done: {
+      id: "done", type: "terminal" as const, outcome, edges: {},
+    } } };
+    const store = new RuntimeStore({ ...makeRun(selected), current_node: "verify", status: "active" });
+    const services = new NodeServices();
+    await lifecycleOrchestrator(store, services, selected).run(store.run.run_id, new FakeStep([]));
+    assert.equal(store.run.status, outcome);
+    assert.equal(services.doneRequests.length, 0);
+  });
+}
+
+test("a stop immediately after the success commit resumes only the notification on exact replay", async () => {
+  const source = { ...makeRun(definition), current_node: "verify", status: "active" as const };
+  const store = new RuntimeStore({ ...source });
+  const services = new NodeServices();
+  const commit = store.compareAndSetNode.bind(store);
+  let stopped = false;
+  store.compareAndSetNode = async (input) => {
+    const result = await commit(input);
+    if (!stopped) { stopped = true; throw new Error("process stopped after commit"); }
+    return result;
+  };
+  const decision = { kind: "transition" as const, fromNode: "verify", toNode: "done", outcome: "completed",
+    actorType: "workflow", actorId: null, causeReference: "system:openspec.verify:completed", contractViolation: false };
+  const instance = orchestrator(store, services);
+  await assert.rejects(instance["commitOutcome"](source, decision));
+  assert.equal(store.run.status, "succeeded");
+  assert.equal(services.doneRequests.length, 0);
+  await instance["commitOutcome"](source, decision);
+  assert.equal(services.doneRequests.length, 1);
+  assert.equal(store.transitions.length, 1);
+});
+
+test("a wait edge that commits success also requests Done", async () => {
+  const wait = resumableDefinition.nodes.wait;
+  const selected = { ...resumableDefinition, nodes: { ...resumableDefinition.nodes,
+    wait: { ...wait, edges: { ...wait.edges, received: "done" } },
+  } };
+  const store = new RuntimeStore(makeRun(selected));
+  const services = new WaitServices(["failed"]);
+  store.inbox.set("delivery-resume", waitInboxEvent("delivery-resume", "In Progress"));
+  await lifecycleOrchestrator(store, services, selected).run(store.run.run_id, new FakeStep(["delivery-resume"]));
+  assert.equal(store.run.status, "succeeded");
+  assert.deepEqual(services.doneRequests, [store.run.issue_id]);
 });

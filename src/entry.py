@@ -25,6 +25,8 @@ class Default(WorkerEntrypoint):
     """Authenticate Linear deliveries and hand relevant ones to a Queue."""
 
     async def fetch(self, request):
+        from pyodide.ffi import jsnull
+
         if request.method != "POST":
             return Response("method not allowed", status=405)
 
@@ -85,9 +87,9 @@ class Default(WorkerEntrypoint):
                     run_id,
                     event.label_selection_evidence.canonical_json(),
                     event.label_selection_evidence.digest(),
-                    route_proof.project_id if route_proof is not None else None,
-                    route_proof.route_revision if route_proof is not None else None,
-                    route_proof.route_digest if route_proof is not None else None,
+                    route_proof.project_id if route_proof is not None else jsnull,
+                    route_proof.route_revision if route_proof is not None else jsnull,
+                    route_proof.route_digest if route_proof is not None else jsnull,
                 )
                 .run()
             )

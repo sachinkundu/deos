@@ -155,6 +155,7 @@ interface LinearTransitionConfig {
   humanGateStateId: string;
   startStateId: string;
   workStateId: string;
+  teamId?: string;
 }
 
 interface LinearTransitionDependencies {
@@ -164,11 +165,13 @@ interface LinearTransitionDependencies {
 
 class LinearGraphqlError extends Error {
   readonly safeCategory: string;
+  readonly retryable: boolean;
 
-  constructor(safeCategory: string) {
+  constructor(safeCategory: string, retryable = false) {
     super("Linear GraphQL request failed");
     this.name = "LinearGraphqlError";
     this.safeCategory = safeCategory;
+    this.retryable = retryable;
   }
 }
 
@@ -202,6 +205,10 @@ const stateFromOperation = (operation: ProviderOperationRecord): HumanGateOperat
   return "awaiting_delivery";
 };
 
+export type LinearTransitionRequestResult =
+  | { outcome: "succeeded" }
+  | { outcome: "failed"; retryable: boolean };
+
 export class LinearTransitionController {
   private readonly store: LinearOperationStore;
   private readonly config: LinearTransitionConfig;
@@ -217,6 +224,38 @@ export class LinearTransitionController {
     this.config = config;
     this.request = dependencies.fetch ?? ((input, init) => fetch(input, init));
     this.now = dependencies.now ?? (() => new Date());
+  }
+
+  // Request only: no provider operation, issue-state read, or delivery confirmation.
+  async requestDone(issueId: string): Promise<LinearTransitionRequestResult> {
+    try {
+      if (!this.config.teamId) return { outcome: "failed", retryable: false };
+      const states = await this.graphql(
+        `query DeosDoneState($teamId: ID!, $name: String!) {
+          workflowStates(filter: { team: { id: { eq: $teamId } }, name: { eq: $name } }, first: 2) {
+            nodes { id name }
+          }
+        }`,
+        { teamId: this.config.teamId, name: "Done" },
+        true,
+      ) as { data?: { workflowStates?: { nodes?: { id: string; name: string }[] } } };
+      const matches = states.data?.workflowStates?.nodes;
+      if (matches?.length !== 1 || matches[0]?.name !== "Done" || !matches[0].id) {
+        return { outcome: "failed", retryable: false };
+      }
+      const response = await this.graphql(
+        `mutation DeosMoveIssue($id: String!, $stateId: String!) {
+          issueUpdate(id: $id, input: { stateId: $stateId }) { success }
+        }`,
+        { id: issueId, stateId: matches[0].id },
+        true,
+      ) as { data?: { issueUpdate?: { success?: boolean } } };
+      return response.data?.issueUpdate?.success === true
+        ? { outcome: "succeeded" }
+        : { outcome: "failed", retryable: false };
+    } catch (error) {
+      return { outcome: "failed", retryable: error instanceof LinearGraphqlError && error.retryable };
+    }
   }
 
   async ensureHumanGate(
@@ -574,7 +613,7 @@ export class LinearTransitionController {
     return { kind: "system_action", outcome: "failed", providerReceiptsComplete: false };
   }
 
-  private async graphql(query: string, variables: Record<string, unknown>): Promise<unknown> {
+  private async graphql(query: string, variables: Record<string, unknown>, bounded = false): Promise<unknown> {
     const response = await this.request(this.config.apiUrl, {
       method: "POST",
       headers: {
@@ -582,12 +621,21 @@ export class LinearTransitionController {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ query, variables }),
+      ...(bounded ? { signal: AbortSignal.timeout(10_000) } : {}),
     });
-    if (!response.ok) throw new Error(`Linear request failed (${response.status})`);
+    if (!response.ok && !bounded) throw new Error(`Linear request failed (${response.status})`);
     const payload = await response.json() as { errors?: LinearGraphqlFailure[] };
     if (payload.errors?.length) {
-      throw new LinearGraphqlError(safeLinearErrorCategory(payload.errors));
+      // Linear documents RATELIMITED (including HTTP 400) as a rejected
+      // request. Mixed/unknown errors and ambiguous transport failures are unsafe.
+      // https://linear.app/developers/rate-limiting
+      throw new LinearGraphqlError(
+        safeLinearErrorCategory(payload.errors),
+        bounded && (response.status === 400 || response.ok) &&
+          payload.errors.every((error) => error.extensions?.code === "RATELIMITED"),
+      );
     }
+    if (!response.ok) throw new Error(`Linear request failed (${response.status})`);
     return payload;
   }
 }

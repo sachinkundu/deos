@@ -384,7 +384,7 @@ export interface WorkflowRuntimeStore {
     actorType: string | null;
     now: string;
     terminalCause?: string | null;
-  }): Promise<boolean>;
+  }): Promise<TransitionCommitResult>;
   compareAndSetNode(input: {
     runId: string;
     expectedNode: string;
@@ -1013,7 +1013,7 @@ export class D1OrchestrationStore {
     actorType: string | null;
     now: string;
     terminalCause?: string | null;
-  }): Promise<boolean> {
+  }): Promise<TransitionCommitResult> {
     const waitStatus = input.outcome === "canceled" ? "canceled" : "consumed";
     const decision = input.outcome === "canceled" ? "canceled" : "resumed";
     const nextVisitSequence = input.expectedVisitSequence + 1;
@@ -1094,7 +1094,27 @@ export class D1OrchestrationStore {
         input.transitionId,
       ),
     ]);
-    return changes(results[0]) === 1 && changes(results[1]) === 1 && changes(results[2]) === 1;
+    const transition = await this.database.prepare(
+      "SELECT * FROM workflow_transitions_v2 WHERE transition_id = ?",
+    ).bind(input.transitionId).first<WorkflowTransitionRecord>();
+    if (transition === null) return { outcome: "stale" };
+    const wait = await this.database.prepare(
+      "SELECT * FROM workflow_waits WHERE wait_id = ?",
+    ).bind(input.waitId).first<WorkflowWaitRecord>();
+    if (transition.run_id !== input.runId || transition.from_node !== input.expectedNode ||
+        transition.to_node !== input.nextNode ||
+        transition.from_visit_sequence !== input.expectedVisitSequence ||
+        transition.to_visit_sequence !== nextVisitSequence ||
+        transition.cause_type !== "linear_event" || transition.cause_reference !== input.deliveryId ||
+        transition.actor_id !== input.actorId || transition.actor_type !== input.actorType ||
+        wait?.consumed_delivery_id !== input.deliveryId || wait.status !== waitStatus) {
+      return { outcome: "stale" };
+    }
+    return {
+      outcome: changes(results[0]) === 1 && changes(results[1]) === 1 && changes(results[2]) === 1
+        ? "committed" : "replayed",
+      transition,
+    };
   }
 
   async compareAndSetNode(input: {

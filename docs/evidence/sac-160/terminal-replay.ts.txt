@@ -1,0 +1,75 @@
+export { DeosWorkflow, Sandbox, RouteAdmin } from "../../src/queue-consumer.ts";
+import { D1OrchestrationStore } from "../../src/orchestration-store.ts";
+import { restoreWorkflowDefinition } from "../../src/workflow-definition.ts";
+import { WorkflowOrchestrator } from "../../src/workflow-orchestrator.ts";
+import { LinearTransitionController, D1LinearOperationStore } from "../../src/linear-transition.ts";
+import { proofKey } from "./key.ts";
+
+import original from "../../src/queue-consumer.ts";
+
+export default {
+  ...original,
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    if (new URL(request.url).pathname !== "/__sac160-proof") return original.fetch(request, env, ctx);
+    if (request.method !== "POST" || request.headers.get("Authorization") !== `Bearer ${proofKey}`) {
+      return new Response("Not found", { status: 404 });
+    }
+    const { mode } = await request.json() as { mode: string };
+    if (mode === "contract") {
+      const response = await fetch(env.LINEAR_API_URL, {
+        method: "POST", headers: { Authorization: `Bearer ${env.LINEAR_APP_ACCESS_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ query: `query DeosDoneState($teamId: ID!, $name: String!) {
+          viewer { id name }
+          workflowStates(filter: { team: { id: { eq: $teamId } }, name: { eq: $name } }, first: 2) { nodes { id name } }
+        }`, variables: { teamId: env.LINEAR_TEAM_ID, name: "Done" } }),
+        signal: AbortSignal.timeout(10000),
+      });
+      return Response.json({ httpStatus: response.status, payload: await response.json() });
+    }
+    if (!["failure", "success"].includes(mode)) return new Response("Bad mode", { status: 400 });
+    const store = new D1OrchestrationStore(env.DB);
+    const runId = "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:fe309e48-a316-40c4-a000-eb2927e7d72d:run:1";
+    const run = await store.findRun(runId);
+    if (!run || run.status !== "succeeded" || run.current_node !== "done" || run.current_visit_sequence !== 41) {
+      return new Response("Authority changed", { status: 409 });
+    }
+    const row = await env.DB.prepare("SELECT * FROM workflow_transitions_v2 WHERE transition_id = ?")
+      .bind(run.last_transition_id).first<any>();
+    if (!row || row.from_node !== "merge_design_pr" || row.cause_reference !== "system:github.merge_design_pull_request:completed") {
+      return new Response("Traversal changed", { status: 409 });
+    }
+    const snapshot = await store.findDefinitionSnapshot(run.definition_id, run.definition_version);
+    const definition = await restoreWorkflowDefinition(snapshot!.canonical_json, run.definition_digest);
+    const linear = new LinearTransitionController(new D1LinearOperationStore(env.DB), {
+      apiUrl: env.LINEAR_API_URL,
+      accessToken: mode === "failure" ? "deliberately-invalid-proof-token" : env.LINEAR_APP_ACCESS_TOKEN,
+      appActorId: env.LINEAR_APP_ACTOR_ID, teamId: env.LINEAR_TEAM_ID,
+      humanGateStateId: env.LINEAR_HUMAN_APPROVAL_STATE_ID,
+      startStateId: env.LINEAR_START_STATE_ID, workStateId: env.LINEAR_WORK_STATE_ID,
+    });
+    const results: unknown[] = [];
+    const services = {
+      async requestLinearDone(issueId: string) {
+        const result = await linear.requestDone(issueId);
+        results.push(result);
+        return result;
+      },
+    };
+    const orchestrator = new WorkflowOrchestrator(store, definition, services as any, {
+      humanGateStateId: env.LINEAR_HUMAN_APPROVAL_STATE_ID,
+      approvalStateNames: [], rejectionStateNames: [],
+    });
+    // Controlled replay of ONLY the recorded terminal callback; no agent or merge runs.
+    const result = await orchestrator["commitOutcome"]({
+      ...run, current_node: row.from_node, current_visit_sequence: row.from_visit_sequence,
+      status: "active",
+    }, {
+      kind: "transition", fromNode: row.from_node, toNode: row.to_node, outcome: "completed",
+      actorId: row.actor_id, actorType: row.actor_type,
+      causeReference: row.cause_reference, contractViolation: false,
+    });
+    const after = await store.findRun(runId);
+    return Response.json({ mode, result, requests: results, status: after?.status,
+      terminalAt: after?.terminal_at, transitionId: after?.last_transition_id });
+  },
+};

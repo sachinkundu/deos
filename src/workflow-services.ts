@@ -1275,6 +1275,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         humanGateStateId: env.LINEAR_HUMAN_APPROVAL_STATE_ID,
         startStateId: env.LINEAR_START_STATE_ID,
         workStateId: env.LINEAR_WORK_STATE_ID,
+        teamId: env.LINEAR_TEAM_ID,
       },
     );
   }
@@ -1286,6 +1287,10 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     definition: LoadedWorkflowDefinition,
   ) {
     return this.agents.execute(run, nodeId, jobId, definition);
+  }
+
+  requestLinearDone(issueId: string) {
+    return this.linear.requestDone(issueId);
   }
 
   executeSystemAction(run: OrchestrationRunRecord, nodeId: string, action: string) {

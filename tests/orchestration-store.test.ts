@@ -106,3 +106,37 @@ test("allocateRun binds one value for every D1 placeholder", async () => {
   assert.equal(allocation.run.current_node, "claim_issue");
   assert.equal(allocation.run.definition_version, 2);
 });
+
+for (const scenario of ["committed", "replayed", "different-delivery", "different-node", "no-transition"] as const) {
+  test(`wait transition classifies ${scenario} before permitting a success notification`, async () => {
+    const input = {
+      waitId: "wait-1", runId: "run-1", deliveryId: "delivery-1", expectedNode: "wait",
+      expectedVisitSequence: 4, expectedStatus: "awaiting_capability" as const,
+      nextNode: "done", nextStatus: "succeeded" as const, outcome: "received" as const,
+      transitionId: "run-1:visit:4:transition", actorId: "user-1", actorType: "user", now: "2026-09-08T00:00:00Z",
+    };
+    const transition = {
+      transition_id: input.transitionId, run_id: input.runId, from_node: input.expectedNode,
+      to_node: scenario === "different-node" ? "other" : input.nextNode,
+      from_visit_sequence: 4, to_visit_sequence: 5, cause_type: "linear_event",
+      cause_reference: scenario === "different-delivery" ? "delivery-2" : input.deliveryId,
+      actor_id: input.actorId, actor_type: input.actorType, provider_operation_id: null,
+    };
+    const database = {
+      prepare(sql: string) {
+        return { bind(...values: unknown[]) {
+          assert.equal(values.length, (sql.match(/\?/g) ?? []).length);
+          return { async first() {
+            if (sql.includes("workflow_transitions_v2")) return scenario === "no-transition" ? null : transition;
+            return { consumed_delivery_id: input.deliveryId, status: "consumed" };
+          } };
+        } };
+      },
+      async batch(statements: unknown[]) {
+        return statements.map(() => ({ meta: { changes: scenario === "committed" ? 1 : 0 } }));
+      },
+    } as unknown as D1Database;
+    const result = await new D1OrchestrationStore(database).consumeWait(input);
+    assert.equal(result.outcome, scenario === "committed" ? "committed" : scenario === "replayed" ? "replayed" : "stale");
+  });
+}
