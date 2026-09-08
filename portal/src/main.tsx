@@ -361,12 +361,10 @@ function TraceabilityWorkflowMap({
     (visit) => planningSubstepForNode(visit.nodeId) === "independent_review",
   );
   const planningReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "planning_review");
-  const planningMergeVisit = latestVisitFor(planningVisits, (visit) => ["verify_planning_merge", "merge_planning_pr"].includes(visit.nodeId));
   const designAuthorVisit = latestVisitFor(designVisits, isDesignAuthorVisit);
   const designSelfReviewVisit = latestVisitFor(designVisits, (visit) => designSubstepForNode(visit.nodeId) === "design_self_review");
   const designIndependentReviewVisit = latestVisitFor(designVisits, (visit) => designSubstepForNode(visit.nodeId) === "design_independent_review");
   const designReviewVisit = latestVisitFor(approvalVisits, (visit) => visit.nodeId === "design_review");
-  const designMergeVisit = latestVisitFor(designVisits, (visit) => visit.nodeId === "merge_design_pr");
   const planningGates = projection.gateVisits.filter((gate) => gate.gateKind === "plan");
   const designGates = projection.gateVisits.filter((gate) => gate.gateKind === "design");
   const planningProduct = projection.workProducts.planning;
@@ -435,11 +433,6 @@ function TraceabilityWorkflowMap({
       <span className="substep-heading"><span className="substep-icon"><Eye /></span><span className="substep-copy"><strong>Independent review</strong><small>{visitOutcomeSummary(independentReviewVisit, independentReviewStatus)}</small></span>{expandedSubstep === "independent_review" ? <CaretDown /> : <CaretRight />}</span>
       <span className={`substep-status ${workflowStatusTone(independentReviewStatus)}`}>{independentReviewStatus}</span>
     </button>
-    <div className="approved-edge"><ArrowRight weight="bold" /><span>after Human Review</span></div>
-    <button type="button" className={`phase-substep terminal ${expandedSubstep === "planning_merge" ? "selected" : ""}`} onClick={() => selectSubstep("planning_merge", planningMergeVisit)}>
-      <span className="substep-heading"><span className="substep-icon"><GitMerge /></span><strong>Merge &amp; verify</strong></span>
-      <span className="substep-meta">{planningProduct?.verified ? `Verified via PR #${planningProduct.number}` : "Waiting for checked merge"}</span>
-    </button>
   </div>;
 
   const renderDesign = () => <div className="phase-drill" aria-label="Design details">
@@ -448,11 +441,6 @@ function TraceabilityWorkflowMap({
       <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong><small>{visitOutcomeSummary(step.visit, step.status)}</small></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
       <span className={`substep-status ${workflowStatusTone(step.status)}`}>{step.status}</span>
     </button>)}
-    <div className="approved-edge"><ArrowRight weight="bold" /><span>after Human Review</span></div>
-    <button type="button" className={`phase-substep terminal ${expandedSubstep === "design_merge" ? "selected" : ""}`} onClick={() => selectSubstep("design_merge", designMergeVisit)}>
-      <span className="substep-heading"><span className="substep-icon"><GitMerge /></span><strong>Merge &amp; verify</strong></span>
-      <span className="substep-meta">{designProduct?.status === "Merged" ? `Merged via PR #${designProduct.number}` : "Waiting for merge"}</span>
-    </button>
   </div>;
 
   const renderApproval = () => <div className="phase-drill" aria-label="Human Review details">
