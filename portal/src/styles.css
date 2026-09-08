@@ -79,3 +79,8 @@ button { color:inherit; }
 .failure-panel h3 { font-size: 14px; }
 .failure-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.6 ui-monospace, monospace; }
 .failure-panel article + article { border-top: 1px solid #d75b6050; margin-top: 18px; padding-top: 12px; }
+
+.run-health { border-color: var(--border, #526575); border-left-color: #528dd7; background: transparent; }
+.error-history { margin-top: 16px; }
+.error-history summary { cursor: pointer; font-weight: 600; }
+.error-history > p { opacity: .75; }

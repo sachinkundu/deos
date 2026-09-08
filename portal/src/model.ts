@@ -508,7 +508,7 @@ export class PortalReadStore {
       })));
     const retry = portalRunRetry(run, attemptResult.results, transitions, retryRow);
     const errorRows = await this.db.prepare(`SELECT error_id AS id, node_id AS nodeId,
-      step_name AS step, location, message, occurred_at AS occurredAt
+      visit_sequence AS visitSequence, step_name AS step, location, message, occurred_at AS occurredAt
       FROM workflow_errors WHERE run_id = ? ORDER BY occurred_at DESC`).bind(runId).all();
     const legacyErrors = await this.db.prepare(`SELECT operation.operation_id AS id,
       operation.action AS step, operation.safe_error_category AS category,
@@ -539,6 +539,7 @@ export class PortalReadStore {
         endedAt: run.terminal_at,
         freshness: run.updated_at,
         terminalCause: run.terminal_cause,
+        failureStartedAt: transitions.find(t => t.to_visit_sequence === run.current_visit_sequence - 1)?.occurred_at ?? run.created_at,
       },
       stages,
       connections,

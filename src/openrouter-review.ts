@@ -403,7 +403,8 @@ export class OpenRouterReviewClient {
       ? await readCompleteText(response)
       : await readBoundedText(response, 16_384);
     let parsed: Record<string, unknown> | null = null;
-    if (!raw.truncated && raw.text.length > 0) {
+    if (!raw.truncated && raw.text.length > 0 &&
+        !response.headers.get("content-type")?.toLowerCase().includes("text/event-stream")) {
       try {
         parsed = nullableRecord(JSON.parse(raw.text));
       } catch (caughtError) {

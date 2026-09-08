@@ -1,3 +1,4 @@
+import { separateErrors } from "./error-state.ts";
 import { errorText } from "../../src/error-details.ts";
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -78,11 +79,11 @@ interface Visit {
     decision_outcome: string | null;
   } | null;
 }
-interface FailureDetail { id: string; nodeId?: string; step: string; message: string | null; category?: string; occurredAt: string; detailUrl?: string }
+interface FailureDetail { visitSequence?: number; id: string; nodeId?: string; step: string; message: string | null; category?: string; occurredAt: string; detailUrl?: string }
 interface Projection {
   errors?: FailureDetail[];
   legacyErrors?: FailureDetail[];
-  run: Run & { freshness: string; currentNode: string; terminalCause?: string | null };
+  run: Run & { freshness: string; currentNode: string; terminalCause?: string | null; currentVisitSequence?: number; failureStartedAt?: string };
   stages: Stage[];
   history: Visit[];
   unlinked: { attempts: number; waits: number };
@@ -946,23 +947,28 @@ function DesignReviewPage({ runId }: { runId: string }) {
 }
 
 function RunErrors({ projection }: { projection: Projection }) {
-  const errors = projection.errors ?? [];
-  const legacy = projection.legacyErrors ?? [];
-  const failed = ["failed", "blocked", "denied"].includes(projection.run.status);
-  if (!failed && errors.length === 0 && legacy.length === 0) return null;
-  return <section className="failure-panel" role={failed ? "alert" : "region"} aria-label="Workflow errors">
-    <h2>{failed ? "Workflow failed" : "Recorded errors"}</h2>
-    {failed && <p>Stopped at <strong>{workflowStepLabel(projection.run.currentNode)}</strong>{projection.run.terminalCause ? ` · ${projection.run.terminalCause}` : ""}</p>}
-    {errors.map((error) => <article key={error.id}>
-      <h3>{workflowStepLabel(error.step)} · {formatTime(error.occurredAt)}</h3>
-      <pre>{error.message}</pre>
-      {error.detailUrl && <a href={error.detailUrl} target="_blank" rel="noreferrer">Full original error, stack and causes</a>}
-    </article>)}
-    {legacy.map((error) => <article key={error.id}>
-      <h3>{workflowStepLabel(error.step)} · {formatTime(error.occurredAt)}</h3>
-      <pre>{error.message || `${error.category ?? "Failure"} — the original error was not recorded by this version of DEOS.`}</pre>
-    </article>)}
-    {failed && errors.length === 0 && legacy.length === 0 && <p>The original error was not recorded by this version of DEOS.</p>}
+  const all = [...(projection.errors ?? []), ...(projection.legacyErrors ?? [])];
+  const { failed, current, historical } = separateErrors(all, projection.run);
+  const renderError = (error: FailureDetail) => <article key={error.id}>
+    <h3>{workflowStepLabel(error.step)} · {formatTime(error.occurredAt)}</h3>
+    <pre>{error.message || `${error.category ?? "Failure"} — the original error was not recorded by this version of DEOS.`}</pre>
+    {error.detailUrl && <a href={error.detailUrl} target="_blank" rel="noreferrer">Full original error, stack and causes</a>}
+  </article>;
+  const status = projection.run.status;
+  const heading = status === "active" ? "Workflow running"
+    : status === "succeeded" ? "Workflow completed"
+    : status === "awaiting_human" ? "Waiting for your review"
+    : failed ? "Workflow stopped" : `Workflow ${human(status)}`;
+  return <section className={`failure-panel ${failed ? "" : "run-health"}`} role={failed ? "alert" : "region"} aria-label="Current workflow status">
+    <h2>{heading}</h2>
+    <p>{failed ? "Stopped at" : "Current step:"} <strong>{workflowStepLabel(projection.run.currentNode)}</strong></p>
+    {current.map(renderError)}
+    {failed && current.length === 0 && <p>{projection.run.terminalCause ? `${projection.run.terminalCause} — ` : ""}The original error for this failure was not recorded.</p>}
+    {historical.length > 0 && <details className="error-history">
+      <summary>Earlier errors and diagnostics ({historical.length})</summary>
+      <p>These records are retained for investigation. They do not describe the current workflow status.</p>
+      {historical.map(renderError)}
+    </details>}
   </section>;
 }
 

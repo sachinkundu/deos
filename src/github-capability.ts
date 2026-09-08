@@ -1289,8 +1289,7 @@ export class GitHubCapabilityAdapter {
     ]);
     const markerComments = reviewComments.filter((value) => {
       const entry = value as { body?: unknown; user?: { type?: unknown } };
-      return entry.user?.type === "Bot" && typeof entry.body === "string" &&
-        entry.body.includes("<!-- deos-review-reply:");
+      return entry.user?.type === "Bot" && typeof entry.body === "string";
     });
     const actorLogin = markerComments.length === 0 ? null : await this.trustedActorLogin();
     const pick = (kind: string, entries: unknown[]): Record<string, unknown>[] => entries.map((value) => {
@@ -1629,13 +1628,10 @@ export class GitHubCapabilityAdapter {
     if ([...requested.keys()].some((commentId) => !roots.has(commentId))) {
       throw new Error("GitHub review reply targets an unknown human review thread");
     }
-    const marker = (commentId: number): string =>
-      `<!-- deos-review-reply:${operationId}:${commentId} -->`;
     const actorLogin = roots.size === 0 ? null : await this.trustedActorLogin();
     const isAcknowledgment = (comment: GitHubReviewComment, rootId: number): boolean =>
       actorLogin !== null && comment.inReplyToId === rootId && comment.userType === "Bot" &&
-      comment.userLogin.toLowerCase() === actorLogin.toLowerCase() &&
-      comment.body.includes("<!-- deos-review-reply:") && comment.body.includes(`:${rootId} -->`);
+      comment.userLogin.toLowerCase() === actorLogin.toLowerCase();
     const latestHumanCommentIds = new Map<number, number>();
     const latestHumanCommentUpdatedAts = new Map<number, string | null>();
     const outstanding = [...roots.keys()].filter((rootId) => {
@@ -1683,7 +1679,7 @@ export class GitHubCapabilityAdapter {
         reconciled = true;
         continue;
       }
-      const body = `${reply.body}\n\n${marker(reply.commentId)}`;
+      const body = reply.body;
       try {
         const created = await this.json(
           token,
@@ -1702,7 +1698,7 @@ export class GitHubCapabilityAdapter {
         recordCaughtError(caughtError, "src/github-capability.ts:1680");
         comments = await this.reviewComments(token, repository, pullRequestNumber);
         const after = comments.find((comment) =>
-          isAcknowledgment(comment, reply.commentId) && comment.body.includes(marker(reply.commentId)));
+          isAcknowledgment(comment, reply.commentId) && comment.body === body);
         if (after === undefined) throw new Error("GitHub review reply is ambiguous", { cause: caughtError });
         ids.push(after.id);
         reconciled = true;

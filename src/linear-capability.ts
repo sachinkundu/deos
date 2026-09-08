@@ -1,5 +1,12 @@
 import { responseError } from "./error-details.ts";
 import { recordCaughtError } from "./error-context.ts";
+const commentIdentity = async (issueId: string, key: string): Promise<string> => {
+  const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify([issueId, key]))));
+  bytes[6] = (bytes[6] & 15) | 0x40;
+  bytes[8] = (bytes[8] & 63) | 0x80;
+  const hex = [...bytes.slice(0, 16)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+};
 export interface LinearNoteRequest {
   issueId: string;
   body: string;
@@ -53,18 +60,18 @@ export class LinearCapabilityAdapter {
   }
 
   async upsertNote(input: LinearNoteRequest, operationId: string): Promise<LinearNoteReceipt> {
-    const marker = `<!-- deos-operation:${operationId} -->`;
+    const marker = await commentIdentity(input.issueId, `note:${operationId}`);
     const existing = await this.findComment(input.issueId, marker);
     if (existing !== null) return { commentId: existing, reconciled: true };
     try {
       const payload = await this.graphql(
-        `mutation DeosCreateComment($issueId: String!, $body: String!) {
-           commentCreate(input: { issueId: $issueId, body: $body }) {
+        `mutation DeosCreateComment($issueId: String!, $body: String!, $commentId: String!) {
+           commentCreate(input: { id: $commentId, issueId: $issueId, body: $body }) {
              success
              comment { id }
            }
          }`,
-        { issueId: input.issueId, body: `${input.body}\n\n${marker}` },
+        { issueId: input.issueId, body: input.body, commentId: marker },
       ) as { data?: { commentCreate?: { success?: boolean; comment?: { id?: string } } } };
       const id = payload.data?.commentCreate?.comment?.id;
       if (payload.data?.commentCreate?.success !== true || typeof id !== "string") {
@@ -83,20 +90,20 @@ export class LinearCapabilityAdapter {
     if (!/^[a-z0-9][a-z0-9:._-]{7,299}$/i.test(input.markerId)) {
       throw new Error("Linear status marker is invalid");
     }
-    const marker = `<!-- deos-status:${input.markerId} -->`;
-    const desired = `${input.body}\n\n${marker}`;
+    const marker = await commentIdentity(input.issueId, `status:${input.markerId}`);
+    const desired = input.body;
     const existing = await this.findCommentRecord(input.issueId, marker);
     if (existing?.body === desired) return { commentId: existing.id, reconciled: true };
     if (existing === null) {
       try {
         const payload = await this.graphql(
-          `mutation DeosCreateStatusComment($issueId: String!, $body: String!) {
-             commentCreate(input: { issueId: $issueId, body: $body }) {
+          `mutation DeosCreateStatusComment($issueId: String!, $body: String!, $commentId: String!) {
+             commentCreate(input: { id: $commentId, issueId: $issueId, body: $body }) {
                success
                comment { id }
              }
            }`,
-          { issueId: input.issueId, body: desired },
+          { issueId: input.issueId, body: desired, commentId: marker },
         ) as { data?: { commentCreate?: { success?: boolean; comment?: { id?: string } } } };
         const id = payload.data?.commentCreate?.comment?.id;
         if (payload.data?.commentCreate?.success !== true || typeof id !== "string") {
@@ -249,7 +256,7 @@ export class LinearCapabilityAdapter {
        }`,
       { id: issueId },
     ) as { data?: { issue?: { comments?: { nodes?: Array<{ id?: string; body?: string }> } } } };
-    const match = payload.data?.issue?.comments?.nodes?.find((comment) => comment.body?.includes(marker));
+    const match = payload.data?.issue?.comments?.nodes?.find((comment) => comment.id === marker);
     return typeof match?.id === "string" && typeof match.body === "string"
       ? { id: match.id, body: match.body }
       : null;
