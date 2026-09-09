@@ -12,7 +12,7 @@
 
 - [x] 3.1 Add a fixed staging entrypoint with main ancestry, target preflight, checks, build, deploy, and live verification.
 - [x] 3.2 Add serialized manual release promotion and deployment with exact SHA and fast-forward checks.
-- [ ] 3.3 Add staging CI and protected environment configuration; document credential cutover and retry procedures.
+- [x] 3.3 Add staging CI and protected environment configuration; document credential cutover and retry procedures.
 - [x] 3.4 Test rejected refs, target mismatches, failed builds, failed or ambiguous deploys, and version read-back.
 
 ## 4. Live migration and evidence

@@ -55,7 +55,9 @@ The live bindings match the configuration:
 GitHub now has staging and production environments. Both allow only the main
 branch. Production requires approval by sachinkundu. Both environments now
 have the probe Client ID as a variable and Client Secret as a secret. The
-workflows read these entry types. Deployment tokens remain pending. A repository-wide
+workflows read these entry types. Both environments now also contain their
+separate deployment token secrets. These checks confirm secret names and
+placement, not token values or successful authentication. A repository-wide
 `CLOUDFLARE_API_TOKEN` secret exists and the sandbox inventory audit uses it.
 Do not remove that secret until the unrelated audit has suitable read access.
 The existing CI workflow contains dry-run validation, not a production deploy.
@@ -68,10 +70,15 @@ The owner also created DEOS portal version checks. Browser inspection confirms
 deos.voxdez.com/api/version and deos-staging.voxdez.com/api/version, with the
 Service Auth policy limited to the DEOS portal deployment probe service token.
 This confirms configuration, not successful authentication from GitHub.
-Staging still needs the existing shared retry secret before live use. The current
-credential received HTTP 403 when creating the Access probe and reading API
-token management. The user will configure these resources in the dashboard;
-do not broaden the agent's API permissions. See docs/portal-access-setup.md.
+Staging still needs the existing shared retry secret before live use. The owner
+completed Access setup and token creation in the dashboard after the agent's
+credential received HTTP 403 for those operations. No broader agent API
+permissions were granted. See docs/portal-access-setup.md.
+
+The initial implementation PR must use a merge commit so the verified release
+baseline remains an ancestor of main. This requirement is recorded in the
+release procedure. The PR remains unmerged pending human approval and the
+remaining rollout prerequisites.
 
 The provider snapshot and exact baseline hashes are recorded in
 docs/evidence/sac-155/rollout.md. This is baseline and configuration evidence.

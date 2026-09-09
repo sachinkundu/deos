@@ -69,6 +69,14 @@ granting the agent Access administration or API token management permissions.
    labels, shared records, and one active version at 100 percent.
 7. Prove a later main-only update changes staging without changing production.
 
+For the initial implementation PR, use GitHub's **Create a merge commit**
+option. The verified release baseline `6018ea33d2bba472b717e6fb6a4a8554fef92207`
+is an ancestor of the implementation branch and must remain an ancestor of
+main. Squashing or rebasing this initial PR would lose that relationship and
+the first fast-forward release would be rejected. GitHub allows merge commits
+for this repository. Later portal PRs may use the repository's normal merge
+method once the baseline is in main's history.
+
 Cloudflare tokens cannot enforce individual-Worker isolation in this account.
 Separate environment secrets limit where credentials are provided. Fixed
 preflight checks prevent accidental target selection. Neither prevents a
