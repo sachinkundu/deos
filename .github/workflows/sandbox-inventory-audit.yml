@@ -30,13 +30,14 @@ jobs:
           console.error(output.replaceAll(process.env.CLOUDFLARE_API_TOKEN, '[REDACTED]').slice(0, 2000));
           const account = process.env.CLOUDFLARE_ACCOUNT_ID;
           const app = process.env.CONTAINER_APPLICATION_ID;
-          for (const path of [`/accounts/${account}/containers/applications/${app}/instances`, `/accounts/${account}/containers/dash/applications/${app}/instances`]) {
+          console.log(JSON.stringify({ tokenHasWhitespace: /\s/.test(process.env.CLOUDFLARE_API_TOKEN), accountMatches: account === 'c68856288112af7698f5be52ea94b96e', applicationMatches: app === 'a0344373-884d-4c06-b4c2-4e58295de498' }));
+          for (const path of [`/accounts/${account}/tokens/verify`, `/accounts/${account}/containers/applications/${app}/instances`, `/accounts/${account}/containers/dash/applications/${app}/instances`]) {
             const response = await fetch('https://api.cloudflare.com/client/v4' + path, {
               headers: { Authorization: 'Bearer ' + process.env.CLOUDFLARE_API_TOKEN },
               redirect: 'error', signal: AbortSignal.timeout(20000),
             });
             const body = await response.json();
-            console.log(JSON.stringify({ endpoint: path.includes('/dash/') ? 'dashboard-inventory' : 'application-inventory', status: response.status, success: body.success,
+            console.log(JSON.stringify({ endpoint: path.endsWith('/verify') ? 'token-verification' : path.includes('/dash/') ? 'dashboard-inventory' : 'application-inventory', tokenIdMatches: path.endsWith('/verify') ? body.result?.id === '421df085aabecd815291bfceaf0c5d27' : undefined, status: response.status, success: body.success,
               errorCodes: body.errors?.map(error => error.code) }));
           }
           JS
