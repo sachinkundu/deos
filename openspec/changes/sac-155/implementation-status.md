@@ -12,7 +12,7 @@ Safe `GET /api/version`, within the host Access perimeter, reports site, canonic
 SHA, and Cloudflare version metadata. The fixed deploy entrypoint supplies the checked-out source SHA. The checked-in
 placeholder is explicitly `unbuilt`.
 
-All 69 portal tests, 16 release tests (including real local Git promotion and
+All 69 portal tests, 18 release tests (including real local Git promotion and
 retry), Python lint, portal type-checking, both canonical portal builds, staging
 Wrangler dry-run, and strict OpenSpec validation pass.
 
@@ -113,8 +113,40 @@ states the two policies explicitly.
 Read-back confirms production and the staging placeholder kept their previous
 deployments. No upload occurred. The owner was asked to correct both deployment
 token policies without rotating their values, and to replace the repository
-inventory token with Containers Read. The failed deployment will be retried
-after those saved settings are confirmed.
+inventory token with Containers Read. The owner corrected both account policies;
+the second attempt is recorded below.
+
+## Second staging attempt and audit repair
+
+Attempt 2 of staging run `34324212520` uploaded source
+`c02de5f3d3f0bb1825b5eec0e4dcbee9d8ea0840`. Cloudflare activated staging version
+`1d96d46f-9a14-4b58-9840-7923dd8b94c6` at 100 percent. Its shared bindings and
+source metadata match the planned target. Wrangler then failed to list zone
+routes with error 10000, before attaching the hostname. The Custom Domain is
+absent. This is a partial deployment, not a successful live staging rollout.
+
+The owner must add Workers Routes Read to the voxdez.com policy in both portal
+tokens. Wrangler checks existing routes even for Custom Domains. The deployment
+script now checks this permission before upload. A failed host read also keeps
+the provider deployment evidence visible. Both failure paths have regression
+tests. No production portal upload has occurred.
+
+The separate inventory audit had two existing failures. Its GitHub credentials
+did not match the backend secret. After a secret-only replacement, harmless
+requests from GitHub authenticated successfully with both existing secret names.
+The backend code, settings, and container configuration remained unchanged.
+Backend version `07015e8b-44ff-46f8-9613-75b73d206623` is active at 100 percent.
+
+The next full audit failed because 141 inventory records exceeded the endpoint's
+100-ID request limit. The client now submits batches of at most 100. All 141
+provider records matched D1 attempts already marked destroyed. Three HTTP client
+tests cover complete batching, empty inventory, and stopping on a failed batch.
+The audit from follow-up commit `9f29b9e` accepted both batches with zero reports.
+
+The new Containers Read token is visible in Cloudflare. At the last check, the
+GitHub repository `CLOUDFLARE_API_TOKEN` still had its August 26 update time.
+Its replacement remains an owner action; successful inventory reads so far do
+not prove use of the new restricted credential.
 
 The provider snapshot and exact baseline hashes are recorded in
 docs/evidence/sac-155/rollout.md. This is baseline and configuration evidence.

@@ -489,3 +489,191 @@ rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/cod
   ]
 }
 ```
+
+## Partial staging deployment and audit repair
+
+Staging attempt 2 uploaded the main commit but failed on the zone route lookup before attaching the Custom Domain. Production remains on its prior version. The follow-up checks route read access before upload and records provider and hostname read-backs independently.
+
+The inventory audit had mismatched shared credentials and then exceeded its 100-ID request limit. The shared credential was replaced in the queue Worker and both existing GitHub repository entries. Provider read-back confirmed identical backend modules, settings, and container configuration. The client now submits batches of at most 100 IDs. The following GitHub run used the real provider inventory; each accepted batch reported zero cleanup findings. The separate Containers Read API-token replacement is still pending in GitHub.
+
+```bash
+rtk proxy python3 - <<'PYREAD'
+import json,re,subprocess
+run='34329098195'
+state=json.loads(subprocess.check_output(['gh','run','view',run,'--repo','sachinkundu/deos','--json','url,headSha,status,conclusion'],text=True))
+log=subprocess.check_output(['gh','run','view',run,'--repo','sachinkundu/deos','--log'],text=True)
+state['acceptedBatches']=[json.loads(match.group(0)) for line in log.splitlines() if (match:=re.search(r'\{"version":1,"reported":\d+\}',line))]
+print(json.dumps(state,indent=2))
+PYREAD
+```
+
+```output
+{
+  "conclusion": "success",
+  "headSha": "9f29b9eb960bbfec9fbf7bbbaf76b707b31ae515",
+  "status": "completed",
+  "url": "https://github.com/sachinkundu/deos/actions/runs/34329098195",
+  "acceptedBatches": [
+    {
+      "version": 1,
+      "reported": 0
+    },
+    {
+      "version": 1,
+      "reported": 0
+    }
+  ]
+}
+```
+
+```bash
+rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/code/deos/.env
+```
+
+```output
+{
+  "production": {
+    "deploymentId": "f06ddb2c-2c23-4161-8bca-2f8a2fd8fe69",
+    "versions": [
+      {
+        "version_id": "a3e925cc-3b26-46d0-8fc5-b7602eb3f4d9",
+        "percentage": 100
+      }
+    ],
+    "workerModuleSha256": {
+      "worker.js": "01afa2e4187d2da2ea0228662a3d1d019606d24258ec9d6b30e7b29e37bf0492"
+    },
+    "sharedBindings": [
+      {
+        "bucket_name": "deos-sample-project-artifacts",
+        "name": "ARTIFACTS",
+        "type": "r2_bucket"
+      },
+      {
+        "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "name": "DB",
+        "type": "d1"
+      },
+      {
+        "environment": "production",
+        "name": "RETRY_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "entrypoint": "RouteAdmin",
+        "environment": "production",
+        "name": "ROUTE_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      }
+    ]
+  },
+  "staging": {
+    "deploymentId": "b26e755d-521c-4e84-9999-79e108d08fc9",
+    "versions": [
+      {
+        "version_id": "1d96d46f-9a14-4b58-9840-7923dd8b94c6",
+        "percentage": 100
+      }
+    ],
+    "bindings": [
+      {
+        "bucket_name": "deos-sample-project-artifacts",
+        "name": "ARTIFACTS",
+        "type": "r2_bucket"
+      },
+      {
+        "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "name": "DB",
+        "type": "d1"
+      },
+      {
+        "name": "PORTAL_CANONICAL_HOST",
+        "text": "deos-staging.voxdez.com",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SITE",
+        "text": "Staging",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SOURCE_BRANCH",
+        "text": "main",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SOURCE_SHA",
+        "text": "c02de5f3d3f0bb1825b5eec0e4dcbee9d8ea0840",
+        "type": "plain_text"
+      },
+      {
+        "environment": "production",
+        "name": "RETRY_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "entrypoint": "RouteAdmin",
+        "environment": "production",
+        "name": "ROUTE_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      }
+    ]
+  },
+  "portalDomains": [
+    {
+      "hostname": "deos.voxdez.com",
+      "service": "deos-workflow-portal",
+      "enabled": true,
+      "previews_enabled": false
+    }
+  ],
+  "releaseSha": "6018ea33d2bba472b717e6fb6a4a8554fef92207",
+  "githubEnvironments": [
+    {
+      "name": "staging",
+      "protectionTypes": [
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET",
+        "PORTAL_STAGING_CLOUDFLARE_API_TOKEN"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    },
+    {
+      "name": "production",
+      "protectionTypes": [
+        "required_reviewers",
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET",
+        "PORTAL_PRODUCTION_CLOUDFLARE_API_TOKEN"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    }
+  ]
+}
+```

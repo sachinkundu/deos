@@ -128,10 +128,22 @@ and the live checks remain pending.
 
 The hourly sandbox inventory audit uses the repository secret
 `CLOUDFLARE_API_TOKEN`. Replace its broad deployment token with an account token
-named **DEOS inventory read-only**. Use an **Entire Account** policy with only
+named **DEOS Inventory Cleanup**. Use an **Entire Account** policy with only
 **Containers Read** in the same account. Do not add zone or Worker permissions.
 Run the audit once to verify the replacement. The portal deployment tokens stay
 in their separate GitHub environments.
+
+The audit also uses a separate shared credential to submit inventory to the
+backend. It grants no Cloudflare API permissions. On 2026-09-09, both stored
+GitHub values failed authentication. The replacement is now installed as
+`CLEANUP_AUDIT_SECRET` on `deos-queue-consumer-ts` and under both existing
+GitHub repository names, `CLEANUP_AUDIT_SECRET` and `DEOS_CLEANUP_AUDIT_SECRET`.
+The current workflow reads the latter. An owner-only copy is in the ignored
+local `.env`. Replace these copies together if the audit credential is rotated.
+
+The inventory client submits at most 100 IDs per request, matching the backend
+contract. The full live inventory contains more than 100 records, including
+inactive containers; the backend checks its durable cleanup records for each ID.
 
 ## Provider instructions checked on 2026-09-09
 
