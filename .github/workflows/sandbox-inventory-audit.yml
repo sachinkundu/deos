@@ -37,7 +37,7 @@ jobs:
               redirect: 'error', signal: AbortSignal.timeout(20000),
             });
             const body = await response.json();
-            console.log(JSON.stringify({ endpoint: path.endsWith('/verify') ? 'token-verification' : path.includes('/dash/') ? 'dashboard-inventory' : 'application-inventory', tokenIdMatches: path.endsWith('/verify') ? body.result?.id === '421df085aabecd815291bfceaf0c5d27' : undefined, status: response.status, success: body.success,
+            console.log(JSON.stringify({ endpoint: path.endsWith('/verify') ? 'token-verification' : path.includes('/dash/') ? 'dashboard-inventory' : 'application-inventory', tokenId: path.endsWith('/verify') ? body.result?.id : undefined, tokenState: path.endsWith('/verify') ? body.result?.status : undefined, status: response.status, success: body.success,
               errorCodes: body.errors?.map(error => error.code) }));
           }
           JS
