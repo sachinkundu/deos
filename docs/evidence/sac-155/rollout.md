@@ -1005,3 +1005,13 @@ rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/cod
   ]
 }
 ```
+
+```bash
+rtk proxy gh run view 34335314618 --repo sachinkundu/deos --json conclusion,headSha,url,updatedAt
+```
+
+```output
+{"conclusion":"success","headSha":"f7c997276030dc1c5b5e7520d5227e89c78d6ed0","updatedAt":"2026-09-09T09:33:19Z","url":"https://github.com/sachinkundu/deos/actions/runs/34335314618"}
+```
+
+The owner updated the repository CLOUDFLARE_API_TOKEN at 2026-09-09T09:32:06Z. GitHub audit run 34335314618 then read provider inventory and submitted both batches successfully, with zero reports. Production run 34335399832 was dispatched for the exact staging-verified SHA f7c997276030dc1c5b5e7520d5227e89c78d6ed0. It reached the existing production required-reviewer gate; no promotion or production upload has run yet.

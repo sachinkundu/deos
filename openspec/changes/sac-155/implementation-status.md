@@ -2,7 +2,8 @@
 
 Planning PR #91, design PR #92, implementation PR #93, and rollout repair PRs #94
 and #95 are merged. Staging is live and verified from GitHub and the browser.
-The inventory credential cutover and protected production release remain incomplete.
+The updated inventory credential passes the real audit. The production release
+is prepared and waiting at GitHub's required-reviewer gate.
 
 ## Completed local slice
 
@@ -188,6 +189,17 @@ source SHA. Deployment `88ddcb13-3990-4922-8d61-5984dbbff380` serves version
 existing repository routes through staging's RouteAdmin binding. No route or
 workflow state was changed during that check.
 
+## Inventory cutover and production gate
+
+The owner updated the repository credential at `2026-09-09T09:32:06Z`. GitHub
+audit run `34335314618` then read Cloudflare inventory successfully and submitted
+both batches to the trusted audit endpoint. Each returned zero reports. No
+additional token permissions were needed.
+
+Production run `34335399832` selects the exact staging-verified commit
+`f7c997276030dc1c5b5e7520d5227e89c78d6ed0`. It is waiting for the configured
+production reviewer. No release promotion or production upload has run yet.
+
 The provider snapshots and exact baseline hashes are recorded in
-docs/evidence/sac-155/rollout.md. Inventory credential cutover, production release,
-and later main-only deployment proof remain pending.
+docs/evidence/sac-155/rollout.md. Production release and later main-only deployment
+proof remain pending.
