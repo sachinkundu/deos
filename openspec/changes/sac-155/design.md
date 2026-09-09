@@ -102,9 +102,9 @@ route, D1 database ID, and R2 bucket name with repository-owned staging
 constants. Only after that comparison passes does it run the fixed command
 `npx wrangler deploy --config portal/wrangler.jsonc --env staging`. GitHub CI
 declares the protected `staging` environment and receives only its
-staging-scoped Cloudflare token; neither the environment nor token name is a
+separately held staging Cloudflare token; neither the environment nor token name is a
 workflow input. The release job separately declares the protected `production`
-environment. A manual operator uses an equivalently staging-scoped token. The
+environment. A manual operator uses an separately held staging token. The
 fixed target preflight prevents that command from naming production even if an
 operator's token is broader than intended.
 
@@ -319,3 +319,23 @@ the shared D1 or R2 resources. If a production release fails, leave the current
 deployment active and retry after the failure is understood. Rollback selects a
 known-good commit through the same deliberate `release` workflow rather than a
 manual production Wrangler command.
+
+## Implementation decision approved on 2026-09-09
+
+Cloudflare API tokens support account and zone scopes, not an individual
+Worker scope for Workers Scripts Write. Separate GitHub environment secrets
+therefore do not make the staging token unable to edit production. The user
+accepted this limitation: protected environments and fixed target checks prevent
+accidental cross-deployment. They do not contain a compromised account token.
+This decision supersedes any stronger credential-isolation claim above.
+
+Provider contract: https://developers.cloudflare.com/fundamentals/api/how-to/create-via-api/
+
+The safe version endpoint contains deployment metadata only. Cloudflare Access
+protects its host; a deployment probe uses an Access service token allowed by
+the site's Access policy. The Worker still verifies the user's identity before
+all portal pages and data APIs. No data access is granted to the probe.
+
+Rollback uses a new main commit that reverts the unwanted change, then the same
+fast-forward release procedure. Selecting an older SHA directly is rejected by
+the release branch's fast-forward rule.

@@ -1,0 +1,43 @@
+name: Deploy portal staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'portal/**'
+      - 'src/**'
+      - 'scripts/*portal*.py'
+      - 'package*.json'
+      - '.github/workflows/portal-staging.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portal-staging
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: avrea-ubuntu-latest-2-vcpu
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: npm ci
+      - name: Deploy and verify staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_STAGING_CLOUDFLARE_API_TOKEN }}
+          PORTAL_ACCESS_CLIENT_ID: ${{ secrets.PORTAL_ACCESS_CLIENT_ID }}
+          PORTAL_ACCESS_CLIENT_SECRET: ${{ secrets.PORTAL_ACCESS_CLIENT_SECRET }}
+        run: python scripts/deploy_portal_staging.py

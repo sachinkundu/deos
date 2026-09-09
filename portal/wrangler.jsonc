@@ -5,43 +5,125 @@
   "workers_dev": false,
   "preview_urls": false,
   "compatibility_date": "2026-08-26",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "account_id": "c68856288112af7698f5be52ea94b96e",
   "observability": {
     "enabled": true,
-    "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true }
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true
+    }
   },
   "vars": {
     "ACCESS_TEAM_DOMAIN": "deos-voxdez.cloudflareaccess.com",
     "ACCESS_AUD": "c12828abda88ac73e394039f6e0b87a9bc5f2d78922463c37a72ccca55bedec7",
     "ALLOWED_EMAIL": "sachinkundu@gmail.com",
-    "OPENROUTER_SUPPORTED_MODELS": "deepseek/deepseek-v4-pro"
+    "OPENROUTER_SUPPORTED_MODELS": "deepseek/deepseek-v4-pro",
+    "PORTAL_SITE": "Production",
+    "PORTAL_CANONICAL_HOST": "deos.voxdez.com",
+    "PORTAL_SOURCE_BRANCH": "release",
+    "PORTAL_SOURCE_SHA": "unbuilt"
   },
   "secrets": {
-    "required": ["STAGE_RETRY_SECRET"]
+    "required": [
+      "STAGE_RETRY_SECRET"
+    ]
   },
-  "d1_databases": [{
-    "binding": "DB",
-    "database_name": "deos-sample-project",
-    "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2"
-  }],
-  "r2_buckets": [{
-    "binding": "ARTIFACTS",
-    "bucket_name": "deos-sample-project-artifacts"
-  }],
-  "services": [{
-    "binding": "ROUTE_ADMIN",
-    "service": "deos-queue-consumer-ts",
-    "entrypoint": "RouteAdmin"
-  }, {
-    "binding": "RETRY_ADMIN",
-    "service": "deos-queue-consumer-ts"
-  }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "deos-sample-project",
+      "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ARTIFACTS",
+      "bucket_name": "deos-sample-project-artifacts"
+    }
+  ],
+  "services": [
+    {
+      "binding": "ROUTE_ADMIN",
+      "service": "deos-queue-consumer-ts",
+      "entrypoint": "RouteAdmin"
+    },
+    {
+      "binding": "RETRY_ADMIN",
+      "service": "deos-queue-consumer-ts"
+    }
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
     "run_worker_first": true,
     "html_handling": "none"
   },
-  "routes": [{ "pattern": "deos.voxdez.com", "custom_domain": true }]
+  "routes": [
+    {
+      "pattern": "deos.voxdez.com",
+      "custom_domain": true
+    }
+  ],
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  },
+  "env": {
+    "staging": {
+      "vars": {
+        "ACCESS_TEAM_DOMAIN": "deos-voxdez.cloudflareaccess.com",
+        "ACCESS_AUD": "c12828abda88ac73e394039f6e0b87a9bc5f2d78922463c37a72ccca55bedec7",
+        "ALLOWED_EMAIL": "sachinkundu@gmail.com",
+        "OPENROUTER_SUPPORTED_MODELS": "deepseek/deepseek-v4-pro",
+        "PORTAL_SITE": "Staging",
+        "PORTAL_CANONICAL_HOST": "deos-staging.voxdez.com",
+        "PORTAL_SOURCE_BRANCH": "main",
+        "PORTAL_SOURCE_SHA": "unbuilt"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "deos-sample-project",
+          "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "ARTIFACTS",
+          "bucket_name": "deos-sample-project-artifacts"
+        }
+      ],
+      "services": [
+        {
+          "binding": "ROUTE_ADMIN",
+          "service": "deos-queue-consumer-ts",
+          "entrypoint": "RouteAdmin"
+        },
+        {
+          "binding": "RETRY_ADMIN",
+          "service": "deos-queue-consumer-ts"
+        }
+      ],
+      "secrets": {
+        "required": [
+          "STAGE_RETRY_SECRET"
+        ]
+      },
+      "name": "deos-workflow-portal-staging",
+      "routes": [
+        {
+          "pattern": "deos-staging.voxdez.com",
+          "custom_domain": true
+        }
+      ],
+      "workers_dev": false,
+      "preview_urls": false,
+      "version_metadata": {
+        "binding": "CF_VERSION_METADATA"
+      }
+    }
+  }
 }

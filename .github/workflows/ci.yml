@@ -28,7 +28,7 @@ jobs:
         run: python -m pip install --upgrade pytest ruff
 
       - name: Lint Python
-        run: ruff check src tests
+        run: ruff check src tests scripts/portal_release.py scripts/deploy_portal_staging.py scripts/release_portal.py
 
       - name: Run tests
         env:
@@ -83,3 +83,4 @@ jobs:
           npx wrangler deploy --dry-run --config wrangler.queue-consumer-ts.jsonc
           npx wrangler deploy --dry-run --config wrangler.jsonc
           npx wrangler deploy --dry-run --config portal/wrangler.jsonc
+          npx wrangler deploy --dry-run --config portal/wrangler.jsonc --env staging

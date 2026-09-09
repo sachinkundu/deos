@@ -986,7 +986,7 @@ function App() {
 
   return <div className="shell">
     <header className="topbar">
-      <div className="brand"><span className="brand-mark">D</span><div><strong>DEOS</strong><small>Workflow portal</small></div></div>
+      <div className="brand"><span className="brand-mark">D</span><div><strong>DEOS</strong><small>Workflow portal · {document.querySelector<HTMLMetaElement>('meta[name="deos-site"]')?.content ?? "Development"}</small></div></div>
       <div className="topbar-meta"><span className="secure-dot" />Access protected<a className="settings-nav" href="/"><Gear />Workflows</a><ThemeControl theme={theme} setTheme={setTheme} /></div>
     </header>
     {page === "workflow" && <aside className="rail">
