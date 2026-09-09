@@ -188,3 +188,9 @@ rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/cod
   ]
 }
 ```
+
+## Version-path Access application
+
+The owner created DEOS portal version checks and corrected its second hostname. Browser inspection of the saved configuration confirms deos.voxdez.com/api/version and deos-staging.voxdez.com/api/version. The attached Allow deployment probe policy uses Service Auth and one Include rule selecting the DEOS portal deployment probe service token.
+
+This is configuration evidence. Authentication from GitHub and live deployment checks remain pending. GitHub checks for implementation revision d87152d passed in both Python versions and TypeScript.

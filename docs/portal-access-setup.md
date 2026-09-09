@@ -45,8 +45,12 @@ public hostnames:
 
 | Subdomain | Domain | Path |
 | --- | --- | --- |
-| `deos` | `voxdez.com` | `/api/version` |
-| `deos-staging` | `voxdez.com` | `/api/version` |
+| `deos` | `voxdez.com` | `api/version` |
+| `deos-staging` | `voxdez.com` | `api/version` |
+
+The dashboard already shows the leading slash before the Path field. Enter
+`api/version` in the field. A blank path conflicts with the existing application
+for the whole hostname.
 
 Create a policy named **Allow deployment probe**. Set its action to
 **Service Auth**. Add an **Include** rule with selector **Service Token** and
@@ -65,9 +69,34 @@ source; Cloudflare cannot reveal a stored Worker secret. Do not rotate the
 production or backend secret to complete this setup.
 
 GitHub still needs separate deployment credentials in its two environments.
-Those credentials are distinct from the Access probe. No Access administration
-or API token management permission is needed for deployment. The accepted
-account scope limitation and the remaining release steps are documented in
+Those credentials are distinct from the Access probe. In Cloudflare's Account
+API tokens page, create two custom tokens, named **DEOS portal staging deploy**
+and **DEOS portal production deploy**. Use these permissions:
+
+| Scope | Permission | Access |
+| --- | --- | --- |
+| Account | Workers Scripts | Edit |
+| Account | Workers R2 Storage | Read |
+| Account | Account Settings | Read |
+| Zone | Zone | Read |
+
+Limit account resources to **Skundu@hey.com's Account** and zone resources to
+**voxdez.com**. Save each value directly as an environment secret in GitHub:
+
+| GitHub environment | Secret name |
+| --- | --- |
+| staging | `PORTAL_STAGING_CLOUDFLARE_API_TOKEN` |
+| production | `PORTAL_PRODUCTION_CLOUDFLARE_API_TOKEN` |
+
+Workers Scripts Edit supports uploads and Custom Domain attachment. The locked
+Wrangler version checks the existing R2 bucket when it first provisions the
+staging binding, so it needs R2 read access. The D1 binding already has its
+database ID and does not require provisioning. Account and zone reads support
+resource discovery. This permission set still needs a real deployment check.
+
+No Access administration or API token management permission is needed for
+deployment. Worker write access remains account-wide. The accepted scope
+limitation and remaining release steps are documented in
 [portal release](portal-release.md).
 
 ## Provider instructions checked on 2026-09-09
@@ -75,3 +104,7 @@ account scope limitation and the remaining release steps are documented in
 - [Self-hosted Access applications](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/)
 - [Service tokens](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/)
 - [Application paths and precedence](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/)
+- [GitHub Actions deployment credentials](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)
+- [Worker upload permissions](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/update/)
+- [Custom Domain permissions](https://developers.cloudflare.com/api/resources/workers/subresources/domains/methods/update/)
+- [R2 bucket read permissions](https://developers.cloudflare.com/api/resources/r2/subresources/buckets/methods/get/)

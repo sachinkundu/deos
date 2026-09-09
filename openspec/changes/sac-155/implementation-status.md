@@ -64,6 +64,10 @@ No Worker, route, workflow state, or shared data was changed.
 Production remains on its existing version. The owner added staging to the
 existing Access application. Browser inspection confirmed deos.voxdez.com,
 bettaview.voxdez.com, and deos-staging.voxdez.com under Allow Sachin only.
+The owner also created DEOS portal version checks. Browser inspection confirms
+deos.voxdez.com/api/version and deos-staging.voxdez.com/api/version, with the
+Service Auth policy limited to the DEOS portal deployment probe service token.
+This confirms configuration, not successful authentication from GitHub.
 Staging still needs the existing shared retry secret before live use. The current
 credential received HTTP 403 when creating the Access probe and reading API
 token management. The user will configure these resources in the dashboard;
