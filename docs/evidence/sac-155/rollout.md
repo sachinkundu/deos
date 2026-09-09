@@ -1189,3 +1189,185 @@ rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/cod
   ]
 }
 ```
+
+```bash
+rtk proxy gh run view 34337402715 --repo sachinkundu/deos --json conclusion,headSha,url,updatedAt
+```
+
+```output
+{"conclusion":"success","headSha":"4c9fbf51160735d270f8cf87e2e93327eb8b3291","updatedAt":"2026-09-09T09:56:08Z","url":"https://github.com/sachinkundu/deos/actions/runs/34337402715"}
+```
+
+```bash
+rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/code/deos/.env
+```
+
+```output
+{
+  "production": {
+    "deploymentId": "d7c12887-8982-41a1-9530-ec41a0aea84e",
+    "versions": [
+      {
+        "version_id": "8060f8e0-afca-45d0-bc29-c37e65918639",
+        "percentage": 100
+      }
+    ],
+    "workerModuleSha256": {
+      "worker.js": "d3f673dc9eb21225b0094f0d973529df2100935a1aa5d211f7b0a20a1ae33030"
+    },
+    "sourceMetadata": {
+      "PORTAL_CANONICAL_HOST": "deos.voxdez.com",
+      "PORTAL_SITE": "Production",
+      "PORTAL_SOURCE_BRANCH": "release",
+      "PORTAL_SOURCE_SHA": "f7c997276030dc1c5b5e7520d5227e89c78d6ed0"
+    },
+    "sharedBindings": [
+      {
+        "bucket_name": "deos-sample-project-artifacts",
+        "name": "ARTIFACTS",
+        "type": "r2_bucket"
+      },
+      {
+        "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "name": "DB",
+        "type": "d1"
+      },
+      {
+        "environment": "production",
+        "name": "RETRY_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "entrypoint": "RouteAdmin",
+        "environment": "production",
+        "name": "ROUTE_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      }
+    ]
+  },
+  "staging": {
+    "deploymentId": "17e573ab-2e61-463d-a6a1-24a5357aef82",
+    "versions": [
+      {
+        "version_id": "bd778c91-7216-4e69-b9a8-499d729f5edf",
+        "percentage": 100
+      }
+    ],
+    "bindings": [
+      {
+        "bucket_name": "deos-sample-project-artifacts",
+        "name": "ARTIFACTS",
+        "type": "r2_bucket"
+      },
+      {
+        "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "name": "DB",
+        "type": "d1"
+      },
+      {
+        "name": "PORTAL_CANONICAL_HOST",
+        "text": "deos-staging.voxdez.com",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SITE",
+        "text": "Staging",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SOURCE_BRANCH",
+        "text": "main",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SOURCE_SHA",
+        "text": "4c9fbf51160735d270f8cf87e2e93327eb8b3291",
+        "type": "plain_text"
+      },
+      {
+        "environment": "production",
+        "name": "RETRY_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "entrypoint": "RouteAdmin",
+        "environment": "production",
+        "name": "ROUTE_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      }
+    ]
+  },
+  "portalDomains": [
+    {
+      "hostname": "deos.voxdez.com",
+      "service": "deos-workflow-portal",
+      "enabled": true,
+      "previews_enabled": false
+    },
+    {
+      "hostname": "deos-staging.voxdez.com",
+      "service": "deos-workflow-portal-staging",
+      "enabled": true,
+      "previews_enabled": false
+    }
+  ],
+  "releaseSha": "f7c997276030dc1c5b5e7520d5227e89c78d6ed0",
+  "githubEnvironments": [
+    {
+      "name": "staging",
+      "protectionTypes": [
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET",
+        "PORTAL_STAGING_CLOUDFLARE_API_TOKEN"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    },
+    {
+      "name": "production",
+      "protectionTypes": [
+        "required_reviewers",
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET",
+        "PORTAL_PRODUCTION_CLOUDFLARE_API_TOKEN"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    }
+  ]
+}
+```
+
+Final isolation proof: main commit 4c9fbf51160735d270f8cf87e2e93327eb8b3291 triggered successful staging run 34337402715. Staging moved to bd778c91-7216-4e69-b9a8-499d729f5edf at 100 percent, deployment 17e573ab-2e61-463d-a6a1-24a5357aef82. Production retained release SHA f7c997276030dc1c5b5e7520d5227e89c78d6ed0, version 8060f8e0-afca-45d0-bc29-c37e65918639, deployment d7c12887-8982-41a1-9530-ec41a0aea84e, and the same Worker module hash. Both portals retain the same shared bindings. Browser screenshots are attached at https://github.com/sachinkundu/deos/pull/96#issuecomment-5599961193. All 13 implementation tasks now have live or local evidence as appropriate.
+
+Browser proof is retained in the repository record and in the PR discussion. Production and staging show distinct site labels and the same SAC-155 workflow run.
+
+![Production portal](https://github.com/user-attachments/assets/c4922fec-de81-4b1d-8dbc-8a677d2c0f79)
+
+![Staging portal](https://github.com/user-attachments/assets/45f43a7e-7ddb-487b-adc0-83a7aa5d4832)
+
+[Original screenshot attachment and context](https://github.com/sachinkundu/deos/pull/96#issuecomment-5599961193).

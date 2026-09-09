@@ -83,9 +83,9 @@ preflight checks prevent accidental target selection. Neither prevents a
 compromised account-scoped token from editing another Worker. This limitation
 was explicitly accepted on 2026-09-09.
 
-Staging and production are live. See the
-[implementation status](../openspec/changes/sac-155/implementation-status.md)
-for the remaining main-only staging isolation check.
+Staging and production are live. A later main-only update has also passed:
+staging moved forward while production kept its released commit and version.
+See the [completed rollout record](../openspec/changes/sac-155/implementation-status.md).
 
 ## Shared retry secret
 
