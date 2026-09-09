@@ -28,7 +28,7 @@ jobs:
         run: python -m pip install --upgrade pytest ruff
 
       - name: Lint Python
-        run: ruff check src tests scripts/portal_release.py scripts/deploy_portal_staging.py scripts/release_portal.py
+        run: ruff check src tests scripts/portal_release.py scripts/deploy_portal_staging.py scripts/release_portal.py scripts/inspect_portal_rollout.py
 
       - name: Run tests
         env:

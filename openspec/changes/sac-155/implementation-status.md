@@ -11,7 +11,7 @@ Safe `GET /api/version`, within the host Access perimeter, reports site, canonic
 SHA, and Cloudflare version metadata. The fixed deploy entrypoint supplies the checked-out source SHA. The checked-in
 placeholder is explicitly `unbuilt`.
 
-All 68 portal tests, 16 release tests (including real local Git promotion and
+All 69 portal tests, 16 release tests (including real local Git promotion and
 retry), Python lint, portal type-checking, both canonical portal builds, staging
 Wrangler dry-run, and strict OpenSpec validation pass.
 
@@ -39,8 +39,12 @@ Provider-enforced isolation would require a different design. The design now rec
 On 2026-09-09, production's active deployment was
 `99c7a7f8-b46c-47f6-9302-eff15191f94e`, with version
 `df20c143-b007-4da9-9b15-e54679d5a7ab` at 100 percent traffic.
-Its deployment message does not identify a source SHA. Establishing the exact
-source baseline remains open; do not initialize `release` from a guess.
+Its deployment message does not identify a source SHA. We reconstructed the
+source from main plus the four existing portal edits in the original checkout.
+The rebuilt Worker, JavaScript, and CSS match the live bytes by SHA-256.
+Commit `6018ea33d2bba472b717e6fb6a4a8554fef92207` preserves that baseline.
+The remote `release` branch now points to it. This branch creation did not deploy
+anything. The implementation branch includes the same baseline changes.
 
 The live bindings match the configuration:
 
@@ -48,12 +52,20 @@ The live bindings match the configuration:
 - R2: `deos-sample-project-artifacts`.
 - Services: `deos-queue-consumer-ts`, with `RouteAdmin` for `ROUTE_ADMIN`.
 
-GitHub has no deployment environments. A repository-wide
+GitHub now has staging and production environments. Both allow only the main
+branch. Production requires approval by sachinkundu. Both environments still
+need their deployment and probe secrets. A repository-wide
 `CLOUDFLARE_API_TOKEN` secret exists and the sandbox inventory audit uses it.
 Do not remove that secret until the unrelated audit has suitable read access.
 The existing CI workflow contains dry-run validation, not a production deploy.
 
-No production/release branches, secrets, environments, Workers, routes, Access settings,
-workflow states, or shared data were changed. Staging still needs Access
-protection and the shared retry secret before live use. No provider-originated
-or visual deployment proof has been claimed.
+No Worker, route, Access setting, workflow state, or shared data was changed.
+Production remains on its existing version. Staging still needs Access
+protection and the existing shared retry secret before live use. The current
+credential received HTTP 403 when creating the Access probe and reading API
+token management. The user will configure these resources in the dashboard;
+do not broaden the agent's API permissions. See docs/portal-access-setup.md.
+
+The provider snapshot and exact baseline hashes are recorded in
+docs/evidence/sac-155/rollout.md. This is baseline and configuration evidence.
+Live staging, release, and later main-only deployment proof remain pending.

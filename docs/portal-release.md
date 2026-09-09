@@ -36,6 +36,11 @@ staging, then release it normally. Older SHAs are not fast-forward promotions.
 
 ## Required provider setup before cutover
 
+The production baseline and GitHub environment protections are now in place.
+See [rollout evidence](evidence/sac-155/rollout.md). The owner will configure
+Cloudflare Access using the [dashboard steps](portal-access-setup.md), without
+granting the agent Access administration or API token management permissions.
+
 1. Establish the exact source of the currently active production bundle. The
    initial snapshot has no source SHA, so `main` must not be assumed equivalent.
    Initialize `release` at that verified commit without deploying it.

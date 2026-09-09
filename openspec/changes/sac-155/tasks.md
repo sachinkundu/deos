@@ -1,6 +1,6 @@
 ## 1. Deployment contracts
 
-- [ ] 1.1 Record the live production target, bindings, version, and source baseline; inspect the provider deployment contract.
+- [x] 1.1 Record the live production target, bindings, version, and source baseline; inspect the provider deployment contract.
 - [x] 1.2 Resolve credential isolation against Cloudflare's supported token scopes before enabling deployments.
 
 ## 2. Portal targets and identity
@@ -17,7 +17,7 @@
 
 ## 4. Live migration and evidence
 
-- [ ] 4.1 Initialize release at the verified production baseline without deploying production.
+- [x] 4.1 Initialize release at the verified production baseline without deploying production.
 - [ ] 4.2 Exercise the deployment path on the real staging Worker and capture shared-data and browser evidence.
 - [ ] 4.3 Complete credential cutover and run the deliberate no-feature-change production release with 100 percent version read-back.
 - [ ] 4.4 Prove a later main-only update changes staging while production stays on the released version.
