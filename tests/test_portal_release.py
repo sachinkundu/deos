@@ -74,6 +74,21 @@ def setup_deploy(monkeypatch):
         monkeypatch.setenv(name, "test")
     monkeypatch.setattr(release, "clean_checkout", lambda: SHA)
     monkeypatch.setattr(release, "check_ref", lambda *args: None)
+    monkeypatch.setattr(release, "check_route_access", lambda: None)
+
+
+def test_missing_route_permission_stops_before_build_or_upload(monkeypatch):
+    setup_deploy(monkeypatch)
+    calls = []
+
+    def denied():
+        raise ValueError("Cannot read voxdez.com Worker routes; check Workers Routes Read")
+
+    monkeypatch.setattr(release, "check_route_access", denied)
+    monkeypatch.setattr(release, "run", lambda *args, **kwargs: calls.append(args))
+    with pytest.raises(ValueError, match="Workers Routes Read"):
+        release.deploy("staging")
+    assert calls == []
 
 
 def test_failed_build_never_calls_wrangler(monkeypatch):
@@ -117,6 +132,30 @@ def test_production_rejects_manual_local_deploy(monkeypatch):
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     with pytest.raises(ValueError, match="manual release workflow"):
         release.deploy("production")
+
+
+def test_failed_hostname_read_keeps_uploaded_version_evidence(monkeypatch, capsys):
+    setup_deploy(monkeypatch)
+    calls = []
+
+    def run(*args, **kwargs):
+        calls.append(args)
+        if "wrangler" in args:
+            raise subprocess.CalledProcessError(1, args)
+
+    def unreachable(target):
+        raise OSError("Hostname has no DNS record")
+
+    monkeypatch.setattr(release, "run", run)
+    monkeypatch.setattr(release, "provider_deployment", lambda target: {"id": "uploaded-version"})
+    monkeypatch.setattr(release, "host_version", unreachable)
+    with pytest.raises(subprocess.CalledProcessError):
+        release.deploy("staging")
+    assert json.loads(capsys.readouterr().out) == {
+        "observedDeployment": {"id": "uploaded-version"},
+        "observedHostError": "OSError",
+    }
+    assert len([args for args in calls if "wrangler" in args]) == 1
 
 
 def test_promotion_rejects_non_sha_input_before_git(monkeypatch):
