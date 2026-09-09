@@ -96,3 +96,95 @@ The Worker hash compares a local Wrangler dry run with the script downloaded thr
 
 The updated implementation includes this baseline and passed 69 portal tests, 16 release tests, portal type-checking, both canonical portal builds, Python lint, and strict OpenSpec validation. Live staging and release verification remain pending.
 
+## Owner-managed Access setup
+
+The owner added staging to the existing DEOS Workflow Portal Access application. Browser inspection confirmed the displayed destinations deos.voxdez.com, bettaview.voxdez.com, and deos-staging.voxdez.com, with the existing Allow Sachin only policy. A configuration screenshot was captured in the Codex conversation.
+
+GitHub read-back confirms both staging and production have PORTAL_ACCESS_CLIENT_ID as an environment variable and PORTAL_ACCESS_CLIENT_SECRET as an environment secret. Only entry names were inspected; the secret values were not read or printed. The workflows now match this storage. The version-path Service Auth policy, deployment credentials, and staging retry secret remain pending.
+
+```bash
+rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/code/deos/.env
+```
+
+```output
+{
+  "production": {
+    "deploymentId": "99c7a7f8-b46c-47f6-9302-eff15191f94e",
+    "versions": [
+      {
+        "version_id": "df20c143-b007-4da9-9b15-e54679d5a7ab",
+        "percentage": 100
+      }
+    ],
+    "workerModuleSha256": {
+      "worker.js": "01afa2e4187d2da2ea0228662a3d1d019606d24258ec9d6b30e7b29e37bf0492"
+    },
+    "sharedBindings": [
+      {
+        "bucket_name": "deos-sample-project-artifacts",
+        "name": "ARTIFACTS",
+        "type": "r2_bucket"
+      },
+      {
+        "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "name": "DB",
+        "type": "d1"
+      },
+      {
+        "environment": "production",
+        "name": "RETRY_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "entrypoint": "RouteAdmin",
+        "environment": "production",
+        "name": "ROUTE_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      }
+    ]
+  },
+  "releaseSha": "6018ea33d2bba472b717e6fb6a4a8554fef92207",
+  "githubEnvironments": [
+    {
+      "name": "staging",
+      "protectionTypes": [
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    },
+    {
+      "name": "production",
+      "protectionTypes": [
+        "required_reviewers",
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    }
+  ]
+}
+```

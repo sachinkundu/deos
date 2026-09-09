@@ -53,15 +53,18 @@ The live bindings match the configuration:
 - Services: `deos-queue-consumer-ts`, with `RouteAdmin` for `ROUTE_ADMIN`.
 
 GitHub now has staging and production environments. Both allow only the main
-branch. Production requires approval by sachinkundu. Both environments still
-need their deployment and probe secrets. A repository-wide
+branch. Production requires approval by sachinkundu. Both environments now
+have the probe Client ID as a variable and Client Secret as a secret. The
+workflows read these entry types. Deployment tokens remain pending. A repository-wide
 `CLOUDFLARE_API_TOKEN` secret exists and the sandbox inventory audit uses it.
 Do not remove that secret until the unrelated audit has suitable read access.
 The existing CI workflow contains dry-run validation, not a production deploy.
 
-No Worker, route, Access setting, workflow state, or shared data was changed.
-Production remains on its existing version. Staging still needs Access
-protection and the existing shared retry secret before live use. The current
+No Worker, route, workflow state, or shared data was changed.
+Production remains on its existing version. The owner added staging to the
+existing Access application. Browser inspection confirmed deos.voxdez.com,
+bettaview.voxdez.com, and deos-staging.voxdez.com under Allow Sachin only.
+Staging still needs the existing shared retry secret before live use. The current
 credential received HTTP 403 when creating the Access probe and reading API
 token management. The user will configure these resources in the dashboard;
 do not broaden the agent's API permissions. See docs/portal-access-setup.md.

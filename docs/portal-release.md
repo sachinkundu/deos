@@ -57,7 +57,8 @@ granting the agent Access administration or API token management permissions.
    to workflows dispatched from `main`. Require a human reviewer for production.
    Store `PORTAL_STAGING_CLOUDFLARE_API_TOKEN` only in staging and
    `PORTAL_PRODUCTION_CLOUDFLARE_API_TOKEN` only in production. Store the probe's
-   `PORTAL_ACCESS_CLIENT_ID` and `PORTAL_ACCESS_CLIENT_SECRET` in each environment.
+   `PORTAL_ACCESS_CLIENT_ID` as a variable and `PORTAL_ACCESS_CLIENT_SECRET` as a
+   secret in each environment.
 5. Replace the repository-wide Cloudflare deployment token only after giving
    the existing sandbox inventory audit a suitable read-only token. Disable any
    external main-triggered production deploys. The existing repository CI only

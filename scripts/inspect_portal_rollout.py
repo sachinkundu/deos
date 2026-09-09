@@ -72,6 +72,7 @@ def main():
                     for p in github(path + "/deployment-branch-policies")["branch_policies"]
                 ],
                 "secretNames": [secret["name"] for secret in github(path + "/secrets")["secrets"]],
+                "variableNames": [var["name"] for var in github(path + "/variables")["variables"]],
             }
         )
     release = github("repos/sachinkundu/deos/git/ref/heads/release")["object"]["sha"]

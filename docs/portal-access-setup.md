@@ -27,12 +27,12 @@ choose a one-year duration. Generate it and save its Client ID and Client
 Secret in a password manager. Cloudflare displays the secret only once.
 
 Open [GitHub deployment environments](https://github.com/sachinkundu/deos/settings/environments).
-In each of **staging** and **production**, add these environment secrets:
+In each of **staging** and **production**, add these environment entries:
 
-| GitHub secret name | Cloudflare value |
-| --- | --- |
-| `PORTAL_ACCESS_CLIENT_ID` | Client ID |
-| `PORTAL_ACCESS_CLIENT_SECRET` | Client Secret |
+| GitHub name | Entry type | Cloudflare value |
+| --- | --- | --- |
+| `PORTAL_ACCESS_CLIENT_ID` | Variable | Client ID |
+| `PORTAL_ACCESS_CLIENT_SECRET` | Secret | Client Secret |
 
 Use the same pair in both environments. Enter the values directly in GitHub;
 do not paste them into chat or commit them.

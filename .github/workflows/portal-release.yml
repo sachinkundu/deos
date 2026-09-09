@@ -35,6 +35,6 @@ jobs:
         env:
           REVIEWED_SHA: ${{ inputs.reviewed_sha }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_PRODUCTION_CLOUDFLARE_API_TOKEN }}
-          PORTAL_ACCESS_CLIENT_ID: ${{ secrets.PORTAL_ACCESS_CLIENT_ID }}
+          PORTAL_ACCESS_CLIENT_ID: ${{ vars.PORTAL_ACCESS_CLIENT_ID }}
           PORTAL_ACCESS_CLIENT_SECRET: ${{ secrets.PORTAL_ACCESS_CLIENT_SECRET }}
         run: python scripts/release_portal.py
