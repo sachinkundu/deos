@@ -18,7 +18,6 @@ data contracts.
 flowchart TB
     M[main] --> SB[Portal build]
     CI[GitHub CI] --> SB
-    DW[DEOS workflow] --> SB
     OP[Operator] --> SB
     SB --> SD[Wrangler staging deploy]
     SD --> SW[Staging Worker]
@@ -60,6 +59,7 @@ flowchart TB
 - Add another D1 database, R2 bucket, or provider connection for staging.
 - Change portal schemas, stored records, or provider integration contracts.
 - Add feature flags or synchronize code between the two running Workers.
+- Add a new DEOS system action or give a DEOS agent Cloudflare credentials.
 - Redesign Cloudflare Access or portal authorization.
 
 ## Decisions
@@ -88,24 +88,38 @@ production are required to show the same data.
 
 ### Deploy `main` to staging with the normal build and Wrangler command
 
-All three allowed staging paths use the repository portal build followed by
-Wrangler with the staging target selected:
+The initial implementation supports two staging paths. Both use one
+repository-owned staging entrypoint:
 
 - GitHub CI may deploy after a change reaches `main`.
-- A DEOS workflow may request the same staging command for a selected `main`
-  commit.
 - An operator may check out `main` and run the same command manually with
   staging deploy access.
 
-The selected commit must be contained in `main`, and the build runs from that
-checkout. The deploy command names the repository-owned staging configuration;
-it does not accept a caller-supplied Worker name, domain, D1 ID, or R2 ID.
-Staging credentials are sufficient only for the staging Worker and route.
+The entrypoint accepts no target or resource arguments. It verifies that the
+selected commit is contained in `main`, runs `npm run portal:build`, parses the
+staging environment from `portal/wrangler.jsonc`, and compares its Worker name,
+route, D1 database ID, and R2 bucket name with repository-owned staging
+constants. Only after that comparison passes does it run the fixed command
+`npx wrangler deploy --config portal/wrangler.jsonc --env staging`. GitHub CI
+declares the protected `staging` environment and receives only its
+staging-scoped Cloudflare token; neither the environment nor token name is a
+workflow input. The release job separately declares the protected `production`
+environment. A manual operator uses an equivalently staging-scoped token. The
+fixed target preflight prevents that command from naming production even if an
+operator's token is broader than intended.
+
+The approved specification permits, but does not require, a DEOS workflow as a
+staging path. The current DEOS architecture has no deployment system action,
+and its agent Sandboxes have no provider credentials, so this change does not
+claim or add that path. Adding it later requires a separately designed trusted
+system action that dispatches the fixed GitHub staging workflow through the
+trusted GitHub adapter. That workflow invokes the same staging entrypoint; the
+DEOS agent Sandbox does not receive GitHub or Cloudflare credentials.
 
 There is no separate notion of an untrusted initiator or attestation issuer in
-this design. A staging deployment is an ordinary authorized CI, DEOS, or
-operator action. Build output, standard test results, the Git SHA, Wrangler
-output, and live host read-back provide the operational record.
+this design. A staging deployment is an ordinary authorized CI or operator
+action. Build output, standard test results, the Git SHA, Wrangler output, and
+live host read-back provide the operational record.
 
 Allowing free-form Wrangler target arguments was rejected because a mistaken
 target could overwrite production. Rebuilding an independent artifact service
@@ -179,9 +193,10 @@ alone does not prove that either site was updated.
 
 1. A commit reaches `main`, or an allowed operator selects a commit contained
    in `main`.
-2. GitHub CI, a DEOS workflow, or the operator checks out that commit and runs
-   the portal build and checks.
-3. The path runs Wrangler with only the staging target and staging credential.
+2. GitHub CI or the operator checks out that commit and runs the fixed staging
+   entrypoint.
+3. The entrypoint validates the checked-in staging resource tuple, builds the
+   portal, and runs Wrangler with only the staging target and credential.
 4. Wrangler updates the staging Worker; no production command is invoked.
 5. The path reads `deos-staging.voxdez.com` and verifies `Staging`, the selected
    source SHA, and the active provider version.
@@ -213,7 +228,7 @@ The release uses only deployment configuration and runtime metadata:
 
 | Field | Staging value | Production value | Purpose |
 | --- | --- | --- | --- |
-| `site` | `staging` | `production` | Selects the visible environment label |
+| `site` | `Staging` | `Production` | Exact runtime value and visible environment label |
 | `canonicalHost` | `deos-staging.voxdez.com` | `deos.voxdez.com` | Fixed host validation |
 | `sourceBranch` | `main` | `release` | Branch allowed to feed the target |
 | `sourceSha` | Selected `main` SHA | Current `release` SHA | Live deployment read-back |
@@ -234,7 +249,9 @@ plus host read-back identify what is active.
 | Staging build or checks fail | Do not deploy staging; production is unchanged. |
 | Staging Wrangler command fails | Report the failed staging run and do not invoke production. |
 | Staging host reports the wrong label, SHA, or version | Mark staging verification failed and investigate the staging target; production is unchanged. |
-| A staging path selects the production Worker, route, or credential | Configuration validation fails before Wrangler runs. |
+| Staging config names a production Worker, route, D1 ID, or R2 bucket | The fixed entrypoint's resource-tuple comparison fails before Wrangler runs. |
+| A staging CI job requests a production environment or secret | Workflow configuration review fails; the job declares only the protected `staging` environment and accepts no environment or secret input. |
+| A DEOS workflow requests staging deployment | No deployment occurs because this change adds no DEOS deployment system action; use GitHub CI or the manual staging entrypoint. |
 | Release candidate is not on `main` or is not a fast-forward from `release` | Stop without moving `release` or deploying production. |
 | Two release requests overlap | The production concurrency group runs one and queues the other; the queued run rechecks branch state. |
 | `release` moves but a later build or check fails | Keep current production active; retry the workflow from the same `release` head after fixing the failure. |
@@ -277,13 +294,24 @@ plus host read-back identify what is active.
    shared bindings. Deploy `main` with Wrangler and verify the host, label,
    source SHA, shared data, and provider links.
 3. Add the manually dispatched GitHub release workflow and its production-only
-   environment credential. Validate branch, checkout, target, concurrency,
-   failure, and read-back behavior on a real non-production Cloudflare target.
-4. Run a no-feature-change release through `release`. Confirm that production
+   environment credential. Exercise the shared build, configuration preflight,
+   Wrangler, and live read-back behavior against the real staging Worker. Lint
+   and review the release workflow's branch, checkout, fixed target, and
+   concurrency declarations without retargeting it. Its actual production-only
+   checks are first exercised by the no-feature-change release in step 5, not
+   against a different target.
+4. Remove or disable every existing `main`-triggered production deployment and
+   any general-purpose production credential. Point the fixed production
+   target at the existing production Worker, `deos.voxdez.com`, and the shared
+   binding IDs. Make the protected GitHub production environment credential
+   available only to the manual release workflow, and verify that staging
+   credentials cannot edit the production Worker or route. This cutover changes
+   who may deploy production; it does not replace the active version.
+5. Run a no-feature-change release through `release`. Confirm that production
    remains available during the run, reaches 100 percent traffic on the
    reported version, shows `Production`, and continues to use the same shared
    data. Capture real command output and sanitized browser evidence.
-5. Confirm that a later `main`-only change updates staging through an allowed
+6. Confirm that a later `main`-only change updates staging through an allowed
    path and does not change production.
 
 If the staging rollout fails, remove only its route and Worker; do not change
