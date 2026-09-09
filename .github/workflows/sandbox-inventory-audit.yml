@@ -23,8 +23,33 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CONTAINER_APPLICATION_ID: ${{ secrets.CLOUDFLARE_CONTAINER_APPLICATION_ID }}
         run: npx wrangler containers instances "$CONTAINER_APPLICATION_ID" --json > sandbox-inventory.json
-      - name: Submit inventory to trusted audit endpoint
+      - name: Check audit authentication without changing cleanup state
         env:
           DEOS_CLEANUP_AUDIT_URL: ${{ secrets.DEOS_CLEANUP_AUDIT_URL }}
-          DEOS_CLEANUP_AUDIT_SECRET: ${{ secrets.CLEANUP_AUDIT_SECRET }}
-        run: node scripts/audit-sandbox-inventory.mjs < sandbox-inventory.json
+          CANONICAL_AUDIT_SECRET: ${{ secrets.CLEANUP_AUDIT_SECRET }}
+          LEGACY_AUDIT_SECRET: ${{ secrets.DEOS_CLEANUP_AUDIT_SECRET }}
+        run: |
+          node --input-type=module <<'JS'
+          const endpoint = 'https://deos-queue-consumer-ts.skundu.workers.dev/cleanup-audit';
+          console.log(JSON.stringify({ configuredEndpointMatchesQueueWorker: process.env.DEOS_CLEANUP_AUDIT_URL === endpoint }));
+          for (const name of ['CANONICAL_AUDIT_SECRET', 'LEGACY_AUDIT_SECRET']) {
+            const secret = process.env[name];
+            if (!secret) {
+              console.log(JSON.stringify({ credential: name, present: false }));
+              continue;
+            }
+            try {
+              const response = await fetch(endpoint, {
+                method: 'POST', redirect: 'error', signal: AbortSignal.timeout(20000),
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` },
+                body: '{}',
+              });
+              const body = await response.json().catch(() => ({}));
+              console.log(JSON.stringify({ credential: name, status: response.status,
+                authenticated: response.status === 400 && body.error === 'invalid_inventory' }));
+            } catch {
+              console.log(JSON.stringify({ credential: name, requestFailed: true }));
+              process.exitCode = 1;
+            }
+          }
+          JS

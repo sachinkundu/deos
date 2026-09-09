@@ -74,12 +74,14 @@ Use these permissions:
 | Account | Workers Scripts | Edit |
 | Account | Workers R2 Storage | Read |
 | Zone | Zone | Read |
+| Zone | Workers Routes | Read |
 
 Create **two separate permission policies** in each token:
 
 1. Choose **Entire Account** within **Skundu@hey.com's Account**. Select only
    **Workers Scripts Write** and **Workers R2 Storage Read**.
-2. Choose **Specified Domains**, then **voxdez.com**. Select only **Zone Read**.
+2. Choose **Specified Domains**, then **voxdez.com**. Select **Zone Read** and
+   **Workers Routes Read**.
 
 Do not put the Worker or R2 permissions in the domain policy. The dashboard can
 retain them as "Other selected permissions" after a scope change, but they do
@@ -100,7 +102,12 @@ Workers Scripts Edit supports uploads and Custom Domain attachment. The locked
 Wrangler version checks the existing R2 bucket when it first provisions the
 staging binding, so it needs R2 read access. The D1 binding already has its
 database ID and does not require provisioning. Zone read access supports zone
-discovery. Account Settings Read is not required: the configured `account_id`
+discovery. Workers Routes Read lets Wrangler check whether a route is already
+assigned to another Worker before it attaches the Custom Domain. This check
+also runs when there are no ordinary Worker routes to create. The second
+staging attempt uploaded the Worker but stopped at this route check because
+the token lacked that read permission. It did not attach the staging hostname.
+Account Settings Read is not required: the configured `account_id`
 lets Wrangler skip account discovery. The Worker account-settings endpoint also
 accepts Workers Scripts Write, so it does not require a separate account-settings
 grant. This permission set still needs a real deployment check.
@@ -114,7 +121,8 @@ The shared `STAGE_RETRY_SECRET` was replaced with owner approval on 2026-09-09.
 The backend, production portal, and staging placeholder now hold the same
 replacement. A private copy is saved in the ignored local `.env`. No copy is
 needed in GitHub. See the [rotation procedure](portal-release.md#shared-retry-secret).
-Staging still awaits its first application deployment from main.
+Staging has received its first application upload from main. Hostname attachment
+and the live checks remain pending.
 
 ## Inventory audit credential
 
@@ -133,5 +141,6 @@ in their separate GitHub environments.
 - [GitHub Actions deployment credentials](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)
 - [Worker upload permissions](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/update/)
 - [Custom Domain permissions](https://developers.cloudflare.com/api/resources/workers/subresources/domains/methods/update/)
+- [Workers route list permissions](https://developers.cloudflare.com/api/resources/workers/subresources/routes/methods/list/)
 - [R2 bucket read permissions](https://developers.cloudflare.com/api/resources/r2/subresources/buckets/methods/get/)
 - [Worker account-settings permissions](https://developers.cloudflare.com/api/resources/workers/subresources/account_settings/methods/get/)
