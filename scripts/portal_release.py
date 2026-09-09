@@ -161,6 +161,7 @@ def host_version(target):
             "CF-Access-Client-Id": os.environ["PORTAL_ACCESS_CLIENT_ID"],
             "CF-Access-Client-Secret": os.environ["PORTAL_ACCESS_CLIENT_SECRET"],
             "Accept": "application/json",
+            "User-Agent": "DEOS-Portal-Release/1.0",
         },
     )
     # Never forward Access credentials through a redirect to a different host.

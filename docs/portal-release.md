@@ -83,8 +83,9 @@ preflight checks prevent accidental target selection. Neither prevents a
 compromised account-scoped token from editing another Worker. This limitation
 was explicitly accepted on 2026-09-09.
 
-The initial rollout remains pending. Do not describe local tests or dry runs as
-live deployment proof.
+Staging is live. The initial production release remains pending. See the
+[implementation status](../openspec/changes/sac-155/implementation-status.md)
+for the current verification and credential cutover work.
 
 ## Shared retry secret
 
@@ -109,8 +110,8 @@ That script updates only the backend and production copies; staging must also
 receive the same value if it changes during future backend maintenance.
 
 The owner approved this rotation on 2026-09-09. All three copies are installed.
-The staging Worker is a placeholder with no public targets or data bindings.
-Its first application deployment still requires the main-only staging workflow.
+The staging application has since been deployed through the main-only workflow,
+with the same data and service bindings as production.
 
 ## Primary contracts
 
