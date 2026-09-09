@@ -1,8 +1,8 @@
 # Implementation status
 
-Planning PR #91, design PR #92, implementation PR #93, and rollout repair PR #94
-are merged. Staging is live. Its automated version check, the inventory credential
-cutover, and the protected production release remain incomplete.
+Planning PR #91, design PR #92, implementation PR #93, and rollout repair PRs #94
+and #95 are merged. Staging is live and verified from GitHub and the browser.
+The inventory credential cutover and protected production release remain incomplete.
 
 ## Completed local slice
 
@@ -175,6 +175,19 @@ However, GitHub's repository secret currently verifies as the production
 deployment token. The owner must replace that repository secret with the
 inventory token value. The environment deployment secrets stay as they are.
 
+## Successful staging verification
+
+PR #95 merged as `f7c997276030dc1c5b5e7520d5227e89c78d6ed0`. GitHub run
+`34332992168` then passed the full deployment and authenticated host verification.
+The existing Access credential worked with the explicit client signature; no
+Cloudflare security setting or Access secret changed.
+
+The host reports Staging, deos-staging.voxdez.com, branch main, and that exact
+source SHA. Deployment `88ddcb13-3990-4922-8d61-5984dbbff380` serves version
+`b5e10830-0f34-4e20-8f40-071a4114cb29` at 100 percent. The browser also reads the
+existing repository routes through staging's RouteAdmin binding. No route or
+workflow state was changed during that check.
+
 The provider snapshots and exact baseline hashes are recorded in
-docs/evidence/sac-155/rollout.md. Authenticated staging verification, release,
+docs/evidence/sac-155/rollout.md. Inventory credential cutover, production release,
 and later main-only deployment proof remain pending.

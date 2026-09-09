@@ -18,7 +18,7 @@
 ## 4. Live migration and evidence
 
 - [x] 4.1 Initialize release at the verified production baseline without deploying production.
-- [ ] 4.2 Exercise the deployment path on the real staging Worker and capture shared-data and browser evidence.
+- [x] 4.2 Exercise the deployment path on the real staging Worker and capture shared-data and browser evidence.
 - [ ] 4.3 Complete credential cutover and run the deliberate no-feature-change production release with 100 percent version read-back.
 - [ ] 4.4 Prove a later main-only update changes staging while production stays on the released version.
 - [ ] 4.5 Package implementation, checks, and remaining rollout status in one pull request.
