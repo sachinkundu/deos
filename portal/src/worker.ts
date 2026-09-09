@@ -1,5 +1,6 @@
 import { errorDetails, errorText } from "../../src/error-details.ts";
 import { verifyAccess } from "./auth.ts";
+import { deploymentMetadata, labelPortalHtml, type PortalDeploymentEnv } from "./deployment.ts";
 import { PortalIssueSearchHistoryStore, PortalReadStore } from "./model.ts";
 import {
   TranscriptNotFoundError,
@@ -33,7 +34,7 @@ const securityHeaders = {
 
 const json = (status: number, body: unknown): Response => Response.json(body, { status, headers: securityHeaders });
 
-type PortalRuntimeEnv = Pick<Env, "DB" | "ARTIFACTS" | "ASSETS"> & {
+type PortalRuntimeEnv = Pick<Env, "DB" | "ARTIFACTS" | "ASSETS"> & PortalDeploymentEnv & {
   ACCESS_TEAM_DOMAIN: string;
   ACCESS_AUD: string;
   ALLOWED_EMAIL: string;
@@ -131,6 +132,11 @@ export const routePortalRequest = async (
   env: PortalRuntimeEnv,
   authenticate: typeof verifyAccess = verifyAccess,
 ): Promise<Response> => {
+  const url = new URL(request.url);
+  if (url.pathname === "/api/version") {
+    if (request.method !== "GET") return json(405, { error: "method_not_allowed" });
+    return json(200, deploymentMetadata(env));
+  }
   let identity: { email: string };
   try {
     identity = await authenticate(request.headers.get("CF-Access-Jwt-Assertion"), {
@@ -142,7 +148,6 @@ export const routePortalRequest = async (
     const message = errorText(error);
     return json(message === "forbidden" ? 403 : 401, { error: message === "authentication unavailable" ? "authentication_unavailable" : "unauthorized" });
   }
-  const url = new URL(request.url);
   const detailPage = url.pathname.match(/^\/failure-detail\/([0-9a-f-]{36})$/i);
   if (detailPage !== null && request.method === "GET") {
     const escape = (text: string): string => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -177,6 +182,11 @@ export const routePortalRequest = async (
     const response = await env.ASSETS.fetch(new Request(assetUrl, request));
     const headers = new Headers(response.headers);
     for (const [key, value] of Object.entries(securityHeaders)) headers.set(key, value);
+    if (request.method === "GET" && response.ok && headers.get("Content-Type")?.includes("text/html")) {
+      headers.delete("Content-Length");
+      headers.delete("ETag");
+      return new Response(labelPortalHtml(await response.text(), env), { status: response.status, headers });
+    }
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   }
   const store = new PortalReadStore(env.DB);

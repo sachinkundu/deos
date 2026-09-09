@@ -1,0 +1,40 @@
+name: Release portal production
+
+on:
+  workflow_dispatch:
+    inputs:
+      reviewed_sha:
+        description: Full SHA of the main commit reviewed on staging
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: portal-production
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: avrea-ubuntu-latest-2-vcpu
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Promote, build, deploy, and verify release
+        env:
+          REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_PRODUCTION_CLOUDFLARE_API_TOKEN }}
+          PORTAL_ACCESS_CLIENT_ID: ${{ vars.PORTAL_ACCESS_CLIENT_ID }}
+          PORTAL_ACCESS_CLIENT_SECRET: ${{ secrets.PORTAL_ACCESS_CLIENT_SECRET }}
+        run: python scripts/release_portal.py

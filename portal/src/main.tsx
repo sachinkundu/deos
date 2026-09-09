@@ -38,7 +38,9 @@ import {
   isDesignStageWorkflow,
   latestPhaseId,
   authorVisitStatus,
+  reviewVisitStatus,
   isDesignAuthorVisit,
+  isPlanningAuthorVisit,
   designSubstepForNode,
   phaseDisplayStatus,
   phaseForVisit,
@@ -354,7 +356,7 @@ function TraceabilityWorkflowMap({
   const designVisits = phases.find((phase) => phase.id === "design")?.visits as Visit[] | undefined ?? [];
   const planningAuthorVisit = latestVisitFor(
     planningVisits,
-    (visit) => planningSubstepForNode(visit.nodeId) === "planning_author",
+    isPlanningAuthorVisit,
   );
   const selfReviewVisit = latestVisitFor(
     planningVisits,
@@ -371,10 +373,12 @@ function TraceabilityWorkflowMap({
   const designProduct = projection.workProducts.design;
   const planningAuthorStatus = authorVisitStatus(planningAuthorVisit, projection.run.status);
   const selfReviewStatus = authorVisitStatus(selfReviewVisit, projection.run.status);
-  const independentReviewStatus = authorVisitStatus(independentReviewVisit, projection.run.status);
+  const planningRevision = latestVisitFor(planningVisits, visit => visit.nodeId === "planning_revision_author");
+  const designRevision = latestVisitFor(designVisits, visit => visit.nodeId === "design_revision_author");
+  const independentReviewStatus = reviewVisitStatus(independentReviewVisit, projection.run.status, planningRevision);
   const designAuthorStatus = authorVisitStatus(designAuthorVisit, projection.run.status);
   const designSelfReviewStatus = authorVisitStatus(designSelfReviewVisit, projection.run.status);
-  const designIndependentReviewStatus = authorVisitStatus(designIndependentReviewVisit, projection.run.status);
+  const designIndependentReviewStatus = reviewVisitStatus(designIndependentReviewVisit, projection.run.status, designRevision);
   const designSteps = [
     { id: "design_author", label: "Author", visit: designAuthorVisit, status: designAuthorStatus, icon: <UserCircle /> },
     { id: "design_self_review", label: "Self-review", visit: designSelfReviewVisit, status: designSelfReviewStatus, icon: <CheckCircle /> },
@@ -400,10 +404,17 @@ function TraceabilityWorkflowMap({
     { id: "self_review", label: "Self-review", visit: selfReviewVisit, status: selfReviewStatus, icon: <CheckCircle /> },
     { id: "independent_review", label: "Independent review", visit: independentReviewVisit, status: independentReviewStatus, icon: <Eye /> },
   ];
-  const renderStep = (step: typeof planningSteps[number]) => <button key={step.id} type="button" className={`phase-substep ${step.status === "In progress" ? "is-breathing" : ""} ${expandedSubstep === step.id ? "selected" : ""}`} aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
+  const renderStep = (step: typeof planningSteps[number]) => <div key={step.id} className={`phase-substep agent-step ${step.status === "In progress" ? "is-breathing" : ""} ${expandedSubstep === step.id ? "selected" : ""}`}>
+    <button type="button" className="agent-step-heading" aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
     <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
+    </button>
+    <div className="agent-step-actions">
     <span className={`substep-status ${workflowStatusTone(step.status)}`}>{step.status}</span>
-  </button>;
+    {step.visit?.attempts.filter(attempt => attempt.transcriptAvailable).map(attempt => <button key={attempt.id} type="button" className="agent-transcript-button" onClick={() => onOpenTranscript(attempt.id)} aria-label={`View ${step.label.toLowerCase()} transcript${step.visit!.attempts.length > 1 ? ` · attempt ${step.visit!.attempts.indexOf(attempt) + 1}` : ""}`}>
+      View transcript{step.visit!.attempts.length > 1 ? ` · attempt ${step.visit!.attempts.indexOf(attempt) + 1}` : ""}
+    </button>)}
+    </div>
+  </div>;
   const renderPhaseSteps = (label: string, steps: typeof planningSteps) => <div className="phase-drill" aria-label={`${label} details`}>
     <div className="author-review-row">
       {renderStep(steps[0])}
@@ -432,7 +443,7 @@ function TraceabilityWorkflowMap({
         <svg className="review-connectors" aria-hidden="true"><defs>{["complete", "active", "upcoming"].map(tone => <marker key={tone} id={`review-arrow-${tone}`} className={tone} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>)}</defs>{reviewPaths.map(edge => {
           const phase = phases.find(phase => phase.id === edge.kind);
           const complete = phase && phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId) === "Complete";
-          const tone = complete ? "complete" : edge.kind === reviewPhase ? "active" : "upcoming";
+          const tone = complete ? "complete" : activeGate && edge.kind === reviewPhase ? "active" : "upcoming";
           return <path key={edge.kind} d={edge.path} className={tone} markerEnd={`url(#review-arrow-${tone})`} />;
         })}</svg>
         {phases.filter((phase) => phase.visits.length > 0 || phase.id !== "stopped").map((phase, index) => {
@@ -986,7 +997,7 @@ function App() {
 
   return <div className="shell">
     <header className="topbar">
-      <div className="brand"><span className="brand-mark">D</span><div><strong>DEOS</strong><small>Workflow portal</small></div></div>
+      <div className="brand"><span className="brand-mark">D</span><div><strong>DEOS</strong><small>Workflow portal · {document.querySelector<HTMLMetaElement>('meta[name="deos-site"]')?.content ?? "Development"}</small></div></div>
       <div className="topbar-meta"><span className="secure-dot" />Access protected<a className="settings-nav" href="/"><Gear />Workflows</a><ThemeControl theme={theme} setTheme={setTheme} /></div>
     </header>
     {page === "workflow" && <aside className="rail">

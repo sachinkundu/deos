@@ -140,6 +140,15 @@ export const authorVisitStatus = (
   return visit.leftAt === null && !terminal ? "In progress" : "Complete";
 };
 
+export const reviewVisitStatus = (
+  visit: (NonNullable<Parameters<typeof authorVisitStatus>[0]> & { sequence: number }) | null,
+  runStatus: string,
+  revision: { sequence: number } | null,
+): ReturnType<typeof authorVisitStatus> => {
+  if (revision !== null && (visit === null || visit.sequence < revision.sequence)) return "Upcoming";
+  return authorVisitStatus(visit, runStatus);
+};
+
 export const isPlanningAuthorVisit = (visit: Pick<PhaseVisitLike, "nodeId">): boolean => [
   "planning_author",
   "planning_self_repair",
