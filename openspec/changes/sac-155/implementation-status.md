@@ -1,10 +1,10 @@
 # Implementation status
 
-Planning PR #91, design PR #92, implementation PR #93, and rollout repair PRs #94
-and #95 are merged. Staging is live and verified from GitHub and the browser.
-The updated inventory credential passes the real audit. The production release
-has passed its protected GitHub workflow and live verification. The later
-main-only staging update remains to be proved.
+SAC-155 is complete. Planning PR #91, design PR #92, implementation PR #93, and
+rollout PRs #94–96 are merged. Both portals are live and verified from GitHub,
+Cloudflare, and the browser. The inventory audit passes with the updated
+credential. A later main-only change updated staging while production kept its
+released commit, version, and deployment.
 
 ## Completed local slice
 
@@ -209,5 +209,26 @@ and version. The browser shows Production in the title and shell and continues
 to load the same SAC-155 run. D1, R2, and service bindings match staging.
 
 The provider snapshots and exact baseline hashes are recorded in
-docs/evidence/sac-155/rollout.md. The portal README provides a later main-only
-change for the final staging isolation check. It does not alter application code.
+docs/evidence/sac-155/rollout.md.
+
+## Completed staging isolation check
+
+PR #96 merged as `4c9fbf51160735d270f8cf87e2e93327eb8b3291`. Its main push started
+staging run `34337402715`, which passed deployment and authenticated host checks.
+Staging now serves that SHA as version `bd778c91-7216-4e69-b9a8-499d729f5edf` at
+100 percent, deployment `17e573ab-2e61-463d-a6a1-24a5357aef82`.
+
+Production still serves release SHA `f7c997276030dc1c5b5e7520d5227e89c78d6ed0`,
+version `8060f8e0-afca-45d0-bc29-c37e65918639`, and deployment
+`d7c12887-8982-41a1-9530-ec41a0aea84e`, at 100 percent. Its Worker module hash is
+unchanged. Both portals retain the same D1, R2, and service bindings. Backend
+and BettaView deployment IDs also match their before-state.
+
+The proof update added a portal README and production metadata to the read-only
+inspector. It did not add a user feature or change shared data. Screenshots of
+both sites are attached to [PR #96](https://github.com/sachinkundu/deos/pull/96#issuecomment-5599961193).
+All 13 implementation tasks are complete. No fake ingress was used as provider
+proof; the deployment, inventory, hostname, and browser checks used real services.
+The approved requirements are synced to the main portal-release-flow spec.
+Planning files stay at their existing paths because the completed workflow's
+portal links point to those paths on main.
