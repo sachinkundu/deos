@@ -26,5 +26,5 @@ jobs:
       - name: Submit inventory to trusted audit endpoint
         env:
           DEOS_CLEANUP_AUDIT_URL: ${{ secrets.DEOS_CLEANUP_AUDIT_URL }}
-          DEOS_CLEANUP_AUDIT_SECRET: ${{ secrets.DEOS_CLEANUP_AUDIT_SECRET }}
+          DEOS_CLEANUP_AUDIT_SECRET: ${{ secrets.CLEANUP_AUDIT_SECRET }}
         run: node scripts/audit-sandbox-inventory.mjs < sandbox-inventory.json
