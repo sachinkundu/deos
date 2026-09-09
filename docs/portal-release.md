@@ -36,10 +36,10 @@ staging, then release it normally. Older SHAs are not fast-forward promotions.
 
 ## Required provider setup before cutover
 
-The production baseline and GitHub environment protections are now in place.
-See [rollout evidence](evidence/sac-155/rollout.md). The owner will configure
-Cloudflare Access using the [dashboard steps](portal-access-setup.md), without
-granting the agent Access administration or API token management permissions.
+The production baseline, Access setup, and GitHub environment protections are
+in place. The first protected production release has passed. See
+[rollout evidence](evidence/sac-155/rollout.md) and the
+[dashboard setup steps](portal-access-setup.md).
 
 1. Establish the exact source of the currently active production bundle. The
    initial snapshot has no source SHA, so `main` must not be assumed equivalent.
@@ -83,9 +83,9 @@ preflight checks prevent accidental target selection. Neither prevents a
 compromised account-scoped token from editing another Worker. This limitation
 was explicitly accepted on 2026-09-09.
 
-Staging is live. The initial production release remains pending. See the
+Staging and production are live. See the
 [implementation status](../openspec/changes/sac-155/implementation-status.md)
-for the current verification and credential cutover work.
+for the remaining main-only staging isolation check.
 
 ## Shared retry secret
 

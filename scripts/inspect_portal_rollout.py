@@ -79,6 +79,7 @@ def main():
     staging_base = f"/accounts/{ACCOUNT}/workers/scripts/deos-workflow-portal-staging"
     staging = max(api(staging_base + "/deployments")["deployments"], key=lambda row: row["created_on"])
     staging_settings = api(staging_base + "/settings")
+    production_settings = api(base + "/settings")
     print(
         json.dumps(
             {
@@ -86,9 +87,17 @@ def main():
                     "deploymentId": active["id"],
                     "versions": active["versions"],
                     "workerModuleSha256": code,
+                    "sourceMetadata": {
+                        b["name"]: b["text"]
+                        for b in production_settings["bindings"]
+                        if b["type"] == "plain_text" and b["name"] in {
+                            "PORTAL_SITE", "PORTAL_CANONICAL_HOST",
+                            "PORTAL_SOURCE_BRANCH", "PORTAL_SOURCE_SHA",
+                        }
+                    },
                     "sharedBindings": [
                         b
-                        for b in api(base + "/settings")["bindings"]
+                        for b in production_settings["bindings"]
                         if b["type"] in ["d1", "r2_bucket", "service"]
                     ],
                 },
