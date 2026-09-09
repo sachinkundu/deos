@@ -77,7 +77,6 @@ and **DEOS portal production deploy**. Use these permissions:
 | --- | --- | --- |
 | Account | Workers Scripts | Edit |
 | Account | Workers R2 Storage | Read |
-| Account | Account Settings | Read |
 | Zone | Zone | Read |
 
 Limit account resources to **Skundu@hey.com's Account** and zone resources to
@@ -91,8 +90,11 @@ Limit account resources to **Skundu@hey.com's Account** and zone resources to
 Workers Scripts Edit supports uploads and Custom Domain attachment. The locked
 Wrangler version checks the existing R2 bucket when it first provisions the
 staging binding, so it needs R2 read access. The D1 binding already has its
-database ID and does not require provisioning. Account and zone reads support
-resource discovery. This permission set still needs a real deployment check.
+database ID and does not require provisioning. Zone read access supports zone
+discovery. Account Settings Read is not required: the configured `account_id`
+lets Wrangler skip account discovery. The Worker account-settings endpoint also
+accepts Workers Scripts Write, so it does not require a separate account-settings
+grant. This permission set still needs a real deployment check.
 
 No Access administration or API token management permission is needed for
 deployment. Worker write access remains account-wide. The accepted scope
@@ -108,3 +110,4 @@ limitation and remaining release steps are documented in
 - [Worker upload permissions](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/update/)
 - [Custom Domain permissions](https://developers.cloudflare.com/api/resources/workers/subresources/domains/methods/update/)
 - [R2 bucket read permissions](https://developers.cloudflare.com/api/resources/r2/subresources/buckets/methods/get/)
+- [Worker account-settings permissions](https://developers.cloudflare.com/api/resources/workers/subresources/account_settings/methods/get/)
