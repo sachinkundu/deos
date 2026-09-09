@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   approvalEvidenceLinks,
   authorVisitStatus,
+  reviewVisitStatus,
   isDesignAuthorVisit,
   designSubstepForNode,
   isDesignStageWorkflow,
@@ -109,6 +110,16 @@ test("an unfinished author visit stays in progress until the run is terminal", (
   assert.equal(authorVisitStatus({ leftAt: "2026-09-01T12:00:00.000Z", attempts: [] }, "active"), "Complete");
   assert.equal(authorVisitStatus({ leftAt: null, attempts: [] }, "failed"), "Complete");
   assert.equal(authorVisitStatus(null, "active"), "Upcoming");
+});
+
+test("a human revision resets old review completion until the new review runs", () => {
+  const completed = { sequence: 10, leftAt: "2026-09-01T12:00:00.000Z", attempts: [] };
+  assert.equal(reviewVisitStatus(completed, "active", null), "Complete");
+  assert.equal(reviewVisitStatus(completed, "active", { sequence: 12 }), "Upcoming");
+  assert.equal(reviewVisitStatus({ ...completed, sequence: 14, leftAt: null }, "active", { sequence: 12 }), "In progress");
+  assert.equal(reviewVisitStatus({ ...completed, sequence: 14 }, "awaiting_human", { sequence: 12 }), "Complete");
+  assert.equal(reviewVisitStatus({ ...completed, sequence: 14 }, "active", { sequence: 16 }), "Upcoming");
+  assert.equal(reviewVisitStatus({ ...completed, sequence: 18, attempts: [{ state: "failed", outcome: "failed" }] }, "failed", { sequence: 16 }), "Failed");
 });
 
 test("planning and design author failures remain visible in their nested substeps", () => {

@@ -124,6 +124,13 @@ button { color:inherit; }
 
 .author-review-row { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); align-items: stretch; gap: 6px; }
 .author-review-arrow { width: 24px; height: 24px; align-self: center; color: var(--muted); }
+.agent-step { min-width: 0; cursor: default; }
+.agent-step-heading { min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.agent-step-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.agent-step-heading:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+.agent-transcript-button { padding: 4px 7px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--blue); font: inherit; font-size: 11px; cursor: pointer; text-align: left; }
+.agent-transcript-button:hover { border-color: var(--blue); }
+.agent-transcript-button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .author-review-row .phase-substep { min-width: 0; grid-template-columns: minmax(0, 1fr); }
 .author-review-row .substep-heading { min-width: 0; }
 .author-review-row .substep-copy { min-width: 0; overflow-wrap: anywhere; }
