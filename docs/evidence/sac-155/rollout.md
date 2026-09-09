@@ -677,3 +677,163 @@ rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/cod
   ]
 }
 ```
+
+Staging run 34331133748 deployed main f89391e58ef012fcbf64fe07c694d00519b47a5d and attached its Custom Domain. The second attempt activated version 5e6600ca-f04b-4ba2-b556-63299cdbb4e3 at 100 percent, deployment 7c9d31a0-8ed9-4a4e-a279-c264fbfc39d4. The browser loaded the Staging label and the same SAC-155 run as production. The automated host probe failed with HTTP 403. A real unauthenticated probe isolated error 1010 for the default Python client; the explicit DEOS-Portal-Release/1.0 client reached the Access denial page instead. Both GitHub client IDs match the enabled Cloudflare service token. Production remains on a3e925cc-3b26-46d0-8fc5-b7602eb3f4d9. The repository inventory credential currently verifies as the production deployment token; the owner has been asked to replace it with DEOS Inventory Cleanup. No secret values were logged.
+
+```bash
+rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/code/deos/.env
+```
+
+```output
+{
+  "production": {
+    "deploymentId": "f06ddb2c-2c23-4161-8bca-2f8a2fd8fe69",
+    "versions": [
+      {
+        "version_id": "a3e925cc-3b26-46d0-8fc5-b7602eb3f4d9",
+        "percentage": 100
+      }
+    ],
+    "workerModuleSha256": {
+      "worker.js": "01afa2e4187d2da2ea0228662a3d1d019606d24258ec9d6b30e7b29e37bf0492"
+    },
+    "sharedBindings": [
+      {
+        "bucket_name": "deos-sample-project-artifacts",
+        "name": "ARTIFACTS",
+        "type": "r2_bucket"
+      },
+      {
+        "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "name": "DB",
+        "type": "d1"
+      },
+      {
+        "environment": "production",
+        "name": "RETRY_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "entrypoint": "RouteAdmin",
+        "environment": "production",
+        "name": "ROUTE_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      }
+    ]
+  },
+  "staging": {
+    "deploymentId": "7c9d31a0-8ed9-4a4e-a279-c264fbfc39d4",
+    "versions": [
+      {
+        "version_id": "5e6600ca-f04b-4ba2-b556-63299cdbb4e3",
+        "percentage": 100
+      }
+    ],
+    "bindings": [
+      {
+        "bucket_name": "deos-sample-project-artifacts",
+        "name": "ARTIFACTS",
+        "type": "r2_bucket"
+      },
+      {
+        "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "name": "DB",
+        "type": "d1"
+      },
+      {
+        "name": "PORTAL_CANONICAL_HOST",
+        "text": "deos-staging.voxdez.com",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SITE",
+        "text": "Staging",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SOURCE_BRANCH",
+        "text": "main",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SOURCE_SHA",
+        "text": "f89391e58ef012fcbf64fe07c694d00519b47a5d",
+        "type": "plain_text"
+      },
+      {
+        "environment": "production",
+        "name": "RETRY_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "entrypoint": "RouteAdmin",
+        "environment": "production",
+        "name": "ROUTE_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      }
+    ]
+  },
+  "portalDomains": [
+    {
+      "hostname": "deos.voxdez.com",
+      "service": "deos-workflow-portal",
+      "enabled": true,
+      "previews_enabled": false
+    },
+    {
+      "hostname": "deos-staging.voxdez.com",
+      "service": "deos-workflow-portal-staging",
+      "enabled": true,
+      "previews_enabled": false
+    }
+  ],
+  "releaseSha": "6018ea33d2bba472b717e6fb6a4a8554fef92207",
+  "githubEnvironments": [
+    {
+      "name": "staging",
+      "protectionTypes": [
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET",
+        "PORTAL_STAGING_CLOUDFLARE_API_TOKEN"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    },
+    {
+      "name": "production",
+      "protectionTypes": [
+        "required_reviewers",
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET",
+        "PORTAL_PRODUCTION_CLOUDFLARE_API_TOKEN"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    }
+  ]
+}
+```

@@ -1,8 +1,8 @@
 # Implementation status
 
-Planning PR #91, design PR #92, and implementation PR #93 are merged.
-The live rollout remains incomplete. Follow-up evidence is being recorded in
-`codex/sac-155-rollout`.
+Planning PR #91, design PR #92, implementation PR #93, and rollout repair PR #94
+are merged. Staging is live. Its automated version check, the inventory credential
+cutover, and the protected production release remain incomplete.
 
 ## Completed local slice
 
@@ -148,6 +148,33 @@ GitHub repository `CLOUDFLARE_API_TOKEN` still had its August 26 update time.
 Its replacement remains an owner action; successful inventory reads so far do
 not prove use of the new restricted credential.
 
-The provider snapshot and exact baseline hashes are recorded in
-docs/evidence/sac-155/rollout.md. This is baseline and configuration evidence.
-Live staging, release, and later main-only deployment proof remain pending.
+## Live staging and probe diagnosis
+
+The owner corrected Workers Routes Read in both deployment tokens. GitHub run
+`34331133748` deployed main `f89391e58ef012fcbf64fe07c694d00519b47a5d` and attached
+the staging Custom Domain. Its first host probe ran before DNS had propagated.
+After DNS resolved, the second attempt completed the deployment and received
+HTTP 403 from the version probe.
+
+Cloudflare confirms deployment `7c9d31a0-8ed9-4a4e-a279-c264fbfc39d4`, with version
+`5e6600ca-f04b-4ba2-b556-63299cdbb4e3` at 100 percent. Staging's D1, R2, and service
+bindings match production. The live browser shows Staging in the title and
+header and the same SAC-155 run as production. The production version remains
+`a3e925cc-3b26-46d0-8fc5-b7602eb3f4d9`.
+
+Both GitHub probe Client IDs match the enabled service token. Its application
+paths and Service Auth policy are correct. A real request with Python's default
+client signature receives Cloudflare error 1010. An explicit
+`DEOS-Portal-Release/1.0` signature reaches the Access denial page instead when
+sent without credentials. The probe now uses that signature. This proves the
+client-signature issue; a successful authenticated GitHub probe is still needed.
+See the [Cloudflare error 1010 contract](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1010/).
+
+The inventory token's saved policy is Workers Containers Read for this account.
+However, GitHub's repository secret currently verifies as the production
+deployment token. The owner must replace that repository secret with the
+inventory token value. The environment deployment secrets stay as they are.
+
+The provider snapshots and exact baseline hashes are recorded in
+docs/evidence/sac-155/rollout.md. Authenticated staging verification, release,
+and later main-only deployment proof remain pending.
