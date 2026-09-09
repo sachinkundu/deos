@@ -75,8 +75,21 @@ Use these permissions:
 | Account | Workers R2 Storage | Read |
 | Zone | Zone | Read |
 
-Limit account resources to **Skundu@hey.com's Account** and zone resources to
-**voxdez.com**. Save each value directly as an environment secret in GitHub:
+Create **two separate permission policies** in each token:
+
+1. Choose **Entire Account** within **Skundu@hey.com's Account**. Select only
+   **Workers Scripts Write** and **Workers R2 Storage Read**.
+2. Choose **Specified Domains**, then **voxdez.com**. Select only **Zone Read**.
+
+Do not put the Worker or R2 permissions in the domain policy. The dashboard can
+retain them as "Other selected permissions" after a scope change, but they do
+not grant access to account-level Workers there. This caused the first staging
+run to fail on its Worker service lookup with Cloudflare error 10000.
+Neither production nor staging changed during that failed run.
+
+For an existing token, edit its policies and save without rotating its value.
+Its GitHub secret then needs no change. For a new token, save each value
+directly as an environment secret in GitHub:
 
 | GitHub environment | Secret name |
 | --- | --- |
@@ -102,6 +115,15 @@ The backend, production portal, and staging placeholder now hold the same
 replacement. A private copy is saved in the ignored local `.env`. No copy is
 needed in GitHub. See the [rotation procedure](portal-release.md#shared-retry-secret).
 Staging still awaits its first application deployment from main.
+
+## Inventory audit credential
+
+The hourly sandbox inventory audit uses the repository secret
+`CLOUDFLARE_API_TOKEN`. Replace its broad deployment token with an account token
+named **DEOS inventory read-only**. Use an **Entire Account** policy with only
+**Containers Read** in the same account. Do not add zone or Worker permissions.
+Run the audit once to verify the replacement. The portal deployment tokens stay
+in their separate GitHub environments.
 
 ## Provider instructions checked on 2026-09-09
 

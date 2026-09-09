@@ -1,7 +1,8 @@
 # Implementation status
 
-Planning PR #91 and design PR #92 are merged. Implementation is isolated in
-`codex/sac-155-implementation`. Repository implementation is present; provider configuration and live migration remain incomplete.
+Planning PR #91, design PR #92, and implementation PR #93 are merged.
+The live rollout remains incomplete. Follow-up evidence is being recorded in
+`codex/sac-155-rollout`.
 
 ## Completed local slice
 
@@ -96,10 +97,24 @@ A direct backend authentication probe received HTTP 403 before an application
 response could be verified. No retry or recovery was triggered. Successful
 portal-to-backend retry authentication remains unverified.
 
-The initial implementation PR must use a merge commit so the verified release
-baseline remains an ancestor of main. This requirement is recorded in the
-release procedure. The PR remains unmerged pending human approval and the
-remaining rollout prerequisites.
+## First staging run
+
+The owner approved deployment and continued rollout. PR #93 merged with merge
+commit `c02de5f3d3f0bb1825b5eec0e4dcbee9d8ea0840`, preserving the release baseline
+in main's ancestry. The main push started GitHub run `34324212520`.
+
+All 69 portal tests, type-checking, and both builds passed. Wrangler then failed
+to read `/workers/services/deos-workflow-portal-staging` with Cloudflare error
+10000. The token identity was valid. Browser inspection found Workers Scripts
+Write and Workers R2 Storage Read attached to a Specified Domains policy for
+voxdez.com. They need a separate Entire Account policy. The setup guide now
+states the two policies explicitly.
+
+Read-back confirms production and the staging placeholder kept their previous
+deployments. No upload occurred. The owner was asked to correct both deployment
+token policies without rotating their values, and to replace the repository
+inventory token with Containers Read. The failed deployment will be retried
+after those saved settings are confirmed.
 
 The provider snapshot and exact baseline hashes are recorded in
 docs/evidence/sac-155/rollout.md. This is baseline and configuration evidence.
