@@ -61,17 +61,13 @@ This application grants the service token access to version metadata. The
 existing application continues to protect the rest of each portal. The
 service token does not grant Cloudflare administration or deployment rights.
 
-## Remaining rollout work
+## Deployment credentials
 
-These steps prepare Access. Staging also needs the existing `STAGE_RETRY_SECRET`
-installed as a Worker secret. Its value must come from the existing secret
-source; Cloudflare cannot reveal a stored Worker secret. Do not rotate the
-production or backend secret to complete this setup.
-
-GitHub still needs separate deployment credentials in its two environments.
-Those credentials are distinct from the Access probe. In Cloudflare's Account
-API tokens page, create two custom tokens, named **DEOS portal staging deploy**
-and **DEOS portal production deploy**. Use these permissions:
+Both GitHub environments now contain their separate deployment credentials.
+These credentials are distinct from the Access probe. For replacement tokens,
+use Cloudflare's Account API tokens page. The token names are
+**DEOS portal staging deploy** and **DEOS portal production deploy**.
+Use these permissions:
 
 | Scope | Permission | Access |
 | --- | --- | --- |
@@ -100,6 +96,12 @@ No Access administration or API token management permission is needed for
 deployment. Worker write access remains account-wide. The accepted scope
 limitation and remaining release steps are documented in
 [portal release](portal-release.md).
+
+The shared `STAGE_RETRY_SECRET` was replaced with owner approval on 2026-09-09.
+The backend, production portal, and staging placeholder now hold the same
+replacement. A private copy is saved in the ignored local `.env`. No copy is
+needed in GitHub. See the [rotation procedure](portal-release.md#shared-retry-secret).
+Staging still awaits its first application deployment from main.
 
 ## Provider instructions checked on 2026-09-09
 

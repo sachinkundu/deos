@@ -62,18 +62,39 @@ placement, not token values or successful authentication. A repository-wide
 Do not remove that secret until the unrelated audit has suitable read access.
 The existing CI workflow contains dry-run validation, not a production deploy.
 
-No Worker, route, workflow state, or shared data was changed.
-Production remains on its existing version. The owner added staging to the
+The baseline setup did not change Workers, routes, workflow state, or shared data.
+The later secret rotation is recorded below. The owner added staging to the
 existing Access application. Browser inspection confirmed deos.voxdez.com,
 bettaview.voxdez.com, and deos-staging.voxdez.com under Allow Sachin only.
 The owner also created DEOS portal version checks. Browser inspection confirms
 deos.voxdez.com/api/version and deos-staging.voxdez.com/api/version, with the
 Service Auth policy limited to the DEOS portal deployment probe service token.
 This confirms configuration, not successful authentication from GitHub.
-Staging still needs the existing shared retry secret before live use. The owner
-completed Access setup and token creation in the dashboard after the agent's
+The owner completed Access setup and token creation in the dashboard after the agent's
 credential received HTTP 403 for those operations. No broader agent API
 permissions were granted. See docs/portal-access-setup.md.
+
+## Shared retry secret rotation
+
+The owner approved replacement on 2026-09-09. Cloudflare reported zero running
+DEOS Workflows. The two durable records still marked active correspond to
+instances that errored on August 27 and August 31; they were not resumed.
+A new value was installed on the backend, production portal, and staging
+placeholder. The ignored local `.env` retains a private copy with mode 0600.
+No value was printed or placed in GitHub.
+
+Production now serves version `a3e925cc-3b26-46d0-8fc5-b7602eb3f4d9` at 100 percent.
+The backend serves `0331c8c9-98ba-44c6-8783-1edfb15a5b9e` at 100 percent.
+All Worker module hashes, runtime settings, bindings, and backend container
+configuration match the before-state. Only the secret and deployment metadata
+changed. Production loaded normally after a browser reload.
+
+Staging has version `09ac1352-a5d1-4f73-9383-7acc81fdea09` with only the shared
+secret. It has no data bindings or public targets; workers.dev and preview URLs
+are disabled. This is setup evidence, not a deployed staging application.
+A direct backend authentication probe received HTTP 403 before an application
+response could be verified. No retry or recovery was triggered. Successful
+portal-to-backend retry authentication remains unverified.
 
 The initial implementation PR must use a merge commit so the verified release
 baseline remains an ancestor of main. This requirement is recorded in the

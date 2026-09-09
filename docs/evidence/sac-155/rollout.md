@@ -283,3 +283,104 @@ rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/cod
   ]
 }
 ```
+
+```bash
+rtk proxy python3 scripts/inspect_portal_rollout.py --env-file /Users/sachin/code/deos/.env
+```
+
+```output
+{
+  "production": {
+    "deploymentId": "f06ddb2c-2c23-4161-8bca-2f8a2fd8fe69",
+    "versions": [
+      {
+        "version_id": "a3e925cc-3b26-46d0-8fc5-b7602eb3f4d9",
+        "percentage": 100
+      }
+    ],
+    "workerModuleSha256": {
+      "worker.js": "01afa2e4187d2da2ea0228662a3d1d019606d24258ec9d6b30e7b29e37bf0492"
+    },
+    "sharedBindings": [
+      {
+        "bucket_name": "deos-sample-project-artifacts",
+        "name": "ARTIFACTS",
+        "type": "r2_bucket"
+      },
+      {
+        "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "name": "DB",
+        "type": "d1"
+      },
+      {
+        "environment": "production",
+        "name": "RETRY_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "entrypoint": "RouteAdmin",
+        "environment": "production",
+        "name": "ROUTE_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      }
+    ]
+  },
+  "releaseSha": "6018ea33d2bba472b717e6fb6a4a8554fef92207",
+  "githubEnvironments": [
+    {
+      "name": "staging",
+      "protectionTypes": [
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET",
+        "PORTAL_STAGING_CLOUDFLARE_API_TOKEN"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    },
+    {
+      "name": "production",
+      "protectionTypes": [
+        "required_reviewers",
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET",
+        "PORTAL_PRODUCTION_CLOUDFLARE_API_TOKEN"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    }
+  ]
+}
+```
+
+## Shared retry secret replacement
+
+The owner approved replacement on 2026-09-09. Cloudflare reported zero running DEOS Workflows. The two D1 rows still marked active map to provider instances that had already errored; no workflow was resumed.
+
+One new value was installed on deos-queue-consumer-ts, deos-workflow-portal, and deos-workflow-portal-staging. It is retained in the ignored local .env with owner-only permissions. No value was printed or stored in GitHub.
+
+The read-back above records production version a3e925cc-3b26-46d0-8fc5-b7602eb3f4d9 at 100 percent. Its Worker hash still matches the verified baseline. A separate before/after API comparison confirmed every backend and portal module hash and runtime setting stayed unchanged; the deployment annotations now identify the secret change. Backend version 0331c8c9-98ba-44c6-8783-1edfb15a5b9e is active at 100 percent. Its container configuration and image digest 39c3bc98bfbd51f6da275b0c8470b79317fcc53efb71bd3ec8422df57a948053 are unchanged.
+
+The staging placeholder has version 09ac1352-a5d1-4f73-9383-7acc81fdea09, with only STAGE_RETRY_SECRET installed. It has no data bindings or public targets. Both workers.dev and preview URLs are disabled. This does not count as the first staging application deployment.
+
+The production browser was reloaded and still rendered the SAC-155 workflow and current records. A direct backend authentication probe received HTTP 403 before an application response could be verified. No retry or recovery was triggered. Portal-to-backend retry authentication and the main-only staging rollout still need live proof.

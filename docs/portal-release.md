@@ -86,10 +86,37 @@ was explicitly accepted on 2026-09-09.
 The initial rollout remains pending. Do not describe local tests or dry runs as
 live deployment proof.
 
+## Shared retry secret
+
+`STAGE_RETRY_SECRET` authenticates portal retry and runtime-recovery requests
+to the backend. A replacement must use the same value in all three Workers:
+
+- `deos-queue-consumer-ts`: verifies the credential.
+- `deos-workflow-portal`: sends the credential from production.
+- `deos-workflow-portal-staging`: sends the credential from staging.
+
+Keep a private copy in the ignored local `.env` for future maintenance.
+The owner does not need to view or copy the value. GitHub deployment workflows
+preserve the installed Worker secrets; they do not need another copy.
+BettaView and Cloudflare Access service tokens do not use this secret.
+
+Before rotation, check both durable run records and Cloudflare Workflow state.
+Replace the three Worker secrets together, then confirm active versions,
+unchanged code, bindings, and container configuration. Secret updates create
+new versions and deploy immediately. Do not run the full backend deployment
+script just to rotate this value: it also runs migrations and deploys code.
+That script updates only the backend and production copies; staging must also
+receive the same value if it changes during future backend maintenance.
+
+The owner approved this rotation on 2026-09-09. All three copies are installed.
+The staging Worker is a placeholder with no public targets or data bindings.
+Its first application deployment still requires the main-only staging workflow.
+
 ## Primary contracts
 
 - [Cloudflare token resource scopes](https://developers.cloudflare.com/fundamentals/api/how-to/create-via-api/)
 - [Worker versions and deployments](https://developers.cloudflare.com/workers/versions-and-deployments/)
 - [Version metadata binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/version-metadata/)
 - [Access service tokens](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/)
+- [Worker secrets and deployment behavior](https://developers.cloudflare.com/workers/configuration/secrets/)
 - [GitHub workflow concurrency and queueing](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
