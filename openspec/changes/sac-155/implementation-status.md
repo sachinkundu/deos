@@ -3,7 +3,8 @@
 Planning PR #91, design PR #92, implementation PR #93, and rollout repair PRs #94
 and #95 are merged. Staging is live and verified from GitHub and the browser.
 The updated inventory credential passes the real audit. The production release
-is prepared and waiting at GitHub's required-reviewer gate.
+has passed its protected GitHub workflow and live verification. The later
+main-only staging update remains to be proved.
 
 ## Completed local slice
 
@@ -196,10 +197,17 @@ audit run `34335314618` then read Cloudflare inventory successfully and submitte
 both batches to the trusted audit endpoint. Each returned zero reports. No
 additional token permissions were needed.
 
-Production run `34335399832` selects the exact staging-verified commit
-`f7c997276030dc1c5b5e7520d5227e89c78d6ed0`. It is waiting for the configured
-production reviewer. No release promotion or production upload has run yet.
+The owner approved production run `34335399832` through GitHub's required-reviewer
+gate. It released the exact staging-verified commit
+`f7c997276030dc1c5b5e7520d5227e89c78d6ed0` and passed at `2026-09-09T09:49:29Z`.
+The release branch now points to that SHA.
+
+Cloudflare deployment `d7c12887-8982-41a1-9530-ec41a0aea84e` serves version
+`8060f8e0-afca-45d0-bc29-c37e65918639` at 100 percent. The authenticated host
+reports Production, deos.voxdez.com, branch release, and the same source SHA
+and version. The browser shows Production in the title and shell and continues
+to load the same SAC-155 run. D1, R2, and service bindings match staging.
 
 The provider snapshots and exact baseline hashes are recorded in
-docs/evidence/sac-155/rollout.md. Production release and later main-only deployment
-proof remain pending.
+docs/evidence/sac-155/rollout.md. The portal README provides a later main-only
+change for the final staging isolation check. It does not alter application code.
