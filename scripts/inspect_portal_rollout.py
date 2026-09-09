@@ -76,6 +76,9 @@ def main():
             }
         )
     release = github("repos/sachinkundu/deos/git/ref/heads/release")["object"]["sha"]
+    staging_base = f"/accounts/{ACCOUNT}/workers/scripts/deos-workflow-portal-staging"
+    staging = max(api(staging_base + "/deployments")["deployments"], key=lambda row: row["created_on"])
+    staging_settings = api(staging_base + "/settings")
     print(
         json.dumps(
             {
@@ -89,6 +92,20 @@ def main():
                         if b["type"] in ["d1", "r2_bucket", "service"]
                     ],
                 },
+                "staging": {
+                    "deploymentId": staging["id"],
+                    "versions": staging["versions"],
+                    "bindings": [
+                        b for b in staging_settings["bindings"]
+                        if b["type"] in ["d1", "r2_bucket", "service"]
+                        or (b["type"] == "plain_text" and b["name"].startswith("PORTAL_"))
+                    ],
+                },
+                "portalDomains": [
+                    {key: domain.get(key) for key in ("hostname", "service", "enabled", "previews_enabled")}
+                    for domain in api(f"/accounts/{ACCOUNT}/workers/domains")
+                    if domain["service"] in [WORKER, "deos-workflow-portal-staging"]
+                ],
                 "releaseSha": release,
                 "githubEnvironments": environments,
             },

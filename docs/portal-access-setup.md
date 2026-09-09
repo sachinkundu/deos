@@ -74,9 +74,24 @@ Use these permissions:
 | Account | Workers Scripts | Edit |
 | Account | Workers R2 Storage | Read |
 | Zone | Zone | Read |
+| Zone | Workers Routes | Read |
 
-Limit account resources to **Skundu@hey.com's Account** and zone resources to
-**voxdez.com**. Save each value directly as an environment secret in GitHub:
+Create **two separate permission policies** in each token:
+
+1. Choose **Entire Account** within **Skundu@hey.com's Account**. Select only
+   **Workers Scripts Write** and **Workers R2 Storage Read**.
+2. Choose **Specified Domains**, then **voxdez.com**. Select **Zone Read** and
+   **Workers Routes Read**.
+
+Do not put the Worker or R2 permissions in the domain policy. The dashboard can
+retain them as "Other selected permissions" after a scope change, but they do
+not grant access to account-level Workers there. This caused the first staging
+run to fail on its Worker service lookup with Cloudflare error 10000.
+Neither production nor staging changed during that failed run.
+
+For an existing token, edit its policies and save without rotating its value.
+Its GitHub secret then needs no change. For a new token, save each value
+directly as an environment secret in GitHub:
 
 | GitHub environment | Secret name |
 | --- | --- |
@@ -87,7 +102,12 @@ Workers Scripts Edit supports uploads and Custom Domain attachment. The locked
 Wrangler version checks the existing R2 bucket when it first provisions the
 staging binding, so it needs R2 read access. The D1 binding already has its
 database ID and does not require provisioning. Zone read access supports zone
-discovery. Account Settings Read is not required: the configured `account_id`
+discovery. Workers Routes Read lets Wrangler check whether a route is already
+assigned to another Worker before it attaches the Custom Domain. This check
+also runs when there are no ordinary Worker routes to create. The second
+staging attempt uploaded the Worker but stopped at this route check because
+the token lacked that read permission. It did not attach the staging hostname.
+Account Settings Read is not required: the configured `account_id`
 lets Wrangler skip account discovery. The Worker account-settings endpoint also
 accepts Workers Scripts Write, so it does not require a separate account-settings
 grant. This permission set still needs a real deployment check.
@@ -101,7 +121,29 @@ The shared `STAGE_RETRY_SECRET` was replaced with owner approval on 2026-09-09.
 The backend, production portal, and staging placeholder now hold the same
 replacement. A private copy is saved in the ignored local `.env`. No copy is
 needed in GitHub. See the [rotation procedure](portal-release.md#shared-retry-secret).
-Staging still awaits its first application deployment from main.
+Staging has received its first application upload from main. Hostname attachment
+and the live checks remain pending.
+
+## Inventory audit credential
+
+The hourly sandbox inventory audit uses the repository secret
+`CLOUDFLARE_API_TOKEN`. Replace its broad deployment token with an account token
+named **DEOS Inventory Cleanup**. Use an **Entire Account** policy with only
+**Containers Read** in the same account. Do not add zone or Worker permissions.
+Run the audit once to verify the replacement. The portal deployment tokens stay
+in their separate GitHub environments.
+
+The audit also uses a separate shared credential to submit inventory to the
+backend. It grants no Cloudflare API permissions. On 2026-09-09, both stored
+GitHub values failed authentication. The replacement is now installed as
+`CLEANUP_AUDIT_SECRET` on `deos-queue-consumer-ts` and under both existing
+GitHub repository names, `CLEANUP_AUDIT_SECRET` and `DEOS_CLEANUP_AUDIT_SECRET`.
+The current workflow reads the latter. An owner-only copy is in the ignored
+local `.env`. Replace these copies together if the audit credential is rotated.
+
+The inventory client submits at most 100 IDs per request, matching the backend
+contract. The full live inventory contains more than 100 records, including
+inactive containers; the backend checks its durable cleanup records for each ID.
 
 ## Provider instructions checked on 2026-09-09
 
@@ -111,5 +153,6 @@ Staging still awaits its first application deployment from main.
 - [GitHub Actions deployment credentials](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)
 - [Worker upload permissions](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/update/)
 - [Custom Domain permissions](https://developers.cloudflare.com/api/resources/workers/subresources/domains/methods/update/)
+- [Workers route list permissions](https://developers.cloudflare.com/api/resources/workers/subresources/routes/methods/list/)
 - [R2 bucket read permissions](https://developers.cloudflare.com/api/resources/r2/subresources/buckets/methods/get/)
 - [Worker account-settings permissions](https://developers.cloudflare.com/api/resources/workers/subresources/account_settings/methods/get/)

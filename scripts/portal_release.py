@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ACCOUNT = "c68856288112af7698f5be52ea94b96e"
+ZONE = "8a120356c46d1557fbf7fec6cbed7a19"
 DATABASE = "4e854f8a-018a-42c4-a325-c4b8805c06b2"
 BUCKET = "deos-sample-project-artifacts"
 TARGETS = {
@@ -132,6 +133,22 @@ def provider_deployment(target):
     return max(deployments, key=lambda item: item["created_on"])
 
 
+def check_route_access():
+    # Wrangler reads zone routes even when deploying only a Custom Domain.
+    # Check this before upload so a missing read grant cannot leave a partial deploy.
+    request = urllib.request.Request(
+        f"https://api.cloudflare.com/client/v4/zones/{ZONE}/workers/routes",
+        headers={"Authorization": "Bearer " + os.environ["CLOUDFLARE_API_TOKEN"]},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            payload = json.load(response)
+    except OSError as error:
+        raise ValueError("Cannot read voxdez.com Worker routes; check Workers Routes Read") from error
+    if not payload.get("success"):
+        raise ValueError("Cannot read voxdez.com Worker routes; check Workers Routes Read")
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -183,6 +200,7 @@ def deploy(target):
     check_ref(target, sha)
     config_path = ROOT / "portal/wrangler.jsonc"
     preflight(json.loads(config_path.read_text()), target)
+    check_route_access()
     run("npm", "ci")
     run("npm", "run", "portal:test")
     run("npm", "run", "portal:typecheck")
@@ -200,17 +218,13 @@ def deploy(target):
     except subprocess.CalledProcessError:
         # The provider may have applied a deploy before the CLI lost contact.
         # Read back once, but never convert a failed CLI command to success.
-        try:
-            print(
-                json.dumps(
-                    {
-                        "observedDeployment": provider_deployment(target),
-                        "observedHost": host_version(target),
-                    }
-                )
-            )
-        except (OSError, ValueError, KeyError, TypeError) as error:
-            print(f"Ambiguous deployment; read-back failed: {type(error).__name__}")
+        observed = {}
+        for name, read in (("observedDeployment", provider_deployment), ("observedHost", host_version)):
+            try:
+                observed[name] = read(target)
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                observed[name + "Error"] = type(error).__name__
+        print(json.dumps(observed))
         raise
     deployment = provider_deployment(target)
     version = host_version(target)
