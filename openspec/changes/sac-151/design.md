@@ -1,548 +1,368 @@
 ## Context
 
 See `proposal.md` for the motivation and the three delta specs for required
-behavior. The current architecture gives every top-level attempt a sealed
-Sandbox, UUIDv7 identity, pinned supervisor, frozen workflow definition,
-D1-backed authority, and hash-checked R2 evidence. It separates deterministic
-artifact validation, semantic self-check, trusted publication, independent
-review, and human approval.
+behavior. Today the author and its semantic self-check use separate top-level
+attempts and separate Cloudflare Sandboxes. The checked architecture already
+provides a sealed Sandbox per top-level attempt, a pinned Codex launch, a
+frozen workflow definition, deterministic candidate checks, D1 workflow
+authority, and hash-checked R2 evidence.
 
-This change moves only plan and design self-check execution into the active
-author's Sandbox. The author session must survive check, repair, and recheck,
-while every reviewer remains a fresh, read-only child execution. The Sandbox
-has no GitHub or Linear credential. Provider writes, independent review, and
-human gates remain outside it.
+Codex already has a native subagent facility: a main agent can start fresh
+child agents, wait for their results, and continue in the same work session.
+This design uses that facility directly. It does not add a second process
+orchestrator, private namespace scheme, or parallel request/lease/reuse system
+inside the Sandbox. The Cloudflare Sandbox remains the security boundary. Its
+author has no GitHub or Linear capability, and its review children receive only
+the existing read-only review tools.
 
-A shared Sandbox is not permission to share process state. The pinned
-supervisor isolates author and reviewer lanes with kernel-enforced credentials
-and namespaces. It executes the phase-specific review contract frozen for the
-run rather than substituting one generic review topology. Planning discovery
-uses two mutually blind directional sessions followed by the link reconciler.
-Design discovery uses one fresh design-review session over the complete design
-candidate and design rubric. A design recheck uses one new design-recheck
-session over that candidate and the fixed finding inventory. Each topology has
-its own prompt, input projection, schema, validator, and result adapter.
+The workflow still owns policy. It supplies the same phase-specific review
+input, role, model settings, instructions, result schema, limits, and reducer
+used by the separate-Sandbox check. Native subagents change where those review
+sessions run, not what counts as a valid result or stop.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Keep one plan or design author session alive for the complete private
-  self-check and repair loop.
-- Interpret each check and recheck solely from its frozen review-session plan,
-  preserving session count, dependencies, blindness, schemas, adapter, and
-  semantic slot.
-- Give every launched reviewer a distinct child identity, fresh model session,
-  enforceable process boundary, immutable checked candidate, and read-only
-  tools.
-- Give every request, preflight fault, execution, reuse decision, and accepted
-  stop durable and replayable identity before cleanup.
-- Recover abandoned work without duplicate model calls, concurrent reviewers,
-  or extra semantic turns.
-- Preserve candidate-based identical-input reuse across top-level retries and
-  preserve the existing reducer's finding rules, three-repair limit, and stop
-  outcomes.
+- Keep one plan or design author session active through check, repair, and
+  recheck.
+- Run each declared review session as a fresh native Codex subagent in the
+  author's Sandbox, with its own child identity and no inherited author turns.
+- Preserve the current planning and design review topologies, finding rules,
+  three-repair limit, result schemas, and stop outcomes.
+- Prove that the checked files did not change during review and save the native
+  child identity, checked input, result, and proof before cleanup.
+- Reuse the existing candidate, review, reducer, evidence, and identical-input
+  mechanisms instead of creating duplicate control planes.
 
 **Non-Goals:**
 
-- Running independent review or human approval inside the author Sandbox.
-- Giving an author or reviewer provider capabilities.
-- Changing a phase's topology, prompt, model, result schema, finding identity,
-  reconciliation rules, repair limit, turn limit, or stop policy.
-- Keeping reviewer state across rechecks or exposing a sibling result unless
-  the frozen plan explicitly declares that dependency.
-- Running author edits concurrently with a reviewer.
-- Treating a cgroup by itself as a security or filesystem-isolation boundary.
+- Moving independent review or human approval into the author Sandbox.
+- Giving an author or self-reviewer provider access.
+- Building a custom subagent runtime, kernel isolation layer, or second durable
+  scheduler inside an author attempt.
+- Treating a self-check result as human approval.
+- Allowing author edits while a review child is reading the checked candidate.
 
 ## Component diagram
 
 ```mermaid
 flowchart LR
-    W[Cloudflare Workflow<br/>frozen definition] --> C[Trusted Worker<br/>loop and lease authority]
-    C <--> D[(D1 requests, leases,<br/>executions, reuse)]
+    W[Cloudflare Workflow<br/>frozen definition] --> C[Trusted controller<br/>candidate and loop authority]
     C --> S[Author Sandbox<br/>one top-level attempt]
-    S --> P[Pinned supervisor<br/>privileged review broker]
-    P --> AL[Author lane<br/>author UID and namespaces]
-    AL --> A[Live author session]
-    A -->|opaque checked receipt<br/>and review request| P
-    P --> PF[Durable request<br/>and fenced preflight]
-    PF --> F[Immutable snapshot<br/>checked candidate bytes]
-    C --> RP[Frozen phase-specific<br/>review-session plan]
-    RP --> PI[Plan interpreter]
-    P --> PI
-    F --> PI
-    PI --> RS[Fresh reviewer lanes<br/>exactly as declared]
-    RS --> PA[Plan-selected validator<br/>and adapter]
-    PA --> SR[Existing semantic reducer]
-    SR -->|bounded findings| A
-    P --> E[(Create-only R2 evidence)]
-    E --> C
-    SR -->|accepted stop only| T[Trusted publication]
+    S --> A[Codex author<br/>live main session]
+    A -->|native spawn<br/>then await| R[Fresh Codex review subagent]
+    C --> P[Frozen review profile<br/>input, model, tools, schema]
+    P --> R
+    S --> M[Completion hook<br/>before/after file manifests]
+    R -->|structured result| A
+    R --> V[Existing validator<br/>and semantic reducer]
+    M --> V
+    V --> E[(D1 index and<br/>hash-checked R2 proof)]
+    V -->|findings| A
+    V -->|accepted stop| T[Trusted publication]
     T --> I[Independent review]
     I --> H[Human approval]
 ```
 
-The trusted Worker owns request identity, D1 state transitions, leases, reuse,
-and semantic reduction. The pinned supervisor is the only privileged Sandbox
-process. It owns process isolation, author quiescence, snapshot creation, plan
-execution, tool brokerage, and evidence staging. The author can request the
-configured check and receive a validated result, but cannot choose the plan,
-child configuration, context, model, tools, schema, adapter, or retry allowance.
+The Codex main session owns the conversation with its native children: it
+starts the configured reviewer, awaits the result, receives findings, repairs
+the draft when allowed, and asks for a fresh recheck. The trusted controller
+and completion hook do not emulate subagent communication. They provide the
+checked input and profile, pause repository writes during review, validate the
+result and file manifests, apply the existing semantic policy, and persist the
+proof.
 
 ## Decisions
 
-### 1. Run author and reviewers in supervisor-owned OS isolation lanes
+### 1. Use native Codex subagents as the only local review runtime
 
-The supervisor exposes one bounded `start_self_review` operation. Trusted code
-accepts it only after deterministic checks create an opaque, create-only
-checked-candidate receipt and no conflicting request is active. A reviewer is
-a child of the current `author_attempt_id`; it never creates a Workflow visit,
-top-level attempt, writable checkout, or new Sandbox.
+Each author job is launched with allowlisted native reviewer profiles derived
+from the frozen workflow definition. A profile fixes the reviewer role,
+instructions, model and reasoning settings, result schema, input projection,
+and read-only tools. The author may invoke the profile for the current semantic
+slot, but cannot replace those settings or add tools.
 
-The author runs as a dedicated unprivileged user in PID, mount, IPC, and network
-namespaces. Its writable checkout exists only in that mount namespace. All
-author descendants remain in a non-delegated cgroup. The author cannot create
-or join cgroups or namespaces. `no_new_privs` is set; ambient and inheritable
-capabilities are empty; cross-boundary capabilities such as `CAP_SYS_ADMIN`,
-`CAP_SYS_PTRACE`, `CAP_KILL`, `CAP_DAC_OVERRIDE`, and `CAP_DAC_READ_SEARCH` are
-absent from the bounding set. Seccomp denies tracing, cross-process memory
-access, and namespace-changing calls outside the author tool contract.
+The invocation starts a new native child with no forked turns. Its task payload
+contains the complete service-authored review context and checked candidate
+identity. The native launch returns a `subagent_id`; that child remains under
+the existing `author_attempt_id` and does not allocate a Workflow visit,
+top-level attempt, checkout, or Sandbox. The author awaits the child before it
+can edit again. A recheck always starts another fresh child unless the existing
+identical-input reuse rule supplies an already accepted result.
 
-Each declared reviewer session gets a new unprivileged UID/GID, PID, mount,
-IPC, and network namespace, cgroup, root filesystem, child ID, and model-session
-ID. Its root is read-only except for a bounded private tmpfs used by the model
-harness. It sees only the immutable candidate snapshot, canonical envelope,
-declared dependency results, and frozen-plan tools. It cannot see the live
-checkout, author state, sibling roots, process trees, supervisor staging, or
-provider capabilities. Neither lane has direct network egress; only
-supervisor-owned, attempt-scoped model and tool channels are reachable.
+The completion hook accepts a child only when the Codex transcript proves the
+expected native profile, a new child identity, no parent-turn fork, and a result
+for the requested semantic slot. It does not attempt to prove freshness with
+new operating-system users, namespaces, cgroups, or supervisor sockets.
 
-Supervisor sockets, result pipes, model channels, and evidence staging are
-absent from unprivileged mount namespaces. Reviewer output crosses a framed,
-supervisor-owned channel that cannot address another process.
+Alternative considered: implement a privileged review broker with separate
+process lanes. Native Codex already supplies child lifecycle and communication,
+so another broker would duplicate bookkeeping without changing the approved
+review contract.
 
-Before reading candidate bytes, the supervisor freezes the complete author
-cgroup and verifies its process inventory. Launch evidence records namespaces,
-UID/GID, capability sets, seccomp digest, cgroup membership, process inventory,
-and mount-policy digest. A missing control or an author process outside the
-lane creates a durable non-consuming preflight fault; no reviewer starts.
+Alternative considered: fork the author's chat into a child. That would expose
+author conversation and hidden context that the delta spec excludes.
 
-The author stays frozen until all plan-declared sessions close, post-run checks
-finish, and child processes are reaped. The supervisor removes the snapshot,
-thaws the same author session, and returns an accepted result. Repair must pass
-deterministic checks again. Recheck uses a new request when candidate or input
-changes and fresh session identities unless verified identical-input reuse
-applies.
+### 2. Freeze review configuration, not a second orchestration system
 
-Alternative considered: use only cgroups and brokered paths. Cgroups freeze and
-account for processes but do not prevent signaling, tracing, or filesystem
-access, so they are not a complete security boundary.
+The controller materializes the same complete review input that the current
+separate self-check receives. It also selects the existing phase-specific
+profile from the run's frozen definition. The canonical launch payload binds:
 
-Alternative considered: let the author spawn arbitrary subagents. That would
-make process configuration, model, context, tools, and evidence depend on
-untrusted author output.
+- run, author attempt, phase, round, semantic slot, and native profile;
+- trusted change identity, checked candidate digest, and tracked path manifest;
+- full service-authored change context and declared repository guides;
+- role, instructions, model settings, tool policy, input projection, result
+  schema, validator, adapter or reconciler, and their revisions; and
+- for recheck, the immutable finding inventory and remaining repair count.
 
-### 2. Interpret the frozen phase-specific review plan exactly
+The completion hook hashes this payload and records the native child ID and
+effective profile digest. A missing field, unexpected profile, inherited turn,
+wrong model, undeclared dependency, or incompatible schema rejects the review
+before semantic reduction.
 
-The trusted Worker builds the same complete self-check input and immutable
-`ReviewSessionPlan` used by the separate-Sandbox flow. The digest-bound plan
-contains:
+The current frozen topologies remain explicit:
 
-- phase, discovery or recheck mode, semantic slot, and fixed finding inventory
-  where applicable;
-- ordered session declarations with stable keys, dependency edges, visibility
-  rules, role, prompt, model settings, tools, input projection, and schema;
-- execution mode, including blindness and allowed concurrency;
-- required-session and completion predicates;
-- exact validator and adapter or reconciler identity and configuration; and
-- review, result, retry, limit, and stop-policy revisions.
-
-The Sandbox interpreter may launch only declared sessions, expose only declared
-dependencies, validate each result with its declared schema, and call only the
-declared adapter after the completion predicate holds. Unknown revisions,
-session types, schemas, adapters, dependency cycles, or impossible visibility
-rules fail closed before model allocation. The interpreter must not infer a
-topology from the phase name.
-
-The current phase shapes are explicit:
-
-| Phase and mode | Sessions and visibility | Completion and adapter |
+| Phase | Native sessions | Accepted aggregation |
 |---|---|---|
-| Planning discovery | `proposal_first` and `requirement_first`; both receive the same immutable plan inventory and neither sees the other's output | Both valid results are required; the planning link reconciler produces the existing directional claim set and finding inventory. |
-| Planning recheck | The frozen planning-recheck declarations; every session receives only its declared projection and the immutable discovery inventory | The declared recheck validator must rate the full fixed inventory before the planning adapter emits the existing result. |
-| Design discovery | One `design_review` session receives the complete immutable `design.md`, approved plan context, architecture guide, and design rubric | One schema-valid result is required; the design adapter emits the existing findings or pass shape without link reconciliation. |
-| Design recheck | One new `design_recheck` session receives the repaired immutable design, same checked context, and complete fixed design-finding inventory | The recheck validator requires exactly one rating for every existing finding ID; the design adapter emits the existing recheck result. |
+| Planning discovery | Start fresh `proposal_first` and `requirement_first` children over the same candidate. Neither receives the other result. They may run in parallel because both are read-only. | Require both valid results, then run the existing planning link reconciler. |
+| Planning recheck | Start the fresh children declared by the existing planning-recheck profile over the repaired candidate and fixed discovery inventory. | Require the declared results and use the existing planning recheck adapter. |
+| Design discovery | Start one fresh `design_review` child with the approved plan, complete design, checked guides, and design rubric. | Validate its existing design result directly; do not use planning reconciliation. |
+| Design recheck | Start one fresh `design_recheck` child with the repaired design and complete fixed finding inventory. | Require exactly one rating for every saved finding ID and use the existing design recheck adapter. |
 
-The table documents the currently frozen contract; the plan remains authority.
-A later reviewed workflow definition may declare a different design topology,
-but an active run cannot synthesize or normalize it. Planning's two discovery
-sessions remain blind even when executed sequentially. Design review never
-uses the planning link reconciler. Rechecks never fall back to discovery.
+This table documents the active contract; the frozen workflow definition is
+authoritative. The native runtime does not infer a generic topology from the
+phase name and does not expose one child's result to another unless that
+dependency is declared.
 
-For every session, the supervisor creates a canonical `ReviewLaunchEnvelope`
-containing request, execution, parent attempt, session key, child and model
-identities; trusted change context; candidate and snapshot identities; prompt,
-model, tools, projection, schema, dependencies, visibility; and all contract
-digests. Every child starts with no forked turns, author transcript, parent
-model state, unsaved notes, or undeclared sibling results. A launch receipt
-records the envelope digest, model identity, `parent_context_included: false`,
-declared sibling inputs, OS-isolation proof, and configuration digests.
+Alternative considered: one generic reviewer for every phase. That would alter
+planning's two blind directions and design's single-session contract.
 
-Only after all required sessions close does the selected adapter produce the
-existing phase result. Missing sessions, undeclared information flow, invalid
-output, or a wrong adapter rejects the review before semantic reduction.
+### 3. Keep review file access read-only and verify it with existing manifests
 
-Alternative considered: always launch the two planning directions. That is
-correct for planning discovery but overrides design and recheck contracts.
+Before each native child starts, the completion hook reruns the phase's
+deterministic checks and enumerates the full tracked review scope as ordered
+repository paths, byte lengths, and SHA-256 hashes. The author then awaits the
+declared child set and performs no repository tool call until it finishes.
 
-Alternative considered: fork the author's conversation and tell the reviewer
-to ignore it. Instructions cannot prove fresh context.
+Each reviewer profile exposes the same read-only repository tools as the
+current self-check and no write, shell-mutation, GitHub, Linear, or other
+provider tool. The shared Sandbox itself contains no provider credential. The
+native tool transcript is checked against that allowlist.
 
-### 3. Bind every review to its deterministic checked candidate
+When each child exits, the completion hook enumerates the same tracked scope
+again and binds that manifest to the child. Parallel blind children each keep
+their own launch and completion manifests. Every path set, length, and hash
+must match its pre-review manifest exactly. Any difference or attempted
+write/provider tool rejects the complete semantic-slot review, saves the
+fault, and consumes no semantic turn. The check protects the acceptance
+decision without treating the author and reviewer as adversarial
+operating-system tenants.
 
-Each successful deterministic check writes a receipt with candidate ID, phase
-inventory, ordered paths, byte lengths and SHA-256 values, aggregate manifest
-SHA-256, candidate SHA-256, check-policy revision, and validation result. The
-author receives only the opaque receipt identity.
+Alternative considered: copy the candidate into a private filesystem and
+maintain separate mount namespaces. Pausing author edits, applying the native
+read-only profile, and comparing the required manifests provide the approved
+file invariant with much less machinery.
 
-The Worker derives and inserts the attempt-local request from that receipt and
-canonical review input before Sandbox isolation, freeze, or snapshot work.
-Every later fault is therefore attributable to a durable request. The
-supervisor claims a fenced preflight and freezes the author cgroup.
+Alternative considered: trust the read-only profile without a manifest. The
+delta spec explicitly requires the same pre- and post-review file proof, so the
+manifest remains an acceptance check.
 
-Trusted code then enumerates the live tracked scope with the same inventory
-builder. It must exactly equal the checked receipt. A mismatch records
-`stale_checked_candidate` with locatable proof, starts no child, thaws the
-author, and requires a fresh deterministic check. On equality, the supervisor
-copies the exact frozen bytes to a content-addressed, supervisor-owned snapshot
-and independently proves snapshot equality with both checkout and receipt.
-Reviewers never read the live checkout.
+### 4. Route native results through the existing review validator and reducer
 
-Immediately before and after every reviewer session, the supervisor enumerates
-the snapshot and live tracked scope while the author remains frozen. Acceptance
-requires identical ordered paths, lengths, and hashes across every receipt and
-manifest. Any missing, added, or changed path creates a non-consuming
-file-integrity fault. Read-only tools and mounts prevent mutation; manifest
-equality controls acceptance.
+The native child returns the current structured result shape. The trusted
+validator checks the launch binding, required session set, blindness and
+declared dependencies, tool audit, file manifests, schema, and selected adapter
+before forwarding anything to the existing semantic reducer.
 
-Alternative considered: compare only before/after manifests. They could agree
-even if bytes changed after deterministic validation but before freezing.
+The reducer remains the sole authority for finding IDs, accepted findings,
+semantic turns, pass, judgment, limits, and stop results. Discovery creates one
+immutable finding inventory. Every recheck must rate every existing finding ID
+exactly once and cannot add, remove, rename, merge, or split findings. The
+current contract allows at most three author-repair turns; a fourth repair or
+recheck is never offered. Rejected infrastructure or validation work consumes
+no semantic turn.
 
-Alternative considered: mount the live checkout read-only for reviewers. That
-couples review reads to mutable author state and weakens candidate identity.
+For accepted findings, the bounded result is returned directly to the still
+live author session. The author may repair the draft, rerun deterministic
+checks, and invoke a fresh native recheck. Pass, third-repair limit, and
+judgment produce the same accepted stop records as the current flow.
 
-### 4. Separate request, preflight, execution, replay, and reuse identities
+Alternative considered: implement loop counters and stop decisions in the
+author prompt. Prompt-managed policy would not be replay-safe and could diverge
+from the frozen workflow reducer.
 
-Trusted code derives `review_request_id` before preflight from run, author
-attempt, phase, semantic slot, checked receipt, canonical input digest, and
-contract revision. A guarded D1 insert serializes lost responses and concurrent
-calls within the attempt. An existing request is returned, not recreated.
+### 5. Extend existing review evidence with native child correlation
 
-Every preparation attempt has `preflight_id` and ordinal. Isolation,
-quiescence, stale-candidate, snapshot, and other pre-execution faults attach to
-that record. Its create-only R2 proof is locatable by exact key, byte length,
-and SHA-256 stored in D1.
+The existing candidate, finding inventory, accepted-review, identical-input
+reuse, and R2 evidence paths remain authoritative. The in-Sandbox path adds one
+child-session record for each native invocation; it does not create parallel
+request, preflight, execution, lease, or reuse tables.
 
-`review_reuse_key` excludes `author_attempt_id` and instead binds run and trusted
-change, phase, candidate and inventory digests, canonical input digest,
-finding-inventory digest, semantic slot, and complete contract digest. After
-the current preflight proves checkout and snapshot equality, the Worker may
-look up an accepted source by this key. It verifies source receipt, every file
-hash, result digest, semantic slot, contract, and source evidence by exact R2
-key, length, and SHA-256.
+Before spawning, a guarded insert reserves the session key derived from run,
+author attempt, phase, round, semantic slot, declared session role, candidate
+digest, canonical input digest, and profile digest. Replaying that key returns
+the durable running, failed, or accepted state instead of spawning again. The
+existing identical-input check may bind an accepted review to the current
+author attempt without a child launch or semantic counter change, using the
+same verified candidate and review-contract digests it uses today.
 
-Successful reuse creates an attempt-local request and `self_review_reuse`
-binding but no execution, model call, Sandbox, or counter increment. The
-attempt-specific reuse-validation receipt is a canonical create-only R2 object.
-D1 stores its key, byte length, SHA-256, and source evidence identity. Final
-completion reads that exact object back and verifies it.
+Each executed session contributes to one create-only R2 review bundle holding
+the canonical launch payload, native child identity and transcript slice,
+profile receipt, before/after manifests, tool audit, structured result or
+bounded fault, adapter output, and validation receipt. D1 stores the bundle's
+exact R2 key, byte length, and SHA-256 on the existing review record. The Worker
+reads it back before accepting a stop.
 
-If reuse does not apply, the controller allocates an execution under the
-request. Replay alone cannot increment its retry ordinal. Only the reducer or
-typed infrastructure recovery policy can authorize a later execution after a
-rejected or abandoned one. A repair changes candidate or input and therefore
-creates a new request and reuse key.
+At an allowed stop, the accepted review is linked to the parent author attempt.
+Only complete, hash-checked proof permits author completion and normal Sandbox
+cleanup. A storage or read-back failure uses the existing proof-repair and
+Sandbox-retention path.
 
-Alternative considered: include the attempt in the only identity. That handles
-local replay but prevents identical-input reuse after a top-level retry.
+Alternative considered: mirror every top-level attempt and lease record for a
+child. A native child is not a top-level attempt; one correlated session row
+plus the existing review and evidence records is sufficient for replay and
+audit.
 
-Alternative considered: omit the attempt from every identity. That permits
-reuse but cannot serialize or audit one attempt's request.
+### 6. Preserve publication, independent review, and approval boundaries
 
-### 5. Fence live work and reconcile abandoned work
+The author Sandbox cannot publish. After an allowed self-check stop, the
+trusted publication stage consumes the checked candidate and accepted review,
+posts the full allowed artifact paths to the one run branch and pull request,
+and records its provider receipt. Missing or invalid candidate, review proof,
+or receipt prevents success and Human Review entry.
 
-Every preflight and execution uses a D1 compare-and-set lease with
-`lease_owner`, monotonic `fence_epoch`, `lease_expires_at`, and `heartbeat_at`.
-Every supervisor command, model channel, evidence write, and state transition
-carries the epoch. D1 and the supervisor reject late work from an older epoch.
-Lease expiry triggers reconciliation; it does not authorize an immediate
-second reviewer.
+Independent review remains a later fresh top-level stage over the published
+head. Human approval remains a separate gate visit whose signed user event is
+the only approval authority. Native self-review advice cannot satisfy either
+boundary.
 
-The recovery path reads the durable record, Sandbox identity, process
-inventory, model-channel state, and staged or durable evidence:
-
-1. If complete hash-checked evidence proves a valid result, finish validation
-   and indexing under the same identity without another model call.
-2. If a preflight provably ended before any child or model channel allocation,
-   fence it, mark it `abandoned`, save bounded proof, and allow the next
-   preflight ordinal only when typed policy permits.
-3. If a child or model call started, or start is ambiguous, revoke its model and
-   tool channels, stop child processes, obtain a terminal or canceled broker
-   acknowledgement, and prove no process or channel remains. Then mark the
-   execution `abandoned`; only typed policy may allocate a fresh execution and
-   identities.
-4. If termination and quiescence cannot be proved, launch no replacement.
-   Reject the parent attempt and retain the Sandbox for proof repair.
-
-Abandoned work never reaches the reducer, consumes a turn, or becomes a reuse
-source. An old owner cannot publish evidence, accept a result, renew, or thaw
-the author under a newer fence. If the author died, recovery may preserve proof
-but cannot attach the child to a different top-level attempt. Frozen lease and
-retry limits cannot extend the 24-hour top-level attempt bound.
-
-Alternative considered: take over immediately at lease expiry. The old model
-call may still run, so expiry alone cannot prove duplicate work is safe.
-
-### 6. Preserve the existing semantic reducer and explicit recheck bounds
-
-After plan, OS/context isolation, tool policy, candidate equality, session
-integrity, completion, adapter, and schema checks pass, the interpreter submits
-the phase result to the existing reducer. The reducer remains sole authority
-for finding IDs, accepted findings, pass, judgment, counters, and stop results.
-Executor location, preflight count, and infrastructure recovery are not
-semantic inputs.
-
-The current self-check contract permits at most three author-repair turns after
-discovery. Each accepted finding result consumes the same semantic turn it
-would consume in the separate-Sandbox flow; rejected or abandoned
-infrastructure work consumes none. The fourth repair is never offered. If a
-finding remains after the third repair, the reducer emits the existing limit
-stop with the unchanged finding and proof.
-
-Discovery creates one immutable finding inventory. Every recheck must rate
-every existing inventory ID exactly once. It cannot add, remove, rename, merge,
-or split a finding. The trusted validator compares the returned ID multiset to
-the saved inventory before reduction; any duplicate, omission, or unknown ID
-rejects the result without changing the inventory or consuming a semantic
-turn. A valid recheck may only update the allowed per-finding rating and
-evidence fields defined by the frozen schema.
-
-For findings, the reducer sends that same bounded inventory to the live author.
-For pass, limit, or judgment, it emits the same accepted stop record as the old
-flow. Malformed, partial, rejected, abandoned, or wrongly aggregated output
-cannot become a semantic result.
-
-Alternative considered: keep the numeric bound and inventory rules implicit in
-the reducer. That would preserve runtime behavior but leave implementation and
-verification unable to check the in-Sandbox path as a standalone design.
-
-Alternative considered: implement counters in the supervisor. Duplicating
-semantic policy would allow local execution to diverge from the frozen flow.
-
-### 7. Persist locatable proof before completing the author attempt
-
-Each preflight and execution writes a create-only R2 evidence bundle. Execution
-evidence includes the checked receipt, frozen plan, launch envelopes, freshness
-and OS-isolation receipts, manifests, tool audits, lease/fence history, session
-outputs or faults, adapter result, and validation receipt. The Worker indexes a
-bundle only after reading it back and matching exact key, byte length, and
-SHA-256. D1 stores those fields on the owning record.
-
-Reuse writes a separate attempt-specific validation object with its exact key,
-length, and digest on the reuse row. It references, rather than copies, the
-source accepted execution evidence.
-
-At an allowed stop, D1 binds the final request and accepted review to the parent
-attempt. The Worker reads back the result and every required preflight,
-execution, or reuse reference. Only verified closure permits author completion
-and normal Sandbox cleanup. Storage or read-back failure rejects the attempt
-and enters the existing retention path for proof repair.
-
-Trusted publication consumes only the accepted stop and checked candidate. It
-remains outside the Sandbox. Independent review runs later in a fresh stage,
-and human approval remains bound to a separate gate visit.
-
-Alternative considered: store only reviewer text or evidence digests. Text
-cannot prove isolation or immutability, and an unlocated digest cannot be read
-back or audited.
+Alternative considered: reuse the native self-review as independent or human
+approval. That conflicts with the approved separation and weakens exact-head
+review.
 
 ## Event flow
 
-1. The author writes a private plan or design draft. The supervisor runs the
-   phase-specific deterministic checks and stores the checked-candidate receipt.
-2. The author requests the configured self-check with the opaque receipt. The
-   Worker loads the frozen review plan, derives attempt-local request and reuse
-   identities, and inserts or reads the D1 request before preflight.
-3. The controller claims a fenced preflight. The supervisor freezes the author
-   lane and proves credentials, namespaces, capabilities, seccomp, mounts,
-   cgroup, protected channels, and process inventory.
-4. The supervisor requires the frozen checkout to equal the receipt, creates an
-   immutable snapshot, and proves equality. A mismatch starts no child and
-   records a non-consuming preflight fault.
-5. After equality proof, the Worker may accept identical-input reuse. It
-   verifies source candidate, contract, result, and R2 object, then writes and
-   reads back the attempt-specific reuse object. Valid reuse removes the
-   snapshot, thaws the author, and returns the result without a model call or
-   counter change.
-6. Otherwise, the controller claims a fenced execution. The interpreter
-   validates and launches exactly the frozen plan's declared sessions. Planning
-   discovery launches the two blind directions; design discovery launches one
-   `design_review` session; design recheck launches one fresh `design_recheck`
-   session with the complete fixed inventory.
-7. Before and after each session, the supervisor records snapshot and checkout
-   manifests while the author remains frozen. Each child receives only its
-   envelope, snapshot, declared dependencies, and read-only tool profile.
-8. When the plan completion predicate holds, its declared validator and adapter
-   produce the existing phase result. The supervisor validates isolation,
-   visibility, manifests, tools, schema, plan, and fencing proof.
-9. Invalid or abandoned infrastructure work is saved without a semantic turn.
-   Expired work follows fenced reconciliation; no replacement launches until
-   old processes and channels are proved absent.
-10. For accepted findings, the reducer records one of at most three repair
-    turns and sends the unchanged bounded inventory to the same author. The
-    author repairs, reruns deterministic checks, and requests a fresh recheck.
-    That recheck must rate every saved ID exactly once and cannot add, remove,
-    rename, merge, or split findings.
-11. For pass, the third-repair limit, or judgment, the Worker writes and reads
-    back all locatable proof, binds the accepted stop, and permits cleanup.
-12. Trusted publication posts checked artifacts and records its receipt.
-    Independent review and human approval continue in separate stages.
+1. The author writes a private plan or design and invokes the existing
+   deterministic completion checks.
+2. The controller accepts the checked candidate, loads the frozen review
+   profile and full checked context, derives the session key, and records the
+   pre-review file manifest.
+3. The author starts the configured reviewer through Codex's native subagent
+   operation with no forked turns, then awaits it. Planning discovery starts
+   its two blind children; design discovery starts one child.
+4. Each child receives only its canonical launch payload and read-only tools.
+   Codex returns its native child identity, tool transcript, and structured
+   result to the main author session.
+5. As each required child exits, the completion hook records its post-review
+   manifest. After all required children exit, it verifies freshness, profiles,
+   tools, dependencies, result schemas, and unchanged per-child file hashes.
+6. A failed launch, forbidden tool request, file change, or invalid result is
+   saved as a non-semantic fault. The author receives the bounded failure under
+   the existing retry/stop policy; no review turn is consumed.
+7. The existing adapter and reducer accept valid results. Findings return to
+   the same live author, which may repair and request a fresh native recheck
+   while one of the three repair turns remains.
+8. A recheck receives the complete immutable finding inventory and must rate
+   every ID exactly once. Pass, the third-repair limit, or judgment ends the
+   loop with the unchanged stop result.
+9. The Worker writes the review bundle, reads it back by exact key, length, and
+   SHA-256, binds the accepted stop to the author attempt, and only then permits
+   cleanup.
+10. Trusted publication, independent review, and human approval continue in
+    their existing separate stages.
 
 ## Minimal data model
 
-Existing run, top-level attempt, candidate, accepted-review, and provider
-operation records remain authoritative. Child sessions never enter the
-top-level attempt relation.
+Existing run, top-level attempt, candidate, finding-inventory, accepted-review,
+reuse, provider-operation, and evidence records remain authoritative. Native
+children never enter the top-level attempt relation.
 
 | Record | Minimal fields | Purpose |
 |---|---|---|
-| `self_review_loop` | `run_id`, `author_attempt_id`, `phase`, `revision`, `turns_used`, nullable `stop_result`, nullable `final_review_request_id` | Serializes one phase loop. The reducer owns counters and stops, including the three-repair maximum. |
-| `self_review_request` | `review_request_id`, `review_reuse_key`, `run_id`, `author_attempt_id`, `phase`, `semantic_slot`, `candidate_id`, `candidate_sha256`, `checked_manifest_sha256`, `input_sha256`, `session_plan_sha256`, nullable `finding_inventory_sha256`, `contract_revision`, `state`, nullable `accepted_execution_id`, nullable `reused_from_request_id`, timestamps | Provides attempt-local replay and exists before preflight. |
-| `self_review_preflight` | `preflight_id`, `review_request_id`, `ordinal`, `state`, `lease_owner`, `fence_epoch`, `lease_expires_at`, `heartbeat_at`, nullable `fault_code`, nullable `evidence_r2_key`, nullable `evidence_byte_length`, nullable `evidence_sha256`, timestamps | Gives all pre-execution work durable identity and locatable proof. `(review_request_id, ordinal)` is unique. |
-| `self_review_execution` | `review_execution_id`, `review_request_id`, `preflight_id`, `retry_ordinal`, `state`, `lease_owner`, `fence_epoch`, `lease_expires_at`, `heartbeat_at`, `counts_as_turn`, nullable `semantic_turn`, nullable `result_sha256`, nullable `fault_code`, nullable `evidence_r2_key`, nullable `evidence_byte_length`, nullable `evidence_sha256`, timestamps | Records one plan execution, fenced ownership, result, and proof. `(review_request_id, retry_ordinal)` is unique. |
-| `self_review_session` | `subagent_id`, `review_execution_id`, `author_attempt_id`, `phase`, `session_key`, `launch_seq`, nullable `direction`, `model_session_id`, `input_projection_sha256`, `schema_sha256`, `visibility_sha256`, `os_isolation_sha256`, `envelope_sha256`, `state`, nullable `result_sha256`, nullable `fault_code`, timestamps | Correlates each plan-declared fresh session without assuming topology. `(review_execution_id, session_key)` and `(author_attempt_id, phase, launch_seq)` are unique. |
-| `self_review_reuse` | `review_request_id`, `review_reuse_key`, `source_request_id`, `source_execution_id`, `source_evidence_r2_key`, `source_evidence_byte_length`, `source_evidence_sha256`, `validation_r2_key`, `validation_byte_length`, `validation_sha256`, `created_at` | Audits cross-attempt identical-input reuse and locates its validation proof. |
-| R2 evidence objects | checked receipt; preflight or execution envelope; frozen plan; fencing history; OS/context receipts; manifests; tool audits; session results or faults; adapter result; reuse validation | Hold immutable detailed proof at the exact key, length, and SHA-256 indexed by D1. |
+| Existing author attempt | `attempt_id`, `run_id`, `sandbox_id`, `definition_digest`, `state` | Owns the live Codex main session and Sandbox. No new attempt is created for a child. |
+| Existing accepted review | Existing candidate, phase, round, inventory, result, counters, and stop fields; add nullable `author_attempt_id` and execution location `native_subagent` | Keeps semantic state and downstream result shape unchanged while linking the final review to its live author. |
+| `self_review_session` | `session_key`, `author_attempt_id`, `phase`, `round`, `semantic_slot`, `session_role`, `candidate_sha256`, `input_sha256`, `profile_sha256`, nullable `subagent_id`, `state`, nullable `fault_code`, nullable `result_sha256`, `before_manifest_sha256`, nullable `after_manifest_sha256`, nullable `evidence_r2_key`, nullable `evidence_byte_length`, nullable `evidence_sha256`, timestamps | Correlates one declared native child, guards replay, and locates its proof without modeling it as an attempt. |
+| Existing R2 review bundle | canonical launch payload, native launch receipt, bounded transcript slice, tool audit, both manifests, child results or faults, adapter output, validation and reuse receipts | Stores immutable detailed proof read back before acceptance. |
 
-Request state is `allocated`, `preparing`, `executing`, `accepted`, `reused`, or
-`rejected`. Preflight and execution state is `allocated`, `running`,
-`validating`, `accepted`, `rejected`, or `abandoned`. Session state is
-`allocated`, `running`, `accepted`, `rejected`, or `abandoned`.
-`counts_as_turn` is written only by the reducer. `semantic_turn` is null before
-semantic acceptance. A reused request has no new execution row.
+`self_review_session.state` is `allocated`, `running`, `accepted`, `rejected`,
+or `canceled`. The unique session key prevents duplicate native launches. A
+reused review has an existing reuse record and no `self_review_session` row.
+Semantic counters remain only on the existing reducer-owned review state.
 
-No prompt bodies, provider credentials, author transcript, hidden model state,
-or unsaved notes are stored in D1. Stable digests identify allowlisted
-configuration; hash-checked R2 objects hold bounded evidence.
+D1 stores no provider credential, author transcript, hidden model state, or
+unsaved notes. Only bounded identities, digests, states, and exact R2 object
+references are durable.
 
 ## Failure modes
 
 | Failure | Required behavior |
 |---|---|
-| Request insertion fails before preflight | Start no Sandbox work and return the existing infrastructure failure; there is no unattributed execution. |
-| Required namespace, credential, capability, seccomp, mount, cgroup, or channel isolation cannot be established | Save a non-consuming preflight fault and use existing infrastructure policy. Never fall back to cgroups alone. |
-| The supervisor cannot freeze every author process | Save a non-consuming quiescence fault and start no reviewer. |
-| Frozen checkout differs from the checked receipt | Save `stale_checked_candidate` with locatable proof, thaw the author, and require a new deterministic check. Do not review or reuse old bytes. |
-| Snapshot differs from frozen checkout | Save a non-consuming snapshot-integrity fault and start no reviewer. |
-| Frozen plan is unknown, invalid, or requires an unavailable schema or adapter | Reject before model allocation and store plan-validation proof. Do not substitute a generic topology. |
-| Design discovery or recheck does not match its one-session declaration | Reject before reduction; do not use the planning topology or adapter. |
-| A session cannot start or its context is not fresh | Save a launch or context-isolation fault, accept no partial result, and follow existing retry/stop policy. |
-| A blind session sees undeclared sibling output | Reject the execution, save visibility proof, and do not invoke the adapter. |
-| A required session is absent, has the wrong schema, or uses the wrong adapter | Reject the execution and do not infer a partial result. |
-| The author exits while a child runs | Fence and stop the child, retain proof, and fail the parent. Never convert the child into a top-level attempt. |
-| Author can see, signal, trace, or read reviewer/supervisor resources | Reject as an OS-isolation fault and fail closed before reduction. |
-| Reviewer reads forbidden parent or sibling state | Deny the read, record a tool-policy fault, and reject the execution. |
-| Reviewer requests provider access | Deny it, record the capability and safe target class, and reject without external effect. |
-| Any receipt, checkout, or snapshot manifest differs | Save all manifests and a non-consuming file-integrity fault; do not reduce the result. |
-| Reviewer output is malformed or incomplete | Save the bounded invalid result and follow current proof-repair/failure policy; never infer from free text. |
-| Recheck omits, duplicates, adds, removes, renames, merges, or splits a finding ID | Reject before reduction, preserve the fixed inventory unchanged, and consume no semantic turn. |
-| Author requests a fourth repair | Emit the existing three-repair limit stop; do not launch another recheck. |
-| Request is replayed while its owner is healthy | Return durable state. Do not allocate another preflight, execution, model call, or turn. |
-| Preflight or execution lease expires | Reconcile proof and live state; replace work only after old processes/channels are absent and typed policy permits. |
-| Complete evidence exists after owner death | Validate and index it under the original identity instead of repeating the model call. |
-| Started work cannot be proved terminated | Start no replacement, reject the parent, and retain the Sandbox for proof repair. |
-| Late fenced owner sends a result or heartbeat | Reject it by fence epoch and record the stale-owner event without changing accepted state. |
-| Accepted reuse fails candidate, contract, result, or source-object verification | Refuse reuse, save a locatable fault, and enter proof-repair/failure policy. Do not launch under ambiguous proof. |
-| Reuse object cannot be written or read by key, length, and hash | Do not accept reuse or complete the attempt. |
-| Top-level retry has a new attempt but identical checked input | Create an attempt-local request and verified reuse binding; create no execution, model call, or turn. |
-| Rejected or abandoned execution needs retry | Only typed reducer or recovery policy may advance `retry_ordinal`; replay cannot create allowance. |
-| Author repair fails deterministic checks | Resume only while a repair allowance remains; launch no reviewer for invalid bytes. |
-| Semantic judgment or limit stop is reached | Emit the unchanged stop and proof; local execution grants no extra turn. |
-| R2 write/read-back/checksum or D1 indexing fails | Do not accept the author attempt or clean up; enter existing proof repair/failure. |
-| Sandbox heartbeat or absolute lifetime expires | Apply existing top-level failure and cleanup; child recovery cannot extend 24 hours. |
-| Trusted publication fails after valid self-check | Preserve accepted private proof and use existing publication reconciliation; reviewer never publishes. |
+| The pinned Codex version cannot start native subagents | Record an infrastructure failure and start no semantic review. An active run does not invent a custom fallback or change executor type. |
+| A child inherits parent turns or uses the wrong native profile | Reject it as a context/configuration fault, save proof, and consume no semantic turn. |
+| A required planning direction or design session is missing | Do not run the adapter or infer a partial result. Save the incomplete session set and follow existing retry policy. |
+| A blind child receives sibling output or an undeclared dependency | Reject the review before reduction and save the launch/input proof. |
+| A reviewer requests a write or provider tool | Deny the tool, record the safe tool class and child identity, reject the result, and perform no external effect. |
+| The tracked path set, length, or hash differs after review | Save both manifests, reject the result as a non-consuming file-integrity fault, and require the author to revalidate the candidate. |
+| The child returns malformed, incomplete, or wrong-schema output | Save the bounded invalid output and use the existing proof-repair or failure rule; never infer findings from prose. |
+| A recheck omits, duplicates, adds, removes, renames, merges, or splits a finding | Reject before reduction, keep the fixed inventory unchanged, and consume no semantic turn. |
+| The author requests a fourth repair | Return the existing three-repair limit stop and launch no child. |
+| The same session request is replayed | Return its durable state or accepted result. Do not start another child or increment a counter. |
+| Verified identical input exists from an eligible prior attempt | Use the existing reuse record and proof; start no child, create no top-level attempt, and consume no turn. |
+| The author exits while children are active | Cancel the native children, preserve available proof, and fail or recover the parent through existing top-level attempt policy. Never promote a child to an attempt. |
+| A native child does not terminate before the attempt deadline | Cancel it and apply the existing 24-hour top-level failure and cleanup policy; a child cannot extend the attempt lifetime. |
+| R2 write/read-back/checksum or D1 indexing fails | Do not accept the author attempt or clean up its Sandbox; enter the existing proof-repair/failure path. |
+| Trusted publication fails after a valid self-check | Preserve the accepted private proof and use existing publication reconciliation; the child never publishes. |
+| Independent review or human approval is missing | Do not treat native self-review as a substitute and do not advance the corresponding gate. |
 
 ## Risks / Trade-offs
 
-- [One Sandbox is a weaker physical boundary than two] → Put the privileged
-  supervisor outside distinct author and reviewer namespaces, drop
-  capabilities, apply seccomp, protect channels, use immutable mounts, and
-  persist proof of every control.
-- [A kernel or supervisor defect could cross the shared host boundary] → Fail
-  closed on isolation mismatch, retain workflow rollback, and keep independent
-  review outside the author Sandbox.
-- [Keeping the author alive consumes capacity longer] → Execute only the frozen
-  topology and retain heartbeat, timeout, stop limits, and cleanup.
-- [Candidate bytes can change between validation and review] → Freeze the full
-  author lane and compare checkout and snapshot to the checked receipt before
-  launch and around every session.
-- [Negative context-isolation claims are hard to audit] → Construct each child
-  from one envelope, deny undeclared paths, and persist model, namespace,
-  capability, mount, channel, and visibility receipts.
-- [A generic interpreter could normalize phase topology] → Treat sessions and
-  adapter as digest-bound data, fail unknown declarations, and test planning
-  and design discovery and recheck fixtures independently.
-- [Lease recovery could duplicate a running model call] → Fence commands and
-  results, revoke channels, prove process absence, and fail the parent when
-  termination is ambiguous.
-- [Cross-attempt reuse could accept stale proof] → Scope its key to complete
-  checked input and contract, verify source objects, and store a locatable
-  attempt-specific receipt.
-- [Child identities may look like attempts] → Carry `author_attempt_id` and
-  `subagent_id` while keeping sessions out of the attempt table.
-- [Serialization prevents concurrent author work] → Accept it because exact
-  candidate binding and attributable integrity proof require quiescence.
+- [Native subagent behavior can change with Codex versions] → Pin the Codex
+  version and reviewer profiles in the frozen workflow definition, validate the
+  effective launch receipt, and canary version changes.
+- [Author and reviewer share a filesystem] → Await children, disable author
+  edits during review, expose read-only child tools, and compare the complete
+  tracked manifest before and after.
+- [Fresh-context proof depends on the native runtime] → Require a new native
+  child ID, no turn fork, the expected profile digest, and the bounded child
+  transcript for every executed session.
+- [Parallel planning directions could leak results] → Give each child only its
+  canonical input and validate that no sibling dependency appears in either
+  launch or tool transcript.
+- [Keeping the author alive consumes Sandbox capacity longer] → Keep the
+  existing heartbeat, absolute attempt lifetime, repair limit, stop rules, and
+  cleanup behavior.
+- [Removing a separate review Sandbox reduces physical isolation] → Keep the
+  Sandbox as the credential boundary, give children no provider tools, retain
+  file manifests, and keep independent review in a separate later stage.
 
 ## Migration Plan
 
-1. Add request, preflight, execution, session, and reuse records with lease
-   fences and exact R2 key, length, and SHA-256 fields. Keep existing attempt
-   and accepted-review readers unchanged.
-2. Start author sessions in the isolation lane. Verify writes, model access,
-   descendant containment, namespace visibility, denied signaling/tracing,
-   capability bounds, seccomp, and supervisor-only channels.
-3. Insert requests before preflight. Add checked-candidate equality, immutable
-   snapshots, and locatable evidence for early faults.
-4. Add the frozen-plan interpreter. Exercise planning discovery's two blind
-   directions and reconciler, planning recheck, design discovery's single
-   `design_review` session, and design recheck's single fresh `design_recheck`
-   session as separate fixtures. Prove session count, dependencies, blindness,
-   schemas, adapter, and result shape match the old executor.
-5. Route adapter output through the existing reducer. Test pass, findings,
-   repair/recheck, judgment, the three-repair limit, exact fixed-inventory ID
-   coverage, denied provider access, signaling/tracing, mutation, missing
-   session, wrong adapter, malformed output, and evidence failure.
-6. Add fenced recovery tests for death before allocation, during a model call,
-   completed-but-unindexed evidence, stale-owner results, unprovable
-   termination, and authorized retry. Prove none creates concurrent work or an
-   extra semantic turn.
-7. Add attempt-local replay and cross-attempt identical-input reuse. Verify
-   source evidence and the new reuse object by R2 key, length, and SHA-256.
-8. Register a new immutable workflow definition selecting the in-Sandbox
-   executor for plan and design self-check nodes. Older frozen definitions keep
-   their separate review Sandboxes.
-9. Canary with real Cloudflare Sandbox execution. Verify one Sandbox and
-   top-level attempt span author, check, and repair; phase-specific topologies
-   run exactly; every session is fresh and isolated; snapshot hashes match;
-   the three-repair and fixed-inventory rules hold; recovery is fenced; reuse
-   proof is locatable; evidence reads back; cleanup follows proof; and
-   independent review remains separate. This is real Sandbox execution proof,
-   not a provider-originated ingress claim.
-10. Enable the new definition only for later runs after the canary passes.
-    Never migrate an active loop between executor types.
+1. Define pinned native reviewer profiles from the existing planning discovery,
+   planning recheck, design discovery, and design recheck configurations.
+2. Add the guarded `self_review_session` correlation record and extend existing
+   review evidence with native child identity, profile, transcript, tool audit,
+   and before/after manifests.
+3. Let the active author invoke only the declared native profiles, await their
+   results, and receive accepted findings. Route every result through the
+   existing validators, adapters, reducer, reuse, and evidence read-back.
+4. Test each phase topology, blindness, fresh no-fork context, read-only tools,
+   unchanged manifests, malformed output, fixed finding inventory, three-repair
+   limit, replay, reuse, cancellation, evidence failure, and retained
+   independent/human boundaries.
+5. Register a new immutable workflow definition that selects native subagents
+   for plan and design self-checks. Older frozen definitions continue using
+   separate review Sandboxes.
+6. Canary with a real Cloudflare Sandbox. Prove that one top-level attempt and
+   Sandbox span author, check, repair, and recheck; native child IDs are fresh;
+   tracked hashes match; proof reads back; cleanup follows proof; publication
+   succeeds through trusted code; and independent review remains separate.
+7. Enable the new definition only for later runs after the canary passes. Never
+   change the executor type of an active run.
 
 Rollback selects the prior registered workflow definition for later runs.
-Because definitions are frozen per run, an active new-version run completes
-under this design or fails closed through existing top-level recovery; it never
-switches executor mid-loop. Additive records and evidence remain readable after
-rollback.
+Because definitions are frozen, an active new-version run completes with native
+subagents or fails closed through existing attempt recovery; it never switches
+mid-loop. The additive child correlation fields and evidence remain readable
+after rollback.
