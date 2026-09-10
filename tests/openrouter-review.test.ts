@@ -122,6 +122,7 @@ test("OpenRouter transport failures remain ambiguous and retryable", async () =>
   const client = new OpenRouterReviewClient({
     apiKey: "secret-key-that-is-long-enough",
     supportedModels: ["vendor/allowed"],
+    wait: async () => {},
     fetcher: async () => { throw new Error("network unavailable"); },
   });
   await assert.rejects(
@@ -275,4 +276,103 @@ test("supported model settings are bounded and deterministic", () => {
   }));
   assert.equal(result.providerRequestId,"resp-ok");
   assert.deepEqual(errors,[]);
+});
+
+
+test("Responses recovers on the third retry and resends the exact request", async () => {
+  const delays: number[] = [];
+  const bodies: string[] = [];
+  const client = new OpenRouterReviewClient({
+    apiKey: "secret-key-that-is-long-enough", supportedModels: ["vendor/allowed"],
+    wait: async ms => { delays.push(ms); }, random: () => 0.5,
+    now: () => Date.parse("2026-09-10T12:00:00Z"),
+    fetcher: async (_url, init) => {
+      bodies.push(String(init?.body));
+      const attempt = bodies.length;
+      if (attempt <= 3) return Response.json({ error: { code: 429, message: "busy" } }, {
+        status: 429, headers: { "Retry-After": attempt === 1 ? "3" :
+          attempt === 2 ? "Thu, 10 Sep 2026 12:00:06 GMT" : "invalid" },
+      });
+      return new Response('data: {"response":{"id":"recovered"}}\n\n',
+        { headers: { "Content-Type": "text/event-stream" } });
+    },
+  });
+  const response = await client.proxyResponses({ model: "vendor/allowed", input: "review", text: reviewText });
+  assert.equal(response.providerRequestId, "recovered");
+  assert.equal(bodies.length, 4);
+  assert.equal(new Set(bodies).size, 1);
+  assert.deepEqual(delays, [3000, 6000, 8500]);
+});
+
+test("transient HTTP failures stop after exactly three retries and retain the final cause", async () => {
+  for (const status of [408, 429, 500, 502, 503, 504, 524, 529]) {
+    let requests = 0;
+    const delays: number[] = [];
+    const client = new OpenRouterReviewClient({
+      apiKey: "secret-key-that-is-long-enough", supportedModels: ["vendor/allowed"],
+      wait: async ms => { delays.push(ms); }, random: () => 0,
+      fetcher: async () => Response.json({ error: { code: status, message: `busy-${++requests}` } },
+        { status, headers: { "x-request-id": `provider-${requests}` } }),
+    });
+    await assert.rejects(client.proxyResponses({ model: "vendor/allowed", input: "review", text: reviewText }),
+      (error: unknown) => {
+        assert.ok(error instanceof OpenRouterReviewError);
+        assert.equal(error.diagnostic.requestAttempts, 4);
+        assert.equal(error.diagnostic.httpStatus, status);
+        assert.equal(error.diagnostic.providerRequestId, "provider-4");
+        assert.match(error.diagnostic.rawResponseBody!, /busy-4/);
+        return true;
+      });
+    assert.equal(requests, 4);
+    assert.deepEqual(delays, [2000, 4000, 8000]);
+  }
+});
+
+test("authentication, payment, and request errors fail without retries", async () => {
+  for (const status of [400, 401, 402, 403, 404, 422]) {
+    let requests = 0;
+    const client = new OpenRouterReviewClient({
+      apiKey: "secret-key-that-is-long-enough", supportedModels: ["vendor/allowed"],
+      wait: async () => { assert.fail("permanent errors must not wait"); },
+      fetcher: async () => { requests++; return Response.json({ error: { code: status } }, { status }); },
+    });
+    await assert.rejects(client.proxyResponses({ model: "vendor/allowed", input: "review", text: reviewText }),
+      (error: unknown) => error instanceof OpenRouterReviewError && error.diagnostic.requestAttempts === 1);
+    assert.equal(requests, 1);
+  }
+});
+
+test("transport retry exhaustion preserves ambiguity and chat reviews share the retry policy", async () => {
+  let requests = 0;
+  const client = new OpenRouterReviewClient({
+    apiKey: "secret-key-that-is-long-enough", supportedModels: ["vendor/allowed"],
+    wait: async () => {}, random: () => 0,
+    fetcher: async () => { requests++; throw new Error(`network-${requests}`); },
+  });
+  await assert.rejects(client.review({ model: "vendor/allowed", reasoning: "high", prompt: "Review",
+    schemaName: "review", schema: { type: "object" } }), (error: unknown) => {
+    assert.ok(error instanceof OpenRouterReviewError);
+    assert.equal(error.diagnostic.requestAttempts, 4);
+    assert.equal(error.diagnostic.requestMayHaveSucceeded, true);
+    assert.match(error.diagnostic.rawResponseBody!, /network-4/);
+    return true;
+  });
+  assert.equal(requests, 4);
+});
+
+test("a partial successful stream is never replayed by HTTP backoff", async () => {
+  let requests = 0;
+  const client = new OpenRouterReviewClient({
+    apiKey: "secret-key-that-is-long-enough", supportedModels: ["vendor/allowed"],
+    wait: async () => { assert.fail("must not replay partial output"); },
+    fetcher: async () => {
+      requests++;
+      return new Response(new ReadableStream({ start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"type":"response.created"}\n\n'));
+        controller.error(new Error("stream disconnected"));
+      } }), { headers: { "Content-Type": "text/event-stream" } });
+    },
+  });
+  await assert.rejects(client.proxyResponses({ model: "vendor/allowed", input: "review", text: reviewText }));
+  assert.equal(requests, 1);
 });

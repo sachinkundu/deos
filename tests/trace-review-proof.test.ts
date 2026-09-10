@@ -188,6 +188,8 @@ test("Codex reviewer resume uses only options accepted by the resume subcommand"
   assert.ok(routed.includes("--ignore-rules"));
   assert.ok(routed.includes('model_provider="deos_openrouter"'));
   assert.ok(routed.includes('model_providers.deos_openrouter.wire_api="responses"'));
+  assert.ok(routed.includes("model_providers.deos_openrouter.request_max_retries=0"));
+  assert.ok(routed.includes("model_providers.deos_openrouter.stream_max_retries=0"));
   assert.ok(routed.includes(
     'model_providers.deos_openrouter.base_url="https://worker.example/capabilities/openrouter/v1"',
   ));
