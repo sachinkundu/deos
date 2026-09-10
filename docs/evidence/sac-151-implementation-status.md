@@ -103,3 +103,23 @@ Migration 0031 permits multiple scoped manifests under the parent attempt. It
 preserves existing references; the remote foreign-key check reported no violations.
 The pending workflow checkpoint replayed successfully without replacing the author.
 A regression test covers two review manifests and the final author manifest.
+
+## Remaining canary work
+
+The published calculator proposal is sample-project PR 11. Publication recovered
+through provider reconciliation. Independent review then failed on a retryable
+OpenRouter HTTP 429. Its failed attempt is 01a08a5a-bdd7-734e-9586-a278fde7eaea;
+the saved native planning results remain accepted.
+
+A changes-requested review on proposal PR 11 asks for finite-number input and
+result bounds. The portal's stage-retry confirmation is pending because browser
+controls could not accept the JavaScript dialog. No retry was submitted at this
+checkpoint. Independent review, proposal rework, design review and rework, and the
+remaining authorized human transitions must complete before this PR is ready.
+
+Repository validation: 350 Node tests, typecheck, 56 Python tests, and strict
+OpenSpec validation passed. The backend Worker version is
+9534de94-332b-44bf-8936-cf069412609e at 100% traffic. Container image digest is
+8a97f99ff512dcd975f42eecfeffa791ca484dfe38247ed7d4f3562fa2a03736.
+The portal and BettaView deployments were not changed. Local probe containers and
+the temporary observer Worker were removed.
