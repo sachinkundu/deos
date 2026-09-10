@@ -50,6 +50,7 @@ def main():
         'trace_reviews': query(f'SELECT review_id,attempt_id,phase,mode,overall_outcome,accepted,reviewed_head_sha,sidecar_r2_key,created_at,completed_at FROM trace_reviews WHERE {run_filter} ORDER BY created_at'),
         'planning_work_products': query(f'SELECT * FROM run_work_products WHERE {run_filter}'),
         'design_work_products': query(f'SELECT * FROM design_work_products WHERE {run_filter}'),
+        'design_reviews': query(f'SELECT review_attempt_id,agent_attempt_id,phase,head_sha,outcome,accepted,evidence_r2_key,evidence_sha256,created_at,completed_at FROM design_review_attempts WHERE round_id IN (SELECT round_id FROM design_review_rounds WHERE {run_filter}) ORDER BY created_at'),
     }
     if args.verify_proofs:
         proofs = []
