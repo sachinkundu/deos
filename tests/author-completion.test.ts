@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   authorCorrectionPrompt,
   changedPathsFromPorcelain,
+  designCorrectionPrompt,
   runAuthorCompletionCheck,
   runBoundedAuthorCompletion,
   runDesignCompletionCheck,
@@ -161,7 +162,7 @@ test("bounded completion resumes the exact session and never allocates another a
   assert.match(resumes[0].prompt, /in-place correction 1 of 2/);
 });
 
-test("design completion allows only design.md and requires all design sections", async () => {
+test("design completion validates scope and repairs malformed replies in the same session", async () => {
   const designPath = `${ROOT}/design.md`;
   const execute = async (args: string[]) => {
     if (args[0] === "git") {
@@ -193,6 +194,42 @@ test("design completion allows only design.md and requires all design sections",
     const checked = await runDesignCompletionCheck({ cwd, change: CHANGE, execute });
     assert.equal(checked.ok, true);
     assert.deepEqual(checked.changedPaths, [designPath]);
+    const reviewRepliesPath = `${cwd}/review-replies.json`;
+    const check = () => runDesignCompletionCheck({ cwd, change: CHANGE, execute, reviewRepliesPath });
+    assert.equal((await check()).ok, false, "a missing final reply file requires correction");
+    for (const invalid of [
+      "{",
+      JSON.stringify([{ threadId: 3979327179, body: "Updated the install plan." }]),
+      JSON.stringify([{ commentId: 3979327179, body: " " }]),
+      JSON.stringify([{ commentId: 1, body: "a" }, { commentId: 1, body: "b" }]),
+    ]) {
+      await writeFile(reviewRepliesPath, invalid);
+      assert.equal((await check()).ok, false);
+    }
+    await writeFile(reviewRepliesPath, JSON.stringify([
+      { threadId: 3979327179, body: "Updated the install plan." },
+    ]));
+    const initialCheck = await check();
+    const repaired = await runBoundedAuthorCompletion({
+      initialCheck,
+      initialResult: { code: 0, signal: null, outcome: "completed" },
+      sessionId: "design-session",
+      maximumRepairs: 2,
+      correctionPrompt: designCorrectionPrompt,
+      resume: async ({ sessionId, prompt }) => {
+        assert.equal(sessionId, "design-session");
+        assert.match(prompt, /Use commentId, not threadId/);
+        await writeFile(reviewRepliesPath, JSON.stringify([
+          { commentId: 3979327179, body: "Updated the install plan." },
+        ]));
+        return { code: 0, signal: null, outcome: "completed" };
+      },
+      check,
+    });
+    assert.equal(repaired.check.ok, true);
+    assert.equal(repaired.rounds.length, 2);
+    await writeFile(reviewRepliesPath, "[]");
+    assert.equal((await check()).ok, true);
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }
