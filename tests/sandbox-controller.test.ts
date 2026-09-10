@@ -1449,6 +1449,25 @@ test("failed attempt can retain a credential-free Sandbox until a durable cleanu
   assert.equal(collector.verified, 1);
 });
 
+test("native author deadline stops execution and retains credential-free evidence", async () => {
+  const { controller, factory, attempts, collector } = setup();
+  await controller.execute(run, "work", "work", definition);
+  const attempt = attempts.latest!;
+  attempt.job_spec_json = JSON.stringify({ ...JSON.parse(attempt.job_spec_json), nativeSelfReview: { phase: "planning" } });
+  attempt.absolute_deadline = NOW.toISOString();
+
+  await controller.execute(run, "work", "work", definition);
+
+  assert.equal(attempts.latest?.state, "absolute_timeout");
+  assert.equal(factory.sandbox.supervisor.state, "exited");
+  assert.equal(factory.sandbox.files.has("/root/.codex/auth.json"), false);
+  assert.equal(factory.sandbox.destroyed, false);
+  assert.equal(factory.sandbox.keepAlive, true);
+  assert.equal(attempts.latest?.cleanup_hold_until, "2026-08-17T10:00:00.000Z");
+  assert.equal(attempts.latest?.cleanup_hold_reason, "native_review_proof_repair");
+  assert.equal(collector.verifiedDurable, 1);
+});
+
 test("failure evidence persistence error keeps the Sandbox recoverable", async () => {
   const { controller, factory, attempts, collector } = setup();
   await controller.execute(run, "work", "work", definition);

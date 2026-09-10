@@ -172,3 +172,90 @@ rtk proxy python3 /tmp/sac151-cf.py api containers/applications/a0344373-884d-4c
 Run 2 started from another real Linear Todo delivery (c0fefdbd-b965-4670-8353-5b974445325a). Its author attempt is 01a08a1b-4a08-7bf4-8e88-e0f6d0a4a6bc and Sandbox is sbx-v1-omqiapopvtqaanrbnsu4ryg2hxnk5wsnuoyb77l7pezi4v6dntya. The first candidate and native child were recorded under that same attempt. The live run also exposed a five-minute controller polling delay; the new native initial-author path now reconciles every ten seconds. The current run adopted that Worker update without replacing its live author or Sandbox.
 
 The first native child in run 2 failed at 07:06:20 UTC with an encrypted function-output decode error. A protected read-only diagnostic confirmed the exact task_complete error. The v2 native messaging handler treats model messages as encrypted; replacing its message argument in a hook with plaintext broke transport. The implementation now uses the pinned native v1 plain-message interface, selected through Codex model_catalog_json while retaining the provider model metadata and model identity. Child runtime errors are detected even when SubagentStop is absent. The original error was captured in R2 and copied to sac-151-native-transport-failure.json. Run 2 correctly ended as native_review_failed and will not be reported as a passed review.
+
+```bash
+rtk proxy python3 /tmp/sac151-status.py
+```
+
+```output
+[
+  {
+    "run_sequence": 1,
+    "current_node": "agent_failed",
+    "status": "failed",
+    "definition_version": 23
+  },
+  {
+    "run_sequence": 2,
+    "current_node": "agent_failed",
+    "status": "failed",
+    "definition_version": 23
+  },
+  {
+    "run_sequence": 3,
+    "current_node": "planning_author",
+    "status": "active",
+    "definition_version": 23
+  }
+]
+[
+  {
+    "attempt_id": "01a08a15-7393-7d2e-b237-3c7ee16ea379",
+    "sandbox_id": "sbx-v1-v7gciu545rlvbh7weozhifpft7yzsabrsful5klt2kxsucwfp6sq",
+    "node_id": "planning_author",
+    "state": "failed",
+    "started_at": "2026-09-10T06:51:07.051Z",
+    "result_class": "supervisor_failed",
+    "result_detail": null
+  },
+  {
+    "attempt_id": "01a08a1b-4a08-7bf4-8e88-e0f6d0a4a6bc",
+    "sandbox_id": "sbx-v1-omqiapopvtqaanrbnsu4ryg2hxnk5wsnuoyb77l7pezi4v6dntya",
+    "node_id": "planning_author",
+    "state": "failed",
+    "started_at": "2026-09-10T06:57:28.430Z",
+    "result_class": "native_review_failed",
+    "result_detail": null
+  },
+  {
+    "attempt_id": "01a08a3a-12cf-751a-a3c8-fcae93993315",
+    "sandbox_id": "sbx-v1-fg4onq3et2itrhbn27xpv4l54n5eqr5t4ukgp2sagc7dei37uwaa",
+    "node_id": "planning_author",
+    "state": "running",
+    "started_at": "2026-09-10T07:31:06.661Z",
+    "result_class": null,
+    "result_detail": null
+  }
+]
+[
+  {
+    "session_key": "01a08a1b-4a08-7bf4-8e88-e0f6d0a4a6bc:1:0",
+    "author_attempt_id": "01a08a1b-4a08-7bf4-8e88-e0f6d0a4a6bc",
+    "candidate_sequence": 1,
+    "call_index": 0,
+    "phase": "planning",
+    "state": "started",
+    "subagent_id": "01a08a22-f284-79c2-8655-b0fcb9d35a6a",
+    "stop_result": null
+  }
+]
+[
+  {
+    "author_attempt_id": "01a08a1b-4a08-7bf4-8e88-e0f6d0a4a6bc",
+    "sequence": 0,
+    "kind": "candidate"
+  },
+  {
+    "author_attempt_id": "01a08a1b-4a08-7bf4-8e88-e0f6d0a4a6bc",
+    "sequence": 1,
+    "kind": "session_allocate"
+  },
+  {
+    "author_attempt_id": "01a08a1b-4a08-7bf4-8e88-e0f6d0a4a6bc",
+    "sequence": 2,
+    "kind": "session_started"
+  }
+]
+```
+
+Run 3 retained the same author attempt across a Cloudflare internal workflow error. Observation step agent:planning_author:visit:2-20 started at 07:34:59.731 UTC. Its first execution ended at 07:40:01.852 with WorkflowInternalError; the replay succeeded at 07:40:04.235. This was a step replay, not a new author attempt or Sandbox. The author continued to edit and validate the calculator specification.

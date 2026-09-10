@@ -86,5 +86,5 @@ supports the required plain-message contract. Both local probes now use it.
 The live child error is saved in R2. The controller now detects a terminal child
 error even when no SubagentStop hook runs, and stops the parent with that cause.
 Initial native authors reconcile every ten seconds; other paths keep the existing
-heartbeat interval. The corrected image is rolling out before another real trial.
+heartbeat interval. The corrected image is active at 100% Worker traffic. SAC-166 run 3 uses a new author attempt and Sandbox on that image.
 No human gate has been advanced for SAC-166 yet.

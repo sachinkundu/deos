@@ -186,16 +186,17 @@ export class WorkflowOrchestrator {
           ),
         );
         if (execution.state === "running") {
+          const nativeHeartbeat = run.definition_id === "simple-traceability" &&
+            run.definition_version >= 23 && ["planning_author", "design_author"].includes(instruction.nodeId);
           try {
             await step.waitForEvent<{ deliveryId: string }>(
               `agent-event:${execution.attemptId}`,
-              { type: "linear-event", timeout: run.definition_id === "simple-traceability" &&
-                run.definition_version >= 23 &&
-                ["planning_author", "design_author"].includes(instruction.nodeId)
-                ? "10s" : this.definition.execution.heartbeatTimeout },
+              { type: "linear-event", timeout: nativeHeartbeat ? "10s" : this.definition.execution.heartbeatTimeout },
             );
           } catch (caughtError) {
-            recordCaughtError(caughtError, "src/workflow-orchestrator.ts:192");
+            if (!nativeHeartbeat || !(caughtError instanceof Error) || caughtError.name !== "WorkflowTimeoutError") {
+              recordCaughtError(caughtError, "src/workflow-orchestrator.ts:192");
+            }
             // A timeout is the durable heartbeat checkpoint; the next loop
             // reloads D1 and reconciles the exact Sandbox/process identities.
           }
