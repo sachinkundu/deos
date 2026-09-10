@@ -61,3 +61,10 @@ At the gate, the trial reviewer checked the revision and requested a separate un
 
 
 Readback confirmed provider-originated delivery `965c9e08-32f4-42e9-8263-e5a059fefc30` at 11:55:04.176Z, classified relevant. Run 3 entered `planning_revision_author`. Fresh attempt `01a08b2c-2eec-7ec9-b674-9f0c01a8d0be` started at 11:55:29.320Z in Sandbox `sbx-v1-iakczu5rxqjp7bzj6h5pqmd4ktfq3v46svktbxmxnw2uvoa66lba`. This establishes an actual human-requested revision round; its completion is pending.
+
+
+## Human-requested revision accepted by independent review
+
+The revision published head `79d0b0f6c37fc3878ade46196729cd0b40b1556d`. Its only change adds a Celsius-to-Fahrenheit overflow scenario with finite input, empty stdout, a short stderr reason and help hint, and a non-zero exit status. The bot posted a substantive [reply to the second review thread](https://github.com/sachinkundu/deos-sample-project/pull/11#discussion_r3978858583). Both reviewer threads remain available for human resolution.
+
+Fresh independent attempt `01a08b35-c9d6-778b-bde7-1bbcf6b4cb84` ran from 12:05:58.580Z to 12:11:08.791Z. D1 accepted its pass review, bound to that exact published head; the Sandbox was destroyed. The workflow then started independent-response author `01a08b3a-a61f-75b1-bac9-3dbe7dbd404c` at 12:11:20.506Z. Return to Human Review and proposal merge remain pending.
