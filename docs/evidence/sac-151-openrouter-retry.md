@@ -73,3 +73,9 @@ The resumed independent reviewer used new attempt `01a08afd-46e3-7b4d-84d9-f44d9
 ```
 
 D1 recorded the resumed attempt and run as failed at 2026-09-10T11:09:22.112Z, with result class `codex_exit_nonzero`. Sandbox cleanup was read back as `destroyed`. No additional stage retry was submitted after this exhausted retry budget.
+
+## Original upstream causes recovered from R2
+
+The initial 429 explicitly identified Baidu, `rpm_rate_limit_exceeded`, and `limit_source: upstream_provider_shared_pool`, with `is_byok: false`. This was the provider's shared request-rate limit, not evidence of an empty user balance.
+
+The final 502 after the three retries identified Baidu, `provider_error_code: internal_error`. Its raw provider response was `{"error":{"code":"internal_error","message":"Internal error","type":"internal_error"},"id":"as-zvgw8yuk0i"}`. The protected diagnostic reports `requestAttempts: 4`. Neither response included Retry-After. The 502's internal cause is not disclosed; it does not prove a platform-wide outage or rule out a request-specific provider fault.
