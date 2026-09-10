@@ -37,17 +37,22 @@ flowchart LR
     B --> X[Fresh directional reviewer Sandbox]
     X <-->|attempt-scoped model channel| T[Trusted runner]
     E[(Encrypted Claude auth in R2)] --> T
+    J[(Versioned runner-only HMAC keyring)] -->|derive account fingerprint| T
     T <-->|Pro account session| P[Claude cloud]
     T --> V[Result and proof validator]
     B --> V
     V --> R[(Create-only R2 proof)]
-    V --> D
+    V -->|validated pending cleanup| D
+    D -->|expired lease and owner IDs| Z[Trusted cleanup reconciler]
+    Z -->|stop exact Sandbox owner| X
+    Z -->|stop runner and remove auth namespace| T
+    Z -->|destruction receipt| D
     D --> O[Protected review projection]
     R --> O
-    V -->|accepted review only| H[Existing human gate path]
+    D -->|accepted review after cleanup| H[Existing human gate path]
 ```
 
-Settings shows the fixed setup and no OpenRouter model control for the new flow. The allocator owns the immutable profile. Each Sandbox keeps one direction's review context and read-only tools. The trusted runner owns auth and provider calls. Only the validator may accept provider output.
+Settings shows the fixed setup and no OpenRouter model control for the new flow. The allocator owns the immutable profile. Each Sandbox keeps one direction's review context and read-only tools. The trusted runner owns auth and provider calls. The runner-only keyring supplies the frozen fingerprint key version, and the cleanup reconciler recovers lost owners without exposing auth. Only the validator may accept provider output.
 
 ## Decisions
 
@@ -122,6 +127,8 @@ The Claude definition is first deployed and registered as non-default. A trusted
 
 Normal signed Linear ingress and Queue dispatch process the test event. The guarded run insert selects the non-default definition only if every field matches. It consumes the authorization and saves the run ID in the same transaction. An expiry, mismatch, replay, or second issue cannot select the unproved definition.
 
+A failed canary never rearms or reuses its consumed authorization. If current rules allow a same-run stage retry, that is the first recovery path; it uses the run's frozen definition and needs no new canary authorization. If no eligible same-run retry remains and the canary run reaches its existing terminal failed or canceled outcome, an allowed Access operator may create one fresh expiring authorization only after its Sandbox and auth cleanup both read back as `destroyed`. The replacement binds a fresh eligible test issue, the current route revision and digest, repository, and the same unchanged definition digest. If the definition changed, its prior test evidence is stale and the release starts again from contract checks and a new authorization. Failed canary runs and consumed authorizations remain immutable audit records and cannot enter release proof. Only one unconsumed authorization or nonterminal canary run may exist for a definition and route at a time.
+
 After the canary, a trusted release verifier creates one immutable release-proof record. It binds the definition digest, consumed authorization, canary run, accepted review and invocation claim, hash-checked D1 and R2 read-back, and sanitized Settings and review-state image hashes. Its status becomes `verified` only when every required item matches.
 
 Promotion is a protected RouteAdmin operation for an allowed Access operator. Its transaction takes the expected route revision, definition digest, and release-proof ID. It checks that proof is `verified`, belongs to the same canary and definition, and has not been used. It then marks the definition selectable, advances the route control revision, consumes the proof for promotion, and writes an audit row atomically. Trusted code reads the route back and requires the new digest and revision before reporting success. A missing image, stale revision, changed digest, used proof, or failed read-back leaves the definition non-default.
@@ -133,6 +140,8 @@ Making the definition a normal choice before proof was considered, but it could 
 A valid Claude result completes outside review even when it has concerns. Concerns remain advice. Existing author response and human gates still follow. The review cannot approve a gate.
 
 Auth, plan-limit, provider, result, proof, stale, or ambiguous failures create no accepted review. A retry follows current limits, counts an ambiguous call as a used attempt, uses the same frozen profile, and starts only after cleanup is proved. It never falls back to another model, provider, API key, or paid route.
+
+`plan_limit` is quota-bound, not a transient invocation failure. It ends the current attempt and never schedules an immediate automatic retry. If the confirmed Claude contract supplies a trustworthy reset time or retry-after value, the adapter normalizes it to `retry_not_before` and trusted allocation rejects a retry before that time. If no trustworthy time exists, only the existing operator-triggered stage retry may try again after capacity is expected to be restored; the workflow does not poll or spend another attempt on its own. Such a retry still counts against all current attempt and stop limits and uses the same Claude Pro profile. Other review failures keep the current retry eligibility rules.
 
 ## Event flow
 
@@ -146,7 +155,7 @@ Auth, plan-limit, provider, result, proof, stale, or ambiguous failures create n
 8. Validation checks fingerprints, route facts, input, head, output schema, proof rules, and secret scan. Hash-checked R2 proof moves the attempt only to `validated_pending_cleanup`.
 9. The runner removes the Claude process, auth namespace, client state, and Sandbox. Trusted cleanup reads both records back as `destroyed`, then re-reads the exact R2 manifest for final integrity.
 10. Only a guarded D1 update after cleanup and final integrity may accept the review. Acceptance then follows the current author-response and human-gate path. Any stopped, failed, ambiguous, cleanup-unproved, or integrity-unproved review has no accepted pointer and cannot advance.
-11. An allowed retry consumes the prior attempt budget, increments the retry ordinal, allocates a new attempt ID, and creates a new claim only after cleanup is `destroyed`.
+11. An allowed retry consumes the prior attempt budget, increments the retry ordinal, allocates a new attempt ID, and creates a new claim only after cleanup is `destroyed`. A `plan_limit` retry also waits until a trustworthy `retry_not_before`, or for an operator-triggered retry when the provider supplies no safe reset time; it is never automatic.
 
 ## Minimal data model
 
@@ -155,10 +164,10 @@ The logical fields below may use existing repository naming, but their values an
 | Record | Required data | Constraint |
 | --- | --- | --- |
 | Frozen review profile | definition, provider, model, effort, billing route, fallback, allowed fingerprint, scheme, key version | Immutable. Old runs retain old values and keys. |
-| Review attempt | attempt, run, stage, round, direction, retry ordinal, input, head, copied profile, observed fingerprint, status, safe cause, proof hashes | Acceptance requires `validated_pending_cleanup`, both cleanup records `destroyed`, and final manifest read-back. |
+| Review attempt | attempt, run, stage, round, direction, retry ordinal, input, head, copied profile, observed fingerprint, status, safe cause, optional retry-not-before and signal source, proof hashes | Acceptance requires `validated_pending_cleanup`, both cleanup records `destroyed`, and final manifest read-back. When a trustworthy plan-limit reset time exists, retry cannot allocate before it. |
 | Invocation claim | stable claim ID, retry ordinal, attempt, input and head, status, started time, provider request or completion ID, receipt hash, ambiguity cause | Exact replay reuses the claim. A retry has a new ordinal and attempt. Ambiguity consumes the attempt. |
 | Auth checkout | attempt, encrypted object and ETag, Sandbox and runner IDs, process slot, namespace, lease and heartbeat, cleanup receipt and state | Contains no auth value. `destroyed` needs matching owner and provider read-back. |
-| Canary authorization | test issue, route revision and digest, repository, definition, expiry, consumed run | One-time. Consumption and run allocation are atomic. |
+| Canary authorization | authorization ID, test issue, route revision and digest, repository, definition, expiry, optional replaced authorization, consumed run | One-time. Consumption and run allocation are atomic. At most one unconsumed authorization or nonterminal canary run exists per definition and route. |
 | Release proof and promotion | definition, canary, accepted review and claim, data and image hashes, verification, operator, route revision | Promotion requires verified proof and consumes it in the route transaction. |
 | R2 review proof | receipt, semantic result, provider result, validation, input binding, SHA-256 manifest | Create-only and read back before acceptance. No auth or raw account ID. |
 
@@ -169,7 +178,8 @@ The old OpenRouter setting remains only for audit and frozen runs. The new alloc
 | Failure | Durable outcome | Gate and retry behavior |
 | --- | --- | --- |
 | Auth is missing, expired, revoked, invalid, or has the wrong account fingerprint | `auth_failure`; no accepted result | No gate. Retry only under current rules and route. |
-| Claude reports the Pro plan limit | `plan_limit` | No fallback or gate. A later retry still uses Claude Pro. |
+| Claude reports the Pro plan limit with a trustworthy reset signal | `plan_limit` plus internal `retry_not_before` and signal source | No fallback or gate. Reject retry allocation before that time; never retry automatically. |
+| Claude reports the Pro plan limit without a trustworthy reset signal | `plan_limit` with no retry time | No fallback, gate, polling, or automatic retry. Only the existing operator-triggered retry may try later, within current limits and on Claude Pro. |
 | Claude environment has an ambient key, endpoint, inherited config, or override | `review_failure` before provider contact | Start no process and send no provider byte. |
 | Provider call, tool loop, result, or proof fails | `review_failure` | Keep safe internal detail; show only the cause. |
 | Receipt disagrees with account, model, effort, route, input, or attempt | `review_failure` | Configured values cannot replace provider proof. |
@@ -183,6 +193,7 @@ The old OpenRouter setting remains only for audit and frozen runs. The new alloc
 | Auth refresh races with an attempt | Attempt keeps its source ETag | A stale writer cannot replace a newer snapshot. |
 | Fingerprint key rotates during a run | Use the frozen scheme and key version | Retain old keys through run and audit retention. |
 | Canary guard is absent, stale, mismatched, or consumed | Do not allocate the non-default definition | Ordinary runs keep the released definition. |
+| A canary consumes its authorization and then fails | Keep the failed run and authorization as audit records; create no release proof | Use an eligible same-run retry first. After the run is terminal with no eligible retry and cleanup is proved, an operator may authorize one fresh issue for the same unchanged definition. Never rearm automatically. |
 | Release proof is incomplete, stale, mismatched, used, or not read back | Do not promote | Keep the definition non-default and audit the result. |
 | Frozen OpenRouter run resumes | Restore its saved path and labels | Do not migrate or relabel it. |
 | Passed review is rendered | Show semantic content, but no provider execution facts | Internal proof stays on trusted evidence paths. |
@@ -196,7 +207,7 @@ The old OpenRouter setting remains only for audit and frozen runs. The new alloc
 - [Proof can validate while secret-bearing resources are live] → Hold `validated_pending_cleanup`, require both destruction read-backs, then re-read proof before acceptance.
 - [Local auth formats may change] → Isolate parsing in the trusted adapter and keep durable fields provider-neutral.
 - [The fixed setup reduces operator choice] → Treat that as a safety property. Another route needs a reviewed definition.
-- [The real canary consumes plan capacity] → Allow one bounded canary and stop at the plan limit.
+- [A real canary can consume plan capacity or fail after its authorization is used] → Keep one authorization or canary run live at a time, use eligible same-run retry first, preserve the failed audit record, and allow a fresh bound issue only after the old run and cleanup are terminal.
 - [Old proof and HMAC keys add retention cost] → Select both from the frozen profile and retain them for the audit period.
 
 ## Migration Plan
@@ -205,8 +216,9 @@ The old OpenRouter setting remains only for audit and frozen runs. The new alloc
 2. Add the provider-neutral profile, fingerprint scheme and key version, invocation claims, release proof, canary authorization, addressable auth checkout, and crash reconciler. Keep old rows readable.
 3. Add the Claude adapter behind the current model channel. Give each direction isolated client state and a sanitized process environment. Keep the contract builder, validator, rounds, retries, stop rules, and gates.
 4. Change Settings to show the fixed setup and remove the OpenRouter choice for the new flow. Ignore any old saved choice.
-5. Test both review stages, ambient-key rejection, wrong auth, fingerprint rotation, direction isolation, plan limit, bad result, exact replay versus a new retry claim, ambiguous replay, cleanup-before-acceptance, owner cleanup, retry gating, canary allocation and promotion, and old runs.
+5. Test both review stages, ambient-key rejection, wrong auth, fingerprint rotation, direction isolation, plan limit with and without a reset signal, rejection before `retry_not_before`, no automatic quota retry, bad result, exact replay versus a new retry claim, ambiguous replay, cleanup-before-acceptance, owner cleanup, retry gating, failed-canary replacement, canary allocation and promotion, and old runs.
 6. Deploy and register the immutable Claude definition as non-default. Read back the deployed version at full traffic.
 7. Create one expiring authorization for an exact test issue, route proof, repository, and definition. Trigger it through normal signed Linear ingress and Queue dispatch.
 8. Run one real outside review. The release verifier binds safe D1 and R2 read-back and sanitized images to the canary, accepted claim, exact input, account, Opus 5, high effort, result, and Pro route.
-9. An allowed Access operator promotes the exact digest through guarded RouteAdmin. Require verified proof, atomic route revision, audit, and read-back. If any check fails, leave it non-default. Never reroute an active Claude attempt to OpenRouter or paid API use.
+9. If the canary fails after allocation, leave the definition non-default and keep the authorization consumed. Wait for Sandbox and auth destruction proof and any trustworthy quota reset. An allowed same-run stage retry uses the frozen definition and no new authorization. If no eligible retry remains and the run reaches its existing terminal failed or canceled outcome, an allowed Access operator may create one fresh authorization for a fresh test issue, the current route proof, and the same unchanged definition digest, then repeat steps 7 and 8. A changed definition restarts at step 1.
+10. An allowed Access operator promotes the exact digest through guarded RouteAdmin. Require verified proof, atomic route revision, audit, and read-back. If any check fails, leave it non-default. Never reroute an active Claude attempt to OpenRouter or paid API use.
