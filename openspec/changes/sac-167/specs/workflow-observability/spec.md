@@ -1,25 +1,25 @@
 ## ADDED Requirements
 
-### Requirement: Show Claude review facts and stop causes
+### Requirement: Record Claude review facts and show stop causes
 
-Each outside review record SHALL show Claude Opus 5, high effort, Claude Pro billing, the no-paid-use state, and the result. A stopped review SHALL show whether sign-in, the Pro plan limit, or the review failed. The saved proof and protected review view MUST NOT expose sign-in data.
+Each outside review record SHALL store Claude Opus 5, high effort, the Claude Pro route, and the result as internal facts. A passed review view MUST NOT show those facts. A failed or stopped review view SHALL show only whether local auth, the Pro plan limit, or the review failed. The saved proof and protected review view MUST NOT expose the local auth JSON.
 
 #### Scenario: Claude review passes
 
 - **WHEN** an outside review saves a valid result from the real Claude cloud path.
-- **THEN** its record and protected view show the model, effort, Pro billing source, no-paid-use state, and result.
+- **THEN** its internal record stores the model, effort, Claude Pro route, and result, while the passed review view does not show them.
 
-#### Scenario: Claude sign-in fails
+#### Scenario: Local Claude auth fails
 
-- **WHEN** an outside review cannot use its saved Claude Pro sign-in.
-- **THEN** its record shows an auth stop and does not show a passed review.
+- **WHEN** an outside review cannot use its local Claude auth JSON.
+- **THEN** its record and protected view show an auth stop and do not show a passed review.
 
 #### Scenario: Claude plan limit is met
 
 - **WHEN** the Pro plan cannot run more work.
-- **THEN** its record shows a plan-limit stop and no paid fallback.
+- **THEN** its record and protected view show a plan-limit stop and no fallback.
 
 #### Scenario: Review fails
 
 - **WHEN** the cloud call, result, or proof fails its checks.
-- **THEN** its record shows a review failure and does not show a passed review.
+- **THEN** its record and protected view show a review failure and do not show a passed review.
