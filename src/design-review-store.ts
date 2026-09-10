@@ -271,8 +271,22 @@ export class D1DesignReviewStore {
 
   // A durable exit receipt preserves the actual review outcome (concerns).
   // Only validated responses from completed, cleaned attempts count toward the cap.
-  async finishSelfReviewAtLimit(runId: string, now: string): Promise<boolean> {
-    const current = await this.database.prepare(
+  async finishSelfReviewAtLimit(runId: string, now: string, nativeAuthorAttemptId?: string): Promise<boolean> {
+    const current = nativeAuthorAttemptId ? await this.database.prepare(
+      `SELECT round.round_id, candidate.candidate_id, candidate.source_attempt_id
+       FROM design_review_rounds round JOIN design_candidates candidate ON candidate.run_id = round.run_id
+         AND candidate.round = round.round_no AND candidate.state = 'validated'
+       JOIN agent_attempts author ON author.attempt_id = candidate.source_attempt_id
+       WHERE round.run_id = ? AND candidate.source_attempt_id = ? AND author.state = 'running'
+         AND round.status IN ('active', 'human_revision')
+         AND (SELECT COUNT(DISTINCT disposition.resulting_candidate_id) FROM design_review_dispositions disposition
+           JOIN design_review_attempts review ON review.review_attempt_id = disposition.review_attempt_id
+           WHERE review.round_id = round.round_id AND review.phase = 'self' AND review.accepted = 1
+             AND review.outcome = 'concerns' AND disposition.author_attempt_id = author.attempt_id) >= 3
+         AND NOT EXISTS (SELECT 1 FROM self_review_sessions session
+           WHERE session.author_attempt_id = author.attempt_id AND session.state != 'accepted')
+       ORDER BY candidate.created_at DESC, candidate.candidate_id DESC LIMIT 1`
+    ).bind(runId, nativeAuthorAttemptId).first<{ round_id: string; candidate_id: string; source_attempt_id: string }>() : await this.database.prepare(
       `SELECT round.round_id, candidate.candidate_id, candidate.source_attempt_id
        FROM design_review_rounds round
        JOIN design_candidates candidate ON candidate.run_id = round.run_id

@@ -172,6 +172,7 @@ export class R2ArtifactObjectStore implements ArtifactObjectStore {
 }
 
 export interface ArtifactCollectionInput {
+  evidenceScope?: string;
   runId: string;
   attemptId: string;
   outputRoot: string;
@@ -324,8 +325,11 @@ export class ArtifactCollector {
   }
 
   async collect(input: ArtifactCollectionInput): Promise<ArtifactCollectionResult> {
-    const manifestId = `manifest:${input.attemptId}`;
-    const prefix = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}`;
+    if (input.evidenceScope !== undefined && !/^[a-z0-9-]+$/.test(input.evidenceScope)) {
+      throw new Error("artifact evidence scope is invalid");
+    }
+    const manifestId = `manifest:${input.attemptId}${input.evidenceScope ? `:${input.evidenceScope}` : ""}`;
+    const prefix = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}${input.evidenceScope ? `/${input.evidenceScope}` : ""}`;
     await this.manifests.begin({
       manifestId,
       runId: input.runId,

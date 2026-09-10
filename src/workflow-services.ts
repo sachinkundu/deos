@@ -1,3 +1,4 @@
+import { D1NativeReviewStore } from "./native-review-store.ts";
 import { recordCaughtError } from "./error-context.ts";
 import {
   ArtifactCollector,
@@ -173,6 +174,9 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         ) * 60_000,
       },
       {
+        nativeReviews: new D1NativeReviewStore(env.DB, env.ARTIFACTS),
+        nativeDesignLimit: (runId, attemptId) => new D1DesignReviewStore(env.DB)
+          .finishSelfReviewAtLimit(runId, new Date().toISOString(), attemptId),
         now: () => new Date(),
         attemptId: defaultAttemptId,
         materializeContext: (run, job) => jobInputs.materialize(run, job),
@@ -220,10 +224,15 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           const activeRound = await env.DB.prepare(
             "SELECT COALESCE(MAX(round), 1) AS round FROM trace_review_phases WHERE run_id = ?",
           ).bind(run.run_id).first<{ round: number }>();
+          const nativeExisting = attempt.native_evidence_id ? await env.DB.prepare(
+            "SELECT candidate_id, candidate_digest, accepted_at, created_at FROM planning_candidates WHERE candidate_id = ?",
+          ).bind(`candidate:${attempt.native_evidence_id}`).first<{
+            candidate_id: string; candidate_digest: string; accepted_at: string; created_at: string;
+          }>() : null;
           let built;
           try {
             built = await buildPlanningCandidate({
-              candidateId: `candidate:${attempt.attempt_id}`,
+              candidateId: `candidate:${attempt.native_evidence_id ?? attempt.attempt_id}`,
               runId: run.run_id,
               round: activeRound?.round ?? 1,
               sourceAttemptId: attempt.attempt_id,
@@ -234,7 +243,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               reviewDispositions,
               reviewContextId,
               strictOpenSpecCheck: async () => {},
-              checkedAt: new Date().toISOString(),
+              checkedAt: nativeExisting?.accepted_at ?? nativeExisting?.created_at ?? new Date().toISOString(),
             });
           } catch (error) {
             recordCaughtError(error, "src/workflow-services.ts:238");
@@ -248,6 +257,11 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           ).bind(run.run_id, built.candidate.round, built.candidate.candidateDigest)
             .first<{ candidate_id: string }>();
           if (duplicate !== null) {
+            if (attempt.native_evidence_id && duplicate.candidate_id === built.candidate.candidateId &&
+                nativeExisting?.candidate_digest === built.candidate.candidateDigest) {
+              await persistCandidateEvidence(env.ARTIFACTS, built);
+              return;
+            }
             throw new PlanningCandidateRejectedError("planning candidate has no semantic changes");
           }
           const evidence = await persistCandidateEvidence(env.ARTIFACTS, built);
@@ -264,7 +278,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           reviewDispositions,
           reviewContextId,
         }) => {
-          const candidateId = `design:${attempt.attempt_id}`;
+          const candidateId = `design:${attempt.native_evidence_id ?? attempt.attempt_id}`;
           const existing = await env.DB.prepare(
             `SELECT candidate_id, run_id, round, source_attempt_id, base_commit, change_id,
                     design_digest, candidate_digest, state, created_at, accepted_at
@@ -315,7 +329,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               throw new DesignCandidateRejectedError("design candidate attempt identity mismatch");
             }
             await persistDesignCandidateEvidence(env.ARTIFACTS, built);
-            return;
+            if (!attempt.native_evidence_id) return;
           }
           let feedback: {
             review_attempt_id: string;
@@ -356,7 +370,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               ).bind(reviewRound.round_id).first<{ turns: number }>();
               if ((prior?.turns ?? 0) >= 3) throw new Error('design independent review response limit is exhausted');
             }
-            await reviewStore.incrementResponseTurn(reviewRound.round_id, new Date().toISOString(),
+            if (!attempt.native_evidence_id) await reviewStore.incrementResponseTurn(reviewRound.round_id, new Date().toISOString(),
               run.definition_version >= 21);
             if (feedback.phase === "self" && built.candidate.designDigest === feedback.design_digest) {
               throw new DesignCandidateRejectedError("self-check concern requires a revised design candidate");
@@ -387,7 +401,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             `SELECT candidate_id FROM design_candidates
              WHERE run_id = ? AND candidate_digest = ? LIMIT 1`,
           ).bind(run.run_id, built.candidate.candidateDigest).first<{ candidate_id: string }>();
-          if (duplicate !== null) {
+          if (duplicate !== null && !(attempt.native_evidence_id && duplicate.candidate_id === built.candidate.candidateId)) {
             throw new DesignCandidateRejectedError("design candidate has no semantic changes");
           }
           const evidence = await persistDesignCandidateEvidence(env.ARTIFACTS, built);
@@ -416,6 +430,13 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               dispositions: reviewDispositions,
               now: new Date().toISOString(),
             });
+          }
+          if (feedback?.phase === "self" && attempt.native_evidence_id) {
+            await env.DB.prepare(`UPDATE design_review_rounds SET response_turns = MAX(response_turns,
+              (SELECT COUNT(DISTINCT disposition.resulting_candidate_id) FROM design_review_dispositions disposition
+               JOIN design_review_attempts review ON review.review_attempt_id = disposition.review_attempt_id
+               WHERE review.round_id = ? AND review.phase = 'self' AND review.accepted = 1)), updated_at = ?
+              WHERE round_id = ?`).bind(reviewRound.round_id, new Date().toISOString(), reviewRound.round_id).run();
           }
           if (feedback?.phase === "independent") {
             await reviewStore.recordDispositions({
@@ -497,7 +518,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             now: new Date().toISOString(),
           });
           const accepted = await store.findAcceptedInput(saved.inputSha256);
-          const reviewAttemptId = accepted?.review_attempt_id ?? `design-review:${attempt.attempt_id}`;
+          const reviewAttemptId = accepted?.review_attempt_id ?? `design-review:${attempt.native_evidence_id ?? attempt.attempt_id}`;
           if (accepted === null) {
             await store.acceptAttempt({
               reviewAttemptId,
@@ -561,7 +582,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             validated.input.reasoning !== job.reasoning
           ) throw new Error("failed design review input changed");
           await new D1DesignReviewStore(env.DB).recordFailedAttempt({
-            reviewAttemptId: `design-review:${attempt.attempt_id}`,
+            reviewAttemptId: `design-review:${attempt.native_evidence_id ?? attempt.attempt_id}`,
             roundId: `design-round:${attempt.run_id}:${validated.input.round}`,
             agentAttemptId: attempt.attempt_id,
             phase: saved.phase,
@@ -723,12 +744,19 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             sharedRepairTurns: shared?.turns ?? 0,
             now: new Date().toISOString(),
           });
+          if (attempt.native_evidence_id && phase.accepted_review_id === `review:${attempt.native_evidence_id}`) {
+            const replay = await store.findAcceptedInput(inputId);
+            if (!replay || replay.review_id !== phase.accepted_review_id || replay.proof_manifest_id !== collection.manifestId) {
+              throw new Error("native accepted review replay changed identity");
+            }
+            return replay.overall_outcome;
+          }
           const currentTurns = Math.max(phase.shared_repair_turns, shared?.turns ?? 0);
           const nextTurns = stage === "self_check" && trustedOutcome === "findings" && currentTurns < 3
             ? currentTurns + 1
             : currentTurns;
           const workflowOutcome = workflowOutcomeForReview(stage, trustedOutcome, currentTurns);
-          const reviewId = `review:${attempt.attempt_id}`;
+          const reviewId = `review:${attempt.native_evidence_id ?? attempt.attempt_id}`;
           const now = new Date().toISOString();
           await store.acceptReview({
             review_id: reviewId,

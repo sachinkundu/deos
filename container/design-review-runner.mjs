@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { nativeReviewJudgment, saveNativeReviewRequest } from "./native-review-adapter.mjs";
 
 import {
   codexReviewArgs,
@@ -18,7 +19,7 @@ import {
 } from "./trace-review-proof.mjs";
 import { designReviewOutputSchema } from "./design-review-schema.mjs";
 
-const OUTPUT_ROOT = "/deos/output";
+const OUTPUT_ROOT = process.env.DEOS_REVIEW_OUTPUT_ROOT ?? "/deos/output";
 const SHA256 = /^[a-f0-9]{64}$/;
 const SAFE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const severities = new Set(["low", "medium", "high"]);
@@ -145,6 +146,12 @@ const main = async () => {
           repair: attempt,
           maximumRepairs: MAXIMUM_PROOF_REPAIRS,
         });
+        if (process.env.DEOS_NATIVE_REVIEW_ROOT) {
+          const generated = await nativeReviewJudgment({
+            prompt: activePrompt, schema, model: job.model, reasoning: job.reasoning, sessionId,
+          });
+          return { raw: generated.result, sessionId: generated.sessionId };
+        }
         const args = codexReviewArgs({
           sessionId,
           cwd: job.cwd,
@@ -204,7 +211,8 @@ const main = async () => {
   }
 };
 
-main().catch((error) => {
+main().catch(async (error) => {
+  if (await saveNativeReviewRequest(error)) return;
   recordCaughtError(error, "runner fatal");
   process.stderr.write(`design review failed: ${error.message}\n`);
   process.exitCode = 1;

@@ -1,0 +1,20 @@
+{
+  "evidence_class": "local-scripted-native-runtime",
+  "codex_version": "codex-cli 0.147.0",
+  "model_responses": "scripted locally; no model or provider calls",
+  "checks": {
+    "two_fresh_children": true,
+    "both_children_completed": true,
+    "same_live_parent": true,
+    "frozen_profile": true,
+    "fresh_profile_context": true,
+    "child_write_attempts_observed": true,
+    "writes_denied": true,
+    "candidate_unchanged": true
+  },
+  "child_ids": [
+    "01a089de-1bea-7d61-a74e-c4bd773665cc",
+    "01a089de-1cf3-7353-838f-a714f75ccc49"
+  ],
+  "passed": true
+}

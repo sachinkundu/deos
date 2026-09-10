@@ -194,7 +194,7 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 22);
+  assert.equal(definition.version, 23);
   assert.equal(definition.nodes.publish_design.edges.review_feedback_changed, "design_revision_author");
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
@@ -212,7 +212,7 @@ test("traceability planning definition freezes reviewers and keeps publication t
     "github.publish_planning_candidate",
   );
   assert.equal(definition.nodes.independent_discovery.type, "agent");
-  assert.equal(definition.nodes.planning_author.edges.completed, "self_discovery");
+  assert.equal(definition.nodes.planning_author.edges.completed, "publish_initial");
   assert.equal(definition.nodes.start_new_review_round.edges.completed, "planning_revision_author");
   assert.equal(definition.nodes.planning_revision_author.type, "agent");
   assert.equal(definition.nodes.planning_revision_author.edges.completed, "publish_planning_revision");
@@ -260,7 +260,7 @@ test("traceability planning definition freezes reviewers and keeps publication t
   assert.equal(planningRepair.edges.canceled, "canceled");
   assert.equal(definition.jobs.design_author.operation?.instruction, "/opsx:continue");
   assert.deepEqual(definition.jobs.design_author.providerAccess, []);
-  assert.equal(definition.nodes.design_author.edges.completed, "design_self_review");
+  assert.equal(definition.nodes.design_author.edges.completed, "publish_design");
   assert.equal(definition.jobs.design_self_review.reviewKind, "design");
   assert.equal(definition.jobs.design_self_review.modelProvider, "codex");
   assert.equal(definition.nodes.design_self_review.edges.pass, "publish_design");

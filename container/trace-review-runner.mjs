@@ -12,6 +12,7 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { nativeReviewJudgment, saveNativeReviewRequest } from "./native-review-adapter.mjs";
 
 import {
   buildDirectionalJudgePrompt,
@@ -32,7 +33,7 @@ import {
   runBoundedProofReview,
 } from "./trace-review-proof.mjs";
 
-const OUTPUT_ROOT = "/deos/output";
+const OUTPUT_ROOT = process.env.DEOS_REVIEW_OUTPUT_ROOT ?? "/deos/output";
 const directionalPasses = {
   proposal_to_spec: {
     promptFile: "/deos/bettaview/prompts/openspec-semantic-traceability-proposal-first-v1.md",
@@ -92,6 +93,9 @@ const codexJudgment = async ({
   capabilityToken = null,
   attemptId = null,
 }) => {
+  if (process.env.DEOS_NATIVE_REVIEW_ROOT) {
+    return nativeReviewJudgment({ prompt, schema, model, reasoning, sessionId });
+  }
   const args = codexReviewArgs({
     sessionId,
     cwd,
@@ -388,7 +392,7 @@ const main = async () => {
   }
   const reviewerVersion = `${job.model} (${job.reasoning}) via ${job.modelProvider}`;
   try {
-    const reviewedAt = new Date().toISOString();
+    const reviewedAt = job.nativeReviewedAt ?? new Date().toISOString();
     const directionalResults = {};
     for (const direction of ["proposal_to_spec", "spec_to_proposal"]) {
       const pass = directionalPasses[direction];
@@ -503,7 +507,8 @@ const main = async () => {
   }
 };
 
-main().catch((error) => {
+main().catch(async (error) => {
+  if (await saveNativeReviewRequest(error)) return;
   recordCaughtError(error, "runner fatal");
   process.stderr.write(`trace review failed: ${error.message}\n`);
   process.exitCode = 1;

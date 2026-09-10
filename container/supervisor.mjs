@@ -1,3 +1,4 @@
+import { setupNativeReview } from "./native-review-setup.mjs";
 #!/usr/bin/env node
 import { recordCaughtError } from "./original-errors.mjs";
 import { createWriteStream } from "node:fs";
@@ -181,6 +182,7 @@ const main = async () => {
   const deadline = Date.parse(job.deadline);
   if (!Number.isFinite(deadline) || deadline <= Date.now()) throw new Error("job deadline is invalid");
   const prompt = await readFile(job.promptPath, "utf8");
+  await setupNativeReview(job);
   const transcript = await trustedCapture("transcript.jsonl");
   const validation = await trustedCapture("stderr.txt");
   const reviewer = job.agentRole === "reviewer";

@@ -1,3 +1,4 @@
+import { D1NativeReviewStore, nativeDigest, nativeRecord } from "./native-review-store.ts";
 import { recordCaughtError } from "./error-context.ts";
 import type { ArtifactCollectionResult, ArtifactCollector } from "./artifact-collector.ts";
 import type { CredentialLease, CredentialVault } from "./credential-vault.ts";
@@ -32,6 +33,7 @@ export type AgentAttemptState =
   | "canceled";
 
 export interface AgentAttemptRecord {
+  native_evidence_id?: string;
   attempt_id: string;
   sandbox_id: string;
   run_id: string;
@@ -91,7 +93,7 @@ export interface AgentAttemptStore {
     now: string;
   }): Promise<void>;
   markCleanup(attemptId: string, state: "destroyed" | "failed", category: string | null, now: string): Promise<void>;
-  markCleanupHold(attemptId: string, until: string, reason: "debug_failure", now: string): Promise<void>;
+  markCleanupHold(attemptId: string, until: string, reason: "debug_failure" | "native_review_proof_repair", now: string): Promise<void>;
 }
 
 const changes = (result: D1Result<unknown>): number => result.meta.changes ?? 0;
@@ -262,7 +264,7 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
   async markCleanupHold(
     attemptId: string,
     until: string,
-    reason: "debug_failure",
+    reason: "debug_failure" | "native_review_proof_repair",
     now: string,
   ): Promise<void> {
     const result = await this.database.prepare(
@@ -374,6 +376,8 @@ export type AgentExecutionObservation =
     };
 
 interface SandboxControllerDependencies {
+  nativeReviews?: D1NativeReviewStore;
+  nativeDesignLimit?: (runId: string, attemptId: string) => Promise<boolean>;
   now: () => Date;
   attemptId: () => string;
   wait?: (delayMs: number) => Promise<void>;
@@ -507,7 +511,7 @@ export class SandboxAgentController {
         Date.parse(run.updated_at) > Date.parse(attempt.ended_at)
       )
     ) {
-      attempt = await this.allocate(run, nodeId, job);
+      attempt = await this.allocate(run, nodeId, job, definition);
     }
     if (isTerminalAttempt(attempt.state)) return this.finishedObservation(attempt);
     if (attempt.state === "pending") return this.start(run, attempt, job);
@@ -555,6 +559,7 @@ export class SandboxAgentController {
     run: OrchestrationRunRecord,
     nodeId: string,
     job: WorkflowJob,
+    definition: LoadedWorkflowDefinition,
   ): Promise<AgentAttemptRecord> {
     const retrySource = await this.attempts.findRetrySource(
       run.run_id,
@@ -645,6 +650,13 @@ export class SandboxAgentController {
             retrySourceAttemptId: retrySource.attempt_id,
             retrySourceJobSpecDigest: retrySource.job_spec_digest,
           }),
+      nativeSelfReview: frozenRetrySpec?.nativeSelfReview ?? (
+        run.definition_id === "simple-traceability" && run.definition_version >= 23 &&
+        ["planning_author", "design_author"].includes(nodeId) ? {
+          phase: nodeId === "design_author" ? "design" : "planning",
+          discovery: this.runtimeJob(run, definition.jobs[nodeId === "design_author" ? "design_self_review" : "self_discovery"]),
+          recheck: this.runtimeJob(run, definition.jobs[nodeId === "design_author" ? "design_self_review" : "self_recheck"]),
+        } : null),
       deadline,
     };
     const jobSpecJson = JSON.stringify(durableJob);
@@ -702,6 +714,7 @@ export class SandboxAgentController {
         permissionProfile?: unknown;
         providerAccess?: unknown;
         reviewKind?: unknown;
+        nativeSelfReview?: unknown;
       };
       if (typeof durableJob.materializedContext !== "string") {
         throw new Error("materialized job context is missing");
@@ -747,7 +760,12 @@ export class SandboxAgentController {
         typeof durableJob.openspecChange === "string" ? durableJob.openspecChange : "",
         typeof durableJob.planningBranch === "string" ? durableJob.planningBranch : null,
       );
-      const renderedPrompt = this.prompt(run, attempt, job, durableJob.materializedContext);
+      const renderedPrompt = [this.prompt(run, attempt, job, durableJob.materializedContext),
+        ...(durableJob.nativeSelfReview ? [
+          "This task explicitly requests native review subagents. When the trusted completion hook prepares a self-review, spawn the named deos_reviewer with fork_turns=none, await it, and follow the checked repair or stop instruction in this same live author session.",
+          "Use the shell tool for repository reads and edits. The author account cannot access trusted review control files. Do not bypass the hooks or start your own review before the hook supplies its checked input.",
+        ] : []),
+      ].join("\n\n");
       const protectedPrompt = await this.dependencies.protectPrompt({
         runId: run.run_id,
         attemptId: attempt.attempt_id,
@@ -790,6 +808,7 @@ export class SandboxAgentController {
         openspecChange: typeof durableJob.openspecChange === "string" ? durableJob.openspecChange : null,
         designOnly: designAuthorJob,
         materializedContext: durableJob.materializedContext,
+        nativeSelfReview: durableJob.nativeSelfReview ?? null,
       };
       await sandbox.writeFile("/deos/run/job.json", JSON.stringify(stagedJob), { encoding: "utf8" });
       await this.cloneRepository(sandbox, attempt, grant);
@@ -938,6 +957,15 @@ export class SandboxAgentController {
     }
     const status = await process.status();
     if (status.state === "running") {
+      if (JSON.parse(attempt.job_spec_json).nativeSelfReview) {
+        if ((await sandbox.exists("/deos/native-review/fault.json")).exists) {
+          const fault = (await sandbox.readFile("/deos/native-review/fault.json")).content;
+          await sandbox.writeFile("/deos/output/native-review-fault.json", fault);
+          const manifestId = await this.finishFailure(attempt, sandbox, job, "failed", "native_review_failed", process);
+          return this.failedObservation(attempt, "failed", manifestId);
+        }
+        await this.reconcileNativeReview(run, attempt, sandbox, job);
+      }
       let observedAt: string;
       try {
         const heartbeat = JSON.parse((await sandbox.readFile(
@@ -1033,7 +1061,18 @@ export class SandboxAgentController {
         );
       if (job.agentRole === "author" && job.inputs.includes("openspec_change")) {
         try {
-          if (job.inputs.includes("design_context")) {
+          const native = JSON.parse(attempt.job_spec_json).nativeSelfReview;
+          if (native) {
+            const store = this.dependencies.nativeReviews;
+            if (!store) throw new Error("native review store is missing");
+            const final = await store.finalCheckpoint(attempt.attempt_id);
+            const sequence = Number(final.request.candidateSequence);
+            const ready = await store.response(attempt.attempt_id, sequence, "candidate");
+            if (!ready || typeof ready.authorContext !== "string") throw new Error("native final candidate is missing");
+            const scoped = this.nativeAttempt(attempt, sequence, ready.authorContext);
+            if (job.inputs.includes("design_context")) await this.captureDesignCandidate(run, scoped, sandbox);
+            else await this.capturePlanningCandidate(run, scoped, sandbox);
+          } else if (job.inputs.includes("design_context")) {
             await this.captureDesignCandidate(run, attempt, sandbox);
           } else {
             await this.capturePlanningCandidate(run, attempt, sandbox);
@@ -1179,6 +1218,126 @@ export class SandboxAgentController {
     await this.cleanup(attempt, sandbox);
     await collector.verifyAfterCleanup(collection);
     return observation;
+  }
+
+  private nativeAttempt(attempt: AgentAttemptRecord, sequence: number, context: string): AgentAttemptRecord {
+    return { ...attempt, native_evidence_id: `${attempt.attempt_id}:native:${sequence}`,
+      job_spec_json: JSON.stringify({ ...JSON.parse(attempt.job_spec_json), materializedContext: context }) };
+  }
+
+  private async reconcileNativeReview(
+    run: OrchestrationRunRecord, attempt: AgentAttemptRecord, sandbox: SandboxView, authorJob: WorkflowJob,
+  ): Promise<void> {
+    const store = this.dependencies.nativeReviews;
+    if (!store) throw new Error("native review store is unavailable");
+    if ((await sandbox.exists("/deos/native-review/fault.json")).exists) {
+      throw new Error(`native review fault: ${(await sandbox.readFile("/deos/native-review/fault.json")).content}`);
+    }
+    if (!(await sandbox.exists("/deos/native-review/request.json")).exists) return;
+    const request = nativeRecord(JSON.parse((await sandbox.readFile("/deos/native-review/request.json")).content));
+    const durable = JSON.parse(attempt.job_spec_json);
+    const native = durable.nativeSelfReview as { phase: "planning" | "design"; discovery: WorkflowJob; recheck: WorkflowJob };
+    const sequence = Number(request.candidateSequence);
+    if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence > 4) throw new Error("native candidate sequence is invalid");
+    const reviewJob = sequence === 1 ? native.discovery : native.recheck;
+    const response = await store.checkpoint(attempt.attempt_id, request, async () => {
+      if (request.kind === "candidate") {
+        // The Worker supplies feedback. It never accepts the author's copy as authority.
+        const authorContext = sequence === 1 ? durable.materializedContext :
+          (await this.dependencies.materializeContext(run, authorJob)).context;
+        const scoped = this.nativeAttempt(attempt, sequence, authorContext);
+        if (native.phase === "design") await this.captureDesignCandidate(run, scoped, sandbox);
+        else await this.capturePlanningCandidate(run, scoped, sandbox);
+        if (native.phase === "design" && await this.dependencies.nativeDesignLimit?.(run.run_id, attempt.attempt_id)) {
+          return { action: "stop", outcome: "limit_reached", authorContext };
+        }
+        const reused = native.phase === "design"
+          ? await this.dependencies.reuseDesignReview?.(run, "design_self_review", reviewJob)
+          : await this.dependencies.reuseTraceReview?.(run, sequence === 1 ? "self_discovery" : "self_recheck_before_publish", reviewJob);
+        if (reused) {
+          const outcome = reused.state === "completed" ? reused.outcome.outcome : null;
+          if (outcome === "findings" || outcome === "concerns") {
+            throw new Error("native unchanged finding needs an author repair, not a new review");
+          }
+          return { action: "stop", outcome, authorContext };
+        }
+        const materialized = await this.dependencies.materializeContext(run, reviewJob);
+        const directory = `/deos/native-review/candidate-${sequence}`;
+        return { action: "review", authorContext, reviewJob: {
+          attemptId: attempt.attempt_id, runId: run.run_id, nodeId: attempt.node_id,
+          cwd: "/deos/workspace/repository", promptPath: `${directory}/prompt.md`,
+          prompt: reviewJob.prompt, model: reviewJob.model, reasoning: reviewJob.reasoning,
+          modelProvider: reviewJob.modelProvider, agentRole: "reviewer",
+          agentHarness: AGENT_HARNESS, agentHarnessVersion: AGENT_HARNESS_VERSION, permissionProfile: "review_read_only", reviewKind: reviewJob.reviewKind ?? "traceability",
+          reviewMode: reviewJob.reviewMode, openspecChange: durable.openspecChange,
+          materializedContext: materialized.context, nativeReviewedAt: this.dependencies.now().toISOString(),
+        } };
+      }
+      const ready = await store.response(attempt.attempt_id, sequence, "candidate");
+      if (!ready || ready.action !== "review") throw new Error("native candidate was not prepared");
+      const savedJob = nativeRecord(ready.reviewJob);
+      if (request.kind === "session_allocate") {
+        const launch = nativeRecord(request.launch);
+        if (launch.model !== reviewJob.model || launch.reasoning !== reviewJob.reasoning ||
+            launch.profile !== "deos_reviewer" || launch.context !== savedJob.materializedContext ||
+            launch.candidateSequence !== sequence || typeof launch.prompt !== "string") {
+          throw new Error("native reviewer configuration changed");
+        }
+        const hash = await nativeDigest(JSON.stringify({ index: launch.index, prompt: launch.prompt,
+          schema: launch.schema, model: launch.model, reasoning: launch.reasoning, sessionId: launch.sessionId }));
+        if (hash !== launch.inputSha256) throw new Error("native reviewer input digest mismatch");
+        const sessionKey = await store.allocate(attempt.attempt_id, native.phase, sequence, launch);
+        if (typeof launch.sessionId === "string") {
+          // Only proof correction may reuse a child, and only from this candidate.
+          const prior = await store.session(`${attempt.attempt_id}:${sequence}:${Number(launch.index) - 1}`, attempt.attempt_id);
+          if (prior.subagent_id !== launch.sessionId || !["complete", "accepted"].includes(prior.state)) {
+            throw new Error("native proof correction child is not the preceding review");
+          }
+          await store.started(sessionKey, attempt.attempt_id, launch.sessionId);
+        }
+        return { action: "launch", sessionKey };
+      }
+      if (request.kind === "session_started") {
+        const receipt = nativeRecord(request.receipt);
+        if (receipt.agent_type !== "deos_reviewer" || receipt.model !== reviewJob.model || receipt.agent_id !== request.subagentId) {
+          throw new Error("native start receipt profile mismatch");
+        }
+        await store.started(String(request.sessionKey), attempt.attempt_id, String(request.subagentId));
+        return { action: "started" };
+      }
+      if (request.kind === "session_completed") {
+        await store.complete(String(request.sessionKey), attempt.attempt_id, nativeRecord(request.proof));
+        return { action: "stored" };
+      }
+      if (request.kind === "review_completed") {
+        await store.verifyCandidate(attempt.attempt_id, sequence);
+        const outputRoot = `/deos/native-review/candidate-${sequence}/output`;
+        if (request.outputRoot !== outputRoot) throw new Error("native review output root changed");
+        const collector = this.dependencies.collector(sandbox);
+        const collection = await collector.collect({ runId: run.run_id, attemptId: attempt.attempt_id,
+          evidenceScope: `native-${sequence}`, outputRoot, requiredFiles: reviewJob.requiredOutputs,
+          resultSchema: reviewJob.resultSchema });
+        await collector.verifyDurable(collection);
+        const scoped = this.nativeAttempt(attempt, sequence, String(savedJob.materializedContext));
+        const accept = native.phase === "design" ? this.dependencies.acceptDesignReview : this.dependencies.acceptTraceReview;
+        if (!accept) throw new Error("native review validator is unavailable");
+        const outcome = await accept({ run, attempt: scoped, job: reviewJob, collection });
+        await store.accepted(attempt.attempt_id, sequence,
+          `${native.phase === "design" ? "design-review" : "review"}:${scoped.native_evidence_id}`, String(outcome));
+        if (outcome === "findings" || outcome === "concerns") {
+          return { action: "repair", outcome,
+            materializedContext: (await this.dependencies.materializeContext(run, authorJob)).context };
+        }
+        if (!["pass", "needs_judgment", "proof_conflict", "limit_reached"].includes(String(outcome))) {
+          throw new Error("native review has no allowed stop");
+        }
+        return { action: "stop", outcome };
+      }
+      throw new Error("unknown native checkpoint kind");
+    });
+    await sandbox.writeFile("/deos/native-review/response.json.tmp", JSON.stringify(response));
+    const publish = await sandbox.exec(["mv", "--", "/deos/native-review/response.json.tmp", "/deos/native-review/response.json"], { timeout: 30_000 });
+    if ((await publish.waitForExit({ timeout: 30_000 })).code !== 0) throw new Error("native checkpoint response publication failed");
   }
 
   private async capturePlanningCandidate(
@@ -1486,7 +1645,8 @@ export class SandboxAgentController {
         runId: attempt.run_id,
         attemptId: attempt.attempt_id,
         outputRoot: "/deos/output",
-        expectedFiles: job.requiredOutputs,
+        expectedFiles: JSON.parse(attempt.job_spec_json).nativeSelfReview
+          ? [...job.requiredOutputs, "native-review-fault.json"] : job.requiredOutputs,
         fallbackErrorCategory: category,
       });
       await collector.verifyDurable(collection);
@@ -1548,7 +1708,9 @@ export class SandboxAgentController {
   }
 
   private async cleanupFailure(attempt: AgentAttemptRecord, sandbox: SandboxView): Promise<void> {
-    if (this.config.failureRetentionMs <= 0) {
+    const native = Boolean(JSON.parse(attempt.job_spec_json).nativeSelfReview);
+    const retentionMs = native ? Math.max(this.config.failureRetentionMs, 24 * 60 * 60_000) : this.config.failureRetentionMs;
+    if (retentionMs <= 0) {
       await this.cleanup(attempt, sandbox);
       return;
     }
@@ -1556,8 +1718,8 @@ export class SandboxAgentController {
     await sandbox.setKeepAlive(true);
     await this.attempts.markCleanupHold(
       attempt.attempt_id,
-      new Date(now.getTime() + this.config.failureRetentionMs).toISOString(),
-      "debug_failure",
+      new Date(now.getTime() + retentionMs).toISOString(),
+      native ? "native_review_proof_repair" : "debug_failure",
       now.toISOString(),
     );
   }

@@ -653,8 +653,8 @@ test("simple graph cancellation reaches no merge action", async () => {
 test("one independent cycle precedes each distinct human gate", async () => {
   const store = new RuntimeStore(makeRun(traceabilityDefinition));
   const services = new NodeServices([
-    "completed", "pass", "pass", "completed",
-    "completed", "pass", "pass", "completed", "pass",
+    "completed", "pass", "completed",
+    "completed", "pass", "completed", "pass",
   ]);
   store.inbox.set("delivery-plan-merge", inboxEvent("delivery-plan-merge", "user", "Merging"));
   store.inbox.set("delivery-design-revision", inboxEvent("delivery-design-revision", "user", "In Progress"));
@@ -703,8 +703,8 @@ test("one independent cycle precedes each distinct human gate", async () => {
 test("planning and design concerns each receive one author response with no second reviewer", async () => {
   const store = new RuntimeStore(makeRun(traceabilityDefinition));
   const services = new NodeServices([
-    "completed", "pass", "findings", "completed",
-    "completed", "pass", "concerns", "completed",
+    "completed", "findings", "completed",
+    "completed", "concerns", "completed",
   ]);
   store.inbox.set("delivery-plan-merge", inboxEvent("delivery-plan-merge", "user", "Merging"));
   store.inbox.set("delivery-design-cancel", inboxEvent("delivery-design-cancel", "user", "Canceled"));
@@ -723,8 +723,8 @@ test("planning and design concerns each receive one author response with no seco
 test("recovers initial design publication feedback before any design gate exists", async () => {
   const store = new RuntimeStore(makeRun(traceabilityDefinition));
   const services = new InitialDesignFeedbackServices([
-    "completed", "pass", "pass", "completed",
-    "completed", "pass", "completed", "pass",
+    "completed", "pass", "completed",
+    "completed", "completed", "pass",
   ]);
   store.inbox.set("delivery-plan-merge", inboxEvent("delivery-plan-merge", "user", "Merging"));
   store.inbox.set("delivery-design-merge", inboxEvent("delivery-design-merge", "user", "Merging"));
