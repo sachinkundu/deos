@@ -178,6 +178,9 @@ export const codexReviewArgs = ({
       "--config", `model_providers.deos_openrouter.base_url=${JSON.stringify(`${capabilityUrl.replace(/\/$/, "")}/openrouter/v1`)}`,
       "--config", 'model_providers.deos_openrouter.env_key="DEOS_MODEL_CAPABILITY_TOKEN"',
       "--config", 'model_providers.deos_openrouter.wire_api="responses"',
+      // The proxy owns the three retries; nested client retries multiply requests.
+      "--config", "model_providers.deos_openrouter.request_max_retries=0",
+      "--config", "model_providers.deos_openrouter.stream_max_retries=0",
       "--config", 'model_providers.deos_openrouter.env_http_headers={"Deos-Attempt"="DEOS_ATTEMPT_ID"}',
       "--config", 'shell_environment_policy.include_only=["PATH","HOME"]',
       "--config", "model_context_window=1000000",
