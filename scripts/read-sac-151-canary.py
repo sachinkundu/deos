@@ -47,6 +47,7 @@ def main():
         'deliveries': query(f"SELECT delivery_id,received_at,classification,route_revision FROM deliveries WHERE correlation_id LIKE '%:{issue}' ORDER BY received_at"),
         'attempts': query(f'SELECT attempt_id,sandbox_id,node_id,state,started_at,ended_at,result_class,cleanup_state,cleanup_hold_until FROM agent_attempts WHERE {run_filter} ORDER BY created_at'),
         'native_sessions': query(f'SELECT session_key,author_attempt_id,candidate_sequence,call_index,phase,state,subagent_id,review_id,stop_result,input_sha256,profile_sha256,proof_r2_key,proof_sha256 FROM self_review_sessions WHERE {attempt_filter} ORDER BY created_at'),
+        'trace_reviews': query(f'SELECT review_id,attempt_id,phase,mode,overall_outcome,accepted,reviewed_head_sha,sidecar_r2_key,created_at,completed_at FROM trace_reviews WHERE {run_filter} ORDER BY created_at'),
         'planning_work_products': query(f'SELECT * FROM run_work_products WHERE {run_filter}'),
         'design_work_products': query(f'SELECT * FROM design_work_products WHERE {run_filter}'),
     }

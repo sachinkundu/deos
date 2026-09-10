@@ -37,3 +37,17 @@ Routing commit `bd5c16e` was merged into SAC-151 as `f46572b`. Worker `2125caf7-
 The normal authenticated stage retry was established at 2026-09-10T11:28:21.359Z. Run 3 keeps frozen workflow v23 and its completed planning artifacts; the new independent-review visit is 8. Queuing this retry is not evidence that the review passed.
 
 The resumed review allocated attempt `01a08b13-769f-7508-ad19-fedc53835af4` and Sandbox `sbx-v1-i4o3pku7aii3xd2kae5ljni3adik74wqnsupxp7rxe6wvweziuwq`. Its first live provider operation succeeded at 11:29:04.067Z. OpenRouter generation metadata confirmed StreamLake with `finish_reason: tool_calls` for `gen-1789039713-B7Amd7xBm8PMw4LGEz3j`. The reviewer then issued another request; final review acceptance remains to be verified.
+
+
+## Accepted live review
+
+The resumed independent review completed at 2026-09-10T11:33:40.713Z. All four provider operations succeeded. D1 records the review as accepted, with overall outcome `pass`; its Sandbox was destroyed. The R2 sidecar was read back and contains both traceability directions, all six requirement links, eight confirmed directional links, and no findings. Its document hashes match the published proposal and specification. This proves the real tool loop and existing JSON validation succeeded without upstream schema enforcement. It does not show that earlier-message recovery was needed.
+
+The run then entered `planning_independent_response`, with a new author attempt `01a08b18-5609-7636-b1e7-7f00e7f9e3ef` at 11:33:49.956Z. Proposal human rework and the design gates remain pending.
+
+
+OpenRouter generation metadata confirmed StreamLake for all four live calls. Their states and generation IDs are recorded in [sac-151-streamlake-operations.json](sac-151-streamlake-operations.json).
+
+The proposal rework request is visible in GitHub:
+
+![Proposal feedback requests finite-number bounds](sac-151-proposal-rework.jpg)
