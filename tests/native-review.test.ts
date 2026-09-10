@@ -1,3 +1,4 @@
+import { D1ArtifactManifestStore } from "../src/artifact-collector.ts";
 import { nativeReviewMessage } from "../container/native-review-packet.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -102,4 +103,24 @@ test("a child runtime error is retained even without a SubagentStop callback", a
   await store.allocate("author", "planning", 1, launch);
   await store.failAttempt("author");
   assert.equal(db.prepare("SELECT state FROM self_review_sessions").get()?.state, "fault");
+});
+
+test("manifest migration preserves saved review references and permits native cycles plus author output", async () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys=ON; CREATE TABLE orchestration_runs(run_id TEXT PRIMARY KEY); INSERT INTO orchestration_runs VALUES ('run');");
+  const original = readFileSync("migrations/0006_sandbox_orchestration.sql", "utf8");
+  db.exec(original.slice(original.indexOf("CREATE TABLE IF NOT EXISTS artifact_manifests"), original.indexOf("CREATE TABLE IF NOT EXISTS agent_attempts")));
+  const store = new D1ArtifactManifestStore({ prepare: (sql: string) => new Statement(db, sql) } as unknown as D1Database);
+  const first = { manifestId: "manifest:author:native-1", runId: "run", attemptId: "author", r2Key: "native-1/manifest.json", now: "now" };
+  await store.begin(first);
+  db.exec("CREATE TABLE saved_review (manifest_id TEXT REFERENCES artifact_manifests(manifest_id)); INSERT INTO saved_review VALUES ('manifest:author:native-1');");
+  db.exec("BEGIN;" + readFileSync("migrations/0031_native_review_artifact_manifests.sql", "utf8") + "COMMIT;");
+  await store.begin(first);
+  await store.begin({ ...first, manifestId: "manifest:author:native-2", r2Key: "native-2/manifest.json" });
+  await store.begin({ ...first, manifestId: "manifest:author", r2Key: "manifest.json" });
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM artifact_manifests WHERE attempt_id='author'").get()?.n, 3);
+  assert.equal(db.prepare("SELECT manifest_id FROM saved_review").get()?.manifest_id, first.manifestId);
+  assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+  await assert.rejects(store.begin({ ...first, r2Key: "changed" }), /identity mismatch/);
+  db.close();
 });

@@ -259,3 +259,5 @@ rtk proxy python3 /tmp/sac151-status.py
 ```
 
 Run 3 retained the same author attempt across a Cloudflare internal workflow error. Observation step agent:planning_author:visit:2-20 started at 07:34:59.731 UTC. Its first execution ended at 07:40:01.852 with WorkflowInternalError; the replay succeeded at 07:40:04.235. This was a step replay, not a new author attempt or Sandbox. The author continued to edit and validate the calculator specification.
+
+The live planning loop found scope detail missing from the proposal. The same author repaired it, then a fresh child rechecked the fixed inventory. At the second review checkpoint, the old artifact_manifests.attempt_id UNIQUE constraint rejected a second scoped manifest. Migration 0031 removes that uniqueness while retaining manifest and object identities. The remote foreign_key_check returned no violations. The workflow replay then accepted the saved recheck as pass without a new author attempt or Sandbox.

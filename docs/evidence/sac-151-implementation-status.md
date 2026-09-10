@@ -88,3 +88,18 @@ error even when no SubagentStop hook runs, and stops the parent with that cause.
 Initial native authors reconcile every ten seconds; other paths keep the existing
 heartbeat interval. The corrected image is active at 100% Worker traffic. SAC-166 run 3 uses a new author attempt and Sandbox on that image.
 No human gate has been advanced for SAC-166 yet.
+
+## Live planning result
+
+Run 3 completed planning self-review in one author attempt. Two fresh native
+children performed discovery. Their accepted findings led the same author to
+repair its draft. A third fresh child rechecked the fixed finding list and passed.
+All three proof objects matched their saved hashes and child IDs. They show fresh
+context and unchanged file manifests. The author then completed and its Sandbox
+was destroyed after artifact verification.
+
+The second review exposed the old one-manifest-per-attempt database constraint.
+Migration 0031 permits multiple scoped manifests under the parent attempt. It
+preserves existing references; the remote foreign-key check reported no violations.
+The pending workflow checkpoint replayed successfully without replacing the author.
+A regression test covers two review manifests and the final author manifest.
