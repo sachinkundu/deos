@@ -51,3 +51,13 @@ OpenRouter generation metadata confirmed StreamLake for all four live calls. The
 The proposal rework request is visible in GitHub:
 
 ![Proposal feedback requests finite-number bounds](sac-151-proposal-rework.jpg)
+
+
+## First human gate and explicit rework
+
+The independent-response author finished at 2026-09-10T11:44:03.136Z and its Sandbox was destroyed. It incorporated the earlier human comment about NaN, infinities, and non-finite results. The publisher pushed head `f7b87daa930abc2dbdf815e2e2abc6b96137d756` and posted a substantive [thread reply](https://github.com/sachinkundu/deos-sample-project/pull/11#discussion_r3978685690). D1 reached `planning_review` / `awaiting_human`, and Linear reached Human Review at 11:44:14Z. This was the normal independent-response path, not yet an explicit human rework round.
+
+At the gate, the trial reviewer checked the revision and requested a separate unit-conversion overflow scenario, since the existing overflow scenario covered only multiplication. The [changes-requested review](https://github.com/sachinkundu/deos-sample-project/pull/11#pullrequestreview-5166745494) is bound to that head. Linear was transitioned from Human Review to In Progress at 11:55:03Z to exercise the normal human rework path. Reviewer threads remain unresolved. Provider delivery and the new round must be read back before calling the rework complete.
+
+
+Readback confirmed provider-originated delivery `965c9e08-32f4-42e9-8263-e5a059fefc30` at 11:55:04.176Z, classified relevant. Run 3 entered `planning_revision_author`. Fresh attempt `01a08b2c-2eec-7ec9-b674-9f0c01a8d0be` started at 11:55:29.320Z in Sandbox `sbx-v1-iakczu5rxqjp7bzj6h5pqmd4ktfq3v46svktbxmxnw2uvoa66lba`. This establishes an actual human-requested revision round; its completion is pending.
