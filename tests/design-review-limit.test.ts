@@ -154,7 +154,9 @@ const bundle = {
   schemas: Object.fromEntries(readdirSync('config/schemas').map(name => [`schemas/${name}`, readFileSync(`config/schemas/${name}`, 'utf8')])),
 };
 const yaml = readFileSync('config/workflow.simple-traceability.yaml', 'utf8');
-const legacyYaml = yaml.replace('version: 22', 'version: 21')
+const legacyYaml = yaml.replace('version: 23', 'version: 21')
+  .replace('completed: publish_initial, invalid_candidate:', 'completed: self_discovery, invalid_candidate:')
+  .replace('completed: publish_design, invalid_design_candidate:', 'completed: design_self_review, invalid_design_candidate:')
   .replace('completed: publish_planning_revision,', 'completed: publish_update,')
   .replace(/    publish_planning_revision:\n      type: system_action\n      action: github.publish_planning_candidate\n      edges: \{completed: independent_discovery, failed: system_action_failed\}\n/, '')
   .replace('edges: {completed: publish_author_response, failed: system_action_failed}', 'edges: {completed: final_trace, failed: system_action_failed}')
@@ -187,4 +189,24 @@ test('v20 retry upgrades only the limit edge and retains completed planning and 
     { ...current, nodes: { ...current.nodes, planning_review: { ...current.nodes.planning_review, edges: {} } } },
   ]) await assert.rejects(planStageRetryDefinition(source, 'design_self_response', broken), /stage_retry_not_eligible/);
   await assert.rejects(planStageRetryDefinition({ ...source, target_registered: 0 }, 'design_self_response', current));
+});
+
+test('native design limit counts three checked repairs in one still-live author attempt', async () => {
+  const { db, store } = fixture();
+  db.exec(`CREATE TABLE design_review_attempts(review_attempt_id TEXT,round_id TEXT,phase TEXT,accepted INTEGER,outcome TEXT);
+    CREATE TABLE design_review_dispositions(review_attempt_id TEXT,resulting_candidate_id TEXT,author_attempt_id TEXT);
+    CREATE TABLE self_review_sessions(author_attempt_id TEXT,state TEXT);
+    INSERT INTO agent_attempts VALUES ('native','run','design_author','running','pending');
+    INSERT INTO self_review_sessions VALUES ('native','accepted');`);
+  for (let round = 1; round <= 3; round++) {
+    db.prepare('INSERT INTO design_candidates VALUES (?,?,?,?,?,?)').run(`native-${round}`, 'run', 1, 'validated', 'native', String(round));
+    db.prepare('INSERT INTO design_review_attempts VALUES (?,?,?,?,?)').run(`r${round}`, 'round', 'self', 1, 'concerns');
+    db.prepare('INSERT INTO design_review_dispositions VALUES (?,?,?)').run(`r${round}`, `native-${round}`, 'native');
+    assert.equal(await store.finishSelfReviewAtLimit('run', 'now', 'native'), round === 3);
+  }
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM agent_attempts').get()?.n, 1);
+  assert.equal(db.prepare('SELECT provider_resource_id FROM provider_operations').get()?.provider_resource_id, 'native-3');
+  db.exec("UPDATE self_review_sessions SET state='started'");
+  assert.equal(await store.finishSelfReviewAtLimit('run', 'later', 'native'), false);
+  db.close();
 });

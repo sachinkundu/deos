@@ -39,6 +39,7 @@ export type OpenRouterFailureStage =
   | "structured_json";
 
 export interface OpenRouterFailureDiagnostic {
+  requestAttempts?: number;
   responseHeaders?: Record<string, string>;
   stage: OpenRouterFailureStage;
   httpStatus: number | null;
@@ -128,7 +129,7 @@ const readCompleteText = async (
 };
 
 const retryableStatus = (status: number): boolean =>
-  [408, 429, 500, 502, 503, 524, 529].includes(status);
+  [408, 429, 500, 502, 503, 504, 524, 529].includes(status);
 
 const requestId = (response: Response, body: Record<string, unknown> | null): string | null =>
   boundedString(body?.id, 240) ??
@@ -193,18 +194,70 @@ export class OpenRouterReviewClient {
   private readonly supportedModels: ReadonlySet<string>;
   private readonly fetcher: Fetcher;
   private readonly apiUrl: string;
+  private readonly wait: (milliseconds: number) => Promise<void>;
+  private readonly now: () => number;
+  private readonly random: () => number;
 
   constructor(input: {
     apiKey: string;
     supportedModels: readonly string[];
     fetcher?: Fetcher;
     apiUrl?: string;
+    wait?: (milliseconds: number) => Promise<void>;
+    now?: () => number;
+    random?: () => number;
   }) {
     if (input.apiKey.length < 16) throw new Error("OpenRouter key is unavailable");
+    this.wait = input.wait ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+    this.now = input.now ?? Date.now;
+    this.random = input.random ?? Math.random;
     this.apiKey = input.apiKey;
     this.supportedModels = new Set(input.supportedModels);
     this.fetcher = input.fetcher ?? ((request, init) => fetch(request, init));
     this.apiUrl = (input.apiUrl ?? "https://openrouter.ai/api/v1").replace(/\/$/, "");
+  }
+
+  private async withRetry<T>(endpoint: string, request: () => Promise<T>): Promise<T> {
+    // Four HTTP attempts total. These are transport retries, not review rounds.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const result = await request();
+        if (attempt > 1) console.info(JSON.stringify({
+          event: "deos.openrouter.retry_succeeded", endpoint, requestAttempts: attempt,
+        }));
+        return result;
+      } catch (error) {
+        if (!(error instanceof OpenRouterReviewError)) throw error;
+        const diagnostic = { ...error.diagnostic, requestAttempts: attempt };
+        // Never replay a successful/partial stream or an invalid model output.
+        const canRetry = diagnostic.retryable &&
+          ["http", "transport"].includes(diagnostic.stage);
+        if (!canRetry || attempt === 4) {
+          throw Object.assign(new OpenRouterReviewError(error.message, diagnostic), { cause: error });
+        }
+        const headers = new Headers(diagnostic.responseHeaders);
+        const retryAfter = headers.get("retry-after")?.trim();
+        const seconds = retryAfter && /^\d+(?:\.\d+)?$/.test(retryAfter) ? Number(retryAfter) : NaN;
+        const providerDelay = Number.isFinite(seconds)
+          ? seconds * 1000
+          : retryAfter ? Date.parse(retryAfter) - this.now() : NaN;
+        const backoff = 2000 * 2 ** (attempt - 1) + Math.floor(this.random() * 1000);
+        const delayMs = Math.max(backoff, Number.isFinite(providerDelay) ? providerDelay : 0);
+        console.info(JSON.stringify({
+          event: "deos.openrouter.retry_scheduled", endpoint, failedAttempt: attempt,
+          nextAttempt: attempt + 1, maximumAttempts: 4, delayMs,
+          httpStatus: diagnostic.httpStatus, failureStage: diagnostic.stage,
+          requestMayHaveSucceeded: diagnostic.requestMayHaveSucceeded,
+        }));
+        // Split long provider cooldowns to avoid timer overflow and early retries.
+        let remaining = delayMs;
+        while (remaining > 0) {
+          const interval = Math.min(remaining, 60_000);
+          await this.wait(interval);
+          remaining -= interval;
+        }
+      }
+    }
   }
 
   async listSupportedModels(): Promise<readonly OpenRouterModelSummary[]> {
@@ -232,6 +285,10 @@ export class OpenRouterReviewClient {
   }
 
   async review(input: OpenRouterReviewRequest): Promise<OpenRouterReviewResponse> {
+    return this.withRetry("chat/completions", () => this.reviewOnce(input));
+  }
+
+  private async reviewOnce(input: OpenRouterReviewRequest): Promise<OpenRouterReviewResponse> {
     if (!this.supportedModels.has(input.model)) throw new Error("OpenRouter model is not supported");
     if (!/^[a-z][a-z0-9_-]{2,63}$/.test(input.schemaName)) throw new Error("review schema name is invalid");
     if (input.prompt.length === 0) throw new Error("review prompt is invalid");
@@ -349,6 +406,12 @@ export class OpenRouterReviewClient {
   async proxyResponses(
     input: Readonly<Record<string, unknown>>,
   ): Promise<OpenRouterResponsesProxyResponse> {
+    return this.withRetry("responses", () => this.proxyResponsesOnce(input));
+  }
+
+  private async proxyResponsesOnce(
+    input: Readonly<Record<string, unknown>>,
+  ): Promise<OpenRouterResponsesProxyResponse> {
     const model = boundedString(input.model, 240);
     if (model === null || !this.supportedModels.has(model)) {
       throw new Error("OpenRouter model is not supported");
@@ -387,12 +450,14 @@ export class OpenRouterReviewClient {
           // DeepSeek endpoints reject this optional Codex parameter even when
           // false. Keep schema routing strict; omit the unsupported parameter.
           parallel_tool_calls: undefined,
-          text: { ...text, format: { ...format, strict: true } },
-          // Host policy, not a model-controlled routing preference. Unsupported
-          // providers must reject routing rather than silently ignore the schema.
-          // Pin the endpoint proven with the real Codex tool + schema contract.
-          // Model-level structured-output support alone is not enough.
-          provider: { require_parameters: true, only: ["baidu"] },
+          // The schema is supplied in the review prompt and checked locally.
+          // Live schema-enforced probes skipped tools; prompt-only output passed.
+          text: undefined,
+          // Host policy, not a model-controlled routing preference. Require
+          // support for the remaining tool and reasoning parameters.
+          // Let OpenRouter select and fail over among compatible endpoints.
+          // Baidu's shared pool returned rate limits and internal errors in the canary.
+          provider: { require_parameters: true, ignore: ["baidu"] },
         }),
       });
     } catch (error) {

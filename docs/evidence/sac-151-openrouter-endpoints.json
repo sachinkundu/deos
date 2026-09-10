@@ -1,0 +1,134 @@
+{
+  "source": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-pro/endpoints",
+  "observedDate": "2026-09-10",
+  "endpoints": [
+    {
+      "provider": "DigitalOcean",
+      "tag": "digitalocean",
+      "status": 0,
+      "structured_outputs": false,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "StreamLake",
+      "tag": "streamlake/fp8",
+      "status": 0,
+      "structured_outputs": true,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "GMICloud",
+      "tag": "gmicloud/fp8",
+      "status": 0,
+      "structured_outputs": false,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "Fireworks",
+      "tag": "fireworks",
+      "status": -5,
+      "structured_outputs": true,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "DeepInfra",
+      "tag": "deepinfra/fp8",
+      "status": 0,
+      "structured_outputs": true,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "Alibaba",
+      "tag": "alibaba/fp8",
+      "status": 0,
+      "structured_outputs": true,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "SiliconFlow",
+      "tag": "siliconflow/fp8",
+      "status": 0,
+      "structured_outputs": false,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "Novita",
+      "tag": "novita/fp8",
+      "status": 0,
+      "structured_outputs": false,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "Venice",
+      "tag": "venice",
+      "status": 0,
+      "structured_outputs": true,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "AtlasCloud",
+      "tag": "atlas-cloud/fp4",
+      "status": 0,
+      "structured_outputs": true,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "Baidu",
+      "tag": "baidu/fp8",
+      "status": -2,
+      "structured_outputs": true,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "BaseTen",
+      "tag": "baseten/fp4",
+      "status": -5,
+      "structured_outputs": false,
+      "response_format": false,
+      "tools": true
+    },
+    {
+      "provider": "BaseTen",
+      "tag": "baseten/fp4",
+      "status": -5,
+      "structured_outputs": false,
+      "response_format": false,
+      "tools": true
+    },
+    {
+      "provider": "Parasail",
+      "tag": "parasail/fp8",
+      "status": 0,
+      "structured_outputs": true,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "Azure",
+      "tag": "azure/us",
+      "status": 0,
+      "structured_outputs": false,
+      "response_format": true,
+      "tools": true
+    },
+    {
+      "provider": "NextBit",
+      "tag": "nextbit/fp8",
+      "status": 0,
+      "structured_outputs": true,
+      "response_format": true,
+      "tools": true
+    }
+  ]
+}

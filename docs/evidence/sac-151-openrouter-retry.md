@@ -1,0 +1,81 @@
+# SAC-151 OpenRouter retry hotfix
+
+Branch: `codex/sac-151-openrouter-retry`, based on SAC-151 implementation commit `a780340`.
+
+OpenRouter model calls now allow the initial request plus three retries for transport failures and HTTP 408, 429, 500, 502, 503, 504, 524, and 529. Delays start at 2, 4, and 8 seconds, each with up to one second of jitter. A valid Retry-After duration or HTTP date can extend the delay. Authentication, payment, invalid-request, malformed-output, and partial-stream failures are not replayed by this loop.
+
+The retry count belongs to the model request, not an author/reviewer round or a new workflow attempt. Model, provider pinning, prompts, review rules, and human gates are unchanged. OpenRouter's Codex provider disables its own HTTP and stream retries, so it cannot multiply the proxy's three retries. Retry logs record attempt counts and waits. The final protected diagnostic keeps the original provider error and total request attempts. Ambiguous transport errors remain marked as possibly accepted by the provider; repeated generation can incur charges.
+
+## Validation
+
+- 355 Node tests passed; TypeScript checking passed.
+- Tests cover third-retry recovery, exact exhaustion, unchanged request contents, seconds/date Retry-After, invalid Retry-After fallback, jitter, permanent errors, ambiguous transport failures, and refusal to replay a partial stream.
+- The isolated retry probe injects three synthetic 429 responses, uses real backoff, then sends the fourth request to the real Baidu DeepSeek endpoint through the production adapter. It validates the returned schema and exact result. It does not launch a workflow. The first three errors are synthetic, not provider-originated 429 proof.
+
+```jsonl
+{"event":"deos.openrouter.retry_scheduled","endpoint":"responses","failedAttempt":1,"nextAttempt":2,"maximumAttempts":4,"delayMs":2693,"httpStatus":429,"failureStage":"http","requestMayHaveSucceeded":false}
+{"event":"deos.openrouter.retry_scheduled","endpoint":"responses","failedAttempt":2,"nextAttempt":3,"maximumAttempts":4,"delayMs":4457,"httpStatus":429,"failureStage":"http","requestMayHaveSucceeded":false}
+{"event":"deos.openrouter.retry_scheduled","endpoint":"responses","failedAttempt":3,"nextAttempt":4,"maximumAttempts":4,"delayMs":8747,"httpStatus":429,"failureStage":"http","requestMayHaveSucceeded":false}
+{"event":"deos.openrouter.retry_succeeded","endpoint":"responses","requestAttempts":4}
+{"result":"passed","synthetic429s":3,"requestAttempts":4,"realProviderRequests":1,"elapsedMs":19294,"providerRequestId":"gen-1789037851-vafPkrASYmB4tsjn6rP8","exactSchemaResult":true,"workflowStarted":false}
+```
+
+A separate existing Codex tool-contract probe reached the provider and completed a response, but failed its expected-tool-call assertion: the model returned without the requested tool call. That probe is not counted as passing evidence. The first retry-specific probe also initially parsed reasoning content as answer text; the probe was corrected to read only message output and rerun successfully. Neither observation was used to weaken production validation.
+
+## Deployment and stage retry
+
+Hotfix commit `3d1893e` was merged into SAC-151 with merge commit `d3a8582`.
+Worker version `1653e6d9-11f4-46a4-8981-a024df45af93` was read back at 100% traffic.
+Container application version 51 activated image `sha256:eafb9bc98fe75d46358f0c9b7f165c7c79e006bd46e4e67059edc2ae8a9fb169` with four healthy instances and no errors before retry submission. Portal and BettaView were not deployed.
+
+The authenticated operator stage-retry endpoint established the independent-review retry at 2026-09-10T11:04:07.967Z. It preserved run 3 and frozen workflow v23, using a replacement Workflow instance. An initial request with Python's default user agent was rejected at Cloudflare's edge with 403/1010; identifying the authorized client as `deos-operator/1.0` reached the normal endpoint and returned 202. No authentication or routing policy was changed.
+
+The completed planning work and proposal PR remain intact. A queued retry is not proof that the independent review passed; its new attempt and result are tracked by the continuing canary.
+
+
+## Live retry exhaustion
+
+The resumed independent reviewer used new attempt `01a08afd-46e3-7b4d-84d9-f44d93e04868` and Sandbox `sbx-v1-z5mh6cqry3opf42c3n64mcshgrikq6xmzr2xdlpxdhxz3vcaw5ha`. Its first model operation ran from 11:04:20.412Z to 11:04:38.228Z. OpenRouter returned HTTP 502; Workers Observability confirms the three production backoff waits below. The operation then recorded failure, rather than retrying indefinitely. This is real provider failure and retry evidence, distinct from the injected-429 recovery probe. The review itself did not pass.
+
+```json
+[
+  {
+    "event": "deos.openrouter.retry_scheduled",
+    "endpoint": "responses",
+    "failedAttempt": 1,
+    "nextAttempt": 2,
+    "maximumAttempts": 4,
+    "delayMs": 2773,
+    "httpStatus": 502,
+    "failureStage": "http"
+  },
+  {
+    "event": "deos.openrouter.retry_scheduled",
+    "endpoint": "responses",
+    "failedAttempt": 2,
+    "nextAttempt": 3,
+    "maximumAttempts": 4,
+    "delayMs": 4241,
+    "httpStatus": 502,
+    "failureStage": "http"
+  },
+  {
+    "event": "deos.openrouter.retry_scheduled",
+    "endpoint": "responses",
+    "failedAttempt": 3,
+    "nextAttempt": 4,
+    "maximumAttempts": 4,
+    "delayMs": 8227,
+    "httpStatus": 502,
+    "failureStage": "http"
+  }
+]
+```
+
+D1 recorded the resumed attempt and run as failed at 2026-09-10T11:09:22.112Z, with result class `codex_exit_nonzero`. Sandbox cleanup was read back as `destroyed`. No additional stage retry was submitted after this exhausted retry budget.
+
+## Original upstream causes recovered from R2
+
+The initial 429 explicitly identified Baidu, `rpm_rate_limit_exceeded`, and `limit_source: upstream_provider_shared_pool`, with `is_byok: false`. This was the provider's shared request-rate limit, not evidence of an empty user balance.
+
+The final 502 after the three retries identified Baidu, `provider_error_code: internal_error`. Its raw provider response was `{"error":{"code":"internal_error","message":"Internal error","type":"internal_error"},"id":"as-zvgw8yuk0i"}`. The protected diagnostic reports `requestAttempts: 4`. Neither response included Retry-After. The 502's internal cause is not disclosed; it does not prove a platform-wide outage or rule out a request-specific provider fault.

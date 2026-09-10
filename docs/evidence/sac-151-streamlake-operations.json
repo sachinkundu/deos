@@ -1,0 +1,42 @@
+[
+  {
+    "provider_resource_id": "gen-1789039713-B7Amd7xBm8PMw4LGEz3j",
+    "started_at": "2026-09-10T11:28:33.430Z",
+    "completed_at": "2026-09-10T11:29:04.067Z",
+    "state": "succeeded",
+    "provider_name": "StreamLake",
+    "model": "deepseek/deepseek-v4-pro-20260423",
+    "finish_reason": "tool_calls",
+    "total_cost": 0.006055711
+  },
+  {
+    "provider_resource_id": "gen-1789039744-jp2lZJ8GWuaavwGGuZb8",
+    "started_at": "2026-09-10T11:29:04.252Z",
+    "completed_at": "2026-09-10T11:29:21.156Z",
+    "state": "succeeded",
+    "provider_name": "StreamLake",
+    "model": "deepseek/deepseek-v4-pro-20260423",
+    "finish_reason": "stop",
+    "total_cost": 0.003057707
+  },
+  {
+    "provider_resource_id": "gen-1789039762-W8iSbtQ9CqDMPLMfWECu",
+    "started_at": "2026-09-10T11:29:22.732Z",
+    "completed_at": "2026-09-10T11:30:20.321Z",
+    "state": "succeeded",
+    "provider_name": "StreamLake",
+    "model": "deepseek/deepseek-v4-pro-20260423",
+    "finish_reason": "tool_calls",
+    "total_cost": 0.007889651
+  },
+  {
+    "provider_resource_id": "gen-1789039821-3V4ngfnMXvDlS0Nc2Nm1",
+    "started_at": "2026-09-10T11:30:20.916Z",
+    "completed_at": "2026-09-10T11:31:05.914Z",
+    "state": "succeeded",
+    "provider_name": "StreamLake",
+    "model": "deepseek/deepseek-v4-pro-20260423",
+    "finish_reason": "stop",
+    "total_cost": 0.005017264
+  }
+]

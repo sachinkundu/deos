@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: simple-traceability
-  version: 22
+  version: 23
 spec:
   start: claim_issue
   execution:
@@ -110,7 +110,7 @@ spec:
     planning_author:
       type: agent
       job: planning_author
-      edges: {completed: self_discovery, invalid_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+      edges: {completed: publish_initial, invalid_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
     planning_revision_author:
       type: agent
       job: planning_author
@@ -195,7 +195,7 @@ spec:
     design_author:
       type: agent
       job: design_author
-      edges: {completed: design_self_review, invalid_design_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
+      edges: {completed: publish_design, invalid_design_candidate: agent_failed, blocked: agent_blocked, failed: agent_failed}
     design_self_review:
       type: agent
       job: design_self_review

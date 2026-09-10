@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { setupNativeReview } from "./native-review-setup.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { createWriteStream } from "node:fs";
 import { access, appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
@@ -181,6 +182,7 @@ const main = async () => {
   const deadline = Date.parse(job.deadline);
   if (!Number.isFinite(deadline) || deadline <= Date.now()) throw new Error("job deadline is invalid");
   const prompt = await readFile(job.promptPath, "utf8");
+  await setupNativeReview(job);
   const transcript = await trustedCapture("transcript.jsonl");
   const validation = await trustedCapture("stderr.txt");
   const reviewer = job.agentRole === "reviewer";
@@ -239,6 +241,7 @@ const main = async () => {
       initialCheck: await (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)({
         cwd: job.cwd,
         change: job.openspecChange,
+        reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined,
       }),
       initialResult: { ...result, outcome: "completed" },
       sessionId,
@@ -250,6 +253,7 @@ const main = async () => {
       check: () => (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)({
         cwd: job.cwd,
         change: job.openspecChange,
+        reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined,
       }),
       correctionPrompt: designAuthor ? designCorrectionPrompt : undefined,
     });

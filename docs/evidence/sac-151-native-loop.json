@@ -1,0 +1,13 @@
+{
+  "evidence_class": "local-scripted-production-hook-integration",
+  "checks": {
+    "exit_success": true,
+    "loop_completed": true,
+    "two_fresh_children": true,
+    "read_only": true,
+    "one_author_attempt": true,
+    "no_controller_failures": true
+  },
+  "passed": true,
+  "controller_errors": []
+}

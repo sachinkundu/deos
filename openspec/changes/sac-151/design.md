@@ -1,3 +1,7 @@
+> Clarified by the user on 2026-09-10: preserve v22 review rules. References
+> below to fixed-list recheck inventories and adapters apply to planning only.
+> Design keeps fresh discovery after repair, including its existing limit stop.
+
 ## Context
 
 See `proposal.md` for the motivation and the three delta specs for required
@@ -129,7 +133,7 @@ The current frozen topologies remain explicit:
 | Planning discovery | Start fresh `proposal_first` and `requirement_first` children over the same candidate. Neither receives the other result. They may run in parallel because both are read-only. | Require both valid results, then run the existing planning link reconciler. |
 | Planning recheck | Start the fresh children declared by the existing planning-recheck profile over the repaired candidate and fixed discovery inventory. | Require the declared results and use the existing planning recheck adapter. |
 | Design discovery | Start one fresh `design_review` child with the approved plan, complete design, checked guides, and design rubric. | Validate its existing design result directly; do not use planning reconciliation. |
-| Design recheck | Start one fresh `design_recheck` child with the repaired design and complete fixed finding inventory. | Require exactly one rating for every saved finding ID and use the existing design recheck adapter. |
+| Design after repair | Start one fresh `design_review` discovery child with the repaired design and current complete review context. | Use the existing design validator and author-response limit; do not introduce fixed-list design rechecks. |
 
 This table documents the active contract; the frozen workflow definition is
 authoritative. The native runtime does not infer a generic topology from the
@@ -177,9 +181,10 @@ declared dependencies, tool audit, file manifests, schema, and selected adapter
 before forwarding anything to the existing semantic reducer.
 
 The reducer remains the sole authority for finding IDs, accepted findings,
-semantic turns, pass, judgment, limits, and stop results. Discovery creates one
-immutable finding inventory. Every recheck must rate every existing finding ID
-exactly once and cannot add, remove, rename, merge, or split findings. The
+semantic turns, pass, judgment, limits, and stop results. Planning discovery creates one
+immutable finding inventory. Every planning recheck must rate every existing finding ID
+exactly once and cannot add, remove, rename, merge, or split findings. Design keeps
+v22 discovery after each repair and its existing author-response limit. The
 current contract allows at most three author-repair turns; a fourth repair or
 recheck is never offered. Rejected infrastructure or validation work consumes
 no semantic turn.

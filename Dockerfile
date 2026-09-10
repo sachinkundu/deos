@@ -2,6 +2,8 @@ FROM cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774d
 
 USER root
 
+RUN useradd --create-home --shell /bin/bash deos-author
+
 RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0
 
 RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/bettaview \
@@ -9,6 +11,11 @@ RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/be
     && chmod 755 /deos/bin /deos/shared /deos/staging /deos/jobs
 
 COPY container/original-errors.mjs /deos/bin/original-errors.mjs
+COPY container/native-review-packet.mjs /deos/bin/native-review-packet.mjs
+COPY container/native-review-read.mjs /deos/bin/native-review-read.mjs
+COPY container/native-review-adapter.mjs /deos/bin/native-review-adapter.mjs
+COPY container/native-self-review.mjs /deos/bin/native-self-review.mjs
+COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
 COPY container/author-completion.mjs /deos/bin/author-completion.mjs
 COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs
@@ -26,5 +33,6 @@ COPY container/deos-linear /usr/local/bin/deos-linear
 RUN chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin/trace-review-runner.mjs \
       /deos/bin/design-review-runner.mjs \
       /usr/local/bin/deos-github /usr/local/bin/deos-linear \
+    && for file in /deos/bin/*.mjs; do node --check "$file" || exit 1; done \
     && codex --version \
     && openspec --version
