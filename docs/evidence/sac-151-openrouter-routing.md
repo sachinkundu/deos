@@ -29,3 +29,11 @@ The first prompt-only diagnostic emitted a harmless local error-log warning for 
 ```
 
 355 Node tests and TypeScript checking passed. These probes use real providers with a local fixture; they do not themselves complete the SAC-166 workflow. The existing three-retry policy remains in place.
+
+## Activation and resumed trial
+
+Routing commit `bd5c16e` was merged into SAC-151 as `f46572b`. Worker `2125caf7-cc12-4688-a122-4cf321d57557` was verified at 100% traffic. The existing container v51 image remained active with four healthy instances and no errors. Portal and BettaView were not deployed.
+
+The normal authenticated stage retry was established at 2026-09-10T11:28:21.359Z. Run 3 keeps frozen workflow v23 and its completed planning artifacts; the new independent-review visit is 8. Queuing this retry is not evidence that the review passed.
+
+The resumed review allocated attempt `01a08b13-769f-7508-ad19-fedc53835af4` and Sandbox `sbx-v1-i4o3pku7aii3xd2kae5ljni3adik74wqnsupxp7rxe6wvweziuwq`. Its first live provider operation succeeded at 11:29:04.067Z. OpenRouter generation metadata confirmed StreamLake with `finish_reason: tool_calls` for `gen-1789039713-B7Amd7xBm8PMw4LGEz3j`. The reviewer then issued another request; final review acceptance remains to be verified.
