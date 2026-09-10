@@ -40,6 +40,7 @@ export function designCorrectionPrompt(
 export function runDesignCompletionCheck(input: {
   cwd: string;
   change: string;
+  reviewRepliesPath?: string;
   execute?: (args: string[], cwd: string, timeout?: number) => Promise<CommandResult>;
 }): Promise<AuthorCompletionCheck>;
 export function runBoundedAuthorCompletion(input: {

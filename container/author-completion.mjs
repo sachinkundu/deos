@@ -202,10 +202,30 @@ export const designCorrectionPrompt = (check, round, maximumRepairs) => [
   "Do not write tasks or implementation code. Return completed only when design.md is valid.",
 ].join("\n");
 
-export const runDesignCompletionCheck = async ({ cwd, change, execute = command }) => {
+export const runDesignCompletionCheck = async ({ cwd, change, reviewRepliesPath, execute = command }) => {
   if (!safeChange(change)) throw new Error("design completion change identity is invalid");
   const expectedPath = `openspec/changes/${change}/design.md`;
   const failures = [];
+  // Final completion owns sidecar validation; native candidate checks can run
+  // before the author has written its reply file.
+  if (reviewRepliesPath !== undefined) {
+    try {
+      const replies = JSON.parse(await readFile(reviewRepliesPath, "utf8"));
+      const ids = new Set();
+      if (!Array.isArray(replies) || replies.some((reply) => {
+        if (reply === null || typeof reply !== "object" ||
+          !Number.isSafeInteger(reply.commentId) || reply.commentId <= 0 ||
+          typeof reply.body !== "string" || reply.body.trim().length === 0 ||
+          ids.has(reply.commentId)) return true;
+        ids.add(reply.commentId);
+        return false;
+      })) throw new Error("invalid reply shape");
+    } catch (error) {
+      if (!(error instanceof SyntaxError) && error?.code !== "ENOENT" &&
+        error?.message !== "invalid reply shape") throw error;
+      failures.push(`Write ${reviewRepliesPath} as a JSON array of { "commentId": <positive root review comment ID>, "body": <non-empty reply> }. Use commentId, not threadId, and include each root at most once. Use [] when no replies are needed.`);
+    }
+  }
   const status = await execute(
     ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
     cwd,

@@ -241,6 +241,7 @@ const main = async () => {
       initialCheck: await (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)({
         cwd: job.cwd,
         change: job.openspecChange,
+        reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined,
       }),
       initialResult: { ...result, outcome: "completed" },
       sessionId,
@@ -252,6 +253,7 @@ const main = async () => {
       check: () => (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)({
         cwd: job.cwd,
         change: job.openspecChange,
+        reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined,
       }),
       correctionPrompt: designAuthor ? designCorrectionPrompt : undefined,
     });
