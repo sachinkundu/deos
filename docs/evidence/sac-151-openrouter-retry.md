@@ -31,3 +31,43 @@ Container application version 51 activated image `sha256:eafb9bc98fe75d46358f0c9
 The authenticated operator stage-retry endpoint established the independent-review retry at 2026-09-10T11:04:07.967Z. It preserved run 3 and frozen workflow v23, using a replacement Workflow instance. An initial request with Python's default user agent was rejected at Cloudflare's edge with 403/1010; identifying the authorized client as `deos-operator/1.0` reached the normal endpoint and returned 202. No authentication or routing policy was changed.
 
 The completed planning work and proposal PR remain intact. A queued retry is not proof that the independent review passed; its new attempt and result are tracked by the continuing canary.
+
+
+## Live retry exhaustion
+
+The resumed independent reviewer used new attempt `01a08afd-46e3-7b4d-84d9-f44d93e04868` and Sandbox `sbx-v1-z5mh6cqry3opf42c3n64mcshgrikq6xmzr2xdlpxdhxz3vcaw5ha`. Its first model operation ran from 11:04:20.412Z to 11:04:38.228Z. OpenRouter returned HTTP 502; Workers Observability confirms the three production backoff waits below. The operation then recorded failure, rather than retrying indefinitely. This is real provider failure and retry evidence, distinct from the injected-429 recovery probe. The review itself did not pass.
+
+```json
+[
+  {
+    "event": "deos.openrouter.retry_scheduled",
+    "endpoint": "responses",
+    "failedAttempt": 1,
+    "nextAttempt": 2,
+    "maximumAttempts": 4,
+    "delayMs": 2773,
+    "httpStatus": 502,
+    "failureStage": "http"
+  },
+  {
+    "event": "deos.openrouter.retry_scheduled",
+    "endpoint": "responses",
+    "failedAttempt": 2,
+    "nextAttempt": 3,
+    "maximumAttempts": 4,
+    "delayMs": 4241,
+    "httpStatus": 502,
+    "failureStage": "http"
+  },
+  {
+    "event": "deos.openrouter.retry_scheduled",
+    "endpoint": "responses",
+    "failedAttempt": 3,
+    "nextAttempt": 4,
+    "maximumAttempts": 4,
+    "delayMs": 8227,
+    "httpStatus": 502,
+    "failureStage": "http"
+  }
+]
+```
