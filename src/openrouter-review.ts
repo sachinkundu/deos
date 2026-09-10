@@ -450,12 +450,14 @@ export class OpenRouterReviewClient {
           // DeepSeek endpoints reject this optional Codex parameter even when
           // false. Keep schema routing strict; omit the unsupported parameter.
           parallel_tool_calls: undefined,
-          text: { ...text, format: { ...format, strict: true } },
-          // Host policy, not a model-controlled routing preference. Unsupported
-          // providers must reject routing rather than silently ignore the schema.
-          // Pin the endpoint proven with the real Codex tool + schema contract.
-          // Model-level structured-output support alone is not enough.
-          provider: { require_parameters: true, only: ["baidu"] },
+          // The schema is supplied in the review prompt and checked locally.
+          // Live schema-enforced probes skipped tools; prompt-only output passed.
+          text: undefined,
+          // Host policy, not a model-controlled routing preference. Require
+          // support for the remaining tool and reasoning parameters.
+          // Let OpenRouter select and fail over among compatible endpoints.
+          // Baidu's shared pool returned rate limits and internal errors in the canary.
+          provider: { require_parameters: true, ignore: ["baidu"] },
         }),
       });
     } catch (error) {
