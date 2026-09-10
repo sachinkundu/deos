@@ -1,25 +1,25 @@
 ## ADDED Requirements
 
-### Requirement: Protect Claude Pro review sign-in
+### Requirement: Protect local Claude review auth
 
-The trusted runner SHALL keep protected Claude Pro sign-in data inside the trusted auth boundary used to start outside review. It MUST NOT expose that data in review input or saved proof. The review runtime MUST NOT receive an Anthropic API key, an OpenRouter key, paid credits, or another paid route.
+The trusted runner SHALL use the user's existing local Claude auth JSON to start outside review, as Codex does. It MUST NOT ask the user to sign in. It SHALL keep the auth JSON inside the trusted runner and MUST NOT expose it in review input or saved proof. The review runtime MUST NOT receive an Anthropic API key or an OpenRouter key. The flow SHALL NOT inspect or manage the user's Anthropic API billing state.
 
-#### Scenario: Saved sign-in is valid
+#### Scenario: Local auth JSON is valid
 
-- **WHEN** the trusted runner starts an allowed outside review with valid Claude Pro sign-in.
-- **THEN** Claude signs in without an API key and the review may run.
+- **WHEN** the trusted runner starts an allowed outside review with valid local Claude auth JSON.
+- **THEN** Claude uses that account session with no sign-in prompt or API key, and the review may run.
 
-#### Scenario: Sign-in cannot be used
+#### Scenario: Local auth JSON cannot be used
 
-- **WHEN** the saved sign-in data is absent, expired, revoked, or not for the set Pro account.
+- **WHEN** the local auth JSON is absent, expired, revoked, invalid, or not for the set Pro account.
 - **THEN** the attempt records an auth failure and makes no accepted review result.
 
-#### Scenario: Review tries to enable paid use
+#### Scenario: Review asks for an API route
 
-- **WHEN** the review process requests an API key, paid credits, or another paid route.
-- **THEN** the trusted runner denies that route and the review cannot pass.
+- **WHEN** the review process requests an Anthropic API key or an OpenRouter key.
+- **THEN** the trusted runner does not supply it and the review cannot pass.
 
-#### Scenario: Sign-in data reaches proof
+#### Scenario: Local auth JSON reaches proof
 
-- **WHEN** review proof contains Claude sign-in data.
+- **WHEN** review proof contains the local Claude auth JSON or data from it.
 - **THEN** DEOS does not accept or show that unsafe proof.
