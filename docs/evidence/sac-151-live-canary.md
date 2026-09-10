@@ -1,5 +1,7 @@
 # SAC-151 calculator canary
 
+Final outcome: run 3 completed successfully. See the [completion report](sac-151-completion.md) for final provider state, both human rework loops, merged artifacts, cleanup, and limitations. The entries below preserve the chronological trial, including superseded failures and pending states.
+
 *2026-09-10T06:43:33Z by Showboat 0.6.1*
 <!-- showboat-id: 845a9317-9511-4261-a2e4-60f5520973f0 -->
 

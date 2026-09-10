@@ -21,5 +21,5 @@
 - [x] 4.1 Test phase topologies, fresh context, tool denial, manifests, invalid output, fixed inventories, limits, replay, reuse, cancellation, and evidence failures.
 - [x] 4.2 Run repository checks and deploy the backend with verified Worker and container activation.
 - [x] 4.3 Launch a fresh sample-project calculator trial with number arithmetic and temperature and angle conversions.
-- [ ] 4.4 Request proposal and design rework, inspect each revision, and perform the authorized trial human transitions through completion.
-- [ ] 4.5 Capture provider, D1, R2, Sandbox, child-session, cleanup, and browser evidence; publish the final implementation PR.
+- [x] 4.4 Request proposal and design rework, inspect each revision, and perform the authorized trial human transitions through completion.
+- [x] 4.5 Capture provider, D1, R2, Sandbox, child-session, cleanup, and browser evidence; publish the final implementation PR.

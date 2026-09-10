@@ -1,5 +1,7 @@
 # SAC-151 design canary
 
+Final outcome: design PR 12 merged and SAC-166 reached Done. See the [completion report](sac-151-completion.md). The record below preserves each intermediate state and failure.
+
 SAC-166 run 3 entered design after proposal PR 11 merged as `34ac2699e7b449e35aa50597638a21e2dd234746` and DEOS verified the approved manifest. Design author attempt `01a08b4b-0598-7ed7-ad46-acfc651c0b7a` started at 2026-09-10T12:29:12.030Z in Sandbox `sbx-v1-oyxubz33fvs32ckbtge4f76xymhzndrrwxulemeoygmvioafhhca`.
 
 ## First native design review
