@@ -71,3 +71,5 @@ The resumed independent reviewer used new attempt `01a08afd-46e3-7b4d-84d9-f44d9
   }
 ]
 ```
+
+D1 recorded the resumed attempt and run as failed at 2026-09-10T11:09:22.112Z, with result class `codex_exit_nonzero`. Sandbox cleanup was read back as `destroyed`. No additional stage retry was submitted after this exhausted retry budget.
