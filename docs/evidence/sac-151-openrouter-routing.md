@@ -68,3 +68,13 @@ Readback confirmed provider-originated delivery `965c9e08-32f4-42e9-8263-e5a059f
 The revision published head `79d0b0f6c37fc3878ade46196729cd0b40b1556d`. Its only change adds a Celsius-to-Fahrenheit overflow scenario with finite input, empty stdout, a short stderr reason and help hint, and a non-zero exit status. The bot posted a substantive [reply to the second review thread](https://github.com/sachinkundu/deos-sample-project/pull/11#discussion_r3978858583). Both reviewer threads remain available for human resolution.
 
 Fresh independent attempt `01a08b35-c9d6-778b-bde7-1bbcf6b4cb84` ran from 12:05:58.580Z to 12:11:08.791Z. D1 accepted its pass review, bound to that exact published head; the Sandbox was destroyed. The workflow then started independent-response author `01a08b3a-a61f-75b1-bac9-3dbe7dbd404c` at 12:11:20.506Z. Return to Human Review and proposal merge remain pending.
+
+
+## Proposal gate approved
+
+The independent-response author completed at 12:16:33.286Z and cleaned up its Sandbox. Human Review resumed at 12:16:43Z with the published head unchanged at `79d0b0f6c37fc3878ade46196729cd0b40b1556d`. GitHub's DEOS traceability check was successful on this exact head. The trial reviewer approved PR 11 after checking both revisions and replies, then moved Linear to Merging at 12:28:17Z. This authorization uses the normal human gate; it does not bypass DEOS merge verification.
+
+
+Relevant provider delivery `6d8c2c67-b803-49a5-be20-365aa768c07b` arrived at 12:28:19.001Z. GitHub merged PR 11 at 12:28:57Z as `34ac2699e7b449e35aa50597638a21e2dd234746`; D1 verified that same merge and approved manifest at 12:29:02.361Z. Run 3 entered `design_author`, with attempt `01a08b4b-0598-7ed7-ad46-acfc651c0b7a` starting at 12:29:12.030Z in Sandbox `sbx-v1-oyxubz33fvs32ckbtge4f76xymhzndrrwxulemeoygmvioafhhca`.
+
+![Proposal rework reply, approval, and merge](sac-151-proposal-approved.jpg)
