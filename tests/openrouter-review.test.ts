@@ -168,7 +168,7 @@ test("OpenRouter default transport calls fetch as a function", async () => {
 const reviewText = { format: { type: "json_schema", name: "review", strict: false,
   schema: { type: "object", properties: { outcome: { type: "string" } }, required: ["outcome"], additionalProperties: false } } };
 
-test("OpenRouter Responses proxy enforces schema routing without losing the Codex tool loop", async () => {
+test("OpenRouter Responses proxy uses automatic routing and leaves schema validation to the review runner", async () => {
   let sent: Record<string, unknown> | null = null;
   let authorization = "";
   const client = new OpenRouterReviewClient({
@@ -206,8 +206,8 @@ test("OpenRouter Responses proxy enforces schema routing without losing the Code
   const captured = sent as unknown as Record<string, unknown>;
   assert.equal(captured.store, false);
   assert.equal("parallel_tool_calls" in captured, false);
-  assert.deepEqual(captured.provider, { require_parameters: true, only: ["baidu"] });
-  assert.deepEqual(captured.text, { format: { ...reviewText.format, strict: true } });
+  assert.deepEqual(captured.provider, { require_parameters: true, ignore: ["baidu"] });
+  assert.equal("text" in captured, false);
   assert.equal(reviewText.format.strict, false);
   assert.deepEqual(captured.tools, [{ type: "function", name: "exec", parameters: { type: "object" } }]);
   assert.equal(JSON.stringify(sent).includes("secret-key"), false);

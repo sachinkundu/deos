@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { parseEnv } from "node:util";
-import { codexReviewArgs, reviewPromptWithSchema } from "../container/trace-review-proof.mjs";
+import { codexReviewArgs, reviewPromptWithSchema, recoverCodexReview } from "../container/trace-review-proof.mjs";
 import { OpenRouterReviewClient, OpenRouterReviewError } from "../src/openrouter-review.ts";
 import { designReviewOutputSchema } from "../container/design-review-schema.mjs";
 import assert from "node:assert/strict";
@@ -13,31 +13,38 @@ import { randomUUID } from "node:crypto";
 const model = "deepseek/deepseek-v4-pro";
 const directory = mkdtempSync(`${tmpdir()}/deos-codex-contract-`);
 writeFileSync(`${directory}/schema.json`, JSON.stringify(designReviewOutputSchema));
+process.env.DEOS_ERROR_OUTPUT_ROOT = directory;
 const env = parseEnv(readFileSync(".env", "utf8"));
 // Diagnostic-only endpoint comparison; production routing is unchanged.
 const probeProvider = process.env.PROBE_PROVIDER;
+const promptOnly = process.env.PROBE_PROMPT_ONLY !== "0";
+const forceTool = process.env.PROBE_FORCE_TOOL === "1";
 assert.ok(probeProvider === undefined || ["baidu", "venice", "fireworks"].includes(probeProvider));
 const client = new OpenRouterReviewClient({
   apiKey: env.OPENROUTER_API_KEY ?? "", supportedModels: [model],
   fetcher: (url, init) => {
     const body = JSON.parse(String(init?.body));
+    console.log(JSON.stringify({ requestTools: body.tools.map((tool: { name?: string, type: string }) => ({ name: tool.name, type: tool.type })), requestedToolChoice: body.tool_choice }));
     assert.equal(body.stream, true);
     assert.equal("parallel_tool_calls" in body, false);
     assert.equal(body.tools.some((tool: {type: string}) => /web_search/.test(tool.type)), false);
-    assert.equal(body.text.format.strict, true);
-    assert.deepEqual(body.text.format.schema, designReviewOutputSchema);
-    assert.deepEqual(body.provider, { require_parameters: true, only: ["baidu"] });
+    assert.equal("text" in body, false);
+    assert.deepEqual(body.provider, { require_parameters: true, ignore: ["baidu"] });
     // Default verifies production unchanged. Comparison mode changes only the host.
-    if (probeProvider) body.provider.only = [probeProvider];
-    return fetch(url, { ...init, ...(probeProvider ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(180_000) });
+    if (probeProvider) body.provider = { require_parameters: true, only: [probeProvider] };
+    if (!promptOnly) body.text = { format: { type: "json_schema", name: "review",
+      strict: true, schema: designReviewOutputSchema } };
+    if (forceTool && requests === 1) body.tool_choice = { type: "function", name: "exec_command" };
+    return fetch(url, { ...init, body: JSON.stringify(body), signal: AbortSignal.timeout(180_000) });
   },
 });
-console.log(JSON.stringify({ harness: "0.147.0", model, provider: probeProvider ?? "baidu", workflowStarted: false }));
+console.log(JSON.stringify({ harness: "0.147.0", model, provider: probeProvider ?? "automatic-excluding-baidu", promptOnly, forceTool, workflowStarted: false }));
 const marker = randomUUID();
 writeFileSync(`${directory}/probe-input.txt`, marker);
 let toolCalls = 0;
 let requests = 0;
 let failure: unknown;
+let transcript = "";
 const exitCode = await new Promise<number | null>((resolve, reject) => {
   let child: ReturnType<typeof spawn>;
   const server = createServer(async (req, res) => {
@@ -50,6 +57,7 @@ const exitCode = await new Promise<number | null>((resolve, reject) => {
       const events = response.body.split("\n").filter(line => line.startsWith("data: {")).map(line => JSON.parse(line.slice(6)));
       const completed = events.find(event => event.type === "response.completed");
       assert.ok(completed, "Provider did not complete the response");
+      console.log(JSON.stringify({ outputTypes: completed.response.output.map((item: { type: string }) => item.type) }));
       for (const item of completed.response.output) {
         if (item.type.endsWith("_call")) {
           assert.equal(item.type, "function_call");
@@ -76,8 +84,9 @@ const exitCode = await new Promise<number | null>((resolve, reject) => {
       capabilityUrl: `http://127.0.0.1:${address.port}` });
     child = spawn("npx", ["--yes", "@openai/codex@0.147.0", ...args], {
       env: { PATH: process.env.PATH, HOME: directory, DEOS_MODEL_CAPABILITY_TOKEN: "probe-only", DEOS_ATTEMPT_ID: "probe" },
-      stdio: ["pipe", "ignore", "ignore"],
+      stdio: ["pipe", "pipe", "ignore"],
     });
+    child.stdout!.on("data", chunk => { transcript += chunk; });
     child.stdin!.end(reviewPromptWithSchema(`This is a transport test. Do not delegate or call any other tools.
 First use exec_command exactly once with cmd "cat probe-input.txt" to read the fixture.
 Then return version 1, inputSha256 ${"a".repeat(64)}, phase independent, outcome pass,
@@ -94,7 +103,8 @@ if (failure) throw failure;
 assert.equal(exitCode, 0);
 assert.equal(toolCalls, 1);
 assert.ok(requests >= 2);
-assert.deepEqual(JSON.parse(readFileSync(`${directory}/tool-result.json`, "utf8")), {
+const recovered = recoverCodexReview(transcript.trimEnd(), readFileSync(`${directory}/tool-result.json`, "utf8"), designReviewOutputSchema.required);
+assert.deepEqual(recovered.raw, {
   version: 1, inputSha256: "a".repeat(64), phase: "independent", outcome: "pass", summary: marker, findings: [],
 });
-console.log(JSON.stringify({ result: "real Codex tool round-trip and exact review JSON passed", workflowStarted: false }));
+console.log(JSON.stringify({ result: "real Codex tool round-trip and exact review JSON passed", recoveredEarlierMessage: recovered.recovered, workflowStarted: false }));
