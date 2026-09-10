@@ -22,4 +22,12 @@ The retry count belongs to the model request, not an author/reviewer round or a 
 
 A separate existing Codex tool-contract probe reached the provider and completed a response, but failed its expected-tool-call assertion: the model returned without the requested tool call. That probe is not counted as passing evidence. The first retry-specific probe also initially parsed reasoning content as answer text; the probe was corrected to read only message output and rerun successfully. Neither observation was used to weaken production validation.
 
-Deployment and the resumed canary remain separate evidence to collect after merging this hotfix into SAC-151.
+## Deployment and stage retry
+
+Hotfix commit `3d1893e` was merged into SAC-151 with merge commit `d3a8582`.
+Worker version `1653e6d9-11f4-46a4-8981-a024df45af93` was read back at 100% traffic.
+Container application version 51 activated image `sha256:eafb9bc98fe75d46358f0c9b7f165c7c79e006bd46e4e67059edc2ae8a9fb169` with four healthy instances and no errors before retry submission. Portal and BettaView were not deployed.
+
+The authenticated operator stage-retry endpoint established the independent-review retry at 2026-09-10T11:04:07.967Z. It preserved run 3 and frozen workflow v23, using a replacement Workflow instance. An initial request with Python's default user agent was rejected at Cloudflare's edge with 403/1010; identifying the authorized client as `deos-operator/1.0` reached the normal endpoint and returned 202. No authentication or routing policy was changed.
+
+The completed planning work and proposal PR remain intact. A queued retry is not proof that the independent review passed; its new attempt and result are tracked by the continuing canary.
