@@ -36,8 +36,8 @@ if event["hook_event_name"] == "PreToolUse":
         result = {"hookSpecificOutput": {
             "hookEventName": "PreToolUse", "permissionDecision": "allow",
             "updatedInput": {
-                "task_name": requested["task_name"], "agent_type": "reviewer",
-                "fork_turns": "none", "message": "REVIEW_PACKET_CANARY"}}}
+                "agent_type": "reviewer",
+                "fork_context": False, "message": "REVIEW_PACKET_CANARY"}}}
 print(json.dumps(result))
 '''
 
@@ -128,10 +128,9 @@ def run_probe(codex, root):
                         "input": 'text(await tools.exec_command({cmd: "touch SHOULD_NOT_EXIST", max_output_tokens: 10}));'}
             elif not child and len(outputs) < 4:
                 spawn = len(outputs) % 2 == 0
-                arguments = ({"task_name": f"reviewer_{len(outputs) // 2 + 1}",
-                              "agent_type": "default", "fork_turns": "all",
-                              "message": "PARENT_PRIVATE_CANARY_LEAK"} if spawn else {"timeout_ms": 10000})
-                item = {"id": f"function{ordinal}", "type": "function_call", "namespace": "collaboration",
+                arguments = ({"agent_type": "default", "fork_context": True,
+                              "message": "PARENT_PRIVATE_CANARY_LEAK"} if spawn else {"ids": [json.loads(line)["agent_id"] for line in (root / "hooks.jsonl").read_text().splitlines() if json.loads(line).get("hook_event_name") == "SubagentStart"][-1:], "timeout_ms": 10000})
+                item = {"id": f"function{ordinal}", "type": "function_call", "namespace": "multi_agent_v1",
                         "name": "spawn_agent" if spawn else "wait_agent", "call_id": f"call{ordinal}",
                         "arguments": json.dumps(arguments)}
             else:
@@ -165,13 +164,23 @@ def run_probe(codex, root):
         'name = "reviewer"\ndescription = "Fresh read-only reviewer"\n'
         'developer_instructions = "REVIEWER_PROFILE_CANARY. Review only."\n'
         f'model = "{MODEL}"\nmodel_reasoning_effort = "high"\n')
+    (root / "home/models.json").write_text(json.dumps(dict(models=[dict(
+        slug=MODEL, display_name=MODEL, description='Local runtime fixture',
+        base_instructions='Follow the supplied task and tools.',
+        default_reasoning_level='high', supported_reasoning_levels=[dict(effort='high',description='Review')],
+        shell_type='shell_command', visibility='list', supported_in_api=True, priority=1,
+        availability_nux=None, upgrade=None, support_verbosity=True, default_verbosity='low',
+        apply_patch_tool_type='freeform', truncation_policy=dict(mode='tokens',limit=10000),
+        supports_parallel_tool_calls=True, experimental_supported_tools=[],
+        tool_mode='code_mode_only', multi_agent_version='v1', context_window=272000,
+    )])))
     (root / "home/config.toml").write_text(
-        f'model = "{MODEL}"\nmodel_provider = "probe"\napproval_policy = "never"\n'
+        f'model_catalog_json = {json.dumps(str(root / "home/models.json"))}\nmodel = "{MODEL}"\nmodel_provider = "probe"\napproval_policy = "never"\n'
         'sandbox_mode = "danger-full-access"\n[model_providers.probe]\n'
         'name = "Local scripted runtime probe"\n'
         f'base_url = "http://127.0.0.1:{server.server_port}/v1"\n'
         'wire_api = "responses"\nrequires_openai_auth = false\n'
-        '[features]\nhooks = true\napps = false\nplugins = false\nshell_snapshot = false\n'
+        '[features]\nmulti_agent = true\nmulti_agent_v2 = false\nhooks = true\napps = false\nplugins = false\nshell_snapshot = false\n'
         '[agents.reviewer]\nconfig_file = "reviewer.toml"\ndescription = "Fresh read-only reviewer"\n' +
         "".join(f'\n[[hooks.{event}]]\nmatcher = ".*"\n[[hooks.{event}.hooks]]\n'
                 f'type = "command"\ncommand = "python3 {root}/hook.py"\n' for event in EVENTS))

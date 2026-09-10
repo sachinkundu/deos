@@ -42,3 +42,30 @@ rtk proxy python3 scripts/probe-native-self-review.py --codex /Users/sachin/.npm
   "passed": true
 }
 ```
+
+```bash
+rtk proxy python3 scripts/probe-native-self-review.py --codex /Users/sachin/.npm/_npx/6391354789b65492/node_modules/.bin/codex --output docs/evidence/sac-151-native-runtime.json
+```
+
+```output
+{
+  "evidence_class": "local-scripted-native-runtime",
+  "codex_version": "codex-cli 0.147.0",
+  "model_responses": "scripted locally; no model or provider calls",
+  "checks": {
+    "two_fresh_children": true,
+    "both_children_completed": true,
+    "same_live_parent": true,
+    "frozen_profile": true,
+    "fresh_profile_context": true,
+    "child_write_attempts_observed": true,
+    "writes_denied": true,
+    "candidate_unchanged": true
+  },
+  "child_ids": [
+    "01a08a37-ffc4-7e61-bc2e-e3e4bad93971",
+    "01a08a38-0044-7a93-9a46-dc9ef0a9c9f7"
+  ],
+  "passed": true
+}
+```

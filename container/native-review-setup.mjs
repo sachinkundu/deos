@@ -8,7 +8,7 @@ const COMMAND = "node /deos/bin/native-self-review.mjs hook";
 
 // The parent trust bypass does not reach child sessions. Discover and trust the
 // exact generated hooks through the pinned runtime's own config contract.
-const trustGeneratedHooks = async (cwd) => {
+const trustGeneratedHooks = async (cwd, model) => {
   const child = spawn("codex", ["app-server"], {
     env: { PATH: process.env.PATH, HOME: "/root", CODEX_HOME: "/root/.codex" },
     stdio: ["pipe", "pipe", "inherit"],
@@ -31,10 +31,26 @@ const trustGeneratedHooks = async (cwd) => {
     await rpc(1, "initialize", { clientInfo: { name: "deos-native-review", version: "1" },
       capabilities: { experimentalApi: true } });
     child.stdin.write('{"method":"initialized"}\n');
+    // The v2 messaging transport encrypts model-authored arguments. Hooks cannot
+    // replace those with service-authored plaintext. Select the pinned native v1
+    // tool contract through the supported catalog override, retaining all other
+    // provider model metadata and the configured model identity.
+    let cache;
+    try { cache = JSON.parse(await readFile("/root/.codex/models_cache.json", "utf8")); } catch {}
+    if (!cache?.models?.some((entry) => entry.slug === model)) {
+      await rpc(3, "model/list", {});
+      cache = JSON.parse(await readFile("/root/.codex/models_cache.json", "utf8"));
+    }
+    const profile = cache.models.find((entry) => entry.slug === model);
+    if (!profile) throw new Error("configured native model metadata is unavailable");
+    await writeFile("/root/.codex/deos-models.json", JSON.stringify({
+      models: [{ ...profile, multi_agent_version: "v1" }],
+    }), { mode: 0o600 });
+    await writeFile(CONFIG, 'model_catalog_json = "/root/.codex/deos-models.json"\n' + await readFile(CONFIG, "utf8"));
     const result = await rpc(2, "hooks/list", { cwds: [cwd] });
     const entry = result.data?.[0];
     if (result.data?.length !== 1 || entry.errors.length || entry.warnings.length || entry.hooks.length !== EVENTS.length) {
-      throw new Error("native hook discovery mismatch");
+      throw new Error(`native hook discovery mismatch: ${JSON.stringify({ errors: entry?.errors, warnings: entry?.warnings, count: entry?.hooks?.length })}`);
     }
     for (const hook of entry.hooks) {
       if (hook.command !== COMMAND || hook.sourcePath !== CONFIG || !EVENTS.some((event) => event.toLowerCase() === hook.eventName.toLowerCase())) {
@@ -68,13 +84,13 @@ export const setupNativeReview = async (job) => {
     '[shell_environment_policy]', 'include_only = ["PATH", "HOME"]',
   ].join("\n") + "\n", { mode: 0o600 });
   await writeFile(CONFIG, [
-    '[features]', 'hooks = true', 'apps = false', 'plugins = false', 'shell_snapshot = false',
+    '[features]', 'multi_agent = true', 'multi_agent_v2 = false', 'hooks = true', 'apps = false', 'plugins = false', 'shell_snapshot = false',
     '[agents.deos_reviewer]', 'config_file = "deos-reviewer.toml"',
     'description = "Fresh read-only OpenSpec reviewer"',
     ...EVENTS.flatMap((event) => [`[[hooks.${event}]]`, 'matcher = ".*"',
       `[[hooks.${event}.hooks]]`, 'type = "command"', `command = ${JSON.stringify(COMMAND)}`, 'timeout = 86400']),
   ].join("\n") + "\n", { mode: 0o600 });
-  await trustGeneratedHooks(job.cwd);
+  await trustGeneratedHooks(job.cwd, job.model);
   for (const args of [
     ["chown", "-R", "deos-author:deos-author", job.cwd, "/deos/output"],
     ["chmod", "700", "/root/.codex", "/deos/native-review"],

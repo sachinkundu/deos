@@ -466,7 +466,7 @@ class NodeServices implements WorkflowNodeServices {
     this.agentOutcomes = agentOutcomes;
   }
 
-  executeAgent() {
+  executeAgent(): ReturnType<WorkflowNodeServices["executeAgent"]> {
     const outcome = this.agentOutcomes.shift();
     if (outcome === undefined) throw new Error("no agent outcome");
     return Promise.resolve({
@@ -1149,4 +1149,35 @@ test("a wait edge that commits success also requests Done", async () => {
   await lifecycleOrchestrator(store, services, selected).run(store.run.run_id, new FakeStep(["delivery-resume"]));
   assert.equal(store.run.status, "succeeded");
   assert.deepEqual(services.doneRequests, [store.run.issue_id]);
+});
+
+
+test("native initial authors reconcile promptly while old and later author paths retain heartbeat waits", async () => {
+  for (const [version, node, expected] of [
+    [23, "planning_author", "10s"], [23, "design_author", "10s"],
+    [22, "planning_author", "5m"], [23, "planning_revision_author", "5m"],
+  ] as const) {
+    const run = { ...makeRun(traceabilityDefinition), definition_version: version, current_node: node };
+    const store = new RuntimeStore(run);
+    let calls = 0;
+    let timeout: string | number | undefined;
+    class RunningServices extends NodeServices {
+      override executeAgent(): ReturnType<WorkflowNodeServices["executeAgent"]> {
+        if (calls++ > 0) throw new Error("observed next reconciliation");
+        return Promise.resolve({ state: "running", attemptId: "native-author", sandboxId: "sandbox" });
+      }
+    }
+    const step: WorkflowStepLike = {
+      do: async (_name, callback) => callback(),
+      waitForEvent: async (_name, options) => {
+        timeout = options.timeout;
+        throw new Error("checkpoint timeout");
+      },
+    };
+    await assert.rejects(new WorkflowOrchestrator(store, traceabilityDefinition, new RunningServices(), {
+      humanGateStateId: "human-state", approvalStateNames: ["Merging"], rejectionStateNames: ["Canceled"],
+      now: () => new Date(NOW),
+    }).run(run.run_id, step), /observed next reconciliation/);
+    assert.equal(timeout, expected, `${version}:${node}`);
+  }
 });

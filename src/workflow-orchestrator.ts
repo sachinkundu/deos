@@ -189,7 +189,10 @@ export class WorkflowOrchestrator {
           try {
             await step.waitForEvent<{ deliveryId: string }>(
               `agent-event:${execution.attemptId}`,
-              { type: "linear-event", timeout: this.definition.execution.heartbeatTimeout },
+              { type: "linear-event", timeout: run.definition_id === "simple-traceability" &&
+                run.definition_version >= 23 &&
+                ["planning_author", "design_author"].includes(instruction.nodeId)
+                ? "10s" : this.definition.execution.heartbeatTimeout },
             );
           } catch (caughtError) {
             recordCaughtError(caughtError, "src/workflow-orchestrator.ts:192");

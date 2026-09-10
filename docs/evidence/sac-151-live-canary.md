@@ -95,3 +95,80 @@ rtk proxy python3 /tmp/sac151-cf.py query "SELECT definition_id,version,digest F
   "success": true
 }
 ```
+
+The real Linear Todo event started SAC-166 run 1 on frozen workflow v23. Delivery fb39a85c-e65a-4e81-83e2-f133b6dd5842 was relevant on route revision 12. Attempt 01a08a15-7393-7d2e-b237-3c7ee16ea379 failed before native review: a misplaced supervisor shebang caused a Node parse error. The failure manifest honestly contains no process artifacts. The supervisor was fixed and Docker now checks every runtime module for syntax. This failed run is retained as evidence; the next trial uses a new run and Sandbox.
+
+```bash
+rtk proxy python3 /tmp/sac151-cf.py api containers/applications/a0344373-884d-4c06-b4c2-4e58295de498
+```
+
+```output
+{
+  "success": true,
+  "result": {
+    "id": "a0344373-884d-4c06-b4c2-4e58295de498",
+    "created_at": "2026-08-16T07:52:21.590000128Z",
+    "updated_at": "2026-09-10T06:56:30.06Z",
+    "account_id": "c68856288112af7698f5be52ea94b96e",
+    "name": "deos-queue-consumer-ts-sandbox",
+    "version": 49,
+    "scheduling_policy": "default",
+    "instances": 4,
+    "max_instances": 4,
+    "configuration": {
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:9cd916c609cb2f6bef62d93380db13ab04a1f4c1398ba36b3848b22f20a5c7f3",
+      "vcpu": 0.25,
+      "memory": "1GiB",
+      "memory_mib": 1024,
+      "disk": {
+        "size_mb": 4000,
+        "size": "4GB"
+      },
+      "network": {
+        "assign_ipv6": "none",
+        "assign_ipv4": "none",
+        "mode": "private"
+      },
+      "command": [],
+      "entrypoint": [],
+      "runtime": "firecracker",
+      "observability": {
+        "logs": {
+          "enabled": true
+        }
+      }
+    },
+    "constraints": {
+      "tiers": [
+        1,
+        2
+      ]
+    },
+    "durable_objects": {
+      "namespace_id": "3132c2f21e9c48339cb72292268a1589"
+    },
+    "rollout_active_grace_period": 0,
+    "health": {
+      "errors": [],
+      "instances": {
+        "active": 0,
+        "assigned": 0,
+        "healthy": 4,
+        "stopped": 0,
+        "failed": 0,
+        "scheduling": 0,
+        "starting": 0
+      }
+    },
+    "network": {
+      "bandwidth_limit_mbps": 250
+    }
+  },
+  "messages": [],
+  "errors": []
+}
+```
+
+Run 2 started from another real Linear Todo delivery (c0fefdbd-b965-4670-8353-5b974445325a). Its author attempt is 01a08a1b-4a08-7bf4-8e88-e0f6d0a4a6bc and Sandbox is sbx-v1-omqiapopvtqaanrbnsu4ryg2hxnk5wsnuoyb77l7pezi4v6dntya. The first candidate and native child were recorded under that same attempt. The live run also exposed a five-minute controller polling delay; the new native initial-author path now reconciles every ten seconds. The current run adopted that Worker update without replacing its live author or Sandbox.
+
+The first native child in run 2 failed at 07:06:20 UTC with an encrypted function-output decode error. A protected read-only diagnostic confirmed the exact task_complete error. The v2 native messaging handler treats model messages as encrypted; replacing its message argument in a hook with plaintext broke transport. The implementation now uses the pinned native v1 plain-message interface, selected through Codex model_catalog_json while retaining the provider model metadata and model identity. Child runtime errors are detected even when SubagentStop is absent. The original error was captured in R2 and copied to sac-151-native-transport-failure.json. Run 2 correctly ended as native_review_failed and will not be reported as a passed review.

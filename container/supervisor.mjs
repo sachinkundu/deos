@@ -1,5 +1,5 @@
-import { setupNativeReview } from "./native-review-setup.mjs";
 #!/usr/bin/env node
+import { setupNativeReview } from "./native-review-setup.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { createWriteStream } from "node:fs";
 import { access, appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";

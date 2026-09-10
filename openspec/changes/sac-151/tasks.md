@@ -14,12 +14,12 @@
 
 - [x] 3.1 Add guarded child-session correlation and link accepted reviews to the parent author attempt without allocating child attempts.
 - [x] 3.2 Persist and read back native proof before acceptance and cleanup, preserving replay, reuse, and proof repair.
-- [ ] 3.3 Register a new immutable workflow definition while retaining old execution paths and separate publication, independent review, and human gates.
+- [x] 3.3 Register a new immutable workflow definition while retaining old execution paths and separate publication, independent review, and human gates.
 
 ## 4. Verification and release
 
 - [ ] 4.1 Test phase topologies, fresh context, tool denial, manifests, invalid output, fixed inventories, limits, replay, reuse, cancellation, and evidence failures.
-- [ ] 4.2 Run repository checks and deploy the backend with verified Worker and container activation.
-- [ ] 4.3 Launch a fresh sample-project calculator trial with number arithmetic and temperature and angle conversions.
+- [x] 4.2 Run repository checks and deploy the backend with verified Worker and container activation.
+- [x] 4.3 Launch a fresh sample-project calculator trial with number arithmetic and temperature and angle conversions.
 - [ ] 4.4 Request proposal and design rework, inspect each revision, and perform the authorized trial human transitions through completion.
 - [ ] 4.5 Capture provider, D1, R2, Sandbox, child-session, cleanup, and browser evidence; publish the final implementation PR.

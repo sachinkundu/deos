@@ -126,6 +126,12 @@ export class D1NativeReviewStore {
     if ((await this.session(key, attemptId)).subagent_id !== childId) throw new Error("native child start was not saved");
   }
 
+  async failAttempt(attemptId: string): Promise<void> {
+    await this.db.prepare(`UPDATE self_review_sessions SET state = 'fault', updated_at = ?
+      WHERE author_attempt_id = ? AND state IN ('allocated', 'started', 'complete')`)
+      .bind(new Date().toISOString(), attemptId).run();
+  }
+
   async complete(key: string, attemptId: string, proof: Record<string, unknown>) {
     const row = await this.session(key, attemptId);
     if (proof.sessionKey !== key || proof.authorAttemptId !== attemptId || proof.subagentId !== row.subagent_id ||
@@ -134,7 +140,7 @@ export class D1NativeReviewStore {
     }
     const effective = nativeRecord(proof.effectiveInput);
     const launch = nativeRecord(proof.launch);
-    if (launch.sessionId === null ? effective.fork_turns !== "none" || effective.agent_type !== "deos_reviewer" : effective.target !== launch.sessionId) {
+    if (launch.sessionId === null ? (effective.fork_context !== false && effective.fork_turns !== "none") || effective.agent_type !== "deos_reviewer" : effective.target !== launch.sessionId) {
       throw new Error("native proof did not use the declared fresh session or proof correction");
     }
     if (effective.message !== nativeReviewMessage(launch)) throw new Error("native effective prompt changed");
@@ -186,3 +192,12 @@ export class D1NativeReviewStore {
       .bind(reviewId, outcome, new Date().toISOString(), attemptId, sequence).run();
   }
 }
+
+
+export const nativeChildTerminalError = (transcript: string): { error: unknown; completedAt: string } | null => {
+  const events = transcript.split("\n").filter(Boolean).flatMap((line) => {
+    try { return [JSON.parse(line)]; } catch { return []; }
+  });
+  const terminal = events.findLast((event) => event.type === "event_msg" && event.payload?.type === "task_complete");
+  return terminal?.payload?.error ? { error: terminal.payload.error, completedAt: terminal.timestamp } : null;
+};

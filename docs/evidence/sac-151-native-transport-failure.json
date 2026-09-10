@@ -1,0 +1,9 @@
+{
+  "category": "native_child_runtime_failed",
+  "subagentId": "01a08a22-f284-79c2-8655-b0fcb9d35a6a",
+  "originalError": {
+    "message": "stream disconnected before completion: Encrypted function output content could not be decrypted or decoded.",
+    "codex_error_info": "other"
+  },
+  "completedAt": "2026-09-10T07:06:20.134Z"
+}

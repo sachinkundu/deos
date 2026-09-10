@@ -71,7 +71,7 @@ const instruct = (state) => {
   ].join("\n");
   return [
     "The trusted completion check has prepared the next self-review input.",
-    `Spawn a native child with agent_type=deos_reviewer, task_name=self_review_${state.candidateSequence}_${pending.index}, fork_turns=none.`,
+    "Use multi_agent_v1.spawn_agent with agent_type=deos_reviewer and fork_context=false.",
     "Use message='Run the prepared review'. The trusted hook supplies the complete checked review context and schema.",
     "Await the child. Do not read, edit, run repository commands, or send your own context to it.",
   ].join("\n");
@@ -188,7 +188,7 @@ const executeHook = async (event) => {
       state.stage = "launching";
       const message = nativeReviewMessage(payload);
       const updatedInput = spawnChild ? {
-        task_name: `self_review_${state.candidateSequence}_${payload.index}`, agent_type: "deos_reviewer", fork_turns: "none", message,
+        agent_type: "deos_reviewer", fork_context: false, message,
       } : { target: payload.sessionId, message };
       if (followup) { state.activeChild = payload.sessionId; state.stage = "active"; }
       state.effectiveInput = updatedInput;

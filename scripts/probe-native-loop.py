@@ -50,6 +50,17 @@ def setup():
     Path('/deos/run/prompt.md').write_text('PARENT_PRIVATE_MARKER: finish the design, then follow trusted review hooks.')
     job = dict(nativeSelfReview=dict(phase='design'), attemptId='probe-author', deadline=(datetime.now(timezone.utc)+timedelta(minutes=5)).isoformat(), openspecChange=CHANGE, promptPath='/deos/run/prompt.md', materializedContext='{}', model=MODEL, reasoning='high', cwd=str(REPO))
     save(Path('/deos/run/job.json'), job)
+    Path('/root/.codex').mkdir(parents=True, exist_ok=True)
+    save(Path('/root/.codex/models_cache.json'), dict(models=[dict(
+        slug=MODEL, display_name=MODEL, description='Local runtime fixture', base_instructions='Follow the supplied task and tools.',
+        default_reasoning_level='high', supported_reasoning_levels=[dict(effort='high',description='Review')],
+        shell_type='shell_command', visibility='list', supported_in_api=True, priority=1,
+        availability_nux=None, upgrade=None, support_verbosity=True, default_verbosity='low',
+        apply_patch_tool_type='freeform', truncation_policy=dict(mode='tokens',limit=10000),
+        supports_parallel_tool_calls=True, experimental_supported_tools=[],
+        tool_mode='code_mode_only', multi_agent_version='v2', context_window=272000,
+    )]))
+
     execute(['node', '--input-type=module', '-e', 'import {readFile} from "node:fs/promises"; import {setupNativeReview} from "/deos/bin/native-review-setup.mjs"; await setupNativeReview(JSON.parse(await readFile("/deos/run/job.json","utf8")));'])
 
 
@@ -103,7 +114,7 @@ class Model(BaseHTTPRequestHandler):
         state = json.loads((ROOT/'state.json').read_text())
         output = [item for item in request['input'] if item.get('type') in ['function_call_output','custom_tool_call_output']]
         def call(name, arguments):
-            return dict(id=f'f{ordinal}',type='function_call',namespace='collaboration',name=name,call_id=f'c{ordinal}',arguments=json.dumps(arguments))
+            return dict(id=f'f{ordinal}',type='function_call',namespace='multi_agent_v1',name=name,call_id=f'c{ordinal}',arguments=json.dumps(arguments))
         def shell(command):
             return dict(id=f'f{ordinal}',type='custom_tool_call',namespace='functions',name='exec',call_id=f'c{ordinal}',input=f'text(await tools.exec_command({json.dumps(dict(cmd=command,max_output_tokens=1000))}));')
         def message(value):
@@ -114,9 +125,9 @@ class Model(BaseHTTPRequestHandler):
             findings = [] if state['candidateSequence'] > 1 else [dict(id='failure-message',severity='low',category='completeness',message='Name the error shown to a person.',sourceRanges=[dict(path=f'{PREFIX}/design.md',startLine=13,endLine=15)])]
             item = message(dict(version=1,inputSha256=INPUT,phase='self',outcome='concerns' if findings else 'pass',summary='Checked the design.',findings=findings))
         elif state['stage']=='review':
-            item = call('spawn_agent',dict(task_name=f"review_{state['candidateSequence']}",agent_type='deos_reviewer',fork_turns='none',message='Run prepared review'))
-        elif state['stage'] in ['active','launching']:
-            item = call('wait_agent',dict(timeout_ms=10000))
+            item = call('spawn_agent',dict(agent_type='deos_reviewer',fork_context=False,message='Run prepared review'))
+        elif state['stage']=='active' and state.get('activeChild'):
+            item = call('wait_agent',dict(ids=[state['activeChild']],timeout_ms=10000))
         elif state['stage']=='writing' and state['candidateSequence']==1 and 'Error: plan check failed.' not in (REPO/PREFIX/'design.md').read_text():
             item = shell(f"printf '\\nError: plan check failed.\\n' >> {PREFIX}/design.md")
         else:

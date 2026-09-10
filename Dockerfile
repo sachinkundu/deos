@@ -33,5 +33,6 @@ COPY container/deos-linear /usr/local/bin/deos-linear
 RUN chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin/trace-review-runner.mjs \
       /deos/bin/design-review-runner.mjs \
       /usr/local/bin/deos-github /usr/local/bin/deos-linear \
+    && for file in /deos/bin/*.mjs; do node --check "$file" || exit 1; done \
     && codex --version \
     && openspec --version

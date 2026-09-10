@@ -1,4 +1,4 @@
-import { D1NativeReviewStore, nativeDigest, nativeRecord } from "./native-review-store.ts";
+import { D1NativeReviewStore, nativeChildTerminalError, nativeDigest, nativeRecord } from "./native-review-store.ts";
 import { recordCaughtError } from "./error-context.ts";
 import type { ArtifactCollectionResult, ArtifactCollector } from "./artifact-collector.ts";
 import type { CredentialLease, CredentialVault } from "./credential-vault.ts";
@@ -762,7 +762,7 @@ export class SandboxAgentController {
       );
       const renderedPrompt = [this.prompt(run, attempt, job, durableJob.materializedContext),
         ...(durableJob.nativeSelfReview ? [
-          "This task explicitly requests native review subagents. When the trusted completion hook prepares a self-review, spawn the named deos_reviewer with fork_turns=none, await it, and follow the checked repair or stop instruction in this same live author session.",
+          "This task explicitly requests native review subagents. When the trusted completion hook prepares a self-review, spawn the named deos_reviewer with fork_context=false, await it, and follow the checked repair or stop instruction in this same live author session.",
           "Use the shell tool for repository reads and edits. The author account cannot access trusted review control files. Do not bypass the hooks or start your own review before the hook supplies its checked input.",
         ] : []),
       ].join("\n\n");
@@ -958,6 +958,22 @@ export class SandboxAgentController {
     const status = await process.status();
     if (status.state === "running") {
       if (JSON.parse(attempt.job_spec_json).nativeSelfReview) {
+        if ((await sandbox.exists("/deos/native-review/state.json")).exists) {
+          const nativeState = JSON.parse((await sandbox.readFile("/deos/native-review/state.json")).content);
+          const transcriptPath = nativeState.startReceipt?.transcript_path;
+          if (nativeState.stage === "active" && typeof transcriptPath === "string" &&
+              transcriptPath.startsWith("/root/.codex/sessions/") && !transcriptPath.includes("..") &&
+              (await sandbox.exists(transcriptPath)).exists) {
+            const transcript = (await sandbox.readFile(transcriptPath)).content;
+            const terminal = nativeChildTerminalError(transcript);
+            if (terminal) {
+              await sandbox.writeFile("/deos/native-review/fault.json", JSON.stringify({
+                category: "native_child_runtime_failed", subagentId: nativeState.activeChild,
+                originalError: terminal.error, completedAt: terminal.completedAt,
+              }));
+            }
+          }
+        }
         if ((await sandbox.exists("/deos/native-review/fault.json")).exists) {
           const fault = (await sandbox.readFile("/deos/native-review/fault.json")).content;
           await sandbox.writeFile("/deos/output/native-review-fault.json", fault);
@@ -1689,6 +1705,9 @@ export class SandboxAgentController {
       collection.safeErrorCategory,
       collection.manifestId,
     );
+    if (JSON.parse(attempt.job_spec_json).nativeSelfReview) {
+      await this.dependencies.nativeReviews?.failAttempt(attempt.attempt_id);
+    }
     await this.cleanupFailure(attempt, sandbox);
     await collector.verifyAfterCleanup(collection);
     return collection.manifestId;

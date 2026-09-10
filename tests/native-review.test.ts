@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import { D1NativeReviewStore, nativeDigest } from "../src/native-review-store.ts";
+import { D1NativeReviewStore, nativeChildTerminalError, nativeDigest } from "../src/native-review-store.ts";
 import { readCommand } from "../container/native-review-read.mjs";
 
 class Statement {
@@ -90,4 +90,16 @@ test("review shell exposes reads while denying execution and shell expansion", (
   for (const command of ["touch proposal.md", "curl https://example.com", "cat $(env)", "cat x > proposal.md", "cat x; env", "python3 -c print(1)"]) {
     assert.throws(() => readCommand(command));
   }
+});
+
+
+test("a child runtime error is retained even without a SubagentStop callback", async () => {
+  const error = { message: "encrypted output could not be decoded", codex_error_info: "other" };
+  const event = JSON.stringify({ type: "event_msg", timestamp: "2026-09-10T07:06:20Z", payload: { type: "task_complete", error } });
+  assert.deepEqual(nativeChildTerminalError(event + '\n{"partial":'), { error, completedAt: "2026-09-10T07:06:20Z" });
+  assert.equal(nativeChildTerminalError(JSON.stringify({ type: "event_msg", payload: { type: "task_complete", error: null } })), null);
+  const { store, db } = fixture();
+  await store.allocate("author", "planning", 1, launch);
+  await store.failAttempt("author");
+  assert.equal(db.prepare("SELECT state FROM self_review_sessions").get()?.state, "fault");
 });

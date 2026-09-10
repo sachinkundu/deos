@@ -17,9 +17,10 @@ the private parent prompt. The launch hook replaces a requested full-history
 fork with a fresh child and the configured review packet. Both attempted shell
 writes are denied before execution. The checked draft hash stays unchanged.
 
-The runtime uses the `collaboration` tool namespace and `fork_turns: none` with
-the configured model. Native hook names include `collaborationspawn_agent` and
-`collaborationwait_agent`. Code-mode shell calls reach the hook as `Bash`.
+The runtime uses the native `multi_agent_v1` tool namespace and
+`fork_context: false` with the configured model. The supported model catalog
+override selects this plain-message tool interface and retains the provider model
+metadata. Code-mode shell calls reach the hook as `Bash`.
 
 Hook trust must survive child configuration loading. A parent-only hook-trust
 launch override did not activate the child's hooks in the initial probe.
@@ -75,6 +76,15 @@ session receipts, or review checkpoints. Reviewer commands use a bounded reader
 for the checked source files. The native profile alone does not enforce a narrower
 Sandbox policy in this pinned runtime, so the trusted hooks enforce tool access.
 
-The additive native-session migration is applied. The backend release is in
-progress. SAC-166 is the new calculator trial, staged in Backlog until activation
-is verified. No human gate has been advanced for that trial yet.
+The additive native-session migration is applied, and workflow v23 is registered.
+SAC-166 was launched through real Linear Todo events. Run 1 exposed a supervisor
+syntax error, now caught by the container build. Run 2 started a native child but
+exposed a transport mismatch: the v2 message argument is encrypted and cannot be
+replaced with plain service-authored text by the hook. The native v1 interface
+supports the required plain-message contract. Both local probes now use it.
+
+The live child error is saved in R2. The controller now detects a terminal child
+error even when no SubagentStop hook runs, and stops the parent with that cause.
+Initial native authors reconcile every ten seconds; other paths keep the existing
+heartbeat interval. The corrected image is rolling out before another real trial.
+No human gate has been advanced for SAC-166 yet.
