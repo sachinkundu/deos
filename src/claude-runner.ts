@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import { sandboxIdentity } from "./orchestration-identity.ts";
 import { CLAUDE_MODEL, CLAUDE_EFFORT, CLAUDE_VERSION, ClaudeReviewError, digest, record,
   verifyClaudeEnrollment, type ClaudeReceipt } from "./claude-review.ts";
@@ -47,6 +48,8 @@ export class ClaudeRunner {
       }
       throw new ClaudeReviewError("review_failure");
     } catch (error) {
+      const operation = ["review", "status", "tools", "finish"].find(name => path.endsWith(`/${name}`)) ?? "unknown";
+      recordCaughtError(new Error(`Claude ${operation} failed (${error instanceof ClaudeReviewError ? error.causeCode : "runner_operation"})`), "src/claude-runner.ts:handle");
       const safe = error instanceof ClaudeReviewError ? error : new ClaudeReviewError("review_failure");
       await this.dependencies.store.fail(claims.attemptId, safe.causeCode, safe.retryNotBefore);
       await this.dependencies.db.prepare("UPDATE agent_attempts SET result_detail = ? WHERE attempt_id = ? AND state = 'running'")
@@ -131,6 +134,13 @@ export class ClaudeRunner {
     const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: true });
     if ((await sandbox.exists("/deos/claude/failure.json")).exists) {
       const failure = record(JSON.parse((await sandbox.readFile("/deos/claude/failure.json")).content));
+      const stage = ["configuration", "client_start", "provider_turn", "receipt_validation", "receipt_write"].includes(String(failure.diagnosticStage))
+        ? failure.diagnosticStage : "unknown";
+      const facts = record(failure.diagnosticFacts ?? {});
+      const safeFacts = Object.fromEntries(Object.entries(facts).filter(([key, value]) =>
+        ["spawnError", "exitCode", "initSeen", "modelPinned", "terminalSuccess", "finalError", "quotaCount", "effortCount"].includes(key) &&
+        (typeof value === "boolean" || (typeof value === "number" && Number.isSafeInteger(value)))));
+      recordCaughtError(new Error(`Claude client stopped at ${stage}: ${JSON.stringify(safeFacts)}`), "src/claude-runner.ts:status");
       throw new ClaudeReviewError(["auth_failure", "plan_limit"].includes(String(failure.cause))
         ? failure.cause as "auth_failure" | "plan_limit" : "review_failure",
         typeof failure.retryNotBefore === "string" && Number.isFinite(Date.parse(failure.retryNotBefore)) ? failure.retryNotBefore : null);

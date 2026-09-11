@@ -858,9 +858,14 @@ function DesignReviewPage({ runId }: { runId: string }) {
 function RunErrors({ projection }: { projection: Projection }) {
   const all = [...(projection.errors ?? []), ...(projection.legacyErrors ?? [])];
   const { failed, current, historical } = separateErrors(all, projection.run);
+  const claudeFailures: Record<string, string> = {
+    auth_failure: "Claude sign-in failed. Check the enrolled setup token.",
+    plan_limit: "Claude included usage limit reached. Retry after the plan resets.",
+    review_failure: "Claude review could not be verified.",
+  };
   const renderError = (error: FailureDetail) => <article key={error.id}>
     <h3>{workflowStepLabel(error.step)} · {formatTime(error.occurredAt)}</h3>
-    <pre>{error.message || `${error.category ?? "Failure"} — the original error was not recorded by this version of DEOS.`}</pre>
+    <pre>{claudeFailures[error.message ?? ""] || error.message || `${error.category ?? "Failure"} — the original error was not recorded by this version of DEOS.`}</pre>
     {error.detailUrl && <a href={error.detailUrl} target="_blank" rel="noreferrer">Full original error, stack and causes</a>}
   </article>;
   const status = projection.run.status;

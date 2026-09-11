@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--env-file', type=Path, required=True)
 parser.add_argument('--issue-id', required=True, help='Linear issue UUID')
 parser.add_argument('--check-r2', action='store_true')
+parser.add_argument('--check-container', action='store_true')
 args = parser.parse_args()
 values = {}
 for line in args.env_file.read_text().splitlines():
@@ -58,4 +59,10 @@ for run in runs:
                 receipt = json.loads(raw)
                 turn['hashVerified'] = True
                 turn['providerProof'] = {key: receipt[key] for key in ['model', 'effort', 'route', 'clientVersion', 'accountEvidence', 'secretVersion', 'paidUsage', 'observedModels', 'appliedEfforts', 'quotaEvidenceScope', 'quotaObservations']}
-print(json.dumps(runs, indent=2))
+if args.check_container:
+    result = subprocess.run(['npx', 'wrangler', 'containers', 'info', 'a0344373-884d-4c06-b4c2-4e58295de498'], env={**os.environ, **values}, capture_output=True, text=True)
+    if result.returncode:
+        raise RuntimeError('container read failed')
+    print(json.dumps({'container': json.loads(result.stdout), 'runs': runs}, indent=2))
+else:
+    print(json.dumps(runs, indent=2))

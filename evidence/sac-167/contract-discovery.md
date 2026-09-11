@@ -60,3 +60,16 @@ The client emitted two API retry notices before that terminal failure.
 Quota exhaustion uses the provider's `rate_limit_event` rejection and epoch
 seconds reset field. Exhaustion was not deliberately induced on the account;
 quota-stop and interruption controls also have fault-injection coverage.
+
+## Live schema contract
+
+The first two SAC-168 external review attempts stopped before a model call.
+The exact live schema reproduced this Claude Code 2.1.268 error in the pinned Linux image:
+`--json-schema is not a valid JSON Schema: no schema with key or ref "https://json-schema.org/draft/2020-12/schema"`.
+The CLI adapter omits the root dialect declaration for its shared schema keyword subset.
+The full original schema remains in the prompt, turn digest, and DEOS result validation.
+
+The exact live schema passed a real Linux client call after this adaptation:
+Claude Code 2.1.268, Opus 5, high effort, Claude Pro, paid usage false,
+and organization overage disabled. This isolates the schema fix; it is not
+evidence that the deployed workflow review has passed.

@@ -1204,7 +1204,7 @@ export class SandboxAgentController {
         outcome: {
           kind: "agent",
           outcome: resultClass,
-          providerReceiptsPresent: mechanicalReceiptIds.length > 0,
+          providerReceiptsPresent: job.modelProvider === "claude" || mechanicalReceiptIds.length > 0,
           providerReceiptsComplete,
         },
       };
@@ -1813,7 +1813,10 @@ export class SandboxAgentController {
       : attempt.state === "completed"
         ? attempt.result_class ?? "failed"
         : "failed";
-    const providerReceiptsPresent = await this.dependencies.providerReceipts.hasAny(
+    const isClaude = JSON.parse(attempt.job_spec_json).modelProvider === "claude";
+    const claudeReceipts = isClaude && attempt.state === "completed"
+      ? await this.dependencies.claude?.proof(attempt.attempt_id) ?? [] : [];
+    const providerReceiptsPresent = isClaude ? claudeReceipts.length > 0 : await this.dependencies.providerReceipts.hasAny(
       attempt.run_id,
       attempt.attempt_id,
     );
@@ -1826,7 +1829,7 @@ export class SandboxAgentController {
         kind: "agent",
         outcome,
         providerReceiptsPresent,
-        providerReceiptsComplete: attempt.manifest_id !== null &&
+        providerReceiptsComplete: attempt.manifest_id !== null && (!isClaude || claudeReceipts.length > 0) &&
           await this.dependencies.providerReceipts.verify(attempt.run_id, attempt.attempt_id,
             undefined, JSON.parse(attempt.job_spec_json).agentRole === "reviewer"),
       },

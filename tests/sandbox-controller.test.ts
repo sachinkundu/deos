@@ -649,6 +649,7 @@ interface SetupOptions {
   candidateRejection?: PlanningCandidateRejectedError;
   reviewAcceptanceError?: Error;
   failureRetentionMs?: number;
+  claude?: ConstructorParameters<typeof SandboxAgentController>[4]["claude"];
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -674,6 +675,7 @@ const setup = (options: SetupOptions = {}) => {
     },
     {
       now: clock,
+      claude: options.claude,
       attemptId: () => "00000000-0000-7000-8000-000000000001",
       wait: options.wait,
       materializeContext: async () => {
@@ -1601,4 +1603,32 @@ test("a categorized terminal failure replays through the configured failed edge"
   const replay = await controller.execute(run, "work", "work", definition);
   assert.equal(replay.state === "completed" ? replay.outcome.outcome : null, "failed");
   assert.equal(replay.state === "completed" ? replay.outcome.providerReceiptsComplete : true, false);
+});
+
+
+test("completed Claude replay rechecks protected proof without starting another process", async () => {
+  let proofReads = 0;
+  let damaged = false;
+  const state = setup({ claude: {
+    cleanup: async () => {}, failure: async () => "review_failure",
+    proof: async () => {
+      proofReads++;
+      if (damaged) throw new Error("receipt hash mismatch");
+      return [{} as import("../src/claude-review.ts").ClaudeReceipt];
+    },
+  } });
+  await state.controller.execute(run, "work", "work", definition);
+  const attempt = state.attempts.latest!;
+  attempt.state = "completed";
+  attempt.result_class = "pass";
+  attempt.manifest_id = "saved-manifest";
+  attempt.job_spec_json = JSON.stringify({ ...JSON.parse(attempt.job_spec_json), modelProvider: "claude", agentRole: "reviewer" });
+  const starts = state.factory.sandbox.commands.length;
+  const replay = await state.controller.execute(run, "work", "work", definition);
+  assert.equal(replay.state, "completed");
+  if (replay.state === "completed") assert.equal(replay.outcome.providerReceiptsPresent, true);
+  damaged = true;
+  await assert.rejects(state.controller.execute(run, "work", "work", definition), /receipt hash mismatch/);
+  assert.equal(proofReads, 2);
+  assert.equal(state.factory.sandbox.commands.length, starts);
 });

@@ -1,0 +1,11 @@
+{
+  "scope": "Real provider call inside the pinned Linux image; diagnostic trial, not workflow proof",
+  "model": "claude-opus-5",
+  "effort": "high",
+  "route": "claude_pro",
+  "clientVersion": "2.1.268",
+  "paidUsage": false,
+  "quotaStatus": "allowed",
+  "overageDisabledReason": "org_level_disabled",
+  "containerRemoved": true
+}

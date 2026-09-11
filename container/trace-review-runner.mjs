@@ -442,7 +442,7 @@ const main = async () => {
             capabilityUrl: job.capabilityUrl,
             capabilityToken: job.capabilityToken,
             attemptId: job.attemptId,
-    deadline: job.deadline,
+            deadline: job.deadline,
           });
           return { raw: generated.result, sessionId: generated.sessionId };
         },
@@ -498,7 +498,7 @@ const main = async () => {
       ? await collectOpenRouterReceipts(job)
       : [];
     await finishClaudeReview(job);
-  await writeFile(`${OUTPUT_ROOT}/result.json`, `${JSON.stringify({
+    await writeFile(`${OUTPUT_ROOT}/result.json`, `${JSON.stringify({
       outcome: "completed",
       reviewOutcome: traceability.review.overall,
       summary: traceability.review.overall === "pass"
