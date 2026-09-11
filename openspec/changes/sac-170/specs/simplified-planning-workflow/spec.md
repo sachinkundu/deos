@@ -2,7 +2,7 @@
 
 ### Requirement: Use the short review cycle in new flow versions
 
-A new fixed flow version SHALL use the bounded plan and design review cycle. It SHALL keep self-review inside each first author step. It SHALL run one independent stage after each first post. Later human edits SHALL return to the same human gate after trusted checks, with no new semantic review.
+A new fixed flow version SHALL use the bounded plan and design review cycle. It SHALL keep self-review inside each first author step. It SHALL run one independent stage after each first post. Later human edits SHALL return to the same human gate after trusted checks, with no new semantic review. This change MUST NOT alter the author or reviewer model route definitions.
 
 Each run SHALL keep the flow ID, version, graph, job rules, review rules, and model routes saved when it starts. Registering or selecting the new version MUST NOT change an active or past run or its saved proof.
 
