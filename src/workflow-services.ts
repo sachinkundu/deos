@@ -932,6 +932,9 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           const reviewStore = new D1TraceReviewStore(env.DB);
           let accepted = await reviewStore.findAcceptedInput(inputId);
           if (accepted !== null) {
+            if (accepted.reviewer_provider === "claude") {
+              await claudeRunner(env).proofForReuse(accepted.attempt_id, accepted.review_id);
+            }
             const { accepted: _accepted, ...source } = accepted;
             const reuseDigest = await sha256Hex(`${run.run_id}\0${nodeId}\0${inputId}`);
             const reuseUuid = `${reuseDigest.slice(0, 8)}-${reuseDigest.slice(8, 12)}-${reuseDigest.slice(12, 16)}-${reuseDigest.slice(16, 20)}-${reuseDigest.slice(20, 32)}`;
@@ -973,6 +976,9 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
                   reviewedHeadSha,
                 )) === source.sha256));
               if (exact.every(Boolean)) {
+                if (reusable.reviewer_provider === "claude") {
+                  await claudeRunner(env).proofForReuse(reusable.attempt_id, reusable.review_id);
+                }
                 const now = new Date().toISOString();
                 const uuid = `${inputId.slice(0, 8)}-${inputId.slice(8, 12)}-${inputId.slice(12, 16)}-${inputId.slice(16, 20)}-${inputId.slice(20, 32)}`;
                 const reviewId = `review:${uuid}`;
@@ -1078,6 +1084,9 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             accepted.model !== job.model || accepted.reasoning !== job.reasoning ||
             !["pass", "concerns"].includes(accepted.outcome) || accepted.evidence_manifest_id === null
           ) throw new Error("reusable design review identity mismatch");
+          if (accepted.model_provider === "claude") {
+            await claudeRunner(env).proofForReuse(accepted.agent_attempt_id);
+          }
           const findingCount = await env.DB.prepare(
             "SELECT COUNT(*) AS count FROM design_review_findings WHERE review_attempt_id = ?",
           ).bind(accepted.review_attempt_id).first<{ count: number }>();

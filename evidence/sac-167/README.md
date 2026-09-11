@@ -17,7 +17,7 @@ were destroyed before review acceptance. All canary attempts are now cleaned up.
 
 - [Executable Showboat record with real D1/R2 output](canary.md)
 - [Provider contract trials and fixes found by the live canary](contract-discovery.md)
-- [Local checks: 368 backend, 69 portal, and 56 Python tests](local-checks.json)
+- [Local checks: 374 backend, 69 portal, and 56 Python tests](local-checks.json)
 - [Deployed versions and canary completion](release.json)
 - [Three promoted defaults and verified route digests](promoted-defaults.json)
 - [All 76 pre-existing run profiles unchanged after promotion](frozen-run-check.json)
@@ -40,3 +40,5 @@ those tests are not presented as provider-originated canaries.
 ![Fixed Claude profile in production settings](claude-default-settings.png)
 
 ![Refreshed Claude usage after the canary: credits off and zero spent](provider-usage-after-canary.png)
+
+The [review follow-up](review-fixes.md) records the recovery fixes added after the canary.

@@ -31,6 +31,11 @@ Use `scripts/inspect-claude-review.py --env-file <ignored-env-file> --issue-id
 its recorded R2 hash. It prints allowlisted model, effort, billing-route and
 cleanup facts. It does not print the review text or token.
 
+A trusted D1 completion checkpoint is saved before review Sandbox cleanup.
+After an interruption, completion resumes from that checkpoint and durable
+artifacts, without reading the deleted Sandbox or starting another model call.
+Accepted-review reuse also rechecks the originating protected receipts.
+
 A successful review requires matching provider receipts, the existing semantic
 proof checks, and destruction of both Sandboxes. The receipt records only
 allowlisted observations. Quota facts are scoped to the same live client

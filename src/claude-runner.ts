@@ -1,3 +1,4 @@
+import type { ArtifactCollectionResult } from "./artifact-collector.ts";
 import { recordCaughtError } from "./error-context.ts";
 import { sandboxIdentity } from "./orchestration-identity.ts";
 import { CLAUDE_MODEL, CLAUDE_EFFORT, CLAUDE_VERSION, ClaudeReviewError, digest, record,
@@ -99,6 +100,7 @@ export class ClaudeRunner {
       if (!receipt) throw new ClaudeReviewError("review_failure");
       return response({ receipt });
     }
+    if (invocation.state === "claimed") return response({ state: "starting" }, 202);
     this.assertRunning(invocation);
     const turn = await store.claimTurn(attempt.attempt_id, Number(body.ordinal), inputSha256, body.sessionId as string | null);
     const receipt = await store.receipt(turn);
@@ -126,8 +128,10 @@ export class ClaudeRunner {
     const store = this.dependencies.store;
     const invocation = await store.invocation(attempt.attempt_id);
     if (!invocation) throw new ClaudeReviewError("review_failure");
+    if (invocation.state === "claimed") return response({ state: "starting" }, 202);
     if (invocation.state !== "finished") this.assertRunning(invocation);
     const turn = await store.turn(attempt.attempt_id, Number(body.ordinal));
+    if (!turn && body.ordinal === 0 && invocation.state === "running") return response({ state: "starting" }, 202);
     if (!turn) throw new ClaudeReviewError("review_failure");
     const saved = await store.receipt(turn);
     if (saved) return response({ receipt: saved });
@@ -222,6 +226,33 @@ export class ClaudeRunner {
     await store.receipts(attemptId);
     await this.cleanup(attemptId);
     await store.finish(attemptId);
+  }
+
+  saveCollection(attemptId: string, jobDigest: string, collection: ArtifactCollectionResult): Promise<void> {
+    return this.dependencies.store.saveCollection(attemptId, jobDigest, collection);
+  }
+
+  collection(attemptId: string, jobDigest: string): Promise<ArtifactCollectionResult | null> {
+    return this.dependencies.store.collection(attemptId, jobDigest);
+  }
+
+  async proofForReuse(attemptId: string | null, reviewId: string | null = null): Promise<void> {
+    const seen = new Set<string>();
+    while (!attemptId && reviewId) {
+      if (seen.has(reviewId)) throw new ClaudeReviewError("review_failure");
+      seen.add(reviewId);
+      const row = await this.dependencies.db.prepare(`SELECT attempt_id, reused_from_review_id FROM trace_reviews
+        WHERE review_id = ? AND accepted = 1 AND reviewer_provider = 'claude'`)
+        .bind(reviewId).first<{ attempt_id: string | null; reused_from_review_id: string | null }>();
+      if (!row) throw new ClaudeReviewError("review_failure");
+      attemptId = row.attempt_id;
+      reviewId = row.reused_from_review_id;
+    }
+    if (!attemptId) throw new ClaudeReviewError("review_failure");
+    const attempt = await this.dependencies.db.prepare("SELECT cleanup_state FROM agent_attempts WHERE attempt_id = ?")
+      .bind(attemptId).first<{ cleanup_state: string }>();
+    if (attempt?.cleanup_state !== "destroyed") throw new ClaudeReviewError("review_failure");
+    await this.proof(attemptId);
   }
 
   async proof(attemptId: string): Promise<ClaudeReceipt[]> {

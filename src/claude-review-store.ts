@@ -1,3 +1,4 @@
+import type { ArtifactCollectionResult } from "./artifact-collector.ts";
 import { ClaudeReviewError, digest, type ClaudeEnrollment, type ClaudeReceipt, type ClaudeStopCause } from "./claude-review.ts";
 
 export interface ClaudeInvocation {
@@ -26,6 +27,23 @@ export class ClaudeReviewStore {
   private readonly db: D1Database;
   private readonly bucket: R2Bucket;
   constructor(db: D1Database, bucket: R2Bucket) { this.db = db; this.bucket = bucket; }
+
+  async saveCollection(attemptId: string, jobDigest: string, collection: ArtifactCollectionResult): Promise<void> {
+    const body = JSON.stringify(collection);
+    await this.db.prepare(`INSERT OR IGNORE INTO claude_review_collections
+      (attempt_id, job_digest, collection_json) VALUES (?, ?, ?)`)
+      .bind(attemptId, jobDigest, body).run();
+    const saved = await this.collection(attemptId, jobDigest);
+    if (JSON.stringify(saved) !== body) throw new ClaudeReviewError("review_failure");
+  }
+
+  async collection(attemptId: string, jobDigest: string): Promise<ArtifactCollectionResult | null> {
+    const row = await this.db.prepare("SELECT job_digest, collection_json FROM claude_review_collections WHERE attempt_id = ?")
+      .bind(attemptId).first<{ job_digest: string; collection_json: string }>();
+    if (!row) return null;
+    if (row.job_digest !== jobDigest) throw new ClaudeReviewError("review_failure");
+    return JSON.parse(row.collection_json) as ArtifactCollectionResult;
+  }
 
   async enrollment(): Promise<ClaudeEnrollment> {
     const row = await this.db.prepare("SELECT * FROM claude_review_enrollment WHERE singleton = 1")

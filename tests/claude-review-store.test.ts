@@ -169,6 +169,10 @@ test("trusted runner replay starts one credential-bearing process and tool denia
     .run(enrollment.secretVersion,enrollment.accountBinding,await tokenHmac(token,key),"verified","now");
   const files = new Map<string,string>();
   const executions: Array<{ id:string; command:readonly string[]; options:unknown }> = [];
+  let releaseStart!: () => void;
+  let reachedStart!: () => void;
+  const startGate = new Promise<void>(resolve => { releaseStart = resolve; });
+  const startReached = new Promise<void>(resolve => { reachedStart = resolve; });
   const sandbox = (id:string) => ({
     async mkdir() {},
     async exists(path:string) { return {exists:files.has(path)}; },
@@ -177,6 +181,7 @@ test("trusted runner replay starts one credential-bearing process and tool denia
     async setKeepAlive() {}, async destroy() {},
     async exec(command:readonly string[], options:unknown) {
       executions.push({id,command,options});
+      if (command.includes("/deos/bin/claude-trusted-runner.mjs")) { reachedStart(); await startGate; }
       if (command[0]==="mv") { files.set(command[2],files.get(command[1])!); files.delete(command[1]); }
       return { id:"process",async waitForExit(){return {code:0};},
         async output(){return {stdout:"",exitCode:1,truncated:false,timedOut:false};} };
@@ -187,7 +192,18 @@ test("trusted runner replay starts one credential-bearing process and tool denia
   const claims = {actions:["model.claude_review"],modelProvider:"claude",model:"claude-opus-5",reasoning:"high",attemptId:"attempt"} as never;
   const body={ordinal:0,prompt:"Review the proposal",schema:{type:"object"},sessionId:null};
   try {
-    assert.equal((await runner.handle("/claude/review",body,claims,"capability","https://service/capabilities")).status,202);
+    const winner = runner.handle("/claude/review",body,claims,"capability","https://service/capabilities");
+    await startReached;
+    assert.equal((await store.invocation("attempt"))?.state, "claimed");
+    const duplicate = await runner.handle("/claude/review",body,claims,"capability","https://service/capabilities");
+    assert.equal(duplicate.status, 202);
+    assert.deepEqual(await duplicate.json(), { state: "starting" });
+    const poll = await runner.handle("/claude/status", {ordinal: 0}, claims, "capability", "https://service/capabilities");
+    assert.equal(poll.status, 202);
+    assert.deepEqual(await poll.json(), {state: "starting"});
+    assert.equal((await store.invocation("attempt"))?.state, "claimed");
+    releaseStart();
+    assert.equal((await winner).status, 202);
     assert.equal((await runner.handle("/claude/review",body,claims,"capability","https://service/capabilities")).status,202);
     assert.equal(executions.filter(e=>e.command.includes("/deos/bin/claude-trusted-runner.mjs")).length,1);
     assert.equal([...files.values()].some(value=>value.includes(token)),false);
@@ -242,5 +258,60 @@ test("Claude stage retry waits for trusted cleanup and the recorded plan reset",
     await assert.rejects(retries.prepare({...input, now:"2026-09-11T13:00:00.000Z"}), /stage_retry_not_eligible/);
     assert.equal(reachedWorkflowEligibility(), true);
     assert.equal(db.sqlite.prepare("SELECT count(*) AS n FROM agent_stage_retries").get()?.n, 0);
+  } finally { db.close(); }
+});
+
+
+test("Claude completion checkpoint is immutable and bound to the originating job", async () => {
+  const { db, store } = setup();
+  const collection = { manifestId: "manifest:attempt", result: { reviewOutcome: "pass" } } as never;
+  try {
+    assert.equal(await store.collection("attempt", "digest"), null);
+    await store.saveCollection("attempt", "digest", collection);
+    await store.saveCollection("attempt", "digest", collection);
+    assert.deepEqual(await store.collection("attempt", "digest"), collection);
+    await assert.rejects(store.collection("attempt", "different-job"));
+    await assert.rejects(store.saveCollection("attempt", "digest", { ...collection as object, result: {} } as never));
+  } finally { db.close(); }
+});
+
+test("reused Claude review proof rejects missing or corrupted protected receipts", async () => {
+  const { ClaudeRunner } = await import("../src/claude-runner.ts");
+  const { db, store, objects } = setup();
+  const reuseRows = new Map([
+    ["rebound", { attempt_id: null, reused_from_review_id: "original" }],
+    ["original", { attempt_id: "attempt", reused_from_review_id: null }],
+    ["cycle", { attempt_id: null, reused_from_review_id: "cycle" }],
+  ]);
+  const proofDb = { prepare(sql: string) {
+    if (sql.includes("FROM trace_reviews")) return { bind(id: string) {
+      return { async first() { return reuseRows.get(id) ?? null; } };
+    } };
+    return db.prepare(sql);
+  } };
+  const runner = new ClaudeRunner({ db: proofDb as unknown as D1Database, store,
+    sandboxes: { get() { throw new Error("Reuse must not access a Sandbox"); } } as never,
+    token: undefined, secretVersion: undefined, signingKey: "" });
+  try {
+    await store.claim({ attemptId: "attempt", runnerId: "trusted", jobDigest: "digest", enrollment });
+    await store.started("attempt", "process");
+    const turn = await store.claimTurn("attempt", 0, "c".repeat(64), null);
+    await store.saveReceipt(turn, receipt());
+    await store.cleanup("attempt", "destroyed");
+    await store.finish("attempt");
+    await assert.rejects(runner.proofForReuse("attempt"));
+    db.sqlite.exec("UPDATE agent_attempts SET cleanup_state='destroyed' WHERE attempt_id='attempt'");
+    await runner.proofForReuse("attempt");
+    await runner.proofForReuse(null, "rebound");
+    await assert.rejects(runner.proofForReuse(null, "cycle"));
+    const [key, body] = [...objects][0];
+    objects.set(key, "corrupted");
+    await assert.rejects(runner.proofForReuse("attempt"));
+    await assert.rejects(runner.proofForReuse(null, "rebound"));
+    objects.delete(key);
+    await assert.rejects(runner.proofForReuse("attempt"));
+    objects.set(key, body);
+    await runner.proofForReuse("attempt");
+    await assert.rejects(runner.proofForReuse(null, "missing-review"));
   } finally { db.close(); }
 });

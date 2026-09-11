@@ -376,7 +376,7 @@ export type AgentExecutionObservation =
     };
 
 interface SandboxControllerDependencies {
-  claude?: Pick<import("./claude-runner.ts").ClaudeRunner, "cleanup" | "proof" | "failure">;
+  claude?: Pick<import("./claude-runner.ts").ClaudeRunner, "cleanup" | "proof" | "failure" | "saveCollection" | "collection">;
   claudeReviewSources?: (run: OrchestrationRunRecord, context: string, kind: string) => Promise<readonly { path: string; sha256: string }[]>;
   nativeReviews?: D1NativeReviewStore;
   nativeDesignLimit?: (runId: string, attemptId: string) => Promise<boolean>;
@@ -497,6 +497,11 @@ export class SandboxAgentController {
     const configuredJob = definition.jobs[jobId];
     if (configuredJob === undefined) throw new Error(`workflow job ${jobId} is missing`);
     const job = this.runtimeJob(run, configuredJob);
+    let attempt = await this.attempts.findLatest(run.run_id, nodeId);
+    // Finish a saved Claude collection even if acceptance was persisted before interruption.
+    if (job.modelProvider === "claude" && attempt?.state === "collecting") {
+      return this.reconcile(run, attempt, job);
+    }
     if (job.agentRole === "reviewer") {
       const reuse = job.reviewKind === "design"
         ? this.dependencies.reuseDesignReview
@@ -504,7 +509,6 @@ export class SandboxAgentController {
       const reused = reuse === undefined ? null : await reuse(run, nodeId, job);
       if (reused !== null) return reused;
     }
-    let attempt = await this.attempts.findLatest(run.run_id, nodeId);
     if (
       attempt === null ||
       (
@@ -931,6 +935,10 @@ export class SandboxAgentController {
     job: WorkflowJob,
   ): Promise<AgentExecutionObservation> {
     const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true });
+    if (job.modelProvider === "claude" && attempt.state === "collecting") {
+      const saved = await this.dependencies.claude?.collection(attempt.attempt_id, attempt.job_spec_digest);
+      if (saved) return this.completeClaudeCollection(run, attempt, sandbox, job, saved);
+    }
     if (Date.parse(attempt.absolute_deadline) <= this.dependencies.now().getTime()) {
       const process = attempt.process_id === null ? null : await sandbox.getProcess(attempt.process_id);
       const manifestId = await this.finishFailure(
@@ -1163,8 +1171,8 @@ export class SandboxAgentController {
         if (!Array.isArray(judgments) || JSON.stringify(judgments) !== JSON.stringify(receipts.map(r => r.result))) {
           throw new Error("Claude semantic result differs from trusted receipt");
         }
-        await this.cleanup(attempt, sandbox);
-        await collector.verifyAfterCleanup(collection);
+        await this.dependencies.claude.saveCollection(attempt.attempt_id, attempt.job_spec_digest, collection);
+        return await this.completeClaudeCollection(run, attempt, sandbox, job, collection);
       }
       if (job.agentRole === "reviewer") {
         if (job.reviewKind === "design") {
@@ -1204,7 +1212,7 @@ export class SandboxAgentController {
         outcome: {
           kind: "agent",
           outcome: resultClass,
-          providerReceiptsPresent: job.modelProvider === "claude" || mechanicalReceiptIds.length > 0,
+          providerReceiptsPresent: mechanicalReceiptIds.length > 0,
           providerReceiptsComplete,
         },
       };
@@ -1259,11 +1267,32 @@ export class SandboxAgentController {
       return this.failedObservation(attempt, "failed", manifestId);
     }
     if (collection === null || observation === null) throw new Error("artifact collection outcome is missing");
-    if (job.modelProvider !== "claude") {
-      await this.cleanup(attempt, sandbox);
-      await collector.verifyAfterCleanup(collection);
-    }
+    await this.cleanup(attempt, sandbox);
+    await collector.verifyAfterCleanup(collection);
     return observation;
+  }
+
+  private async completeClaudeCollection(
+    run: OrchestrationRunRecord, attempt: AgentAttemptRecord, sandbox: SandboxView,
+    job: WorkflowJob, collection: ArtifactCollectionResult,
+  ): Promise<AgentExecutionObservation> {
+    if (!this.dependencies.claude) throw new Error("Claude proof verifier unavailable");
+    // This checkpoint was saved only after durable collection and receipt/result comparison.
+    // Recovery reads no files or process state from the destroyed review Sandbox.
+    await this.dependencies.claude.proof(attempt.attempt_id);
+    const collector = this.dependencies.collector(sandbox);
+    await collector.verifyDurable(collection);
+    await this.cleanup(attempt, sandbox);
+    await collector.verifyAfterCleanup(collection);
+    const accept = job.reviewKind === "design"
+      ? this.dependencies.acceptDesignReview : this.dependencies.acceptTraceReview;
+    if (!accept) throw new Error("trusted review accepter is unavailable");
+    const resultClass = await accept({ run, attempt, job, collection }) ?? String(collection.result.reviewOutcome);
+    const state = resultClass === "blocked" ? "blocked" : resultClass === "failed" ? "failed" : "completed";
+    await this.attempts.finish({ attemptId: attempt.attempt_id, expected: "collecting", state,
+      resultClass, manifestId: collection.manifestId, now: this.dependencies.now().toISOString() });
+    this.emitForAttempt(attempt, "artifact.manifest", "succeeded", undefined, collection.manifestId);
+    return this.finishedObservation({ ...attempt, state, result_class: resultClass, manifest_id: collection.manifestId });
   }
 
   private nativeAttempt(attempt: AgentAttemptRecord, sequence: number, context: string): AgentAttemptRecord {
