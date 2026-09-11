@@ -6,17 +6,17 @@ Run each outside OpenSpec review through Claude Pro with fixed model rules, safe
 
 ### Requirement: Use one fixed Claude review setup
 
-Each new flow version SHALL use Claude Opus 5 for every outside plan and design review. Its reasoning effort SHALL be `high`. The trusted runner SHALL use the user's existing local Claude auth JSON, as Codex does. The flow MUST NOT ask the user to sign in. It MUST NOT send an Anthropic API key or use OpenRouter or a fallback model for this work.
+Each new flow version SHALL use Claude Opus 5 for every outside plan and design review. Its reasoning effort SHALL be `high`. The trusted runner SHALL use the user's existing Claude setup token. The flow MUST NOT ask the user to sign in. It MUST NOT send an Anthropic API key or use OpenRouter or a fallback model for this work.
 
 #### Scenario: Outside plan review starts
 
 - **WHEN** a new flow starts an outside review of a posted plan.
-- **THEN** it uses Claude Opus 5 with high effort and the local Claude auth JSON.
+- **THEN** it uses Claude Opus 5 with high effort and the Claude setup token.
 
 #### Scenario: Outside design review starts
 
 - **WHEN** a new flow starts an outside review of a posted design.
-- **THEN** it uses Claude Opus 5 with high effort and the local Claude auth JSON.
+- **THEN** it uses Claude Opus 5 with high effort and the Claude setup token.
 
 #### Scenario: Review requests another route
 
@@ -49,16 +49,16 @@ The provider cutover SHALL change only the outside model route and its proof. Ea
 
 ### Requirement: Stop safely at account and review limits
 
-DEOS SHALL record a clear stop result when the local Claude auth JSON is missing or cannot be used. It SHALL do the same when the Pro plan limit is met or the cloud review fails. None of these results may count as a passed review. The flow SHALL use its set retry or stop rule, but MUST NOT try another model or provider. It MUST NOT open the next human gate without valid review proof. The protected review view SHALL show the cause only for a failed or stopped review.
+DEOS SHALL record a clear stop result when the Claude setup token is missing or cannot be used. It SHALL do the same when the Pro plan limit is met or the cloud review fails. None of these results may count as a passed review. The flow SHALL use its set retry or stop rule, but MUST NOT try another model or provider. It MUST NOT open the next human gate without valid review proof. The protected review view SHALL show the cause only for a failed or stopped review.
 
-#### Scenario: Local auth cannot be used
+#### Scenario: Setup token cannot be used
 
-- **WHEN** the local Claude auth JSON is missing, expired, revoked, or invalid.
+- **WHEN** the Claude setup token is missing, expired, revoked, or invalid.
 - **THEN** the review records an auth failure and cannot pass.
 
 #### Scenario: Pro plan limit is met
 
-- **WHEN** Claude reports that the local account plan cannot run more work.
+- **WHEN** Claude reports that the account plan cannot run more work.
 - **THEN** the review stops with a plan-limit result and starts no fallback.
 
 #### Scenario: Cloud review fails
@@ -97,11 +97,11 @@ A run SHALL keep the provider, model, effort, and flow rules saved when it began
 
 ### Requirement: Prove the real Claude cloud path
 
-Release proof SHALL include at least one real outside review from the deployed flow. The internal proof SHALL show the exact review input, Claude Opus 5, high effort, the result, and the Claude Pro route. A local mock, fake result, or direct test request MUST NOT count as this cloud proof. The proof SHALL include a safe data read-back and clear screen images of the provider setup and the resulting review state. It MUST NOT expose the local auth JSON. A passed review view MUST NOT show these internal facts. A failed or stopped review view SHALL show only its cause.
+Release proof SHALL include at least one real outside review from the deployed flow. The internal proof SHALL show the exact review input, Claude Opus 5, high effort, the result, and the Claude Pro route. A local mock, fake result, or direct test request MUST NOT count as this cloud proof. The proof SHALL include a safe data read-back and clear screen images of the provider setup and the resulting review state. It MUST NOT expose the setup token. A passed review view MUST NOT show these internal facts. A failed or stopped review view SHALL show only its cause.
 
 #### Scenario: Real cloud review completes
 
-- **WHEN** the deployed flow gets a valid review result from Claude through the local auth JSON.
+- **WHEN** the deployed flow gets a valid review result from Claude through the setup token.
 - **THEN** durable proof ties the input, model, effort, Claude Pro route, and result to that review.
 
 #### Scenario: Only synthetic proof exists
@@ -111,5 +111,5 @@ Release proof SHALL include at least one real outside review from the deployed f
 
 #### Scenario: Proof could expose sign-in data
 
-- **WHEN** a proof item contains the local auth JSON, a token, a cookie, or another auth file.
+- **WHEN** a proof item contains the setup token, another token, a cookie, or an auth file.
 - **THEN** DEOS does not accept or show that unsafe proof.
