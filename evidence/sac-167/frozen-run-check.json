@@ -1,6 +1,6 @@
 {
+  "checkedAt": "2026-09-11T11:02:12.682381+00:00",
   "baselineRuns": 76,
-  "preservedFrozenProfiles": 76,
-  "changedProfiles": 0,
-  "scope": "Original runs before SAC-167 migration, compared after the planning canary"
+  "changedRuns": 0,
+  "scope": "Frozen definition and provider profiles checked after all three project defaults were promoted."
 }

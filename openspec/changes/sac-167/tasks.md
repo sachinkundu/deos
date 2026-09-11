@@ -19,7 +19,7 @@
 
 ## 4. Verify and deliver
 
-- [ ] 4.1 Test both review phases, read-only tool scope, profile/account enforcement, token replacement and version conflicts, failed auth, quota stops, bad results, replay, cleanup, frozen runs, and rollback.
+- [x] 4.1 Test both review phases, read-only tool scope, profile/account enforcement, token replacement and version conflicts, failed auth, quota stops, bad results, replay, cleanup, frozen runs, and rollback.
 - [x] 4.2 Run repository checks and strict OpenSpec validation.
-- [ ] 4.3 Deploy a dedicated canary using normal signed Linear ingress and verify the actual review, D1 authority, R2 hashes, token binding, cleanup, and unchanged human gates.
-- [ ] 4.4 Attach sanitized visual and provider evidence, publish a review-ready implementation PR, and promote the new default only after all release proof passes.
+- [x] 4.3 Deploy a dedicated canary using normal signed Linear ingress and verify the actual review, D1 authority, R2 hashes, token binding, cleanup, and unchanged human gates.
+- [x] 4.4 Attach sanitized visual and provider evidence, publish a review-ready implementation PR, and promote the new default only after all release proof passes.

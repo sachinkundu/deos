@@ -1,0 +1,19 @@
+{
+  "backendVersion": "24dfc766-c16e-438d-a099-c435fa375baf",
+  "backendTrafficPercent": 100,
+  "containerImage": "sha256:e7ed313d4b4a57a1142b2fc2726f96c1aa1767cdb84f0088a103e24c0c795e1f",
+  "healthyInstances": 4,
+  "failedInstances": 0,
+  "portalVersion": "1f35dc45-eddc-49fe-9e62-26a7025ac020",
+  "portalTrafficPercent": 100,
+  "canaryIssue": "SAC-168",
+  "canaryStatus": "succeeded",
+  "canaryFinishedAt": "2026-09-11T10:52:15.180Z",
+  "planPR": "https://github.com/sachinkundu/deos-sample-project/pull/13",
+  "designPR": "https://github.com/sachinkundu/deos-sample-project/pull/14",
+  "defaultPromotionAt": "2026-09-11T11:00:41.438Z",
+  "defaultPromotionActor": "deployment",
+  "defaultPromotionMechanism": "scheduled registry refresh",
+  "paidCreditsSpentEUR": 0,
+  "paidCreditsEnabled": false
+}

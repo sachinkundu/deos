@@ -55,8 +55,10 @@ invocation claim or replay a provider call within the same attempt.
 ## Roll back
 
 Set the bundled default back to `simple-traceability` and deploy the backend.
-Its registry update restores the default route for new runs. Keep the prior
-OpenRouter model setting valid. Existing Claude runs stay frozen to Claude;
+The next Queue event or scheduled registry refresh links the bundled default to
+saved project policies and updates their route digests. Verify those D1 rows
+before treating rollback as active. Keep the prior OpenRouter model setting
+valid. Existing Claude runs stay frozen to Claude;
 rollback does not rewrite active runs or human gates. A selected label can also
 choose the prior definition when that project selector is enabled.
 
