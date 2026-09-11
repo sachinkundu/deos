@@ -1,5 +1,16 @@
 # Agent guidance
 
+## Pass context through files
+
+- Always write agent prompts, review context, source bundles, and other context
+  payloads to files before handing them to a runner. Pass file paths on the
+  command line, never the context itself, including base64-encoded context.
+- Do not use environment variables or shell interpolation to carry context.
+  If a provider client requires a stream or API body, read the saved file and
+  send its contents through that interface.
+- Use a separate request file for each concurrent call. Finish writing it before
+  launching the reader, and preserve the full context without truncation.
+
 ## Preserve original errors
 
 - Never swallow errors or replace them with generic messages that discard the

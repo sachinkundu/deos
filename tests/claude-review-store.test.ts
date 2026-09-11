@@ -115,7 +115,8 @@ test("Claude tool failures retain original SDK causes in D1 and R2 without expos
     const credential = 'secret-with-"quotes';
     const job = { modelProvider: "claude", model: "claude-opus-5", reasoning: "high", agentRole: "reviewer",
       permissionProfile: "review_read_only", openspecChange: "sample", reviewKind: "design",
-      claudeReviewSources: [{ path: "design.md", sha256: "a".repeat(64) }] };
+      claudeReviewSources: [{ path: "design.md", sha256: "a".repeat(64) }],
+      materializedContext: JSON.stringify({ content: "large-context ".repeat(50_000) }) };
     const encoded = JSON.stringify(job);
     try {
       db.sqlite.prepare("UPDATE agent_attempts SET job_spec_json=?,job_spec_digest=?,absolute_deadline=? WHERE attempt_id='attempt'")
@@ -125,9 +126,19 @@ test("Claude tool failures retain original SDK causes in D1 and R2 without expos
       const original = Object.assign(new Error(`Sandbox transport reset ${credential}`, {
         cause: new Error("socket disconnected"),
       }), { code: "CONNECTION_RESET", credential, capability: "request-capability", signingKey: "signing-secret" });
+      const requests = new Map<string, string>();
       const runner = new ClaudeRunner({ db: db as unknown as D1Database, store,
         token: credential, secretVersion: "one", signingKey: "signing-secret",
-        sandboxes: { get() { return { async exec() {
+        sandboxes: { get() { return {
+          async mkdir() {},
+          async writeFile(path: string, content: string) { requests.set(path, content); },
+          async exec(argv: string[]) {
+          assert.deepEqual(argv.slice(0, 3), ["node", "/deos/bin/claude-review-read.mjs", "--request-file"]);
+          assert.equal(argv.length, 4);
+          assert.ok(argv.every(arg => arg.length < 200));
+          const request = JSON.parse(requests.get(argv[3])!);
+          assert.equal(request.state.reviewJob.materializedContext, job.materializedContext);
+          assert.equal(request.command, "cat design.md");
           if (mode === "sdk") throw original;
           return { async output() { return { exitCode: 7, truncated: false, timedOut: false,
             stdout: "", stderr: "snapshot hash mismatch", }; } };

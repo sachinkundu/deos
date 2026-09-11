@@ -8,12 +8,6 @@ import { ClaudeReviewStore, type ClaudeInvocation } from "./claude-review-store.
 import type { AgentAttemptRecord, SandboxFactory } from "./sandbox-controller.ts";
 import type { CapabilityClaims } from "./capability-auth.ts";
 
-const encoded = (text: string): string => {
-  const bytes = new TextEncoder().encode(text);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
-};
 const response = (body: Record<string, unknown>, status = 200): Response =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -183,7 +177,10 @@ export class ClaudeRunner {
     const state = { phase: job.reviewKind === "design" ? "design" : "planning", change: job.openspecChange,
       before: job.claudeReviewSources, reviewJob: { materializedContext: job.materializedContext } };
     const sandbox = this.dependencies.sandboxes.get(attempt.sandbox_id, { keepAlive: true });
-    const process = await sandbox.exec(["node", "/deos/bin/claude-review-read.mjs", encoded(JSON.stringify(state)), encoded(body.command)], { timeout: 15_000 });
+    const requestPath = `/deos/claude-read/request-${crypto.randomUUID()}.json`;
+    await sandbox.mkdir("/deos/claude-read", { recursive: true });
+    await sandbox.writeFile(requestPath, JSON.stringify({ state, command: body.command }));
+    const process = await sandbox.exec(["node", "/deos/bin/claude-review-read.mjs", "--request-file", requestPath], { timeout: 15_000 });
     const output = await process.output({ encoding: "utf8", maxBytes: 262144, timeout: 20_000 });
     if (output.exitCode !== 0 || output.truncated || output.timedOut) {
       throw Object.assign(new Error("Claude read tool did not complete successfully"), {

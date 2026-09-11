@@ -1,4 +1,6 @@
 import { pathToFileURL } from "node:url";
+import { readFile } from "node:fs/promises";
+import { recordCaughtError } from "./original-errors.mjs";
 import { readCommand, readSnapshot } from "./native-review-read.mjs";
 export const claudeReadCommand = command => {
   const parsed = readCommand(command);
@@ -8,14 +10,17 @@ export const claudeReadCommand = command => {
   return parsed;
 };
 
-// Both arguments are encoded by the service. No model input reaches a shell.
+// The service writes each complete request before launching this reader.
+// Only a file path reaches argv, regardless of the context size.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) try {
-  const state = JSON.parse(Buffer.from(process.argv[2], "base64url").toString("utf8"));
-  const command = Buffer.from(process.argv[3], "base64url").toString("utf8");
+  if (process.argv.length !== 4 || process.argv[2] !== "--request-file") {
+    throw new Error("Claude read tool requires --request-file PATH");
+  }
+  const { state, command } = JSON.parse(await readFile(process.argv[3], "utf8"));
   const text = await readSnapshot(claudeReadCommand(command), state);
   if (Buffer.byteLength(text) > 262144) throw new Error("read exceeds limit");
   process.stdout.write(text);
-} catch {
-  process.stderr.write("read-only review request rejected\n");
+} catch (error) {
+  recordCaughtError(error, "container/claude-review-read.mjs");
   process.exitCode = 1;
 }
