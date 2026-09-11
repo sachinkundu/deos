@@ -2,6 +2,7 @@ const RUN_ID = /^workflow:[0-9a-f-]+:[0-9a-f-]+:run:[1-9][0-9]*$/i;
 const REVIEW_ID = /^review:[0-9a-f-]{36}$/i;
 const ALLOWED_ARTIFACTS = new Set([
   "raw-review-output.json",
+  "claude-provider-proof.json",
   "normalized-review.json",
   "bettaview-traceability.json",
   "candidate-inventory.json",

@@ -1,0 +1,22 @@
+[
+  {
+    "check": "npm test",
+    "exitCode": 0
+  },
+  {
+    "check": "npm run typecheck",
+    "exitCode": 0
+  },
+  {
+    "check": "npm run portal:test",
+    "exitCode": 0
+  },
+  {
+    "check": "npm run portal:typecheck",
+    "exitCode": 0
+  },
+  {
+    "check": "npx openspec validate sac-167 --strict",
+    "exitCode": 0
+  }
+]

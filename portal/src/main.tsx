@@ -626,12 +626,16 @@ function SettingsPanel() {
         </div>
         <div className="settings-card">
           <div className="card-heading"><div><h2>Independent review</h2><p>This model is frozen into each new traceability run.</p></div><span className="guard">Future runs</span></div>
+          {selected.definitionId === "simple-traceability-claude" ? (
+            <p><strong>Claude Opus 5 · High effort</strong><br />Fixed for new runs on this workflow.</p>
+          ) : <>
           <label htmlFor="independent-review-model">Review model</label>
           <select id="independent-review-model" value={independentModel} onChange={(event) => setIndependentModel(event.target.value)} disabled={busy}>
             {overview?.supportedReviewModels.map((model) => <option value={model} key={model}>{model}</option>)}
           </select>
           <p>The provider key stays in the trusted Worker. Active runs keep their saved model.</p>
           <div className="settings-actions"><button type="button" onClick={() => void work(() => routeMutation<RepositoryRoute>(`/api/settings/routes/${selected.projectId}/review`, "PUT", { model: independentModel, expectedRevision: selected.independentReviewRevision }), "Review model saved for future runs.")} disabled={busy || independentModel.length === 0 || independentModel === selected.independentReviewModel}>Save review model</button></div>
+          </>}
         </div>
       </div>
       <div className="connection-card">

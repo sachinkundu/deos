@@ -1,5 +1,6 @@
 import workflowSource from "../config/workflow.deos.yaml";
 import simpleWorkflowSource from "../config/workflow.simple.yaml";
+import claudeWorkflowSource from "../config/workflow.simple-traceability-claude.yaml";
 import traceabilityWorkflowSource from "../config/workflow.simple-traceability.yaml";
 import requirementsPrompt from "../config/prompts/requirements.md";
 import requirementsReviewPrompt from "../config/prompts/requirements-review.md";
@@ -50,7 +51,7 @@ const schemas: Readonly<Record<string, string>> = Object.freeze({
   "schemas/design-review-result-v1.json": JSON.stringify(designReviewResultSchema),
 });
 
-const workflowSources = Object.freeze([workflowSource, simpleWorkflowSource, traceabilityWorkflowSource]);
+const workflowSources = Object.freeze([workflowSource, simpleWorkflowSource, traceabilityWorkflowSource, claudeWorkflowSource]);
 
 export const loadBundledWorkflowDefinitionRegistry = async (): Promise<
   Readonly<Record<string, LoadedWorkflowDefinition>>

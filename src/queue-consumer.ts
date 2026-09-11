@@ -1,3 +1,4 @@
+import { claudeRunner } from "./claude-environment.ts";
 import { D1StageRetryStore } from "./publication-stage-retry.ts";
 import { CapabilityRouter } from "./capability-router.ts";
 import { verifyCapabilityToken } from "./capability-auth.ts";
@@ -37,6 +38,7 @@ export { DeosWorkflow, Sandbox };
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
+  claude: claudeRunner(env),
   store: new D1CapabilityStore(env.DB),
   github: new GitHubCapabilityAdapter(
     env.GITHUB_API_URL,
@@ -145,6 +147,7 @@ export default {
   },
   async scheduled(_controller, env) {
     await registerBundledWorkflowDefinitions(env as unknown as QueueConsumerEnv);
+    await claudeRunner(env).audit();
     await cleanupAuditor(env).scheduled();
     await completionReconciler(env).scheduled();
   },

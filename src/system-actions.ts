@@ -939,7 +939,7 @@ export class SystemActionController {
       await sha256Hex(JSON.stringify({ visitSequence: gate.visit_sequence, approvedHeadSha: gate.approved_head_sha })),
     );
     if (["succeeded", "reconciled"].includes(operation.state)) return this.completed();
-    if (run.definition_id === "simple-traceability" && run.definition_version >= 19) {
+    if (["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) && run.definition_version >= 19) {
       if (this.planning?.startDesignReviewRound === undefined) {
         throw new Error("design review round allocator is unavailable");
       }

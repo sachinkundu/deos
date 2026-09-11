@@ -30,3 +30,33 @@ This is real provider execution from a local test. It is not a deployed DEOS rev
 - https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan
 
 The current subscription notice pauses the proposed separate Agent SDK credit change: headless CLI usage still draws from subscription limits. SDK declarations document `BaseHookInput.effort.level` as the active effort after a model downgrade and `SDKRateLimitInfo` as subscription quota metadata. Live trials confirmed the Stop hook and rate-limit fields used above.
+
+## Tool and session trial, 11 September
+
+The real local setup-token trial ran the trusted driver, pinned client, and MCP
+broker. It read a sample README, reused the client session for a follow-up,
+and started an isolated session for the second direction. All three completed
+with Opus 5, applied high effort, and subscription quota evidence showing no
+paid usage. See `tool-session-contract.json`. This is local provider proof;
+it is not the deployed workflow canary.
+
+The client emits quota status changes, not a new quota event for every repair.
+The driver retains observed quota events within that live client session and
+clears them when starting the other direction. Receipts label this evidence
+as `same_client_session`. Missing initial evidence or any conflicting event
+fails the review.
+
+A failed tool trial exposed automatic fallback to Opus 4.8. Its receipt was
+rejected. The runner now sets `switchModelsOnFlag: false` and an empty fallback
+chain. A later real refusal emitted `model_refusal_no_fallback` with only Opus 5
+usage and failed closed. This follows the [documented noninteractive fallback
+control](https://code.claude.com/docs/en/model-config#ask-before-switching).
+No refusal is treated as a completed semantic review.
+
+A real invalid-token request returned `api_error_status: 401`,
+`terminal_reason: api_error`, `is_error: true`, and empty model usage.
+The validator classified it as `auth_failure` without requiring a Stop hook.
+The client emitted two API retry notices before that terminal failure.
+Quota exhaustion uses the provider's `rate_limit_event` rejection and epoch
+seconds reset field. Exhaustion was not deliberately induced on the account;
+quota-stop and interruption controls also have fault-injection coverage.

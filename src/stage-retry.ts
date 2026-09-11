@@ -304,6 +304,12 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
       ) throw new Error("stage_retry_not_eligible");
       return existing;
     }
+    const claude = await this.database.prepare(`SELECT retry_not_before, cleanup_state FROM claude_review_invocations WHERE attempt_id = ?`)
+      .bind(input.failedAttemptId).first<{ retry_not_before: string | null; cleanup_state: string }>();
+    if (claude && (claude.cleanup_state !== "destroyed" ||
+        (claude.retry_not_before !== null && Date.parse(claude.retry_not_before) > Date.parse(input.now)))) {
+      throw new Error("stage_retry_not_eligible");
+    }
     const source = await this.source(input.runId, input.failedAttemptId, input.targetDefinition);
     if (
       source === null || source.attempt_node !== input.retryNode ||

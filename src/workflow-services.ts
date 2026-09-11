@@ -1,3 +1,4 @@
+import { claudeRunner } from "./claude-environment.ts";
 import { D1NativeReviewStore } from "./native-review-store.ts";
 import { recordCaughtError } from "./error-context.ts";
 import {
@@ -174,6 +175,16 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         ) * 60_000,
       },
       {
+        claude: claudeRunner(env),
+        claudeReviewSources: async (run, context, kind) => {
+          if (kind === "design") return JSON.parse(context).designReview.sources.map(
+            (source: { path: string; sha256: string }) => ({ path: source.path, sha256: source.sha256 }));
+          const candidate = await env.DB.prepare(`SELECT file_list_json FROM planning_candidates
+            WHERE run_id = ? AND state = 'validated' ORDER BY created_at DESC, candidate_id DESC LIMIT 1`)
+            .bind(run.run_id).first<{ file_list_json: string }>();
+          if (!candidate) throw new Error("Claude review candidate is missing");
+          return JSON.parse(candidate.file_list_json);
+        },
         nativeReviews: new D1NativeReviewStore(env.DB, env.ARTIFACTS),
         nativeDesignLimit: (runId, attemptId) => new D1DesignReviewStore(env.DB)
           .finishSelfReviewAtLimit(runId, new Date().toISOString(), attemptId),
@@ -294,6 +305,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             roundNo: round,
             authorModel: run.author_model ?? "",
             authorReasoning: run.author_reasoning ?? "",
+            outsideProvider: run.independent_review_provider as "openrouter" | "claude",
             outsideModel: run.independent_review_model ?? "",
             outsideReasoning: run.independent_review_reasoning ?? "",
             now: new Date().toISOString(),
@@ -513,6 +525,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             roundNo: validatedInput.input.round,
             authorModel: run.author_model ?? "",
             authorReasoning: run.author_reasoning ?? "",
+            outsideProvider: run.independent_review_provider as "openrouter" | "claude",
             outsideModel: run.independent_review_model ?? "",
             outsideReasoning: run.independent_review_reasoning ?? "",
             now: new Date().toISOString(),
@@ -613,7 +626,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           }>();
           if (candidate === null) throw new Error("trace review candidate is missing");
           const workProduct = await new D1PlanningStore(env.DB).findRunWorkProduct(run.run_id);
-          const stage = job.modelProvider === "openrouter" ? "independent" as const : "self_check" as const;
+          const stage = job.modelProvider !== "codex" ? "independent" as const : "self_check" as const;
           const reviewedHeadSha = stage === "independent" ? workProduct?.head_sha ?? null : null;
           if (stage === "independent" && reviewedHeadSha === null) {
             throw new Error("independent trace review head is missing");
@@ -872,7 +885,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             round: number;
           }>();
           if (candidate === null) return null;
-          const stage = job.modelProvider === "openrouter" ? "independent" as const : "self_check" as const;
+          const stage = job.modelProvider !== "codex" ? "independent" as const : "self_check" as const;
           const mode = job.reviewMode;
           if (mode === undefined) return null;
           const workProduct = stage === "independent"
@@ -1037,13 +1050,13 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             outcome: {
               kind: "agent",
               outcome: accepted.overall_outcome,
-              providerReceiptsPresent: accepted.reviewer_provider === "openrouter",
+              providerReceiptsPresent: ["openrouter", "claude"].includes(accepted.reviewer_provider),
               providerReceiptsComplete: true,
             },
           };
         },
         reuseDesignReview: async (run, nodeId, job) => {
-          if (run.definition_id === 'simple-traceability' && run.definition_version >= 21 &&
+          if (["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) && run.definition_version >= 21 &&
               nodeId === 'design_self_review' &&
               await new D1DesignReviewStore(env.DB).finishSelfReviewAtLimit(run.run_id, new Date().toISOString())) {
             return {
@@ -1084,7 +1097,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             outcome: {
               kind: "agent",
               outcome: accepted.outcome,
-              providerReceiptsPresent: accepted.model_provider === "openrouter",
+              providerReceiptsPresent: ["openrouter", "claude"].includes(accepted.model_provider),
               providerReceiptsComplete: true,
             },
           };
@@ -1241,6 +1254,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             roundNo: row.round_no,
             authorModel: run.author_model ?? "",
             authorReasoning: run.author_reasoning ?? "",
+            outsideProvider: run.independent_review_provider as "openrouter" | "claude",
             outsideModel: run.independent_review_model ?? "",
             outsideReasoning: run.independent_review_reasoning ?? "",
             now: new Date().toISOString(),
@@ -1488,7 +1502,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     if (gateKind === null) return this.linear.ensureHumanGate(run, node);
     const designReviews = new D1DesignReviewStore(this.env.DB);
     if (
-      gateKind === "design" && run.definition_id === "simple-traceability" &&
+      gateKind === "design" && ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
       run.definition_version >= 19 && !await designReviews.eligible(run.run_id, run.definition_version >= 22)
     ) throw new Error("design human gate requires accepted review and author response proof");
     await new D1HumanGateStore(this.env.DB).bind({
@@ -1499,7 +1513,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       now: new Date().toISOString(),
     });
     if (
-      gateKind === "design" && run.definition_id === "simple-traceability" &&
+      gateKind === "design" && ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
       run.definition_version >= 19
     ) {
       await designReviews.bindGate({
@@ -1818,6 +1832,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       ? ["github.publish_planning_work_product"]
       : job.providerAccess?.includes("model.openrouter_review") === true
         ? ["model.openrouter_review"]
+        : job.providerAccess?.includes("model.claude_review") === true
+          ? ["model.claude_review"]
         : explicitlyBound ? [] : ["github.publish_work_product", "linear.upsert_working_note"];
     const actions: readonly CapabilityAction[] = ["github.clone_repository", ...workActions];
     if (planning) {
@@ -1840,8 +1856,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       actions,
       changeId: planning ? changeId : null,
       planningBranch: planning ? planningBranch : null,
-      ...(actions.includes("model.openrouter_review") ? {
-        modelProvider: "openrouter" as const,
+      ...((actions.includes("model.openrouter_review") || actions.includes("model.claude_review")) ? {
+        modelProvider: job.modelProvider as "openrouter" | "claude",
         model: job.model ?? null,
         reasoning: job.reasoning ?? null,
       } : {}),

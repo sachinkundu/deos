@@ -3,7 +3,7 @@ export const MAXIMUM_PROOF_REPAIRS: 2;
 export function findingSetFingerprint(review: unknown): string;
 export function parseCodexFinalMessage(message: unknown): unknown;
 export function recoverCodexReview(stdout: string, finalMessage: string, fields?: string[]): { raw: unknown; messageOffset: number | null; recovered: boolean };
-export function reviewPromptWithSchema(prompt: string, schema: string, provider: "codex" | "openrouter"): string;
+export function reviewPromptWithSchema(prompt: string, schema: string, provider: "codex" | "openrouter" | "claude"): string;
 export function validateDiscoveryProofShape(review: unknown): void;
 export function codexSessionId(stdout: string): string;
 export function codexReviewArgs(input: {
@@ -13,10 +13,10 @@ export function codexReviewArgs(input: {
   reasoning: string;
   schema: string;
   destination: string;
-  modelProvider?: "codex" | "openrouter";
+  modelProvider?: "codex" | "openrouter" | "claude";
   capabilityUrl?: string | null;
 }): string[];
-export function reviewResultPayload(provider: "codex" | "openrouter", generated: unknown): unknown;
+export function reviewResultPayload(provider: "codex" | "openrouter" | "claude", generated: unknown): unknown;
 export function canonicalRecheckResolutions(
   resolutions: Array<Record<string, any>>,
   change: string,

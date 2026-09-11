@@ -71,8 +71,13 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
     return this.database.prepare(
       `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state,
               cleanup_hold_until, cleanup_hold_reason, updated_at
-       FROM agent_attempts WHERE sandbox_id = ?`,
-    ).bind(sandboxId).first<CleanupCandidate>();
+       FROM agent_attempts WHERE sandbox_id = ?
+       UNION ALL SELECT c.runner_id AS sandbox_id, a.run_id, c.attempt_id, c.process_id,
+         CASE WHEN c.state IN ('claimed','running') THEN 'running' ELSE 'failed' END AS state,
+         c.cleanup_state, NULL AS cleanup_hold_until, NULL AS cleanup_hold_reason, c.updated_at
+       FROM claude_review_invocations c JOIN agent_attempts a ON a.attempt_id = c.attempt_id
+       WHERE c.runner_id = ?`,
+    ).bind(sandboxId, sandboxId).first<CleanupCandidate>();
   }
 
   async upsertWorkItem(

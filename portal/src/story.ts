@@ -11,6 +11,7 @@ const ALLOWED_STORY_ARTIFACTS = new Set([
   "patch.diff",
   "provider-references.json",
   "raw-review-output.json",
+  "claude-provider-proof.json",
   "result.json",
   "review-dispositions.json",
   "review-replies.json",
@@ -157,6 +158,7 @@ export class ReviewStoryReadStore {
            ON manifest.manifest_id = attempt.manifest_id AND manifest.run_id = attempt.run_id
          JOIN artifacts artifact ON artifact.manifest_id = manifest.manifest_id
          WHERE attempt.run_id = ? AND manifest.state = 'complete'
+           AND (COALESCE(json_extract(attempt.job_spec_json, '$.modelProvider'), '') != 'claude' OR attempt.state = 'completed')
            AND artifact.policy_outcome = 'accepted'
          ORDER BY attempt.created_at, artifact.logical_name`,
       ).bind(runId).all<StoryArtifactRow>(),
@@ -336,6 +338,7 @@ export class ReviewStoryReadStore {
          ON manifest.manifest_id = attempt.manifest_id AND manifest.run_id = attempt.run_id
        JOIN artifacts artifact ON artifact.manifest_id = manifest.manifest_id
        WHERE attempt.attempt_id = ? AND manifest.state = 'complete'
+         AND (COALESCE(json_extract(attempt.job_spec_json, '$.modelProvider'), '') != 'claude' OR attempt.state = 'completed')
          AND artifact.logical_name = ?
          AND artifact.policy_outcome = 'accepted' LIMIT 1`,
     ).bind(attemptId, logicalName).first<StoryArtifactRow>();

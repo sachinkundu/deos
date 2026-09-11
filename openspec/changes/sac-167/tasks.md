@@ -1,14 +1,14 @@
 ## 1. Confirm the Claude contract
 
-- [x] 1.1 Verify local Claude credential JSON, Opus 5, applied high effort, and subscription-only use in a real isolated client trial. Save sanitized observations.
-- [ ] 1.2 Establish exclusive ownership of the refreshable login across the Mac and DEOS before cloud provisioning.
-- [ ] 1.3 Confirm stable account binding, auth failure, quota stop, and interrupted-call handling with the pinned client contract.
+- [x] 1.1 Verify the approved Claude setup token, Opus 5, applied high effort, and subscription-only use in a real isolated client trial. Save sanitized observations.
+- [x] 1.2 Reconcile the approved setup-token plan and design; keep the Mac login out of DEOS.
+- [ ] 1.3 Confirm token enrollment binding, auth failure, quota stop, and interrupted-call handling with the pinned client contract.
 
 ## 2. Implement the trusted provider boundary
 
 - [ ] 2.1 Add a Claude receipt validator that checks observed model, applied effort, account binding, subscription route, terminal result, and input binding.
 - [ ] 2.2 Run the pinned Claude client in a trusted runner separate from the review Sandbox. Broker only existing read-only tools and preserve prompts, context, schema, and repair limits.
-- [ ] 2.3 Extend encrypted credential checkout with exclusive leases, heartbeat renewal, safe terminal reconciliation, account checks, refresh compare-and-swap, and cleanup.
+- [ ] 2.3 Add protected setup-token enrollment, captured secret-version checks, operator replacement, and cleanup of the separate trusted runner.
 - [ ] 2.4 Integrate attempt replay, clear auth/review/plan-limit causes, and retry-not-before enforcement without fallback.
 
 ## 3. Freeze and present the new workflow
@@ -19,7 +19,7 @@
 
 ## 4. Verify and deliver
 
-- [ ] 4.1 Test both review phases, read-only tool scope, profile/account enforcement, shared-login concurrency, refresh conflicts, failed auth, quota stops, bad results, replay, cleanup, frozen runs, and rollback.
+- [ ] 4.1 Test both review phases, read-only tool scope, profile/account enforcement, token replacement and version conflicts, failed auth, quota stops, bad results, replay, cleanup, frozen runs, and rollback.
 - [ ] 4.2 Run repository checks and strict OpenSpec validation.
-- [ ] 4.3 Deploy a dedicated canary using normal signed Linear ingress and verify the actual review, D1 authority, R2 hashes, auth persistence, cleanup, and unchanged human gates.
+- [ ] 4.3 Deploy a dedicated canary using normal signed Linear ingress and verify the actual review, D1 authority, R2 hashes, token binding, cleanup, and unchanged human gates.
 - [ ] 4.4 Attach sanitized visual and provider evidence, publish a review-ready implementation PR, and promote the new default only after all release proof passes.

@@ -192,7 +192,7 @@ export const codexReviewArgs = ({
 
 export const reviewResultPayload = (provider, generated) => {
   if (
-    ["codex", "openrouter"].includes(provider) &&
+    ["codex", "openrouter", "claude"].includes(provider) &&
     typeof generated === "object" && generated !== null &&
     Object.hasOwn(generated, "result")
   ) return generated.result;

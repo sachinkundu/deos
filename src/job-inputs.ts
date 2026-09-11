@@ -358,7 +358,7 @@ export class JobInputMaterializer {
     guidance: readonly { path: string; content: string }[];
     installationId: string;
   }): Promise<Record<string, unknown>> {
-    const phase = input.job.modelProvider === "openrouter" ? "independent" as const : "self" as const;
+    const phase = input.job.modelProvider !== "codex" ? "independent" as const : "self" as const;
     const candidateId = String(input.candidate.candidateId ?? "");
     const candidateDigest = String(input.candidate.candidateDigest ?? "");
     const candidatePath = String(input.candidate.path ?? "");

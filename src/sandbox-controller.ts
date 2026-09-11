@@ -376,6 +376,8 @@ export type AgentExecutionObservation =
     };
 
 interface SandboxControllerDependencies {
+  claude?: Pick<import("./claude-runner.ts").ClaudeRunner, "cleanup" | "proof" | "failure">;
+  claudeReviewSources?: (run: OrchestrationRunRecord, context: string, kind: string) => Promise<readonly { path: string; sha256: string }[]>;
   nativeReviews?: D1NativeReviewStore;
   nativeDesignLimit?: (runId: string, attemptId: string) => Promise<boolean>;
   now: () => Date;
@@ -540,6 +542,11 @@ export class SandboxAgentController {
       }
       return Object.freeze({ ...job, model: run.author_model, reasoning: run.author_reasoning });
     }
+    if (job.modelProvider === "claude") {
+      if (run.independent_review_provider !== "claude" || run.independent_review_model !== "claude-opus-5" ||
+          run.independent_review_reasoning !== "high" || !run.independent_review_account_binding) throw new Error("Claude run profile is missing");
+      return Object.freeze({ ...job, modelProvider: "claude", model: "claude-opus-5", reasoning: "high" });
+    }
     if (
       run.independent_review_provider !== "openrouter" ||
       !run.independent_review_model || !run.independent_review_reasoning
@@ -633,6 +640,8 @@ export class SandboxAgentController {
       agentRole: job.agentRole ?? null,
       agentHarness: job.agentRole === undefined ? null : AGENT_HARNESS,
       agentHarnessVersion: job.agentRole === undefined ? null : AGENT_HARNESS_VERSION,
+      ...(job.modelProvider === "claude" ? { claudeReviewSources: frozenRetrySpec?.claudeReviewSources ??
+        await this.dependencies.claudeReviewSources?.(run, materialized!.context, job.reviewKind ?? "traceability") } : {}),
       modelProvider: job.modelProvider ?? null,
       model: job.model ?? null,
       reasoning: job.reasoning ?? null,
@@ -651,7 +660,7 @@ export class SandboxAgentController {
             retrySourceJobSpecDigest: retrySource.job_spec_digest,
           }),
       nativeSelfReview: frozenRetrySpec?.nativeSelfReview ?? (
-        run.definition_id === "simple-traceability" && run.definition_version >= 23 &&
+        ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) && run.definition_version >= 23 &&
         ["planning_author", "design_author"].includes(nodeId) ? {
           phase: nodeId === "design_author" ? "design" : "planning",
           discovery: this.runtimeJob(run, definition.jobs[nodeId === "design_author" ? "design_self_review" : "self_discovery"]),
@@ -682,7 +691,7 @@ export class SandboxAgentController {
     let lease: CredentialLease | null = null;
     let supervisor: SandboxProcessView | null = null;
     try {
-      if (job.modelProvider !== "openrouter") {
+      if (job.modelProvider !== "openrouter" && job.modelProvider !== "claude") {
         lease = await this.credentials.acquire(
           this.config.authProfileId,
           attempt.attempt_id,
@@ -1041,7 +1050,7 @@ export class SandboxAgentController {
     let observation: AgentExecutionObservation | null = null;
     const collector = this.dependencies.collector(sandbox);
     try {
-      if (job.modelProvider !== "openrouter") {
+      if (job.modelProvider !== "openrouter" && job.modelProvider !== "claude") {
         const lease = await this.credentials.resume(this.config.authProfileId, attempt.attempt_id);
         const refreshed = (await sandbox.readFile("/root/.codex/auth.json", { encoding: "utf8" })).content;
         try {
@@ -1049,6 +1058,13 @@ export class SandboxAgentController {
         } finally {
           await sandbox.deleteFile("/root/.codex/auth.json");
         }
+      }
+      if (job.modelProvider === "claude") {
+        if (!this.dependencies.claude) throw new Error("Claude proof verifier unavailable");
+        const receipts = await this.dependencies.claude.proof(attempt.attempt_id);
+        await sandbox.writeFile("/deos/output/claude-provider-proof.json", JSON.stringify({
+          version: 1, attemptId: attempt.attempt_id, jobSha256: attempt.job_spec_digest, receipts,
+        }));
       }
       collection = await collector.collect({
         runId: attempt.run_id,
@@ -1096,7 +1112,7 @@ export class SandboxAgentController {
         } catch (error) {
           recordCaughtError(error, "src/sandbox-controller.ts:1038");
           if (error instanceof PlanningCandidateRejectedError || error instanceof DesignCandidateRejectedError) {
-            const verificationMismatch = run.definition_id === "simple-traceability" &&
+            const verificationMismatch = ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
               run.definition_version >= 6;
             const repeatedPatch = await this.repeatsContinuationPatch(attempt, sandbox);
             const resultDetail = verificationMismatch
@@ -1137,6 +1153,18 @@ export class SandboxAgentController {
           }
           throw error;
         }
+      }
+      if (job.modelProvider === "claude") {
+        if (!this.dependencies.claude) throw new Error("Claude proof verifier unavailable");
+        const receipts = await this.dependencies.claude.proof(attempt.attempt_id);
+        const raw = JSON.parse((await sandbox.readFile("/deos/output/raw-review-output.json")).content);
+        const judgments = job.reviewKind === "design" ? raw : job.reviewMode === "recheck" ? [raw] :
+          [...raw.proposalFirst, ...raw.requirementFirst];
+        if (!Array.isArray(judgments) || JSON.stringify(judgments) !== JSON.stringify(receipts.map(r => r.result))) {
+          throw new Error("Claude semantic result differs from trusted receipt");
+        }
+        await this.cleanup(attempt, sandbox);
+        await collector.verifyAfterCleanup(collection);
       }
       if (job.agentRole === "reviewer") {
         if (job.reviewKind === "design") {
@@ -1183,7 +1211,7 @@ export class SandboxAgentController {
     } catch (error) {
       recordCaughtError(error, "src/sandbox-controller.ts:1124");
       if (collection !== null) {
-        const resultDetail = this.safeResultDetail(
+        const resultDetail = job.modelProvider === "claude" ? "review_failure" : this.safeResultDetail(
           error instanceof Error ? error.message : "post-collection validation failed",
           false,
         );
@@ -1198,7 +1226,7 @@ export class SandboxAgentController {
           attemptId: attempt.attempt_id,
           expected: "collecting",
           state: "failed",
-          resultClass: "post_collection_validation_failed",
+          resultClass: job.modelProvider === "claude" ? "review_failure" : "post_collection_validation_failed",
           resultDetail,
           manifestId: collection.manifestId,
           now: this.dependencies.now().toISOString(),
@@ -1231,8 +1259,10 @@ export class SandboxAgentController {
       return this.failedObservation(attempt, "failed", manifestId);
     }
     if (collection === null || observation === null) throw new Error("artifact collection outcome is missing");
-    await this.cleanup(attempt, sandbox);
-    await collector.verifyAfterCleanup(collection);
+    if (job.modelProvider !== "claude") {
+      await this.cleanup(attempt, sandbox);
+      await collector.verifyAfterCleanup(collection);
+    }
     return observation;
   }
 
@@ -1412,7 +1442,7 @@ export class SandboxAgentController {
       reason: string;
     }[] = [];
     let reviewContextId: string | null = null;
-    if (run.definition_id === "simple-traceability" && run.definition_version >= 12) {
+    if (["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) && run.definition_version >= 12) {
       try {
         reviewDispositions = JSON.parse((await sandbox.readFile("/deos/output/review-dispositions.json", {
           encoding: "utf8",
@@ -1561,7 +1591,7 @@ export class SandboxAgentController {
       reason: string;
     }[] = [];
     let reviewContextId: string | null = null;
-    if (run.definition_id === "simple-traceability" && run.definition_version >= 19) {
+    if (["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) && run.definition_version >= 19) {
       try {
         reviewDispositions = JSON.parse((await sandbox.readFile("/deos/output/design-dispositions.json", {
           encoding: "utf8",
@@ -1635,6 +1665,8 @@ export class SandboxAgentController {
     process: SandboxProcessView | null = null,
   ): Promise<string> {
     if (process !== null) await this.stopProcess(process);
+    if (job.modelProvider === "claude") category = await this.dependencies.claude?.failure(attempt.attempt_id) ?? "review_failure";
+    if (job.modelProvider !== "claude") {
     try {
       await sandbox.deleteFile("/root/.codex/auth.json");
     } catch (caughtError) {
@@ -1644,6 +1676,7 @@ export class SandboxAgentController {
       await this.credentials.release(lease);
     } catch (caughtError) {
       recordCaughtError(caughtError, "src/sandbox-controller.ts:1460");}
+    }
     if (attempt.state !== "collecting") {
       const changed = await this.attempts.setState(
         attempt.attempt_id,
@@ -1727,6 +1760,10 @@ export class SandboxAgentController {
   }
 
   private async cleanupFailure(attempt: AgentAttemptRecord, sandbox: SandboxView): Promise<void> {
+    if (JSON.parse(attempt.job_spec_json).modelProvider === "claude") {
+      await this.cleanup(attempt, sandbox);
+      return;
+    }
     const native = Boolean(JSON.parse(attempt.job_spec_json).nativeSelfReview);
     const retentionMs = native ? Math.max(this.config.failureRetentionMs, 24 * 60 * 60_000) : this.config.failureRetentionMs;
     if (retentionMs <= 0) {
@@ -1744,7 +1781,9 @@ export class SandboxAgentController {
   }
 
   private async cleanup(attempt: AgentAttemptRecord, sandbox: SandboxView): Promise<void> {
+    if (attempt.cleanup_state === "destroyed") return;
     try {
+      if (JSON.parse(attempt.job_spec_json).modelProvider === "claude") await this.dependencies.claude?.cleanup(attempt.attempt_id);
       await sandbox.setKeepAlive(false);
       await sandbox.destroy();
       await this.attempts.markCleanup(
@@ -1753,6 +1792,7 @@ export class SandboxAgentController {
         null,
         this.dependencies.now().toISOString(),
       );
+      attempt.cleanup_state = "destroyed";
       this.emitForAttempt(attempt, "sandbox.cleanup", "succeeded");
     } catch (caughtError) {
       recordCaughtError(caughtError, "src/sandbox-controller.ts:1563");

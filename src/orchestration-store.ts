@@ -55,6 +55,7 @@ export interface OrchestrationRunRecord {
   author_model_provider?: string | null;
   author_model?: string | null;
   author_reasoning?: string | null;
+  independent_review_account_binding?: string | null;
   independent_review_provider?: string | null;
   independent_review_model?: string | null;
   independent_review_reasoning?: string | null;
@@ -764,7 +765,14 @@ export class D1OrchestrationStore {
     const authorJobs = Object.values(definitionJobs)
       .filter((job) => job.agentRole === "author");
     const independentJobs = Object.values(definitionJobs)
-      .filter((job) => job.agentRole === "reviewer" && job.modelProvider === "openrouter");
+      .filter((job) => job.agentRole === "reviewer" && ["openrouter", "claude"].includes(job.modelProvider ?? ""));
+    const claude = independentJobs.some(job => job.modelProvider === "claude");
+    if (claude && independentJobs.some(job => job.modelProvider !== "claude" || job.model !== "claude-opus-5" || job.reasoning !== "high")) {
+      throw new Error("Claude workflow profile is inconsistent");
+    }
+    const enrollment = claude ? await this.database.prepare("SELECT account_binding FROM claude_review_enrollment WHERE singleton = 1")
+      .first<{ account_binding: string }>() : null;
+    if (claude && !enrollment?.account_binding) throw new Error("auth_failure");
     const authorSettings = authorJobs[0] ?? null;
     if (authorJobs.some((job) =>
       job.modelProvider !== authorSettings?.modelProvider || job.model !== authorSettings?.model ||
@@ -776,7 +784,7 @@ export class D1OrchestrationStore {
       policy === null || policy.route_revision !== input.routeRevision ||
       policy.route_digest !== input.routeDigest || policy.dispatch_enabled !== 1
     ) return null;
-    if (independentJobs.length > 0 && !policy.independent_review_model) {
+    if (!claude && independentJobs.length > 0 && !policy.independent_review_model) {
       throw new Error("independent review model setting is missing");
     }
     try {
@@ -787,15 +795,15 @@ export class D1OrchestrationStore {
           status, selection_kind, selection_value, selection_label_name, selection_reason,
           selection_evidence_json, selection_delivery_id, selection_observed_at,
           selection_provider_digest, author_model_provider, author_model, author_reasoning,
-          independent_review_provider, independent_review_model, independent_review_reasoning,
+          independent_review_provider, independent_review_model, independent_review_reasoning, independent_review_account_binding,
           route_project_name, route_repository, route_github_installation_id,
           route_revision, route_digest, route_start_state_name, route_human_gate_state_id,
           route_repository_revision, route_workflow_revision, route_review_revision,
           created_at, updated_at)
          SELECT ?, ?, ?, p.project_id, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                CASE WHEN ? = 0 THEN NULL ELSE p.independent_review_provider END,
-                CASE WHEN ? = 0 THEN NULL ELSE p.independent_review_model END,
-                ?, p.linear_project_name, p.trial_repository, p.github_installation_id,
+                CASE WHEN ? = 0 THEN NULL WHEN ? = 1 THEN 'claude' ELSE p.independent_review_provider END,
+                CASE WHEN ? = 0 THEN NULL WHEN ? = 1 THEN 'claude-opus-5' ELSE p.independent_review_model END,
+                ?, ?, p.linear_project_name, p.trial_repository, p.github_installation_id,
                 p.route_revision, p.route_digest, p.start_state_name, p.human_gate_state_id,
                 p.repository_revision, p.workflow_revision, p.independent_review_revision, ?, ?
          FROM project_workflow_policies p
@@ -825,8 +833,11 @@ export class D1OrchestrationStore {
         authorSettings?.model ?? null,
         authorSettings?.reasoning ?? null,
         independentJobs.length,
+        Number(claude),
         independentJobs.length,
+        Number(claude),
         independentJobs[0]?.reasoning ?? null,
+        enrollment?.account_binding ?? null,
         input.now,
         input.now,
         input.projectId,

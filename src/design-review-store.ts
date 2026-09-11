@@ -18,7 +18,7 @@ export interface DesignReviewRoundRecord {
   author_provider: "codex";
   author_model: string;
   author_reasoning: string;
-  outside_provider: "openrouter";
+  outside_provider: "openrouter" | "claude";
   outside_model: string;
   outside_reasoning: string;
   status: "active" | "ready_for_human" | "human_revision" | "merged" | "failed";
@@ -38,7 +38,7 @@ export interface DesignReviewAttemptRecord {
   candidate_id: string;
   pr_database_id: string | null;
   head_sha: string | null;
-  model_provider: "codex" | "openrouter";
+  model_provider: "codex" | "openrouter" | "claude";
   model: string;
   reasoning: string;
   outcome: DesignReviewOutcome | "invalid" | "failed";
@@ -68,6 +68,7 @@ export class D1DesignReviewStore {
     roundNo: number;
     authorModel: string;
     authorReasoning: string;
+    outsideProvider?: "openrouter" | "claude";
     outsideModel: string;
     outsideReasoning: string;
     now: string;
@@ -79,7 +80,7 @@ export class D1DesignReviewStore {
        (round_id, run_id, round_no, kind, self_required, author_provider, author_model,
         author_reasoning, outside_provider, outside_model, outside_reasoning, status,
         response_turns, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'codex', ?, ?, 'openrouter', ?, ?, ?, 0, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, 'codex', ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
     ).bind(
       roundId,
       input.runId,
@@ -88,6 +89,7 @@ export class D1DesignReviewStore {
       initial ? 1 : 0,
       input.authorModel,
       input.authorReasoning,
+      input.outsideProvider ?? "openrouter",
       input.outsideModel,
       input.outsideReasoning,
       initial ? "active" : "human_revision",
@@ -98,6 +100,7 @@ export class D1DesignReviewStore {
     if (
       stored === null || stored.round_id !== roundId || stored.author_model !== input.authorModel ||
       stored.author_reasoning !== input.authorReasoning || stored.outside_model !== input.outsideModel ||
+      stored.outside_provider !== (input.outsideProvider ?? "openrouter") ||
       stored.outside_reasoning !== input.outsideReasoning || stored.self_required !== Number(initial)
     ) throw new Error("design review round identity mismatch");
     return stored;
@@ -119,7 +122,7 @@ export class D1DesignReviewStore {
     candidateId: string;
     prDatabaseId: string | null;
     headSha: string | null;
-    modelProvider: "codex" | "openrouter";
+    modelProvider: "codex" | "openrouter" | "claude";
     model: string;
     reasoning: string;
     evidenceManifestId: string | null;
@@ -156,7 +159,7 @@ export class D1DesignReviewStore {
     candidateId: string;
     prDatabaseId: string | null;
     headSha: string | null;
-    modelProvider: "codex" | "openrouter";
+    modelProvider: "codex" | "openrouter" | "claude";
     model: string;
     reasoning: string;
     outcome: DesignReviewOutcome;

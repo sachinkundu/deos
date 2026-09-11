@@ -2,6 +2,7 @@ const RUN_ID = /^workflow:[0-9a-f-]+:[0-9a-f-]+:run:[1-9][0-9]*$/i;
 const REVIEW_ATTEMPT_ID = /^design-review:[0-9a-f-]{36}$/i;
 const ALLOWED_ARTIFACTS = new Set([
   "raw-review-output.json",
+  "claude-provider-proof.json",
   "normalized-review.json",
   "design-review-input.json",
   "candidate-inventory.json",
@@ -88,7 +89,7 @@ export class DesignReviewReadStore {
           `SELECT finding_id, disposition, reason, resulting_candidate_id, created_at
            FROM design_review_dispositions WHERE review_attempt_id = ? ORDER BY finding_id`,
         ).bind(reviewAttemptId).all<Record<string, unknown>>(),
-        attempt.evidence_manifest_id === null ? Promise.resolve({ results: [] }) : this.db.prepare(
+        (attempt.evidence_manifest_id === null || (attempt.model_provider === "claude" && attempt.accepted !== 1)) ? Promise.resolve({ results: [] }) : this.db.prepare(
           `SELECT logical_name, sha256, byte_size FROM artifacts
            WHERE manifest_id = ? AND policy_outcome = 'accepted' ORDER BY logical_name`,
         ).bind(attempt.evidence_manifest_id).all<Record<string, unknown>>(),
