@@ -218,3 +218,29 @@ test("new Claude definition preserves the graph and authors while fixing only ex
     } else assert.deepEqual(next.jobs[name],job);
   }
 });
+
+
+test("Claude stage retry waits for trusted cleanup and the recorded plan reset", async () => {
+  const { D1AgentStageRetryStore } = await import("../src/stage-retry.ts");
+  const { db, store } = setup();
+  const reads: string[] = [];
+  const traced = { prepare(sql: string) { reads.push(sql); return db.prepare(sql); } };
+  const retries = new D1AgentStageRetryStore(traced as unknown as D1Database);
+  const input = { runId: "run", failedAttemptId: "attempt", retryNode: "independent_discovery" as const,
+    requestedBy: "operator", targetDefinition: { name: "test", version: 1, digest: "digest" } as never,
+    now: "2026-09-11T12:00:00.000Z" };
+  const reachedWorkflowEligibility = () => reads.some(sql => sql.includes("JOIN dispatch_intents"));
+  try {
+    await store.claim({attemptId:"attempt",runnerId:"runner",jobDigest:"digest",enrollment});
+    await store.fail("attempt", "plan_limit", "2026-09-11T13:00:00.000Z");
+    await assert.rejects(retries.prepare(input), /stage_retry_not_eligible/);
+    assert.equal(reachedWorkflowEligibility(), false);
+    await store.cleanup("attempt", "destroyed");
+    await assert.rejects(retries.prepare(input), /stage_retry_not_eligible/);
+    assert.equal(reachedWorkflowEligibility(), false);
+    // Once the provider reset arrives, normal frozen-run eligibility still applies.
+    await assert.rejects(retries.prepare({...input, now:"2026-09-11T13:00:00.000Z"}), /stage_retry_not_eligible/);
+    assert.equal(reachedWorkflowEligibility(), true);
+    assert.equal(db.sqlite.prepare("SELECT count(*) AS n FROM agent_stage_retries").get()?.n, 0);
+  } finally { db.close(); }
+});

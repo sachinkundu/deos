@@ -73,3 +73,12 @@ The exact live schema passed a real Linux client call after this adaptation:
 Claude Code 2.1.268, Opus 5, high effort, Claude Pro, paid usage false,
 and organization overage disabled. This isolates the schema fix; it is not
 evidence that the deployed workflow review has passed.
+
+## Live repository read contract
+
+The first design review requested `ls /deos/workspace/repository`. The existing
+read executor accepts only bare `ls`, so that attempt stopped without accepted
+review proof. The Claude adapter now maps the repository root aliases to the
+same frozen inventory. It never lists the filesystem. The tool description
+now gives exact supported syntax. A regression check rejects parent, trusted
+runner, flag, and shell-command forms while allowing only the fixed root aliases.

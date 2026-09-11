@@ -22,7 +22,9 @@ for line in args.env_file.read_text().splitlines():
         continue
     key, value = line.removeprefix('export ').split('=', 1)
     if key in {'CLOUDFLARE_TOKEN', 'CLOUDFLARE_API_TOKEN'}:
-        values['CLOUDFLARE_API_TOKEN'] = shlex.split(value, comments=True)[0]
+        parsed = shlex.split(value, comments=True)
+        if parsed:
+            values['CLOUDFLARE_API_TOKEN'] = parsed[0]
 if not values.get('CLOUDFLARE_API_TOKEN'):
     parser.error('Cloudflare token is missing')
 endpoint = 'https://api.cloudflare.com/client/v4/accounts/c68856288112af7698f5be52ea94b96e/d1/database/4e854f8a-018a-42c4-a325-c4b8805c06b2/query'

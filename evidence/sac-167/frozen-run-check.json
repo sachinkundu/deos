@@ -1,0 +1,6 @@
+{
+  "baselineRuns": 76,
+  "preservedFrozenProfiles": 76,
+  "changedProfiles": 0,
+  "scope": "Original runs before SAC-167 migration, compared after the planning canary"
+}

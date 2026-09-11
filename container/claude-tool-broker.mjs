@@ -13,7 +13,7 @@ for await (const line of createInterface({ input: process.stdin })) {
         serverInfo: { name: "deos-read-only", version: "1" } });
     } else if (request.method === "tools/list") {
       send(request.id, { tools: [{ name: "read_repository", description:
-        "Read checked review sources. Supports cat, ls, pwd, head, tail, sed -n, rg and wc -l. No writes or shell syntax.",
+        "Read only frozen review sources. Start with bare ls (no arguments) to list all allowed file paths. Use pwd with no arguments; cat FILE; head or tail [-n COUNT] FILE; sed -n START,ENDp FILE; rg [-n] [-i] [-F] PATTERN [FILE]; wc -l FILE. No other flags, writes, glob expansion, or shell syntax.",
         inputSchema: { type: "object", properties: { command: { type: "string", maxLength: 8192 } },
           required: ["command"], additionalProperties: false } }] });
     } else if (request.method === "tools/call") {
