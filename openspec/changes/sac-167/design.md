@@ -1,224 +1,170 @@
 ## Context
 
-See `proposal.md` for the reason for this change. Today, each outside review runs in a fresh, read-only Sandbox. Its model route is frozen with the run. D1 holds run and review authority. R2 holds hash-checked evidence. A valid review can advise the author, but only a later human action can approve a gate.
+See `proposal.md` for the reason for this change. The current external plan and design review path already has the controls this change needs: a frozen workflow definition, exact review input and head, a read-only review harness, a trusted runner, D1 authority, R2 proof, bounded retries, author responses, and human gates.
 
-This change crosses the workflow definition, review dispatch, trusted runner, auth storage, proof, and protected views. The checked inputs do not contain the Claude client contract. Before adapter work starts, implementation must inspect that primary contract with the set Pro account. It must confirm the model selector, effort control, auth behavior, stable account subject, result facts, lookup support, and auth and plan-limit errors. Tests may copy observed contracts. They may not invent them.
+This design changes only the external reviewer route for new workflow versions. It replaces the OpenRouter adapter with a Claude adapter fixed to Opus 5 and `high` effort. Existing OpenRouter runs keep their frozen adapter and labels.
+
+The approved plan requires the trusted runner to use the user's existing local Claude auth JSON. A review comment proposes passing a long-lived setup token through `CLAUDE_CODE_OAUTH_TOKEN`. That is not adopted here because it would change the approved auth contract. Before implementation, the primary Claude client contract must be checked to establish the supported Pro sign-in input, model and effort controls, result metadata, and auth and plan-limit errors. If the approved local auth JSON cannot drive the Pro route, planning must be revised before code is written.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Freeze Claude Opus 5, `high` effort, the Claude Pro route, and the allowed Pro account for each new run.
-- Keep the current plan and design review inputs, prompt, tools, output, directional isolation, rounds, retries, stop rules, author replies, and human gates.
-- Keep Claude auth in the trusted runner and remove decrypted auth after every terminal or abandoned attempt.
-- Prevent ambient keys, automatic replay, and paid fallback.
-- Bind safe proof to the exact input, account, model, effort, route, and result.
-- Keep old frozen runs and OpenRouter evidence unchanged.
+- Reuse the current external review pipeline and change only its provider adapter and recorded provider facts.
+- Fix every new outside plan and design review to Claude Opus 5, `high` effort, Claude Pro, and no fallback.
+- Keep auth inside the trusted runner and keep it out of the review Sandbox, prompts, results, and proof.
+- Preserve the current review contract, retry and stop rules, author response, and human approval gates.
+- Prove the real deployed Claude path without exposing auth or paid API credentials.
 
 **Non-Goals:**
 
-- This design does not change Codex author or self-check work.
-- It does not add sign-in, billing, or quota management to Settings.
-- It does not grant gate authority to review output.
-- It does not choose undocumented Claude flags, wire fields, error text, or lookup calls.
+- No new review orchestrator, canary subsystem, account-management UI, or billing manager.
+- No change to Codex author or self-check work.
+- No migration of an active or historical OpenRouter run.
+- No assumption about undocumented Claude flags, token lifetime, error text, or receipt fields.
 
 ## Component diagram
 
 ```mermaid
 flowchart LR
-    S[Access-protected Settings] --> A[Run allocator]
-    K[(One-time canary authorization)] --> A
-    L[Protected release verifier] --> G[(Verified canary proof)]
-    G -->|guard promotion| A
-    A -->|freeze profile| D[(D1 authority and invocation claims)]
-    W[Cloudflare Workflow] --> C[Outside review coordinator]
-    D --> C
-    C --> B[Unchanged contract builder]
-    B --> X[Fresh directional reviewer Sandbox]
-    X <-->|attempt-scoped model channel| T[Trusted runner]
-    E[(Encrypted Claude auth in R2)] --> T
-    J[(Versioned runner-only HMAC keyring)] -->|derive account fingerprint| T
-    T <-->|Pro account session| P[Claude cloud]
-    T --> V[Result and proof validator]
-    B --> V
-    V --> R[(Create-only R2 proof)]
-    V -->|validated pending cleanup| D
-    D -->|expired lease and owner IDs| Z[Trusted cleanup reconciler]
-    Z -->|stop exact Sandbox owner| X
-    Z -->|stop runner and remove auth namespace| T
-    Z -->|destruction receipt| D
-    D --> O[Protected review projection]
-    R --> O
-    D -->|accepted review after cleanup| H[Existing human gate path]
+    W[Cloudflare Workflow] --> C[Existing review coordinator]
+    C --> H[Existing contract and read-only harness]
+    H --> A[Claude review adapter]
+    A --> T[Trusted runner]
+    S[(Encrypted local Claude auth JSON)] --> T
+    T --> P[Claude Pro cloud]
+    A --> V[Existing result and proof validator]
+    H --> V
+    V --> D[(D1 review authority)]
+    V --> R[(R2 hash-checked proof)]
+    D --> G[Existing author response and human gate]
+    D --> O[Protected review view]
 ```
 
-Settings shows the fixed setup and no OpenRouter model control for the new flow. The allocator owns the immutable profile. Each Sandbox keeps one direction's review context and read-only tools. The trusted runner owns auth and provider calls. The runner-only keyring supplies the frozen fingerprint key version, and the cleanup reconciler recovers lost owners without exposing auth. Only the validator may accept provider output.
+The coordinator, harness, validator, proof stores, and gate path remain the same. The new Claude adapter translates the existing review request into the confirmed Claude client contract and normalizes the response back into the existing review result. The trusted runner is the only component that can read Claude auth or contact Claude.
 
 ## Decisions
 
-### Confirm the provider contract before adapter work
+### Replace only the external provider adapter
 
-The adapter maps durable DEOS values to values observed in the primary Claude client contract. Discovery must prove that the real Pro route exposes a stable account subject and trustworthy model, effort, route, and terminal facts. It must also determine whether a started invocation can be looked up without starting more model work. If any required acceptance fact cannot be proved, implementation stops and the plan returns for revision.
+Add one Claude adapter behind the current attempt-scoped model channel. The coordinator continues to build the same plan or design inventory, prompt, read-only tools, output schema, exact-head binding, stale checks, direction isolation, round counters, and retry identity. The adapter accepts no model, effort, provider, billing, or fallback override from the Sandbox.
 
-Inferring fields from a mock was considered. It was rejected because local output cannot prove the provider route or account.
-
-### Freeze a typed profile and versioned account binding
-
-The new workflow definition supplies this logical profile:
+The immutable workflow definition for a new run supplies this fixed profile:
 
 - provider: `claude`
-- model: `claude-opus-5`
+- model: the primary contract's exact Opus 5 selector
 - effort: `high`
-- billing route: `claude_pro`
+- route: `claude_pro`
 - fallback: `none`
-- allowed account: `allowed_account_fingerprint`
-- fingerprint scheme: `hmac-sha256-v1`
-- fingerprint key version: an immutable trusted key ID
 
-Trusted provisioning applies the named HMAC scheme, with the selected runner-only key version, to the provider's stable account subject. It stores no email or raw account ID. The fingerprint, scheme, and key version are frozen with the run. The runner derives each observed fingerprint with that same key version. Acceptance requires an exact match.
+The exact model selector is confirmed during contract discovery rather than guessed in the design. The definition digest and profile are frozen with the run using the existing workflow-version mechanism. New Claude runs ignore the old OpenRouter model setting. Frozen OpenRouter runs continue to use their saved profile.
 
-Key rotation creates a new key version and allowed fingerprint for later definitions. It never replaces a key used by a frozen run. The trusted keyring retains each verification key through the active-run and audit retention period. Old proof stays readable from saved fingerprints.
+Rebuilding review orchestration was considered and rejected. The approved change keeps the review behavior unchanged, and the current coordinator already supplies the required isolation, retries, stale checks, and human gates.
 
-New Claude runs ignore a stored OpenRouter model choice. Existing runs keep their saved profile and definition. Keeping a mutable selector was considered, but it would weaken the fixed route and frozen-run rules.
+### Keep the approved local-auth-JSON boundary
 
-### Keep the review harness and isolate each direction
+Use the existing trusted auth pattern: keep the user's local Claude auth JSON encrypted at rest, check it out only to the trusted runner for one attempt, and remove the attempt-local material during normal cleanup. The review Sandbox receives only its scoped model capability. It never receives the auth JSON, a token copied from it, an Anthropic API key, or an OpenRouter key.
 
-Plan and design contract builders remain unchanged. They still select the exact files, head, service context, prompt, read-only tools, output schema, stale checks, and proof rules. Each directional pass gets its own Sandbox, model capability, home, client config, conversation ID, auth checkout, and invocation claim. Resume, history import, and session reuse are disabled.
+The runner starts the Claude client with a minimal environment and blocks Anthropic API keys, OpenRouter keys, alternate API base URLs, and provider overrides. This prevents an ambient credential from changing the Pro route into paid API use. Missing, expired, revoked, invalid, or wrong-account auth becomes `auth_failure` and cannot produce accepted review proof.
 
-The second pass cannot read the first pass's output, transcript, session ID, temporary state, or proof. Both may use the same encrypted auth source, but their decrypted paths and cleanup records differ. The model channel accepts no provider, model, effort, account, or billing override.
+The suggested `CLAUDE_CODE_OAUTH_TOKEN` setup-token route was considered but is not selected by this design. The approved proposal and specs require existing local Claude auth JSON, and the checked inputs do not establish that an environment token has the same custody, account, expiry, or billing behavior. Contract discovery must explicitly test the approved route. If the service requires a setup token instead, that is a planning change, not an adapter detail.
 
-Sharing one Claude conversation was considered. It was rejected because the second directional review must not see the first result.
+### Confirm provider facts before accepting a review
 
-### Broker auth in a sanitized runner process
+Before adapter implementation, run the real Claude client with the set Pro account in a safe test resource. Confirm:
 
-Claude auth follows the protected Codex pattern. The local auth JSON is an encrypted, conditionally replaced R2 object. Each attempt gets a D1 checkout for one object version. Only the trusted runner decrypts it into a runner-owned, attempt-only namespace.
+- the exact Opus 5 selector and `high` effort control;
+- that the approved local auth JSON uses the Claude Pro route without an API key or browser prompt;
+- which response or trusted client facts identify model, effort, route, account, completion, and terminal result;
+- how auth failure and plan-limit failure are distinguished; and
+- whether an interrupted invocation can be looked up without starting more model work.
 
-Before decryption, the checkout saves an addressable execution owner: Sandbox ID, runner instance ID, process-handle slot, and auth namespace ID. Its path is derived inside that namespace. The checkout also has a lease, expiry, and heartbeat. A `finally` path kills the exact process, removes the whole namespace, and marks cleanup `destroyed` on success, failure, timeout, and cancellation.
+The adapter normalizes only observed, trustworthy facts. Config values alone do not prove the route. Acceptance compares the observed model, effort, Pro route, review input digest, exact head, and valid result with the run's frozen profile. If the client cannot provide enough facts to prove the required route and result, implementation stops and the plan returns for revision.
 
-A trusted reconciler handles crashes and lost heartbeats. It uses the saved owner IDs to stop the exact runner or container and remove its auth namespace. Cleanup becomes `destroyed` only after the container API reads the owner as absent or destroyed and a cleanup receipt names the same Sandbox, runner, and namespace. If the owner still exists, reconciliation keeps trying within current cleanup limits. No retry or replay that invokes Claude starts before both Sandbox and auth cleanup are `destroyed`.
+Mocks may reproduce an observed contract for tests, but they do not prove provider behavior. Guessing the wire contract from fake payloads was considered and rejected.
 
-The Claude subprocess environment is built from an empty allowlist. It contains only inert runtime values, a new attempt-only home and config directory, and the local auth path. A pre-exec guard rejects Anthropic or OpenRouter API keys, API base URLs, inherited user config, and provider overrides in the environment, arguments, or client config. It runs before any provider byte is sent. Old OpenRouter credentials may remain available to old adapters, but a Claude subprocess never inherits them.
+### Reuse current idempotency, proof, and cleanup
 
-A concurrent auth refresh uses the source ETag as a compare-and-swap guard. Passing auth into the Sandbox or using an API key was considered. Both were rejected because they widen secret access and could use paid API billing.
+Use the existing review attempt and Workflow replay identities. Exactly one provider invocation may be associated with an attempt. A replay reuses the durable result and must not start another call. An allowed retry receives a new existing attempt identity and remains subject to current retry and stop limits.
 
-### Claim before calling and fail closed on ambiguity
+The validator writes the normalized provider receipt, semantic review result, validation record, and input binding through the existing create-only R2 proof path, reads the manifest back by hash, and records the accepted pointer in D1 only after the current Sandbox and auth cleanup checks pass. An interrupted call with no trustworthy completion record fails closed. It may be reconciled only if contract discovery confirms a lookup bound to that invocation; otherwise it consumes the attempt and any later call must be an allowed retry.
 
-Before a provider call, D1 creates one invocation claim. Its stable key covers run, review stage, round, direction, retry ordinal, attempt ID, exact input digest, and head. The retry ordinal and attempt ID are allocated durably before the claim. An exact Workflow replay reuses that attempt and claim, while an allowed retry increments the ordinal, allocates a new attempt ID, and therefore gets a new claim. The guarded claim moves from `claimed` to `started` immediately before the call.
+Adding a second claim, keyring, cleanup service, and release database was considered and rejected. The checked architecture already has durable attempt identity, encrypted auth checkout, create-only proof, hash read-back, cleanup reconciliation, immutable workflow definitions, and route controls.
 
-The adapter creates a normalized receipt from the real invocation. It binds the claim, attempt, input digest, observed account fingerprint, route, model, effort, completion ID, and terminal execution result. The exact source fields come from the confirmed provider contract. Configured values alone are not proof. The receipt moves the claim to `completed` before later acceptance work.
+### Keep presentation and gate authority unchanged
 
-If a lease expires while a claim is `started` with no receipt, the invocation is `ambiguous`. Trusted code may reconcile it only through a provider lookup confirmed by the primary contract and bound to the same invocation ID. A confirmed result completes the same claim without another model call. If no lookup exists or it is inconclusive, the attempt stops as `review_failure`. The ambiguous call consumes that attempt and its retry budget. Only a new retry allowed by existing rules, after cleanup, may create a new claim.
+A structurally valid Claude review completes the outside review stage even when it reports concerns. Concerns remain advice. The existing author-response step records dispositions, and only the existing user action can approve a human gate.
 
-Relying on process exit or automatically replaying the call was considered. Both were rejected because the provider may have accepted work before the crash.
+Internal proof stores the model, effort, Claude Pro route, input binding, and result. A passed review page continues to show the semantic review content needed by people but does not show internal provider execution facts. A failed or stopped review page shows only the safe cause: `auth_failure`, `plan_limit`, or `review_failure`. It shows no auth data, raw provider response, or partial review output.
 
-### Store provider proof but expose only review content
+Settings shows Claude Opus 5 and high effort as fixed for the new workflow version and removes the OpenRouter model selector from new external review configuration. Historical proof keeps its original provider label.
 
-Trusted validation compares account fingerprints and receipt facts with the frozen profile, exact input and head, existing result schema, stale rules, and secret scan. It writes the sanitized receipt, semantic result, and validation record to create-only R2 keys. It reads them back by SHA-256 and marks the attempt `validated_pending_cleanup`. The runner then destroys the Claude process, auth namespace, client state, and Sandbox. Trusted code reads both cleanup records back as `destroyed` and re-reads the exact R2 manifest for final integrity. Only then may one guarded D1 update point to accepted proof. A cleanup or final read-back failure records `review_failure` and leaves no accepted pointer.
+### Treat a plan limit as a stop, not a transient retry
 
-D1 keeps account, model, effort, route, provider execution result, completion ID, receipt, and proof checks as internal facts. A passed review page hides those execution facts. It still shows semantic content people need: concerns, cited ranges, directional claims, author dispositions, exact-head freshness, and review history. The hidden provider result does not suppress human review content.
+When the confirmed Claude contract reports that the Pro plan limit is reached, normalize it to `plan_limit`. Do not fall back and do not schedule an immediate automatic retry. If the provider gives a trustworthy reset or retry-after time, save it as `retry_not_before` and reject retry allocation before it. If no trustworthy time exists, only the existing operator-triggered stage retry may try again after capacity is expected to return. Every retry still uses the same frozen Claude profile and current attempt limits.
 
-A failed or stopped page shows only `auth_failure`, `plan_limit`, or `review_failure`. It shows no raw provider text or partial semantic output. Settings may show the fixed setup, but not account identity, auth detail, provider replies, or API billing state.
-
-One broad page payload was considered and rejected because proof and review content have different disclosure rules.
-
-### Guard canary allocation and promotion
-
-The Claude definition is first deployed and registered as non-default. A trusted operator creates one expiring D1 canary authorization. It binds one test Linear issue ID, project route revision and digest, repository, and exact definition digest. It is not shown in Settings.
-
-Normal signed Linear ingress and Queue dispatch process the test event. The guarded run insert selects the non-default definition only if every field matches. It consumes the authorization and saves the run ID in the same transaction. An expiry, mismatch, replay, or second issue cannot select the unproved definition.
-
-A failed canary never rearms or reuses its consumed authorization. If current rules allow a same-run stage retry, that is the first recovery path; it uses the run's frozen definition and needs no new canary authorization. If no eligible same-run retry remains and the canary run reaches its existing terminal failed or canceled outcome, an allowed Access operator may create one fresh expiring authorization only after its Sandbox and auth cleanup both read back as `destroyed`. The replacement binds a fresh eligible test issue, the current route revision and digest, repository, and the same unchanged definition digest. If the definition changed, its prior test evidence is stale and the release starts again from contract checks and a new authorization. Failed canary runs and consumed authorizations remain immutable audit records and cannot enter release proof. Only one unconsumed authorization or nonterminal canary run may exist for a definition and route at a time.
-
-After the canary, a trusted release verifier creates one immutable release-proof record. It binds the definition digest, consumed authorization, canary run, accepted review and invocation claim, hash-checked D1 and R2 read-back, and sanitized Settings and review-state image hashes. Its status becomes `verified` only when every required item matches.
-
-Promotion is a protected RouteAdmin operation for an allowed Access operator. Its transaction takes the expected route revision, definition digest, and release-proof ID. It checks that proof is `verified`, belongs to the same canary and definition, and has not been used. It then marks the definition selectable, advances the route control revision, consumes the proof for promotion, and writes an audit row atomically. Trusted code reads the route back and requires the new digest and revision before reporting success. A missing image, stale revision, changed digest, used proof, or failed read-back leaves the definition non-default.
-
-Making the definition a normal choice before proof was considered, but it could expose an unproved flow. A direct request was rejected because it would not prove the deployed path.
-
-### Keep gate and retry semantics
-
-A valid Claude result completes outside review even when it has concerns. Concerns remain advice. Existing author response and human gates still follow. The review cannot approve a gate.
-
-Auth, plan-limit, provider, result, proof, stale, or ambiguous failures create no accepted review. A retry follows current limits, counts an ambiguous call as a used attempt, uses the same frozen profile, and starts only after cleanup is proved. It never falls back to another model, provider, API key, or paid route.
-
-`plan_limit` is quota-bound, not a transient invocation failure. It ends the current attempt and never schedules an immediate automatic retry. If the confirmed Claude contract supplies a trustworthy reset time or retry-after value, the adapter normalizes it to `retry_not_before` and trusted allocation rejects a retry before that time. If no trustworthy time exists, only the existing operator-triggered stage retry may try again after capacity is expected to be restored; the workflow does not poll or spend another attempt on its own. Such a retry still counts against all current attempt and stop limits and uses the same Claude Pro profile. Other review failures keep the current retry eligibility rules.
+Treating quota exhaustion like a network error was considered and rejected because it could consume more attempts without available plan capacity.
 
 ## Event flow
 
-1. A new run selects the Claude definition through the released default or an exact one-time canary authorization. The allocator freezes the definition digest, fixed profile, allowed fingerprint, scheme, and key version.
-2. At a plan or design review node, the coordinator loads D1 authority and builds the unchanged contract with the exact input manifest and head.
-3. The coordinator allocates one direction-specific attempt and retry ordinal. It saves the execution owner, opens a leased auth checkout, and creates a claim keyed by that attempt, ordinal, input, and head.
-4. A fresh read-only Sandbox starts with a new client home, config, conversation, scoped model channel, and no history or provider credential. The second direction cannot see the first.
-5. The runner builds the Claude environment from an empty allowlist. The pre-exec guard rejects ambient API credentials, endpoints, user config, and overrides before the claim moves to `started`.
-6. The runner invokes Claude Opus 5 at high effort through the local account session. Heartbeats renew the lease. Tool work stays in the current read-only harness.
-7. The adapter normalizes completion facts and the stable account subject. It writes the receipt against the claim, or leaves an expired `started` claim for fail-closed reconciliation.
-8. Validation checks fingerprints, route facts, input, head, output schema, proof rules, and secret scan. Hash-checked R2 proof moves the attempt only to `validated_pending_cleanup`.
-9. The runner removes the Claude process, auth namespace, client state, and Sandbox. Trusted cleanup reads both records back as `destroyed`, then re-reads the exact R2 manifest for final integrity.
-10. Only a guarded D1 update after cleanup and final integrity may accept the review. Acceptance then follows the current author-response and human-gate path. Any stopped, failed, ambiguous, cleanup-unproved, or integrity-unproved review has no accepted pointer and cannot advance.
-11. An allowed retry consumes the prior attempt budget, increments the retry ordinal, allocates a new attempt ID, and creates a new claim only after cleanup is `destroyed`. A `plan_limit` retry also waits until a trustworthy `retry_not_before`, or for an operator-triggered retry when the provider supplies no safe reset time; it is never automatic.
+1. A new run selects the released Claude workflow version. The current allocator freezes its definition digest and the fixed Claude review profile. An older run keeps its OpenRouter profile.
+2. At an outside plan or design review node, the current coordinator loads D1 authority and builds the unchanged exact-input, exact-head review contract.
+3. The current attempt allocator creates one direction-specific review attempt and a fresh read-only Sandbox. The Sandbox receives an attempt-scoped model capability, not provider auth.
+4. The Claude adapter asks the trusted runner to start the confirmed Claude client contract. The runner checks out the encrypted local auth JSON into attempt-local storage and starts with a minimal environment that rejects paid API and provider overrides.
+5. Claude runs Opus 5 with high effort through the Pro account. The adapter normalizes the observed provider facts and existing semantic result shape.
+6. The existing validator checks the fixed profile, input digest, head, result schema, stale rules, proof rules, and secret scan. It writes and hash-reads the R2 proof.
+7. Existing cleanup removes the Sandbox and attempt-local auth. Only after cleanup and proof checks pass does D1 point to the accepted review.
+8. The current author-response and human-gate path continues unchanged. A concern cannot approve the gate.
+9. Auth, plan-limit, invocation, result, proof, stale, or cleanup failure leaves no accepted review. A retry can start only through the current retry rules, with a new attempt and the same frozen Claude profile.
 
 ## Minimal data model
 
-The logical fields below may use existing repository naming, but their values and guards are required.
+Use existing records and names where possible. Add only fields that the current schema does not already hold.
 
-| Record | Required data | Constraint |
+| Record | Minimum data | Rule |
 | --- | --- | --- |
-| Frozen review profile | definition, provider, model, effort, billing route, fallback, allowed fingerprint, scheme, key version | Immutable. Old runs retain old values and keys. |
-| Review attempt | attempt, run, stage, round, direction, retry ordinal, input, head, copied profile, observed fingerprint, status, safe cause, optional retry-not-before and signal source, proof hashes | Acceptance requires `validated_pending_cleanup`, both cleanup records `destroyed`, and final manifest read-back. When a trustworthy plan-limit reset time exists, retry cannot allocate before it. |
-| Invocation claim | stable claim ID, retry ordinal, attempt, input and head, status, started time, provider request or completion ID, receipt hash, ambiguity cause | Exact replay reuses the claim. A retry has a new ordinal and attempt. Ambiguity consumes the attempt. |
-| Auth checkout | attempt, encrypted object and ETag, Sandbox and runner IDs, process slot, namespace, lease and heartbeat, cleanup receipt and state | Contains no auth value. `destroyed` needs matching owner and provider read-back. |
-| Canary authorization | authorization ID, test issue, route revision and digest, repository, definition, expiry, optional replaced authorization, consumed run | One-time. Consumption and run allocation are atomic. At most one unconsumed authorization or nonterminal canary run exists per definition and route. |
-| Release proof and promotion | definition, canary, accepted review and claim, data and image hashes, verification, operator, route revision | Promotion requires verified proof and consumes it in the route transaction. |
-| R2 review proof | receipt, semantic result, provider result, validation, input binding, SHA-256 manifest | Create-only and read back before acceptance. No auth or raw account ID. |
+| Frozen run review profile | definition digest, provider, model, effort, route, fallback | Immutable for the run. New Claude runs ignore the old OpenRouter setting. |
+| Review attempt | attempt ID, run, stage, round, direction, input digest, head, status, safe stop cause, optional `retry_not_before` | Existing replay and retry rules apply. No accepted result for a stopped or failed attempt. |
+| Provider receipt | attempt ID, observed model, effort, route, terminal result, provider completion ID when available | Built from confirmed provider facts, not configuration alone. Contains no auth or raw account identity. |
+| Review proof | normalized receipt, semantic result, validation record, input binding, hashes | Stored through the existing create-only R2 manifest and hash read-back. |
+| Auth checkout | existing encrypted object version, attempt owner, lease and cleanup state | Trusted-runner only. Stores no decrypted auth value in D1 or proof. |
 
-The old OpenRouter setting remains only for audit and frozen runs. The new allocator does not read it. No old record is relabeled.
+No separate canary authorization, promotion record, account-fingerprint table, or new proof store is required. The existing immutable definition, route revision, attempt, cleanup, D1, and R2 records remain authoritative.
 
 ## Failure modes
 
-| Failure | Durable outcome | Gate and retry behavior |
+| Failure | Durable result | Behavior |
 | --- | --- | --- |
-| Auth is missing, expired, revoked, invalid, or has the wrong account fingerprint | `auth_failure`; no accepted result | No gate. Retry only under current rules and route. |
-| Claude reports the Pro plan limit with a trustworthy reset signal | `plan_limit` plus internal `retry_not_before` and signal source | No fallback or gate. Reject retry allocation before that time; never retry automatically. |
-| Claude reports the Pro plan limit without a trustworthy reset signal | `plan_limit` with no retry time | No fallback, gate, polling, or automatic retry. Only the existing operator-triggered retry may try later, within current limits and on Claude Pro. |
-| Claude environment has an ambient key, endpoint, inherited config, or override | `review_failure` before provider contact | Start no process and send no provider byte. |
-| Provider call, tool loop, result, or proof fails | `review_failure` | Keep safe internal detail; show only the cause. |
-| Receipt disagrees with account, model, effort, route, input, or attempt | `review_failure` | Configured values cannot replace provider proof. |
-| Review asks for another route, model, effort, or key | `review_failure` before acceptance | Supply no key and start no fallback. |
-| Exact input or head is stale | Existing stale outcome; no acceptance | Rebuild only through current flow rules. |
-| R2 write, hash read-back, D1 commit, or secret scan fails | `review_failure`; no accepted pointer | Reuse only a verified create-only object. |
-| Sandbox or auth cleanup, destruction read-back, or final manifest integrity is unproved | `review_failure`; remain unaccepted | Do not enter author response or the human gate. |
-| Runner crashes or loses its auth heartbeat | Cleanup stays unproved; reconciler stops the saved owner and records matching destruction proof | No invocation retry before `destroyed`. |
-| Claim is `started` without a durable receipt | Reconcile by confirmed lookup or stop as `review_failure` and consume the attempt | Exact replay never calls Claude. |
-| A direction tries to resume or read another direction | Reject before provider contact | Use a new home, config, conversation, claim, and capability. |
-| Auth refresh races with an attempt | Attempt keeps its source ETag | A stale writer cannot replace a newer snapshot. |
-| Fingerprint key rotates during a run | Use the frozen scheme and key version | Retain old keys through run and audit retention. |
-| Canary guard is absent, stale, mismatched, or consumed | Do not allocate the non-default definition | Ordinary runs keep the released definition. |
-| A canary consumes its authorization and then fails | Keep the failed run and authorization as audit records; create no release proof | Use an eligible same-run retry first. After the run is terminal with no eligible retry and cleanup is proved, an operator may authorize one fresh issue for the same unchanged definition. Never rearm automatically. |
-| Release proof is incomplete, stale, mismatched, used, or not read back | Do not promote | Keep the definition non-default and audit the result. |
-| Frozen OpenRouter run resumes | Restore its saved path and labels | Do not migrate or relabel it. |
-| Passed review is rendered | Show semantic content, but no provider execution facts | Internal proof stays on trusted evidence paths. |
+| Local auth JSON is missing, expired, revoked, invalid, or for the wrong account | `auth_failure` | No accepted proof or gate. Retry only through current rules. |
+| An Anthropic API key, OpenRouter key, alternate endpoint, or provider override is present | `review_failure` before provider contact | Reject the attempt; do not use paid or fallback service. |
+| Claude reports a Pro plan limit with a trustworthy reset time | `plan_limit` with `retry_not_before` | No gate, fallback, automatic retry, or retry before the saved time. |
+| Claude reports a Pro plan limit without a trustworthy reset time | `plan_limit` | No polling or automatic retry. A later operator-triggered retry may use current rules. |
+| The client cannot prove model, effort, route, account, or terminal result | `review_failure` | Do not accept configured values as proof. Return planning for revision if this is a contract limitation. |
+| Provider call, tool loop, or result validation fails | `review_failure` | Show only the safe failure class; preserve no partial accepted review. |
+| Result input or head is stale | Existing stale result | Rebuild only through the current flow. |
+| R2 write/read-back, D1 update, secret scan, or cleanup check fails | `review_failure` | Leave no accepted D1 pointer and do not enter the gate. |
+| Workflow replays an attempt | Existing attempt result is reused | Never start a second provider call for the same attempt. |
+| Invocation outcome is ambiguous after interruption | `review_failure` unless confirmed lookup recovers the same call | Consume the attempt; only an allowed new retry may call again. |
+| A frozen OpenRouter run resumes | Existing saved provider path | Do not migrate or relabel it. |
+| Claude returns valid concerns | Accepted semantic review with concerns | Continue to author response and the unchanged human gate; do not auto-approve. |
 
 ## Risks / Trade-offs
 
-- [Claude may not expose a trustworthy account, route, effort, or lookup signal] → Confirm the primary contract first. Stop and revise the plan if acceptance proof is impossible.
-- [A runner can inherit a paid API credential] → Build its process environment from an empty allowlist and reject API settings before exec.
-- [A runner can crash while auth is decrypted] → Save an addressable owner, use a short lease, destroy its namespace, require provider read-back, and gate retries.
-- [A call can finish before its receipt is durable] → Key the claim by retry ordinal and attempt, block exact replay, reconcile by provider ID when supported, and otherwise fail closed while consuming the attempt.
-- [Proof can validate while secret-bearing resources are live] → Hold `validated_pending_cleanup`, require both destruction read-backs, then re-read proof before acceptance.
-- [Local auth formats may change] → Isolate parsing in the trusted adapter and keep durable fields provider-neutral.
-- [The fixed setup reduces operator choice] → Treat that as a safety property. Another route needs a reviewed definition.
-- [A real canary can consume plan capacity or fail after its authorization is used] → Keep one authorization or canary run live at a time, use eligible same-run retry first, preserve the failed audit record, and allow a fresh bound issue only after the old run and cleanup are terminal.
-- [Old proof and HMAC keys add retention cost] → Select both from the frozen profile and retain them for the audit period.
+- [The approved local auth JSON may not support the required non-interactive Pro route] → Verify the primary client contract first and revise planning if it instead requires a setup token.
+- [The provider may not expose trustworthy model, effort, route, or account facts] → Fail closed rather than claim unproved billing or model behavior.
+- [Ambient credentials could select paid API billing] → Start from a minimal runner environment and reject API keys, alternate endpoints, and overrides before contact.
+- [A call may finish while the runner loses its response] → Reconcile only through a confirmed same-invocation lookup; otherwise consume the attempt and use the existing retry path.
+- [A plan limit may last longer than the workflow retry window] → Do not retry automatically; enforce a trustworthy reset time or require the existing operator-triggered retry.
+- [Old and new provider records coexist] → Select the adapter from the frozen workflow definition and preserve the original provider label in historical proof.
 
 ## Migration Plan
 
-1. Inspect the primary Claude client contract with the set Pro account. Record the stable subject, model and effort controls, auth behavior, result facts, lookup support, and safe auth and limit signals. Stop if account, route, or proof rules cannot be met.
-2. Add the provider-neutral profile, fingerprint scheme and key version, invocation claims, release proof, canary authorization, addressable auth checkout, and crash reconciler. Keep old rows readable.
-3. Add the Claude adapter behind the current model channel. Give each direction isolated client state and a sanitized process environment. Keep the contract builder, validator, rounds, retries, stop rules, and gates.
-4. Change Settings to show the fixed setup and remove the OpenRouter choice for the new flow. Ignore any old saved choice.
-5. Test both review stages, ambient-key rejection, wrong auth, fingerprint rotation, direction isolation, plan limit with and without a reset signal, rejection before `retry_not_before`, no automatic quota retry, bad result, exact replay versus a new retry claim, ambiguous replay, cleanup-before-acceptance, owner cleanup, retry gating, failed-canary replacement, canary allocation and promotion, and old runs.
-6. Deploy and register the immutable Claude definition as non-default. Read back the deployed version at full traffic.
-7. Create one expiring authorization for an exact test issue, route proof, repository, and definition. Trigger it through normal signed Linear ingress and Queue dispatch.
-8. Run one real outside review. The release verifier binds safe D1 and R2 read-back and sanitized images to the canary, accepted claim, exact input, account, Opus 5, high effort, result, and Pro route.
-9. If the canary fails after allocation, leave the definition non-default and keep the authorization consumed. Wait for Sandbox and auth destruction proof and any trustworthy quota reset. An allowed same-run stage retry uses the frozen definition and no new authorization. If no eligible retry remains and the run reaches its existing terminal failed or canceled outcome, an allowed Access operator may create one fresh authorization for a fresh test issue, the current route proof, and the same unchanged definition digest, then repeat steps 7 and 8. A changed definition restarts at step 1.
-10. An allowed Access operator promotes the exact digest through guarded RouteAdmin. Require verified proof, atomic route revision, audit, and read-back. If any check fails, leave it non-default. Never reroute an active Claude attempt to OpenRouter or paid API use.
+1. Inspect the primary Claude client contract with the set Pro account. Confirm the approved local auth JSON path, exact Opus 5 selector, high-effort control, safe provider facts, and auth and plan-limit signals. Explicitly test whether the setup-token environment route proposed in review is distinct; do not substitute it without an approved planning revision.
+2. Add the thin Claude adapter behind the current model channel. Reuse the current coordinator, attempt allocation, review contract, validator, D1/R2 proof, cleanup, retry, and gate code.
+3. Add deterministic tests based on the observed contract for plan and design review, exact profile enforcement, ambient-key rejection, expired auth, plan limits with and without reset time, bad or stale results, replay, cleanup failure, old frozen runs, and no fallback.
+4. Update Settings for the new workflow version to show the fixed Claude setup and remove the OpenRouter selector. Keep historical data readable.
+5. Deploy and register the immutable Claude workflow version without moving active runs. Use the existing route controls to select it for a dedicated test run.
+6. Trigger a real review through normal signed Linear ingress, Queue dispatch, and the deployed Workflow. Capture D1 and hash-checked R2 read-back plus sanitized provider-setup and resulting-state screenshots. A mock or direct Worker request is only synthetic proof and does not complete this step.
+7. Make the new definition the default only after the real review proves the exact input, Opus 5, high effort, Claude Pro route, valid result, and cleanup. If proof fails, keep the prior definition as the default.
+
+Rollback changes the default for later runs back to the prior immutable workflow definition. It does not reroute an active Claude attempt or rewrite completed proof. A frozen Claude run either completes under its saved definition or stops under the existing failure and retry rules; it never falls back to OpenRouter or paid API use.
