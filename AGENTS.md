@@ -1,5 +1,18 @@
 # Agent guidance
 
+## Preserve original errors
+
+- Never swallow errors or replace them with generic messages that discard the
+  original cause. No empty catches, silent fallbacks, or success-shaped results
+  after a failure.
+- Preserve the original error message, stack, cause chain, and relevant operation
+  context in durable diagnostics before marking a workflow failed or cleaning up
+  its runtime. Redact secrets without erasing the evidence needed to diagnose it.
+- A safe public error code may accompany the original error; it must never be
+  the only evidence retained. When wrapping an error, retain its original cause.
+- Handle only errors the code can actually recover from. Propagate unexpected
+  failures. Cleanup or diagnostic-write failures must not mask the primary error.
+
 ## Demo-first delivery
 
 Before implementing an integration, inspect the provider's primary contract

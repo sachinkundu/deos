@@ -104,6 +104,63 @@ const receipt = () => validateClaudeTurn({ attemptId: "attempt", turn: 0, inputS
       modelUsage:{"claude-opus-5":{canonicalModel:"claude-opus-5",provider:"firstParty"}} },
   ] });
 
+test("Claude tool failures retain original SDK causes in D1 and R2 without exposing credentials", async () => {
+  const { ClaudeRunner } = await import("../src/claude-runner.ts");
+  const { digest } = await import("../src/claude-review.ts");
+  const { captureWorkflowErrors } = await import("../src/error-context.ts");
+  for (const mode of ["sdk", "exit"] as const) {
+    const { db, store } = setup();
+    const saved = new Map<string, string>();
+    const bucket = { async put(key: string, value: string) { saved.set(key, value); } };
+    const credential = 'secret-with-"quotes';
+    const job = { modelProvider: "claude", model: "claude-opus-5", reasoning: "high", agentRole: "reviewer",
+      permissionProfile: "review_read_only", openspecChange: "sample", reviewKind: "design",
+      claudeReviewSources: [{ path: "design.md", sha256: "a".repeat(64) }] };
+    const encoded = JSON.stringify(job);
+    try {
+      db.sqlite.prepare("UPDATE agent_attempts SET job_spec_json=?,job_spec_digest=?,absolute_deadline=? WHERE attempt_id='attempt'")
+        .run(encoded, await digest(encoded), new Date(Date.now() + 60_000).toISOString());
+      await store.claim({ attemptId: "attempt", runnerId: "runner", jobDigest: await digest(encoded), enrollment });
+      await store.started("attempt", "process");
+      const original = Object.assign(new Error(`Sandbox transport reset ${credential}`, {
+        cause: new Error("socket disconnected"),
+      }), { code: "CONNECTION_RESET", credential, capability: "request-capability", signingKey: "signing-secret" });
+      const runner = new ClaudeRunner({ db: db as unknown as D1Database, store,
+        token: credential, secretVersion: "one", signingKey: "signing-secret",
+        sandboxes: { get() { return { async exec() {
+          if (mode === "sdk") throw original;
+          return { async output() { return { exitCode: 7, truncated: false, timedOut: false,
+            stdout: "", stderr: "snapshot hash mismatch", }; } };
+        } }; } } as never });
+      const claims = { actions: ["model.claude_review"], modelProvider: "claude", model: "claude-opus-5",
+        reasoning: "high", attemptId: "attempt" } as never;
+      const result = await captureWorkflowErrors(db as unknown as D1Database, bucket as unknown as R2Bucket,
+        "run", "/capabilities/claude/tools", () => runner.handle("/claude/tools", { command: "cat design.md" },
+          claims, "request-capability", "https://service/capabilities"));
+      assert.equal(result.status, 409);
+      assert.deepEqual(await result.json(), { error: "review_failure", retryNotBefore: null });
+      const row = db.sqlite.prepare("SELECT message,location,detail_r2_key FROM workflow_errors").get()!;
+      const raw = saved.get(String(row.detail_r2_key))!;
+      const detail = JSON.parse(raw);
+      assert.equal(row.location, "src/claude-runner.ts:handle:tools");
+      assert.equal((await store.invocation("attempt"))?.state, "failed");
+      if (mode === "sdk") {
+        assert.equal(row.message, "Sandbox transport reset [REDACTED]");
+        assert.equal(detail.cause.message, "socket disconnected");
+        assert.equal(detail.code, "CONNECTION_RESET");
+        assert.match(detail.stack, /Sandbox transport reset/);
+        assert.equal(detail.credential, "[REDACTED]");
+        assert.equal(detail.capability, "[REDACTED]");
+        assert.equal(detail.signingKey, "[REDACTED]");
+      } else {
+        assert.equal(detail.exitCode, 7);
+        assert.equal(detail.stderr, "snapshot hash mismatch");
+        assert.equal(detail.command, "cat design.md");
+      }
+    } finally { db.close(); }
+  }
+});
+
 test("only one invocation claim wins, and an interrupted claim cannot be reset", async () => {
   const { db, store } = setup();
   try {
