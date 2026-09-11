@@ -14,7 +14,7 @@ export const readCommand = (command) => {
   return { op, args };
 };
 
-export const readSnapshot = async ({ op, args }, state) => {
+export const readSnapshot = async ({ op, args }, state, sourceRoot = "/deos/workspace/repository") => {
   const context = JSON.parse(state.reviewJob.materializedContext);
   const root = `openspec/changes/${state.change}/`;
   const allowed = state.phase === "design" ? context.designReview.sources.map((source) => source.path) :
@@ -29,7 +29,7 @@ export const readSnapshot = async ({ op, args }, state) => {
   };
   const read = async (name) => {
     name = normalize(name);
-    const file = `/deos/workspace/repository/${name}`;
+    const file = `${sourceRoot}/${name}`;
     const stat = await lstat(file);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("review source is not a regular file");
     const bytes = await readFile(file);
