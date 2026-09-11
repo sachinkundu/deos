@@ -52,6 +52,7 @@ interface OpenRouterCapabilityRequest {
 }
 
 export interface CapabilityRouterDependencies {
+  claude?: Pick<import("./claude-runner.ts").ClaudeRunner, "handle">;
   store: CapabilityStore;
   github: GitHubCapabilityAdapter;
   githubForInstallation?: (installationId: string) => GitHubCapabilityAdapter;
@@ -364,6 +365,10 @@ export class CapabilityRouter {
     } catch (caughtError) {
       recordCaughtError(caughtError, "src/capability-router.ts:360");
       return json(400, { error: "invalid_json" });
+    }
+    if (path.includes("/claude/")) {
+      if (!this.dependencies.claude) return json(503, { error: "review_failure" });
+      return this.dependencies.claude.handle(path, untrusted, claims, token, request.url.slice(0, request.url.indexOf("/claude/")));
     }
     if (path.endsWith("/github")) {
       const planningInput = parsePlanningRequest(untrusted);

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { claudeReviewJudgment, finishClaudeReview } from "./claude-review-adapter.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -92,9 +93,14 @@ const codexJudgment = async ({
   capabilityUrl = null,
   capabilityToken = null,
   attemptId = null,
+  deadline = null,
 }) => {
   if (process.env.DEOS_NATIVE_REVIEW_ROOT) {
     return nativeReviewJudgment({ prompt, schema, model, reasoning, sessionId });
+  }
+  if (modelProvider === "claude") {
+    return claudeReviewJudgment({ job: { model, reasoning, capabilityUrl, capabilityToken, attemptId, deadline },
+      prompt, schema: JSON.parse(await readFile(schema, "utf8")), sessionId });
   }
   const args = codexReviewArgs({
     sessionId,
@@ -189,6 +195,7 @@ const recheckJudgment = async ({ job, inventory, temporary }) => {
     capabilityUrl: job.capabilityUrl,
     capabilityToken: job.capabilityToken,
     attemptId: job.attemptId,
+    deadline: job.deadline,
   });
   const result = reviewResultPayload(job.modelProvider, generated);
   if (
@@ -225,6 +232,7 @@ const recheckJudgment = async ({ job, inventory, temporary }) => {
   const providerReceipts = job.modelProvider === "openrouter"
     ? await collectOpenRouterReceipts(job)
     : [];
+  await finishClaudeReview(job);
   await writeFile(`${OUTPUT_ROOT}/result.json`, `${JSON.stringify({
     outcome: "completed",
     reviewOutcome: findingCount === 0 ? "pass" : "findings",
@@ -365,7 +373,7 @@ const main = async () => {
     job.agentRole !== "reviewer" || job.agentHarness !== "codex" ||
     job.agentHarnessVersion !== "0.147.0" ||
     job.permissionProfile !== "review_read_only" ||
-    !["codex", "openrouter"].includes(job.modelProvider) ||
+    !["codex", "openrouter", "claude"].includes(job.modelProvider) ||
     typeof job.model !== "string" || typeof job.reasoning !== "string" ||
     !["discovery", "recheck"].includes(job.reviewMode) ||
     typeof job.materializedContext !== "string" ||
@@ -434,6 +442,7 @@ const main = async () => {
             capabilityUrl: job.capabilityUrl,
             capabilityToken: job.capabilityToken,
             attemptId: job.attemptId,
+            deadline: job.deadline,
           });
           return { raw: generated.result, sessionId: generated.sessionId };
         },
@@ -488,6 +497,7 @@ const main = async () => {
     const providerReceipts = job.modelProvider === "openrouter"
       ? await collectOpenRouterReceipts(job)
       : [];
+    await finishClaudeReview(job);
     await writeFile(`${OUTPUT_ROOT}/result.json`, `${JSON.stringify({
       outcome: "completed",
       reviewOutcome: traceability.review.overall,

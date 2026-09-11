@@ -626,12 +626,16 @@ function SettingsPanel() {
         </div>
         <div className="settings-card">
           <div className="card-heading"><div><h2>Independent review</h2><p>This model is frozen into each new traceability run.</p></div><span className="guard">Future runs</span></div>
+          {selected.definitionId === "simple-traceability-claude" ? (
+            <p><strong>Claude Opus 5 · High effort</strong><br />Fixed for new runs on this workflow.</p>
+          ) : <>
           <label htmlFor="independent-review-model">Review model</label>
           <select id="independent-review-model" value={independentModel} onChange={(event) => setIndependentModel(event.target.value)} disabled={busy}>
             {overview?.supportedReviewModels.map((model) => <option value={model} key={model}>{model}</option>)}
           </select>
           <p>The provider key stays in the trusted Worker. Active runs keep their saved model.</p>
           <div className="settings-actions"><button type="button" onClick={() => void work(() => routeMutation<RepositoryRoute>(`/api/settings/routes/${selected.projectId}/review`, "PUT", { model: independentModel, expectedRevision: selected.independentReviewRevision }), "Review model saved for future runs.")} disabled={busy || independentModel.length === 0 || independentModel === selected.independentReviewModel}>Save review model</button></div>
+          </>}
         </div>
       </div>
       <div className="connection-card">
@@ -854,9 +858,14 @@ function DesignReviewPage({ runId }: { runId: string }) {
 function RunErrors({ projection }: { projection: Projection }) {
   const all = [...(projection.errors ?? []), ...(projection.legacyErrors ?? [])];
   const { failed, current, historical } = separateErrors(all, projection.run);
+  const claudeFailures: Record<string, string> = {
+    auth_failure: "Claude sign-in failed. Check the enrolled setup token.",
+    plan_limit: "Claude included usage limit reached. Retry after the plan resets.",
+    review_failure: "Claude review could not be verified.",
+  };
   const renderError = (error: FailureDetail) => <article key={error.id}>
     <h3>{workflowStepLabel(error.step)} · {formatTime(error.occurredAt)}</h3>
-    <pre>{error.message || `${error.category ?? "Failure"} — the original error was not recorded by this version of DEOS.`}</pre>
+    <pre>{claudeFailures[error.message ?? ""] || error.message || `${error.category ?? "Failure"} — the original error was not recorded by this version of DEOS.`}</pre>
     {error.detailUrl && <a href={error.detailUrl} target="_blank" rel="noreferrer">Full original error, stack and causes</a>}
   </article>;
   const status = projection.run.status;

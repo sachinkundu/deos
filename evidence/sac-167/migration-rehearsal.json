@@ -1,0 +1,12 @@
+{
+  "scope": "Production snapshot migration rehearsal",
+  "rowsPreserved": {
+    "design_review_rounds": 14,
+    "design_review_attempts": 55,
+    "design_review_findings": 156,
+    "design_review_dispositions": 79,
+    "design_gate_bindings": 13,
+    "orchestration_runs": 76
+  },
+  "foreignKeyViolations": 0
+}

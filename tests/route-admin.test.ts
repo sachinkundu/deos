@@ -173,8 +173,8 @@ test("creating a route pairs only provider-listed ids and records a disabled rou
     linear: { listProjects: async () => [project] } as unknown as LinearCapabilityAdapter,
     github: { list: async () => [installation] } as unknown as GitHubAppCatalog,
     loadDefinitions: async () => ({
-      "simple-traceability": {
-        name: "simple-traceability",
+      "simple-traceability-claude": {
+        name: "simple-traceability-claude",
         version: 13,
         digest: "a".repeat(64),
       } as LoadedWorkflowDefinition,

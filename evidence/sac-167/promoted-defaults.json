@@ -1,0 +1,35 @@
+[
+  {
+    "project": "sachinkundu/deos-sample-project",
+    "definition": "simple-traceability-claude",
+    "version": 24,
+    "digest": "3fffb452df0c533e5619c73b27916c2e3e41fe36291d46ea7fd5b8ad5b0f47b4",
+    "workflowRevision": 8,
+    "routeRevision": 13,
+    "routeDigestVerified": true,
+    "retainedLegacyProvider": "openrouter",
+    "retainedLegacyModel": "deepseek/deepseek-v4-pro"
+  },
+  {
+    "project": "sachinkundu/deos-sample-project-2",
+    "definition": "simple-traceability-claude",
+    "version": 24,
+    "digest": "3fffb452df0c533e5619c73b27916c2e3e41fe36291d46ea7fd5b8ad5b0f47b4",
+    "workflowRevision": 5,
+    "routeRevision": 12,
+    "routeDigestVerified": true,
+    "retainedLegacyProvider": "openrouter",
+    "retainedLegacyModel": "deepseek/deepseek-v4-pro"
+  },
+  {
+    "project": "sachinkundu/deos",
+    "definition": "simple-traceability-claude",
+    "version": 24,
+    "digest": "3fffb452df0c533e5619c73b27916c2e3e41fe36291d46ea7fd5b8ad5b0f47b4",
+    "workflowRevision": 3,
+    "routeRevision": 10,
+    "routeDigestVerified": true,
+    "retainedLegacyProvider": "openrouter",
+    "retainedLegacyModel": "deepseek/deepseek-v4-pro"
+  }
+]

@@ -11,7 +11,7 @@ export const FINDING_RESOLUTIONS = [
 export type TraceReviewStage = typeof TRACE_REVIEW_STAGES[number];
 export type TraceReviewMode = typeof TRACE_REVIEW_MODES[number];
 export type FindingResolution = typeof FINDING_RESOLUTIONS[number];
-export type TraceReviewProvider = "codex" | "openrouter";
+export type TraceReviewProvider = "codex" | "openrouter" | "claude";
 
 export interface TraceReviewModel {
   harness: "codex";
@@ -198,14 +198,14 @@ export const reviewInputId = async (input: TraceReviewInput): Promise<string> =>
   for (const model of [input.author, input.reviewer]) {
     if (model.harness !== "codex") throw new Error("review agent harness is invalid");
     assertSafeText(model.harnessVersion, "review agent harness version", 80);
-    if (!(["codex", "openrouter"] as const).includes(model.provider)) throw new Error("review model provider is invalid");
+    if (!(["codex", "openrouter", "claude"] as const).includes(model.provider)) throw new Error("review model provider is invalid");
     assertSafeText(model.model, "review model", 240);
     assertSafeText(model.reasoning, "review reasoning", 80);
   }
   if (input.stage === "self_check" && JSON.stringify(input.author) !== JSON.stringify(input.reviewer)) {
     throw new Error("self-check model must match the author model");
   }
-  if (input.stage === "independent" && input.reviewer.provider !== "openrouter") {
+  if (input.stage === "independent" && !["openrouter", "claude"].includes(input.reviewer.provider)) {
     throw new Error("independent review must use OpenRouter");
   }
   if (input.stage === "independent" && input.reviewer.model === input.author.model) {

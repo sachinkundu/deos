@@ -1,0 +1,13 @@
+{
+  "trial": "fresh JSON login after successful model invocation",
+  "exitCode": 0,
+  "accountIdentifierPresent": true,
+  "emailPresent": true,
+  "authUnchanged": true,
+  "status": {
+    "loggedIn": true,
+    "authMethod": "claude.ai",
+    "apiProvider": "firstParty",
+    "subscriptionType": "pro"
+  }
+}

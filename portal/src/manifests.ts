@@ -110,7 +110,7 @@ const fullStageForNode = (nodeId: string): string => {
 };
 
 const stageForNode = (definition: LoadedWorkflowDefinition, nodeId: string): string => {
-  if (definition.name === "simple" || definition.name === "simple-traceability") {
+  if (definition.name === "simple" || ["simple-traceability", "simple-traceability-claude"].includes(definition.name)) {
     return simplifiedStageForNode(nodeId, definition.version);
   }
   if (definition.name === "openspec-delivery") return fullStageForNode(nodeId);
@@ -120,7 +120,7 @@ const stageForNode = (definition: LoadedWorkflowDefinition, nodeId: string): str
 const configuredStages = (definition: LoadedWorkflowDefinition): readonly PresentationStage[] =>
   definition.name === "simple"
     ? SIMPLE_STAGES
-    : definition.name === "simple-traceability"
+    : ["simple-traceability", "simple-traceability-claude"].includes(definition.name)
       ? definition.version >= 17 ? TRACEABILITY_DESIGN_STAGES : TRACEABILITY_STAGES
       : definition.name === "openspec-delivery"
         ? STAGES

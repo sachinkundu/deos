@@ -23,7 +23,7 @@ export interface DesignReviewInput {
   baseCommit: string;
   guidanceManifestSha256: string;
   sources: readonly DesignReviewSource[];
-  modelProvider: "codex" | "openrouter";
+  modelProvider: "codex" | "openrouter" | "claude";
   model: string;
   reasoning: string;
   pullRequestDatabaseId: string | null;
@@ -117,7 +117,7 @@ export const validateDesignReviewInput = async (
       throw new Error("self design review input is invalid");
     }
   } else if (
-    input.modelProvider !== "openrouter" || input.pullRequestDatabaseId === null ||
+    !["openrouter", "claude"].includes(input.modelProvider) || input.pullRequestDatabaseId === null ||
     input.pullRequestDatabaseId.length > 240 || !HEAD_SHA.test(input.headSha ?? "")
   ) throw new Error("independent design review input is invalid");
   const normalized = Object.freeze({ ...input, sources: validateSources(input.sources) });

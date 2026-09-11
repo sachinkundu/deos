@@ -649,6 +649,9 @@ interface SetupOptions {
   candidateRejection?: PlanningCandidateRejectedError;
   reviewAcceptanceError?: Error;
   failureRetentionMs?: number;
+  reuseTraceReview?: ConstructorParameters<typeof SandboxAgentController>[4]["reuseTraceReview"];
+  reuseDesignReview?: ConstructorParameters<typeof SandboxAgentController>[4]["reuseDesignReview"];
+  claude?: ConstructorParameters<typeof SandboxAgentController>[4]["claude"];
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -674,6 +677,9 @@ const setup = (options: SetupOptions = {}) => {
     },
     {
       now: clock,
+      claude: options.claude,
+      reuseTraceReview: options.reuseTraceReview,
+      reuseDesignReview: options.reuseDesignReview,
       attemptId: () => "00000000-0000-7000-8000-000000000001",
       wait: options.wait,
       materializeContext: async () => {
@@ -745,6 +751,10 @@ const setup = (options: SetupOptions = {}) => {
         designCandidates.push(input);
       },
       acceptTraceReview: async ({ collection }) => {
+        if (options.reviewAcceptanceError !== undefined) throw options.reviewAcceptanceError;
+        return String(collection.result.reviewOutcome ?? "pass");
+      },
+      acceptDesignReview: async ({ collection }) => {
         if (options.reviewAcceptanceError !== undefined) throw options.reviewAcceptanceError;
         return String(collection.result.reviewOutcome ?? "pass");
       },
@@ -1602,3 +1612,75 @@ test("a categorized terminal failure replays through the configured failed edge"
   assert.equal(replay.state === "completed" ? replay.outcome.outcome : null, "failed");
   assert.equal(replay.state === "completed" ? replay.outcome.providerReceiptsComplete : true, false);
 });
+
+
+test("completed Claude replay rechecks protected proof without starting another process", async () => {
+  let proofReads = 0;
+  let damaged = false;
+  const state = setup({ claude: {
+    cleanup: async () => {}, failure: async () => "review_failure",
+    saveCollection: async () => {}, collection: async () => null,
+    proof: async () => {
+      proofReads++;
+      if (damaged) throw new Error("receipt hash mismatch");
+      return [{} as import("../src/claude-review.ts").ClaudeReceipt];
+    },
+  } });
+  await state.controller.execute(run, "work", "work", definition);
+  const attempt = state.attempts.latest!;
+  attempt.state = "completed";
+  attempt.result_class = "pass";
+  attempt.manifest_id = "saved-manifest";
+  attempt.job_spec_json = JSON.stringify({ ...JSON.parse(attempt.job_spec_json), modelProvider: "claude", agentRole: "reviewer" });
+  const starts = state.factory.sandbox.commands.length;
+  const replay = await state.controller.execute(run, "work", "work", definition);
+  assert.equal(replay.state, "completed");
+  if (replay.state === "completed") assert.equal(replay.outcome.providerReceiptsPresent, true);
+  damaged = true;
+  await assert.rejects(state.controller.execute(run, "work", "work", definition), /receipt hash mismatch/);
+  assert.equal(proofReads, 2);
+  assert.equal(state.factory.sandbox.commands.length, starts);
+});
+
+
+for (const reviewKind of ["traceability", "design"] as const) {
+  for (const cleaned of [false, true]) {
+    test(`Claude ${reviewKind} resumes durable completion ${cleaned ? "after" : "before"} cleanup without inspecting the process`, async () => {
+      let checkpoint: ArtifactCollectionResult | null = null;
+      let proofReads = 0;
+      const state = setup({
+        reuseTraceReview: async () => { throw new Error("Checkpoint completion must precede reuse"); },
+        reuseDesignReview: async () => { throw new Error("Checkpoint completion must precede reuse"); },
+        claude: {
+        cleanup: async () => {}, failure: async () => "review_failure",
+        saveCollection: async (_attempt, _digest, collection) => { checkpoint = collection; },
+        collection: async () => checkpoint,
+        proof: async () => { proofReads++; return [{} as import("../src/claude-review.ts").ClaudeReceipt]; },
+      } });
+      await state.controller.execute(run, "work", "work", definition);
+      const attempt = state.attempts.latest!;
+      attempt.state = "collecting";
+      attempt.cleanup_state = cleaned ? "destroyed" : "pending";
+      attempt.job_spec_json = JSON.stringify({ ...JSON.parse(attempt.job_spec_json), modelProvider: "claude", agentRole: "reviewer" });
+      // Simulate a Worker interruption after the durable checkpoint, including an expired deadline.
+      attempt.absolute_deadline = "2020-01-01T00:00:00.000Z";
+      checkpoint = { ...await state.collector.collect(), result: { reviewOutcome: "pass" } };
+      state.factory.sandbox.destroyed = cleaned;
+      state.factory.sandbox.files.clear();
+      state.factory.sandbox.getProcess = async () => { throw new Error("Destroyed process must not be read"); };
+      const claudeRun = { ...run, independent_review_provider: "claude", independent_review_model: "claude-opus-5",
+        independent_review_reasoning: "high", independent_review_account_binding: "binding" };
+      const claudeDefinition = { ...definition, jobs: { ...definition.jobs,
+        work: { ...definition.jobs.work, agentRole: "reviewer" as const, modelProvider: "claude" as const, reviewKind } } };
+      const starts = state.factory.sandbox.commands.length;
+      const result = await state.controller.execute(claudeRun, "work", "work", claudeDefinition);
+      assert.equal(result.state, "completed");
+      if (result.state === "completed") assert.equal(result.outcome.outcome, "pass");
+      assert.equal(attempt.state, "completed");
+      assert.equal(attempt.cleanup_state, "destroyed");
+      assert.equal(state.factory.sandbox.commands.length, starts);
+      assert.equal(state.collector.failureCollections, 0);
+      assert.equal(proofReads, 2);
+    });
+  }
+}

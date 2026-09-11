@@ -321,6 +321,11 @@ export const registerBundledWorkflowDefinitions = async (
       });
     }
   }
+  const claude = bundled["simple-traceability-claude"];
+  if (claude !== undefined) {
+    for (const policy of policies) await store.registerSelector({ projectId: policy.project_id,
+      repository: policy.trial_repository, labelName: "DEOS Claude", definition: claude, now });
+  }
   return bundled;
 };
 
@@ -509,7 +514,7 @@ export const processQueueMessage = async (
             labelName,
             selector: await store.findSelector(event.project_id, policy.trial_repository, labelName),
           })))).filter((match) =>
-            match.selector?.enabled === 1 && match.selector.definition_id === "simple-traceability");
+            match.selector?.enabled === 1 && ["simple-traceability", "simple-traceability-claude"].includes(match.selector.definition_id));
       if (selectorMatches.length > 1) throw new CategorizedWorkflowError("correlation_mismatch");
       const selected = selectorMatches[0];
       const selectedDefinition = selected === undefined

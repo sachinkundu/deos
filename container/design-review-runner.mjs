@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { claudeReviewJudgment, finishClaudeReview } from "./claude-review-adapter.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -102,7 +103,7 @@ const main = async () => {
   const job = JSON.parse(await readFile(process.env.DEOS_JOB_PATH ?? "/deos/run/job.json", "utf8"));
   if (
     job.agentRole !== "reviewer" || job.reviewKind !== "design" || job.reviewMode !== "discovery" ||
-    job.permissionProfile !== "review_read_only" || !["codex", "openrouter"].includes(job.modelProvider) ||
+    job.permissionProfile !== "review_read_only" || !["codex", "openrouter", "claude"].includes(job.modelProvider) ||
     typeof job.model !== "string" || typeof job.reasoning !== "string" ||
     typeof job.materializedContext !== "string"
   ) throw new Error("design review job contract is invalid");
@@ -152,6 +153,10 @@ const main = async () => {
           });
           return { raw: generated.result, sessionId: generated.sessionId };
         }
+        if (job.modelProvider === "claude") {
+          const generated = await claudeReviewJudgment({ job, prompt: activePrompt, schema, sessionId });
+          return { raw: generated.result, sessionId: generated.sessionId };
+        }
         const args = codexReviewArgs({
           sessionId,
           cwd: job.cwd,
@@ -199,6 +204,7 @@ const main = async () => {
       `proof repairs ${reviewed.proofRepairCount}`,
     ].join("\n") + "\n");
     const providerReceipts = job.modelProvider === "openrouter" ? await collectOpenRouterReceipts(job) : [];
+    await finishClaudeReview(job);
     await writeFile(`${OUTPUT_ROOT}/result.json`, `${JSON.stringify({
       outcome: "completed",
       reviewOutcome: reviewed.accepted.outcome,

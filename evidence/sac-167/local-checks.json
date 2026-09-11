@@ -1,0 +1,87 @@
+[
+  {
+    "check": "npm test",
+    "exitCode": 0,
+    "summary": [
+      "374 backend tests passed after review fixes; six new regression cases."
+    ]
+  },
+  {
+    "check": "npm run typecheck",
+    "exitCode": 0,
+    "summary": [
+      "",
+      "> typecheck",
+      "> tsc --noEmit",
+      ""
+    ]
+  },
+  {
+    "check": "npm run portal:test",
+    "exitCode": 0,
+    "summary": [
+      "\u2139 tests 69",
+      "\u2139 suites 0",
+      "\u2139 pass 69",
+      "\u2139 fail 0",
+      "\u2139 cancelled 0",
+      "\u2139 skipped 0",
+      "\u2139 todo 0",
+      "\u2139 duration_ms 773.55975"
+    ]
+  },
+  {
+    "check": "npm run portal:typecheck",
+    "exitCode": 0,
+    "summary": [
+      "",
+      "> portal:typecheck",
+      "> tsc --noEmit -p portal/tsconfig.json",
+      ""
+    ]
+  },
+  {
+    "check": "npm run types:check",
+    "exitCode": 0,
+    "summary": [
+      "> types:check",
+      "> wrangler types worker-configuration.d.ts --include-runtime false --config wrangler.queue-consumer-ts.jsonc --check",
+      "",
+      "",
+      " \u26c5\ufe0f wrangler 4.125.0 (update available 4.131.0)",
+      "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+      "\u2728 Types at worker-configuration.d.ts are up to date.",
+      ""
+    ]
+  },
+  {
+    "check": "npm run portal:types:check",
+    "exitCode": 0,
+    "summary": [
+      "> portal:types:check",
+      "> wrangler types portal/src/worker-configuration.d.ts --include-runtime false --config portal/wrangler.jsonc --check",
+      "",
+      "",
+      " \u26c5\ufe0f wrangler 4.125.0 (update available 4.131.0)",
+      "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+      "\u2728 Types at portal/src/worker-configuration.d.ts are up to date.",
+      ""
+    ]
+  },
+  {
+    "check": "Python CI tests",
+    "exitCode": 0,
+    "summary": [
+      "PYTHONPATH=src uv run --no-project --with pytest --with ruff python -m pytest -q",
+      "56 passed in 2.64s"
+    ]
+  },
+  {
+    "check": "Python CI lint",
+    "exitCode": 0,
+    "summary": [
+      "ruff check src tests scripts/portal_release.py scripts/deploy_portal_staging.py scripts/release_portal.py scripts/inspect_portal_rollout.py",
+      "All checks passed!"
+    ]
+  }
+]

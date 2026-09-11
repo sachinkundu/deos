@@ -1,0 +1,64 @@
+{
+  "clientVersion": "2.1.268",
+  "exitCode": 0,
+  "credentialSource": "CLAUDE_SETUP_TOKEN mapped to CLAUDE_CODE_OAUTH_TOKEN",
+  "localLoginCopied": false,
+  "appliedEffort": {
+    "level": "high"
+  },
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "model": "claude-opus-5",
+      "apiKeySource": "none"
+    },
+    {
+      "type": "assistant"
+    },
+    {
+      "type": "rate_limit_event",
+      "rate_limit_info": {
+        "status": "allowed",
+        "resetsAt": 1789131000,
+        "rateLimitType": "five_hour",
+        "overageStatus": "rejected",
+        "overageDisabledReason": "org_level_disabled",
+        "isUsingOverage": false,
+        "unifiedWindows": {
+          "five_hour": {
+            "utilization": 0.01,
+            "resetsAt": 1789131000
+          },
+          "seven_day": {
+            "utilization": 0,
+            "resetsAt": 1789279200
+          }
+        }
+      }
+    },
+    {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "terminal_reason": "completed",
+      "result": "SETUP_TOKEN_OK",
+      "modelUsage": {
+        "claude-opus-5": {
+          "inputTokens": 2,
+          "outputTokens": 15,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 1339,
+          "webSearchRequests": 0,
+          "costUSD": 0.013774999999999999,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000,
+          "thinkingTokens": 0,
+          "canonicalModel": "claude-opus-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      }
+    }
+  ]
+}

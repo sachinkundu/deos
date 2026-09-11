@@ -186,7 +186,7 @@ export class WorkflowOrchestrator {
           ),
         );
         if (execution.state === "running") {
-          const nativeHeartbeat = run.definition_id === "simple-traceability" &&
+          const nativeHeartbeat = ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
             run.definition_version >= 23 && ["planning_author", "design_author"].includes(instruction.nodeId);
           try {
             await step.waitForEvent<{ deliveryId: string }>(

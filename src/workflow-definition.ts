@@ -32,11 +32,11 @@ export interface WorkflowJob {
   requiredOutputs: readonly string[];
   capabilities?: readonly string[];
   agentRole?: "author" | "reviewer";
-  modelProvider?: "codex" | "openrouter";
+  modelProvider?: "codex" | "openrouter" | "claude";
   model?: string;
   reasoning?: string;
   permissionProfile?: "repository_write" | "review_read_only";
-  providerAccess?: readonly "model.openrouter_review"[];
+  providerAccess?: readonly ("model.openrouter_review" | "model.claude_review")[];
   reviewKind?: "traceability" | "design";
   reviewMode?: "discovery" | "recheck";
   operation: OpenSpecJobOperation | null;
@@ -416,7 +416,7 @@ export const loadWorkflowDefinition = async (
       if (!(["author", "reviewer"] as const).includes(job.agentRole as "author" | "reviewer")) {
         throw new Error(`${label}.agentRole is invalid`);
       }
-      if (!(["codex", "openrouter"] as const).includes(job.modelProvider as "codex" | "openrouter")) {
+      if (!(["codex", "openrouter", "claude"] as const).includes(job.modelProvider as "codex" | "openrouter" | "claude")) {
         throw new Error(`${label}.modelProvider is invalid`);
       }
       const model = stringValue(job, "model", label);
@@ -427,7 +427,7 @@ export const loadWorkflowDefinition = async (
       )) throw new Error(`${label}.permissionProfile is invalid`);
       const providerAccess = stringArray(job, "providerAccess", label, false);
       if (
-        providerAccess.some((access) => access !== "model.openrouter_review") ||
+        providerAccess.some((access) => ! ["model.openrouter_review", "model.claude_review"].includes(access)) ||
         new Set(providerAccess).size !== providerAccess.length
       ) throw new Error(`${label}.providerAccess is invalid`);
       if (job.agentRole === "reviewer" && job.permissionProfile !== "review_read_only") {
@@ -440,7 +440,9 @@ export const loadWorkflowDefinition = async (
         throw new Error(`${label} reviewer cannot have provider mutation capabilities`);
       }
       if (
-        (job.modelProvider === "openrouter") !== providerAccess.includes("model.openrouter_review")
+        (job.modelProvider === "openrouter") !== providerAccess.includes("model.openrouter_review") ||
+        (job.modelProvider === "claude") !== providerAccess.includes("model.claude_review") ||
+        (job.modelProvider === "claude" && (job.agentRole !== "reviewer" || job.model !== "claude-opus-5" || job.reasoning !== "high"))
       ) throw new Error(`${label} OpenRouter access does not match its model provider`);
       if (job.agentRole === "reviewer") {
         if (!(job.reviewMode === "discovery" || job.reviewMode === "recheck")) {
@@ -459,11 +461,11 @@ export const loadWorkflowDefinition = async (
       }
       agentConfiguration = {
         agentRole: job.agentRole as "author" | "reviewer",
-        modelProvider: job.modelProvider as "codex" | "openrouter",
+        modelProvider: job.modelProvider as "codex" | "openrouter" | "claude",
         model,
         reasoning,
         permissionProfile: job.permissionProfile as "repository_write" | "review_read_only",
-        providerAccess: Object.freeze(providerAccess as "model.openrouter_review"[]),
+        providerAccess: Object.freeze(providerAccess as ("model.openrouter_review" | "model.claude_review")[]),
       };
     }
     jobs[id] = Object.freeze({

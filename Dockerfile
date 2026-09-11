@@ -4,11 +4,14 @@ USER root
 
 RUN useradd --create-home --shell /bin/bash deos-author
 
-RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0
+RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0 @anthropic-ai/claude-code@2.1.268
 
 RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/bettaview \
     && chmod 700 /deos/auth \
     && chmod 755 /deos/bin /deos/shared /deos/staging /deos/jobs
+
+COPY container/claude-*.mjs /deos/bin/
+COPY src/claude-review.ts /deos/bin/claude-review.ts
 
 COPY container/original-errors.mjs /deos/bin/original-errors.mjs
 COPY container/native-review-packet.mjs /deos/bin/native-review-packet.mjs
@@ -34,5 +37,6 @@ RUN chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin
       /deos/bin/design-review-runner.mjs \
       /usr/local/bin/deos-github /usr/local/bin/deos-linear \
     && for file in /deos/bin/*.mjs; do node --check "$file" || exit 1; done \
+    && claude --version \
     && codex --version \
     && openspec --version
