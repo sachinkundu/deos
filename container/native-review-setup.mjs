@@ -1,3 +1,4 @@
+import { initializeBoundedReview } from "./bounded-self-review.mjs";
 import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
@@ -8,7 +9,7 @@ const COMMAND = "node /deos/bin/native-self-review.mjs hook";
 
 // The parent trust bypass does not reach child sessions. Discover and trust the
 // exact generated hooks through the pinned runtime's own config contract.
-const trustGeneratedHooks = async (cwd, model) => {
+const trustGeneratedHooks = async (cwd, model, command = COMMAND) => {
   const child = spawn("codex", ["app-server"], {
     env: { PATH: process.env.PATH, HOME: "/root", CODEX_HOME: "/root/.codex" },
     stdio: ["pipe", "pipe", "inherit"],
@@ -53,7 +54,7 @@ const trustGeneratedHooks = async (cwd, model) => {
       throw new Error(`native hook discovery mismatch: ${JSON.stringify({ errors: entry?.errors, warnings: entry?.warnings, count: entry?.hooks?.length })}`);
     }
     for (const hook of entry.hooks) {
-      if (hook.command !== COMMAND || hook.sourcePath !== CONFIG || !EVENTS.some((event) => event.toLowerCase() === hook.eventName.toLowerCase())) {
+      if (hook.command !== command || hook.sourcePath !== CONFIG || !EVENTS.some((event) => event.toLowerCase() === hook.eventName.toLowerCase())) {
         throw new Error(`unrecognized native hook configuration: ${JSON.stringify(hook)}`);
       }
       await appendFile(CONFIG, `\n[hooks.state.${JSON.stringify(hook.key)}]\ntrusted_hash = ${JSON.stringify(hook.currentHash)}\nenabled = true\n`);
@@ -69,6 +70,8 @@ const trustGeneratedHooks = async (cwd, model) => {
 export const setupNativeReview = async (job) => {
   if (!job.nativeSelfReview) return;
   const phase = job.nativeSelfReview.phase;
+  const bounded = job.nativeSelfReview.schema === "deos-bounded-review-v1";
+  const command = bounded ? "node /deos/bin/bounded-self-review.mjs hook" : COMMAND;
   if (!["planning", "design"].includes(phase)) throw new Error("native phase is invalid");
   await mkdir("/deos/native-review", { recursive: true, mode: 0o700 });
   await writeFile("/deos/native-review/state.json", JSON.stringify({
@@ -76,7 +79,9 @@ export const setupNativeReview = async (job) => {
     authorPrompt: await readFile(job.promptPath, "utf8"), materializedContext: job.materializedContext,
     candidateSequence: 0, checkpointSequence: 0, completionRepairs: 0, stage: "writing",
   }), { mode: 0o600 });
+  if (bounded) await initializeBoundedReview(job);
   await writeFile("/root/.codex/deos-reviewer.toml", [
+    ...(job.grounding ? ['web_search = "live"'] : []),
     'name = "deos_reviewer"', 'description = "Fresh read-only OpenSpec reviewer"',
     'developer_instructions = "Review only the service-authored input. Never inspect parent sessions or private notes. Do not write files, call providers, or spawn children."',
     `model = ${JSON.stringify(job.model)}`, `model_reasoning_effort = ${JSON.stringify(job.reasoning)}`,
@@ -84,13 +89,14 @@ export const setupNativeReview = async (job) => {
     '[shell_environment_policy]', 'include_only = ["PATH", "HOME"]',
   ].join("\n") + "\n", { mode: 0o600 });
   await writeFile(CONFIG, [
+    ...(job.grounding ? ['web_search = "live"'] : []),
     '[features]', 'multi_agent = true', 'multi_agent_v2 = false', 'hooks = true', 'apps = false', 'plugins = false', 'shell_snapshot = false',
     '[agents.deos_reviewer]', 'config_file = "deos-reviewer.toml"',
     'description = "Fresh read-only OpenSpec reviewer"',
     ...EVENTS.flatMap((event) => [`[[hooks.${event}]]`, 'matcher = ".*"',
-      `[[hooks.${event}.hooks]]`, 'type = "command"', `command = ${JSON.stringify(COMMAND)}`, 'timeout = 86400']),
+      `[[hooks.${event}.hooks]]`, 'type = "command"', `command = ${JSON.stringify(command)}`, 'timeout = 86400']),
   ].join("\n") + "\n", { mode: 0o600 });
-  await trustGeneratedHooks(job.cwd, job.model);
+  await trustGeneratedHooks(job.cwd, job.model, command);
   for (const args of [
     ["chown", "-R", "deos-author:deos-author", job.cwd, "/deos/output"],
     ["chmod", "700", "/root/.codex", "/deos/native-review"],

@@ -84,7 +84,7 @@ export class ClaudeRunner {
       const sandbox = this.dependencies.sandboxes.get(runnerId, { keepAlive: true });
       await sandbox.mkdir("/deos/claude", { recursive: true });
       await sandbox.writeFile("/deos/claude/config.json", JSON.stringify({ attemptId: attempt.attempt_id,
-        deadline: attempt.absolute_deadline, capabilityToken, capabilityUrl, enrollment }));
+        deadline: attempt.absolute_deadline, capabilityToken, capabilityUrl, enrollment, grounding: job.grounding ?? null }));
       const process = await sandbox.exec(["node", "--experimental-strip-types", "/deos/bin/claude-trusted-runner.mjs"], {
         cwd: "/deos/claude", env: { CLAUDE_CODE_OAUTH_TOKEN: this.dependencies.token! },
         timeout: Math.max(1, Date.parse(attempt.absolute_deadline) - Date.now()),
@@ -163,6 +163,13 @@ export class ClaudeRunner {
         receipt.route !== "claude_pro" || receipt.accountEvidence !== "trusted_enrollment" ||
         typeof receipt.sessionId !== "string" || !receipt.sessionId) throw new ClaudeReviewError("review_failure");
     record(receipt.result);
+    if (record(JSON.parse(attempt.job_spec_json)).grounding) {
+      const transcript = record(receipt.transcript);
+      if (typeof transcript.text !== "string" || transcript.sha256 !== await digest(transcript.text) ||
+          transcript.eventCount !== transcript.text.split("\n").filter(line => line.trim()).length || Number(transcript.eventCount) < 1) {
+        throw new Error("required Claude transcript is missing or corrupt");
+      }
+    }
     await store.saveReceipt(turn, receipt as unknown as ClaudeReceipt);
     return response({ receipt });
   }

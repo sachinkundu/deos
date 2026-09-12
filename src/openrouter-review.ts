@@ -405,12 +405,14 @@ export class OpenRouterReviewClient {
 
   async proxyResponses(
     input: Readonly<Record<string, unknown>>,
+    policy: { nativeWebSearch: boolean } = { nativeWebSearch: false },
   ): Promise<OpenRouterResponsesProxyResponse> {
-    return this.withRetry("responses", () => this.proxyResponsesOnce(input));
+    return this.withRetry("responses", () => this.proxyResponsesOnce(input, policy));
   }
 
   private async proxyResponsesOnce(
     input: Readonly<Record<string, unknown>>,
+    policy: { nativeWebSearch: boolean },
   ): Promise<OpenRouterResponsesProxyResponse> {
     const model = boundedString(input.model, 240);
     if (model === null || !this.supportedModels.has(model)) {
@@ -428,7 +430,7 @@ export class OpenRouterReviewClient {
         (type === "web_search" || type.startsWith("web_search_preview") ||
           type === "openrouter:web_search");
     };
-    if (isHostedSearch(input.tool_choice)) {
+    if (!policy.nativeWebSearch && isHostedSearch(input.tool_choice)) {
       throw new Error("Hosted web search is disabled for independent reviews");
     }
     let response: Response;
@@ -446,7 +448,11 @@ export class OpenRouterReviewClient {
           store: false,
           // Keep old containers compatible without enabling hosted search. The
           // independent reviewer reads its supplied sources using local tools.
-          tools: Array.isArray(input.tools) ? input.tools.filter((tool) => !isHostedSearch(tool)) : input.tools,
+          tools: Array.isArray(input.tools) ? input.tools.flatMap((tool) => isHostedSearch(tool)
+            ? policy.nativeWebSearch ? [{ type: "openrouter:web_search" }] : []
+            : [tool]) : input.tools,
+          tool_choice: policy.nativeWebSearch && isHostedSearch(input.tool_choice)
+            ? { type: "openrouter:web_search" } : input.tool_choice,
           // DeepSeek endpoints reject this optional Codex parameter even when
           // false. Keep schema routing strict; omit the unsupported parameter.
           parallel_tool_calls: undefined,

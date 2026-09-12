@@ -1,0 +1,646 @@
+apiVersion: deos.dev/v1alpha1
+kind: DeliveryWorkflow
+metadata:
+  name: simple-traceability
+  version: 25
+spec:
+  start: claim_issue
+  execution:
+    attemptTimeout: 24h
+    heartbeatTimeout: 5m
+    codexSandboxMode: danger-full-access
+  jobs:
+    planning_author:
+      promptFile: prompts/openspec-planning-author.md
+      inputs:
+        - linear_issue
+        - openspec_change
+        - planning_feedback
+        - traceability_feedback
+      context:
+        - shared_workpad
+        - prior_artifact_manifests
+        - planning_pull_request
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - review-replies.json
+        - review-dispositions.json
+        - author-completion.json
+        - agent-input-manifest.json
+        - author-sources.json
+        - review-progress.json
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: repository_write
+      providerAccess: []
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills: &a1
+          - id: cloudflare
+            sha256: 58b799ccf073e49ed4127798ea4f15cbf863260b26866ed9e8cf3cb12662f5ee
+          - id: openspec-review-gated-flow
+            sha256: 5a8212258036d9913a9091b903609c25d82138524e1147411d81543df8b06bce
+          - id: openspec-apply-change
+            sha256: 85d0cb44b9074a0f54c976516462d01dd2f1842c514306a93ff7f7fbf0a7f0e1
+    self_discovery:
+      promptFile: prompts/openspec-traceability-review.md
+      inputs:
+        - openspec_change
+      context: []
+      resultSchema: schemas/trace-agent-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - raw-review-output.json
+        - normalized-review.json
+        - bettaview-traceability.json
+        - candidate-inventory.json
+        - trace-validation.txt
+        - agent-input-manifest.json
+        - review-sources.json
+      agentRole: reviewer
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: []
+      reviewMode: discovery
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills: *a1
+    self_recheck:
+      promptFile: prompts/openspec-traceability-recheck.md
+      inputs:
+        - openspec_change
+        - traceability_feedback
+      context: []
+      resultSchema: schemas/trace-agent-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - raw-review-output.json
+        - normalized-review.json
+        - bettaview-traceability.json
+        - candidate-inventory.json
+        - trace-validation.txt
+        - agent-input-manifest.json
+        - review-sources.json
+      agentRole: reviewer
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: []
+      reviewMode: recheck
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills: *a1
+    independent_discovery:
+      promptFile: prompts/openspec-traceability-review.md
+      inputs:
+        - openspec_change
+      context:
+        - planning_pull_request
+      resultSchema: schemas/trace-agent-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - raw-review-output.json
+        - normalized-review.json
+        - bettaview-traceability.json
+        - candidate-inventory.json
+        - trace-validation.txt
+        - agent-input-manifest.json
+        - review-sources.json
+      agentRole: reviewer
+      modelProvider: openrouter
+      model: configured-at-run-allocation
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess:
+        - model.openrouter_review
+      reviewMode: discovery
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills: *a1
+    design_author:
+      promptFile: prompts/openspec-design-author.md
+      inputs:
+        - linear_issue
+        - openspec_change
+        - design_context
+        - design_review_feedback
+      context:
+        - approved_planning_merge
+        - prior_design
+        - design_pull_request
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - review-replies.json
+        - design-dispositions.json
+        - author-completion.json
+        - agent-input-manifest.json
+        - author-sources.json
+        - review-progress.json
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: repository_write
+      providerAccess: []
+      operation:
+        kind: openspec
+        instruction: /opsx:continue
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills: *a1
+    design_self_review:
+      promptFile: prompts/openspec-design-review.md
+      inputs:
+        - openspec_change
+        - design_review
+      context:
+        - approved_planning_merge
+        - prior_design
+      resultSchema: schemas/design-review-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - raw-review-output.json
+        - normalized-review.json
+        - design-review-input.json
+        - candidate-inventory.json
+        - review-validation.txt
+        - agent-input-manifest.json
+        - review-sources.json
+      agentRole: reviewer
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: []
+      reviewKind: design
+      reviewMode: discovery
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills: *a1
+    design_independent_review:
+      promptFile: prompts/openspec-design-review.md
+      inputs:
+        - openspec_change
+        - design_review
+      context:
+        - approved_planning_merge
+        - design_pull_request
+      resultSchema: schemas/design-review-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - raw-review-output.json
+        - normalized-review.json
+        - design-review-input.json
+        - candidate-inventory.json
+        - review-validation.txt
+        - agent-input-manifest.json
+        - review-sources.json
+      agentRole: reviewer
+      modelProvider: openrouter
+      model: configured-at-run-allocation
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess:
+        - model.openrouter_review
+      reviewKind: design
+      reviewMode: discovery
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills: *a1
+    planning_revision:
+      promptFile: prompts/openspec-planning-author.md
+      inputs:
+        - linear_issue
+        - openspec_change
+        - planning_feedback
+        - traceability_feedback
+      context:
+        - shared_workpad
+        - prior_artifact_manifests
+        - planning_pull_request
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - review-replies.json
+        - review-dispositions.json
+        - author-completion.json
+        - agent-input-manifest.json
+        - author-sources.json
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: repository_write
+      providerAccess: []
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills:
+          - id: cloudflare
+            sha256: 58b799ccf073e49ed4127798ea4f15cbf863260b26866ed9e8cf3cb12662f5ee
+          - id: openspec-review-gated-flow
+            sha256: 5a8212258036d9913a9091b903609c25d82138524e1147411d81543df8b06bce
+          - id: openspec-apply-change
+            sha256: 85d0cb44b9074a0f54c976516462d01dd2f1842c514306a93ff7f7fbf0a7f0e1
+    planning_response:
+      promptFile: prompts/openspec-planning-author.md
+      inputs:
+        - linear_issue
+        - openspec_change
+        - planning_feedback
+        - traceability_feedback
+      context:
+        - shared_workpad
+        - prior_artifact_manifests
+        - planning_pull_request
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - review-replies.json
+        - review-dispositions.json
+        - author-completion.json
+        - agent-input-manifest.json
+        - author-sources.json
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: repository_write
+      providerAccess: []
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills:
+          - id: cloudflare
+            sha256: 58b799ccf073e49ed4127798ea4f15cbf863260b26866ed9e8cf3cb12662f5ee
+          - id: openspec-review-gated-flow
+            sha256: 5a8212258036d9913a9091b903609c25d82138524e1147411d81543df8b06bce
+          - id: openspec-apply-change
+            sha256: 85d0cb44b9074a0f54c976516462d01dd2f1842c514306a93ff7f7fbf0a7f0e1
+    design_revision:
+      promptFile: prompts/openspec-design-author.md
+      inputs:
+        - linear_issue
+        - openspec_change
+        - design_context
+        - design_review_feedback
+      context:
+        - approved_planning_merge
+        - prior_design
+        - design_pull_request
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - review-replies.json
+        - design-dispositions.json
+        - author-completion.json
+        - agent-input-manifest.json
+        - author-sources.json
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: repository_write
+      providerAccess: []
+      operation:
+        kind: openspec
+        instruction: /opsx:continue
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills:
+          - id: cloudflare
+            sha256: 58b799ccf073e49ed4127798ea4f15cbf863260b26866ed9e8cf3cb12662f5ee
+          - id: openspec-review-gated-flow
+            sha256: 5a8212258036d9913a9091b903609c25d82138524e1147411d81543df8b06bce
+          - id: openspec-apply-change
+            sha256: 85d0cb44b9074a0f54c976516462d01dd2f1842c514306a93ff7f7fbf0a7f0e1
+    design_response:
+      promptFile: prompts/openspec-design-author.md
+      inputs:
+        - linear_issue
+        - openspec_change
+        - design_context
+        - design_review_feedback
+      context:
+        - approved_planning_merge
+        - prior_design
+        - design_pull_request
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs:
+        - transcript.jsonl
+        - result.json
+        - patch.diff
+        - validation.txt
+        - provider-references.json
+        - review-replies.json
+        - design-dispositions.json
+        - author-completion.json
+        - agent-input-manifest.json
+        - author-sources.json
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: repository_write
+      providerAccess: []
+      operation:
+        kind: openspec
+        instruction: /opsx:continue
+      boundedReview: deos-bounded-review-v1
+      grounding:
+        schema: deos-grounding-v1
+        webSearch: native-live
+        skills:
+          - id: cloudflare
+            sha256: 58b799ccf073e49ed4127798ea4f15cbf863260b26866ed9e8cf3cb12662f5ee
+          - id: openspec-review-gated-flow
+            sha256: 5a8212258036d9913a9091b903609c25d82138524e1147411d81543df8b06bce
+          - id: openspec-apply-change
+            sha256: 85d0cb44b9074a0f54c976516462d01dd2f1842c514306a93ff7f7fbf0a7f0e1
+  nodes:
+    claim_issue:
+      type: system_action
+      action: linear.delegate_and_start
+      edges:
+        completed: planning_author
+        failed: system_action_failed
+    planning_author:
+      type: agent
+      job: planning_author
+      edges:
+        completed: publish_initial
+        invalid_candidate: agent_failed
+        blocked: agent_blocked
+        failed: agent_failed
+        manual_reconciliation_required: review_reconciliation
+    planning_revision_author:
+      type: agent
+      job: planning_revision
+      edges:
+        completed: publish_planning_revision
+        invalid_candidate: agent_failed
+        blocked: agent_blocked
+        failed: agent_failed
+        manual_reconciliation_required: review_reconciliation
+    publish_planning_revision:
+      type: system_action
+      action: github.publish_planning_candidate
+      edges:
+        completed: planning_review
+        failed: system_action_failed
+    publish_initial:
+      type: system_action
+      action: github.publish_planning_candidate
+      edges:
+        completed: independent_discovery
+        failed: system_action_failed
+    independent_discovery:
+      type: agent
+      job: independent_discovery
+      edges:
+        pass: planning_independent_response
+        findings: planning_independent_response
+        needs_judgment: planning_independent_response
+        proof_conflict: planning_independent_response
+        blocked: agent_blocked
+        failed: agent_failed
+        manual_reconciliation_required: review_reconciliation
+    planning_independent_response:
+      type: agent
+      job: planning_response
+      edges:
+        completed: publish_update
+        invalid_candidate: agent_failed
+        blocked: agent_blocked
+        failed: agent_failed
+        manual_reconciliation_required: review_reconciliation
+    publish_update:
+      type: system_action
+      action: github.publish_planning_candidate
+      edges:
+        completed: publish_author_response
+        failed: system_action_failed
+    publish_author_response:
+      type: system_action
+      action: traceability.publish_author_response
+      edges:
+        completed: planning_review
+        failed: system_action_failed
+    planning_review:
+      type: human_gate
+      linearState: Human Review
+      decisions:
+        revision_requested: In Progress
+        merge_authorized: Merging
+        canceled: Canceled
+      edges:
+        revision_requested: planning_revision_author
+        merge_authorized: merge_planning_pr
+        canceled: canceled
+    merge_planning_pr:
+      type: system_action
+      action: github.merge_planning_pull_request
+      edges:
+        completed: verify_planning_merge
+        failed: system_action_failed
+    verify_planning_merge:
+      type: system_action
+      action: github.verify_planning_merge
+      edges:
+        completed: design_author
+        failed: planning_merge_repair_wait
+    planning_merge_repair_wait:
+      type: wait
+      deosStatus: manual_reconciliation_required
+      resumeEvent:
+        type: linear.issue.state_changed
+        actorType: user
+        toState: In Progress
+        action: github.verify_planning_merge
+      cancelEvent:
+        type: linear.issue.state_changed
+        actorType: user
+        toState: Canceled
+      edges:
+        received: verify_planning_merge
+        canceled: canceled
+    design_author:
+      type: agent
+      job: design_author
+      edges:
+        completed: publish_design
+        invalid_design_candidate: agent_failed
+        blocked: agent_blocked
+        failed: agent_failed
+        manual_reconciliation_required: review_reconciliation
+    publish_design:
+      type: system_action
+      action: github.publish_design_candidate
+      edges:
+        completed: design_independent_review
+        unchanged: design_independent_review
+        review_feedback_changed: design_revision_author
+        failed: system_action_failed
+    design_independent_review:
+      type: agent
+      job: design_independent_review
+      edges:
+        pass: design_review
+        concerns: design_independent_response
+        blocked: agent_blocked
+        failed: agent_failed
+        manual_reconciliation_required: review_reconciliation
+    design_independent_response:
+      type: agent
+      job: design_response
+      edges:
+        completed: publish_design_response
+        invalid_design_candidate: agent_failed
+        blocked: agent_blocked
+        failed: agent_failed
+        manual_reconciliation_required: review_reconciliation
+    publish_design_response:
+      type: system_action
+      action: github.publish_design_candidate
+      edges:
+        completed: design_review
+        unchanged: design_review
+        review_feedback_changed: design_revision_author
+        failed: system_action_failed
+    design_review:
+      type: human_gate
+      linearState: Human Review
+      decisions:
+        revision_requested: In Progress
+        merge_authorized: Merging
+        canceled: Canceled
+      edges:
+        revision_requested: design_revision_author
+        merge_authorized: merge_design_pr
+        canceled: canceled
+    design_revision_author:
+      type: agent
+      job: design_revision
+      edges:
+        completed: publish_design_revision
+        invalid_design_candidate: agent_failed
+        blocked: agent_blocked
+        failed: agent_failed
+        manual_reconciliation_required: review_reconciliation
+    publish_design_revision:
+      type: system_action
+      action: github.publish_design_candidate
+      edges:
+        completed: design_review
+        unchanged: design_review
+        review_feedback_changed: design_revision_author
+        failed: system_action_failed
+    merge_design_pr:
+      type: system_action
+      action: github.merge_design_pull_request
+      edges:
+        completed: done
+        failed: system_action_failed
+    done:
+      type: terminal
+      deosStatus: succeeded
+      executorAction: return
+    canceled:
+      type: terminal
+      deosStatus: canceled
+      executorAction: return
+    agent_blocked:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: agent_outcome_blocked
+    agent_failed:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: agent_execution_failed
+    system_action_failed:
+      type: failure
+      deosStatus: failed
+      executorAction: throw
+      cause: system_action_invariant_failed
+    review_reconciliation:
+      type: wait
+      deosStatus: manual_reconciliation_required
+      resumeEvent:
+        type: linear.issue.state_changed
+        actorType: user
+        toState: In Progress
+        action: review.reconcile_manually
+      cancelEvent:
+        type: linear.issue.state_changed
+        actorType: user
+        toState: Canceled
+      edges:
+        received: review_reconciliation
+        canceled: canceled

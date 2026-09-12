@@ -39,6 +39,9 @@ export interface VerifiedTranscript {
 export class TranscriptNotFoundError extends Error {}
 export class TranscriptUnavailableError extends Error {}
 
+export const transcriptState = (records: readonly TranscriptRecord[]) => records.length ? 'content' as const : 'empty' as const;
+
+
 const hex = (value: ArrayBuffer): string => Array.from(new Uint8Array(value))
   .map((byte) => byte.toString(16).padStart(2, "0"))
   .join("");
@@ -64,6 +67,61 @@ export class TranscriptReadStore {
   ) {
     this.db = db;
     this.bucket = bucket;
+  }
+
+  async child(ownerId: string): Promise<Record<string, unknown>> {
+    const row = await this.db.prepare(`SELECT owner.attempt_id, owner.child_index, owner.sha256, owner.byte_size, owner.event_count,
+        artifact.r2_key, artifact.sha256 AS artifact_sha256
+      FROM review_transcript_owners owner
+      JOIN agent_attempts attempt ON attempt.attempt_id = owner.attempt_id
+      JOIN orchestration_runs run ON run.run_id = attempt.run_id
+      JOIN project_workflow_policies route ON route.project_id = run.project_id
+      JOIN artifacts artifact ON artifact.manifest_id = owner.manifest_id AND artifact.logical_name = owner.logical_name
+        AND artifact.policy_outcome = 'accepted'
+      WHERE owner.owner_kind = 'native_child_invocation' AND owner.owner_id = ?`)
+      .bind(ownerId).first<{ attempt_id: string; child_index: number; sha256: string; byte_size: number; event_count: number; r2_key: string; artifact_sha256: string }>();
+    if (!row) throw new TranscriptNotFoundError("review child transcript not found");
+    const corrupt = () => ({ state: "corrupt", ownerId, attemptId: row.attempt_id, records: [], message: "This child transcript failed its integrity check." });
+    const object = await this.bucket.get(row.r2_key);
+    if (!object) return corrupt();
+    const text = await object.text();
+    if (hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))) !== row.artifact_sha256) return corrupt();
+    const child = JSON.parse(text).children?.[row.child_index];
+    if (child?.invocationId !== ownerId || typeof child.transcript !== "string") return corrupt();
+    const bytes = new TextEncoder().encode(child.transcript);
+    if (bytes.length !== row.byte_size || hex(await crypto.subtle.digest("SHA-256", bytes)) !== row.sha256) return corrupt();
+    const records = parseTranscriptJsonl(child.transcript);
+    if (records.length !== row.event_count) return corrupt();
+    return { state: transcriptState(records), ownerId, attemptId: row.attempt_id, records,
+      byteSize: bytes.length, sha256: row.sha256, eventCount: records.length,
+      message: records.length ? null : "No transcript content was captured." };
+  }
+
+  async view(attemptId: string): Promise<Record<string, unknown>> {
+    try {
+      const transcript = await this.read(attemptId);
+      return { ...transcriptDto(transcript), state: transcriptState(transcript.records),
+        message: transcript.records.length ? null : "No transcript content was captured." };
+    } catch (error) {
+      if (error instanceof TranscriptUnavailableError) {
+        return { state: "corrupt", message: "This transcript failed its integrity check.",
+          detail: error.message, attemptId, records: [] };
+      }
+      if (!(error instanceof TranscriptNotFoundError)) throw error;
+      const owner = await this.db.prepare(`SELECT attempt.attempt_id, attempt.job_spec_json,
+          run.definition_version, run.definition_id FROM agent_attempts attempt
+        JOIN orchestration_runs run ON run.run_id = attempt.run_id
+        JOIN project_workflow_policies route ON route.project_id = run.project_id
+        JOIN linear_issue_index issue ON issue.issue_id = run.issue_id AND issue.project_id = run.project_id
+        WHERE attempt.attempt_id = ?`).bind(attemptId)
+        .first<{ attempt_id: string; job_spec_json: string }>();
+      if (owner === null) throw error;
+      const job = JSON.parse(owner.job_spec_json);
+      return job.transcriptSchema ? { state: "corrupt", attemptId, records: [],
+        message: "The required transcript evidence is missing." } : {
+        state: "unavailable", attemptId, records: [],
+        message: "No supported transcript was saved for this older job." };
+    }
   }
 
   async read(attemptId: string): Promise<VerifiedTranscript> {

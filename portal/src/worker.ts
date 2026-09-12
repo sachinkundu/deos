@@ -1,3 +1,4 @@
+import { D1BoundedReviewStore } from "../../src/bounded-review-store.ts";
 import type { RecentIssuesBinding, RecentIssuesUpdate } from "../../src/recent-issues.ts";
 import { errorDetails, errorText } from "../../src/error-details.ts";
 import { verifyAccess } from "./auth.ts";
@@ -135,6 +136,11 @@ export const routePortalRequest = async (
   authenticate: typeof verifyAccess = verifyAccess,
 ): Promise<Response> => {
   const url = new URL(request.url);
+  if (url.pathname === '/api/review-compatibility') {
+    if (request.method !== 'GET') return json(405, { error: 'method_not_allowed' });
+    return json(200, { versionId: env.CF_VERSION_METADATA?.id ?? null,
+      reviewSchemas: ['deos-bounded-review-v1'], transcriptSchemas: ['deos-transcript-v1'] });
+  }
   if (url.pathname === "/api/version") {
     if (request.method !== "GET") return json(405, { error: "method_not_allowed" });
     return json(200, deploymentMetadata(env));
@@ -306,12 +312,33 @@ export const routePortalRequest = async (
     if (url.pathname === "/api/workflows/simple/issues") {
       return json(200, { issues: await store.simpleIssues() });
     }
+    const childTranscriptMatch = url.pathname.match(/^\/api\/review-children\/([0-9a-f-]{36})\/transcript$/i);
+    if (childTranscriptMatch) return json(200, await new TranscriptReadStore(env.DB, env.ARTIFACTS).child(childTranscriptMatch[1]));
+    const cyclesMatch = url.pathname.match(/^\/api\/runs\/(.+)\/review-cycles$/);
+    if (cyclesMatch) {
+      const runId = decodeURIComponent(cyclesMatch[1]);
+      const permitted = await env.DB.prepare(`SELECT run.run_id FROM orchestration_runs run
+        JOIN project_workflow_policies route ON route.project_id = run.project_id WHERE run.run_id = ?`).bind(runId).first();
+      if (!permitted) return json(404, { error: "run_not_found" });
+      const cycles = await env.DB.prepare(`SELECT phase, origin_attempt_id, state_json, state_sha256, journal_manifest_id FROM phase_review_cycles WHERE run_id = ?`)
+        .bind(runId).all<{ phase: string; origin_attempt_id: string; state_json: string; state_sha256: string; journal_manifest_id: string }>();
+      const result = [];
+      for (const cycle of cycles.results) {
+        const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(cycle.state_json))))
+          .map(byte => byte.toString(16).padStart(2, "0")).join("");
+        if (hash !== cycle.state_sha256) throw new Error("review cycle integrity mismatch");
+        const capabilities = JSON.parse(await new D1BoundedReviewStore(env.DB, env.ARTIFACTS).artifact(cycle.journal_manifest_id, "agent-input-manifest.json"));
+        result.push({ phase: cycle.phase, authorAttemptId: cycle.origin_attempt_id, ...JSON.parse(cycle.state_json), capabilities });
+      }
+      return json(200, { cycles: result });
+    }
     const transcriptMatch = url.pathname.match(
       /^\/api\/attempts\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/transcript(\.jsonl)?$/i,
     );
     if (transcriptMatch !== null) {
-      const transcript = await new TranscriptReadStore(env.DB, env.ARTIFACTS)
-        .read(transcriptMatch[1]);
+      const store = new TranscriptReadStore(env.DB, env.ARTIFACTS);
+      if (transcriptMatch[2] !== ".jsonl") return json(200, await store.view(transcriptMatch[1]));
+      const transcript = await store.read(transcriptMatch[1]);
       if (transcriptMatch[2] === ".jsonl") {
         return new Response(request.method === "HEAD" ? null : transcript.bytes, {
           status: 200,

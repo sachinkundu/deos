@@ -251,7 +251,12 @@ export class JobInputMaterializer {
         installationId: frozenInstallationId,
       })
       : null;
+    const checkedContextFiles = job.grounding ? await Promise.all([
+      ...(approvedPlan ?? []), ...repositoryGuidance,
+    ].map(async file => ({ path: file.path, content: file.content, sha256: await sha256Hex(file.content) }))) : [];
     const bundle = {
+      ...(job.grounding ? { agentInputs: { schema: "deos-grounding-v1", jobKind: job.id,
+        role: job.agentRole, checkedContextFiles, policy: job.grounding } } : {}),
       version: 1,
       declaredInputs: job.inputs,
       declaredContext: job.context,

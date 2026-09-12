@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { claudeReviewJudgment, finishClaudeReview } from "./claude-review-adapter.mjs";
+import { groundedSchema, groundedPrompt, saveGroundedReview } from "./grounded-review.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -35,6 +36,7 @@ import {
 } from "./trace-review-proof.mjs";
 
 const OUTPUT_ROOT = process.env.DEOS_REVIEW_OUTPUT_ROOT ?? "/deos/output";
+let groundingOrdinal = 0;
 const directionalPasses = {
   proposal_to_spec: {
     promptFile: "/deos/bettaview/prompts/openspec-semantic-traceability-proposal-first-v1.md",
@@ -94,14 +96,23 @@ const codexJudgment = async ({
   capabilityToken = null,
   attemptId = null,
   deadline = null,
+  grounding = null,
 }) => {
   if (process.env.DEOS_NATIVE_REVIEW_ROOT) {
     return nativeReviewJudgment({ prompt, schema, model, reasoning, sessionId });
   }
   if (modelProvider === "claude") {
-    return claudeReviewJudgment({ job: { model, reasoning, capabilityUrl, capabilityToken, attemptId, deadline },
+    return claudeReviewJudgment({ job: { model, reasoning, capabilityUrl, capabilityToken, attemptId, deadline, grounding },
       prompt, schema: JSON.parse(await readFile(schema, "utf8")), sessionId });
   }
+  const originalSchema = JSON.parse(await readFile(schema, "utf8"));
+  if (grounding) {
+    schema = `${destination}.schema.json`;
+    await writeFile(schema, JSON.stringify(groundedSchema(originalSchema)));
+    prompt = reviewPromptWithSchema(groundedPrompt(prompt), await readFile(schema, "utf8"), modelProvider);
+  }
+  const promptPath = `${destination}.prompt.txt`;
+  await writeFile(promptPath, prompt, { mode: 0o600 });
   const args = codexReviewArgs({
     sessionId,
     cwd,
@@ -112,9 +123,10 @@ const codexJudgment = async ({
     modelProvider,
     capabilityUrl,
   });
+  if (grounding) args.push("--config", 'web_search="live"');
   const execution = await run("codex", args, {
     cwd,
-    input: prompt,
+    input: await readFile(promptPath, "utf8"),
     forward: true,
     env: modelProvider === "openrouter"
       ? {
@@ -132,7 +144,7 @@ const codexJudgment = async ({
   const outputSchema = JSON.parse(await readFile(schema, "utf8"));
   const recovered = recoverCodexReview(execution.stdout, finalMessage, outputSchema.required ?? []);
   process.stderr.write(`review JSON source: offset=${recovered.messageOffset}, recovered=${recovered.recovered}\n`);
-  const result = recovered.raw;
+  const result = grounding ? await saveGroundedReview(recovered.raw, groundingOrdinal++) : recovered.raw;
   return {
     result,
     sessionId: observedSessionId,
@@ -196,6 +208,7 @@ const recheckJudgment = async ({ job, inventory, temporary }) => {
     capabilityToken: job.capabilityToken,
     attemptId: job.attemptId,
     deadline: job.deadline,
+    grounding: job.grounding,
   });
   const result = reviewResultPayload(job.modelProvider, generated);
   if (
@@ -407,7 +420,7 @@ const main = async () => {
       const instructions = await readFile(pass.promptFile, "utf8");
       const schemaSource = await readFile(pass.schemaFile, "utf8");
       directionalResults[direction] = await runBoundedProofReview({
-        maximumRepairs: MAXIMUM_PROOF_REPAIRS,
+        maximumRepairs: job.grounding ? 0 : MAXIMUM_PROOF_REPAIRS,
         generate: async ({ attempt, prior, failure, sessionId }) => {
           const basePrompt = buildDirectionalJudgePrompt({
             inventory,
@@ -443,6 +456,7 @@ const main = async () => {
             capabilityToken: job.capabilityToken,
             attemptId: job.attemptId,
             deadline: job.deadline,
+            grounding: job.grounding,
           });
           return { raw: generated.result, sessionId: generated.sessionId };
         },

@@ -4,6 +4,7 @@
   "main": "src/queue-consumer.ts",
   "compatibility_date": "2026-08-16",
   "compatibility_flags": ["nodejs_compat"],
+  "services": [{ "binding": "REVIEW_PORTAL", "service": "deos-workflow-portal" }],
   "account_id": "c68856288112af7698f5be52ea94b96e",
   "observability": {
     "enabled": true,
