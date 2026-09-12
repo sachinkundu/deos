@@ -1,3 +1,4 @@
+import { requireAttemptTier, sandboxCreationCause, type SandboxTier } from "./sandbox-tier.ts";
 import { D1NativeReviewStore, nativeChildTerminalError, nativeDigest, nativeRecord } from "./native-review-store.ts";
 import { recordCaughtError } from "./error-context.ts";
 import type { ArtifactCollectionResult, ArtifactCollector } from "./artifact-collector.ts";
@@ -33,6 +34,7 @@ export type AgentAttemptState =
   | "canceled";
 
 export interface AgentAttemptRecord {
+  sandbox_tier?: string | null;
   native_evidence_id?: string;
   attempt_id: string;
   sandbox_id: string;
@@ -149,8 +151,9 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
     await this.database.prepare(
       `INSERT INTO agent_attempts
        (attempt_id, sandbox_id, run_id, node_id, visit_sequence, job_spec_json, job_spec_digest,
-        state, absolute_deadline, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+        state, absolute_deadline, created_at, updated_at, sandbox_tier)
+       SELECT ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, sandbox_tier
+       FROM orchestration_runs WHERE run_id = ? AND sandbox_tier IN ('basic','standard-2')`,
     ).bind(
       input.attemptId,
       input.sandboxId,
@@ -162,6 +165,7 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
       input.absoluteDeadline,
       input.now,
       input.now,
+      input.runId,
     ).run();
     const attempt = await this.findLatest(input.runId, input.nodeId);
     if (attempt?.attempt_id !== input.attemptId) throw new Error("agent attempt is not readable");
@@ -171,7 +175,7 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
   async markStarted(attemptId: string, processId: string, processRuntimeId: string, now: string): Promise<void> {
     const result = await this.database.prepare(
       `UPDATE agent_attempts
-       SET process_id = ?, process_runtime_id = ?, state = 'running', started_at = ?,
+       SET process_id = ?, process_runtime_id = ?, state = 'running', started_at = COALESCE(started_at, ?),
            heartbeat_at = ?, updated_at = ?
        WHERE attempt_id = ? AND state IN ('pending', 'starting')`,
     ).bind(processId, processRuntimeId, now, now, now, attemptId).run();
@@ -218,8 +222,8 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
     now: string,
   ): Promise<boolean> {
     const result = await this.database.prepare(
-      "UPDATE agent_attempts SET state = ?, updated_at = ? WHERE attempt_id = ? AND state = ?",
-    ).bind(next, now, attemptId, expected).run();
+      "UPDATE agent_attempts SET state = ?, updated_at = ?, started_at = CASE WHEN ? = 'starting' THEN COALESCE(started_at, ?) ELSE started_at END WHERE attempt_id = ? AND state = ?",
+    ).bind(next, now, next, now, attemptId, expected).run();
     return changes(result) === 1;
   }
 
@@ -350,7 +354,7 @@ const REPOSITORY_CHECKOUT_MAX_ATTEMPTS = 3;
 const REPOSITORY_CHECKOUT_BASE_BACKOFF_MS = 5_000;
 
 export interface SandboxFactory {
-  get(sandboxId: string, options: { keepAlive: boolean }): SandboxView;
+  get(sandboxId: string, options: { keepAlive: boolean; tier: SandboxTier }): SandboxView;
 }
 
 export interface CapabilityGrant {
@@ -691,7 +695,15 @@ export class SandboxAgentController {
     attempt: AgentAttemptRecord,
     job: WorkflowJob,
   ): Promise<AgentExecutionObservation> {
-    const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true });
+    requireAttemptTier(run.sandbox_tier, attempt.sandbox_tier);
+    const started = this.dependencies.now().toISOString();
+    if (!await this.attempts.setState(attempt.attempt_id, "pending", "starting", started)) {
+      return {state:"running",attemptId:attempt.attempt_id,sandboxId:attempt.sandbox_id};
+    }
+    attempt = {...attempt,state:"starting",started_at:started};
+    console.log(JSON.stringify({event:"sandbox_attempt_start",run_id:run.run_id,
+      attempt_id:attempt.attempt_id,sandbox_tier:attempt.sandbox_tier,stage:attempt.node_id,started_at:started}));
+    const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true, tier: requireAttemptTier(run.sandbox_tier, attempt.sandbox_tier) });
     let lease: CredentialLease | null = null;
     let supervisor: SandboxProcessView | null = null;
     try {
@@ -880,9 +892,16 @@ export class SandboxAgentController {
       this.emit(run, attempt, "sandbox.attempt", "running");
       return { state: "running", attemptId: attempt.attempt_id, sandboxId: attempt.sandbox_id };
     } catch (error) {
-      recordCaughtError(error, "src/sandbox-controller.ts:849");
-      if (lease !== null) await this.credentials.release(lease);
-      await this.finishFailure(attempt, sandbox, job, "failed", "startup_failed", supervisor);
+      recordCaughtError(error, `sandbox.start.${sandboxCreationCause(error)}`);
+      console.error(JSON.stringify({event:"sandbox_creation_failed",run_id:run.run_id,
+        project_id:run.project_id,attempt_id:attempt.attempt_id,sandbox_tier:attempt.sandbox_tier,
+        stage:attempt.node_id,cause:sandboxCreationCause(error)}));
+      try {
+        if (lease !== null) await this.credentials.release(lease);
+      } catch (cleanupError) { recordCaughtError(cleanupError,"sandbox.start.release"); }
+      try {
+        await this.finishFailure(attempt, sandbox, job, "failed", "startup_failed", supervisor);
+      } catch (cleanupError) { recordCaughtError(cleanupError,"sandbox.start.failure_cleanup"); }
       throw error;
     }
   }
@@ -934,7 +953,7 @@ export class SandboxAgentController {
     attempt: AgentAttemptRecord,
     job: WorkflowJob,
   ): Promise<AgentExecutionObservation> {
-    const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true });
+    const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true, tier: requireAttemptTier(run.sandbox_tier, attempt.sandbox_tier) });
     if (job.modelProvider === "claude" && attempt.state === "collecting") {
       const saved = await this.dependencies.claude?.collection(attempt.attempt_id, attempt.job_spec_digest);
       if (saved) return this.completeClaudeCollection(run, attempt, sandbox, job, saved);
@@ -2059,6 +2078,7 @@ export class SandboxAgentController {
       workflowInstanceId: run.workflow_instance_id,
       attemptId: attempt.attempt_id,
       sandboxId: attempt.sandbox_id,
+      sandboxTier: attempt.sandbox_tier ?? undefined,
       nodeId: attempt.node_id,
     });
   }
@@ -2079,6 +2099,7 @@ export class SandboxAgentController {
       sandboxId: attempt.sandbox_id,
       manifestId,
       nodeId: attempt.node_id,
+      sandboxTier: attempt.sandbox_tier ?? undefined,
       safeErrorCategory,
     });
   }

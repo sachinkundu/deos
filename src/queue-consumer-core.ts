@@ -1,3 +1,4 @@
+import { selectSandboxTier, TierIntegrityError } from "./sandbox-tier.ts";
 import { recordCaughtError } from "./error-context.ts";
 import { correlationIdentity } from "./orchestration-identity.ts";
 import {
@@ -28,6 +29,8 @@ export type LabelSelectionEvidence =
   | { status: "unavailable" };
 
 export interface QueueBody {
+  start_slow_ok?: true;
+  sandbox_tier_policy_version?: string;
   event_id: string;
   source_delivery_id: string;
   issue_id: string;
@@ -352,15 +355,20 @@ export const processQueueMessage = async (
     if (event.correlation_id !== correlationIdentity(event.project_id, event.issue_id)) {
       throw new CategorizedWorkflowError("correlation_mismatch");
     }
+    const allocated = await store.findRunByDelivery(event.source_delivery_id);
+    if (allocated) {
+      if (allocated.project_id !== event.project_id || allocated.issue_id !== event.issue_id) throw new CategorizedWorkflowError("correlation_mismatch");
+      if (allocated.status === "pending_dispatch") await establishDispatch(event,allocated,store,env.ORCHESTRATION_WORKFLOW,now);
+      return;
+    }
     const storedEvidence = await store.findDeliverySelectionEvidence(event.source_delivery_id);
     const evidence = canonicalLabelEvidence(event.label_selection_evidence);
     const evidenceDigest = await sha256Hex(evidence.json);
-    if (
-      storedEvidence === null ||
-      storedEvidence.label_selection_evidence_json !== evidence.json ||
-      storedEvidence.label_selection_evidence_digest !== evidenceDigest ||
-      event.label_selection_evidence_digest !== evidenceDigest
-    ) throw new CategorizedWorkflowError("correlation_mismatch");
+    const verifyLabelEvidence = () => {
+      if (storedEvidence === null || storedEvidence.label_selection_evidence_json !== evidence.json ||
+          storedEvidence.label_selection_evidence_digest !== evidenceDigest ||
+          event.label_selection_evidence_digest !== evidenceDigest) throw new CategorizedWorkflowError("correlation_mismatch");
+    };
     await registerBundledWorkflowDefinitions(env, {
       store,
       definitions: bundled,
@@ -379,6 +387,7 @@ export const processQueueMessage = async (
     const policy = await store.findPolicy(event.project_id);
     const activeRun = await store.findActiveRun(event.project_id, event.issue_id);
     if (activeRun !== null) {
+      verifyLabelEvidence();
       const intent = await store.findDispatchIntent(activeRun.run_id);
       if (intent?.source_delivery_id === event.source_delivery_id) {
         await establishDispatch(event, activeRun, store, env.ORCHESTRATION_WORKFLOW, now);
@@ -508,6 +517,23 @@ export const processQueueMessage = async (
         emit(observe, base, { stage: "queue.consume", outcome: "succeeded" });
         return;
       }
+      let sandboxTier;
+      try {
+        sandboxTier = selectSandboxTier(event, storedEvidence);
+      } catch (error) {
+        if (!(error instanceof TierIntegrityError)) throw error;
+        await env.DB.prepare(`INSERT INTO start_dispatch_failures
+          (delivery_id,issue_id,issue_key,project_id,route_revision,cause,first_seen_at,last_seen_at)
+          VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(delivery_id) DO UPDATE SET
+          last_seen_at=excluded.last_seen_at,occurrence_count=occurrence_count+1`)
+          .bind(event.source_delivery_id,event.issue_id,event.issue_key,event.project_id,
+            event.route_revision,error.causeCode,now,now).run();
+        console.error(JSON.stringify({event:"sandbox_tier_start_integrity_failure",
+          delivery_id:event.source_delivery_id,project_id:event.project_id,issue_id:event.issue_id,
+          cause:error.causeCode}));
+        return;
+      }
+      verifyLabelEvidence();
       const selectorMatches = evidence.names === null || policy === null
         ? []
         : (await Promise.all(evidence.names.map(async (labelName) => ({
@@ -551,6 +577,7 @@ export const processQueueMessage = async (
         issueId: event.issue_id,
         definition: selectedDefinition,
         selection,
+        sandboxTier,
         routeRevision: event.route_revision,
         routeDigest: event.route_digest,
         now,
@@ -579,6 +606,7 @@ export const processQueueMessage = async (
         workflowInstanceId: allocation.run.workflow_instance_id,
       });
     } else {
+      verifyLabelEvidence();
       await store.insertInboxEvent(toInboxEvent(event, null), now);
     }
   } catch (error) {

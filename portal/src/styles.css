@@ -166,3 +166,10 @@ button { color:inherit; }
   .workflow-phase.is-breathing,
   .phase-substep.is-breathing { animation: none; border-color: var(--cyan); box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan) 30%, transparent); }
 }
+
+.tier-trial .settings-card { margin-top: 18px; }
+.tier-trial-results { overflow-x: auto; margin-top: 24px; }
+.tier-trial-results table { width: 100%; border-collapse: collapse; text-align: left; }
+.tier-trial-results th, .tier-trial-results td { padding: 12px; border-bottom: 1px solid var(--line); }
+
+.sandbox-startup-failure{padding:14px 0;border-bottom:1px solid var(--line)}.sandbox-startup-failure p{overflow-wrap:anywhere;white-space:pre-wrap}.sandbox-startup-failure a{margin-top:4px}

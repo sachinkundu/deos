@@ -1,0 +1,120 @@
+[
+  {
+    "id": "a0360266-c278-481d-85da-c6d5daa277b7",
+    "created_at": "2026-09-12T08:03:31.907000064Z",
+    "updated_at": "2026-09-12T08:03:32.596999936Z",
+    "account_id": "c68856288112af7698f5be52ea94b96e",
+    "name": "deos-sac171-contract-probe-standard2probe",
+    "version": 1,
+    "scheduling_policy": "default",
+    "instances": 1,
+    "max_instances": 1,
+    "configuration": {
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:46c62f15cc93cefd1dd207ec38b4021aaffac16f7d8d220d266551f48b5c9531",
+      "vcpu": 1,
+      "memory": "6GiB",
+      "memory_mib": 6144,
+      "disk": {
+        "size_mb": 12000,
+        "size": "12GB"
+      },
+      "network": {
+        "assign_ipv6": "none",
+        "assign_ipv4": "none",
+        "mode": "private"
+      },
+      "command": [],
+      "entrypoint": [],
+      "runtime": "firecracker",
+      "observability": {
+        "logs": {
+          "enabled": true
+        }
+      }
+    },
+    "constraints": {
+      "tiers": [
+        1,
+        2
+      ]
+    },
+    "durable_objects": {
+      "namespace_id": "2f4ba4fd636b4eb08848c40b4641391a"
+    },
+    "rollout_active_grace_period": 0,
+    "health": {
+      "errors": [],
+      "instances": {
+        "active": 0,
+        "assigned": 0,
+        "healthy": 1,
+        "stopped": 0,
+        "failed": 0,
+        "scheduling": 0,
+        "starting": 0
+      }
+    },
+    "network": {
+      "bandwidth_limit_mbps": 1000
+    }
+  },
+  {
+    "id": "a0332982-3357-442c-9daf-28658bc2af1b",
+    "created_at": "2026-09-12T08:03:30.112Z",
+    "updated_at": "2026-09-12T08:03:30.32Z",
+    "account_id": "c68856288112af7698f5be52ea94b96e",
+    "name": "deos-sac171-contract-probe-basicprobe",
+    "version": 1,
+    "scheduling_policy": "default",
+    "instances": 1,
+    "max_instances": 1,
+    "configuration": {
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:46c62f15cc93cefd1dd207ec38b4021aaffac16f7d8d220d266551f48b5c9531",
+      "vcpu": 0.25,
+      "memory": "1GiB",
+      "memory_mib": 1024,
+      "disk": {
+        "size_mb": 4000,
+        "size": "4GB"
+      },
+      "network": {
+        "assign_ipv6": "none",
+        "assign_ipv4": "none",
+        "mode": "private"
+      },
+      "command": [],
+      "entrypoint": [],
+      "runtime": "firecracker",
+      "observability": {
+        "logs": {
+          "enabled": true
+        }
+      }
+    },
+    "constraints": {
+      "tiers": [
+        1,
+        2
+      ]
+    },
+    "durable_objects": {
+      "namespace_id": "b77e67fed9a24dba8f39ad625fe65767"
+    },
+    "rollout_active_grace_period": 0,
+    "health": {
+      "errors": [],
+      "instances": {
+        "active": 0,
+        "assigned": 0,
+        "healthy": 1,
+        "stopped": 0,
+        "failed": 0,
+        "scheduling": 0,
+        "starting": 0
+      }
+    },
+    "network": {
+      "bandwidth_limit_mbps": 250
+    }
+  }
+]

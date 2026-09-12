@@ -163,7 +163,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     );
     this.agents = new SandboxAgentController(
       new D1AgentAttemptStore(env.DB),
-      new CloudflareSandboxFactory(env.Sandbox),
+      new CloudflareSandboxFactory(env.Sandbox, env.Standard2Sandbox),
       credentials,
       {
         authProfileId: env.CODEX_AUTH_PROFILE_ID,

@@ -7,6 +7,7 @@ New runs use the small sandbox tier, even when more CPU and memory could make ag
 - Use the Standard-2 sandbox tier for each new run by default.
 - Use the Basic tier when the issue has the exact `slow-ok` label as it moves to `Todo`.
 - Save the chosen tier on the run and each sandbox attempt. Use it for all author and review sandboxes, even after a retry. A later label change does not resize the run.
+- Surface sandbox startup failures and original error details in the portal. External message delivery is deferred.
 - Show the saved tier in the portal. Record enough timing data to compare the two tiers in a controlled trial.
 - Keep the same agent roles, model routes, review rules, and human approval gates for both tiers.
 

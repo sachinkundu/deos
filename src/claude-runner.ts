@@ -1,3 +1,4 @@
+import { requireAttemptTier } from "./sandbox-tier.ts";
 import type { ArtifactCollectionResult } from "./artifact-collector.ts";
 import { recordCaughtError } from "./error-context.ts";
 import { sandboxIdentity } from "./orchestration-identity.ts";
@@ -32,6 +33,12 @@ export class ClaudeRunner {
         job.agentRole !== "reviewer" || job.permissionProfile !== "review_read_only" ||
         Date.parse(attempt.absolute_deadline) <= Date.now()) throw new ClaudeReviewError("review_failure");
     return { attempt, job };
+  }
+
+  private async tier(attempt: AgentAttemptRecord) {
+    const run = await this.dependencies.db.prepare("SELECT sandbox_tier FROM orchestration_runs WHERE run_id = ?")
+      .bind(attempt.run_id).first<{sandbox_tier:string}>();
+    return requireAttemptTier(run?.sandbox_tier, attempt.sandbox_tier);
   }
 
   async handle(path: string, input: unknown, claims: CapabilityClaims, token: string, url: string): Promise<Response> {
@@ -81,7 +88,7 @@ export class ClaudeRunner {
         jobDigest: attempt.job_spec_digest, enrollment });
       if (!won) return response({ state: "starting" }, 202);
       // Only the durable claim winner may start a process. Never retry this block.
-      const sandbox = this.dependencies.sandboxes.get(runnerId, { keepAlive: true });
+      const sandbox = this.dependencies.sandboxes.get(runnerId, { keepAlive: true, tier: await this.tier(attempt) });
       await sandbox.mkdir("/deos/claude", { recursive: true });
       await sandbox.writeFile("/deos/claude/config.json", JSON.stringify({ attemptId: attempt.attempt_id,
         deadline: attempt.absolute_deadline, capabilityToken, capabilityUrl, enrollment }));
@@ -105,7 +112,7 @@ export class ClaudeRunner {
     const turn = await store.claimTurn(attempt.attempt_id, Number(body.ordinal), inputSha256, body.sessionId as string | null);
     const receipt = await store.receipt(turn);
     if (receipt) return response({ receipt });
-    const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: true });
+    const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: true, tier: await this.tier(attempt) });
     const path = `/deos/claude/request-${turn.ordinal}.json`;
     const request = JSON.stringify({ ...body, inputSha256 });
     if ((await sandbox.exists(path)).exists) {
@@ -135,7 +142,7 @@ export class ClaudeRunner {
     if (!turn) throw new ClaudeReviewError("review_failure");
     const saved = await store.receipt(turn);
     if (saved) return response({ receipt: saved });
-    const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: true });
+    const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: true, tier: await this.tier(attempt) });
     if ((await sandbox.exists("/deos/claude/failure.json")).exists) {
       const failure = record(JSON.parse((await sandbox.readFile("/deos/claude/failure.json")).content));
       const stage = ["configuration", "client_start", "provider_turn", "receipt_validation", "receipt_write"].includes(String(failure.diagnosticStage))
@@ -175,7 +182,7 @@ export class ClaudeRunner {
     if (!Array.isArray(job.claudeReviewSources) || job.claudeReviewSources.length === 0) throw new ClaudeReviewError("review_failure");
     const state = { phase: job.reviewKind === "design" ? "design" : "planning", change: job.openspecChange,
       before: job.claudeReviewSources, reviewJob: { materializedContext: job.materializedContext } };
-    const sandbox = this.dependencies.sandboxes.get(attempt.sandbox_id, { keepAlive: true });
+    const sandbox = this.dependencies.sandboxes.get(attempt.sandbox_id, { keepAlive: true, tier: await this.tier(attempt) });
     const process = await sandbox.exec(["node", "/deos/bin/claude-review-read.mjs", encoded(JSON.stringify(state)), encoded(body.command)], { timeout: 15_000 });
     const output = await process.output({ encoding: "utf8", maxBytes: 262144, timeout: 20_000 });
     if (output.exitCode !== 0 || output.truncated || output.timedOut) throw new ClaudeReviewError("review_failure");
@@ -207,7 +214,10 @@ export class ClaudeRunner {
     const invocation = await this.dependencies.store.invocation(attemptId);
     if (!invocation || invocation.cleanup_state === "destroyed") return;
     try {
-      const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: false });
+      const attempt = await this.dependencies.db.prepare("SELECT * FROM agent_attempts WHERE attempt_id = ?")
+        .bind(attemptId).first<AgentAttemptRecord>();
+      if (!attempt) throw new Error("Claude cleanup attempt is missing");
+      const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: false, tier: await this.tier(attempt) });
       await sandbox.setKeepAlive(false);
       await sandbox.destroy();
       await this.dependencies.store.cleanup(attemptId, "destroyed");

@@ -68,6 +68,9 @@ class Default(WorkerEntrypoint):
             DeliveryClassification.RELEVANT if relevant else DeliveryClassification.IRRELEVANT
         )
         delivery = Delivery.from_body(event.source_delivery_id, body, now, classification)
+        tier_policy = self.env.SANDBOX_TIER_POLICY_VERSION
+        if tier_policy not in ("legacy-basic-v1", "event-label-v1"):
+            raise ValueError("unknown sandbox tier release policy")
         run_id = workflow_identity(event.project_id, event.issue_id)
         try:
             result = (
@@ -76,8 +79,9 @@ class Default(WorkerEntrypoint):
                 INSERT OR IGNORE INTO deliveries
                     (delivery_id, payload_hash, received_at, classification, correlation_id,
                      label_selection_evidence_json, label_selection_evidence_digest,
-                     route_project_id, route_revision, route_digest)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     route_project_id, route_revision, route_digest,
+                     start_slow_ok, sandbox_tier_policy_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
                 )
                 .bind(
@@ -91,6 +95,8 @@ class Default(WorkerEntrypoint):
                     route_proof.project_id if route_proof is not None else jsnull,
                     route_proof.route_revision if route_proof is not None else jsnull,
                     route_proof.route_digest if route_proof is not None else jsnull,
+                    1 if event.start_slow_ok is True else jsnull,
+                    tier_policy,
                 )
                 .run()
             )
@@ -165,6 +171,8 @@ class Default(WorkerEntrypoint):
                         "label_selection_evidence_digest": event.label_selection_evidence.digest(),
                         "route_revision": route_proof.route_revision,
                         "route_digest": route_proof.route_digest,
+                        "sandbox_tier_policy_version": tier_policy,
+                        **({"start_slow_ok": True} if event.start_slow_ok is True else {}),
                     }
                 ),
                 contentType="json",

@@ -14,7 +14,7 @@ import {
   type QueueBody,
   type QueueConsumerEnv,
 } from "./queue-consumer-core.ts";
-import { Sandbox } from "./sandbox-platform.ts";
+import { Sandbox, Standard2Sandbox } from "./sandbox-platform.ts";
 import { writeLifecycleObservation } from "./lifecycle-telemetry.ts";
 import { CleanupAuditor, D1CleanupAuditStore } from "./cleanup-audit.ts";
 import { CloudflareSandboxFactory } from "./sandbox-platform.ts";
@@ -34,7 +34,7 @@ import {
   WorkflowRuntimeRecoveryController,
 } from "./workflow-runtime-recovery.ts";
 
-export { DeosWorkflow, Sandbox };
+export { DeosWorkflow, Sandbox, Standard2Sandbox };
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
@@ -85,7 +85,7 @@ const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
 
 const cleanupAuditor = (env: Env): CleanupAuditor => new CleanupAuditor(
   new D1CleanupAuditStore(env.DB),
-  new CloudflareSandboxFactory(env.Sandbox),
+  new CloudflareSandboxFactory(env.Sandbox, env.Standard2Sandbox),
   {
     linearApiUrl: env.LINEAR_API_URL,
     linearAccessToken: env.LINEAR_APP_ACCESS_TOKEN,

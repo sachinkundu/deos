@@ -91,6 +91,7 @@ const setup = () => {
     INSERT INTO agent_attempts (attempt_id,sandbox_id,run_id,node_id,visit_sequence,job_spec_json,job_spec_digest,
       state,absolute_deadline,created_at,updated_at)
     VALUES ('attempt','sandbox','run','review',1,'{}','digest','running','later','now','now');`);
+  db.sqlite.exec("UPDATE orchestration_runs SET sandbox_tier='basic',sandbox_tier_source='legacy_basic',sandbox_tier_policy_version='legacy-basic-v1'; UPDATE agent_attempts SET sandbox_tier='basic'");
   const objects = new Map<string,string>();
   const bucket = { async get(key: string) { const body = objects.get(key); return body === undefined ? null : { async text() { return body; } }; },
     async put(key: string, body: string) { if (!objects.has(key)) objects.set(key,body); } };

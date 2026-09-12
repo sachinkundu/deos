@@ -33,6 +33,7 @@ export interface LifecycleObservation {
   workflowInstanceId?: string;
   attemptId?: string;
   sandboxId?: string;
+  sandboxTier?: string;
   manifestId?: string;
   operationId?: string;
   nodeId?: string;
@@ -60,6 +61,7 @@ export const writeLifecycleObservation: LifecycleWriter = (input) => {
     "cloudflare.workflow.instance_id": input.workflowInstanceId,
     "deos.agent.attempt_id": input.attemptId,
     "cloudflare.sandbox.id": input.sandboxId,
+    "cloudflare.sandbox.tier": input.sandboxTier,
     "deos.artifact.manifest_id": input.manifestId,
     "deos.provider.operation_id": input.operationId,
     "deos.workflow.node_id": input.nodeId,
