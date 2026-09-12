@@ -59,19 +59,22 @@ parts; it does not redesign agent isolation or provider access.
 ```mermaid
 flowchart LR
     W[Cloudflare Workflow<br/>frozen definition] <--> D[(D1 authority)]
-    W --> A[First author attempt<br/>Codex session]
+    W --> T[Trusted runner supervisors<br/>out-of-band control channels]
+    T --> A[First author attempt<br/>Codex session]
     A --> C0[Initial checks<br/>and trusted checkpoint]
     C0 --> SD[Native Codex subagent<br/>self-review discovery]
     SD -->|findings| F[One author fix turn]
     F --> C1[Repair checks<br/>and trusted checkpoint]
     C1 --> SR[Native Codex subagent<br/>closed recheck]
-    A --> E[(R2 artifacts and transcripts)]
-    SD --> E
-    SR --> E
+    A -. parent events .-> T
+    SD -. child events .-> T
+    SR -. child events .-> T
+    T --> E[(R2 artifacts and transcripts)]
+    T --> D
     SD -->|no findings| P1[First publish and read-back]
     SR --> P1
     P1 --> I[Independent review stage<br/>configured Claude route]
-    I --> E
+    I -. review events .-> T
     I --> R[Author response]
     R --> U[Checks, update, and read-back]
     U --> H[Human Review gate]
@@ -100,10 +103,13 @@ back to the human gate.
    the attempt input manifest.
 2. The author creates the full phase artifact. The existing completion hook
    runs allowed-path, OpenSpec, whitespace, readability, and required-section
-   checks. It submits the checked files and completion receipt through an
-   attempt-scoped review-checkpoint capability. The trusted Worker repeats the
-   acceptance checks, stores and reads back the immutable candidate in R2, and
-   records its digest in D1. Self-review cannot start before that response.
+   checks. The trusted supervisor submits the checked files and completion
+   receipt over its control channel. That channel and its credential are held
+   outside the Codex process: they are absent from the model tool schema,
+   environment, arguments, filesystem, and inherited file descriptors. The
+   trusted Worker repeats the acceptance checks, stores and reads back the
+   immutable candidate in R2, and records its digest in D1. Self-review cannot
+   start before that response.
 3. The live author session starts one native Codex subagent with the accepted
    candidate, applicable requirements, checked context, reviewer instructions,
    and a structured finding schema. The child shares the author's Sandbox, so
@@ -112,7 +118,9 @@ back to the human gate.
    compares candidate paths after the child returns. A mismatch rejects the
    child result and restores the accepted candidate before any parent repair.
    A valid result is an ordered finding set with stable IDs or an explicit empty
-   result. Sources used through web search are attached and cited.
+   result. The supervisor accepts it only from a completed child result event
+   whose stable invocation ID matches the start and finish events it observed
+   in the Codex stream. Sources used through web search are attached and cited.
 4. If discovery is empty, self-review ends. If it contains findings, the parent
    author receives the complete fixed set once and gets one repair turn. The
    repaired candidate must pass the same deterministic checks.
@@ -122,18 +130,24 @@ back to the human gate.
    and permits only `fixed` or `open` for each ID. Trusted code rejects
    additional IDs and treats a missing or malformed rating as open. The recheck
    cannot request another author turn.
-6. Before either child call, the supervisor uses the checkpoint capability to
-   reserve the applicable empty slot with a stable invocation ID. Afterward it
-   submits the result through that capability. The Worker validates the active
-   attempt, frozen cycle and input digest, result schema, and closed discovery
-   ID set before it accepts the slot. The Sandbox has no direct D1 or R2 write
-   authority.
+6. Before either child call, the trusted supervisor reserves the applicable
+   empty slot over its out-of-band checkpoint channel with a stable invocation
+   ID. Afterward it submits the result over that channel. The Worker validates
+   the active attempt, frozen cycle and input digest, result schema, closed
+   discovery ID set, and supervisor-attested child lifecycle digest before it
+   accepts the slot. A result without matching observed start, result, and
+   finish events is rejected. Neither the parent model nor a child receives a
+   callable checkpoint endpoint or its credential, and the Sandbox has no
+   direct D1 or R2 write authority.
 7. The supervisor captures parent and subagent events from the Codex JSONL
    stream as they occur. It stores one continuous author transcript plus a
    transcript view for each child invocation, all linked to the same DEOS
    attempt. The latest accepted candidate after the optional repair is the
    publication candidate. Its digest, discovery, repair outcome, recheck, open
    set, sources, and transcript manifests are persisted before publication.
+   Trusted result validation also compares source records with captured native
+   search events. If search ran, the result must declare the used sources, and
+   every declared source must be cited by an existing claim or finding.
 8. Trusted publication updates the phase pull request from that publication
    candidate and reads back its exact head. The Workflow binds both its digest
    and the read-back head as the input to the one independent-review stage. The
@@ -151,8 +165,11 @@ back to the human gate.
 10. The human gate opens after all required results and dispositions exist,
    checks pass, and publication read-back matches the current head. It shows
    the self-review findings and open set, the independent result and responses,
-   the reviewed head, and the current head. Only a signed decision by an
-   allowed person can leave the gate through an approval edge.
+   the reviewed head, and the current head. For recheck, either one valid closed
+   result or the exhausted `unavailable` fallback satisfies completion; the
+   latter leaves every discovery finding open and is labeled as missing review
+   evidence. Only a signed decision by an allowed person can leave the gate
+   through an approval edge.
 
 ### Retry and recovery
 
@@ -180,8 +197,23 @@ this special retry is ineligible.
 If the one repair turn was issued but its outcome is ambiguous, the turn is
 treated as consumed and the last accepted checked candidate is used for the
 closed recheck. This favors visible open findings over an accidental second
-repair. A failed recheck leaves its slot empty and fails with a typed cause; an
-eligible retry may reconcile or fill only that slot.
+repair. A recheck slot permits at most two transport invocations: the original
+call and one authenticated replacement after a typed failure. Both target the
+same closed finding inventory and only the first valid result can fill the
+slot. If neither returns a valid result, trusted code finalizes the slot as
+`unavailable`, derives the open set as every discovery finding, records both
+failure causes, and continues to publication. It shows the missing recheck at
+independent review and the human gate and cannot be retried again.
+
+A structurally invalid independent-review result ends that attempt with
+`invalid_independent_review_result`; it does not fill or consume the single
+valid-result slot. The existing authenticated stage-retry path may make one
+replacement attempt against the same published candidate and slot. A second
+invalid result moves the run to `manual_reconciliation_required` with no human
+approval gate open and no automatic model call. A structurally invalid author
+response similarly ends with `invalid_author_response`; one authenticated
+replacement receives the same concern inventory and cannot start another
+independent review. A second invalid response enters manual reconciliation.
 
 The supervisor's existing five-minute heartbeat continues independently while
 a child is active, and child lifecycle or output events also count as progress.
@@ -234,7 +266,21 @@ self-review child roles, and the independent Claude reviewer; a missing
 required tool or skill fails startup instead of degrading to memory-only work.
 This adds no custom browsing proxy or provider credential. Search results are
 untrusted inputs and cannot change allowed paths, provider rights, or gate
-rules. Each role cites every outside page it uses.
+rules. The supervisor detects native search calls in the captured event stream.
+A structurally valid artifact or review result must list each source it declares
+as used and bind it to an existing claim locator or finding ID; every listed
+source must also appear as a citation in the artifact or structured result. If
+search ran but no valid citation binding exists, trusted acceptance fails. The
+human gate judges whether the agent omitted a source it actually relied on,
+which cannot be established mechanically from tool events alone.
+
+Source values are accepted only when the URL exactly matches a URL in a
+captured native-search result, parses as credential-free HTTPS, contains no
+control characters, and is at most 2,048 bytes. Titles are plain text without
+control characters and at most 300 bytes. The trusted supervisor supplies the
+access timestamp from the search event; model-supplied timestamps are ignored.
+The portal HTML-escapes titles, never fetches a saved URL server-side, and opens
+external links with `noopener`, `noreferrer`, and `nofollow`.
 
 Skills are instruction bundles, not capabilities. The trusted job builder
 loads the exact list for the typed job kind from the frozen definition and
@@ -273,23 +319,29 @@ Prompt-only counting was rejected because a process retry could repeat work.
 Adding more review nodes was rejected because it would make the graph and
 portal contradict the required nested presentation.
 
-### 3. Put mid-attempt review state behind a trusted checkpoint capability
+### 3. Put mid-attempt review state behind a supervisor-only checkpoint channel
 
-The live supervisor reaches a narrow Worker endpoint through its existing
-attempt-scoped capability. The endpoint accepts only three operation kinds for
-the attempt's frozen run, phase, and cycle: accept a deterministically checked
-candidate, reserve a discovery or recheck invocation, and accept its structured
-result. Candidate acceptance repeats trusted checks and R2 read-back before D1
-indexing. Reservation is a D1 compare-and-set. Result acceptance verifies the
-reserved invocation, input digest, schema, and closed finding set before a
+The live trusted supervisor reaches a narrow Worker endpoint through a control
+channel that is not inherited by the Codex parent or children. Its credential
+stays outside the Codex process and is never exposed through a model tool,
+environment variable, argument, file, or inherited descriptor. The endpoint
+accepts only three operation kinds for the attempt's frozen run, phase, and
+cycle: accept a deterministically checked candidate, reserve a discovery or
+recheck invocation, and accept its structured result. Candidate acceptance
+repeats trusted checks and R2 read-back before D1 indexing. Reservation is a D1
+compare-and-set. Result acceptance also requires the supervisor's digest of
+captured start, result, and finish events for the reserved child invocation,
+then verifies the input digest, schema, and closed finding set before a
 create-only R2 write and D1 slot update.
 
 Operation identities derive from the run, phase, cycle, slot kind, candidate or
 invocation identity, and payload digest. Exact retries return the saved result;
-conflicting payloads fail closed. Giving the Sandbox D1 credentials was
-rejected because agent work must not become workflow authority. Deferring all
-state until attempt completion was rejected because a crash could otherwise
-repeat discovery or repair without a durable bound.
+conflicting payloads fail closed. A request with no matching observed child
+lifecycle fails closed even if its other fields are well formed. Giving the
+Codex process either the checkpoint credential or D1 credentials was rejected
+because agent work must not become workflow authority. Deferring all state
+until attempt completion was rejected because a crash could otherwise repeat
+discovery or repair without a durable bound.
 
 ### 4. Capture author, child, and independent-review transcripts
 
@@ -306,11 +358,13 @@ author, self-review, or independent-review job must have a transcript manifest;
 an explicit zero-event manifest is reserved for genuine zero-event or
 historical logs, not used as a substitute for missing capture.
 
-The transcript API addresses an owner explicitly: an author attempt or a child
-invocation. The portal uses the author owner for the main log and the child
-owner for **View transcript** on a nested self-review row. Copying review text
-into portal-only state was rejected because it would drift from the captured
-execution evidence.
+The transcript API addresses one of three owner kinds explicitly:
+`author_attempt`, `native_child_invocation`, or
+`independent_review_attempt`. The portal uses the author owner for the main
+author log, the child owner for **View transcript** on a nested self-review row,
+and the independent-review owner for the top-level independent stage. Copying
+review text into portal-only state was rejected because it would drift from the
+captured execution evidence.
 
 ### 5. Keep independent review and exact-head truth unchanged
 
@@ -347,8 +401,10 @@ Jobs opt into the web-search tool through their frozen role policy. Both the
 author runner and independent Claude review-agent runner register that existing
 tool with the Codex harness, and startup verifies it and the role's pinned
 skills are present for every required role. The design adds no bespoke broker,
-fetcher, URL policy, or network service. Citations remain part of the artifact
-or review result.
+fetcher, or network service. Captured search events and submitted source
+bindings are validated together before accepting an artifact or review result.
+This proves citation structure and source provenance; the human gate retains
+judgment over semantic citation completeness.
 
 A new safe-browsing service was rejected because it expands this change into a
 new security product without an approved contract. Unrestricted provider
@@ -375,11 +431,11 @@ records. They do not require one new table per row type.
 
 | Record | Required fields | Purpose |
 | --- | --- | --- |
-| `phase_review_cycle` | run, phase, initial candidate digest, current accepted candidate digest, publication candidate digest, originating author attempt, discovery slot, repair-used state, recheck slot, independent slot, reviewed head, current head | Enforces one bounded semantic cycle and identifies exactly which checked candidate was published and reviewed. |
-| `review_job` | review ID, cycle, kind, owning attempt, parent attempt and native child invocation ID when nested, input digest, result digest, outcome, model-route reference | Indexes discovery, closed recheck, and independent results without turning child reviews into Workflow nodes. |
+| `phase_review_cycle` | run, phase, initial candidate digest, current accepted candidate digest, publication candidate digest, originating author attempt, discovery slot, repair-used state, recheck status and transport count, independent slot and invalid-attempt count, author-response invalid-attempt count, reviewed head, current head | Enforces one bounded semantic cycle, including the recheck fallback and retry caps, and identifies exactly which checked candidate was published and reviewed. |
+| `review_job` | review ID, cycle, kind, owning attempt, parent attempt and native child invocation ID when nested, observed lifecycle digest, input digest, result digest, outcome, model-route reference | Indexes discovery, closed recheck, and independent results without turning child reviews into Workflow nodes, and proves nested results came from an observed child invocation. |
 | `review_finding` | review ID, stable finding ID, ordinal, summary, artifact location, status, author disposition or response | Keeps the immutable finding inventory and the trusted derived open set queryable. |
 | `agent_input_manifest` | attempt, typed job kind, role, checked file paths and hashes, required web-search tool identity, exact skill IDs and digests, effective capability digest | Extends the existing typed job input proof with deterministic grounding and tool selection. |
-| `source_record` | job or review ID, source ID, URL, title, access time, supported claim or finding ID | Records only outside sources actually used and cited. |
+| `source_record` | job or review ID, source ID, normalized HTTPS URL, plain-text title, supervisor-recorded access time, captured search-event ID, supported claim locator or finding ID | Records validated outside sources actually declared as used and cited. |
 | `transcript_manifest` | owner kind, owner ID, owning attempt, optional parent attempt, R2 object or event range, SHA-256, byte count, event count, format version | Opens an author, nested subagent, or independent-review transcript with integrity and empty-state information. |
 | `human_gate_binding` | run, phase, visit, pull-request identity, reviewed head, current head, open finding IDs, no-new-review reason | Shows the human exactly what proof covers and keeps approval visit-scoped. |
 
@@ -394,23 +450,27 @@ provider token, authorization header, raw credential, or secret is added.
 | --- | --- |
 | A checked plan, architecture file, skill digest, or candidate hash does not match | Fail before starting the affected author or subagent. Do not substitute filesystem discovery or an older manifest. |
 | The first draft fails deterministic checks | Keep the author in the existing bounded completion path. Do not allocate self-review. |
-| The review-checkpoint capability is absent, expired, or scoped to another attempt or phase | Fail before accepting a candidate or reserving a slot. The Sandbox never writes D1 or R2 directly. |
+| The supervisor checkpoint channel is absent, expired, or scoped to another attempt or phase | Fail before accepting a candidate or reserving a slot. The Sandbox never writes D1 or R2 directly. |
+| A reservation or result is submitted from the model process, or its invocation ID has no matching supervisor-observed child lifecycle | Reject it as `unobserved_child_invocation`, leave the slot unaccepted, and preserve the conflicting request as security evidence. |
 | Native discovery subagent exits without a valid result | Leave discovery unaccepted, preserve its child transcript, and fail with a typed cause. Retry reconciles that slot before another transport call. |
 | A child changes a candidate path | Reject its result, retain the immutable accepted R2 candidate as authority, restore that candidate before parent work resumes, and record a protocol violation. |
 | Discovery returns no findings | Save an explicit empty result, mark repair and recheck not required, and continue to publication. |
 | The one author repair fails checks or its completion is ambiguous | Mark the repair opportunity consumed and retain the last valid candidate for closed recheck. Do not grant another repair. |
 | Recheck returns an unknown ID | Reject that item, record a protocol violation, and never add it to the frozen inventory. |
 | Recheck omits or corrupts an original rating | Treat that original item as open and preserve the raw result for diagnosis. |
-| Recheck subagent fails without a valid result | Leave the recheck slot empty and fail with a typed cause. An authenticated retry may fill only that same slot and cannot repeat discovery or repair. |
+| Recheck subagent fails without a valid result | Fail with a typed cause. One authenticated replacement may target only the same slot and inventory; if that also fails, mark the recheck `unavailable`, mark every discovery finding open, and continue with no further recheck calls. |
 | The shared attempt deadline expires while child work is active | Cancel the child, close and retain captured events, leave its result slot unaccepted, and complete normal attempt cleanup. Do not extend the 24-hour deadline. |
 | Parent author attempt ends while child work is active | Stop through the existing attempt-cleanup path, retain captured events, and allow a review-cycle continuation only after cleanup is `destroyed` and the trusted retry preconditions match. Do not create a separate Sandbox lifecycle for the child. |
 | Duplicate delivery or process replay tries to accept another result | The slot compare-and-set loses and the controller reuses the accepted result. |
 | Independent review has concerns | Save them and continue to the one author-response job; concerns do not fail the stage or approve the work. |
-| Independent review or author response is structurally invalid | Keep the required slot or disposition set incomplete and do not open the human gate. |
+| Independent review is structurally invalid | End with `invalid_independent_review_result` and leave the valid-result slot empty. Permit one authenticated replacement against the same head; on a second invalid result enter `manual_reconciliation_required` without opening the human gate. |
+| Author response is structurally invalid | End with `invalid_author_response` and keep the disposition set incomplete. Permit one authenticated replacement with the same concerns and no new review; on a second invalid response enter `manual_reconciliation_required`. |
 | Publication succeeds but exact-head read-back is missing or differs | Record an ambiguous provider effect and hold gate entry until trusted reconciliation establishes the current head. |
 | A human revision omits a bounded root-comment reply | Reject the response set before returning to the gate. Retry the stable reply operation and never resolve the thread. |
 | A later human edit fails checks | Do not publish or start semantic review. Keep the revision on its typed failure path. |
 | Required native web search or a pinned skill is absent from an author, self-review, or independent Claude-review harness | Fail job startup because the frozen role capability was not provisioned. Do not degrade to memory-only or skill-less work. |
+| Captured native search ran but the result has no valid source binding, or a declared source is not cited by an existing claim or finding | Reject the artifact or review result as `uncited_search_result`; preserve the transcript and do not fill its review slot. |
+| A source URL or title violates provenance, scheme, credential, control-character, or length rules | Reject the source record as `invalid_source_record`; do not render or persist it as an operator link. |
 | A successful new independent-review result has no transcript manifest | Treat evidence collection as incomplete and do not advance to author response or the human gate. Preserve a genuine verified zero-event result only when the manifest explicitly proves zero events. |
 | A skill or web result asks for a forbidden action | Treat it as untrusted input and deny the action under the existing attempt capability. |
 | A transcript manifest verifies and has zero events | Return `empty` and render the clear empty message, not an error page. |
@@ -440,6 +500,9 @@ provider token, authorization header, raw credential, or secret is added.
 - **Legacy transcript evidence is inconsistent** → Distinguish verified empty,
   unavailable, and corrupt states instead of turning every absence into an
   error or an empty claim.
+- **A saved outside source becomes misleading or hostile later** → Persist only
+  validated search-result URLs, escape display text, never fetch links from the
+  portal, and apply external-link isolation attributes.
 
 ## Migration Plan
 
@@ -447,39 +510,47 @@ provider token, authorization header, raw credential, or secret is added.
    review-slot, initial/current/publication candidate digest, source, and
    exact-head fields needed by the logical model. Keep historical rows and
    immutable R2 evidence unchanged.
-2. Add the attempt-scoped review-checkpoint operations to the trusted Worker.
-   Verify the frozen attempt and phase, repeat candidate checks and R2 read-back,
-   reserve slots with compare-and-set, and validate digest-bound closed-set
-   results. Test conflicting idempotency payloads and direct-write denial.
+2. Add supervisor-only review-checkpoint operations to the trusted Worker.
+   Keep the control credential outside the Codex process, verify the frozen
+   attempt and phase, repeat candidate checks and R2 read-back, reserve slots
+   with compare-and-set, and require observed child-lifecycle digests for
+   digest-bound closed-set results. Test model-process submission,
+   unobserved-child rejection, conflicting idempotency payloads, and direct-
+   write denial.
 3. Update the Codex author supervisor to issue bounded native subagent prompts,
    keep its heartbeat running, enforce the shared absolute deadline, persist
    stable child identities and structured results through the checkpoint, and
    split or index child events from the parent JSONL stream. Test empty
    discovery, one repair, closed-set violations, child writes, child timeout,
-   replay, and cleanup.
+   replay, the two-invocation recheck fallback, and cleanup.
 4. Update the independent review-agent supervisor to retain its own Codex-
    harness JSONL stream and require a hash-checked transcript manifest before a
-   successful result advances. Test eventful, verified-empty, interrupted, and
-   corrupt independent logs.
+   successful result advances. Add the bounded invalid-result and author-
+   response recovery paths. Test eventful, verified-empty, interrupted,
+   invalid, and corrupt independent logs.
 5. Put exact skills and required native web search in every typed job policy in
    the new frozen definition, including the configured Claude independent
    reviewer. Register the existing search tool in both Codex harness paths,
    load and verify the reviewer-specific skill digests, fail startup when
    either is missing, and record the effective selection in each attempt
    manifest. Verify author, self-review, independent-review, response, and
-   revision context without new provider rights.
-6. Register a new immutable workflow version with unchanged model-route
-   references. Its first-author jobs contain self-review; its independent
-   stages remain top-level; its author-response and human-revision edges skip
-   semantic review. Extend authenticated stage-retry eligibility to first plan
-   and design authors only for nested-review continuation after terminal attempt
-   state, destroyed cleanup, an accepted cycle, and a matching remaining slot.
-7. Update the workflow portal to nest child review rows under the author step,
+   revision context without new provider rights. Validate citation bindings
+   against captured search events and apply the source-record bounds before
+   persistence.
+6. Update the workflow portal to nest child review rows under the author step,
    show the read-only context/tool manifest and exact-head coverage, address
-   transcripts by owner ID, and render content, empty, unavailable, and corrupt
-   states. Build and deploy the workflow portal from the DEOS root, read back
-   the active Cloudflare version at 100% traffic, and verify the protected live
-   pages.
+   all three transcript owner kinds, validate and safely render source links,
+   and render content, empty, unavailable, and corrupt states. Build and deploy
+   the workflow portal from the DEOS root, read back the active Cloudflare
+   version at 100% traffic, and verify the protected live pages.
+7. Only after portal readiness is recorded, register and select a new immutable
+   workflow version with unchanged model-route references. Its first-author
+   jobs contain self-review; its independent stages remain top-level; its
+   author-response and human-revision edges skip semantic review. Extend
+   authenticated stage-retry eligibility for bounded nested-review continuation
+   and invalid author responses, and use the existing independent-stage retry
+   for its one allowed replacement. Selection fails closed when the portal
+   readiness marker does not name the compatible review and transcript schema.
 8. Run a provider-originated canary from a test Linear issue through the new
    flow. Record provider delivery, Workflow state, D1/R2 review and transcript
    evidence, exact pull-request heads, and signed-in portal screenshots as
