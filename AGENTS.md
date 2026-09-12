@@ -63,3 +63,36 @@ packaging guidance, read
 - Read back the deployed version at 100% traffic and verify the live browser.
   A local build or upload alone does not prove activation.
 - The hash-pinned workflow trace runner is separate from the BettaView web app.
+
+## Staging deployment and browser verification
+
+- Treat an authorized staging deployment and its live browser check as part of
+  implementation completion. A later production release follows its own gates;
+  do not block staging completion on production-only checks. Keep the normal
+  release branch policy intact when the user authorizes a manual staging deploy.
+- Staging shares backend services and D1 with production. Before a shared Worker
+  deploy, read its active version and identify its source revision. Preserve
+  newer deployed fixes, even when they have not reached the implementation
+  branch. Recheck the active version immediately before deployment. If it has
+  changed, reconcile against the new baseline before proceeding.
+- For an additive Worker entrypoint change, preserve existing bindings and vars.
+  Avoid a container rollout when no container change is needed. Record the
+  deployed source revision, Worker version, and container rollout choice.
+- Verify the active version at 100% traffic, then exercise the feature in the
+  requested browser. Recheck the backend after browser testing: another deploy
+  can remove an entrypoint while leaving its D1 data intact.
+- A deployment command can fail after activation. Preserve its original error
+  and exit status, inspect provider deployment state, and test the live hostname
+  before deciding whether a retry is needed. Do not report a clean command
+  success or blindly redeploy after a route-read permission error.
+- Use an existing authenticated session in the requested browser, including
+  Brave when requested. For portal history, real completed and ongoing issues
+  can prove search, repeat ordering, reload persistence, and saved navigation
+  without creating issues or changing workflow states. Confirm those states
+  remain unchanged in D1. State separately which limits were tested locally.
+- Check Access policy per endpoint. The portal's `/api/version` endpoint uses a
+  separate service-token policy; a reviewer session alone can return 403 there.
+  Keep service credentials and reviewer assertions out of saved evidence.
+
+See [SAC-161 live evidence](docs/evidence/sac-161/README.md) for the deployment
+collision, recovery, browser checks, and retained command error behind this guidance.
