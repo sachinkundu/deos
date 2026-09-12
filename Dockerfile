@@ -12,6 +12,7 @@ RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/be
 
 COPY container/claude-*.mjs /deos/bin/
 COPY src/claude-review.ts /deos/bin/claude-review.ts
+COPY src/claude-diagnostics.ts src/error-details.ts /deos/bin/
 
 COPY container/original-errors.mjs /deos/bin/original-errors.mjs
 COPY container/native-review-packet.mjs /deos/bin/native-review-packet.mjs

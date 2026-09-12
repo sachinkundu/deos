@@ -1,5 +1,7 @@
 import type { ArtifactCollectionResult } from "./artifact-collector.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { errorDetails } from "./error-details.ts";
+import { redactClaudeDiagnostic } from "./claude-diagnostics.ts";
 import { sandboxIdentity } from "./orchestration-identity.ts";
 import { CLAUDE_MODEL, CLAUDE_EFFORT, CLAUDE_VERSION, ClaudeReviewError, digest, record,
   verifyClaudeEnrollment, type ClaudeReceipt } from "./claude-review.ts";
@@ -7,12 +9,6 @@ import { ClaudeReviewStore, type ClaudeInvocation } from "./claude-review-store.
 import type { AgentAttemptRecord, SandboxFactory } from "./sandbox-controller.ts";
 import type { CapabilityClaims } from "./capability-auth.ts";
 
-const encoded = (text: string): string => {
-  const bytes = new TextEncoder().encode(text);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
-};
 const response = (body: Record<string, unknown>, status = 200): Response =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -50,7 +46,13 @@ export class ClaudeRunner {
       throw new ClaudeReviewError("review_failure");
     } catch (error) {
       const operation = ["review", "status", "tools", "finish"].find(name => path.endsWith(`/${name}`)) ?? "unknown";
-      recordCaughtError(new Error(`Claude ${operation} failed (${error instanceof ClaudeReviewError ? error.causeCode : "runner_operation"})`), "src/claude-runner.ts:handle");
+      // Keep the thrown value, including nested causes and SDK details. Public
+      // classification must not replace the protected diagnostic evidence.
+      let diagnostic = JSON.stringify(errorDetails(error));
+      for (const secret of [this.dependencies.token, this.dependencies.signingKey, token]) {
+        if (secret) diagnostic = diagnostic.split(JSON.stringify(secret).slice(1, -1)).join("[REDACTED]");
+      }
+      recordCaughtError(JSON.parse(diagnostic), `src/claude-runner.ts:handle:${operation}`);
       const safe = error instanceof ClaudeReviewError ? error : new ClaudeReviewError("review_failure");
       await this.dependencies.store.fail(claims.attemptId, safe.causeCode, safe.retryNotBefore);
       await this.dependencies.db.prepare("UPDATE agent_attempts SET result_detail = ? WHERE attempt_id = ? AND state = 'running'")
@@ -144,15 +146,29 @@ export class ClaudeRunner {
       const safeFacts = Object.fromEntries(Object.entries(facts).filter(([key, value]) =>
         ["spawnError", "exitCode", "initSeen", "modelPinned", "terminalSuccess", "finalError", "quotaCount", "effortCount"].includes(key) &&
         (typeof value === "boolean" || (typeof value === "number" && Number.isSafeInteger(value)))));
-      recordCaughtError(new Error(`Claude client stopped at ${stage}: ${JSON.stringify(safeFacts)}`), "src/claude-runner.ts:status");
-      throw new ClaudeReviewError(["auth_failure", "plan_limit"].includes(String(failure.cause))
+      const diagnostic = redactClaudeDiagnostic(failure,
+        [this.dependencies.token, this.dependencies.signingKey]) as Record<string, unknown>;
+      // Keep legacy runners diagnosable too, without replacing new detailed evidence.
+      if (typeof diagnostic.providerMessage !== "string") {
+        diagnostic.providerMessage = `Claude client stopped at ${stage}: ${JSON.stringify(safeFacts)}`;
+      }
+      throw Object.assign(new ClaudeReviewError(["auth_failure", "plan_limit"].includes(String(failure.cause))
         ? failure.cause as "auth_failure" | "plan_limit" : "review_failure",
-        typeof failure.retryNotBefore === "string" && Number.isFinite(Date.parse(failure.retryNotBefore)) ? failure.retryNotBefore : null);
+        typeof failure.retryNotBefore === "string" && Number.isFinite(Date.parse(failure.retryNotBefore)) ? failure.retryNotBefore : null,
+        { cause: diagnostic.originalError }), { diagnostic });
     }
     const path = `/deos/claude/result-${turn.ordinal}.json`;
     if (!(await sandbox.exists(path)).exists) {
       const process = invocation.process_id ? await sandbox.getProcess(invocation.process_id) : null;
-      if (!process || (await process.status()).state !== "running") throw new ClaudeReviewError("review_failure");
+      if (!process || (await process.status()).state !== "running") {
+        const output = process ? await process.output({ encoding: "utf8" }) : null;
+        // A failed failure.json write leaves the complete, redacted error on stderr.
+        // Collect that fallback before the invocation can be cleaned up.
+        throw Object.assign(new ClaudeReviewError("review_failure"), { diagnostic: {
+          providerMessage: output?.stderr || "Claude runner stopped without a result or failure file",
+          processId: invocation.process_id, output,
+        } });
+      }
       return response({ state: "running" }, 202);
     }
     const content = (await sandbox.readFile(path)).content;
@@ -176,9 +192,17 @@ export class ClaudeRunner {
     const state = { phase: job.reviewKind === "design" ? "design" : "planning", change: job.openspecChange,
       before: job.claudeReviewSources, reviewJob: { materializedContext: job.materializedContext } };
     const sandbox = this.dependencies.sandboxes.get(attempt.sandbox_id, { keepAlive: true });
-    const process = await sandbox.exec(["node", "/deos/bin/claude-review-read.mjs", encoded(JSON.stringify(state)), encoded(body.command)], { timeout: 15_000 });
+    const requestPath = `/deos/claude-read/request-${crypto.randomUUID()}.json`;
+    await sandbox.mkdir("/deos/claude-read", { recursive: true });
+    await sandbox.writeFile(requestPath, JSON.stringify({ state, command: body.command }));
+    const process = await sandbox.exec(["node", "/deos/bin/claude-review-read.mjs", "--request-file", requestPath], { timeout: 15_000 });
     const output = await process.output({ encoding: "utf8", maxBytes: 262144, timeout: 20_000 });
-    if (output.exitCode !== 0 || output.truncated || output.timedOut) throw new ClaudeReviewError("review_failure");
+    if (output.exitCode !== 0 || output.truncated || output.timedOut) {
+      throw Object.assign(new Error("Claude read tool did not complete successfully"), {
+        command: body.command, exitCode: output.exitCode, truncated: output.truncated,
+        timedOut: output.timedOut, stdout: output.stdout, stderr: output.stderr,
+      });
+    }
     return response({ text: output.stdout });
   }
 

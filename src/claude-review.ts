@@ -7,8 +7,8 @@ export type ClaudeStopCause = "auth_failure" | "plan_limit" | "review_failure";
 export class ClaudeReviewError extends Error {
   readonly causeCode: ClaudeStopCause;
   readonly retryNotBefore: string | null;
-  constructor(causeCode: ClaudeStopCause, retryNotBefore: string | null = null) {
-    super(causeCode);
+  constructor(causeCode: ClaudeStopCause, retryNotBefore: string | null = null, options?: ErrorOptions) {
+    super(causeCode, options);
     this.name = "ClaudeReviewError";
     this.causeCode = causeCode;
     this.retryNotBefore = retryNotBefore;
@@ -80,7 +80,7 @@ export interface ClaudeReceipt {
   result: Record<string, unknown>;
 }
 
-/** Normalize only allowlisted facts; never persist the raw provider stream. */
+/** Success receipts contain normalized proof. Failures retain protected diagnostics separately. */
 export const validateClaudeTurn = (input: {
   events: unknown[]; appliedEfforts: unknown[]; attemptId: string; turn: number;
   inputSha256: string; sessionId: string; enrollment: ClaudeEnrollment;
@@ -136,7 +136,7 @@ export const validateClaudeTurn = (input: {
     result: record(result) };
 };
 const parseResult = (text: string): unknown => {
-  try { return JSON.parse(text); } catch { throw new ClaudeReviewError("review_failure"); }
+  try { return JSON.parse(text); } catch (cause) { throw new ClaudeReviewError("review_failure", null, { cause }); }
 };
 
 export const validateClaudeEnvironment = (env: Record<string, string | undefined>): void => {

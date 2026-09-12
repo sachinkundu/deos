@@ -4,6 +4,7 @@ import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 import { setTimeout as wait } from "node:timers/promises";
 import { CLAUDE_MODEL, ClaudeReviewError, digest,
   validateClaudeTurn, validateClaudeEnvironment } from "/deos/bin/claude-review.ts";
+import { claudeFailureDiagnostic, redactClaudeDiagnostic } from "/deos/bin/claude-diagnostics.ts";
 
 const ROOT = "/deos/claude";
 const atomic = async (name, value) => {
@@ -15,6 +16,7 @@ const read = async name => {
   catch (e) { if (e.code === "ENOENT") return null; throw e; }
 };
 let child;
+let childClosed;
 let active;
 let init;
 let sessionId;
@@ -27,9 +29,19 @@ let completed;
 let effortOffset = 0;
 let diagnosticStage = "configuration";
 let diagnosticFacts = {};
+let config;
+let stdout = "";
+let stderr = "";
+let brokerFailure;
+const secrets = () => [config?.capabilityToken, ...Object.entries(process.env)
+  .filter(([key]) => /TOKEN|SECRET|PASSWORD|API_KEY|AUTH_TOKEN/.test(key)).map(([, value]) => value)];
+const checkBroker = async () => {
+  brokerFailure = await read("broker-failure.json");
+  if (brokerFailure) throw new ClaudeReviewError("review_failure", null, { cause: brokerFailure });
+};
 const main = async () => {
   validateClaudeEnvironment(process.env);
-  const config = await read("config.json");
+  config = await read("config.json");
   if (!config || !Number.isFinite(Date.parse(config.deadline)) || !process.env.CLAUDE_CODE_OAUTH_TOKEN) throw new ClaudeReviewError("auth_failure");
   await mkdir(`${ROOT}/home`, { recursive: true, mode: 0o700 });
   await mkdir(`${ROOT}/config`, { recursive: true, mode: 0o700 });
@@ -58,10 +70,21 @@ const main = async () => {
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1" }, stdio: ["pipe", "pipe", "pipe"],
     });
     const current = child;
-    child.on("error", () => { if (child === current) { streamFailure = true; diagnosticFacts.spawnError = true; } });
-    child.on("exit", code => { if (child === current && active && !completed) { streamFailure = true; diagnosticFacts.exitCode = code; } });
-    // Never send raw stderr or provider messages to Worker logs.
-    child.stderr.on("data", () => {});
+    childClosed = new Promise(resolve => current.once("close", resolve));
+    child.on("error", error => { if (child === current) { streamFailure = error; diagnosticFacts.spawnError = true; } });
+    child.on("close", (code, signal) => {
+      if (child === current && active && !completed) {
+        streamFailure ??= Object.assign(new Error(`Claude client exited with code ${code}, signal ${signal}`), { code, signal });
+        diagnosticFacts.exitCode = code;
+        diagnosticFacts.exitSignal = signal;
+      }
+    });
+    // Full process output belongs only in protected diagnostics, never public responses.
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", chunk => { if (child === current) stdout += chunk; });
+    child.stderr.on("data", chunk => { if (child === current) stderr += chunk; });
+    child.stdin.on("error", error => { if (child === current) streamFailure ??= error; });
     const lines = createInterface({ input: child.stdout });
     (async () => {
       try {
@@ -94,7 +117,7 @@ const main = async () => {
           if (event.type === "result") completed = event;
           if (events.length > 10000) throw new Error("event limit");
         }
-      } catch { if (child === current) streamFailure = true; }
+      } catch (error) { if (child === current) streamFailure ??= error; }
     })();
   };
   let priorSession = null;
@@ -108,7 +131,7 @@ const main = async () => {
         await digest(JSON.stringify({ prompt: active.prompt, schema: active.schema, sessionId: active.sessionId })) !== active.inputSha256) {
       throw new ClaudeReviewError("review_failure");
     }
-    completed = null; streamFailure = false; terminalFailure = null; events = [];
+    completed = null; streamFailure = null; terminalFailure = null; events = []; stdout = ""; stderr = "";
     if (active.sessionId === null) {
       if (child) { child.stdin.end(); child.kill("SIGTERM"); }
       init = null; sessionId = null; priorSession = null; sessionQuotas = [];
@@ -121,11 +144,15 @@ const main = async () => {
     diagnosticStage = "provider_turn";
     while (!completed) {
       if (terminalFailure) throw terminalFailure;
-      if (streamFailure || await read("broker-failure.json") || Date.now() >= Date.parse(config.deadline)) throw new ClaudeReviewError("review_failure");
+      if (streamFailure) throw new ClaudeReviewError("review_failure", null, { cause: streamFailure });
+      await checkBroker();
+      if (Date.now() >= Date.parse(config.deadline)) throw new ClaudeReviewError("review_failure", null,
+        { cause: new Error(`Claude provider turn exceeded deadline ${config.deadline}`) });
       await wait(100);
     }
     if (terminalFailure) throw terminalFailure;
-    if (await read("broker-failure.json")) throw new ClaudeReviewError("review_failure");
+    if (streamFailure) throw new ClaudeReviewError("review_failure", null, { cause: streamFailure });
+    await checkBroker();
     const efforts = (await readFile(`${ROOT}/effort.jsonl`, "utf8")).split("\n").filter(Boolean).map(JSON.parse);
     diagnosticStage = "receipt_validation";
     diagnosticFacts = { initSeen: Boolean(init), modelPinned: init?.model === CLAUDE_MODEL,
@@ -148,10 +175,21 @@ const main = async () => {
 };
 try { await main(); }
 catch (error) {
-  await atomic("failure.json", { cause: error instanceof ClaudeReviewError ? error.causeCode : "review_failure",
+  // Stop the failed client and drain its pipes before freezing the diagnostic.
+  if (child && child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+  if (childClosed) await childClosed;
+  const diagnostic = claudeFailureDiagnostic({ error, stage: diagnosticStage, facts: diagnosticFacts,
+    events, stdout, stderr, streamError: streamFailure, brokerFailure,
+    attemptId: config?.attemptId, ordinal: active?.ordinal }, secrets());
+  const failure = { ...diagnostic, cause: error instanceof ClaudeReviewError ? error.causeCode : "review_failure",
     retryNotBefore: error instanceof ClaudeReviewError ? error.retryNotBefore : null,
-    diagnosticStage, diagnosticFacts });
+  };
   process.exitCode = 1;
+  try { await atomic("failure.json", failure); }
+  catch (storageError) {
+    // Preserve both failures if the protected file cannot be written.
+    process.stderr.write(JSON.stringify(redactClaudeDiagnostic({ failure, storageError }, secrets())) + "\n");
+  }
 } finally {
   if (child) { child.stdin.end(); child.kill("SIGTERM"); }
 }
