@@ -59,7 +59,7 @@ Remaining rollout procedure:
 
 1. Read current deployments, enabled routes, pending dispatches, active runs,
    and account limits. Preserve unrelated live releases.
-2. Apply migration 0034. Its temporary D1 triggers cover writes from old Workers
+2. Apply migration 0035. Its temporary D1 triggers cover writes from old Workers
    during the release boundary. They fill only missing legacy values with Basic.
    The migration also backfills existing rows without reading current labels.
 3. Deploy ingress with `legacy-basic-v1`. Drain accepted start messages from the

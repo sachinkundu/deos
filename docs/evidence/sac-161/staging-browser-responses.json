@@ -1,0 +1,615 @@
+{
+  "sourceSha": "f20e35c6d405271235eb04711381c0baec7f5b9d",
+  "browser": "Brave",
+  "expectedOrder": [
+    "SAC-161",
+    "SAC-154",
+    "SAC-160",
+    "SAC-155",
+    "SAC-151",
+    "SAC-166",
+    "SAC-167",
+    "SAC-168",
+    "SAC-171",
+    "SAC-153"
+  ],
+  "reloadedOrder": [
+    "SAC-161",
+    "SAC-154",
+    "SAC-160",
+    "SAC-155",
+    "SAC-151",
+    "SAC-166",
+    "SAC-167",
+    "SAC-168",
+    "SAC-171",
+    "SAC-153"
+  ],
+  "responses": [
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-153",
+      "status": 200,
+      "response": {
+        "issues": [
+          {
+            "key": "SAC-153",
+            "title": "Keep workflow views up to date automatically",
+            "url": "https://linear.app/sachinkundu/issue/SAC-153/keep-workflow-views-up-to-date-automatically",
+            "observedAt": "2026-09-12T12:35:55.747000+00:00"
+          }
+        ],
+        "recentIssues": {
+          "state": "updated",
+          "snapshotVersion": 1,
+          "items": [
+            {
+              "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+              "identifier": "SAC-153",
+              "title": "Keep workflow views up to date automatically"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-161",
+      "status": 200,
+      "response": {
+        "issues": [
+          {
+            "key": "SAC-161",
+            "title": "Keep the last 10 searched issues in the DEOS portal",
+            "url": "https://linear.app/sachinkundu/issue/SAC-161/keep-the-last-10-searched-issues-in-the-deos-portal",
+            "observedAt": "2026-09-12T11:58:16.759000+00:00"
+          }
+        ],
+        "recentIssues": {
+          "state": "updated",
+          "snapshotVersion": 2,
+          "items": [
+            {
+              "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+              "identifier": "SAC-161",
+              "title": "Keep the last 10 searched issues in the DEOS portal"
+            },
+            {
+              "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+              "identifier": "SAC-153",
+              "title": "Keep workflow views up to date automatically"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-171",
+      "status": 200,
+      "response": {
+        "issues": [
+          {
+            "key": "SAC-171",
+            "title": "Use faster sandboxes by default with a slow-ok option",
+            "url": "https://linear.app/sachinkundu/issue/SAC-171/use-faster-sandboxes-by-default-with-a-slow-ok-option",
+            "observedAt": "2026-09-12T07:58:36.572000+00:00"
+          }
+        ],
+        "recentIssues": {
+          "state": "updated",
+          "snapshotVersion": 3,
+          "items": [
+            {
+              "issueId": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+              "identifier": "SAC-171",
+              "title": "Use faster sandboxes by default with a slow-ok option"
+            },
+            {
+              "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+              "identifier": "SAC-161",
+              "title": "Keep the last 10 searched issues in the DEOS portal"
+            },
+            {
+              "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+              "identifier": "SAC-153",
+              "title": "Keep workflow views up to date automatically"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-168",
+      "status": 200,
+      "response": {
+        "issues": [
+          {
+            "key": "SAC-168",
+            "title": "Convert temperatures with a small command-line tool",
+            "url": "https://linear.app/sachinkundu/issue/SAC-168/convert-temperatures-with-a-small-command-line-tool",
+            "observedAt": "2026-09-11T10:51:54.670000+00:00"
+          }
+        ],
+        "recentIssues": {
+          "state": "updated",
+          "snapshotVersion": 4,
+          "items": [
+            {
+              "issueId": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+              "identifier": "SAC-168",
+              "title": "Convert temperatures with a small command-line tool"
+            },
+            {
+              "issueId": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+              "identifier": "SAC-171",
+              "title": "Use faster sandboxes by default with a slow-ok option"
+            },
+            {
+              "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+              "identifier": "SAC-161",
+              "title": "Keep the last 10 searched issues in the DEOS portal"
+            },
+            {
+              "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+              "identifier": "SAC-153",
+              "title": "Keep workflow views up to date automatically"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-167",
+      "status": 200,
+      "response": {
+        "issues": [
+          {
+            "key": "SAC-167",
+            "title": "Replace OpenRouter external review with Claude Opus 5",
+            "url": "https://linear.app/sachinkundu/issue/SAC-167/replace-openrouter-external-review-with-claude-opus-5",
+            "observedAt": "2026-09-11T07:46:13.786000+00:00"
+          }
+        ],
+        "recentIssues": {
+          "state": "updated",
+          "snapshotVersion": 5,
+          "items": [
+            {
+              "issueId": "d168992b-7e01-4f58-be3b-dd940246d0aa",
+              "identifier": "SAC-167",
+              "title": "Replace OpenRouter external review with Claude Opus 5"
+            },
+            {
+              "issueId": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+              "identifier": "SAC-168",
+              "title": "Convert temperatures with a small command-line tool"
+            },
+            {
+              "issueId": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+              "identifier": "SAC-171",
+              "title": "Use faster sandboxes by default with a slow-ok option"
+            },
+            {
+              "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+              "identifier": "SAC-161",
+              "title": "Keep the last 10 searched issues in the DEOS portal"
+            },
+            {
+              "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+              "identifier": "SAC-153",
+              "title": "Keep workflow views up to date automatically"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-166",
+      "status": 200,
+      "response": {
+        "issues": [
+          {
+            "key": "SAC-166",
+            "title": "Build a calculator CLI for numbers and unit conversions",
+            "url": "https://linear.app/sachinkundu/issue/SAC-166/build-a-calculator-cli-for-numbers-and-unit-conversions",
+            "observedAt": "2026-09-10T13:56:10.434000+00:00"
+          }
+        ],
+        "recentIssues": {
+          "state": "updated",
+          "snapshotVersion": 6,
+          "items": [
+            {
+              "issueId": "e5996a8a-295a-4f94-a020-6769cfcb2c7e",
+              "identifier": "SAC-166",
+              "title": "Build a calculator CLI for numbers and unit conversions"
+            },
+            {
+              "issueId": "d168992b-7e01-4f58-be3b-dd940246d0aa",
+              "identifier": "SAC-167",
+              "title": "Replace OpenRouter external review with Claude Opus 5"
+            },
+            {
+              "issueId": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+              "identifier": "SAC-168",
+              "title": "Convert temperatures with a small command-line tool"
+            },
+            {
+              "issueId": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+              "identifier": "SAC-171",
+              "title": "Use faster sandboxes by default with a slow-ok option"
+            },
+            {
+              "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+              "identifier": "SAC-161",
+              "title": "Keep the last 10 searched issues in the DEOS portal"
+            },
+            {
+              "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+              "identifier": "SAC-153",
+              "title": "Keep workflow views up to date automatically"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-151",
+      "status": 200,
+      "response": {
+        "issues": [
+          {
+            "key": "SAC-151",
+            "title": "Speed up automated OpenSpec review loops",
+            "url": "https://linear.app/sachinkundu/issue/SAC-151/speed-up-automated-openspec-review-loops",
+            "observedAt": "2026-09-10T05:26:16.371000+00:00"
+          }
+        ],
+        "recentIssues": {
+          "state": "updated",
+          "snapshotVersion": 7,
+          "items": [
+            {
+              "issueId": "243ec1d6-9be8-416b-bc2e-8083771c8b13",
+              "identifier": "SAC-151",
+              "title": "Speed up automated OpenSpec review loops"
+            },
+            {
+              "issueId": "e5996a8a-295a-4f94-a020-6769cfcb2c7e",
+              "identifier": "SAC-166",
+              "title": "Build a calculator CLI for numbers and unit conversions"
+            },
+            {
+              "issueId": "d168992b-7e01-4f58-be3b-dd940246d0aa",
+              "identifier": "SAC-167",
+              "title": "Replace OpenRouter external review with Claude Opus 5"
+            },
+            {
+              "issueId": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+              "identifier": "SAC-168",
+              "title": "Convert temperatures with a small command-line tool"
+            },
+            {
+              "issueId": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+              "identifier": "SAC-171",
+              "title": "Use faster sandboxes by default with a slow-ok option"
+            },
+            {
+              "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+              "identifier": "SAC-161",
+              "title": "Keep the last 10 searched issues in the DEOS portal"
+            },
+            {
+              "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+              "identifier": "SAC-153",
+              "title": "Keep workflow views up to date automatically"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-155",
+      "status": 200,
+      "response": {
+        "issues": [
+          {
+            "key": "SAC-155",
+            "title": "Keep the live portal available and review new features in staging",
+            "url": "https://linear.app/sachinkundu/issue/SAC-155/keep-the-live-portal-available-and-review-new-features-in-staging",
+            "observedAt": "2026-09-09T05:18:46.365000+00:00"
+          }
+        ],
+        "recentIssues": {
+          "state": "updated",
+          "snapshotVersion": 8,
+          "items": [
+            {
+              "issueId": "19832025-7d65-4441-af89-00833fbb8348",
+              "identifier": "SAC-155",
+              "title": "Keep the live portal available and review new features in staging"
+            },
+            {
+              "issueId": "243ec1d6-9be8-416b-bc2e-8083771c8b13",
+              "identifier": "SAC-151",
+              "title": "Speed up automated OpenSpec review loops"
+            },
+            {
+              "issueId": "e5996a8a-295a-4f94-a020-6769cfcb2c7e",
+              "identifier": "SAC-166",
+              "title": "Build a calculator CLI for numbers and unit conversions"
+            },
+            {
+              "issueId": "d168992b-7e01-4f58-be3b-dd940246d0aa",
+              "identifier": "SAC-167",
+              "title": "Replace OpenRouter external review with Claude Opus 5"
+            },
+            {
+              "issueId": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+              "identifier": "SAC-168",
+              "title": "Convert temperatures with a small command-line tool"
+            },
+            {
+              "issueId": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+              "identifier": "SAC-171",
+              "title": "Use faster sandboxes by default with a slow-ok option"
+            },
+            {
+              "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+              "identifier": "SAC-161",
+              "title": "Keep the last 10 searched issues in the DEOS portal"
+            },
+            {
+              "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+              "identifier": "SAC-153",
+              "title": "Keep workflow views up to date automatically"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-160",
+      "status": 200,
+      "response": {
+        "issues": [
+          {
+            "key": "SAC-160",
+            "title": "Tell Linear when a DEOS workflow is done",
+            "url": "https://linear.app/sachinkundu/issue/SAC-160/tell-linear-when-a-deos-workflow-is-done",
+            "observedAt": "2026-09-08T08:01:55.808000+00:00"
+          }
+        ],
+        "recentIssues": {
+          "state": "updated",
+          "snapshotVersion": 9,
+          "items": [
+            {
+              "issueId": "fe309e48-a316-40c4-a000-eb2927e7d72d",
+              "identifier": "SAC-160",
+              "title": "Tell Linear when a DEOS workflow is done"
+            },
+            {
+              "issueId": "19832025-7d65-4441-af89-00833fbb8348",
+              "identifier": "SAC-155",
+              "title": "Keep the live portal available and review new features in staging"
+            },
+            {
+              "issueId": "243ec1d6-9be8-416b-bc2e-8083771c8b13",
+              "identifier": "SAC-151",
+              "title": "Speed up automated OpenSpec review loops"
+            },
+            {
+              "issueId": "e5996a8a-295a-4f94-a020-6769cfcb2c7e",
+              "identifier": "SAC-166",
+              "title": "Build a calculator CLI for numbers and unit conversions"
+            },
+            {
+              "issueId": "d168992b-7e01-4f58-be3b-dd940246d0aa",
+              "identifier": "SAC-167",
+              "title": "Replace OpenRouter external review with Claude Opus 5"
+            },
+            {
+              "issueId": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+              "identifier": "SAC-168",
+              "title": "Convert temperatures with a small command-line tool"
+            },
+            {
+              "issueId": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+              "identifier": "SAC-171",
+              "title": "Use faster sandboxes by default with a slow-ok option"
+            },
+            {
+              "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+              "identifier": "SAC-161",
+              "title": "Keep the last 10 searched issues in the DEOS portal"
+            },
+            {
+              "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+              "identifier": "SAC-153",
+              "title": "Keep workflow views up to date automatically"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-154",
+      "status": 200,
+      "response": {
+        "issues": [
+          {
+            "key": "SAC-154",
+            "title": "Set a desktop wallpaper from the command line",
+            "url": "https://linear.app/sachinkundu/issue/SAC-154/set-a-desktop-wallpaper-from-the-command-line",
+            "observedAt": "2026-09-04T08:06:22.678000+00:00"
+          }
+        ],
+        "recentIssues": {
+          "state": "updated",
+          "snapshotVersion": 10,
+          "items": [
+            {
+              "issueId": "70bb4734-3c5d-4c02-88e1-faec3becd3d1",
+              "identifier": "SAC-154",
+              "title": "Set a desktop wallpaper from the command line"
+            },
+            {
+              "issueId": "fe309e48-a316-40c4-a000-eb2927e7d72d",
+              "identifier": "SAC-160",
+              "title": "Tell Linear when a DEOS workflow is done"
+            },
+            {
+              "issueId": "19832025-7d65-4441-af89-00833fbb8348",
+              "identifier": "SAC-155",
+              "title": "Keep the live portal available and review new features in staging"
+            },
+            {
+              "issueId": "243ec1d6-9be8-416b-bc2e-8083771c8b13",
+              "identifier": "SAC-151",
+              "title": "Speed up automated OpenSpec review loops"
+            },
+            {
+              "issueId": "e5996a8a-295a-4f94-a020-6769cfcb2c7e",
+              "identifier": "SAC-166",
+              "title": "Build a calculator CLI for numbers and unit conversions"
+            },
+            {
+              "issueId": "d168992b-7e01-4f58-be3b-dd940246d0aa",
+              "identifier": "SAC-167",
+              "title": "Replace OpenRouter external review with Claude Opus 5"
+            },
+            {
+              "issueId": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+              "identifier": "SAC-168",
+              "title": "Convert temperatures with a small command-line tool"
+            },
+            {
+              "issueId": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+              "identifier": "SAC-171",
+              "title": "Use faster sandboxes by default with a slow-ok option"
+            },
+            {
+              "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+              "identifier": "SAC-161",
+              "title": "Keep the last 10 searched issues in the DEOS portal"
+            },
+            {
+              "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+              "identifier": "SAC-153",
+              "title": "Keep workflow views up to date automatically"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/recent-issues",
+      "status": 200,
+      "response": {
+        "snapshotVersion": 11,
+        "items": [
+          {
+            "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+            "identifier": "SAC-161",
+            "title": "Keep the last 10 searched issues in the DEOS portal"
+          },
+          {
+            "issueId": "70bb4734-3c5d-4c02-88e1-faec3becd3d1",
+            "identifier": "SAC-154",
+            "title": "Set a desktop wallpaper from the command line"
+          },
+          {
+            "issueId": "fe309e48-a316-40c4-a000-eb2927e7d72d",
+            "identifier": "SAC-160",
+            "title": "Tell Linear when a DEOS workflow is done"
+          },
+          {
+            "issueId": "19832025-7d65-4441-af89-00833fbb8348",
+            "identifier": "SAC-155",
+            "title": "Keep the live portal available and review new features in staging"
+          },
+          {
+            "issueId": "243ec1d6-9be8-416b-bc2e-8083771c8b13",
+            "identifier": "SAC-151",
+            "title": "Speed up automated OpenSpec review loops"
+          },
+          {
+            "issueId": "e5996a8a-295a-4f94-a020-6769cfcb2c7e",
+            "identifier": "SAC-166",
+            "title": "Build a calculator CLI for numbers and unit conversions"
+          },
+          {
+            "issueId": "d168992b-7e01-4f58-be3b-dd940246d0aa",
+            "identifier": "SAC-167",
+            "title": "Replace OpenRouter external review with Claude Opus 5"
+          },
+          {
+            "issueId": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+            "identifier": "SAC-168",
+            "title": "Convert temperatures with a small command-line tool"
+          },
+          {
+            "issueId": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+            "identifier": "SAC-171",
+            "title": "Use faster sandboxes by default with a slow-ok option"
+          },
+          {
+            "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+            "identifier": "SAC-153",
+            "title": "Keep workflow views up to date automatically"
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues/e5996a8a-295a-4f94-a020-6769cfcb2c7e/runs",
+      "status": 200,
+      "response": {
+        "issue": {
+          "key": "SAC-166",
+          "title": "Build a calculator CLI for numbers and unit conversions",
+          "url": "https://linear.app/sachinkundu/issue/SAC-166/build-a-calculator-cli-for-numbers-and-unit-conversions",
+          "observedAt": "2026-09-10T13:56:10.434000+00:00"
+        },
+        "runs": [
+          {
+            "id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e5996a8a-295a-4f94-a020-6769cfcb2c7e:run:3",
+            "sequence": 3,
+            "status": "succeeded",
+            "definitionVersion": 23,
+            "startedAt": "2026-09-10T07:30:42.163Z",
+            "updatedAt": "2026-09-10T13:56:31.426Z",
+            "endedAt": "2026-09-10T13:56:31.426Z"
+          },
+          {
+            "id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e5996a8a-295a-4f94-a020-6769cfcb2c7e:run:2",
+            "sequence": 2,
+            "status": "failed",
+            "definitionVersion": 23,
+            "startedAt": "2026-09-10T06:57:05.093Z",
+            "updatedAt": "2026-09-10T07:20:41.123Z",
+            "endedAt": "2026-09-10T07:20:41.123Z"
+          },
+          {
+            "id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e5996a8a-295a-4f94-a020-6769cfcb2c7e:run:1",
+            "sequence": 1,
+            "status": "failed",
+            "definitionVersion": 23,
+            "startedAt": "2026-09-10T06:50:42.282Z",
+            "updatedAt": "2026-09-10T06:51:14.872Z",
+            "endedAt": "2026-09-10T06:51:14.872Z"
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://deos-staging.voxdez.com/api/issues?query=SAC-999999999",
+      "status": 200,
+      "response": {
+        "issues": [],
+        "recentIssues": {
+          "state": "unchanged"
+        }
+      }
+    }
+  ]
+}

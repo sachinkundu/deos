@@ -1,0 +1,74 @@
+{
+  "runStateChanges": [],
+  "runCount": 10,
+  "recentHistory": [
+    {
+      "recency_id": 11,
+      "issue_id": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+      "issue_identifier": "SAC-161",
+      "issue_title": "Keep the last 10 searched issues in the DEOS portal"
+    },
+    {
+      "recency_id": 10,
+      "issue_id": "70bb4734-3c5d-4c02-88e1-faec3becd3d1",
+      "issue_identifier": "SAC-154",
+      "issue_title": "Set a desktop wallpaper from the command line"
+    },
+    {
+      "recency_id": 9,
+      "issue_id": "fe309e48-a316-40c4-a000-eb2927e7d72d",
+      "issue_identifier": "SAC-160",
+      "issue_title": "Tell Linear when a DEOS workflow is done"
+    },
+    {
+      "recency_id": 8,
+      "issue_id": "19832025-7d65-4441-af89-00833fbb8348",
+      "issue_identifier": "SAC-155",
+      "issue_title": "Keep the live portal available and review new features in staging"
+    },
+    {
+      "recency_id": 7,
+      "issue_id": "243ec1d6-9be8-416b-bc2e-8083771c8b13",
+      "issue_identifier": "SAC-151",
+      "issue_title": "Speed up automated OpenSpec review loops"
+    },
+    {
+      "recency_id": 6,
+      "issue_id": "e5996a8a-295a-4f94-a020-6769cfcb2c7e",
+      "issue_identifier": "SAC-166",
+      "issue_title": "Build a calculator CLI for numbers and unit conversions"
+    },
+    {
+      "recency_id": 5,
+      "issue_id": "d168992b-7e01-4f58-be3b-dd940246d0aa",
+      "issue_identifier": "SAC-167",
+      "issue_title": "Replace OpenRouter external review with Claude Opus 5"
+    },
+    {
+      "recency_id": 4,
+      "issue_id": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+      "issue_identifier": "SAC-168",
+      "issue_title": "Convert temperatures with a small command-line tool"
+    },
+    {
+      "recency_id": 3,
+      "issue_id": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+      "issue_identifier": "SAC-171",
+      "issue_title": "Use faster sandboxes by default with a slow-ok option"
+    },
+    {
+      "recency_id": 1,
+      "issue_id": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+      "issue_identifier": "SAC-153",
+      "issue_title": "Keep workflow views up to date automatically"
+    }
+  ],
+  "schema": [
+    {
+      "sql": "CREATE TABLE portal_recent_issues (\n  recency_id INTEGER PRIMARY KEY AUTOINCREMENT,\n  person_key TEXT NOT NULL CHECK(length(person_key) BETWEEN 1 AND 80),\n  issue_id TEXT NOT NULL CHECK(length(issue_id) BETWEEN 1 AND 128),\n  issue_identifier TEXT NOT NULL CHECK(length(issue_identifier) BETWEEN 1 AND 64),\n  issue_title TEXT NOT NULL CHECK(length(issue_title) <= 512),\n  UNIQUE(person_key, issue_id)\n)"
+    },
+    {
+      "sql": "CREATE INDEX portal_recent_issues_person_recency\n  ON portal_recent_issues(person_key, recency_id DESC)"
+    }
+  ]
+}

@@ -16,6 +16,8 @@
     }
   },
   "vars": {
+    "PORTAL_ACCESS_TEAM_DOMAIN": "deos-voxdez.cloudflareaccess.com",
+    "PORTAL_ACCESS_AUD": "c12828abda88ac73e394039f6e0b87a9bc5f2d78922463c37a72ccca55bedec7",
     "LINEAR_API_URL": "https://api.linear.app/graphql",
     "LINEAR_HUMAN_APPROVAL_STATE_ID": "71738607-03fd-49f2-b4be-b2aac29ccd13",
     "LINEAR_PROJECT_ID": "99426d9b-cda7-4db4-9136-692a95a0b090",
