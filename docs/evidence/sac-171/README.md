@@ -49,11 +49,14 @@ there were no waits. Account quota headroom remains a rollout check.
 
 ## Rollout status
 
-Production has not received this implementation. The local ingress configuration
-still selects the temporary `legacy-basic-v1` compatibility policy. The
-Standard-2 default is not active. The user revised the design on 12 September:
-errors are surfaced in the portal and external message delivery is deferred.
-A paging destination is no longer an activation prerequisite.
+Production migration 0035 and tier enforcement are applied. All 82 existing
+runs were backfilled to Basic. Validation found zero invalid runs, mismatched
+attempts, or unversioned deliveries. The backend is deployed with both classes
+and retains the production recovery fixes from SAC-170 and the current image.
+The compatibility ingress release is active; activation follows portal release.
+
+The user deferred message delivery and the fixed-count reliability window.
+Neither is a completion prerequisite.
 
 Remaining rollout procedure:
 
