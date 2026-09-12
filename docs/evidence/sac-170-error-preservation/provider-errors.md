@@ -87,7 +87,26 @@ the existing business run and frozen v24 definition, advancing visit 45 to 46.
 The new Workflow instance is
 `wf-v1-rntenp5gkgagwmkc6othboimueh64mzscaedlrhhcekprce22amq`.
 No credentials, human gates, or deployments were changed. The new review attempt
-`01a0956a-3a29-778f-aa53-4b186d7d5aca` is running; the result is pending.
+`01a0956a-3a29-778f-aa53-4b186d7d5aca` passed authentication but failed on a
+repository read at 11:41:44 UTC. The exact command was:
+
+```text
+rg -n -i "skill|subagent|web search|harness" docs/current-architecture.md
+```
+
+Protected error `ef53894e-6287-4cbe-a085-f458d523036d` retained the full command,
+exit code 1, empty stdout, and stderr containing `unsupported review command`
+with the stack at `container/native-review-read.mjs:8`. The reader rejects
+`|` before parsing quotes. That wrongly rejects regex alternatives inside a
+quoted search argument. Calling `readCommand` locally with the saved command
+reproduced the exact error. This is a deterministic reader bug, not another
+authentication rejection.
+
+D1 marked the run failed at 11:44:41 UTC. Cloudflare marked its Workflow
+errored, and the attempt runtime was destroyed. SAC-161 is at Human Review.
+The monitor was paused after recording the cause. No second retry was issued.
+The reader needs to distinguish quoted argument data from shell syntax while
+preserving the read-only operation and frozen-path checks before another run.
 [Showboat follow-through](provider-403-followthrough.md) records this retry.
 
 [Showboat deployment and retry output](provider-rollout.md) records the actual

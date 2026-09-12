@@ -95,3 +95,99 @@ rtk proxy python3 /tmp/deos-sac170-live.py snapshot
   }
 }
 ```
+
+```bash
+rtk proxy node /tmp/sac170-reproduce-read.mjs
+```
+
+```output
+{"command":"rg -n -i \"skill|subagent|web search|harness\" docs/current-architecture.md","error":"unsupported review command","stack":"Error: unsupported review command\n    at readCommand (file:///Users/sachin/code/deos/container/native-review-read.mjs:8:77)\n    at file:///private/tmp/sac170-reproduce-read.mjs:4:49"}
+```
+
+```bash
+rtk proxy python3 /tmp/deos-sac170-live.py snapshot
+```
+
+```output
+{
+  "runs": [
+    {
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:eecb8048-26ce-4c5c-9467-97e583842f5b:run:1",
+      "issue_id": "eecb8048-26ce-4c5c-9467-97e583842f5b",
+      "status": "failed",
+      "current_node": "agent_failed",
+      "definition_id": "simple-traceability-claude",
+      "definition_version": 24,
+      "workflow_instance_id": "wf-v1-rntenp5gkgagwmkc6othboimueh64mzscaedlrhhcekprce22amq",
+      "updated_at": "2026-09-12T11:44:41.446Z"
+    },
+    {
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:096ce85d-9c56-4faa-ad74-ef8055bafc91:run:1",
+      "issue_id": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+      "status": "awaiting_human",
+      "current_node": "design_review",
+      "definition_id": "simple-traceability-claude",
+      "definition_version": 24,
+      "workflow_instance_id": "wf-v1-5oklscanzhh74xyzxgownabtfg6omcvjtuum2iybzn6esdif6xpa",
+      "updated_at": "2026-09-12T11:40:35.966Z"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt_id": "01a0956a-3a29-778f-aa53-4b186d7d5aca",
+      "node_id": "design_independent_review",
+      "state": "failed",
+      "heartbeat_at": "2026-09-12T11:39:31.118Z",
+      "result_class": "codex_exit_nonzero",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-12T11:39:22.025Z"
+    },
+    {
+      "attempt_id": "01a0955b-9167-7cc9-97d1-7420f3d6d0d5",
+      "node_id": "design_independent_review",
+      "state": "failed",
+      "heartbeat_at": "2026-09-12T11:23:28.932Z",
+      "result_class": "codex_exit_nonzero",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-12T11:23:21.319Z"
+    }
+  ]
+}
+{
+  "issue": "eecb8048-26ce-4c5c-9467-97e583842f5b",
+  "workflow": {
+    "status": "errored",
+    "versionId": "742f0a75-7c6e-49e5-86c9-f6b60831a08d",
+    "start": "2026-09-12T11:39:16.577Z",
+    "end": "2026-09-12T11:44:42.786Z",
+    "error": {
+      "name": "Error",
+      "message": "NonRetryableError: agent_execution_failed"
+    },
+    "step_count": 7
+  },
+  "lastStep": {
+    "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:eecb8048-26ce-4c5c-9467-97e583842f5b:run:1-3",
+    "type": "step",
+    "finished": null,
+    "error": null
+  }
+}
+{
+  "issue": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+  "workflow": {
+    "status": "waiting",
+    "versionId": "f87280db-3260-4d6f-a61b-4909e3d4b491",
+    "start": "2026-09-12T07:35:49.076Z",
+    "end": null,
+    "error": null,
+    "step_count": 774
+  },
+  "lastStep": {
+    "name": "linear-event:design_review:visit:32-1",
+    "type": "waitForEvent",
+    "finished": false,
+    "error": null
+  }
+}
+```
