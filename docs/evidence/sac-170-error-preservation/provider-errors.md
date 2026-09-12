@@ -47,8 +47,19 @@ SAC-170's failed `design_independent_review` attempt. It retained the existing
 business run and frozen workflow definition v24. The new attempt is
 `01a0953c-1dc9-7ce3-a0e4-bd855eec623e`; its Cloudflare Workflow instance is
 `wf-v1-pf4sw62lp3yovir734yl3e4mktmd2d7ssjgzv3svalwurdmoj6qq`.
-Cloudflare reported the workflow running, and D1 recorded the new attempt.
-The review result is pending. SAC-161 remains at its Human Review gate.
+Claude finished the review with concerns. Its invocation has no failure cause,
+and its runtime was destroyed after collection. The author response attempt
+`01a09541-25d7-78b5-a8a6-f15b95d4cf75` then completed and was cleaned up.
+
+Linear entered Human Review at 11:06:04 UTC. D1 confirmed `awaiting_human` at
+`design_review` at 11:06:20 UTC. Cloudflare reached the human-event wait for
+visit 40. SAC-161 remains at its Human Review gate. No further retry or human
+approval was issued, and the monitor was paused after recording this outcome.
+
+This live retry confirms a real Claude review and author response can finish
+on the deployed release. No authentication failure recurred, so it does not
+identify the original rejection cause or prove the new failure capture path
+against a live rejected request.
 
 [Showboat deployment and retry output](provider-rollout.md) records the actual
 commands and remote readback. Its operator helpers and request file were saved

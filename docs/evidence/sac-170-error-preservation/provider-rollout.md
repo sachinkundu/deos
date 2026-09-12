@@ -1022,3 +1022,88 @@ rtk proxy python3 /tmp/deos-sac170-live.py snapshot
   }
 }
 ```
+
+```bash
+rtk proxy python3 /tmp/deos-sac170-live.py snapshot
+```
+
+```output
+{
+  "runs": [
+    {
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:eecb8048-26ce-4c5c-9467-97e583842f5b:run:1",
+      "issue_id": "eecb8048-26ce-4c5c-9467-97e583842f5b",
+      "status": "awaiting_human",
+      "current_node": "design_review",
+      "definition_id": "simple-traceability-claude",
+      "definition_version": 24,
+      "workflow_instance_id": "wf-v1-pf4sw62lp3yovir734yl3e4mktmd2d7ssjgzv3svalwurdmoj6qq",
+      "updated_at": "2026-09-12T11:06:20.081Z"
+    },
+    {
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:096ce85d-9c56-4faa-ad74-ef8055bafc91:run:1",
+      "issue_id": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+      "status": "awaiting_human",
+      "current_node": "design_review",
+      "definition_id": "simple-traceability-claude",
+      "definition_version": 24,
+      "workflow_instance_id": "wf-v1-5oklscanzhh74xyzxgownabtfg6omcvjtuum2iybzn6esdif6xpa",
+      "updated_at": "2026-09-12T10:42:10.105Z"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt_id": "01a09541-25d7-78b5-a8a6-f15b95d4cf75",
+      "node_id": "design_independent_response",
+      "state": "completed",
+      "heartbeat_at": "2026-09-12T10:59:40.012Z",
+      "result_class": "completed",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-12T10:54:29.847Z"
+    },
+    {
+      "attempt_id": "01a0953c-1dc9-7ce3-a0e4-bd855eec623e",
+      "node_id": "design_independent_review",
+      "state": "completed",
+      "heartbeat_at": "2026-09-12T10:49:13.883Z",
+      "result_class": "concerns",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-12T10:49:00.105Z"
+    }
+  ]
+}
+{
+  "issue": "eecb8048-26ce-4c5c-9467-97e583842f5b",
+  "workflow": {
+    "status": "running",
+    "versionId": "742f0a75-7c6e-49e5-86c9-f6b60831a08d",
+    "start": "2026-09-12T10:48:55.474Z",
+    "end": null,
+    "error": null,
+    "step_count": 27
+  },
+  "lastStep": {
+    "name": "linear-event:design_review:visit:40-1",
+    "type": "waitForEvent",
+    "finished": false,
+    "error": null
+  }
+}
+{
+  "issue": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+  "workflow": {
+    "status": "waiting",
+    "versionId": "f87280db-3260-4d6f-a61b-4909e3d4b491",
+    "start": "2026-09-12T07:35:49.076Z",
+    "end": null,
+    "error": null,
+    "step_count": 724
+  },
+  "lastStep": {
+    "name": "linear-event:design_review:visit:23-1",
+    "type": "waitForEvent",
+    "finished": false,
+    "error": null
+  }
+}
+```
