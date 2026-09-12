@@ -1,3 +1,4 @@
+import { applyRecentSnapshot, type RecentIssuesSnapshot, type RecentIssuesUpdate } from "../../src/recent-issues.ts";
 import { reviewDestination } from "./review-actions.ts";
 import { separateErrors } from "./error-state.ts";
 import { errorText } from "../../src/error-details.ts";
@@ -53,7 +54,7 @@ import {
 import "./styles.css";
 
 type Theme = "system" | "light" | "dark";
-interface Issue { key: string; title: string; url: string; observedAt: string }
+interface Issue { issueId?: string; key: string; title: string; url: string; observedAt: string }
 interface Run { id: string; sequence: number; status: string; definitionVersion: number; startedAt: string; updatedAt: string; endedAt: string | null }
 interface Stage { id: string; label: string; state: "active" | "complete" | "upcoming"; visits: number }
 interface Visit {
@@ -888,8 +889,19 @@ function RunErrors({ projection }: { projection: Projection }) {
 
 function App() {
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("deos-theme") as Theme | null) ?? "system");
-  const [query, setQuery] = useState(() => localStorage.getItem("deos-issue") ?? "SAC-148");
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const [query, setQuery] = useState("");
+  const [recent, setRecent] = useState<RecentIssuesSnapshot>({ snapshotVersion: 0, items: [] });
+  const [historyError, setHistoryError] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const issues: Issue[] = recent.items.map(item => ({ issueId: item.issueId, key: item.identifier, title: item.title, url: "", observedAt: "" }));
+  const loadRecent = useCallback(async () => {
+    try {
+      const snapshot = await api<RecentIssuesSnapshot>("/api/recent-issues");
+      setRecent(current => applyRecentSnapshot(current, snapshot));
+      setHistoryError(false);
+    } catch (error) { console.error("Recent issues load failed", error); setHistoryError(true); }
+    finally { setHistoryLoading(false); }
+  }, []);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [runId, setRunId] = useState("");
@@ -939,9 +951,9 @@ function App() {
   const selectIssue = useCallback(async (issue: Issue) => {
     setBusy(true);
     setSelectedIssue(issue);
-    localStorage.setItem("deos-issue", issue.key);
     try {
-      const result = await api<{ issue: Issue; runs: Run[] }>(`/api/issues/${issue.key}/runs`);
+      const result = await api<{ issue: Issue; runs: Run[] }>(`/api/issues/${issue.issueId ?? issue.key}/runs`);
+      setSelectedIssue({ ...result.issue, issueId: issue.issueId });
       setRuns(result.runs);
       const first = result.runs[0]?.id ?? "";
       setRunId(first);
@@ -958,8 +970,12 @@ function App() {
   const search = useCallback(async () => {
     setBusy(true);
     try {
-      const result = await api<{ issues: Issue[] }>(`/api/issues?query=${encodeURIComponent(query)}`);
-      setIssues(result.issues);
+      const result = await api<{ issues: Issue[]; recentIssues: RecentIssuesUpdate }>(`/api/issues?query=${encodeURIComponent(query)}`);
+      if (result.recentIssues.state === "updated") {
+        const snapshot = result.recentIssues;
+        setRecent(current => applyRecentSnapshot(current, snapshot));
+        setHistoryError(false);
+      } else if (result.recentIssues.state === "error") setHistoryError(true);
       const exact = result.issues.find((issue) => issue.key === query.trim().toUpperCase());
       if (exact) await selectIssue(exact);
     } catch (error) {
@@ -970,8 +986,8 @@ function App() {
   useEffect(() => {
     if (page !== "workflow" || workflowLoadedRef.current) return;
     workflowLoadedRef.current = true;
-    void search();
-  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
+    void loadRecent();
+  }, [page, loadRecent]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (page !== "workflow" || !runId) return;
     const tick = () => { if (document.visibilityState === "visible") void loadProjection(runId); };
@@ -1015,10 +1031,11 @@ function App() {
         <div className="search-input"><MagnifyingGlass /><input id="issue-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="SAC-101" autoComplete="off" /><button aria-label="Search" type="submit"><ArrowRight /></button></div>
       </form>
       <div className="issue-list" aria-live="polite">
+        {historyError && <p role="status">Recent issues are unavailable. <button type="button" onClick={() => void loadRecent()}>Retry</button></p>}
         {issues.map((issue) => <button key={issue.key} type="button" className={selectedIssue?.key === issue.key ? "issue selected" : "issue"} onClick={() => void selectIssue(issue)}>
-          <span className="issue-key">{issue.key}</span><strong>{issue.title}</strong><small>Observed {formatTime(issue.observedAt)}</small>
+          <span className="issue-key">{issue.key}</span><strong>{issue.title}</strong>
         </button>)}
-        {!busy && issues.length === 0 && <p className="empty-small">Search by an issue key with a durable DEOS run.</p>}
+        {!busy && !historyLoading && !historyError && issues.length === 0 && <p className="empty-small">Search by an issue key with a durable DEOS run.</p>}
       </div>
     </aside>}
     <main className={page !== "workflow" ? "main settings-main" : "main"}>

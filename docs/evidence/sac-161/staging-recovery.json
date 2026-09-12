@@ -1,0 +1,71 @@
+{
+  "backendVersion": "55d1b170-2fc1-4676-b3d0-54eb357595f2",
+  "status": 200,
+  "snapshot": {
+    "snapshotVersion": 11,
+    "items": [
+      {
+        "issueId": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+        "identifier": "SAC-161",
+        "title": "Keep the last 10 searched issues in the DEOS portal"
+      },
+      {
+        "issueId": "70bb4734-3c5d-4c02-88e1-faec3becd3d1",
+        "identifier": "SAC-154",
+        "title": "Set a desktop wallpaper from the command line"
+      },
+      {
+        "issueId": "fe309e48-a316-40c4-a000-eb2927e7d72d",
+        "identifier": "SAC-160",
+        "title": "Tell Linear when a DEOS workflow is done"
+      },
+      {
+        "issueId": "19832025-7d65-4441-af89-00833fbb8348",
+        "identifier": "SAC-155",
+        "title": "Keep the live portal available and review new features in staging"
+      },
+      {
+        "issueId": "243ec1d6-9be8-416b-bc2e-8083771c8b13",
+        "identifier": "SAC-151",
+        "title": "Speed up automated OpenSpec review loops"
+      },
+      {
+        "issueId": "e5996a8a-295a-4f94-a020-6769cfcb2c7e",
+        "identifier": "SAC-166",
+        "title": "Build a calculator CLI for numbers and unit conversions"
+      },
+      {
+        "issueId": "d168992b-7e01-4f58-be3b-dd940246d0aa",
+        "identifier": "SAC-167",
+        "title": "Replace OpenRouter external review with Claude Opus 5"
+      },
+      {
+        "issueId": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+        "identifier": "SAC-168",
+        "title": "Convert temperatures with a small command-line tool"
+      },
+      {
+        "issueId": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+        "identifier": "SAC-171",
+        "title": "Use faster sandboxes by default with a slow-ok option"
+      },
+      {
+        "issueId": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+        "identifier": "SAC-153",
+        "title": "Keep workflow views up to date automatically"
+      }
+    ]
+  },
+  "order": [
+    "SAC-161",
+    "SAC-154",
+    "SAC-160",
+    "SAC-155",
+    "SAC-151",
+    "SAC-166",
+    "SAC-167",
+    "SAC-168",
+    "SAC-171",
+    "SAC-153"
+  ]
+}

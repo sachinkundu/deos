@@ -1,0 +1,102 @@
+[
+  {
+    "issue_id": "ac6a9946-56e0-4a3d-aaa9-3f639c0ba625",
+    "issue_key": "SAC-153",
+    "title": "Keep workflow views up to date automatically",
+    "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:ac6a9946-56e0-4a3d-aaa9-3f639c0ba625:run:1",
+    "status": "awaiting_human",
+    "current_node": "planning_review",
+    "updated_at": "2026-09-12T12:36:09.933Z",
+    "run_sequence": 1
+  },
+  {
+    "issue_id": "096ce85d-9c56-4faa-ad74-ef8055bafc91",
+    "issue_key": "SAC-161",
+    "title": "Keep the last 10 searched issues in the DEOS portal",
+    "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:096ce85d-9c56-4faa-ad74-ef8055bafc91:run:1",
+    "status": "succeeded",
+    "current_node": "done",
+    "updated_at": "2026-09-12T11:58:49.169Z",
+    "run_sequence": 1
+  },
+  {
+    "issue_id": "e186f008-5b59-4f5e-bb59-280519c9ae60",
+    "issue_key": "SAC-171",
+    "title": "Use faster sandboxes by default with a slow-ok option",
+    "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e186f008-5b59-4f5e-bb59-280519c9ae60:run:1",
+    "status": "succeeded",
+    "current_node": "done",
+    "updated_at": "2026-09-12T07:59:07.093Z",
+    "run_sequence": 1
+  },
+  {
+    "issue_id": "5985e51d-8a19-47c3-aab1-0f0e3d808b0d",
+    "issue_key": "SAC-168",
+    "title": "Convert temperatures with a small command-line tool",
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:5985e51d-8a19-47c3-aab1-0f0e3d808b0d:run:1",
+    "status": "succeeded",
+    "current_node": "done",
+    "updated_at": "2026-09-11T10:52:15.180Z",
+    "run_sequence": 1
+  },
+  {
+    "issue_id": "d168992b-7e01-4f58-be3b-dd940246d0aa",
+    "issue_key": "SAC-167",
+    "title": "Replace OpenRouter external review with Claude Opus 5",
+    "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:d168992b-7e01-4f58-be3b-dd940246d0aa:run:1",
+    "status": "succeeded",
+    "current_node": "done",
+    "updated_at": "2026-09-11T07:47:04.118Z",
+    "run_sequence": 1
+  },
+  {
+    "issue_id": "e5996a8a-295a-4f94-a020-6769cfcb2c7e",
+    "issue_key": "SAC-166",
+    "title": "Build a calculator CLI for numbers and unit conversions",
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e5996a8a-295a-4f94-a020-6769cfcb2c7e:run:3",
+    "status": "succeeded",
+    "current_node": "done",
+    "updated_at": "2026-09-10T13:56:31.426Z",
+    "run_sequence": 3
+  },
+  {
+    "issue_id": "243ec1d6-9be8-416b-bc2e-8083771c8b13",
+    "issue_key": "SAC-151",
+    "title": "Speed up automated OpenSpec review loops",
+    "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:243ec1d6-9be8-416b-bc2e-8083771c8b13:run:1",
+    "status": "succeeded",
+    "current_node": "done",
+    "updated_at": "2026-09-10T05:26:40.737Z",
+    "run_sequence": 1
+  },
+  {
+    "issue_id": "19832025-7d65-4441-af89-00833fbb8348",
+    "issue_key": "SAC-155",
+    "title": "Keep the live portal available and review new features in staging",
+    "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:19832025-7d65-4441-af89-00833fbb8348:run:1",
+    "status": "succeeded",
+    "current_node": "done",
+    "updated_at": "2026-09-09T05:19:08.582Z",
+    "run_sequence": 1
+  },
+  {
+    "issue_id": "fe309e48-a316-40c4-a000-eb2927e7d72d",
+    "issue_key": "SAC-160",
+    "title": "Tell Linear when a DEOS workflow is done",
+    "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:fe309e48-a316-40c4-a000-eb2927e7d72d:run:1",
+    "status": "succeeded",
+    "current_node": "done",
+    "updated_at": "2026-09-08T08:02:21.029Z",
+    "run_sequence": 1
+  },
+  {
+    "issue_id": "70bb4734-3c5d-4c02-88e1-faec3becd3d1",
+    "issue_key": "SAC-154",
+    "title": "Set a desktop wallpaper from the command line",
+    "run_id": "workflow:b0b6265d-5e61-4315-9ef4-724ddb391700:70bb4734-3c5d-4c02-88e1-faec3becd3d1:run:1",
+    "status": "succeeded",
+    "current_node": "done",
+    "updated_at": "2026-09-04T08:06:51.178Z",
+    "run_sequence": 1
+  }
+]

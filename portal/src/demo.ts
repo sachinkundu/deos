@@ -103,7 +103,23 @@ const stageLabels = {
   complete: "Completed",
 } as const;
 
+let recentDemo = {
+  snapshotVersion: 10,
+  items: Array.from({ length: 10 }, (_, index) => ({
+    issueId: index === 0 ? "6936d743-0000-4000-8000-000000000000" : `demo-${148-index}`,
+    identifier: `SAC-${148-index}`,
+    title: index === 0 ? issue.title : `Sample workflow ${148-index}`,
+  })),
+};
+
 export const demoApi = (path: string): unknown => {
+  if (path === "/api/recent-issues") return structuredClone(recentDemo);
+  if (path.startsWith("/api/issues?") && new URL(path, "http://demo").searchParams.get("query")?.toUpperCase() === issue.key) {
+    recentDemo = { ...recentDemo, snapshotVersion: recentDemo.snapshotVersion + 1 };
+    return { issues: [issue], recentIssues: { state: "updated", ...structuredClone(recentDemo) } };
+  }
+  const savedDemo = recentDemo.items.find(item => path === `/api/issues/${item.issueId}/runs`);
+  if (savedDemo) return { issue: { ...issue, key: savedDemo.identifier, title: savedDemo.title }, runs: [run] };
   if (path === "/api/settings/routes") return {
     routes: [
       {
@@ -186,10 +202,10 @@ export const demoApi = (path: string): unknown => {
     },
     supportedReviewModels: ["deepseek/deepseek-v4-pro"],
   };
-  if (path.startsWith("/api/issues?")) return { issues: [issue] };
+  if (path.startsWith("/api/issues?")) return { issues: [], recentIssues: { state: "unchanged" } };
   if (path === `/api/issues/${issue.key}/runs`) return { issue, runs: [run] };
   if (path.startsWith("/api/runs/")) return {
-    run: { ...run, freshness: run.updatedAt },
+    run: { ...run, freshness: run.updatedAt, currentNode: "done", currentVisitSequence: history.length },
     stages: Object.entries(stageLabels).map(([id, label]) => ({
       id,
       label,
