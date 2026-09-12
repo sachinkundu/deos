@@ -6,6 +6,8 @@ const issue = {
 };
 
 const run = {
+  sandbox_tier: "standard-2",
+  currentNode: "complete",
   id: "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:6936d743-0000-4000-8000-000000000000:run:1",
   sequence: 2,
   status: "succeeded",

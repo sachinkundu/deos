@@ -1,0 +1,47 @@
+{
+  "name": "deos-sac171-contract-probe",
+  "main": "worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "account_id": "c68856288112af7698f5be52ea94b96e",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BasicProbe",
+        "class_name": "BasicProbe"
+      },
+      {
+        "name": "Standard2Probe",
+        "class_name": "Standard2Probe"
+      }
+    ]
+  },
+  "containers": [
+    {
+      "class_name": "BasicProbe",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:46c62f15cc93cefd1dd207ec38b4021aaffac16f7d8d220d266551f48b5c9531",
+      "max_instances": 1,
+      "instance_type": "basic"
+    },
+    {
+      "class_name": "Standard2Probe",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:46c62f15cc93cefd1dd207ec38b4021aaffac16f7d8d220d266551f48b5c9531",
+      "max_instances": 1,
+      "instance_type": "standard-2"
+    }
+  ],
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "BasicProbe",
+        "Standard2Probe"
+      ]
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

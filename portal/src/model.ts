@@ -19,6 +19,7 @@ interface IssueRow {
 }
 
 interface RunRow {
+  sandbox_tier: string | null;
   run_id: string;
   run_sequence: number;
   definition_id: string;
@@ -33,6 +34,12 @@ interface RunRow {
   terminal_cause: string | null;
 }
 
+function portalSandboxTier(run:RunRow):string|null {
+  if (run.sandbox_tier === "basic" || run.sandbox_tier === "standard-2") return run.sandbox_tier;
+  console.error(JSON.stringify({event:"sandbox_tier_not_recorded",run_id:run.run_id}));
+  return null;
+}
+
 interface DefinitionRow { canonical_json: string; digest: string }
 interface TransitionRow {
   transition_id: string;
@@ -45,6 +52,8 @@ interface TransitionRow {
   occurred_at: string;
 }
 interface AttemptRow {
+  sandbox_tier: string | null;
+  started_at: string | null;
   attempt_id: string;
   visit_sequence: number | null;
   node_id: string;
@@ -219,12 +228,12 @@ export const PORTAL_SELECTS = Object.freeze({
     WHERE issue.issue_key = ? LIMIT 1`,
   runs: `SELECT run_id, run_sequence, definition_id, definition_version, definition_digest,
     current_node, current_visit_sequence, status, created_at, updated_at, terminal_at,
-    terminal_cause
+    terminal_cause, sandbox_tier
     FROM orchestration_runs WHERE project_id = ? AND issue_id = ?
     ORDER BY run_sequence DESC`,
   run: `SELECT run.run_id, run.run_sequence, run.definition_id, run.definition_version,
     run.definition_digest, run.current_node, run.current_visit_sequence, run.status,
-    run.created_at, run.updated_at, run.terminal_at, run.terminal_cause
+    run.created_at, run.updated_at, run.terminal_at, run.terminal_cause, run.sandbox_tier
     FROM orchestration_runs run
     JOIN project_workflow_policies route ON route.project_id = run.project_id
     WHERE run.run_id = ? LIMIT 1`,
@@ -234,7 +243,7 @@ export const PORTAL_SELECTS = Object.freeze({
     to_visit_sequence, cause_type, cause_reference, occurred_at FROM workflow_transitions_v2
     WHERE run_id = ? ORDER BY from_visit_sequence, transition_id`,
   attempts: `SELECT attempt.attempt_id, attempt.visit_sequence, attempt.node_id,
-    attempt.state, attempt.result_class, attempt.created_at, attempt.ended_at,
+    attempt.state, attempt.result_class, attempt.created_at, attempt.started_at, attempt.ended_at, attempt.sandbox_tier,
     attempt.cleanup_state,
     EXISTS (
       SELECT 1 FROM artifact_manifests manifest
@@ -393,6 +402,7 @@ export class PortalReadStore {
         sequence: run.run_sequence,
         status: run.status,
         definitionVersion: run.definition_version,
+        sandbox_tier: portalSandboxTier(run),
         startedAt: run.created_at,
         updatedAt: run.updated_at,
         endedAt: run.terminal_at,
@@ -473,6 +483,8 @@ export class PortalReadStore {
         leftAt: visit.leftAt,
         attempts: attemptResult.results.filter((attempt) => attempt.visit_sequence === visit.sequence).map((attempt) => ({
           id: attempt.attempt_id,
+          sandbox_tier: attempt.sandbox_tier,
+          sandboxStartedAt: attempt.started_at,
           state: attempt.state,
           outcome: attempt.result_class,
           startedAt: attempt.created_at,
@@ -535,6 +547,7 @@ export class PortalReadStore {
         sequence: run.run_sequence,
         status: run.status,
         definitionVersion: run.definition_version,
+        sandbox_tier: portalSandboxTier(run),
         definitionDigest: run.definition_digest,
         definitionName: definition.name,
         currentNode: run.current_node,

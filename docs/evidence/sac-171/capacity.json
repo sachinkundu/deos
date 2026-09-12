@@ -1,0 +1,59 @@
+{
+  "capacity_queue_field_available": false,
+  "cloudflare_analytics": {
+    "metric_rows": 3781,
+    "minute_peak": 4,
+    "minute_peak_at": "2026-08-31T11:59:00Z"
+  },
+  "configured_max_instances": 4,
+  "container_application": {
+    "id": "a0344373-884d-4c06-b4c2-4e58295de498",
+    "name": "deos-queue-consumer-ts-sandbox",
+    "reported_instances": 4,
+    "state": "active"
+  },
+  "d1": {
+    "allocated_peak": 4,
+    "allocated_peak_at": "2026-08-31T11:48:44.003Z",
+    "attempt_count": 451,
+    "durable_capacity_failure_matches": [],
+    "largest_start_delay_attempt_id": "01a08167-f5b7-7e68-866f-634b9b4fdaa4",
+    "largest_start_delay_seconds": 170.025,
+    "result_classes": {
+      "approved": 25,
+      "author_completion_verification_mismatch": 4,
+      "blocked": 4,
+      "canary_complete_after_repeated_edge": 1,
+      "certified": 3,
+      "changes_requested": 6,
+      "codex_exit_nonzero": 40,
+      "completed": 203,
+      "concerns": 42,
+      "failed": 2,
+      "findings": 25,
+      "invalid_candidate": 4,
+      "native_review_failed": 1,
+      "operator_cleanup": 3,
+      "pass": 58,
+      "post_collection_validation_failed": 4,
+      "process_not_recoverable": 4,
+      "proof_conflict": 1,
+      "repeated_invalid_candidate": 1,
+      "review_failure": 1,
+      "startup_failed": 15,
+      "supervisor_failed": 3
+    },
+    "running_peak": 4,
+    "running_peak_at": "2026-08-31T11:49:05.360Z"
+  },
+  "window": {
+    "from": "2026-08-16T08:15:36.531Z",
+    "to": "2026-09-12T08:19:59.701Z"
+  },
+  "workflow_error_check": {
+    "capacity_failure_matches": [],
+    "instances_checked": 15,
+    "requested": true,
+    "startup_failures": 15
+  }
+}

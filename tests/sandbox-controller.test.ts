@@ -291,6 +291,7 @@ spec:
 );
 
 const run = {
+  sandbox_tier: "basic",
   run_id: "workflow:project-1:issue-1:run:1",
   issue_id: "issue-1",
   updated_at: "2026-08-16T09:59:00.000Z",
@@ -323,6 +324,7 @@ class AttemptStore implements AgentAttemptStore {
     this.latest = {
       attempt_id: input.attemptId,
       sandbox_id: input.sandboxId,
+      sandbox_tier: "basic",
       run_id: input.runId,
       node_id: input.nodeId,
       visit_sequence: input.visitSequence,
