@@ -48,8 +48,55 @@ retry of the failed reader attempt in the same business run and frozen v24
 definition, advancing visit 47 to 48. New Workflow instance:
 `wf-v1-qukaj5wlowestvgpyeel6orrimijpsnvy2b6wxqhvtwa2xdv7trq`.
 New review attempt: `01a09581-521a-717b-abf6-bd402993d528`.
-The review outcome remains pending, and the monitor is active.
+The review completed and returned concerns. The author response also completed.
+The run then failed during design publication, as recorded below.
 
 [Showboat validation, rollout, and retry output](reader-rollout.md) records
 the actual command results. Temporary operator helpers and request files were
 saved under `/tmp`; do not replay mutation commands as verification.
+
+
+## Production outcome: September 12, 12:20 UTC
+
+The real Claude review completed with `concerns`; its invocation finished with
+no safe cause and its runtime was destroyed. The author response completed too.
+This proves the repaired review path completed in production. It does not mean
+the full workflow reached Human Review.
+
+The run failed at `publish_design_response`, visit 50. The original error was:
+
+```text
+Error: GitHub design pull-request read-back mismatch
+    at GitHubCapabilityAdapter.publishDesign (queue-consumer.js:34702:528)
+    at async SystemActionController.publishDesign (queue-consumer.js:35801:23)
+    at async queue-consumer.js:113:16
+```
+
+D1 error `a5263317-a832-4502-9de9-a8351ddfe531` records this at
+`2026-09-12T12:20:32.710Z`. Its protected R2 detail contains the original message,
+name, and stack. No cause or expected/actual field values were attached by the
+throw site. The condition at `src/github-capability.ts:1006-1016` checks PR
+identity, state, head, base, title, body, and design contents together. The
+retained error does not identify which comparison failed. That is a separate
+diagnostic gap, not evidence of another reader or authentication failure.
+
+Earlier saved errors say `Execution timed out after 300000ms`, with stack
+`WorkflowTimeoutError: Execution timed out after 300000ms` at
+`ContextImpl.waitForEvent (index.js:24169:26)`. Cloudflare's step history shows
+these were agent-event waits: execution continued, collected the completed
+author response, then entered publication. They were not the terminal cause.
+The later `system_action_invariant_failed` is the workflow classification.
+
+At readback, GitHub PR #108 was still open, with head
+`3a5ba08f296ecfbbc41189aa3dad1a2d9c5366f8` and update time 12:20:31 UTC.
+D1 was `failed/system_action_failed` at 12:20:33.164 UTC; Cloudflare was
+`errored`. Linear remained In Progress. Both new agent runtimes were destroyed.
+SAC-161 remained succeeded/done. No new deploy, retry, credential change, or
+human-gate transition was performed. The monitor was paused at this terminal
+failure.
+
+[Read-only provider readback](reader-outcome.md) records the real D1,
+Cloudflare, and GitHub output. Full original errors remain in protected R2;
+local copies were retrieved for inspection without publishing private logs.
+
+![GitHub design PR still open after the failed publication check](design-pr-after-reader-fix.png)
