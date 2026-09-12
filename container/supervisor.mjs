@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { checkAuthorSources } from "./grounded-review.mjs";
+import { provisionGrounding, verifyGroundingContext, verifyNativeGrounding } from "./grounded-agent.mjs";
 import { setupNativeReview } from "./native-review-setup.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { createWriteStream } from "node:fs";
@@ -101,6 +103,7 @@ const codexArgs = (job, sessionId = null) => {
     RESULT_PATH,
     "--dangerously-bypass-approvals-and-sandbox",
   );
+  if (job.grounding) args.push("--config", 'web_search="live"');
   if (typeof job.model === "string" && job.model.length > 0) {
     args.push("--model", job.model);
   }
@@ -182,7 +185,13 @@ const main = async () => {
   const deadline = Date.parse(job.deadline);
   if (!Number.isFinite(deadline) || deadline <= Date.now()) throw new Error("job deadline is invalid");
   const prompt = await readFile(job.promptPath, "utf8");
+  const grounding = await provisionGrounding(job.grounding);
   await setupNativeReview(job);
+  if (grounding) {
+    const effective = job.modelProvider === "claude" ? grounding : await verifyNativeGrounding(grounding, job.cwd);
+    await atomicJson(`${OUTPUT_ROOT}/agent-input-manifest.json`, { ...effective, attemptId: job.attemptId, jobKind: job.nodeId,
+      contextFiles: verifyGroundingContext(job.materializedContext, job.grounding) });
+  }
   const transcript = await trustedCapture("transcript.jsonl");
   const validation = await trustedCapture("stderr.txt");
   const reviewer = job.agentRole === "reviewer";
@@ -230,6 +239,11 @@ const main = async () => {
     await heartbeat();
     return result;
   };
+  const authorCheck = async () => {
+    const options = { cwd: job.cwd, change: job.openspecChange, reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined };
+    const check = await (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)(options);
+    return job.grounding ? checkAuthorSources(check, options) : check;
+  };
   let result = await run(prompt);
   const completionRounds = [];
   let completionOutcome = reviewer ? "not_applicable" : "not_run";
@@ -238,11 +252,7 @@ const main = async () => {
     const sessionId = tracker.finish();
     if (sessionId === null) throw new Error("author completion session identity is missing");
     const bounded = await runBoundedAuthorCompletion({
-      initialCheck: await (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)({
-        cwd: job.cwd,
-        change: job.openspecChange,
-        reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined,
-      }),
+      initialCheck: await authorCheck(),
       initialResult: { ...result, outcome: "completed" },
       sessionId,
       maximumRepairs: MAXIMUM_AUTHOR_COMPLETION_REPAIRS,
@@ -250,11 +260,7 @@ const main = async () => {
         const resumed = await run(correctionPrompt, exactSessionId);
         return { ...resumed, outcome: await resultOutcome() };
       },
-      check: () => (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)({
-        cwd: job.cwd,
-        change: job.openspecChange,
-        reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined,
-      }),
+      check: authorCheck,
       correctionPrompt: designAuthor ? designCorrectionPrompt : undefined,
     });
     result = bounded.result;

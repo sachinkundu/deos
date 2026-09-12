@@ -12,12 +12,16 @@ RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/be
 
 COPY container/claude-*.mjs /deos/bin/
 COPY src/claude-review.ts /deos/bin/claude-review.ts
+COPY src/claude-diagnostics.ts src/error-details.ts /deos/bin/
 
 COPY container/original-errors.mjs /deos/bin/original-errors.mjs
 COPY container/native-review-packet.mjs /deos/bin/native-review-packet.mjs
 COPY container/native-review-read.mjs /deos/bin/native-review-read.mjs
 COPY container/native-review-adapter.mjs /deos/bin/native-review-adapter.mjs
 COPY container/native-self-review.mjs /deos/bin/native-self-review.mjs
+COPY container/bounded-*.mjs /deos/bin/
+COPY container/grounded-*.mjs /deos/bin/
+COPY vendor/agent-skills/ /deos/agent-skills/
 COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
 COPY container/author-completion.mjs /deos/bin/author-completion.mjs

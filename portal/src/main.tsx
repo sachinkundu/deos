@@ -1,3 +1,4 @@
+import { BoundedReview } from "./BoundedReview.tsx";
 import type { SandboxStartupFailure } from "./sandbox-failures.ts";
 import { TierTrial } from "./TierTrial.tsx";
 import { applyRecentSnapshot, type RecentIssuesSnapshot, type RecentIssuesUpdate } from "../../src/recent-issues.ts";
@@ -87,7 +88,7 @@ interface FailureDetail { visitSequence?: number; id: string; nodeId?: string; s
 interface Projection {
   errors?: FailureDetail[];
   legacyErrors?: FailureDetail[];
-  run: Run & { freshness: string; currentNode: string; terminalCause?: string | null; currentVisitSequence?: number; failureStartedAt?: string };
+  run: Run & { reviewSchema?: string | null; freshness: string; currentNode: string; terminalCause?: string | null; currentVisitSequence?: number; failureStartedAt?: string };
   stages: Stage[];
   history: Visit[];
   unlinked: { attempts: number; waits: number };
@@ -419,13 +420,15 @@ function TraceabilityWorkflowMap({
       View transcript{step.visit!.attempts.length > 1 ? ` · attempt ${step.visit!.attempts.indexOf(attempt) + 1}` : ""}
     </button>)}
     </div>
+    {projection.run.reviewSchema === "deos-bounded-review-v1" && expandedSubstep === step.id && ["planning_author", "design_author"].includes(step.id) &&
+      <BoundedReview runId={projection.run.id} phase={step.id === "design_author" ? "design" : "planning"} load={api} onTranscript={onOpenTranscript} />}
   </div>;
   const renderPhaseSteps = (label: string, steps: typeof planningSteps) => <div className="phase-drill" aria-label={`${label} details`}>
-    <div className="author-review-row">
+    {projection.run.reviewSchema === "deos-bounded-review-v1" ? renderStep(steps[0]) : <div className="author-review-row">
       {renderStep(steps[0])}
       <ArrowsLeftRight className="author-review-arrow" aria-label="Author and self-review" />
       {renderStep(steps[1])}
-    </div>
+    </div>}
     {renderStep(steps[2])}
   </div>;
   const renderPlanning = () => renderPhaseSteps("Planning", planningSteps);

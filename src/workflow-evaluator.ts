@@ -129,7 +129,7 @@ export const evaluateNodeOutcome = (
     const repositoryLocalOpenSpec = job.operation?.kind === "openspec";
     const explicitProviderAccess = (job.providerAccess?.length ?? 0) > 0 ||
       (job.capabilities?.length ?? 0) > 0;
-    const requiresReceipts = !["blocked", "failed"].includes(input.outcome) &&
+    const requiresReceipts = !["blocked", "failed", "manual_reconciliation_required"].includes(input.outcome) &&
       (job.agentRole === undefined
         ? (!repositoryLocalOpenSpec || input.providerReceiptsPresent)
         : explicitProviderAccess);

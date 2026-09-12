@@ -1,3 +1,4 @@
+import { D1BoundedReviewStore } from "./bounded-review-store.ts";
 import { claudeRunner } from "./claude-environment.ts";
 import { D1NativeReviewStore } from "./native-review-store.ts";
 import { recordCaughtError } from "./error-context.ts";
@@ -107,6 +108,7 @@ const githubForRun = (env: Env, run: OrchestrationRunRecord): GitHubCapabilityAd
 };
 
 export class CloudflareWorkflowServices implements WorkflowNodeServices {
+  private readonly boundedReview: boolean;
   private readonly env: Env;
   private readonly orchestration: D1OrchestrationStore;
   private readonly agents: SandboxAgentController;
@@ -114,6 +116,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
   private readonly linear: LinearTransitionController;
 
   constructor(env: Env, definition: LoadedWorkflowDefinition) {
+    this.boundedReview = definition.jobs.planning_author?.boundedReview === 'deos-bounded-review-v1';
     this.env = env;
     this.orchestration = new D1OrchestrationStore(env.DB);
     const credentials = new CredentialVault(
@@ -186,6 +189,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           return JSON.parse(candidate.file_list_json);
         },
         nativeReviews: new D1NativeReviewStore(env.DB, env.ARTIFACTS),
+        boundedReviews: new D1BoundedReviewStore(env.DB, env.ARTIFACTS),
         nativeDesignLimit: (runId, attemptId) => new D1DesignReviewStore(env.DB)
           .finishSelfReviewAtLimit(runId, new Date().toISOString(), attemptId),
         now: () => new Date(),
@@ -561,13 +565,18 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           ) {
             throw new Error("accepted design review replay changed identity");
           }
+          if (job.boundedReview && saved.phase === "independent") {
+            if (!validatedInput.input.headSha) throw new Error("independent design head missing");
+            await new D1BoundedReviewStore(env.DB, env.ARTIFACTS).acceptIndependent({
+              runId: run.run_id, phase: "design", attemptId: attempt.attempt_id, manifestId: collection.manifestId,
+              head: validatedInput.input.headSha, findings: result.findings.map(item => ({
+                id: item.id, summary: item.message, location: JSON.stringify(item.sourceRanges),
+              })),
+            });
+          }
           const providerProof = await this.syncDesignReviewProviders({
-            run,
-            reviewAttemptId,
-            phase: saved.phase,
-            outcome: result.outcome,
-            findingCount: result.findings.length,
-            headSha: validatedInput.input.headSha,
+            run, reviewAttemptId, phase: saved.phase, outcome: result.outcome,
+            findingCount: result.findings.length, headSha: validatedInput.input.headSha,
           });
           if (!providerProof) throw new Error("design review provider proof is incomplete");
           return result.outcome;
@@ -858,16 +867,23 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             proofRepairCount: phase.proof_repair_count + Number(collection.result.proofRepairCount),
             now,
           });
-          await this.syncTraceReviewProviders({
-            run,
-            reviewId,
-            stage,
-            outcome: workflowOutcome,
+          if (job.boundedReview && stage === "independent") {
+            if (!reviewedHeadSha) throw new Error("independent planning head missing");
+            await new D1BoundedReviewStore(env.DB, env.ARTIFACTS).acceptIndependent({
+              runId: run.run_id, phase: "planning", attemptId: attempt.attempt_id, manifestId: collection.manifestId,
+              head: reviewedHeadSha, findings: findings.map(item => ({
+                id: item.id, summary: item.message, location: JSON.stringify(item.allowedRanges),
+              })),
+            });
+          }
+          const providerProof = await this.syncTraceReviewProviders({
+            run, reviewId, stage, outcome: workflowOutcome,
             findingCount: Number(collection.result.findingCount),
             confirmedLinkCount: Number(collection.result.confirmedLinkCount ?? 0),
             disputedLinkCount: Number(collection.result.disputedLinkCount ?? 0),
             headSha: reviewedHeadSha,
           });
+          if (job.boundedReview && !providerProof) throw new Error('planning review provider proof is incomplete');
           return workflowOutcome;
         },
         reuseTraceReview: async (run, nodeId, job) => {
@@ -1347,7 +1363,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     return this.linear.requestDone(issueId);
   }
 
-  executeSystemAction(run: OrchestrationRunRecord, nodeId: string, action: string) {
+  async executeSystemAction(run: OrchestrationRunRecord, nodeId: string, action: string) {
     if (action === "linear.delegate_and_start") {
       return this.linear.ensureWorkStarted(run, nodeId);
     }
@@ -1357,7 +1373,28 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     if (action === "traceability.publish_author_response") {
       return this.publishTraceReviewAuthorResponse(run);
     }
-    return this.systemActions.execute(run, nodeId, action);
+    const observation = await this.systemActions.execute(run, nodeId, action);
+    if (this.boundedReview && ['completed', 'unchanged'].includes(observation.outcome) &&
+        ['github.publish_planning_candidate', 'github.publish_design_candidate'].includes(action)) {
+      const phase = action === 'github.publish_planning_candidate' ? 'planning' : 'design';
+      const work = phase === 'planning' ? await new D1PlanningStore(this.env.DB).findRunWorkProduct(run.run_id)
+        : await new D1DesignStore(this.env.DB).findWorkProduct(run.run_id);
+      if (!work?.head_sha) throw new Error('published bounded review head is missing');
+      const store = new D1BoundedReviewStore(this.env.DB, this.env.ARTIFACTS);
+      const row = await store.read(run.run_id, phase);
+      if (!row) throw new Error('published review cycle missing');
+      const state = JSON.parse(row.state_json);
+      if (!state.independent.result) {
+        const manifestText = 'planning_manifest_json' in work ? work.planning_manifest_json : work.design_manifest_json;
+        if (!manifestText) throw new Error('published candidate manifest missing');
+        const pairs = (files: { path: string; sha256: string }[]) => files.map(({ path, sha256 }) => ({ path, sha256 })).sort((a, b) => a.path.localeCompare(b.path));
+        if (JSON.stringify(pairs(JSON.parse(manifestText))) !== JSON.stringify(pairs(state.checkedFiles))) throw new Error('published files differ from the checked review candidate');
+      }
+      await store.apply(run.run_id, phase, state.independent.result
+        ? { type: 'head_updated', head: work.head_sha }
+        : { type: 'published', candidateDigest: state.currentDigest, head: work.head_sha });
+    }
+    return observation;
   }
 
   private async publishTraceReviewAuthorResponse(run: OrchestrationRunRecord) {
@@ -1509,9 +1546,16 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       ? "plan"
       : node.id === "design_review" ? "design" : null;
     if (gateKind === null) return this.linear.ensureHumanGate(run, node);
+    if (this.boundedReview) {
+      const phase = gateKind === 'plan' ? 'planning' : 'design';
+      const work = phase === 'planning' ? await new D1PlanningStore(this.env.DB).findRunWorkProduct(run.run_id)
+        : await new D1DesignStore(this.env.DB).findWorkProduct(run.run_id);
+      if (!work?.head_sha) throw new Error('bounded human gate published work missing');
+      await new D1BoundedReviewStore(this.env.DB, this.env.ARTIFACTS).bindGate(run.run_id, phase, run.current_visit_sequence, work.head_sha);
+    }
     const designReviews = new D1DesignReviewStore(this.env.DB);
     if (
-      gateKind === "design" && ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
+      !this.boundedReview && gateKind === "design" && ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
       run.definition_version >= 19 && !await designReviews.eligible(run.run_id, run.definition_version >= 22)
     ) throw new Error("design human gate requires accepted review and author response proof");
     await new D1HumanGateStore(this.env.DB).bind({
@@ -1522,7 +1566,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       now: new Date().toISOString(),
     });
     if (
-      gateKind === "design" && ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
+      !this.boundedReview && gateKind === "design" && ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
       run.definition_version >= 19
     ) {
       await designReviews.bindGate({

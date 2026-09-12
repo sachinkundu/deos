@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { claudeReviewJudgment, finishClaudeReview } from "./claude-review-adapter.mjs";
+import { groundedSchema, groundedPrompt, saveGroundedReview, reviewGroundingContext } from "./grounded-review.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -122,11 +123,12 @@ const main = async () => {
     ) throw new Error("materialized design review source changed");
   }
   const schema = designReviewOutputSchema;
+  const runtimeSchema = job.grounding ? groundedSchema(schema) : schema;
   const temporary = await mkdtemp(path.join(os.tmpdir(), "deos-design-review-"));
   try {
     const schemaPath = path.join(temporary, "schema.json");
     const resultPath = path.join(temporary, "result.json");
-    await writeFile(schemaPath, JSON.stringify(schema));
+    await writeFile(schemaPath, JSON.stringify(runtimeSchema));
     const numbered = review.sources.map((source) => [
       `## ${source.path}`,
       ...source.content.split("\n").map((line, index) => `${index + 1}: ${line}`),
@@ -135,10 +137,10 @@ const main = async () => {
       (await readFile(job.promptPath, "utf8")).trim(), "",
       `Trusted input digest: ${review.inputSha256}`,
       `Phase: ${review.phase}`, "",
-      "Exact numbered sources:", numbered,
+      "Exact numbered sources:", numbered, reviewGroundingContext(job),
     ].join("\n");
     const reviewed = await runBoundedProofReview({
-      maximumRepairs: MAXIMUM_PROOF_REPAIRS,
+      maximumRepairs: job.grounding ? 0 : MAXIMUM_PROOF_REPAIRS,
       generate: async ({ attempt, prior, failure, sessionId }) => {
         const activePrompt = attempt === 0 ? basePrompt : proofRepairPrompt({
           basePrompt,
@@ -167,9 +169,13 @@ const main = async () => {
           modelProvider: job.modelProvider,
           capabilityUrl: job.capabilityUrl,
         });
+        if (job.grounding) args.push("--config", 'web_search="live"');
+        const promptPath = path.join(temporary, `prompt-${attempt}.txt`);
+        await writeFile(promptPath, reviewPromptWithSchema(job.grounding ? groundedPrompt(activePrompt) : activePrompt,
+          JSON.stringify(runtimeSchema), job.modelProvider), { mode: 0o600 });
         const execution = await run("codex", args, {
           cwd: job.cwd,
-          input: reviewPromptWithSchema(activePrompt, JSON.stringify(schema), job.modelProvider),
+          input: await readFile(promptPath, "utf8"),
           env: job.modelProvider === "openrouter" ? {
             ...process.env,
             DEOS_MODEL_CAPABILITY_TOKEN: String(job.capabilityToken ?? ""),
@@ -180,10 +186,10 @@ const main = async () => {
         if (sessionId !== null && observedSessionId !== sessionId) {
           throw new Error("design proof repair changed reviewer session");
         }
-        const recovered = recoverCodexReview(execution.stdout, await readFile(resultPath, "utf8"));
+        const recovered = recoverCodexReview(execution.stdout, await readFile(resultPath, "utf8"), job.grounding ? ["review", "sources", "searchDisposition"] : ["findings"]);
         process.stderr.write(`Review JSON source: ${JSON.stringify({ messageOffset: recovered.messageOffset, recovered: recovered.recovered })}\n`);
         return {
-          raw: recovered.raw,
+          raw: job.grounding ? await saveGroundedReview(recovered.raw, attempt) : recovered.raw,
           sessionId: observedSessionId,
         };
       },

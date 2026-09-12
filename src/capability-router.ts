@@ -474,7 +474,7 @@ export class CapabilityRouter {
         untrusted,
         "model_responses_identity_denied",
       );
-      return this.openRouterResponses(input, claims.runId, claims.attemptId);
+      return this.openRouterResponses(input, claims.runId, claims.attemptId, context.nativeWebSearch === 1);
     }
     if (path.endsWith("/model-review/receipts")) {
       if (
@@ -509,6 +509,7 @@ export class CapabilityRouter {
     input: Readonly<Record<string, unknown>>,
     runId: string,
     attemptId: string,
+    nativeWebSearch = false,
   ): Promise<Response> {
     if (
       this.dependencies.openrouter?.proxyResponses === undefined
@@ -538,7 +539,7 @@ export class CapabilityRouter {
       console.error("OpenRouter diagnostic start failed", error);
     }
     try {
-      const response = await this.dependencies.openrouter.proxyResponses(input);
+      const response = await this.dependencies.openrouter.proxyResponses(input, { nativeWebSearch });
       try { await this.dependencies.openrouterResponses?.put({
         operationId,
         ...response,

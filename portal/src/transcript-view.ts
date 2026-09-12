@@ -5,6 +5,8 @@ export interface TranscriptRecordDto {
 }
 
 export interface TranscriptDto {
+  state?: "content" | "empty" | "unavailable" | "corrupt";
+  message?: string | null;
   attemptId: string;
   runId: string;
   runSequence: number;
