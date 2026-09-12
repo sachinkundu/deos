@@ -30,8 +30,8 @@ The screenshots are local demo UI proof, not production activation proof.
 
 ## Local checks
 
-- 384 TypeScript tests pass.
-- 69 portal tests pass.
+- 385 TypeScript tests pass.
+- 71 portal tests pass.
 - 67 Python tests pass.
 - Worker and portal TypeScript checks pass, as do the portal build, Worker dry
   run, OpenSpec validation, and lint checks for the changed Python files.
@@ -51,10 +51,11 @@ there were no waits. Account quota headroom remains a rollout check.
 
 Production has not received this implementation. The local ingress configuration
 still selects the temporary `legacy-basic-v1` compatibility policy. The
-Standard-2 default is not active. The on-call paging destination must be supplied
-and tested before activation, as required by the approved design.
+Standard-2 default is not active. The user revised the design on 12 September:
+errors are surfaced in the portal and external message delivery is deferred.
+A paging destination is no longer an activation prerequisite.
 
-After the destination is supplied:
+Remaining rollout procedure:
 
 1. Read current deployments, enabled routes, pending dispatches, active runs,
    and account limits. Preserve unrelated live releases.
@@ -71,17 +72,18 @@ After the destination is supplied:
    rollback release while keeping both tiers supported.
 6. Apply `scripts/sandbox-tier-enforce.sql`. This removes the temporary null
    writers and requires valid run, attempt, and delivery tier facts.
-7. Connect and prove paging for `sandbox_tier_start_integrity_failure`, explicit
-   capacity/quota/concurrency refusals in `sandbox_creation_failed`, tier
-   mismatches, and a creation failure rate over five percent. Group by tier and
-   project. Preserve the existing durable original error records.
+7. Verify portal visibility for start integrity failures and sandbox startup
+   failures, including capacity/quota/concurrency refusals. Show the tier and
+   project and link to the existing durable original error records. Check tier
+   mismatches and the creation failure rate during rollout. Message delivery
+   is deferred.
 8. Drain pending starts. Change the ingress release policy to `event-label-v1`,
    deploy it, and read back 100 percent traffic for that version on every enabled
    route. Repeat labeled and unlabeled provider-originated runs and capture D1
    tier agreement and the live portal.
 9. Observe a clean window of at least 20 Standard-2 creation attempts. On the
-   first capacity refusal, page immediately. Restore capacity and pass a probe
-   within 15 minutes, or manually deploy the tested compatibility ingress.
+   first capacity refusal, stop the rollout check. Restore capacity and pass a
+   probe, or manually deploy the tested compatibility ingress.
    Existing Standard-2 runs keep their tier during rollback.
 
 ## Optional comparison manifest
@@ -105,3 +107,9 @@ controls. Failed and retried attempts remain visible. No default is recommended.
 ![Real Linear test issue after cancellation](linear-provider-issue.png)
 
 The real test issue is canceled after the labeled and unlabeled delivery checks. This screenshot shows provider state; it does not show activation of the new production tier policy.
+
+The revised portal keeps sandbox startup refusals under each project, with the
+saved tier and a link to the durable original error. Error-history tests preserve
+the provider cause through cleanup. External paging is deferred by user request.
+
+![Local demo of a portal capacity refusal](portal-local-capacity-error.png)

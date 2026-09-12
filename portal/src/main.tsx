@@ -1,3 +1,4 @@
+import type { SandboxStartupFailure } from "./sandbox-failures.ts";
 import { TierTrial } from "./TierTrial.tsx";
 import { reviewDestination } from "./review-actions.ts";
 import { separateErrors } from "./error-state.ts";
@@ -152,6 +153,7 @@ interface GitHubInstallationChoice {
   repositories: GitHubRepositoryChoice[];
 }
 interface RouteAdminOverview {
+  sandboxStartupFailures?: SandboxStartupFailure[];
   startDispatchFailures?: Array<{project_id:string;issue_key:string;delivery_id:string;cause:string;last_seen_at:string}>;
   routes: RepositoryRoute[];
   linear: { state: "ready" | "unavailable"; values: LinearProjectChoice[] };
@@ -642,6 +644,12 @@ function SettingsPanel() {
       </div>
       <div className="connection-card">
         <h2>Route status</h2>
+        {overview?.sandboxStartupFailures?.filter(failure => failure.projectId === selected.projectId).map(failure => <div className="sandbox-startup-failure" role="alert" key={failure.id}>
+          <strong>{failure.issueKey}: sandbox startup failed</strong>
+          <p>{failure.sandboxTier === "standard-2" ? "Standard-2" : failure.sandboxTier === "basic" ? "Basic" : "Tier not recorded"} · {human(failure.cause)} · {formatTime(failure.occurredAt)}</p>
+          <p>{failure.message}</p>
+          <a href={failure.detailUrl} target="_blank" rel="noreferrer">Original error, stack and causes <ArrowSquareOut /></a>
+        </div>)}
         {overview?.startDispatchFailures?.filter(failure=>failure.project_id===selected.projectId).map(failure=><div role="alert" key={failure.delivery_id}><strong>{failure.issue_key}: start failed</strong><p>{human(failure.cause)} · {formatTime(failure.last_seen_at)}</p><small>Delivery {failure.delivery_id}</small></div>)}
         <dl>
           <div><dt>Active runs</dt><dd>{selected.activeRuns}</dd></div>

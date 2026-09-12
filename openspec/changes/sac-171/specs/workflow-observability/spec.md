@@ -46,3 +46,18 @@ The trial result SHALL report the sample size and elapsed-time result for each t
 
 - **WHEN** an operator reviews the tier trial.
 - **THEN** the result shows the sample size and elapsed-time result for each tier without choosing the long-term default.
+
+### Requirement: Surface sandbox startup failures in the portal
+
+The portal SHALL show sandbox startup failures under the affected project, with the saved tier, issue, time, cause, and a link to the original error details. Capacity, quota, and concurrency refusals SHALL remain visible after a retry. The run view SHALL retain the original error history. External message delivery is deferred and MUST NOT be required for activation.
+
+#### Scenario: Provider refuses sandbox capacity
+
+- **WHEN** sandbox startup fails because the provider refuses capacity, quota, or concurrency.
+- **THEN** the portal shows the refusal under the affected project and links to the saved original error, stack, and causes.
+- **AND** any retry keeps the saved tier.
+
+#### Scenario: No message delivery service exists
+
+- **WHEN** the feature is activated without a message delivery service.
+- **THEN** operators can inspect failures in the portal without configuring a paging destination.

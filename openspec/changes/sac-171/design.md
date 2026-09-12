@@ -41,6 +41,7 @@ each class. Fake requests cannot prove either provider contract.
 - Let agents, portal clients, or later Linear events select a tier.
 - Change model routes, review edges, retry limits, or human gates.
 - Use the optional speed comparison to choose the long-term default.
+- Send external alerts or pages. Message delivery will be implemented later.
 
 ## Component Diagram
 
@@ -88,7 +89,7 @@ receive label-based choice logic.
    `start_slow_ok`; when present, the only valid value is `true`. A successful
    D1 read that finds a missing row, invalid value, unknown version, or
    disagreement is deterministic. The consumer writes or reuses a terminal
-   start-dispatch failure, emits an alert, acknowledges that Queue message, and
+   start-dispatch failure, emits safe diagnostics, acknowledges that Queue message, and
    allocates no run. The DEOS workflow portal shows the issue, delivery, route,
    time, and bounded cause under the affected `/settings` project card. A D1
    read error or failure to save that terminal record remains retryable.
@@ -177,7 +178,7 @@ the decision.
 
 A successful D1 lookup that proves the queued tier fact cannot be trusted will
 never heal on redelivery. The consumer therefore durably records one terminal
-failure keyed by delivery identity, alerts the DEOS on-call, exposes it on the
+failure keyed by delivery identity, exposes the error on the
 route's `/settings` project card, and acknowledges the Queue message without
 allocating a run. Repeated handling increments the same record instead of
 creating more failures. Storage read and write errors still use Queue retry, so
@@ -263,13 +264,13 @@ selection.
 | Event label data is missing, malformed, incomplete, or proves no exact match | Leave `start_slow_ok` missing. `event-label-v1` allocates `standard-2`; temporary `legacy-basic-v1` allocates `basic`. Do not query Linear for replacement facts. |
 | A real labeled test event cannot provide positive event-time label evidence | Stop before parser implementation and revise the approach. Do not ship a parser that misses the exact label. |
 | Event has similar text such as `Slow-Ok` or `slow-ok ` | Leave `start_slow_ok` missing because only exact provider name equality matches. |
-| A successful D1 read finds the delivery missing, an invalid fact or policy version, or a Queue-versus-delivery disagreement | Atomically create or reuse the terminal start-dispatch failure, alert, acknowledge the Queue message, and allocate no run. Show the affected issue under the route's portal diagnostics. Retry only if the D1 read or terminal write itself fails. |
+| A successful D1 read finds the delivery missing, an invalid fact or policy version, or a Queue-versus-delivery disagreement | Atomically create or reuse the terminal start-dispatch failure, emit safe diagnostics, acknowledge the Queue message, and allocate no run. Show the affected issue under the route's portal diagnostics. Retry only if the D1 read or terminal write itself fails. |
 | Delivery or Queue work is replayed | Reuse the delivery identity and saved run. Do not allocate again or recompute the tier. |
 | D1 cannot atomically save the run and tier | Do not dispatch Workflow or acknowledge successful Queue handling. Let existing Queue retry policy retry the delivery. |
 | A run or attempt has a missing or unknown tier | Fail before sandbox creation and record a bounded internal cause. Do not guess from labels, history, or provider defaults. |
 | Attempt tier differs from run tier | Reject attempt reservation or creation, emit safe mismatch telemetry, and leave the run unchanged. |
 | Cloudflare rejects or lacks the saved class | Mark the attempt through the existing typed failure path. Any allowed retry uses the same class. Never fall back. |
-| Standard-2 creation reports a capacity, quota, or concurrency failure | Record the typed attempt failure and page the DEOS on-call on the first explicit provider refusal, grouped by tier and route. Do not fall back that run. The on-call confirms the provider cause and manually deploys the tested `legacy-basic-v1` rollback for later deliveries unless capacity is restored and one Standard-2 probe succeeds within 15 minutes. Existing Standard-2 runs retain their tier and retry fail-closed. This alert and response remain active after rollout. |
+| Standard-2 creation reports a capacity, quota, or concurrency failure | Record the typed attempt failure and show it in the portal, grouped by tier and route, with the original error details. Do not fall back that run. An operator who observes the failure confirms the provider cause, restores capacity and passes a Standard-2 probe, or manually deploys the tested `legacy-basic-v1` rollback for later deliveries. Existing Standard-2 runs retain their tier and retry fail-closed. Message delivery is deferred; no paging destination or notification response deadline is required for this change. |
 | Sandbox creation has an ambiguous response | Reconcile using the deterministic sandbox identity before retrying. Any retry still uses the saved class. |
 | Attempt lacks a terminal timestamp | Exclude it from elapsed-time aggregates until existing reconciliation supplies a terminal outcome; show it as incomplete in trace data. |
 | Portal reads a corrupt or missing run tier | Show `Tier not recorded` and emit safe diagnostics. Do not infer a value from labels or an attempt. New writes must make this impossible. |
@@ -287,10 +288,10 @@ selection.
   rules, counts, elapsed time, outcomes, and retries visible. Make no automatic
   policy change from the report.
 - **[Standard-2 demand can exhaust Sandbox capacity]** → Measure recent peak
-  concurrency and account limits before activation. Page the DEOS on-call on
-  the first explicit capacity, quota, or concurrency refusal. Restore provider
-  capacity and pass one Standard-2 probe within 15 minutes, or manually deploy
-  the tested compatibility release for later deliveries. Never change an
+  concurrency and account limits before activation. Surface explicit capacity,
+  quota, and concurrency refusals in the portal with original error details.
+  When an operator observes a refusal, restore capacity and pass a Standard-2
+  probe, or manually deploy the tested compatibility release for later deliveries. Never change an
   existing run or silently fall back an attempt.
 - **[A copied attempt field can drift from the run]** → Write it through one
   guarded reservation path and check for mismatch before provider calls and in
@@ -301,7 +302,7 @@ selection.
   adapter mappings, plus both delivery policy versions, supported until every
   such run and accepted delivery is final.
 - **[A release boundary is coarser than a route canary]** → Prove both provider
-  classes, capacity headroom, alerting, and rollback before activation. Drain
+  classes, capacity headroom, portal error visibility, and rollback before activation. Drain
   pending start deliveries, activate at 100% traffic, and treat rollback as an
   explicit loss of compliance until Standard-2 default selection is restored.
 - **[Median duration does not prove causation]** → Show the comparison controls
@@ -342,8 +343,9 @@ selection.
    provider rejection.
 7. Before activation, record Sandbox class availability, concurrency and quota
    limits, recent peak concurrent sandboxes, and headroom for author and review
-   retries. Add creation-failure alerts grouped by tier and route with explicit
-   capacity, quota, and concurrency causes.
+   retries. Verify portal creation-failure diagnostics grouped by tier and route
+   with explicit capacity, quota, and concurrency causes and original details.
+   External message delivery is deferred and is not an activation prerequisite.
 8. Reconcile the Queue until no accepted start delivery remains pending, then
    deploy the activation release at 100% traffic and read back that active
    version. The activation release writes `event-label-v1` for every enabled
@@ -352,9 +354,10 @@ selection.
 9. Repeat provider-originated Linear checks for both label choices. Use
    read-only D1 evidence to prove the accepted policy version and one tier per
    run and attempt. Capture the DEOS workflow portal run view. Observe at least
-   20 Standard-2 creation attempts and page immediately on an explicit capacity,
-   quota, or concurrency refusal, any tier mismatch, or a creation-failure rate
-   above 5%. If operators run the optional speed comparison, also capture its
+   20 Standard-2 creation attempts while an operator checks the portal and durable
+   records for capacity, quota, or concurrency refusals, tier mismatches, or a
+   creation-failure rate above 5%. Treat any such finding as a failed rollout
+   check and follow the capacity or rollback procedure. If operators run the optional speed comparison, also capture its
    Access-protected report. Keep synthetic ingress, provider-originated, and
    visual proof separate.
 10. Roll back manually by deploying the tested compatibility release, which

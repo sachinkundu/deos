@@ -1,3 +1,4 @@
+import { captureErrors } from "../src/error-context.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -1686,3 +1687,18 @@ for (const reviewKind of ["traceability", "design"] as const) {
     });
   }
 }
+
+
+test("capacity refusal preserves original error and portal classification through cleanup", async () => {
+  const state = setup();
+  const original = new Error("Provider capacity exhausted", { cause: new Error("account resource limit") });
+  state.factory.sandbox.setKeepAlive = async () => { throw original; };
+  const saved: Array<{ location: string; error: unknown }> = [];
+  await assert.rejects(captureErrors(async errors => { saved.push(...errors); },
+    () => state.controller.execute(run, "work", "work", definition)),
+    error => error === original);
+  const failure = saved.find(error => error.location === "sandbox.start.capacity");
+  assert.ok(failure);
+  assert.match(JSON.stringify(failure.error), /Provider capacity exhausted/);
+  assert.match(JSON.stringify(failure.error), /account resource limit/);
+});

@@ -1,3 +1,4 @@
+import { sandboxStartupFailures } from "./sandbox-failures.ts";
 import { tierTrialReport } from "../../src/sandbox-tier-trial.ts";
 import { errorDetails, errorText } from "../../src/error-details.ts";
 import { verifyAccess } from "./auth.ts";
@@ -205,7 +206,7 @@ export const routePortalRequest = async (
       if (request.method === "GET") {
         const overview = await routeAdmin(env).overview(identity.email) as Record<string,unknown>;
         const failures = await env.DB.prepare("SELECT * FROM start_dispatch_failures ORDER BY last_seen_at DESC LIMIT 100").all();
-        return json(200, {...overview,startDispatchFailures:failures.results});
+        return json(200, {...overview,startDispatchFailures:failures.results, sandboxStartupFailures:await sandboxStartupFailures(env.DB)});
       }
       if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
       if (Number(request.headers.get("Content-Length") ?? "0") > 4_096) {

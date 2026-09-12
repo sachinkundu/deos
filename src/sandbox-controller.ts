@@ -892,7 +892,7 @@ export class SandboxAgentController {
       this.emit(run, attempt, "sandbox.attempt", "running");
       return { state: "running", attemptId: attempt.attempt_id, sandboxId: attempt.sandbox_id };
     } catch (error) {
-      recordCaughtError(error, "src/sandbox-controller.ts:849");
+      recordCaughtError(error, `sandbox.start.${sandboxCreationCause(error)}`);
       console.error(JSON.stringify({event:"sandbox_creation_failed",run_id:run.run_id,
         project_id:run.project_id,attempt_id:attempt.attempt_id,sandbox_tier:attempt.sandbox_tier,
         stage:attempt.node_id,cause:sandboxCreationCause(error)}));

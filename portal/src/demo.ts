@@ -107,6 +107,12 @@ const stageLabels = {
 
 export const demoApi = (path: string): unknown => {
   if (path === "/api/settings/routes") return {
+    sandboxStartupFailures: [{
+      id: "demo-capacity", projectId: "99426d9b-cda7-4db4-9136-692a95a0b090",
+      issueKey: "DEMO", sandboxTier: "standard-2", cause: "capacity",
+      occurredAt: "2026-09-12T10:00:00Z", message: "Demo: the provider could not supply sandbox capacity.",
+      detailUrl: "/failure-detail/demo-capacity",
+    }],
     routes: [
       {
         projectId: "99426d9b-cda7-4db4-9136-692a95a0b090",
