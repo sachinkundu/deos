@@ -1,0 +1,83 @@
+{
+  "stagingMetadata": {
+    "PORTAL_CANONICAL_HOST": "deos-staging.voxdez.com",
+    "PORTAL_SITE": "Staging",
+    "PORTAL_SOURCE_BRANCH": "main",
+    "PORTAL_SOURCE_SHA": "f20e35c6d405271235eb04711381c0baec7f5b9d"
+  },
+  "deployments": {
+    "deos-queue-consumer-ts": {
+      "id": "15e60538-827b-4cc3-8502-db2daca7edb7",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "sachin.kundu@pm.me",
+      "annotations": {
+        "workers/message": "SAC-161 RecentIssues plus recovery 8710906; pre...",
+        "workers/triggered_by": "upload"
+      },
+      "versions": [
+        {
+          "version_id": "55d1b170-2fc1-4676-b3d0-54eb357595f2",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-12T12:54:34.458624Z"
+    },
+    "deos-workflow-portal": {
+      "id": "e1616af3-593f-4608-a54b-ab0eac79850c",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "sachin.kundu@pm.me",
+      "annotations": {
+        "workers/message": "",
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "b01771d7-464b-4c5d-b6d8-e613f759f201",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-11T11:25:25.689628Z"
+    },
+    "deos-workflow-portal-staging": {
+      "id": "024fc95c-4f53-4abe-a9b2-240c9807742a",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "sachin.kundu@pm.me",
+      "annotations": {
+        "workers/message": "SAC-161 manual staging verification f20e35c6d405",
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "0a1c7617-05ac-4405-97e7-a63bc21a31a5",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-12T12:45:06.433106Z"
+    }
+  },
+  "productionPortalUnchanged": true,
+  "queueBaseCommit": "87109066d43ec5151bcabec56ed8c8a0835f6218",
+  "queueAdditiveCommit": "463ce4d",
+  "containerRollout": "none",
+  "initialQueueDeployment": {
+    "id": "15232899-4d95-4c55-93fd-2f6ec4589cd9",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "sachin.kundu@pm.me",
+    "annotations": {
+      "workers/message": "SAC-161 RecentIssues on deployed 50c99dc; prese...",
+      "workers/triggered_by": "upload"
+    },
+    "versions": [
+      {
+        "version_id": "44beec91-c0ae-4b2d-a9b4-4a1f041b619f",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-09-12T12:44:44.118889Z"
+  },
+  "interveningQueueVersion": "2cde8efc-b6ca-4e05-b628-25e8a16a4838"
+}

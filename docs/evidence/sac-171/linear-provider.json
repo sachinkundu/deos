@@ -1,0 +1,41 @@
+{
+  "result": [
+    {
+      "results": [
+        {
+          "delivery_id": "944cb38f-a7a4-48ec-9681-d7281e42f5ed",
+          "received_at": "2026-09-12T08:02:44.985999+00:00",
+          "classification": "relevant",
+          "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[{\"id\":\"6b18934d-9fc1-4c61-b294-c1bc2ea3a8df\",\"name\":\"slow-ok\"}]}"
+        },
+        {
+          "delivery_id": "bbd663a3-afdb-49e4-a83f-a5191ae04a8f",
+          "received_at": "2026-09-12T08:04:25.735000+00:00",
+          "classification": "relevant",
+          "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.5828
+        },
+        "duration": 0.5828,
+        "changes": 0,
+        "last_row_id": 3538,
+        "changed_db": false,
+        "size_after": 61779968,
+        "rows_read": 6,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}

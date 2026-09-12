@@ -1,4 +1,6 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
+import { authorizeRouteAdminActor } from "./route-admin.ts";
+import { saveTierTrial } from "./sandbox-tier-trial.ts";
 
 import {
   RouteAdminService,
@@ -8,6 +10,10 @@ import {
 import type { RepositoryRouteView } from "./repository-routes.ts";
 
 export class RouteAdmin extends WorkerEntrypoint<Env> {
+  async createTierTrial(actorEmail:string, input:unknown):Promise<void> {
+    authorizeRouteAdminActor(actorEmail,this.env.ROUTE_ADMIN_ALLOWED_EMAIL);
+    await saveTierTrial(this.env.DB,input);
+  }
   private service(): RouteAdminService {
     return new RouteAdminService(this.env);
   }

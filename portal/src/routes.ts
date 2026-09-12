@@ -2,7 +2,7 @@ export type PortalPage = "workflow" | "settings" | "review" | "design-review" | 
 
 export const portalPageFromPath = (pathname: string): PortalPage => {
   if (pathname === "/") return "workflow";
-  if (pathname === "/settings" || pathname === "/settings/") return "settings";
+  if (pathname === "/settings" || pathname === "/settings/" || pathname === "/settings/sandbox-tier-trial") return "settings";
   if (/^\/runs\/.+\/review\/?$/.test(pathname)) return "review";
   if (/^\/runs\/.+\/design-review\/?$/.test(pathname)) return "design-review";
   return "not-found";

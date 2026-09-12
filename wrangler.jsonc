@@ -14,6 +14,7 @@
     }
   },
   "vars": {
+    "SANDBOX_TIER_POLICY_VERSION": "legacy-basic-v1",
     "LINEAR_START_TRANSITIONS": "Todo",
     "LINEAR_APPROVAL_TRANSITIONS": "In Progress",
     "LINEAR_REJECTION_TRANSITIONS": "Canceled"

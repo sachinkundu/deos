@@ -17,7 +17,45 @@ concurrency:
   queue: max
 
 jobs:
-  release:
+  portal-staging:
+    if: github.ref == 'refs/heads/main'
+    runs-on: avrea-ubuntu-latest-2-vcpu
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.reviewed_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Deploy the candidate to staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_STAGING_CLOUDFLARE_API_TOKEN }}
+          PORTAL_ACCESS_CLIENT_ID: ${{ vars.PORTAL_ACCESS_CLIENT_ID }}
+          PORTAL_ACCESS_CLIENT_SECRET: ${{ secrets.PORTAL_ACCESS_CLIENT_SECRET }}
+        run: python scripts/deploy_portal_staging.py
+      - run: npx playwright install --with-deps chromium
+      - name: Check the sidebar as the reviewer
+        env:
+          REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+          PORTAL_REVIEWER_ACCESS_ASSERTION: ${{ secrets.PORTAL_REVIEWER_ACCESS_ASSERTION }}
+          PORTAL_ACCESS_CLIENT_ID: ${{ vars.PORTAL_ACCESS_CLIENT_ID }}
+          PORTAL_ACCESS_CLIENT_SECRET: ${{ secrets.PORTAL_ACCESS_CLIENT_SECRET }}
+        run: node scripts/check-portal-recent-issues.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checked-portal
+          path: |
+            portal/dist
+            portal-proof
+            portal-worker
+          if-no-files-found: error
+  portal-production:
+    needs: portal-staging
     if: github.ref == 'refs/heads/main'
     runs-on: avrea-ubuntu-latest-2-vcpu
     environment: production
@@ -31,9 +69,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Promote, build, deploy, and verify release
+      - uses: actions/download-artifact@v4
+        with:
+          name: checked-portal
+          path: ${{ runner.temp }}/checked-portal
+      - name: Promote, deploy checked assets, and verify release
         env:
           REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+          CHECKED_PORTAL_ARTIFACT: ${{ runner.temp }}/checked-portal
           CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_PRODUCTION_CLOUDFLARE_API_TOKEN }}
           PORTAL_ACCESS_CLIENT_ID: ${{ vars.PORTAL_ACCESS_CLIENT_ID }}
           PORTAL_ACCESS_CLIENT_SECRET: ${{ secrets.PORTAL_ACCESS_CLIENT_SECRET }}

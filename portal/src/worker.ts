@@ -1,3 +1,6 @@
+import { sandboxStartupFailures } from "./sandbox-failures.ts";
+import { tierTrialReport } from "../../src/sandbox-tier-trial.ts";
+import type { RecentIssuesBinding, RecentIssuesUpdate } from "../../src/recent-issues.ts";
 import { errorDetails, errorText } from "../../src/error-details.ts";
 import { verifyAccess } from "./auth.ts";
 import { deploymentMetadata, labelPortalHtml, type PortalDeploymentEnv } from "./deployment.ts";
@@ -40,11 +43,13 @@ type PortalRuntimeEnv = Pick<Env, "DB" | "ARTIFACTS" | "ASSETS"> & PortalDeploym
   ALLOWED_EMAIL: string;
   OPENROUTER_SUPPORTED_MODELS?: string;
   ROUTE_ADMIN?: Service;
+  RECENT_ISSUES?: RecentIssuesBinding | Service;
   RETRY_ADMIN?: Fetcher;
   STAGE_RETRY_SECRET?: string;
 };
 
 interface RouteAdminBinding {
+  createTierTrial(actorEmail:string,input:unknown):Promise<void>;
   overview(actorEmail: string): Promise<unknown>;
   createRoute(actorEmail: string, input: unknown): Promise<unknown>;
   saveRepository(actorEmail: string, input: unknown): Promise<unknown>;
@@ -169,7 +174,7 @@ export const routePortalRequest = async (
     if (!["GET", "HEAD"].includes(request.method)) return json(405, { error: "method_not_allowed" });
     const assetPath = url.pathname === "/"
       ? "/index.html"
-      : url.pathname === "/settings" || url.pathname === "/settings/"
+      : url.pathname === "/settings" || url.pathname === "/settings/" || url.pathname === "/settings/sandbox-tier-trial"
         ? "/settings.html"
         : /^\/runs\/.+\/(?:review|design-review)\/?$/.test(url.pathname)
           ? "/settings.html"
@@ -191,9 +196,19 @@ export const routePortalRequest = async (
   }
   const store = new PortalReadStore(env.DB);
   try {
+    if (url.pathname === "/api/settings/sandbox-tier-trial") {
+      if (request.method === "GET") return json(200,await tierTrialReport(env.DB,url.searchParams.get("comparison") ?? ""));
+      if (request.method !== "POST") return json(405,{error:"method_not_allowed"});
+      const body=await request.text();
+      if(body.length>64000) return json(413,{error:"request_too_large"});
+      await routeAdmin(env).createTierTrial(identity.email,JSON.parse(body));
+      return json(201,{saved:true});
+    }
     if (url.pathname === "/api/settings/routes") {
       if (request.method === "GET") {
-        return json(200, await routeAdmin(env).overview(identity.email));
+        const overview = await routeAdmin(env).overview(identity.email) as Record<string,unknown>;
+        const failures = await env.DB.prepare("SELECT * FROM start_dispatch_failures ORDER BY last_seen_at DESC LIMIT 100").all();
+        return json(200, {...overview,startDispatchFailures:failures.results, sandboxStartupFailures:await sandboxStartupFailures(env.DB)});
       }
       if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
       if (Number(request.headers.get("Content-Length") ?? "0") > 4_096) {
@@ -270,8 +285,33 @@ export const routePortalRequest = async (
       return recorded ? json(200, { recorded: true }) : json(404, { error: "issue_not_found" });
     }
     if (!["GET", "HEAD"].includes(request.method)) return json(405, { error: "method_not_allowed" });
+    if (url.pathname === "/api/recent-issues") {
+      if (request.method !== "GET") return json(405, { error: "method_not_allowed" });
+      try {
+        if (!env.RECENT_ISSUES) throw new Error("RecentIssues service binding is unavailable");
+        return json(200, await (env.RECENT_ISSUES as unknown as RecentIssuesBinding).list(request.headers.get("CF-Access-Jwt-Assertion")));
+      } catch (error) {
+        console.error(JSON.stringify({ operation: "recent_issues.list", error: errorDetails(error) }));
+        return json(503, { error: { code: "recent_history_unavailable", retryable: true } });
+      }
+    }
     if (url.pathname === "/api/issues") {
-      return json(200, { issues: await store.searchIssues(url.searchParams.get("query") ?? "") });
+      const query = url.searchParams.get("query") ?? "";
+      const issues = await store.searchIssues(query);
+      let recentIssues: RecentIssuesUpdate = { state: "unchanged" };
+      if (request.method === "GET" && issues.some(issue => issue.key === query.trim().toUpperCase())) {
+        try {
+          const eligible = await store.eligibleRecentIssue(query.trim().toUpperCase());
+          if (eligible) {
+            if (!env.RECENT_ISSUES) throw new Error("RecentIssues service binding is unavailable");
+            recentIssues = { state: "updated", ...await (env.RECENT_ISSUES as unknown as RecentIssuesBinding).record(request.headers.get("CF-Access-Jwt-Assertion"), eligible) };
+          }
+        } catch (error) {
+          console.error(JSON.stringify({ operation: "recent_issues.record", error: errorDetails(error) }));
+          recentIssues = { state: "error", code: "recent_history_unavailable" };
+        }
+      }
+      return json(200, { issues, recentIssues });
     }
     if (url.pathname === "/api/workflows/issues") {
       return json(200, { issues: await store.workflowIssues(identity.email) });
@@ -298,7 +338,7 @@ export const routePortalRequest = async (
       }
       return json(200, transcriptDto(transcript));
     }
-    const issueMatch = url.pathname.match(/^\/api\/issues\/([A-Z][A-Z0-9]+-[1-9][0-9]*)\/runs$/);
+    const issueMatch = url.pathname.match(/^\/api\/issues\/([A-Z][A-Z0-9]+-[1-9][0-9]*|[0-9a-f-]{36})\/runs$/i);
     if (issueMatch !== null) {
       const result = await store.runs(issueMatch[1]);
       return result === null ? json(404, { error: "issue_not_found" }) : json(200, result);

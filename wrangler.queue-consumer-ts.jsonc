@@ -3,7 +3,9 @@
   "name": "deos-queue-consumer-ts",
   "main": "src/queue-consumer.ts",
   "compatibility_date": "2026-08-16",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "account_id": "c68856288112af7698f5be52ea94b96e",
   "observability": {
     "enabled": true,
@@ -86,30 +88,53 @@
       {
         "name": "Sandbox",
         "class_name": "Sandbox"
+      },
+      {
+        "name": "Standard2Sandbox",
+        "class_name": "Standard2Sandbox"
       }
     ]
   },
   "containers": [
     {
       "class_name": "Sandbox",
-      "image": "./Dockerfile",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:a275dfc2c81de9cc167606907ce5724bdbc3ed71dc40e3bf787232381844f875",
       "max_instances": 4,
       "instance_type": "basic"
+    },
+    {
+      "class_name": "Standard2Sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:a275dfc2c81de9cc167606907ce5724bdbc3ed71dc40e3bf787232381844f875",
+      "max_instances": 4,
+      "instance_type": "standard-2"
     }
   ],
   "migrations": [
     {
       "tag": "sandbox-v1",
-      "new_sqlite_classes": ["Sandbox"]
+      "new_sqlite_classes": [
+        "Sandbox"
+      ]
+    },
+    {
+      "tag": "sandbox-standard2-v1",
+      "new_sqlite_classes": [
+        "Standard2Sandbox"
+      ]
     }
   ],
   "triggers": {
-    "crons": ["*/15 * * * *"]
+    "crons": [
+      "*/15 * * * *"
+    ]
   },
   "rules": [
     {
       "type": "Text",
-      "globs": ["**/*.yaml", "**/prompts/*.md"],
+      "globs": [
+        "**/*.yaml",
+        "**/prompts/*.md"
+      ],
       "fallthrough": true
     }
   ]

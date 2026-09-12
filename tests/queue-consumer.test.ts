@@ -1,3 +1,4 @@
+import type { SandboxTierSelection } from "../src/sandbox-tier.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -226,6 +227,8 @@ class FakeStore implements OrchestrationDispatchStore {
     return this.selectors.get(`${projectId}:${repository}:${labelName}`) ?? null;
   }
 
+  findRunByDelivery(deliveryId:string) { return Promise.resolve(this.runs.find(run=>run.selection_delivery_id===deliveryId) ?? null); }
+
   findDeliverySelectionEvidence(deliveryId: string) {
     return Promise.resolve(this.deliveryEvidence.get(deliveryId) ?? null);
   }
@@ -293,6 +296,7 @@ class FakeStore implements OrchestrationDispatchStore {
     issueId: string;
     definition: LoadedWorkflowDefinition;
     selection: RunSelectionEvidence;
+    sandboxTier: SandboxTierSelection;
     routeRevision: number;
     routeDigest: string;
     now: string;
@@ -311,6 +315,9 @@ class FakeStore implements OrchestrationDispatchStore {
       run_id: `workflow:${input.projectId}:${input.issueId}:run:${sequence}`,
       correlation_id: `workflow:${input.projectId}:${input.issueId}`,
       run_sequence: sequence,
+      sandbox_tier:input.sandboxTier.tier,
+      sandbox_tier_source:input.sandboxTier.source,
+      sandbox_tier_policy_version:input.sandboxTier.policy,
       project_id: input.projectId,
       issue_id: input.issueId,
       definition_id: input.definition.name,
@@ -453,6 +460,7 @@ const queueBody = (overrides: Partial<QueueBody> = {}): QueueBody => ({
   occurred_at: NOW,
   correlation_id: "workflow:project-1:issue-1",
   payload_digest: "sha256-payload-1",
+  sandbox_tier_policy_version: "event-label-v1",
   label_selection_evidence: { status: "available", labels: [] },
   label_selection_evidence_digest: "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
   route_revision: 1,
@@ -462,6 +470,8 @@ const queueBody = (overrides: Partial<QueueBody> = {}): QueueBody => ({
 
 const seedEvidence = (store: FakeStore, body: QueueBody): void => {
   store.deliveryEvidence.set(body.source_delivery_id, {
+    sandbox_tier_policy_version: body.sandbox_tier_policy_version,
+    start_slow_ok: body.start_slow_ok,
     label_selection_evidence_json: JSON.stringify(body.label_selection_evidence),
     label_selection_evidence_digest: body.label_selection_evidence_digest,
   });
@@ -920,4 +930,48 @@ test("correlation mismatch fails before storage or provider action", async () =>
   );
   assert.equal(store.runs.length, 0);
   assert.equal(workflow.creates, 0);
+});
+
+
+test("saved tier survives terminal delivery replay without rereading the delivery", async () => {
+  const store=new FakeStore(),workflow=new FakeWorkflow();
+  const body=queueBody();
+  await runMessage(store,workflow,body);
+  assert.equal(store.runs[0].sandbox_tier,"standard-2");
+  store.runs[0].status="succeeded";
+  store.findDeliverySelectionEvidence=()=>{throw new Error("must not reread delivery");};
+  await processQueueMessage({id:"replay",attempts:2,body:{...body,start_slow_ok:true}},environment(workflow),
+    {store,definition,now:()=>new Date(NOW),observe:()=>{},lifecycle:()=>{}});
+  assert.equal(store.runs.length,1);
+  assert.equal(store.runs[0].sandbox_tier,"standard-2");
+});
+
+test("positive event evidence freezes Basic",async()=>{
+  const store=new FakeStore();await runMessage(store,new FakeWorkflow(),queueBody({start_slow_ok:true}));
+  assert.equal(store.runs[0].sandbox_tier,"basic");
+  assert.equal(store.runs[0].sandbox_tier_source,"event_slow_ok");
+});
+
+test("deterministic tier corruption is saved before return; audit write failures retry",async()=>{
+  const store=new FakeStore(),workflow=new FakeWorkflow(),body=queueBody();seedEvidence(store,body);
+  store.deliveryEvidence.get(body.source_delivery_id)!.start_slow_ok=1;
+  let writes=0,failWrite=false;
+  const db = {
+    prepare() {
+      return { bind() {
+        return { async run() {
+          if (failWrite) throw new Error("D1 audit unavailable");
+          writes++;
+          return {meta:{changes:1}};
+        }};
+      }};
+    },
+  };
+  const env={...environment(workflow),DB:db} as unknown as QueueConsumerEnv;
+  const deps={store,definition,now:()=>new Date(NOW),observe:()=>{},lifecycle:()=>{}};
+  await processQueueMessage({id:"mismatch",attempts:1,body},env,deps);
+  assert.equal(writes,1);assert.equal(store.runs.length,0);
+  failWrite=true;
+  await assert.rejects(processQueueMessage({id:"mismatch",attempts:2,body},env,deps),/D1 audit unavailable/);
+  assert.equal(store.runs.length,0);
 });

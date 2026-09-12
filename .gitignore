@@ -16,3 +16,6 @@ node_modules/
 /portal/dist/
 /prototypes/*/dist/
 symphony-understanding.md
+
+/portal-proof/
+/portal-worker/

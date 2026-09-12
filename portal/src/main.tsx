@@ -1,3 +1,6 @@
+import type { SandboxStartupFailure } from "./sandbox-failures.ts";
+import { TierTrial } from "./TierTrial.tsx";
+import { applyRecentSnapshot, type RecentIssuesSnapshot, type RecentIssuesUpdate } from "../../src/recent-issues.ts";
 import { reviewDestination } from "./review-actions.ts";
 import { separateErrors } from "./error-state.ts";
 import { errorText } from "../../src/error-details.ts";
@@ -53,8 +56,8 @@ import {
 import "./styles.css";
 
 type Theme = "system" | "light" | "dark";
-interface Issue { key: string; title: string; url: string; observedAt: string }
-interface Run { id: string; sequence: number; status: string; definitionVersion: number; startedAt: string; updatedAt: string; endedAt: string | null }
+interface Issue { issueId?: string; key: string; title: string; url: string; observedAt: string }
+interface Run { sandbox_tier?: string | null; id: string; sequence: number; status: string; definitionVersion: number; startedAt: string; updatedAt: string; endedAt: string | null }
 interface Stage { id: string; label: string; state: "active" | "complete" | "upcoming"; visits: number }
 interface Visit {
   sequence: number;
@@ -151,6 +154,8 @@ interface GitHubInstallationChoice {
   repositories: GitHubRepositoryChoice[];
 }
 interface RouteAdminOverview {
+  sandboxStartupFailures?: SandboxStartupFailure[];
+  startDispatchFailures?: Array<{project_id:string;issue_key:string;delivery_id:string;cause:string;last_seen_at:string}>;
   routes: RepositoryRoute[];
   linear: { state: "ready" | "unavailable"; values: LinearProjectChoice[] };
   github: { state: "ready" | "unavailable"; values: GitHubInstallationChoice[] };
@@ -563,7 +568,7 @@ function SettingsPanel() {
   };
 
   return <section className="settings-page">
-    <div className="settings-heading"><div><span className="eyebrow">Project connections</span><h1>Repository routes</h1><p>Pair each Linear project with one repository the DEOS GitHub App can use.</p></div><button className="add-route" type="button" onClick={() => {
+    <div className="settings-heading"><div><span className="eyebrow">Project connections</span><h1>Repository routes</h1><a href="/settings/sandbox-tier-trial">Sandbox speed comparison</a><p>Pair each Linear project with one repository the DEOS GitHub App can use.</p></div><button className="add-route" type="button" onClick={() => {
       setAdding(true);
       setProjectId(overview?.linear.values.find((project) =>
         !overview.routes.some((route) => route.projectId === project.projectId))?.projectId ?? "");
@@ -640,6 +645,13 @@ function SettingsPanel() {
       </div>
       <div className="connection-card">
         <h2>Route status</h2>
+        {overview?.sandboxStartupFailures?.filter(failure => failure.projectId === selected.projectId).map(failure => <div className="sandbox-startup-failure" role="alert" key={failure.id}>
+          <strong>{failure.issueKey}: sandbox startup failed</strong>
+          <p>{failure.sandboxTier === "standard-2" ? "Standard-2" : failure.sandboxTier === "basic" ? "Basic" : "Tier not recorded"} · {human(failure.cause)} · {formatTime(failure.occurredAt)}</p>
+          <p>{failure.message}</p>
+          <a href={failure.detailUrl} target="_blank" rel="noreferrer">Original error, stack and causes <ArrowSquareOut /></a>
+        </div>)}
+        {overview?.startDispatchFailures?.filter(failure=>failure.project_id===selected.projectId).map(failure=><div role="alert" key={failure.delivery_id}><strong>{failure.issue_key}: start failed</strong><p>{human(failure.cause)} · {formatTime(failure.last_seen_at)}</p><small>Delivery {failure.delivery_id}</small></div>)}
         <dl>
           <div><dt>Active runs</dt><dd>{selected.activeRuns}</dd></div>
           <div><dt>Route revision</dt><dd>{selected.routeRevision}</dd></div>
@@ -888,8 +900,19 @@ function RunErrors({ projection }: { projection: Projection }) {
 
 function App() {
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("deos-theme") as Theme | null) ?? "system");
-  const [query, setQuery] = useState(() => localStorage.getItem("deos-issue") ?? "SAC-148");
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const [query, setQuery] = useState("");
+  const [recent, setRecent] = useState<RecentIssuesSnapshot>({ snapshotVersion: 0, items: [] });
+  const [historyError, setHistoryError] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const issues: Issue[] = recent.items.map(item => ({ issueId: item.issueId, key: item.identifier, title: item.title, url: "", observedAt: "" }));
+  const loadRecent = useCallback(async () => {
+    try {
+      const snapshot = await api<RecentIssuesSnapshot>("/api/recent-issues");
+      setRecent(current => applyRecentSnapshot(current, snapshot));
+      setHistoryError(false);
+    } catch (error) { console.error("Recent issues load failed", error); setHistoryError(true); }
+    finally { setHistoryLoading(false); }
+  }, []);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [runId, setRunId] = useState("");
@@ -939,9 +962,9 @@ function App() {
   const selectIssue = useCallback(async (issue: Issue) => {
     setBusy(true);
     setSelectedIssue(issue);
-    localStorage.setItem("deos-issue", issue.key);
     try {
-      const result = await api<{ issue: Issue; runs: Run[] }>(`/api/issues/${issue.key}/runs`);
+      const result = await api<{ issue: Issue; runs: Run[] }>(`/api/issues/${issue.issueId ?? issue.key}/runs`);
+      setSelectedIssue({ ...result.issue, issueId: issue.issueId });
       setRuns(result.runs);
       const first = result.runs[0]?.id ?? "";
       setRunId(first);
@@ -958,8 +981,12 @@ function App() {
   const search = useCallback(async () => {
     setBusy(true);
     try {
-      const result = await api<{ issues: Issue[] }>(`/api/issues?query=${encodeURIComponent(query)}`);
-      setIssues(result.issues);
+      const result = await api<{ issues: Issue[]; recentIssues: RecentIssuesUpdate }>(`/api/issues?query=${encodeURIComponent(query)}`);
+      if (result.recentIssues.state === "updated") {
+        const snapshot = result.recentIssues;
+        setRecent(current => applyRecentSnapshot(current, snapshot));
+        setHistoryError(false);
+      } else if (result.recentIssues.state === "error") setHistoryError(true);
       const exact = result.issues.find((issue) => issue.key === query.trim().toUpperCase());
       if (exact) await selectIssue(exact);
     } catch (error) {
@@ -970,8 +997,8 @@ function App() {
   useEffect(() => {
     if (page !== "workflow" || workflowLoadedRef.current) return;
     workflowLoadedRef.current = true;
-    void search();
-  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
+    void loadRecent();
+  }, [page, loadRecent]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (page !== "workflow" || !runId) return;
     const tick = () => { if (document.visibilityState === "visible") void loadProjection(runId); };
@@ -1015,14 +1042,15 @@ function App() {
         <div className="search-input"><MagnifyingGlass /><input id="issue-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="SAC-101" autoComplete="off" /><button aria-label="Search" type="submit"><ArrowRight /></button></div>
       </form>
       <div className="issue-list" aria-live="polite">
+        {historyError && <p role="status">Recent issues are unavailable. <button type="button" onClick={() => void loadRecent()}>Retry</button></p>}
         {issues.map((issue) => <button key={issue.key} type="button" className={selectedIssue?.key === issue.key ? "issue selected" : "issue"} onClick={() => void selectIssue(issue)}>
-          <span className="issue-key">{issue.key}</span><strong>{issue.title}</strong><small>Observed {formatTime(issue.observedAt)}</small>
+          <span className="issue-key">{issue.key}</span><strong>{issue.title}</strong>
         </button>)}
-        {!busy && issues.length === 0 && <p className="empty-small">Search by an issue key with a durable DEOS run.</p>}
+        {!busy && !historyLoading && !historyError && issues.length === 0 && <p className="empty-small">Search by an issue key with a durable DEOS run.</p>}
       </div>
     </aside>}
     <main className={page !== "workflow" ? "main settings-main" : "main"}>
-      {page === "settings" ? <SettingsPanel /> : page === "review" ? <ReviewTracePage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "design-review" ? <DesignReviewPage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "not-found" ? <section className="empty-state"><WarningCircle /><h1>Page not found</h1><p>This portal route is not registered.</p><button className="route-action" type="button" onClick={() => navigate("workflow")}>Go to workflows</button></section> : <>
+      {page === "settings" ? (window.location.pathname === "/settings/sandbox-tier-trial" ? <TierTrial /> : <SettingsPanel />) : page === "review" ? <ReviewTracePage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "design-review" ? <DesignReviewPage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "not-found" ? <section className="empty-state"><WarningCircle /><h1>Page not found</h1><p>This portal route is not registered.</p><button className="route-action" type="button" onClick={() => navigate("workflow")}>Go to workflows</button></section> : <>
       {poll.staged && <div className="update-banner"><span><ArrowClockwise /> Confirmed workflow data is ready.</span><button type="button" onClick={() => setPoll(applyStaged)}>Apply update</button></div>}
       {poll.error && <div className="error-banner"><WarningCircle />{poll.error}<button type="button" onClick={() => runId && void loadProjection(runId)}>Retry</button></div>}
       {retryMessage && <div className="retry-message" aria-live="polite"><ArrowClockwise />{retryMessage}</div>}
@@ -1031,7 +1059,7 @@ function App() {
         <div className="run-control"><label htmlFor="run">Workflow run</label><select id="run" value={runId} onChange={(event) => { setRunId(event.target.value); setSelectedVisit(null); setTranscriptAttempt(null); setRetryMessage(null); void loadProjection(event.target.value, true); }}>{runs.map((run) => <option value={run.id} key={run.id}>Run {run.sequence} · {human(run.status)}</option>)}</select></div>
       </section>}
       {projection ? <>
-        <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : `Retry ${workflowStepLabel(projection.retry.retryNode)}`}</button>}</div></section>
+        <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span><span>Sandbox: {projection.run.sandbox_tier === "basic" ? "Basic" : projection.run.sandbox_tier === "standard-2" ? "Standard-2" : "Tier not recorded"}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : `Retry ${workflowStepLabel(projection.retry.retryNode)}`}</button>}</div></section>
         <RunErrors projection={projection} />
         {groupedWorkflow ? <TraceabilityWorkflowMap
           projection={projection}

@@ -1,0 +1,8 @@
+{
+  "tier": "basic",
+  "stdout": "",
+  "stderr": "node:fs:440\n    return binding.readFileUtf8(path, stringToFlags(options.flag));\n                   ^\n\nError: ENOENT: no such file or directory, open '/sys/fs/cgroup/cpu.max'\n    at Object.readFileSync (node:fs:440:20)\n    at [eval]:1:139\n    at Array.map (<anonymous>)\n    at [eval]:1:126\n    at runScriptInThisContext (node:internal/vm:209:10)\n    at node:internal/process/execution:446:12\n    at [eval]-wrapper:6:24\n    at runScriptInContext (node:internal/process/execution:444:60)\n    at evalFunction (node:internal/process/execution:279:30)\n    at evalTypeScript (node:internal/process/execution:291:3) {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'open',\n  path: '/sys/fs/cgroup/cpu.max'\n}\n\nNode.js v22.23.2\n",
+  "exitCode": 1,
+  "timedOut": false,
+  "truncated": false
+}
