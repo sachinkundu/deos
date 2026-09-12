@@ -29,7 +29,27 @@ contents during error serialization.
   and protected error object, including the stderr fallback.
 - A local HTTP server checks that repository-tool response details survive.
 
-These are local regression checks, not a new provider-originated workflow run.
-The patch has not been deployed. Production readback still showed Worker version
-`e4985e63-03ad-44cb-9b3e-d5cb5d2a874a` at 100% and three active workflow records.
-No SAC-170 retry or workflow-state change was made.
+These regression checks use local processes and doubles. They do not prove that
+a live provider failure retains its full details.
+
+## Production rollout and retry, September 12
+
+SAC-161 returned to Human Review at 10:41:51 UTC. D1 confirmed `awaiting_human`
+at `design_review`, and no agent attempts were active on the shared backend.
+The tested `c92b299` backend was then deployed. Neither portal was deployed.
+
+Readback confirmed Worker `950ee474-71e3-4c7b-846b-6a9ebdbc9695` at 100% traffic.
+The gradual container rollout completed with all four instances healthy and
+image digest `sha256:6bc24d6915d87e32ab9e02327b262e06517bc465c2bd4aaf007d24988a4b8623`.
+
+At 10:48:54 UTC the supported stage-retry endpoint accepted one retry of
+SAC-170's failed `design_independent_review` attempt. It retained the existing
+business run and frozen workflow definition v24. The new attempt is
+`01a0953c-1dc9-7ce3-a0e4-bd855eec623e`; its Cloudflare Workflow instance is
+`wf-v1-pf4sw62lp3yovir734yl3e4mktmd2d7ssjgzv3svalwurdmoj6qq`.
+Cloudflare reported the workflow running, and D1 recorded the new attempt.
+The review result is pending. SAC-161 remains at its Human Review gate.
+
+[Showboat deployment and retry output](provider-rollout.md) records the actual
+commands and remote readback. Its operator helpers and request file were saved
+under `/tmp` for this run; the mutation commands must not be replayed as checks.
