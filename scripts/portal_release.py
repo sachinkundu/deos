@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import shutil
 import subprocess
 import urllib.request
 from pathlib import Path
@@ -42,6 +43,7 @@ def preflight(config, target):
                 "entrypoint": "RouteAdmin",
             },
             {"binding": "RETRY_ADMIN", "service": "deos-queue-consumer-ts"},
+            {"binding": "RECENT_ISSUES", "service": "deos-queue-consumer-ts", "entrypoint": "RecentIssues"},
         ],
         "workers_dev": False,
         "preview_urls": False,
@@ -98,6 +100,7 @@ def promote():
     sha = os.environ.get("REVIEWED_SHA", "")
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("Supply the full reviewed commit SHA")
+    checked_artifact(sha)
     clean_checkout()
     run(
         "git",
@@ -185,6 +188,19 @@ def validate_readback(target, sha, deployment, version):
         raise ValueError("Host metadata does not match the selected commit and provider version")
 
 
+def checked_artifact(sha):
+    artifact_path = os.environ.get("CHECKED_PORTAL_ARTIFACT")
+    if not artifact_path:
+        raise ValueError("Production requires the same-run checked staging artifact")
+    artifact = Path(artifact_path)
+    proof = json.loads((artifact / "portal-proof/check.json").read_text())
+    if proof.get("sourceSha") != sha or proof.get("passed") is not True:
+        raise ValueError("Staging sidebar check is missing, failed, or for another revision")
+    if not (artifact / "portal/dist/index.html").is_file() or not (artifact / "portal-worker/worker.js").is_file():
+        raise ValueError("Checked portal assets are missing")
+    return artifact / "portal/dist"
+
+
 def deploy(target):
     for name in ("CLOUDFLARE_API_TOKEN", "PORTAL_ACCESS_CLIENT_ID", "PORTAL_ACCESS_CLIENT_SECRET"):
         if not os.environ.get(name):
@@ -205,12 +221,24 @@ def deploy(target):
     run("npm", "ci")
     run("npm", "run", "portal:test")
     run("npm", "run", "portal:typecheck")
-    run("npm", "run", "portal:build")
+    if target == "production":
+        assets = checked_artifact(sha)
+        if (ROOT / "portal/dist").exists():
+            shutil.rmtree(ROOT / "portal/dist")
+        shutil.copytree(assets, ROOT / "portal/dist")
+        worker_bundle = assets.parent.parent / "portal-worker/worker.js"
+    else:
+        run("npm", "run", "portal:build")
+        run("npx", "--no-install", "esbuild", "portal/src/worker.ts", "--bundle",
+            "--format=esm", "--platform=neutral", "--conditions=workerd,worker,browser",
+            "--external:cloudflare:*", "--external:node:*",
+            "--outfile=" + str(ROOT / "portal-worker/worker.js"))
+        worker_bundle = ROOT / "portal-worker/worker.js"
     if clean_checkout() != sha:
         raise ValueError("Build changed source checkout")
     check_ref(target, sha)
     preflight(json.loads(config_path.read_text()), target)
-    args = ["npx", "--no-install", "wrangler", "deploy", "--config", "portal/wrangler.jsonc"]
+    args = ["npx", "--no-install", "wrangler", "deploy", str(worker_bundle), "--no-bundle", "--config", "portal/wrangler.jsonc"]
     if target == "staging":
         args += ["--env", "staging"]
     args += ["--var", f"PORTAL_SOURCE_SHA:{sha}"]

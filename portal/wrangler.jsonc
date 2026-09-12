@@ -54,6 +54,11 @@
     {
       "binding": "RETRY_ADMIN",
       "service": "deos-queue-consumer-ts"
+    },
+    {
+      "binding": "RECENT_ISSUES",
+      "service": "deos-queue-consumer-ts",
+      "entrypoint": "RecentIssues"
     }
   ],
   "assets": {
@@ -105,6 +110,11 @@
         {
           "binding": "RETRY_ADMIN",
           "service": "deos-queue-consumer-ts"
+        },
+        {
+          "binding": "RECENT_ISSUES",
+          "service": "deos-queue-consumer-ts",
+          "entrypoint": "RecentIssues"
         }
       ],
       "secrets": {

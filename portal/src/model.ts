@@ -217,6 +217,12 @@ export const PORTAL_SELECTS = Object.freeze({
     FROM linear_issue_index issue
     JOIN project_workflow_policies route ON route.project_id = issue.project_id
     WHERE issue.issue_key = ? LIMIT 1`,
+  issueById: `SELECT issue.issue_id, issue.project_id, issue.issue_key, issue.title,
+    issue.linear_url, issue.observed_at
+    FROM linear_issue_index issue
+    JOIN project_workflow_policies route ON route.project_id = issue.project_id
+    WHERE issue.issue_id = ? LIMIT 1`,
+  eligibleRun: `SELECT run_id FROM orchestration_runs WHERE project_id = ? AND issue_id = ? LIMIT 1`,
   runs: `SELECT run_id, run_sequence, definition_id, definition_version, definition_digest,
     current_node, current_visit_sequence, status, created_at, updated_at, terminal_at,
     terminal_cause
@@ -344,6 +350,14 @@ export class PortalReadStore {
     return result.results.map(issueDto);
   }
 
+  async eligibleRecentIssue(key: string): Promise<import("../../src/recent-issues.ts").RecentIssue | null> {
+    const issue = await this.issue(key);
+    if (issue === null) return null;
+    const run = await this.db.prepare(PORTAL_SELECTS.eligibleRun)
+      .bind(issue.project_id, issue.issue_id).first();
+    return run === null ? null : { issueId: issue.issue_id, identifier: issue.issue_key, title: issue.title };
+  }
+
   async simpleIssues(): Promise<Array<PortalIssue & {
     runId: string;
     runSequence: number;
@@ -378,6 +392,7 @@ export class PortalReadStore {
   }
 
   private issue(key: string): Promise<IssueRow | null> {
+    if (/^[0-9a-f-]{36}$/i.test(key)) return this.db.prepare(PORTAL_SELECTS.issueById).bind(key).first<IssueRow>();
     if (!keyPattern.test(key)) return Promise.resolve(null);
     return this.db.prepare(PORTAL_SELECTS.issueByKey).bind(key).first<IssueRow>();
   }
