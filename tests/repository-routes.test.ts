@@ -403,6 +403,7 @@ test("atomic allocation freezes the matching route and rejects an old route proo
       providerDigest: "e".repeat(64),
     };
     const allocation = await store.allocateRun({
+      sandboxTier:{tier:"basic",source:"legacy_basic",policy:"legacy-basic-v1"},
       projectId: enabled.projectId,
       issueId: "issue-atomic-1",
       definition,
@@ -426,6 +427,7 @@ test("atomic allocation freezes the matching route and rejects an old route proo
     });
     assert.notEqual(changed.routeDigest, enabled.routeDigest);
     const stale = await store.allocateRun({
+      sandboxTier:{tier:"basic",source:"legacy_basic",policy:"legacy-basic-v1"},
       projectId: enabled.projectId,
       issueId: "issue-atomic-2",
       definition,

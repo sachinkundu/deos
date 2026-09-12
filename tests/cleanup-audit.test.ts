@@ -149,6 +149,7 @@ test("operator cleanup destroys one exact stopped tracked Sandbox and records D1
   const { auditor, store, factory } = setup();
   store.candidates.set(SANDBOX_ID, {
     sandbox_id: SANDBOX_ID,
+    sandbox_tier: "basic",
     run_id: "run-1",
     attempt_id: ATTEMPT_ID,
     process_id: "process-1",
@@ -179,6 +180,7 @@ test("operator cleanup rejects changed targets and a process that is still runni
   const { auditor, store, factory } = setup();
   store.candidates.set(SANDBOX_ID, {
     sandbox_id: SANDBOX_ID,
+    sandbox_tier: "basic",
     run_id: "run-1",
     attempt_id: ATTEMPT_ID,
     process_id: "process-1",
@@ -198,6 +200,7 @@ test("known destroyed Sandbox is excluded from external orphan reporting", async
   const { auditor, store, creates } = setup();
   store.candidates.set(SANDBOX_ID, {
     sandbox_id: SANDBOX_ID,
+    sandbox_tier: "basic",
     run_id: "run-1",
     attempt_id: "attempt-1",
     process_id: null,
@@ -214,6 +217,7 @@ test("known live Sandbox is excluded from external orphan reporting", async () =
   const { auditor, store, creates } = setup();
   store.candidates.set(SANDBOX_ID, {
     sandbox_id: SANDBOX_ID,
+    sandbox_tier: "basic",
     run_id: "run-1",
     attempt_id: "attempt-1",
     process_id: "process-1",
@@ -230,6 +234,7 @@ test("held failed Sandbox stays tracked and is excluded from external orphan rep
   const { auditor, store, creates } = setup();
   store.candidates.set(SANDBOX_ID, {
     sandbox_id: SANDBOX_ID,
+    sandbox_tier: "basic",
     run_id: "run-1",
     attempt_id: "attempt-1",
     process_id: null,
@@ -248,6 +253,7 @@ test("scheduled reconciliation destroys D1-known terminal Sandboxes", async () =
   const { auditor, store, factory } = setup();
   const candidate = {
     sandbox_id: SANDBOX_ID,
+    sandbox_tier: "basic",
     run_id: "run-1",
     attempt_id: "attempt-1",
     process_id: "process-1",
@@ -265,6 +271,7 @@ test("scheduled reconciliation waits for a failed Sandbox hold to expire", async
   const { auditor, store, factory } = setup();
   const candidate = {
     sandbox_id: SANDBOX_ID,
+    sandbox_tier: "basic",
     run_id: "run-1",
     attempt_id: "attempt-1",
     process_id: null,

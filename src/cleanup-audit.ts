@@ -1,3 +1,4 @@
+import { requireSandboxTier } from "./sandbox-tier.ts";
 import { responseError } from "./error-details.ts";
 import { recordCaughtError } from "./error-context.ts";
 import { operationIdentity } from "./orchestration-identity.ts";
@@ -5,6 +6,7 @@ import type { SandboxFactory } from "./sandbox-controller.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
 
 interface CleanupCandidate {
+  sandbox_tier?: string | null;
   sandbox_id: string;
   run_id: string | null;
   attempt_id: string | null;
@@ -49,7 +51,7 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
 
   knownLive(): Promise<CleanupCandidate[]> {
     return this.database.prepare(
-      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state,
+      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state, sandbox_tier,
               cleanup_hold_until, cleanup_hold_reason, updated_at
        FROM agent_attempts
        WHERE state IN ('pending', 'starting', 'running', 'collecting')`,
@@ -58,7 +60,7 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
 
   terminalPendingCleanup(now: string): Promise<CleanupCandidate[]> {
     return this.database.prepare(
-      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state,
+      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state, sandbox_tier,
               cleanup_hold_until, cleanup_hold_reason, updated_at
        FROM agent_attempts
        WHERE state IN ('completed', 'blocked', 'failed', 'interrupted', 'absolute_timeout', 'canceled')
@@ -69,12 +71,12 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
 
   candidate(sandboxId: string): Promise<CleanupCandidate | null> {
     return this.database.prepare(
-      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state,
+      `SELECT sandbox_id, run_id, attempt_id, process_id, state, cleanup_state, sandbox_tier,
               cleanup_hold_until, cleanup_hold_reason, updated_at
        FROM agent_attempts WHERE sandbox_id = ?
        UNION ALL SELECT c.runner_id AS sandbox_id, a.run_id, c.attempt_id, c.process_id,
          CASE WHEN c.state IN ('claimed','running') THEN 'running' ELSE 'failed' END AS state,
-         c.cleanup_state, NULL AS cleanup_hold_until, NULL AS cleanup_hold_reason, c.updated_at
+         c.cleanup_state, a.sandbox_tier, NULL AS cleanup_hold_until, NULL AS cleanup_hold_reason, c.updated_at
        FROM claude_review_invocations c JOIN agent_attempts a ON a.attempt_id = c.attempt_id
        WHERE c.runner_id = ?`,
     ).bind(sandboxId, sandboxId).first<CleanupCandidate>();
@@ -181,12 +183,12 @@ export class CleanupAuditor {
   async scheduled(): Promise<void> {
     const now = this.now().toISOString();
     for (const candidate of await this.store.knownLive()) {
-      const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: true });
+      const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: true, tier: requireSandboxTier(candidate.sandbox_tier) });
       const process = candidate.process_id === null ? null : await sandbox.getProcess(candidate.process_id);
       if (process === null && candidate.state !== "pending") await this.report(candidate);
     }
     for (const candidate of await this.store.terminalPendingCleanup(now)) {
-      const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: false });
+      const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: false, tier: requireSandboxTier(candidate.sandbox_tier) });
       try {
         await sandbox.setKeepAlive(false);
         await sandbox.destroy();
@@ -311,7 +313,7 @@ export class CleanupAuditor {
       (candidate.cleanup_hold_until !== null && candidate.cleanup_hold_until > this.now().toISOString())
     ) return Response.json({ error: "cleanup_target_changed" }, { status: 409 });
 
-    const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: false });
+    const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: false, tier: requireSandboxTier(candidate.sandbox_tier) });
     const process = candidate.process_id === null ? null : await sandbox.getProcess(candidate.process_id);
     if (process !== null && (await process.status()).state === "running") {
       return Response.json({ error: "cleanup_process_running" }, { status: 409 });

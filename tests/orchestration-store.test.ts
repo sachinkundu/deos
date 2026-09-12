@@ -82,6 +82,7 @@ test("allocateRun binds one value for every D1 placeholder", async () => {
   } as LoadedWorkflowDefinition;
 
   const allocation = await new D1OrchestrationStore(database).allocateRun({
+      sandboxTier:{tier:"basic",source:"legacy_basic",policy:"legacy-basic-v1"},
     projectId: "project-1",
     issueId: "issue-1",
     definition,

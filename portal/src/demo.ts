@@ -6,6 +6,8 @@ const issue = {
 };
 
 const run = {
+  sandbox_tier: "standard-2",
+  currentNode: "complete",
   id: "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:6936d743-0000-4000-8000-000000000000:run:1",
   sequence: 2,
   status: "succeeded",
@@ -121,6 +123,12 @@ export const demoApi = (path: string): unknown => {
   const savedDemo = recentDemo.items.find(item => path === `/api/issues/${item.issueId}/runs`);
   if (savedDemo) return { issue: { ...issue, key: savedDemo.identifier, title: savedDemo.title }, runs: [run] };
   if (path === "/api/settings/routes") return {
+    sandboxStartupFailures: [{
+      id: "demo-capacity", projectId: "99426d9b-cda7-4db4-9136-692a95a0b090",
+      issueKey: "DEMO", sandboxTier: "standard-2", cause: "capacity",
+      occurredAt: "2026-09-12T10:00:00Z", message: "Demo: the provider could not supply sandbox capacity.",
+      detailUrl: "/failure-detail/demo-capacity",
+    }],
     routes: [
       {
         projectId: "99426d9b-cda7-4db4-9136-692a95a0b090",

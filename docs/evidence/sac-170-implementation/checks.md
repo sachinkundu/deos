@@ -68,3 +68,36 @@ rtk proxy sh -ec 'npm test > /private/tmp/sac170-final-tests.log 2>&1; tail -8 /
 
 Change 'sac-170' is valid
 ```
+
+```bash
+rtk proxy sh -ec 'npm test > /private/tmp/sac170-final-tests.log 2>&1; tail -8 /private/tmp/sac170-final-tests.log; npm run portal:test > /private/tmp/sac170-final-portal-tests.log 2>&1; tail -8 /private/tmp/sac170-final-portal-tests.log; npm run typecheck; npm run portal:typecheck; openspec validate sac-170 --strict'
+
+```
+
+```output
+ℹ tests 418
+ℹ suites 0
+ℹ pass 418
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5299.327292
+ℹ tests 81
+ℹ suites 0
+ℹ pass 81
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1268.292
+
+> typecheck
+> tsc --noEmit
+
+
+> portal:typecheck
+> tsc --noEmit -p portal/tsconfig.json
+
+Change 'sac-170' is valid
+```

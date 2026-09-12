@@ -1,3 +1,4 @@
+import type { SandboxTierSelection } from "./sandbox-tier.ts";
 import { recordCaughtError } from "./error-context.ts";
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import {
@@ -24,6 +25,9 @@ export type RunStatus =
   | "canceled";
 
 export interface OrchestrationRunRecord {
+  sandbox_tier?: string | null;
+  sandbox_tier_source?: string | null;
+  sandbox_tier_policy_version?: string | null;
   run_id: string;
   correlation_id: string;
   run_sequence: number;
@@ -167,6 +171,8 @@ export interface WorkflowDefinitionSelectorRecord {
 }
 
 export interface DeliverySelectionEvidenceRecord {
+  start_slow_ok?: unknown;
+  sandbox_tier_policy_version?: unknown;
   label_selection_evidence_json: string | null;
   label_selection_evidence_digest: string | null;
 }
@@ -277,6 +283,7 @@ export interface OrchestrationDispatchStore {
     repository: string,
     labelName: string,
   ): Promise<WorkflowDefinitionSelectorRecord | null>;
+  findRunByDelivery(deliveryId:string):Promise<OrchestrationRunRecord|null>;
   findDeliverySelectionEvidence(
     deliveryId: string,
   ): Promise<DeliverySelectionEvidenceRecord | null>;
@@ -318,6 +325,7 @@ export interface OrchestrationDispatchStore {
     issueId: string;
     definition: LoadedWorkflowDefinition;
     selection: RunSelectionEvidence;
+    sandboxTier: SandboxTierSelection;
     routeRevision: number;
     routeDigest: string;
     now: string;
@@ -581,11 +589,16 @@ export class D1OrchestrationStore {
     ).bind(projectId, repository, labelName).first<WorkflowDefinitionSelectorRecord>();
   }
 
+  findRunByDelivery(deliveryId:string):Promise<OrchestrationRunRecord|null> {
+    return this.database.prepare("SELECT * FROM orchestration_runs WHERE selection_delivery_id=? LIMIT 1")
+      .bind(deliveryId).first<OrchestrationRunRecord>();
+  }
+
   findDeliverySelectionEvidence(
     deliveryId: string,
   ): Promise<DeliverySelectionEvidenceRecord | null> {
     return this.database.prepare(
-      `SELECT label_selection_evidence_json, label_selection_evidence_digest
+      `SELECT start_slow_ok, sandbox_tier_policy_version, label_selection_evidence_json, label_selection_evidence_digest
        FROM deliveries WHERE delivery_id = ?`,
     ).bind(deliveryId).first<DeliverySelectionEvidenceRecord>();
   }
@@ -747,6 +760,7 @@ export class D1OrchestrationStore {
     issueId: string;
     definition: LoadedWorkflowDefinition;
     selection: RunSelectionEvidence;
+    sandboxTier: SandboxTierSelection;
     routeRevision: number;
     routeDigest: string;
     now: string;
@@ -799,18 +813,19 @@ export class D1OrchestrationStore {
           route_project_name, route_repository, route_github_installation_id,
           route_revision, route_digest, route_start_state_name, route_human_gate_state_id,
           route_repository_revision, route_workflow_revision, route_review_revision,
-          created_at, updated_at)
+          sandbox_tier, sandbox_tier_source, sandbox_tier_policy_version, created_at, updated_at)
          SELECT ?, ?, ?, p.project_id, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                 CASE WHEN ? = 0 THEN NULL WHEN ? = 1 THEN 'claude' ELSE p.independent_review_provider END,
                 CASE WHEN ? = 0 THEN NULL WHEN ? = 1 THEN 'claude-opus-5' ELSE p.independent_review_model END,
                 ?, ?, p.linear_project_name, p.trial_repository, p.github_installation_id,
                 p.route_revision, p.route_digest, p.start_state_name, p.human_gate_state_id,
-                p.repository_revision, p.workflow_revision, p.independent_review_revision, ?, ?
+                p.repository_revision, p.workflow_revision, p.independent_review_revision, ?, ?, ?, ?, ?
          FROM project_workflow_policies p
          WHERE p.project_id = ? AND p.dispatch_enabled = 1
            AND p.route_revision = ? AND p.route_digest = ?
            AND p.linear_project_name IS NOT NULL AND p.github_installation_id IS NOT NULL
-           AND p.route_digest IS NOT NULL`,
+           AND p.route_digest IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM orchestration_runs existing WHERE existing.selection_delivery_id = ?)`,
       ).bind(
         runId,
         correlationId,
@@ -838,17 +853,24 @@ export class D1OrchestrationStore {
         Number(claude),
         independentJobs[0]?.reasoning ?? null,
         enrollment?.account_binding ?? null,
+        input.sandboxTier.tier,
+        input.sandboxTier.source,
+        input.sandboxTier.policy,
         input.now,
         input.now,
         input.projectId,
         input.routeRevision,
         input.routeDigest,
+        input.selection.deliveryId,
       ).run();
       if (changes(result) === 1) {
         const created = await this.findRun(runId);
         if (created === null) throw new Error("created orchestration run is not readable");
         return { run: created, created: true };
-      } else return null;
+      } else {
+        const raced = await this.findRunByDelivery(input.selection.deliveryId);
+        return raced === null ? null : {run:raced,created:false};
+      }
     } catch (caughtError) {
       recordCaughtError(caughtError, "src/orchestration-store.ts:840");
       const raced = await this.findActiveRun(input.projectId, input.issueId);

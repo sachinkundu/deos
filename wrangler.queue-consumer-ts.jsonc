@@ -87,6 +87,10 @@
       {
         "name": "Sandbox",
         "class_name": "Sandbox"
+      },
+      {
+        "name": "Standard2Sandbox",
+        "class_name": "Standard2Sandbox"
       }
     ]
   },
@@ -96,21 +100,40 @@
       "image": "./Dockerfile",
       "max_instances": 4,
       "instance_type": "basic"
+    },
+    {
+      "class_name": "Standard2Sandbox",
+      "image": "./Dockerfile",
+      "max_instances": 4,
+      "instance_type": "standard-2"
     }
   ],
   "migrations": [
     {
       "tag": "sandbox-v1",
-      "new_sqlite_classes": ["Sandbox"]
+      "new_sqlite_classes": [
+        "Sandbox"
+      ]
+    },
+    {
+      "tag": "sandbox-standard2-v1",
+      "new_sqlite_classes": [
+        "Standard2Sandbox"
+      ]
     }
   ],
   "triggers": {
-    "crons": ["*/15 * * * *"]
+    "crons": [
+      "*/15 * * * *"
+    ]
   },
   "rules": [
     {
       "type": "Text",
-      "globs": ["**/*.yaml", "**/prompts/*.md"],
+      "globs": [
+        "**/*.yaml",
+        "**/prompts/*.md"
+      ],
       "fallthrough": true
     }
   ]

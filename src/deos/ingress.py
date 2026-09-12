@@ -155,6 +155,7 @@ class LinearWebhookACL:
             issue_title=issue_title.strip(),
             issue_url=issue_url,
             label_selection_evidence=label_selection_evidence,
+            start_slow_ok=event_start_slow_ok(data),
         )
         state_changed = isinstance(updated_from, dict) and (
             "stateId" in updated_from or "state" in updated_from
@@ -246,6 +247,16 @@ def _previous_state(value: Any) -> tuple[str | None, str | None]:
     if isinstance(previous, dict):
         return state_id or _optional_string(previous, "id"), _optional_string(previous, "name")
     return state_id, None
+
+
+def event_start_slow_ok(data: dict[str, Any]) -> bool | None:
+    """Keep only exact positive evidence from the authenticated provider event."""
+    labels = data.get("labels")
+    if isinstance(labels, list):
+        for label in cast(list[object], labels):
+            if isinstance(label, dict) and cast(dict[str, object], label).get("name") == "slow-ok":
+                return True
+    return None
 
 
 def _label_selection_evidence(data: dict[str, Any]) -> LabelSelectionEvidence:

@@ -3,7 +3,9 @@
 This change implements the plan approved in [PR 106](https://github.com/sachinkundu/deos/pull/106)
 and the design approved in [PR 108](https://github.com/sachinkundu/deos/pull/108).
 It also retains the deployed fixes from [PR 109](https://github.com/sachinkundu/deos/pull/109),
-which was still open when this branch was prepared.
+which was still open when this branch was prepared. The branch also integrates
+SAC-171 from PR 112 and retains its frozen sandbox tier routing. The combined
+checks pass: 418 backend tests, 81 portal tests, and 70 Python tests.
 
 ## Local evidence
 
