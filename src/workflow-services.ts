@@ -565,15 +565,6 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           ) {
             throw new Error("accepted design review replay changed identity");
           }
-          const providerProof = await this.syncDesignReviewProviders({
-            run,
-            reviewAttemptId,
-            phase: saved.phase,
-            outcome: result.outcome,
-            findingCount: result.findings.length,
-            headSha: validatedInput.input.headSha,
-          });
-          if (!providerProof) throw new Error("design review provider proof is incomplete");
           if (job.boundedReview && saved.phase === "independent") {
             if (!validatedInput.input.headSha) throw new Error("independent design head missing");
             await new D1BoundedReviewStore(env.DB, env.ARTIFACTS).acceptIndependent({
@@ -583,6 +574,11 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               })),
             });
           }
+          const providerProof = await this.syncDesignReviewProviders({
+            run, reviewAttemptId, phase: saved.phase, outcome: result.outcome,
+            findingCount: result.findings.length, headSha: validatedInput.input.headSha,
+          });
+          if (!providerProof) throw new Error("design review provider proof is incomplete");
           return result.outcome;
         },
         recordDesignReviewFailure: async ({ attempt, job, manifestId }) => {
@@ -871,16 +867,6 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
             proofRepairCount: phase.proof_repair_count + Number(collection.result.proofRepairCount),
             now,
           });
-          await this.syncTraceReviewProviders({
-            run,
-            reviewId,
-            stage,
-            outcome: workflowOutcome,
-            findingCount: Number(collection.result.findingCount),
-            confirmedLinkCount: Number(collection.result.confirmedLinkCount ?? 0),
-            disputedLinkCount: Number(collection.result.disputedLinkCount ?? 0),
-            headSha: reviewedHeadSha,
-          });
           if (job.boundedReview && stage === "independent") {
             if (!reviewedHeadSha) throw new Error("independent planning head missing");
             await new D1BoundedReviewStore(env.DB, env.ARTIFACTS).acceptIndependent({
@@ -890,6 +876,14 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
               })),
             });
           }
+          const providerProof = await this.syncTraceReviewProviders({
+            run, reviewId, stage, outcome: workflowOutcome,
+            findingCount: Number(collection.result.findingCount),
+            confirmedLinkCount: Number(collection.result.confirmedLinkCount ?? 0),
+            disputedLinkCount: Number(collection.result.disputedLinkCount ?? 0),
+            headSha: reviewedHeadSha,
+          });
+          if (job.boundedReview && !providerProof) throw new Error('planning review provider proof is incomplete');
           return workflowOutcome;
         },
         reuseTraceReview: async (run, nodeId, job) => {
@@ -1390,6 +1384,12 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       const row = await store.read(run.run_id, phase);
       if (!row) throw new Error('published review cycle missing');
       const state = JSON.parse(row.state_json);
+      if (!state.independent.result) {
+        const manifestText = 'planning_manifest_json' in work ? work.planning_manifest_json : work.design_manifest_json;
+        if (!manifestText) throw new Error('published candidate manifest missing');
+        const pairs = (files: { path: string; sha256: string }[]) => files.map(({ path, sha256 }) => ({ path, sha256 })).sort((a, b) => a.path.localeCompare(b.path));
+        if (JSON.stringify(pairs(JSON.parse(manifestText))) !== JSON.stringify(pairs(state.checkedFiles))) throw new Error('published files differ from the checked review candidate');
+      }
       await store.apply(run.run_id, phase, state.independent.result
         ? { type: 'head_updated', head: work.head_sha }
         : { type: 'published', candidateDigest: state.currentDigest, head: work.head_sha });

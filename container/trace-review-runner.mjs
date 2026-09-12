@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { claudeReviewJudgment, finishClaudeReview } from "./claude-review-adapter.mjs";
-import { groundedSchema, groundedPrompt, saveGroundedReview } from "./grounded-review.mjs";
+import { groundedSchema, groundedPrompt, saveGroundedReview, reviewGroundingContext } from "./grounded-review.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -437,7 +437,7 @@ const main = async () => {
                 repair: attempt,
                 maximumRepairs: MAXIMUM_PROOF_REPAIRS,
               });
-          const prompt = reviewPromptWithSchema(
+          const prompt = job.grounding ? reviewPrompt + reviewGroundingContext(job) : reviewPromptWithSchema(
             reviewPrompt,
             schemaSource,
             job.modelProvider,

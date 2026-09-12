@@ -13,6 +13,7 @@ export const runClaudeFailure = async (mode: "401" | "403" | "malformed" | "exit
   try {
     const source = await readFile("container/claude-trusted-runner.mjs", "utf8");
     await writeFile(join(dir, "runner.mjs"), source
+      .replaceAll('"./grounded-agent.mjs"', JSON.stringify(resolve("container/grounded-agent.mjs")))
       .replaceAll('"/deos/bin/claude-review.ts"', JSON.stringify(resolve("src/claude-review.ts")))
       .replaceAll('"/deos/bin/claude-diagnostics.ts"', JSON.stringify(resolve("src/claude-diagnostics.ts")))
       .replace('const ROOT = "/deos/claude";', `const ROOT = ${JSON.stringify(dir)};`));

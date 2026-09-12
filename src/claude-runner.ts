@@ -179,12 +179,28 @@ export class ClaudeRunner {
         receipt.route !== "claude_pro" || receipt.accountEvidence !== "trusted_enrollment" ||
         typeof receipt.sessionId !== "string" || !receipt.sessionId) throw new ClaudeReviewError("review_failure");
     record(receipt.result);
-    if (record(JSON.parse(attempt.job_spec_json)).grounding) {
+    const groundingPolicy = record(JSON.parse(attempt.job_spec_json)).grounding;
+    if (groundingPolicy) {
+      const policy = record(groundingPolicy);
+      const supplied = record(receipt.grounding);
+      const verification = record(supplied.verification);
+      if (supplied.schema !== policy.schema || supplied.webSearch !== policy.webSearch || supplied.runtime !== 'claude' ||
+          supplied.capabilityDigest !== await digest(JSON.stringify(policy)) || !Array.isArray(supplied.skills) ||
+          JSON.stringify(supplied.skills.map(value => { const skill = record(value); return { id: skill.id, sha256: skill.sha256 }; })) !== JSON.stringify(policy.skills) ||
+          verification.webSearch !== 'live' || !Array.isArray(verification.tools) || !verification.tools.includes('WebSearch') ||
+          !verification.tools.includes('Skill') || !Array.isArray(verification.skills) ||
+          (policy.skills as { id: string }[]).some(skill => !(verification.skills as unknown[]).includes(skill.id))) {
+        throw new Error('trusted Claude capabilities differ from the frozen policy');
+      }
       const transcript = record(receipt.transcript);
       if (typeof transcript.text !== "string" || transcript.sha256 !== await digest(transcript.text) ||
           transcript.eventCount !== transcript.text.split("\n").filter(line => line.trim()).length || Number(transcript.eventCount) < 1) {
         throw new Error("required Claude transcript is missing or corrupt");
       }
+      const events = transcript.text.split('\n').filter(line => line.trim()).map(line => record(JSON.parse(line)));
+      const startup = events.find(event => event.type === 'system' && event.subtype === 'init');
+      if (!startup || JSON.stringify(startup.tools) !== JSON.stringify(verification.tools) ||
+          JSON.stringify(startup.skills) !== JSON.stringify(verification.skills)) throw new Error('Claude startup evidence differs from capability receipt');
     }
     await store.saveReceipt(turn, receipt as unknown as ClaudeReceipt);
     return response({ receipt });

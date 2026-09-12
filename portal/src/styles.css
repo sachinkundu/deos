@@ -166,3 +166,18 @@ button { color:inherit; }
   .workflow-phase.is-breathing,
   .phase-substep.is-breathing { animation: none; border-color: var(--cyan); box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan) 30%, transparent); }
 }
+
+.bounded-review { padding: 16px; margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.bounded-review h4 { margin: 0 0 14px; font-size: 15px; }
+.bounded-review dl { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: 0 0 16px; }
+.bounded-review dl > div { min-width: 110px; }
+.bounded-review dd { margin: 3px 0 0; }
+.bounded-review p { margin: 8px 0; }
+.bounded-review ul { padding-left: 20px; }
+.bounded-review li + li { margin-top: 12px; }
+.bounded-review > div { margin: 6px 0; }
+.bounded-review details { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.bounded-review summary { cursor: pointer; font-weight: 600; }
+.bounded-review summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.bounded-review code { font-size: 11px; }
+.bounded-review a { color: var(--blue); }

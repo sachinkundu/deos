@@ -26,3 +26,14 @@ test('legacy missing locator is unavailable and required new locator is corrupt'
 test('unknown or unauthorized attempts retain the not-found boundary',async()=>{
  await assert.rejects(()=>new TranscriptReadStore(database([null,null]),{} as R2Bucket).view(attemptId),TranscriptNotFoundError);
 });
+test('a known child with missing capture is corrupt, not an empty transcript',async()=>{
+ const result=await new TranscriptReadStore(database([null,{attempt_id:attemptId}]),{} as R2Bucket).child('child');
+ assert.equal(result.state,'corrupt');
+ await assert.rejects(()=>new TranscriptReadStore(database([null,null]),{} as R2Bucket).child('unknown'),TranscriptNotFoundError);
+});
+test('invalid child JSON is reported as corrupt with its parser error',async()=>{
+ const text='{broken';
+ const artifact_sha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))).map(b=>b.toString(16).padStart(2,'0')).join('');
+ const result=await new TranscriptReadStore(database([{attempt_id:attemptId,r2_key:'journal',artifact_sha256}]),{get:async()=>({text:async()=>text})} as unknown as R2Bucket).child('child');
+ assert.equal(result.state,'corrupt');assert.equal(typeof result.detail,'string');
+});

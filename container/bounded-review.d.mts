@@ -7,4 +7,4 @@ export function validateDispositions(value: unknown, findings: any[]): any[];
 export function createReviewCycle(input: { runId: string; phase: string; attemptId: string; inputDigest: string }): any;
 export function reduceReviewCycle(prior: any, event: any): any;
 export function reviewGateEvidence(state: any): any;
-export function verifyReviewJournal(journal: any, input: { attemptId: string; runId: string; inputDigest: string; candidateFiles: any[]; parentTranscript: string; hash: (text: string) => Promise<string>; continuation?: any }): Promise<any>;
+export function verifyReviewJournal(journal: any, input: { attemptId: string; runId: string; inputDigest: string; candidateFiles: any[]; parentTranscript: string; hash: (text: string) => Promise<string>; continuation?: any; model?: string }): Promise<any>;

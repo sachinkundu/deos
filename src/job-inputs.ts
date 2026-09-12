@@ -1,4 +1,5 @@
 import { responseError } from "./error-details.ts";
+import { D1BoundedReviewStore } from './bounded-review-store.ts';
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { WorkflowJob } from "./workflow-definition.ts";
 import { D1PlanningStore, type RunWorkProductRecord } from "./planning-store.ts";
@@ -255,6 +256,10 @@ export class JobInputMaterializer {
       ...(approvedPlan ?? []), ...repositoryGuidance,
     ].map(async file => ({ path: file.path, content: file.content, sha256: await sha256Hex(file.content) }))) : [];
     const bundle = {
+      ...(job.boundedReview ? { priorReviewCycle: await new D1BoundedReviewStore(this.database, this.artifacts)
+        .read(run.run_id, designParticipant ? 'design' : 'planning').then(row => row ? {
+          coverage: job.id.endsWith('_revision') ? 'historical' : 'current_phase', state: JSON.parse(row.state_json),
+        } : null) } : {}),
       ...(job.grounding ? { agentInputs: { schema: "deos-grounding-v1", jobKind: job.id,
         role: job.agentRole, checkedContextFiles, policy: job.grounding } } : {}),
       version: 1,
@@ -333,11 +338,11 @@ export class JobInputMaterializer {
         planningBranch: planningWorkProduct?.remote_branch ?? null,
         continuationPatch,
       },
-      traceabilityFeedback: job.inputs.includes("traceability_feedback")
-        ? await this.traceabilityFeedback(run.run_id)
+      traceabilityFeedback: job.inputs.includes("traceability_feedback") && !(job.boundedReview && job.id.endsWith('_revision'))
+        ? await this.traceabilityFeedback(run.run_id, Boolean(job.boundedReview))
         : null,
       designReview,
-      designReviewFeedback: job.inputs.includes("design_review_feedback")
+      designReviewFeedback: job.inputs.includes("design_review_feedback") && !(job.boundedReview && job.id.endsWith('_revision'))
         ? await this.designReviewFeedback(run.run_id)
         : null,
     };
@@ -559,7 +564,7 @@ export class JobInputMaterializer {
     return verifyPriorDesignCandidate(await object.text(), row);
   }
 
-  private async traceabilityFeedback(runId: string): Promise<Record<string, unknown> | null> {
+  private async traceabilityFeedback(runId: string, verify = false): Promise<Record<string, unknown> | null> {
     const row = await this.database.prepare(
       `SELECT r.review_id, r.phase, r.mode, r.round, r.review_input_id,
               r.baseline_finding_set_digest, r.overall_outcome,
@@ -594,6 +599,9 @@ export class JobInputMaterializer {
     ]);
     if (sidecar === null || inventory === null) throw new Error("traceability feedback artifacts are missing");
     const [sidecarText, inventoryText] = await Promise.all([sidecar.text(), inventory.text()]);
+    if (verify && (await sha256Hex(sidecarText) !== row.sidecar_sha256 || await sha256Hex(inventoryText) !== row.inventory_sha256)) {
+      throw new Error('checked traceability feedback hash mismatch');
+    }
     return {
       reviewId: row.review_id,
       phase: row.phase,

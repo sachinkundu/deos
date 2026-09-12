@@ -3,6 +3,7 @@ import { validateSources } from "../container/bounded-review.mjs";
 import { D1BoundedReviewStore } from "./bounded-review-store.ts";
 import { D1NativeReviewStore, nativeChildTerminalError, nativeDigest, nativeRecord } from "./native-review-store.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { errorDetails } from './error-details.ts';
 import type { ArtifactCollectionResult, ArtifactCollector } from "./artifact-collector.ts";
 import type { CredentialLease, CredentialVault } from "./credential-vault.ts";
 import type { ProviderReceiptVerifier } from "./capability-store.ts";
@@ -797,6 +798,9 @@ export class SandboxAgentController {
             ? "Self-review shares this Sandbox. The hook journal records progress; it grants no provider rights. Do not edit control files or bypass hooks. Start a review only when the hook supplies its checked input."
             : "Use the shell tool for repository reads and edits. The author account cannot access trusted review control files. Do not bypass the hooks or start your own review before the hook supplies its checked input.",
         ] : []),
+        ...(durableJob.reviewContinuation ? [
+          'This is an authenticated continuation of an interrupted review cycle. The supervisor restores the last checked candidate and remaining review action. Do not draft again or perform another repair. Follow the hook for the one unfinished action, then finish only the required output sidecars and result. Do not change a candidate after the hook declares review complete.',
+        ] : []),
       ].join("\n\n");
       const protectedPrompt = await this.dependencies.protectPrompt({
         runId: run.run_id,
@@ -1268,7 +1272,7 @@ export class SandboxAgentController {
     } catch (error) {
       recordCaughtError(error, "src/sandbox-controller.ts:1124");
       if (collection !== null) {
-        const resultDetail = job.modelProvider === "claude" ? "review_failure" : this.safeResultDetail(
+        const resultDetail = job.modelProvider === "claude" && !job.boundedReview ? "review_failure" : this.safeResultDetail(
           error instanceof Error ? error.message : "post-collection validation failed",
           false,
         );
@@ -1283,7 +1287,8 @@ export class SandboxAgentController {
           attemptId: attempt.attempt_id,
           expected: "collecting",
           state: "failed",
-          resultClass: job.modelProvider === "claude" ? "review_failure" : "post_collection_validation_failed",
+          resultClass: job.boundedReview ? (error instanceof Error && error.message.startsWith('invalid_author_response')
+            ? 'invalid_author_response' : 'bounded_collection_failed') : job.modelProvider === "claude" ? "review_failure" : "post_collection_validation_failed",
           resultDetail,
           manifestId: collection.manifestId,
           now: this.dependencies.now().toISOString(),
@@ -1304,6 +1309,11 @@ export class SandboxAgentController {
         );
         await this.cleanupFailure(attempt, sandbox);
         await collector.verifyAfterCleanup(collection);
+        if (job.boundedReview) {
+          if (!this.dependencies.boundedReviews) throw new Error('bounded recovery writer missing', { cause: error });
+          const recovery = await this.dependencies.boundedReviews.recordFailure(attempt.attempt_id);
+          if (!recovery.eligible) attempt.result_class = 'manual_reconciliation_required';
+        }
         return this.failedObservation(attempt, "failed", collection.manifestId);
       }
       const manifestId = await this.finishFailure(
@@ -1330,6 +1340,7 @@ export class SandboxAgentController {
     await collector.verifyDurable(saved.collection);
     await this.cleanup(attempt, sandbox);
     await collector.verifyAfterCleanup(saved.collection);
+    await store.verifyCapabilities(attempt.attempt_id, saved.collection.manifestId);
     const candidate = saved.candidate;
     if (candidate === null) {
       const accept = saved.job.reviewKind === "design" ? this.dependencies.acceptDesignReview : this.dependencies.acceptTraceReview;
@@ -1346,6 +1357,7 @@ export class SandboxAgentController {
     const persist = candidate.kind === "planning" ? this.dependencies.persistPlanningCandidate : this.dependencies.persistDesignCandidate;
     if (!persist) throw new Error("candidate writer unavailable");
     await persist(candidate.payload);
+    await store.indexTranscript(attempt.attempt_id, saved.collection.manifestId, 'author_attempt');
     if (['planning_independent_response', 'design_independent_response'].includes(attempt.node_id)) {
       const result = candidate.payload.reviewDispositions.map((item: { itemId?: string; findingId?: string; status: string; reason: string }) => ({
         id: item.itemId ?? item.findingId, disposition: item.status, response: item.reason,
@@ -1377,6 +1389,10 @@ export class SandboxAgentController {
     await collector.verifyDurable(collection);
     await this.cleanup(attempt, sandbox);
     await collector.verifyAfterCleanup(collection);
+    if (job.boundedReview) {
+      if (!this.dependencies.boundedReviews) throw new Error('bounded review capability verifier unavailable');
+      await this.dependencies.boundedReviews.verifyCapabilities(attempt.attempt_id, collection.manifestId);
+    }
     const accept = job.reviewKind === "design"
       ? this.dependencies.acceptDesignReview : this.dependencies.acceptTraceReview;
     if (!accept) throw new Error("trusted review accepter is unavailable");
@@ -1791,6 +1807,22 @@ export class SandboxAgentController {
     process: SandboxProcessView | null = null,
   ): Promise<string> {
     if (process !== null) await this.stopProcess(process);
+    if (JSON.parse(attempt.job_spec_json).nativeSelfReview?.schema === 'deos-bounded-review-v1') {
+      try {
+        const capture = await sandbox.exec(['node', '/deos/bin/bounded-self-review.mjs', 'capture-interrupted'], { timeout: 15_000 });
+        const output = await capture.output({ encoding: 'utf8', timeout: 20_000 });
+        if (output.exitCode !== 0 || output.timedOut || output.truncated) throw new Error('Interrupted child capture failed', { cause: output });
+      } catch (error) {
+        recordCaughtError(error, 'interrupted native child evidence capture');
+        try {
+          await sandbox.writeFile('/deos/output/native-review-capture-fault.json', JSON.stringify({
+            primaryCategory: category, captureError: errorDetails(error),
+          }), { encoding: 'utf8' });
+        } catch (storageError) {
+          throw new AggregateError([error, storageError], `Could not retain child capture failure after ${category}`);
+        }
+      }
+    }
     if (job.modelProvider === "claude") category = await this.dependencies.claude?.failure(attempt.attempt_id) ?? "review_failure";
     if (job.modelProvider !== "claude") {
     try {
@@ -1821,7 +1853,7 @@ export class SandboxAgentController {
         attemptId: attempt.attempt_id,
         outputRoot: "/deos/output",
         expectedFiles: JSON.parse(attempt.job_spec_json).nativeSelfReview
-          ? [...job.requiredOutputs, "native-review-fault.json"] : job.requiredOutputs,
+          ? [...job.requiredOutputs, "native-review-fault.json", ...(job.boundedReview ? ['native-review-capture-fault.json'] : [])] : job.requiredOutputs,
         fallbackErrorCategory: category,
       });
       await collector.verifyDurable(collection);

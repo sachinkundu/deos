@@ -76,21 +76,43 @@ export class TranscriptReadStore {
       JOIN agent_attempts attempt ON attempt.attempt_id = owner.attempt_id
       JOIN orchestration_runs run ON run.run_id = attempt.run_id
       JOIN project_workflow_policies route ON route.project_id = run.project_id
+      JOIN linear_issue_index issue ON issue.issue_id = run.issue_id AND issue.project_id = run.project_id
       JOIN artifacts artifact ON artifact.manifest_id = owner.manifest_id AND artifact.logical_name = owner.logical_name
         AND artifact.policy_outcome = 'accepted'
+      JOIN artifact_manifests manifest ON manifest.manifest_id = artifact.manifest_id AND manifest.state = 'complete'
       WHERE owner.owner_kind = 'native_child_invocation' AND owner.owner_id = ?`)
       .bind(ownerId).first<{ attempt_id: string; child_index: number; sha256: string; byte_size: number; event_count: number; r2_key: string; artifact_sha256: string }>();
-    if (!row) throw new TranscriptNotFoundError("review child transcript not found");
+    if (!row) {
+      const known = await this.db.prepare(`SELECT cycle.origin_attempt_id AS attempt_id FROM phase_review_cycles cycle
+        JOIN orchestration_runs run ON run.run_id = cycle.run_id
+        JOIN project_workflow_policies route ON route.project_id = run.project_id
+        JOIN linear_issue_index issue ON issue.issue_id = run.issue_id AND issue.project_id = run.project_id
+        WHERE EXISTS (SELECT 1 FROM json_each(cycle.state_json, '$.discovery.invocations') invocation WHERE json_extract(invocation.value, '$.id') = ?)
+           OR EXISTS (SELECT 1 FROM json_each(cycle.state_json, '$.recheck.invocations') invocation WHERE json_extract(invocation.value, '$.id') = ?)`)
+        .bind(ownerId, ownerId).first<{ attempt_id: string }>();
+      if (!known) throw new TranscriptNotFoundError("review child transcript not found");
+      return { state: 'corrupt', ownerId, attemptId: known.attempt_id, records: [], message: 'The required child transcript evidence is missing.' };
+    }
     const corrupt = () => ({ state: "corrupt", ownerId, attemptId: row.attempt_id, records: [], message: "This child transcript failed its integrity check." });
     const object = await this.bucket.get(row.r2_key);
     if (!object) return corrupt();
     const text = await object.text();
     if (hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))) !== row.artifact_sha256) return corrupt();
-    const child = JSON.parse(text).children?.[row.child_index];
+    let child;
+    try { child = JSON.parse(text).children?.[row.child_index]; }
+    catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+      return { ...corrupt(), detail: error.message };
+    }
     if (child?.invocationId !== ownerId || typeof child.transcript !== "string") return corrupt();
     const bytes = new TextEncoder().encode(child.transcript);
     if (bytes.length !== row.byte_size || hex(await crypto.subtle.digest("SHA-256", bytes)) !== row.sha256) return corrupt();
-    const records = parseTranscriptJsonl(child.transcript);
+    let records;
+    try { records = parseTranscriptJsonl(child.transcript); }
+    catch (error) {
+      if (!(error instanceof SyntaxError || error instanceof TranscriptUnavailableError)) throw error;
+      return { ...corrupt(), detail: error.message };
+    }
     if (records.length !== row.event_count) return corrupt();
     return { state: transcriptState(records), ownerId, attemptId: row.attempt_id, records,
       byteSize: bytes.length, sha256: row.sha256, eventCount: records.length,

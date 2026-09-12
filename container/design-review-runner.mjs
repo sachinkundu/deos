@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { claudeReviewJudgment, finishClaudeReview } from "./claude-review-adapter.mjs";
-import { groundedSchema, groundedPrompt, saveGroundedReview } from "./grounded-review.mjs";
+import { groundedSchema, groundedPrompt, saveGroundedReview, reviewGroundingContext } from "./grounded-review.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -137,7 +137,7 @@ const main = async () => {
       (await readFile(job.promptPath, "utf8")).trim(), "",
       `Trusted input digest: ${review.inputSha256}`,
       `Phase: ${review.phase}`, "",
-      "Exact numbered sources:", numbered,
+      "Exact numbered sources:", numbered, reviewGroundingContext(job),
     ].join("\n");
     const reviewed = await runBoundedProofReview({
       maximumRepairs: job.grounding ? 0 : MAXIMUM_PROOF_REPAIRS,
