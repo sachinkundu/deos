@@ -118,7 +118,8 @@ export const demoApi = (path: string): unknown => {
     recentDemo = { ...recentDemo, snapshotVersion: recentDemo.snapshotVersion + 1 };
     return { issues: [issue], recentIssues: { state: "updated", ...structuredClone(recentDemo) } };
   }
-  if (path === "/api/issues/6936d743-0000-4000-8000-000000000000/runs") return { issue, runs: [run] };
+  const savedDemo = recentDemo.items.find(item => path === `/api/issues/${item.issueId}/runs`);
+  if (savedDemo) return { issue: { ...issue, key: savedDemo.identifier, title: savedDemo.title }, runs: [run] };
   if (path === "/api/settings/routes") return {
     routes: [
       {
