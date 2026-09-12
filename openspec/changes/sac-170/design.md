@@ -70,7 +70,7 @@ flowchart LR
     SR --> E
     SD -->|no findings| P1[First publish and read-back]
     SR --> P1
-    P1 --> I[Independent review stage]
+    P1 --> I[Independent review stage<br/>configured Claude route]
     I --> E
     I --> R[Author response]
     R --> U[Checks, update, and read-back]
@@ -118,11 +118,10 @@ back to the human gate.
    repaired candidate must pass the same deterministic checks.
 5. A passing repair becomes a new immutable accepted candidate through the same
    trusted checkpoint. After a repair attempt, the author starts one native
-   Codex recheck subagent.
-   Its schema contains the discovery IDs as a closed set and permits only
-   `fixed` or `open` for each ID. Trusted code rejects additional IDs and treats
-   a missing or malformed rating as open. The recheck cannot request another
-   author turn.
+   Codex recheck subagent. Its schema contains the discovery IDs as a closed set
+   and permits only `fixed` or `open` for each ID. Trusted code rejects
+   additional IDs and treats a missing or malformed rating as open. The recheck
+   cannot request another author turn.
 6. Before either child call, the supervisor uses the checkpoint capability to
    reserve the applicable empty slot with a stable invocation ID. Afterward it
    submits the result through that capability. The Worker validates the active
@@ -139,9 +138,11 @@ back to the human gate.
    candidate and reads back its exact head. The Workflow binds both its digest
    and the read-back head as the input to the one independent-review stage. The
    independent review-agent supervisor captures that job's own Codex-harness
-   JSONL stream into a separate transcript manifest. One structurally valid
-   result fills the phase's independent slot; concerns are judgment input, not
-   a failed review.
+   JSONL stream into a separate transcript manifest. The existing configured
+   Claude review route receives native web search and its exact pinned
+   reviewer skills from the frozen job policy. One structurally valid result
+   fills the phase's independent slot; concerns are judgment input, not a
+   failed review.
 9. One author-response job receives the complete concern set, the checked plan
    and architecture context applicable to the phase, and its frozen tools and
    skills. It records `applied`, `declined`, or `no_change` for every concern
@@ -222,12 +223,15 @@ manifest read-only. Policy edits require a new workflow definition and do not
 alter active runs.
 
 Both execution paths use the Codex harness: the author path invokes the native
-Codex session and the independent-review path invokes its configured model
-through that harness. The trusted job builder registers the same existing
-native web-search tool in each harness when the frozen policy enables it. Job
-startup verifies the tool in the effective capability manifest for plan and
-design authors, both self-review child roles, and the independent reviewer; a
-missing required tool fails startup instead of degrading to memory-only work.
+Codex session and the independent-review path invokes its configured Claude
+model route through that harness. The trusted job builder registers the same
+existing native web-search tool in each harness when the frozen policy enables
+it. It also loads the independent reviewer's exact role-appropriate pinned
+skills, including the Cloudflare bundle for this workflow, just as it does for
+the plan and design roles. Job startup verifies the search tool and every skill
+digest in the effective capability manifest for plan and design authors, both
+self-review child roles, and the independent Claude reviewer; a missing
+required tool or skill fails startup instead of degrading to memory-only work.
 This adds no custom browsing proxy or provider credential. Search results are
 untrusted inputs and cannot change allowed paths, provider rights, or gate
 rules. Each role cites every outside page it uses.
@@ -295,12 +299,12 @@ stable child invocation ID. The evidence writer stores the complete parent log
 and an indexed child view or child transcript object derived from those same
 events. Both carry hashes and event counts.
 
-The independent review-agent supervisor also runs its configured model through
-the Codex harness. It stores that job's own JSONL stream as an independent
-attempt owner rather than as a child range. A successful new author,
-self-review, or independent-review job must have a transcript manifest; an
-explicit zero-event manifest is reserved for genuine zero-event or historical
-logs, not used as a substitute for missing capture.
+The independent review-agent supervisor also runs its configured Claude model
+through the Codex harness. It stores that job's own JSONL stream as an
+independent attempt owner rather than as a child range. A successful new
+author, self-review, or independent-review job must have a transcript manifest;
+an explicit zero-event manifest is reserved for genuine zero-event or
+historical logs, not used as a substitute for missing capture.
 
 The transcript API addresses an owner explicitly: an author attempt or a child
 invocation. The portal uses the author owner for the main log and the child
@@ -325,11 +329,12 @@ coverage history.
 
 ### 6. Record exact skill policy in the frozen definition and effective selection in each attempt
 
-The versioned workflow job configuration maps each typed job kind to exact
-skill IDs and digests. The trusted job kind, rather than content inference or a
-runtime role-and-task heuristic, determines the list. The attempt manifest is
-the audit record of what was actually supplied. The portal exposes that
-effective selection read-only.
+The versioned workflow job configuration maps each typed job kind, including
+the configured Claude independent reviewer, to exact skill IDs and digests.
+The trusted job kind, rather than content inference or a runtime role-and-task
+heuristic, determines the list. The attempt manifest is the audit record of
+what was actually supplied. The portal exposes that effective selection
+read-only.
 
 An editable settings page was not selected because changing skill bundles is a
 security- and reproducibility-sensitive workflow change, not per-run human
@@ -339,10 +344,11 @@ checked-context proof.
 ### 7. Use the Codex harness's native web search on both execution paths
 
 Jobs opt into the web-search tool through their frozen role policy. Both the
-author runner and independent review-agent runner register that existing tool
-with the Codex harness, and startup verifies it is present for every required
-role. The design adds no bespoke broker, fetcher, URL policy, or network
-service. Citations remain part of the artifact or review result.
+author runner and independent Claude review-agent runner register that existing
+tool with the Codex harness, and startup verifies it and the role's pinned
+skills are present for every required role. The design adds no bespoke broker,
+fetcher, URL policy, or network service. Citations remain part of the artifact
+or review result.
 
 A new safe-browsing service was rejected because it expands this change into a
 new security product without an approved contract. Unrestricted provider
@@ -404,7 +410,7 @@ provider token, authorization header, raw credential, or secret is added.
 | Publication succeeds but exact-head read-back is missing or differs | Record an ambiguous provider effect and hold gate entry until trusted reconciliation establishes the current head. |
 | A human revision omits a bounded root-comment reply | Reject the response set before returning to the gate. Retry the stable reply operation and never resolve the thread. |
 | A later human edit fails checks | Do not publish or start semantic review. Keep the revision on its typed failure path. |
-| Required native web search is absent from an author or independent-review harness | Fail job startup because the frozen role capability was not provisioned. Do not degrade to memory-only work. |
+| Required native web search or a pinned skill is absent from an author, self-review, or independent Claude-review harness | Fail job startup because the frozen role capability was not provisioned. Do not degrade to memory-only or skill-less work. |
 | A successful new independent-review result has no transcript manifest | Treat evidence collection as incomplete and do not advance to author response or the human gate. Preserve a genuine verified zero-event result only when the manifest explicitly proves zero events. |
 | A skill or web result asks for a forbidden action | Treat it as untrusted input and deny the action under the existing attempt capability. |
 | A transcript manifest verifies and has zero events | Return `empty` and render the clear empty message, not an error page. |
@@ -456,10 +462,12 @@ provider token, authorization header, raw credential, or secret is added.
    successful result advances. Test eventful, verified-empty, interrupted, and
    corrupt independent logs.
 5. Put exact skills and required native web search in every typed job policy in
-   the new frozen definition. Register the existing search tool in both Codex
-   harness paths, fail startup when it is missing, and record the effective
-   selection in each attempt manifest. Verify author, self-review, independent-
-   review, response, and revision context without new provider rights.
+   the new frozen definition, including the configured Claude independent
+   reviewer. Register the existing search tool in both Codex harness paths,
+   load and verify the reviewer-specific skill digests, fail startup when
+   either is missing, and record the effective selection in each attempt
+   manifest. Verify author, self-review, independent-review, response, and
+   revision context without new provider rights.
 6. Register a new immutable workflow version with unchanged model-route
    references. Its first-author jobs contain self-review; its independent
    stages remain top-level; its author-response and human-revision edges skip
