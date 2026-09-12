@@ -61,3 +61,37 @@ test("Claude root listing aliases expose only the frozen inventory", async () =>
   }
   assert.throws(() => claudeReadCommand("ls; cat /deos/claude/config.json"));
 });
+
+test("Claude file reader executes quoted searches over frozen sources without shell expansion", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "claude-search-"));
+  const run = promisify(execFile);
+  const content = 'Skill tools\nSubagent review\nWeb search\nHarness\nprice $5; a|b & <tag>\nsay "hello"\n';
+  const path = "docs/current-architecture.md";
+  const sha256 = createHash("sha256").update(content).digest("hex");
+  const state = { phase: "design", change: "sample", before: [{ path, sha256 }], reviewJob: {
+    materializedContext: JSON.stringify({ designReview: { sources: [{ path, content, sha256 }] } }),
+  } };
+  const request = join(dir, "request.json");
+  const read = async (command: string) => {
+    await writeFile(request, JSON.stringify({ state, command }));
+    return await run(process.execPath, [resolve("container/claude-review-read.mjs"), "--request-file", request],
+      { env: { ...process.env, DEOS_ERROR_OUTPUT_ROOT: dir } });
+  };
+  try {
+    const alternatives = await read('rg -n -i "skill|subagent|web search|harness" docs/current-architecture.md');
+    assert.equal(alternatives.stdout, ['Skill tools', 'Subagent review', 'Web search', 'Harness']
+      .map((line, index) => `${path}:${index + 1}:${line}\n`).join(""));
+    assert.equal((await read(String.raw`rg -i "\bskill\s+tools$" docs/current-architecture.md`)).stdout,
+      `${path}:1:Skill tools\n`);
+    assert.equal((await read(`rg -F 'price $5; a|b & <tag>' docs/current-architecture.md`)).stdout,
+      `${path}:5:price $5; a|b & <tag>\n`);
+    assert.equal((await read(String.raw`rg -F "say \"hello\"" docs/current-architecture.md`)).stdout,
+      `${path}:6:say "hello"\n`);
+    assert.equal((await read('rg "no matches" docs/current-architecture.md')).stdout, "\n");
+    for (const command of ['cat "../.env"', 'cat "/etc/passwd"', 'rg -n --pre env skill',
+      'rg "skill|tools" docs/current-architecture.md | cat .env']) {
+      await assert.rejects(read(command), (error: any) => error.code === 1 &&
+        /outside the checked input|unsupported review search flag|unsupported review command/.test(error.stderr));
+    }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});

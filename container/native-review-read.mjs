@@ -2,13 +2,43 @@ import { pathToFileURL } from "node:url";
 import { readFile, lstat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 
-// Parse a single read command. Shell syntax, redirection, expansion, pipelines,
-// process creation and arbitrary flags never reach a shell from reviewer input.
+// Parse arguments without invoking a shell. Quoted/escaped characters are data;
+// unquoted operators and expansions are rejected rather than executed.
 export const readCommand = (command) => {
-  if (typeof command !== "string" || /[\n\r\0`$;|&<>]/.test(command)) throw new Error("unsupported review command");
-  const tokens = command.match(/"[^"\\]*"|'[^']*'|[^\s'"\\]+/g) ?? [];
-  if (tokens.join("").replace(/\s/g, "") !== command.replace(/\s/g, "")) throw new Error("invalid review command quoting");
-  const args = tokens.map((token) => /^["']/.test(token) ? token.slice(1, -1) : token);
+  if (typeof command !== "string" || command.length > 8192 || /[\n\r\0]/.test(command)) throw new Error("unsupported review command");
+  const args = [];
+  let quote = null;
+  let token = "";
+  let started = false;
+  for (let index = 0; index < command.length; index++) {
+    const char = command[index];
+    if (quote === "'") {
+      if (char === "'") quote = null;
+      else token += char;
+    } else if (char === "\\") {
+      const next = command[++index];
+      if (next === undefined) throw new Error("invalid review command quoting");
+      // In double quotes, keep regex escapes such as \b and \s intact.
+      token += quote === '"' && !['"', "\\", "$", "`"].includes(next) ? "\\" + next : next;
+      started = true;
+    } else if (quote === '"') {
+      if (char === '"') quote = null;
+      else token += char;
+    } else if (char === "'" || char === '"') {
+      quote = char;
+      started = true;
+    } else if (/\s/.test(char)) {
+      if (started) args.push(token);
+      token = "";
+      started = false;
+    } else {
+      if (/[`$;|&<>()]/.test(char)) throw new Error("unsupported review command");
+      token += char;
+      started = true;
+    }
+  }
+  if (quote !== null) throw new Error("invalid review command quoting");
+  if (started) args.push(token);
   const op = args.shift();
   if (!["cat", "ls", "pwd", "head", "tail", "sed", "rg", "wc"].includes(op)) throw new Error("review command is not read-only");
   return { op, args };
