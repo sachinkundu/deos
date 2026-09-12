@@ -7,7 +7,7 @@ People who watch a workflow must now apply each new update by hand. They need an
 - Add a Live updates setting that people can turn on or off.
 - Apply new confirmed workflow data at once when live updates are on.
 - Keep the current **Apply update** flow when live updates are off.
-- Save the choice in the browser and use it after the portal is opened again.
+- Save the choice only in the current browser, not in D1, and use it after the portal is opened again.
 
 ### Non-goals
 
