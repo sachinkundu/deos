@@ -99,3 +99,9 @@ three-element arrays of provider, model, and reasoning setting. The report
 checks actual frozen controls and repository commit against that digest. It
 excludes incomplete pairs, tier mismatches, missing commit evidence, and changed
 controls. Failed and retried attempts remain visible. No default is recommended.
+
+## Provider issue visual
+
+![Real Linear test issue after cancellation](linear-provider-issue.png)
+
+The real test issue is canceled after the labeled and unlabeled delivery checks. This screenshot shows provider state; it does not show activation of the new production tier policy.
