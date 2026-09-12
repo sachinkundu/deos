@@ -32,8 +32,8 @@ each class. Fake requests cannot prove either provider contract.
 - Keep that choice stable for all author, review, repair, and retry attempts.
 - Give sandbox creation one closed, typed value instead of label data.
 - Expose the saved choice and comparable attempt timing in the DEOS portal.
-- Stage the default change with an auditable stop control and no tier rewrite
-  after a run starts.
+- Make activation and rollback auditable without adding a second steady-state
+  selection policy or rewriting a run after it starts.
 
 **Non-Goals:**
 
@@ -51,6 +51,7 @@ flowchart LR
     I -->|authoritative delivery and optional fact| D[(D1)]
     Q --> C[Trusted Queue consumer]
     C -->|verify delivery and policy; allocate run| D
+    C -->|terminal integrity record| F[(Start dispatch failures)]
     D -->|frozen sandbox tier| W[Cloudflare Workflow]
     W -->|run and attempt tier| R[Trusted sandbox runner]
     R -->|verified tier mapping| S[Cloudflare Sandbox]
@@ -59,6 +60,7 @@ flowchart LR
     U[Allowed operator] --> P[DEOS workflow portal in portal/]
     P -->|Access-protected admin binding| C
     P -->|run view and optional speed report| D
+    P -->|route start diagnostics| F
 ```
 
 Ingress records only positive evidence that the authenticated event contained
@@ -78,22 +80,28 @@ receive label-based choice logic.
    accepted delivery. Otherwise that optional fact is missing, whether the
    event proves the label absent or does not contain usable label data. The
    Queue message carries the delivery identity, a copy of the optional fact,
-   and the existing frozen route proof. Ingress does not fetch current labels.
+   the release's `sandbox_tier_policy_version`, and the existing frozen route
+   proof. Ingress does not fetch current labels.
 3. The Queue consumer validates the route and repository rights as it does now,
    then loads the delivery by its queued identity. It requires exact agreement
-   between the queued and durable presence of `start_slow_ok`; when present,
-   the only valid value is `true`. A missing row, invalid value, or disagreement
-   fails before allocation and never defaults a tier.
-4. In the same guarded allocation, the consumer reads the route's
-   `sandbox_standard2_enabled` value and control revision. When enabled, it maps
-   positive `slow-ok` evidence to `basic` and a missing fact to `standard-2`.
-   While staged rollout is disabled, it maps both cases to `basic`. The insert
-   saves the tier, reason, and policy revision with the other frozen run facts.
-   If the issue is a predeclared speed-comparison member, it also binds that
-   member to this run exactly once.
+   between the queued and durable policy version and presence of
+   `start_slow_ok`; when present, the only valid value is `true`. A successful
+   D1 read that finds a missing row, invalid value, unknown version, or
+   disagreement is deterministic. The consumer writes or reuses a terminal
+   start-dispatch failure, emits an alert, acknowledges that Queue message, and
+   allocates no run. The DEOS workflow portal shows the issue, delivery, route,
+   time, and bounded cause under the affected `/settings` project card. A D1
+   read error or failure to save that terminal record remains retryable.
+4. In the same guarded allocation, the consumer maps positive `slow-ok`
+   evidence to `basic` and a missing fact to `standard-2` for policy version
+   `event-label-v1`. It saves the tier, source, and policy version with the other
+   frozen run facts. If the issue is a predeclared speed-comparison member, it
+   also binds that member to this run exactly once. The temporary
+   `legacy-basic-v1` compatibility and rollback policy maps either fact state to
+   `basic`; it is not a completed deployment of this change.
 5. A duplicate delivery cannot allocate a second run. A Queue replay that finds
    the run already allocated reads its saved tier and does not inspect the fact
-   or route switch again.
+   or delivery policy again.
 6. Before any agent provider call, the runner creates the attempt row and copies
    the run tier into it. The runner rejects a missing, unknown, or mismatched
    tier. It maps the closed internal value to the provider's verified sandbox
@@ -123,11 +131,12 @@ boundaries.
 
 | Record | Field | Purpose and rule |
 | --- | --- | --- |
-| Project workflow policy | `sandbox_standard2_enabled` and existing control revision | Access-protected rollout switch. `false` selects Basic for later allocations; `true` applies the event policy. Allocation freezes the observed revision on the run. |
 | Accepted delivery | `start_slow_ok` | Optional positive fact. Store only `true` when the authenticated start event contains the exact label; otherwise leave it missing. The immutable delivery is authoritative, and the Queue copy must have the same presence. |
+| Accepted delivery | `sandbox_tier_policy_version` | Required release policy captured at ingress. Supported values are `event-label-v1` and the temporary `legacy-basic-v1`; the Queue copy must match. This is separate from route authorization and does not change the route revision. |
+| Start dispatch failure | delivery, issue, and route IDs; first and last seen times; occurrence count; bounded cause | Durable terminal audit keyed by delivery identity. Cause is `delivery_missing`, `slow_ok_invalid`, `slow_ok_mismatch`, `tier_policy_unknown`, or `tier_policy_mismatch`. It is shown on the affected `/settings` project card before the Queue message is acknowledged. |
 | Run | `sandbox_tier` | Required closed enum for post-migration allocations. Write it during guarded allocation, then never update it. A pre-activation null-to-`basic` compare-and-set is the sole legacy migration exception. This field is authoritative for later work and portal display. |
-| Run | `sandbox_tier_source` | `event_slow_ok`, `event_default_standard2`, `rollout_basic`, or `legacy_basic`. This explains the choice without storing label names. |
-| Run | `sandbox_tier_policy_revision` | Frozen revision of the route policy used at allocation. Legacy rows use the migration revision that supplied `legacy_basic`. |
+| Run | `sandbox_tier_source` | `event_slow_ok`, `event_default_standard2`, or `legacy_basic`. `legacy_basic` covers every compatibility or rollback allocation regardless of label evidence, so each policy-version and source pair has one meaning. |
+| Run | `sandbox_tier_policy_version` | Copy of the accepted delivery policy used at allocation. Legacy rows use `legacy-basic-v1`; completed-change allocations use `event-label-v1`. |
 | Agent attempt | `sandbox_tier` | Required copy of the run value, written before sandbox creation. A guarded insert or check prevents a different value. |
 | Agent attempt | existing stage, start, end, and outcome fields | Reuse the authoritative attempt identity and lifecycle fields. Do not add another timing record or use sandbox-reported duration. |
 | Speed-comparison member | comparison, pair, and issue IDs; workload and control digests; planned tier; launch order; bound run ID | Fields are immutable after the pre-launch write. Guarded run allocation may bind the run once. This records the benchmark assignment without affecting run authority. |
@@ -164,6 +173,21 @@ Queue work was rejected because it could observe later labels. Passing every
 label was rejected because it stores unrelated provider data without improving
 the decision.
 
+### Terminalize deterministic delivery-integrity failures
+
+A successful D1 lookup that proves the queued tier fact cannot be trusted will
+never heal on redelivery. The consumer therefore durably records one terminal
+failure keyed by delivery identity, alerts the DEOS on-call, exposes it on the
+route's `/settings` project card, and acknowledges the Queue message without
+allocating a run. Repeated handling increments the same record instead of
+creating more failures. Storage read and write errors still use Queue retry, so
+a transient D1 problem cannot be mistaken for corrupt input.
+
+Indefinite Queue retry was rejected because a deterministic mismatch would
+eventually disappear from the Queue without a run or visible disposition.
+Defaulting the tier was rejected because neither the Queue copy nor missing or
+corrupt durable state is adequate authority for an allocation.
+
 ### Make the run tier authoritative and copy it into every attempt
 
 The run is allocated once and already freezes route and workflow controls. The
@@ -194,19 +218,29 @@ never tries the other class and never edits the run.
 Automatic fallback would make the portal value false, mix benchmark cohorts,
 and violate the frozen-run contract.
 
-### Put rollout authority in the existing project route policy
+### Activate one unconditional policy at a release boundary
 
-The Access-protected DEOS workflow portal exposes
-`sandbox_standard2_enabled` with existing project connection controls. Saves
-use the trusted Worker's internal admin binding, advance the route's control
-revision, and are append-only audited. Allocation freezes the revision. A
-change affects later allocations only.
+Tier selection is not a project-route setting. The compatibility release tags
+accepted deliveries with `legacy-basic-v1`; the activation release tags them
+with `event-label-v1`. Consumers support both versions and always use the value
+captured on the accepted delivery. A tier-policy deployment therefore neither
+advances the shared route revision nor changes how an in-flight Queue message
+is authorized. Queue work accepted before a deployment retains its captured
+policy.
 
-A deploy-time flag was rejected because emergency rollback would require a
-release and would not share the durable route revision. Percentage selection
-within one route was rejected because Standard-2 would no longer be the default
-for otherwise eligible runs. Rollout therefore enables whole canary routes and
-widens route by route.
+The change is complete only after pre-activation deliveries are drained, the
+activation release is read back at 100% traffic, and every enabled route accepts
+new start deliveries as `event-label-v1`. At that point every positive
+`slow-ok` fact selects Basic and every missing fact selects Standard-2. A
+compatibility or emergency rollback to `legacy-basic-v1` is explicitly a
+temporary non-compliant state, not another supported default.
+
+A live route toggle was rejected because Settings saves advance the shared
+route revision and could reject start events already queued under an older
+proof. A percentage or route allowlist was rejected because it would make Basic
+the default for some accepted unlabeled events. A versioned release boundary is
+less granular, so capacity proof and a tested rollback release are required
+before activation.
 
 ### Keep the optional speed comparison separate from tier selection
 
@@ -226,16 +260,16 @@ selection.
 
 | Failure | Required behavior |
 | --- | --- |
-| Event label data is missing, malformed, incomplete, or proves no exact match | Leave `start_slow_ok` missing. With event policy enabled, allocate `standard-2`; while rollout is disabled, allocate `basic`. Do not query Linear for replacement facts. |
+| Event label data is missing, malformed, incomplete, or proves no exact match | Leave `start_slow_ok` missing. `event-label-v1` allocates `standard-2`; temporary `legacy-basic-v1` allocates `basic`. Do not query Linear for replacement facts. |
 | A real labeled test event cannot provide positive event-time label evidence | Stop before parser implementation and revise the approach. Do not ship a parser that misses the exact label. |
 | Event has similar text such as `Slow-Ok` or `slow-ok ` | Leave `start_slow_ok` missing because only exact provider name equality matches. |
-| Durable delivery is missing, has a value other than `true`, or disagrees with the Queue fact's presence | Fail before allocation and emit a bounded integrity cause. Do not map a tier or acknowledge successful Queue handling. |
+| A successful D1 read finds the delivery missing, an invalid fact or policy version, or a Queue-versus-delivery disagreement | Atomically create or reuse the terminal start-dispatch failure, alert, acknowledge the Queue message, and allocate no run. Show the affected issue under the route's portal diagnostics. Retry only if the D1 read or terminal write itself fails. |
 | Delivery or Queue work is replayed | Reuse the delivery identity and saved run. Do not allocate again or recompute the tier. |
 | D1 cannot atomically save the run and tier | Do not dispatch Workflow or acknowledge successful Queue handling. Let existing Queue retry policy retry the delivery. |
 | A run or attempt has a missing or unknown tier | Fail before sandbox creation and record a bounded internal cause. Do not guess from labels, history, or provider defaults. |
 | Attempt tier differs from run tier | Reject attempt reservation or creation, emit safe mismatch telemetry, and leave the run unchanged. |
 | Cloudflare rejects or lacks the saved class | Mark the attempt through the existing typed failure path. Any allowed retry uses the same class. Never fall back. |
-| Standard-2 creation reports capacity, quota, or concurrency failure during rollout | Stop widening, alert by tier and route, and turn off Standard-2 selection for later allocations on enabled canary routes. Existing Standard-2 runs retain their tier and retry fail-closed. |
+| Standard-2 creation reports a capacity, quota, or concurrency failure | Record the typed attempt failure and page the DEOS on-call on the first explicit provider refusal, grouped by tier and route. Do not fall back that run. The on-call confirms the provider cause and manually deploys the tested `legacy-basic-v1` rollback for later deliveries unless capacity is restored and one Standard-2 probe succeeds within 15 minutes. Existing Standard-2 runs retain their tier and retry fail-closed. This alert and response remain active after rollout. |
 | Sandbox creation has an ambiguous response | Reconcile using the deterministic sandbox identity before retrying. Any retry still uses the saved class. |
 | Attempt lacks a terminal timestamp | Exclude it from elapsed-time aggregates until existing reconciliation supplies a terminal outcome; show it as incomplete in trace data. |
 | Portal reads a corrupt or missing run tier | Show `Tier not recorded` and emit safe diagnostics. Do not infer a value from labels or an attempt. New writes must make this impossible. |
@@ -253,16 +287,23 @@ selection.
   rules, counts, elapsed time, outcomes, and retries visible. Make no automatic
   policy change from the report.
 - **[Standard-2 demand can exhaust Sandbox capacity]** → Measure recent peak
-  concurrency and account limits before activation. Canary whole routes, alert
-  on creation outcomes by tier and route, and stop on the first explicit
-  capacity, quota, or concurrency failure.
+  concurrency and account limits before activation. Page the DEOS on-call on
+  the first explicit capacity, quota, or concurrency refusal. Restore provider
+  capacity and pass one Standard-2 probe within 15 minutes, or manually deploy
+  the tested compatibility release for later deliveries. Never change an
+  existing run or silently fall back an attempt.
 - **[A copied attempt field can drift from the run]** → Write it through one
   guarded reservation path and check for mismatch before provider calls and in
   operator validation.
 - **[A provider API name may differ from the product label]** → Verify both real
   classes against the primary contract and isolate mapping in one adapter.
 - **[A rollback could strand Standard-2 runs]** → Keep both enum values and
-  adapter mappings supported until every such run is final.
+  adapter mappings, plus both delivery policy versions, supported until every
+  such run and accepted delivery is final.
+- **[A release boundary is coarser than a route canary]** → Prove both provider
+  classes, capacity headroom, alerting, and rollback before activation. Drain
+  pending start deliveries, activate at 100% traffic, and treat rollback as an
+  explicit loss of compliance until Standard-2 default selection is restored.
 - **[Median duration does not prove causation]** → Show the comparison controls
   and all outcome counts. Treat the report as evidence, not a verdict.
 
@@ -273,46 +314,55 @@ selection.
    positive event-time evidence. Inspect the primary Cloudflare sandbox contract
    and create one real test sandbox of each class. Stop and revise the design if
    either provider contract cannot support the required behavior.
-2. Add the optional delivery fact, nullable run and attempt tier fields, route
-   switch, frozen run policy revision, and optional speed-comparison table.
-   Initialize every route switch to `false`. Deploy readers that understand both
-   tier values and a temporary missing legacy value.
-3. While every switch is `false`, deploy compatibility writers on every run and
-   attempt creation path. New runs explicitly save `basic` with source
-   `rollout_basic`; new attempts copy their run. For an allocated legacy run
+2. Add the optional delivery fact, nullable run and attempt tier fields, the
+   start-dispatch failure audit, delivery and run policy versions, and the
+   optional speed-comparison table. Deploy readers that understand both tier
+   values, both policy versions, and a temporary missing legacy value.
+3. Deploy compatibility writers on every delivery, run, and attempt creation
+   path. Accepted deliveries save `legacy-basic-v1`. New runs explicitly save
+   `basic` with source `legacy_basic`; new attempts copy their run. For an
+   allocated legacy run
    that is null, allow one guarded `WHERE sandbox_tier IS NULL` compare-and-set
    to `basic` with source `legacy_basic`. Never update a non-null tier.
-4. Before any switch becomes `true`, backfill remaining pre-cutover runs from
+4. Before activation, backfill remaining pre-cutover runs from
    null to `basic` with the same null-only compare-and-set. Backfill attempts
    from their run in guarded batches and reject mismatches. Do not reconstruct
    old optional label facts from current Linear labels.
 5. Verify that no run or attempt tier is null, every value is in the closed enum,
    every attempt matches its run, and active pre-cutover runs remain Basic.
    Remove the legacy null writer, require run and attempt tiers, and only then
-   permit route switches to become `true`. No run-tier update path remains.
+   permit activation. No run-tier update path remains.
 6. Deploy the verified ingress classifier, durable-delivery recheck, Queue
    choice, optional comparison manifest, DEOS workflow portal fields and report,
-   and sandbox adapter while switches remain `false`. Test exact and missing
-   facts, invalid values, Queue disagreement, duplicate delivery, replay, every
-   new-sandbox role, same-sandbox repair, retry, attempt mismatch, planned-tier
-   mismatch, and provider rejection.
+   terminal start-dispatch diagnostics, and sandbox adapter while ingress still
+   writes `legacy-basic-v1`. Test exact and missing facts, invalid values,
+   unknown policy versions, Queue disagreement, terminal acknowledgement,
+   transient D1 retry, duplicate delivery, replay, every new-sandbox role,
+   same-sandbox repair, retry, attempt mismatch, planned-tier mismatch, and
+   provider rejection.
 7. Before activation, record Sandbox class availability, concurrency and quota
    limits, recent peak concurrent sandboxes, and headroom for author and review
    retries. Add creation-failure alerts grouped by tier and route with explicit
    capacity, quota, and concurrency causes.
-8. Enable Standard-2 on one low-volume canary route. Repeat provider-originated
-   Linear checks for both label choices. Use read-only D1 evidence to prove the
-   policy revision and one tier per run and attempt. Capture the DEOS workflow
-   portal run view. If operators run the optional speed comparison, also capture
-   its Access-protected report. Keep synthetic ingress, provider-originated, and
+8. Reconcile the Queue until no accepted start delivery remains pending, then
+   deploy the activation release at 100% traffic and read back that active
+   version. The activation release writes `event-label-v1` for every enabled
+   route. This is the point at which the approved Standard-2 default becomes
+   effective; the change is not complete before it.
+9. Repeat provider-originated Linear checks for both label choices. Use
+   read-only D1 evidence to prove the accepted policy version and one tier per
+   run and attempt. Capture the DEOS workflow portal run view. Observe at least
+   20 Standard-2 creation attempts and page immediately on an explicit capacity,
+   quota, or concurrency refusal, any tier mismatch, or a creation-failure rate
+   above 5%. If operators run the optional speed comparison, also capture its
+   Access-protected report. Keep synthetic ingress, provider-originated, and
    visual proof separate.
-9. Observe at least 20 Standard-2 creation attempts on the canary. Do not widen
-   after any explicit capacity, quota, or concurrency failure, any tier mismatch,
-   or a Standard-2 creation-failure rate above 5%. On a stop condition, set the
-   canary route switch to `false` and require a new clean window. Otherwise
-   enable remaining routes one at a time with the same rule.
-10. Roll back by setting every route switch to `false`, selecting Basic only for
-    later allocations without a deploy. Do not rewrite existing runs. The
-    deployed version must still create Standard-2 retries for saved Standard-2
-    runs. Keep both adapter mappings and additive fields until all compatible
-    versions and active Standard-2 runs are gone.
+10. Roll back manually by deploying the tested compatibility release, which
+    writes `legacy-basic-v1` and selects Basic only for deliveries accepted
+    after rollback. This is an explicit temporary non-compliant state. Do not
+    rewrite accepted deliveries, runs, or attempts. The rollback release must
+    still consume `event-label-v1` deliveries and create Standard-2 retries for
+    saved Standard-2 runs. Restore the activation release and obtain a clean
+    20-attempt window before declaring the change complete again. Keep both
+    adapter mappings, policy versions, and additive fields until all compatible
+    versions and active Standard-2 work are gone.
