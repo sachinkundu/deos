@@ -20,7 +20,12 @@ The portal SHALL show a Live updates control in Settings. A person SHALL be able
 
 ### Requirement: The browser remembers the choice
 
-The portal SHALL save the Live updates choice in the current browser. It SHALL use the saved choice after a page reload and when the portal is opened again. It MUST NOT store or sync the choice outside that browser.
+The portal SHALL save the Live updates choice only in the current browser. It SHALL use the saved choice after a page reload and when the portal is opened again. It MUST NOT write the choice to D1 or any other server store. It MUST NOT sync the choice outside that browser.
+
+#### Scenario: Person changes the choice
+
+- **WHEN** a person changes the Live updates choice.
+- **THEN** the portal saves it only in that browser and does not write it to D1 or another server store.
 
 #### Scenario: Person reloads the portal
 
