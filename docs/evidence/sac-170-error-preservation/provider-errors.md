@@ -61,6 +61,35 @@ on the deployed release. No authentication failure recurred, so it does not
 identify the original rejection cause or prove the new failure capture path
 against a live rejected request.
 
+## Live failure capture after the next revision
+
+The next human-requested design revision completed, but its Claude review
+attempt `01a0955b-9167-7cc9-97d1-7420f3d6d0d5` failed on September 12 at
+11:23:47 UTC. The deployed diagnostics retained the exact client message:
+
+> Failed to authenticate. API Error: 403 Request not allowed
+
+D1 saved that message at 11:23:50 UTC under error
+`11dba3b1-ef9d-480e-a8f8-fc2a3f360f96`. Its protected R2 object is 7,678 bytes.
+It retains status 403, all three provider events, the full 2,929-character
+stdout stream, the original exception and stack, and the attempt context.
+Stderr was empty. The terminal event reports zero input and output tokens.
+This is real provider failure capture through the deployed runner and Worker.
+The later timeout and missing output files are secondary failures.
+
+SAC-161's overlapping review completed with the same recorded account binding
+and credential version. This evidence does not identify why this particular
+request was rejected, and it does not establish a permanently invalid token.
+
+After the user requested investigation and follow-through, the stopped and
+cleaned-up stage was retried once at 11:39:16 UTC. The supported operation kept
+the existing business run and frozen v24 definition, advancing visit 45 to 46.
+The new Workflow instance is
+`wf-v1-rntenp5gkgagwmkc6othboimueh64mzscaedlrhhcekprce22amq`.
+No credentials, human gates, or deployments were changed. The new review attempt
+`01a0956a-3a29-778f-aa53-4b186d7d5aca` is running; the result is pending.
+[Showboat follow-through](provider-403-followthrough.md) records this retry.
+
 [Showboat deployment and retry output](provider-rollout.md) records the actual
 commands and remote readback. Its operator helpers and request file were saved
 under `/tmp` for this run; the mutation commands must not be replayed as checks.
