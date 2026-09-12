@@ -109,6 +109,10 @@ The reader needs to distinguish quoted argument data from shell syntax while
 preserving the read-only operation and frozen-path checks before another run.
 [Showboat follow-through](provider-403-followthrough.md) records this retry.
 
+The user then requested a fix. The quoted-argument parser repair was deployed
+and the failed stage retried once. See [reader fix](reader-fix.md) for validation,
+deployment readback, and the current attempt.
+
 [Showboat deployment and retry output](provider-rollout.md) records the actual
 commands and remote readback. Its operator helpers and request file were saved
 under `/tmp` for this run; the mutation commands must not be replayed as checks.
