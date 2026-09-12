@@ -6,17 +6,17 @@ Let each person choose how confirmed workflow changes appear in the portal and k
 
 ### Requirement: Settings control live updates
 
-The portal SHALL show a Live updates control in Settings. A person SHALL be able to turn it on or off. The control SHALL choose whether confirmed changes appear at once or wait for **Apply update**. The choice SHALL apply only in the current browser and MUST NOT be stored or synced outside it.
+The portal SHALL show a Live updates control in Settings. A person SHALL be able to turn it on or off. The control SHALL show the current choice.
 
 #### Scenario: Person turns live updates on
 
 - **WHEN** a person turns Live updates on in Settings.
-- **THEN** the portal shows the control as on and confirmed changes appear at once in the current browser.
+- **THEN** the portal shows the control as on.
 
 #### Scenario: Person turns live updates off
 
 - **WHEN** a person turns Live updates off in Settings.
-- **THEN** the portal shows the control as off and keeps **Apply update** in the current browser.
+- **THEN** the portal shows the control as off.
 
 ### Requirement: The browser remembers the choice
 
