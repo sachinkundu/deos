@@ -4,6 +4,7 @@ import { DatabaseSync, type StatementSync } from "node:sqlite";
 import test from "node:test";
 import { ClaudeReviewStore } from "../src/claude-review-store.ts";
 import { validateClaudeTurn, type ClaudeEnrollment } from "../src/claude-review.ts";
+import { runClaudeFailure, credential } from "./helpers/claude-runner-fixture.ts";
 class SqliteD1Statement {
   private readonly database: DatabaseSync;
   private readonly sql: string;
@@ -103,6 +104,124 @@ const receipt = () => validateClaudeTurn({ attemptId: "attempt", turn: 0, inputS
     { type:"result",subtype:"success",is_error:false,terminal_reason:"completed",session_id:"session",result:'{"outcome":"concerns"}',
       modelUsage:{"claude-opus-5":{canonicalModel:"claude-opus-5",provider:"firstParty"}} },
   ] });
+
+test("Claude tool failures retain original SDK causes in D1 and R2 without exposing credentials", async () => {
+  const { ClaudeRunner } = await import("../src/claude-runner.ts");
+  const { digest } = await import("../src/claude-review.ts");
+  const { captureWorkflowErrors } = await import("../src/error-context.ts");
+  for (const mode of ["sdk", "exit"] as const) {
+    const { db, store } = setup();
+    const saved = new Map<string, string>();
+    const bucket = { async put(key: string, value: string) { saved.set(key, value); } };
+    const credential = 'secret-with-"quotes';
+    const job = { modelProvider: "claude", model: "claude-opus-5", reasoning: "high", agentRole: "reviewer",
+      permissionProfile: "review_read_only", openspecChange: "sample", reviewKind: "design",
+      claudeReviewSources: [{ path: "design.md", sha256: "a".repeat(64) }],
+      materializedContext: JSON.stringify({ content: "large-context ".repeat(50_000) }) };
+    const encoded = JSON.stringify(job);
+    try {
+      db.sqlite.prepare("UPDATE agent_attempts SET job_spec_json=?,job_spec_digest=?,absolute_deadline=? WHERE attempt_id='attempt'")
+        .run(encoded, await digest(encoded), new Date(Date.now() + 60_000).toISOString());
+      await store.claim({ attemptId: "attempt", runnerId: "runner", jobDigest: await digest(encoded), enrollment });
+      await store.started("attempt", "process");
+      const original = Object.assign(new Error(`Sandbox transport reset ${credential}`, {
+        cause: new Error("socket disconnected"),
+      }), { code: "CONNECTION_RESET", credential, capability: "request-capability", signingKey: "signing-secret" });
+      const requests = new Map<string, string>();
+      const runner = new ClaudeRunner({ db: db as unknown as D1Database, store,
+        token: credential, secretVersion: "one", signingKey: "signing-secret",
+        sandboxes: { get() { return {
+          async mkdir() {},
+          async writeFile(path: string, content: string) { requests.set(path, content); },
+          async exec(argv: string[]) {
+          assert.deepEqual(argv.slice(0, 3), ["node", "/deos/bin/claude-review-read.mjs", "--request-file"]);
+          assert.equal(argv.length, 4);
+          assert.ok(argv.every(arg => arg.length < 200));
+          const request = JSON.parse(requests.get(argv[3])!);
+          assert.equal(request.state.reviewJob.materializedContext, job.materializedContext);
+          assert.equal(request.command, "cat design.md");
+          if (mode === "sdk") throw original;
+          return { async output() { return { exitCode: 7, truncated: false, timedOut: false,
+            stdout: "", stderr: "snapshot hash mismatch", }; } };
+        } }; } } as never });
+      const claims = { actions: ["model.claude_review"], modelProvider: "claude", model: "claude-opus-5",
+        reasoning: "high", attemptId: "attempt" } as never;
+      const result = await captureWorkflowErrors(db as unknown as D1Database, bucket as unknown as R2Bucket,
+        "run", "/capabilities/claude/tools", () => runner.handle("/claude/tools", { command: "cat design.md" },
+          claims, "request-capability", "https://service/capabilities"));
+      assert.equal(result.status, 409);
+      assert.deepEqual(await result.json(), { error: "review_failure", retryNotBefore: null });
+      const row = db.sqlite.prepare("SELECT message,location,detail_r2_key FROM workflow_errors").get()!;
+      const raw = saved.get(String(row.detail_r2_key))!;
+      const detail = JSON.parse(raw);
+      assert.equal(row.location, "src/claude-runner.ts:handle:tools");
+      assert.equal((await store.invocation("attempt"))?.state, "failed");
+      if (mode === "sdk") {
+        assert.equal(row.message, "Sandbox transport reset [REDACTED]");
+        assert.equal(detail.cause.message, "socket disconnected");
+        assert.equal(detail.code, "CONNECTION_RESET");
+        assert.match(detail.stack, /Sandbox transport reset/);
+        assert.equal(detail.credential, "[REDACTED]");
+        assert.equal(detail.capability, "[REDACTED]");
+        assert.equal(detail.signingKey, "[REDACTED]");
+      } else {
+        assert.equal(detail.exitCode, 7);
+        assert.equal(detail.stderr, "snapshot hash mismatch");
+        assert.equal(detail.command, "cat design.md");
+      }
+    } finally { db.close(); }
+  }
+});
+
+test("trusted process failure reaches D1 and protected R2 with the original provider message", async () => {
+  const { ClaudeRunner } = await import("../src/claude-runner.ts");
+  const { digest } = await import("../src/claude-review.ts");
+  const { captureWorkflowErrors } = await import("../src/error-context.ts");
+  for (const mode of ["403", "storage"] as const) {
+    const { failure, processError, expectedMessage, expectedStderr } = await runClaudeFailure(mode);
+    const { db, store } = setup();
+    const saved = new Map<string, string>();
+    const bucket = { async put(key: string, value: string) { saved.set(key, value); } };
+    try {
+      const job = JSON.stringify({ modelProvider: "claude", model: "claude-opus-5", reasoning: "high",
+        agentRole: "reviewer", permissionProfile: "review_read_only" });
+      db.sqlite.prepare("UPDATE agent_attempts SET job_spec_json=?,job_spec_digest=?,absolute_deadline=? WHERE attempt_id='attempt'")
+        .run(job, await digest(job), new Date(Date.now() + 60_000).toISOString());
+      await store.claim({ attemptId: "attempt", runnerId: "runner", jobDigest: await digest(job), enrollment });
+      await store.started("attempt", "process");
+      await store.claimTurn("attempt", 0, "c".repeat(64), null);
+      const runner = new ClaudeRunner({ db: db as unknown as D1Database, store, token: credential,
+        secretVersion: "one", signingKey: "signing-secret", sandboxes: { get() { return {
+          async exists(path: string) { return { exists: mode === "403" && path === "/deos/claude/failure.json" }; },
+          async getProcess() { return { async status() { return { state: "completed" }; },
+            async output() { return { exitCode: 1, stdout: "", stderr: processError.stderr }; } }; },
+          async readFile(path: string) { assert.equal(path, "/deos/claude/failure.json"); return { content: JSON.stringify(failure) }; },
+        }; } } as never });
+      const result = await captureWorkflowErrors(db as unknown as D1Database, bucket as unknown as R2Bucket,
+        "run", "/capabilities/claude/status", () => runner.handle("/claude/status", { ordinal: 0 }, {
+          actions: ["model.claude_review"], modelProvider: "claude", model: "claude-opus-5",
+          reasoning: "high", attemptId: "attempt",
+        } as never, "capability", "https://service/capabilities"));
+      assert.deepEqual(await result.json(), { error: mode === "403" ? "auth_failure" : "review_failure", retryNotBefore: null });
+      const row = db.sqlite.prepare("SELECT message,detail_r2_key FROM workflow_errors").get()!;
+      const detail = JSON.parse(saved.get(String(row.detail_r2_key))!);
+      if (mode === "storage") {
+        const fallback = JSON.parse(detail.diagnostic.output.stderr);
+        assert.equal(fallback.failure.providerMessage, expectedMessage);
+        assert.equal(fallback.storageError.code, "EISDIR");
+        assert.equal(row.message, detail.diagnostic.output.stderr);
+        continue;
+      }
+      assert.equal(row.message, expectedMessage);
+      assert.equal(detail.diagnostic.providerStatus, 403);
+      assert.equal(detail.diagnostic.providerMessage, expectedMessage);
+      assert.equal(detail.diagnostic.stderr, expectedStderr);
+      assert.equal(detail.diagnostic.providerEvents[1].error.request_id, "req-original-42");
+      assert.match(detail.cause.stack, /validateClaudeTurn/);
+      assert.equal((await store.invocation("attempt"))?.safe_cause, "auth_failure");
+    } finally { db.close(); }
+  }
+});
 
 test("only one invocation claim wins, and an interrupted claim cannot be reset", async () => {
   const { db, store } = setup();
