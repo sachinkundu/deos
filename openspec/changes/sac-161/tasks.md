@@ -15,4 +15,4 @@
 - [x] 3.1 Enforce a passing same-revision staging sidebar check before production.
 - [x] 3.2 Run repository checks and validate the OpenSpec change.
 - [ ] 3.3 Apply the additive schema and verify the staging feature with real authenticated history and browser evidence.
-- [ ] 3.4 Publish the implementation PR with planning links, checks, and release limits.
+- [x] 3.4 Publish the implementation PR with planning links, checks, and release limits.
