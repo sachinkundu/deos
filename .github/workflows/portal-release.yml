@@ -43,6 +43,7 @@ jobs:
         env:
           REVIEWED_SHA: ${{ inputs.reviewed_sha }}
           PORTAL_REVIEWER_ACCESS_ASSERTION: ${{ secrets.PORTAL_REVIEWER_ACCESS_ASSERTION }}
+          PORTAL_REVIEWER_ACCESS_BINDING: ${{ secrets.PORTAL_REVIEWER_ACCESS_BINDING }}
           PORTAL_ACCESS_CLIENT_ID: ${{ vars.PORTAL_ACCESS_CLIENT_ID }}
           PORTAL_ACCESS_CLIENT_SECRET: ${{ secrets.PORTAL_ACCESS_CLIENT_SECRET }}
         run: node scripts/check-portal-recent-issues.mjs
