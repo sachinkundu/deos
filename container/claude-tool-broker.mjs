@@ -1,6 +1,8 @@
 // Trusted stdio MCP transport. Only a bounded repository-read tool is exposed.
 import { writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
+import { redactClaudeDiagnostic } from "/deos/bin/claude-diagnostics.ts";
+import { responseError } from "/deos/bin/error-details.ts";
 const send = (id, result) => process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, result }) + "\n");
 for await (const line of createInterface({ input: process.stdin })) {
   let request;
@@ -25,14 +27,22 @@ for await (const line of createInterface({ input: process.stdin })) {
           "Deos-Attempt": process.env.DEOS_ATTEMPT_ID, "Content-Type": "application/json" },
         body: JSON.stringify(request.params.arguments), signal: AbortSignal.timeout(60_000),
       });
-      if (!response.ok) throw new Error("read denied");
+      if (!response.ok) throw await responseError("DEOS repository reader", response);
       const body = await response.json();
       if (typeof body.text !== "string" || body.text.length > 262144) throw new Error("invalid read result");
       send(request.id, { content: [{ type: "text", text: body.text }] });
     } else if (request.method === "ping") send(request.id, {});
     else throw new Error("unsupported method");
-  } catch {
-    await writeFile("/deos/claude/broker-failure.json", '{"cause":"review_failure"}', { mode: 0o600 });
+  } catch (error) {
+    const secrets = [process.env.DEOS_BROKER_TOKEN];
+    const failure = redactClaudeDiagnostic({ cause: "review_failure", originalError: error,
+      operation: request?.method, requestLine: line }, secrets);
+    try { await writeFile("/deos/claude/broker-failure.json", JSON.stringify(failure), { mode: 0o600 }); }
+    catch (storageError) {
+      process.stderr.write(JSON.stringify(redactClaudeDiagnostic({ failure, storageError }, secrets)) + "\n");
+      process.exitCode = 1;
+      break;
+    }
     if (request?.id !== undefined) process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: request.id,
       error: { code: -32603, message: "read-only tool request failed" } }) + "\n");
   }
