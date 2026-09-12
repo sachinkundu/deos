@@ -81,10 +81,9 @@ Remaining rollout procedure:
    deploy it, and read back 100 percent traffic for that version on every enabled
    route. Repeat labeled and unlabeled provider-originated runs and capture D1
    tier agreement and the live portal.
-9. Observe a clean window of at least 20 Standard-2 creation attempts. On the
-   first capacity refusal, stop the rollout check. Restore capacity and pass a
-   probe, or manually deploy the tested compatibility ingress.
-   Existing Standard-2 runs keep their tier during rollback.
+A fixed-count reliability window is outside this job, per user direction.
+Capacity and startup failures will be observed during normal work in the portal.
+Existing Standard-2 runs keep their tier if a rollback is needed.
 
 ## Optional comparison manifest
 

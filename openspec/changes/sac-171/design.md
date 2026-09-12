@@ -353,11 +353,10 @@ selection.
    effective; the change is not complete before it.
 9. Repeat provider-originated Linear checks for both label choices. Use
    read-only D1 evidence to prove the accepted policy version and one tier per
-   run and attempt. Capture the DEOS workflow portal run view. Observe at least
-   20 Standard-2 creation attempts while an operator checks the portal and durable
-   records for capacity, quota, or concurrency refusals, tier mismatches, or a
-   creation-failure rate above 5%. Treat any such finding as a failed rollout
-   check and follow the capacity or rollback procedure. If operators run the optional speed comparison, also capture its
+   run and attempt. Capture the DEOS workflow portal run view. A fixed-count
+   reliability window is outside this change. Operators observe capacity and
+   startup failures during normal work through the portal. If operators run
+   the optional speed comparison, also capture its
    Access-protected report. Keep synthetic ingress, provider-originated, and
    visual proof separate.
 10. Roll back manually by deploying the tested compatibility release, which
@@ -365,7 +364,7 @@ selection.
     after rollback. This is an explicit temporary non-compliant state. Do not
     rewrite accepted deliveries, runs, or attempts. The rollback release must
     still consume `event-label-v1` deliveries and create Standard-2 retries for
-    saved Standard-2 runs. Restore the activation release and obtain a clean
-    20-attempt window before declaring the change complete again. Keep both
+    saved Standard-2 runs. Restore the activation release and repeat the live
+    checks for both label choices before declaring the change complete again. Keep both
     adapter mappings, policy versions, and additive fields until all compatible
     versions and active Standard-2 work are gone.
