@@ -100,3 +100,10 @@ Cloudflare, and GitHub output. Full original errors remain in protected R2;
 local copies were retrieved for inspection without publishing private logs.
 
 ![GitHub design PR still open after the failed publication check](design-pr-after-reader-fix.png)
+
+
+## Follow-through
+
+The publication gap was repaired and the supported publication-only retry
+succeeded. SAC-170 returned to Human Review on September 12 at 12:47 UTC.
+See [publication recovery and final evidence](publication-recovery.md).

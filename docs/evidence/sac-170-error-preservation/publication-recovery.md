@@ -43,3 +43,29 @@ the documents are not evidence for which field was stale in this run.
 The supported publication retry reuses the accepted candidate and frozen
 workflow definition. It does not allocate another author or reviewer attempt.
 Deployment and live outcome are recorded in publication-recovery-rollout.md.
+
+
+Worker commit `8710906` deployed as version
+`2cde8efc-b6ca-4e05-b628-25e8a16a4838`, read back at 100% traffic.
+`--containers-rollout none` kept the existing image and four healthy containers.
+No active agent attempts were present. Neither portal was deployed.
+
+The publication-only retry was accepted at 12:47:38 UTC, advancing visit 51 to
+52 with the same frozen v24 definition. Workflow
+`wf-v1-bxaau4qkcdbfe6kf62g6wrfcf3ii24ql6toiikzpz44dxawzkx4a` reused the accepted
+candidate. D1 recorded the publication receipt at 12:47:49.470 UTC with head
+`3a5ba08f296ecfbbc41189aa3dad1a2d9c5366f8`, matching GitHub PR #108.
+No agent attempt was added and no new workflow error was recorded.
+
+Linear entered Human Review at 12:47:53.401 UTC. D1 confirmed
+`awaiting_human/design_review` at visit 53, and Cloudflare is waiting for the
+human event. GitHub PR #108 remains open with six passing checks. SAC-161
+remains succeeded/done. Monitoring is paused at the human gate.
+
+This is real provider publication and durable workflow recovery evidence.
+The retry had no mismatch to exercise the new bounded recheck branch; that
+branch is covered by the tests above. The exact field in the old transient
+mismatch remains unknown. The existing GitHub screenshot shows the same open
+PR and head. A fresh portal screenshot was unavailable because the browser
+required Google sign-in; Linear MCP and D1 provided the authoritative gate
+readback.
