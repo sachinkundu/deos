@@ -13,7 +13,15 @@ try {
   await context.addCookies([{ name: "CF_Authorization", value: assertion, url: host, httpOnly: true, secure: true }]);
   const page = await context.newPage();
   const get = async path => {
-    const response = await context.request.get(host + path, { maxRedirects: 0 });
+    // The version endpoint has its own service-token Access application.
+    const headers = path === "/api/version" ? {
+      "CF-Access-Client-Id": process.env.PORTAL_ACCESS_CLIENT_ID,
+      "CF-Access-Client-Secret": process.env.PORTAL_ACCESS_CLIENT_SECRET,
+    } : {};
+    if (path === "/api/version" && Object.values(headers).some(value => !value)) {
+      throw new Error("The version check requires the existing portal Access service credentials");
+    }
+    const response = await context.request.get(host + path, { maxRedirects: 0, headers });
     assert.equal(response.status(), 200, `Staging ${path} must return 200`);
     return response.json();
   };
