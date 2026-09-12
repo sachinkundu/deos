@@ -152,3 +152,5 @@ export default {
     await completionReconciler(env).scheduled();
   },
 } satisfies ExportedHandler<Env, QueueBody>;
+
+export { RecentIssues } from "./recent-issues-entrypoint.ts";
