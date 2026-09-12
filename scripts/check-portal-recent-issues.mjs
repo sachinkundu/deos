@@ -11,6 +11,9 @@ const browser = await chromium.launch();
 try {
   const context = await browser.newContext();
   await context.addCookies([{ name: "CF_Authorization", value: assertion, url: host, httpOnly: true, secure: true }]);
+  // Access binds the reviewer token to this companion cookie when enabled.
+  const binding = process.env.PORTAL_REVIEWER_ACCESS_BINDING;
+  if (binding) await context.addCookies([{ name: "CF_Binding", value: binding, url: host, httpOnly: true, secure: true }]);
   const page = await context.newPage();
   const get = async path => {
     // The version endpoint has its own service-token Access application.
