@@ -116,12 +116,42 @@ test("successful collection retains notification diagnostics without changing th
   reader.files.set("/deos/output/status.json", new TextEncoder().encode(status));
   const result = await collector.collect(input);
   assert.equal(result.result.outcome, "completed");
-  assert.equal(result.objectCount, 4);
-  const stored = [...objects.values].find(([key]) => key.endsWith("/original-errors.jsonl"));
+  assert.equal(result.objectCount, 2);
+  const stored = [...objects.values].find(([key]) => key.endsWith("/diagnostics/original-errors.jsonl"));
   assert.equal(new TextDecoder().decode(stored?.[1].content), diagnostic);
-  const storedStatus = [...objects.values].find(([key]) => key.endsWith("/status.json"));
+  const storedStatus = [...objects.values].find(([key]) => key.endsWith("/diagnostics/status.json"));
   assert.equal(new TextDecoder().decode(storedStatus?.[1].content), status);
   await collector.verifyDurable(result);
+});
+
+test("optional diagnostic read and write failures cannot invalidate the primary manifest", async () => {
+  for (const stage of ["exists", "read", "put", "verify"] as const) {
+    const { collector, reader, objects, manifests } = setup();
+    const error = new Error(`diagnostic ${stage} failed`, { cause: new Error("original transport cause") });
+    reader.files.set("/deos/output/original-errors.jsonl", new TextEncoder().encode('{"message":"notify failed"}\n'));
+    const exists = reader.exists.bind(reader);
+    reader.exists = path => path.endsWith("original-errors.jsonl") && stage === "exists"
+      ? Promise.reject(error) : exists(path);
+    const read = reader.read.bind(reader);
+    reader.read = path => path.endsWith("original-errors.jsonl") && stage === "read"
+      ? Promise.reject(error) : read(path);
+    const put = objects.putCreateOnly.bind(objects);
+    objects.putCreateOnly = (key, content, sha256) => key.includes("/diagnostics/") && stage === "put"
+      ? Promise.reject(error) : put(key, content, sha256);
+    const sha = objects.sha256.bind(objects);
+    objects.sha256 = key => key.includes("/diagnostics/") && stage === "verify"
+      ? Promise.reject(error) : sha(key);
+    const errors: unknown[] = [];
+    const { captureErrors } = await import("../src/error-context.ts");
+    const result = await captureErrors(async captured => { errors.push(...captured); }, () => collector.collect(input));
+    assert.equal(result.result.outcome, "completed", stage);
+    assert.equal(result.objectCount, 2, stage);
+    assert.equal(manifests.state, "complete", stage);
+    assert.equal(manifests.records, 2, stage);
+    assert.match(JSON.stringify(errors), /original transport cause/);
+    if (stage === "put" || stage === "verify") assert.match(JSON.stringify(errors), /notify failed/);
+    await collector.verifyDurable(result);
+  }
 });
 
 test("collector parses mechanically captured successful provider receipts", async () => {

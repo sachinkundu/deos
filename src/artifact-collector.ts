@@ -348,15 +348,7 @@ export class ArtifactCollector {
       let totalBytes = 0;
       let result: Readonly<Record<string, unknown>> | null = null;
       let providerReceipts: readonly ProviderReceiptReference[] = [];
-      const files = [...input.requiredFiles];
-      // Keep the supervisor's finish time and notification diagnostics after
-      // cleanup, including when the work itself succeeded.
-      for (const optional of ["status.json", "original-errors.jsonl"]) {
-        if (!files.includes(optional) && await this.reader.exists(`${input.outputRoot}/${optional}`)) {
-          files.push(optional);
-        }
-      }
-      for (const logicalName of files) {
+      for (const logicalName of input.requiredFiles) {
         if (logicalName.includes("/") || logicalName.includes("..")) {
           throw new Error("artifact logical names must be plain filenames");
         }
@@ -449,6 +441,7 @@ export class ArtifactCollector {
         totalBytes,
         now: this.now().toISOString(),
       });
+      await this.collectDiagnostics(input, prefix);
       return {
         manifestId,
         aggregateDigest,
@@ -463,6 +456,34 @@ export class ArtifactCollector {
       recordCaughtError(error, "src/artifact-collector.ts:451");
       await this.manifests.fail(manifestId);
       throw error;
+    }
+  }
+
+  private async collectDiagnostics(input: ArtifactCollectionInput, prefix: string): Promise<void> {
+    // These copies do not alter the primary result or its immutable manifest.
+    // If a copy fails, the workflow's error capture retains the copy failure
+    // and any safely read original content in protected diagnostics instead.
+    for (const logicalName of ["status.json", "original-errors.jsonl"]) {
+      if (input.requiredFiles.includes(logicalName)) continue;
+      let safeOriginal: string | undefined;
+      try {
+        const path = `${input.outputRoot}/${logicalName}`;
+        if (!await this.reader.exists(path)) continue;
+        const file = await this.reader.read(path);
+        assertArtifactPolicy(logicalName, file.content);
+        safeOriginal = new TextDecoder().decode(file.content);
+        const sha256 = await sha256Hex(file.content);
+        const key = `${prefix}/diagnostics/${logicalName}`;
+        await this.objects.putCreateOnly(key, file.content, sha256, file.mediaType);
+        if (await this.objects.sha256(key) !== sha256) {
+          throw new Error(`diagnostic ${logicalName} write could not be verified`);
+        }
+      } catch (error) {
+        recordCaughtError(error, `sandbox optional diagnostic: ${logicalName}`);
+        if (safeOriginal !== undefined) {
+          recordCaughtError({ logicalName, originalContent: safeOriginal }, "sandbox diagnostic copy fallback");
+        }
+      }
     }
   }
 
