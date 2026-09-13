@@ -69,18 +69,24 @@ same saved policy. Only the Worker can read or write provider state.
 
 ## Decisions
 
-### 1. Introduce fixed flow version 18
+### 1. Allocate the next immutable flow version during implementation
 
-Register the behavior as the next immutable `simple-traceability` definition,
-version 18. Its snapshot includes the graph, node job policies, gate rules,
-author prompts, pinned guidance, validation rules, and review schedule.
+Register the behavior as a new immutable `simple-traceability` definition. Do
+not reserve a numeric version in this design. Before editing the definition,
+the implementation must read the then-current bundled version and the highest
+registered version for that definition ID, choose the next integer above both,
+and fail if the target slot is occupied or either value changes before
+registration. This prevents a stale design-time number from colliding with a
+version already shown by the portal. The new snapshot includes the graph, node
+job policies, gate rules, author prompts, pinned guidance, validation rules,
+and review schedule.
 
-Every run continues to load and verify its saved definition digest. Version 17
-and older runs therefore retain design-only author scope. A retry also retains
-the run's version unless a separately specified compatibility handoff permits
-another exact definition.
+Every run continues to load and verify its saved definition ID, version, and
+digest. Already allocated runs therefore retain their original author scope. A
+retry also retains the run's version unless a separately specified
+compatibility handoff permits another exact definition.
 
-Version 18 uses these Design-phase paths:
+The newly allocated version uses these Design-phase paths:
 
 ```text
 design_author
@@ -104,8 +110,10 @@ The revision edge stays inside Design and reuses the deterministic design
 branch and pull request. The saved review schedule decides whether a later
 revision runs a new semantic check.
 
-Alternative considered: mutate version 17 in place. That would change active
-runs after allocation and violate frozen-definition replay, so it is rejected.
+Alternative considered: name the next version in this design or mutate the
+currently bundled version in place. The first choice can become stale before
+implementation; the second would change active runs after allocation and
+violate frozen-definition replay. Both are rejected.
 
 ### 2. Make plan-edit scope an explicit trusted grant
 
@@ -149,9 +157,9 @@ published design candidate, or the approved plan on the first round.
 The prompt states that the saved job policy controls scope. Pinned skill text
 is advisory and cannot add, remove, or narrow allowed paths.
 
-Alternative considered: always allow plan edits in version 18. That would let
-the first author silently replace an approved plan without the required human
-request, so it is rejected.
+Alternative considered: always allow plan edits in the new version. That would
+let the first author silently replace an approved plan without the required
+human request, so it is rejected.
 
 ### 3. Assemble and validate one complete candidate
 
@@ -373,8 +381,8 @@ proof coverage by itself.
 
 1. Planning merge verification freezes the approved plan manifest and base
    commit.
-2. Version 18 dispatches `design_author` with design-only scope and no prior
-   design.
+2. The newly allocated definition dispatches `design_author` with design-only
+   scope and no prior design.
 3. The author writes `design.md`; the supervisor checks the design-only diff.
 4. The Worker builds the complete candidate with unchanged approved plan bytes,
    repeats validation, and stores hash-checked R2 evidence plus a D1 index.
@@ -460,6 +468,7 @@ references while allowing several visits to reuse one unchanged publication.
 
 | Failure | Trusted response |
 | --- | --- |
+| Bundled or registered definition version changes during allocation | Abort before registration, reread both authorities, and choose the next unused integer. Never overwrite an immutable version. |
 | Author changes a forbidden path | Reject the entire result before candidate storage. Record the path and saved grant. Publish nothing. |
 | First round changes the proposal or specs | Reject as a scope violation even if strict OpenSpec validation passes. |
 | Revision lacks an allowed-user grant | Keep design-only scope and reject any plan edit. An arbitrary comment cannot create authority. |
@@ -496,16 +505,17 @@ references while allowing several visits to reuse one unchanged publication.
   changes beside the approved version while retaining one unambiguous approval
   unit.
 - **[No semantic rerun on some later edits can reduce automated assurance]** →
-  State that no check ran, mark identity-mismatched proof stale, retain trusted
-  validation, and require an exact-head human choice.
+  State that no check ran, mark old proof stale, retain trusted validation, and
+  require an exact-head human choice.
 - **[Provider head drift can invalidate completed work]** → Bind every stage to
   the exact head and reconcile stable publication operations before proceeding.
 - **[The default branch can advance after the planning merge]** → Use the frozen
   planning commit only for publication scope; use the actual merge commit's
   first parent for post-merge scope, while requiring the approved head as the
   second parent.
-- **[Version 18 duplicates some version 17 configuration]** → Prefer immutable
-  snapshots and deterministic replay over mutable shared policy.
+- **[The new version duplicates some prior configuration]** → Prefer immutable
+  snapshots and deterministic replay over mutable shared policy, and allocate
+  its number only after checking the current bundle and registry.
 - **[Unified diffs may expose sensitive text already present in plan files]** →
   Serve them only through the existing Access-protected, no-store review route
   and apply existing credential scanning before storage.
@@ -516,19 +526,22 @@ references while allowing several visits to reuse one unchanged publication.
    and indexes. Do not rewrite historical candidates, visits, or choices.
 2. Extend trusted candidate serialization, validation, R2 read-back, publication,
    merge proof, and portal projection to understand plan-bearing design
-   candidates while retaining the version 17 shape.
-3. Register immutable `simple-traceability` version 18 with the new graph,
-   prompts, scopes, checks, gate rules, and pinned guidance.
-4. Validate version 17 restoration and retry behavior before selecting version
-   18 for new runs.
-5. Exercise a design-only first round, an unchanged revision reuse, a
-   plan-changing revision, a stale-head case, a missing request record, an
-   out-of-band close and merge, an unscheduled-review case, a default branch
-   that advances after publication, and a checked merge in a non-production
-   workflow route.
-6. Make version 18 the default only after durable records and the protected
-   workflow view show the expected candidate, diff, choice, and merge history.
+   candidates while retaining the preceding version's shape.
+3. Read the current bundled and registered `simple-traceability` versions, then
+   register the next unused immutable version with the new graph, prompts,
+   scopes, checks, gate rules, and pinned guidance. Abort on version drift or a
+   registration collision.
+4. Validate restoration and retry behavior for the immediately preceding
+   version before selecting the new version for new runs.
+5. Exercise a design-only first round, an unchanged revision, a plan-changing
+   revision, a stale-head case, a missing request record, an out-of-band close
+   and merge, an unscheduled-review case, a default branch that advances after
+   publication, and a checked merge in a non-production workflow route.
+6. Make the newly allocated version the default only after durable records and
+   the protected workflow view show the expected candidate, diff, choice, and
+   merge history.
 
-Rollback changes only the default selector for future runs. Existing version 18
-runs keep their saved snapshot and may finish under it. Schema and immutable
-history remain in place so rollback cannot orphan or reinterpret prior evidence.
+Rollback changes only the default selector for future runs. Existing runs on
+the new version keep their saved snapshot and may finish under it. Schema and
+immutable history remain in place so rollback cannot orphan or reinterpret
+prior evidence.
