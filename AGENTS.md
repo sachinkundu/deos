@@ -13,6 +13,24 @@
 
 ## Preserve original errors
 
+**NEVER EAT ERRORS. ALWAYS DESIGN FOR RETRY.**
+
+- Error evidence is part of the result. Keep the original message, stack, cause
+  chain, provider response, process output, and operation context. A generic
+  category is never a substitute for that evidence.
+- Credential concerns must not drive opaque errors. Filter only actual known
+  secret values at the diagnostic boundary. Never drop a response, truncate an
+  error, suppress output, or replace a cause because it might contain a secret.
+- Design failure paths so work can resume from durable inputs and checkpoints.
+  Retain the runtime and unsaved evidence when diagnostic collection fails.
+  Retry safe reads and diagnostic writes; do not destroy the only error copy.
+- Keep the original failure when a retry, diagnostic write, or cleanup also
+  fails. Record each failure with its attempt and operation. A later failure
+  must not overwrite the first one, even when a later retry succeeds.
+- Before retrying a provider operation, use its idempotency key or reconcile
+  its recorded outcome. Ambiguity is a reason to inspect durable state, not to
+  repeat a potentially completed action. Preserve human approval gates.
+
 - Never swallow errors or replace them with generic messages that discard the
   original cause. No empty catches, silent fallbacks, or success-shaped results
   after a failure.

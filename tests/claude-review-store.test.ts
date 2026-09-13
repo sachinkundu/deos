@@ -151,8 +151,10 @@ test("Claude tool failures retain original SDK causes in D1 and R2 without expos
         "run", "/capabilities/claude/tools", () => runner.handle("/claude/tools", { command: "cat design.md" },
           claims, "request-capability", "https://service/capabilities"));
       assert.equal(result.status, 409);
-      assert.deepEqual(await result.json(), { error: "review_failure", retryNotBefore: null });
-      const row = db.sqlite.prepare("SELECT message,location,detail_r2_key FROM workflow_errors").get()!;
+      const reply = await result.json() as any;
+      assert.equal(reply.error, "review_failure");
+      assert.ok(reply.errorId);
+      const row = db.sqlite.prepare("SELECT message,location,detail_r2_key FROM workflow_errors WHERE location LIKE 'src/%'").get()!;
       const raw = saved.get(String(row.detail_r2_key))!;
       const detail = JSON.parse(raw);
       assert.equal(row.location, "src/claude-runner.ts:handle:tools");
@@ -203,11 +205,13 @@ test("trusted process failure reaches D1 and protected R2 with the original prov
           actions: ["model.claude_review"], modelProvider: "claude", model: "claude-opus-5",
           reasoning: "high", attemptId: "attempt",
         } as never, "capability", "https://service/capabilities"));
-      assert.deepEqual(await result.json(), { error: mode === "403" ? "auth_failure" : "review_failure", retryNotBefore: null });
-      const row = db.sqlite.prepare("SELECT message,detail_r2_key FROM workflow_errors").get()!;
+      const reply = await result.json() as any;
+      assert.equal(reply.error, mode === "403" ? "auth_failure" : "review_failure");
+      assert.ok(reply.errorId);
+      const row = db.sqlite.prepare("SELECT message,detail_r2_key FROM workflow_errors WHERE location LIKE 'src/%'").get()!;
       const detail = JSON.parse(saved.get(String(row.detail_r2_key))!);
       if (mode === "storage") {
-        const fallback = JSON.parse(detail.diagnostic.output.stderr);
+        const fallback = JSON.parse(detail.diagnostic.output.stderr.trim().split("\n").at(-1));
         assert.equal(fallback.failure.providerMessage, expectedMessage);
         assert.equal(fallback.storageError.code, "EISDIR");
         assert.equal(row.message, detail.diagnostic.output.stderr);
@@ -298,13 +302,14 @@ test("trusted runner replay starts one credential-bearing process and tool denia
     async exists(path:string) { return {exists:files.has(path)}; },
     async readFile(path:string) { return {content:files.get(path)!}; },
     async writeFile(path:string,content:string) { files.set(path,content); },
+    async getProcess() { return null; },
     async setKeepAlive() {}, async destroy() {},
     async exec(command:readonly string[], options:unknown) {
       executions.push({id,command,options});
       if (command.includes("/deos/bin/claude-trusted-runner.mjs")) { reachedStart(); await startGate; }
       if (command[0]==="mv") { files.set(command[2],files.get(command[1])!); files.delete(command[1]); }
       return { id:"process",async waitForExit(){return {code:0};},
-        async output(){return {stdout:"",exitCode:1,truncated:false,timedOut:false};} };
+        async output(){return {stdout:"",exitCode:command[0] === "mv" ? 0 : 1,truncated:false,timedOut:false};} };
     },
   });
   const runner = new ClaudeRunner({db:db as unknown as D1Database,store,
@@ -433,5 +438,123 @@ test("reused Claude review proof rejects missing or corrupted protected receipts
     objects.set(key, body);
     await runner.proofForReuse("attempt");
     await assert.rejects(runner.proofForReuse(null, "missing-review"));
+  } finally { db.close(); }
+});
+
+
+test("status catches a failure published between the first file check and process exit", async () => {
+  const { ClaudeRunner } = await import("../src/claude-runner.ts");
+  const { digest } = await import("../src/claude-review.ts");
+  const { db, store, objects } = setup();
+  try {
+    const job = JSON.stringify({ modelProvider: "claude", model: "claude-opus-5", reasoning: "high",
+      agentRole: "reviewer", permissionProfile: "review_read_only" });
+    db.sqlite.prepare("UPDATE agent_attempts SET job_spec_json=?,job_spec_digest=?,absolute_deadline=? WHERE attempt_id='attempt'")
+      .run(job, await digest(job), new Date(Date.now() + 60_000).toISOString());
+    await store.claim({ attemptId: "attempt", runnerId: "runner", jobDigest: await digest(job), enrollment });
+    await store.started("attempt", "process");
+    await store.claimTurn("attempt", 0, "c".repeat(64), null);
+    let stopped = false;
+    const failure = { cause: "auth_failure", providerMessage: "Provider account rejected: request-42",
+      originalError: { message: "HTTP 403", stack: "provider stack", cause: { code: "account_disabled" } } };
+    const runner = new ClaudeRunner({ db: db as unknown as D1Database, store, token: credential,
+      signingKey: "signing", secretVersion: "one", sandboxes: { get() { return {
+        async exists(path: string) { return { exists: stopped && path.endsWith("failure.json") }; },
+        async readFile() { return { content: JSON.stringify(failure) }; },
+        async getProcess() { return { async status() { stopped = true; return { state: "exited" }; },
+          async output() { throw new Error("must read the terminal failure file first"); } }; },
+      }; } } as never });
+    const response = await runner.handle("/claude/status", { ordinal: 0 }, {
+      actions: ["model.claude_review"], modelProvider: "claude", model: "claude-opus-5",
+      reasoning: "high", attemptId: "attempt",
+    } as never, "capability", "https://service/capabilities");
+    const body = await response.json() as any;
+    assert.equal(body.error, "auth_failure");
+    const row = db.sqlite.prepare("SELECT * FROM workflow_errors WHERE error_id=?").get(body.errorId)!;
+    assert.equal(row.message, failure.providerMessage);
+    const saved = JSON.parse(objects.get(String(row.detail_r2_key))!);
+    assert.equal(saved.cause.cause.code, "account_disabled");
+    assert.equal((await store.invocation("attempt"))?.state, "failed");
+  } finally { db.close(); }
+});
+
+for (const mode of ["success", "storage", "destroy", "state"] as const) {
+  test(`cleanup preserves terminal evidence and original errors: ${mode}`, async () => {
+    const { ClaudeRunner } = await import("../src/claude-runner.ts");
+    const { db, store, objects } = setup();
+    try {
+      await store.claim({ attemptId: "attempt", runnerId: "runner", jobDigest: "digest", enrollment });
+      await store.started("attempt", "process");
+      await store.fail("attempt", "review_failure");
+      let destroyed = false;
+      const primary = new Error("R2 is unavailable", { cause: new Error("connection reset") });
+      const saveDiagnostic = store.saveDiagnostic.bind(store);
+      if (mode === "storage") store.saveDiagnostic = async () => { throw primary; };
+      if (mode === "state") store.cleanup = async () => { throw new Error("D1 cleanup update unavailable"); };
+      const runner = new ClaudeRunner({ db: db as unknown as D1Database, store, token: credential,
+        signingKey: "signing", secretVersion: "one", sandboxes: { get() { return {
+          async getProcess() { return { async status() { return { state: "exited" }; },
+            async output() { return { exitCode: 1, stdout: "first output", stderr: "last output", truncated: false }; } }; },
+          async exists(path: string) { return { exists: path.endsWith("failure.json") }; },
+          async readFile() { return { content: `Original provider explanation ${credential}` }; },
+          async setKeepAlive() {},
+          async destroy() {
+            assert.ok([...objects.values()].some(body => body.includes("Original provider explanation")));
+            if (mode === "destroy" || mode === "state") throw new Error("destroy RPC disconnected", { cause: new Error("socket gone") });
+            destroyed = true;
+          },
+        }; } } as never });
+      if (mode === "success") {
+        await runner.cleanup("attempt");
+        assert.equal(destroyed, true);
+        const saved = [...objects.values()].join("\n");
+        assert.ok(saved.includes("first output") && saved.includes("last output"));
+        assert.equal(saved.includes(JSON.stringify(credential).slice(1, -1)), false);
+      } else {
+        await assert.rejects(runner.cleanup("attempt"), (error: any) => {
+          const serialized = JSON.stringify(error.cause) + (error.errors ? JSON.stringify(error.errors) : "");
+          assert.match(serialized, mode === "storage" ? /R2 is unavailable.*connection reset/s : /destroy RPC disconnected.*socket gone/s);
+          if (mode === "state") assert.match(serialized, /D1 cleanup update unavailable/);
+          return true;
+        });
+        assert.equal(destroyed, false);
+        if (mode === "storage") {
+          store.saveDiagnostic = saveDiagnostic;
+          await runner.cleanup("attempt");
+          assert.equal(destroyed, true);
+          assert.equal((await store.invocation("attempt"))?.cleanup_state, "destroyed");
+        }
+      }
+    } finally { db.close(); }
+  });
+}
+
+test("failure storage rejection preserves the primary error and does not mark invocation failed", async () => {
+  const { ClaudeRunner } = await import("../src/claude-runner.ts");
+  const { digest } = await import("../src/claude-review.ts");
+  const { db, store } = setup();
+  try {
+    const job = JSON.stringify({ modelProvider: "claude", model: "claude-opus-5", reasoning: "high",
+      agentRole: "reviewer", permissionProfile: "review_read_only" });
+    db.sqlite.prepare("UPDATE agent_attempts SET job_spec_json=?,job_spec_digest=?,absolute_deadline=? WHERE attempt_id='attempt'")
+      .run(job, await digest(job), new Date(Date.now() + 60_000).toISOString());
+    await store.claim({ attemptId: "attempt", runnerId: "runner", jobDigest: await digest(job), enrollment });
+    await store.started("attempt", "process");
+    await store.claimTurn("attempt", 0, "c".repeat(64), null);
+    store.saveDiagnostic = async () => { throw new Error("R2 write unavailable"); };
+    const runner = new ClaudeRunner({ db: db as unknown as D1Database, store, token: credential,
+      signingKey: "signing", secretVersion: "one", sandboxes: { get() { return {
+        async exists() { throw new Error("Original sandbox failure", { cause: new Error("transport cause") }); },
+      }; } } as never });
+    await assert.rejects(runner.handle("/claude/status", { ordinal: 0 }, {
+      actions: ["model.claude_review"], modelProvider: "claude", model: "claude-opus-5",
+      reasoning: "high", attemptId: "attempt",
+    } as never, "capability", "https://service/capabilities"), (error: any) => {
+      assert.equal(error.cause.message, "Original sandbox failure");
+      assert.equal(error.cause.cause.message, "transport cause");
+      assert.match(JSON.stringify(error.errors), /R2 write unavailable/);
+      return true;
+    });
+    assert.equal((await store.invocation("attempt"))?.state, "running");
   } finally { db.close(); }
 });

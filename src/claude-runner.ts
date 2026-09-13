@@ -60,11 +60,20 @@ export class ClaudeRunner {
         if (secret) diagnostic = diagnostic.split(JSON.stringify(secret).slice(1, -1)).join("[REDACTED]");
       }
       recordCaughtError(JSON.parse(diagnostic), `src/claude-runner.ts:handle:${operation}`);
-      const safe = error instanceof ClaudeReviewError ? error : new ClaudeReviewError("review_failure");
-      await this.dependencies.store.fail(claims.attemptId, safe.causeCode, safe.retryNotBefore);
-      await this.dependencies.db.prepare("UPDATE agent_attempts SET result_detail = ? WHERE attempt_id = ? AND state = 'running'")
-        .bind(safe.causeCode, claims.attemptId).run();
-      return response({ error: safe.causeCode, retryNotBefore: safe.retryNotBefore }, 409);
+      const safe = error instanceof ClaudeReviewError ? error : new ClaudeReviewError("review_failure", null, { cause: error });
+      let errorId: string;
+      try {
+        errorId = await this.dependencies.store.saveDiagnostic(claims.attemptId, `claude:${operation}`, JSON.parse(diagnostic));
+        await this.dependencies.store.fail(claims.attemptId, safe.causeCode, safe.retryNotBefore);
+        await this.dependencies.db.prepare("UPDATE agent_attempts SET result_detail = ? WHERE attempt_id = ? AND state = 'running'")
+          .bind(safe.causeCode, claims.attemptId).run();
+      } catch (storageError) {
+        // Never let a failed diagnostic/state write replace the provider failure.
+        throw new AggregateError([JSON.parse(diagnostic), redactClaudeDiagnostic(storageError,
+          [this.dependencies.token, this.dependencies.signingKey, token])],
+          "Could not persist Claude review failure", { cause: JSON.parse(diagnostic) });
+      }
+      return response({ error: safe.causeCode, retryNotBefore: safe.retryNotBefore, errorId }, 409);
     }
   }
 
@@ -122,7 +131,9 @@ export class ClaudeRunner {
     } else {
       await sandbox.writeFile(`${path}.tmp`, request);
       const rename = await sandbox.exec(["mv", `${path}.tmp`, path]);
-      if ((await rename.waitForExit()).code !== 0) throw new ClaudeReviewError("review_failure");
+      const output = await rename.output({ encoding: "utf8" });
+      if (output.exitCode !== 0 || output.truncated || output.timedOut) throw Object.assign(
+        new Error("Could not publish Claude request file"), { operation: "request rename", path, ...output });
     }
     return response({ state: "running", ordinal: turn.ordinal }, 202);
   }
@@ -138,6 +149,10 @@ export class ClaudeRunner {
     const invocation = await store.invocation(attempt.attempt_id);
     if (!invocation) throw new ClaudeReviewError("review_failure");
     if (invocation.state === "claimed") return response({ state: "starting" }, 202);
+    if (invocation.state === "failed") return response({
+      error: invocation.safe_cause ?? "review_failure", retryNotBefore: invocation.retry_not_before,
+      errorId: await store.failureReference(attempt.attempt_id),
+    }, 409);
     if (invocation.state !== "finished") this.assertRunning(invocation);
     const turn = await store.turn(attempt.attempt_id, Number(body.ordinal));
     if (!turn && body.ordinal === 0 && invocation.state === "running") return response({ state: "starting" }, 202);
@@ -145,8 +160,13 @@ export class ClaudeRunner {
     const saved = await store.receipt(turn);
     if (saved) return response({ receipt: saved });
     const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: true, tier: await this.tier(attempt) });
-    if ((await sandbox.exists("/deos/claude/failure.json")).exists) {
-      const failure = record(JSON.parse((await sandbox.readFile("/deos/claude/failure.json")).content));
+    const throwFailure = async () => {
+      if (!(await sandbox.exists("/deos/claude/failure.json")).exists) return;
+      const content = (await sandbox.readFile("/deos/claude/failure.json")).content;
+      let failure;
+      try { failure = record(JSON.parse(content)); }
+      catch (cause) { throw Object.assign(new Error("Claude failure file is invalid", { cause }),
+        { path: "/deos/claude/failure.json", content }); }
       const stage = ["configuration", "client_start", "provider_turn", "receipt_validation", "receipt_write"].includes(String(failure.diagnosticStage))
         ? failure.diagnosticStage : "unknown";
       const facts = record(failure.diagnosticFacts ?? {});
@@ -163,11 +183,16 @@ export class ClaudeRunner {
         ? failure.cause as "auth_failure" | "plan_limit" : "review_failure",
         typeof failure.retryNotBefore === "string" && Number.isFinite(Date.parse(failure.retryNotBefore)) ? failure.retryNotBefore : null,
         { cause: diagnostic.originalError }), { diagnostic });
-    }
+    };
+    await throwFailure();
     const path = `/deos/claude/result-${turn.ordinal}.json`;
     if (!(await sandbox.exists(path)).exists) {
       const process = invocation.process_id ? await sandbox.getProcess(invocation.process_id) : null;
       if (!process || (await process.status()).state !== "running") {
+        // The process may have written its terminal file AFTER the first check.
+        // Once stopped, read again before deciding that its evidence is missing.
+        await throwFailure();
+        if ((await sandbox.exists(path)).exists) return this.status(body, attempt);
         const output = process ? await process.output({ encoding: "utf8" }) : null;
         // A failed failure.json write leaves the complete, redacted error on stderr.
         // Collect that fallback before the invocation can be cleaned up.
@@ -264,13 +289,44 @@ export class ClaudeRunner {
       const attempt = await this.dependencies.db.prepare("SELECT * FROM agent_attempts WHERE attempt_id = ?")
         .bind(attemptId).first<AgentAttemptRecord>();
       if (!attempt) throw new Error("Claude cleanup attempt is missing");
-      const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: false, tier: await this.tier(attempt) });
+      const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: true, tier: await this.tier(attempt) });
+      // getProcess does not start a container. A previous destroy may have
+      // succeeded even if its D1 update failed; do not start a replacement.
+      const process = invocation.process_id ? await sandbox.getProcess(invocation.process_id) : null;
+      let capabilityToken: string | undefined;
+      if ((process || !invocation.process_id) && (await sandbox.exists("/deos/claude/config.json")).exists) {
+        const config = JSON.parse((await sandbox.readFile("/deos/claude/config.json")).content);
+        capabilityToken = config.capabilityToken;
+      }
+      // Even an earlier status poll can miss a file written during process exit.
+      // Freeze the runner, then durably preserve all terminal evidence first.
+      if (process && (await process.status()).state === "running") {
+        await process.kill(15);
+        await process.waitForExit({ timeout: 10_000 });
+      }
+      const output = process ? await process.output({ encoding: "utf8" }) : null;
+      const files: Record<string, string> = {};
+      for (const name of ["failure.json", "broker-failure.json", "process-failure.json", "process-stderr.txt"]) {
+        const path = `/deos/claude/${name}`;
+        if ((process || !invocation.process_id) && (await sandbox.exists(path)).exists) files[name] = (await sandbox.readFile(path)).content;
+      }
+      if (invocation.state === "failed" || Object.keys(files).length || output?.stderr || output?.truncated || output?.timedOut) {
+        await this.dependencies.store.saveDiagnostic(attemptId, "claude:before-cleanup",
+          redactClaudeDiagnostic({ message: "Claude runner evidence before cleanup", processId: invocation.process_id,
+            output, files }, [this.dependencies.token, this.dependencies.signingKey, capabilityToken]) as Record<string, unknown>);
+      }
+      if (output?.truncated || output?.timedOut) throw new Error("Claude diagnostic output is incomplete; runner retained");
       await sandbox.setKeepAlive(false);
       await sandbox.destroy();
       await this.dependencies.store.cleanup(attemptId, "destroyed");
-    } catch {
-      await this.dependencies.store.cleanup(attemptId, "failed");
-      throw new ClaudeReviewError("review_failure");
+    } catch (error) {
+      const diagnostic = redactClaudeDiagnostic(error, [this.dependencies.token, this.dependencies.signingKey]);
+      recordCaughtError(diagnostic, "claude:cleanup");
+      try { await this.dependencies.store.cleanup(attemptId, "failed"); }
+      catch (stateError) { throw new AggregateError([diagnostic,
+        redactClaudeDiagnostic(stateError, [this.dependencies.token, this.dependencies.signingKey])],
+        "Claude cleanup and state update failed", { cause: diagnostic }); }
+      throw new ClaudeReviewError("review_failure", null, { cause: diagnostic });
     }
   }
 

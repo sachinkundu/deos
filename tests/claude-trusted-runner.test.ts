@@ -7,7 +7,7 @@ for (const status of ["401", "403"] as const) {
     const { failure, processError, expectedMessage, expectedStderr } = await runClaudeFailure(status);
     assert.equal(processError.code, 1);
     assert.equal(processError.stdout, "");
-    assert.equal(processError.stderr, "");
+    assert.deepEqual(JSON.parse(processError.stderr), failure);
     assert.equal(failure.cause, "auth_failure");
     assert.equal(failure.providerStatus, Number(status));
     assert.equal(failure.providerMessage, expectedMessage);
@@ -49,7 +49,7 @@ test("trusted process retains broker failure causes", async () => {
 test("failure-file write errors retain both failures and redact fallback diagnostics", async () => {
   const { processError, expectedMessage } = await runClaudeFailure("storage");
   assert.equal(processError.code, 1);
-  const diagnostic = JSON.parse(processError.stderr);
+  const diagnostic = JSON.parse(processError.stderr.trim().split("\n").at(-1)!);
   assert.equal(diagnostic.failure.providerMessage, expectedMessage);
   assert.equal(diagnostic.failure.providerStatus, 403);
   assert.equal(diagnostic.storageError.code, "EISDIR");

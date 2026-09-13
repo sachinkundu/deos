@@ -28,6 +28,33 @@ export class ClaudeReviewStore {
   private readonly bucket: R2Bucket;
   constructor(db: D1Database, bucket: R2Bucket) { this.db = db; this.bucket = bucket; }
 
+  async failureReference(attemptId: string): Promise<string | null> {
+    const row = await this.db.prepare(`SELECT error_id FROM workflow_errors
+      WHERE step_name = ? AND location != 'claude:before-cleanup' ORDER BY occurred_at, rowid LIMIT 1`)
+      .bind(`claude:${attemptId}`).first<{ error_id: string }>();
+    return row?.error_id ?? null;
+  }
+
+  /** Commit diagnostics before changing failure state or destroying the runner. */
+  async saveDiagnostic(attemptId: string, location: string, diagnostic: Record<string, unknown>): Promise<string> {
+    const attempt = await this.db.prepare("SELECT run_id, node_id, visit_sequence FROM agent_attempts WHERE attempt_id = ?")
+      .bind(attemptId).first<{ run_id: string; node_id: string; visit_sequence: number }>();
+    if (!attempt) throw new Error(`Cannot save Claude diagnostic: attempt ${attemptId} is missing`);
+    const body = JSON.stringify(diagnostic);
+    const id = crypto.randomUUID();
+    const key = `original-errors/${encodeURIComponent(attempt.run_id)}/${id}.json`;
+    await this.bucket.put(key, body, { httpMetadata: { contentType: "application/json" } });
+    const saved = await this.bucket.get(key);
+    if (!saved || await saved.text() !== body) throw new Error(`Claude diagnostic readback failed: ${key}`);
+    const details = diagnostic.diagnostic as { providerMessage?: string } | undefined;
+    await this.db.prepare(`INSERT INTO workflow_errors
+      (error_id, run_id, node_id, visit_sequence, step_name, location, message, detail_r2_key, occurred_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(id, attempt.run_id, attempt.node_id, attempt.visit_sequence, `claude:${attemptId}`,
+        location, details?.providerMessage ?? String(diagnostic.message ?? location), key, new Date().toISOString()).run();
+    return id;
+  }
+
   async saveCollection(attemptId: string, jobDigest: string, collection: ArtifactCollectionResult): Promise<void> {
     const body = JSON.stringify(collection);
     await this.db.prepare(`INSERT OR IGNORE INTO claude_review_collections
