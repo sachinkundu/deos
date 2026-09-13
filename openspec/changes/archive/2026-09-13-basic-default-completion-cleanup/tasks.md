@@ -8,6 +8,6 @@
 ## 2. Validation and release
 
 - [x] 2.1 Cover authentication, stale attempts, duplicates, early hints, lost hints, and preserved failure outcomes with focused tests.
-- [ ] 2.2 Run the repository checks and strict OpenSpec validation; publish a review-ready PR and address review findings.
-- [ ] 2.3 Release the backend and Basic ingress; verify active versions and a real provider run with durable cleanup evidence.
-- [ ] 2.4 Reconcile the checklist and archive the change after the release proof passes.
+- [x] 2.2 Run the repository checks and strict OpenSpec validation; publish a review-ready PR and address review findings.
+- [x] 2.3 Release the backend and Basic ingress; verify active versions and a real provider run with durable cleanup evidence.
+- [x] 2.4 Reconcile the checklist and archive the change after the release proof passes.
