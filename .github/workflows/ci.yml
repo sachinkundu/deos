@@ -68,6 +68,12 @@ jobs:
           npm run portal:test
           npm run portal:typecheck
 
+      - name: Install Chromium for portal release regression
+        run: npx playwright install --with-deps chromium
+
+      - name: Check portal release session isolation
+        run: node scripts/check-portal-session-isolation.test.mjs
+
       - name: Build portal entries
         run: |
           npm run portal:build:full-workflow

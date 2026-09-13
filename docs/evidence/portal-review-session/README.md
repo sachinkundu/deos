@@ -4,6 +4,6 @@ The local browser smoke check passed against live staging on 2026-09-12. It exer
 
 ![Live staging sidebar after the check](recent-issues.png)
 
-Run the synthetic cookie regression with `node scripts/check-portal-session-isolation.test.mjs`. It reproduces a service response replacing the reviewer cookie in a shared context, then verifies that separate contexts retain reviewer API and browser access.
+CI installs Chromium and runs the synthetic cookie regression on pushes and pull requests. Run it locally with `node scripts/check-portal-session-isolation.test.mjs`. It reproduces a service response replacing the reviewer cookie in a shared context, then verifies that the context factory used by the release check retains reviewer API and browser access.
 
 The complete CI check must run after merge. Diagnostic run 34706172501 was rejected before executing because staging permits only main. Temporary reviewer secrets were removed after the attempt.

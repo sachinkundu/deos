@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { chromium } from '@playwright/test';
+import { createPortalCheckContexts } from './portal-check-contexts.mjs';
 
 const server = createServer((req, res) => {
   if (req.url === '/api/version') {
@@ -15,8 +16,7 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const host = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch();
 try {
-  const reviewer = await browser.newContext();
-  const service = await browser.newContext();
+  const { reviewer, service } = await createPortalCheckContexts(browser);
   const login = () => reviewer.addCookies([{ name: 'CF_Authorization', value: 'reviewer', url: host }]);
   await login();
   assert.equal((await reviewer.request.get(host + '/api/recent-issues')).status(), 200);
