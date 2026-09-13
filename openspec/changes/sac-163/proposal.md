@@ -4,7 +4,7 @@ Design work can expose a flaw in an approved plan. The design author can now cha
 
 ## What Changes
 
-- Let a design author change the proposal, delta specs, and design in one design pull request when the author finds a plan flaw or a person asks for the change.
+- Have the design author first make only the design. If a person asks for plan changes during design review, let the author update the proposal, delta specs, and design in the same design pull request.
 - Check the full plan and design as one candidate. Reject missing plan files, invalid specs, or edits outside the allowed change files.
 - Keep this work in the Design phase and on the same design pull request. Do not send it back through the Planning phase.
 - Show the exact plan changes beside the last approved plan. When a design check is due, check the design against the changed plan. For a later human edit with no new check, show that old proof is stale.
