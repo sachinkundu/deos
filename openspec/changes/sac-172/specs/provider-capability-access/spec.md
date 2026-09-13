@@ -33,26 +33,26 @@ The service user MUST NOT count as the allowed human account. It MUST NOT approv
 
 ### Requirement: Reconcile implementation provider effects
 
-Each host act SHALL use a stable key for its own goal. The pull request identity SHALL stay fixed for the run. Each pull request update SHALL use the run, patch digest, and update kind. A question key SHALL use the run and block. A review reply key SHALL use the run, root note, and reply goal.
+Each provider act SHALL have one logical result. The pull request identity SHALL stay fixed for the run. A retry MUST NOT create a second pull request update or a second question for the same goal.
 
-A browser or test tool key SHALL also use the attempt and tool kind. A retry of the same act SHALL reuse its key and read the host first. A fresh attempt SHALL use a new key and fresh browser and test tools. DEOS MUST NOT make two effects for one key or reuse an old attempt tool.
+A fresh attempt SHALL use fresh browser and test tools. It MUST NOT reuse an old attempt tool. Runs MUST NOT share provider effects. An unclear retry MUST NOT leave two browser or test resources for one attempt.
 
 #### Scenario: Pull request response is lost
 
 - **WHEN** the host may have saved a pull request update but its reply is lost.
-- **THEN** the trusted tool reads the run branch and pull request before a retry.
+- **THEN** a retry keeps the same pull request and does not add a second update for the same work.
 
 #### Scenario: Clarification question is retried
 
 - **WHEN** posting the open question has an unclear result.
-- **THEN** DEOS reads the Linear issue and keeps one question for that run and block.
+- **THEN** DEOS keeps one open question for that run and block.
 
 #### Scenario: Old browser session remains
 
 - **WHEN** a fresh try starts while an old browser or test tool is still live.
-- **THEN** DEOS uses a new attempt key, bars reuse of the old tool, and saves clean-up work.
+- **THEN** DEOS bars reuse of the old tool and gives the fresh try new browser and test tools.
 
 #### Scenario: Browser create call is retried
 
 - **WHEN** one try gets no clear reply to its browser create call.
-- **THEN** DEOS reads the host with the same action key and does not make a second browser for that try.
+- **THEN** DEOS resolves the unclear result without leaving a second browser for that try.
