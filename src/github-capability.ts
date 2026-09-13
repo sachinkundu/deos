@@ -18,6 +18,7 @@ export interface GitHubWorkProductReceipt {
 }
 
 export interface GitHubPlanningWorkProductRequest {
+  deferChangedReviewFeedback?: boolean;
   repository: string;
   branch: string;
   baseBranch: "main";
@@ -31,6 +32,7 @@ export interface GitHubPlanningWorkProductRequest {
 }
 
 export interface GitHubPlanningWorkProductReceipt {
+  deferredReviewFeedback?: boolean;
   pullRequestDatabaseId: string;
   pullRequestNumber: number;
   pullRequestUrl: string;
@@ -872,14 +874,44 @@ export class GitHubCapabilityAdapter {
       const pull = this.parsePull(raw);
       return { value: pull, actual: { ...pull, title: raw.title, body: raw.body } };
     }, this.pause);
-    const reviewReplies = await this.replyToReviewThreads(
-      token,
-      input.repository,
-      confirmed.number,
-      input.reviewReplies,
-      operationId,
-    );
+    let reviewReplies: { ids: readonly number[]; reconciled: boolean };
+    let deferredReviewFeedback = false;
+    try {
+      reviewReplies = await this.replyToReviewThreads(
+        token, input.repository, confirmed.number, input.reviewReplies, operationId,
+      );
+    } catch (error) {
+      recordCaughtError(error, "planning review feedback at publication");
+      if (!input.deferChangedReviewFeedback || !(error instanceof Error) || ![
+        "GitHub review reply manifest is incomplete",
+        "GitHub review reply thread snapshot changed",
+      ].includes(error.message)) throw error;
+      // Publication succeeded. Keep the unresolved feedback visible at the human gate.
+      // Do not invent an author response or retry an unchanged manifest forever.
+      const notice = `${input.body}\n\n## Feedback still needs review\n\nSome review feedback is not covered by this revision. The plan is published for Human Review; the existing comments remain open for the next revision. No new comment is needed.\n\n[Review the feedback](${confirmed.url}/files)\n`;
+      try {
+        await this.json(token, `/repos/${input.repository}/pulls/${confirmed.number}`, {
+          method: "PATCH", body: { title: input.title, body: notice },
+        });
+      } catch (noticeError) {
+        recordCaughtError(noticeError, "planning deferred feedback notice");
+        const after = await this.json(token, `/repos/${input.repository}/pulls/${confirmed.number}`) as { body?: unknown };
+        if (after.body !== notice) throw new AggregateError([error, noticeError],
+          "GitHub deferred feedback notice is ambiguous", { cause: error });
+      }
+      await confirmGitHubReadback({
+        message: "GitHub deferred feedback notice read-back mismatch",
+        repository: input.repository, operationId, phase: "planning-deferred-feedback",
+      }, { body: notice, headSha, state: "open" }, async () => {
+        const raw = await this.json(token, `/repos/${input.repository}/pulls/${confirmed.number}`) as Record<string, unknown>;
+        const pull = this.parsePull(raw);
+        return { value: pull, actual: { body: raw.body, headSha: pull.headSha, state: pull.state } };
+      }, this.pause);
+      deferredReviewFeedback = true;
+      reviewReplies = { ids: [], reconciled: true };
+    }
     return {
+      ...(deferredReviewFeedback ? { deferredReviewFeedback: true } : {}),
       pullRequestDatabaseId: confirmed.databaseId,
       pullRequestNumber: confirmed.number,
       pullRequestUrl: confirmed.url,

@@ -332,6 +332,7 @@ export class SystemActionController {
     ].join("\n");
     try {
       const receipt = await dependencies.github.publishPlanning({
+        deferChangedReviewFeedback: true,
         repository: workProduct.repository,
         branch: workProduct.remote_branch,
         baseBranch: "main",
@@ -352,7 +353,7 @@ export class SystemActionController {
           expected: operation.state,
           state,
           providerResourceId: receipt.pullRequestDatabaseId,
-          safeErrorCategory: null,
+          safeErrorCategory: receipt.deferredReviewFeedback ? "planning_review_feedback_deferred" : null,
           now: this.now().toISOString(),
         });
         if (!finished) throw new Error("trusted planning publication receipt compare-and-set failed");

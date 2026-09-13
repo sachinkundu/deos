@@ -303,6 +303,17 @@ test("GitHub planning adapter replaces one scoped manifest on one ready pull req
     files: revisedFiles,
     reviewReplies: [{ commentId: 102, body: "Added support for five as well as 5." }],
   }, "operation-spoof"), /review reply manifest is incomplete/);
+  const deferred = await adapter.publishPlanning({
+    repository: "sachinkundu/deos", branch: branchName, baseBranch: "main",
+    change: "sac-200", title: "SAC-200: OpenSpec plan", body: "revised body",
+    files: revisedFiles, reviewReplies: [], deferChangedReviewFeedback: true,
+  }, "operation-late-feedback");
+  assert.equal(deferred.deferredReviewFeedback, true);
+  assert.equal(deferred.pullRequestNumber, 54);
+  assert.deepEqual(deferred.reviewReplyIds, []);
+  assert.match(pull!.body, /Feedback still needs review/);
+  assert.match(pull!.body, /No new comment is needed/);
+  assert.equal(calls.filter((call) => call.method === "POST" && call.path.endsWith("/replies")).length, 0);
   const revised = await adapter.publishPlanning({
     repository: "sachinkundu/deos",
     branch: branchName,
