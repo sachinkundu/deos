@@ -348,3 +348,54 @@ test("a new verification visit adopts an intact receipt saved before operation c
     ["failed", "reconciled"],
   );
 });
+
+
+test("late planning feedback records a published receipt and completes toward Human Review", async () => {
+  const operations = new OperationStore();
+  const planning = new PlanningStore();
+  let publications = 0;
+  let writes = 0;
+  const controller = new SystemActionController(operations, {
+    now: () => NOW,
+    planningStore: Object.assign(planning, {
+      recordPublication: async (input: { headSha: string; operationId: string }) => {
+        writes += 1;
+        planning.record.head_sha = input.headSha;
+        planning.record.latest_publication_operation_id = input.operationId;
+        return planning.record;
+      },
+    }),
+    issueContext: async () => ({ identifier: "SAC-200", url: "https://linear.app/test/SAC-200" }),
+    planningCandidate: async () => ({
+      candidateId: "candidate", candidateDigest: manifestDigest, change: "sac-200",
+      files: [".openspec.yaml", "proposal.md", "specs/test/spec.md"].map(path => ({
+        path: `openspec/changes/sac-200/${path}`, content: "content", sha256: manifestDigest, byteSize: 7,
+      })),
+      reviewReplies: [], reviewDispositions: [], reviewContextId: null,
+    }),
+    github: {
+      mergePlanning: async () => { throw new Error("must not merge"); },
+      readPullRequest: async () => { throw new Error("unexpected read"); },
+      verifyCommitOnBranch: async () => { throw new Error("unexpected verification"); },
+      readFileAtRef: async () => { throw new Error("unexpected file read"); },
+      publishPlanning: async input => {
+        assert.equal(input.deferChangedReviewFeedback, true);
+        publications += 1;
+        return { pullRequestDatabaseId: "9001", pullRequestNumber: 54,
+          pullRequestUrl: "https://github.com/sachinkundu/deos/pull/54",
+          headSha: "b".repeat(40), branch: planning.record.remote_branch,
+          reviewReplyIds: [], reconciled: true, deferredReviewFeedback: true };
+      },
+    },
+  });
+  for (let replay = 0; replay < 2; replay += 1) {
+    const outcome = await controller.execute(run, "publish_planning_revision", "github.publish_planning_candidate");
+    assert.equal(outcome.outcome, "completed");
+  }
+  assert.equal(publications, 1);
+  assert.equal(writes, 1);
+  const saved = [...operations.operations.values()][0];
+  assert.equal(saved.state, "reconciled");
+  assert.equal(saved.safe_error_category, "planning_review_feedback_deferred");
+  assert.equal(planning.record.head_sha, "b".repeat(40));
+});

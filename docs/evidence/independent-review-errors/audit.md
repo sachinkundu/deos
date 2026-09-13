@@ -37,3 +37,35 @@ The saved error has exit code 1 and empty output. The error-loss race is
 reproduced, but the original provider message for that historical invocation
 has not been recovered. An offline run of the old deployed image reached its
 provider wait and timed out, so it did not establish SAC-172's provider cause.
+
+
+## Live recovery on 2026-09-13 (SAC-181)
+
+Worker `d5829f3d-8293-43a8-ab93-f297fbe1847a` was read back at 100% traffic.
+Both Sandbox classes completed rollout to image
+`sha256:c52ee12e7c297049a5da3b09bf436b6e4492ee31ea0ca11be87fdf433e9228bf`.
+The individual application readbacks showed four healthy instances each.
+The list endpoint briefly returned an older image after rollout, so the individual
+application and completed rollout were checked before starting SAC-172.
+
+SAC-163 had failed again at 11:20:32 UTC on the old runtime. The authorized
+publication retry at 11:26:55 UTC reused its saved candidate and existing PR #128.
+Publication reconciled at 11:27:05 UTC with category
+`planning_review_feedback_deferred`. The workflow reached `awaiting_human` /
+`planning_review`, and Linear returned to Human Review at 11:27:06 UTC.
+The PR body explicitly states that some feedback is not covered by this revision;
+it keeps the existing comments available and does not invent a reply or claim
+that no new feedback exists. This uses the user-requested Human Review fallback,
+not an unbounded author loop. A later revision reads current GitHub feedback,
+so no dummy comment is required.
+
+SAC-172's authorized same-definition retry started at 11:27:16 UTC. Its new
+independent-review attempt `01a09a85-8c7d-755e-b893-199861bf75c9` completed with
+`result_class=pass` at 11:32:07 UTC. Both real Claude response receipts were saved,
+and cleanup is `destroyed`. The workflow then allocated a fresh
+`planning_independent_response` attempt. The original failed attempt and all
+prior errors remain intact. The historical provider exit cause remains unknown;
+this live pass proves recovery, not a reconstructed cause for the old exit.
+
+No new PR was opened for this follow-up. The existing PR carries the tested
+changes and this evidence. No planning/design approval or merge gate was crossed.
