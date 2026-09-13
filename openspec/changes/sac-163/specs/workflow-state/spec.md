@@ -6,6 +6,8 @@ Each design gate visit SHALL bind one pull request and its exact head. It SHALL 
 
 Only an allowed person may make the merge choice for that gate visit. That choice SHALL cover the changed plan and design. An author, review, comment, check, or old choice MUST NOT approve the merge.
 
+The workflow MUST NOT give the design author direct GitHub or Linear write access. It MUST NOT give the author provider write credentials. The trusted service SHALL handle any provider write after it accepts the checked candidate.
+
 #### Scenario: A changed plan reaches the design gate
 
 - **WHEN** a checked design candidate differs from the last approved proposal or delta specs.
@@ -15,6 +17,12 @@ Only an allowed person may make the merge choice for that gate visit. That choic
 
 - **WHEN** an agent or provider event cites the earlier plan approval for changed work.
 - **THEN** the workflow keeps the design gate open and waits for a fresh choice.
+
+#### Scenario: The design author returns a candidate
+
+- **WHEN** the design author returns plan and design files.
+- **THEN** the author has no direct provider write access or provider write credentials.
+- **AND** the trusted service handles any allowed GitHub or Linear write.
 
 #### Scenario: The candidate head changes
 
