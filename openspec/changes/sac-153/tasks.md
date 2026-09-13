@@ -12,5 +12,5 @@
 
 - [x] 3.1 Test defaults, persistence, tab sync, failures, snapshot promotion, and navigation races.
 - [x] 3.2 Verify browser behavior and browser isolation with request checks and screenshots.
-- [ ] 3.3 Run portal tests, type checking, build, and OpenSpec validation; publish the implementation PR with evidence.
+- [x] 3.3 Run portal tests, type checking, build, and OpenSpec validation; publish the implementation PR with evidence.
 - [ ] 3.4 After release authorization, deploy the portal, verify its active version at 100 percent traffic, and capture authenticated live proof.
