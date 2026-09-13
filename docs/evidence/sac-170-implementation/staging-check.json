@@ -1,0 +1,14 @@
+{
+  "sourceSha": "906103f1488a302d5dc6087213fcec143cc01bb9",
+  "passed": true,
+  "issueCount": 10,
+  "checks": [
+    "order",
+    "repeat",
+    "trim",
+    "reload",
+    "ineligible",
+    "stable-id-navigation",
+    "unchanged-run-state"
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "phase": "planning",
+  "status": "active",
+  "initialDigest": "6a83ab7eaf0ee20a9a47484d44d1f662d04f8bc547a35105d4cea6ce15e59cdf",
+  "currentDigest": "25b62b28259b489ddac938e8eb510bf885de9f414ca0e7bf2edf3aa43a1da9c3",
+  "publicationDigest": "25b62b28259b489ddac938e8eb510bf885de9f414ca0e7bf2edf3aa43a1da9c3",
+  "repair": {
+    "started": true,
+    "outcome": "checked"
+  },
+  "openIds": [],
+  "reviewedHead": "a600db09b4f7730f1f50a2e8d41376509df7ebaf",
+  "currentHead": "b7eb1d140b5228131d01bbf3b1b66918f7fa9f94",
+  "response": {
+    "invalidCount": 0,
+    "result": [
+      {
+        "id": "directional-proposal-only-10-notes-app-requirement-73",
+        "disposition": "applied",
+        "response": "The proposal now says the behavior spec defines the test cases. The delete requirement already has both success and failure cases, so the link is clear."
+      },
+      {
+        "id": "proposal-coverage-10",
+        "disposition": "applied",
+        "response": "The proposal now promises test cases in the behavior spec, not an unstated test suite. The current scenarios cover each named case."
+      },
+      {
+        "id": "proposal-coverage-11",
+        "disposition": "no_change",
+        "response": "Saved review evidence is an outcome of the managed review flow, not notes app behavior. The proposal already records this check, and a notes app requirement would add the wrong scope."
+      },
+      {
+        "id": "proposal-coverage-12",
+        "disposition": "no_change",
+        "response": "Readable review data and portal log links are checks for the managed review flow. They are already stated in the proposal and do not belong in the notes app capability."
+      },
+      {
+        "id": "unstated-error-disclosure-rule",
+        "disposition": "applied",
+        "response": "The proposal now states that errors are safe and must not show stack traces, query text, or secret data."
+      },
+      {
+        "id": "unstated-note-length-bound",
+        "disposition": "applied",
+        "response": "The proposal now states the 500-character note limit, so the approved plan and the behavior rule match."
+      }
+    ]
+  },
+  "revision": 4,
+  "stateSha256": "46e8f43679a50d0ae10d1105fdea3e83e432227d1a317916b91ec66ef4fa2ec3",
+  "discovery": {
+    "status": "accepted",
+    "invocations": [
+      {
+        "id": "01a099fa-9da8-7d53-8af5-7739e2580af3",
+        "inputDigest": "6a83ab7eaf0ee20a9a47484d44d1f662d04f8bc547a35105d4cea6ce15e59cdf",
+        "status": "accepted"
+      }
+    ],
+    "findingIds": [
+      "missing-review-flow-acceptance"
+    ]
+  },
+  "recheck": {
+    "status": "accepted",
+    "invocations": [
+      {
+        "id": "01a099fd-ea3c-7502-a4dd-5bf15984707f",
+        "inputDigest": "25b62b28259b489ddac938e8eb510bf885de9f414ca0e7bf2edf3aa43a1da9c3",
+        "status": "accepted"
+      }
+    ],
+    "result": {
+      "ratings": {
+        "missing-review-flow-acceptance": "fixed"
+      },
+      "violations": [],
+      "sources": [],
+      "searchDisposition": "not_searched"
+    }
+  },
+  "independent": {
+    "attemptId": "01a09a02-9a85-7d76-84a1-d8a4bdb257e8",
+    "invalidCount": 0,
+    "findingIds": [
+      "directional-proposal-only-10-notes-app-requirement-73",
+      "proposal-coverage-10",
+      "proposal-coverage-11",
+      "proposal-coverage-12",
+      "unstated-error-disclosure-rule",
+      "unstated-note-length-bound"
+    ]
+  }
+}
