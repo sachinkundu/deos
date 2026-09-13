@@ -108,6 +108,18 @@ test("collector validates and writes immutable checksum-verified artifacts", asy
   assert.equal(objects.values.size, 3);
 });
 
+test("successful collection retains notification diagnostics without changing the result", async () => {
+  const { collector, reader, objects } = setup();
+  const diagnostic = '{"message":"wake failed","detail":"Error: transport reset; cause: closed socket"}\n';
+  reader.files.set("/deos/output/original-errors.jsonl", new TextEncoder().encode(diagnostic));
+  const result = await collector.collect(input);
+  assert.equal(result.result.outcome, "completed");
+  assert.equal(result.objectCount, 3);
+  const stored = [...objects.values].find(([key]) => key.endsWith("/original-errors.jsonl"));
+  assert.equal(new TextDecoder().decode(stored?.[1].content), diagnostic);
+  await collector.verifyDurable(result);
+});
+
 test("collector parses mechanically captured successful provider receipts", async () => {
   const { collector, reader } = setup();
   reader.files.set(

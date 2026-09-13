@@ -348,7 +348,14 @@ export class ArtifactCollector {
       let totalBytes = 0;
       let result: Readonly<Record<string, unknown>> | null = null;
       let providerReceipts: readonly ProviderReceiptReference[] = [];
-      for (const logicalName of input.requiredFiles) {
+      const files = [...input.requiredFiles];
+      // Wake-up failures do not change the work result, but their diagnostics
+      // must survive successful cleanup just as they survive failed attempts.
+      if (!files.includes("original-errors.jsonl") &&
+          await this.reader.exists(`${input.outputRoot}/original-errors.jsonl`)) {
+        files.push("original-errors.jsonl");
+      }
+      for (const logicalName of files) {
         if (logicalName.includes("/") || logicalName.includes("..")) {
           throw new Error("artifact logical names must be plain filenames");
         }
