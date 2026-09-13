@@ -408,3 +408,113 @@ rtk proxy docker start -a deos-semantic-verification
   "originalResponseRetained": true
 }
 ```
+
+```bash
+rtk proxy python3 docs/evidence/independent-review-errors/capture-recovery-readback.py --env-file /Users/sachin/code/deos/.env --attempt-id 01a09b0d-f9b6-78da-9848-06a9ae3023cb
+```
+
+```output
+{
+  "run": {
+    "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:ec27e96b-1a1a-4f38-a4d1-070258a45ec0:run:1",
+    "status": "active",
+    "current_node": "design_author",
+    "current_visit_sequence": 19,
+    "updated_at": "2026-09-13T14:16:26.638Z"
+  },
+  "attempts": [
+    {
+      "attempt_id": "01a09b0d-f9b6-78da-9848-06a9ae3023cb",
+      "node_id": "design_author",
+      "state": "failed",
+      "result_class": "collection_failed",
+      "cleanup_state": "destroyed",
+      "manifest_id": "manifest:01a09b0d-f9b6-78da-9848-06a9ae3023cb:failure",
+      "started_at": "2026-09-13T13:56:19.672Z",
+      "updated_at": "2026-09-13T14:14:53.223Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "logical_name": "review-progress.json",
+      "byte_size": 950984,
+      "sha256": "652d5e2075e67701f77453033531b9bea4715a50184c2a419de01987d8b7000c",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Aec27e96b-1a1a-4f38-a4d1-070258a45ec0%3Arun%3A1/attempts/01a09b0d-f9b6-78da-9848-06a9ae3023cb/failure-artifacts/review-progress.json",
+      "readBackVerified": true
+    },
+    {
+      "logical_name": "supervisor-stderr.txt",
+      "byte_size": 1415,
+      "sha256": "2c89e1ba9010e90aa4df497d9ecb68c676e5112865470dbfee7c81937990e02d",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Aec27e96b-1a1a-4f38-a4d1-070258a45ec0%3Arun%3A1/attempts/01a09b0d-f9b6-78da-9848-06a9ae3023cb/failure-artifacts/supervisor-stderr.txt",
+      "readBackVerified": true
+    },
+    {
+      "logical_name": "transcript.jsonl",
+      "byte_size": 19626,
+      "sha256": "b9083325124d790e862bd0b787bfcb5104c1254d851a89749406dbaf9812cdf9",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Aec27e96b-1a1a-4f38-a4d1-070258a45ec0%3Arun%3A1/attempts/01a09b0d-f9b6-78da-9848-06a9ae3023cb/failure-artifacts/transcript.jsonl",
+      "readBackVerified": true
+    }
+  ],
+  "transcriptOwners": [
+    {
+      "owner_kind": "native_child_invocation",
+      "owner_id": "01a09b0e-e07b-70c1-8d93-854df0d7ce8d",
+      "byte_size": 519908,
+      "event_count": 80
+    }
+  ],
+  "deployment": {
+    "id": "7113d9b3-bb5f-4dfa-a661-9c3b3db147d8",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "sachin.kundu@pm.me",
+    "annotations": {
+      "workers/message": "Restore review continuation outputs and resume ...",
+      "workers/triggered_by": "upload"
+    },
+    "versions": [
+      {
+        "version_id": "6ad80d31-9104-4573-a0af-9db9082b0eaf",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-09-13T14:14:09.698982Z"
+  },
+  "containers": [
+    {
+      "id": "a0344373-884d-4c06-b4c2-4e58295de498",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:7112856fe0a49375eb392392fa2bf4d697a8ea0100b2a64c16d0d7f8701d2984",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 1,
+          "assigned": 0,
+          "healthy": 3,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      }
+    },
+    {
+      "id": "a03d8a75-5574-4d37-806d-8b07ed1a79c6",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:7112856fe0a49375eb392392fa2bf4d697a8ea0100b2a64c16d0d7f8701d2984",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      }
+    }
+  ]
+}
+```

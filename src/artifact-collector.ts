@@ -22,6 +22,7 @@ export interface ArtifactManifestStore {
     r2Key: string;
     now: string;
   }): Promise<void>;
+  artifactKey?(manifestId: string, logicalName: string): Promise<string | null>;
   record(input: {
     manifestId: string;
     logicalName: string;
@@ -80,6 +81,12 @@ export class D1ArtifactManifestStore implements ArtifactManifestStore {
     }
   }
 
+  async artifactKey(manifestId: string, logicalName: string): Promise<string | null> {
+    const row = await this.database.prepare("SELECT r2_key FROM artifacts WHERE manifest_id = ? AND logical_name = ?")
+      .bind(manifestId, logicalName).first<{ r2_key: string }>();
+    return row?.r2_key ?? null;
+  }
+
   async record(input: {
     manifestId: string;
     logicalName: string;
@@ -113,7 +120,7 @@ export class D1ArtifactManifestStore implements ArtifactManifestStore {
       stored?.r2_key !== input.r2Key ||
       stored.byte_size !== input.byteSize ||
       stored.sha256 !== input.sha256
-    ) throw new Error("artifact receipt mismatch");
+    ) throw new Error(`artifact receipt mismatch for ${input.manifestId}/${input.logicalName}: expected key ${input.r2Key}, bytes ${input.byteSize}, sha256 ${input.sha256}; stored ${JSON.stringify(stored)}`);
   }
 
   async complete(input: {
@@ -562,7 +569,10 @@ export class ArtifactCollector {
       }> = [];
       let totalBytes = 0;
       for (const candidate of candidates) {
-        const r2Key = `${prefix}/${candidate.logicalName}`;
+        // Normal collection may already own the root key. Keep any existing failure
+        // receipt on replay, while new failure receipts use their own namespace.
+        const r2Key = await this.manifests.artifactKey?.(manifestId, candidate.logicalName)
+          ?? `${prefix}/failure-artifacts/${candidate.logicalName}`;
         const disposition = await this.objects.putCreateOnly(
           r2Key,
           candidate.content,

@@ -8,6 +8,7 @@ from urllib.request import Request, urlopen
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--env-file", type=Path, required=True)
+parser.add_argument("--attempt-id", help="Read a specific historical attempt")
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[3]
 spec = importlib.util.spec_from_file_location("credentials", root / ".agents/skills/linear-workflow-telemetry/scripts/query_workflow_telemetry.py")
@@ -30,6 +31,11 @@ issue = "ec27e96b-1a1a-4f38-a4d1-070258a45ec0"
 run = query(f"SELECT run_id,status,current_node,current_visit_sequence,updated_at FROM orchestration_runs WHERE issue_id='{issue}'")[0]
 attempts = query(f"SELECT attempt_id,node_id,state,result_class,cleanup_state,manifest_id,started_at,updated_at FROM agent_attempts WHERE run_id='{run['run_id']}' AND node_id='design_author' ORDER BY created_at DESC LIMIT 2")
 latest = attempts[0]
+if args.attempt_id:
+    if not __import__("re").fullmatch(r"[a-f0-9-]{36}", args.attempt_id):
+        raise ValueError("invalid attempt ID")
+    latest = query(f"SELECT attempt_id,node_id,state,result_class,cleanup_state,manifest_id,started_at,updated_at FROM agent_attempts WHERE run_id='{run['run_id']}' AND attempt_id='{args.attempt_id}'")[0]
+    attempts = [latest]
 artifacts = query(f"SELECT logical_name,byte_size,sha256,r2_key FROM artifacts WHERE manifest_id='{latest['manifest_id']}' AND logical_name IN ('transcript.jsonl','review-journal.json','review-progress.json','supervisor-stderr.txt')")
 import hashlib
 for artifact in artifacts:

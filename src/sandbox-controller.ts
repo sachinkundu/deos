@@ -869,6 +869,11 @@ export class SandboxAgentController {
         const recovery = await this.dependencies.boundedReviews?.recovery(durableJob.reviewContinuation.sourceAttemptId);
         if (!recovery?.eligible || !recovery.journal) throw new Error('bounded review continuation unavailable');
         await sandbox.writeFile('/deos/run/review-continuation.json', JSON.stringify(recovery), { encoding: 'utf8' });
+        const outputs = await this.dependencies.boundedReviews!.continuationOutputs(
+          durableJob.reviewContinuation.sourceAttemptId, job.requiredOutputs);
+        for (const [name, content] of Object.entries(outputs)) {
+          await sandbox.writeFile(`/deos/output/${name}`, content, { encoding: 'utf8' });
+        }
       }
       await sandbox.writeFile("/deos/run/job.json", JSON.stringify(stagedJob), { encoding: "utf8" });
       await this.cloneRepository(sandbox, attempt, grant);

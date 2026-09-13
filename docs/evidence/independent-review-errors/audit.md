@@ -143,3 +143,32 @@ hook test runs both failed rechecks through the production state machine and
 verifies retained errors, the two-invocation bound, unavailable status and open
 findings. The built image replays the original blocked response and retains its
 full error rather than reporting invalid ratings.
+
+
+## Recovery collection and completed recheck
+
+The resumed production recheck in attempt `01a09b0d-f9b6-78da-9848-06a9ae3023cb`
+accepted all four findings as fixed. A source with no matching claim remained a
+visible warning, with the full declared source evidence retained. It did not
+discard the finding ratings.
+
+That attempt exposed a separate collection defect. The continuation restored the
+candidate and journal but omitted saved response files. Normal collection wrote
+several objects before reaching the missing `design-dispositions.json`. Failure
+collection then tried to register those same object keys under a second manifest,
+violating the database's unique object-key constraint.
+
+Continuation now restores the saved response files from verified manifests,
+following the recorded continuation chain when the immediate prior attempt lacks
+one. New failure artifacts use separate object keys. Retried legacy failure
+receipts keep their existing keys. A completed recheck resumes finalization after
+a collection failure instead of consuming another review invocation. Tests use a
+real D1 SQLite database to reproduce the collision, partial legacy receipt replay,
+verified output restoration, and finalization recovery. All 454 tests and type
+checks passed.
+
+Worker `6ad80d31-9104-4573-a0af-9db9082b0eaf` was verified at 100% traffic. The
+container image stayed at `7112856fe0a49375eb392392fa2bf4d697a8ea0100b2a64c16d0d7f8701d2984`.
+Restarting the errored workflow collected the saved evidence and completed cleanup.
+The durable recovery record selected finalization, with the recheck accepted and
+no open findings. An operator retry resumed that checkpoint.
