@@ -1,0 +1,171 @@
+{
+  "production": {
+    "deploymentId": "cef334ef-a0ed-4b00-a39e-e5e4de33dd7f",
+    "versions": [
+      {
+        "version_id": "2fd03629-3c40-46d5-a3b2-a5604e09e7cd",
+        "percentage": 100
+      }
+    ],
+    "workerModuleSha256": {
+      "worker.js": "4b63b3deb0ca0cfbc8c87a91d713a23b6788b7279d85cf5ff40ea79dc0c84961"
+    },
+    "sourceMetadata": {
+      "PORTAL_CANONICAL_HOST": "deos.voxdez.com",
+      "PORTAL_SITE": "Production",
+      "PORTAL_SOURCE_BRANCH": "release",
+      "PORTAL_SOURCE_SHA": "906103f1488a302d5dc6087213fcec143cc01bb9"
+    },
+    "sharedBindings": [
+      {
+        "bucket_name": "deos-sample-project-artifacts",
+        "name": "ARTIFACTS",
+        "type": "r2_bucket"
+      },
+      {
+        "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "name": "DB",
+        "type": "d1"
+      },
+      {
+        "entrypoint": "RecentIssues",
+        "environment": "production",
+        "name": "RECENT_ISSUES",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "environment": "production",
+        "name": "RETRY_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "entrypoint": "RouteAdmin",
+        "environment": "production",
+        "name": "ROUTE_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      }
+    ]
+  },
+  "staging": {
+    "deploymentId": "628d6533-3956-4d2f-afca-3a2672fcc869",
+    "versions": [
+      {
+        "version_id": "979264f4-15a1-447b-bd1b-caab0b6b037c",
+        "percentage": 100
+      }
+    ],
+    "bindings": [
+      {
+        "bucket_name": "deos-sample-project-artifacts",
+        "name": "ARTIFACTS",
+        "type": "r2_bucket"
+      },
+      {
+        "database_id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "id": "4e854f8a-018a-42c4-a325-c4b8805c06b2",
+        "name": "DB",
+        "type": "d1"
+      },
+      {
+        "name": "PORTAL_CANONICAL_HOST",
+        "text": "deos-staging.voxdez.com",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SITE",
+        "text": "Staging",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SOURCE_BRANCH",
+        "text": "main",
+        "type": "plain_text"
+      },
+      {
+        "name": "PORTAL_SOURCE_SHA",
+        "text": "906103f1488a302d5dc6087213fcec143cc01bb9",
+        "type": "plain_text"
+      },
+      {
+        "entrypoint": "RecentIssues",
+        "environment": "production",
+        "name": "RECENT_ISSUES",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "environment": "production",
+        "name": "RETRY_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      },
+      {
+        "entrypoint": "RouteAdmin",
+        "environment": "production",
+        "name": "ROUTE_ADMIN",
+        "service": "deos-queue-consumer-ts",
+        "type": "service"
+      }
+    ]
+  },
+  "portalDomains": [
+    {
+      "hostname": "deos-staging.voxdez.com",
+      "service": "deos-workflow-portal-staging",
+      "enabled": true,
+      "previews_enabled": false
+    },
+    {
+      "hostname": "deos.voxdez.com",
+      "service": "deos-workflow-portal",
+      "enabled": true,
+      "previews_enabled": false
+    }
+  ],
+  "releaseSha": "906103f1488a302d5dc6087213fcec143cc01bb9",
+  "githubEnvironments": [
+    {
+      "name": "staging",
+      "protectionTypes": [
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET",
+        "PORTAL_STAGING_CLOUDFLARE_API_TOKEN"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    },
+    {
+      "name": "production",
+      "protectionTypes": [
+        "required_reviewers",
+        "branch_policy"
+      ],
+      "branches": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretNames": [
+        "PORTAL_ACCESS_CLIENT_SECRET",
+        "PORTAL_PRODUCTION_CLOUDFLARE_API_TOKEN"
+      ],
+      "variableNames": [
+        "PORTAL_ACCESS_CLIENT_ID"
+      ]
+    }
+  ]
+}

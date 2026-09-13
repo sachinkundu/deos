@@ -1,0 +1,12 @@
+{
+  "body": {
+    "reviewSchemas": [
+      "deos-bounded-review-v1"
+    ],
+    "transcriptSchemas": [
+      "deos-transcript-v1"
+    ],
+    "versionId": "2fd03629-3c40-46d5-a3b2-a5604e09e7cd"
+  },
+  "status": 200
+}

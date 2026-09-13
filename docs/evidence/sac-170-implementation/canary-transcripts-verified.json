@@ -1,0 +1,60 @@
+{
+  "verified": true,
+  "transcripts": [
+    {
+      "owner_kind": "author_attempt",
+      "owner_id": "01a099f3-6b11-7031-93e1-76544db37305",
+      "attempt_id": "01a099f3-6b11-7031-93e1-76544db37305",
+      "parent_attempt_id": null,
+      "logical_name": "transcript.jsonl",
+      "sha256": "3ffc120b394b1e2941e492d3d626bd66c1ec65525aac3483d3a4eb3c5b3a867d",
+      "byte_size": 195908,
+      "event_count": 142,
+      "format_version": "deos-transcript-v1"
+    },
+    {
+      "owner_kind": "author_attempt",
+      "owner_id": "01a09a08-b353-76b4-b0cd-7741c7994727",
+      "attempt_id": "01a09a08-b353-76b4-b0cd-7741c7994727",
+      "parent_attempt_id": null,
+      "logical_name": "transcript.jsonl",
+      "sha256": "75e13109c687963fec63e601e33c5f29b452885e37551339a5da65c9e50f404e",
+      "byte_size": 315624,
+      "event_count": 50,
+      "format_version": "deos-transcript-v1"
+    },
+    {
+      "owner_kind": "independent_review_attempt",
+      "owner_id": "01a09a02-9a85-7d76-84a1-d8a4bdb257e8",
+      "attempt_id": "01a09a02-9a85-7d76-84a1-d8a4bdb257e8",
+      "parent_attempt_id": null,
+      "logical_name": "transcript.jsonl",
+      "sha256": "e544ededd3d2ee2472717f0210072ec4956413887b446b73e4f23982d6995c1e",
+      "byte_size": 109696,
+      "event_count": 76,
+      "format_version": "deos-transcript-v1"
+    },
+    {
+      "owner_kind": "native_child_invocation",
+      "owner_id": "01a099fa-9da8-7d53-8af5-7739e2580af3",
+      "attempt_id": "01a099f3-6b11-7031-93e1-76544db37305",
+      "parent_attempt_id": "01a099f3-6b11-7031-93e1-76544db37305",
+      "logical_name": "review-progress.json",
+      "sha256": "e874f161a75f7451194a1c86a9edc748f3d104151babc97d9ec9df0a708b8f75",
+      "byte_size": 148052,
+      "event_count": 33,
+      "format_version": "codex-session-jsonl-v1"
+    },
+    {
+      "owner_kind": "native_child_invocation",
+      "owner_id": "01a099fd-ea3c-7502-a4dd-5bf15984707f",
+      "attempt_id": "01a099f3-6b11-7031-93e1-76544db37305",
+      "parent_attempt_id": "01a099f3-6b11-7031-93e1-76544db37305",
+      "logical_name": "review-progress.json",
+      "sha256": "5514a74d260843e61b1ebe74b750058ff5cc2fd57bf21945f4bc9f53c1601469",
+      "byte_size": 51228,
+      "event_count": 17,
+      "format_version": "codex-session-jsonl-v1"
+    }
+  ]
+}

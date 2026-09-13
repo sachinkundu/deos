@@ -64,10 +64,65 @@ only to loopback and uses a local test identity. Stop it with Ctrl-C.
   independent finding, author disposition, and later head to demonstrate stale
   coverage. It is not a production run or provider screenshot.
 
-## Rollout gate
+## Live rollout and provider canary
 
-No production deployment, D1 migration, readiness marker, test issue transition,
-or provider canary was performed for this implementation.
+PR 120 is merged. The [live rollout record](rollout.md) proves the production
+portal, backend, both sandbox tiers, and portal readiness. After D1 and both
+container pools showed an idle window, the backend was deployed at 08:28 UTC
+on September 13, 2026. Both tiers completed their rollout before the canary.
+
+[SAC-177](https://linear.app/sachinkundu/issue/SAC-177/plan-a-small-notes-app-sac-170-canary)
+started through a real Linear Todo event on frozen v25, using Standard-2.
+It reached planning Human Review at 09:23 UTC. Its
+[planning PR 20](https://github.com/sachinkundu/deos-sample-project/pull/20)
+remains open and unmerged. Task 5.3 is complete.
+
+| Live check | Observed result |
+| --- | --- |
+| Native discovery | One child found one missing review-flow acceptance statement |
+| Author repair and closed recheck | One repair; one child marked the finding fixed |
+| Independent review | One accepted review, six findings, no invalid result retries |
+| Author response | All six answered: four applied and two explained without changes |
+| Saved transcripts | Five verified against R2/D1 hashes and byte/event counts; 318 events total |
+| Cleanup | All three agent attempts completed and their sandboxes were destroyed |
+| Final human gate | D1 and Linear both show Human Review; design has not started |
+| Later edits | Reviewed head retained, current head changed, stale coverage displayed; no second semantic review |
+
+The reviewed head is `a600db09b4f7730f1f50a2e8d41376509df7ebaf`.
+The published response head is `b7eb1d140b5228131d01bbf3b1b66918f7fa9f94`.
+This difference is expected: author replies go directly to human judgment.
+
+External Brave opened the live author, discovery, recheck, and independent
+transcript views. The native discovery/recheck streams contain 33/17 events,
+the independent transcript contains 76, and the two author transcripts contain
+142/50. See [verified metadata](canary-transcripts-verified.json) and the
+[saved cycle summary](canary-cycle-summary.json).
+
+![Production Human Review gate](canary-human-review.png)
+![Linear Human Review state](linear-canary-human-review.png)
+![Independent findings and author responses](canary-author-responses.png)
+![Live discovery transcript](canary-discovery-transcript.png)
+![Live recheck transcript](canary-recheck-transcript.png)
+![Live independent transcript](canary-independent-transcript.png)
+![Live author transcript](canary-author-transcript.png)
+![Enabled Linear issue webhook](linear-webhook-enabled.png)
+
+GitHub returned temporary 500/502 errors during initial publication and update.
+The existing reconciliation path recovered and left one PR at the expected head.
+Original errors remain in D1. The initial missing heartbeat file was also
+recorded, followed by healthy heartbeats and successful completion. No canary
+retry, workflow reset, or product fix was needed during this run.
+
+The first local R2 checker needed two corrections: URL-encode literal percent
+signs for Wrangler, and verify each embedded child separately from its enclosing
+journal. The corrected reads passed; these were checker errors, not corrupt
+production transcripts.
+
+This canary proves the live planning flow. Design, later human-requested rounds,
+failure injection, and unavailable-recheck recovery were not forced in production;
+the applicable offline tests remain separate evidence.
+
+## Readiness contract
 
 The existing [portal release contract](../../../openspec/specs/portal-release-flow/spec.md)
 requires a reviewed main commit, staging checks, and a person-controlled release
@@ -78,7 +133,7 @@ compatible version currently served by the production portal service binding.
 A rollback or absent marker keeps new runs on the legacy registry; frozen runs
 retain their existing definitions.
 
-After implementation review and merge:
+For a future rollout after implementation review and merge:
 
 1. Check active attempts in D1 before rolling out the backend. Apply additive
    migration `0036_bounded_review_cycles.sql` before deploying code that reads it.
@@ -95,8 +150,4 @@ After implementation review and merge:
    Capture the real provider delivery, D1 frozen definition, bounded cycle,
    R2 transcript owners, exact published/reviewed heads, and Human Review gate.
    Add protected browser screenshots. Stop at the human gate; do not approve it.
-6. Complete task 5.3 and replace this pending rollout note with real provider
-   evidence before marking delivery complete.
-
-The task checklist leaves live delivery open. Local tests and offline probes
-must not be described as provider-originated end-to-end verification.
+6. Save the actual provider evidence before marking delivery complete.

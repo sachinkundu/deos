@@ -30,7 +30,7 @@
 
 - [x] 5.1 Test bounded slots, replay, failure recovery, grounding, transcripts, graph edges, and frozen-run compatibility.
 - [x] 5.2 Run backend and portal checks and strict OpenSpec validation.
-- [ ] 5.3 Verify deployed backend and portal activation, then run a real provider-originated canary with D1/R2 and browser evidence.
-- [ ] 5.4 Publish tasks, implementation, checks, and evidence in one review-ready PR linked to approved PRs 106 and 108.
+- [x] 5.3 Verify deployed backend and portal activation, then run a real provider-originated canary with D1/R2 and browser evidence.
+- [x] 5.4 Publish tasks, implementation, checks, and evidence in one review-ready PR linked to approved PRs 106 and 108.
 
-Delivery note: the code and local checks are complete. Live activation and the provider canary await the existing portal release gate. The portal release contract requires a reviewed main commit, staging verification, and person-controlled production promotion. The new workflow remains unselected until its compatible production portal version is recorded and served.
+Delivery note: PR 120 is merged and the backend and compatible portal are active in production. SAC-177 reached planning Human Review on frozen v25 on September 13, 2026. The live canary exercised discovery, one repair, one closed recheck, one independent review, and all six author responses. D1/R2 checks verified all five transcripts. External Brave verified the review panels and transcript views. See `docs/evidence/sac-170-implementation/rollout.md`. The canary plan remains open for human review.
