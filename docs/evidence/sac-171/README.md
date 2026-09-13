@@ -31,8 +31,8 @@ The screenshots are local demo UI proof, not production activation proof.
 ## Local checks
 
 - 385 TypeScript tests pass.
-- 71 portal tests pass.
-- 67 Python tests pass.
+- 75 portal tests pass.
+- 70 Python tests pass.
 - Worker and portal TypeScript checks pass, as do the portal build, Worker dry
   run, OpenSpec validation, and lint checks for the changed Python files.
 - Full strict Python type checking is not clean. It reports diagnostics in the
@@ -45,7 +45,8 @@ four allocated attempts and four running attempts. Cloudflare's one-minute
 instance peak is also four. The configured limit was four. No explicit capacity
 refusal was found in attempt details or the 15 checked startup-failure Workflow
 summaries. There is no dedicated capacity-wait field, so this does not prove
-there were no waits. Account quota headroom remains a rollout check.
+there were no waits. The account readback covers eight vCPUs and 47,104 MiB at
+all configured maxima, within the provider limits in `account-headroom.json`.
 
 ## Rollout status
 
@@ -53,12 +54,28 @@ Production migration 0035 and tier enforcement are applied. All 82 existing
 runs were backfilled to Basic. Validation found zero invalid runs, mismatched
 attempts, or unversioned deliveries. The backend is deployed with both classes
 and retains the production recovery fixes from SAC-170 and the current image.
-The compatibility ingress release is active; activation follows portal release.
+On 13 September 2026, the protected portal release passed for merged revision
+`2eb61daa5e1abcfedef872b2e32ec688b900ce10`. Production version
+`0ea2577b-3f1f-482c-8dc5-ebbfaa5cebee` serves 100 percent of traffic. Both temporary
+reviewer secrets were removed after the staging check.
+
+Ingress version `0d481854-9d0c-4683-81fe-3a8caf45bcf0` serves 100 percent with
+`event-label-v1`. The queue and pending dispatch count were zero before activation.
+SAC-173 run 2 received positive event-time `slow-ok` evidence and used Basic.
+SAC-175 run 1 had no positive label evidence and used Standard-2. Both real
+sandbox attempts reached `running` with their saved run tier. No synthetic
+webhook was used. See the final readback in `rollout.md` and the screenshots below.
+
+This proves start selection and execution, not completion of the sample issues'
+whole planning workflows or a long-term reliability rate. The portal retained
+an early missing-heartbeat-file diagnostic with its original-error link while
+the Standard-2 run continued. Capacity refusal rendering is covered by the
+existing local fixture and tests; no production capacity refusal was induced.
 
 The user deferred message delivery and the fixed-count reliability window.
 Neither is a completion prerequisite.
 
-Remaining rollout procedure:
+Completed rollout procedure and rollback reference:
 
 1. Read current deployments, enabled routes, pending dispatches, active runs,
    and account limits. Preserve unrelated live releases.
@@ -87,6 +104,27 @@ Remaining rollout procedure:
 A fixed-count reliability window is outside this job, per user direction.
 Capacity and startup failures will be observed during normal work in the portal.
 Existing Standard-2 runs keep their tier if a rollback is needed.
+
+The tested compatibility ingress version is
+`a120579e-3d72-44d6-b9a9-aa9240357e41`. A rollback changes only future start
+selection to `legacy-basic-v1`; it must retain the current backend and both
+sandbox bindings. Never rewrite existing run or attempt tiers. Restore capacity
+and pass a Standard-2 probe before returning new starts to `event-label-v1`.
+
+## Production start proof
+
+![Labeled Linear start](linear-basic-start.png)
+
+![Unlabeled Linear start](linear-standard-2-start.png)
+
+![Basic run in production](portal-production-basic.png)
+
+![Standard-2 run in production](portal-production-standard-2.png)
+
+The [successful release run](https://github.com/sachinkundu/deos/actions/runs/34741117359)
+promoted the same artifact that passed the reviewer check. Its check result is
+saved as `portal-release-check.json`. PR #121 also runs the cookie regression in
+ordinary CI; its review comment was answered before merge.
 
 ## Optional comparison manifest
 

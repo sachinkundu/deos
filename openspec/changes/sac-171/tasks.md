@@ -25,7 +25,7 @@
 ## 5. Migrate and activate
 
 - [x] 5.1 Validate compatibility writers, null-only legacy backfill, and zero invalid or mismatched tiers.
-- [ ] 5.2 Prove account capacity and verify portal creation-failure diagnostics with the rollback response procedure.
-- [ ] 5.3 Drain pre-activation starts, activate event-label-v1 at 100 percent traffic, and read back deployment state.
-- [ ] 5.4 Capture provider-originated runs for both choices and portal screenshots.
-- [ ] 5.5 Run repository checks and publish tasks, implementation, and evidence in one review-ready PR.
+- [x] 5.2 Prove account capacity and verify portal creation-failure diagnostics with the rollback response procedure.
+- [x] 5.3 Drain pre-activation starts, activate event-label-v1 at 100 percent traffic, and read back deployment state.
+- [x] 5.4 Capture provider-originated runs for both choices and portal screenshots.
+- [x] 5.5 Run repository checks and publish tasks, implementation, and evidence in one review-ready PR.

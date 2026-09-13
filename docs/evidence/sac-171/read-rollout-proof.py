@@ -28,9 +28,17 @@ def read(path, data=None):
 for name in ['deos-sample-project','deos-queue-consumer-ts','deos-workflow-portal','deos-workflow-portal-staging']:
     latest=max(read('/workers/scripts/'+name+'/deployments')['deployments'],key=lambda row:row['created_on'])
     print(json.dumps({'worker':name,'deployment_id':latest['id'],'versions':latest['versions']},indent=2))
+    if name == 'deos-sample-project':
+        for version in latest['versions']:
+            config = read('/workers/scripts/'+name+'/versions/'+version['version_id'])
+            policy = [b for b in config['resources']['bindings'] if b['name'] == 'SANDBOX_TIER_POLICY_VERSION']
+            print(json.dumps({'ingress_tier_policy':policy},indent=2))
 for name,sql in {
+ 'pending_dispatches':"SELECT COUNT(*) AS pending FROM dispatch_intents WHERE state='pending'",
+ 'enabled_projects':"SELECT project_id,dispatch_enabled FROM project_workflow_policies WHERE dispatch_enabled=1",
  'tier_validation':Path('scripts/sandbox-tier-validate.sql').read_text(),
  'tier_enforcement':"SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'sandbox_tier_%' ORDER BY name",
+ 'start_deliveries':"SELECT r.run_id,d.delivery_id,d.received_at,d.start_slow_ok,d.sandbox_tier_policy_version FROM orchestration_runs r JOIN deliveries d ON d.delivery_id=r.selection_delivery_id WHERE r.issue_id IN ('5f773b25-3023-405c-9c89-9146bbf5fb07','353a3f52-740c-443a-811e-e27a6f20dc6f') AND r.created_at>'2026-09-12T16:00:00' ORDER BY r.created_at",
  'rollout_runs':"SELECT r.run_id,r.issue_id,r.status,r.current_node,r.sandbox_tier,r.sandbox_tier_source,r.sandbox_tier_policy_version,a.attempt_id,a.sandbox_tier AS attempt_tier,a.state,a.started_at,a.ended_at FROM orchestration_runs r LEFT JOIN agent_attempts a ON a.run_id=r.run_id WHERE r.issue_id IN ('5f773b25-3023-405c-9c89-9146bbf5fb07','353a3f52-740c-443a-811e-e27a6f20dc6f') AND r.created_at>'2026-09-12T16:00:00' ORDER BY r.created_at,a.created_at",
 }.items():
     result=read('/d1/database/4e854f8a-018a-42c4-a325-c4b8805c06b2/query',{'sql':sql})[0]
