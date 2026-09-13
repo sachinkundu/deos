@@ -30,6 +30,7 @@ const displayTimestamp = (value: string | null): string => {
 };
 
 export function TranscriptViewer({ attemptId, loadTranscript, onClose }: TranscriptViewerProps) {
+  const childOwner = attemptId.startsWith("child:") ? attemptId.slice(6) : null;
   const [transcript, setTranscript] = useState<TranscriptDto | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"activity" | "raw">("activity");
@@ -39,7 +40,7 @@ export function TranscriptViewer({ attemptId, loadTranscript, onClose }: Transcr
     const controller = new AbortController();
     setTranscript(null);
     setError("");
-    void loadTranscript(`/api/attempts/${attemptId}/transcript`, controller.signal)
+    void loadTranscript(childOwner ? `/api/review-children/${childOwner}/transcript` : `/api/attempts/${attemptId}/transcript`, controller.signal)
       .then(setTranscript)
       .catch((reason: unknown) => {
         if (!(reason instanceof DOMException && reason.name === "AbortError")) {
@@ -47,9 +48,10 @@ export function TranscriptViewer({ attemptId, loadTranscript, onClose }: Transcr
         }
       });
     return () => controller.abort();
-  }, [attemptId, loadTranscript]);
+  }, [attemptId, childOwner, loadTranscript]);
 
   const activity = useMemo(() => transcript?.records.map(activityForRecord) ?? [], [transcript]);
+  const hasContent = transcript !== null && (transcript.state === undefined ? transcript.records.length > 0 : transcript.state === "content");
   const rawJsonl = transcript === null ? "" : `${transcript.records.map((record) => record.raw).join("\n")}\n`;
   const copyAll = async () => {
     await navigator.clipboard.writeText(rawJsonl);
@@ -63,21 +65,24 @@ export function TranscriptViewer({ attemptId, loadTranscript, onClose }: Transcr
         <div><span className="eyebrow">Agent transcript</span><h2 id="transcript-title">Recorded activity</h2></div>
         <button className="icon-button" type="button" onClick={onClose} aria-label="Close transcript"><X /></button>
       </header>
-      {transcript !== null && <div className="transcript-meta">
-        <span>{transcript.issueKey} · run {transcript.runSequence}</span>
+      {transcript !== null && hasContent && <div className="transcript-meta">
+        <span>{childOwner ? "Self-review transcript" : `${transcript.issueKey} · run ${transcript.runSequence}`}</span>
         <span>{transcript.eventCount} events · {formatTranscriptBytes(transcript.byteSize)}</span>
         <span title={transcript.sha256}>SHA-256 {transcript.sha256.slice(0, 12)}…</span>
       </div>}
       {error && <div className="transcript-error" role="alert">{error}<button type="button" onClick={onClose}>Close</button></div>}
       {transcript === null && !error && <div className="transcript-loading"><SpinnerGap className="spin" /><p>Loading the verified durable transcript…</p></div>}
-      {transcript !== null && <>
+      {transcript !== null && !hasContent && <div className={transcript.state === "corrupt" ? "transcript-error" : "transcript-loading"} role={transcript.state === "corrupt" ? "alert" : "status"}>
+        <p>{transcript.message ?? "No transcript content was captured."}</p>
+      </div>}
+      {transcript !== null && hasContent && <>
         <div className="transcript-toolbar">
           <div className="transcript-tabs" role="tablist" aria-label="Transcript view">
             <button type="button" role="tab" aria-selected={tab === "activity"} className={tab === "activity" ? "selected" : ""} onClick={() => setTab("activity")}>Activity</button>
             <button type="button" role="tab" aria-selected={tab === "raw"} className={tab === "raw" ? "selected" : ""} onClick={() => setTab("raw")}><Code />Raw JSONL</button>
           </div>
           <button className="transcript-action" type="button" onClick={() => void copyAll()}>{copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy all"}</button>
-          <a className="transcript-action" href={`/api/attempts/${attemptId}/transcript.jsonl`} download={`${transcript.issueKey}-${attemptId}-transcript.jsonl`}><DownloadSimple />Download</a>
+          {!childOwner && <a className="transcript-action" href={`/api/attempts/${attemptId}/transcript.jsonl`} download={`${transcript.issueKey}-${attemptId}-transcript.jsonl`}><DownloadSimple />Download</a>}
         </div>
         <div className="transcript-body">
           {tab === "activity" ? <ol className="activity-list">

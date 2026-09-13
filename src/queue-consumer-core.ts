@@ -1,5 +1,6 @@
 import { selectSandboxTier, TierIntegrityError } from "./sandbox-tier.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { boundedReviewReady } from './review-readiness.ts';
 import { correlationIdentity } from "./orchestration-identity.ts";
 import {
   D1OrchestrationStore,
@@ -101,7 +102,7 @@ type WorkflowRegistrationEnv = Pick<
   | "TRIAL_REPOSITORY"
   | "TRIAL_DISPATCH_ENABLED"
   | "GITHUB_INSTALLATION_ID"
->;
+> & { REVIEW_PORTAL?: Pick<Fetcher, 'fetch'> };
 
 interface RegistrationDependencies {
   store: OrchestrationDispatchStore;
@@ -271,7 +272,7 @@ export const registerBundledWorkflowDefinitions = async (
 ): Promise<Readonly<Record<string, LoadedWorkflowDefinition>>> => {
   const store = dependencies.store ?? new D1OrchestrationStore(env.DB);
   const bundled = dependencies.definitions ??
-    await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry();
+    await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry({ boundedReviews: await boundedReviewReady(env.DB, env.REVIEW_PORTAL) });
   const definition = dependencies.defaultDefinition ?? bundled[DEFAULT_WORKFLOW_DEFINITION_ID];
   if (definition === undefined) throw new Error("default workflow definition is unavailable");
   const now = (dependencies.now ?? (() => new Date()))().toISOString();
@@ -341,7 +342,7 @@ export const processQueueMessage = async (
   const store = dependencies.store ?? new D1OrchestrationStore(env.DB);
   const bundled = dependencies.definitions ?? (
     dependencies.definition === undefined
-      ? await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry()
+      ? await (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry({ boundedReviews: await boundedReviewReady(env.DB, env.REVIEW_PORTAL) })
       : Object.freeze({ [dependencies.definition.name]: dependencies.definition })
   );
   const definition = dependencies.definition ?? bundled[DEFAULT_WORKFLOW_DEFINITION_ID];

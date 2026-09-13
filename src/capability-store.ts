@@ -9,6 +9,7 @@ export interface CapabilityContext {
   repository: string;
   githubInstallationId?: string;
   attemptState: string;
+  nativeWebSearch?: number;
 }
 
 export interface CapabilityStore {
@@ -50,7 +51,8 @@ export class D1CapabilityStore implements CapabilityStore {
       `SELECT a.attempt_id AS attemptId, a.run_id AS runId, a.state AS attemptState,
               r.issue_id AS issueId, r.project_id AS projectId,
               r.route_repository AS repository,
-              r.route_github_installation_id AS githubInstallationId
+              r.route_github_installation_id AS githubInstallationId,
+              COALESCE(json_extract(a.job_spec_json, '$.grounding.webSearch') = 'native-live', 0) AS nativeWebSearch
        FROM agent_attempts a
        JOIN orchestration_runs r ON r.run_id = a.run_id
        WHERE a.attempt_id = ?

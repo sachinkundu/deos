@@ -5,18 +5,23 @@ export const errorDetails = (value: unknown, seen = new WeakSet<object>()): unkn
   if (typeof value !== "object" || value === null) return value;
   if (seen.has(value)) return "[Circular]";
   seen.add(value);
-  if (Array.isArray(value)) return value.map((item) => errorDetails(item, seen));
-  const result: Record<string, unknown> = {};
-  for (const key of Object.getOwnPropertyNames(value)) {
-    try { result[key] = errorDetails(Reflect.get(value, key), seen); }
-    catch (error) { result[key] = { propertyReadError: String(error) }; }
+  try {
+    if (Array.isArray(value)) return value.map((item) => errorDetails(item, seen));
+    const result: Record<string, unknown> = {};
+    for (const key of Object.getOwnPropertyNames(value)) {
+      try { result[key] = errorDetails(Reflect.get(value, key), seen); }
+      catch (error) { result[key] = { propertyReadError: errorDetails(error, seen) }; }
+    }
+    if (value instanceof Error) {
+      result.name = value.name;
+      result.message = value.message;
+      result.stack = value.stack;
+    }
+    return result;
+  } finally {
+    // Shared references are not cycles; retain the full error at each location.
+    seen.delete(value);
   }
-  if (value instanceof Error) {
-    result.name = value.name;
-    result.message = value.message;
-    result.stack = value.stack;
-  }
-  return result;
 };
 
 export const errorText = (value: unknown): string => {

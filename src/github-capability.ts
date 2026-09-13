@@ -1,5 +1,6 @@
 import { responseError, readResponseText } from "./error-details.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { confirmGitHubReadback } from "./github-readback.ts";
 export interface GitHubWorkProductRequest {
   repository: string;
   branch: string;
@@ -544,6 +545,7 @@ export class GitHubAppCatalog {
 
 interface GitHubCapabilityDependencies {
   fetch: typeof fetch;
+  pause: (milliseconds: number) => Promise<void>;
 }
 
 class GitHubProviderHttpError extends Error {
@@ -563,6 +565,7 @@ export class GitHubCapabilityAdapter {
   private readonly apiUrl: string;
   private readonly tokens: GitHubTokenProvider;
   private readonly request: typeof fetch;
+  private readonly pause: ((milliseconds: number) => Promise<void>) | undefined;
 
   constructor(
     apiUrl: string,
@@ -570,6 +573,7 @@ export class GitHubCapabilityAdapter {
     dependencies: Partial<GitHubCapabilityDependencies> = {},
   ) {
     this.apiUrl = apiUrl.replace(/\/$/, "");
+    this.pause = dependencies.pause;
     this.tokens = tokens;
     this.request = dependencies.fetch ?? ((request, init) => fetch(request, init));
   }
@@ -854,19 +858,20 @@ export class GitHubCapabilityAdapter {
     }
     const headSha = await this.ref(token, input.repository, input.branch);
     if (headSha === null) throw new Error("GitHub planning branch read-back is missing");
-    const confirmed = this.parsePull(await this.json(
-      token,
-      `/repos/${input.repository}/pulls/${number}`,
-    ));
-    if (
-      confirmed.state !== "open" || confirmed.draft || confirmed.merged ||
-      confirmed.headBranch !== input.branch || confirmed.headSha !== headSha ||
-      confirmed.baseBranch !== input.baseBranch ||
-      (input.expectedPullRequestDatabaseId !== undefined &&
-        confirmed.databaseId !== input.expectedPullRequestDatabaseId) ||
-      (input.expectedPullRequestNumber !== undefined &&
-        confirmed.number !== input.expectedPullRequestNumber)
-    ) throw new Error("GitHub planning pull-request read-back mismatch");
+    const confirmed = await confirmGitHubReadback({
+      message: "GitHub planning pull-request read-back mismatch",
+      repository: input.repository, operationId, phase: "planning-publication",
+    }, {
+      state: "open", draft: false, merged: false,
+      headBranch: input.branch, headSha, baseBranch: input.baseBranch,
+      title: input.title, body: input.body,
+      ...(input.expectedPullRequestDatabaseId === undefined ? {} : { databaseId: input.expectedPullRequestDatabaseId }),
+      ...(input.expectedPullRequestNumber === undefined ? {} : { number: input.expectedPullRequestNumber }),
+    }, async () => {
+      const raw = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as Record<string, unknown>;
+      const pull = this.parsePull(raw);
+      return { value: pull, actual: { ...pull, title: raw.title, body: raw.body } };
+    }, this.pause);
     const reviewReplies = await this.replyToReviewThreads(
       token,
       input.repository,
@@ -1002,18 +1007,21 @@ export class GitHubCapabilityAdapter {
     const headSha = await this.ref(token, input.repository, input.branch);
     if (headSha === null) throw new Error("GitHub design branch read-back is missing");
     await this.assertDesignOnlyBranch(token, input.repository, input.baseCommit, headSha, path, true);
-    const confirmedRaw = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as Record<string, unknown>;
-    const confirmed = this.parsePull(confirmedRaw);
-    const design = await this.readContent(token, input.repository, headSha, path, false);
-    if (
-      confirmed.state !== "open" || confirmed.draft || confirmed.merged ||
-      confirmed.headBranch !== input.branch || confirmed.headSha !== headSha ||
-      confirmed.baseBranch !== input.baseBranch || design?.content !== input.content ||
-      confirmedRaw.title !== input.title || confirmedRaw.body !== input.body ||
-      (input.expectedPullRequestDatabaseId !== undefined &&
-        confirmed.databaseId !== input.expectedPullRequestDatabaseId) ||
-      (input.expectedPullRequestNumber !== undefined && confirmed.number !== input.expectedPullRequestNumber)
-    ) throw new Error("GitHub design pull-request read-back mismatch");
+    const confirmed = await confirmGitHubReadback({
+      message: "GitHub design pull-request read-back mismatch",
+      repository: input.repository, operationId, phase: "design-publication",
+    }, {
+      state: "open", draft: false, merged: false,
+      headBranch: input.branch, headSha, baseBranch: input.baseBranch,
+      title: input.title, body: input.body, content: input.content,
+      ...(input.expectedPullRequestDatabaseId === undefined ? {} : { databaseId: input.expectedPullRequestDatabaseId }),
+      ...(input.expectedPullRequestNumber === undefined ? {} : { number: input.expectedPullRequestNumber }),
+    }, async () => {
+      const raw = await this.json(token, `/repos/${input.repository}/pulls/${number}`) as Record<string, unknown>;
+      const pull = this.parsePull(raw);
+      const design = await this.readContent(token, input.repository, headSha, path, false);
+      return { value: pull, actual: { ...pull, title: raw.title, body: raw.body, content: design?.content } };
+    }, this.pause);
     let replies: { ids: readonly number[]; reconciled: boolean; humanSnapshot: string };
     try {
       replies = await this.replyToReviewThreads(
@@ -1045,20 +1053,21 @@ export class GitHubCapabilityAdapter {
       throw error;
     }
     await this.assertDesignBaseCurrent(token, input.repository, input.baseCommit, input.baseBranch);
-    const finalHeadSha = await this.ref(token, input.repository, input.branch);
-    const finalRaw = await this.json(
-      token,
-      `/repos/${input.repository}/pulls/${confirmed.number}`,
-    ) as Record<string, unknown>;
-    const finalPull = this.parsePull(finalRaw);
-    if (
-      finalHeadSha !== headSha || finalPull.databaseId !== confirmed.databaseId ||
-      finalPull.number !== confirmed.number || finalPull.url !== confirmed.url ||
-      finalPull.state !== "open" || finalPull.draft || finalPull.merged ||
-      finalPull.headBranch !== input.branch || finalPull.headSha !== headSha ||
-      finalPull.baseBranch !== input.baseBranch || finalRaw.title !== input.title ||
-      finalRaw.body !== input.body
-    ) throw new Error("GitHub design pull-request final read-back mismatch");
+    const finalPull = await confirmGitHubReadback({
+      message: "GitHub design pull-request final read-back mismatch",
+      repository: input.repository, operationId, phase: "design-after-replies",
+    }, {
+      branchHeadSha: headSha, databaseId: confirmed.databaseId,
+      number: confirmed.number, url: confirmed.url,
+      state: "open", draft: false, merged: false,
+      headBranch: input.branch, headSha, baseBranch: input.baseBranch,
+      title: input.title, body: input.body,
+    }, async () => {
+      const branchHeadSha = await this.ref(token, input.repository, input.branch);
+      const raw = await this.json(token, `/repos/${input.repository}/pulls/${confirmed.number}`) as Record<string, unknown>;
+      const pull = this.parsePull(raw);
+      return { value: pull, actual: { ...pull, branchHeadSha, title: raw.title, body: raw.body } };
+    }, this.pause);
     const finalReviewComments = await this.reviewComments(token, input.repository, confirmed.number);
     if (this.humanReviewSnapshot(finalReviewComments) !== replies.humanSnapshot) {
       throw new GitHubReviewFeedbackChangedError("GitHub review reply thread snapshot changed", {

@@ -439,6 +439,8 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
   let title = "Old title";
   let body = "Old body";
   let patchCalls = 0;
+  let staleReads = 3;
+  const pauses: number[] = [];
   let designMode = "100644";
   const pull = () => ({
     id: 7001,
@@ -456,7 +458,7 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
   const adapter = new GitHubCapabilityAdapter(
     "https://api.github.test",
     { token: async () => "installation-token" },
-    { fetch: async (input, init) => {
+    { pause: async (ms) => { pauses.push(ms); }, fetch: async (input, init) => {
       const url = new URL(String(input));
       const path = `${url.pathname}${url.search}`;
       const method = init?.method ?? "GET";
@@ -489,7 +491,11 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
         patchCalls += 1;
         throw new Error("metadata response lost");
       }
-      if (path.endsWith("/pulls/7") && method === "GET") return Response.json(pull());
+      if (path.endsWith("/pulls/7") && method === "GET") {
+        const value = pull();
+        if (patchCalls > 0 && staleReads-- > 0) value.head.sha = "c".repeat(40);
+        return Response.json(value);
+      }
       if (path.endsWith("/pulls/7/comments?per_page=100")) return Response.json([]);
       return new Response(`unexpected ${method} ${path}`, { status: 500 });
     } },
@@ -511,6 +517,7 @@ test("GitHub design publication reconciles an accepted metadata update with a lo
   assert.equal(receipt.reconciled, true);
   assert.equal(receipt.pullRequestNumber, 7);
   assert.equal(patchCalls, 1);
+  assert.deepEqual(pauses, [250, 1000]);
   assert.equal(title, "SAC-201: OpenSpec design");
   assert.equal(body, "Reviewed design");
   designMode = "120000";

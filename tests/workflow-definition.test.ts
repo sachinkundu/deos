@@ -467,3 +467,24 @@ test("rejects ambiguous or incomplete explicit lifecycle nodes", async () => {
   const unsafeCause = source.replace("cause: agent_execution_failed", 'cause: "Agent failed raw output"');
   await assert.rejects(loadWorkflowDefinition(unsafeCause, bundle()), /bounded safe category/);
 });
+
+test('bounded candidate definitions keep model routes and send every human revision directly back to its gate', async () => {
+  for (const id of ['simple-traceability', 'simple-traceability-claude']) {
+    const current = await loadWorkflowDefinition(readFileSync(new URL(`../config/workflow.${id}.yaml`, import.meta.url), 'utf8'), bundle());
+    const next = await loadWorkflowDefinition(readFileSync(new URL(`../config/workflow.${id}.bounded.yaml`, import.meta.url), 'utf8'), bundle());
+    assert.equal(next.version, 25);
+    for (const [jobId, job] of Object.entries(current.jobs)) {
+      assert.equal(next.jobs[jobId].model, job.model);
+      assert.equal(next.jobs[jobId].modelProvider, job.modelProvider);
+      assert.equal(next.jobs[jobId].grounding?.webSearch, 'native-live');
+    }
+    for (const phase of ['planning','design']) {
+      assert.equal(next.nodes[`${phase}_review`].edges.revision_requested, `${phase}_revision_author`);
+      assert.equal(next.nodes[`publish_${phase}_revision`].edges.completed, `${phase}_review`);
+      assert.equal(next.nodes[`${phase}_self_review`], undefined);
+    }
+    assert.equal(next.nodes.self_discovery, undefined);
+    assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(next), next.digest), next);
+    assert.equal(current.nodes.publish_planning_revision.edges.completed, 'independent_discovery');
+  }
+});

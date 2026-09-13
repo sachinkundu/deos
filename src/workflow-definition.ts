@@ -39,6 +39,8 @@ export interface WorkflowJob {
   providerAccess?: readonly ("model.openrouter_review" | "model.claude_review")[];
   reviewKind?: "traceability" | "design";
   reviewMode?: "discovery" | "recheck";
+  boundedReview?: "deos-bounded-review-v1";
+  grounding?: { schema: "deos-grounding-v1"; webSearch: "native-live"; skills: readonly { id: string; sha256: string }[] };
   operation: OpenSpecJobOperation | null;
 }
 
@@ -388,7 +390,7 @@ export const loadWorkflowDefinition = async (
       [
         "promptFile", "inputs", "context", "resultSchema", "requiredOutputs", "capabilities",
         "agentRole", "modelProvider", "model", "reasoning", "permissionProfile",
-        "providerAccess", "reviewKind", "reviewMode", "operation",
+        "providerAccess", "reviewKind", "reviewMode", "operation", "boundedReview", "grounding",
       ],
       label,
     );
@@ -468,7 +470,11 @@ export const loadWorkflowDefinition = async (
         providerAccess: Object.freeze(providerAccess as ("model.openrouter_review" | "model.claude_review")[]),
       };
     }
+    if (job.boundedReview !== undefined && job.boundedReview !== "deos-bounded-review-v1") throw new Error("unsupported bounded review schema");
+    const grounding = parseGroundingPolicy(job.grounding);
     jobs[id] = Object.freeze({
+      ...(job.boundedReview === undefined ? {} : { boundedReview: "deos-bounded-review-v1" as const }),
+      ...(grounding === undefined ? {} : { grounding }),
       id,
       promptFile,
       prompt,
@@ -657,7 +663,7 @@ export const restoreWorkflowDefinition = async (
       [
         "id", "promptFile", "prompt", "inputs", "context", "resultSchemaFile",
         "resultSchema", "requiredOutputs", "capabilities", "agentRole", "modelProvider",
-        "model", "reasoning", "permissionProfile", "providerAccess", "reviewMode", "reviewKind", "operation",
+        "model", "reasoning", "permissionProfile", "providerAccess", "reviewMode", "reviewKind", "operation", "boundedReview", "grounding",
       ],
       label,
     );
@@ -667,6 +673,8 @@ export const restoreWorkflowDefinition = async (
     prompts[promptFile] = stringValue(job, "prompt", label);
     schemas[resultSchemaFile] = JSON.stringify(asRecord(job.resultSchema, `${label}.resultSchema`));
     jobs[id] = {
+      ...(job.boundedReview === undefined ? {} : { boundedReview: job.boundedReview }),
+      ...(job.grounding === undefined ? {} : { grounding: job.grounding }),
       promptFile,
       inputs: stringArray(job, "inputs", label),
       context: stringArray(job, "context", label, false),
@@ -720,3 +728,21 @@ export const restoreWorkflowDefinition = async (
   if (restored.digest !== expectedDigest) throw new Error("restored workflow definition digest mismatch");
   return restored;
 };
+
+export function parseGroundingPolicy(value: unknown): WorkflowJob["grounding"] {
+  if (value === undefined) return undefined;
+  const policy = asRecord(value, "grounding");
+  assertAllowedKeys(policy, ["schema", "webSearch", "skills"], "grounding");
+  if (policy.schema !== "deos-grounding-v1" || policy.webSearch !== "native-live" || !Array.isArray(policy.skills) || !policy.skills.length) throw new Error("invalid grounding policy");
+  const ids = new Set<string>();
+  const skills = policy.skills.map(item => {
+    const skill = asRecord(item, "skill");
+    assertAllowedKeys(skill, ["id", "sha256"], "skill");
+    const id = stringValue(skill, "id", "skill");
+    const sha256 = stringValue(skill, "sha256", "skill");
+    if (!/^[a-z0-9-]+$/.test(id) || !/^[a-f0-9]{64}$/.test(sha256) || ids.has(id)) throw new Error("invalid pinned skill identity");
+    ids.add(id);
+    return Object.freeze({ id, sha256 });
+  });
+  return Object.freeze({ schema: "deos-grounding-v1", webSearch: "native-live", skills: Object.freeze(skills) });
+}

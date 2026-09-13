@@ -5,6 +5,8 @@ export interface TranscriptRecordDto {
 }
 
 export interface TranscriptDto {
+  state?: "content" | "empty" | "unavailable" | "corrupt";
+  message?: string | null;
   attemptId: string;
   runId: string;
   runSequence: number;
@@ -61,6 +63,12 @@ const readable = (value: string): string => value
 const detailText = (record: Record<string, unknown>): string | null => {
   const direct = readableText(directString(record, ["summary", "message", "text", "content", "output", "result"]));
   if (direct !== null) return direct;
+  for (const parts of [record.content, record.output]) {
+    if (!Array.isArray(parts)) continue;
+    const text = parts.map(part => nestedString(part, ["text"]))
+      .filter((part): part is string => part !== null).join("\n");
+    if (text) return text;
+  }
   for (const key of ["data", "payload", "item", "event"]) {
     const nested = readableText(nestedString(record[key], ["summary", "message", "text", "content", "output", "result", "command"]));
     if (nested !== null) return nested;
@@ -71,15 +79,22 @@ const detailText = (record: Record<string, unknown>): string | null => {
 export const activityForRecord = (record: TranscriptRecordDto): TranscriptActivity => {
   const value = record.value;
   const outerKind = directString(value, ["type", "kind", "event_type", "event", "role"]) ?? "record";
-  const item = objectValue(value.item);
+  const nativePayload = ["response_item", "event_msg"].includes(outerKind) ? objectValue(value.payload) : null;
+  const item = objectValue(value.item) ?? nativePayload;
   const itemKind = item === null ? null : directString(item, ["type", "kind"]);
   const kind = itemKind ?? outerKind;
   const tool = directString(value, ["tool_name", "tool", "name"])
+    ?? (item === null ? null : directString(item, ["tool_name", "tool", "name"]))
     ?? nestedString(value.tool, ["name", "tool_name"])
     ?? nestedString(value.data, ["tool_name", "tool", "name"]);
   let title = readable(kind);
   const lower = kind.toLowerCase();
-  if (lower === "agent_message") title = "Agent update";
+  if (lower === "message" && item?.role === "assistant") title = "Agent update";
+  else if (lower === "message" && item?.role === "user") title = "User message";
+  else if (lower === "message" && item?.role === "developer") title = "Agent instructions";
+  else if (lower === "function_call") title = tool === null ? "Tool call" : `Tool call · ${tool}`;
+  else if (["function_call_output", "custom_tool_call_output"].includes(lower)) title = "Tool result";
+  else if (lower === "agent_message") title = "Agent update";
   else if (lower === "command_execution") title = outerKind.endsWith("completed") ? "Command completed" : "Command started";
   else if (lower === "file_change") title = outerKind.endsWith("completed") ? "Files changed" : "Updating files";
   else if (lower.includes("tool") && lower.includes("result")) title = tool === null ? "Tool result" : `Tool result · ${tool}`;

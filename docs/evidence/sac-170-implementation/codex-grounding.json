@@ -1,0 +1,43 @@
+{
+  "schema": "deos-grounding-v1",
+  "webSearch": "native-live",
+  "skills": [
+    {
+      "id": "cloudflare",
+      "sha256": "58b799ccf073e49ed4127798ea4f15cbf863260b26866ed9e8cf3cb12662f5ee",
+      "path": "/private/tmp/sac170-grounding-home/skills/cloudflare/SKILL.md"
+    },
+    {
+      "id": "openspec-review-gated-flow",
+      "sha256": "5a8212258036d9913a9091b903609c25d82138524e1147411d81543df8b06bce",
+      "path": "/private/tmp/sac170-grounding-home/skills/openspec-review-gated-flow/SKILL.md"
+    },
+    {
+      "id": "openspec-apply-change",
+      "sha256": "85d0cb44b9074a0f54c976516462d01dd2f1842c514306a93ff7f7fbf0a7f0e1",
+      "path": "/private/tmp/sac170-grounding-home/skills/openspec-apply-change/SKILL.md"
+    }
+  ],
+  "capabilityDigest": "a37c3e4739090803948fddfbbbbfe8e89f42ab2368d5f5cad836f4b08095a113",
+  "runtime": "codex",
+  "verification": {
+    "webSearch": "live",
+    "skills": [
+      {
+        "name": "cloudflare",
+        "path": "/private/tmp/sac170-grounding-home/skills/cloudflare/SKILL.md",
+        "enabled": true
+      },
+      {
+        "name": "openspec-apply-change",
+        "path": "/private/tmp/sac170-grounding-home/skills/openspec-apply-change/SKILL.md",
+        "enabled": true
+      },
+      {
+        "name": "openspec-review-gated-flow",
+        "path": "/private/tmp/sac170-grounding-home/skills/openspec-review-gated-flow/SKILL.md",
+        "enabled": true
+      }
+    ]
+  }
+}

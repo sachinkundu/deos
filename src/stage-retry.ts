@@ -319,6 +319,13 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
       source.cleanup_state !== "destroyed" || source.is_latest_attempt !== 1 ||
       source.source_delivery_id === null
     ) throw new Error("stage_retry_not_eligible");
+    const bounded = await this.database.prepare(`SELECT job_spec_json FROM agent_attempts WHERE attempt_id = ?`)
+      .bind(input.failedAttemptId).first<{ job_spec_json: string }>();
+    if (bounded && JSON.parse(bounded.job_spec_json).boundedReview === 'deos-bounded-review-v1') {
+      const recovery = await this.database.prepare(`SELECT eligible FROM bounded_review_recoveries WHERE attempt_id = ?`)
+        .bind(input.failedAttemptId).first<{ eligible: number }>();
+      if (recovery?.eligible !== 1) throw new Error('bounded_review_manual_reconciliation_required');
+    }
     const plan = await planStageRetryDefinition(source, input.retryNode, input.targetDefinition);
     const retryId = `stage-retry:${input.failedAttemptId}`;
     const transitionId = `transition:${retryId}`;

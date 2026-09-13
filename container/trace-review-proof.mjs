@@ -69,7 +69,7 @@ export const reviewPromptWithSchema = (prompt, schema, provider) => provider ===
       "## Required exact JSON schema",
       "",
       "The routed model does not enforce the native output-schema parameter.",
-      "Return one JSON object matching this schema exactly. Do not nest top-level fields inside review, rename fields, wrap the object in Markdown, or add prose.",
+      "Return one JSON object with exactly the top-level fields of this schema. Do not rename fields, wrap the object in Markdown, or add prose.",
       schema.trim(),
     ].join("\n")
   : prompt;

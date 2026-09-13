@@ -565,6 +565,7 @@ export class PortalReadStore {
         sandbox_tier: portalSandboxTier(run),
         definitionDigest: run.definition_digest,
         definitionName: definition.name,
+        reviewSchema: definition.jobs.planning_author?.boundedReview ?? null,
         currentNode: run.current_node,
         currentVisitSequence: run.current_visit_sequence,
         startedAt: run.created_at,

@@ -1,0 +1,17 @@
+**
+!Dockerfile
+!container/
+!container/**
+!src/
+!src/claude-review.ts
+!src/claude-diagnostics.ts
+!src/error-details.ts
+!shared/
+!shared/planning-language.mjs
+!vendor/
+!vendor/**
+!config/
+!config/schemas/
+!config/schemas/trace-recheck-result-v1.json
+!config/prompts/
+!config/prompts/openspec-traceability-recheck.md

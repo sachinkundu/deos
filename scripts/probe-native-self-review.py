@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -129,7 +130,7 @@ def run_probe(codex, root):
             elif not child and len(outputs) < 4:
                 spawn = len(outputs) % 2 == 0
                 arguments = ({"agent_type": "default", "fork_context": True,
-                              "message": "PARENT_PRIVATE_CANARY_LEAK"} if spawn else {"ids": [json.loads(line)["agent_id"] for line in (root / "hooks.jsonl").read_text().splitlines() if json.loads(line).get("hook_event_name") == "SubagentStart"][-1:], "timeout_ms": 10000})
+                              "message": "PARENT_PRIVATE_CANARY_LEAK"} if spawn else {"targets": [json.loads(line)["agent_id"] for line in (root / "hooks.jsonl").read_text().splitlines() if json.loads(line).get("hook_event_name") == "SubagentStart"][-1:], "timeout_ms": 10000})
                 item = {"id": f"function{ordinal}", "type": "function_call", "namespace": "multi_agent_v1",
                         "name": "spawn_agent" if spawn else "wait_agent", "call_id": f"call{ordinal}",
                         "arguments": json.dumps(arguments)}
@@ -186,14 +187,18 @@ def run_probe(codex, root):
                 f'type = "command"\ncommand = "python3 {root}/hook.py"\n' for event in EVENTS))
     try:
         trust_generated_hooks(codex, root, environment)
+        prompt_path = root / "parent-prompt.txt"
+        prompt_path.write_text("PARENT_PRIVATE_CANARY: spawn two successive fresh reviewer checks and wait for each.")
         execution = subprocess.run(
             [codex, "exec", "--skip-git-repo-check", "--json", "--dangerously-bypass-approvals-and-sandbox",
-             "PARENT_PRIVATE_CANARY: spawn two successive fresh reviewer checks and wait for each."],
-            cwd=root / "work", env=environment, stdin=subprocess.DEVNULL,
+             "-"],
+            cwd=root / "work", env=environment, input=prompt_path.read_text(),
             text=True, capture_output=True, timeout=90,
         )
         if execution.returncode:
             raise RuntimeError(execution.stderr)
+        (root / "requests.json").write_text(json.dumps(requests, indent=2))
+        (root / "execution.json").write_text(json.dumps({"stdout": execution.stdout, "stderr": execution.stderr}, indent=2))
         hooks = [json.loads(line) for line in (root / "hooks.jsonl").read_text().splitlines()]
         starts = [event for event in hooks if event["hook_event_name"] == "SubagentStart"]
         stops = [event for event in hooks if event["hook_event_name"] == "SubagentStop"]
@@ -202,6 +207,7 @@ def run_probe(codex, root):
                           and "PARENT_PRIVATE_CANARY" not in json.dumps(request["input"])]
         checks = {
             "two_fresh_children": len(starts) == len(children) == 2,
+            "native_wait_has_no_contract_error": "agent ids must be non-empty" not in execution.stderr,
             "both_children_completed": {event["agent_id"] for event in stops} == children and len(stops) == 2,
             "same_live_parent": len({event["session_id"] for event in hooks if not event.get("agent_id")}) == 1,
             "frozen_profile": bool(starts) and all(event["agent_type"] == "reviewer" and event["model"] == MODEL for event in starts),
@@ -229,6 +235,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--codex", required=True, help="Path to Codex CLI 0.147.0")
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--diagnostics", type=Path)
     args = parser.parse_args()
     codex = str(Path(args.codex).absolute())
     version = subprocess.check_output([codex, "--version"], text=True).strip()
@@ -236,6 +243,8 @@ def main():
         raise SystemExit(f"Expected {PINNED_VERSION}; found {version}")
     with tempfile.TemporaryDirectory(prefix="deos-native-probe-") as temporary:
         result = run_probe(codex, Path(temporary).resolve())
+        if args.diagnostics:
+            shutil.copytree(temporary, args.diagnostics, dirs_exist_ok=True)
     encoded = json.dumps(result, indent=2) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

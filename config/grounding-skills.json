@@ -1,0 +1,14 @@
+[
+  {
+    "id": "cloudflare",
+    "sha256": "58b799ccf073e49ed4127798ea4f15cbf863260b26866ed9e8cf3cb12662f5ee"
+  },
+  {
+    "id": "openspec-review-gated-flow",
+    "sha256": "5a8212258036d9913a9091b903609c25d82138524e1147411d81543df8b06bce"
+  },
+  {
+    "id": "openspec-apply-change",
+    "sha256": "85d0cb44b9074a0f54c976516462d01dd2f1842c514306a93ff7f7fbf0a7f0e1"
+  }
+]

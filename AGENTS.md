@@ -1,5 +1,29 @@
 # Agent guidance
 
+## Pass context through files
+
+- Always write agent prompts, review context, source bundles, and other context
+  payloads to files before handing them to a runner. Pass file paths on the
+  command line, never the context itself, including base64-encoded context.
+- Do not use environment variables or shell interpolation to carry context.
+  If a provider client requires a stream or API body, read the saved file and
+  send its contents through that interface.
+- Use a separate request file for each concurrent call. Finish writing it before
+  launching the reader, and preserve the full context without truncation.
+
+## Preserve original errors
+
+- Never swallow errors or replace them with generic messages that discard the
+  original cause. No empty catches, silent fallbacks, or success-shaped results
+  after a failure.
+- Preserve the original error message, stack, cause chain, and relevant operation
+  context in durable diagnostics before marking a workflow failed or cleaning up
+  its runtime. Redact secrets without erasing the evidence needed to diagnose it.
+- A safe public error code may accompany the original error; it must never be
+  the only evidence retained. When wrapping an error, retain its original cause.
+- Handle only errors the code can actually recover from. Propagate unexpected
+  failures. Cleanup or diagnostic-write failures must not mask the primary error.
+
 ## Demo-first delivery
 
 Before implementing an integration, inspect the provider's primary contract

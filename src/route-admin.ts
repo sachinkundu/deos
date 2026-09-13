@@ -72,7 +72,7 @@ type RouteAdminRuntimeEnv = Pick<
   | "LINEAR_START_STATE_NAME"
   | "LINEAR_HUMAN_APPROVAL_STATE_ID"
   | "OPENROUTER_SUPPORTED_MODELS"
-> & { ROUTE_ADMIN_ALLOWED_EMAIL: string };
+> & { ROUTE_ADMIN_ALLOWED_EMAIL: string; REVIEW_PORTAL?: Pick<Fetcher, 'fetch'> };
 
 type DefinitionLoader = () => Promise<Readonly<Record<string, LoadedWorkflowDefinition>>>;
 
@@ -159,7 +159,7 @@ export class RouteAdminService {
       privateKey: env.GITHUB_APP_PRIVATE_KEY,
     });
     this.loadDefinitions = dependencies.loadDefinitions ?? (async () =>
-      (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry());
+      (await import("./workflow-bundle.ts")).loadBundledWorkflowDefinitionRegistry({ boundedReviews: await boundedReviewReady(env.DB, env.REVIEW_PORTAL) }));
     this.models = parseModels(env.OPENROUTER_SUPPORTED_MODELS);
   }
 
@@ -467,3 +467,4 @@ export class RouteAdminService {
       error instanceof Error ? error : new Error(String(error), { cause: error });
   }
 }
+import { boundedReviewReady } from './review-readiness.ts';

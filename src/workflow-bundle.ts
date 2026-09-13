@@ -2,6 +2,8 @@ import workflowSource from "../config/workflow.deos.yaml";
 import simpleWorkflowSource from "../config/workflow.simple.yaml";
 import claudeWorkflowSource from "../config/workflow.simple-traceability-claude.yaml";
 import traceabilityWorkflowSource from "../config/workflow.simple-traceability.yaml";
+import boundedTraceabilityWorkflowSource from "../config/workflow.simple-traceability.bounded.yaml";
+import boundedClaudeWorkflowSource from "../config/workflow.simple-traceability-claude.bounded.yaml";
 import requirementsPrompt from "../config/prompts/requirements.md";
 import requirementsReviewPrompt from "../config/prompts/requirements-review.md";
 import bddReviewPrompt from "../config/prompts/bdd-review.md";
@@ -53,11 +55,12 @@ const schemas: Readonly<Record<string, string>> = Object.freeze({
 
 const workflowSources = Object.freeze([workflowSource, simpleWorkflowSource, traceabilityWorkflowSource, claudeWorkflowSource]);
 
-export const loadBundledWorkflowDefinitionRegistry = async (): Promise<
+export const loadBundledWorkflowDefinitionRegistry = async (options: { boundedReviews?: boolean } = {}): Promise<
   Readonly<Record<string, LoadedWorkflowDefinition>>
 > => {
   const definitions = await Promise.all(
-    workflowSources.map((source) => loadWorkflowDefinition(source, { prompts, schemas })),
+    (options.boundedReviews ? [workflowSource, simpleWorkflowSource, boundedTraceabilityWorkflowSource, boundedClaudeWorkflowSource] : workflowSources)
+      .map((source) => loadWorkflowDefinition(source, { prompts, schemas })),
   );
   const registry: Record<string, LoadedWorkflowDefinition> = {};
   for (const definition of definitions) {

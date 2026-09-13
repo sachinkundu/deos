@@ -35,7 +35,7 @@ test("OpenRouter review prompts include the exact schema while native Codex prom
   const schema = '{"type":"object","required":["findings"]}';
   const routed = reviewPromptWithSchema(prompt, schema, "openrouter");
   assert.match(routed, /Required exact JSON schema/);
-  assert.match(routed, /Do not nest top-level fields inside review/);
+  assert.match(routed, /exactly the top-level fields of this schema/);
   assert.match(routed, /"required":\["findings"\]/);
   assert.equal(reviewPromptWithSchema(prompt, schema, "codex"), prompt);
 });
