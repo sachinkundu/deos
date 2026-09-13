@@ -4,7 +4,7 @@
 
 The workflow view SHALL show when a design draft changes the approved plan. It SHALL show each changed path and the exact text edits. It SHALL link those edits to the design pull request. It SHALL also show the old plan and the current draft head.
 
-If no plan file changed, the view SHALL say that the design uses the approved plan. Plan and design text MUST stay out of public logs. It SHALL appear only in an allowed review view or provider link.
+If no plan file changed, the view SHALL say that the design uses the approved plan.
 
 #### Scenario: A design candidate changes the plan
 
@@ -16,12 +16,6 @@ If no plan file changed, the view SHALL say that the design uses the approved pl
 
 - **WHEN** a person opens a design round with no proposal or delta spec edit.
 - **THEN** the view says that the design still uses the approved plan.
-
-#### Scenario: An operator reads public telemetry
-
-- **WHEN** an operator traces a design round through public logs.
-- **THEN** the events show safe work and choice IDs.
-- **AND** they show no plan, design, or review text.
 
 ### Requirement: Show review and approval coverage
 
