@@ -54,10 +54,12 @@ flowchart TB
     SB --> APP[Attempt test app and data]
     SB --> CAP[Attempt capability broker]
     CAP --> DOC[Read-only first-party web]
-    CAP --> BR[Service-owned browser session]
+    CAP --> BR[Browser broker and session slots]
     BR --> APP
-    CAP --> GH[GitHub App adapter]
     TR --> R2[(R2 patches, logs, and proof)]
+    TR --> BP[Trusted branch publisher]
+    BP --> GH[GitHub App adapter]
+    WF --> GH
     WF --> LR[Trusted Linear adapter]
     LR --> LI
     GH --> PR[One implementation pull request]
@@ -75,12 +77,38 @@ is a read-only projection of those stores.
 
 ### 1. Add an immutable implementation tail to a new flow version
 
-The new graph adds these stages after trusted design-merge verification:
+The new graph adds the following reviewed nodes and edges after trusted
+design-merge verification:
 
 ```text
-implementation_tasks -> implementation_build -> implementation_proof_check
-    -> implementation_publish -> implementation_review -> code_merge_or_edit
+design_merge_verified -> implementation_tasks -> implementation_build
+implementation_build --complete--> implementation_proof_check
+implementation_build --needs_human--> implementation_clarification_wait
+implementation_clarification_wait --accepted_comment--> implementation_build
+implementation_clarification_wait --other_event--> implementation_clarification_wait
+implementation_proof_check -> implementation_branch_write
+implementation_branch_write -> implementation_publish -> implementation_review
+implementation_review --In Progress--> implementation_build
+implementation_review --Merging--> implementation_merge_recheck
+implementation_merge_recheck --current--> implementation_merge -> code_merged
+implementation_proof_check|implementation_branch_write|implementation_publish
+    |implementation_review|implementation_merge_recheck --base_changed--> implementation_build
+implementation_build --ambiguous_resource--> implementation_manual_reconciliation
+implementation_manual_reconciliation --authorized_resume--> implementation_build
+implementation_tasks|implementation_build|implementation_proof_check
+    |implementation_branch_write|implementation_publish
+    |implementation_merge_recheck --unrecoverable_typed_fault--> implementation_failed
 ```
+
+`implementation_tasks`, `implementation_build`, clarification, proof check,
+branch write, and publication are nodes in the implementation stage.
+`implementation_review` and merge recheck are nodes in the final human-review
+stage. `implementation_clarification_wait` is visit-scoped to an expected
+comment event; `implementation_review` is a separate visit scoped to a state
+event. `implementation_manual_reconciliation` is a recoverable durable wait,
+while `implementation_failed` first commits the primary typed failure to D1 and
+then ends the executor as errored. The graph snapshot contains every listed
+back edge and terminal edge before a run can select this version.
 
 `implementation_tasks` is a typed `/opsx:continue` job. It creates only
 `tasks.md` from the checked plan and design. Trusted validation then starts a
@@ -160,7 +188,7 @@ The alternative was to place scoped provider tokens in the Sandbox. Even a
 narrow token could leak through commands, patches, logs, or proof, so the Worker
 remains the credential boundary.
 
-### 4. Broker one browser and one safe preview per try
+### 4. Broker one browser and one safe preview per try without serializing runs
 
 When the changed area has a web surface, the Sandbox starts the app against its
 own test namespace. The runner exposes only that process through an
@@ -177,19 +205,34 @@ state, console faults, and sanitized screenshots. It refuses personal Google
 cookies, downloads of credentials, live admin origins, and state-changing live
 requests.
 
-Browser creation goes through one account-level allocator. The allocator holds
-an exclusive create lease, saves the provider's active-session inventory, and
-then makes one create call with a short keep-alive. A clear response binds the
-returned session ID to the try before the lease ends.
+Project setup saves an `effective_browser_cap` that is no greater than the
+account's provider limit, defaults to four, and must be at least two before this
+flow can be enabled. It also limits creates to one per second. This is below the
+current documented paid-plan defaults, while making the DEOS bound explicit and
+independent of later provider limit changes
+([Cloudflare Browser Run limits](https://developers.cloudflare.com/browser-run/limits/)).
+An active or quarantined allocation consumes one slot. A slot limit can delay a
+try, but a single unclear allocation cannot take the account-wide allocator.
 
-If the response is lost before the session ID is saved, the allocation becomes
-`quarantined`. While it still holds the lease, the broker compares the provider
-inventory with the saved inventory. Because the browser token is exclusive to
-this broker, exactly one new session can be bound to the try. Any other result
-stays quarantined. The broker creates no second session for that try. It waits
-for the short keep-alive to expire, confirms that no unbound session remains,
-and only then releases the allocator for a fresh try. If that proof is not
-possible, the run enters manual reconciliation.
+The allocator serializes only the create request and its immediate inventory
+reads under a lease capped at 30 seconds. It requests a 60-second keep-alive and
+saves the pre-call session inventory. A clear response binds the returned
+`sessionId` to the reserved slot; Cloudflare documents that the create response
+supplies that ID and a debugger URL
+([Cloudflare browser session management](https://developers.cloudflare.com/browser-run/cdp/session-management/)).
+The lease is then released, so other runs may use the remaining slots.
+
+If the response is lost before the session ID is saved, only that slot and any
+new, unbound session IDs observed in the operation's non-overlapping create
+window become `quarantined`. The short create lease is released after the
+immediate inventory read even when the result is unclear. Later successful
+creates bind their explicit IDs and cannot adopt a quarantined candidate. The
+broker makes no second create call for the unclear operation. It checks the
+inventory until the 60-second keep-alive plus a 30-second grace period has
+passed. Absence of every candidate and every otherwise-unbound session first
+seen in that window closes the slot as `destroyed`; an unavailable or ambiguous
+inventory at 90 seconds moves that try to manual reconciliation and leaves only
+its slot reserved. Other tries continue while account capacity remains.
 
 A new try always gets a new browser operation and session. Cleanup closes the
 session and preview, then reads the provider inventory back. It records each
@@ -205,10 +248,13 @@ The build agent may return `needs_human` only with one question, a short reason,
 and a deterministic block key. The runner saves the patch, task state, checks,
 proof, and first error before cleanup. It does not post the question itself.
 
-The Workflow inserts the open question and its Linear operation in one guarded
-D1 transaction. The operation key is `(run_id, block_key)`, so retries reconcile
-the same comment. The trusted adapter posts that comment and moves the issue to
-`Human Review`. The old agent and all try tools are then destroyed.
+The Workflow inserts the open question, a new clarification gate visit, and its
+Linear operations in one guarded D1 transaction. The binding freezes the issue,
+question, `Human Review` state ID, saved allowed user ID, opening delivery, and
+`expected_event_kind = comment`. The operation key is `(run_id, block_key)`, so
+retries reconcile the same comment. The trusted adapter posts that comment and
+moves the issue to `Human Review`. The old agent and all try tools are then
+destroyed.
 
 Signed Linear comment events enter the existing delivery-keyed inbox. A reply
 is eligible only if it belongs to the same issue, follows the open question,
@@ -222,6 +268,15 @@ and prior work. The new agent decides whether the text answers the question. If
 it does not, it returns the same block key and the Workflow keeps the one open
 question instead of posting another. A distinct later blocker gets a new key
 and question only after the first one is closed.
+
+A signed state event received during this visit is recorded as
+`ignored_wrong_event_kind` against the clarification binding. It is never tested
+against an implementation-review binding and cannot select `In Progress` or
+`Merging`. If it moved the provider issue out of `Human Review`, the trusted
+adapter reconciles the same visit's gate-entry operation back to `Human Review`
+and keeps waiting for a qualifying comment. Conversely, comments received at
+the later implementation-review visit are recorded as the wrong event kind and
+cannot leave that gate. At most one of these binding kinds is open for a run.
 
 The alternative was to keep an agent process waiting. A durable wait costs no
 live Sandbox and makes reply authority a trusted ingress decision.
@@ -240,25 +295,69 @@ identifies the exact tasks, code, and tests. A changed tree or base makes the
 affected proof stale. The service must rerun the affected checks before another
 pull request update or final gate.
 
-Proof has a declared kind: `browser_image`, `showboat`,
-`provider_originated`, `synthetic_ingress`, or `unit_test`. User-facing work
-requires a current sanitized browser image when a useful visual state exists.
-Nonvisual behavior requires a current Showboat record of the real command and
-output. Provider integration work uses a safe real provider resource when one
-exists and keeps its delivery record apart from synthetic ingress. Unit tests
-may support those items but never satisfy the behavior-proof rule alone.
+Before task execution, trusted code creates a proof-requirement snapshot from
+the union of the approved proposal, delta specs, design, the immutable
+workflow-version path policy, and the planned affected components. It
+recomputes that snapshot from the actual cumulative diff before every proof
+check. Requirements can stay the same or become stronger; an agent declaration
+cannot remove one. The snapshot always requires behavior proof beyond unit
+tests. A match to configured UI paths or approved user-interface behavior
+requires `browser_image`. A match to provider ingress or adapter paths, or an
+approved provider-integration requirement, requires `provider_originated` when
+the trusted safe-resource registry has a matching test adapter. Other changed
+behavior requires `showboat`.
 
-The completion hook checks task completion, command results, proof kinds,
-subject hashes, sanitization status, and required provider receipts. It writes
-immutable payloads to R2, reads them back by SHA-256, and commits their accepted
-index in D1. If proof storage fails after a build failure, both errors are kept
-and the build error remains primary.
+If UI work cannot be rendered in the assigned safe preview, the run records a
+capability or implementation failure rather than accepting an agent's
+`nonvisual` claim. `showboat` may replace a browser image only when the checked
+planning and design inputs classify the behavior as nonvisual. If a required
+provider adapter has no safe real resource, readiness is blocked for a trusted
+capability decision; synthetic ingress never lowers that requirement. An agent
+may request extra proof kinds, but its classification is advisory only.
+
+Proof items have a declared kind: `browser_image`, `showboat`,
+`provider_originated`, `synthetic_ingress`, or `unit_test`. Provider delivery
+records remain separate from synthetic ingress, and unit tests may support but
+never satisfy the behavior-proof requirement alone.
+
+Read-only documentation access produces `documentation-sources.json`. Every
+opened first-party document from which content was returned must have one entry
+with its title, canonical HTTPS URL, the implementation claim it informed, and
+an artifact path-and-line citation. The broker's attempt access log is the
+trusted inventory: the completion hook rejects a missing citation, a cited URL
+that was not opened, or a non-first-party URL. The artifact is hash-checked in
+R2, indexed in D1, and linked from the pull request. Search result listings that
+return no document content are logged but are not treated as used sources.
+
+The completion hook checks task completion, command results, the trusted proof
+requirement snapshot, proof kinds, subject hashes, sanitization status,
+documentation citations, and required provider receipts. It writes immutable
+payloads to R2, reads them back by SHA-256, and commits their accepted index in
+D1. If proof storage fails after a build failure, both errors are kept and the
+build error remains primary.
 
 The alternative was to attach proof to an attempt. Attempts are lifecycle
 records, while a subject digest lets trusted code state exactly when evidence
 became stale.
 
-### 7. Publish one idempotent implementation pull request
+### 7. Publish the checked tree and one pull request idempotently
+
+The agent and read-only Git proxy never push. After proof passes, a trusted
+branch publisher reads the hash-checked cumulative patch and tree manifest from
+R2, reconstructs the exact Git blobs and tree, and uses the frozen GitHub App
+installation to create one snapshot commit whose parent is `tested_base_sha`.
+It creates or replaces only `deos/implementation/<run-hash>`. The branch-write
+operation is `(run_id, branch_sequence, tested_base_sha,
+implementation_tree_sha)`.
+
+On retry, the publisher reads the branch ref, commit parent, and tree. An exact
+match reconciles the operation without another commit or ref update. A later
+sequence may replace the prior snapshot commit, including after a rebase, only
+with a compare-and-swap read proving that the ref still equals the prior
+accepted branch head. This is the sole permitted force update. A missing ref
+may be created once; an unrelated head is a typed branch conflict and cannot be
+overwritten. D1 saves the resulting commit SHA and read-back receipt before
+pull request publication begins.
 
 Trusted publication separates pull request identity from update identity. One
 stable `implementation_pr_identity` operation creates or finds the pull request
@@ -271,11 +370,20 @@ repository, pull request, sequence, or operation key.
 
 The pull request body is generated from checked records. It lists the approved
 planning and design commits, task checklist, exact checks, current proof links,
-provider-proof labels, and any safe assumptions. Before each post, the trusted
-service reads the pull request head and target base. It rejects publication if
-the head differs from the checked tree or if the target base differs from the
-tested base. The approved design commit must remain reachable from that base,
-and the approved plan files must keep their checked hashes.
+provider-proof labels, documentation sources, and any safe assumptions. Before
+each post, the trusted service reads the branch commit, pull request head, and
+target base. It rejects publication unless the branch and pull request head are
+the saved commit, that commit has the checked tree and tested-base parent, and
+the target branch still has `tested_base_sha` as its head. The approved design
+commit must remain reachable from that base, and the approved plan files must
+keep their checked hashes.
+
+The existing Worker cron also checks target-base heads for runs in proof check,
+branch write, publication, or final review. A changed head inserts one
+idempotent `implementation_base_changed` inbox event. That event marks subject
+proof and any unpublished branch sequence stale and follows the frozen
+`base_changed` edge to a fresh build try. The same synchronous check runs before
+each branch write, pull request update, gate entry, and merge.
 
 The alternative was to let the agent push and compose the final review state.
 Trusted publication is needed to enforce one pull request and to prevent claims
@@ -299,14 +407,19 @@ After pull request read-back and proof validation, D1 creates a visit-scoped
 implementation review binding and the Workflow moves the issue to
 `Human Review`. Only a new signed Linear state event from the saved allowed user
 can leave that gate. `In Progress` starts a fresh edit try. `Merging` records the
-human merge choice and permits one trusted merge operation. A comment, label,
-agent result, check result, service actor, or unclear event cannot choose either
-edge.
+human merge choice and enters merge recheck. A comment, label, agent result,
+check result, service actor, or unclear event cannot choose either edge.
 
 The merge adapter verifies the gate visit, actor event, repository, pull
-request, exact head, and current proof again. It then requests the merge once
-and reads the result back. No capability in this graph can deploy or release.
-The terminal state is `code_merged`, with release shown as not begun.
+request, exact head, target base, and current proof again. If the subject is
+current, it requests the merge once and reads the result back. If the base or
+head is stale, it records the event as
+`merge_choice_not_executed_stale_subject`, closes that gate visit without a
+merge, and follows `base_changed` to a fresh build try. The saved choice remains
+auditable but cannot authorize a rebuilt head; after new proof, a new final-gate
+visit requires a new allowed-user state event. No capability in this graph can
+deploy or release. The terminal state is `code_merged`, with release shown as
+not begun.
 
 The alternative was to infer approval from the GitHub pull request state. The
 approved contract requires the saved Linear identity and state event to remain
@@ -336,22 +449,37 @@ R2 records provide an auditable view and keep old proof in history.
 1. The trusted merge action reads the design pull request after merge. It proves
    the merge commit is on the base branch and verifies all approved plan and
    design hashes.
-2. The Workflow loads the read-back project human binding. It records its route
-   revision and exact Linear user ID with the approved design SHA, current
-   tested base SHA, and deterministic branch.
+2. The Workflow loads the read-back project human binding and builds a checked
+   input manifest. That manifest contains the approved planning files and
+   design, exact base revision, prior planning/design validation and merge
+   receipts from hash-checked D1/R2 records, and a trusted Linear issue snapshot.
+   The issue snapshot comes from signed ingress plus service read-back and is
+   limited to identifier, project, state, URL, a 1 KiB title, a 64 KiB
+   description, and any accepted clarification reply. Control characters are
+   normalized, provider text is labeled as untrusted data, and unrelated
+   comments are omitted. The manifest is written to a file and passed to each
+   runner by path. The Workflow also records its route revision, exact Linear
+   user ID, approved design SHA, current tested base SHA, and deterministic
+   branch.
 3. A fresh typed task try runs `/opsx:continue`, creates only `tasks.md`, and
-   passes OpenSpec and allowed-path checks. No human gate is created.
+   passes OpenSpec and allowed-path checks. It receives the complete checked
+   input manifest. No human gate is created.
 4. A fresh build try restores the checked task patch. Trusted adapters allocate
    its local data, preview, and any safe provider resource, then `/opsx:apply`
-   updates each task as work passes. Commands can use only those exact resource
-   IDs and deny live targets.
+   receives the same checked inputs, current task and patch manifests, prior
+   proof, and new resource identities. It updates each task as work passes.
+   Commands can use only those exact resource IDs and deny live targets.
 5. For web work, the runner starts the test app and the broker creates the try's
    browser. The agent inspects the page, fixes proven faults, and reruns affected
-   checks. Other work records a fitting Showboat or provider proof.
-6. The completion hook saves tasks, patch, command results, proof, and original
-   errors. Trusted checks accept only a complete, current proof subject.
-7. The GitHub adapter creates or updates the fixed pull request and reads its
-   exact head and base back.
+   checks. Other work records the proof required by the trusted proof snapshot.
+   Any opened documentation is recorded in `documentation-sources.json`.
+6. The completion hook saves tasks, patch, command results, proof, cited sources,
+   and original errors. Trusted checks accept only a complete, current proof
+   subject.
+7. The branch publisher writes the checked tree as one commit on the fixed run
+   branch and reads the ref, parent, and tree back. The GitHub adapter then
+   creates or updates the fixed pull request and reads its exact head and base
+   back.
 8. The Workflow binds the final gate and moves the issue to `Human Review`.
    The portal shows the current pull request, checks, tasks, and proof.
 
@@ -360,23 +488,30 @@ R2 records provide an auditable view and keep old proof in history.
 1. A build try returns one bounded question because no safe assumption preserves
    the approved intent, safety, and design.
 2. The Workflow saves the question and stable operation, posts or reconciles one
-   Linear comment, enters `Human Review`, and destroys the try resources.
+   Linear comment, creates a comment-only clarification binding, enters
+   `Human Review`, and destroys the try resources.
 3. Ingress authenticates and deduplicates each later comment event. The Workflow
    checks issue, actor ID, order, and question binding. An unclear event is read
    back before use.
 4. A valid allowed-user reply returns the issue to active work and creates a new
    try. The try restores the run patch and receives the exact question and
    reply, but no old browser or test capability.
+5. A state event during this wait is recorded as the wrong event kind. It cannot
+   select a final-review edge; the clarification visit remains open for a
+   qualifying comment.
 
 ### Revision or merge
 
 1. At the final gate, an allowed-user move to `In Progress` closes that gate
    visit and starts a fresh try on the same branch and pull request.
-2. Changed code, tasks, or base marks affected proof stale. The new try must
-   rebuild and replace it before the final gate can reopen.
+2. Changed code or tasks marks affected proof stale. Target-base movement is
+   detected by the trusted pre-effect checks or cron event and autonomously
+   follows `base_changed` to a fresh try. The try rebuilds against the new base
+   and replaces affected proof before the final gate can reopen.
 3. An allowed-user move to `Merging` saves the exact event as the merge choice.
-   The trusted adapter verifies the current head and proof, merges once, and
-   reads the result back.
+   The trusted adapter verifies the current head, base, and proof. A current
+   subject merges once. A stale subject records the unexecuted choice, rebuilds,
+   and requires a new choice for the new gate visit and head.
 4. The Workflow records `code_merged`. It does not dispatch a deployment or
    claim that the change is live.
 
@@ -391,25 +526,30 @@ or extends only these logical records:
 | `project_workflow_policies` extension | `project_id`, `allowed_access_email`, `allowed_linear_user_id`, `human_binding_revision`, `human_binding_checked_at` | Route-level source of human authority. Settings saves the Access identity and a trusted Linear catalog result together. New implementation runs require a successful user read-back. |
 | `implementation_runs` | `run_id`, `change`, `approved_design_sha`, `tested_base_sha`, `branch`, `allowed_linear_user_id`, `status`, `pr_number`, `pr_head_sha` | One row per workflow run. `branch` and pull request identity are unique and fixed. The approved design SHA never changes. |
 | `implementation_tries` | `attempt_id`, `run_id`, `try_sequence`, `kind`, `sandbox_id`, `status`, `input_patch_sha`, `output_patch_sha`, `primary_error_manifest` | One row per task or build try. `(run_id, try_sequence)` and the Sandbox identity are unique. Old resource IDs are historical only. |
-| `implementation_resources` | `resource_id`, `run_id`, `attempt_id`, `kind`, `allocation_op`, `provider`, `provider_resource_id`, `namespace`, `preview_origin`, `status`, `quarantine_until`, `cleanup_receipt` | One row per browser, preview, local data scope, or remote safe-test resource. `provider_resource_id`, namespace, and preview origin are unique when present. Only `ready` resources bound to the calling try may be used. |
+| `implementation_resources` | `resource_id`, `run_id`, `attempt_id`, `kind`, `slot_id`, `allocation_op`, `provider`, `provider_resource_id`, `namespace`, `preview_origin`, `status`, `create_window`, `quarantine_until`, `cleanup_receipt` | One row per browser, preview, local data scope, or remote safe-test resource. `provider_resource_id`, namespace, preview origin, and active browser slot are unique when present. Only `ready` resources bound to the calling try may be used. |
+| `implementation_branch_publications` | `run_id`, `branch_sequence`, `tested_base_sha`, `tree_sha`, `operation_key`, `commit_sha`, `prior_ref_sha`, `status`, `provider_receipt` | One checked tree-to-branch operation. Exact retries reconcile the commit and ref. A later sequence may advance only its prior accepted head. |
 | `implementation_publications` | `run_id`, `publication_sequence`, `publication_digest`, `tested_base_sha`, `tree_sha`, `proof_manifest_sha`, `status`, `provider_receipt` | One desired pull request state per sequence. The digest includes the body and exact subject. Retrying the same sequence is idempotent; a changed desired state needs the next sequence. |
+| `implementation_proof_requirements` | `run_id`, `requirement_sequence`, `approved_input_digest`, `diff_sha`, `required_kinds`, `safe_provider_adapter_ids`, `decision_reasons`, `status` | Trusted, immutable proof obligation snapshot. It is derived from approved inputs, frozen path policy, safe-resource registry, and actual diff. Agent input may add but cannot remove requirements. |
 | `implementation_proof` | `proof_id`, `run_id`, `attempt_id`, `kind`, `approved_design_sha`, `tested_base_sha`, `tree_sha`, `r2_key`, `sha256`, `sanitized`, `provider_delivery_id` | Immutable proof index. Current status is derived by comparing its subject fields with the checked run head and base. |
-| `implementation_questions` | `question_id`, `run_id`, `block_key`, `linear_comment_id`, `opened_delivery_id`, `opened_at`, `status`, `answer_delivery_id`, `answer_comment_id`, `answer_actor_id` | One open question per `(run_id, block_key)`. An answer is usable only after trusted provenance and order checks. |
+| `implementation_doc_sources` | `source_id`, `run_id`, `attempt_id`, `url`, `title`, `claim`, `artifact_locator`, `access_event_id`, `r2_key`, `sha256` | Checked citations for opened first-party documentation. Every content-returning doc access must map to one cited entry. |
+| `implementation_questions` | `question_id`, `run_id`, `block_key`, `gate_visit`, `expected_event_kind`, `linear_comment_id`, `opened_delivery_id`, `opened_at`, `status`, `answer_delivery_id`, `answer_comment_id`, `answer_actor_id` | One open question per `(run_id, block_key)`. Its visit accepts comments only; an answer is usable only after trusted provenance and order checks. |
 
-R2 stores the cumulative patch, task snapshot, command log, screenshots, provider
-evidence, original error chain, and completion manifest under create-only keys.
-D1 stores their byte sizes and SHA-256 values. Browser keys, GitHub tokens,
-Linear tokens, authorization headers, and raw secret-bearing replies are stored
-in neither system.
+R2 stores the checked input manifest, cumulative patch, task snapshot, command
+log, screenshots, provider evidence, `documentation-sources.json`, original
+error chain, and completion manifest under create-only keys. D1 stores their
+byte sizes and SHA-256 values. Browser keys, GitHub tokens, Linear tokens,
+authorization headers, and raw secret-bearing replies are stored in neither
+system.
 
 Stable provider operation identities are:
 
-- `(browser_account, allocator_generation)` for one serialized browser create;
+- `(browser_account, browser_slot_id, allocation_generation)` for one browser create and quarantine lifecycle;
 - `(run_id, try_sequence, resource_kind, allocate_or_cleanup)` for test scope and preview reconciliation;
 - `(run_id, block_key, clarification_question)` for one question;
+- `(run_id, branch_sequence, tested_base_sha, implementation_tree_sha)` for one branch commit and ref advance;
 - `(run_id, implementation_pr_identity)` for the fixed pull request;
 - `(run_id, publication_sequence, publication_digest)` for one desired update;
-- `(run_id, gate_visit, linear_state)` for gate entry; and
+- `(run_id, gate_kind, gate_visit, linear_state)` for clarification or review gate entry; and
 - `(run_id, gate_visit, implementation_merge)` for an authorized merge.
 
 ## Failure Modes
@@ -423,14 +563,18 @@ Stable provider operation identities are:
 | A run reaches another run's branch, test data, preview, or capability | Compare the requested provider resource ID, namespace, or preview origin with its `ready` resource row. Deny a mismatch, record both identities, and fail the try. |
 | A command or browser action targets live state | Deny it before forwarding, retain the requested safe target facts, and keep the run out of the pass path. |
 | Test resource allocation is unclear | Quarantine the allocation and reconcile by its stable operation and provider marker. Do not use it or allocate a replacement until absence or cleanup is proved. |
-| Browser creation has an unclear response | Keep the exclusive allocator lease, compare provider inventory, and bind only one proven new session. Otherwise wait for expiry and read-back, or enter manual reconciliation. Never create a second browser for that try. |
+| Browser creation has an unclear response | Quarantine only its reserved slot and candidate sessions, release the 30-second create lease after the immediate inventory read, and never create again for that operation. Prove absence after the 90-second bound or enter manual reconciliation for that slot while other capacity remains usable. |
 | Browser or test preview cannot be reached | Keep the browser proof incomplete, save console and connection errors, and retry only in a fresh try when the old resources are closed. |
-| A safe real provider test exists but is not run | Label synthetic checks as synthetic and block publication and final review until provider-originated proof exists. |
+| Trusted proof classification requires a browser or provider test that is not run | Preserve the proof-requirement snapshot, label synthetic checks as synthetic, and block publication and final review. An agent claim cannot waive the missing kind. |
+| A documentation page is opened without a checked citation | Reject completion, preserve the access event and citation error, and require the attempt's `documentation-sources.json` to map the URL to an artifact claim. |
 | A build command fails | Preserve the command, exit status, stdout, stderr, stack, cause chain, patch, task state, and prior proof before cleanup. |
 | Evidence storage or cleanup also fails | Preserve each secondary error without replacing the first build error. Mark cleanup for existing reconciliation. |
-| Code or target base changes after proof | Mark affected proof stale by subject mismatch. Block pull request posting and the final gate until replacement proof passes. |
+| Code or target base changes after proof | Mark affected proof stale by subject mismatch. A trusted pre-effect check or cron event follows `base_changed` into a fresh build try; block branch/PR effects and the final gate until replacement proof passes. |
+| Branch write response is lost | Read the fixed ref, commit parent, and tree. Reconcile an exact match; advance only from the prior accepted head; never overwrite an unrelated head. |
+| A human `Merging` event arrives after the subject became stale | Save it as `merge_choice_not_executed_stale_subject`, do not merge, rebuild on the current base, and require a new state event for the new gate visit and head. |
 | Pull request create or update response is lost | Find the fixed pull request by its identity, then compare the desired publication digest and exact head. Retry only that publication key and never suppress a later sequence. |
 | Clarification posting is unclear | Reconcile by `(run_id, block_key)` and Linear read-back. Keep one open question and remain waiting. |
+| A state event arrives during clarification | Record `ignored_wrong_event_kind`, reconcile that clarification visit to `Human Review` if needed, and keep waiting for a bound comment. Never evaluate it as final review. |
 | A reply is old, edited, deleted, untrusted, or on another issue | Record a safe rejection reason, keep private text out of the portal, and leave the clarification gate closed. |
 | An allowed reply does not answer the question | A fresh agent returns the same block key. Keep the existing question open and do not post a duplicate. |
 | Agent or service output looks like approval | Ignore it. Only the bound signed state event from the saved user can leave the final gate. |
@@ -449,7 +593,14 @@ Stable provider operation identities are:
   documentation, preview, and safe-test hosts in the workflow version. A missing
   material host becomes a capability wait, not an unrestricted fallback.
 - **Strict proof freshness can require costly reruns after base movement** -> Show
-  the stale reason early and rerun only checks affected by the changed subject.
+  the stale reason early, use the explicit `base_changed` edge, and rerun only
+  checks affected by the changed subject.
+- **Conservative browser slots can delay checks** -> Freeze an effective cap of
+  at least two, reserve quarantined slots instead of the account allocator, and
+  surface capacity waits separately from build failures.
+- **Path-based proof rules may over-require evidence** -> Combine frozen path
+  policy with approved design declarations, record the decision reasons, and
+  allow agents to add but never remove a trusted requirement.
 - **The agent judges whether an allowed reply is useful** -> Trusted ingress
   decides identity and order; an inadequate reply cannot pass work and reuses
   the same block key.
@@ -465,15 +616,18 @@ Stable provider operation identities are:
 1. Add the D1 fields and tables with nullable or additive migrations. Add the
    project human binding as optional for old flow versions. Existing runs keep
    their frozen definitions and do not need backfill.
-2. Add the task, build, browser, proof, clarification, publication, and portal
-   handlers behind a new immutable workflow version. Keep it unselected while
-   contract and migration checks run.
+2. Add the task, build, browser, proof classification, branch publication,
+   clarification, base-drift, pull request, and portal handlers behind a new
+   immutable workflow version. Keep it unselected while contract and migration
+   checks run.
 3. Configure the allowed Access email and exact Linear user ID through the
    trusted project catalog, then require a successful read-back before enabling
    the new version for that route.
 4. Verify synthetic safety first: concurrent run identities, resource-ID
-   denial, ambiguous browser and test allocation, later pull request revisions,
-   stale proof, untrusted replies, and cleanup error precedence.
+   denial, slot-scoped ambiguous browser and test allocation, branch-write and
+   pull request retries, later revisions, proof classification, citation
+   completeness, base-drift recovery, wrong-kind gate events, untrusted replies,
+   and cleanup error precedence.
 5. Run a service-owned canary from an approved design through a real code pull
    request. Use a safe provider event when the canary changes an integration,
    and capture sanitized browser proof when it changes the portal.
