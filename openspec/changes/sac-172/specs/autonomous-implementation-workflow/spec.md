@@ -87,7 +87,7 @@ When all tasks and checks pass, DEOS SHALL publish or update one run-scoped impl
 
 Proof SHALL show the changed behavior. For user-facing work, it SHALL include sanitized browser images of the changed state when a visual check is possible. When a visual check does not fit, it SHALL include Showboat records of the real commands and outputs. Unit test results MAY support the proof but MUST NOT be the only behavior proof.
 
-Each proof item SHALL name the exact patch digest and base digest it covers. Before each pull request post and move to final review, a trusted check SHALL match all needed proof to the current digests. Any patch or base change SHALL make old proof stale. DEOS MUST NOT mark the pull request ready or open the final gate until new proof covers the current digests.
+Each proof item SHALL state which change and approved base it checks. Before each pull request post and move to final review, a trusted check SHALL confirm that all needed proof still fits the current work. A later change to the code or base SHALL make affected proof stale. DEOS MUST NOT mark the pull request ready or open the final gate until the current work has complete proof.
 
 #### Scenario: User-facing work is complete
 
@@ -104,10 +104,10 @@ Each proof item SHALL name the exact patch digest and base digest it covers. Bef
 - **WHEN** all unit tests pass but no proof shows the changed behavior.
 - **THEN** DEOS keeps the work out of the final human gate.
 
-#### Scenario: Patch changes after proof
+#### Scenario: Work changes after proof
 
-- **WHEN** the patch or base digest changes after proof was saved.
-- **THEN** DEOS marks the old proof stale and blocks the final gate until new proof covers both current digests.
+- **WHEN** the code or approved base changes after proof was saved.
+- **THEN** DEOS marks the affected proof stale and blocks the final gate until the current work has new proof.
 
 ### Requirement: Keep final approval and release with a person
 
