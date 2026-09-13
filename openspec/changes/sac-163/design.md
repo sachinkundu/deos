@@ -126,6 +126,13 @@ following are true:
 3. That request belongs to the same run, design pull request, and gate visit.
 4. The service-authored context includes the bounded request and current draft.
 
+The gate transition and a `design_revision_requests` row are inserted in one
+guarded D1 batch. The row keeps the request actor, signed delivery identity,
+bound pull request and head, and the SHA-256 and R2 key for the bounded request
+text. Dispatch includes the exact `request_id` and request hash. A retry must
+reconstruct the grant from that row and its hash-checked R2 object; a comment or
+request text that exists only in the author context cannot grant plan scope.
+
 With that grant, the write set becomes:
 
 ```text
@@ -148,10 +155,22 @@ request, so it is rejected.
 
 ### 3. Assemble and validate one complete candidate
 
-The supervisor reads the checkout diff after the author returns. It first
-checks path scope against the exact job grant. It then overlays allowed author
-outputs on the last published candidate, or on the approved plan for round one.
-This produces a complete draft inventory rather than a partial patch.
+The checkout baseline is explicit and immutable. The initial `design_author`
+checks out the verified planning merge `design_base_commit`, which contains the
+approved plan and no design. Before a revision dispatch, the Worker proves that
+the pull request still names the last accepted publication head. The revision
+Sandbox then checks out that exact head, not the moving branch name or the
+planning base. That tree contains the complete last published plan and design.
+
+The supervisor compares the returned checkout to the job's exact baseline and
+checks every changed or deleted path against the grant. A path the author does
+not change inherits its baseline bytes. Reverting a plan file to approved bytes
+or removing a delta spec requires an explicit checkout change; a spec removal
+also requires the resulting proposal inventory to agree. The Worker assembles
+the candidate by applying only those allowed changes to the same baseline. It
+never treats an untouched revision file as a request to fall back to the
+planning merge. This produces a complete draft inventory rather than a partial
+patch.
 
 The inventory contains:
 
@@ -186,9 +205,17 @@ spec. The design hash is the SHA-256 of the exact `design.md` bytes. Candidate
 identity hashes this tuple:
 
 ```text
-run_id, round, approved_plan_hash, plan_hash, design_hash, base_commit,
+run_id, approved_plan_hash, plan_hash, design_hash, base_commit,
 definition_digest, guidance_manifest_hash
 ```
+
+Round identity is stored separately from content identity. If a validated
+revision is byte-identical to the last accepted candidate, the Worker records a
+`no_content_change` round that references the existing candidate, validation,
+publication, and head. It performs no GitHub write and does not create a second
+candidate for the same content. If a later revision returns to older content
+from a different head, it may reuse the content-addressed candidate but creates
+a new publication for the new head.
 
 The trusted service also computes a unified text diff from the approved plan to
 the candidate plan. It records every added, removed, and changed plan path. An
@@ -206,16 +233,21 @@ to create-only R2 keys. It reads each object back and verifies its SHA-256 befor
 inserting the candidate index in D1.
 
 Only an indexed candidate may be published. Publication uses a stable operation
-identity derived from the run and candidate. It creates or updates the existing
-deterministic design branch and pull request with the complete candidate in one
-commit. It never deletes unchanged approved plan files.
+identity derived from the run, round, candidate, and expected prior publication.
+It creates or updates the existing deterministic design branch and pull request
+with the complete candidate in one commit. It never deletes unchanged approved
+plan files. A `no_content_change` round reuses the existing publication instead
+of manufacturing an empty or metadata-only commit.
 
 The Worker then reads the pull request's exact head tree through trusted GitHub
 reads. It compares every candidate file's bytes with the R2 manifest. It also
-compares the complete base-to-head changed-path inventory with the expected
-candidate diff: `design.md` plus only proposal and spec paths whose candidate
-bytes differ from the trusted base. `.openspec.yaml` must match the base. Any
-extra, missing, or mismatched path rejects publication and keeps the gate closed.
+compares the complete `design_base_commit..published_head` changed-path
+inventory with the expected candidate diff from that same immutable planning
+merge commit: `design.md` plus only proposal and spec paths whose candidate
+bytes differ from that commit. `.openspec.yaml` must match that commit. The
+published head must descend from `design_base_commit`. Any extra, missing, or
+mismatched path rejects publication and keeps the gate closed. The pull
+request's moving default-branch tip is not the base for this publication proof.
 
 Only after that proof passes does the Worker store the pull request number,
 base, exact head, and verified tree digest as a publication record. A due design
@@ -233,9 +265,12 @@ result with any mismatch. Proof is current only while all named identities
 match the latest publication.
 
 When the saved schedule omits a new semantic check after a later human edit,
-the Worker records `semantic_check_not_scheduled` for that round. It marks all
-older proof stale and presents the trusted checks to the person. It never
-labels an older check as coverage for the new candidate.
+the Worker records `semantic_check_not_scheduled` for that round. When candidate
+or publication identity changed, it marks all older proof stale and presents
+the trusted checks to the person. For a `no_content_change` round, existing
+proof remains current because candidate, files, base, and head are identical;
+the view still states that no new semantic check ran. It never labels proof for
+a different identity as coverage for the current candidate.
 
 Alternative considered: review a live pull request checkout. The head could
 move between reads and mix candidate versions, so checks use immutable R2 input
@@ -247,37 +282,61 @@ The Worker opens a new visit-scoped Design gate only after publication and all
 due checks complete. The visit binds:
 
 ```text
-run_id, visit_sequence, candidate_id, approved_plan_hash, plan_hash,
-design_hash, pull_request_number, base, head
+run_id, visit_sequence, publication_id, candidate_id, approved_plan_hash,
+plan_hash, design_hash, pull_request_number, base, head
 ```
 
 Only a signed event from an allowed `actor.type == user` may record the choice.
 Approval covers the whole plan and design at that head. A prior planning choice,
 agent result, check, comment, or approval for another head has no authority.
 
-Any new publication makes the prior gate visit and its choice stale. The old
-records remain append-only. A new visit is required even if the resulting file
-contents happen to match an earlier candidate, because the exact head changed.
+Any changed publication makes the prior gate visit and its choice stale. A
+revision request consumes its gate visit even when the returned content is
+identical. In that case the Worker reuses the candidate, publication, and head,
+keeps matching semantic proof current, and opens a fresh gate visit because the
+earlier visit ended with `changes_requested`, not because the head changed.
+The old visits, requests, and choices remain append-only.
 
 Before merge, the trusted action compares the open visit, pull request, exact
-head, verified publication tree, candidate hashes, and approval again. One
-guarded D1 batch then creates a pending merge operation with a stable operation
-ID derived from the run, gate visit, candidate, and approved head. The pending
-row is durable before the GitHub merge request.
+head, open provider state, verified publication tree, candidate hashes, and
+approval again. If the pull request is already merged or closed without a
+pending merge operation bound to that exact choice and head, the Worker records
+an unauthorized provider-state anomaly and enters repair. It does not create a
+retroactive choice or update current pointers. Otherwise, one guarded D1 batch
+creates a pending merge operation with a stable operation ID derived from the
+run, gate visit, candidate, and approved head. The pending row is durable before
+the GitHub merge request.
 
-After requesting merge, the Worker reads back the pull request and merge commit.
-It verifies that GitHub merged the approved head. It compares the complete
-trusted-base-to-merge changed-path inventory with the expected candidate diff,
-checks every candidate file byte, rejects every extra path, and checks required
-branch reachability under the existing merge-proof contract.
+The action requests GitHub's merge-commit method so the approved head remains a
+named parent. After requesting merge, the Worker reads back the pull request and
+merge commit. It requires the pull request's recorded head to equal the approved
+head, the merge commit's second parent to equal that head, and the merge commit
+to be reachable from the saved default branch. It then uses the merge commit's
+first parent—not `design_base_commit`—as the post-merge inventory base. The
+complete `merge_first_parent..merge_commit` changed-path inventory must equal
+the candidate paths whose bytes differ between that first parent and the
+candidate. Every candidate file must have its manifest bytes at the merge
+commit, every candidate-deleted path must be absent, and the inventory may
+contain no other path. Unrelated commits already present in the first parent
+therefore do not appear as design pull request changes.
 
 A guarded D1 batch marks the operation complete, appends the merge proof, and
 updates current pointers to the plan version, design, and choice. If that batch
 fails after GitHub merged, a retry finds the pending operation and reconciles
 before issuing any provider request. It verifies the already-merged approved
-head and complete merge tree, then idempotently completes the same D1 batch. A
-different or unprovable merged head enters repair and leaves the prior approved
-set current in D1.
+head, parent relationship, first-parent inventory, and candidate bytes, then
+idempotently completes the same D1 batch. A different or unprovable merged head
+enters repair and leaves the prior approved set current in D1.
+
+Every provider-state read before gate entry and merge also checks `open`,
+`closed`, and `merged`. A merged or closed pull request with no authorized
+pending operation is appended to `design_provider_state_anomalies` with the
+observed head, merge commit if any, provider receipt, and `unbound` authority
+status. A close without merge may be repaired only through a trusted resume that
+revalidates and republishes the same pull request. An out-of-band merge cannot
+be adopted by a later choice: it remains unapproved evidence, current pointers
+stay unchanged, and repair requires restoring repository state and producing a
+new checked publication and gate visit.
 
 Earlier pointers, choices, candidates, visits, operations, and proofs remain in
 history. A failed or canceled revision never changes the current approved set.
@@ -328,16 +387,20 @@ proof coverage by itself.
 ### Human-requested revision
 
 1. An allowed person requests changes on the active Design gate.
-2. The Worker records the request and starts `design_revision_author` on the
-   same branch and pull request with the explicit plan-edit grant.
-3. The author receives the approved plan, current complete candidate, design,
+2. A guarded D1 batch consumes the visit and records the signed, visit-bound,
+   hash-addressed revision request.
+3. The Worker proves the last accepted pull request head and starts
+   `design_revision_author` from that exact checkout with the explicit grant.
+4. The author receives the approved plan, current complete candidate, design,
    bounded feedback, and saved guidance.
-4. The supervisor and Worker validate the returned complete plan and design.
-5. The Worker stores a new immutable candidate and updates the same pull request
-   in one commit.
-6. Old checks and choices become stale. Due checks run for the new exact head,
-   or the round records that no semantic check was scheduled.
-7. The Worker posts idempotent replies to affected root review threads without
+5. The supervisor and Worker validate the returned complete plan and design.
+6. Changed content creates or reuses a content-addressed candidate and updates
+   the same pull request in one commit. Identical content records a round reuse
+   and keeps the existing publication and head without a GitHub write.
+7. Old proof becomes stale only when its bound identities changed. Due checks
+   run for the current exact head, or the round records that no semantic check
+   was scheduled.
+8. The Worker posts idempotent replies to affected root review threads without
    resolving them, then opens a fresh Design gate visit.
 
 ### Approval and merge
@@ -347,8 +410,9 @@ proof coverage by itself.
 3. A guarded D1 batch records a stable pending merge operation.
 4. The Worker requests merge, or reconciles an earlier request with that same
    operation identity.
-5. It reads back the merge commit, checks the full changed-path inventory, and
-   verifies all candidate file bytes and branch reachability.
+5. It requires the approved head as the merge commit's second parent, compares
+   the merge commit with its first parent, and verifies all candidate file bytes
+   and branch reachability.
 6. A guarded D1 batch completes the operation, appends merge proof, and makes
    the plan, design, and choice current.
 7. The workflow view shows the new current approval and retains all earlier
@@ -364,26 +428,33 @@ own the same lifecycle.
 | `workflow_definitions` | `version`, `digest`, graph, job policies, review schedule, prompt hash, guidance hash; immutable after registration. |
 | `plan_versions` | `plan_hash`, manifest R2 key, proposal and spec count, parent approved plan hash, created time; content-addressed and immutable. |
 | `plan_version_files` | `plan_hash`, `path`, `byte_size`, `sha256`, content R2 key; unique by plan and path. |
-| `design_candidates` | `candidate_id`, `run_id`, `round`, `approved_plan_hash`, `plan_hash`, `design_hash`, `base_commit`, definition and guidance hashes, candidate and validation R2 keys, author attempt; immutable. |
-| `design_publications` | `candidate_id`, stable provider operation id, pull request number, base, head, published time; one accepted exact-head record per publication. |
-| `design_review_results` | `candidate_id`, review kind, plan and design hashes, base, head, result R2 key, status, accepted time; immutable proof identity. |
-| `design_gate_visits` | Globally unique `gate_visit_id`, `run_id`, `visit_sequence`, `candidate_id`, pull request number, base, head, plan and design hashes, opened and superseded times. |
+| `design_candidates` | Content-derived `candidate_id`, `run_id`, `approved_plan_hash`, `plan_hash`, `design_hash`, `base_commit`, definition and guidance hashes, candidate R2 key, first accepted time; immutable and reusable by later rounds in the run. |
+| `design_rounds` | `round_id`, `run_id`, round number, baseline commit and candidate, `request_id` when revised, result candidate, author attempt, validation R2 key, outcome including `no_content_change`, and times; one row for every author return. |
+| `design_revision_requests` | Globally unique `request_id`, `gate_visit_id`, run, pull request, bound head, actor id and type, signed delivery id, bounded text R2 key and SHA-256, recorded and consumed times; immutable grant evidence. |
+| `design_publications` | Globally unique `publication_id`, `candidate_id`, stable provider operation id, pull request number, `design_base_commit`, exact head, verified tree digest and inventory R2 key, published time; a publication may be reused by later rounds. |
+| `design_review_results` | `publication_id`, `candidate_id`, review kind, plan and design hashes, base, head, result R2 key, status, accepted time; immutable proof identity. |
+| `design_gate_visits` | Globally unique `gate_visit_id`, `run_id`, `visit_sequence`, `publication_id`, `candidate_id`, pull request number, base, head, plan and design hashes, opened and superseded times. |
 | `design_gate_choices` | Globally unique `choice_id`, `gate_visit_id`, actor id and type, choice, signed delivery id, candidate and head, recorded time; append-only. |
-| `design_merge_operations` | Stable `operation_id`, `gate_visit_id`, `choice_id`, `candidate_id`, approved head, state, provider request receipt, merge commit, attempt and timestamps; supports post-effect reconciliation. |
-| `design_merge_proofs` | `operation_id`, `candidate_id`, `choice_id`, approved head, merge commit, verified full-diff manifest, verification time and outcome. |
+| `design_merge_operations` | Stable `operation_id`, `gate_visit_id`, `choice_id`, `publication_id`, `candidate_id`, approved head, observed target tip, state, provider request receipt, merge commit, attempt and timestamps; supports post-effect reconciliation. |
+| `design_merge_proofs` | `operation_id`, `candidate_id`, `choice_id`, approved head, merge commit, first and second parents, verified first-parent diff manifest, candidate-file manifest, verification time and outcome. |
+| `design_provider_state_anomalies` | `anomaly_id`, run, pull request, observed state, head and merge commit, provider receipt, authority status, detected time, repair state; append-only evidence for an out-of-band close or merge. |
 | `runs` | Current plan hash, design hash, choice id, node, visit sequence, and frozen definition digest; pointers update only after verified merge. |
 
 Candidate manifests in R2 include the exact plan diff or the explicit
 `uses_approved_plan` marker. D1 stores only bounded indexes and authority fields;
 large file contents, diffs, and review payloads remain hash-addressed in R2.
 
-Required uniqueness guards include candidate identity, publication operation,
-`gate_visit_id`, `(run_id, visit_sequence)`, `choice_id`, signed delivery id,
-merge operation identity, and one successful merge proof per candidate. A
-choice references `design_gate_visits(gate_visit_id)`. A merge operation and
-proof reference exact `choice_id`, `gate_visit_id`, and `candidate_id` rows.
-These enforced foreign keys prevent cross-run visit collisions and dangling
-choice or proof references.
+Required uniqueness guards include candidate content identity,
+`(run_id, round)`, `request_id`, revision signed delivery id, publication
+operation, `(candidate_id, head)`, `gate_visit_id`, `(run_id, visit_sequence)`,
+`choice_id`, choice signed delivery id, merge operation identity, and one
+successful merge proof per operation and run. A round references its baseline
+and result candidate plus any revision request. A request and choice each
+reference `design_gate_visits(gate_visit_id)`. Visits reference exact
+publications. Merge operations and proofs reference exact `choice_id`,
+`gate_visit_id`, `publication_id`, and `candidate_id` rows. These enforced
+foreign keys prevent cross-run collisions and dangling grant, choice, or proof
+references while allowing several visits to reuse one unchanged publication.
 
 ## Failure Modes
 
@@ -392,6 +463,10 @@ choice or proof references.
 | Author changes a forbidden path | Reject the entire result before candidate storage. Record the path and saved grant. Publish nothing. |
 | First round changes the proposal or specs | Reject as a scope violation even if strict OpenSpec validation passes. |
 | Revision lacks an allowed-user grant | Keep design-only scope and reject any plan edit. An arbitrary comment cannot create authority. |
+| Revision request evidence is missing or hash-mismatched | Do not dispatch the revision or grant plan scope. Preserve the signed delivery and R2 verification cause. |
+| Revision pull request no longer has the accepted baseline head | Do not start from a live or drifted branch. Mark the prior visit stale and require trusted publication reconciliation before another author job. |
+| Revision leaves an allowed file untouched | Inherit the exact last-published baseline bytes. Reversion or deletion requires an explicit author change. |
+| Revision result is content-identical | Record `no_content_change`, reuse the candidate, publication, head, and matching proof, perform no GitHub write, and open a fresh visit because the revision request consumed the old visit. |
 | Proposal and spec paths disagree | Reject the complete candidate, preserve strict validation output, and do not open review. |
 | Required plan or design file is missing | Reject before hashing or publication and identify every missing path. |
 | Strict OpenSpec, whitespace, readability, or section check fails | Preserve the original command, message, stack or cause, and check context. Use only the existing bounded author-correctable hook. |
@@ -400,15 +475,16 @@ choice or proof references.
 | R2 create-only write collides | Read the existing object and accept it only when identity and checksum match. Otherwise fail with both keys and hashes. |
 | R2 read-back or checksum fails | Do not index or publish the candidate. Retain the storage error as the primary cause. |
 | GitHub publication has an ambiguous result | Reconcile by stable operation identity and expected head before retrying. Never create a second design pull request. |
-| Published head has an extra, missing, or mismatched path | Reject its publication proof and keep review and the gate closed. Never review only the R2 subset under that head. |
+| Published head has an extra, missing, or mismatched path relative to `design_base_commit` | Reject its publication proof and keep review and the gate closed. Never review only the R2 subset under that head. |
 | Pull request head changes after publication | Mark review proof and the gate visit stale. Recheck the full exact-head tree and require a checked candidate publication and fresh visit. |
 | Review result mixes plan, design, base, or head identities | Reject the proof and keep the gate closed. Do not consume it as a semantic result. |
-| A later round has no scheduled semantic check | Record that fact, show prior proof as stale, and require a fresh human choice after trusted checks. |
+| A later round has no scheduled semantic check | Record that fact and require a fresh human choice after trusted checks. Mark prior proof stale when candidate or publication identity changed; keep exact matching proof current for `no_content_change`. |
 | Non-user or disallowed user sends a gate event | Audit the event without changing the visit or approval state. |
 | Duplicate signed event or Workflow replay arrives | Reuse the existing delivery, traversal, candidate, or choice record without advancing state. |
 | Merge precondition no longer matches | Do not request merge. Supersede the visit and require a current checked head. |
-| GitHub merges but the final D1 batch fails | Keep the pending merge operation. On retry, verify the already-merged approved head and full tree, then complete authority state without another merge request. |
-| Merge read-back, full path inventory, or file proof mismatches | Keep the prior approved set current, store the original provider and verification evidence, and enter repair. |
+| Pull request is closed or merged without a choice-bound pending operation | Record an `unbound` provider-state anomaly and enter manual repair. Never adopt the effect or advance current pointers; an out-of-band merge requires repository restoration and a new checked gate. |
+| GitHub merges but the final D1 batch fails | Keep the pending merge operation. On retry, verify the already-merged approved head, parent relationship, first-parent diff, and candidate bytes, then complete authority state without another merge request. |
+| Merge read-back, first-parent path inventory, parent relationship, or file proof mismatches | Keep the prior approved set current, store the original provider and verification evidence, and enter repair. |
 | Portal cannot verify an R2 object | Show bounded unavailable evidence and its checksum failure. Never present unverified content as current proof. |
 | Cleanup or diagnostic storage also fails | Preserve the primary failure and attach cleanup failure as a secondary cause. |
 
@@ -420,10 +496,14 @@ choice or proof references.
   changes beside the approved version while retaining one unambiguous approval
   unit.
 - **[No semantic rerun on some later edits can reduce automated assurance]** →
-  State that no check ran, mark old proof stale, retain trusted validation, and
-  require an exact-head human choice.
+  State that no check ran, mark identity-mismatched proof stale, retain trusted
+  validation, and require an exact-head human choice.
 - **[Provider head drift can invalidate completed work]** → Bind every stage to
   the exact head and reconcile stable publication operations before proceeding.
+- **[The default branch can advance after the planning merge]** → Use the frozen
+  planning commit only for publication scope; use the actual merge commit's
+  first parent for post-merge scope, while requiring the approved head as the
+  second parent.
 - **[Version 18 duplicates some version 17 configuration]** → Prefer immutable
   snapshots and deterministic replay over mutable shared policy.
 - **[Unified diffs may expose sensitive text already present in plan files]** →
@@ -441,9 +521,11 @@ choice or proof references.
    prompts, scopes, checks, gate rules, and pinned guidance.
 4. Validate version 17 restoration and retry behavior before selecting version
    18 for new runs.
-5. Exercise a design-only first round, an unchanged revision, a plan-changing
-   revision, a stale-head case, an unscheduled-review case, and a checked merge
-   in a non-production workflow route.
+5. Exercise a design-only first round, an unchanged revision reuse, a
+   plan-changing revision, a stale-head case, a missing request record, an
+   out-of-band close and merge, an unscheduled-review case, a default branch
+   that advances after publication, and a checked merge in a non-production
+   workflow route.
 6. Make version 18 the default only after durable records and the protected
    workflow view show the expected candidate, diff, choice, and merge history.
 
