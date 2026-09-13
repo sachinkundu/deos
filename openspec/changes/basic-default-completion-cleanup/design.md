@@ -37,7 +37,7 @@ D1 remains the authority for run, node, visit, attempt, and workflow instance. W
 
 ## Risks / Trade-offs
 
-- A notification may fail or be lost. Preserve its error and use the heartbeat; do not fail successful work merely because wake-up failed.
+- A notification may fail or be lost. Preserve its error and use the heartbeat; do not fail successful work merely because wake-up failed. Cap each request at three seconds and the remaining attempt lifetime, leaving one second for process exit. Skip requests when that budget is gone.
 - An early or duplicate hint may cause an extra reconciliation. It cannot supply the result or bypass compare-and-set completion.
 - A supervisor can crash before writing status. The heartbeat still observes the failed process.
 - The workflow may be replaced during recovery. Resolve its current identity from D1 for each request.

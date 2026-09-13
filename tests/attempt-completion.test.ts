@@ -64,7 +64,8 @@ test("event transport errors retain their original cause", async () => {
   await assert.rejects(notifier.notify("run", "attempt"), caught => caught === error);
 });
 
-const job = { capabilityUrl: "https://worker.test/capabilities", capabilityToken: "attempt-grant", attemptId: "attempt" };
+const job = { capabilityUrl: "https://worker.test/capabilities", capabilityToken: "attempt-grant", attemptId: "attempt",
+  deadline: new Date(Date.now() + 60_000).toISOString() };
 test("supervisor notification contains no result or caller-selected workflow identity", async () => {
   const errors: unknown[] = [];
   const ok = await notifyAttemptCompletion(job, {
@@ -104,4 +105,33 @@ test("an ambiguous notification can retry without changing the work outcome", as
   assert.equal(ok, true);
   assert.equal(calls, 2);
   assert.match(errors[0].message, /HTTP 503: busy/);
+});
+
+test("notification yields to process exit when the attempt deadline is near", async () => {
+  let calls = 0;
+  let now = 1_000;
+  const closeToDeadline = { ...job, deadline: new Date(2_001).toISOString() };
+  const errors: unknown[] = [];
+  const ok = await notifyAttemptCompletion(closeToDeadline, {
+    now: () => now,
+    recordError: (error: unknown) => errors.push(error),
+    fetcher: async (_url, init) => {
+      calls++;
+      const signal = init!.signal!;
+      // Keep the test process alive while the real AbortSignal timeout fires.
+      await new Promise<void>(resolve => {
+        const guard = setTimeout(resolve, 100);
+        signal.addEventListener("abort", () => { clearTimeout(guard); resolve(); }, { once: true });
+      });
+      assert.equal(signal.aborted, true);
+      now = 1_001;
+      throw signal.reason;
+    },
+  });
+  assert.equal(ok, false);
+  assert.equal(calls, 1, "remaining lifetime is recalculated before a retry");
+  assert.equal(errors.length, 1);
+  assert.equal(await notifyAttemptCompletion(closeToDeadline, {
+    now: () => 1_001, fetcher: async () => { throw new Error("must not start a request"); },
+  }), false);
 });
