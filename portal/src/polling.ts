@@ -15,3 +15,9 @@ export const receivePoll = <T>(state: PollState<T>, value: T): PollState<T> => {
 export const applyStaged = <T>(state: PollState<T>): PollState<T> => state.staged === null
   ? state
   : { applied: state.staged, staged: null, error: null };
+
+// Confirmation and comparison stay in receivePoll; mode only controls promotion.
+export const receiveConfirmedPoll = <T>(state: PollState<T>, value: T, live: boolean): PollState<T> => {
+  const next = receivePoll(state, value);
+  return live ? applyStaged(next) : next;
+};
