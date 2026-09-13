@@ -249,3 +249,162 @@ rtk proxy docker start -a deos-semantic-verification
   "warnings": []
 }
 ```
+
+```bash
+rtk proxy python3 docs/evidence/independent-review-errors/capture-recovery-readback.py --env-file /Users/sachin/code/deos/.env
+```
+
+```output
+{
+  "run": {
+    "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:ec27e96b-1a1a-4f38-a4d1-070258a45ec0:run:1",
+    "status": "failed",
+    "current_node": "agent_failed",
+    "current_visit_sequence": 16,
+    "updated_at": "2026-09-13T13:45:38.679Z"
+  },
+  "attempts": [
+    {
+      "attempt_id": "01a09af6-7b5d-75b2-b004-3feb503e270d",
+      "node_id": "design_author",
+      "state": "failed",
+      "result_class": "native_review_failed",
+      "cleanup_state": "destroyed",
+      "manifest_id": "manifest:01a09af6-7b5d-75b2-b004-3feb503e270d:failure",
+      "started_at": "2026-09-13T13:30:40.222Z",
+      "updated_at": "2026-09-13T13:45:37.123Z"
+    },
+    {
+      "attempt_id": "01a09aa2-d48e-79ae-8fc6-6f356274e3e6",
+      "node_id": "design_author",
+      "state": "failed",
+      "result_class": "native_review_failed",
+      "cleanup_state": "destroyed",
+      "manifest_id": "manifest:01a09aa2-d48e-79ae-8fc6-6f356274e3e6:failure",
+      "started_at": "2026-09-13T11:59:17.800Z",
+      "updated_at": "2026-09-13T12:25:17.071Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "logical_name": "review-progress.json",
+      "byte_size": 400194,
+      "sha256": "0280b4a13dd739f32878cf3d0d2477245a3520b0c3586f4d49070e4d048e7343",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Aec27e96b-1a1a-4f38-a4d1-070258a45ec0%3Arun%3A1/attempts/01a09af6-7b5d-75b2-b004-3feb503e270d/review-progress.json",
+      "readBackVerified": true
+    },
+    {
+      "logical_name": "supervisor-stderr.txt",
+      "byte_size": 206,
+      "sha256": "e22dac3991e15dfde3c1e4e848937c12746d87a17be4434b1d83cafbd18b785c",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Aec27e96b-1a1a-4f38-a4d1-070258a45ec0%3Arun%3A1/attempts/01a09af6-7b5d-75b2-b004-3feb503e270d/supervisor-stderr.txt",
+      "readBackVerified": true
+    },
+    {
+      "logical_name": "transcript.jsonl",
+      "byte_size": 247075,
+      "sha256": "b57f3fb19ff3b6dbb2b6947c8118f2a3b9e87f57e21744ebe2c5a49543eb5281",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Aec27e96b-1a1a-4f38-a4d1-070258a45ec0%3Arun%3A1/attempts/01a09af6-7b5d-75b2-b004-3feb503e270d/transcript.jsonl",
+      "readBackVerified": true
+    }
+  ],
+  "transcriptOwners": [
+    {
+      "owner_kind": "native_child_invocation",
+      "owner_id": "01a09afe-5ed6-76a3-bc94-6bf6ee4ead70",
+      "byte_size": 267438,
+      "event_count": 65
+    },
+    {
+      "owner_kind": "native_child_invocation",
+      "owner_id": "01a09b03-b9df-7171-93b8-ce3e5183b2a5",
+      "byte_size": 52921,
+      "event_count": 12
+    }
+  ],
+  "deployment": {
+    "id": "dcaca8ea-6bf6-4b94-850f-6909e7504a14",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "sachin.kundu@pm.me",
+    "annotations": {
+      "workers/message": "SAC-172 semantic review sources, durable transc...",
+      "workers/triggered_by": "upload"
+    },
+    "versions": [
+      {
+        "version_id": "9ba54291-d66b-402a-8416-506d7418b300",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-09-13T13:28:01.369536Z"
+  },
+  "containers": [
+    {
+      "id": "a0344373-884d-4c06-b4c2-4e58295de498",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:17340cf258159e6d964c95980d70962b0064a58b39ad2e75c36c9cfee6503a68",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      }
+    },
+    {
+      "id": "a03d8a75-5574-4d37-806d-8b07ed1a79c6",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:17340cf258159e6d964c95980d70962b0064a58b39ad2e75c36c9cfee6503a68",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      }
+    }
+  ]
+}
+```
+
+```bash
+rtk proxy docker start -a deos-semantic-verification
+```
+
+```output
+{
+  "proof": "Replay of SAC-172 saved native recheck",
+  "ratings": {
+    "proof-base-drift": "fixed",
+    "incomplete-lifecycle-graph": "fixed",
+    "human-identity-enrollment": "fixed",
+    "clarification-comment-readback": "fixed",
+    "capability-policy-timing": "fixed",
+    "test-resource-reconciliation": "fixed",
+    "openspec-post-merge-tail": "fixed"
+  },
+  "source": {
+    "id": "candidate-design",
+    "url": "openspec/changes/sac-172/design.md",
+    "title": "SAC-172 design candidate",
+    "claimLocator": "proof-base-drift",
+    "provenance": "local",
+    "evidenceKind": "local_document"
+  },
+  "warnings": []
+}
+{
+  "proof": "Actual blocked response retains original reviewer error",
+  "message": "Reviewer reported blocked: REQUEST_FILE_UNAVAILABLE: I cannot read /deos/native-review/recheck-request.json without spawning a filesystem-reading process, which is prohibited by the active review constraints. Provide the file contents directly to continue.",
+  "originalResponseRetained": true
+}
+```

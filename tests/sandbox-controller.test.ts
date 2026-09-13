@@ -1702,3 +1702,53 @@ test("capacity refusal preserves original error and portal classification throug
   assert.match(JSON.stringify(failure.error), /Provider capacity exhausted/);
   assert.match(JSON.stringify(failure.error), /account resource limit/);
 });
+
+
+test("failure recovery publishes the parent capture after stopping and before cleanup", async () => {
+  let clock = NOW;
+  const state = setup({clock: () => clock});
+  await state.controller.execute(run,"work","work",definition);
+  const sandbox = state.factory.sandbox;
+  sandbox.files.set("/deos/run/supervisor-capture/transcript.jsonl", "original transcript");
+  const exec = sandbox.exec.bind(sandbox);
+  let published = false;
+  sandbox.exec = (command, options) => {
+    if (command[1] !== '/deos/bin/supervisor-capture.mjs') return exec(command,options);
+    assert.equal(sandbox.supervisor.killed,true);
+    assert.equal(sandbox.destroyed,false);
+    published = true;
+    const capture = new Process('capture',99);
+    capture.state = 'exited';
+    return Promise.resolve(capture);
+  };
+  clock = new Date(NOW.getTime() + 6 * 60_000);
+  await state.controller.execute(run,"work","work",definition);
+  assert.equal(published,true);
+  assert.equal(state.collector.failureCollections,1);
+  assert.equal(sandbox.destroyed,true);
+});
+test("failed parent capture publication retains the sandbox and original output for retry", async () => {
+  let clock = NOW;
+  const state = setup({clock: () => clock});
+  await state.controller.execute(run,"work","work",definition);
+  const sandbox = state.factory.sandbox;
+  sandbox.files.set("/deos/run/supervisor-capture/transcript.jsonl", "original transcript");
+  const exec = sandbox.exec.bind(sandbox);
+  sandbox.exec = (command, options) => {
+    if (command[1] !== '/deos/bin/supervisor-capture.mjs') return exec(command,options);
+    const capture = new Process('capture',99);
+    capture.state = 'exited';
+    capture.exitCode = 1;
+    capture.stderr = 'write failed: original disk error';
+    return Promise.resolve(capture);
+  };
+  clock = new Date(NOW.getTime() + 6 * 60_000);
+  await assert.rejects(state.controller.execute(run,"work","work",definition), error => {
+    assert.match(String(error),/Supervisor transcript recovery failed/);
+    assert.equal((error as Error & {cause:{stderr:string}}).cause.stderr,'write failed: original disk error');
+    return true;
+  });
+  assert.equal(sandbox.destroyed,false);
+  assert.equal(state.collector.failureCollections,0);
+  assert.equal(sandbox.files.get("/deos/run/supervisor-capture/transcript.jsonl"),"original transcript");
+});

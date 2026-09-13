@@ -107,8 +107,15 @@ export function interpretReviewSources(result, claims) {
         searchDisposition: sources.some(source => source.provenance !== 'local') ? 'sources_used' :
             result.searchDisposition === 'not_searched' ? 'not_searched' : 'none_used' };
 }
+export function assertReviewAvailable(result) {
+    if (result?.error || ['blocked', 'failed', 'error', 'unavailable'].includes(result?.status)) {
+        const detail = typeof result.error === 'object' && result.error !== null ? result.error : {};
+        throw new Error(`Reviewer reported ${result.status ?? 'error'}: ${detail.code ?? 'review_unavailable'}: ${detail.message ?? JSON.stringify(result.error ?? result)}`, { cause: result });
+    }
+}
 export function validateDiscovery(value) {
     const result = record(value, 'discovery');
+    assertReviewAvailable(result);
     if (!Array.isArray(result.findings))
         throw new Error('invalid discovery findings');
     const ids = new Set();
@@ -126,6 +133,7 @@ export function validateDiscovery(value) {
 }
 export function validateRecheck(value, findings) {
     const result = record(value, 'recheck');
+    assertReviewAvailable(result);
     const ratings = record(result.ratings, 'ratings');
     const ids = new Set(findings.map(item => item.id));
     const violations = Object.keys(ratings).filter(id => !ids.has(id));
@@ -195,8 +203,10 @@ export function reduceReviewCycle(prior, event) {
         if (event.slot === 'recheck' && (!state.repair.started || state.discovery.status !== 'accepted'))
             throw new Error('recheck before repair');
         const expected = event.slot === 'discovery' ? state.initialDigest : state.currentDigest;
-        if (event.inputDigest !== expected || (slot.invocations.length && event.authenticatedContinuation !== true)) {
-            throw new Error('review continuation input or authorization mismatch');
+        // One retry after a failed invocation is automatic on the same checked input.
+        // Cross-attempt continuation evidence is verified by the journal collector.
+        if (event.inputDigest !== expected) {
+            throw new Error('review continuation input mismatch');
         }
         if (state.discovery.invocations.concat(state.recheck.invocations).some(item => item.id === event.invocationId)) {
             throw new Error('duplicate native child identity');

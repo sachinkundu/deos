@@ -18,7 +18,7 @@ test('two failed discovery calls require reconciliation; recheck instead keeps a
         for (let n = 0; n < 2; n++) {
             const event = { type: 'invoke', slot, invocationId: `${slot}${n}`, inputDigest: 'a'.repeat(64), authenticatedContinuation: n > 0 };
             if (n > 0)
-                assert.throws(() => reduceReviewCycle(state, { ...event, authenticatedContinuation: false }), /authorization/);
+                assert.equal(reduceReviewCycle(state, { ...event, authenticatedContinuation: false })[slot].status, 'running');
             state = reduceReviewCycle(state, event);
             state = reduceReviewCycle(state, { type: 'failure', slot, invocationId: event.invocationId, cause: { message: 'original transport error', stack: 'stack' } });
         }

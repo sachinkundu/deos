@@ -1205,7 +1205,7 @@ test("native initial authors reconcile promptly while old and later author paths
       do: async (_name, callback) => callback(),
       waitForEvent: async (_name, options) => {
         timeout = options.timeout;
-        throw new Error("checkpoint timeout");
+        throw Object.assign(new Error("checkpoint timeout"), {name:"WorkflowTimeoutError"});
       },
     };
     await assert.rejects(new WorkflowOrchestrator(store, traceabilityDefinition, new RunningServices(), {
@@ -1247,4 +1247,17 @@ test("a completion hint wakes normal reconciliation and covers the exit race for
     assert.equal(store.run.status, "active");
     assert.equal(store.run.current_node, "planning_author");
   }
+});
+
+
+test("RPC heartbeat timeouts are recognized without hiding execution or transport failures", async () => {
+  const { isWorkflowWaitTimeout } = await import('../src/workflow-orchestrator.ts');
+  const observed = Object.assign(new Error('Execution timed out after 10000ms'), {
+    remote:true, stack:'WorkflowTimeoutError: Execution timed out after 10000ms\n    at ContextImpl.waitForEvent (index.js:24169:26)',
+  });
+  assert.equal(isWorkflowWaitTimeout(observed),true);
+  assert.equal(isWorkflowWaitTimeout(Object.assign(new Error('heartbeat'),{name:'WorkflowTimeoutError'})),true);
+  assert.equal(isWorkflowWaitTimeout(new Error('Execution timed out after 10000ms')),false);
+  assert.equal(isWorkflowWaitTimeout({...observed,stack:'Error: Execution timed out after 10000ms\n    at sandbox.exec'}),false);
+  assert.equal(isWorkflowWaitTimeout(new Error('connection reset')),false);
 });

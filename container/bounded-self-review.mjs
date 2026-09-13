@@ -87,6 +87,7 @@ const prepareChild = async (state, slot) => {
                 searchDisposition: { enum: ['sources_used', 'none_used', 'not_searched'] },
             },
         },
+        previousFailure: state.cycle?.[slot]?.invocations.at(-1)?.cause,
         context: state.materializedContext, candidate: state.checkedCandidate.files,
         findings: slot === 'recheck' ? state.cycle.findings : undefined,
         instructions: slot === 'discovery'
@@ -141,7 +142,7 @@ export async function executeBoundedHook(event) {
             state.stage = 'launching';
             await save(`${ROOT}/state.json`, state);
             return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', updatedInput: {
-                        agent_type: 'deos_reviewer', fork_context: false, message: `Read ${state.requestPath} and perform only the review specified in that file. Return the complete structured JSON result.`,
+                        agent_type: 'deos_reviewer', fork_context: false, message: `Read ${state.requestPath} using a read-only shell command. Read-only filesystem processes are allowed; do not delegate to another agent. Perform the review specified in the file and return the complete structured JSON result.`,
                     } } };
         }
         if (/followup_task|send_input/.test(event.tool_name))
@@ -174,6 +175,7 @@ export async function executeBoundedHook(event) {
             inputDigest: state.checkedCandidate.digest, transcript, sha256: digest(transcript), eventCount: records.length };
         state.children.push(captured);
         let resultEvent;
+        let candidateIntact = false;
         try {
             let candidateFault;
             try {
@@ -192,14 +194,21 @@ export async function executeBoundedHook(event) {
                 }
                 throw candidateFault;
             }
+            candidateIntact = true;
             const result = parseCodexFinalMessage(event.last_assistant_message ?? '');
             resultEvent = { type: 'result', slot: state.slot, invocationId: event.agent_id,
                 inputDigest: state.checkedCandidate.digest, lifecycleVerified: true, result };
             reduceReviewCycle(state.cycle, resultEvent);
         }
         catch (error) {
+            recordCaughtError(error, 'native review result');
             await journal(state, { type: 'failure', slot: state.slot, invocationId: event.agent_id,
                 cause: { message: error.message, stack: error.stack, detail: originalErrorText(error) } });
+            if (candidateIntact && state.cycle[state.slot].status === 'failed' && state.cycle[state.slot].invocations.length < 2) {
+                state.activeChild = null;
+                await prepareChild(state, state.slot);
+                return {};
+            }
             if (state.slot === 'recheck' && state.cycle.recheck.status === 'unavailable') {
                 state.stage = 'done';
                 state.activeChild = null;

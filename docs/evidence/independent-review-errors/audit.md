@@ -108,3 +108,38 @@ review attempt from this reconciliation state. It retains the frozen definition,
 failed attempt and evidence, and does not reuse the unverified verdict. SQLite
 integration tests prove one durable retry and rejection of stale visits,
 unrelated failures and unfinished cleanup.
+
+## Live interrupted capture proof and follow-up recovery
+
+On the new image, SAC-172 attempt `01a09af6-7b5d-75b2-b004-3feb503e270d`
+failed during recheck. This time the failure manifest retained the 247,075-byte
+parent transcript (SHA-256
+`b57f3fb19ff3b6dbb2b6947c8118f2a3b9e87f57e21744ebe2c5a49543eb5281`),
+206 bytes of original stderr, and both native child transcripts. R2 content was
+read back and matched the stored sizes and hashes after sandbox destruction.
+The recovery record is eligible and resumes at recheck. This is real production
+failure evidence for the capture fix.
+
+The saved recheck response reports `REQUEST_FILE_UNAVAILABLE`: the reviewer
+interpreted "do not spawn children" as forbidding the filesystem-reading process
+needed to read its request file. The validator replaced that with `invalid
+ratings`. Reviewer instructions now explicitly allow read-only shell processes
+and prohibit delegation to additional agents. Reported reviewer errors retain
+the original message and response as the cause. A failed native invocation gets
+one automatic retry on the same checked candidate. After a second recheck failure,
+review is marked unavailable and all findings stay open for the human gate.
+Candidate writes and evidence-integrity failures are still reported as failures.
+
+The same attempt recorded 83 "Execution timed out after 10000ms" entries.
+Their saved stacks identify `ContextImpl.waitForEvent` and
+`WorkflowTimeoutError`, but Cloudflare RPC set the error name to `Error`.
+The handler recognized only the original name and recorded normal heartbeat
+waits as workflow errors. The handler now recognizes this precise RPC shape,
+records a normal wait-elapsed event, and propagates unexpected wait errors with
+the original evidence. Existing historical error records remain untouched.
+
+All 453 tests and type checks passed after these follow-up changes. The native
+hook test runs both failed rechecks through the production state machine and
+verifies retained errors, the two-invocation bound, unavailable status and open
+findings. The built image replays the original blocked response and retains its
+full error rather than reporting invalid ratings.

@@ -1,0 +1,7 @@
+{
+  "status": "blocked",
+  "error": {
+    "code": "REQUEST_FILE_UNAVAILABLE",
+    "message": "I cannot read /deos/native-review/recheck-request.json without spawning a filesystem-reading process, which is prohibited by the active review constraints. Provide the file contents directly to continue."
+  }
+}
