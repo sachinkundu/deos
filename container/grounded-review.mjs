@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { validateSources } from './bounded-review.mjs';
+import { validateSources, interpretReviewSources } from './bounded-review.mjs';
 export const sourceSchema = { type: 'object', additionalProperties: false, required: ['id', 'url', 'title', 'claimLocator'], properties: { id: { type: 'string' }, url: { type: 'string' }, title: { type: 'string' }, claimLocator: { type: 'string' } } };
 export const groundedSchema = review => ({ type: 'object', additionalProperties: false, required: ['review', 'sources', 'searchDisposition'], properties: {
         review, sources: { type: 'array', items: sourceSchema }, searchDisposition: { type: 'string', enum: ['sources_used', 'none_used', 'not_searched'] },
@@ -28,8 +28,7 @@ export function reviewGroundingContext(job) {
 export function unwrapGroundedReview(envelope) {
     if (!envelope || typeof envelope.review !== 'object')
         throw new Error('invalid grounded review envelope');
-    const sources = validateSources(envelope, claimStrings(envelope.review));
-    return { review: envelope.review, sources, searchDisposition: envelope.searchDisposition };
+    return { review: envelope.review, ...interpretReviewSources(envelope, claimStrings(envelope.review)) };
 }
 export async function saveGroundedReview(envelope, index) {
     const accepted = unwrapGroundedReview(envelope);

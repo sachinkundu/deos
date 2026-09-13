@@ -1,11 +1,11 @@
 #!/usr/bin/env node
+import { trustedCapture, recoverCaptures } from './supervisor-capture.mjs';
 import { checkAuthorSources } from "./grounded-review.mjs";
 import { provisionGrounding, verifyGroundingContext, verifyNativeGrounding } from "./grounded-agent.mjs";
 import { setupNativeReview } from "./native-review-setup.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { notifyAttemptCompletion } from "./attempt-completion.mjs";
-import { createWriteStream } from "node:fs";
-import { access, appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { finished } from "node:stream/promises";
 
@@ -38,32 +38,6 @@ const atomicJson = async (path, value) => {
   const temporary = `${path}.tmp`;
   await writeFile(temporary, `${JSON.stringify(value)}\n`, { mode: 0o600 });
   await rename(temporary, path);
-};
-
-const trustedCapture = async (name) => {
-  const root = await mkdtemp(`/tmp/deos-${name}-`);
-  const path = `${root}/${name}`;
-  return {
-    stream: createWriteStream(path, { flags: "wx", mode: 0o600 }),
-    async finalize(destination, replace = true) {
-      await finished(this.stream);
-      let shouldWrite = replace;
-      if (!replace) {
-        try {
-          await access(destination);
-        } catch (caughtError) {
-          recordCaughtError(caughtError, "container/supervisor.mjs:46");
-          shouldWrite = true;
-        }
-      }
-      if (shouldWrite) {
-        const temporary = `${destination}.tmp`;
-        await writeFile(temporary, await readFile(path), { mode: 0o600 });
-        await rename(temporary, destination);
-      }
-      await rm(root, { recursive: true, force: true });
-    },
-  };
 };
 
 const finalizeMechanicalOutputs = async (job) => {
@@ -307,6 +281,7 @@ const main = async () => {
   clearInterval(heartbeatTimer);
   clearTimeout(deadlineTimer);
   await transcript.finalize(TRANSCRIPT_PATH);
+  await validation.finalize(`${OUTPUT_ROOT}/supervisor-stderr.txt`);
   await validation.finalize(VALIDATION_PATH, false);
   if (planningAuthor) {
     const finalRound = completionRounds.at(-1);
@@ -336,6 +311,8 @@ const main = async () => {
 
 main().catch(async (error) => {
   recordCaughtError(error, "supervisor fatal");
+  try { await recoverCaptures(); }
+  catch (captureError) { recordCaughtError(new AggregateError([error, captureError], 'Supervisor failure capture failed', { cause: error }), 'supervisor fatal capture'); }
   try {
     await mkdir(OUTPUT_ROOT, { recursive: true, mode: 0o700 });
     await atomicJson(STATUS_PATH, {

@@ -217,6 +217,7 @@ test("failure collection preserves every available safe output and records absen
     new TextEncoder().encode(JSON.stringify({ exitCode: 1, signal: null, timedOut: false })),
   );
   reader.files.set("/deos/output/validation.txt", new TextEncoder().encode("codex failed\n"));
+  reader.files.set("/deos/output/supervisor-stderr.txt", new TextEncoder().encode("Original process stderr\n"));
 
   const result = await collector.collectFailure({
     runId: input.runId,
@@ -227,10 +228,10 @@ test("failure collection preserves every available safe output and records absen
   });
 
   assert.equal(result.safeErrorCategory, "codex_exit_nonzero");
-  assert.deepEqual(result.storedFiles, ["status.json", "transcript.jsonl", "validation.txt"]);
+  assert.deepEqual(result.storedFiles, ["status.json", "supervisor-stderr.txt", "transcript.jsonl", "validation.txt"]);
   assert.deepEqual(result.absentFiles, ["original-errors.jsonl", "patch.diff", "result.json"]);
   assert.deepEqual(result.policyRejectedFiles, []);
-  assert.equal(result.objectCount, 4);
+  assert.equal(result.objectCount, 5);
   assert.equal(manifests.state, "complete");
   assert.equal(objects.values.has(result.manifestKey), true);
   const summaryKey = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}/failure-summary.json`;

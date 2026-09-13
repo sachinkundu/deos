@@ -198,3 +198,54 @@ rtk proxy python3 docs/evidence/independent-review-errors/recovery-readback.py -
   ]
 }
 ```
+
+```bash
+rtk proxy docker start -a deos-capture-verification
+```
+
+```output
+TAP version 13
+# Subtest: SIGKILL preserves the exact parent transcript for failure collection and replay
+ok 1 - SIGKILL preserves the exact parent transcript for failure collection and replay
+  ---
+  duration_ms: 311.930138
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 327.408223
+```
+
+```bash
+rtk proxy docker start -a deos-semantic-verification
+```
+
+```output
+{
+  "proof": "Replay of SAC-172 saved native recheck",
+  "ratings": {
+    "proof-base-drift": "fixed",
+    "incomplete-lifecycle-graph": "fixed",
+    "human-identity-enrollment": "fixed",
+    "clarification-comment-readback": "fixed",
+    "capability-policy-timing": "fixed",
+    "test-resource-reconciliation": "fixed",
+    "openspec-post-merge-tail": "fixed"
+  },
+  "source": {
+    "id": "candidate-design",
+    "url": "openspec/changes/sac-172/design.md",
+    "title": "SAC-172 design candidate",
+    "claimLocator": "proof-base-drift",
+    "provenance": "local",
+    "evidenceKind": "local_document"
+  },
+  "warnings": []
+}
+```

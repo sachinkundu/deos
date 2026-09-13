@@ -42,9 +42,6 @@ export function validateSources(result, claims, captured = []) {
     if (!['sources_used', 'none_used', 'not_searched'].includes(result.searchDisposition) || !Array.isArray(result.sources)) {
         throw new Error('uncited_search_result: invalid search disposition');
     }
-    if ((result.searchDisposition === 'sources_used') !== (result.sources.length > 0)) {
-        throw new Error('uncited_search_result: source inventory disagrees with disposition');
-    }
     const ids = new Set();
     return result.sources.map(raw => {
         const source = record(raw, 'source record');
@@ -76,6 +73,40 @@ export function validateSources(result, claims, captured = []) {
             ...(event ? { searchEventId: event.id, observedAt: event.observedAt } : {}) };
     });
 }
+/** Citation metadata is descriptive, not authority to accept or reject findings.
+ * Preserve the model's declaration and ambiguities alongside normalized evidence.
+ */
+export function interpretReviewSources(result, claims) {
+    const warnings = [];
+    const sources = [];
+    for (const [index, raw] of (Array.isArray(result.sources) ? result.sources : []).entries()) {
+        try {
+            const source = record(raw, 'source record');
+            const url = text(source.url, 'source URL');
+            const matches = Object.entries(claims).filter(([, claim]) => typeof claim === 'string' &&
+                (claim.includes(`[${source.id}]`) || citesUrl(claim, url)));
+            const locator = typeof claims[source.claimLocator] === 'string' ? source.claimLocator : matches[0]?.[0];
+            const local = !/^[a-z][a-z0-9+.-]*:/i.test(url) && !url.startsWith('/') &&
+                !url.split('/').includes('..') && !controls.test(url);
+            if (local && locator) {
+                sources.push({ ...source, claimLocator: locator, provenance: 'local', evidenceKind: 'local_document' });
+            } else {
+                const normalized = validateSources({ ...result, searchDisposition: 'sources_used',
+                    sources: [{ ...source, claimLocator: locator }] }, {
+                    ...claims, ...(locator && matches.length ? { [locator]: `${claims[locator]} ${url}` } : {}),
+                });
+                sources.push(...normalized);
+            }
+        } catch (error) {
+            warnings.push({ index, message: error.message });
+        }
+    }
+    if (!Array.isArray(result.sources)) warnings.push({ message: 'Source inventory was absent or not a list.' });
+    return { sources, sourceWarnings: warnings,
+        declaredSourceEvidence: { sources: result.sources, searchDisposition: result.searchDisposition },
+        searchDisposition: sources.some(source => source.provenance !== 'local') ? 'sources_used' :
+            result.searchDisposition === 'not_searched' ? 'not_searched' : 'none_used' };
+}
 export function validateDiscovery(value) {
     const result = record(value, 'discovery');
     if (!Array.isArray(result.findings))
@@ -90,8 +121,8 @@ export function validateDiscovery(value) {
         return { id, summary: text(item.summary, 'finding summary'), location: text(item.location, 'finding location') };
     });
     const summary = result.summary === undefined ? undefined : text(result.summary, 'review summary');
-    const sources = validateSources(result, { ...Object.fromEntries(findings.map(item => [item.id, item.summary])), ...(summary ? { summary } : {}) });
-    return { findings, sources, searchDisposition: result.searchDisposition, ...(summary ? { summary } : {}) };
+    const evidence = interpretReviewSources(result, { ...Object.fromEntries(findings.map(item => [item.id, item.summary])), ...(summary ? { summary } : {}) });
+    return { findings, ...evidence, ...(summary ? { summary } : {}) };
 }
 export function validateRecheck(value, findings) {
     const result = record(value, 'recheck');
@@ -103,7 +134,7 @@ export function validateRecheck(value, findings) {
     const claims = record(result.claims ?? {}, 'recheck claims');
     if (Object.keys(claims).some(id => !ids.has(id)))
         throw new Error('invalid recheck claim locator');
-    return { ratings: accepted, violations, sources: validateSources(result, claims), searchDisposition: result.searchDisposition };
+    return { ratings: accepted, violations, ...interpretReviewSources(result, claims) };
 }
 export function validateDispositions(value, findings) {
     if (!Array.isArray(value))

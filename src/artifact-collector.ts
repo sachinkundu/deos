@@ -463,7 +463,7 @@ export class ArtifactCollector {
     // These copies do not alter the primary result or its immutable manifest.
     // If a copy fails, the workflow's error capture retains the copy failure
     // and any safely read original content in protected diagnostics instead.
-    for (const logicalName of ["status.json", "original-errors.jsonl"]) {
+    for (const logicalName of ["status.json", "original-errors.jsonl", "supervisor-stderr.txt"]) {
       if (input.requiredFiles.includes(logicalName)) continue;
       let safeOriginal: string | undefined;
       try {
@@ -490,7 +490,7 @@ export class ArtifactCollector {
   async collectFailure(input: FailureArtifactCollectionInput): Promise<FailureArtifactCollectionResult> {
     const manifestId = `manifest:${input.attemptId}:failure`;
     const prefix = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}`;
-    const expectedFiles = [...new Set([...input.expectedFiles, "status.json", "original-errors.jsonl"])]
+    const expectedFiles = [...new Set([...input.expectedFiles, "status.json", "original-errors.jsonl", "supervisor-stderr.txt"])]
       .filter((name) => name.length > 0)
       .sort();
     if (expectedFiles.some((name) => name.includes("/") || name.includes(".."))) {

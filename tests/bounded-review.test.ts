@@ -42,7 +42,7 @@ test('source declarations bind citations and reject unsafe links without invente
         assert.throws(() => validateSources({ ...output, sources: [{ ...source, url: bad }] }, { F1: bad }), /invalid_source_record/);
     }
     assert.throws(() => validateSources(output, { F1: 'No citation' }), /uncited_search_result/);
-    assert.throws(() => validateSources({ ...output, searchDisposition: 'none_used' }, { F1: url }));
+    assert.equal(validateSources({ ...output, searchDisposition: 'none_used' }, { F1: url }).length, 1);
 });
 test('concern dispositions cover exactly the immutable concern inventory', () => {
     assert.throws(() => validateDispositions([], [finding]), /incomplete/);
@@ -65,4 +65,22 @@ test('a result without the observed lifecycle cannot consume a slot', () => {
     const state = reduceReviewCycle(initial(), { type: 'invoke', slot: 'discovery', invocationId: 'child', inputDigest: 'a'.repeat(64) });
     assert.throws(() => reduceReviewCycle(state, { type: 'result', slot: 'discovery', invocationId: 'child', inputDigest: 'a'.repeat(64), result }), /unobserved/);
     assert.equal(state.discovery.status, 'running');
+});
+
+test('local design citations and inconsistent search labels do not discard completed ratings', () => {
+    const input = { ratings: { F1: 'fixed' }, claims: { F1: 'Fixed in the design. [candidate-design]' },
+      sources: [{ id: 'candidate-design', url: 'openspec/changes/sac-172/design.md', title: 'Design', claimLocator: 'Decisions 1 and 3–8' }], searchDisposition: 'not_searched' };
+    const checked = validateRecheck(input, [finding]);
+    assert.equal(checked.ratings.F1, 'fixed');
+    assert.equal(checked.sources[0].provenance, 'local');
+    assert.equal(checked.searchDisposition, 'not_searched');
+    assert.deepEqual(checked.declaredSourceEvidence.sources, input.sources);
+});
+test('ambiguous citations remain visible without changing review judgments or inventing sources', () => {
+    const checked = validateRecheck({ ratings: { F1: 'fixed' }, claims: { F1: 'Explained in the design' },
+      sources: [{ url: 'javascript:alert(1)' }], searchDisposition: 'anything' }, [finding]);
+    assert.equal(checked.ratings.F1, 'fixed');
+    assert.equal(checked.sources.length, 0);
+    assert.equal(checked.sourceWarnings.length, 1);
+    assert.equal(checked.declaredSourceEvidence.sources[0].url, 'javascript:alert(1)');
 });

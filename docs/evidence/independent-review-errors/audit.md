@@ -69,3 +69,42 @@ this live pass proves recovery, not a reconstructed cause for the old exit.
 
 No new PR was opened for this follow-up. The existing PR carries the tested
 changes and this evidence. No planning/design approval or merge gate was crossed.
+
+## Design review metadata and interrupted transcript capture
+
+The later SAC-172 design attempt completed a native recheck with all seven
+findings rated fixed. Its source inventory referred to the local candidate
+`openspec/changes/sac-172/design.md`, while `searchDisposition` was
+`not_searched`. The validator incorrectly required this local citation to behave
+like a searched web source. The saved result is in `sac172-recheck.json`.
+
+Reviewer citation metadata is now interpreted separately from finding ratings.
+Local document references and bracketed source IDs are recognized. Inconsistent
+search labels are normalized. Ambiguous citations remain visible with their
+original declaration and a warning; they do not invalidate completed ratings.
+Finding identity, candidate digest, observed review execution and human approval
+remain enforced. This is deterministic interpretation of review evidence, not
+another model call that can fail or change the verdict.
+
+The parent transcript had a separate lifecycle defect: its temporary capture was
+published only on normal process completion. When native review failed, the
+controller killed the supervisor before publication, then destroyed the sandbox.
+The new capture location survives supervisor termination. Failure collection
+publishes it after stopping the process, before artifact collection and cleanup.
+A failed publication propagates and retains the sandbox for retry. Original
+stderr is saved separately even when an existing validation file is present.
+
+All 449 tests and the type check passed. `probe-capture.mjs` ran in the built
+Linux container with a real SIGKILL and verified exact transcript and stderr
+bytes, repeatable publication, and retained source files after publication
+failure. `probe-semantic.mjs` replayed the actual failed recheck in that image;
+all seven fixed ratings were retained and the local citation was recognized.
+These are local process and replay proofs, not a claim of a provider-induced
+production failure.
+
+The old missing parent transcript cannot be recovered because its sandbox was
+already destroyed. An explicit operator retry can now start a fresh author and
+review attempt from this reconciliation state. It retains the frozen definition,
+failed attempt and evidence, and does not reuse the unverified verdict. SQLite
+integration tests prove one durable retry and rejection of stale visits,
+unrelated failures and unfinished cleanup.
