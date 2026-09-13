@@ -37,7 +37,7 @@ class Objects implements ArtifactObjectStore {
   readonly values = new Map<string, { content: Uint8Array; digest: string }>();
   ambiguousKey: string | null = null;
 
-  putCreateOnly(key: string, content: Uint8Array, sha256: string) {
+  putCreateOnly(key: string, content: Uint8Array, sha256: string): Promise<"created" | "already_exists"> {
     if (this.ambiguousKey === key || this.values.has(key)) return Promise.resolve("already_exists" as const);
     this.values.set(key, { content, digest: sha256 });
     return Promise.resolve("created" as const);
