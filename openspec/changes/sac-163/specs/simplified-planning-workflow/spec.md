@@ -1,21 +1,16 @@
 ## ADDED Requirements
 
-### Requirement: Revise the approved plan with the design
+### Requirement: Start with the design and revise the plan after review
 
-Some saved flows let the design author edit the plan. In those flows, the author SHALL get the last approved proposal and all delta specs. On the first round, the author SHALL get the design rules and no prior design. On a later round, the author SHALL also get the current design draft. The author MAY change the proposal, the specs, and the design. The author MUST keep the full plan and design in sync.
+Some saved flows let the design author edit the plan after human review. In those flows, the first round SHALL give the author the design rules, the last approved proposal, all delta specs, and no prior design. The author SHALL first make only the design and SHALL keep the approved plan unchanged. On a later round, the author SHALL also get the current design draft. If an allowed person asks for a plan change at the design gate, the author MAY change the proposal, affected specs, and design. The author MUST keep the full plan and design in sync.
 
 The trusted service SHALL keep these edits in the Design phase. It SHALL use the same design branch and pull request for each round. It MUST NOT reopen the Planning phase or its pull request.
-
-#### Scenario: Design work finds a plan flaw
-
-- **WHEN** the design author finds that the approved plan cannot support a sound design.
-- **THEN** the author may update the proposal, affected delta specs, and design as one design candidate.
-- **AND** the flow stays in the Design phase.
 
 #### Scenario: The first design round starts
 
 - **WHEN** no design file exists for the change.
 - **THEN** the author gets the design rules, the approved plan, and no prior design draft.
+- **AND** the author keeps the approved proposal and delta specs unchanged.
 
 #### Scenario: A person asks for plan and design edits
 
@@ -25,7 +20,7 @@ The trusted service SHALL keep these edits in the Design phase. It SHALL use the
 
 #### Scenario: The approved plan needs no edit
 
-- **WHEN** the design author can meet the approved plan without changing it.
+- **WHEN** no person asks for a plan change at the design gate.
 - **THEN** the design candidate keeps the approved proposal and delta specs unchanged.
 
 ### Requirement: Accept only a complete design candidate
