@@ -4,7 +4,7 @@
 
 The portal SHALL show the checked design base, build tries, task state, branch, pull request, checks, and proof. It SHALL mark each proof item as an image, a Showboat log, a real host event, or a fake event. Unit tests MUST NOT be the sole proof of how the app acts.
 
-The view SHALL show which patch digest and base digest each proof item covers. Old proof SHALL stay in the past. It MUST NOT look like proof for the new patch. The portal SHALL show the final gate as blocked while any needed proof is stale.
+The view SHALL show which change and approved base each proof item covers. Old proof SHALL stay in the past. It MUST NOT look like proof for new work. The portal SHALL show the final gate as blocked while any needed proof is stale.
 
 #### Scenario: Implementation is active
 
@@ -16,10 +16,10 @@ The view SHALL show which patch digest and base digest each proof item covers. O
 - **WHEN** the build enters its final human gate.
 - **THEN** the portal links the exact pull request, check results, task list, and current behavior proof.
 
-#### Scenario: Candidate changes after proof
+#### Scenario: Work changes after proof
 
 - **WHEN** an edit changes the patch after proof was saved.
-- **THEN** the portal marks the old proof as stale and shows the final gate as blocked until new proof covers the current patch and base.
+- **THEN** the portal marks the affected proof as stale and shows the final gate as blocked until the current work has new proof.
 
 ### Requirement: Show clarification waits and replies
 
