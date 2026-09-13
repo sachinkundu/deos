@@ -6,11 +6,11 @@ const output = "docs/evidence/sac-153-implementation";
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-let revision = 1; let fail = false; let malformed = false;
+let revision = 1; let fail = false; let malformed = false; let modern = false;
 const requests = [];
 const fixture = () => {
   const p = structuredClone(demoApi("/api/runs/demo"));
-  p.run.definitionVersion = 1; // Exercise status, graph, history, and counts in the full map.
+  p.run.definitionVersion = modern ? 25 : 1; // Cover both supported layouts; screenshots use the current grouped view.
   p.run.status = revision === 1 ? "active" : "succeeded";
   p.run.freshness = `2026-09-13T10:0${revision}:00Z`;
   p.stages[0].label = `Snapshot ${revision}`;
@@ -43,7 +43,7 @@ try {
   revision = 2; await tick();
   await expect(page.getByRole("button", { name: "Apply update" })).toBeVisible();
   await expect(page.getByText("Snapshot 1", { exact: true })).toBeVisible();
-  await page.screenshot({ path: `${output}/manual-pending.png`, fullPage: true });
+
   revision = 3; await tick();
   await page.getByRole("button", { name: "Apply update" }).click();
   await expect(page.getByText("Snapshot 3", { exact: true })).toBeVisible();
@@ -57,10 +57,10 @@ try {
   await expect(page.getByText("Snapshot 4", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Apply update" })).toHaveCount(0);
   if (requests.length !== before) throw new Error(`Preference toggle emitted a request: ${JSON.stringify(requests.slice(before))}`);
-  await settings.screenshot({ path: `${output}/settings-live.png`, fullPage: true });
+  await settings.locator(".live-updates-card").screenshot({ path: `${output}/settings-live.png` });
   await settings.reload(); await expect(settings.getByRole("switch")).toBeChecked();
   revision = 5; await tick(); await expect(page.getByText("Snapshot 5", { exact: true })).toBeVisible();
-  await page.screenshot({ path: `${output}/live-applied.png`, fullPage: true });
+
   fail = true; await tick(); await expect(page.getByText(/read temporarily unavailable/)).toBeVisible();
   await expect(page.getByText("Snapshot 5", { exact: true })).toBeVisible(); fail = false;
   await settings.getByRole("switch").uncheck(); revision = 6; await tick();
@@ -84,9 +84,21 @@ try {
   await expect(deniedPage.getByRole("switch")).not.toBeChecked();
   await deniedPage.getByRole("switch").check();
   await expect(deniedPage.getByText(/active only for this page/)).toBeVisible();
-  await deniedPage.screenshot({ path: `${output}/storage-warning.png`, fullPage: true });
+  await deniedPage.locator(".live-updates-card").screenshot({ path: `${output}/storage-warning.png` });
   await denied.close();
-  await reopened.getByRole("switch").check(); malformed = true; await tick();
+  modern = true; revision = 1;
+  await reopened.getByRole("switch").uncheck();
+  await page.reload();
+  await page.getByRole("button", { name: /SAC-148/ }).click();
+  await expect(page.getByText("Definition v25", { exact: true })).toBeVisible();
+  revision = 2; await tick();
+  await expect(page.getByRole("button", { name: "Apply update" })).toBeVisible();
+  await page.screenshot({ path: `${output}/manual-pending.png`, fullPage: true });
+  await reopened.getByRole("switch").check();
+  await expect(page.getByRole("button", { name: "Apply update" })).toHaveCount(0);
+  await expect(page.locator(".status-strip .status-pill")).toHaveText("succeeded");
+  await page.screenshot({ path: `${output}/live-applied.png`, fullPage: true });
+  malformed = true; await tick();
   await expect(page.getByRole("heading", { name: "Workflow view unavailable" })).toBeVisible();
   await page.screenshot({ path: `${output}/render-error.png`, fullPage: true });
   for (const request of requests) {

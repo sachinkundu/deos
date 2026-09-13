@@ -8,8 +8,13 @@ const pollGate = new Promise(resolve => { releasePoll = resolve; });
 let oldIssueSeen; const issueSeen = new Promise(resolve => { oldIssueSeen = resolve; });
 let pollSeen; const pollStarted = new Promise(resolve => { pollSeen = resolve; });
 let revision = 1;
+let releaseRetry; const retryGate = new Promise(resolve => { releaseRetry = resolve; });
+let retrySeen; const retryStarted = new Promise(resolve => { retrySeen = resolve; });
 await context.route("**/api/**", async route => {
   const path = new URL(route.request().url()).pathname;
+  if (path.endsWith("/retry")) {
+    retrySeen(); await retryGate; return route.fulfill({ json: {} });
+  }
   if (path.includes("/api/issues/")) {
     const old = path.includes("6936d743");
     if (old) { oldIssueSeen(); await issueGate; }
@@ -22,6 +27,7 @@ await context.route("**/api/**", async route => {
     const p = structuredClone(demoApi(path));
     p.run.id = path.split("/").at(-1);
     p.run.definitionVersion = 1;
+    p.retry = { failedAttemptId: "demo-failed-attempt", retryNode: "design_author" };
     p.stages[0].label = `Snapshot ${revision}`;
     p.run.freshness = String(revision);
     if (holdPoll) { pollSeen(); await pollGate; }
@@ -45,9 +51,19 @@ try {
   releasePoll();
   await expect(page.getByText("Snapshot 2", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Apply update" })).toHaveCount(0);
-  holdPoll = false; revision = 3;
+  holdPoll = false;
+  page.on("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: /Retry / }).click(); await retryStarted;
+  revision = 3;
   await page.getByLabel("Workflow run").selectOption("second");
   await expect(page.getByText("Snapshot 3", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Apply update" })).toHaveCount(0);
-  console.log("Passed: run switching loads a new baseline; delayed issue response cannot replace current run; poll completion uses the latest mode.");
+  releaseRetry();
+  await page.waitForResponse(r => r.url().endsWith("/retry"));
+  await expect(page.getByLabel("Workflow run")).toHaveValue("second");
+  await expect(page.getByText("Snapshot 3", { exact: true })).toBeVisible();
+  revision = 4;
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await expect(page.getByText("Snapshot 4", { exact: true })).toBeVisible();
+  console.log("Passed: late retry response preserves the selected run and its polling; run switching loads a new baseline; delayed issue response cannot replace current run; poll completion uses the latest mode.");
 } finally { await browser.close(); }

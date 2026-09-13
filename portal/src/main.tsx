@@ -512,9 +512,7 @@ class RunRenderBoundary extends Component<{ children: ReactNode }, { failed: boo
 function LiveUpdatesControl() {
   const preference = useSyncExternalStore(liveUpdates.subscribe, liveUpdates.getSnapshot);
   return <section className="settings-card controls-card live-updates-card" aria-labelledby="live-updates-title">
-    <h2 id="live-updates-title">Live updates</h2>
-    <p>Show confirmed workflow changes automatically. This choice stays in this browser.</p>
-    <label className="switch-row"><span><strong>Live updates</strong><small>{preference.enabled ? "On — confirmed changes appear automatically." : "Off — use Apply update when you are ready."}</small></span><input type="checkbox" role="switch" aria-label="Live updates" checked={preference.enabled} onChange={event => liveUpdates.setEnabled(event.target.checked)} /></label>
+    <label className="switch-row"><span id="live-updates-title"><strong>Live updates</strong></span><input type="checkbox" role="switch" aria-label="Live updates" checked={preference.enabled} onChange={event => liveUpdates.setEnabled(event.target.checked)} /></label>
     {preference.notice && <p role="status">{noticeText[preference.notice]}</p>}
   </section>;
 }
@@ -1083,10 +1081,11 @@ function App() {
     setRetryMessage(null);
     try {
       await retryMutation(`/api/runs/${encodeURIComponent(runId)}/retry`, projection.retry);
+      if (currentRunRef.current !== runId) return;
       setRetryMessage(`Retry started from ${step}. Completed work was kept.`);
       await loadProjection(runId, true);
     } catch (error) {
-      setRetryMessage(errorText(error));
+      if (currentRunRef.current === runId) setRetryMessage(errorText(error));
     } finally {
       setRetrying(false);
     }

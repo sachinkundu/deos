@@ -16,7 +16,7 @@ See [executable browser checks](checks.md). To reproduce, install dependencies, 
 
 ## Evidence boundary
 
-These are local browser tests with controlled fixtures, not provider-originated or production proof. The screenshots use sample run data. The existing poll interval, response comparison, read API, and server data are unchanged. This change does not add a new projection ordering rule.
+These are local browser tests with controlled fixtures, not provider-originated or production proof. The screenshots use sample run data in the current grouped workflow layout. Earlier PR screenshots incorrectly used the legacy version-1 layout; those have been replaced. The test still checks the legacy layout separately, without using it for the screenshots. The existing poll interval, response comparison, read API, and server data are unchanged. This change does not add a new projection ordering rule.
 
 Production deployment, active-version readback, and authenticated live screenshots remain a release step after authorization. No portal or backend was deployed for this implementation PR.
 

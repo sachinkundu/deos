@@ -18,3 +18,12 @@ rtk node --experimental-strip-types portal/e2e/live-updates.mjs
 ```output
 {"result":"passed","apiRequests":21,"scenarios":["manual baseline","latest pending","atomic snapshot","pending promotion","cross-tab sync","reload","reopen","live polling","poll failure preservation","disable","browser isolation","invalid storage","denied storage","render failure","no preference requests"]}
 ```
+
+```bash
+rtk node --experimental-strip-types portal/e2e/live-update-races.mjs && rtk node --experimental-strip-types portal/e2e/live-updates.mjs
+```
+
+```output
+Passed: late retry response preserves the selected run and its polling; run switching loads a new baseline; delayed issue response cannot replace current run; poll completion uses the latest mode.
+{"result":"passed","apiRequests":26,"scenarios":["manual baseline","latest pending","atomic snapshot","pending promotion","cross-tab sync","reload","reopen","live polling","poll failure preservation","disable","browser isolation","invalid storage","denied storage","render failure","no preference requests"]}
+```
