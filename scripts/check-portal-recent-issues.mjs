@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { chromium } from "@playwright/test";
+import { createPortalCheckContexts } from "./portal-check-contexts.mjs";
 
 const host = "https://deos-staging.voxdez.com";
 const assertion = process.env.PORTAL_REVIEWER_ACCESS_ASSERTION;
@@ -9,7 +10,7 @@ const sha = process.env.REVIEWED_SHA ?? process.env.GITHUB_SHA;
 if (!assertion || !/^[a-f0-9]{40}$/.test(sha ?? "")) throw new Error("A reviewer Access assertion and full source SHA are required");
 const browser = await chromium.launch();
 try {
-  const context = await browser.newContext();
+  const { reviewer: context, service: serviceContext } = await createPortalCheckContexts(browser);
   await context.addCookies([{ name: "CF_Authorization", value: assertion, url: host, httpOnly: true, secure: true }]);
   // Access binds the reviewer token to this companion cookie when enabled.
   const binding = process.env.PORTAL_REVIEWER_ACCESS_BINDING;
@@ -24,7 +25,8 @@ try {
     if (path === "/api/version" && Object.values(headers).some(value => !value)) {
       throw new Error("The version check requires the existing portal Access service credentials");
     }
-    const response = await context.request.get(host + path, { maxRedirects: 0, headers });
+    const requestContext = path === "/api/version" ? serviceContext : context;
+    const response = await requestContext.request.get(host + path, { maxRedirects: 0, headers });
     assert.equal(response.status(), 200, `Staging ${path} must return 200`);
     return response.json();
   };
