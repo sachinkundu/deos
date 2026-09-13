@@ -112,11 +112,15 @@ test("successful collection retains notification diagnostics without changing th
   const { collector, reader, objects } = setup();
   const diagnostic = '{"message":"wake failed","detail":"Error: transport reset; cause: closed socket"}\n';
   reader.files.set("/deos/output/original-errors.jsonl", new TextEncoder().encode(diagnostic));
+  const status = JSON.stringify({ exitCode: 0, completedAt: NOW.toISOString() });
+  reader.files.set("/deos/output/status.json", new TextEncoder().encode(status));
   const result = await collector.collect(input);
   assert.equal(result.result.outcome, "completed");
-  assert.equal(result.objectCount, 3);
+  assert.equal(result.objectCount, 4);
   const stored = [...objects.values].find(([key]) => key.endsWith("/original-errors.jsonl"));
   assert.equal(new TextDecoder().decode(stored?.[1].content), diagnostic);
+  const storedStatus = [...objects.values].find(([key]) => key.endsWith("/status.json"));
+  assert.equal(new TextDecoder().decode(storedStatus?.[1].content), status);
   await collector.verifyDurable(result);
 });
 

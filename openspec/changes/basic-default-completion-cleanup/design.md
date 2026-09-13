@@ -33,7 +33,7 @@ Cloudflare buffers events sent before the matching wait. See [events and paramet
 
 ### No new persistent state
 
-D1 remains the authority for run, node, visit, attempt, and workflow instance. Workflow event history holds the hint. The supervisor's existing original-error log preserves notification errors; the existing collector stores it. No outbox or completion-result table is needed because the heartbeat already recovers a lost hint.
+D1 remains the authority for run, node, visit, attempt, and workflow instance. Workflow event history holds the hint. The collector also saves the supervisor status and original-error log when present, including on success. This preserves the finish time and notification errors after cleanup. No outbox or completion-result table is needed because the heartbeat already recovers a lost hint.
 
 ## Risks / Trade-offs
 

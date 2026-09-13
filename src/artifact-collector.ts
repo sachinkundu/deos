@@ -349,11 +349,12 @@ export class ArtifactCollector {
       let result: Readonly<Record<string, unknown>> | null = null;
       let providerReceipts: readonly ProviderReceiptReference[] = [];
       const files = [...input.requiredFiles];
-      // Wake-up failures do not change the work result, but their diagnostics
-      // must survive successful cleanup just as they survive failed attempts.
-      if (!files.includes("original-errors.jsonl") &&
-          await this.reader.exists(`${input.outputRoot}/original-errors.jsonl`)) {
-        files.push("original-errors.jsonl");
+      // Keep the supervisor's finish time and notification diagnostics after
+      // cleanup, including when the work itself succeeded.
+      for (const optional of ["status.json", "original-errors.jsonl"]) {
+        if (!files.includes(optional) && await this.reader.exists(`${input.outputRoot}/${optional}`)) {
+          files.push(optional);
+        }
       }
       for (const logicalName of files) {
         if (logicalName.includes("/") || logicalName.includes("..")) {
