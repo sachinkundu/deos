@@ -5,7 +5,43 @@ and the design approved in [PR 108](https://github.com/sachinkundu/deos/pull/108
 It also retains the deployed fixes from [PR 109](https://github.com/sachinkundu/deos/pull/109),
 which was still open when this branch was prepared. The branch also integrates
 SAC-171 from PR 112 and retains its frozen sandbox tier routing. The combined
-checks pass: 418 backend tests, 81 portal tests, and 70 Python tests.
+checks pass: 418 backend tests, 83 portal tests, and 70 Python tests.
+
+## Transcript and stored-state integration check
+
+[The executable replay](portal-replay.md) connects the captured native streams
+to the production collector, local D1/R2, and the portal API. It applies every
+repository migration, including the sandbox tier triggers. It found and fixed
+a display bug: Activity did not read native child messages from their payloads.
+
+| Behavior | Result |
+| --- | --- |
+| Collection before cleanup | Rejected |
+| Discovery and recheck transcript reads | Both return all 14 captured events with matching hashes |
+| Activity view | Shows reviewer messages and tool output; Raw JSONL remains available |
+| Changed R2 bytes | Reported as corrupt |
+| Missing child index | Explicit missing-evidence error; collection replay restores the index |
+| Unknown child or absent issue visibility | Not found; unauthenticated requests are denied |
+| Independent result replay | Identical replay accepted; different second result rejected |
+| Human gate before response or attempt completion | Rejected |
+| Three later head updates | Reviewed head retained, coverage marked stale, child counts unchanged |
+
+The independent findings and later heads are synthetic test inputs. This replay
+does not test live model judgment, provider delivery, or Cloudflare activation.
+Both transcript screenshots below come from real collector/API reads of the
+saved offline native streams, rather than hand-built transcript responses.
+
+![Discovery transcript from local D1/R2 replay](discovery-transcript-replay.png)
+![Recheck transcript from local D1/R2 replay](recheck-transcript-replay.png)
+
+To inspect the same flow locally, install the locked dependencies and run:
+
+```sh
+node --experimental-strip-types scripts/probe-bounded-portal.ts
+```
+
+Open `http://127.0.0.1:4780/` and use both transcript buttons. The server binds
+only to loopback and uses a local test identity. Stop it with Ctrl-C.
 
 ## Local evidence
 
