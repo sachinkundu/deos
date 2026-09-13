@@ -518,3 +518,106 @@ rtk proxy python3 docs/evidence/independent-review-errors/capture-recovery-readb
   ]
 }
 ```
+
+```bash
+rtk proxy python3 docs/evidence/independent-review-errors/capture-recovery-readback.py --env-file /Users/sachin/code/deos/.env --attempt-id 01a09b1f-84cd-74ff-ab85-7d56e7fec467
+```
+
+```output
+{
+  "run": {
+    "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:ec27e96b-1a1a-4f38-a4d1-070258a45ec0:run:1",
+    "status": "active",
+    "current_node": "design_independent_review",
+    "current_visit_sequence": 21,
+    "updated_at": "2026-09-13T14:19:38.885Z"
+  },
+  "attempts": [
+    {
+      "attempt_id": "01a09b1f-84cd-74ff-ab85-7d56e7fec467",
+      "node_id": "design_author",
+      "state": "completed",
+      "result_class": "completed",
+      "cleanup_state": "destroyed",
+      "manifest_id": "manifest:01a09b1f-84cd-74ff-ab85-7d56e7fec467",
+      "started_at": "2026-09-13T14:15:29.395Z",
+      "updated_at": "2026-09-13T14:19:17.955Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "logical_name": "review-progress.json",
+      "byte_size": 950984,
+      "sha256": "1a88558f51bb2b096af1afe80433c5e826859e03b13fae2415794493461384dc",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Aec27e96b-1a1a-4f38-a4d1-070258a45ec0%3Arun%3A1/attempts/01a09b1f-84cd-74ff-ab85-7d56e7fec467/review-progress.json",
+      "readBackVerified": true
+    },
+    {
+      "logical_name": "transcript.jsonl",
+      "byte_size": 1152962,
+      "sha256": "20349f99d88baae3b2a31d0f8da3e8c9002451d0d334857abf55020f37735ede",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Aec27e96b-1a1a-4f38-a4d1-070258a45ec0%3Arun%3A1/attempts/01a09b1f-84cd-74ff-ab85-7d56e7fec467/transcript.jsonl",
+      "readBackVerified": true
+    }
+  ],
+  "transcriptOwners": [
+    {
+      "owner_kind": "author_attempt",
+      "owner_id": "01a09b1f-84cd-74ff-ab85-7d56e7fec467",
+      "byte_size": 1152962,
+      "event_count": 88
+    }
+  ],
+  "deployment": {
+    "id": "7113d9b3-bb5f-4dfa-a661-9c3b3db147d8",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "sachin.kundu@pm.me",
+    "annotations": {
+      "workers/message": "Restore review continuation outputs and resume ...",
+      "workers/triggered_by": "upload"
+    },
+    "versions": [
+      {
+        "version_id": "6ad80d31-9104-4573-a0af-9db9082b0eaf",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-09-13T14:14:09.698982Z"
+  },
+  "containers": [
+    {
+      "id": "a0344373-884d-4c06-b4c2-4e58295de498",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:7112856fe0a49375eb392392fa2bf4d697a8ea0100b2a64c16d0d7f8701d2984",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 1,
+          "assigned": 1,
+          "healthy": 2,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      }
+    },
+    {
+      "id": "a03d8a75-5574-4d37-806d-8b07ed1a79c6",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:7112856fe0a49375eb392392fa2bf4d697a8ea0100b2a64c16d0d7f8701d2984",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      }
+    }
+  ]
+}
+```

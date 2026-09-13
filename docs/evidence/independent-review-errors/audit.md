@@ -172,3 +172,20 @@ container image stayed at `7112856fe0a49375eb392392fa2bf4d697a8ea0100b2a64c16d0d
 Restarting the errored workflow collected the saved evidence and completed cleanup.
 The durable recovery record selected finalization, with the recheck accepted and
 no open findings. An operator retry resumed that checkpoint.
+
+
+Finalization attempt `01a09b1f-84cd-74ff-ab85-7d56e7fec467` completed at
+2026-09-13T14:19:17.955Z with cleanup destroyed. Its complete manifest includes
+both restored response files, the parent transcript and review progress. The
+checked candidate digest remains unchanged. The workflow published design PR
+#133 and started independent review attempt `01a09b23-6f9a-7097-bf29-b47a9c304f19`.
+SAC-163 had already reached succeeded/done at 13:44:42.983Z. Neither recovery
+required a dummy review comment or a human approval from this operator.
+
+![SAC-163 completed](sac163-completed.png)
+![SAC-172 recovered and independent review running](sac172-recovered.png)
+
+The production portal opened the finalization parent transcript: 88 events,
+SHA-256 `20349f99d88baae3b2a31d0f8da3e8c9002451d0d334857abf55020f37735ede`.
+
+![Recovered parent transcript opens](sac172-transcript-restored.png)
