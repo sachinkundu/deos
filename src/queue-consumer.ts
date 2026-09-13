@@ -1,4 +1,5 @@
 import { claudeRunner } from "./claude-environment.ts";
+import { AttemptCompletionNotifier } from "./attempt-completion.ts";
 import { D1StageRetryStore } from "./publication-stage-retry.ts";
 import { CapabilityRouter } from "./capability-router.ts";
 import { verifyCapabilityToken } from "./capability-auth.ts";
@@ -38,6 +39,8 @@ export { DeosWorkflow, Sandbox, Standard2Sandbox };
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
+  completion: new AttemptCompletionNotifier(env.DB,
+    env.ORCHESTRATION_WORKFLOW as unknown as QueueConsumerEnv["ORCHESTRATION_WORKFLOW"]),
   claude: claudeRunner(env),
   store: new D1CapabilityStore(env.DB),
   github: new GitHubCapabilityAdapter(

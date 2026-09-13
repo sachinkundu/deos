@@ -431,6 +431,17 @@ class InterruptingStep extends FakeStep {
   }
 }
 
+class CompletionBeforeLinearStep extends FakeStep {
+  sentHint = false;
+  override async waitForEvent<T>(): Promise<{ payload: Readonly<T> }> {
+    if (!this.sentHint) {
+      this.sentHint = true;
+      return { payload: { kind: "attempt-completed", attemptId: "old-attempt" } as T };
+    }
+    return super.waitForEvent<T>();
+  }
+}
+
 class RacingRuntimeStore extends RuntimeStore {
   raced = false;
 
@@ -600,6 +611,18 @@ test("Workflow reloads D1 authority and continues through agents, a gate, and sy
   assert.equal(store.transitions[2].actor_type, "user");
   assert.deepEqual(store.humanGateDecisions, [undefined]);
   assert.equal(store.reads >= 5, true);
+  assert.equal(services.gateEntries, 1);
+});
+
+test("a buffered completion hint cannot approve a human gate", async () => {
+  const store = new RuntimeStore();
+  const services = new NodeServices();
+  store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+  const step = new CompletionBeforeLinearStep(["delivery-human"]);
+  const result = await orchestrator(store, services).run(store.run.run_id, step);
+  assert.equal(result.outcome, "succeeded");
+  assert.equal(store.transitions[2].actor_type, "user");
+  assert.equal(step.names.some(name => name.includes("undefined") || name.includes("old-attempt")), false);
   assert.equal(services.gateEntries, 1);
 });
 
@@ -953,6 +976,17 @@ test("a missing exact action receipt waits and an authorized event resumes the s
   ]);
 });
 
+test("a buffered completion hint cannot consume a durable wait", async () => {
+  const store = new RuntimeStore(makeRun(resumableDefinition));
+  const services = new WaitServices(["failed", "completed"]);
+  store.inbox.set("delivery-resume", waitInboxEvent("delivery-resume", "In Progress"));
+  const step = new CompletionBeforeLinearStep(["delivery-resume"]);
+  const result = await lifecycleOrchestrator(store, services).run(store.run.run_id, step);
+  assert.equal(result.outcome, "succeeded");
+  assert.deepEqual(store.waitDeliveries, [{ deliveryId: "delivery-resume", decision: "resumed" }]);
+  assert.equal(step.names.some(name => name.includes("undefined") || name.includes("old-attempt")), false);
+});
+
 test("an interrupted wait entry reloads the same persisted wait before resuming", async () => {
   const store = new RuntimeStore(makeRun(resumableDefinition));
   const services = new WaitServices(["failed", "completed"]);
@@ -1179,5 +1213,38 @@ test("native initial authors reconcile promptly while old and later author paths
       now: () => new Date(NOW),
     }).run(run.run_id, step), /observed next reconciliation/);
     assert.equal(timeout, expected, `${version}:${node}`);
+  }
+});
+
+test("a completion hint wakes normal reconciliation and covers the exit race for only its own attempt", async () => {
+  for (const [payload, expected] of [
+    [{ kind: "attempt-completed", attemptId: "attempt" }, ["5m", "10s", "5m"]],
+    [{ kind: "attempt-completed", attemptId: "old-attempt" }, ["5m", "5m", "5m"]],
+    [{ deliveryId: "delivery" }, ["5m", "5m", "5m"]],
+  ] as const) {
+    const run = { ...makeRun(traceabilityDefinition), definition_version: 22, current_node: "planning_author" };
+    const store = new RuntimeStore(run);
+    let calls = 0;
+    const waits: unknown[] = [];
+    class RunningServices extends NodeServices {
+      override executeAgent(): ReturnType<WorkflowNodeServices["executeAgent"]> {
+        if (calls++ === 3) throw new Error("verified normal reconciliation");
+        return Promise.resolve({ state: "running", attemptId: "attempt", sandboxId: "sandbox" });
+      }
+    }
+    const step: WorkflowStepLike = { do: async (_name, callback) => callback(),
+      waitForEvent: async <T>(_name: string, options: { type: string; timeout?: string | number }) => {
+        waits.push(options.timeout);
+        assert.equal(options.type, "linear-event");
+        if (waits.length === 1) return { payload: payload as unknown as Readonly<T> };
+        throw Object.assign(new Error("heartbeat"), { name: "WorkflowTimeoutError" });
+      },
+    };
+    await assert.rejects(new WorkflowOrchestrator(store, traceabilityDefinition, new RunningServices(), {
+      humanGateStateId: "human-state", approvalStateNames: ["Merging"], rejectionStateNames: ["Canceled"],
+    }).run(run.run_id, step), /verified normal reconciliation/);
+    assert.deepEqual(waits, expected);
+    assert.equal(store.run.status, "active");
+    assert.equal(store.run.current_node, "planning_author");
   }
 });

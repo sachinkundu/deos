@@ -3,6 +3,7 @@ import { checkAuthorSources } from "./grounded-review.mjs";
 import { provisionGrounding, verifyGroundingContext, verifyNativeGrounding } from "./grounded-agent.mjs";
 import { setupNativeReview } from "./native-review-setup.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
+import { notifyAttemptCompletion } from "./attempt-completion.mjs";
 import { createWriteStream } from "node:fs";
 import { access, appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
@@ -29,6 +30,9 @@ const PROVIDER_REFERENCES_LOG_PATH = `${OUTPUT_ROOT}/provider-references.jsonl`;
 const PROVIDER_REFERENCES_PATH = `${OUTPUT_ROOT}/provider-references.json`;
 const AUTHOR_COMPLETION_PATH = `${OUTPUT_ROOT}/author-completion.json`;
 const MAXIMUM_AUTHOR_COMPLETION_REPAIRS = 2;
+let completionJob = null;
+let heartbeatTimer;
+let deadlineTimer;
 
 const atomicJson = async (path, value) => {
   const temporary = `${path}.tmp`;
@@ -178,6 +182,7 @@ const runChild = async ({ job, prompt, reviewer, resumeSessionId, transcript, va
 const main = async () => {
   await mkdir(OUTPUT_ROOT, { recursive: true, mode: 0o700 });
   const job = JSON.parse(await readFile(JOB_PATH, "utf8"));
+  completionJob = job;
   const required = ["attemptId", "runId", "nodeId", "cwd", "promptPath", "resultSchemaPath", "deadline"];
   if (required.some((key) => typeof job[key] !== "string" || job[key].length === 0)) {
     throw new Error("job specification is incomplete");
@@ -206,8 +211,8 @@ const main = async () => {
     processPid: activePid,
     observedAt: new Date().toISOString(),
   });
-  const heartbeatTimer = setInterval(() => void heartbeat(), 30_000);
-  const deadlineTimer = setTimeout(() => {
+  heartbeatTimer = setInterval(() => void heartbeat(), 30_000);
+  deadlineTimer = setTimeout(() => {
     if (activePid === null) return;
     try {
       process.kill(-activePid, "SIGTERM");
@@ -344,4 +349,8 @@ main().catch(async (error) => {
   } finally {
     process.exitCode = 1;
   }
+}).finally(async () => {
+  clearInterval(heartbeatTimer);
+  clearTimeout(deadlineTimer);
+  if (completionJob !== null) await notifyAttemptCompletion(completionJob);
 });

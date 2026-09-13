@@ -230,6 +230,37 @@ const setup = async () => {
   return { store, github, selectedInstallations, linear, gitProxy, router, token, invoke, invokeGit };
 };
 
+test("completion requires an active authenticated grant and cannot carry authority or a result", async () => {
+  const store = new Store();
+  const calls: unknown[] = [];
+  let current = true;
+  const router = new CapabilityRouter({ store, github: {} as never, linear: {} as never,
+    signingSecret: SECRET, now: () => NOW,
+    completion: { async notify(runId, attemptId) { calls.push({ runId, attemptId }); return current; } },
+  });
+  const token = await mintCapabilityToken(claims, SECRET);
+  const invoke = (body: unknown = { version: 1 }, grant = token, attempt = claims.attemptId) =>
+    router.handle(new Request("https://worker.example/capabilities/attempt-completed", {
+      method: "POST", headers: { Authorization: `Bearer ${grant}`, "Deos-Attempt": attempt },
+      body: JSON.stringify(body),
+    }));
+  assert.equal((await invoke({ version: 1 }, "forged")).status, 401);
+  assert.equal((await invoke({ version: 1 }, token, "another-attempt")).status, 403);
+  assert.equal((await invoke({ version: 1, outcome: "completed" })).status, 400);
+  assert.equal((await invoke({ version: 1, workflowInstanceId: "another-workflow" })).status, 400);
+  assert.deepEqual(calls, []);
+  assert.equal((await invoke()).status, 200);
+  assert.deepEqual(calls, [{ runId: claims.runId, attemptId: claims.attemptId }]);
+  store.contextValue!.attemptState = "starting";
+  assert.equal((await invoke()).status, 200);
+  current = false;
+  assert.equal((await invoke()).status, 403);
+  store.contextValue!.attemptState = "completed";
+  assert.equal((await invoke()).status, 403);
+  assert.equal(calls.length, 3);
+  assert.equal(store.operations.size, 0);
+});
+
 test("signed capability token is scoped and expires", async () => {
   const token = await mintCapabilityToken(claims, SECRET);
   assert.deepEqual(await verifyCapabilityToken(token, SECRET, NOW.getTime()), claims);

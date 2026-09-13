@@ -52,6 +52,7 @@ interface OpenRouterCapabilityRequest {
 }
 
 export interface CapabilityRouterDependencies {
+  completion?: Pick<import("./attempt-completion.ts").AttemptCompletionNotifier, "notify">;
   claude?: Pick<import("./claude-runner.ts").ClaudeRunner, "handle">;
   store: CapabilityStore;
   github: GitHubCapabilityAdapter;
@@ -304,6 +305,7 @@ export class CapabilityRouter {
 
   async handle(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
+    const completion = path === "/capabilities/attempt-completed";
     const gitKind: GitUploadPackRequest | null =
       request.method === "GET" && path.endsWith("/git/info/refs") &&
           new URL(request.url).searchParams.get("service") === "git-upload-pack"
@@ -329,9 +331,9 @@ export class CapabilityRouter {
     const context = await this.dependencies.store.context(claims.attemptId);
     if (
       context === null ||
-      !(gitKind === null
+      !(gitKind === null && !completion
         ? context.attemptState === "running"
-        : ["pending", "starting", "running"].includes(context.attemptState)) ||
+        : (completion ? ["starting", "running"] : ["pending", "starting", "running"]).includes(context.attemptState)) ||
       context.runId !== claims.runId ||
       context.repository !== claims.repository ||
       context.issueId !== claims.issueId
@@ -365,6 +367,15 @@ export class CapabilityRouter {
     } catch (caughtError) {
       recordCaughtError(caughtError, "src/capability-router.ts:360");
       return json(400, { error: "invalid_json" });
+    }
+    if (completion) {
+      const body = asRecord(untrusted);
+      if (!body || !exactKeys(body, ["version"]) || body.version !== 1) {
+        return json(400, { error: "invalid_completion_hint" });
+      }
+      if (!this.dependencies.completion) return json(503, { error: "completion_unavailable" });
+      const accepted = await this.dependencies.completion.notify(claims.runId, claims.attemptId);
+      return accepted ? json(200, { accepted: true }) : json(403, { error: "attempt_not_current" });
     }
     if (path.includes("/claude/")) {
       if (!this.dependencies.claude) return json(503, { error: "review_failure" });

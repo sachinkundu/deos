@@ -24,6 +24,7 @@ COPY container/grounded-*.mjs /deos/bin/
 COPY vendor/agent-skills/ /deos/agent-skills/
 COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
+COPY container/attempt-completion.mjs /deos/bin/attempt-completion.mjs
 COPY container/author-completion.mjs /deos/bin/author-completion.mjs
 COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs
 COPY container/trace-review-runner.mjs /deos/bin/trace-review-runner.mjs

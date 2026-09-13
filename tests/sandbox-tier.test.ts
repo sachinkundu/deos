@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import {
   selectSandboxTier,
   requireAttemptTier,
@@ -7,6 +8,14 @@ import {
 } from "../src/sandbox-tier.ts";
 
 const policy = { sandbox_tier_policy_version: "event-label-v1" };
+test("the release defaults new starts to Basic without reinterpreting earlier deliveries", () => {
+  const config = JSON.parse(readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8"));
+  const release = { sandbox_tier_policy_version: config.vars.SANDBOX_TIER_POLICY_VERSION };
+  assert.equal(selectSandboxTier(release, release).tier, "basic");
+  assert.equal(selectSandboxTier({ ...release, start_slow_ok: true },
+    { ...release, start_slow_ok: 1 }).tier, "basic");
+  assert.equal(selectSandboxTier(policy, policy).tier, "standard-2");
+});
 test("positive event evidence chooses Basic; absence chooses Standard-2", () => {
   assert.deepEqual(
     selectSandboxTier(policy, { ...policy, start_slow_ok: null }),

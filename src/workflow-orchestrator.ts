@@ -1,4 +1,5 @@
 import { recordCaughtError } from "./error-context.ts";
+import type { AttemptCompletionHint } from "./attempt-completion.ts";
 import { transitionIdentity, visitIdentity } from "./orchestration-identity.ts";
 import type {
   OrchestrationRunRecord,
@@ -24,6 +25,10 @@ import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
 export interface WorkflowWaitEvent {
   payload: Readonly<{ deliveryId: string }>;
 }
+type WorkflowWake = { deliveryId: string } | AttemptCompletionHint;
+const isLinearWake = (event: { payload: Readonly<WorkflowWake> }): event is WorkflowWaitEvent =>
+  "deliveryId" in event.payload && typeof event.payload.deliveryId === "string" &&
+  event.payload.deliveryId.length > 0;
 
 export interface WorkflowStepLike {
   do<T>(name: string, callback: () => Promise<T>): Promise<T>;
@@ -137,6 +142,7 @@ export class WorkflowOrchestrator {
   }
 
   async run(runId: string, step: WorkflowStepLike): Promise<{ outcome: string; runId: string }> {
+    let completionHint: string | null = null;
     for (;;) {
       const run = await step.do(`authority:${runId}`, async () => this.requireRun(runId));
       const instruction = instructionForNode(this.definition, run.current_node);
@@ -188,13 +194,22 @@ export class WorkflowOrchestrator {
         if (execution.state === "running") {
           const nativeHeartbeat = ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
             run.definition_version >= 23 && ["planning_author", "design_author"].includes(instruction.nodeId);
+          // A hint can arrive just before the supervisor closes its HTTP request.
+          // Give that exact attempt one short follow-up wait, then resume heartbeats.
+          const completing: boolean = completionHint === execution.attemptId;
+          completionHint = null;
           try {
-            await step.waitForEvent<{ deliveryId: string }>(
+            const event: { payload: Readonly<{ deliveryId: string } | AttemptCompletionHint> } =
+              await step.waitForEvent<{ deliveryId: string } | AttemptCompletionHint>(
               `agent-event:${execution.attemptId}`,
-              { type: "linear-event", timeout: nativeHeartbeat ? "10s" : this.definition.execution.heartbeatTimeout },
+              { type: "linear-event", timeout: nativeHeartbeat || completing ? "10s" : this.definition.execution.heartbeatTimeout },
             );
+            if ("kind" in event.payload && event.payload.kind === "attempt-completed" &&
+                event.payload.attemptId === execution.attemptId) {
+              completionHint = execution.attemptId;
+            }
           } catch (caughtError) {
-            if (!nativeHeartbeat || !(caughtError instanceof Error) || caughtError.name !== "WorkflowTimeoutError") {
+            if (!(caughtError instanceof Error) || caughtError.name !== "WorkflowTimeoutError") {
               recordCaughtError(caughtError, "src/workflow-orchestrator.ts:192");
             }
             // A timeout is the durable heartbeat checkpoint; the next loop
@@ -256,10 +271,11 @@ export class WorkflowOrchestrator {
         run.status = "awaiting_human";
       }
 
-      const event = await step.waitForEvent<{ deliveryId: string }>(
+      const event = await step.waitForEvent<WorkflowWake>(
         `linear-event:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
         { type: "linear-event", timeout: "24h" },
       );
+      if (!isLinearWake(event)) continue;
       const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
         this.store.claimInboxEvent(
           event.payload.deliveryId,
@@ -351,10 +367,11 @@ export class WorkflowOrchestrator {
     node: HumanGateWorkflowNode,
     operation: HumanGateOperation,
   ): Promise<void> {
-    const event = await step.waitForEvent<{ deliveryId: string }>(
+    const event = await step.waitForEvent<WorkflowWake>(
       `linear-operation:${operation.providerOperationId}`,
       { type: "linear-event", timeout: "24h" },
     );
+    if (!isLinearWake(event)) return;
     const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
       this.store.claimInboxEvent(
         event.payload.deliveryId,
@@ -407,9 +424,9 @@ export class WorkflowOrchestrator {
       wait.cancel_event_type !== node.cancelEvent.type
     ) throw new WorkflowFailureError("durable_wait_definition_mismatch");
 
-    let event: { payload: Readonly<{ deliveryId: string }> };
+    let event: { payload: Readonly<WorkflowWake> };
     try {
-      event = await step.waitForEvent<{ deliveryId: string }>(
+      event = await step.waitForEvent<WorkflowWake>(
         `linear-event:${node.id}:${wait.wait_id}`,
         { type: "linear-event", timeout: "365d" },
       );
@@ -417,6 +434,7 @@ export class WorkflowOrchestrator {
       recordCaughtError(caughtError, "src/workflow-orchestrator.ts:409");
       return;
     }
+    if (!isLinearWake(event)) return;
     const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
       this.store.claimInboxEvent(
         event.payload.deliveryId,
