@@ -1,3 +1,4 @@
+import { createLiveUpdatePreference, noticeText, reportClientError } from "./live-updates.ts";
 import { BoundedReview } from "./BoundedReview.tsx";
 import type { SandboxStartupFailure } from "./sandbox-failures.ts";
 import { TierTrial } from "./TierTrial.tsx";
@@ -5,7 +6,7 @@ import { applyRecentSnapshot, type RecentIssuesSnapshot, type RecentIssuesUpdate
 import { reviewDestination } from "./review-actions.ts";
 import { separateErrors } from "./error-state.ts";
 import { errorText } from "../../src/error-details.ts";
-import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Component, StrictMode, useSyncExternalStore, type ReactNode, type ErrorInfo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowClockwise,
@@ -32,7 +33,7 @@ import {
   UserCircle,
   WarningCircle,
 } from "@phosphor-icons/react";
-import { applyStaged, receivePoll, type PollState } from "./polling.ts";
+import { applyStaged, receiveConfirmedPoll, type PollState } from "./polling.ts";
 import { directionalClaimPresentation } from "./directional-claim.ts";
 import { portalPageFromPath, portalPathForPage, reviewRunIdFromPath, type PortalPage } from "./routes.ts";
 import { bettaViewUrl, bettaViewLabel, pullRequestActions } from "./review-actions.ts";
@@ -492,6 +493,30 @@ function TraceabilityWorkflowMap({
   </section>;
 }
 
+// Load before any run request can resolve, shared by Settings and workflow views.
+const liveUpdates = createLiveUpdatePreference(window);
+let renderContext: Record<string, unknown> = {};
+
+class RunRenderBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    reportClientError(error, { operation: "render_run", ...renderContext, componentStack: info.componentStack });
+  }
+  render() {
+    if (this.state.failed) return <section className="empty-state" role="alert"><h1>Workflow view unavailable</h1><p>{noticeText.render_failed}</p><button type="button" onClick={() => window.location.reload()}>Reload page</button></section>;
+    return this.props.children;
+  }
+}
+
+function LiveUpdatesControl() {
+  const preference = useSyncExternalStore(liveUpdates.subscribe, liveUpdates.getSnapshot);
+  return <section className="settings-card controls-card live-updates-card" aria-labelledby="live-updates-title">
+    <label className="switch-row"><span id="live-updates-title"><strong>Live updates</strong></span><input type="checkbox" role="switch" aria-label="Live updates" checked={preference.enabled} onChange={event => liveUpdates.setEnabled(event.target.checked)} /></label>
+    {preference.notice && <p role="status">{noticeText[preference.notice]}</p>}
+  </section>;
+}
+
 function SettingsPanel() {
   const [overview, setOverview] = useState<RouteAdminOverview | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -571,6 +596,7 @@ function SettingsPanel() {
   };
 
   return <section className="settings-page">
+    <LiveUpdatesControl />
     <div className="settings-heading"><div><span className="eyebrow">Project connections</span><h1>Repository routes</h1><a href="/settings/sandbox-tier-trial">Sandbox speed comparison</a><p>Pair each Linear project with one repository the DEOS GitHub App can use.</p></div><button className="add-route" type="button" onClick={() => {
       setAdding(true);
       setProjectId(overview?.linear.values.find((project) =>
@@ -902,7 +928,11 @@ function RunErrors({ projection }: { projection: Projection }) {
 }
 
 function App() {
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("deos-theme") as Theme | null) ?? "system");
+  const [theme, setTheme] = useState<Theme>(() => {
+    try { return (localStorage.getItem("deos-theme") as Theme | null) ?? "system"; }
+    catch (error) { reportClientError(error, { operation: "load_theme" }); return "system"; }
+  });
+  const preference = useSyncExternalStore(liveUpdates.subscribe, liveUpdates.getSnapshot);
   const [query, setQuery] = useState("");
   const [recent, setRecent] = useState<RecentIssuesSnapshot>({ snapshotVersion: 0, items: [] });
   const [historyError, setHistoryError] = useState(false);
@@ -928,10 +958,17 @@ function App() {
   const [page, setPage] = useState<PortalPage>(() => portalPageFromPath(window.location.pathname));
   const requestRef = useRef<AbortController | null>(null);
   const workflowLoadedRef = useRef(false);
+  const currentRunRef = useRef("");
+  const issueRequestRef = useRef(0);
+  useEffect(() => {
+    const promote = () => { if (liveUpdates.getSnapshot().enabled) setPoll(applyStaged); };
+    promote();
+    return liveUpdates.subscribe(promote);
+  }, []);
   const loadTranscript = useCallback((path: string, signal?: AbortSignal) => api<TranscriptDto>(path, signal), []);
 
   useEffect(() => {
-    localStorage.setItem("deos-theme", theme);
+    try { localStorage.setItem("deos-theme", theme); } catch (error) { reportClientError(error, { operation: "save_theme" }); }
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
@@ -948,25 +985,38 @@ function App() {
   }, []);
 
   const loadProjection = useCallback(async (selectedRun: string, initial = false) => {
+    if (initial) {
+      currentRunRef.current = selectedRun;
+      setPoll({ applied: null, staged: null, error: null });
+    }
+    if (selectedRun !== currentRunRef.current) return;
     requestRef.current?.abort();
     const controller = new AbortController();
     requestRef.current = controller;
     try {
       const next = await api<Projection>(`/api/runs/${encodeURIComponent(selectedRun)}`, controller.signal);
-      setPoll((current) => initial ? { applied: next, staged: null, error: null } : receivePoll(current, next));
+      if (controller.signal.aborted || selectedRun !== currentRunRef.current) return;
+      setPoll((current) => receiveConfirmedPoll(current, next, liveUpdates.getSnapshot().enabled));
       setSelectedVisit((current) => current ?? next.history.at(-1)?.sequence ?? null);
     } catch (error) {
-      if (!(error instanceof DOMException && error.name === "AbortError")) {
+      if (!controller.signal.aborted && selectedRun === currentRunRef.current && !(error instanceof DOMException && error.name === "AbortError")) {
         setPoll((current) => ({ ...current, error: errorText(error) }));
       }
     }
   }, []);
 
   const selectIssue = useCallback(async (issue: Issue) => {
+    const issueRequest = ++issueRequestRef.current;
+    requestRef.current?.abort();
+    currentRunRef.current = "";
+    setRunId("");
+    setRuns([]);
+    setPoll({ applied: null, staged: null, error: null });
     setBusy(true);
     setSelectedIssue(issue);
     try {
       const result = await api<{ issue: Issue; runs: Run[] }>(`/api/issues/${issue.issueId ?? issue.key}/runs`);
+      if (issueRequest !== issueRequestRef.current) return;
       setSelectedIssue({ ...result.issue, issueId: issue.issueId });
       setRuns(result.runs);
       const first = result.runs[0]?.id ?? "";
@@ -977,8 +1027,8 @@ function App() {
       setPoll({ applied: null, staged: null, error: null });
       if (first) await loadProjection(first, true);
     } catch (error) {
-      setPoll({ applied: null, staged: null, error: errorText(error) });
-    } finally { setBusy(false); }
+      if (issueRequest === issueRequestRef.current) setPoll({ applied: null, staged: null, error: errorText(error) });
+    } finally { if (issueRequest === issueRequestRef.current) setBusy(false); }
   }, [loadProjection]);
 
   const search = useCallback(async () => {
@@ -1007,10 +1057,16 @@ function App() {
     const tick = () => { if (document.visibilityState === "visible") void loadProjection(runId); };
     const timer = window.setInterval(tick, 5_000);
     document.addEventListener("visibilitychange", tick);
-    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", tick); requestRef.current?.abort(); };
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+      // A run change may already have started its new baseline request.
+      if (currentRunRef.current === runId) requestRef.current?.abort();
+    };
   }, [loadProjection, page, runId]);
 
   const projection = poll.applied;
+  renderContext = { runId, projectionIdentity: projection?.run.freshness };
   const detail = useMemo(() => projection?.history.find((visit) => visit.sequence === selectedVisit) ?? projection?.history.at(-1) ?? null, [projection, selectedVisit]);
   const transcriptAttempts = detail?.attempts.filter((attempt) => attempt.transcriptAvailable) ?? [];
   const firstRow = projection?.stages.slice(0, 4) ?? [];
@@ -1025,10 +1081,11 @@ function App() {
     setRetryMessage(null);
     try {
       await retryMutation(`/api/runs/${encodeURIComponent(runId)}/retry`, projection.retry);
+      if (currentRunRef.current !== runId) return;
       setRetryMessage(`Retry started from ${step}. Completed work was kept.`);
       await loadProjection(runId, true);
     } catch (error) {
-      setRetryMessage(errorText(error));
+      if (currentRunRef.current === runId) setRetryMessage(errorText(error));
     } finally {
       setRetrying(false);
     }
@@ -1053,6 +1110,7 @@ function App() {
       </div>
     </aside>}
     <main className={page !== "workflow" ? "main settings-main" : "main"}>
+      {preference.notice === "preference_fallback" && page !== "settings" && <div className="error-banner" role="status">{noticeText.preference_fallback}</div>}
       {page === "settings" ? (window.location.pathname === "/settings/sandbox-tier-trial" ? <TierTrial /> : <SettingsPanel />) : page === "review" ? <ReviewTracePage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "design-review" ? <DesignReviewPage runId={reviewRunIdFromPath(window.location.pathname) ?? ""} /> : page === "not-found" ? <section className="empty-state"><WarningCircle /><h1>Page not found</h1><p>This portal route is not registered.</p><button className="route-action" type="button" onClick={() => navigate("workflow")}>Go to workflows</button></section> : <>
       {poll.staged && <div className="update-banner"><span><ArrowClockwise /> Confirmed workflow data is ready.</span><button type="button" onClick={() => setPoll(applyStaged)}>Apply update</button></div>}
       {poll.error && <div className="error-banner"><WarningCircle />{poll.error}<button type="button" onClick={() => runId && void loadProjection(runId)}>Retry</button></div>}
@@ -1112,4 +1170,4 @@ function App() {
   </div>;
 }
 
-createRoot(document.getElementById("root")!).render(<StrictMode><App /></StrictMode>);
+createRoot(document.getElementById("root")!).render(<StrictMode><RunRenderBoundary><App /></RunRenderBoundary></StrictMode>);
