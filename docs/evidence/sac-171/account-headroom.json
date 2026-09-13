@@ -1,0 +1,73 @@
+{
+  "limits": {
+    "account_id": "c68856288112af7698f5be52ea94b96e",
+    "vcpu_per_deployment": 4,
+    "total_vcpu": 1500,
+    "memory_mib_per_deployment": 12288,
+    "total_memory_mib": 6291456,
+    "network_modes": [],
+    "node_group": "metal",
+    "ipv4s": 0,
+    "disk_mb_per_deployment": 20000,
+    "total_disk_mb": 30000000,
+    "durable_object_offset_instances": 2000,
+    "network_bandwidth_limit_mbps": "default",
+    "total_memory": "6TiB",
+    "memory_per_deployment": "12GiB",
+    "disk_per_deployment": "20GB"
+  },
+  "configured_maximum_resources": {
+    "vcpu": 8.0,
+    "memory_mib": 47104
+  },
+  "applications": [
+    {
+      "name": "deos-queue-consumer-ts-standard2sandbox",
+      "max_instances": 4,
+      "vcpu": 1,
+      "memory_mib": 6144
+    },
+    {
+      "name": "deos-sac171-contract-probe-standard2probe",
+      "max_instances": 1,
+      "vcpu": 1,
+      "memory_mib": 6144
+    },
+    {
+      "name": "deos-sac171-contract-probe-basicprobe",
+      "max_instances": 1,
+      "vcpu": 0.25,
+      "memory_mib": 1024
+    },
+    {
+      "name": "deos-isolation-b-20260911-isolationsandbox",
+      "max_instances": 1,
+      "vcpu": 0.25,
+      "memory_mib": 1024
+    },
+    {
+      "name": "deos-isolation-a-20260911-isolationsandbox",
+      "max_instances": 1,
+      "vcpu": 0.25,
+      "memory_mib": 1024
+    },
+    {
+      "name": "deos-browser-probe-20260911-probesandbox",
+      "max_instances": 1,
+      "vcpu": 0.25,
+      "memory_mib": 1024
+    },
+    {
+      "name": "voxdez-content-reading-log-contentreadingsandbox",
+      "max_instances": 2,
+      "vcpu": 0.5,
+      "memory_mib": 4096
+    },
+    {
+      "name": "deos-queue-consumer-ts-sandbox",
+      "max_instances": 4,
+      "vcpu": 0.25,
+      "memory_mib": 1024
+    }
+  ]
+}
