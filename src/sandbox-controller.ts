@@ -616,6 +616,9 @@ export class SandboxAgentController {
         if (!recovery?.eligible) throw new Error('bounded review requires manual reconciliation');
         if (recovery.journal) reviewContinuation = { sourceAttemptId: retrySource.attempt_id };
       }
+      // Implementation retries keep the run's immutable design/policy and model,
+      // but materialize the saved failed patch and its diagnostic for repair.
+      if (job.inputs.includes('implementation_context')) frozenRetrySpec = null;
     }
     const materialized = frozenRetrySpec === null
       ? await this.dependencies.materializeContext(run, job)
@@ -2151,7 +2154,9 @@ export class SandboxAgentController {
       `Run: ${run.run_id}; attempt: ${attempt.attempt_id}; change: ${durableJob.openspecChange}`,
       `Native operation: ${job.operation?.instruction}. Read /deos/run/implementation-input.json and /deos/run/issue-context.json.`,
       `Required outputs under /deos/output: ${job.requiredOutputs.join(', ')}. The supervisor writes the patch, candidate, transcript and provider references.`,
-      'Use only the shell tool to read and edit. The implementation helper takes a JSON request file; it supports check {argv,cwd?,behavior?}, preview {main?,assets?,d1?,r2?}, browser {operation,url?,selector?,text?,caption?}, document {url}, search {query,host}.',
+      'Use shell tools for repository reads and edits. Native live web search is available for research. The implementation helper takes a JSON request file; it supports check {argv,cwd?,behavior?}, preview {main?,assets?,d1?,r2?}, browser {operation,url?,selector?,text?,caption?}, document {url}, search {query,host}.',
+      'Write /deos/output/documentation-sources.json as an array of {"url":"https://canonical-page","title":"Page title","claim":"The specific fact used","artifactLocator":"repository/path:line"}. Use exactly those fields, including claim and artifactLocator. Each document opened with the helper needs an entry; its canonical URL must appear at the cited line of a changed file. Search listings need no entry. Use [] if no documents were opened. The document helper returns current first-party page content and records the access used to verify these citations.',
+      'If implementation-input.json contains priorFailure, the restored patch and prior candidate are unaccepted output from that failed attempt. Preserve useful work, repair the reported issue, reopen the documents you rely on and rerun the required checks for this attempt.',
       'After marking all tasks done, rerun checks and recapture behavior proof so it matches the exact final tree. Never change trusted runtime files.'
     ].join('\n\n');
     if (job.boundedReview && job.agentRole === 'author') {

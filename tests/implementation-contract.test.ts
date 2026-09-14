@@ -209,3 +209,14 @@ test("blockers preserve unfinished work and readable branches separate issue run
   assert.equal(implementationBranch("SAC-172", 2), "deos/agent/SAC-172/run-2");
   assert.throws(() => implementationBranch("../main", 1));
 });
+
+test("malformed documentation sidecars report the required contract instead of throwing a TypeError", () => {
+  const url = "https://docs.github.com/en/rest/pulls/reviews";
+  const accesses = [{access_id:"read",url,content_returned:1}];
+  for (const sources of [null, {}, [null], [{url,title:"Reviews",claimLocator:"tasks.md:1"}],
+    [{url,title:42,claim:"Review semantics",artifactLocator:"tasks.md:1"}]]) {
+    assert.throws(() => validateDocumentation(sources,accesses,["docs.github.com"],[]),
+      error => error instanceof Error && error.name === "ImplementationError" &&
+        /array|claim and artifactLocator/.test(error.message));
+  }
+});

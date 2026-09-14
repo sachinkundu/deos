@@ -2,6 +2,7 @@ import { sha256Hex } from "./implementation-hash.ts";
 import { errorDetails } from "./error-details.ts";
 import {
   ImplementationError,
+  validateImplementationPath,
   type ImplementationCandidate,
   type ProofRequirement,
   type ImplementationPolicy,
@@ -281,6 +282,7 @@ export class ImplementationStore {
     run: ImplementationRun,
     attempt: { attempt_id: string; sandbox_id: string; visit_sequence: number },
     kind: "tasks" | "build",
+    inputPatchSha: string | null = run.patch_sha,
   ) {
     const now = new Date().toISOString();
     await this.db
@@ -295,7 +297,7 @@ export class ImplementationStore {
         kind,
         attempt.sandbox_id,
         run.tested_base_sha,
-        run.patch_sha,
+        inputPatchSha,
         now,
         now,
         run.run_id,
@@ -377,6 +379,38 @@ export class ImplementationStore {
         "checkpoint_conflict",
         "Checkpoint authority changed during acceptance",
       );
+  }
+  async failedCandidate(run: ImplementationRun, nodeId: string) {
+    const row = await this.db.prepare(`
+      SELECT a.attempt_id,a.manifest_id,a.result_class,a.result_detail,
+             c.r2_key AS candidate_key,c.sha256 AS candidate_sha,
+             p.r2_key AS patch_key,p.sha256 AS patch_sha
+      FROM (SELECT * FROM agent_attempts WHERE run_id=? AND node_id=?
+            ORDER BY created_at DESC,attempt_id DESC LIMIT 1) a
+      JOIN artifact_manifests m ON m.manifest_id=a.manifest_id AND m.run_id=a.run_id AND m.attempt_id=a.attempt_id AND m.state='complete'
+      JOIN artifacts c ON c.manifest_id=m.manifest_id AND c.logical_name='implementation-candidate.json' AND c.policy_outcome='accepted'
+      JOIN artifacts p ON p.manifest_id=m.manifest_id AND p.logical_name='patch.diff' AND p.policy_outcome='accepted'
+      WHERE a.state IN ('failed','interrupted','absolute_timeout') AND a.cleanup_state='destroyed'`)
+      .bind(run.run_id,nodeId).first<{
+        attempt_id:string;manifest_id:string;result_class:string;result_detail:string|null;
+        candidate_key:string;candidate_sha:string;patch_key:string;patch_sha:string;
+      }>();
+    if (!row || row.attempt_id === run.source_attempt_id) return null;
+    const candidate = await this.read<ImplementationCandidate>(row.candidate_key,row.candidate_sha);
+    const kind = nodeId === 'implementation_tasks' ? 'tasks' : nodeId === 'implementation_build' ? 'build' : null;
+    if (candidate.testedBaseSha !== run.tested_base_sha || candidate.approvedDesignSha !== run.approved_design_sha)
+      return null;
+    if (!kind || candidate.version !== 1 || candidate.kind !== kind ||
+        candidate.attemptId !== row.attempt_id || candidate.change !== run.change_id ||
+        candidate.patchSha !== row.patch_sha || !Array.isArray(candidate.files))
+      throw new ImplementationError('recovery_identity','Saved implementation output differs from its failed attempt');
+    for (const file of candidate.files) validateImplementationPath(file.path,run.change_id,kind);
+    await this.readBytes(row.patch_key,row.patch_sha);
+    return {
+      candidate,
+      failure: {attemptId:row.attempt_id,resultClass:row.result_class,detail:row.result_detail},
+      patch: {attemptId:row.attempt_id,manifestId:row.manifest_id,r2Key:row.patch_key,sha256:row.patch_sha},
+    };
   }
   resources(attemptId: string) {
     return this.db

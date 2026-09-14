@@ -280,10 +280,11 @@ export class ImplementationService {
       question?.reply_key && question.reply_sha
         ? await this.store.read(question.reply_key, question.reply_sha)
         : null;
-    const prior =
+    const recovered = await this.store.failedCandidate(work, job.id);
+    const prior = recovered?.candidate ?? (
       work.candidate_key && work.candidate_sha
         ? await this.store.candidate(work)
-        : null;
+        : null);
     const issue = await new LinearCapabilityAdapter(
       this.env.LINEAR_API_URL,
       this.env.LINEAR_APP_ACCESS_TOKEN,
@@ -299,15 +300,16 @@ export class ImplementationService {
         testedBaseSha: work.tested_base_sha,
         requirements: JSON.parse(work.requirements_json),
         prior,
+        priorFailure: recovered?.failure ?? null,
         question: question
           ? await this.store.read(question.question_key, question.question_sha)
           : null,
         reply,
-        patchBaseSha: work.patch_base_sha,
+        patchBaseSha: recovered?.candidate.testedBaseSha ?? work.patch_base_sha,
       }),
       repository: input.repository,
       openspecChange: input.change,
-      continuationPatch:
+      continuationPatch: recovered?.patch ?? (
         work.patch_key && work.patch_sha
           ? {
               attemptId: work.source_attempt_id!,
@@ -315,7 +317,7 @@ export class ImplementationService {
               r2Key: work.patch_key,
               sha256: work.patch_sha,
             }
-          : null,
+          : null),
       planningWorkProduct: null,
       designWorkProduct: null,
       checkoutCommit: work.tested_base_sha,
@@ -328,14 +330,16 @@ export class ImplementationService {
     sandbox: SandboxView,
   ) {
     const work = await this.store.requireRun(run.run_id);
+    const durable = JSON.parse(attempt.job_spec_json) as {
+      materializedContext: string;
+      continuationPatch?: {sha256: string} | null;
+    };
     await this.store.beginTry(
       work,
       attempt,
       job.id === "implementation_tasks" ? "tasks" : "build",
+      durable.continuationPatch?.sha256 ?? null,
     );
-    const durable = JSON.parse(attempt.job_spec_json) as {
-      materializedContext: string;
-    };
     const context = JSON.parse(durable.materializedContext);
     await sandbox.writeFile(
       "/deos/run/issue-context.json",

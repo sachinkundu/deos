@@ -742,6 +742,8 @@ const setup = (options: SetupOptions = {}) => {
         };
       },
       collector: () => collector as unknown as ArtifactCollector,
+      implementationNetwork: async () => {},
+      implementationStart: async () => {},
       providerReceipts: {
         verify: async (_runId, _attemptId, operationIds) =>
           operationIds === undefined || operationIds.length > 0,
@@ -804,8 +806,11 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.match(prompt, /requirements-publish-v1/);
 });
 
-test("stage retry preserves the failed attempt's frozen input with a new attempt identity", async () => {
-  const state = setup({ materializedContext: JSON.stringify({ source: "fresh-provider-read" }) });
+for (const implementation of [false, true]) test(implementation
+  ? "implementation retry refreshes recovery context while preserving the frozen model and source identity"
+  : "stage retry preserves the failed attempt's frozen input with a new attempt identity", async () => {
+  const state = setup({ materializedContext: JSON.stringify({ source: "fresh-provider-read" }),
+    ...(implementation ? {checkoutCommit:"a".repeat(40)} : {}) });
   const sourceJobSpec = JSON.stringify({
     version: 1,
     attemptId: "source-attempt",
@@ -872,15 +877,16 @@ test("stage retry preserves the failed attempt's frozen input with a new attempt
     { ...run, current_visit_sequence: 5, updated_at: "2026-08-16T10:00:00.000Z" },
     "work",
     "work",
-    definition,
+    implementation ? { ...definition, jobs: { ...definition.jobs,
+      work: { ...definition.jobs.work, inputs: ['implementation_context'] } } } : definition,
   );
 
   assert.equal(observation.state, "running");
-  assert.equal(state.materializeCalls(), 0);
+  assert.equal(state.materializeCalls(), implementation ? 1 : 0);
   assert.notEqual(state.attempts.latest?.attempt_id, sourceAttempt.attempt_id);
   const retried = JSON.parse(state.attempts.latest?.job_spec_json ?? "{}");
   const source = JSON.parse(sourceJobSpec);
-  assert.equal(retried.materializedContext, source.materializedContext);
+  assert.equal(retried.materializedContext, implementation ? JSON.stringify({ source: "fresh-provider-read" }) : source.materializedContext);
   assert.equal(retried.modelProvider, source.modelProvider);
   assert.equal(retried.model, source.model);
   assert.equal(retried.reasoning, source.reasoning);

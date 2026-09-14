@@ -300,17 +300,28 @@ export function validateImplementationPath(
     );
 }
 export function validateDocumentation(
-  sources: DocumentationSource[],
+  sources: unknown,
   accesses: DocumentationAccess[],
   hosts: string[],
   files: TreeFile[],
 ) {
+  if (!Array.isArray(sources))
+    throw new ImplementationError("documentation_citation", "documentation-sources.json must contain an array");
   const used = new Set(
     accesses.filter((a) => a.content_returned === 1).map((a) => a.url),
   );
   const cited = new Set<string>();
   for (const source of sources) {
-    const url = new URL(source.url);
+    const fields = ["url", "title", "claim", "artifactLocator"] as const;
+    if (!source || typeof source !== "object" || Array.isArray(source) ||
+        fields.some(field => typeof source[field] !== "string" || !source[field].trim()))
+      throw new ImplementationError("documentation_citation",
+        "Each documentation source requires nonempty url, title, claim and artifactLocator fields (path:line)");
+    let url: URL;
+    try { url = new URL(source.url); }
+    catch (cause) {
+      throw new ImplementationError("documentation_citation", `Invalid documentation URL: ${source.url}`, {cause});
+    }
     const locator = /^(.*):([1-9][0-9]*)$/.exec(source.artifactLocator);
     if (
       url.protocol !== "https:" ||
