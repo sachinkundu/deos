@@ -36,8 +36,11 @@ proof that DEOS performed the mapped state change.
 
 **Goals:**
 
-- Preserve one checked human identity across Access, GitHub, and Linear, while
-  freezing the checked IDs and policy version for each new run.
+- Correlate the single configured BettaView account's checked Access, GitHub,
+  and Linear IDs, then freeze those IDs and the policy version for each new run.
+- Let GitHub, through the signed-in user's repository permissions, decide
+  whether that account may view, comment on, or approve each pull request. DEOS
+  stores no reviewer roster, team mapping, or approval role.
 - Publish every required GitHub reply and one atomic review bundle as the
   signed-in GitHub user before DEOS starts the Linear state operation.
 - Make GitHub publication, Linear movement, and workflow continuation a
@@ -54,6 +57,8 @@ proof that DEOS performed the mapped state change.
 - The DEOS app actor does not impersonate the reviewer. GitHub writes use the
   user's session; Linear writes use the app actor and remain linked to the
   checked review.
+- The frozen person link is not a GitHub authorization grant. It neither
+  duplicates repository roles nor allows a review that GitHub rejects.
 - Existing active runs are not retroactively assigned a person link. They keep
   their existing Linear-event gate path.
 - This design does not make two providers transactional. It uses durable
@@ -83,33 +88,37 @@ identity fields. `ReviewContinuation` is a named, non-public service entrypoint
 on the trusted DEOS Worker. It checks the BettaView assertion, the frozen run
 person, the exact pull request and head bound to the open gate visit, and the
 gate-scoped continuation lease. The Workflow manager remains the only component
-that starts a Linear state change or chooses a graph path.
+that starts a Linear state change or chooses a graph path. The checked person
+link correlates the one BettaView account with a gate; it is not a repository
+access-control list.
 
 ## Event Flow
 
-### 1. Enroll and freeze the allowed person
+### 1. Connect and freeze the single BettaView account
 
-1. Only an Access account in the existing `reviewer_link_admin` subset of the
-   route-administrator policy may initiate or approve a reviewer-link version.
-   A candidate reviewer opens the enrollment link in their own Access and
-   GitHub sessions. The initiator, candidate reviewer, and approver identities
-   come from trusted sessions, never form fields.
-2. BettaView reads the candidate's Access account and numeric GitHub user ID.
-   Its user-scoped GitHub read must also return a verified account email. DEOS
-   reads the selected Linear user through private app access. The normalized,
-   verified GitHub and Linear emails must both equal the verified Access email;
-   missing or unequal evidence fails closed. The durable authority remains the
-   three provider-native IDs, while the email match is enrollment evidence that
-   they describe one natural person. GitHub's authenticated-user email endpoint
-   supplies the required verified flag
-   (https://docs.github.com/en/rest/users/emails).
-3. A second `reviewer_link_admin`, distinct from the candidate reviewer and the
-   initiator, approves the candidate facts and bound digest. DEOS then activates
-   the next `policy_version` with a route-revision compare-and-set and appends
-   both administrative acts and all safe provider-read facts to the audit log.
-   An administrator cannot activate their own link, and editing an active link
-   always creates a new candidate version and new approval.
-4. Run allocation copies the three IDs and policy version into the immutable
+1. The existing Access-protected Settings route exposes one BettaView account
+   connection per project. A caller already authorized by the existing
+   route-administrator policy connects the currently signed-in BettaView Access
+   account and GitHub user session, then selects the corresponding Linear user.
+   There is no new reviewer-administrator role, reviewer list, team mapping, or
+   second approval flow.
+2. BettaView reads the current Access account and numeric GitHub user ID from
+   trusted sessions. DEOS reads the selected Linear user ID through private app
+   access. Each provider read must return the expected stable ID; browser fields
+   cannot supply or override one. DEOS saves those three checked IDs as the
+   project's one current BettaView account link.
+3. The link identifies whose GitHub review may continue a frozen DEOS gate; it
+   does not grant that person access to a repository or pull request. Every read
+   and write still uses the person's GitHub session. GitHub requires pull-request
+   write permission for the create-review endpoint, so GitHub remains
+   authoritative for whether that account can comment or approve on the shown
+   pull request (https://docs.github.com/en/rest/pulls/reviews).
+4. Connecting a different account or Linear identity creates the next
+   `policy_version` through the existing route-revision compare-and-set and
+   appends the Settings actor plus safe provider-read facts to the audit log.
+   The old version remains immutable for existing runs; no bespoke reviewer
+   approval is introduced.
+5. Run allocation copies the three IDs and policy version into the immutable
    run snapshot in the same guarded operation that freezes route and control
    facts. Later Settings changes affect only later runs. A run without all
    frozen IDs remains readable but cannot use review continuation.
@@ -302,11 +311,11 @@ are audit facts and never replace stable identities.
 
 | Record | Key fields and constraints |
 | --- | --- |
-| `project_reviewer_links` | `(project_id, policy_version)` primary key; status, checked Access account, numeric GitHub user ID, Linear user ID, normalized verified-email digest, evidence digest, initiating admin, approving admin, route revision, and timestamps. Only one `current` version per project; candidate, initiator, and approver constraints enforce the two-person rule. |
-| `reviewer_link_audit` | Append-only candidate, host-read, approval, activation, rejection, and rotation facts keyed by audit ID and policy version. Provider tokens and raw assertions are excluded. |
-| Frozen run person link | The three IDs and `reviewer_policy_version` on the immutable run snapshot. All four values are non-null together and never updated after allocation. |
+| `project_bettaview_accounts` | `(project_id, policy_version)` primary key; checked Access account, numeric GitHub user ID, Linear user ID, provider-read evidence digest, configuring Settings actor, route revision, status, and timestamps. Only one `current` version exists per project. The row contains no repository role, team membership, reviewer list, or approval grant. |
+| `bettaview_account_audit` | Append-only connect, provider-read, activation, rejection, and rotation facts keyed by audit ID and policy version. It reuses the existing Settings authorization record; provider tokens and raw assertions are excluded. |
+| Frozen run account correlation | The three IDs and `bettaview_account_policy_version` on the immutable run snapshot. All four values are non-null together and never updated after allocation. |
 | `review_drafts` and content items | Browser-created `review_id` primary key plus draft version. Content items have stable UUIDs, kind, body digest, and target digest. Draft rows have no provider receipt and cannot be a gate choice. |
-| `review_intents` | `review_id` primary key; `bound_digest`, optional `supersedes_review_id`, run, issue, repository, gate-bound pull request and frozen head, gate visit, type, person-link version, target state and edge, step projections, final outcome, and timestamps. Reuse requires an identical digest. |
+| `review_intents` | `review_id` primary key; `bound_digest`, optional `supersedes_review_id`, run, issue, repository, gate-bound pull request and frozen head, gate visit, type, account-link version, target state and edge, step projections, final outcome, and timestamps. Reuse requires an identical digest. |
 | `review_continuation_leases` | `gate_visit_id` primary key, unique active `review_id`, phase, acquired time, and release fact. A guarded lease transition permits at most one publishing or Linear-pending intent for an open visit. |
 | `review_parts` | `(review_id, part_id)` primary key; `content_item_id`, kind (`reply` or `review_bundle`), ordinal, content and target digests, marker version, receipt status, GitHub record IDs, commit/user/event facts, and optional prior-intent receipt. A unique provider-record constraint prevents adoption twice. |
 | `review_attempts` | `(review_id, step, scope_id, generation)` primary key with every key column explicitly `NOT NULL`; `scope_id` is the part ID for GitHub or sentinel `linear-state` for the Linear step. A partial unique index on `(review_id, step, scope_id)` where `finished_at IS NULL` permits one active generation. Rows keep permit, request digest, times, outcome, provider operation, and fault reference and are append-only. SQLite otherwise permits NULL in ordinary composite primary keys (https://www.sqlite.org/quirks.html). |
@@ -354,15 +363,19 @@ that request, so they retain per-part permits and receipts. Publishing replies
 first ensures the final review means every prerequisite host write is already
 saved; replacement lineage prevents those replies from being posted twice.
 
-### Authenticate derived identity and require two-person enrollment
+### Treat the person link as correlation, not GitHub authorization
 
-BettaView proves the candidate's Access and GitHub sessions; DEOS proves Linear
-and the run copy. Matching verified provider emails supplies enrollment evidence
-that all three stable IDs belong to one person. A distinct authorized admin
-activates the version, and every act is audited. Trusting form fields, allowing
-one Settings visitor to self-designate, or forwarding a raw Access token was
-rejected because each either lacks cross-provider evidence or broadens secret
-handling.
+BettaView proves the current Access and GitHub sessions; DEOS proves the selected
+Linear identity and the frozen run copy. The project stores exactly one versioned
+account link so the Workflow can correlate the GitHub human act with the allowed
+Linear human path. It does not reproduce GitHub repository roles, requested
+reviewers, teams, or approval rules. The existing route-administrator policy
+guards Settings changes, while GitHub evaluates the user-scoped token on every
+pull-request read and write. A separate reviewer-administrator role, two-person
+activation, email-equality rule, and local per-repository reviewer ACL were
+rejected because they would duplicate or approximate provider authorization.
+Trusting browser fields or forwarding a raw Access token was also rejected
+because neither produces checked identity facts safely.
 
 ### Keep provider writes with their existing actors
 
@@ -401,7 +414,7 @@ would let policy drift change an already-open human gate.
 
 | Failure | Required behavior |
 | --- | --- |
-| Unauthorized reviewer-link writer, self-approval, missing evidence, or email mismatch | Reject activation, append the checked provider and administrator facts, keep the prior policy version current, and freeze no new link. |
+| Settings caller lacks existing route-administrator authority, or a trusted provider identity read is missing or mismatched | Reject the connection, append safe checked facts, keep the prior policy version current, and freeze no new link. Do not create a parallel reviewer role. |
 | Missing or mismatched frozen Access, GitHub, or Linear identity | Reject before provider work, append a safe rule fault, and leave both steps not started. Browser fields never override trusted proof. |
 | Invalid service MAC, expired assertion, or replayed nonce | Reject and record safe authentication context without storing assertion or secret material. |
 | Pull request differs from the gate-bound pull request, is closed, or has a stale/forked head | Block host writes, keep draft content readable, and request a reload. Another pull request for the same run is never sufficient. |
@@ -440,9 +453,10 @@ would let policy drift change an already-open human gate.
 - **The wider webhook timestamp window admits more signed replays** -> Persist
   `Linear-Delivery` uniqueness beyond the window, acknowledge duplicates, and
   bind event facts to the pending operation before any state decision.
-- **Two-person reviewer enrollment adds setup friction** -> Limit it to new or
-  rotated policy versions and retain immutable evidence so run-time checks stay
-  automatic.
+- **The configured BettaView account can lose GitHub access after a run is
+  frozen** -> Recheck the user session and live pull request before each write;
+  treat GitHub rejection as authoritative, keep Linear untouched, and rotate the
+  account link only for future runs.
 - **Waiting for signed Linear delivery adds latency** -> Show
   `awaiting_delivery`, freeze an eight-hour deadline, then escalate rather than
   waiting forever (https://linear.app/developers/webhooks).
@@ -452,12 +466,14 @@ would let policy drift change an already-open human gate.
 
 ## Migration Plan
 
-1. Add the candidate/approval records, intent and lineage tables, explicit
-   `NOT NULL` attempt keys, active-lease constraint, and nullable frozen-run
-   fields. Existing routes and runs keep the current Linear-event path.
-2. Extend Settings with the authorized two-person enrollment flow and trusted
-   Access, GitHub, and Linear reads. Do not enable continuation until one current
-   link and required `Human Review`, `In Progress`, and `Merging` state IDs pass.
+1. Add the single-account link and audit records, intent and lineage tables,
+   explicit `NOT NULL` attempt keys, active-lease constraint, and nullable
+   frozen-run fields. Existing routes and runs keep the current Linear-event
+   path.
+2. Extend the existing route-admin Settings flow with one BettaView account
+   connection and trusted Access, GitHub, and Linear reads. Store no reviewer
+   roles or lists. Do not enable continuation until one current link and the
+   required `Human Review`, `In Progress`, and `Merging` state IDs pass.
 3. Deploy Linear ingress compatibility first: accept the bounded retry window,
    persist delivery-key deduplication, and prove the under-five-second
    acknowledgement path with provider-originated retries.
