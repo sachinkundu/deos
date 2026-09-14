@@ -58,7 +58,7 @@ Before a host write, `DEOS` SHALL also check the link from the pull request to t
 
 ### Requirement: Save the host review before moving the task
 
-`BettaView` SHALL send all notes, replies, and the review choice to `GitHub` as the signed-in user. It SHALL ask `DEOS` to move the task only after the host has saved each write.
+`BettaView` SHALL send all notes, replies, and the review choice to `GitHub` as the signed-in user. It MUST NOT ask `DEOS` to move the task while the person writes or saves a draft note or reply. It SHALL ask only after the person publishes the full review and `GitHub` has saved each write in that review.
 
 A saved `COMMENT` or `REQUEST_CHANGES` review SHALL target `In Progress`. A saved `APPROVE` review SHALL target `Merging`, with or without notes. If a host write fails or its result is not known, `DEOS` MUST NOT move the task.
 
@@ -66,6 +66,11 @@ A saved `COMMENT` or `REQUEST_CHANGES` review SHALL target `In Progress`. A save
 
 - **WHEN** the host saves all notes and a review with no approval.
 - **THEN** the page asks `DEOS` to move the linked task to `In Progress`.
+
+#### Scenario: Person saves one draft note
+
+- **WHEN** the person saves a draft note but has not published the full review.
+- **THEN** the page does not ask `DEOS` to move the task.
 
 #### Scenario: Person asks for changes
 
@@ -136,7 +141,7 @@ If the host work is done and the task result is not clear, `DEOS` SHALL read the
 
 `BettaView` SHALL show the review result and task result as two steps. It SHALL show the goal state and say if the flow went on. A failed step SHALL be clear. A done step SHALL stay clear. The page SHALL offer a safe retry when one can help.
 
-`DEOS` SHALL save the first host error and key act facts in a safe store before clean-up. The page MAY show a safe error code. It MUST NOT show a secret or say both steps worked when one failed.
+`DEOS` SHALL save the first provider error message, its cause chain, and key act facts in a safe store before clean-up. A wrapped error SHALL keep the original error as its cause. `DEOS` MUST NOT replace the saved provider error with a generic message. The page MAY show a safe error code and a redacted form of the provider message. It MUST NOT show a secret or say both steps worked when one failed.
 
 #### Scenario: Both steps work
 
@@ -146,7 +151,7 @@ If the host work is done and the task result is not clear, `DEOS` SHALL read the
 #### Scenario: Review step fails
 
 - **WHEN** the host rejects the review.
-- **THEN** the page shows that the review failed, the task did not move, and the draft can be tried again.
+- **THEN** `DEOS` keeps the original provider error and the page shows a safe form of it, says the task did not move, and lets the person try the draft again.
 
 #### Scenario: Task step fails
 
