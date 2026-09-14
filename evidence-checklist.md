@@ -1,0 +1,38 @@
+## Evidence checklist
+
+- [x] Settings connects and freezes the one allowed BettaView account: The inspected current-tree screenshot shows verified Access, numeric GitHub identity, the selected Linear identity, required states, and the activated checked-account policy.
+  - [Evidence](images/61c5d273e54f06293430c6a5a81a5204834fe8d1aa4543ce3f5b919191a9e6d2.png)
+- [x] Draft notes write nothing to GitHub or Linear and the browser holds no Linear access: The inspected review UI exposes only Comment, Approve, and Request changes while both provider steps are not started; passing BettaView tests cover local draft storage and the production-path Showboat confirms provider work begins only after Publish.
+  - [Evidence](images/0d26c6dd93f39c166f8cfcabb9ad7d6d184f9591962a274d3af44fbd4d078cba.png)
+  - [Evidence](showboat.md#evidence-727d62e7f78cc731eeea92a889b67956bbadb00688536ff67b38170523556315)
+- [x] Published REQUEST_CHANGES review moves the task to In Progress and continues the edit path: The inspected final application captures show GitHub and Linear complete with the linked workflow continued, including restoration in a fresh browser context. The retained review Showboat records the production continuation call order. Final-tree provider receipts are selected separately as provider-originated proof.
+  - [Evidence](images/eff40497b39389cf39f4635a81570555c906d2053521c93a6ec97d4508b07a21.png)
+  - [Evidence](images/d799228380157f8c9989186df9cae7a956d1eb042489361adf6f79b6b6ad5eeb.png)
+  - [Evidence](showboat.md#evidence-727d62e7f78cc731eeea92a889b67956bbadb00688536ff67b38170523556315)
+- [x] Approval with inline notes moves the task to Merging and allows only the merge path: The screenshot shows GitHub approval and Linear Merging complete; selected provider receipts confirm review 5260494478 retained its notes and signed delivery 857d1577-0f09-4441-b7dd-8762292363fb.
+  - [Evidence](images/37e67e15be811d96a247422902920da13259ed2bea36bb40a8fe9ee7a41aa79c.png)
+  - [Evidence](showboat.md#evidence-727d62e7f78cc731eeea92a889b67956bbadb00688536ff67b38170523556315)
+- [x] Approval with no notes also moves the task to Merging: The no-notes UI is pixel-identical to the selected approval success image; selected provider proof distinguishes review 5260495532 by its empty body and signed delivery 3926c58f-ae14-4c8c-81fc-d9020da70bb4.
+  - [Evidence](images/37e67e15be811d96a247422902920da13259ed2bea36bb40a8fe9ee7a41aa79c.png)
+  - [Evidence](showboat.md#evidence-727d62e7f78cc731eeea92a889b67956bbadb00688536ff67b38170523556315)
+- [x] A rejected GitHub review never moves the task and preserves the original provider error: The inspected UI preserves github_rejected, marks GitHub failed retryable, and visibly leaves Linear not started; sequencing and cause preservation are covered by the passing workflow tests.
+  - [Evidence](images/a4bc657745bb5ac7532e13b18ad7a3ea0709ef055ff30e74481b8f97e02e3296.png)
+- [x] A lost GitHub response is reconciled by read-back, and an unprovable read stops for a host check: The inspected UI shows host check required with Linear not started and no retry action; passing idempotency tests cover read-back and suppression, while the production-path Showboat demonstrates one permit, one receipt, and one Linear allocation.
+  - [Evidence](images/56e80bdfcb6e28dda5ebb72244c6c208a141480b39db671cfeb6e1bcca41a313.png)
+  - [Evidence](showboat.md#evidence-727d62e7f78cc731eeea92a889b67956bbadb00688536ff67b38170523556315)
+- [x] A failed task move keeps the review done, retries only the task move, and a missing signed delivery escalates: The retained failure capture shows GitHub remaining done while only Linear is retryable. The inspected current-tree captures show the repaired retry persisted as both steps done in the same and a fresh browser context; Showboat retains the durable provider ordering and no-repeat behavior.
+  - [Evidence](images/c128652fadcdc3c55338ab606d16f0a5d9b250bc3d12960ffd15a01e5b964284.png)
+  - [Evidence](images/eff40497b39389cf39f4635a81570555c906d2053521c93a6ec97d4508b07a21.png)
+  - [Evidence](images/d799228380157f8c9989186df9cae7a956d1eb042489361adf6f79b6b6ad5eeb.png)
+  - [Evidence](showboat.md#evidence-727d62e7f78cc731eeea92a889b67956bbadb00688536ff67b38170523556315)
+- [x] An old head and an unlinked pull request block host writes while the page stays readable: Both inspected states keep the review readable, disable all review decisions, and explain either the stale head or missing open gate.
+  - [Evidence](images/9afbfdb84a814bb59fc5aa33009060288741517ad4a4f6e99fe467e5055536e8.png)
+  - [Evidence](images/d6e570dc97998aa4d90c69a2d2a452ee6ed9611adc27c754d554128421614e62.png)
+- [x] A head advance after a GitHub receipt abandons before Linear and the replacement never repeats visible feedback: The inspected predecessor is terminal with Linear not started; the separately inspected replacement completes both steps. Passing lineage tests cover non-repetition of visible feedback.
+  - [Evidence](images/0955ac9c9e1aa4d3c8906a107ec3c89ff37c2d2d80439fc68fa962af00308f47.png)
+  - [Evidence](images/ddfe6617d760ea9e0fa97d08c06edaeb266bcf00e63df99c4e81eafda049ac6a.png)
+- [x] Forged page identity, a mismatched user ID, a reused review ID and a second intent all fail without any host write: The inspected identity mismatch blocks both provider steps before writes; passing service and orchestration tests cover forged identity, review-ID reuse, lease, and second-intent guards.
+  - [Evidence](images/4e421eee7b5a3e6a71c6939246ce50fccb6239cc7929fc8929e4fc1a093935a1.png)
+- [x] An app-originated Linear state event cannot approve the gate and is restored once: The inspected gate waits for a checked human review with both provider steps not started; passing transition tests cover rejecting/restoring app-originated state events, and Showboat shows the saved GitHub review—not the app delivery—as the review choice.
+  - [Evidence](images/7053b35874bd54ef341ce2ca412867d0d088f2c4086ef1953ef81b445057b042.png)
+  - [Evidence](showboat.md#evidence-727d62e7f78cc731eeea92a889b67956bbadb00688536ff67b38170523556315)

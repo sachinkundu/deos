@@ -1,0 +1,702 @@
+{
+  "version": 1,
+  "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+  "items": [
+    {
+      "id": "sac182-s01-settings-account-link",
+      "title": "Settings connects and freezes the one allowed BettaView account",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:6c727f3bdaf0ba26adbfb0f727a66b1e5e6d0accd8398c494495eb7aea083d4a:61c5d273e54f06293430c6a5a81a5204834fe8d1aa4543ce3f5b919191a9e6d2"
+      ],
+      "reason": "The inspected current-tree screenshot shows verified Access, numeric GitHub identity, the selected Linear identity, required states, and the activated checked-account policy."
+    },
+    {
+      "id": "sac182-s02-draft-is-not-a-choice",
+      "title": "Draft notes write nothing to GitHub or Linear and the browser holds no Linear access",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:257903f11da38f5910d65fccbb55cbd519da8f1ed4ba9cce28f524280cc792fc:0d26c6dd93f39c166f8cfcabb9ad7d6d184f9591962a274d3af44fbd4d078cba",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected review UI exposes only Comment, Approve, and Request changes while both provider steps are not started; passing BettaView tests cover local draft storage and the production-path Showboat confirms provider work begins only after Publish."
+    },
+    {
+      "id": "sac182-s03-request-changes-continues-edit-path",
+      "title": "Published REQUEST_CHANGES review moves the task to In Progress and continues the edit path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:b1d649f109b0d90855644a66693842d5491bb2f50b27b29af8fdf78fafd98345:eff40497b39389cf39f4635a81570555c906d2053521c93a6ec97d4508b07a21",
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:3304a56f601a06d9bb56bd4517f56cb2b8d2fbb2c22c020a66504f6db9ebc9f5:d799228380157f8c9989186df9cae7a956d1eb042489361adf6f79b6b6ad5eeb",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected final application captures show GitHub and Linear complete with the linked workflow continued, including restoration in a fresh browser context. The retained review Showboat records the production continuation call order. Final-tree provider receipts are selected separately as provider-originated proof."
+    },
+    {
+      "id": "sac182-s04-approve-with-notes-merging",
+      "title": "Approval with inline notes moves the task to Merging and allows only the merge path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:32ce6ca8a924a0f4e5450f40552bf4a2b633c8bff6e817638fefbf767ff2faf0:37e67e15be811d96a247422902920da13259ed2bea36bb40a8fe9ee7a41aa79c",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The screenshot shows GitHub approval and Linear Merging complete; selected provider receipts confirm review 5260494478 retained its notes and signed delivery 857d1577-0f09-4441-b7dd-8762292363fb."
+    },
+    {
+      "id": "sac182-s05-approve-without-notes-merging",
+      "title": "Approval with no notes also moves the task to Merging",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:32ce6ca8a924a0f4e5450f40552bf4a2b633c8bff6e817638fefbf767ff2faf0:37e67e15be811d96a247422902920da13259ed2bea36bb40a8fe9ee7a41aa79c",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The no-notes UI is pixel-identical to the selected approval success image; selected provider proof distinguishes review 5260495532 by its empty body and signed delivery 3926c58f-ae14-4c8c-81fc-d9020da70bb4."
+    },
+    {
+      "id": "sac182-s06-github-rejection-blocks-task-move",
+      "title": "A rejected GitHub review never moves the task and preserves the original provider error",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:2fa42ab50c68d135365e02e3409952d35d824cd5a51b722b683e1bde71d48165:a4bc657745bb5ac7532e13b18ad7a3ea0709ef055ff30e74481b8f97e02e3296"
+      ],
+      "reason": "The inspected UI preserves github_rejected, marks GitHub failed retryable, and visibly leaves Linear not started; sequencing and cause preservation are covered by the passing workflow tests."
+    },
+    {
+      "id": "sac182-s07-unclear-github-result-no-duplicate-write",
+      "title": "A lost GitHub response is reconciled by read-back, and an unprovable read stops for a host check",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:95ac4f005fd7ba929657b1ae4106bc04abaf37a7cc6a96c745747f69da3f75d7:56e80bdfcb6e28dda5ebb72244c6c208a141480b39db671cfeb6e1bcca41a313",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected UI shows host check required with Linear not started and no retry action; passing idempotency tests cover read-back and suppression, while the production-path Showboat demonstrates one permit, one receipt, and one Linear allocation."
+    },
+    {
+      "id": "sac182-s08-linear-step-failure-retry-and-delivery-gap",
+      "title": "A failed task move keeps the review done, retries only the task move, and a missing signed delivery escalates",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:c134b6d0c3f533c5fad89aaa30ee9480c5615f07eebd18d30b02cace9a5ddbe5:c128652fadcdc3c55338ab606d16f0a5d9b250bc3d12960ffd15a01e5b964284",
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:b1d649f109b0d90855644a66693842d5491bb2f50b27b29af8fdf78fafd98345:eff40497b39389cf39f4635a81570555c906d2053521c93a6ec97d4508b07a21",
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:3304a56f601a06d9bb56bd4517f56cb2b8d2fbb2c22c020a66504f6db9ebc9f5:d799228380157f8c9989186df9cae7a956d1eb042489361adf6f79b6b6ad5eeb",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The retained failure capture shows GitHub remaining done while only Linear is retryable. The inspected current-tree captures show the repaired retry persisted as both steps done in the same and a fresh browser context; Showboat retains the durable provider ordering and no-repeat behavior."
+    },
+    {
+      "id": "sac182-s09-stale-head-and-unlinked-pull-request",
+      "title": "An old head and an unlinked pull request block host writes while the page stays readable",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:ddf1068447920055ca1452fc3abe4b0a562d3eb4541a8b36088253b750ca608d:9afbfdb84a814bb59fc5aa33009060288741517ad4a4f6e99fe467e5055536e8",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:37142e245de8bf0c3a4184ef81ce5c11f48dcbb0ab964a34dfc60c84f655fa20:d6e570dc97998aa4d90c69a2d2a452ee6ed9611adc27c754d554128421614e62"
+      ],
+      "reason": "Both inspected states keep the review readable, disable all review decisions, and explain either the stale head or missing open gate."
+    },
+    {
+      "id": "sac182-s10-abandon-before-linear-and-replacement-lineage",
+      "title": "A head advance after a GitHub receipt abandons before Linear and the replacement never repeats visible feedback",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:7156b3897b966303308ee505aa5f04865580cc2aaf1ca6681aa16093fd4ecfe2:0955ac9c9e1aa4d3c8906a107ec3c89ff37c2d2d80439fc68fa962af00308f47",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:22ecfd04fca29cda37b2740d55b31775080db6cdad72fc53d15c7dbb82303ed1:ddfe6617d760ea9e0fa97d08c06edaeb266bcf00e63df99c4e81eafda049ac6a"
+      ],
+      "reason": "The inspected predecessor is terminal with Linear not started; the separately inspected replacement completes both steps. Passing lineage tests cover non-repetition of visible feedback."
+    },
+    {
+      "id": "sac182-s11-identity-and-gate-lease-guards",
+      "title": "Forged page identity, a mismatched user ID, a reused review ID and a second intent all fail without any host write",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:fb7f0f41a45a6670c7b1050f819b894ee6dba615214e3178e3ba69484701c9bc:4e421eee7b5a3e6a71c6939246ce50fccb6239cc7929fc8929e4fc1a093935a1"
+      ],
+      "reason": "The inspected identity mismatch blocks both provider steps before writes; passing service and orchestration tests cover forged identity, review-ID reuse, lease, and second-intent guards."
+    },
+    {
+      "id": "sac182-s12-only-a-checked-human-act-moves-the-gate",
+      "title": "An app-originated Linear state event cannot approve the gate and is restored once",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:dafea05e09957b7fe6b92e23c748b1162a034b3db8622e25312006ca3de2e498:7053b35874bd54ef341ce2ca412867d0d088f2c4086ef1953ef81b445057b042",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected gate waits for a checked human review with both provider steps not started; passing transition tests cover rejecting/restoring app-originated state events, and Showboat shows the saved GitHub review—not the app delivery—as the review choice."
+    }
+  ],
+  "history": [
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s01-settings-account-link",
+      "title": "Settings connects and freezes the one allowed BettaView account",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:a2fd863aa17e599b79fff90c82330d2557e28c11e401464f0a9e7101643f5865:da79b6d0373efb0c908907d8b737a465eea2070b1a022189d89fbcf43134ec86"
+      ],
+      "reason": "The inspected temporary-Worker screenshot visibly shows verified Access, the checked GitHub and Linear IDs, policy version 2, and the activated-policy notice."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s02-draft-is-not-a-choice",
+      "title": "Draft notes write nothing to GitHub or Linear and the browser holds no Linear access",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:257903f11da38f5910d65fccbb55cbd519da8f1ed4ba9cce28f524280cc792fc:0d26c6dd93f39c166f8cfcabb9ad7d6d184f9591962a274d3af44fbd4d078cba",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The inspected review UI exposes only Comment, Approve, and Request changes while both provider steps are not started; the passing BettaView and workflow tests cover local draft storage and absence of browser Linear credentials."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s03-request-changes-continues-edit-path",
+      "title": "Published REQUEST_CHANGES review moves the task to In Progress and continues the edit path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:e4e83d70505fb3524ac98f1c1b9a9993764a9afaeed63d6a29be3bc32881d4dd:e448e972318e9d85408945b78227899c068dcf92e249c3df317c91c554ed1dd5",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:provider_originated:4879d95e702591105e668c1e37700df737ebb34c364fa2fab7539ff7ce173957",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The screenshot shows both steps complete at In Progress; provider read-back confirms GitHub review 5260493456 and signed Linear delivery 8d232d35-e321-45c5-ab6d-a42a5c371354."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s04-approve-with-notes-merging",
+      "title": "Approval with inline notes moves the task to Merging and allows only the merge path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:32ce6ca8a924a0f4e5450f40552bf4a2b633c8bff6e817638fefbf767ff2faf0:37e67e15be811d96a247422902920da13259ed2bea36bb40a8fe9ee7a41aa79c",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:provider_originated:d7023d08826f066c5f7ba07f3ff72e8bcb07011385c95d1c5007de802e3b1431",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The screenshot shows GitHub approval and Linear Merging complete; provider read-back confirms review 5260494478 retained its notes and delivery 857d1577-0f09-4441-b7dd-8762292363fb."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s05-approve-without-notes-merging",
+      "title": "Approval with no notes also moves the task to Merging",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:32ce6ca8a924a0f4e5450f40552bf4a2b633c8bff6e817638fefbf767ff2faf0:37e67e15be811d96a247422902920da13259ed2bea36bb40a8fe9ee7a41aa79c",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:provider_originated:3c7d57cb28086e764198a43fe53c356255f0f1ca585d63096245bc4a41c43f46",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The approval UI is pixel-identical for the no-notes case, so the shared selected success image is paired with provider review 5260495532 whose read-back body is empty and delivery 3926c58f-ae14-4c8c-81fc-d9020da70bb4."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s06-github-rejection-blocks-task-move",
+      "title": "A rejected GitHub review never moves the task and preserves the original provider error",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:2fa42ab50c68d135365e02e3409952d35d824cd5a51b722b683e1bde71d48165:a4bc657745bb5ac7532e13b18ad7a3ea0709ef055ff30e74481b8f97e02e3296"
+      ],
+      "reason": "The inspected UI preserves github_rejected, marks GitHub failed retryable, and visibly leaves Linear not started; sequencing and cause preservation are covered by the passing workflow tests."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s07-unclear-github-result-no-duplicate-write",
+      "title": "A lost GitHub response is reconciled by read-back, and an unprovable read stops for a host check",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:95ac4f005fd7ba929657b1ae4106bc04abaf37a7cc6a96c745747f69da3f75d7:56e80bdfcb6e28dda5ebb72244c6c208a141480b39db671cfeb6e1bcca41a313",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The inspected UI shows host check required with Linear not started and no retry action; passing idempotency tests cover provider read-back and duplicate suppression, while Showboat confirms unique provider delivery IDs."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s08-linear-step-failure-retry-and-delivery-gap",
+      "title": "A failed task move keeps the review done, retries only the task move, and a missing signed delivery escalates",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:c134b6d0c3f533c5fad89aaa30ee9480c5615f07eebd18d30b02cace9a5ddbe5:c128652fadcdc3c55338ab606d16f0a5d9b250bc3d12960ffd15a01e5b964284",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The inspected UI keeps GitHub done, marks only Linear retryable, and offers retry; passing workflow tests cover Linear-only retry and signed-delivery escalation, and provider read-back confirms unique signed deliveries."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s09-stale-head-and-unlinked-pull-request",
+      "title": "An old head and an unlinked pull request block host writes while the page stays readable",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:ddf1068447920055ca1452fc3abe4b0a562d3eb4541a8b36088253b750ca608d:9afbfdb84a814bb59fc5aa33009060288741517ad4a4f6e99fe467e5055536e8",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:37142e245de8bf0c3a4184ef81ce5c11f48dcbb0ab964a34dfc60c84f655fa20:d6e570dc97998aa4d90c69a2d2a452ee6ed9611adc27c754d554128421614e62"
+      ],
+      "reason": "Both inspected states keep the review readable, disable all review decisions, and explain either the stale head or missing open gate."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s10-abandon-before-linear-and-replacement-lineage",
+      "title": "A head advance after a GitHub receipt abandons before Linear and the replacement never repeats visible feedback",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:7156b3897b966303308ee505aa5f04865580cc2aaf1ca6681aa16093fd4ecfe2:0955ac9c9e1aa4d3c8906a107ec3c89ff37c2d2d80439fc68fa962af00308f47",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:22ecfd04fca29cda37b2740d55b31775080db6cdad72fc53d15c7dbb82303ed1:ddfe6617d760ea9e0fa97d08c06edaeb266bcf00e63df99c4e81eafda049ac6a"
+      ],
+      "reason": "The inspected predecessor is terminal with Linear not started; the separately inspected replacement completes both steps. Passing lineage tests cover non-repetition of visible feedback."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s11-identity-and-gate-lease-guards",
+      "title": "Forged page identity, a mismatched user ID, a reused review ID and a second intent all fail without any host write",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:fb7f0f41a45a6670c7b1050f819b894ee6dba615214e3178e3ba69484701c9bc:4e421eee7b5a3e6a71c6939246ce50fccb6239cc7929fc8929e4fc1a093935a1"
+      ],
+      "reason": "The inspected identity mismatch blocks both provider steps before writes; passing service and orchestration tests cover forged identity, review-ID reuse, lease, and second-intent guards."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:45.428Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s12-only-a-checked-human-act-moves-the-gate",
+      "title": "An app-originated Linear state event cannot approve the gate and is restored once",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:dafea05e09957b7fe6b92e23c748b1162a034b3db8622e25312006ca3de2e498:7053b35874bd54ef341ce2ca412867d0d088f2c4086ef1953ef81b445057b042",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The inspected gate waits for a checked human review with both provider steps not started; passing transition tests cover rejecting and restoring app-originated Linear state events."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s01-settings-account-link",
+      "title": "Settings connects and freezes the one allowed BettaView account",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:a2fd863aa17e599b79fff90c82330d2557e28c11e401464f0a9e7101643f5865:da79b6d0373efb0c908907d8b737a465eea2070b1a022189d89fbcf43134ec86"
+      ],
+      "reason": "The inspected temporary-Worker screenshot visibly shows verified Access, the checked GitHub and Linear IDs, policy version 2, and the activated-policy notice."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s02-draft-is-not-a-choice",
+      "title": "Draft notes write nothing to GitHub or Linear and the browser holds no Linear access",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:257903f11da38f5910d65fccbb55cbd519da8f1ed4ba9cce28f524280cc792fc:0d26c6dd93f39c166f8cfcabb9ad7d6d184f9591962a274d3af44fbd4d078cba",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The inspected review UI exposes only Comment, Approve, and Request changes while both provider steps are not started; the passing BettaView and workflow tests cover local draft storage and absence of browser Linear credentials."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s03-request-changes-continues-edit-path",
+      "title": "Published REQUEST_CHANGES review moves the task to In Progress and continues the edit path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:e4e83d70505fb3524ac98f1c1b9a9993764a9afaeed63d6a29be3bc32881d4dd:e448e972318e9d85408945b78227899c068dcf92e249c3df317c91c554ed1dd5",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The screenshot shows both steps complete at In Progress; provider read-back confirms GitHub review 5260493456 and signed Linear delivery 8d232d35-e321-45c5-ab6d-a42a5c371354."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s04-approve-with-notes-merging",
+      "title": "Approval with inline notes moves the task to Merging and allows only the merge path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:32ce6ca8a924a0f4e5450f40552bf4a2b633c8bff6e817638fefbf767ff2faf0:37e67e15be811d96a247422902920da13259ed2bea36bb40a8fe9ee7a41aa79c",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The screenshot shows GitHub approval and Linear Merging complete; provider read-back confirms review 5260494478 retained its notes and delivery 857d1577-0f09-4441-b7dd-8762292363fb."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s05-approve-without-notes-merging",
+      "title": "Approval with no notes also moves the task to Merging",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:32ce6ca8a924a0f4e5450f40552bf4a2b633c8bff6e817638fefbf767ff2faf0:37e67e15be811d96a247422902920da13259ed2bea36bb40a8fe9ee7a41aa79c",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The approval UI is pixel-identical for the no-notes case, so the shared selected success image is paired with provider review 5260495532 whose read-back body is empty and delivery 3926c58f-ae14-4c8c-81fc-d9020da70bb4."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s06-github-rejection-blocks-task-move",
+      "title": "A rejected GitHub review never moves the task and preserves the original provider error",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:2fa42ab50c68d135365e02e3409952d35d824cd5a51b722b683e1bde71d48165:a4bc657745bb5ac7532e13b18ad7a3ea0709ef055ff30e74481b8f97e02e3296"
+      ],
+      "reason": "The inspected UI preserves github_rejected, marks GitHub failed retryable, and visibly leaves Linear not started; sequencing and cause preservation are covered by the passing workflow tests."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s07-unclear-github-result-no-duplicate-write",
+      "title": "A lost GitHub response is reconciled by read-back, and an unprovable read stops for a host check",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:95ac4f005fd7ba929657b1ae4106bc04abaf37a7cc6a96c745747f69da3f75d7:56e80bdfcb6e28dda5ebb72244c6c208a141480b39db671cfeb6e1bcca41a313",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The inspected UI shows host check required with Linear not started and no retry action; passing idempotency tests cover provider read-back and duplicate suppression, while Showboat confirms unique provider delivery IDs."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s08-linear-step-failure-retry-and-delivery-gap",
+      "title": "A failed task move keeps the review done, retries only the task move, and a missing signed delivery escalates",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:c134b6d0c3f533c5fad89aaa30ee9480c5615f07eebd18d30b02cace9a5ddbe5:c128652fadcdc3c55338ab606d16f0a5d9b250bc3d12960ffd15a01e5b964284",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The inspected UI keeps GitHub done, marks only Linear retryable, and offers retry; passing workflow tests cover Linear-only retry and signed-delivery escalation, and provider read-back confirms unique signed deliveries."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s09-stale-head-and-unlinked-pull-request",
+      "title": "An old head and an unlinked pull request block host writes while the page stays readable",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:ddf1068447920055ca1452fc3abe4b0a562d3eb4541a8b36088253b750ca608d:9afbfdb84a814bb59fc5aa33009060288741517ad4a4f6e99fe467e5055536e8",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:37142e245de8bf0c3a4184ef81ce5c11f48dcbb0ab964a34dfc60c84f655fa20:d6e570dc97998aa4d90c69a2d2a452ee6ed9611adc27c754d554128421614e62"
+      ],
+      "reason": "Both inspected states keep the review readable, disable all review decisions, and explain either the stale head or missing open gate."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s10-abandon-before-linear-and-replacement-lineage",
+      "title": "A head advance after a GitHub receipt abandons before Linear and the replacement never repeats visible feedback",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:7156b3897b966303308ee505aa5f04865580cc2aaf1ca6681aa16093fd4ecfe2:0955ac9c9e1aa4d3c8906a107ec3c89ff37c2d2d80439fc68fa962af00308f47",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:22ecfd04fca29cda37b2740d55b31775080db6cdad72fc53d15c7dbb82303ed1:ddfe6617d760ea9e0fa97d08c06edaeb266bcf00e63df99c4e81eafda049ac6a"
+      ],
+      "reason": "The inspected predecessor is terminal with Linear not started; the separately inspected replacement completes both steps. Passing lineage tests cover non-repetition of visible feedback."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s11-identity-and-gate-lease-guards",
+      "title": "Forged page identity, a mismatched user ID, a reused review ID and a second intent all fail without any host write",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:fb7f0f41a45a6670c7b1050f819b894ee6dba615214e3178e3ba69484701c9bc:4e421eee7b5a3e6a71c6939246ce50fccb6239cc7929fc8929e4fc1a093935a1"
+      ],
+      "reason": "The inspected identity mismatch blocks both provider steps before writes; passing service and orchestration tests cover forged identity, review-ID reuse, lease, and second-intent guards."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:01:58.346Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s12-only-a-checked-human-act-moves-the-gate",
+      "title": "An app-originated Linear state event cannot approve the gate and is restored once",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:dafea05e09957b7fe6b92e23c748b1162a034b3db8622e25312006ca3de2e498:7053b35874bd54ef341ce2ca412867d0d088f2c4086ef1953ef81b445057b042",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:2ef298933ea2d8dfc9636bac11877d153b8b37007a3fb889dbf9e433c2f02793"
+      ],
+      "reason": "The inspected gate waits for a checked human review with both provider steps not started; passing transition tests cover rejecting and restoring app-originated Linear state events."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s01-settings-account-link",
+      "title": "Settings connects and freezes the one allowed BettaView account",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:a2fd863aa17e599b79fff90c82330d2557e28c11e401464f0a9e7101643f5865:da79b6d0373efb0c908907d8b737a465eea2070b1a022189d89fbcf43134ec86"
+      ],
+      "reason": "The inspected temporary-Worker screenshot visibly shows verified Access, the checked GitHub and Linear IDs, policy version 2, and the activated-policy notice."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s02-draft-is-not-a-choice",
+      "title": "Draft notes write nothing to GitHub or Linear and the browser holds no Linear access",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:257903f11da38f5910d65fccbb55cbd519da8f1ed4ba9cce28f524280cc792fc:0d26c6dd93f39c166f8cfcabb9ad7d6d184f9591962a274d3af44fbd4d078cba",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected review UI exposes only Comment, Approve, and Request changes while both provider steps are not started; passing BettaView tests cover local draft storage and the production-path Showboat confirms provider work begins only after Publish."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s03-request-changes-continues-edit-path",
+      "title": "Published REQUEST_CHANGES review moves the task to In Progress and continues the edit path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:e4e83d70505fb3524ac98f1c1b9a9993764a9afaeed63d6a29be3bc32881d4dd:e448e972318e9d85408945b78227899c068dcf92e249c3df317c91c554ed1dd5",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The screenshot shows both steps complete at In Progress; selected provider receipts confirm GitHub review 5260493456 and signed Linear delivery 8d232d35-e321-45c5-ab6d-a42a5c371354, while Showboat proves the production call order on a COMMENT path."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s04-approve-with-notes-merging",
+      "title": "Approval with inline notes moves the task to Merging and allows only the merge path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:32ce6ca8a924a0f4e5450f40552bf4a2b633c8bff6e817638fefbf767ff2faf0:37e67e15be811d96a247422902920da13259ed2bea36bb40a8fe9ee7a41aa79c",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The screenshot shows GitHub approval and Linear Merging complete; selected provider receipts confirm review 5260494478 retained its notes and signed delivery 857d1577-0f09-4441-b7dd-8762292363fb."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s05-approve-without-notes-merging",
+      "title": "Approval with no notes also moves the task to Merging",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:32ce6ca8a924a0f4e5450f40552bf4a2b633c8bff6e817638fefbf767ff2faf0:37e67e15be811d96a247422902920da13259ed2bea36bb40a8fe9ee7a41aa79c",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The no-notes UI is pixel-identical to the selected approval success image; selected provider proof distinguishes review 5260495532 by its empty body and signed delivery 3926c58f-ae14-4c8c-81fc-d9020da70bb4."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s06-github-rejection-blocks-task-move",
+      "title": "A rejected GitHub review never moves the task and preserves the original provider error",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:2fa42ab50c68d135365e02e3409952d35d824cd5a51b722b683e1bde71d48165:a4bc657745bb5ac7532e13b18ad7a3ea0709ef055ff30e74481b8f97e02e3296"
+      ],
+      "reason": "The inspected UI preserves github_rejected, marks GitHub failed retryable, and visibly leaves Linear not started; sequencing and cause preservation are covered by the passing workflow tests."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s07-unclear-github-result-no-duplicate-write",
+      "title": "A lost GitHub response is reconciled by read-back, and an unprovable read stops for a host check",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:95ac4f005fd7ba929657b1ae4106bc04abaf37a7cc6a96c745747f69da3f75d7:56e80bdfcb6e28dda5ebb72244c6c208a141480b39db671cfeb6e1bcca41a313",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected UI shows host check required with Linear not started and no retry action; passing idempotency tests cover read-back and suppression, while the production-path Showboat demonstrates one permit, one receipt, and one Linear allocation."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s08-linear-step-failure-retry-and-delivery-gap",
+      "title": "A failed task move keeps the review done, retries only the task move, and a missing signed delivery escalates",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:c134b6d0c3f533c5fad89aaa30ee9480c5615f07eebd18d30b02cace9a5ddbe5:c128652fadcdc3c55338ab606d16f0a5d9b250bc3d12960ffd15a01e5b964284",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected UI keeps GitHub done, marks only Linear retryable, and offers retry; passing workflow tests cover Linear-only retry and signed-delivery escalation, while Showboat proves GitHub is durably complete before Linear begins."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s09-stale-head-and-unlinked-pull-request",
+      "title": "An old head and an unlinked pull request block host writes while the page stays readable",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:ddf1068447920055ca1452fc3abe4b0a562d3eb4541a8b36088253b750ca608d:9afbfdb84a814bb59fc5aa33009060288741517ad4a4f6e99fe467e5055536e8",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:37142e245de8bf0c3a4184ef81ce5c11f48dcbb0ab964a34dfc60c84f655fa20:d6e570dc97998aa4d90c69a2d2a452ee6ed9611adc27c754d554128421614e62"
+      ],
+      "reason": "Both inspected states keep the review readable, disable all review decisions, and explain either the stale head or missing open gate."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s10-abandon-before-linear-and-replacement-lineage",
+      "title": "A head advance after a GitHub receipt abandons before Linear and the replacement never repeats visible feedback",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:7156b3897b966303308ee505aa5f04865580cc2aaf1ca6681aa16093fd4ecfe2:0955ac9c9e1aa4d3c8906a107ec3c89ff37c2d2d80439fc68fa962af00308f47",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:22ecfd04fca29cda37b2740d55b31775080db6cdad72fc53d15c7dbb82303ed1:ddfe6617d760ea9e0fa97d08c06edaeb266bcf00e63df99c4e81eafda049ac6a"
+      ],
+      "reason": "The inspected predecessor is terminal with Linear not started; the separately inspected replacement completes both steps. Passing lineage tests cover non-repetition of visible feedback."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s11-identity-and-gate-lease-guards",
+      "title": "Forged page identity, a mismatched user ID, a reused review ID and a second intent all fail without any host write",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:fb7f0f41a45a6670c7b1050f819b894ee6dba615214e3178e3ba69484701c9bc:4e421eee7b5a3e6a71c6939246ce50fccb6239cc7929fc8929e4fc1a093935a1"
+      ],
+      "reason": "The inspected identity mismatch blocks both provider steps before writes; passing service and orchestration tests cover forged identity, review-ID reuse, lease, and second-intent guards."
+    },
+    {
+      "attemptId": "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b",
+      "treeSha": "14010894c71d7e7b61b9ef83cdb023596e795bd8",
+      "occurredAt": "2026-09-20T12:05:30.182Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s12-only-a-checked-human-act-moves-the-gate",
+      "title": "An app-originated Linear state event cannot approve the gate and is restored once",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:dafea05e09957b7fe6b92e23c748b1162a034b3db8622e25312006ca3de2e498:7053b35874bd54ef341ce2ca412867d0d088f2c4086ef1953ef81b445057b042",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected gate waits for a checked human review with both provider steps not started; passing transition tests cover rejecting/restoring app-originated state events, and Showboat shows the saved GitHub review—not the app delivery—as the review choice."
+    },
+    {
+      "attemptId": "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c",
+      "treeSha": "d12dfda66271787c3a529ed41f2599cab00d4fdc",
+      "occurredAt": "2026-09-20T14:11:33.381Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s01-settings-account-link",
+      "title": "Settings connects and freezes the one allowed BettaView account",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:6c727f3bdaf0ba26adbfb0f727a66b1e5e6d0accd8398c494495eb7aea083d4a:61c5d273e54f06293430c6a5a81a5204834fe8d1aa4543ce3f5b919191a9e6d2"
+      ],
+      "reason": "The inspected current-tree screenshot shows verified Access, numeric GitHub identity, the selected Linear identity, required states, and the activated checked-account policy."
+    },
+    {
+      "attemptId": "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c",
+      "treeSha": "d12dfda66271787c3a529ed41f2599cab00d4fdc",
+      "occurredAt": "2026-09-20T14:11:33.381Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s03-request-changes-continues-edit-path",
+      "title": "Published REQUEST_CHANGES review moves the task to In Progress and continues the edit path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:b1d649f109b0d90855644a66693842d5491bb2f50b27b29af8fdf78fafd98345:eff40497b39389cf39f4635a81570555c906d2053521c93a6ec97d4508b07a21",
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:3304a56f601a06d9bb56bd4517f56cb2b8d2fbb2c22c020a66504f6db9ebc9f5:d799228380157f8c9989186df9cae7a956d1eb042489361adf6f79b6b6ad5eeb",
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:provider_originated:ab7568b74c814a4f24f9f541ae641493d2dcd2f325bb0c1d6108c00b927f232d",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected current-tree captures show GitHub and Linear complete with the linked workflow continued, including restoration in a fresh browser context. Current-tree provider proof independently records a real request-changes review and signed Linear move on the isolated fixture; the retained Showboat records the production continuation call order."
+    },
+    {
+      "attemptId": "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c",
+      "treeSha": "d12dfda66271787c3a529ed41f2599cab00d4fdc",
+      "occurredAt": "2026-09-20T14:11:33.381Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s08-linear-step-failure-retry-and-delivery-gap",
+      "title": "A failed task move keeps the review done, retries only the task move, and a missing signed delivery escalates",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:browser_image:c134b6d0c3f533c5fad89aaa30ee9480c5615f07eebd18d30b02cace9a5ddbe5:c128652fadcdc3c55338ab606d16f0a5d9b250bc3d12960ffd15a01e5b964284",
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:b1d649f109b0d90855644a66693842d5491bb2f50b27b29af8fdf78fafd98345:eff40497b39389cf39f4635a81570555c906d2053521c93a6ec97d4508b07a21",
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:3304a56f601a06d9bb56bd4517f56cb2b8d2fbb2c22c020a66504f6db9ebc9f5:d799228380157f8c9989186df9cae7a956d1eb042489361adf6f79b6b6ad5eeb",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The retained failure capture shows GitHub remaining done while only Linear is retryable. The inspected current-tree captures show the repaired retry persisted as both steps done in the same and a fresh browser context; Showboat retains the durable provider ordering and no-repeat behavior."
+    },
+    {
+      "attemptId": "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c",
+      "treeSha": "d12dfda66271787c3a529ed41f2599cab00d4fdc",
+      "occurredAt": "2026-09-20T14:12:52.385Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s03-request-changes-continues-edit-path",
+      "title": "Published REQUEST_CHANGES review moves the task to In Progress and continues the edit path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:b1d649f109b0d90855644a66693842d5491bb2f50b27b29af8fdf78fafd98345:eff40497b39389cf39f4635a81570555c906d2053521c93a6ec97d4508b07a21",
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:3304a56f601a06d9bb56bd4517f56cb2b8d2fbb2c22c020a66504f6db9ebc9f5:d799228380157f8c9989186df9cae7a956d1eb042489361adf6f79b6b6ad5eeb",
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:d12dfda66271787c3a529ed41f2599cab00d4fdc:provider_originated:86f54a3eb211a355b1be61085b2bf0129617207c98ebc80c66d1ae6c68140d8c",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected final application captures show GitHub and Linear complete with the linked workflow continued, including restoration in a fresh browser context. Final-tree provider proof records GitHub request-changes review 5260787717 and signed Linear delivery 4733e1d1-695c-4ab4-8734-e98b465fd762 on the isolated fixture; retained Showboat records the production continuation call order."
+    },
+    {
+      "attemptId": "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c",
+      "treeSha": "d12dfda66271787c3a529ed41f2599cab00d4fdc",
+      "occurredAt": "2026-09-20T14:13:09.431Z",
+      "planSha256": "2c924a5ffb2d6abaaed398827265e69fe72d7dd0f51ad2fb52674fe264454d66",
+      "id": "sac182-s03-request-changes-continues-edit-path",
+      "title": "Published REQUEST_CHANGES review moves the task to In Progress and continues the edit path",
+      "state": "complete",
+      "evidenceIds": [
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:b1d649f109b0d90855644a66693842d5491bb2f50b27b29af8fdf78fafd98345:eff40497b39389cf39f4635a81570555c906d2053521c93a6ec97d4508b07a21",
+        "01a0bee4-ff16-7d35-9e79-9ffb7c857c0c:46c2b3f40ad04c3ee2149c339ad109cd938d7de5:browser_image:3304a56f601a06d9bb56bd4517f56cb2b8d2fbb2c22c020a66504f6db9ebc9f5:d799228380157f8c9989186df9cae7a956d1eb042489361adf6f79b6b6ad5eeb",
+        "01a0be97-7d29-7c3c-ba38-4be8dfe86d9b:14010894c71d7e7b61b9ef83cdb023596e795bd8:showboat:e4b223df067698875b84948939dfe90164d06472751e2d379f2221d183cc38f3"
+      ],
+      "reason": "The inspected final application captures show GitHub and Linear complete with the linked workflow continued, including restoration in a fresh browser context. The retained review Showboat records the production continuation call order. Final-tree provider receipts are selected separately as provider-originated proof."
+    }
+  ]
+}
