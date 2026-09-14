@@ -417,7 +417,14 @@ app.post("/api/comments/batch", async (request, response, next) => {
 
     const sourceCache = new Map();
     const prepared = [];
-    for (const draft of commentDrafts) prepared.push(await prepareBatchComment(context, draft, sourceCache));
+    for (const draft of commentDrafts) {
+      try { prepared.push(await prepareBatchComment(context, draft, sourceCache)); }
+      catch (cause) {
+        const error = new Error(`Comment ${comments.indexOf(draft) + 1} (${draft.path}:${draft.startLine}): ${cause.message}`, { cause });
+        error.status = cause.status;
+        throw error;
+      }
+    }
 
     const assets = [];
     for (const item of prepared) {

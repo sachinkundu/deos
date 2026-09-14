@@ -352,7 +352,14 @@ export async function publishBatchReview(token, body) {
   }
   const sourceCache = new Map();
   const prepared = [];
-  for (const draft of commentDrafts) prepared.push(await prepareBatchComment(token, context, draft, sourceCache));
+  for (const draft of commentDrafts) {
+    try { prepared.push(await prepareBatchComment(token, context, draft, sourceCache)); }
+    catch (cause) {
+      const error = new Error(`Comment ${comments.indexOf(draft) + 1} (${draft.path}:${draft.startLine}): ${cause.message}`, { cause });
+      error.status = cause.status;
+      throw error;
+    }
+  }
   const assets = [];
   for (const item of prepared) {
     if (item.draft.kind !== "mermaid-annotation") continue;

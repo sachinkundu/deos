@@ -1,0 +1,14 @@
+[
+  {
+    "text": "Project setup saves an effective_browser_cap that is no greater than the\naccount's provider limit, defaults to four, and must be at least two before this\nflow can be enabled. It also limits creates to one per second. This is below the\ncurrent documented paid-plan defaults, while making the DEOS bound explicit and\nindependent of later provider limit changes\n(Cloudflare Browser Run limits).\nAn active or quarantined allocation consumes one slot. A slot limit can delay a\ntry, but a single unclear allocation cannot take the account-wide allocator.",
+    "startLine": 208,
+    "endLine": 215,
+    "selectedText": "Project setup saves an effective_browser_cap that is no greater than the account's provider limit, defaults to four, and must be at least two before this flow can be enabled. It also limits creates to one per second. This is below the current documented paid-plan defaults, while making the DEOS bound explicit and independent of later provider limit changes (Cloudflare Browser Run limits). An active or quarantined allocation consumes one slot. A slot limit can delay a try, but a single unclear allocation cannot take the account-wide allocator."
+  },
+  {
+    "text": "The allocator serializes only the create request and its immediate inventory\nreads under a lease capped at 30 seconds. It requests a 60-second keep-alive and\nsaves the pre-call session inventory. A clear response binds the returned\nsessionId to the reserved slot; Cloudflare documents that the create response\nsupplies that ID and a debugger URL\n(Cloudflare browser session management).\nThe lease is then released, so other runs may use the remaining slots.",
+    "startLine": 217,
+    "endLine": 223,
+    "selectedText": "The allocator serializes only the create request and its immediate inventory reads under a lease capped at 30 seconds. It requests a 60-second keep-alive and saves the pre-call session inventory. A clear response binds the returned sessionId to the reserved slot; Cloudflare documents that the create response supplies that ID and a debugger URL (Cloudflare browser session management). The lease is then released, so other runs may use the remaining slots."
+  }
+]

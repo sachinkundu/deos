@@ -1,3 +1,4 @@
+import { locateSelectedText } from "../shared/selection.js";
 import mermaid from "mermaid";
 import { toPng } from "html-to-image";
 import { request } from "./api.js";
@@ -1178,7 +1179,14 @@ function stageSelectionComment() {
   if (!state.selectedText) return setNotice("Select text in the rendered document first.", "error");
   if (!body.trim()) return setNotice("Write a comment before adding it.", "error");
   const file = state.data.files.find((item) => item.path === state.activePath);
-  const lines = locateSelectionLines(file, state.selectedText, state.selectionRange);
+  let lines;
+  try {
+    const preferred = locateSelectionLines(file, state.selectedText, state.selectionRange);
+    lines = locateSelectedText(file.source, state.selectedText, preferred);
+  } catch (error) {
+    setNotice(`${error.message} Your comment is still in the editor.`, "error");
+    return;
+  }
   state.drafts.push({
     kind: "text-selection",
     prUrl: state.prUrl,
