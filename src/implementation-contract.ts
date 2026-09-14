@@ -183,6 +183,10 @@ export interface TreeFile {
   contentBase64: string | null;
   sha: string | null;
 }
+export type ImplementationRecovery = Pick<ImplementationCandidate,
+  "version" | "attemptId" | "kind" | "change" | "approvedDesignSha" | "testedBaseSha" | "treeSha" | "files" | "patchSha"
+> & { purpose: "recovery-only"; runId: string };
+
 export interface ImplementationCandidate extends ProofSubject {
   version: 1;
   attemptId: string;

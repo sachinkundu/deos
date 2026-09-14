@@ -6,6 +6,7 @@ import { D1NativeReviewStore, nativeChildTerminalError, nativeDigest, nativeReco
 import { recordCaughtError } from "./error-context.ts";
 import { errorDetails } from './error-details.ts';
 import type { ArtifactCollectionResult, ArtifactCollector } from "./artifact-collector.ts";
+import { captureImplementationFailure, implementationFailureFiles } from "./implementation-failure-capture.ts";
 import type { CredentialLease, CredentialVault } from "./credential-vault.ts";
 import type { ProviderReceiptVerifier } from "./capability-store.ts";
 import { sandboxIdentity, uuidV7 } from "./orchestration-identity.ts";
@@ -1890,6 +1891,11 @@ export class SandboxAgentController {
     } catch (caughtError) {
       recordCaughtError(caughtError, "src/sandbox-controller.ts:1460");}
     }
+    if (job.inputs.includes("implementation_context")) {
+      // Retain a credential-free sandbox if capture fails. Do not destroy the
+      // working patch before it and the process evidence are verified durably.
+      await captureImplementationFailure(attempt, sandbox, category, process);
+    }
     if (attempt.state !== "collecting") {
       const changed = await this.attempts.setState(
         attempt.attempt_id,
@@ -1907,8 +1913,11 @@ export class SandboxAgentController {
         runId: attempt.run_id,
         attemptId: attempt.attempt_id,
         outputRoot: "/deos/output",
-        expectedFiles: JSON.parse(attempt.job_spec_json).nativeSelfReview
-          ? [...job.requiredOutputs, "native-review-fault.json", ...(job.boundedReview ? ['native-review-capture-fault.json'] : [])] : job.requiredOutputs,
+        expectedFiles: [
+          ...job.requiredOutputs,
+          ...(job.inputs.includes("implementation_context") ? implementationFailureFiles : []),
+          ...(JSON.parse(attempt.job_spec_json).nativeSelfReview ? ["native-review-fault.json", ...(job.boundedReview ? ['native-review-capture-fault.json'] : [])] : []),
+        ],
         fallbackErrorCategory: category,
       });
       await collector.verifyDurable(collection);
@@ -2158,6 +2167,7 @@ export class SandboxAgentController {
       `Native operation: ${job.operation?.instruction}. Read /deos/run/implementation-input.json and /deos/run/issue-context.json.`,
       `Required outputs under /deos/output: ${job.requiredOutputs.join(', ')}. The supervisor writes the patch, candidate, transcript and provider references.`,
       'Use shell tools for repository reads and edits. Native live web search is available for research. The implementation helper takes a JSON request file; it supports check {argv,cwd?,behavior?}, preview {main?,assets?,d1?,r2?}, browser {operation,url?,selector?,text?,caption?}, document {url}, search {query,host}.',
+      'For npm package downloads through the sandbox proxy, use --cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt. Keep TLS verification enabled. Check installed language versions before running the repository suite; a missing runtime or dependency is an environment problem, not a reason to weaken tests or replace required checks with ad hoc substitutes.',
       'Write /deos/output/documentation-sources.json as an array of {"url":"https://canonical-page","title":"Page title","claim":"The specific fact used","artifactLocator":"repository/path:line"}. Use exactly those fields, including claim and artifactLocator. Each document opened with the helper needs an entry; its canonical URL must appear at the cited line of a changed file. Search listings need no entry. Use [] if no documents were opened. The document helper returns current first-party page content and records the access used to verify these citations.',
       'If implementation-input.json contains priorFailure, the restored patch and prior candidate are unaccepted output from that failed attempt. Preserve useful work, repair the reported issue, reopen the documents you rely on and rerun the required checks for this attempt.',
       'After marking all tasks done, rerun checks and recapture behavior proof so it matches the exact final tree. Never change trusted runtime files.'

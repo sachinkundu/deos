@@ -67,3 +67,23 @@ test("recovery excludes incomplete cleanup/manifests, newer attempts and corrupt
     assert.equal(await f.store.failedCandidate(f.work,"implementation_tasks"),null);
   } finally { f.db.close(); }
 });
+
+test("an incomplete supervisor snapshot can seed a fresh author but never becomes an accepted candidate", async () => {
+  const f = await fixture();
+  try {
+    const saved = { ...f.candidate, purpose: "recovery-only", runId: "run-1" };
+    const bytes = JSON.stringify(saved);
+    await f.bucket.put("recovery", bytes);
+    f.db.sqlite.prepare("UPDATE artifacts SET logical_name='implementation-recovery.json',r2_key='recovery',sha256=?,byte_size=? WHERE logical_name='implementation-candidate.json'")
+      .run(await sha256Hex(bytes), Buffer.byteLength(bytes));
+    f.db.sqlite.exec("UPDATE artifacts SET logical_name='recovery-patch.diff' WHERE logical_name='patch.diff'");
+    const recovery = await f.store.failedCandidate(f.work, "implementation_tasks");
+    assert.equal(recovery?.candidate.attemptId, "failed-task");
+    assert.equal((await f.store.requireRun("run-1")).candidate_key, null);
+    assert.equal(f.db.sqlite.prepare("SELECT state FROM agent_attempts WHERE attempt_id='failed-task'").get()!.state, "failed");
+    const invalid = JSON.stringify({ ...saved, runId: "other-run" });
+    f.bucket.objects.set("recovery", new TextEncoder().encode(invalid));
+    f.db.sqlite.prepare("UPDATE artifacts SET sha256=? WHERE r2_key='recovery'").run(await sha256Hex(invalid));
+    await assert.rejects(f.store.failedCandidate(f.work, "implementation_tasks"), /does not match its run/);
+  } finally { f.db.close(); }
+});

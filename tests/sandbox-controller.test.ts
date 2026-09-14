@@ -1448,6 +1448,21 @@ test("non-zero supervisor exit persists failure evidence before cleanup", async 
   assert.equal(factory.sandbox.destroyed, true);
 });
 
+test("implementation failure capture must succeed before collection and destructive cleanup", async () => {
+  const state = setup({ checkoutCommit: "1".repeat(40), materializedContext: JSON.stringify({ approvedDesignSha: "a".repeat(40), testedBaseSha: "b".repeat(40) }) });
+  const implementation = { ...definition, jobs: { ...definition.jobs, work: { ...definition.jobs.work, inputs: ["implementation_context"] } } };
+  await state.controller.execute(run, "implementation_build", "work", implementation);
+  state.factory.sandbox.files.set("/deos/run/implementation-input.json", "{}");
+  state.factory.sandbox.supervisor.state = "exited";
+  state.factory.sandbox.supervisor.exitCode = 137;
+  state.factory.sandbox.supervisor.stderr = "process stopped without finalizing";
+  await assert.rejects(state.controller.execute(run, "implementation_build", "work", implementation), /Implementation failure capture failed/);
+  assert.equal(state.factory.sandbox.destroyed, false);
+  assert.equal(state.collector.failureCollections, 0);
+  assert.equal(state.attempts.latest?.state, "running");
+  assert.match(state.factory.sandbox.files.get("/deos/output/supervisor-process.json")!, /process stopped without finalizing/);
+});
+
 test("failed attempt can retain a credential-free Sandbox until a durable cleanup deadline", async () => {
   const { controller, factory, attempts, collector } = setup({ failureRetentionMs: 60 * 60_000 });
   await controller.execute(run, "work", "work", definition);

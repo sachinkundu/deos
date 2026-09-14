@@ -4,6 +4,7 @@ import {
   ImplementationError,
   validateImplementationPath,
   type ImplementationCandidate,
+  type ImplementationRecovery,
   type ProofRequirement,
   type ImplementationPolicy,
 } from "./implementation-contract.ts";
@@ -395,20 +396,24 @@ export class ImplementationStore {
   async failedCandidate(run: ImplementationRun, nodeId: string) {
     const row = await this.db.prepare(`
       SELECT a.attempt_id,a.manifest_id,a.result_class,a.result_detail,
-             c.r2_key AS candidate_key,c.sha256 AS candidate_sha,
-             p.r2_key AS patch_key,p.sha256 AS patch_sha
+             COALESCE(r.r2_key,c.r2_key) AS candidate_key,COALESCE(r.sha256,c.sha256) AS candidate_sha,
+             p.r2_key AS patch_key,p.sha256 AS patch_sha,r.logical_name AS recovery_name
       FROM (SELECT * FROM agent_attempts WHERE run_id=? AND node_id=?
             ORDER BY created_at DESC,attempt_id DESC LIMIT 1) a
       JOIN artifact_manifests m ON m.manifest_id=a.manifest_id AND m.run_id=a.run_id AND m.attempt_id=a.attempt_id AND m.state='complete'
-      JOIN artifacts c ON c.manifest_id=m.manifest_id AND c.logical_name='implementation-candidate.json' AND c.policy_outcome='accepted'
-      JOIN artifacts p ON p.manifest_id=m.manifest_id AND p.logical_name='patch.diff' AND p.policy_outcome='accepted'
-      WHERE a.state IN ('failed','interrupted','absolute_timeout') AND a.cleanup_state='destroyed'`)
+      LEFT JOIN artifacts c ON c.manifest_id=m.manifest_id AND c.logical_name='implementation-candidate.json' AND c.policy_outcome='accepted'
+      LEFT JOIN artifacts r ON r.manifest_id=m.manifest_id AND r.logical_name='implementation-recovery.json' AND r.policy_outcome='accepted'
+      JOIN artifacts p ON p.manifest_id=m.manifest_id AND p.logical_name=CASE WHEN r.logical_name IS NOT NULL THEN 'recovery-patch.diff' ELSE 'patch.diff' END AND p.policy_outcome='accepted'
+      WHERE a.state IN ('failed','interrupted','absolute_timeout') AND a.cleanup_state='destroyed'
+        AND COALESCE(r.r2_key,c.r2_key) IS NOT NULL`)
       .bind(run.run_id,nodeId).first<{
         attempt_id:string;manifest_id:string;result_class:string;result_detail:string|null;
-        candidate_key:string;candidate_sha:string;patch_key:string;patch_sha:string;
+        candidate_key:string;candidate_sha:string;patch_key:string;patch_sha:string;recovery_name:string|null;
       }>();
     if (!row || row.attempt_id === run.source_attempt_id) return null;
-    const candidate = await this.read<ImplementationCandidate>(row.candidate_key,row.candidate_sha);
+    const candidate = await this.read<ImplementationCandidate | ImplementationRecovery>(row.candidate_key,row.candidate_sha);
+    if (row.recovery_name && (!("purpose" in candidate) || candidate.purpose !== "recovery-only" || candidate.runId !== run.run_id))
+      throw new ImplementationError('recovery_identity','Failure snapshot does not match its run or recovery purpose');
     const kind = nodeId === 'implementation_tasks' ? 'tasks' : nodeId === 'implementation_build' ? 'build' : null;
     if (candidate.testedBaseSha !== run.tested_base_sha || candidate.approvedDesignSha !== run.approved_design_sha)
       return null;
