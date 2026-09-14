@@ -1,25 +1,46 @@
 ## ADDED Requirements
 
+### Requirement: Signal task progress in the Author node
+
+The implementation phase SHALL contain one Author node linked to Human Review. A compact meter SHALL show the author's checked tasks, total tasks, remaining tasks, and the last observed time. It SHALL keep the existing phase markers, status, and transcript controls. It MUST NOT add internal task or proof panels.
+
+Checklist edits SHALL signal the current workflow through the attempt's scoped capability. The workflow SHALL read the actual checklist before saving counts. A signal MUST NOT carry a completion result or choose a human gate. The heartbeat SHALL reconcile missed signals as a fallback.
+
+#### Scenario: The author checks off a task
+
+- **WHEN** the active author saves a changed task checklist, including an atomic file replacement.
+- **THEN** a progress signal wakes the workflow, which reads and saves that attempt's counts for the portal.
+
+#### Scenario: All tasks are checked but the run is active
+
+- **WHEN** the author marks all tasks complete while the workflow still has work to verify.
+- **THEN** the meter shows no remaining checklist tasks and says that final checks are still in progress. The human gate remains controlled by the workflow.
+
+#### Scenario: Progress cannot be refreshed
+
+- **WHEN** a progress read fails or an old attempt sends a late signal.
+- **THEN** the original error is retained or the old signal is rejected. No count is invented. The view shows the observation time and marks delayed updates. A fresh try does not inherit a prior try's live counter.
+
 ### Requirement: Show implementation progress and proof
 
-The portal SHALL show the checked design base, build tries, task state, branch, pull request, checks, and proof. It SHALL mark each proof item as an image, a Showboat log, a real host event, or a fake event. Unit tests MUST NOT be the sole proof of how the app acts.
+The portal SHALL show implementation progress through the Author node and link the final pull request from Human Review. The pull request and its linked evidence SHALL retain the checked design base, build tries, task state, branch, checks, and proof. Each proof item SHALL be marked as an image, a Showboat log, a real host event, or a fake event. Unit tests MUST NOT be the sole proof of how the app acts.
 
-The view SHALL show which change and approved base each proof item covers. Old proof SHALL stay in the past. It MUST NOT look like proof for new work. The portal SHALL show the final gate as blocked while any needed proof is stale.
+The linked evidence SHALL show which change and approved base each proof item covers. Old proof SHALL stay in the past. It MUST NOT look like proof for new work. The workflow SHALL keep the final gate blocked while any needed proof is stale.
 
 #### Scenario: Implementation is active
 
 - **WHEN** a person opens a run while the build is in flight.
-- **THEN** the portal shows the task state, try, branch, base, and last safe step.
+- **THEN** the portal shows Author as active with its checklist meter, status, and existing transcript controls.
 
 #### Scenario: Pull request is ready
 
 - **WHEN** the build enters its final human gate.
-- **THEN** the portal links the exact pull request, check results, task list, and current behavior proof.
+- **THEN** the shared Human Review node links the exact pull request, which contains check results, the task list, and current behavior proof.
 
 #### Scenario: Work changes after proof
 
 - **WHEN** an edit changes the patch after proof was saved.
-- **THEN** the portal marks the affected proof as stale and shows the final gate as blocked until the current work has new proof.
+- **THEN** the workflow marks the affected proof as stale and keeps the final gate blocked until the current work has new proof.
 
 ### Requirement: Show clarification waits and replies
 

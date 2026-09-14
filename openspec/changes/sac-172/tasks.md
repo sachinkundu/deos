@@ -26,7 +26,7 @@
 - [x] 4.2 Add durable comment-only clarification visits, one question per block, signed reply provenance checks, and fresh-try resume.
 - [x] 4.3 Keep final review state-only and require the exact saved human event, gate, PR head, base, and proof before merge; end at code merged without release.
 - [x] 4.4 Show implementation tasks, attempts, branch, checks, proof gallery, stale subjects, clarification, and distinct release status through the protected portal.
-- [ ] 4.5 Apply the user's UI refinement: show only Author leading to Human Review, with a compact live checklist meter for tasks done and remaining, a last-update time, and no claim that checklist completion proves final checks.
+- [x] 4.5 Apply the user's UI refinement: show only Author leading to Human Review, with a compact live checklist meter for tasks done and remaining, a last-update time, and no claim that checklist completion proves final checks. Checklist changes signal the workflow; the heartbeat reconciles missed signals.
 
 ## 5. Verification and canary
 
