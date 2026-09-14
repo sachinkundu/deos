@@ -44,10 +44,16 @@ queries = [
     'SELECT visit_sequence,state,pull_request_number,approved_head_sha,decision_delivery_id,decision_outcome,created_at FROM human_gate_visits WHERE run_id=? AND visit_sequence>=22 ORDER BY visit_sequence',
     "SELECT attempt_id,node_id,state FROM agent_attempts WHERE run_id=? AND state IN ('pending','starting','running','collecting')",
     'SELECT adapter_binding,profile_sha,checked_at FROM implementation_test_profiles WHERE run_id=?',
+    "SELECT attempt_id,node_id,visit_sequence,state,sandbox_id,process_id,result_class,cleanup_state,created_at,ended_at FROM agent_attempts WHERE run_id=? AND node_id LIKE 'implementation_%' ORDER BY created_at DESC LIMIT 5",
+    'SELECT retry_id,failed_attempt_id,retry_node,state,from_visit_sequence,to_visit_sequence,source_workflow_instance_id,target_workflow_instance_id FROM agent_stage_retries WHERE run_id=? ORDER BY created_at DESC LIMIT 5',
+    'SELECT status,approved_design_sha,tested_base_sha,branch,tree_sha,pr_url FROM implementation_runs WHERE run_id=?',
+    "SELECT step_name,message,detail_r2_key,occurred_at FROM workflow_errors WHERE run_id=? AND occurred_at>'2026-09-14T12:47:00Z' ORDER BY occurred_at DESC LIMIT 8",
 ]
 rows = read('d1/database/4e854f8a-018a-42c4-a325-c4b8805c06b2/query',
             {'batch': [{'sql': sql, 'params': [run]} for sql in queries]})
 print(json.dumps({'deployments': deployments, 'containers': containers,
                   'run': rows[0]['results'], 'handoff': rows[1]['results'],
                   'gates': rows[2]['results'], 'active_attempts': rows[3]['results'],
-                  'provider_test_profile': rows[4]['results']}, indent=2))
+                  'provider_test_profile': rows[4]['results'],
+                  'implementation_attempts': rows[5]['results'], 'retries': rows[6]['results'],
+                  'implementation': rows[7]['results'], 'recent_errors': rows[8]['results']}, indent=2))
