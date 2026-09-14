@@ -11,8 +11,8 @@ export class Standard2Sandbox extends Sandbox {}
 export class ImplementationSandbox extends Sandbox<Env> {
   enableInternet = false;
   interceptHttps = true;
-  // The tunnel transport carries only the assigned local preview port.
-  allowedHosts: string[] | undefined = ['region1.v2.argotunnel.com','region2.v2.argotunnel.com'];
+  // The trusted controller installs the frozen policy before starting the author.
+  allowedHosts: string[] | undefined = [];
   static outbound = async (request: Request) => new Response('Implementation outbound policy is not configured',{status:403});
   static outboundHandlers = { implementation: async (request: Request, env: Env, context: {params?:unknown}) => {
     const {runId,attemptId}=context.params as {runId:string;attemptId:string};

@@ -40,6 +40,7 @@ import {
 } from "./workflow-runtime-recovery.ts";
 
 export { DeosWorkflow, Sandbox, Standard2Sandbox };
+export { ContainerProxy } from "@cloudflare/sandbox";
 export { ImplementationSandbox, ImplementationStandard2Sandbox } from "./sandbox-platform.ts";
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
 

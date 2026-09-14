@@ -1,3 +1,4 @@
+import { configureImplementationNetwork } from "./implementation-network.ts";
 import { BaseChangedError } from "./implementation-contract.ts";
 import { ImplementationService } from "./implementation-service.ts";
 import { ImplementationBroker } from "./implementation-broker.ts";
@@ -201,7 +202,13 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         attemptId: defaultAttemptId,
         materializeContext: (run, job) => job.inputs.includes('implementation_context') ? this.implementation.materialize(run, job) : jobInputs.materialize(run, job),
         implementationNetwork: async (run,attempt,sandbox) => {
-          await (sandbox as unknown as {setOutboundHandler(name:string,params:object):Promise<void>}).setOutboundHandler('implementation',{runId:run.run_id,attemptId:attempt.attempt_id});
+          const saved = await this.implementation.store.requireRun(run.run_id);
+          const input = await this.implementation.store.read<import('./implementation-store.ts').ImplementationInput>(saved.input_key, saved.input_sha);
+          await configureImplementationNetwork(
+            sandbox as unknown as import('./implementation-network.ts').ImplementationNetworkSandbox,
+            input.policy, env.CAPABILITY_BASE_URL,
+            {runId:run.run_id,attemptId:attempt.attempt_id},
+          );
         },
         implementationStart: (run, attempt, job, sandbox) => this.implementation.start(run, attempt, job, sandbox),
         implementationCollect: (run, attempt, sandbox) => this.implementation.collect(run, attempt, sandbox),

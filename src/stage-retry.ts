@@ -259,14 +259,17 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
        JOIN dispatch_intents AS intent
          ON intent.run_id = run.run_id AND intent.workflow_instance_id = run.workflow_instance_id
        WHERE run.run_id = ? AND attempt.attempt_id = ?
-         AND run.current_node = 'agent_failed' AND run.status = 'failed'
-         AND run.terminal_cause = 'agent_execution_failed'
+         AND run.status = 'failed'
+         AND ((run.current_node = 'agent_failed' AND run.terminal_cause = 'agent_execution_failed')
+           OR (run.definition_id = 'implementation' AND run.current_node = 'implementation_failed'
+             AND run.terminal_cause = 'implementation_failed'
+             AND attempt.node_id IN ('implementation_tasks','implementation_build')))
          AND attempt.visit_sequence = run.current_visit_sequence - 1
          AND EXISTS (
            SELECT 1 FROM workflow_transitions_v2 AS failed_exit
            WHERE failed_exit.run_id = run.run_id
              AND failed_exit.from_node = attempt.node_id
-             AND failed_exit.to_node = 'agent_failed'
+             AND failed_exit.to_node = run.current_node
              AND failed_exit.from_visit_sequence = attempt.visit_sequence
              AND failed_exit.to_visit_sequence = run.current_visit_sequence
              AND failed_exit.cause_reference = 'agent:' || attempt.node_id || ':failed'
@@ -391,8 +394,11 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
          ON intent.run_id = run.run_id AND intent.workflow_instance_id = run.workflow_instance_id
        WHERE run.run_id = ? AND run.definition_id = ? AND run.definition_version = ?
          AND run.definition_digest = ? AND run.workflow_instance_id = ?
-         AND run.current_visit_sequence = ? AND run.current_node = 'agent_failed'
-         AND run.status = 'failed' AND run.terminal_cause = 'agent_execution_failed'
+         AND run.current_visit_sequence = ? AND run.status = 'failed'
+         AND ((run.current_node = 'agent_failed' AND run.terminal_cause = 'agent_execution_failed')
+           OR (run.definition_id = 'implementation' AND run.current_node = 'implementation_failed'
+             AND run.terminal_cause = 'implementation_failed'
+             AND attempt.node_id IN ('implementation_tasks','implementation_build')))
          AND attempt.attempt_id = ? AND attempt.node_id = ?
          AND attempt.visit_sequence = run.current_visit_sequence - 1
          AND attempt.state IN ('failed', 'interrupted', 'absolute_timeout')
@@ -408,7 +414,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
            SELECT 1 FROM workflow_transitions_v2 AS failed_exit
            WHERE failed_exit.run_id = run.run_id
              AND failed_exit.from_node = attempt.node_id
-             AND failed_exit.to_node = 'agent_failed'
+             AND failed_exit.to_node = run.current_node
              AND failed_exit.from_visit_sequence = attempt.visit_sequence
              AND failed_exit.to_visit_sequence = run.current_visit_sequence
              AND failed_exit.cause_reference = 'agent:' || attempt.node_id || ':failed'
@@ -455,7 +461,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
              terminal_at = NULL, terminal_cause = NULL, updated_at = ?
          WHERE run_id = ? AND definition_id = ? AND definition_version = ?
            AND definition_digest = ? AND workflow_instance_id = ?
-           AND current_visit_sequence = ? AND current_node = 'agent_failed' AND status = 'failed'
+           AND current_visit_sequence = ? AND current_node IN ('agent_failed','implementation_failed') AND status = 'failed'
            AND EXISTS (SELECT 1 FROM agent_stage_retries WHERE retry_id = ?)`,
       ).bind(
         plan.targetDefinitionId,
@@ -493,7 +499,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
          (transition_id, run_id, from_node, to_node, from_visit_sequence,
           to_visit_sequence, cause_type, cause_reference, actor_id, actor_type,
           provider_operation_id, occurred_at)
-         SELECT retry.transition_id, retry.run_id, 'agent_failed', retry.retry_node,
+         SELECT retry.transition_id, retry.run_id, run.previous_node, retry.retry_node,
                 retry.from_visit_sequence, retry.to_visit_sequence, 'operator_retry',
                 retry.failed_attempt_id, retry.requested_by, 'operator', NULL, ?
          FROM agent_stage_retries AS retry

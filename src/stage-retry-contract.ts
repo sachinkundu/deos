@@ -15,7 +15,9 @@ export type AgentStageRetryNode =
   | "design_independent_review"
   | "design_self_response"
   | "design_independent_response"
-  | "design_final_review";
+  | "design_final_review"
+  | "implementation_tasks"
+  | "implementation_build";
 
 export const RETRYABLE_AGENT_ATTEMPT_STATES = [
   "failed",
@@ -41,6 +43,8 @@ const agentStageRetryNodes = new Set<unknown>([
   "design_self_response",
   "design_independent_response",
   "design_final_review",
+  "implementation_tasks",
+  "implementation_build",
 ]);
 
 export const isAgentStageRetryNode = (value: unknown): value is AgentStageRetryNode =>
