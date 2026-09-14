@@ -43,7 +43,11 @@ const checkBroker = async () => {
 const main = async () => {
   validateClaudeEnvironment(process.env);
   config = await read("config.json");
-  if (!config || !Number.isFinite(Date.parse(config.deadline)) || !process.env.CLAUDE_CODE_OAUTH_TOKEN) throw new ClaudeReviewError("auth_failure");
+  if (!config) throw new ClaudeReviewError("auth_failure", null, { cause: new Error("Claude runner config.json is missing") });
+  if (!Number.isFinite(Date.parse(config.deadline))) throw new ClaudeReviewError("auth_failure", null,
+    { cause: new Error(`Claude runner deadline is invalid: ${config.deadline}`) });
+  if (!process.env.CLAUDE_CODE_OAUTH_TOKEN) throw new ClaudeReviewError("auth_failure", null,
+    { cause: new Error("Claude runner OAuth token is missing") });
   await mkdir(`${ROOT}/home`, { recursive: true, mode: 0o700 });
   await mkdir(`${ROOT}/config`, { recursive: true, mode: 0o700 });
   await writeFile(`${ROOT}/effort.jsonl`, "", { mode: 0o600 });
@@ -109,17 +113,17 @@ const main = async () => {
             if (event.rate_limit_info?.status === "rejected") {
               const reset = event.rate_limit_info.resetsAt;
               const retry = Number.isSafeInteger(reset) && reset > 0 && reset < 253402300800 ? new Date(reset * 1000).toISOString() : null;
-              terminalFailure = new ClaudeReviewError("plan_limit", retry);
+              terminalFailure = new ClaudeReviewError("plan_limit", retry, { cause: event });
               current.kill("SIGTERM");
             } else if (event.rate_limit_info?.isUsingOverage !== false ||
                 event.rate_limit_info?.overageStatus !== "rejected" ||
                 event.rate_limit_info?.overageDisabledReason !== "org_level_disabled") {
-              terminalFailure = new ClaudeReviewError("review_failure");
+              terminalFailure = new ClaudeReviewError("review_failure", null, { cause: event });
               current.kill("SIGTERM");
             }
           }
           if (event.type === "system" && ["model_refusal_fallback", "model_refusal_no_fallback"].includes(event.subtype)) {
-            terminalFailure = new ClaudeReviewError("review_failure");
+            terminalFailure = new ClaudeReviewError("review_failure", null, { cause: event });
             current.kill("SIGTERM");
           }
           if (active) events.push(event);
@@ -193,20 +197,33 @@ const main = async () => {
 try { await main(); }
 catch (error) {
   // Stop the failed client and drain its pipes before freezing the diagnostic.
-  if (child && child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
-  if (childClosed) await childClosed;
+  let cleanupError;
+  try {
+    if (child && child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    if (childClosed) await childClosed;
+  } catch (caught) { cleanupError = caught; }
   const diagnostic = claudeFailureDiagnostic({ error, stage: diagnosticStage, facts: diagnosticFacts,
     events, stdout, stderr, streamError: streamFailure, brokerFailure,
     attemptId: config?.attemptId, ordinal: active?.ordinal }, secrets());
-  const failure = { ...diagnostic, cause: error instanceof ClaudeReviewError ? error.causeCode : "review_failure",
+  const failure = { ...diagnostic, cleanupError: redactClaudeDiagnostic(cleanupError, secrets()),
+    cause: error instanceof ClaudeReviewError ? error.causeCode : "review_failure",
     retryNotBefore: error instanceof ClaudeReviewError ? error.retryNotBefore : null,
   };
   process.exitCode = 1;
+  // A status poll can race the file rename. Keep the complete redacted evidence
+  // on both independent channels, including when file publication succeeds.
+  process.stderr.write(JSON.stringify(failure) + "\n");
   try { await atomic("failure.json", failure); }
   catch (storageError) {
     // Preserve both failures if the protected file cannot be written.
     process.stderr.write(JSON.stringify(redactClaudeDiagnostic({ failure, storageError }, secrets())) + "\n");
   }
 } finally {
-  if (child) { child.stdin.end(); child.kill("SIGTERM"); }
+  if (child) {
+    try { child.stdin.end(); child.kill("SIGTERM"); }
+    catch (cleanupError) {
+      process.stderr.write(JSON.stringify(redactClaudeDiagnostic({ cleanupError }, secrets())) + "\n");
+      process.exitCode = 1;
+    }
+  }
 }

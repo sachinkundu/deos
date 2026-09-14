@@ -1,3 +1,4 @@
+import { recordCaughtError } from './original-errors.mjs';
 import { initializeBoundedReview } from "./bounded-self-review.mjs";
 import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
@@ -37,7 +38,14 @@ const trustGeneratedHooks = async (cwd, model, command = COMMAND) => {
     // tool contract through the supported catalog override, retaining all other
     // provider model metadata and the configured model identity.
     let cache;
-    try { cache = JSON.parse(await readFile("/root/.codex/models_cache.json", "utf8")); } catch {}
+    try { cache = JSON.parse(await readFile("/root/.codex/models_cache.json", "utf8")); }
+    catch (error) {
+      if (error.code !== 'ENOENT') {
+        recordCaughtError(error, 'native model catalog cache');
+        if (!(error instanceof SyntaxError)) throw error;
+      }
+      // A missing or malformed cache can be refreshed from the model catalog.
+    }
     if (!cache?.models?.some((entry) => entry.slug === model)) {
       await rpc(3, "model/list", {});
       cache = JSON.parse(await readFile("/root/.codex/models_cache.json", "utf8"));
@@ -83,7 +91,7 @@ export const setupNativeReview = async (job) => {
   await writeFile("/root/.codex/deos-reviewer.toml", [
     ...(job.grounding ? ['web_search = "live"'] : []),
     'name = "deos_reviewer"', 'description = "Fresh read-only OpenSpec reviewer"',
-    'developer_instructions = "Review only the service-authored input. Never inspect parent sessions or private notes. Do not write files, call providers, or spawn children."',
+    'developer_instructions = "Read the complete service-authored request file and the pinned skills and candidate sources it names. You may use read-only shell commands such as cat, sed, rg, or Python file reads; the processes needed for those reads are allowed. Use native web search for current outside facts when available. Do not create additional agents, edit files, publish provider changes, or inspect parent sessions or private notes."',
     `model = ${JSON.stringify(job.model)}`, `model_reasoning_effort = ${JSON.stringify(job.reasoning)}`,
     'sandbox_mode = "read-only"', 'approval_policy = "never"',
     '[shell_environment_policy]', 'include_only = ["PATH", "HOME"]',

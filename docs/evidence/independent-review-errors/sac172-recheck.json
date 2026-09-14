@@ -1,0 +1,29 @@
+{
+  "ratings": {
+    "proof-base-drift": "fixed",
+    "incomplete-lifecycle-graph": "fixed",
+    "human-identity-enrollment": "fixed",
+    "clarification-comment-readback": "fixed",
+    "capability-policy-timing": "fixed",
+    "test-resource-reconciliation": "fixed",
+    "openspec-post-merge-tail": "fixed"
+  },
+  "claims": {
+    "proof-base-drift": "Fixed. Proof fingerprints and review bindings now include the tested pull-request base SHA; publication, review, and merge read back both head and base, while base drift requires a fresh try, affected checks and proof, and a new review visit. [candidate-design]",
+    "incomplete-lifecycle-graph": "Fixed. The frozen graph now defines capability and reconciliation waits, typed failure, cancellation, denial, and terminal outcomes, and permits normal Workflow return only after D1 commits succeeded, denied, or canceled. [candidate-design]",
+    "human-identity-enrollment": "Fixed. Settings now verifies an active Linear user's normalized email against the Access-authenticated Gmail address, persists a revisioned project binding, revalidates it at allocation, freezes it into the run, and fails closed when unavailable or stale. [candidate-design]",
+    "clarification-comment-readback": "Fixed. Every candidate clarification reply is read back by comment ID immediately before assessment and checked for issue, actor, order, current body, edits, and deletion; an accepted body is stored as an immutable R2 snapshot with a D1 digest and receipt. [candidate-design]",
+    "capability-policy-timing": "Fixed. A reviewed maximum policy is frozen at allocation, the provider-free task job returns requested operation IDs, and trusted validation derives and freezes a narrower design-and-task-bound policy before the first implementation try. [candidate-design]",
+    "test-resource-reconciliation": "Fixed. Every provider test-resource lifecycle verb receives a stable operation key, with lookup or inventory reconciliation, idempotency constraints, revocation and deletion handling, duplicate quarantine, and manual reconciliation for unresolved effects. [candidate-design]",
+    "openspec-post-merge-tail": "Fixed. code_merged is now a nonterminal milestone followed by a typed mechanical OpenSpec archive and reconciliation PR; success is committed only after validation, checks, merge, and read-back, with semantic changes or conflicts failing closed. [candidate-design]"
+  },
+  "sources": [
+    {
+      "id": "candidate-design",
+      "url": "openspec/changes/sac-172/design.md",
+      "title": "SAC-172 design candidate",
+      "claimLocator": "Decisions 1 and 3\u20138; Event Flow; Minimal Data Model; Failure Modes; Migration Plan"
+    }
+  ],
+  "searchDisposition": "not_searched"
+}

@@ -95,10 +95,10 @@ export const validateClaudeTurn = (input: {
     const reset = rejected.resetsAt;
     const retry = typeof reset === "number" && Number.isSafeInteger(reset) && reset > 0 && reset < 253402300800
       ? new Date(reset * 1000).toISOString() : null;
-    throw new ClaudeReviewError("plan_limit", retry);
+    throw new ClaudeReviewError("plan_limit", retry, { cause: rejected });
   }
   if (finals.some(e => e.api_error_status === 401 || e.api_error_status === 403)) {
-    throw new ClaudeReviewError("auth_failure");
+    throw new ClaudeReviewError("auth_failure", null, { cause: finals.filter(e => e.api_error_status === 401 || e.api_error_status === 403) });
   }
   if (!init || inits.some(e => e.model !== CLAUDE_MODEL || e.apiKeySource !== "none" ||
       e.claude_code_version !== CLAUDE_VERSION || e.session_id !== input.sessionId) || init.model !== CLAUDE_MODEL || init.apiKeySource !== "none" ||
@@ -107,13 +107,16 @@ export const validateClaudeTurn = (input: {
       input.appliedEfforts.some(e => e !== CLAUDE_EFFORT) ||
       !/^[a-f0-9]{64}$/.test(input.inputSha256) ||
       !input.attemptId || !Number.isSafeInteger(input.turn) || input.turn < 0) {
-    throw new ClaudeReviewError("review_failure");
+    throw new ClaudeReviewError("review_failure", null, { cause: Object.assign(
+      new Error("Claude turn failed the pinned model, session, terminal, quota, or effort contract"),
+      { inits, finals, quotas, appliedEfforts: input.appliedEfforts, attemptId: input.attemptId, turn: input.turn }) });
   }
   for (const q of quotas) {
     if (!["allowed", "allowed_warning"].includes(String(q.status)) ||
         q.isUsingOverage !== false || q.overageInUse === true ||
         q.overageStatus !== "rejected" || q.overageDisabledReason !== "org_level_disabled") {
-      throw new ClaudeReviewError("review_failure");
+      throw new ClaudeReviewError("review_failure", null, { cause: Object.assign(
+        new Error("Claude quota evidence does not prove subscription-only usage"), { quota: q }) });
     }
   }
   const final = finals[0];
@@ -122,7 +125,8 @@ export const validateClaudeTurn = (input: {
       final.terminal_reason !== "completed" || Object.keys(usage).length !== 1 ||
       record(usage[CLAUDE_MODEL]).canonicalModel !== CLAUDE_MODEL ||
       record(usage[CLAUDE_MODEL]).provider !== "firstParty") {
-    throw new ClaudeReviewError("review_failure");
+    throw new ClaudeReviewError("review_failure", null, { cause: Object.assign(
+      new Error("Claude terminal result did not prove a successful first-party review"), { final }) });
   }
   const result = final.structured_output ?? (typeof final.result === "string" ? parseResult(final.result) : null);
   return { version: 1, provider: "claude", model: CLAUDE_MODEL, effort: CLAUDE_EFFORT,
@@ -136,14 +140,15 @@ export const validateClaudeTurn = (input: {
     result: record(result) };
 };
 const parseResult = (text: string): unknown => {
-  try { return JSON.parse(text); } catch (cause) { throw new ClaudeReviewError("review_failure", null, { cause }); }
+  try { return JSON.parse(text); } catch (cause) { throw new ClaudeReviewError("review_failure", null,
+    { cause: Object.assign(new Error("Claude result is invalid JSON", { cause }), { responseBody: text }) }); }
 };
 
 export const validateClaudeEnvironment = (env: Record<string, string | undefined>): void => {
   for (const [key, value] of Object.entries(env)) {
     if (value && (/^(ANTHROPIC_|OPENROUTER_|AWS_|GOOGLE_|AZURE_)/.test(key) ||
         /^CLAUDE_CODE_(USE_|API_|SUBAGENT_|EFFORT_|SIMPLE|SAFE_MODE)/.test(key))) {
-      throw new ClaudeReviewError("review_failure");
+      throw new ClaudeReviewError("review_failure", null, { cause: new Error(`Disallowed Claude environment variable: ${key}`) });
     }
   }
 };

@@ -22,6 +22,16 @@ import type {
 import type { AgentExecutionObservation } from "./sandbox-controller.ts";
 import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
 
+/** Cloudflare RPC preserves the timeout type in the stack, but may reset name to Error. */
+export const isWorkflowWaitTimeout = (value: unknown): boolean => {
+  if (typeof value !== 'object' || value === null) return false;
+  const error = value as {name?: unknown; message?: unknown; stack?: unknown; remote?: unknown};
+  if (error.name === 'WorkflowTimeoutError') return true;
+  return error.name === 'Error' && error.remote === true &&
+    typeof error.message === 'string' && /^Execution timed out after [0-9]+ms$/.test(error.message) &&
+    typeof error.stack === 'string' && /^WorkflowTimeoutError: Execution timed out after [0-9]+ms\n\s+at ContextImpl\.waitForEvent\b/.test(error.stack);
+};
+
 export interface WorkflowWaitEvent {
   payload: Readonly<{ deliveryId: string }>;
 }
@@ -209,9 +219,12 @@ export class WorkflowOrchestrator {
               completionHint = execution.attemptId;
             }
           } catch (caughtError) {
-            if (!(caughtError instanceof Error) || caughtError.name !== "WorkflowTimeoutError") {
-              recordCaughtError(caughtError, "src/workflow-orchestrator.ts:192");
+            if (!isWorkflowWaitTimeout(caughtError)) {
+              recordCaughtError(caughtError, "agent completion wait");
+              throw caughtError;
             }
+            console.log({event: 'workflow.agent_wait_elapsed', run_id: run.run_id,
+              attempt_id: execution.attemptId, message: (caughtError as Error).message});
             // A timeout is the durable heartbeat checkpoint; the next loop
             // reloads D1 and reconciles the exact Sandbox/process identities.
           }

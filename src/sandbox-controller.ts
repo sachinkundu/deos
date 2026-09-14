@@ -607,8 +607,13 @@ export class SandboxAgentController {
       ) throw new Error("retry source job specification identity mismatch");
       if (job.boundedReview) {
         const recovery = await this.dependencies.boundedReviews?.recovery(retrySource.attempt_id);
-        if (!recovery?.eligible) throw new Error('bounded review requires manual reconciliation');
-        if (recovery.journal) reviewContinuation = { sourceAttemptId: retrySource.attempt_id };
+        const operatorRestart = run.previous_node === 'review_reconciliation' &&
+          run.last_transition_id === `transition:stage-retry:${retrySource.attempt_id}` &&
+          ['planning_author', 'design_author'].includes(nodeId);
+        if (!recovery?.eligible && !operatorRestart) throw new Error('bounded review requires manual reconciliation');
+        // An explicit operator retry starts a new review when prior evidence is incomplete.
+        // It never manufactures the missing transcript or adopts an unverified verdict.
+        if (recovery?.eligible && recovery.journal) reviewContinuation = { sourceAttemptId: retrySource.attempt_id };
       }
     }
     const materialized = frozenRetrySpec === null
@@ -864,6 +869,11 @@ export class SandboxAgentController {
         const recovery = await this.dependencies.boundedReviews?.recovery(durableJob.reviewContinuation.sourceAttemptId);
         if (!recovery?.eligible || !recovery.journal) throw new Error('bounded review continuation unavailable');
         await sandbox.writeFile('/deos/run/review-continuation.json', JSON.stringify(recovery), { encoding: 'utf8' });
+        const outputs = await this.dependencies.boundedReviews!.continuationOutputs(
+          durableJob.reviewContinuation.sourceAttemptId, job.requiredOutputs);
+        for (const [name, content] of Object.entries(outputs)) {
+          await sandbox.writeFile(`/deos/output/${name}`, content, { encoding: 'utf8' });
+        }
       }
       await sandbox.writeFile("/deos/run/job.json", JSON.stringify(stagedJob), { encoding: "utf8" });
       await this.cloneRepository(sandbox, attempt, grant);
@@ -1826,6 +1836,17 @@ export class SandboxAgentController {
     process: SandboxProcessView | null = null,
   ): Promise<string> {
     if (process !== null) await this.stopProcess(process);
+    if (job.modelProvider !== 'claude' &&
+        (await sandbox.exists('/deos/run/supervisor-capture/transcript.jsonl')).exists) {
+      const capture = await sandbox.exec(['node', '/deos/bin/supervisor-capture.mjs'], { timeout: 15_000 });
+      const output = await capture.output({ encoding: 'utf8', timeout: 20_000 });
+      if (output.exitCode !== 0 || output.timedOut || output.truncated) {
+        const error = new Error(`Supervisor transcript recovery failed after ${category}`, { cause: output });
+        recordCaughtError(error, 'failure transcript recovery');
+        // Do not destroy the only surviving capture when publication needs another try.
+        throw error;
+      }
+    }
     if (JSON.parse(attempt.job_spec_json).nativeSelfReview?.schema === 'deos-bounded-review-v1') {
       try {
         const capture = await sandbox.exec(['node', '/deos/bin/bounded-self-review.mjs', 'capture-interrupted'], { timeout: 15_000 });

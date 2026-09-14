@@ -76,10 +76,11 @@ const run = (command, args, options = {}) => new Promise((resolve, reject) => {
     if (options.forward) process.stderr.write(chunk);
   });
   child.once("error", reject);
-  child.once("exit", (code) => {
+  child.once("close", (code, signal) => {
     if (code === 0) resolve({ stdout, stderr });
-    else reject(new Error(`${path.basename(command)} exited ${code}: ${(stderr || stdout).trim()}`));
+    else reject(Object.assign(new Error(`${path.basename(command)} exited ${code}, signal ${signal}`), { command, args, cwd: options.cwd, code, signal, stdout, stderr }));
   });
+  child.stdin.on("error", (cause) => reject(Object.assign(new Error("Review process stdin failed", { cause }), { command, args, stdout, stderr })));
   child.stdin.end(options.input);
 });
 
@@ -398,6 +399,7 @@ const main = async () => {
   }
 
   const source = path.join(job.cwd, "openspec", "changes", job.openspecChange);
+  let primaryError;
   const temporary = await mkdtemp(path.join(os.tmpdir(), "deos-trace-review-"));
   const reviewDirectory = path.join(temporary, job.openspecChange);
   await cp(source, reviewDirectory, { recursive: true, errorOnExist: true });
@@ -407,8 +409,9 @@ const main = async () => {
     try {
       await recheckJudgment({ job, inventory, temporary });
       return;
-    } finally {
-      await rm(temporary, { recursive: true, force: true });
+    } catch (error) { primaryError = error; throw error; } finally {
+      try { await rm(temporary, { recursive: true, force: true }); }
+      catch (cleanupError) { throw new AggregateError(primaryError === undefined ? [cleanupError] : [primaryError, cleanupError], "Review cleanup failed", { cause: primaryError }); }
     }
   }
   const reviewerVersion = `${job.model} (${job.reasoning}) via ${job.modelProvider}`;
@@ -526,13 +529,15 @@ const main = async () => {
         .reduce((total, result) => total + result.proofRepairCount, 0),
       providerReceipts,
     })}\n`);
-  } finally {
-    await rm(temporary, { recursive: true, force: true });
+  } catch (error) { primaryError = error; throw error; } finally {
+    try { await rm(temporary, { recursive: true, force: true }); }
+    catch (cleanupError) { throw new AggregateError(primaryError === undefined ? [cleanupError] : [primaryError, cleanupError], "Review cleanup failed", { cause: primaryError }); }
   }
 };
 
 main().catch(async (error) => {
-  if (await saveNativeReviewRequest(error)) return;
+  try { if (await saveNativeReviewRequest(error)) return; }
+  catch (saveError) { error = new AggregateError([error, saveError], "Review failure and native request storage failure", { cause: error }); }
   recordCaughtError(error, "runner fatal");
   process.stderr.write(`trace review failed: ${error.message}\n`);
   process.exitCode = 1;

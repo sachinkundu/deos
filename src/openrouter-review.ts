@@ -228,6 +228,7 @@ export class OpenRouterReviewClient {
         return result;
       } catch (error) {
         if (!(error instanceof OpenRouterReviewError)) throw error;
+        recordCaughtError(error, `OpenRouter ${endpoint} request attempt ${attempt}`);
         const diagnostic = { ...error.diagnostic, requestAttempts: attempt };
         // Never replay a successful/partial stream or an invalid model output.
         const canRetry = diagnostic.retryable &&

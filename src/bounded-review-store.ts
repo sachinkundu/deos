@@ -64,6 +64,37 @@ export class D1BoundedReviewStore {
             throw new Error(`review artifact hash mismatch: ${name}`);
         return content;
     }
+    async continuationOutputs(sourceAttemptId: string, requiredFiles: readonly string[]): Promise<Record<string, string>> {
+        const remaining = new Set(requiredFiles.filter(name =>
+            ['review-replies.json', 'review-dispositions.json', 'design-dispositions.json'].includes(name)));
+        const outputs: Record<string, string> = {};
+        const visited = new Set<string>();
+        let attemptId: string | null = sourceAttemptId;
+        let owner: { run_id: string; node_id: string } | null = null;
+        while (attemptId && remaining.size) {
+            if (visited.has(attemptId)) throw new Error(`review continuation cycle at ${attemptId}`);
+            visited.add(attemptId);
+            const attempt: { run_id: string; node_id: string; manifest_id: string; job_spec_json: string; job_spec_digest: string } | null = await this.db.prepare('SELECT run_id, node_id, manifest_id, job_spec_json, job_spec_digest FROM agent_attempts WHERE attempt_id = ?')
+                .bind(attemptId).first<{ run_id: string; node_id: string; manifest_id: string; job_spec_json: string; job_spec_digest: string }>();
+            if (!attempt) throw new Error(`review continuation attempt missing: ${attemptId}`);
+            if (await sha256Hex(attempt.job_spec_json) !== attempt.job_spec_digest)
+                throw new Error(`review continuation job digest mismatch: ${attemptId}`);
+            if (owner && (owner.run_id !== attempt.run_id || owner.node_id !== attempt.node_id))
+                throw new Error(`review continuation owner mismatch: ${attemptId}`);
+            owner = attempt;
+            for (const name of remaining) {
+                const receipt = await this.db.prepare('SELECT r2_key FROM artifacts WHERE manifest_id = ? AND logical_name = ?')
+                    .bind(attempt.manifest_id, name).first();
+                if (receipt) {
+                    outputs[name] = await this.artifact(attempt.manifest_id, name);
+                    remaining.delete(name);
+                }
+            }
+            attemptId = JSON.parse(attempt.job_spec_json).reviewContinuation?.sourceAttemptId ?? null;
+        }
+        if (remaining.size) throw new Error(`review continuation saved outputs missing: ${[...remaining].join(', ')}`);
+        return outputs;
+    }
     async acceptJournal(input: {
         runId: string;
         attemptId: string;
@@ -357,7 +388,7 @@ export class D1BoundedReviewStore {
                     cycle = reduceReviewCycle(cycle, event);
                     journal.events.push(event);
                 }
-                const slot = cycle.recheck.status === 'unavailable' ? 'finalize' : cycle.discovery.status === 'accepted' ? 'recheck' : 'discovery';
+                const slot = ['accepted', 'unavailable', 'not_required'].includes(cycle.recheck.status) ? 'finalize' : cycle.discovery.status === 'accepted' ? 'recheck' : 'discovery';
                 const eligible = cycle.status === 'active' && (slot === 'finalize' || ['failed', 'pending'].includes(cycle[slot].status) && cycle[slot].invocations.length < 2);
                 const prior = await this.read(attempt.run_id, cycle.phase);
                 if (prior) {

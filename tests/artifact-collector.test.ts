@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   ArtifactCollector,
+  D1ArtifactManifestStore,
   type ArtifactManifestStore,
   type ArtifactObjectStore,
   type SandboxArtifactReader,
@@ -217,6 +218,7 @@ test("failure collection preserves every available safe output and records absen
     new TextEncoder().encode(JSON.stringify({ exitCode: 1, signal: null, timedOut: false })),
   );
   reader.files.set("/deos/output/validation.txt", new TextEncoder().encode("codex failed\n"));
+  reader.files.set("/deos/output/supervisor-stderr.txt", new TextEncoder().encode("Original process stderr\n"));
 
   const result = await collector.collectFailure({
     runId: input.runId,
@@ -227,13 +229,13 @@ test("failure collection preserves every available safe output and records absen
   });
 
   assert.equal(result.safeErrorCategory, "codex_exit_nonzero");
-  assert.deepEqual(result.storedFiles, ["status.json", "transcript.jsonl", "validation.txt"]);
+  assert.deepEqual(result.storedFiles, ["status.json", "supervisor-stderr.txt", "transcript.jsonl", "validation.txt"]);
   assert.deepEqual(result.absentFiles, ["original-errors.jsonl", "patch.diff", "result.json"]);
   assert.deepEqual(result.policyRejectedFiles, []);
-  assert.equal(result.objectCount, 4);
+  assert.equal(result.objectCount, 5);
   assert.equal(manifests.state, "complete");
   assert.equal(objects.values.has(result.manifestKey), true);
-  const summaryKey = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}/failure-summary.json`;
+  const summaryKey = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}/failure-artifacts/failure-summary.json`;
   const summary = JSON.parse(new TextDecoder().decode(objects.values.get(summaryKey)?.content));
   assert.equal(summary.safeErrorCategory, "codex_exit_nonzero");
   assert.deepEqual(summary.absentFiles, ["original-errors.jsonl", "patch.diff", "result.json"]);
@@ -284,4 +286,37 @@ test("failure collection preserves the trusted author completion category", asyn
     fallbackErrorCategory: "supervisor_failed",
   });
   assert.equal(result.safeErrorCategory, "author_completion_failed");
+});
+
+
+test("failure collection resumes legacy receipts after partial normal collection without key collisions", async () => {
+  const { Miniflare, convertV4MiniflareOptions } = await import('miniflare');
+  const mf = new Miniflare(convertV4MiniflareOptions({ workers: [{ name: 'receipt-test', modules: true,
+    compatibilityDate: '2026-08-26', script: "export default { fetch() { return new Response('ok'); } }", d1Databases: ['DB'] }] }));
+  try {
+    const db = await mf.getD1Database('DB');
+    await db.prepare('CREATE TABLE artifact_manifests (manifest_id TEXT PRIMARY KEY, run_id TEXT, attempt_id TEXT, r2_key TEXT, state TEXT, created_at TEXT, aggregate_digest TEXT, object_count INTEGER, total_bytes INTEGER, completed_at TEXT)').run();
+    await db.prepare('CREATE TABLE artifacts (manifest_id TEXT, logical_name TEXT, r2_key TEXT UNIQUE, media_type TEXT, byte_size INTEGER, sha256 TEXT, created_at TEXT, policy_outcome TEXT, PRIMARY KEY(manifest_id,logical_name))').run();
+    const { reader, objects } = setup();
+    const manifests = new D1ArtifactManifestStore(db as unknown as D1Database);
+    const collector = new ArtifactCollector(reader, objects, manifests, () => NOW);
+    await assert.rejects(collector.collect({ ...input, requiredFiles: [...input.requiredFiles, 'missing.json'] }), /missing/);
+    const prefix = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}`;
+    const legacyName = 'original-errors.jsonl';
+    const content = new TextEncoder().encode('{"message":"original failure"}');
+    reader.files.set(`/deos/output/${legacyName}`, content);
+    const digest = Buffer.from(await crypto.subtle.digest('SHA-256', content)).toString('hex');
+    const manifestId = `manifest:${input.attemptId}:failure`;
+    await manifests.begin({ manifestId, runId: input.runId, attemptId: input.attemptId, r2Key: `${prefix}/failure-manifest.json`, now: NOW.toISOString() });
+    await objects.putCreateOnly(`${prefix}/${legacyName}`, content, digest);
+    await manifests.record({ manifestId, logicalName: legacyName, r2Key: `${prefix}/${legacyName}`, mediaType: 'text/plain', byteSize: content.length, sha256: digest, now: NOW.toISOString() });
+    await manifests.fail(manifestId);
+    const request = { ...input, expectedFiles: [...input.requiredFiles, legacyName], fallbackErrorCategory: 'missing_output' };
+    const failure = await collector.collectFailure(request);
+    await collector.verifyDurable(failure);
+    assert.deepEqual(await collector.collectFailure(request), failure);
+    assert.equal(await manifests.artifactKey(manifestId, legacyName), `${prefix}/${legacyName}`);
+    assert.equal(await manifests.artifactKey(manifestId, 'transcript.jsonl'), `${prefix}/failure-artifacts/transcript.jsonl`);
+    assert.equal(await manifests.artifactKey(`manifest:${input.attemptId}`, 'transcript.jsonl'), `${prefix}/transcript.jsonl`);
+  } finally { await mf.dispose(); }
 });

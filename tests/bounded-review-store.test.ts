@@ -120,6 +120,21 @@ test('D1/R2 collection requires cleanup, survives replay, and keeps later head c
         assert.equal(resumed.recheck.invocations.length, 1);
         assert.deepEqual(resumed.openIds, ['F1']);
         assert.equal(resumed.originAttemptId, 'failed-author');
+        // A collection failure after the accepted recheck resumes finalization, not review.
+        await db.prepare("UPDATE agent_attempts SET state='failed', result_class='artifact_collection_failed' WHERE attempt_id='resumed-author'").run();
+        const completedRecovery = await store.recordFailure('resumed-author');
+        assert.equal(completedRecovery.eligible, true);
+        assert.equal(completedRecovery.slot, 'finalize');
+        await artifact('review-replies.json', '[{"commentId":7,"body":"Addressed."}]', 'failure');
+        await artifact('design-dispositions.json', '[]', 'failure');
+        await artifact('review-replies.json', '[{"commentId":7,"body":"Updated reply."}]', 'resumed');
+        assert.deepEqual(await store.continuationOutputs('resumed-author', ['review-replies.json', 'design-dispositions.json', 'result.json']), {
+            'review-replies.json': '[{"commentId":7,"body":"Updated reply."}]', 'design-dispositions.json': '[]',
+        });
+        await assert.rejects(store.continuationOutputs('resumed-author', ['review-dispositions.json']), /saved outputs missing: review-dispositions.json/);
+        await bucket.put('failure/design-dispositions.json', '[0]');
+        await assert.rejects(store.continuationOutputs('resumed-author', ['design-dispositions.json']), /size mismatch/);
+
     }
     finally {
         await mf.dispose();

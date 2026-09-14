@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { inspect } from "node:util";
 import { spawn } from "node:child_process";
 import {
   copyFile,
@@ -410,7 +411,7 @@ function runProcess(command, args, { cwd, input, forwardOutput = false } = {}) {
     const child = spawn(command, args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
-    const retainTail = (current, chunk) => `${current}${chunk}`.slice(-65_536);
+    const retainTail = (current, chunk) => `${current}${chunk}`;
     child.stdout.on("data", (chunk) => {
       stdout = retainTail(stdout, chunk);
       if (forwardOutput) process.stderr.write(chunk);
@@ -420,11 +421,12 @@ function runProcess(command, args, { cwd, input, forwardOutput = false } = {}) {
       if (forwardOutput) process.stderr.write(chunk);
     });
     child.on("error", reject);
-    child.on("close", (code) => {
+    child.on("close", (code, signal) => {
       if (code === 0) resolve({ stdout, stderr });
-      else reject(new Error(`${path.basename(command)} exited ${code}: ${(stderr || stdout).trim()}`));
+      else reject(Object.assign(new Error(`${path.basename(command)} exited ${code}, signal ${signal}`), { command, args, cwd: cwd, code, signal, stdout, stderr }));
     });
-    child.stdin.end(input);
+    child.stdin.on("error", (cause) => reject(Object.assign(new Error("Review process stdin failed", { cause }), { command, args, stdout, stderr })));
+  child.stdin.end(input);
   });
 }
 
@@ -479,6 +481,7 @@ export async function reviewOpenSpecTraceability({
   const inventory = await inventoryOpenSpecChange(changeDirectoryArgument);
   const cliVersion = judge ? "injected-judge" : await codexVersion(codexCommand);
   const reviewerVersion = `${model} (${reasoningEffort}) via ${cliVersion}`;
+  let primaryError;
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "bettaview-traceability-review-"));
   try {
     const reviewedAt = new Date().toISOString();
@@ -515,8 +518,9 @@ export async function reviewOpenSpecTraceability({
           accepted = structuredClone(validateDirectionalJudgment(direction, rawJudgment, inventory));
           break;
         } catch (error) {
+          process.stderr.write(inspect({ direction, attempt, error, rawJudgment }, { depth: null, maxStringLength: null, maxArrayLength: null }) + "\n");
           if (attempt === maxRepairs) {
-            throw new Error(`${direction} review failed after ${attempt + 1} attempt(s): ${error.message}`);
+            throw new Error(`${direction} review failed after ${attempt + 1} attempt(s): ${error.message}`, { cause: error });
           }
           repair = { error: error.message, judgment: rawJudgment || null };
         }
@@ -551,8 +555,10 @@ export async function reviewOpenSpecTraceability({
       },
     };
   } catch (error) {
-    throw new Error(`Traceability review failed: ${error.message}. Existing sidecar was not changed.`);
+    primaryError = error;
+    throw new Error(`Traceability review failed: ${error.message}. Existing sidecar was not changed.`, { cause: error });
   } finally {
-    await rm(temporaryDirectory, { recursive: true, force: true });
+    try { await rm(temporaryDirectory, { recursive: true, force: true }); }
+    catch (cleanupError) { throw new AggregateError(primaryError === undefined ? [cleanupError] : [primaryError, cleanupError], "Review cleanup failed", { cause: primaryError }); }
   }
 }

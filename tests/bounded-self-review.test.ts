@@ -95,3 +95,28 @@ test('native child writes restore the checked candidate and preserve the failed 
         await rm(f.root, { recursive: true, force: true });
     }
 });
+
+
+test('a reported review error gets one retry; exhausted recheck stays visible and keeps findings open', async () => {
+    const f = await fixture();
+    try {
+        await f.stop();
+        await f.child('discovery', {findings:[{id:'F1',summary:'Clarify behavior',location:'design.md'}],sources:[],searchDisposition:'not_searched'});
+        await f.stop();
+        await f.stop();
+        const reported = {status:'blocked',error:{code:'REQUEST_FILE_UNAVAILABLE',message:'I cannot read the request without a filesystem process'}};
+        await f.child('recheck-1',reported);
+        let state = await f.readState();
+        assert.equal(state.stage,'ready');
+        assert.match(state.cycle.recheck.invocations[0].cause.message,/REQUEST_FILE_UNAVAILABLE.*filesystem process/);
+        assert.match(state.cycle.recheck.invocations[0].cause.detail,/blocked/);
+        assert.match((await f.stop()).reason,/authorized native review child/);
+        await f.child('recheck-2',reported);
+        state = await f.readState();
+        assert.equal(state.stage,'done');
+        assert.equal(state.cycle.recheck.status,'unavailable');
+        assert.deepEqual(state.cycle.openIds,['F1']);
+        assert.equal(state.children.length,3);
+        assert.deepEqual(await f.stop(),{});
+    } finally {await rm(f.root,{recursive:true,force:true});}
+});
