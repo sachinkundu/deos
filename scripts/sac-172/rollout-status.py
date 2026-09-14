@@ -48,6 +48,9 @@ queries = [
     'SELECT retry_id,failed_attempt_id,retry_node,state,from_visit_sequence,to_visit_sequence,source_workflow_instance_id,target_workflow_instance_id FROM agent_stage_retries WHERE run_id=? ORDER BY created_at DESC LIMIT 5',
     'SELECT status,approved_design_sha,tested_base_sha,branch,tree_sha,pr_url FROM implementation_runs WHERE run_id=?',
     "SELECT step_name,message,detail_r2_key,occurred_at FROM workflow_errors WHERE run_id=? AND occurred_at>'2026-09-14T12:47:00Z' ORDER BY occurred_at DESC LIMIT 8",
+    'SELECT attempt_id,try_sequence,kind,status,input_patch_sha,output_patch_sha,public_error_code,updated_at FROM implementation_tries WHERE run_id=? ORDER BY try_sequence DESC LIMIT 5',
+    "SELECT attempt_id,json_extract(job_spec_json,'$.retrySourceAttemptId') AS retry_source,json_extract(job_spec_json,'$.continuationPatch.sha256') AS input_patch_sha,json_extract(json_extract(job_spec_json,'$.materializedContext'),'$.priorFailure.attemptId') AS recovered_attempt FROM agent_attempts WHERE run_id=? AND node_id LIKE 'implementation_%' ORDER BY created_at DESC LIMIT 1",
+    'SELECT attempt_id,url,content_returned,COUNT(*) AS read_count,MAX(created_at) AS last_read FROM implementation_doc_access WHERE run_id=? AND content_returned=1 GROUP BY attempt_id,url ORDER BY last_read DESC LIMIT 20',
 ]
 rows = read('d1/database/4e854f8a-018a-42c4-a325-c4b8805c06b2/query',
             {'batch': [{'sql': sql, 'params': [run]} for sql in queries]})
@@ -56,4 +59,6 @@ print(json.dumps({'deployments': deployments, 'containers': containers,
                   'gates': rows[2]['results'], 'active_attempts': rows[3]['results'],
                   'provider_test_profile': rows[4]['results'],
                   'implementation_attempts': rows[5]['results'], 'retries': rows[6]['results'],
-                  'implementation': rows[7]['results'], 'recent_errors': rows[8]['results']}, indent=2))
+                  'implementation': rows[7]['results'], 'recent_errors': rows[8]['results'],
+                  'implementation_tries': rows[9]['results'], 'recovered_input': rows[10]['results'],
+                  'document_reads': rows[11]['results']}, indent=2))
