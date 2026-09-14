@@ -126,6 +126,32 @@ test("lost create response reconciles one replacement and keeps the original err
   } finally { f.db.close(); }
 });
 
+test("an old unconsumed delivery cannot block a later design gate handoff", async () => {
+  const f = await fixture();
+  try {
+    f.db.sqlite.prepare(`INSERT INTO workflow_event_inbox (delivery_id,run_id,correlation_id,event_kind,actor_id,actor_type,
+      provider_time,to_state_name,payload_digest,state,created_at)
+      VALUES ('old-claim','run-1','run-1','Issue.update','app','user',?,'In Progress',?,'sent',?)`)
+      .run("2026-09-14T08:01:30Z", source.digest, "2026-09-14T08:01:30Z");
+    const p = await f.plan();
+    assert.equal((await f.controller.handle(f.request({ execute: true, planDigest: p.planDigest }))).status, 200);
+    assert.equal(f.db.sqlite.prepare("SELECT state FROM workflow_event_inbox WHERE delivery_id='old-claim'").get()!.state, "sent");
+    assert.equal(f.calls.includes("send-event"), false);
+  } finally { f.db.close(); }
+});
+
+test("a lost pause response is preserved and a retry resumes the same prepared handoff", async () => {
+  const f = await fixture();
+  try {
+    const p = await f.plan();
+    f.setPauseHook(() => { throw new Error("lost pause response"); });
+    await assert.rejects(f.controller.handle(f.request({ execute: true, planDigest: p.planDigest })), /lost pause response/);
+    assert.equal(f.states.get(sourceId), "paused");
+    assert.equal((await f.controller.handle(f.request({ execute: true, planDigest: p.planDigest }))).status, 200);
+    assert.deepEqual(f.calls, ["pause", "terminate", "create"]);
+  } finally { f.db.close(); }
+});
+
 test("stale provider head, Linear state, unchecked human and wrong plan cannot pause a run", async () => {
   for (const change of [
     (f: Awaited<ReturnType<typeof fixture>>) => { f.pull.head.sha = "b".repeat(40); },

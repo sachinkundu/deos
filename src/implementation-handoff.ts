@@ -200,10 +200,11 @@ export class ImplementationHandoffController {
         AND NOT EXISTS(SELECT 1 FROM agent_attempts a WHERE a.run_id=orchestration_runs.run_id
           AND a.state IN ('pending','starting','running','collecting'))
         AND NOT EXISTS(SELECT 1 FROM workflow_event_inbox e WHERE e.run_id=orchestration_runs.run_id
-          AND e.actor_type='user' AND e.state IN ('pending','sent','claimed'))`)
+          AND e.actor_type='user' AND e.state IN ('pending','sent','claimed')
+          AND julianday(e.provider_time)>=julianday(?))`)
         .bind(plan.target.name, plan.target.version, plan.target.digest, plan.targetWorkflowInstanceId, transitionId,
           plan.human.id, plan.humanBindingRevision, now, run.run_id, run.workflow_instance_id, run.definition_digest,
-          run.current_visit_sequence, plan.gate.approved_head_sha, id, digest),
+          run.current_visit_sequence, plan.gate.approved_head_sha, id, digest, plan.gate.created_at),
       db.prepare(`INSERT INTO human_gate_visits
         (run_id,visit_sequence,node_id,gate_kind,work_type,work_product_kind,round,state,repository,pull_request_database_id,
          pull_request_number,pull_request_url,head_branch,base_branch,approved_head_sha,created_at)
