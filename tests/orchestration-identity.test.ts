@@ -6,6 +6,7 @@ import {
   operationIdentity,
   runIdentity,
   sandboxIdentity,
+  sandboxProviderIdentity,
   transitionIdentity,
   uuidV7,
   visitIdentity,
@@ -36,6 +37,19 @@ test("operation identities include logical intent and ordinal", () => {
     operationIdentity("run-1", "implementation", "github-pr", 1),
     "run-1:implementation:github-pr:1",
   );
+});
+
+test("implementation names fit the provider limit without shortening the attempt hash", async () => {
+  const normal = await sandboxIdentity("attempt-one");
+  const implementation = await sandboxIdentity("attempt-one", true);
+  assert.match(implementation, /^impl-v1-[a-z2-7]{52}$/);
+  assert.ok(implementation.length <= 63);
+  assert.equal(implementation.slice(8), normal.slice(7));
+  assert.notEqual(implementation, await sandboxIdentity("attempt-two", true));
+  assert.equal(sandboxProviderIdentity(`impl-${normal}`), implementation);
+  assert.equal(sandboxProviderIdentity(normal), normal);
+  assert.equal(sandboxProviderIdentity(implementation), implementation);
+  assert.equal(sandboxProviderIdentity(`impl-${normal}x`), `impl-${normal}x`);
 });
 
 test("visit and transition identities are stable per source visit", () => {

@@ -36,8 +36,13 @@ export const runIdentity = (correlationId: string, sequence: number): string => 
 export const workflowInstanceIdentity = async (runId: string): Promise<string> =>
   `wf-v1-${base32(await sha256(runId))}`;
 
-export const sandboxIdentity = async (attemptId: string): Promise<string> =>
-  `sbx-v1-${base32(await sha256(attemptId))}`;
+export const sandboxIdentity = async (attemptId: string, implementation = false): Promise<string> =>
+  `${implementation ? "impl" : "sbx"}-v1-${base32(await sha256(attemptId))}`;
+
+// The first implementation allocation prepended impl- to a 59-character ID.
+// Preserve its durable identity while addressing the provider with a valid name.
+export const sandboxProviderIdentity = (id: string): string =>
+  /^impl-sbx-v1-[a-z2-7]{52}$/.test(id) ? id.replace("impl-sbx-v1-", "impl-v1-") : id;
 
 export const visitIdentity = (runId: string, sequence: number): string => {
   if (runId.length === 0 || !Number.isInteger(sequence) || sequence < 1) {

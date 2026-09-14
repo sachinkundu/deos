@@ -628,7 +628,7 @@ export class SandboxAgentController {
       throw new Error("trial repository is invalid");
     }
     const attemptId = this.dependencies.attemptId();
-    const sandboxId = (job.inputs.includes("implementation_context") ? "impl-" : "") + await sandboxIdentity(attemptId);
+    const sandboxId = await sandboxIdentity(attemptId, job.inputs.includes("implementation_context"));
     const now = this.dependencies.now();
     const deadline = new Date(now.getTime() + this.config.absoluteTimeoutMs).toISOString();
     const continuationPatch = frozenRetrySpec === null

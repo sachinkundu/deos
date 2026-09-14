@@ -1,5 +1,6 @@
 import { getSandbox, Sandbox } from "@cloudflare/sandbox";
 import { requireSandboxTier, type SandboxTier } from "./sandbox-tier.ts";
+import { sandboxProviderIdentity } from "./orchestration-identity.ts";
 
 import type { SandboxArtifactReader } from "./artifact-collector.ts";
 import type { SandboxFactory, SandboxView } from "./sandbox-controller.ts";
@@ -56,7 +57,7 @@ this.implementationStandard2=implementationStandard2;
       ? tier==='basic' ? this.implementation : this.implementationStandard2
       : tier === "basic" ? this.namespace : this.standard2;
     if(!namespace)throw new Error('Implementation Sandbox namespace is missing');
-    return getSandbox(namespace as unknown as DurableObjectNamespace<Sandbox<unknown>>, sandboxId, {
+    return getSandbox(namespace as unknown as DurableObjectNamespace<Sandbox<unknown>>, sandboxProviderIdentity(sandboxId), {
       keepAlive: options.keepAlive,
       normalizeId: true,
       sleepAfter: "10m",
