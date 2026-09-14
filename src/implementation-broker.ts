@@ -18,6 +18,7 @@ import type { CapabilityClaims } from "./capability-auth.ts";
 import { readResponseText, responseError } from "./error-details.ts";
 import { recordCaughtError } from "./error-context.ts";
 import { ImplementationProviderTest } from "./implementation-provider-test.ts";
+import { previewRelayHost, previewRelayProgram, previewRelaySandboxId } from "./implementation-preview.ts";
 
 export class ImplementationBroker {
   readonly store: ImplementationStore;
@@ -102,13 +103,23 @@ export class ImplementationBroker {
         );
         if (row.status === "ready")
           return Response.json({ origin: row.preview_origin });
-        if (row.status !== "allocating")
+        if (row.status !== "allocating" || row.create_window)
           throw new ImplementationError(
             "preview_quarantined",
             "Preview allocation needs reconciliation",
           );
+        const relaySandboxId = await previewRelaySandboxId(claims.attemptId);
+        const claimed = await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=?,create_window=? WHERE resource_id=? AND status='allocating' AND create_window IS NULL")
+          .bind(JSON.stringify({relaySandboxId}), new Date().toISOString(), row.resource_id).run();
+        if (claimed.meta.changes !== 1)
+          throw new ImplementationError("preview_allocation_in_flight", "Preview allocation already started");
         try {
-          const tunnel = await sandbox.tunnels.get(8787);
+          const relay = getSandbox(this.env.Sandbox, relaySandboxId, {normalizeId:true,keepAlive:true});
+          await relay.setOutboundByHost(previewRelayHost, "implementationPreview", {runId:claims.runId,attemptId:claims.attemptId});
+          await relay.writeFile("/tmp/implementation-preview.mjs", previewRelayProgram);
+          const process = await relay.exec(["node", "/tmp/implementation-preview.mjs"]);
+          await process.waitForPort(8787, {timeout:30_000});
+          const tunnel = await relay.tunnels.get(8787);
           const origin = new URL(tunnel.url).origin;
           if (!new URL(origin).hostname.endsWith(".trycloudflare.com"))
             throw new ImplementationError(
@@ -122,11 +133,10 @@ export class ImplementationBroker {
             .run();
           return Response.json({ origin });
         } catch (error) {
-          await this.env.DB.prepare(
-            "UPDATE implementation_resources SET status='quarantined' WHERE resource_id=?",
-          )
-            .bind(row.resource_id)
-            .run();
+          try {
+            await this.env.DB.prepare("UPDATE implementation_resources SET status='quarantined' WHERE resource_id=?")
+              .bind(row.resource_id).run();
+          } catch (secondary) { recordCaughtError(secondary, "preview.quarantine"); }
           throw error;
         }
       }
@@ -464,18 +474,26 @@ export class ImplementationBroker {
             new CloudflareBrowserProvider(this.env.IMPLEMENTATION_BROWSER),
           ).cleanup(row);
         else if (row.kind === "preview") {
-          await sandbox.tunnels.destroy(8787);
+          const relayId = JSON.parse(row.metadata_json).relaySandboxId;
+          if (relayId && relayId !== await previewRelaySandboxId(attemptId))
+            throw new Error("Preview relay identity differs from this attempt");
+          const previewSandbox = relayId ? getSandbox(this.env.Sandbox, relayId, {normalizeId:true}) : sandbox;
+          await previewSandbox.tunnels.destroy(8787);
           if (
-            (await sandbox.tunnels.list()).some(
+            (await previewSandbox.tunnels.list()).some(
               (tunnel) => new URL(tunnel.url).origin === row.preview_origin,
             )
           )
             throw new Error("Preview remains after cleanup");
+          if (relayId) {
+            await previewSandbox.destroy();
+            if ((await previewSandbox.getState()).status !== "stopped") throw new Error("Preview relay remains after cleanup");
+          }
           await this.env.DB.prepare(
             "UPDATE implementation_resources SET status='destroyed',cleanup_receipt=? WHERE resource_id=?",
           )
             .bind(
-              JSON.stringify({ absent: row.preview_origin }),
+              JSON.stringify({ absent: row.preview_origin, ...(relayId ? {relaySandboxDestroyed:relayId} : {}) }),
               row.resource_id,
             )
             .run();

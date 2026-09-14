@@ -19,8 +19,5 @@ export async function configureImplementationNetwork(
     "chatgpt.com",
     "auth.openai.com",
     new URL(capabilityBaseUrl).hostname,
-    "api.trycloudflare.com",
-    "region1.v2.argotunnel.com",
-    "region2.v2.argotunnel.com",
   ])]);
 }

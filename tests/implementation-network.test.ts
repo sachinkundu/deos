@@ -19,10 +19,11 @@ test("model, saved package hosts and broker pass the outer filter only after pol
     },
   }, { ...implementationPolicy, packageHosts: ["custom-packages.example", "registry.npmjs.org"] },
   "https://broker.example/capability", identity);
-  for (const host of ["chatgpt.com", "auth.openai.com", "broker.example", "custom-packages.example", "registry.npmjs.org", "api.trycloudflare.com"]) {
+  for (const host of ["chatgpt.com", "auth.openai.com", "broker.example", "custom-packages.example", "registry.npmjs.org"]) {
     assert.ok(hosts.includes(host), `${host} must reach the method/path policy`);
   }
   assert.ok(!hosts.includes("*"));
+  assert.ok(!hosts.includes("api.trycloudflare.com"), "tunnels run only in the trusted preview relay");
   assert.ok(!hosts.includes("pypi.org"), "use the frozen package policy");
 });
 

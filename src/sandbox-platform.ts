@@ -1,12 +1,32 @@
 import { getSandbox, Sandbox } from "@cloudflare/sandbox";
 import { requireSandboxTier, type SandboxTier } from "./sandbox-tier.ts";
 import { sandboxProviderIdentity } from "./orchestration-identity.ts";
+import { forwardImplementationPreview } from "./implementation-preview.ts";
+import { ImplementationStore } from "./implementation-store.ts";
+import { recordCaughtError } from "./error-context.ts";
 
 import type { SandboxArtifactReader } from "./artifact-collector.ts";
 import type { SandboxFactory, SandboxView } from "./sandbox-controller.ts";
 
 export { Sandbox };
 export class Standard2Sandbox extends Sandbox {}
+
+Sandbox.outboundHandlers = { implementationPreview: async (request, rawEnv, context) => {
+  const env = rawEnv as Env;
+  const identity = context.params as { runId: string; attemptId: string };
+  try {
+    return await forwardImplementationPreview(request, env.DB, context, {
+      relayContainerId: id => env.Sandbox.idFromName(id).toString(),
+      forward: (id, tier, forwarded) => getSandbox(tier === "standard-2"
+        ? env.ImplementationStandard2Sandbox : env.ImplementationSandbox, id, {normalizeId:true,keepAlive:true})
+        .containerFetch(forwarded, 8787),
+    });
+  } catch (error) {
+    try { await new ImplementationStore(env.DB, env.ARTIFACTS).error(identity.runId, identity.attemptId, "preview.forward", error); }
+    catch (secondary) { recordCaughtError(secondary, "preview.forward.diagnostics"); }
+    throw error;
+  }
+}};
 
 export class ImplementationSandbox extends Sandbox<Env> {
   enableInternet = false;
@@ -33,8 +53,7 @@ for (const sandboxClass of [ImplementationSandbox, ImplementationStandard2Sandbo
     const model=(url.hostname==='chatgpt.com'&&url.pathname.startsWith('/backend-api/codex/')) ||
       (url.hostname==='auth.openai.com'&&url.pathname==='/oauth/token');
     const broker=url.origin===capability.origin&&url.pathname.startsWith(`${capability.pathname}/`);
-    const tunnel=url.hostname==='api.trycloudflare.com'&&url.pathname==='/tunnel'&&request.method==='POST';
-    if(url.protocol!=='https:'||url.username||url.password||!(packageRead||model||broker||tunnel))return new Response('Destination is outside the saved implementation policy',{status:403});
+    if(url.protocol!=='https:'||url.username||url.password||!(packageRead||model||broker))return new Response('Destination is outside the saved implementation policy',{status:403});
     return fetch(request,{redirect:'manual'});
   }};
 }

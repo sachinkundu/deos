@@ -6,10 +6,11 @@ import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 test("both implementation tiers register their handlers in the real Container SDK", async () => {
   const bundle = await build({
     stdin: { contents: `
-      import { ImplementationSandbox, ImplementationStandard2Sandbox } from './src/sandbox-platform.ts';
+      import { Sandbox, ImplementationSandbox, ImplementationStandard2Sandbox } from './src/sandbox-platform.ts';
       import { Container } from '@cloudflare/containers';
       import { ContainerProxy } from '@cloudflare/sandbox';
       export default { async fetch() {
+        Container.prototype.validateOutboundHandlerMethodName.call({constructor: Sandbox}, 'implementationPreview');
         const results = [];
         for (const sandboxClass of [ImplementationSandbox, ImplementationStandard2Sandbox]) {
           Container.prototype.validateOutboundHandlerMethodName.call({constructor: sandboxClass}, 'implementation');
