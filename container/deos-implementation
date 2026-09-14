@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+import { readFile } from 'node:fs/promises';
+const path=process.argv[2];
+if(!path || path==='--help') {
+  process.stdout.write(JSON.stringify({usage:'deos-implementation REQUEST_FILE',examples:[
+    {action:'check',argv:['npm','run','build']},
+    {action:'check',argv:['node','scripts/demo.mjs'],behavior:true},
+    {action:'preview',main:'src/index.ts',assets:'dist',d1:['DB'],r2:['BUCKET']},
+    {action:'browser',operation:'navigate',url:'/'},
+    {action:'browser',operation:'state'},
+    {action:'browser',operation:'fill',selector:'input[name=title]',text:'Canary note'},
+    {action:'browser',operation:'click',selector:'button[type=submit]'},
+    {action:'browser',operation:'screenshot',caption:'Saved note after reload'},
+    {action:'document',url:'https://developers.cloudflare.com/workers/wrangler/commands/'}
+  ],notes:['Save one JSON request per call.','Preview fields are optional except at least one of main or assets.','Browser state returns page content and console messages. Inspect each screenshot with view_image using the returned imagePath.','For documentation citations use the final canonical URL returned by the document call.']},null,2)+'\n');
+  process.exit(0);
+}
+const response=await fetch('http://127.0.0.1:8790/tool',{method:'POST',headers:{'Content-Type':'application/json'},body:await readFile(path,'utf8')});
+const text=await response.text();process.stdout.write(text+'\n');if(!response.ok)process.exitCode=1;

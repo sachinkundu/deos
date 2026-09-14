@@ -93,7 +93,7 @@ class LinearWebhookACL:
             raise InvalidWebhook("invalid Linear signature")
 
     def translate(
-        self, body: bytes, delivery_id: str | None = None
+        self, body: bytes, delivery_id: str | None = None, comment_issue: dict[str, Any] | None = None
     ) -> tuple[ApplicationEvent, bool]:
         try:
             payload: Any = json.loads(body)
@@ -103,12 +103,20 @@ class LinearWebhookACL:
             raise InvalidWebhook("payload must be an object")
 
         data = _object(payload, "data")
-        project = _object(data, "project")
-        state = _object(data, "state")
         action = _optional_string(payload, "action") or "update"
         resource_type = _optional_string(payload, "type") or "Issue"
-        if resource_type != "Issue":
-            raise InvalidWebhook("webhook resource must be Issue")
+        comment_id = None
+        comment_time = None
+        if resource_type == "Comment":
+            if comment_issue is None or _string(data, "issueId") != comment_issue.get("id"):
+                raise InvalidWebhook("comment has no active trusted issue")
+            comment_id = _string(data, "id")
+            comment_time = _first_string(data, "createdAt")
+            data = comment_issue
+        elif resource_type != "Issue":
+            raise InvalidWebhook("unsupported webhook resource")
+        project = _object(data, "project")
+        state = _object(data, "state")
         delivery_id = delivery_id or _first_string(payload, "webhookId", "id")
         issue_id = _string(data, "id")
         issue_key = _optional_string(data, "identifier")
@@ -127,7 +135,7 @@ class LinearWebhookACL:
         project_id = _string(project, "id")
         transition = _first_string(state, "name", "type")
         occurred_at = _parse_datetime(
-            _first_string(data, "updatedAt", "createdAt")
+            comment_time or _first_string(data, "updatedAt", "createdAt")
             if isinstance(data, dict)
             else _first_string(payload, "updatedAt", "createdAt")
         )
@@ -156,6 +164,7 @@ class LinearWebhookACL:
             issue_url=issue_url,
             label_selection_evidence=label_selection_evidence,
             start_slow_ok=event_start_slow_ok(data),
+            comment_id=comment_id,
         )
         state_changed = isinstance(updated_from, dict) and (
             "stateId" in updated_from or "state" in updated_from

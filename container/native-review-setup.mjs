@@ -9,7 +9,7 @@ const COMMAND = "node /deos/bin/native-self-review.mjs hook";
 
 // The parent trust bypass does not reach child sessions. Discover and trust the
 // exact generated hooks through the pinned runtime's own config contract.
-const trustGeneratedHooks = async (cwd, model, command = COMMAND) => {
+export const trustGeneratedHooks = async (cwd, model, command = COMMAND) => {
   const child = spawn("codex", ["app-server"], {
     env: { PATH: process.env.PATH, HOME: "/root", CODEX_HOME: "/root/.codex" },
     stdio: ["pipe", "pipe", "inherit"],
@@ -59,6 +59,7 @@ const trustGeneratedHooks = async (cwd, model, command = COMMAND) => {
       }
       await appendFile(CONFIG, `\n[hooks.state.${JSON.stringify(hook.key)}]\ntrusted_hash = ${JSON.stringify(hook.currentHash)}\nenabled = true\n`);
     }
+    await mkdir("/deos/native-review",{recursive:true,mode:0o700});
     await writeFile("/deos/native-review/hook-receipt.json", JSON.stringify(entry));
   } finally {
     clearTimeout(timer);

@@ -18,6 +18,9 @@ export class RouteAdmin extends WorkerEntrypoint<Env> {
     return new RouteAdminService(this.env);
   }
 
+  implementationHumans(actorEmail: string) { return this.service().implementationHumans(actorEmail); }
+  saveImplementation(actorEmail: string,input: {projectId:string;userId:string;expectedRevision:number}) { return this.service().saveImplementation(actorEmail,input); }
+
   overview(actorEmail: string): Promise<RouteAdminOverview> {
     return this.service().overview(actorEmail);
   }

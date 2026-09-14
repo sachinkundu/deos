@@ -25,6 +25,8 @@ export type RunStatus =
   | "canceled";
 
 export interface OrchestrationRunRecord {
+  allowed_linear_user_id?: string | null;
+  human_binding_revision?: number | null;
   sandbox_tier?: string | null;
   sandbox_tier_source?: string | null;
   sandbox_tier_policy_version?: string | null;
@@ -76,6 +78,9 @@ export interface OrchestrationRunRecord {
 }
 
 export interface ProjectWorkflowPolicyRecord {
+  allowed_linear_user_id?: string | null;
+  human_binding_revision?: number | null;
+  human_binding_checked_at?: string | null;
   project_id: string;
   linear_project_name?: string | null;
   definition_id: string;
@@ -121,6 +126,7 @@ export interface DispatchIntentRecord {
 }
 
 export interface WorkflowInboxEvent {
+  commentId?: string | null;
   deliveryId: string;
   runId: string | null;
   correlationId: string;
@@ -139,6 +145,7 @@ export interface WorkflowInboxRecord {
   delivery_id: string;
   run_id: string | null;
   correlation_id: string;
+  comment_id?: string | null;
   event_kind: string;
   actor_id: string | null;
   actor_type: string | null;
@@ -412,6 +419,7 @@ export interface WorkflowRuntimeStore {
     now: string;
     wait?: PersistedWaitInput;
     humanGateDecision?: HumanGateDecisionInput;
+    implementationGateDecision?: { deliveryId: string; outcome: string };
     terminalCause?: string | null;
   }): Promise<TransitionCommitResult>;
 }
@@ -798,6 +806,8 @@ export class D1OrchestrationStore {
       policy === null || policy.route_revision !== input.routeRevision ||
       policy.route_digest !== input.routeDigest || policy.dispatch_enabled !== 1
     ) return null;
+    if (input.definition.name === 'implementation' && (!policy.allowed_linear_user_id || !policy.human_binding_revision || !policy.human_binding_checked_at))
+      throw new Error('Implementation workflow requires a checked human binding');
     if (!claude && independentJobs.length > 0 && !policy.independent_review_model) {
       throw new Error("independent review model setting is missing");
     }
@@ -813,13 +823,13 @@ export class D1OrchestrationStore {
           route_project_name, route_repository, route_github_installation_id,
           route_revision, route_digest, route_start_state_name, route_human_gate_state_id,
           route_repository_revision, route_workflow_revision, route_review_revision,
-          sandbox_tier, sandbox_tier_source, sandbox_tier_policy_version, created_at, updated_at)
+          sandbox_tier, sandbox_tier_source, sandbox_tier_policy_version, allowed_linear_user_id, human_binding_revision, created_at, updated_at)
          SELECT ?, ?, ?, p.project_id, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                 CASE WHEN ? = 0 THEN NULL WHEN ? = 1 THEN 'claude' ELSE p.independent_review_provider END,
                 CASE WHEN ? = 0 THEN NULL WHEN ? = 1 THEN 'claude-opus-5' ELSE p.independent_review_model END,
                 ?, ?, p.linear_project_name, p.trial_repository, p.github_installation_id,
                 p.route_revision, p.route_digest, p.start_state_name, p.human_gate_state_id,
-                p.repository_revision, p.workflow_revision, p.independent_review_revision, ?, ?, ?, ?, ?
+                p.repository_revision, p.workflow_revision, p.independent_review_revision, ?, ?, ?, p.allowed_linear_user_id, p.human_binding_revision, ?, ?
          FROM project_workflow_policies p
          WHERE p.project_id = ? AND p.dispatch_enabled = 1
            AND p.route_revision = ? AND p.route_digest = ?
@@ -930,8 +940,8 @@ export class D1OrchestrationStore {
       `INSERT OR IGNORE INTO workflow_event_inbox
        (delivery_id, run_id, correlation_id, event_kind, actor_id, actor_type,
         provider_time, from_state_id, from_state_name, to_state_id, to_state_name,
-        payload_digest, state, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        payload_digest, state, created_at, comment_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       event.deliveryId,
       event.runId,
@@ -947,6 +957,7 @@ export class D1OrchestrationStore {
       event.payloadDigest,
       event.runId === null ? "unmatched" : "pending",
       now,
+      event.commentId ?? null,
     ).run();
     return changes(result) === 1;
   }
@@ -1169,10 +1180,21 @@ export class D1OrchestrationStore {
     now: string;
     wait?: PersistedWaitInput;
     humanGateDecision?: HumanGateDecisionInput;
+    implementationGateDecision?: { deliveryId: string; outcome: string };
     terminalCause?: string | null;
   }): Promise<TransitionCommitResult> {
     const nextVisitSequence = input.expectedVisitSequence + 1;
-    const gateGuard = input.humanGateDecision === undefined
+    const implementationDecision = input.implementationGateDecision;
+    const gateGuard = implementationDecision ? ` AND EXISTS (
+      SELECT 1 FROM implementation_gates gate JOIN implementation_gate_events event
+      ON event.run_id=gate.run_id AND event.gate_visit=gate.visit_sequence
+      JOIN workflow_event_inbox inbox ON inbox.delivery_id=event.delivery_id
+      WHERE gate.run_id=? AND gate.visit_sequence=? AND gate.node_id=? AND gate.state='open'
+      AND event.delivery_id=? AND event.decision='eligible'
+      AND inbox.run_id=gate.run_id AND inbox.actor_id=gate.allowed_linear_user_id AND inbox.actor_type='user'
+      AND ((gate.expected_event_kind='comment' AND inbox.event_kind='Comment.create')
+        OR (gate.expected_event_kind='state' AND inbox.event_kind='Issue.update' AND inbox.from_state_id=gate.human_state_id))
+    )` : input.humanGateDecision === undefined
       ? ""
       : ` AND EXISTS (
             SELECT 1 FROM human_gate_visits gate
@@ -1210,6 +1232,7 @@ export class D1OrchestrationStore {
     if (input.humanGateDecision !== undefined) {
       runBindings.push(input.runId, input.expectedVisitSequence, input.expectedNode);
     }
+    if (implementationDecision) runBindings.push(input.runId,input.expectedVisitSequence,input.expectedNode,implementationDecision.deliveryId);
     const statements = [
       runUpdate.bind(...runBindings),
       this.database.prepare(
@@ -1261,6 +1284,13 @@ export class D1OrchestrationStore {
         input.transitionId,
       ));
     }
+    if (implementationDecision) {
+      statements.push(this.database.prepare(`UPDATE implementation_gates SET state=?,decision_delivery_id=?,decision_outcome=?,decided_at=?
+        WHERE run_id=? AND visit_sequence=? AND state='open'
+        AND EXISTS (SELECT 1 FROM workflow_transitions_v2 WHERE transition_id=? AND cause_reference=?)`)
+        .bind(implementationDecision.outcome,implementationDecision.deliveryId,implementationDecision.outcome,input.now,
+          input.runId,input.expectedVisitSequence,input.transitionId,implementationDecision.deliveryId));
+    }
     if (input.wait !== undefined) {
       statements.push(this.database.prepare(
         `INSERT OR IGNORE INTO workflow_waits
@@ -1289,8 +1319,8 @@ export class D1OrchestrationStore {
     const transition = await this.database.prepare(
       "SELECT * FROM workflow_transitions_v2 WHERE transition_id = ?",
     ).bind(input.transitionId).first<WorkflowTransitionRecord>();
-    const waitIndex = input.wait === undefined ? -1 : 2 + (input.humanGateDecision === undefined ? 0 : 1);
-    const gateIndex = input.humanGateDecision === undefined ? -1 : 2;
+    const waitIndex = input.wait === undefined ? -1 : 2 + (input.humanGateDecision === undefined && !implementationDecision ? 0 : 1);
+    const gateIndex = input.humanGateDecision === undefined && !implementationDecision ? -1 : 2;
     const waitChanged = waitIndex === -1 || changes(results[waitIndex]!) === 1;
     const gateChanged = gateIndex === -1 || changes(results[gateIndex]!) === 1;
     if (changes(results[0]) === 1 && changes(results[1]) === 1 && waitChanged && gateChanged) {
@@ -1338,6 +1368,12 @@ export class D1OrchestrationStore {
           gate?.decision_delivery_id !== input.humanGateDecision.deliveryId ||
           gate.decision_outcome !== input.humanGateDecision.outcome
         ) throw new Error("human gate decision identity conflict");
+      }
+      if (implementationDecision) {
+        const gate = await this.database.prepare('SELECT decision_delivery_id,decision_outcome FROM implementation_gates WHERE run_id=? AND visit_sequence=?')
+          .bind(input.runId,input.expectedVisitSequence).first<{decision_delivery_id:string;decision_outcome:string}>();
+        if(gate?.decision_delivery_id!==implementationDecision.deliveryId||gate.decision_outcome!==implementationDecision.outcome)
+          throw new Error('implementation gate decision identity conflict');
       }
       return { outcome: "replayed", transition };
     }

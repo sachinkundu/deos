@@ -30,6 +30,7 @@ export type LabelSelectionEvidence =
   | { status: "unavailable" };
 
 export interface QueueBody {
+  comment_id?: string | null;
   start_slow_ok?: true;
   sandbox_tier_policy_version?: string;
   event_id: string;
@@ -179,6 +180,7 @@ const emit = (
 
 const toInboxEvent = (event: QueueBody, runId: string | null): WorkflowInboxEvent => ({
   deliveryId: event.source_delivery_id,
+  commentId: event.comment_id ?? null,
   runId,
   correlationId: event.correlation_id,
   eventKind: event.event_kind,
@@ -535,7 +537,7 @@ export const processQueueMessage = async (
         return;
       }
       verifyLabelEvidence();
-      const selectorMatches = evidence.names === null || policy === null
+      const selectorMatches = policy?.definition_id === "implementation" || evidence.names === null || policy === null
         ? []
         : (await Promise.all(evidence.names.map(async (labelName) => ({
             labelName,

@@ -1,3 +1,5 @@
+import { reconcileImplementations } from "./implementation-reconciliation.ts";
+import { ImplementationBroker } from "./implementation-broker.ts";
 import { claudeRunner } from "./claude-environment.ts";
 import { AttemptCompletionNotifier } from "./attempt-completion.ts";
 import { D1StageRetryStore } from "./publication-stage-retry.ts";
@@ -36,9 +38,11 @@ import {
 } from "./workflow-runtime-recovery.ts";
 
 export { DeosWorkflow, Sandbox, Standard2Sandbox };
+export { ImplementationSandbox, ImplementationStandard2Sandbox } from "./sandbox-platform.ts";
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
+  implementation: new ImplementationBroker(env),
   completion: new AttemptCompletionNotifier(env.DB,
     env.ORCHESTRATION_WORKFLOW as unknown as QueueConsumerEnv["ORCHESTRATION_WORKFLOW"]),
   claude: claudeRunner(env),
@@ -88,7 +92,7 @@ const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
 
 const cleanupAuditor = (env: Env): CleanupAuditor => new CleanupAuditor(
   new D1CleanupAuditStore(env.DB),
-  new CloudflareSandboxFactory(env.Sandbox, env.Standard2Sandbox),
+  new CloudflareSandboxFactory(env.Sandbox, env.Standard2Sandbox, env.ImplementationSandbox, env.ImplementationStandard2Sandbox),
   {
     linearApiUrl: env.LINEAR_API_URL,
     linearAccessToken: env.LINEAR_APP_ACCESS_TOKEN,
@@ -153,6 +157,7 @@ export default {
     await claudeRunner(env).audit();
     await cleanupAuditor(env).scheduled();
     await completionReconciler(env).scheduled();
+    await reconcileImplementations(env);
   },
 } satisfies ExportedHandler<Env, QueueBody>;
 

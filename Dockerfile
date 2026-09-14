@@ -2,9 +2,16 @@ FROM cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774d
 
 USER root
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-venv \
+    && python3 -m venv /opt/deos-tools \
+    && /opt/deos-tools/bin/pip install --no-cache-dir showboat==0.6.1 \
+    && ln -s /opt/deos-tools/bin/showboat /usr/local/bin/showboat \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN useradd --create-home --shell /bin/bash deos-author
 
-RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0 @anthropic-ai/claude-code@2.1.268
+RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0 @anthropic-ai/claude-code@2.1.268 wrangler@4.125.0
 
 RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/bettaview \
     && chmod 700 /deos/auth \
@@ -23,6 +30,8 @@ COPY container/bounded-*.mjs /deos/bin/
 COPY container/grounded-*.mjs /deos/bin/
 COPY vendor/agent-skills/ /deos/agent-skills/
 COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
+COPY container/implementation-*.mjs /deos/bin/
+COPY container/deos-implementation /usr/local/bin/deos-implementation
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
 COPY container/attempt-completion.mjs /deos/bin/attempt-completion.mjs
 COPY container/author-completion.mjs /deos/bin/author-completion.mjs
@@ -40,7 +49,7 @@ COPY container/deos-linear /usr/local/bin/deos-linear
 
 RUN chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin/trace-review-runner.mjs \
       /deos/bin/design-review-runner.mjs \
-      /usr/local/bin/deos-github /usr/local/bin/deos-linear \
+      /usr/local/bin/deos-github /usr/local/bin/deos-linear /usr/local/bin/deos-implementation \
     && for file in /deos/bin/*.mjs; do node --check "$file" || exit 1; done \
     && claude --version \
     && codex --version \

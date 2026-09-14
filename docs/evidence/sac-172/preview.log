@@ -1,0 +1,15 @@
+
+ ⛅️ wrangler 4.125.0
+────────────────────
+Your Worker has access to the following bindings:
+Binding                             Resource         Mode
+env.DB (test-probe-DB)              D1 Database      local
+env.BUCKET (test-probe-bucket)      R2 Bucket        local
+
+⎔ Starting local server...
+[wrangler:info] Ready on http://0.0.0.0:8787
+[wrangler:info] - http://127.0.0.1:8787
+[wrangler:info] - http://172.17.0.2:8787
+[wrangler:info] GET / 200 OK (251ms)
+[wrangler:info] GET / 200 OK (14ms)
+[wrangler:info] GET / 200 OK (17ms)

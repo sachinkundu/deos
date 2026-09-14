@@ -208,3 +208,33 @@ def headers(body: bytes, timestamp: datetime | None = None) -> dict[str, str]:
     signed = body
     signature = hmac.new(SECRET, signed, hashlib.sha256).hexdigest()
     return {"Linear-Timestamp": timestamp_text, "Linear-Signature": signature}
+
+
+def test_comment_translation_uses_verified_body_and_only_trusted_active_issue() -> None:
+    import pytest
+
+    from deos.ingress import InvalidWebhook
+
+    acl = LinearWebhookACL(LinearIngressConfig(SECRET, frozenset(), frozenset()))
+    payload = {
+        "type": "Comment", "action": "create", "actor": {"id": "human", "type": "user"},
+        "data": {"id": "comment-one", "issueId": "issue-1", "body": "Use the blue option.",
+                 "createdAt": NOW.isoformat(), "updatedAt": NOW.isoformat()},
+    }
+    body = json.dumps(payload).encode()
+    acl.verify(body, headers(body), NOW)
+    context = {"id": "issue-1", "identifier": "SAC-172", "title": "Implement safely",
+               "url": "https://linear.app/sachinkundu/issue/SAC-172/implement-safely",
+               "project": {"id": "project-1"}, "state": {"id": "review", "name": "Human Review"}}
+    event, _ = acl.translate(body, "delivery-one", context)
+    assert event.issue_id == "issue-1"
+    assert event.comment_id == "comment-one"
+    assert event.source_delivery_id == "delivery-one"
+    assert event.event_kind == "Comment.create"
+    assert event.actor_id == "human"
+    with pytest.raises(InvalidWebhook, match="trusted issue"):
+        acl.translate(body, "delivery-one")
+    with pytest.raises(InvalidWebhook, match="trusted issue"):
+        acl.translate(body, "delivery-one", {**context, "id": "another-issue"})
+    with pytest.raises(InvalidWebhook, match="signature"):
+        acl.verify(body + b" ", headers(body), NOW)

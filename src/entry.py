@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import traceback
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from workers import Response, WorkerEntrypoint
 
@@ -57,8 +58,25 @@ class Default(WorkerEntrypoint):
         now = datetime.now(UTC)
         try:
             acl.verify(body, headers, now)
-            event, _ = acl.translate(body, headers["linear-delivery"] or None)
-        except InvalidWebhook:
+            payload: object = json.loads(cast(bytes, body))
+            comment_issue: dict[str, Any] | None = None
+            if isinstance(payload, dict) and cast(dict[str, Any], payload).get("type") == "Comment":
+                comment_data: object = cast(dict[str, Any], payload).get("data")
+                if not isinstance(comment_data, dict):
+                    raise InvalidWebhook("comment data missing")
+                comment_issue_id: object = cast(dict[str, Any], comment_data).get("issueId")
+                if not isinstance(comment_issue_id, str):
+                    raise InvalidWebhook("comment issue ID missing")
+                row = await _implementation_comment_issue(cast(Any, self).env.DB, comment_issue_id)
+                if _row_value(row, "issue_id") is None:
+                    return Response("ignored", status=200)
+                comment_issue = {
+                    "id": _row_value(row, "issue_id"), "identifier": _row_value(row, "issue_key"), "title": _row_value(row, "title"),
+                    "url": _row_value(row, "linear_url"), "project": {"id": _row_value(row, "project_id")},
+                    "state": {"id": _row_value(row, "route_human_gate_state_id"), "name": "Human Review"},
+                }
+            event, _ = acl.translate(body, headers["linear-delivery"] or None, comment_issue)
+        except (InvalidWebhook, json.JSONDecodeError):
             return Response("invalid webhook", status=400)
 
         route_proof = await _find_route_proof(self.env.DB, event)
@@ -161,6 +179,7 @@ class Default(WorkerEntrypoint):
                         "actor_id": event.actor_id,
                         "actor_type": event.actor_type,
                         "event_kind": event.event_kind,
+                        "comment_id": event.comment_id,
                         "state_id": event.state_id,
                         "previous_state_id": event.previous_state_id,
                         "previous_state_name": event.previous_state_name,
@@ -294,3 +313,13 @@ async def _find_route_proof(database: Any, event: ApplicationEvent) -> IngressRo
         .first()
     )
     return route_event_proof(event, _proof_from_row(route_row), active)
+
+
+async def _implementation_comment_issue(database: Any, issue_id: str) -> Any:
+    return await database.prepare("""
+        SELECT i.*,r.route_human_gate_state_id FROM linear_issue_index i
+        JOIN orchestration_runs r ON r.issue_id=i.issue_id AND r.project_id=i.project_id
+        WHERE i.issue_id=? AND r.definition_id='implementation'
+        AND r.status IN ('pending_dispatch','active','awaiting_human','awaiting_capability','manual_reconciliation_required')
+        ORDER BY r.run_sequence DESC LIMIT 1
+    """).bind(issue_id).first()

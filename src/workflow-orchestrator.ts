@@ -39,6 +39,7 @@ export interface WorkflowStepLike {
 }
 
 export interface WorkflowNodeServices {
+  implementationGateDecision?(run: OrchestrationRunRecord,node: HumanGateWorkflowNode,event: NonNullable<Awaited<ReturnType<WorkflowRuntimeStore["findInboxEvent"]>>>): Promise<EdgeDecision>;
   requestLinearDone(issueId: string): Promise<import("./linear-transition.ts").LinearTransitionRequestResult>;
   executeAgent(
     run: OrchestrationRunRecord,
@@ -192,7 +193,7 @@ export class WorkflowOrchestrator {
           ),
         );
         if (execution.state === "running") {
-          const nativeHeartbeat = ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
+          const nativeHeartbeat = ["simple-traceability", "simple-traceability-claude", "implementation"].includes(run.definition_id) &&
             run.definition_version >= 23 && ["planning_author", "design_author"].includes(instruction.nodeId);
           // A hint can arrive just before the supervisor closes its HTTP request.
           // Give that exact attempt one short follow-up wait, then resume heartbeats.
@@ -283,11 +284,14 @@ export class WorkflowOrchestrator {
           this.now().toISOString(),
         ));
       if (claimed === null) continue;
-      const decision = evaluateNodeOutcome(this.definition, instruction.nodeId, {
+      const decision = gateNode.expectedEventKind
+        ? await this.services.implementationGateDecision!(run,gateNode,claimed)
+        : claimed.event_kind.startsWith('Comment.') ? { kind: 'wait' as const, reason: 'unrelated_event' as const }
+        : evaluateNodeOutcome(this.definition, instruction.nodeId, {
         kind: "linear_event",
         deliveryId: claimed.delivery_id,
         actorId: claimed.actor_id,
-        actorType: claimed.actor_type,
+        actorType: run.definition_id === 'implementation' && claimed.actor_id !== run.allowed_linear_user_id ? 'unauthorized' : claimed.actor_type,
         fromStateId: claimed.from_state_id,
         fromStateName: claimed.from_state_name,
         toStateName: claimed.to_state_name,
@@ -446,7 +450,7 @@ export class WorkflowOrchestrator {
       deliveryId: claimed.delivery_id,
       eventKind: claimed.event_kind,
       actorId: claimed.actor_id,
-      actorType: claimed.actor_type,
+      actorType: run.definition_id === "implementation" && claimed.actor_id !== run.allowed_linear_user_id ? "unauthorized" : claimed.actor_type,
       toStateName: claimed.to_state_name,
     });
     if (decision.kind === "reject") {
@@ -546,7 +550,10 @@ export class WorkflowOrchestrator {
       providerOperationId: null,
       now: this.now().toISOString(),
       wait,
-      humanGateDecision: run.definition_version >= 17 && decision.actorType === "user" &&
+      implementationGateDecision: this.definition.nodes[decision.fromNode]?.type === 'human_gate' &&
+          (this.definition.nodes[decision.fromNode] as HumanGateWorkflowNode).expectedEventKind && decision.actorType === 'user'
+        ? { deliveryId: decision.causeReference, outcome: decision.outcome } : undefined,
+      humanGateDecision: !(this.definition.nodes[decision.fromNode] as HumanGateWorkflowNode).expectedEventKind && run.definition_version >= 17 && decision.actorType === "user" &&
           ["revision_requested", "merge_authorized", "canceled"].includes(decision.outcome)
         ? {
             deliveryId: decision.causeReference,

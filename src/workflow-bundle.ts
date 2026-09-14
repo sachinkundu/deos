@@ -1,3 +1,7 @@
+import implementationSource from "../config/workflow.implementation.yaml";
+import implementationTasks from "../config/prompts/implementation-tasks.md";
+import implementationBuild from "../config/prompts/implementation-build.md";
+import implementationSchema from "../config/schemas/implementation-result-v1.json";
 import workflowSource from "../config/workflow.deos.yaml";
 import simpleWorkflowSource from "../config/workflow.simple.yaml";
 import claudeWorkflowSource from "../config/workflow.simple-traceability-claude.yaml";
@@ -35,6 +39,8 @@ const prompts: Readonly<Record<string, string>> = Object.freeze({
   "prompts/ddd-architecture.md": dddArchitecturePrompt,
   "prompts/ddd-review.md": dddReviewPrompt,
   "prompts/implementation.md": implementationPrompt,
+  "prompts/implementation-tasks.md": implementationTasks,
+  "prompts/implementation-build.md": implementationBuild,
   "prompts/code-review.md": codeReviewPrompt,
   "prompts/evidence-verification.md": evidenceVerificationPrompt,
   "prompts/openspec.md": openSpecPrompt,
@@ -47,19 +53,20 @@ const prompts: Readonly<Record<string, string>> = Object.freeze({
 });
 
 const schemas: Readonly<Record<string, string>> = Object.freeze({
+  "schemas/implementation-result-v1.json": JSON.stringify(implementationSchema),
   "schemas/agent-result-v1.json": JSON.stringify(agentResultSchema),
   "schemas/review-result-v1.json": JSON.stringify(reviewResultSchema),
   "schemas/trace-agent-result-v1.json": JSON.stringify(traceAgentResultSchema),
   "schemas/design-review-result-v1.json": JSON.stringify(designReviewResultSchema),
 });
 
-const workflowSources = Object.freeze([workflowSource, simpleWorkflowSource, traceabilityWorkflowSource, claudeWorkflowSource]);
+const workflowSources = Object.freeze([implementationSource, workflowSource, simpleWorkflowSource, traceabilityWorkflowSource, claudeWorkflowSource]);
 
 export const loadBundledWorkflowDefinitionRegistry = async (options: { boundedReviews?: boolean } = {}): Promise<
   Readonly<Record<string, LoadedWorkflowDefinition>>
 > => {
   const definitions = await Promise.all(
-    (options.boundedReviews ? [workflowSource, simpleWorkflowSource, boundedTraceabilityWorkflowSource, boundedClaudeWorkflowSource] : workflowSources)
+    (options.boundedReviews ? [implementationSource, workflowSource, simpleWorkflowSource, boundedTraceabilityWorkflowSource, boundedClaudeWorkflowSource] : workflowSources)
       .map((source) => loadWorkflowDefinition(source, { prompts, schemas })),
   );
   const registry: Record<string, LoadedWorkflowDefinition> = {};

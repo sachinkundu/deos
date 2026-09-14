@@ -1,4 +1,5 @@
 import { createLiveUpdatePreference, noticeText, reportClientError } from "./live-updates.ts";
+import { Implementation } from "./Implementation.tsx";
 import { BoundedReview } from "./BoundedReview.tsx";
 import type { SandboxStartupFailure } from "./sandbox-failures.ts";
 import { TierTrial } from "./TierTrial.tsx";
@@ -113,6 +114,7 @@ interface Projection {
   }>;
 }
 interface RepositoryRoute {
+  allowedLinearUserId?:string|null;
   projectId: string;
   projectName: string;
   repository: string;
@@ -518,6 +520,9 @@ function LiveUpdatesControl() {
 }
 
 function SettingsPanel() {
+  const [implementationHumans,setImplementationHumans]=useState<{id:string;name:string;email:string}[]>([]);
+  const [selectedHuman,setSelectedHuman]=useState('');
+  const [humanError,setHumanError]=useState('');
   const [overview, setOverview] = useState<RouteAdminOverview | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -648,6 +653,15 @@ function SettingsPanel() {
         </div>
         <div className="settings-card controls-card">
           <div className="card-heading"><div><h2>Workflow controls</h2><p>This setting applies to new {selected.startStateName} events.</p></div><span className="guard">Future runs</span></div>
+          <p>{selected.definitionId==='implementation'?'Automatic implementation after design approval is selected.':'This route ends after the approved design.'}</p>
+          <button type="button" className="secondary" disabled={busy} onClick={()=>{
+            setHumanError('');void api<{id:string;name:string;email:string}[]>('/api/settings/implementation-humans')
+              .then(users=>{setImplementationHumans(users);setSelectedHuman(users[0]?.id??'');if(!users.length)setHumanError('No active Linear person matches the allowed portal account.');})
+              .catch(error=>setHumanError(String(error)));
+          }}>Check implementation reviewer</button>
+          {humanError&&<p role="alert">{humanError}</p>}
+          {implementationHumans.length>0&&<><label htmlFor="implementation-human">Allowed reviewer</label><select id="implementation-human" value={selectedHuman} onChange={event=>setSelectedHuman(event.target.value)}>{implementationHumans.map(user=><option key={user.id} value={user.id}>{user.name} · {user.email}</option>)}</select>
+          <button type="button" disabled={busy||!selectedHuman} onClick={()=>void work(()=>routeMutation<RepositoryRoute>(`/api/settings/routes/${selected.projectId}/implementation`,'PUT',{userId:selectedHuman,expectedRevision:selected.routeRevision}),'Implementation selected for future runs. Dispatch is off until enabled.')}>Select automatic implementation</button></>}
           <label className="switch-row">
             <span><strong>Workflow dispatch</strong><small>Let accepted {selected.startStateName} events start a workflow.</small></span>
             <input type="checkbox" checked={dispatchEnabled} onChange={(event) => setDispatchEnabled(event.target.checked)} disabled={busy || (!dispatchEnabled && (selected.accessState !== "passed" || overview?.github.state !== "ready"))} />
@@ -660,7 +674,7 @@ function SettingsPanel() {
         </div>
         <div className="settings-card">
           <div className="card-heading"><div><h2>Independent review</h2><p>This model is frozen into each new traceability run.</p></div><span className="guard">Future runs</span></div>
-          {selected.definitionId === "simple-traceability-claude" ? (
+          {["simple-traceability-claude","implementation"].includes(selected.definitionId) ? (
             <p><strong>Claude Opus 5 · High effort</strong><br />Fixed for new runs on this workflow.</p>
           ) : <>
           <label htmlFor="independent-review-model">Review model</label>
@@ -1122,6 +1136,7 @@ function App() {
       {projection ? <>
         <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span><span>Sandbox: {projection.run.sandbox_tier === "basic" ? "Basic" : projection.run.sandbox_tier === "standard-2" ? "Standard-2" : "Tier not recorded"}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : `Retry ${workflowStepLabel(projection.retry.retryNode)}`}</button>}</div></section>
         <RunErrors projection={projection} />
+        {projection.stages.some(stage=>stage.id.startsWith("implementation_")) && <Implementation runId={runId} freshness={projection.run.freshness} />}
         {groupedWorkflow ? <TraceabilityWorkflowMap
           projection={projection}
           selectedVisit={selectedVisit}

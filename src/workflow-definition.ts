@@ -1,3 +1,4 @@
+import type { ImplementationPolicy } from "./implementation-contract.ts";
 import { recordCaughtError } from "./error-context.ts";
 import { parse } from "yaml";
 
@@ -77,6 +78,7 @@ export interface SystemActionWorkflowNode extends WorkflowNodeBase {
 export interface HumanGateWorkflowNode extends WorkflowNodeBase {
   type: "human_gate";
   linearState: string;
+  expectedEventKind?: "comment" | "state";
   decisions?: Readonly<Record<string, string>>;
 }
 
@@ -116,6 +118,7 @@ export type WorkflowNode =
   | FailureWorkflowNode;
 
 export interface LoadedWorkflowDefinition {
+  implementationPolicy?: ImplementationPolicy;
   apiVersion: typeof WORKFLOW_API_VERSION;
   kind: typeof WORKFLOW_KIND;
   name: string;
@@ -133,6 +136,8 @@ export interface WorkflowBundleSources {
 }
 
 const SYSTEM_ACTIONS = new Set([
+  "implementation.prepare", "implementation.check_proof", "implementation.write_branch", "implementation.publish",
+  "implementation.question", "implementation.rebase", "implementation.merge_recheck", "implementation.merge",
   "openspec.create_proposal_and_requirements",
   "openspec.create_delta_specs",
   "openspec.create_tasks",
@@ -234,6 +239,7 @@ const parseDecisions = (
   value: unknown,
   edges: Readonly<Record<string, string>>,
   label: string,
+  expectedEventKind?: unknown,
 ): Readonly<Record<string, string>> | null => {
   if (value === undefined) return null;
   const decisions = asRecord(value, `${label}.decisions`);
@@ -252,7 +258,7 @@ const parseDecisions = (
     if (states.has(state)) throw new Error(`${label}.decisions state names must be unique`);
     states.add(state);
   }
-  assertExactEdges(edges, Object.keys(decisions), label);
+  assertExactEdges(edges, [...Object.keys(decisions),...(expectedEventKind==='state' && edges.base_changed ? ['base_changed'] : [])], label);
   return Object.freeze(Object.fromEntries(Object.entries(decisions).map(([key, state]) => [key, String(state)])));
 };
 
@@ -358,7 +364,7 @@ export const loadWorkflowDefinition = async (
   const supportsExplicitLifecycle = version >= 4 || name === "simple";
 
   const spec = asRecord(root.spec, "workflow.spec");
-  assertAllowedKeys(spec, ["start", "execution", "jobs", "nodes"], "workflow.spec");
+  assertAllowedKeys(spec, ["start", "execution", "jobs", "nodes", "implementationPolicy"], "workflow.spec");
   const start = stringValue(spec, "start", "workflow.spec");
   const executionRecord = asRecord(spec.execution, "workflow.spec.execution");
   assertAllowedKeys(
@@ -512,13 +518,17 @@ export const loadWorkflowDefinition = async (
       ) throw new Error(`${label} uses unsupported action ${action}`);
       nodes[id] = Object.freeze({ id, type, action, edges });
     } else if (type === "human_gate") {
-      assertAllowedKeys(node, ["type", "linearState", "decisions", "edges"], label);
+      assertAllowedKeys(node, ["type", "linearState", "decisions", "edges", "expectedEventKind"], label);
       nodes[id] = Object.freeze({
         id,
         type,
         linearState: stringValue(node, "linearState", label),
+        ...(node.expectedEventKind === undefined ? {} : { expectedEventKind: (() => {
+          if (node.expectedEventKind !== "comment" && node.expectedEventKind !== "state") throw new Error("invalid gate event kind");
+          return node.expectedEventKind;
+        })() }),
         ...(node.decisions === undefined ? {} : {
-          decisions: parseDecisions(node.decisions, edges, label) ?? undefined,
+          decisions: parseDecisions(node.decisions, edges, label,node.expectedEventKind) ?? undefined,
         }),
         edges,
       });
@@ -605,11 +615,12 @@ export const loadWorkflowDefinition = async (
     }
   }
 
+  const implementation = spec.implementationPolicy === undefined ? {} : { implementationPolicy: parseImplementationPolicy(spec.implementationPolicy) };
   const digestPayload = canonicalize({
     apiVersion: WORKFLOW_API_VERSION,
     kind: WORKFLOW_KIND,
     metadata: { name, version },
-    spec: { start, execution, jobs, nodes },
+    spec: { start, execution, jobs, nodes, ...implementation },
   });
   const digest = await sha256Hex(JSON.stringify(digestPayload));
   return Object.freeze({
@@ -621,6 +632,7 @@ export const loadWorkflowDefinition = async (
     execution,
     jobs: Object.freeze(jobs),
     nodes: Object.freeze(nodes),
+    ...implementation,
     digest,
   });
 };
@@ -639,7 +651,7 @@ export const restoreWorkflowDefinition = async (
   const stored = asRecord(parsed, "stored workflow");
   assertAllowedKeys(
     stored,
-    ["apiVersion", "kind", "name", "version", "start", "execution", "jobs", "nodes", "digest"],
+    ["apiVersion", "kind", "name", "version", "start", "execution", "jobs", "nodes", "digest", "implementationPolicy"],
     "stored workflow",
   );
   if (stored.apiVersion !== WORKFLOW_API_VERSION) throw new Error("unsupported stored workflow apiVersion");
@@ -720,7 +732,7 @@ export const restoreWorkflowDefinition = async (
       apiVersion: WORKFLOW_API_VERSION,
       kind: WORKFLOW_KIND,
       metadata: { name, version },
-      spec: { start, execution, jobs, nodes },
+      spec: { start, execution, jobs, nodes, ...(stored.implementationPolicy === undefined ? {} : { implementationPolicy: stored.implementationPolicy }) },
     }),
     { prompts, schemas },
     { allowRetiredSystemActions: true },
@@ -745,4 +757,11 @@ export function parseGroundingPolicy(value: unknown): WorkflowJob["grounding"] {
     return Object.freeze({ id, sha256 });
   });
   return Object.freeze({ schema: "deos-grounding-v1", webSearch: "native-live", skills: Object.freeze(skills) });
+}
+
+function parseImplementationPolicy(value: unknown): ImplementationPolicy {
+  const policy = asRecord(value, 'implementation policy');
+  const keys = ['uiPaths','providerPaths','documentationHosts','packageHosts','safeAdapters'] as const;
+  assertAllowedKeys(policy, keys, 'implementation policy');
+  return Object.fromEntries(keys.map(key => [key, stringArray(policy,key,'implementation policy')])) as unknown as ImplementationPolicy;
 }

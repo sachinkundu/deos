@@ -1,0 +1,61 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "outcome",
+    "summary",
+    "assumptions",
+    "question",
+    "providerReceipts"
+  ],
+  "properties": {
+    "outcome": {
+      "enum": [
+        "completed",
+        "needs_human",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "providerReceipts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "question": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "blockKey",
+        "question",
+        "reason"
+      ],
+      "properties": {
+        "blockKey": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$id": "https://deos.dev/schemas/implementation-result-v1.json"
+}

@@ -52,6 +52,7 @@ interface OpenRouterCapabilityRequest {
 }
 
 export interface CapabilityRouterDependencies {
+  implementation?: Pick<import("./implementation-broker.ts").ImplementationBroker, "handle">;
   completion?: Pick<import("./attempt-completion.ts").AttemptCompletionNotifier, "notify">;
   claude?: Pick<import("./claude-runner.ts").ClaudeRunner, "handle">;
   store: CapabilityStore;
@@ -367,6 +368,10 @@ export class CapabilityRouter {
     } catch (caughtError) {
       recordCaughtError(caughtError, "src/capability-router.ts:360");
       return json(400, { error: "invalid_json" });
+    }
+    if (path.endsWith("/implementation")) {
+      if (!this.dependencies.implementation) return json(503, { error: "implementation_unavailable" });
+      return this.dependencies.implementation.handle(claims, untrusted);
     }
     if (completion) {
       const body = asRecord(untrusted);

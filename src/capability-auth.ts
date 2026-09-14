@@ -17,6 +17,7 @@ export interface CapabilityClaims {
 }
 
 export type CapabilityAction =
+  | "implementation.tools"
   | "github.clone_repository"
   | "github.publish_work_product"
   | "github.publish_planning_work_product"
@@ -25,6 +26,7 @@ export type CapabilityAction =
   | "model.claude_review";
 
 const CAPABILITY_ACTIONS = new Set<CapabilityAction>([
+  "implementation.tools",
   "github.clone_repository",
   "github.publish_work_product",
   "github.publish_planning_work_product",

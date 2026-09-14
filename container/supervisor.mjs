@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { setupImplementation } from "./implementation-runtime.mjs";
 import { checkAuthorSources } from "./grounded-review.mjs";
 import { provisionGrounding, verifyGroundingContext, verifyNativeGrounding } from "./grounded-agent.mjs";
 import { setupNativeReview } from "./native-review-setup.mjs";
@@ -179,6 +180,7 @@ const runChild = async ({ job, prompt, reviewer, resumeSessionId, transcript, va
   return result;
 };
 
+let implementationRuntime = null;
 const main = async () => {
   await mkdir(OUTPUT_ROOT, { recursive: true, mode: 0o700 });
   const job = JSON.parse(await readFile(JOB_PATH, "utf8"));
@@ -192,6 +194,7 @@ const main = async () => {
   const prompt = await readFile(job.promptPath, "utf8");
   const grounding = await provisionGrounding(job.grounding);
   await setupNativeReview(job);
+  const implementation = implementationRuntime = await setupImplementation(job);
   if (grounding) {
     const effective = job.modelProvider === "claude" ? grounding : await verifyNativeGrounding(grounding, job.cwd);
     await atomicJson(`${OUTPUT_ROOT}/agent-input-manifest.json`, { ...effective, attemptId: job.attemptId, jobKind: job.nodeId,
@@ -200,7 +203,7 @@ const main = async () => {
   const transcript = await trustedCapture("transcript.jsonl");
   const validation = await trustedCapture("stderr.txt");
   const reviewer = job.agentRole === "reviewer";
-  const planningAuthor = job.agentRole === "author" &&
+  const planningAuthor = !job.implementationKind && job.agentRole === "author" &&
     typeof job.openspecChange === "string" &&
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(job.openspecChange);
   const designAuthor = planningAuthor && job.designOnly === true;
@@ -319,6 +322,7 @@ const main = async () => {
       { mode: 0o600 },
     );
   }
+  if (implementation) { try { await implementation.finish(); } finally { await implementation.close(); implementationRuntime=null; } }
   await finalizeMechanicalOutputs(job);
   const timedOut = Date.now() >= deadline && result.code !== 0;
   await atomicJson(STATUS_PATH, {
@@ -350,6 +354,7 @@ main().catch(async (error) => {
     process.exitCode = 1;
   }
 }).finally(async () => {
+  if(implementationRuntime) { try { await implementationRuntime.close(); } catch(error) { recordCaughtError(error,"implementation cleanup");process.exitCode=1; } }
   clearInterval(heartbeatTimer);
   clearTimeout(deadlineTimer);
   if (completionJob !== null) await notifyAttemptCompletion(completionJob);

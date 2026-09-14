@@ -1702,3 +1702,26 @@ test("capacity refusal preserves original error and portal classification throug
   assert.match(JSON.stringify(failure.error), /Provider capacity exhausted/);
   assert.match(JSON.stringify(failure.error), /account resource limit/);
 });
+
+test("implementation rebase preserves the checked patch and original conflict without applying partial work", async () => {
+  const patchContent = "diff --git a/app.txt b/app.txt\n--- a/app.txt\n+++ b/app.txt\n@@ -1 +1 @@\n-old\n+saved implementation\n";
+  const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(patchContent)))].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  const reference = {attemptId:"prior",manifestId:"manifest",r2Key:"patch",sha256:digest};
+  const {controller,factory} = setup({patchContent});
+  const captured: string[][] = [];
+  factory.sandbox.exec = async command => {
+    captured.push([...command]);
+    const process = new Process("conflict",123);
+    process.state="exited";process.exitCode=1;process.stderr="error: patch failed: app.txt:1\nerror: app.txt: patch does not apply";
+    return process;
+  };
+  const restore = Reflect.get(controller,"restoreContinuationPatch") as (sandbox:SandboxView,value:unknown,preserve:boolean)=>Promise<void>;
+  await restore.call(controller,factory.sandbox,reference,true);
+  assert.equal(factory.sandbox.files.get("/deos/run/continuation.patch"),patchContent);
+  const diagnostic=JSON.parse(factory.sandbox.files.get("/deos/run/continuation-conflict.json")!);
+  assert.match(diagnostic.output.stderr,/app.txt: patch does not apply/);
+  assert.equal(diagnostic.patchSha256,digest);
+  assert.equal(captured.length,1);assert.ok(captured[0].includes("--check"));
+  await assert.rejects(restore.call(controller,factory.sandbox,reference,false),/app.txt: patch does not apply/);
+  assert.equal(factory.sandbox.files.has("/deos/run/continuation.patch"),false);
+});

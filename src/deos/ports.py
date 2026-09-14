@@ -89,6 +89,7 @@ class ApplicationEvent:
     issue_url: str | None = None
     label_selection_evidence: LabelSelectionEvidence = LabelSelectionEvidence("unavailable")
     start_slow_ok: bool | None = None
+    comment_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

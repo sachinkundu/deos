@@ -1,0 +1,216 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  ImplementationStore,
+  type ImplementationInput,
+} from "../src/implementation-store.ts";
+import { implementationPolicy } from "../src/implementation-contract.ts";
+import { D1OrchestrationStore } from "../src/orchestration-store.ts";
+import {
+  ImplementationTestDatabase,
+  ImplementationTestBucket,
+  seedRun,
+  seedAttempt,
+} from "./helpers/implementation-fixture.ts";
+const now = "2026-09-14T01:00:00Z";
+export const input = (id = "run-1"): ImplementationInput => ({
+  version: 1,
+  runId: id,
+  repository: "owner/repo",
+  change: "sample",
+  branch: `deos/agent/SAC-172/run-${id === "run-1" ? 1 : 2}`,
+  approvedDesignSha: "a".repeat(40),
+  testedBaseSha: "b".repeat(40),
+  policy: implementationPolicy,
+  approvedFiles: [],
+  issue: {},
+  receipts: {},
+  requirements: { kinds: ["showboat"], reasons: [], blockedProviders: [] },
+});
+test("additive migration, R2 hash checks, fresh tries and cross-run resource rejection", async () => {
+  const db = new ImplementationTestDatabase(),
+    bucket = new ImplementationTestBucket();
+  try {
+    seedRun(db);
+    seedRun(db, "run-2", "issue-2");
+    const store = new ImplementationStore(
+      db as unknown as D1Database,
+      bucket as unknown as R2Bucket,
+    );
+    const run = await store.allocate(
+      input(),
+      { userId: "human", revision: 1 },
+      "SAC-172",
+      1,
+    );
+    const second = await store.allocate(
+      input("run-2"),
+      { userId: "human", revision: 1 },
+      "SAC-172",
+      2,
+    );
+    for (const [id, work] of [
+      ["a1", run],
+      ["a2", run],
+      ["b1", second],
+    ] as const) {
+      seedAttempt(db, id, work.run_id);
+      await store.beginTry(
+        work,
+        { attempt_id: id, sandbox_id: `impl-${id}`, visit_sequence: 1 },
+        "build",
+      );
+    }
+    assert.deepEqual(
+      db.sqlite
+        .prepare(
+          "SELECT try_sequence FROM implementation_tries WHERE run_id=? ORDER BY try_sequence",
+        )
+        .all("run-1")
+        .map((r) => r.try_sequence),
+      [1, 2],
+    );
+    const resource = await store.allocateResource(
+      "run-1",
+      "a1",
+      "browser",
+      "cloudflare",
+    );
+    db.sqlite
+      .prepare(
+        "UPDATE implementation_resources SET status='ready',provider_resource_id='browser-one' WHERE resource_id=?",
+      )
+      .run(resource.resource_id);
+    await store.assertResource(
+      "run-1",
+      "a1",
+      resource.resource_id,
+      "browser-one",
+    );
+    await assert.rejects(
+      store.assertResource("run-2", "b1", resource.resource_id, "browser-one"),
+      /not ready/,
+    );
+    await assert.rejects(
+      store.assertResource("run-1", "a2", resource.resource_id, "browser-one"),
+      /not ready/,
+    );
+    const object = await store.put("run-1", "proof.txt", "real output");
+    bucket.objects.set(object.key, new TextEncoder().encode("changed"));
+    await assert.rejects(
+      store.readBytes(object.key, object.sha256),
+      /hash mismatch/,
+    );
+  } finally {
+    db.close();
+  }
+});
+test("an ambiguous create-only upload reconciles only by reading the exact bytes", async () => {
+  const db = new ImplementationTestDatabase();
+  const bucket = new ImplementationTestBucket();
+  const put = bucket.put.bind(bucket);
+  bucket.put = async (key, value) => {
+    await put(key, value);
+    throw new Error("lost response");
+  };
+  const store = new ImplementationStore(
+    db as unknown as D1Database,
+    bucket as unknown as R2Bucket,
+  );
+  try {
+    const proof = await store.put("run", "proof.txt", "actual bytes");
+    assert.equal(
+      new TextDecoder().decode(await store.readBytes(proof.key, proof.sha256)),
+      "actual bytes",
+    );
+  } finally {
+    db.close();
+  }
+});
+test("an eligible human event and the graph move commit atomically; replay cannot consume another decision", async () => {
+  const db = new ImplementationTestDatabase(),
+    bucket = new ImplementationTestBucket();
+  try {
+    seedRun(db);
+    const store = new ImplementationStore(
+      db as unknown as D1Database,
+      bucket as unknown as R2Bucket,
+    );
+    await store.allocate(
+      input(),
+      { userId: "human", revision: 1 },
+      "SAC-172",
+      1,
+    );
+    const authority = new D1OrchestrationStore(db as unknown as D1Database);
+    db.sqlite
+      .prepare(
+        `INSERT INTO implementation_gates (run_id,visit_sequence,node_id,expected_event_kind,allowed_linear_user_id,issue_id,human_state_id,opened_at)
+ VALUES ('run-1',1,'implementation_review','state','human','issue-1','review',?)`,
+      )
+      .run(now);
+    await authority.insertInboxEvent(
+      {
+        deliveryId: "event",
+        runId: "run-1",
+        correlationId: "run-1",
+        eventKind: "Issue.update",
+        actorId: "impostor",
+        actorType: "user",
+        providerTime: now,
+        fromStateId: "review",
+        fromStateName: "Human Review",
+        toStateId: "merge",
+        toStateName: "Merging",
+        payloadDigest: "d".repeat(64),
+      },
+      now,
+    );
+    db.sqlite
+      .prepare(
+        "INSERT INTO implementation_gate_events VALUES ('event','run-1',1,'eligible',?)",
+      )
+      .run(now);
+    const args = {
+      runId: "run-1",
+      expectedNode: "implementation_review",
+      expectedVisitSequence: 1,
+      expectedStatus: "awaiting_human" as const,
+      nextNode: "implementation_merge_recheck",
+      nextStatus: "active" as const,
+      gateOriginNode: null,
+      transitionId: "transition",
+      causeType: "linear_event",
+      causeReference: "event",
+      actorId: "human",
+      actorType: "user",
+      providerOperationId: null,
+      now,
+      implementationGateDecision: {
+        deliveryId: "event",
+        outcome: "merge_authorized",
+      },
+    };
+    assert.equal((await authority.compareAndSetNode(args)).outcome, "stale");
+    assert.equal(
+      db.sqlite.prepare("SELECT state FROM implementation_gates").get()?.state,
+      "open",
+    );
+    db.sqlite
+      .prepare(
+        "UPDATE workflow_event_inbox SET actor_id='human' WHERE delivery_id='event'",
+      )
+      .run();
+    assert.equal(
+      (await authority.compareAndSetNode(args)).outcome,
+      "committed",
+    );
+    assert.equal((await authority.compareAndSetNode(args)).outcome, "replayed");
+    assert.equal(
+      db.sqlite.prepare("SELECT state FROM implementation_gates").get()?.state,
+      "merge_authorized",
+    );
+  } finally {
+    db.close();
+  }
+});

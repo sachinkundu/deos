@@ -392,6 +392,12 @@ interface SandboxControllerDependencies {
   now: () => Date;
   attemptId: () => string;
   wait?: (delayMs: number) => Promise<void>;
+  implementationFailure?: (attempt: AgentAttemptRecord,operation:string,error:unknown) => Promise<void>;
+  implementationDestroyed?: (attempt: AgentAttemptRecord) => Promise<void>;
+  implementationNetwork?: (run: OrchestrationRunRecord, attempt: AgentAttemptRecord, sandbox: SandboxView) => Promise<void>;
+  implementationStart?: (run: OrchestrationRunRecord, attempt: AgentAttemptRecord, job: WorkflowJob, sandbox: SandboxView) => Promise<void>;
+  implementationCollect?: (run: OrchestrationRunRecord, attempt: AgentAttemptRecord, sandbox: SandboxView) => Promise<void>;
+  implementationCleanup?: (attempt: AgentAttemptRecord) => Promise<void>;
   materializeContext: (run: OrchestrationRunRecord, job: WorkflowJob) => Promise<MaterializedJobInput>;
   readContinuationPatch: (reference: ContinuationPatchReference) => Promise<string>;
   capabilityGrant: (
@@ -622,7 +628,7 @@ export class SandboxAgentController {
       throw new Error("trial repository is invalid");
     }
     const attemptId = this.dependencies.attemptId();
-    const sandboxId = await sandboxIdentity(attemptId);
+    const sandboxId = (job.inputs.includes("implementation_context") ? "impl-" : "") + await sandboxIdentity(attemptId);
     const now = this.dependencies.now();
     const deadline = new Date(now.getTime() + this.config.absoluteTimeoutMs).toISOString();
     const continuationPatch = frozenRetrySpec === null
@@ -681,7 +687,7 @@ export class SandboxAgentController {
       ...(job.grounding ? { grounding: job.grounding, transcriptSchema: "deos-transcript-v1" } : {}),
       ...(job.boundedReview ? { boundedReview: job.boundedReview, reviewContinuation } : {}),
       nativeSelfReview: frozenRetrySpec?.nativeSelfReview ?? (
-        ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) && run.definition_version >= 23 &&
+        ["simple-traceability", "simple-traceability-claude", "implementation"].includes(run.definition_id) && run.definition_version >= 23 &&
         ["planning_author", "design_author"].includes(nodeId) ? {
           ...(job.boundedReview ? { schema: job.boundedReview } : {}),
           phase: nodeId === "design_author" ? "design" : "planning",
@@ -721,6 +727,10 @@ export class SandboxAgentController {
     let lease: CredentialLease | null = null;
     let supervisor: SandboxProcessView | null = null;
     try {
+      if(job.inputs.includes('implementation_context')) {
+        if(!this.dependencies.implementationNetwork)throw new Error('Implementation network policy missing');
+        await this.dependencies.implementationNetwork(run,attempt,sandbox);
+      }
       if (job.modelProvider !== "openrouter" && job.modelProvider !== "claude") {
         lease = await this.credentials.acquire(
           this.config.authProfileId,
@@ -773,7 +783,8 @@ export class SandboxAgentController {
       ) throw new Error("OpenSpec job identity is invalid");
       const planningJob = job.capabilities?.includes("github.publish_planning_work_product") === true;
       const designAuthorJob = job.inputs.includes("design_context");
-      const designJob = designAuthorJob || job.reviewKind === "design";
+      const implementationJob = job.inputs.includes("implementation_context");
+      const designJob = designAuthorJob || job.reviewKind === "design" || implementationJob;
       if (job.agentRole !== undefined && (
         durableJob.agentRole !== job.agentRole || durableJob.agentHarness !== AGENT_HARNESS ||
         durableJob.agentHarnessVersion !== AGENT_HARNESS_VERSION ||
@@ -855,6 +866,7 @@ export class SandboxAgentController {
         reviewMode: job.reviewMode ?? null,
         openspecChange: typeof durableJob.openspecChange === "string" ? durableJob.openspecChange : null,
         designOnly: designAuthorJob,
+        implementationKind: implementationJob ? (job.id === "implementation_tasks" ? "tasks" : "build") : null,
         materializedContext: durableJob.materializedContext,
         nativeSelfReview: durableJob.nativeSelfReview ?? null,
         grounding: job.grounding ?? null,
@@ -902,12 +914,18 @@ export class SandboxAgentController {
       if ((await branch.waitForExit({ timeout: 60_000 })).code !== 0) {
         throw new Error("attempt branch creation failed");
       }
-      await this.restoreContinuationPatch(sandbox, durableJob.continuationPatch);
+      await this.restoreContinuationPatch(sandbox, durableJob.continuationPatch, implementationJob);
       if (job.agentRole === "reviewer" || designJob) {
         await sandbox.deleteFile("/usr/local/bin/deos-linear");
         await sandbox.deleteFile("/usr/local/bin/deos-github");
       } else if (planningJob) {
         await sandbox.deleteFile("/usr/local/bin/deos-linear");
+      }
+      if (implementationJob) {
+        if (!this.dependencies.implementationStart) throw new Error("Implementation runner is unavailable");
+        await this.dependencies.implementationStart(run, attempt, job, sandbox);
+        const permissions = await sandbox.exec(["chmod", "600", "/deos/run/job.json"], { timeout: 30000 });
+        if ((await permissions.waitForExit({ timeout: 30000 })).code !== 0) throw new Error("Implementation job protection failed");
       }
       supervisor = await sandbox.exec(
         ["node", "/deos/bin/supervisor.mjs"],
@@ -923,6 +941,10 @@ export class SandboxAgentController {
       return { state: "running", attemptId: attempt.attempt_id, sandboxId: attempt.sandbox_id };
     } catch (error) {
       recordCaughtError(error, `sandbox.start.${sandboxCreationCause(error)}`);
+      if (job.inputs.includes("implementation_context")) {
+        try { await this.dependencies.implementationFailure?.(attempt,"sandbox.start",error); }
+        catch (secondary) { recordCaughtError(secondary,"implementation.start.diagnostics"); }
+      }
       console.error(JSON.stringify({event:"sandbox_creation_failed",run_id:run.run_id,
         project_id:run.project_id,attempt_id:attempt.attempt_id,sandbox_tier:attempt.sandbox_tier,
         stage:attempt.node_id,cause:sandboxCreationCause(error)}));
@@ -1157,7 +1179,11 @@ export class SandboxAgentController {
           job.agentRole === "reviewer" ? undefined : mechanicalReceiptIds,
           job.agentRole === "reviewer",
         );
-      if (job.agentRole === "author" && job.inputs.includes("openspec_change")) {
+      if (job.inputs.includes("implementation_context")) {
+        if (!this.dependencies.implementationCollect) throw new Error("Implementation collection is unavailable");
+        await this.dependencies.implementationCollect(run, attempt, sandbox);
+      }
+      if (!job.inputs.includes("implementation_context") && job.agentRole === "author" && job.inputs.includes("openspec_change")) {
         try {
           const native = JSON.parse(attempt.job_spec_json).nativeSelfReview;
           if (native && !job.boundedReview) {
@@ -1178,7 +1204,7 @@ export class SandboxAgentController {
         } catch (error) {
           recordCaughtError(error, "src/sandbox-controller.ts:1038");
           if (error instanceof PlanningCandidateRejectedError || error instanceof DesignCandidateRejectedError) {
-            const verificationMismatch = ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
+            const verificationMismatch = ["simple-traceability", "simple-traceability-claude", "implementation"].includes(run.definition_id) &&
               run.definition_version >= 6;
             const repeatedPatch = await this.repeatsContinuationPatch(attempt, sandbox);
             const resultDetail = verificationMismatch
@@ -1290,6 +1316,10 @@ export class SandboxAgentController {
       };
     } catch (error) {
       recordCaughtError(error, "src/sandbox-controller.ts:1124");
+      if (job.inputs.includes("implementation_context")) {
+        try { await this.dependencies.implementationFailure?.(attempt,"candidate.collect",error); }
+        catch (secondary) { throw new AggregateError([error,secondary],"Candidate collection and diagnostic storage failed",{cause:error}); }
+      }
       if (collection !== null) {
         const resultDetail = job.modelProvider === "claude" && !job.boundedReview ? "review_failure" : this.safeResultDetail(
           error instanceof Error ? error.message : "post-collection validation failed",
@@ -1600,7 +1630,7 @@ export class SandboxAgentController {
       reason: string;
     }[] = [];
     let reviewContextId: string | null = null;
-    if (["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) && run.definition_version >= 12) {
+    if (["simple-traceability", "simple-traceability-claude", "implementation"].includes(run.definition_id) && run.definition_version >= 12) {
       try {
         reviewDispositions = JSON.parse((await sandbox.readFile("/deos/output/review-dispositions.json", {
           encoding: "utf8",
@@ -1751,7 +1781,7 @@ export class SandboxAgentController {
       reason: string;
     }[] = [];
     let reviewContextId: string | null = null;
-    if (["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) && run.definition_version >= 19) {
+    if (["simple-traceability", "simple-traceability-claude", "implementation"].includes(run.definition_id) && run.definition_version >= 19) {
       try {
         reviewDispositions = JSON.parse((await sandbox.readFile("/deos/output/design-dispositions.json", {
           encoding: "utf8",
@@ -1967,7 +1997,9 @@ export class SandboxAgentController {
     try {
       if (JSON.parse(attempt.job_spec_json).modelProvider === "claude") await this.dependencies.claude?.cleanup(attempt.attempt_id);
       await sandbox.setKeepAlive(false);
+      await this.dependencies.implementationCleanup?.(attempt);
       await sandbox.destroy();
+      await this.dependencies.implementationDestroyed?.(attempt);
       await this.attempts.markCleanup(
         attempt.attempt_id,
         "destroyed",
@@ -2042,6 +2074,7 @@ export class SandboxAgentController {
   private async restoreContinuationPatch(
     sandbox: SandboxView,
     value: unknown,
+    preserveConflict = false,
   ): Promise<void> {
     if (value === null || value === undefined) return;
     if (typeof value !== "object" || Array.isArray(value)) {
@@ -2062,6 +2095,8 @@ export class SandboxAgentController {
     if (patch.length === 0 || patch === "# No repository changes in this attempt.\n") return;
     const path = "/deos/run/continuation.patch";
     await sandbox.writeFile(path, patch, { encoding: "utf8" });
+    let retainPatch = false;
+    let primaryError: unknown;
     try {
       for (const args of [
         ["git", "apply", "--binary", "--check", path],
@@ -2072,10 +2107,30 @@ export class SandboxAgentController {
           timeout: 60_000,
         });
         const exit = await process.waitForExit({ timeout: 60_000 });
-        if (exit.code !== 0) throw new Error("continuation patch cannot be applied");
+        if (exit.code !== 0) {
+          const output = await process.output({encoding: "utf8", timeout: 60_000, maxBytes: 1_048_576});
+          const diagnostic = { command: args, exit, output, patchPath: path, patchSha256: reference.sha256 };
+          if (preserveConflict && args.some(arg => arg === "--check")) {
+            // Keep the new base intact and hand the complete checked patch and
+            // original conflict output to the next author. Nothing was applied.
+            await sandbox.writeFile("/deos/run/continuation-conflict.json", JSON.stringify(diagnostic), { encoding: "utf8" });
+            retainPatch = true;
+            return;
+          }
+          throw new Error(`Continuation patch cannot be applied: ${JSON.stringify(diagnostic)}`);
+        }
       }
+    } catch (error) {
+      primaryError = error;
+      throw error;
     } finally {
-      await sandbox.deleteFile(path);
+      if (!retainPatch) {
+        try { await sandbox.deleteFile(path); }
+        catch (secondary) {
+          if (primaryError) throw new AggregateError([primaryError,secondary],"Patch restoration and cleanup failed",{cause:primaryError});
+          throw secondary;
+        }
+      }
     }
   }
 
@@ -2092,6 +2147,13 @@ export class SandboxAgentController {
     };
     const planningJob = job.capabilities?.includes("github.publish_planning_work_product") === true;
     const designJob = job.inputs.includes("design_context");
+    if (job.inputs.includes("implementation_context")) return [job.prompt,
+      `Run: ${run.run_id}; attempt: ${attempt.attempt_id}; change: ${durableJob.openspecChange}`,
+      `Native operation: ${job.operation?.instruction}. Read /deos/run/implementation-input.json and /deos/run/issue-context.json.`,
+      `Required outputs under /deos/output: ${job.requiredOutputs.join(', ')}. The supervisor writes the patch, candidate, transcript and provider references.`,
+      'Use only the shell tool to read and edit. The implementation helper takes a JSON request file; it supports check {argv,cwd?,behavior?}, preview {main?,assets?,d1?,r2?}, browser {operation,url?,selector?,text?,caption?}, document {url}, search {query,host}.',
+      'After marking all tasks done, rerun checks and recapture behavior proof so it matches the exact final tree. Never change trusted runtime files.'
+    ].join('\n\n');
     if (job.boundedReview && job.agentRole === 'author') {
       return [job.prompt.trim(), `OpenSpec change identity: ${durableJob.openspecChange}`,
         `Run: ${run.run_id}`, `Node: ${attempt.node_id}`, `Attempt: ${attempt.attempt_id}`, `Deadline: ${attempt.absolute_deadline}`,

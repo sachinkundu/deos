@@ -1,3 +1,6 @@
+import { BaseChangedError } from "./implementation-contract.ts";
+import { ImplementationService } from "./implementation-service.ts";
+import { ImplementationBroker } from "./implementation-broker.ts";
 import { D1BoundedReviewStore } from "./bounded-review-store.ts";
 import { claudeRunner } from "./claude-environment.ts";
 import { D1NativeReviewStore } from "./native-review-store.ts";
@@ -108,6 +111,7 @@ const githubForRun = (env: Env, run: OrchestrationRunRecord): GitHubCapabilityAd
 };
 
 export class CloudflareWorkflowServices implements WorkflowNodeServices {
+  private readonly implementation: ImplementationService;
   private readonly boundedReview: boolean;
   private readonly env: Env;
   private readonly orchestration: D1OrchestrationStore;
@@ -118,6 +122,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
   constructor(env: Env, definition: LoadedWorkflowDefinition) {
     this.boundedReview = definition.jobs.planning_author?.boundedReview === 'deos-bounded-review-v1';
     this.env = env;
+    this.implementation = new ImplementationService(env, definition);
     this.orchestration = new D1OrchestrationStore(env.DB);
     const credentials = new CredentialVault(
       new R2ProtectedObjectStore(env.ARTIFACTS),
@@ -166,7 +171,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     );
     this.agents = new SandboxAgentController(
       new D1AgentAttemptStore(env.DB),
-      new CloudflareSandboxFactory(env.Sandbox, env.Standard2Sandbox),
+      new CloudflareSandboxFactory(env.Sandbox, env.Standard2Sandbox, env.ImplementationSandbox, env.ImplementationStandard2Sandbox),
       credentials,
       {
         authProfileId: env.CODEX_AUTH_PROFILE_ID,
@@ -194,7 +199,18 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           .finishSelfReviewAtLimit(runId, new Date().toISOString(), attemptId),
         now: () => new Date(),
         attemptId: defaultAttemptId,
-        materializeContext: (run, job) => jobInputs.materialize(run, job),
+        materializeContext: (run, job) => job.inputs.includes('implementation_context') ? this.implementation.materialize(run, job) : jobInputs.materialize(run, job),
+        implementationNetwork: async (run,attempt,sandbox) => {
+          await (sandbox as unknown as {setOutboundHandler(name:string,params:object):Promise<void>}).setOutboundHandler('implementation',{runId:run.run_id,attemptId:attempt.attempt_id});
+        },
+        implementationStart: (run, attempt, job, sandbox) => this.implementation.start(run, attempt, job, sandbox),
+        implementationCollect: (run, attempt, sandbox) => this.implementation.collect(run, attempt, sandbox),
+        implementationCleanup: attempt => new ImplementationBroker(env).cleanup(attempt.attempt_id),
+        implementationFailure: async (attempt,operation,error) => {await this.implementation.store.error(attempt.run_id,attempt.attempt_id,operation,error);},
+        implementationDestroyed: async attempt => {
+          await env.DB.prepare("UPDATE implementation_resources SET status='destroyed',cleanup_receipt=?,updated_at=? WHERE attempt_id=? AND kind='local_data'")
+            .bind(JSON.stringify({sandboxDestroyed:attempt.sandbox_id}),new Date().toISOString(),attempt.attempt_id).run();
+        },
         readContinuationPatch: async (reference) => {
           const object = await env.ARTIFACTS.get(reference.r2Key);
           if (object === null) throw new Error("continuation patch object is missing");
@@ -1078,7 +1094,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           };
         },
         reuseDesignReview: async (run, nodeId, job) => {
-          if (["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) && run.definition_version >= 21 &&
+          if (["simple-traceability", "simple-traceability-claude", "implementation"].includes(run.definition_id) && run.definition_version >= 21 &&
               nodeId === 'design_self_review' &&
               await new D1DesignReviewStore(env.DB).finishSelfReviewAtLimit(run.run_id, new Date().toISOString())) {
             return {
@@ -1350,13 +1366,34 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     );
   }
 
-  executeAgent(
+  async executeAgent(
     run: OrchestrationRunRecord,
     nodeId: string,
     jobId: string,
     definition: LoadedWorkflowDefinition,
   ) {
-    return this.agents.execute(run, nodeId, jobId, definition);
+    try {
+      const observation = await this.agents.execute(run, nodeId, jobId, definition);
+      if (observation.state === 'completed' && observation.attemptId && definition.jobs[jobId].inputs.includes('implementation_context')) {
+        const uncertain = await this.env.DB.prepare(`SELECT t.attempt_id FROM implementation_tries t
+          WHERE t.attempt_id=? AND (t.status='manual_reconciliation_required' OR EXISTS
+          (SELECT 1 FROM implementation_resources r WHERE r.attempt_id=t.attempt_id AND r.status='quarantined'))`)
+          .bind(observation.attemptId).first();
+        if (uncertain) return {...observation,outcome:{...observation.outcome,outcome:'manual_reconciliation_required'}};
+        const retry = await this.env.DB.prepare("SELECT attempt_id FROM implementation_tries WHERE attempt_id=? AND status='retry_required'")
+          .bind(observation.attemptId).first();
+        if (retry) return {...observation,outcome:{...observation.outcome,outcome:'retry_fresh'}};
+      }
+      return observation;
+    }
+    catch(error) {
+      if(error instanceof BaseChangedError && definition.jobs[jobId].inputs.includes('implementation_context')) {
+        await this.implementation.invalidate(run);
+        return {state:'completed' as const,attemptId:null,sandboxId:null,manifestId:null,
+          outcome:{kind:'agent' as const,outcome:'base_changed',providerReceiptsPresent:false,providerReceiptsComplete:true}};
+      }
+      throw error;
+    }
   }
 
   requestLinearDone(issueId: string) {
@@ -1364,6 +1401,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
   }
 
   async executeSystemAction(run: OrchestrationRunRecord, nodeId: string, action: string) {
+    if (action.startsWith("implementation.")) return this.implementation.execute(run, action);
     if (action === "linear.delegate_and_start") {
       return this.linear.ensureWorkStarted(run, nodeId);
     }
@@ -1542,6 +1580,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
   }
 
   async ensureHumanGate(run: OrchestrationRunRecord, node: HumanGateWorkflowNode) {
+    if (node.expectedEventKind) await this.implementation.bindGate(run, node);
     const gateKind = node.id === "planning_review"
       ? "plan"
       : node.id === "design_review" ? "design" : null;
@@ -1555,7 +1594,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     }
     const designReviews = new D1DesignReviewStore(this.env.DB);
     if (
-      !this.boundedReview && gateKind === "design" && ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
+      !this.boundedReview && gateKind === "design" && ["simple-traceability", "simple-traceability-claude", "implementation"].includes(run.definition_id) &&
       run.definition_version >= 19 && !await designReviews.eligible(run.run_id, run.definition_version >= 22)
     ) throw new Error("design human gate requires accepted review and author response proof");
     await new D1HumanGateStore(this.env.DB).bind({
@@ -1566,7 +1605,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       now: new Date().toISOString(),
     });
     if (
-      !this.boundedReview && gateKind === "design" && ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
+      !this.boundedReview && gateKind === "design" && ["simple-traceability", "simple-traceability-claude", "implementation"].includes(run.definition_id) &&
       run.definition_version >= 19
     ) {
       await designReviews.bindGate({
@@ -1577,6 +1616,10 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       });
     }
     return this.linear.ensureHumanGate(run, node);
+  }
+
+  async implementationGateDecision(run: OrchestrationRunRecord, node: HumanGateWorkflowNode, event: import("./orchestration-store.ts").WorkflowInboxRecord) {
+    return this.implementation.gateDecision(run, node, event);
   }
 
   async restoreHumanGate(
@@ -1881,7 +1924,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     }
     const planning = job.capabilities?.includes("github.publish_planning_work_product") === true;
     const explicitlyBound = job.agentRole !== undefined;
-    const workActions: readonly CapabilityAction[] = planning
+    const workActions: readonly CapabilityAction[] = job.inputs.includes("implementation_context") ? ["implementation.tools"] : planning
       ? ["github.publish_planning_work_product"]
       : job.providerAccess?.includes("model.openrouter_review") === true
         ? ["model.openrouter_review"]
