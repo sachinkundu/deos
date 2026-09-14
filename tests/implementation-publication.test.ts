@@ -17,6 +17,17 @@ import {
 const base = "b".repeat(40),
   tree = "c".repeat(40),
   head = "d".repeat(40);
+test("default transport calls the Workers fetch function without a client receiver", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async function (this: unknown) {
+    assert.equal(this, undefined, "Workers fetch rejects a client object as its receiver");
+    return Response.json({ object: { sha: head } });
+  } as typeof fetch;
+  try {
+    const github = new ImplementationGitHub("https://api.github.com", "owner/repo", { token: async () => "test" });
+    assert.equal(await github.ref("main"), head);
+  } finally { globalThis.fetch = original; }
+});
 async function fixture() {
   const db = new ImplementationTestDatabase();
   seedRun(db);

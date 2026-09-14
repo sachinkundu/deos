@@ -45,7 +45,7 @@ export class ImplementationGitHub {
     apiUrl: string,
     repository: string,
     tokens: { token(): Promise<string> },
-    request: typeof fetch = fetch,
+    request: typeof fetch = (input, init) => fetch(input, init),
   ) {
     this.apiUrl = apiUrl;
     this.repository = repository;
