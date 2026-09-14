@@ -333,8 +333,7 @@ export class RouteAdminService {
 
   async implementationHumans(actorEmail: string) {
     this.actor(actorEmail);
-    return (await this.linear.implementationUsers()).filter(user => user.active && !user.isMe &&
-      user.email.toLowerCase() === this.env.ROUTE_ADMIN_ALLOWED_EMAIL.toLowerCase());
+    return (await this.linear.implementationUsers()).filter(user => user.active && !user.isMe);
   }
 
   async saveImplementation(actorEmail: string, input: { projectId: string; userId: string; expectedRevision: number }): Promise<RepositoryRouteView> {
@@ -343,7 +342,7 @@ export class RouteAdminService {
     const projectId=normalizeIdentifier(input.projectId), userId=normalizeIdentifier(input.userId);
     const revision=normalizeRevision(input.expectedRevision);
     const user=await this.linear.implementationUser(userId);
-    if (!user.active || user.isMe || user.email.toLowerCase()!==this.env.ROUTE_ADMIN_ALLOWED_EMAIL.toLowerCase())
+    if (!user.active || user.isMe || user.id !== userId)
       throw new RouteAdminError('unauthorized_actor');
     const route=await this.routes.read(projectId);
     if(!route)throw new RouteAdminError('route_not_found');

@@ -6,6 +6,7 @@ import { D1StageRetryStore } from "./publication-stage-retry.ts";
 import { CapabilityRouter } from "./capability-router.ts";
 import { verifyCapabilityToken } from "./capability-auth.ts";
 import { captureWorkflowErrors } from "./error-context.ts";
+import { ImplementationHandoffController } from "./implementation-handoff.ts";
 import { D1CapabilityStore } from "./capability-store.ts";
 import { DeosWorkflow } from "./deos-workflow.ts";
 import { GitHubAppTokenProvider, GitHubCapabilityAdapter } from "./github-capability.ts";
@@ -136,6 +137,16 @@ export default {
     if (path === "/stage-retries") return (await stageRetryController(env)).handle(request);
     if (path === "/workflow-runtime-recoveries") {
       return workflowRuntimeRecoveryController(env).handle(request);
+    }
+    if (path === "/implementation-handoffs") {
+      if (!env.STAGE_RETRY_SECRET || request.headers.get("Authorization") !== `Bearer ${env.STAGE_RETRY_SECRET}`)
+        return Response.json({ error: "invalid_operator_capability" }, { status: 401 });
+      const body = await request.clone().json() as { runId?: unknown };
+      if (typeof body?.runId !== "string") return Response.json({ error: "invalid_handoff_request" }, { status: 400 });
+      const definition = (await loadBundledWorkflowDefinitionRegistry()).implementation;
+      if (!definition) throw new Error("Implementation definition is unavailable");
+      return captureWorkflowErrors(env.DB, env.ARTIFACTS, body.runId, path,
+        () => new ImplementationHandoffController(env, definition).handle(request));
     }
     if (!path.startsWith("/capabilities/")) return new Response("not found", { status: 404 });
     // Only verified claims may associate diagnostics with a workflow.
