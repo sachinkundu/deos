@@ -51,8 +51,8 @@ export function cleanRenderedMarkdown(html, { owner, repo, path, ref }) {
   });
 }
 
-export async function github(token, path, options = {}) {
-  const response = await fetch(`${API}${path}`, {
+export async function github(token, path, options = {}, request = fetch) {
+  const response = await request(`${API}${path}`, {
     ...options,
     headers: {
       Accept: "application/vnd.github+json",
@@ -76,29 +76,29 @@ export async function github(token, path, options = {}) {
   return value;
 }
 
-async function pullContext(token, prUrl) {
+async function pullContext(token, prUrl, request = fetch) {
   const identity = parsePullRequestUrl(prUrl);
   const { owner, repo, number } = identity;
   const [pr, files] = await Promise.all([
-    github(token, `/repos/${owner}/${repo}/pulls/${number}`),
-    github(token, `/repos/${owner}/${repo}/pulls/${number}/files?per_page=100`),
+    github(token, `/repos/${owner}/${repo}/pulls/${number}`, {}, request),
+    github(token, `/repos/${owner}/${repo}/pulls/${number}/files?per_page=100`, {}, request),
   ]);
   return { identity, pr, files };
 }
 
-async function markdownFile(token, owner, repo, path, ref) {
-  const content = await github(token, `/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${ref}`);
+async function markdownFile(token, owner, repo, path, ref, request = fetch) {
+  const content = await github(token, `/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${ref}`, {}, request);
   const binary = atob(String(content.content || "").replaceAll("\n", ""));
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
   return new TextDecoder().decode(bytes);
 }
 
-async function threads(token, owner, repo, number) {
+async function threads(token, owner, repo, number, request = fetch) {
   const query = `query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated path line startLine comments(first:100){nodes{databaseId body createdAt url author{login}}}}}}}}`;
   const data = await github(token, "/graphql", {
     method: "POST",
     body: JSON.stringify({ query, variables: { owner, repo, number } }),
-  });
+  }, request);
   return data.data.repository.pullRequest.reviewThreads.nodes.map((thread) => ({
     ...thread,
     comments: thread.comments.nodes.map((comment) => ({ ...comment, metadata: readMarker(comment.body) })),
@@ -168,17 +168,17 @@ async function deosStory(env, accessToken, identity) {
   return proxiedStory(await response.json());
 }
 
-export async function loadPullRequest(token, prUrl, env, accessToken) {
-  const context = await pullContext(token, prUrl);
+export async function loadPullRequest(token, prUrl, env, accessToken, request = fetch) {
+  const context = await pullContext(token, prUrl, request);
   const { owner, repo, number } = context.identity;
   const markdownFiles = context.files.filter(isRenderableMarkdownFile);
   const [renderedFiles, reviewThreads, viewer, story] = await Promise.all([
     Promise.all(markdownFiles.map(async (file) => {
-      const source = await markdownFile(token, owner, repo, file.filename, context.pr.head.sha);
+      const source = await markdownFile(token, owner, repo, file.filename, context.pr.head.sha, request);
       const rendered = await github(token, "/markdown", {
         method: "POST",
         body: JSON.stringify({ text: source, mode: "gfm", context: `${owner}/${repo}` }),
-      });
+      }, request);
       return {
         path: file.filename,
         status: file.status,
@@ -191,8 +191,8 @@ export async function loadPullRequest(token, prUrl, env, accessToken) {
         mermaidBlocks: extractMermaidBlocks(source),
       };
     })),
-    threads(token, owner, repo, number),
-    github(token, "/user"),
+    threads(token, owner, repo, number, request),
+    github(token, "/user", {}, request),
     deosStory(env, accessToken, context.identity),
   ]);
   const trace = await traceabilityReview(story, renderedFiles, context.pr.head.sha);
@@ -213,6 +213,7 @@ export async function loadPullRequest(token, prUrl, env, accessToken) {
     traceabilityTargets: [],
     traceabilityReviews: trace ? [trace] : [],
     threads: reviewThreads,
+    reviewContinuation: story?.reviewContinuation ?? { readiness: "feature_disabled" },
     deos: story,
   };
 }
@@ -225,9 +226,9 @@ function assertHead(pr, expectedHead) {
   }
 }
 
-async function assertReviewEventAllowed(token, context, event) {
+async function assertReviewEventAllowed(token, context, event, request = fetch) {
   if (event !== "APPROVE") return;
-  const viewer = await github(token, "/user");
+  const viewer = await github(token, "/user", {}, request);
   const restriction = approvalRestriction(viewer.login, context.pr.user.login);
   if (!restriction) return;
   const error = new Error(restriction);
@@ -240,22 +241,22 @@ async function existingSubmission(token, owner, repo, number, clientSubmissionId
   return comments.find((comment) => readMarker(comment.body)?.clientSubmissionId === clientSubmissionId);
 }
 
-async function ensureAssetBranch(token, owner, repo, baseSha) {
+async function ensureAssetBranch(token, owner, repo, baseSha, request = fetch) {
   try {
-    await github(token, `/repos/${owner}/${repo}/git/ref/heads/bettaview-annotations`);
+    await github(token, `/repos/${owner}/${repo}/git/ref/heads/bettaview-annotations`, {}, request);
   } catch (error) {
     if (error.status !== 404) throw error;
     await github(token, `/repos/${owner}/${repo}/git/refs`, {
       method: "POST",
       body: JSON.stringify({ ref: "refs/heads/bettaview-annotations", sha: baseSha }),
-    });
+    }, request);
   }
 }
 
-async function uploadAnnotation(token, owner, repo, pr, clientSubmissionId, dataUrl) {
+async function uploadAnnotation(token, owner, repo, pr, clientSubmissionId, dataUrl, request = fetch) {
   const match = dataUrl.match(/^data:image\/png;base64,(.+)$/);
   if (!match) throw new Error("The annotation capture was not a PNG image.");
-  await ensureAssetBranch(token, owner, repo, pr.base.sha);
+  await ensureAssetBranch(token, owner, repo, pr.base.sha, request);
   const path = `annotations/pr-${pr.number}/${pr.head.sha}/${clientSubmissionId}.png`;
   const result = await github(token, `/repos/${owner}/${repo}/contents/${path}`, {
     method: "PUT",
@@ -264,7 +265,7 @@ async function uploadAnnotation(token, owner, repo, pr, clientSubmissionId, data
       content: match[1],
       branch: "bettaview-annotations",
     }),
-  });
+  }, request);
   return {
     imageUrl: `https://raw.githubusercontent.com/${owner}/${repo}/bettaview-annotations/${path}`,
     blobSha: result.content.sha,
@@ -272,7 +273,7 @@ async function uploadAnnotation(token, owner, repo, pr, clientSubmissionId, data
   };
 }
 
-async function prepareBatchComment(token, context, draft, sourceCache) {
+async function prepareBatchComment(token, context, draft, sourceCache, request = fetch) {
   const { identity, pr, files } = context;
   if (!draft?.body?.trim()) throw new Error("Every unpublished comment needs text.");
   if (!draft.clientSubmissionId) throw new Error("An unpublished comment is missing its submission identity.");
@@ -280,7 +281,7 @@ async function prepareBatchComment(token, context, draft, sourceCache) {
   if (!file) throw new Error(`${draft.path || "The selected file"} is not part of this pull request.`);
   let source = sourceCache.get(draft.path);
   if (!source) {
-    source = await markdownFile(token, identity.owner, identity.repo, draft.path, pr.head.sha);
+    source = await markdownFile(token, identity.owner, identity.repo, draft.path, pr.head.sha, request);
     sourceCache.set(draft.path, source);
   }
   if (draft.kind === "text-selection") {
@@ -328,19 +329,21 @@ async function prepareBatchComment(token, context, draft, sourceCache) {
   throw new Error(`Unsupported unpublished comment type: ${draft.kind || "unknown"}.`);
 }
 
-export async function publishBatchReview(token, body) {
+export async function publishBatchReview(token, body, request = fetch) {
   const { prUrl, headSha, event = "COMMENT", comments } = body;
-  if (!Array.isArray(comments) || comments.length === 0) throw new Error("Add at least one comment before publishing.");
+  if (!Array.isArray(comments) || (comments.length === 0 && event === "COMMENT" && !body.reviewId)) {
+    throw new Error("Add at least one comment before publishing.");
+  }
   if (!["COMMENT", "APPROVE", "REQUEST_CHANGES"].includes(event)) throw new Error("Unsupported review state.");
-  const context = await pullContext(token, prUrl);
+  const context = await pullContext(token, prUrl, request);
   assertHead(context.pr, headSha);
-  await assertReviewEventAllowed(token, context, event);
+  await assertReviewEventAllowed(token, context, event, request);
   const ids = comments.map((comment) => comment.clientSubmissionId);
   if (new Set(ids).size !== ids.length) throw new Error("Each unpublished comment must have a unique submission identity.");
-  const priorComments = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/comments?per_page=100`);
+  const priorComments = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/comments?per_page=100`, {}, request);
   const priorIds = new Set(priorComments.map((comment) => readMarker(comment.body)?.clientSubmissionId).filter(Boolean));
   const unpublished = comments.filter((comment) => !priorIds.has(comment.clientSubmissionId));
-  if (!unpublished.length) return { review: null, published: 0, duplicates: comments.length, assets: [] };
+  if (!unpublished.length && !body.reviewId) return { review: null, published: 0, duplicates: comments.length, assets: [] };
 
   const replyDrafts = unpublished.filter((draft) => draft.kind === "reply");
   const commentDrafts = unpublished.filter((draft) => draft.kind !== "reply");
@@ -353,7 +356,7 @@ export async function publishBatchReview(token, body) {
   const sourceCache = new Map();
   const prepared = [];
   for (const draft of commentDrafts) {
-    try { prepared.push(await prepareBatchComment(token, context, draft, sourceCache)); }
+    try { prepared.push(await prepareBatchComment(token, context, draft, sourceCache, request)); }
     catch (cause) {
       const error = new Error(`Comment ${comments.indexOf(draft) + 1} (${draft.path}:${draft.startLine}): ${cause.message}`, { cause });
       error.status = cause.status;
@@ -363,7 +366,7 @@ export async function publishBatchReview(token, body) {
   const assets = [];
   for (const item of prepared) {
     if (item.draft.kind !== "mermaid-annotation") continue;
-    const asset = await uploadAnnotation(token, context.identity.owner, context.identity.repo, context.pr, item.draft.clientSubmissionId, item.draft.imageDataUrl);
+    const asset = await uploadAnnotation(token, context.identity.owner, context.identity.repo, context.pr, item.draft.clientSubmissionId, item.draft.imageDataUrl, request);
     assets.push(asset);
     item.metadata = {
       kind: "mermaid-annotation",
@@ -389,52 +392,94 @@ export async function publishBatchReview(token, body) {
   const reviewComments = prepared.map((item) => ({
     path: item.path,
     line: item.line,
-    body: `${item.body}\n\n${marker(item.metadata)}`,
+    body: `${item.body}\n\n${marker(body.reviewId ? { ...item.metadata, reviewId: body.reviewId, contentItemId: item.draft.clientSubmissionId } : item.metadata)}`,
   }));
-  let review = null;
-  if (reviewComments.length) {
-    review = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/reviews`, {
-      method: "POST",
-      body: JSON.stringify(batchReviewPayload(headSha, reviewComments, event)),
-    });
-  }
+  // Replies are prerequisite writes because GitHub's create-review contract cannot bundle them.
   const replies = [];
   for (const draft of replyDrafts) {
-    const metadata = { kind: "reply", clientSubmissionId: draft.clientSubmissionId, headSha, path: draft.path };
-    replies.push(await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/comments/${Number(draft.commentId)}/replies`, {
-      method: "POST",
-      body: JSON.stringify({ body: `${draft.body.trim()}\n\n${marker(metadata)}` }),
-    }));
+    const metadata = {
+      kind: "reply",
+      clientSubmissionId: draft.clientSubmissionId,
+      reviewId: body.reviewId || null,
+      partId: `reply:${draft.clientSubmissionId}`,
+      headSha,
+      path: draft.path,
+    };
+    const part = { partId: `reply:${draft.clientSubmissionId}`, event: null, request: draft };
+    const permit = await body.beforePart?.(part);
+    try {
+      const reply = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/comments/${Number(draft.commentId)}/replies`, {
+        method: "POST",
+        body: JSON.stringify({ body: `${draft.body.trim()}\n\n${marker(metadata)}` }),
+      }, request);
+      await body.afterPart?.({ ...part, permit, record: reply });
+      replies.push(reply);
+    } catch (cause) {
+      await body.partFailed?.({ ...part, permit, cause });
+      throw cause;
+    }
   }
-  if (!reviewComments.length && event !== "COMMENT") {
-    review = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/reviews`, {
-      method: "POST",
-      body: JSON.stringify({ commit_id: headSha, event, body: "" }),
-    });
+  const reviewMetadata = {
+    kind: "review_bundle",
+    reviewId: body.reviewId || null,
+    partId: "review_bundle",
+    headSha,
+    event,
+  };
+  let review;
+  const reviewPart = {
+    partId: "review_bundle",
+    event,
+    request: { reviewId: body.reviewId || null, headSha, event, comments: commentDrafts },
+  };
+  const reviewPermit = await body.beforePart?.(reviewPart);
+  if (reviewComments.length) {
+    const payload = batchReviewPayload(headSha, reviewComments, event);
+    payload.body = `${payload.body}\n\n${marker(reviewMetadata)}`;
+    try {
+      review = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/reviews`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }, request);
+    } catch (cause) {
+      await body.partFailed?.({ ...reviewPart, permit: reviewPermit, cause });
+      throw cause;
+    }
+  } else {
+    try {
+      review = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/reviews`, {
+        method: "POST",
+        body: JSON.stringify({ commit_id: headSha, event, body: `${body.reviewBody?.trim() ? `${body.reviewBody.trim()}\n\n` : ""}${marker(reviewMetadata)}` }),
+      }, request);
+    } catch (cause) {
+      await body.partFailed?.({ ...reviewPart, permit: reviewPermit, cause });
+      throw cause;
+    }
   }
+  await body.afterPart?.({ ...reviewPart, permit: reviewPermit, record: review });
   return { review, replies, published: reviewComments.length + replies.length, duplicates: comments.length - unpublished.length, assets };
 }
 
-export async function publishReply(token, body) {
+export async function publishReply(token, body, request = fetch) {
   if (!body.body?.trim()) throw new Error("Write a reply before submitting.");
   const { owner, repo, number } = parsePullRequestUrl(body.prUrl);
   return {
     comment: await github(token, `/repos/${owner}/${repo}/pulls/${number}/comments/${Number(body.commentId)}/replies`, {
       method: "POST",
       body: JSON.stringify({ body: body.body.trim() }),
-    }),
+    }, request),
   };
 }
 
-export async function publishReviewDecision(token, body) {
+export async function publishReviewDecision(token, body, request = fetch) {
   if (!["COMMENT", "APPROVE", "REQUEST_CHANGES"].includes(body.event)) throw new Error("Unsupported review state.");
-  const context = await pullContext(token, body.prUrl);
+  const context = await pullContext(token, body.prUrl, request);
   assertHead(context.pr, body.headSha);
-  await assertReviewEventAllowed(token, context, body.event);
+  await assertReviewEventAllowed(token, context, body.event, request);
   return {
     review: await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/reviews`, {
       method: "POST",
       body: JSON.stringify({ commit_id: body.headSha, event: body.event, body: body.body || "" }),
-    }),
+    }, request),
   };
 }
