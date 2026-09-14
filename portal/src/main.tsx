@@ -1,5 +1,5 @@
 import { createLiveUpdatePreference, noticeText, reportClientError } from "./live-updates.ts";
-import { Implementation, useImplementation } from "./Implementation.tsx";
+import { useImplementation } from "./Implementation.tsx";
 import { BoundedReview } from "./BoundedReview.tsx";
 import type { SandboxStartupFailure } from "./sandbox-failures.ts";
 import { TierTrial } from "./TierTrial.tsx";
@@ -23,9 +23,7 @@ import {
   FileText,
   Gear,
   GithubLogo,
-  GitMerge,
   GitPullRequest,
-  ListChecks,
   MagnifyingGlass,
   Moon,
   ArrowSquareOut,
@@ -48,7 +46,6 @@ import {
   isDesignAuthorVisit,
   isPlanningAuthorVisit,
   designSubstepForNode,
-  implementationSubstepForNode,
   reviewPhaseForNode,
   phaseDisplayStatus,
   phaseForVisit,
@@ -57,6 +54,7 @@ import {
   workflowStatusTone,
   workflowPhases,
   type WorkflowPhaseId,
+  type WorkflowDisplayStatus,
 } from "./workflow-phases.ts";
 import "./styles.css";
 
@@ -256,12 +254,13 @@ const workflowStepLabel = (nodeId: string): string => ({
   independent_recheck: "Independent review recheck",
   final_trace: "Final independent trace check",
   publish_initial: "Publish planning candidate",
-  implementation_prepare: "Prepare implementation",
-  implementation_tasks: "Create tasks",
-  implementation_build: "Build and test",
-  implementation_proof_check: "Verify behavior proof",
-  implementation_branch_write: "Prepare implementation PR",
-  implementation_publish: "Publish implementation PR",
+  implementation_prepare: "Implementation author",
+  implementation_tasks: "Implementation author",
+  implementation_rebase_tasks: "Implementation author",
+  implementation_build: "Implementation author",
+  implementation_proof_check: "Implementation author",
+  implementation_branch_write: "Implementation author",
+  implementation_publish: "Implementation author",
   implementation_review: "Review implementation",
   implementation_clarification_wait: "Answer implementation question",
   implementation_merge_recheck: "Recheck before merge",
@@ -362,7 +361,7 @@ function TraceabilityWorkflowMap({
       : stopped && failedPhaseId === "design" && failedLeafVisit !== null
         ? designSubstepForNode(failedLeafVisit.nodeId)
         : stopped && failedPhaseId === "implementation" && failedLeafVisit !== null
-          ? implementationSubstepForNode(failedLeafVisit.nodeId) : null);
+          ? "implementation_author" : null);
     if (stopped && failedLeafVisit !== null) onSelectVisit(failedLeafVisit.sequence);
     setHistoryOpen(false);
   }, [projection.run.id, projection.run.status, failedPhaseId, failedLeafVisit?.nodeId, onSelectVisit]);
@@ -375,7 +374,7 @@ function TraceabilityWorkflowMap({
     setExpandedSubstep(next === "planning" ? planningSubstepForNode(latest?.nodeId ?? "planning_author")
       : next === "approval" ? (latest?.gate?.gate_kind === "design" ? "design_review" : "planning_review")
         : next === "design" ? designSubstepForNode(latest?.nodeId ?? "design_author")
-          : next === "implementation" ? implementationSubstepForNode(latest?.nodeId ?? "implementation_tasks") : null);
+          : next === "implementation" ? "implementation_author" : null);
     if (latest !== undefined) onSelectVisit(latest.sequence);
   };
 
@@ -425,7 +424,7 @@ function TraceabilityWorkflowMap({
     setExpandedSubstep(phaseId === "approval"
       ? (visit.gate?.gate_kind === "design" ? "design_review" : "planning_review")
       : phaseId === "design" ? designSubstepForNode(visit.nodeId)
-        : phaseId === "implementation" ? implementationSubstepForNode(visit.nodeId) : null);
+        : phaseId === "implementation" ? "implementation_author" : null);
   };
 
   const planningSteps = [
@@ -433,19 +432,13 @@ function TraceabilityWorkflowMap({
     { id: "self_review", label: "Self-review", visit: selfReviewVisit, status: selfReviewStatus, icon: <CheckCircle /> },
     { id: "independent_review", label: "Independent review", visit: independentReviewVisit, status: independentReviewStatus, icon: <Eye /> },
   ];
-  const implementationSteps = [
-    {id:"implementation_tasks",label:"Tasks",icon:<ListChecks />},
-    {id:"implementation_build",label:"Build and test",icon:<UserCircle />},
-    {id:"implementation_proof_check",label:"Behavior proof",icon:<Eye />},
-    {id:"implementation_publish",label:"Pull request",icon:<GitPullRequest />},
-    {id:"implementation_merge",label:"Merge",icon:<GitMerge />},
-  ].map(step => {
-    const visit = latestVisitFor(implementationVisits, visit => implementationSubstepForNode(visit.nodeId) === step.id);
-    const latestBuild = latestVisitFor(implementationVisits, visit => visit.nodeId === "implementation_build");
-    return {...step, visit, status: ["implementation_proof_check", "implementation_publish", "implementation_merge"].includes(step.id)
-      ? reviewVisitStatus(visit, projection.run.status, latestBuild) : authorVisitStatus(visit, projection.run.status)};
-  });
-  const renderStep = (step: typeof planningSteps[number]) => <div key={step.id} className={`phase-substep agent-step ${step.status === "In progress" ? "is-breathing" : ""} ${expandedSubstep === step.id ? "selected" : ""}`}>
+  const implementationPhase = phases.find(phase => phase.id === "implementation");
+  const implementationAuthor = {
+    id: "implementation_author", label: "Author", icon: <UserCircle />,
+    visit: latestVisitFor(implementationVisits, visit => ["implementation_tasks", "implementation_build"].includes(visit.nodeId)),
+    status: implementationPhase ? phaseDisplayStatus(implementationPhase, currentPhaseId, projection.run.status, failedPhaseId) : "Upcoming",
+  };
+  const renderStep = (step: Omit<typeof planningSteps[number], "status"> & { status: WorkflowDisplayStatus }) => <div key={step.id} className={`phase-substep agent-step ${step.status === "In progress" ? "is-breathing" : ""} ${expandedSubstep === step.id ? "selected" : ""}`}>
     <button type="button" className="agent-step-heading" aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
     <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
     </button>
@@ -457,9 +450,6 @@ function TraceabilityWorkflowMap({
     </div>
     {projection.run.reviewSchema === "deos-bounded-review-v1" && expandedSubstep === step.id && ["planning_author", "design_author"].includes(step.id) &&
       <BoundedReview runId={projection.run.id} phase={step.id === "design_author" ? "design" : "planning"} load={api} onTranscript={onOpenTranscript} />}
-    {expandedSubstep === step.id && step.id.startsWith("implementation_") && <div className="implementation-step-detail">
-      <Implementation runId={projection.run.id} data={implementation.data} error={implementation.error} focus={step.id} stepStatus={step.status} />
-    </div>}
   </div>;
   const renderPhaseSteps = (label: string, steps: typeof planningSteps) => <div className="phase-drill" aria-label={`${label} details`}>
     {projection.run.reviewSchema === "deos-bounded-review-v1" ? renderStep(steps[0]) : <div className="author-review-row">
@@ -483,7 +473,7 @@ function TraceabilityWorkflowMap({
   const renderApproval = () => !reviewActive ? null : reviewPhase === "implementation"
     ? <div className="implementation-review-action">
       {projection.run.currentNode === "implementation_clarification_wait" ? <><p>{implementation.data?.question?.question}</p><p className="phase-note">Reply to the question in Linear to continue.</p></>
-        : <><p className="phase-note">Checks and behavior proof are ready for your review.</p>{reviewProductUrl && <div className="phase-artifacts review-action"><a href={reviewProductUrl} target="_blank" rel="noreferrer"><GitPullRequest />Review implementation PR</a></div>}</>}
+        : reviewProductUrl && <div className="phase-artifacts review-action"><a href={reviewProductUrl} target="_blank" rel="noreferrer"><GitPullRequest />Review implementation PR</a></div>}
     </div>
     : reviewProductUrl ? <div className="phase-artifacts review-action"><PullRequestActions url={reviewProductUrl} githubLabel="Review" /></div> : null;
 
@@ -527,8 +517,7 @@ function TraceabilityWorkflowMap({
             {phase.id === "approval" && renderApproval()}
             {expanded && phase.id === "design" && renderDesign()}
             {expanded && phase.id === "implementation" && <div className="phase-drill" aria-label="Implementation details">
-              {implementationSteps.map(renderStep)}
-              <details className="implementation-saved-evidence"><summary>Saved work and evidence</summary><Implementation runId={projection.run.id} data={implementation.data} error={implementation.error} /></details>
+              {renderStep(implementationAuthor)}
             </div>}
           </article>;
         })}

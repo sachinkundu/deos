@@ -117,15 +117,6 @@ export const phaseDisplayStatus = (
   return phase.visits.length > 0 ? "Complete" : "Upcoming";
 };
 
-export type ImplementationSubstepId = "implementation_tasks" | "implementation_build" | "implementation_proof_check" | "implementation_publish" | "implementation_merge";
-
-export const implementationSubstepForNode = (nodeId: string): ImplementationSubstepId =>
-  ["implementation_prepare", "implementation_tasks", "implementation_rebase_tasks"].includes(nodeId) ? "implementation_tasks"
-    : nodeId === "implementation_proof_check" ? "implementation_proof_check"
-      : ["implementation_branch_write", "implementation_publish"].includes(nodeId) ? "implementation_publish"
-        : ["implementation_merge_recheck", "implementation_merge"].includes(nodeId) ? "implementation_merge"
-          : "implementation_build";
-
 export const reviewPhaseForNode = (nodeId: string): "planning" | "design" | "implementation" | null =>
   nodeId.startsWith("implementation_") || nodeId === "code_merged" ? "implementation"
     : nodeId.startsWith("design_") || nodeId === "merge_design_pr" ? "design"

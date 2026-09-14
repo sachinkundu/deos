@@ -6,7 +6,6 @@ import {
   reviewVisitStatus,
   isDesignAuthorVisit,
   designSubstepForNode,
-  implementationSubstepForNode,
   reviewPhaseForNode,
   isDesignStageWorkflow,
   isPlanningAuthorVisit,
@@ -42,9 +41,6 @@ test("implementation appears in the existing map before work starts and owns its
   assert.equal(phase.visits.length,3);
   assert.equal(latestPhaseId(builds),"implementation");
   assert.equal(phaseDisplayStatus(phase,"implementation","active"),"In progress");
-  assert.equal(implementationSubstepForNode("implementation_rebase_tasks"),"implementation_tasks");
-  assert.equal(implementationSubstepForNode("implementation_branch_write"),"implementation_publish");
-  assert.equal(implementationSubstepForNode("implementation_merge_recheck"),"implementation_merge");
 });
 
 test("implementation joins the shared human review branch only at its durable gate", () => {
