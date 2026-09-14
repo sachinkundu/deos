@@ -12,6 +12,8 @@ Project setup SHALL bind one checked `Access` account, one numeric `GitHub` user
 
 The web page MUST NOT set trusted user fields. The `BettaView` service SHALL send its checked account and user IDs to `DEOS` through an authenticated call. `DEOS` SHALL check that call and all IDs against the frozen run link. It MUST NOT trust identity data from the page. This check is needed because an `Access` context does not pass through a service binding.
 
+The browser MUST NOT hold a `Linear` key or read or write `Linear` task state. Only `DEOS` SHALL use its private host access to read or change that state.
+
 Before a host write, `DEOS` SHALL also check the link from the pull request to the run and gate. It SHALL check that the head is still live. One host login by itself MUST NOT grant access to the task.
 
 #### Scenario: Allowed person is set up
@@ -48,6 +50,11 @@ Before a host write, `DEOS` SHALL also check the link from the pull request to t
 
 - **WHEN** the page body names an account or user that differs from the trusted service proof.
 - **THEN** `DEOS` ignores the page fields, rejects the review, and records the safe rule fault.
+
+#### Scenario: Browser asks for direct task access
+
+- **WHEN** the browser asks for a `Linear` key or tries to read or write task state.
+- **THEN** `BettaView` gives it no key or direct access and sends no browser request to `Linear`.
 
 ### Requirement: Save the host review before moving the task
 
