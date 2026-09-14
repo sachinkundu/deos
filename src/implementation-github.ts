@@ -75,7 +75,7 @@ export class ImplementationGitHub {
         `GitHub implementation ${init?.method ?? "GET"} ${path}`,
         response,
       );
-    return (await response.json()) as T;
+    return response.status === 204 ? null as T : (await response.json()) as T;
   }
   async ref(branch: string, missing = false): Promise<string | null> {
     const row = await this.json<{ object: { sha: string } } | null>(

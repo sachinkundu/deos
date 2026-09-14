@@ -39,6 +39,7 @@ async function fixture() {
       async pause() { calls.push("pause"); states.set(id, "paused"); pauseHook(); },
       async resume() { calls.push("resume"); states.set(id, "waiting"); },
       async terminate() { calls.push("terminate"); states.set(id, "terminated"); },
+      async sendEvent() { calls.push("send-event"); },
     }; },
     async createBatch(items: Array<{ id: string }>) {
       calls.push("create");
@@ -56,7 +57,7 @@ async function fixture() {
   });
   const input: HandoffInput = { version: 1, runId: "run-1", sourceWorkflowInstanceId: sourceId,
     sourceDefinitionDigest: source.digest, visitSequence: 28, designHeadSha: head,
-    humanUserId: "human", targetVersion: 26, requestedBy: "operator@example.com" };
+    humanUserId: "human", targetVersion: 27, requestedBy: "operator@example.com" };
   const request = (extra: Partial<HandoffInput> = {}) => new Request("https://worker/implementation-handoffs", {
     method: "POST", headers: { Authorization: "Bearer secret" }, body: JSON.stringify({ ...input, ...extra }),
   });
@@ -66,7 +67,7 @@ async function fixture() {
 }
 
 test("handoff preserves every frozen planning/design job and node and only attaches the implementation tail", async () => {
-  const target = await implementationHandoffDefinition(source, tail, 26);
+  const target = await implementationHandoffDefinition(source, tail, 27);
   assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(target), target.digest), target);
   for (const [id, job] of Object.entries(source.jobs)) assert.deepEqual(target.jobs[id], job);
   for (const [id, node] of Object.entries(source.nodes))
@@ -74,7 +75,7 @@ test("handoff preserves every frozen planning/design job and node and only attac
   assert.equal(target.nodes.merge_design_pr.edges.completed, "implementation_prepare");
   assert.equal(target.nodes.implementation_merge.edges.completed, "code_merged");
   assert.deepEqual(target.nodes.design_review, source.nodes.design_review);
-  await assert.rejects(implementationHandoffDefinition(target, tail, 27), /incompatible_definition/);
+  await assert.rejects(implementationHandoffDefinition(target, tail, 28), /incompatible_definition/);
 });
 
 test("preflight is read-only; applying freezes the checked human and preserves the pending design approval", async () => {
@@ -91,7 +92,7 @@ test("preflight is read-only; applying freezes the checked human and preserves t
     assert.equal(run.definition_id, "implementation");
     const gates = f.db.sqlite.prepare("SELECT * FROM human_gate_visits ORDER BY visit_sequence").all();
     assert.equal(gates.length, 2);
-    for (const g of gates) { assert.equal(g.state, "open"); assert.equal(g.approved_head_sha, head); assert.equal(g.decision_delivery_id, null); }
+    for (const g of gates) { assert.equal(g.state, "open"); assert.equal(g.approved_head_sha, head); assert.equal(g.decision_delivery_id, null); assert.equal(g.created_at, stamp); }
     assert.deepEqual(f.calls, ["pause", "terminate", "create"]);
     assert.equal(f.states.get(sourceId), "terminated"); assert.equal(f.states.get(run.workflow_instance_id), "waiting");
     await f.controller.handle(f.request({ execute: true, planDigest: p.planDigest }));

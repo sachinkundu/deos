@@ -127,6 +127,7 @@ class Default(WorkerEntrypoint):
                     )
                 )
             raise
+        await _record_implementation_test_event(self.env.DB, event, delivery)
         if result.meta.changes == 0:
             if relevant:
                 try:
@@ -213,6 +214,26 @@ def _javascript_value(value: object):
     from pyodide.ffi import to_js
 
     return to_js(value, dict_converter=Object.fromEntries)
+
+
+async def _record_implementation_test_event(database: Any, event: ApplicationEvent, delivery: Delivery) -> None:
+    """Capture only verified provider state changes for a reserved test issue."""
+    from pyodide.ffi import jsnull
+
+    if event.event_kind != "Issue.update" or not event.actor_id or not event.state_id:
+        return
+    await database.prepare(
+        """INSERT OR IGNORE INTO implementation_test_events
+        (delivery_id, resource_id, issue_id, actor_id, from_state_id, to_state_id,
+         provider_time, payload_sha, received_at)
+        SELECT ?, resource_id, ?, ?, ?, ?, ?, ?, ? FROM implementation_resources
+        WHERE kind='safe_test' AND provider='github-linear-review-v1' AND provider_resource_id=?"""
+    ).bind(
+        delivery.delivery_id, event.issue_id, event.actor_id,
+        event.previous_state_id if event.previous_state_id else jsnull,
+        event.state_id, event.occurred_at.isoformat(), delivery.payload_hash,
+        delivery.received_at.isoformat(), event.issue_id,
+    ).run()
 
 
 def _observation(

@@ -11,9 +11,17 @@ if(!path || path==='--help') {
     {action:'browser',operation:'fill',selector:'input[name=title]',text:'Canary note'},
     {action:'browser',operation:'click',selector:'button[type=submit]'},
     {action:'browser',operation:'screenshot',caption:'Saved note after reload'},
-    {action:'document',url:'https://developers.cloudflare.com/workers/wrangler/commands/'}
+    {action:'document',url:'https://developers.cloudflare.com/workers/wrangler/commands/'},
+    {action:'safe_test',operation:'fixture'},
+    {action:'safe_test',operation:'github.read',resourceId:'FROM_FIXTURE',path:'/reviews'},
+    {action:'safe_test',operation:'github.review',resourceId:'FROM_FIXTURE',operationId:'unique-request-id',body:{commit_id:'FIXTURE_HEAD',event:'COMMENT',body:'Canary review'}},
+    {action:'safe_test',operation:'linear.move',resourceId:'FROM_FIXTURE',operationId:'another-request-id',issueId:'FIXTURE_ISSUE',stateId:'FIXTURE_WORK_STATE'},
+    {action:'safe_test',operation:'events',resourceId:'FROM_FIXTURE'},
+    {action:'safe_test',operation:'proof',resourceId:'FROM_FIXTURE',githubOperationId:'unique-request-id',linearOperationId:'another-request-id'}
   ],notes:['Save one JSON request per call.','Preview fields are optional except at least one of main or assets.','Browser state returns page content and console messages. Inspect each screenshot with view_image using the returned imagePath.','For documentation citations use the final canonical URL returned by the document call.']},null,2)+'\n');
   process.exit(0);
 }
-const response=await fetch('http://127.0.0.1:8790/tool',{method:'POST',headers:{'Content-Type':'application/json'},body:await readFile(path,'utf8')});
+const body=await readFile(path,'utf8');
+const endpoint=JSON.parse(body).action==='safe_test'?'provider-test':'tool';
+const response=await fetch(`http://127.0.0.1:8790/${endpoint}`,{method:'POST',headers:{'Content-Type':'application/json'},body});
 const text=await response.text();process.stdout.write(text+'\n');if(!response.ok)process.exitCode=1;

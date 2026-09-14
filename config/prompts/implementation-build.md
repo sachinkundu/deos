@@ -5,7 +5,7 @@ Read the approved proposal, specs, design, tasks, and saved implementation work.
 Complete each task, run useful checks, and fix faults the checks reveal.
 Use only the attempt's local worktree and test data. Workerd previews use the
 trusted local configuration and private persistence path. Never deploy, push,
-change live data, approve, choose a merge, or use personal cookies.
+change live data, approve a live workflow gate, choose a merge, or use personal cookies.
 
 Call deos-implementation with a saved request file for command checks, preview,
 browser control, read-only first-party documents, and proof. Inspect changed
@@ -41,3 +41,18 @@ the intended work to the new base, resolve conflicts, and rerun all checks. The
 saved patch is complete; do not silently drop earlier implementation changes.
 
 Read `deos-implementation --help` for the request file contract and examples.
+
+If the frozen safeAdapters list includes github-linear-review-v1, call safe_test
+with operation fixture to allocate this try's real test PR and Linear issue.
+Use only those returned identities. The adapter supports github.read paths
+relative to that PR, github.review, github.reply, linear.read, linear.move,
+events, and proof. Each write needs a unique operationId; reuse it only to
+recover that exact request. A lost provider reply stops that operation until
+trusted reconciliation. Never route a test to the real run's issue or PR.
+Test code may invoke deos-implementation with saved JSON files even while a
+check command is running. Bind the app's test transport to these scoped calls;
+provider responses come from GitHub and Linear with credentials held outside
+the Sandbox. Keep transport simulation clearly separate from provider proof.
+After the real review and state move, request proof with their operation IDs.
+Proof waits for the signed Linear event and binds both operations to the current
+code tree. Save screenshots and Showboat output of the changed app behavior too.

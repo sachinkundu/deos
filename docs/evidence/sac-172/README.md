@@ -1,6 +1,6 @@
-# SAC-172 implementation: ready for canary selection
+# SAC-172 implementation: SAC-182 canary preparation
 
-The implementation is on `codex/sac-172-implementation`, based on the merged design at `584d676e18baab6032446c75b805fa410f6ec456`. No implementation PR has been opened. No staging or production deployment, route activation, existing-run migration, or test issue has been started.
+The implementation is on `codex/sac-172-implementation`, based on the merged design at `584d676e18baab6032446c75b805fa410f6ec456`. SAC-182 is the selected canary. No SAC-172 implementation PR has been opened. The first backend rollout and migrations 0037/0038 are deployed. The final provider adapter rollout and checked design handoff are being verified before the user approves SAC-182.
 
 ## What is implemented
 
@@ -30,9 +30,13 @@ The Git publication test speaks the real receive-pack protocol to a local Git se
 
 The packaged-runner probe uses a local proof receiver and a model catalog fixture for native configuration discovery. It makes no model request and uses no provider credentials. The model fixture adapts the laptop catalog to the pinned CLI's required metadata field; it is not proof of the provider's model catalog. The native CLI used its bundled bubblewrap fallback. Neither this probe nor the portal fixture is provider-originated end-to-end evidence.
 
-## Next: choose and run the first canary
+## SAC-182: first automatic canary
 
-The user asked to pause here to choose the issue. A useful candidate is remembering BettaView's file sidebar width across reloads, with correct clamping on a smaller screen. The current app initializes that width from the viewport on each load. This is a proposed canary, not an issue that has been created or started.
+The user selected SAC-182, Continue the workflow from BettaView reviews. Its design is at Human Review in PR #136. The user authorized deployment at that gate so approval can continue through automatic implementation. A guarded handoff preserves the frozen planning/design jobs and pending approval, adds the implementation tail, and freezes the checked human and isolated provider-test profile. It rejects a raced human event or changed design head.
+
+The canary uses a per-try disposable PR and Linear task in the sample project. Trusted operations restrict tests to those exact resources, retain uncertain writes without repeating them, and require the matching signed Linear delivery before accepting provider proof. The author never receives the provider credentials. The adapter alone is not proof of SAC-182's changed behavior; the canary must still exercise that behavior through its preview and collect browser and command evidence.
+
+Additional local checks on September 14 passed: 461 backend tests, 72 Python tests, TypeScript, changed Python lint, and a Linux container probe with a nested provider-adapter command. The probe has a local receiver and makes no provider/model request. Its purpose is to prove that a recorded test command can call the adapter without deadlocking. The handoff tests also cover preserving the pending approval, compare-and-set races, and lost replacement creation responses.
 
 The agreed canary must use the real provider workflow through planning/design approval and automatic implementation to its PR. Its evidence must include the deployed version and container digest, fresh resource records, actual native web grounding, browser screenshots of the changed behavior, durable proof read-back, and the final GitHub PR subject. Concurrent tries must not share browser, preview, or test data. Exercise clarification, revision, and base movement deliberately where agreed; preserve human gates.
 

@@ -6,6 +6,7 @@ import { implementationGitHub, type ImplementationPull } from "./implementation-
 import { workflowInstanceIdentity } from "./orchestration-identity.ts";
 import { sha256Hex } from "./implementation-hash.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { ImplementationProviderTest } from "./implementation-provider-test.ts";
 
 const stable = (value: unknown): string => JSON.stringify(value, (_key, item: unknown) =>
   item && typeof item === "object" && !Array.isArray(item)
@@ -139,7 +140,11 @@ export class ImplementationHandoffController {
     const stored = await new D1OrchestrationStore(this.env.DB).findDefinitionSnapshot(run.definition_id, run.definition_version);
     if (!stored) throw new Error("implementation_handoff_source_missing");
     const source = await restoreWorkflowDefinition(stored.canonical_json, run.definition_digest);
-    const target = await implementationHandoffDefinition(source, this.tail, input.targetVersion);
+    const testProfile = await this.env.DB.prepare("SELECT run_id FROM implementation_test_profiles WHERE run_id=?")
+      .bind(run.run_id).first();
+    const tail = testProfile ? { ...this.tail, implementationPolicy: { ...this.tail.implementationPolicy!,
+      safeAdapters: [(await new ImplementationProviderTest(this.env).profile(run.run_id)).row.adapter_binding] } } : this.tail;
+    const target = await implementationHandoffDefinition(source, tail, input.targetVersion);
     const intent = await this.env.DB.prepare("SELECT source_delivery_id FROM dispatch_intents WHERE run_id=? AND workflow_instance_id=?")
       .bind(run.run_id, run.workflow_instance_id).first<{ source_delivery_id: string }>();
     if (!intent) throw new Error("implementation_handoff_dispatch_missing");
@@ -203,10 +208,10 @@ export class ImplementationHandoffController {
         (run_id,visit_sequence,node_id,gate_kind,work_type,work_product_kind,round,state,repository,pull_request_database_id,
          pull_request_number,pull_request_url,head_branch,base_branch,approved_head_sha,created_at)
         SELECT g.run_id,g.visit_sequence+1,g.node_id,g.gate_kind,g.work_type,g.work_product_kind,g.round,'open',g.repository,
-          g.pull_request_database_id,g.pull_request_number,g.pull_request_url,g.head_branch,g.base_branch,g.approved_head_sha,?
+          g.pull_request_database_id,g.pull_request_number,g.pull_request_url,g.head_branch,g.base_branch,g.approved_head_sha,g.created_at
         FROM human_gate_visits g JOIN orchestration_runs r ON r.run_id=g.run_id
         WHERE g.run_id=? AND g.visit_sequence=? AND r.last_transition_id=? AND r.workflow_instance_id=?`)
-        .bind(now, run.run_id, run.current_visit_sequence, transitionId, plan.targetWorkflowInstanceId),
+        .bind(run.run_id, run.current_visit_sequence, transitionId, plan.targetWorkflowInstanceId),
       db.prepare(`UPDATE dispatch_intents SET workflow_instance_id=?,updated_at=? WHERE run_id=? AND workflow_instance_id=?
         AND EXISTS(SELECT 1 FROM orchestration_runs r WHERE r.run_id=dispatch_intents.run_id AND r.last_transition_id=?)`)
         .bind(plan.targetWorkflowInstanceId, now, run.run_id, run.workflow_instance_id, transitionId),
@@ -244,6 +249,12 @@ export class ImplementationHandoffController {
     const instance = await this.env.ORCHESTRATION_WORKFLOW.get(plan.targetWorkflowInstanceId);
     const status = (await instance.status()).status;
     if (!["queued", "running", "waiting", "paused"].includes(status)) throw new Error(`implementation_handoff_target_status:${status}`);
+    // A dispatcher can have read the old instance just before the handoff.
+    // Forward saved, unconsumed deliveries after stopping that instance.
+    const inbox = await this.env.DB.prepare(`SELECT delivery_id FROM workflow_event_inbox
+      WHERE run_id=? AND state IN ('pending','sent') AND julianday(provider_time)>=julianday(?) ORDER BY provider_time`)
+      .bind(record.run_id, plan.gate.created_at).all<{ delivery_id: string }>();
+    for (const event of inbox.results) await instance.sendEvent({ type: "linear-event", payload: { deliveryId: event.delivery_id } });
     await this.env.DB.prepare("UPDATE implementation_handoffs SET state='established',updated_at=? WHERE handoff_id=?")
       .bind(new Date().toISOString(), record.handoff_id).run();
     return Response.json({ handoffId: record.handoff_id, state: "established", workflowStatus: status, planDigest: record.plan_digest, plan });

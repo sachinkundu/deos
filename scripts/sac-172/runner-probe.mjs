@@ -58,6 +58,7 @@ const receiver = createServer(async (req, res) => {
   const result =
     request.action === "preview"
       ? { origin: "http://127.0.0.1:8787" }
+      : request.action === "safe_test" ? { localProviderAdapter: true }
       : {
           ...request.subject,
           id: "local-showboat",
@@ -134,11 +135,13 @@ try {
     ],
     behavior: true,
   });
+  await writeFile("/tmp/provider-test-request.json", JSON.stringify({ action: "safe_test", operation: "fixture" }), { mode: 0o644 });
+  await tool({ action: "check", argv: ["deos-implementation", "/tmp/provider-test-request.json"] });
   await runtime.finish();
   const candidate = JSON.parse(
     await readFile("/deos/output/implementation-candidate.json"),
   );
-  assert.equal(candidate.checks.length, 1);
+  assert.equal(candidate.checks.length, 2);
   assert.equal(candidate.checks[0].exitCode, 0);
   assert.equal(candidate.proof.length, 1);
   await symlink("/root/.codex/config.toml", "/deos/output/escape");

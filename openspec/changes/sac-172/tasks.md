@@ -31,6 +31,6 @@
 
 - [x] 5.1 Verify migrations, frozen graph compatibility, job contracts, isolation, denial cases, resource ambiguity, cleanup, proof freshness, citations, publication retries, and human gate behavior.
 - [x] 5.2 Run repository checks and exercise the built implementation in isolated staging as needed, recording actual outcomes and limitations.
-- [ ] 5.3 After implementation is ready, stop with the user to select a useful first automatic canary issue and its expected proof.
+- [x] 5.3 After implementation is ready, stop with the user to select a useful first automatic canary issue and its expected proof. The user selected SAC-182; exercise the real review choices and their resulting workflow transitions.
 - [ ] 5.4 Run the agreed canary through the real provider workflow to its implementation PR, with browser or Showboat proof, durable read-back, and concurrent-run isolation checks.
 - [ ] 5.5 Publish the SAC-172 implementation PR only after all agreed tests and canary evidence pass.

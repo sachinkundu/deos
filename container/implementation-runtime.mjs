@@ -356,7 +356,40 @@ export async function setupImplementation(job) {
   let previewLog = null;
   let previewError = null;
   let chain = Promise.resolve();
+  let providerChain = Promise.resolve();
+  let stateWrites = Promise.resolve();
+  const persistState = () => {
+    stateWrites = stateWrites.then(() => writeFile(`${ROOT}/state.json`, JSON.stringify(state), { mode: 0o600 }));
+    return stateWrites;
+  };
   const server = createServer((req, res) => {
+    // A checked test process may call the provider adapter while its enclosing
+    // check waits for exit. Keep these narrow requests off the command queue.
+    if (req.method === "POST" && req.url === "/provider-test") {
+      providerChain = providerChain.then(async () => {
+        const chunks = []; let size = 0;
+        for await (const chunk of req) {
+          size += chunk.length;
+          if (size > 1024 * 1024) throw new Error("Provider test request exceeds 1048576 bytes");
+          chunks.push(chunk);
+        }
+        const request = JSON.parse(Buffer.concat(chunks).toString());
+        if (request.action !== "safe_test") throw new Error("Only scoped provider tests use this endpoint");
+        const current = await snapshot(job.cwd);
+        const result = await broker({ ...request, subject: { change: job.openspecChange,
+          approvedDesignSha: input.approvedDesignSha, testedBaseSha: current.testedBaseSha, treeSha: current.treeSha } });
+        if (result.proof && !state.proof.some(p => p.id === result.proof.id)) state.proof.push(result.proof);
+        await persistState();
+        res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(result));
+      }).catch(async error => {
+        const diagnostic = { message: error.message, stack: error.stack, cause: error.cause, result: error.result };
+        try { await appendFile(journal, JSON.stringify({ operation: "provider-test", error: diagnostic }) + "\n"); }
+        catch (secondary) { diagnostic.storageError = { message: secondary.message, stack: secondary.stack }; process.stderr.write(JSON.stringify(diagnostic) + "\n"); }
+        if (!res.headersSent) res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(diagnostic));
+      });
+      return;
+    }
     chain = chain
       .then(async () => {
         if (req.method !== "POST" || req.url !== "/tool") {
@@ -555,7 +588,7 @@ export async function setupImplementation(job) {
               `Preview did not become ready: ${await readFile(`${ROOT}/preview.log`, "utf8")}`,
             );
           result = await broker({ action: "preview", port: 8787 });
-        } else if (["browser", "document", "search"].includes(request.action)) {
+        } else if (["browser", "document", "search", "safe_test"].includes(request.action)) {
           result = await broker({ ...request, subject });
           if (result.proof) state.proof.push(result.proof);
           if (result.imageBase64) {
@@ -569,9 +602,7 @@ export async function setupImplementation(job) {
             result.imagePath = imagePath;
           }
         } else throw new Error("Unsupported implementation tool action");
-        await writeFile(`${ROOT}/state.json`, JSON.stringify(state), {
-          mode: 0o600,
-        });
+        await persistState();
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(result));
       })
@@ -601,6 +632,8 @@ export async function setupImplementation(job) {
   return {
     async finish() {
       await chain;
+      await providerChain;
+      await stateWrites;
       const { patch, ...snap } = await snapshot(job.cwd);
       const result = JSON.parse(
         await readRegularFile("/deos/output/result.json", "/deos/output"),

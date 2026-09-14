@@ -7,6 +7,7 @@ import { CapabilityRouter } from "./capability-router.ts";
 import { verifyCapabilityToken } from "./capability-auth.ts";
 import { captureWorkflowErrors } from "./error-context.ts";
 import { ImplementationHandoffController } from "./implementation-handoff.ts";
+import { ImplementationProviderTest, type ReviewTestProfile } from "./implementation-provider-test.ts";
 import { D1CapabilityStore } from "./capability-store.ts";
 import { DeosWorkflow } from "./deos-workflow.ts";
 import { GitHubAppTokenProvider, GitHubCapabilityAdapter } from "./github-capability.ts";
@@ -147,6 +148,17 @@ export default {
       if (!definition) throw new Error("Implementation definition is unavailable");
       return captureWorkflowErrors(env.DB, env.ARTIFACTS, body.runId, path,
         () => new ImplementationHandoffController(env, definition).handle(request));
+    }
+    if (path === "/implementation-test-profiles") {
+      if (request.method !== "POST") return Response.json({ error: "method_not_allowed" }, { status: 405 });
+      if (!env.STAGE_RETRY_SECRET || request.headers.get("Authorization") !== `Bearer ${env.STAGE_RETRY_SECRET}`)
+        return Response.json({ error: "invalid_operator_capability" }, { status: 401 });
+      const body = await request.json() as { runId: string; profile: ReviewTestProfile; requestedBy: string };
+      if (typeof body?.runId !== "string" || typeof body.requestedBy !== "string" ||
+        !/^[a-zA-Z0-9._@-]{1,100}$/.test(body.requestedBy))
+        return Response.json({ error: "invalid_provider_test_profile" }, { status: 400 });
+      return captureWorkflowErrors(env.DB, env.ARTIFACTS, body.runId, path,
+        async () => Response.json(await new ImplementationProviderTest(env).configure(body.runId, body.profile, body.requestedBy)));
     }
     if (!path.startsWith("/capabilities/")) return new Response("not found", { status: 404 });
     // Only verified claims may associate diagnostics with a workflow.

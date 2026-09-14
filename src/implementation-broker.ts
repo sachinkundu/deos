@@ -17,6 +17,7 @@ import {
 import type { CapabilityClaims } from "./capability-auth.ts";
 import { readResponseText, responseError } from "./error-details.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { ImplementationProviderTest } from "./implementation-provider-test.ts";
 
 export class ImplementationBroker {
   readonly store: ImplementationStore;
@@ -77,6 +78,16 @@ export class ImplementationBroker {
         attempt.sandbox_id,
         { normalizeId: true, keepAlive: true },
       );
+      if (request.action === "safe_test") {
+        const result = await new ImplementationProviderTest(this.env).call(claims.runId, claims.attemptId, input.policy.safeAdapters, request);
+        if ("providerDeliveryId" in result && "evidence" in result) {
+          const proof = await this.proof(claims, subject, "provider_originated",
+            this.sanitize(JSON.stringify(result.evidence)), "application/json",
+            "Real GitHub review and signed Linear event on this try's isolated resources", result.providerDeliveryId);
+          return Response.json({ ...result, proof });
+        }
+        return Response.json(result);
+      }
       if (request.action === "preview") {
         if (request.port !== 8787)
           throw new ImplementationError(
@@ -377,22 +388,23 @@ export class ImplementationBroker {
   async proof(
     claims: CapabilityClaims,
     subject: ProofSubject,
-    kind: "showboat" | "browser_image",
+    kind: "showboat" | "browser_image" | "provider_originated",
     content: string | Uint8Array,
     mediaType: string,
     caption: string,
+    providerDeliveryId?: string,
   ): Promise<ImplementationProof> {
     const object = await this.store.put(
       claims.runId,
-      kind === "browser_image" ? "browser.png" : "showboat.md",
+      kind === "browser_image" ? "browser.png" : kind === "provider_originated" ? "provider-proof.json" : "showboat.md",
       content,
       mediaType,
     );
     const id = `${claims.attemptId}:${subject.treeSha}:${kind}:${object.sha256}`;
     await this.env.DB.prepare(
       `INSERT OR IGNORE INTO implementation_proof
-      (proof_id,run_id,attempt_id,kind,approved_design_sha,tested_base_sha,tree_sha,r2_key,sha256,byte_size,media_type,caption,sanitized,created_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?)`,
+      (proof_id,run_id,attempt_id,kind,approved_design_sha,tested_base_sha,tree_sha,r2_key,sha256,byte_size,media_type,caption,sanitized,created_at,provider_delivery_id)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)`,
     )
       .bind(
         id,
@@ -408,6 +420,7 @@ export class ImplementationBroker {
         mediaType,
         caption,
         new Date().toISOString(),
+        providerDeliveryId ?? null,
       )
       .run();
     return {
@@ -418,6 +431,7 @@ export class ImplementationBroker {
       caption,
       sha256: object.sha256,
       sanitized: true,
+      ...(providerDeliveryId ? { providerDeliveryId } : {}),
     };
   }
   async cleanup(attemptId: string) {
@@ -465,7 +479,7 @@ export class ImplementationBroker {
               row.resource_id,
             )
             .run();
-        }
+        } else if (row.kind === "safe_test") await new ImplementationProviderTest(this.env).cleanup(row);
       } catch (error) {
         errors.push(error);
         await this.store.error(

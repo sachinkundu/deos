@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: implementation
-  version: 25
+  version: 26
 spec:
   implementationPolicy:
     uiPaths:
