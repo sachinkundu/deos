@@ -5,10 +5,10 @@ import { provisionGrounding, verifyGroundingContext, verifyNativeGrounding } fro
 import { setupNativeReview } from "./native-review-setup.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { notifyAttemptCompletion } from "./attempt-completion.mjs";
-import { createWriteStream } from "node:fs";
-import { access, appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { finished } from "node:stream/promises";
+import { atomicJson, captureSupervisorStreams, recordHeartbeat } from "./supervisor-io.mjs";
 
 import {
   designCorrectionPrompt,
@@ -34,38 +34,6 @@ const MAXIMUM_AUTHOR_COMPLETION_REPAIRS = 2;
 let completionJob = null;
 let heartbeatTimer;
 let deadlineTimer;
-
-const atomicJson = async (path, value) => {
-  const temporary = `${path}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(value)}\n`, { mode: 0o600 });
-  await rename(temporary, path);
-};
-
-const trustedCapture = async (name) => {
-  const root = await mkdtemp(`/tmp/deos-${name}-`);
-  const path = `${root}/${name}`;
-  return {
-    stream: createWriteStream(path, { flags: "wx", mode: 0o600 }),
-    async finalize(destination, replace = true) {
-      await finished(this.stream);
-      let shouldWrite = replace;
-      if (!replace) {
-        try {
-          await access(destination);
-        } catch (caughtError) {
-          recordCaughtError(caughtError, "container/supervisor.mjs:46");
-          shouldWrite = true;
-        }
-      }
-      if (shouldWrite) {
-        const temporary = `${destination}.tmp`;
-        await writeFile(temporary, await readFile(path), { mode: 0o600 });
-        await rename(temporary, destination);
-      }
-      await rm(root, { recursive: true, force: true });
-    },
-  };
-};
 
 const finalizeMechanicalOutputs = async (job) => {
   await writeFile(
@@ -200,8 +168,7 @@ const main = async () => {
     await atomicJson(`${OUTPUT_ROOT}/agent-input-manifest.json`, { ...effective, attemptId: job.attemptId, jobKind: job.nodeId,
       contextFiles: verifyGroundingContext(job.materializedContext, job.grounding) });
   }
-  const transcript = await trustedCapture("transcript.jsonl");
-  const validation = await trustedCapture("stderr.txt");
+  const { transcript, validation } = await captureSupervisorStreams();
   const reviewer = job.agentRole === "reviewer";
   const planningAuthor = !job.implementationKind && job.agentRole === "author" &&
     typeof job.openspecChange === "string" &&
@@ -214,7 +181,7 @@ const main = async () => {
     processPid: activePid,
     observedAt: new Date().toISOString(),
   });
-  heartbeatTimer = setInterval(() => void heartbeat(), 30_000);
+  heartbeatTimer = setInterval(() => void recordHeartbeat(heartbeat), 30_000);
   deadlineTimer = setTimeout(() => {
     if (activePid === null) return;
     try {

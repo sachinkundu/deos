@@ -7,6 +7,8 @@ import { execFileSync } from "node:child_process";
 import { implementationFailureProgram, captureImplementationFailure } from "../src/implementation-failure-capture.ts";
 import type { AgentAttemptRecord, SandboxView, SandboxProcessView } from "../src/sandbox-controller.ts";
 import { sha256Hex } from "../src/implementation-hash.ts";
+import { captureSupervisorStreams } from "../container/supervisor-io.mjs";
+import { finished } from "node:stream/promises";
 
 test("a killed supervisor's working tree and private captures survive without a result or candidate", async () => {
   const root = await mkdtemp(join(tmpdir(), "implementation-failure-"));
@@ -19,9 +21,10 @@ test("a killed supervisor's working tree and private captures survive without a 
     const base = git("rev-parse", "HEAD");
     await writeFile(join(cwd, "app.txt"), "recovered work\n");
     await writeFile(join(cwd, "image.bin"), Buffer.from([0, 1, 255]));
-    for (const name of ["transcript", "validation"]) {
-      const path = await mkdtemp(join(tempRoot, `deos-${name}-`));
-      await writeFile(join(path, name), `partial ${name}\n`, { mode: 0o600 });
+    const captures = await captureSupervisorStreams(tempRoot);
+    for (const [name, capture] of Object.entries(captures)) {
+      capture.stream.end(`partial ${name}\n`);
+      await finished(capture.stream);
     }
     const request = { runtimeModule: resolve("container/implementation-runtime.mjs"), cwd, runRoot, outputRoot, tempRoot,
       runId: "run-1", attemptId: "failed-build", kind: "build", change: "sample", approvedDesignSha: base, testedBaseSha: base };

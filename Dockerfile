@@ -33,6 +33,7 @@ COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
 COPY container/implementation-*.mjs /deos/bin/
 COPY container/deos-implementation /usr/local/bin/deos-implementation
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
+COPY container/supervisor-io.mjs /deos/bin/supervisor-io.mjs
 COPY container/attempt-completion.mjs /deos/bin/attempt-completion.mjs
 COPY container/author-completion.mjs /deos/bin/author-completion.mjs
 COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs

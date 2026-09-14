@@ -30,7 +30,7 @@ await save('implementation-recovery.json', JSON.stringify({
 }));
 // A killed supervisor may not have finalized its private capture streams.
 // Each attempt owns a fresh sandbox. Refuse ambiguous or author-owned sources.
-for (const [name, destination] of [['transcript', 'transcript.jsonl'], ['validation', 'validation.txt']]) {
+for (const [name, destination] of [['transcript.jsonl', 'transcript.jsonl'], ['stderr.txt', 'validation.txt']]) {
   try { await lstat(join(request.outputRoot, destination)); continue; }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   const directories = (await readdir(request.tempRoot)).filter(entry => entry.startsWith('deos-' + name + '-'));
