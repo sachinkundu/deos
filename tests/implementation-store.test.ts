@@ -127,6 +127,37 @@ test("an ambiguous create-only upload reconciles only by reading the exact bytes
     db.close();
   }
 });
+test("terminal attempt state repairs stale try summaries without changing attempts, errors or uncertainty", async () => {
+  const db = new ImplementationTestDatabase(), bucket = new ImplementationTestBucket();
+  try {
+    seedRun(db); seedRun(db, "run-2", "issue-2");
+    const store = new ImplementationStore(db as unknown as D1Database, bucket as unknown as R2Bucket);
+    const work = await store.allocate(input(), {userId:"human",revision:1}, "SAC-172", 1);
+    const other = await store.allocate(input("run-2"), {userId:"human",revision:1}, "SAC-172", 2);
+    for (const [id, run, state, status] of [
+      ["failed",work,"failed","running"], ["interrupted",work,"interrupted","completed"],
+      ["timeout",work,"absolute_timeout","running"], ["active",work,"running","running"],
+      ["completed",work,"completed","completed"], ["uncertain",work,"failed","manual_reconciliation_required"],
+      ["retry",work,"failed","retry_required"], ["other",other,"failed","running"],
+    ] as const) {
+      seedAttempt(db, id, run.run_id);
+      await store.beginTry(run, {attempt_id:id,sandbox_id:`impl-${id}`,visit_sequence:1}, "build");
+      db.sqlite.prepare("UPDATE agent_attempts SET state=?,result_detail='original failure' WHERE attempt_id=?").run(state,id);
+      db.sqlite.prepare("UPDATE implementation_tries SET status=?,primary_error_manifest='saved-error',public_error_code='saved-code' WHERE attempt_id=?").run(status,id);
+    }
+    const attempts = db.sqlite.prepare("SELECT * FROM agent_attempts ORDER BY attempt_id").all();
+    await store.reconcileFailedTries("run-1");
+    const tries = db.sqlite.prepare("SELECT attempt_id,status,primary_error_manifest,public_error_code,updated_at FROM implementation_tries ORDER BY attempt_id").all();
+    assert.deepEqual(Object.fromEntries(tries.map(row => [row.attempt_id,row.status])), {
+      active:"running",completed:"completed",failed:"failed",interrupted:"interrupted",other:"running",
+      retry:"retry_required",timeout:"absolute_timeout",uncertain:"manual_reconciliation_required",
+    });
+    assert.ok(tries.every(row => row.primary_error_manifest === "saved-error" && row.public_error_code === "saved-code"));
+    assert.deepEqual(db.sqlite.prepare("SELECT * FROM agent_attempts ORDER BY attempt_id").all(), attempts);
+    await store.reconcileFailedTries("run-1");
+    assert.deepEqual(db.sqlite.prepare("SELECT attempt_id,status,primary_error_manifest,public_error_code,updated_at FROM implementation_tries ORDER BY attempt_id").all(), tries);
+  } finally { db.close(); }
+});
 test("an eligible human event and the graph move commit atomically; replay cannot consume another decision", async () => {
   const db = new ImplementationTestDatabase(),
     bucket = new ImplementationTestBucket();

@@ -278,6 +278,18 @@ export class ImplementationStore {
       );
     return row;
   }
+  async reconcileFailedTries(runId: string) {
+    // Agent attempts own process state. A collected candidate or recoverable tool
+    // error must not leave the implementation projection running after failure.
+    await this.db.prepare(`
+      UPDATE implementation_tries AS t
+      SET status=(SELECT a.state FROM agent_attempts a WHERE a.attempt_id=t.attempt_id AND a.run_id=t.run_id),
+          updated_at=?
+      WHERE t.run_id=? AND t.status NOT IN ('manual_reconciliation_required','retry_required')
+        AND EXISTS (SELECT 1 FROM agent_attempts a WHERE a.attempt_id=t.attempt_id AND a.run_id=t.run_id
+          AND a.state IN ('failed','interrupted','absolute_timeout') AND a.state<>t.status)`)
+      .bind(new Date().toISOString(), runId).run();
+  }
   async beginTry(
     run: ImplementationRun,
     attempt: { attempt_id: string; sandbox_id: string; visit_sequence: number },

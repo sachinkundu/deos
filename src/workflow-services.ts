@@ -1379,9 +1379,12 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     jobId: string,
     definition: LoadedWorkflowDefinition,
   ) {
+    const implementation = definition.jobs[jobId].inputs.includes('implementation_context');
     try {
+      if (implementation) await this.implementation.store.reconcileFailedTries(run.run_id);
       const observation = await this.agents.execute(run, nodeId, jobId, definition);
-      if (observation.state === 'completed' && observation.attemptId && definition.jobs[jobId].inputs.includes('implementation_context')) {
+      if (implementation) await this.implementation.store.reconcileFailedTries(run.run_id);
+      if (observation.state === 'completed' && observation.attemptId && implementation) {
         const uncertain = await this.env.DB.prepare(`SELECT t.attempt_id FROM implementation_tries t
           WHERE t.attempt_id=? AND (t.status='manual_reconciliation_required' OR EXISTS
           (SELECT 1 FROM implementation_resources r WHERE r.attempt_id=t.attempt_id AND r.status='quarantined'))`)
