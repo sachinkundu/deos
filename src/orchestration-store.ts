@@ -73,6 +73,10 @@ export interface OrchestrationRunRecord {
   route_repository_revision?: number | null;
   route_workflow_revision?: number | null;
   route_review_revision?: number | null;
+  frozen_access_account?: string | null;
+  frozen_github_user_id?: number | null;
+  frozen_linear_user_id?: string | null;
+  bettaview_account_policy_version?: number | null;
 }
 
 export interface ProjectWorkflowPolicyRecord {
@@ -148,6 +152,7 @@ export interface WorkflowInboxRecord {
   to_state_id: string | null;
   to_state_name: string;
   payload_digest: string;
+  review_id?: string | null;
   state: "pending" | "sent" | "claimed" | "processed" | "duplicate" | "unmatched";
 }
 
@@ -344,6 +349,8 @@ export interface OrchestrationDispatchStore {
   ): Promise<void>;
   insertInboxEvent(event: WorkflowInboxEvent, now: string): Promise<boolean>;
   findInboxEvent(deliveryId: string): Promise<WorkflowInboxRecord | null>;
+  findBettaViewReviewChoice?(deliveryId: string): Promise<BettaViewReviewChoice | null>;
+  completeBettaViewReviewChoice?(reviewId: string, deliveryId: string, now: string): Promise<boolean>;
   markInboxState(
     deliveryId: string,
     expected: "pending" | "sent" | "claimed",
@@ -352,9 +359,18 @@ export interface OrchestrationDispatchStore {
   ): Promise<boolean>;
 }
 
+export interface BettaViewReviewChoice {
+  reviewId: string;
+  reviewType: "COMMENT" | "REQUEST_CHANGES" | "APPROVE";
+  githubUserId: number;
+  linearAppActorId: string;
+}
+
 export interface WorkflowRuntimeStore {
   findRun(runId: string): Promise<OrchestrationRunRecord | null>;
   findInboxEvent(deliveryId: string): Promise<WorkflowInboxRecord | null>;
+  findBettaViewReviewChoice?(deliveryId: string): Promise<BettaViewReviewChoice | null>;
+  completeBettaViewReviewChoice?(reviewId: string, deliveryId: string, now: string): Promise<boolean>;
   claimInboxEvent(deliveryId: string, runId: string, now: string): Promise<WorkflowInboxRecord | null>;
   markInboxState(
     deliveryId: string,
@@ -813,14 +829,21 @@ export class D1OrchestrationStore {
           route_project_name, route_repository, route_github_installation_id,
           route_revision, route_digest, route_start_state_name, route_human_gate_state_id,
           route_repository_revision, route_workflow_revision, route_review_revision,
+          frozen_access_account, frozen_github_user_id, frozen_linear_user_id, bettaview_account_policy_version,
           sandbox_tier, sandbox_tier_source, sandbox_tier_policy_version, created_at, updated_at)
          SELECT ?, ?, ?, p.project_id, ?, ?, ?, ?, ?, ?, 'pending_dispatch', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                 CASE WHEN ? = 0 THEN NULL WHEN ? = 1 THEN 'claude' ELSE p.independent_review_provider END,
                 CASE WHEN ? = 0 THEN NULL WHEN ? = 1 THEN 'claude-opus-5' ELSE p.independent_review_model END,
                 ?, ?, p.linear_project_name, p.trial_repository, p.github_installation_id,
                 p.route_revision, p.route_digest, p.start_state_name, p.human_gate_state_id,
-                p.repository_revision, p.workflow_revision, p.independent_review_revision, ?, ?, ?, ?, ?
+                p.repository_revision, p.workflow_revision, p.independent_review_revision,
+                CASE WHEN p.bettaview_continuation_enabled = 1 THEN a.access_account END,
+                CASE WHEN p.bettaview_continuation_enabled = 1 THEN a.github_user_id END,
+                CASE WHEN p.bettaview_continuation_enabled = 1 THEN a.linear_user_id END,
+                CASE WHEN p.bettaview_continuation_enabled = 1 THEN a.policy_version END,
+                ?, ?, ?, ?, ?
          FROM project_workflow_policies p
+         LEFT JOIN project_bettaview_accounts a ON a.project_id = p.project_id AND a.status = 'current'
          WHERE p.project_id = ? AND p.dispatch_enabled = 1
            AND p.route_revision = ? AND p.route_digest = ?
            AND p.linear_project_name IS NOT NULL AND p.github_installation_id IS NOT NULL
@@ -955,6 +978,28 @@ export class D1OrchestrationStore {
     return this.database.prepare(
       "SELECT * FROM workflow_event_inbox WHERE delivery_id = ?",
     ).bind(deliveryId).first<WorkflowInboxRecord>();
+  }
+
+  findBettaViewReviewChoice(deliveryId: string): Promise<BettaViewReviewChoice | null> {
+    return this.database.prepare(`SELECT i.review_id reviewId,r.review_type reviewType,
+      o.frozen_github_user_id githubUserId, p.linear_app_actor_id linearAppActorId
+      FROM workflow_event_inbox i JOIN review_intents r ON r.review_id=i.review_id
+      JOIN orchestration_runs o ON o.run_id=r.run_id
+      JOIN project_workflow_policies p ON p.project_id=o.project_id
+      WHERE i.delivery_id=? AND r.outcome='active' AND r.github_status='done' AND r.linear_status='done'`)
+      .bind(deliveryId).first<BettaViewReviewChoice>();
+  }
+
+  async completeBettaViewReviewChoice(reviewId: string, deliveryId: string, now: string): Promise<boolean> {
+    const results = await this.database.batch([
+      this.database.prepare(`UPDATE review_intents SET outcome='continued',updated_at=?,terminal_at=?
+        WHERE review_id=? AND outcome='active' AND linear_status='done'`).bind(now,now,reviewId),
+      this.database.prepare(`UPDATE review_continuation_leases SET released_at=?,release_reason='continued'
+        WHERE review_id=? AND released_at IS NULL AND phase='linear_pending'`).bind(now,reviewId),
+      this.database.prepare(`UPDATE workflow_transitions_v2 SET review_id=?
+        WHERE cause_reference=? AND review_id IS NULL`).bind(reviewId,deliveryId),
+    ]);
+    return changes(results[0]) === 1 && changes(results[1]) === 1 && changes(results[2]) === 1;
   }
 
   async claimInboxEvent(

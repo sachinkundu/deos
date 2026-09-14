@@ -66,9 +66,11 @@ test("pull request story keeps failed attempts and selects a verified exact-head
       return {
         bind: (..._values: unknown[]) => ({
           first: async () => {
+            if (query.includes("FROM orchestration_runs run JOIN project_workflow_policies")) return null;
             if (!query.includes("FROM run_work_products work")) throw new Error(`Unexpected first query: ${query}`);
             return {
               run_id: runId,
+              issue_id: "dcde8049-91b0-4f81-a6ad-ca57b3f968a1",
               run_status: "awaiting_human",
               current_node: "planning_review",
               definition_version: 12,

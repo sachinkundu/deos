@@ -37,6 +37,7 @@ import {
 
 export { DeosWorkflow, Sandbox, Standard2Sandbox };
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
+export { ReviewContinuation } from "./review-continuation-entrypoint.ts";
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
   completion: new AttemptCompletionNotifier(env.DB,
