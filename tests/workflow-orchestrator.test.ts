@@ -1220,6 +1220,7 @@ test("a completion hint wakes normal reconciliation and covers the exit race for
   for (const [payload, expected] of [
     [{ kind: "attempt-completed", attemptId: "attempt" }, ["5m", "10s", "5m"]],
     [{ kind: "attempt-completed", attemptId: "old-attempt" }, ["5m", "5m", "5m"]],
+    [{ kind: "attempt-progress", attemptId: "attempt" }, ["5m", "5m", "5m"]],
     [{ deliveryId: "delivery" }, ["5m", "5m", "5m"]],
   ] as const) {
     const run = { ...makeRun(traceabilityDefinition), definition_version: 22, current_node: "planning_author" };

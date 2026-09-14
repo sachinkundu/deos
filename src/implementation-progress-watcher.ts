@@ -1,0 +1,60 @@
+import type { SandboxView } from "./sandbox-controller.ts";
+
+// Installed by the trusted Worker, so active attempts can adopt it without an
+// image restart. It only sends wake-up hints; the Worker reads and counts tasks.
+export const implementationProgressWatcher = String.raw`
+import { watch } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+const { recordCaughtError } = await import(process.argv[3]);
+const job = JSON.parse(await readFile(process.argv[2], 'utf8'));
+if (!/^[a-z0-9][a-z0-9-]*$/.test(job.openspecChange)) throw new Error('Invalid progress watcher change');
+let timer, closed = false, sending = false, pending = false;
+const watcher = watch(join(job.cwd, 'openspec', 'changes', job.openspecChange), (_event, name) => {
+  if (name === null || String(name) === 'tasks.md') schedule();
+});
+const close = () => { closed = true; clearTimeout(timer); clearTimeout(deadline); watcher.close(); };
+watcher.on('error', error => { recordCaughtError(error, 'implementation progress watcher'); close(); });
+const deadline = setTimeout(close, Math.max(1, Date.parse(job.deadline) - Date.now()));
+process.once('SIGTERM', close);
+function schedule() {
+  if (closed) return;
+  clearTimeout(timer);
+  timer = setTimeout(() => { void notify(); }, 750);
+}
+async function notify() {
+  if (closed) return;
+  if (sending) { pending = true; return; }
+  sending = true;
+  try {
+    const response = await fetch(job.capabilityUrl + '/attempt-progress', {
+      method:'POST', headers:{Authorization:'Bearer ' + job.capabilityToken,'Deos-Attempt':job.attemptId,'Content-Type':'application/json'},
+      body:JSON.stringify({version:1}), signal:AbortSignal.timeout(3000),
+    });
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) close();
+      throw new Error('Progress notification HTTP ' + response.status + ': ' + await response.text());
+    }
+    await response.arrayBuffer();
+  } catch (error) { recordCaughtError(error, 'implementation progress signal'); }
+  finally { sending = false; if (pending) { pending = false; schedule(); } }
+}
+schedule();
+`;
+
+export async function ensureImplementationProgressWatcher(sandbox: SandboxView, deadline: string) {
+  const receiptPath = "/deos/run/implementation-progress-watcher.json";
+  if ((await sandbox.exists(receiptPath)).exists) {
+    const receipt = JSON.parse((await sandbox.readFile(receiptPath)).content) as {processId:string};
+    const process = await sandbox.getProcess(receipt.processId);
+    if (process && (await process.status()).state === "running") return;
+  }
+  const remaining = Date.parse(deadline) - Date.now();
+  if (!Number.isFinite(remaining) || remaining <= 0) return;
+  const path = "/deos/run/implementation-progress-watcher.mjs";
+  await sandbox.writeFile(path, implementationProgressWatcher);
+  // flock also prevents duplicates if the launch succeeds but its reply is lost.
+  const process = await sandbox.exec(["flock", "-n", "/deos/run/implementation-progress.lock", "node", path,
+    "/deos/run/job.json", "/deos/bin/original-errors.mjs"], {timeout:remaining});
+  await sandbox.writeFile(receiptPath, JSON.stringify({processId:process.id}));
+}

@@ -190,12 +190,16 @@ export const routePortalRequest = async (
       env.DB.prepare('SELECT operation,error_id,created_at FROM implementation_effect_errors WHERE run_id=? ORDER BY created_at DESC').bind(runId).all(),
     ]);
     const candidate=work.candidate_key ? await store.candidate(work) : null;
+    const {latestImplementationProgress,countImplementationTasks}=await import('../../src/implementation-progress.ts');
+    const savedProgress=candidate?.tasks ? {...countImplementationTasks(candidate.tasks),observedAt:work.updated_at,source:'saved' as const} : null;
+    const progress=candidate?.kind==='build' && work.source_attempt_id===(attempts.results.at(-1) as {attempt_id?:string}|undefined)?.attempt_id
+      ? savedProgress : await latestImplementationProgress(env.DB,runId) ?? savedProgress;
     const question=await store.question(runId);
     return json(200,{status:work.status,branch:work.branch,prUrl:work.pr_url,approvedDesignSha:work.approved_design_sha,
       testedBaseSha:work.tested_base_sha,treeSha:work.tree_sha,mergeSha:work.merge_sha,
       candidateKind:candidate?.kind??null,tasks:candidate?.tasks??null,checks:candidate?.checks??[],assumptions:candidate?.assumptions??[],
       requirements:JSON.parse(work.requirements_json),attempts:attempts.results,proof:proof.results,gates:gates.results,
-      documentation:sources.results,errors:errors.results,
+      documentation:sources.results,errors:errors.results,progress,
       question:question?{status:question.status,...await store.read<Record<string,unknown>>(question.question_key,question.question_sha)}:null});
   }
   const detailPage = url.pathname.match(/^\/failure-detail\/([0-9a-f-]{36})$/i);

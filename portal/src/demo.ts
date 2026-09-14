@@ -297,6 +297,7 @@ export const demoApi = (path: string): unknown => {
     approvedDesignSha: "a".repeat(40), testedBaseSha:"b".repeat(40), treeSha:"c".repeat(40), mergeSha:completed ? "d".repeat(40) : null,
     tasks:"## 1. Build and verify\n- [x] 1.1 Create the implementation plan.\n- [ ] 1.2 Implement and test the approved behavior.\n- [ ] 1.3 Capture browser and provider proof.",
     candidateKind:reviewing || completed ? "build" : "tasks",checks:[{command:"npm test",exitCode:0,stdout:"All checks passed.\n",stderr:""}],
+    progress:{completed:reviewing || completed ? 57 : 23,total:57,observedAt:new Date().toISOString(),source:"author"},
     assumptions:[],attempts:[],proof:[],documentation:[],errors:[],question:null,
     gates:reviewing ? [{expected_event_kind:"state",state:"open",head_sha:"c".repeat(40),base_sha:"b".repeat(40)}] : [],
   };

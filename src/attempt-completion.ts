@@ -1,7 +1,7 @@
 import type { QueueConsumerEnv } from "./queue-consumer-core.ts";
 
 export interface AttemptCompletionHint {
-  kind: "attempt-completed";
+  kind: "attempt-completed" | "attempt-progress";
   attemptId: string;
 }
 
@@ -14,7 +14,7 @@ export class AttemptCompletionNotifier {
     workflows: QueueConsumerEnv["ORCHESTRATION_WORKFLOW"],
   ) { this.database = database; this.workflows = workflows; }
 
-  async notify(runId: string, attemptId: string): Promise<boolean> {
+  async notify(runId: string, attemptId: string, kind: AttemptCompletionHint["kind"] = "attempt-completed"): Promise<boolean> {
     const target = await this.database.prepare(
       `SELECT r.workflow_instance_id AS workflowInstanceId
        FROM agent_attempts a JOIN orchestration_runs r ON r.run_id = a.run_id
@@ -32,9 +32,9 @@ export class AttemptCompletionNotifier {
     const instance = await this.workflows.get(target.workflowInstanceId);
     await instance.sendEvent({
       type: "linear-event",
-      payload: { kind: "attempt-completed", attemptId } satisfies AttemptCompletionHint,
+      payload: { kind, attemptId } satisfies AttemptCompletionHint,
     });
-    console.log(JSON.stringify({ event: "sandbox.completion_notified", run_id: runId,
+    console.log(JSON.stringify({ event: kind === "attempt-progress" ? "sandbox.progress_notified" : "sandbox.completion_notified", run_id: runId,
       attempt_id: attemptId, workflow_instance_id: target.workflowInstanceId }));
     return true;
   }

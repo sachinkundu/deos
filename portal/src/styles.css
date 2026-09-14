@@ -133,6 +133,17 @@ button { color:inherit; }
 .author-review-row { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); align-items: stretch; gap: 6px; }
 .author-review-arrow { width: 24px; height: 24px; align-self: center; color: var(--muted); }
 .agent-step { min-width: 0; cursor: default; }
+.implementation-task-progress { grid-column: 1 / -1; width: 100%; padding: 8px 0 2px; }
+.task-progress-copy, .task-progress-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.task-progress-copy { font-size: 12px; }.task-progress-copy > span, .task-progress-meta { color: var(--muted); }
+.task-progress-meta { font-size: 10px; margin-top: 5px; line-height: 1.5; }
+.implementation-task-progress progress { display: block; appearance: none; width: 100%; height: 6px; margin: 8px 0 0; border: 0; border-radius: 99px; overflow: hidden; background: var(--line); }
+.implementation-task-progress progress::-webkit-progress-bar { background: var(--line); border-radius: 99px; }
+.implementation-task-progress progress::-webkit-progress-value { background: var(--blue); border-radius: 99px; transition: width .3s ease; }
+.implementation-task-progress progress::-moz-progress-bar { background: var(--blue); border-radius: 99px; }
+.task-progress-empty { color: var(--muted); font-size: 11px; }
+.implementation-task-progress.is-stale .task-progress-meta { color: var(--orange, #d8a754); }
+@media (prefers-reduced-motion: reduce) { .implementation-task-progress progress::-webkit-progress-value { transition: none; } }
 .agent-step-heading { min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .agent-step-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .agent-step-heading:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }

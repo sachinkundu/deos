@@ -261,6 +261,24 @@ test("completion requires an active authenticated grant and cannot carry authori
   assert.equal(store.operations.size, 0);
 });
 
+test("progress hints require implementation authority and cannot supply counts or a result", async () => {
+  const store=new Store(), calls:unknown[]=[];
+  const router=new CapabilityRouter({store,github:{} as never,linear:{} as never,signingSecret:SECRET,now:()=>NOW,
+    completion:{async notify(runId,attemptId,kind){calls.push({runId,attemptId,kind});return true;}}});
+  const grant=await mintCapabilityToken({...claims,actions:["implementation.tools"]},SECRET);
+  const other=await mintCapabilityToken(claims,SECRET);
+  const invoke=(body:unknown,token=grant)=>router.handle(new Request("https://worker.example/capabilities/attempt-progress",{
+    method:"POST",headers:{Authorization:`Bearer ${token}`,"Deos-Attempt":claims.attemptId},body:JSON.stringify(body),
+  }));
+  assert.equal((await invoke({version:1},other)).status,403);
+  assert.equal((await invoke({version:1,completed:57,total:57})).status,400);
+  assert.equal((await invoke({version:1,outcome:"completed"})).status,400);
+  assert.equal((await invoke({version:1})).status,200);
+  assert.deepEqual(calls,[{runId:claims.runId,attemptId:claims.attemptId,kind:"attempt-progress"}]);
+  store.contextValue!.attemptState="completed";
+  assert.equal((await invoke({version:1})).status,403);
+});
+
 test("signed capability token is scoped and expires", async () => {
   const token = await mintCapabilityToken(claims, SECRET);
   assert.deepEqual(await verifyCapabilityToken(token, SECRET, NOW.getTime()), claims);

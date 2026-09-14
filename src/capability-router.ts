@@ -306,7 +306,8 @@ export class CapabilityRouter {
 
   async handle(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
-    const completion = path === "/capabilities/attempt-completed";
+    const progress = path === "/capabilities/attempt-progress";
+    const completion = path === "/capabilities/attempt-completed" || progress;
     const gitKind: GitUploadPackRequest | null =
       request.method === "GET" && path.endsWith("/git/info/refs") &&
           new URL(request.url).searchParams.get("service") === "git-upload-pack"
@@ -374,12 +375,13 @@ export class CapabilityRouter {
       return this.dependencies.implementation.handle(claims, untrusted);
     }
     if (completion) {
+      if (progress && !claims.actions.includes("implementation.tools")) return json(403, { error: "progress_denied" });
       const body = asRecord(untrusted);
       if (!body || !exactKeys(body, ["version"]) || body.version !== 1) {
         return json(400, { error: "invalid_completion_hint" });
       }
       if (!this.dependencies.completion) return json(503, { error: "completion_unavailable" });
-      const accepted = await this.dependencies.completion.notify(claims.runId, claims.attemptId);
+      const accepted = await this.dependencies.completion.notify(claims.runId, claims.attemptId, progress ? "attempt-progress" : "attempt-completed");
       return accepted ? json(200, { accepted: true }) : json(403, { error: "attempt_not_current" });
     }
     if (path.includes("/claude/")) {

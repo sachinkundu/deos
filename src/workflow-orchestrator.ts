@@ -209,6 +209,8 @@ export class WorkflowOrchestrator {
                 event.payload.attemptId === execution.attemptId) {
               completionHint = execution.attemptId;
             }
+            // attempt-progress wakes this same reconciliation loop immediately.
+            // It is never interpreted as completion or a workflow transition.
           } catch (caughtError) {
             if (!(caughtError instanceof Error) || caughtError.name !== "WorkflowTimeoutError") {
               recordCaughtError(caughtError, "src/workflow-orchestrator.ts:192");

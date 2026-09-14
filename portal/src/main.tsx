@@ -1,5 +1,5 @@
 import { createLiveUpdatePreference, noticeText, reportClientError } from "./live-updates.ts";
-import { useImplementation } from "./Implementation.tsx";
+import { useImplementation, ImplementationTaskMeter } from "./Implementation.tsx";
 import { BoundedReview } from "./BoundedReview.tsx";
 import type { SandboxStartupFailure } from "./sandbox-failures.ts";
 import { TierTrial } from "./TierTrial.tsx";
@@ -448,6 +448,7 @@ function TraceabilityWorkflowMap({
       View transcript{step.visit!.attempts.length > 1 ? ` · attempt ${step.visit!.attempts.indexOf(attempt) + 1}` : ""}
     </button>)}
     </div>
+    {step.id === "implementation_author" && <ImplementationTaskMeter progress={implementation.data?.progress} active={projection.run.status === "active"} error={implementation.error} />}
     {projection.run.reviewSchema === "deos-bounded-review-v1" && expandedSubstep === step.id && ["planning_author", "design_author"].includes(step.id) &&
       <BoundedReview runId={projection.run.id} phase={step.id === "design_author" ? "design" : "planning"} load={api} onTranscript={onOpenTranscript} />}
   </div>;

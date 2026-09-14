@@ -397,6 +397,7 @@ interface SandboxControllerDependencies {
   implementationNetwork?: (run: OrchestrationRunRecord, attempt: AgentAttemptRecord, sandbox: SandboxView) => Promise<void>;
   implementationStart?: (run: OrchestrationRunRecord, attempt: AgentAttemptRecord, job: WorkflowJob, sandbox: SandboxView) => Promise<void>;
   implementationCollect?: (run: OrchestrationRunRecord, attempt: AgentAttemptRecord, sandbox: SandboxView) => Promise<void>;
+  implementationProgress?: (run: OrchestrationRunRecord, attempt: AgentAttemptRecord, sandbox: SandboxView) => Promise<void>;
   implementationCleanup?: (attempt: AgentAttemptRecord) => Promise<void>;
   materializeContext: (run: OrchestrationRunRecord, job: WorkflowJob) => Promise<MaterializedJobInput>;
   readContinuationPatch: (reference: ContinuationPatchReference) => Promise<string>;
@@ -941,6 +942,7 @@ export class SandboxAgentController {
         this.dependencies.now().toISOString(),
       );
       this.emit(run, attempt, "sandbox.attempt", "running");
+      if (job.inputs.includes("implementation_context")) await this.dependencies.implementationProgress?.(run, attempt, sandbox);
       return { state: "running", attemptId: attempt.attempt_id, sandboxId: attempt.sandbox_id };
     } catch (error) {
       recordCaughtError(error, `sandbox.start.${sandboxCreationCause(error)}`);
@@ -1112,6 +1114,7 @@ export class SandboxAgentController {
         observedAt,
         this.dependencies.now().toISOString(),
       );
+      if (job.inputs.includes("implementation_context")) await this.dependencies.implementationProgress?.(run, attempt, sandbox);
       return { state: "running", attemptId: attempt.attempt_id, sandboxId: attempt.sandbox_id };
     }
     if (status.state === "error" || status.exit?.code !== 0) {

@@ -8,6 +8,9 @@ import {
 import { LinearCapabilityAdapter } from "./linear-capability.ts";
 import { sha256Hex } from "./implementation-hash.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { saveImplementationProgress } from "./implementation-progress.ts";
+import { readImplementationTaskProgress } from "./implementation-progress-reader.ts";
+import { ensureImplementationProgressWatcher } from "./implementation-progress-watcher.ts";
 import {
   ImplementationStore,
   type ImplementationInput,
@@ -373,6 +376,28 @@ export class ImplementationService {
         resource.resource_id,
       )
       .run();
+  }
+  async progress(run: OrchestrationRunRecord, attempt: AgentAttemptRecord, sandbox: SandboxView) {
+    try { await ensureImplementationProgressWatcher(sandbox, attempt.absolute_deadline); }
+    catch (error) {
+      recordCaughtError(error, `implementation.progress.watch:${attempt.attempt_id}`);
+      try { await this.store.error(run.run_id, null, `progress.watch:${attempt.attempt_id}`, error); }
+      catch (secondary) { recordCaughtError(secondary, "implementation.progress.watch.diagnostics"); }
+    }
+    try {
+      const work = await this.store.requireRun(run.run_id);
+      const observedAt = new Date().toISOString();
+      const counts = await readImplementationTaskProgress(sandbox, work.change_id);
+      if (counts) await saveImplementationProgress(this.env.DB, {
+        ...counts, runId:run.run_id, attemptId:attempt.attempt_id, testedBaseSha:work.tested_base_sha, observedAt,
+      });
+    } catch (error) {
+      // Optional observation cannot fail otherwise healthy author work. Preserve
+      // the original error separately; the old observation visibly becomes stale.
+      recordCaughtError(error, `implementation.progress:${attempt.attempt_id}`);
+      try { await this.store.error(run.run_id, null, `progress.read:${attempt.attempt_id}`, error); }
+      catch (secondary) { recordCaughtError(secondary, "implementation.progress.diagnostics"); }
+    }
   }
   async collect(
     run: OrchestrationRunRecord,

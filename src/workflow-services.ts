@@ -212,6 +212,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         },
         implementationStart: (run, attempt, job, sandbox) => this.implementation.start(run, attempt, job, sandbox),
         implementationCollect: (run, attempt, sandbox) => this.implementation.collect(run, attempt, sandbox),
+        implementationProgress: (run, attempt, sandbox) => this.implementation.progress(run, attempt, sandbox),
         implementationCleanup: attempt => new ImplementationBroker(env).cleanup(attempt.attempt_id),
         implementationFailure: async (attempt,operation,error) => {await this.implementation.store.error(attempt.run_id,attempt.attempt_id,operation,error);},
         implementationDestroyed: async attempt => {

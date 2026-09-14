@@ -63,6 +63,14 @@ test("event transport errors retain their original cause", async () => {
   }) }) } as never, { get: async () => ({ sendEvent: async () => { throw error; } }) } as never);
   await assert.rejects(notifier.notify("run", "attempt"), caught => caught === error);
 });
+test("task progress signals wake the current workflow without completing its attempt", async () => {
+  const {sqlite,calls,notifier}=setup();
+  try {
+    assert.equal(await notifier.notify("run","attempt","attempt-progress"),true);
+    assert.deepEqual(calls,[{id:"workflow",event:{type:"linear-event",payload:{kind:"attempt-progress",attemptId:"attempt"}}}]);
+    assert.equal(sqlite.prepare("SELECT state FROM agent_attempts").get()?.state,"running");
+  } finally {sqlite.close();}
+});
 
 const job = { capabilityUrl: "https://worker.test/capabilities", capabilityToken: "attempt-grant", attemptId: "attempt",
   deadline: new Date(Date.now() + 60_000).toISOString() };
