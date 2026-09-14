@@ -13,8 +13,14 @@ export class ImplementationSandbox extends Sandbox<Env> {
   interceptHttps = true;
   // The trusted controller installs the frozen policy before starting the author.
   allowedHosts: string[] | undefined = [];
-  static outbound = async (request: Request) => new Response('Implementation outbound policy is not configured',{status:403});
-  static outboundHandlers = { implementation: async (request: Request, env: Env, context: {params?:unknown}) => {
+}
+export class ImplementationStandard2Sandbox extends ImplementationSandbox {}
+
+// These assignments invoke Container's static setters. Class fields would shadow
+// those setters and leave ContainerProxy's per-class registry empty.
+for (const sandboxClass of [ImplementationSandbox, ImplementationStandard2Sandbox]) {
+  sandboxClass.outbound = async () => new Response('Implementation outbound policy is not configured',{status:403});
+  sandboxClass.outboundHandlers = { implementation: async (request: Request, env: Env, context: {params?:unknown}) => {
     const {runId,attemptId}=context.params as {runId:string;attemptId:string};
     const row=await env.DB.prepare(`SELECT a.state,r.input_key,r.input_sha FROM agent_attempts a
       JOIN implementation_runs r ON r.run_id=a.run_id WHERE a.attempt_id=? AND r.run_id=?`)
@@ -32,7 +38,6 @@ export class ImplementationSandbox extends Sandbox<Env> {
     return fetch(request,{redirect:'manual'});
   }};
 }
-export class ImplementationStandard2Sandbox extends ImplementationSandbox {}
 
 
 export class CloudflareSandboxFactory implements SandboxFactory {
