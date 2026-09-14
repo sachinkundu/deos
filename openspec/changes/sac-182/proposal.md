@@ -6,10 +6,10 @@ Reviewers must leave BettaView to move a linked Linear task after a review. This
 
 - Send each BettaView review as one tracked intent for the exact pull request, head, linked run, and human gate.
 - Bind the allowed Access, GitHub, and Linear user IDs in project setup. Freeze that checked link for each run.
-- Move the linked Linear task to `In Progress` after a comment or change request is saved on GitHub.
+- Move the linked Linear task to `In Progress` only after the reviewer publishes a `COMMENT` or `REQUEST_CHANGES` review on GitHub. Saving one draft note does not move the task.
 - Move the linked Linear task to `Merging` after an approval is saved on GitHub, with or without comments.
 - Let the trusted DEOS workflow make and check the Linear change. The browser does not get a Linear key or direct state access.
-- Show the GitHub and Linear results as separate steps. Read back an unclear host write before any retry. Keep the first error and key act facts in a safe store, and show no secrets.
+- Show the GitHub and Linear results as separate steps. Read back an unclear host write before any retry. Keep the provider's first error message, cause chain, and key act facts in a safe store. Do not replace them with a generic error, and show no secrets.
 
 ### Non-goals
 
