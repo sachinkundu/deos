@@ -1,4 +1,4 @@
-export type WorkflowPhaseId = "claim" | "planning" | "approval" | "design" | "complete" | "stopped";
+export type WorkflowPhaseId = "claim" | "planning" | "approval" | "design" | "implementation" | "complete" | "stopped";
 
 export interface PhaseVisitLike {
   sequence: number;
@@ -12,6 +12,7 @@ export interface WorkflowPhase {
   id: WorkflowPhaseId;
   label: string;
   visits: PhaseVisitLike[];
+  includesImplementation?: boolean;
 }
 
 export interface ApprovalEvidenceVisitLike {
@@ -37,12 +38,17 @@ const PHASE_LABELS: Record<WorkflowPhaseId, string> = {
   planning: "Planning",
   approval: "Human Review",
   design: "Design",
+  implementation: "Implementation",
   complete: "Completed",
   stopped: "Stopped",
 };
 
 export const phaseForVisit = (visit: Pick<PhaseVisitLike, "nodeId" | "stageId" | "gate">): WorkflowPhaseId | null => {
   if (visit.stageId === "claim") return "claim";
+  if (visit.nodeId === "implementation_failed") return "stopped";
+  if (visit.nodeId === "code_merged") return "complete";
+  if (["implementation_review", "implementation_clarification_wait"].includes(visit.nodeId)) return "approval";
+  if (visit.nodeId.startsWith("implementation_")) return "implementation";
   if (["planning_review", "design_review"].includes(visit.nodeId) || visit.gate !== null) return "approval";
   if (["planning", "independent_review", "plan_merge"].includes(visit.stageId)) return "planning";
   if (["design", "design_merge"].includes(visit.stageId)) return "design";
@@ -51,13 +57,16 @@ export const phaseForVisit = (visit: Pick<PhaseVisitLike, "nodeId" | "stageId" |
   return null;
 };
 
-export const workflowPhases = (visits: PhaseVisitLike[]): WorkflowPhase[] => {
+export const workflowPhases = (visits: PhaseVisitLike[], stages: readonly { id: string }[] = []): WorkflowPhase[] => {
   const visibleVisits = visits.filter((visit) => visit.recovered !== true);
-  const order: WorkflowPhaseId[] = ["claim", "planning", "approval", "design", "complete"];
+  const includesImplementation = stages.some(stage => stage.id.startsWith("implementation")) ||
+    visibleVisits.some(visit => visit.nodeId.startsWith("implementation_") || visit.nodeId === "code_merged");
+  const order: WorkflowPhaseId[] = ["claim", "planning", "approval", "design", ...(includesImplementation ? ["implementation" as const] : []), "complete"];
   if (visibleVisits.some((visit) => phaseForVisit(visit) === "stopped")) order.push("stopped");
   return order.map((id) => ({
     id,
     label: PHASE_LABELS[id],
+    includesImplementation,
     visits: visibleVisits.filter((visit) => phaseForVisit(visit) === id),
   }));
 };
@@ -103,9 +112,24 @@ export const phaseDisplayStatus = (
   if (phase.id === "approval") {
     const gateKinds = new Set(phase.visits.flatMap((visit) => visit.gate?.gate_kind ?? []));
     if (!gateKinds.has("plan") || !gateKinds.has("design")) return "Upcoming";
+    if (phase.includesImplementation && !phase.visits.some(visit => visit.nodeId === "implementation_review")) return "Upcoming";
   }
   return phase.visits.length > 0 ? "Complete" : "Upcoming";
 };
+
+export type ImplementationSubstepId = "implementation_tasks" | "implementation_build" | "implementation_proof_check" | "implementation_publish" | "implementation_merge";
+
+export const implementationSubstepForNode = (nodeId: string): ImplementationSubstepId =>
+  ["implementation_prepare", "implementation_tasks", "implementation_rebase_tasks"].includes(nodeId) ? "implementation_tasks"
+    : nodeId === "implementation_proof_check" ? "implementation_proof_check"
+      : ["implementation_branch_write", "implementation_publish"].includes(nodeId) ? "implementation_publish"
+        : ["implementation_merge_recheck", "implementation_merge"].includes(nodeId) ? "implementation_merge"
+          : "implementation_build";
+
+export const reviewPhaseForNode = (nodeId: string): "planning" | "design" | "implementation" | null =>
+  nodeId.startsWith("implementation_") || nodeId === "code_merged" ? "implementation"
+    : nodeId.startsWith("design_") || nodeId === "merge_design_pr" ? "design"
+      : nodeId.startsWith("planning_") ? "planning" : null;
 
 export const workflowStatusTone = (status: string): WorkflowStatusTone =>
   status === "In progress" ? "active"

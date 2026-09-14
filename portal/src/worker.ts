@@ -193,7 +193,7 @@ export const routePortalRequest = async (
     const question=await store.question(runId);
     return json(200,{status:work.status,branch:work.branch,prUrl:work.pr_url,approvedDesignSha:work.approved_design_sha,
       testedBaseSha:work.tested_base_sha,treeSha:work.tree_sha,mergeSha:work.merge_sha,
-      tasks:candidate?.tasks??null,checks:candidate?.checks??[],assumptions:candidate?.assumptions??[],
+      candidateKind:candidate?.kind??null,tasks:candidate?.tasks??null,checks:candidate?.checks??[],assumptions:candidate?.assumptions??[],
       requirements:JSON.parse(work.requirements_json),attempts:attempts.results,proof:proof.results,gates:gates.results,
       documentation:sources.results,errors:errors.results,
       question:question?{status:question.status,...await store.read<Record<string,unknown>>(question.question_key,question.question_sha)}:null});

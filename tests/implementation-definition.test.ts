@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 import { implementationPolicy } from "../src/implementation-contract.ts";
+import {validatePresentationManifest} from "../portal/src/manifests.ts";
 import {
   loadWorkflowDefinition,
   restoreWorkflowDefinition,
@@ -26,6 +27,9 @@ test("merged design leads to distinct task and build jobs, separate human decisi
     bundle,
   );
   assert.deepEqual(flow.implementationPolicy, implementationPolicy);
+  const presentation = validatePresentationManifest(flow);
+  assert.equal(presentation.get("implementation_failed"),"stopped");
+  assert.equal(presentation.get("code_merged"),"complete");
   assert.equal(
     flow.nodes.merge_design_pr.edges.completed,
     "implementation_prepare",

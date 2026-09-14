@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-interface ImplementationView {
+export interface ImplementationView {
   status: string;
   branch: string;
   prUrl: string | null;
@@ -7,6 +7,7 @@ interface ImplementationView {
   testedBaseSha: string;
   treeSha: string | null;
   mergeSha: string | null;
+  candidateKind: "tasks" | "build" | null;
   tasks: string | null;
   checks: {
     command: string;
@@ -44,41 +45,36 @@ interface ImplementationView {
   }[];
   errors: { error_id: string; operation: string; created_at: string }[];
 }
-export function Implementation({
-  runId,
-  freshness,
-}: {
-  runId: string;
-  freshness: string;
-}) {
+export function useImplementation(runId: string, freshness: string, enabled: boolean,
+  load: <T>(path: string, signal?: AbortSignal) => Promise<T>) {
   const [data, setData] = useState<ImplementationView | null>(null),
     [error, setError] = useState("");
+  useEffect(() => { setData(null); }, [runId]);
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
-    setData(null);
     setError("");
-    void fetch(`/api/implementation/${encodeURIComponent(runId)}`, {
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok)
-          throw new Error(`Implementation view HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((value) => setData(value as ImplementationView | null))
+    void load<ImplementationView | null>(`/api/implementation/${encodeURIComponent(runId)}`, controller.signal)
+      .then((value) => { if (!controller.signal.aborted) setData(value); })
       .catch((error) => {
         if (!controller.signal.aborted) setError(String(error));
       });
     return () => controller.abort();
-  }, [runId, freshness]);
+  }, [runId, freshness, enabled, load]);
+  return {data: enabled ? data : null, error};
+}
+
+export function Implementation({runId, data, error, focus, stepStatus}: {
+  runId: string; data: ImplementationView | null; error: string; focus?: string; stepStatus?: string;
+}) {
   if (error) return <p role="alert">{error}</p>;
-  if (!data) return null;
+  if (!data) return <p className="phase-note">Saved work will appear when implementation begins.</p>;
+  const show = (step: string) => focus === undefined || focus === `implementation_${step}`;
   const proofUrl = (id: string) =>
     `/api/implementation/${encodeURIComponent(runId)}/proof/${encodeURIComponent(id)}`;
   return (
-    <section className="workflow-panel implementation-panel">
-      <h2>Implementation</h2>
-      <p>
+    <div className="implementation-evidence">
+      {(show("publish") || focus === "implementation_merge") && <><p>
         {data.mergeSha
           ? "Code merged. Live release has not begun."
           : data.status === "stale"
@@ -101,7 +97,8 @@ export function Implementation({
           </>
         )}
       </p>
-      {data.question && data.question.status !== "closed" && (
+      </>}
+      {show("build") && data.question && data.question.status !== "closed" && (
         <aside className="guard-note">
           <strong>{data.question.question}</strong>
           <p>{data.question.reason}</p>
@@ -112,7 +109,7 @@ export function Implementation({
           </p>
         </aside>
       )}
-      <details>
+      {show("merge") && <details open={focus === "implementation_merge"}>
         <summary>Approved and tested revisions</summary>
         <dl>
           <dt>Approved design</dt>
@@ -128,14 +125,20 @@ export function Implementation({
             <code>{data.treeSha}</code>
           </dd>
         </dl>
-      </details>
-      {data.tasks && (
-        <details open>
-          <summary>Tasks</summary>
-          <pre>{data.tasks}</pre>
+      </details>}
+      {show("tasks") && data.tasks && (
+        <details open={focus === "implementation_tasks"}>
+          <summary>Task checklist</summary>
+          <div className="implementation-tasks">{data.tasks.split("\n").map((line, index) => {
+            const task = line.match(/^\s*- \[([ xX])\]\s+(.+)$/);
+            if (task) return <div className="implementation-task" key={index}><span aria-label={task[1] === " " ? "Not completed" : "Completed"}>{task[1] === " " ? "☐" : "☑"}</span><span>{task[2]}</span></div>;
+            const heading = line.match(/^#{1,6}\s+(.+)$/);
+            return heading ? <h4 key={index}>{heading[1]}</h4> : line.trim() ? <p key={index}>{line}</p> : null;
+          })}</div>
         </details>
       )}
-      <h3>Checks</h3>
+      {focus === "implementation_build" && data.candidateKind !== "build" && <p>{["Failed", "Blocked", "Canceled"].includes(stepStatus ?? "") ? "This attempt did not produce accepted build checks." : "Build checks will appear when this attempt finishes."} Task checks are available under saved work and evidence.</p>}
+      {show("build") && (focus !== "implementation_build" || data.candidateKind === "build") && <details open={focus === "implementation_build"}><summary>Saved checks ({data.checks.length})</summary>
       {data.checks.map((check, index) => (
         <details key={index}>
           <summary>
@@ -147,7 +150,9 @@ export function Implementation({
           </pre>
         </details>
       ))}
-      <h3>Behavior proof</h3>
+      </details>}
+      {show("proof_check") && <details open={focus === "implementation_proof_check"}><summary>Behavior proof ({data.proof.length})</summary>
+      {data.proof.length === 0 && <p>No behavior proof has been collected yet.</p>}
       <div className="implementation-gallery">
         {data.proof.map((proof) => (
           <figure key={proof.proof_id}>
@@ -182,7 +187,8 @@ export function Implementation({
           </figure>
         ))}
       </div>
-      <details>
+      </details>}
+      {show("build") && <details>
         <summary>Attempts ({data.attempts.length})</summary>
         <ul>
           {data.attempts.map((attempt) => (
@@ -193,20 +199,20 @@ export function Implementation({
             </li>
           ))}
         </ul>
-      </details>
-      {data.assumptions.length > 0 && (
-        <>
-          <h3>Assumptions</h3>
+      </details>}
+      {show("build") && data.assumptions.length > 0 && (
+        <details>
+          <summary>Assumptions</summary>
           <ul>
             {data.assumptions.map((text) => (
               <li key={text}>{text}</li>
             ))}
           </ul>
-        </>
+        </details>
       )}
-      {data.documentation.length > 0 && (
-        <>
-          <h3>Documentation</h3>
+      {!focus && data.documentation.length > 0 && (
+        <details>
+          <summary>Documentation ({data.documentation.length})</summary>
           <ul>
             {data.documentation.map((source, i) => (
               <li key={i}>
@@ -217,9 +223,9 @@ export function Implementation({
               </li>
             ))}
           </ul>
-        </>
+        </details>
       )}
-      {data.errors.length > 0 && (
+      {!focus && data.errors.length > 0 && (
         <details>
           <summary>Preserved errors ({data.errors.length})</summary>
           <ul>
@@ -238,6 +244,6 @@ export function Implementation({
           </ul>
         </details>
       )}
-    </section>
+    </div>
   );
 }

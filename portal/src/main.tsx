@@ -1,5 +1,5 @@
 import { createLiveUpdatePreference, noticeText, reportClientError } from "./live-updates.ts";
-import { Implementation } from "./Implementation.tsx";
+import { Implementation, useImplementation } from "./Implementation.tsx";
 import { BoundedReview } from "./BoundedReview.tsx";
 import type { SandboxStartupFailure } from "./sandbox-failures.ts";
 import { TierTrial } from "./TierTrial.tsx";
@@ -48,6 +48,8 @@ import {
   isDesignAuthorVisit,
   isPlanningAuthorVisit,
   designSubstepForNode,
+  implementationSubstepForNode,
+  reviewPhaseForNode,
   phaseDisplayStatus,
   phaseForVisit,
   planningSubstepForNode,
@@ -254,6 +256,17 @@ const workflowStepLabel = (nodeId: string): string => ({
   independent_recheck: "Independent review recheck",
   final_trace: "Final independent trace check",
   publish_initial: "Publish planning candidate",
+  implementation_prepare: "Prepare implementation",
+  implementation_tasks: "Create tasks",
+  implementation_build: "Build and test",
+  implementation_proof_check: "Verify behavior proof",
+  implementation_branch_write: "Prepare implementation PR",
+  implementation_publish: "Publish implementation PR",
+  implementation_review: "Review implementation",
+  implementation_clarification_wait: "Answer implementation question",
+  implementation_merge_recheck: "Recheck before merge",
+  implementation_merge: "Merge implementation",
+  code_merged: "Code merged",
   done: "Completed",
 }[nodeId] ?? human(nodeId));
 
@@ -305,6 +318,9 @@ function TraceabilityWorkflowMap({
   const [historyOpen, setHistoryOpen] = useState(false);
   const flowMap = useRef<HTMLDivElement>(null);
   const [reviewPaths, setReviewPaths] = useState<Array<{ kind: string; path: string }>>([]);
+  const phases = useMemo(() => workflowPhases(projection.history, projection.stages), [projection.history, projection.stages]);
+  const hasImplementation = phases.some(phase => phase.id === "implementation");
+  const implementation = useImplementation(projection.run.id, projection.run.freshness, hasImplementation, api);
   useEffect(() => {
     const map = flowMap.current;
     if (!map) return;
@@ -312,7 +328,7 @@ function TraceabilityWorkflowMap({
       const bounds = map.getBoundingClientRect();
       const review = map.querySelector('[data-phase="approval"]')?.getBoundingClientRect();
       if (!review) return;
-      setReviewPaths(["planning", "design"].flatMap(kind => {
+      setReviewPaths(["planning", "design", ...(hasImplementation ? ["implementation"] : [])].flatMap(kind => {
         const stage = map.querySelector(`[data-phase="${kind}"]`)?.getBoundingClientRect();
         if (!stage || review.left <= stage.right) return [];
         const x = stage.right - bounds.left, y = stage.top + 32 - bounds.top;
@@ -326,8 +342,7 @@ function TraceabilityWorkflowMap({
     map.querySelectorAll('[data-phase]').forEach(node => observer.observe(node));
     update();
     return () => observer.disconnect();
-  }, []);
-  const phases = useMemo(() => workflowPhases(projection.history), [projection.history]);
+  }, [hasImplementation]);
   const currentPhaseId = latestPhaseId(projection.history);
   const failedPhaseId = stoppedPhaseSourceId(projection.history);
   const currentPhase = phases.find((phase) => phase.id === currentPhaseId) ?? null;
@@ -345,24 +360,28 @@ function TraceabilityWorkflowMap({
     setExpandedSubstep(stopped && failedPhaseId === "planning" && failedLeafVisit !== null
       ? planningSubstepForNode(failedLeafVisit.nodeId)
       : stopped && failedPhaseId === "design" && failedLeafVisit !== null
-        ? designSubstepForNode(failedLeafVisit.nodeId) : null);
+        ? designSubstepForNode(failedLeafVisit.nodeId)
+        : stopped && failedPhaseId === "implementation" && failedLeafVisit !== null
+          ? implementationSubstepForNode(failedLeafVisit.nodeId) : null);
     if (stopped && failedLeafVisit !== null) onSelectVisit(failedLeafVisit.sequence);
     setHistoryOpen(false);
   }, [projection.run.id, projection.run.status, failedPhaseId, failedLeafVisit?.nodeId, onSelectVisit]);
 
   const openPhase = (phaseId: WorkflowPhaseId, visits: Visit[]) => {
-    const expandable = phaseId === "planning" || phaseId === "approval" || phaseId === "design";
+    const expandable = ["planning", "approval", "design", "implementation"].includes(phaseId);
     const next = expandable && expandedPhase !== phaseId ? phaseId : null;
     const latest = visits.at(-1);
     setExpandedPhase(next);
     setExpandedSubstep(next === "planning" ? planningSubstepForNode(latest?.nodeId ?? "planning_author")
       : next === "approval" ? (latest?.gate?.gate_kind === "design" ? "design_review" : "planning_review")
-        : next === "design" ? designSubstepForNode(latest?.nodeId ?? "design_author") : null);
+        : next === "design" ? designSubstepForNode(latest?.nodeId ?? "design_author")
+          : next === "implementation" ? implementationSubstepForNode(latest?.nodeId ?? "implementation_tasks") : null);
     if (latest !== undefined) onSelectVisit(latest.sequence);
   };
 
   const planningVisits = phases.find((phase) => phase.id === "planning")?.visits as Visit[] | undefined ?? [];
   const designVisits = phases.find((phase) => phase.id === "design")?.visits as Visit[] | undefined ?? [];
+  const implementationVisits = phases.find(phase => phase.id === "implementation")?.visits as Visit[] | undefined ?? [];
   const planningAuthorVisit = latestVisitFor(
     planningVisits,
     isPlanningAuthorVisit,
@@ -405,7 +424,8 @@ function TraceabilityWorkflowMap({
     setExpandedPhase(phaseId);
     setExpandedSubstep(phaseId === "approval"
       ? (visit.gate?.gate_kind === "design" ? "design_review" : "planning_review")
-      : phaseId === "design" ? designSubstepForNode(visit.nodeId) : null);
+      : phaseId === "design" ? designSubstepForNode(visit.nodeId)
+        : phaseId === "implementation" ? implementationSubstepForNode(visit.nodeId) : null);
   };
 
   const planningSteps = [
@@ -413,6 +433,18 @@ function TraceabilityWorkflowMap({
     { id: "self_review", label: "Self-review", visit: selfReviewVisit, status: selfReviewStatus, icon: <CheckCircle /> },
     { id: "independent_review", label: "Independent review", visit: independentReviewVisit, status: independentReviewStatus, icon: <Eye /> },
   ];
+  const implementationSteps = [
+    {id:"implementation_tasks",label:"Tasks",icon:<ListChecks />},
+    {id:"implementation_build",label:"Build and test",icon:<UserCircle />},
+    {id:"implementation_proof_check",label:"Behavior proof",icon:<Eye />},
+    {id:"implementation_publish",label:"Pull request",icon:<GitPullRequest />},
+    {id:"implementation_merge",label:"Merge",icon:<GitMerge />},
+  ].map(step => {
+    const visit = latestVisitFor(implementationVisits, visit => implementationSubstepForNode(visit.nodeId) === step.id);
+    const latestBuild = latestVisitFor(implementationVisits, visit => visit.nodeId === "implementation_build");
+    return {...step, visit, status: ["implementation_proof_check", "implementation_publish", "implementation_merge"].includes(step.id)
+      ? reviewVisitStatus(visit, projection.run.status, latestBuild) : authorVisitStatus(visit, projection.run.status)};
+  });
   const renderStep = (step: typeof planningSteps[number]) => <div key={step.id} className={`phase-substep agent-step ${step.status === "In progress" ? "is-breathing" : ""} ${expandedSubstep === step.id ? "selected" : ""}`}>
     <button type="button" className="agent-step-heading" aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
     <span className="substep-heading"><span className="substep-icon">{step.icon}</span><span className="substep-copy"><strong>{step.label}</strong></span>{expandedSubstep === step.id ? <CaretDown /> : <CaretRight />}</span>
@@ -425,6 +457,9 @@ function TraceabilityWorkflowMap({
     </div>
     {projection.run.reviewSchema === "deos-bounded-review-v1" && expandedSubstep === step.id && ["planning_author", "design_author"].includes(step.id) &&
       <BoundedReview runId={projection.run.id} phase={step.id === "design_author" ? "design" : "planning"} load={api} onTranscript={onOpenTranscript} />}
+    {expandedSubstep === step.id && step.id.startsWith("implementation_") && <div className="implementation-step-detail">
+      <Implementation runId={projection.run.id} data={implementation.data} error={implementation.error} focus={step.id} stepStatus={step.status} />
+    </div>}
   </div>;
   const renderPhaseSteps = (label: string, steps: typeof planningSteps) => <div className="phase-drill" aria-label={`${label} details`}>
     {projection.run.reviewSchema === "deos-bounded-review-v1" ? renderStep(steps[0]) : <div className="author-review-row">
@@ -438,24 +473,30 @@ function TraceabilityWorkflowMap({
   const renderDesign = () => renderPhaseSteps("Design", designSteps);
 
   const activeGate = projection.gateVisits.find(gate => gate.active);
-  const reviewKind = activeGate?.gateKind ?? (currentPhaseId === "design" || projection.run.currentNode === "design_review"
-    ? "design" : projection.gateVisits.at(-1)?.gateKind ?? "plan");
-  const reviewPhase = reviewKind === "plan" ? "planning" : "design";
-  const reviewProduct = reviewKind === "plan" ? planningProduct : designProduct;
-  const renderApproval = () => activeGate && reviewProduct ? <div className="phase-artifacts review-action">
-    <PullRequestActions url={reviewProduct.url} githubLabel="Review" />
-  </div> : null;
+  const reviewPhase = reviewPhaseForNode(projection.run.currentNode) ??
+    ((activeGate?.gateKind ?? projection.gateVisits.at(-1)?.gateKind) === "design" ? "design" : "planning");
+  const implementationGate = implementation.data?.gates[0];
+  const reviewActive = currentPhaseId === "approval" && (reviewPhase === "implementation"
+    ? implementationGate?.state === "open" : Boolean(activeGate));
+  const reviewProductUrl = reviewPhase === "implementation" ? implementation.data?.prUrl
+    : reviewPhase === "planning" ? planningProduct?.url : designProduct?.url;
+  const renderApproval = () => !reviewActive ? null : reviewPhase === "implementation"
+    ? <div className="implementation-review-action">
+      {projection.run.currentNode === "implementation_clarification_wait" ? <><p>{implementation.data?.question?.question}</p><p className="phase-note">Reply to the question in Linear to continue.</p></>
+        : <><p className="phase-note">Checks and behavior proof are ready for your review.</p>{reviewProductUrl && <div className="phase-artifacts review-action"><a href={reviewProductUrl} target="_blank" rel="noreferrer"><GitPullRequest />Review implementation PR</a></div>}</>}
+    </div>
+    : reviewProductUrl ? <div className="phase-artifacts review-action"><PullRequestActions url={reviewProductUrl} githubLabel="Review" /></div> : null;
 
   return <section className="workflow-panel phase-workflow-panel" aria-labelledby="workflow-title">
     <div className="section-heading phase-heading"><div><span className="eyebrow">Current run</span><h2 id="workflow-title">Workflow map</h2></div><span>Open a phase, then drill into its evidence</span></div>
     <div className="current-step-banner"><span>{currentPhaseId === "stopped" ? "Failed step" : "Current step"}</span><strong className={workflowStatusTone(currentLeafStatus)}>{currentLeafVisit === null ? currentPhase?.label ?? "Unknown" : workflowStepLabel(currentLeafVisit.nodeId)}</strong></div>
     <div className="phase-workspace">
-      <div className="phase-map branching-flow" ref={flowMap}>
+      <div className={`phase-map branching-flow ${hasImplementation ? "with-implementation" : ""}`} ref={flowMap}>
         <svg className="review-connectors" aria-hidden="true"><defs>{["complete", "active", "upcoming"].map(tone => <marker key={tone} id={`review-arrow-${tone}`} className={tone} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>)}</defs>{reviewPaths.map(edge => {
           const phase = phases.find(phase => phase.id === edge.kind);
           const complete = phase && phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId) === "Complete";
-          const tone = complete ? "complete" : activeGate && edge.kind === reviewPhase ? "active" : "upcoming";
-          return <path key={edge.kind} d={edge.path} className={tone} markerEnd={`url(#review-arrow-${tone})`} />;
+          const tone = reviewActive && edge.kind === reviewPhase ? "active" : complete ? "complete" : "upcoming";
+          return <path key={edge.kind} data-from={edge.kind} d={edge.path} className={tone} markerEnd={`url(#review-arrow-${tone})`} />;
         })}</svg>
         {phases.filter((phase) => phase.visits.length > 0 || phase.id !== "stopped").map((phase, index) => {
           const expanded = expandedPhase === phase.id;
@@ -468,22 +509,27 @@ function TraceabilityWorkflowMap({
           return <article className={`workflow-phase ${workflowStatusTone(status)} ${expanded ? "expanded" : ""} ${current && !["Failed", "Blocked", "Canceled"].includes(status) ? "current is-breathing" : ""} ${phase.id === "approval" ? "review-decision" : ""}`} key={phase.id} data-phase={phase.id}>
             <span className={`phase-spine-marker ${workflowStatusTone(status)}`} aria-hidden="true">{["Failed", "Blocked", "Canceled"].includes(status) ? <WarningCircle weight="fill" /> : phaseComplete ? <Check weight="bold" /> : <Clock />}</span>
             <div className="phase-summary-row">
-              {phase.id === "approval" ? <div className="phase-summary"><span className="phase-number decision-diamond"><Eye /></span><span className="phase-summary-copy"><strong>Human Review</strong><small>{reviewKind === "plan" ? "Planning" : "Design"}</small></span></div> : <button type="button" className="phase-summary" aria-expanded={expanded} onClick={() => openPhase(phase.id, phase.visits as Visit[])}>
-                <span className="phase-number">{phase.id === "design" ? 3 : phase.id === "complete" ? 4 : index + 1}</span>
+              {phase.id === "approval" ? <div className="phase-summary"><span className="phase-number decision-diamond"><Eye /></span><span className="phase-summary-copy"><strong>Human Review</strong><small>{reviewPhase === "planning" ? "Planning" : reviewPhase === "design" ? "Design" : "Implementation"}</small></span>{hasImplementation && <span className={`phase-status ${workflowStatusTone(status)}`}>{status}</span>}</div> : <button type="button" className="phase-summary" aria-expanded={expanded} onClick={() => openPhase(phase.id, phase.visits as Visit[])}>
+                <span className="phase-number">{phase.id === "design" ? 3 : phase.id === "implementation" ? 4 : phase.id === "complete" ? hasImplementation ? 5 : 4 : phase.id === "stopped" ? hasImplementation ? 6 : 5 : index + 1}</span>
                 <span className="phase-summary-copy"><strong>{phase.label}</strong></span>
                 <span className={`phase-status ${workflowStatusTone(status)}`}>{status}</span>
                 {current && <span className="current-pill">Current step</span>}
-                {(phase.id === "planning" || phase.id === "design") && (expanded ? <CaretDown /> : <CaretRight />)}
+                {["planning", "design", "implementation"].includes(phase.id) && (expanded ? <CaretDown /> : <CaretRight />)}
               </button>}
               {product && <div className="phase-artifacts">
                 <PullRequestActions url={product.url} githubLabel={`PR #${product.number}`} />
                 {product.artifacts?.map(artifact => <a key={artifact.url} href={artifact.url} target="_blank" rel="noreferrer"><FileText />{artifact.label}</a>)}
               </div>}
+              {phase.id === "implementation" && implementation.data?.prUrl && <div className="phase-artifacts"><a href={implementation.data.prUrl} target="_blank" rel="noreferrer"><GitPullRequest />Implementation PR</a></div>}
 
             </div>
             {expanded && phase.id === "planning" && renderPlanning()}
             {phase.id === "approval" && renderApproval()}
             {expanded && phase.id === "design" && renderDesign()}
+            {expanded && phase.id === "implementation" && <div className="phase-drill" aria-label="Implementation details">
+              {implementationSteps.map(renderStep)}
+              <details className="implementation-saved-evidence"><summary>Saved work and evidence</summary><Implementation runId={projection.run.id} data={implementation.data} error={implementation.error} /></details>
+            </div>}
           </article>;
         })}
       </div>
@@ -1136,7 +1182,6 @@ function App() {
       {projection ? <>
         <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span><span>Sandbox: {projection.run.sandbox_tier === "basic" ? "Basic" : projection.run.sandbox_tier === "standard-2" ? "Standard-2" : "Tier not recorded"}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : `Retry ${workflowStepLabel(projection.retry.retryNode)}`}</button>}</div></section>
         <RunErrors projection={projection} />
-        {projection.stages.some(stage=>stage.id.startsWith("implementation_")) && <Implementation runId={runId} freshness={projection.run.freshness} />}
         {groupedWorkflow ? <TraceabilityWorkflowMap
           projection={projection}
           selectedVisit={selectedVisit}

@@ -87,8 +87,8 @@ const simplifiedStageForNode = (nodeId: string, definitionVersion: number): stri
     return "design";
   }
   if (nodeId === "merge_design_pr") return "design_merge";
-  if (nodeId === "done") return "complete";
-  if (["blocked", "denied", "canceled", "agent_blocked", "agent_failed", "system_action_failed"].includes(nodeId)) {
+  if (["done", "code_merged"].includes(nodeId)) return "complete";
+  if (["blocked", "denied", "canceled", "agent_blocked", "agent_failed", "system_action_failed", "implementation_failed"].includes(nodeId)) {
     return "stopped";
   }
   return nodeId;
