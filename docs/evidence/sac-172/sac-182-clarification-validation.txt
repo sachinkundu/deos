@@ -1,0 +1,29 @@
+OpenSpec change: sac-182 (spec-driven)
+OpenSpec progress: 0/57 checklist items marked complete; rollout tasks 9.1-9.7 remain blocked by the frozen no-deploy policy.
+
+Passed through deos-implementation against the final implementation tree:
+- npm test
+- npm run bettaview:test
+- npm run portal:test
+- npm run typecheck
+- npm run portal:typecheck
+- npm run types:check
+- npm run portal:types:check
+- python3 -m pytest tests/test_ingress.py tests/test_bettaview_review_continuation_migration.py
+- npm run bettaview:build
+- npm run portal:build
+- openspec validate sac-182 --strict
+- git diff --check
+
+Environment diagnostic:
+- Node v22.23.2 and Python 3.10.12 are installed.
+- uv is unavailable (env: uv: No such file or directory); no test requirement was weakened or replaced.
+
+Behavior proof:
+- Local browser screenshots captured the checked-account Settings view and the production continuation renderer for GitHub done / Linear awaiting_delivery and host_check_required.
+- Scoped real GitHub COMMENT review 5201721056 preceded a Linear In Progress mutation and signed event 7d94ddc5-8b02-4284-a79b-265175be9aa9; its proof request was rejected because the subject changed, and that original failure is retained in implementation-diagnostics.jsonl.
+- Final provider-originated proof is bound to tree e0ac2d18e079a390c1de14baaacedc201aec2335: GitHub APPROVE review 5201738127 on fixture PR 24, Linear Merging mutation on SAC-205, and signed delivery 2e01d08e-e1b1-455f-b33b-14cf6f64eeb1.
+- Provider proof artifact: implementation/workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1/58ea11bfffa953875ce4027f0cd54b428b93df56d82d1098dccec92478928622/provider-proof.json
+
+Not performed:
+- No deployment, push, merge choice, live workflow-gate approval, personal-cookie use, or non-fixture live-data mutation.

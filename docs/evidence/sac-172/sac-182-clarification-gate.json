@@ -1,0 +1,52 @@
+[
+  [
+    {
+      "question_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:sac-182-rollout-scope-v1",
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "block_key": "sac-182-rollout-scope-v1",
+      "gate_visit": 39,
+      "linear_comment_id": "d2fa0add-8448-4a7b-af69-059caf24bd49",
+      "opened_delivery_id": "af60cf6e-d451-4a98-86ec-6aa23f47e047",
+      "opened_at": "2026-09-14T19:11:14.461Z",
+      "question_key": "implementation/workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1/7e1e502db15769a7f15b99c90d4f175718091fe88da375db313623eb3c1250ab/question.json",
+      "question_sha": "7e1e502db15769a7f15b99c90d4f175718091fe88da375db313623eb3c1250ab",
+      "status": "open",
+      "answer_delivery_id": null,
+      "answer_comment_id": null,
+      "answer_actor_id": null,
+      "reply_key": null,
+      "reply_sha": null
+    }
+  ],
+  [
+    {
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "visit_sequence": 39,
+      "node_id": "implementation_clarification_wait",
+      "expected_event_kind": "comment",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "issue_id": "e75aad25-c32f-4c23-8184-b4b38388a631",
+      "human_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+      "question_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:sac-182-rollout-scope-v1",
+      "pr_number": null,
+      "head_sha": null,
+      "base_sha": "f2b994131d879967940e69ced07932dfffb8bc9a",
+      "state": "open",
+      "decision_delivery_id": null,
+      "decision_outcome": null,
+      "opened_at": "2026-09-14T19:11:14.964Z",
+      "decided_at": null
+    }
+  ],
+  [
+    {
+      "attempt_id": "01a0a134-fefc-75d9-b32e-d941983aa546",
+      "state": "completed",
+      "result_class": "needs_human",
+      "result_detail": null,
+      "manifest_id": "manifest:01a0a134-fefc-75d9-b32e-d941983aa546",
+      "cleanup_state": "destroyed",
+      "ended_at": "2026-09-14T19:11:08.698Z"
+    }
+  ]
+]
