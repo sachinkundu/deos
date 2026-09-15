@@ -1,0 +1,106 @@
+{
+  "result": [
+    {
+      "results": [],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 1.4352
+        },
+        "duration": 1.4352,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 95891456,
+        "rows_read": 482,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "delivery_id": "445f4801-bb99-4e56-8e48-8c0da2285b12",
+          "payload_hash": "d57d0d143a2602be6ec33dcdc1bee5cc28d62b2c7fdf5e046b763c54802ebb1a",
+          "received_at": "2026-09-15T14:15:11.524999+00:00",
+          "classification": "relevant",
+          "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c",
+          "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
+          "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+          "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+          "route_revision": 16,
+          "route_digest": "d49a17021a815c1b58a5d6638c8e52d089dd2e83718ee3510a097f27363e4deb",
+          "start_slow_ok": null,
+          "sandbox_tier_policy_version": "legacy-basic-v1"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.3459
+        },
+        "duration": 0.3459,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 95891456,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.2774
+        },
+        "duration": 0.2774,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 95891456,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.2244
+        },
+        "duration": 0.2244,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 95891456,
+        "rows_read": 0,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}

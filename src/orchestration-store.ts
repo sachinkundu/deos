@@ -78,6 +78,7 @@ export interface OrchestrationRunRecord {
 }
 
 export interface ProjectWorkflowPolicyRecord {
+  allowed_access_email?: string | null;
   allowed_linear_user_id?: string | null;
   human_binding_revision?: number | null;
   human_binding_checked_at?: string | null;
@@ -691,6 +692,9 @@ export class D1OrchestrationStore {
       current.route_updated_at === undefined || current.github_access_state === undefined
     ) throw new Error("workflow route metadata is incomplete");
     const digest = await repositoryRouteDigest({
+      allowed_access_email: current.allowed_access_email,
+      allowed_linear_user_id: current.allowed_linear_user_id,
+      human_binding_revision: current.human_binding_revision,
       project_id: current.project_id,
       linear_project_name: current.linear_project_name,
       definition_id: input.definition.name,

@@ -1,0 +1,77 @@
+[
+  {
+    "timestamp": 1789481777790,
+    "source": {
+      "level": "info",
+      "message": "POST https://deos-sample-project.skundu.workers.dev/"
+    },
+    "outcome": "ok",
+    "scriptName": "deos-sample-project",
+    "version": {
+      "id": "7dcb3e04-2c21-4f8f-ab26-b389d4f8c175"
+    },
+    "requestId": "1d998048ce99c18a6539b5166a2f052d",
+    "responseStatus": 200,
+    "cpuTimeMs": 429,
+    "wallTimeMs": 601
+  },
+  {
+    "timestamp": 1789481777790,
+    "source": {
+      "event": {
+        "time": "2026-09-15T14:16:17.790000Z",
+        "name": "deos.workflow.ingress.delivery_record"
+      },
+      "service": {
+        "name": "deos-sample-project"
+      },
+      "deos": {
+        "telemetry": {
+          "schema_version": "1"
+        },
+        "workflow": {
+          "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c",
+          "stage": "ingress.delivery_record",
+          "outcome": "duplicate",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c"
+        }
+      },
+      "linear": {
+        "delivery": {
+          "id": "445f4801-bb99-4e56-8e48-8c0da2285b12"
+        },
+        "issue": {
+          "id": "d5dc0e9d-be0d-4504-82a1-62c14340c91c"
+        },
+        "project": {
+          "id": "99426d9b-cda7-4db4-9136-692a95a0b090"
+        }
+      }
+    },
+    "outcome": null,
+    "scriptName": "deos-sample-project",
+    "version": {
+      "id": "7dcb3e04-2c21-4f8f-ab26-b389d4f8c175"
+    },
+    "requestId": "1d998048ce99c18a6539b5166a2f052d",
+    "responseStatus": null,
+    "cpuTimeMs": null,
+    "wallTimeMs": null
+  },
+  {
+    "timestamp": 1789481711649,
+    "source": {
+      "level": "info",
+      "message": "POST https://deos-sample-project.skundu.workers.dev/"
+    },
+    "outcome": "canceled",
+    "scriptName": "deos-sample-project",
+    "version": {
+      "id": "7dcb3e04-2c21-4f8f-ab26-b389d4f8c175"
+    },
+    "requestId": "f9e5795f2f20f5bbd38284b457518681",
+    "responseStatus": null,
+    "cpuTimeMs": 545,
+    "wallTimeMs": 4216
+  }
+]

@@ -308,6 +308,9 @@ export const registerBundledWorkflowDefinitions = async (
     : await store.listPolicies();
   if (store.linkDefinitionToPolicy !== undefined) {
     for (const policy of policies) {
+      // Registration may advance the same flow, but must preserve a flow
+      // explicitly selected through RouteAdmin, including implementation.
+      if (policy.definition_id !== definition.name) continue;
       await store.linkDefinitionToPolicy({
         projectId: policy.project_id,
         definition,

@@ -1,0 +1,644 @@
+{
+  "deployments": {
+    "deos-queue-consumer-ts": {
+      "versions": [
+        {
+          "version_id": "a175cc34-a4b1-4b51-89db-8c9c0ce0e6cc",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-15T14:07:10.342732Z"
+    },
+    "deos-sample-project": {
+      "versions": [
+        {
+          "version_id": "7dcb3e04-2c21-4f8f-ab26-b389d4f8c175",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-14T12:29:19.555854Z"
+    },
+    "deos-workflow-portal-staging": {
+      "versions": [
+        {
+          "version_id": "63782ae2-7a2c-42f7-ba45-4e571ab2dfe4",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-15T13:44:36.131525Z"
+    }
+  },
+  "containers": [
+    {
+      "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:1b856ddf9e71e25cb52ca461941123adddcae5fb20430f9c71119e909776d809",
+      "version": 11,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-implementationsandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:1b856ddf9e71e25cb52ca461941123adddcae5fb20430f9c71119e909776d809",
+      "version": 12,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-standard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:1b856ddf9e71e25cb52ca461941123adddcae5fb20430f9c71119e909776d809",
+      "version": 17,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:1b856ddf9e71e25cb52ca461941123adddcae5fb20430f9c71119e909776d809",
+      "version": 75,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 3,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 1
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    }
+  ],
+  "run": [
+    {
+      "status": "failed",
+      "current_node": "implementation_failed",
+      "current_visit_sequence": 59,
+      "definition_id": "implementation",
+      "definition_version": 29,
+      "definition_digest": "a8788e6328b326ef187733934d3a4c7429f4210ec0e366283e54399dd260122d",
+      "workflow_instance_id": "wf-v1-cwor5evpqbz7u5ojkw3wsaxa2yowe6ceew5b2hgpezpu7mpmdotq",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 1,
+      "sandbox_tier": "basic"
+    }
+  ],
+  "handoff": [
+    {
+      "state": "established",
+      "target_workflow_instance_id": "wf-v1-hkwmsuzcsdgkoib5m3w3c6vyqusabubbpg2qq5zrz44cdkgg3dca",
+      "plan_digest": "04465b28466b95ea7b09a5fa467712b8814ebf68cd973f38bc640233272b46b3"
+    }
+  ],
+  "gates": [
+    {
+      "visit_sequence": 22,
+      "state": "open",
+      "pull_request_number": 136,
+      "approved_head_sha": "ae79e7e0a7658942e26e24be0f7070908864ee1c",
+      "decision_delivery_id": null,
+      "decision_outcome": null,
+      "created_at": "2026-09-14T11:32:03.299Z"
+    },
+    {
+      "visit_sequence": 23,
+      "state": "merge_authorized",
+      "pull_request_number": 136,
+      "approved_head_sha": "ae79e7e0a7658942e26e24be0f7070908864ee1c",
+      "decision_delivery_id": "9009a6b5-e2fc-4784-93c5-799cbbba756c",
+      "decision_outcome": "merge_authorized",
+      "created_at": "2026-09-14T11:32:03.299Z"
+    }
+  ],
+  "active_attempts": [],
+  "provider_test_profile": [
+    {
+      "adapter_binding": "github-linear-review-v1@d1ab8b099831c782cbf8e235dc93bd0028cb9d9c3f380cd5285640991e22038d",
+      "profile_sha": "d1ab8b099831c782cbf8e235dc93bd0028cb9d9c3f380cd5285640991e22038d",
+      "checked_at": "2026-09-14T12:33:02.207Z"
+    }
+  ],
+  "implementation_attempts": [
+    {
+      "attempt_id": "01a0a556-0a4e-7212-b549-1b23320e14cd",
+      "node_id": "implementation_demo_plan",
+      "visit_sequence": 58,
+      "state": "failed",
+      "sandbox_id": "sbx-v1-7zmop2qelcfdpooji7dybkg2yj7ndxamekfj2yrby5lqvzb766kq",
+      "sandbox_tier": "standard-2",
+      "heartbeat_at": "2026-09-15T13:51:27.196Z",
+      "process_id": "11f4aec8-5fd8-4b2c-89ab-0743efb12398",
+      "result_class": "codex_exit_nonzero",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-15T13:51:14.510Z",
+      "ended_at": "2026-09-15T13:51:59.661Z"
+    },
+    {
+      "attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "node_id": "implementation_build",
+      "visit_sequence": 56,
+      "state": "failed",
+      "sandbox_id": "impl-v1-ceu67m6rzjx3mehx4t2oeftc73waknq6yqvulsnkgfdc4vbpnmfq",
+      "sandbox_tier": "standard-2",
+      "heartbeat_at": "2026-09-15T12:04:58.881Z",
+      "process_id": "2eff10b4-5179-45c7-989f-b3fb6cc9b3b4",
+      "result_class": "supervisor_failed",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-15T11:49:35.286Z",
+      "ended_at": "2026-09-15T12:05:42.593Z"
+    },
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "node_id": "implementation_build",
+      "visit_sequence": 51,
+      "state": "completed",
+      "sandbox_id": "impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq",
+      "sandbox_tier": "standard-2",
+      "heartbeat_at": "2026-09-15T10:04:25.446Z",
+      "process_id": "3a5f1042-5895-456e-90c9-2610ae550cb3",
+      "result_class": "completed",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-15T09:29:07.943Z",
+      "ended_at": "2026-09-15T10:07:05.221Z"
+    },
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "node_id": "implementation_build",
+      "visit_sequence": 49,
+      "state": "failed",
+      "sandbox_id": "impl-v1-eip7xmlk3y3kafj5fhggn5l45dm6xa25z72t4x5rgbqqou2vbjla",
+      "sandbox_tier": "standard-2",
+      "heartbeat_at": "2026-09-15T08:57:20.277Z",
+      "process_id": "c7ac2263-6a8a-455d-ab1d-9a491497e1d7",
+      "result_class": "supervisor_failed",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-15T08:37:02.888Z",
+      "ended_at": "2026-09-15T09:01:59.340Z"
+    },
+    {
+      "attempt_id": "01a0a407-62dc-7bc0-95e6-965a0a818188",
+      "node_id": "implementation_build",
+      "visit_sequence": 44,
+      "state": "completed",
+      "sandbox_id": "impl-v1-tfqmguac4oelhcdyymct2uojh435fpeodiz3uqdpu5wp65efvyiq",
+      "sandbox_tier": "standard-2",
+      "heartbeat_at": "2026-09-15T08:11:06.584Z",
+      "process_id": "a5a9f821-39c3-4476-bf2d-c894b85c58f5",
+      "result_class": "completed",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-15T07:45:42.620Z",
+      "ended_at": "2026-09-15T08:13:08.763Z"
+    }
+  ],
+  "retries": [
+    {
+      "retry_id": "stage-retry:01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "failed_attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "retry_node": "implementation_build",
+      "state": "established",
+      "from_visit_sequence": 57,
+      "to_visit_sequence": 58,
+      "source_workflow_instance_id": "wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq",
+      "target_workflow_instance_id": "wf-v1-cwor5evpqbz7u5ojkw3wsaxa2yowe6ceew5b2hgpezpu7mpmdotq"
+    },
+    {
+      "retry_id": "stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "failed_attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "retry_node": "implementation_build",
+      "state": "established",
+      "from_visit_sequence": 50,
+      "to_visit_sequence": 51,
+      "source_workflow_instance_id": "wf-v1-k5kuq3ggfmfrxcucpwfvopkstvcdnqanxvef7bv6c26zdp7enojq",
+      "target_workflow_instance_id": "wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq"
+    },
+    {
+      "retry_id": "stage-retry:01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "failed_attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "retry_node": "implementation_build",
+      "state": "established",
+      "from_visit_sequence": 43,
+      "to_visit_sequence": 44,
+      "source_workflow_instance_id": "wf-v1-cghsgyliqgxamwbycplagwgsfcvci7hakrwpgmwho5vmglrguo2q",
+      "target_workflow_instance_id": "wf-v1-k5kuq3ggfmfrxcucpwfvopkstvcdnqanxvef7bv6c26zdp7enojq"
+    },
+    {
+      "retry_id": "stage-retry:01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+      "failed_attempt_id": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+      "retry_node": "implementation_build",
+      "state": "established",
+      "from_visit_sequence": 41,
+      "to_visit_sequence": 42,
+      "source_workflow_instance_id": "wf-v1-d5c2ifdot3p7rkggpzbd3h3tyxobiyyg7xnuijhfepnvvoyzdnva",
+      "target_workflow_instance_id": "wf-v1-cghsgyliqgxamwbycplagwgsfcvci7hakrwpgmwho5vmglrguo2q"
+    },
+    {
+      "retry_id": "stage-retry:01a0a0d7-0ea0-715b-bf5e-a57a8c14965c",
+      "failed_attempt_id": "01a0a0d7-0ea0-715b-bf5e-a57a8c14965c",
+      "retry_node": "implementation_build",
+      "state": "established",
+      "from_visit_sequence": 36,
+      "to_visit_sequence": 37,
+      "source_workflow_instance_id": "wf-v1-6fv7343ma6ueq2rxqhzg3scgx5uznhmanxh33qxfottpfyi3kzma",
+      "target_workflow_instance_id": "wf-v1-d5c2ifdot3p7rkggpzbd3h3tyxobiyyg7xnuijhfepnvvoyzdnva"
+    }
+  ],
+  "implementation": [
+    {
+      "status": "review",
+      "approved_design_sha": "f2b994131d879967940e69ced07932dfffb8bc9a",
+      "tested_base_sha": "f2b994131d879967940e69ced07932dfffb8bc9a",
+      "branch": "deos/agent/SAC-182/run-1",
+      "tree_sha": "845fc86da7787d86e5ec58769e9fd6a7903d084a",
+      "pr_url": "https://github.com/sachinkundu/deos/pull/137"
+    }
+  ],
+  "recent_errors": [
+    {
+      "step_name": "workflow runtime",
+      "message": "implementation_failed",
+      "detail_r2_key": "original-errors/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/1e8eac56-3f2e-47c2-884e-b7fcad28a2ab.json",
+      "occurred_at": "2026-09-15T13:52:03.297Z"
+    },
+    {
+      "step_name": "workflow runtime",
+      "message": "implementation_failed",
+      "detail_r2_key": "original-errors/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/f61abfcb-36a4-4dae-a213-1639e99eba2c.json",
+      "occurred_at": "2026-09-15T13:52:03.297Z"
+    },
+    {
+      "step_name": "agent:implementation_demo_plan:visit:58",
+      "message": "ENOENT: no such file or directory, open '/deos/output/provider-references.jsonl'",
+      "detail_r2_key": "original-errors/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/60ec55da-5e9e-4d48-9813-be6cd407af08.json",
+      "occurred_at": "2026-09-15T13:51:55.867Z"
+    },
+    {
+      "step_name": "agent:implementation_demo_plan:visit:58",
+      "message": "review_failure",
+      "detail_r2_key": "original-errors/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/d82e9605-c936-4d04-b078-6a237a00810d.json",
+      "occurred_at": "2026-09-15T13:51:55.867Z"
+    },
+    {
+      "step_name": "agent:implementation_demo_plan:visit:58",
+      "message": "review path is not in the checked input",
+      "detail_r2_key": "original-errors/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/8ccd0808-cc93-4871-a059-6d638c4b184d.json",
+      "occurred_at": "2026-09-15T13:51:55.867Z"
+    },
+    {
+      "step_name": "/capabilities/claude/status",
+      "message": "review_failure",
+      "detail_r2_key": "original-errors/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/62d57f88-22f8-4caa-89cc-50e2d84354a8.json",
+      "occurred_at": "2026-09-15T13:51:53.331Z"
+    },
+    {
+      "step_name": "/capabilities/claude/tools",
+      "message": "Claude read tool did not complete successfully",
+      "detail_r2_key": "original-errors/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/ac820019-afc8-44ce-b8ae-5a03aa33344b.json",
+      "occurred_at": "2026-09-15T13:51:51.884Z"
+    },
+    {
+      "step_name": "/implementation-demo-upgrades",
+      "message": "(instance.not_found) Instance not found",
+      "detail_r2_key": "original-errors/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/465a12fb-b0a9-481d-8ed1-6a6ef31fe118.json",
+      "occurred_at": "2026-09-15T13:51:05.719Z"
+    }
+  ],
+  "implementation_tries": [
+    {
+      "attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "try_sequence": 11,
+      "kind": "build",
+      "status": "failed",
+      "input_patch_sha": "d1b88aeda02ed968dd94040028c7fba548e4455702dcab1bc0c0b4f64e0580ff",
+      "output_patch_sha": null,
+      "public_error_code": "documentation_denied",
+      "updated_at": "2026-09-15T12:05:49.006Z"
+    },
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "try_sequence": 10,
+      "kind": "build",
+      "status": "completed",
+      "input_patch_sha": "8a6ff3e0c147a0558a72723d084ac063251d0934935af4632921a9097ab77896",
+      "output_patch_sha": "d1b88aeda02ed968dd94040028c7fba548e4455702dcab1bc0c0b4f64e0580ff",
+      "public_error_code": "documentation_denied",
+      "updated_at": "2026-09-15T10:07:06.835Z"
+    },
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "try_sequence": 9,
+      "kind": "build",
+      "status": "failed",
+      "input_patch_sha": "8a6ff3e0c147a0558a72723d084ac063251d0934935af4632921a9097ab77896",
+      "output_patch_sha": null,
+      "public_error_code": "documentation_denied",
+      "updated_at": "2026-09-15T09:02:24.690Z"
+    },
+    {
+      "attempt_id": "01a0a407-62dc-7bc0-95e6-965a0a818188",
+      "try_sequence": 8,
+      "kind": "build",
+      "status": "completed",
+      "input_patch_sha": "cdfaa685ebdf676271f2a26f6f8f0288953c054b6837176811325f735973b87f",
+      "output_patch_sha": "8a6ff3e0c147a0558a72723d084ac063251d0934935af4632921a9097ab77896",
+      "public_error_code": "implementation_failed",
+      "updated_at": "2026-09-15T08:13:08.610Z"
+    },
+    {
+      "attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "try_sequence": 7,
+      "kind": "build",
+      "status": "interrupted",
+      "input_patch_sha": "81a3f091107316c8f7d8289aca9d28074e67f81671e1503977007d3527e215c7",
+      "output_patch_sha": null,
+      "public_error_code": null,
+      "updated_at": "2026-09-15T06:42:24.883Z"
+    }
+  ],
+  "recovered_input": [
+    {
+      "attempt_id": "01a0a556-0a4e-7212-b549-1b23320e14cd",
+      "retry_source": null,
+      "input_patch_sha": null,
+      "recovered_attempt": null
+    }
+  ],
+  "document_reads": [
+    {
+      "attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "url": "https://linear.app/developers/webhooks",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T11:53:07.771Z"
+    },
+    {
+      "attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "url": "https://linear.app/developers/oauth-actor-authorization",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T11:53:06.598Z"
+    },
+    {
+      "attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "url": "https://linear.app/developers/graphql",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T11:53:05.333Z"
+    },
+    {
+      "attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "url": "https://docs.github.com/en/rest/pulls/reviews",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T11:53:04.231Z"
+    },
+    {
+      "attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "url": "https://docs.github.com/en/rest/pulls/comments",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T11:53:03.008Z"
+    },
+    {
+      "attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "url": "https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T11:53:01.617Z"
+    },
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "url": "https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/",
+      "content_returned": 1,
+      "read_count": 2,
+      "last_read": "2026-09-15T09:51:08.584Z"
+    },
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "url": "https://linear.app/developers/webhooks",
+      "content_returned": 1,
+      "read_count": 2,
+      "last_read": "2026-09-15T09:51:07.706Z"
+    },
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "url": "https://linear.app/developers/oauth-actor-authorization",
+      "content_returned": 1,
+      "read_count": 2,
+      "last_read": "2026-09-15T09:51:06.487Z"
+    },
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "url": "https://linear.app/developers/graphql",
+      "content_returned": 1,
+      "read_count": 2,
+      "last_read": "2026-09-15T09:51:05.329Z"
+    },
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "url": "https://docs.github.com/en/rest/pulls/comments",
+      "content_returned": 1,
+      "read_count": 2,
+      "last_read": "2026-09-15T09:51:04.220Z"
+    },
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "url": "https://docs.github.com/en/rest/pulls/reviews",
+      "content_returned": 1,
+      "read_count": 2,
+      "last_read": "2026-09-15T09:51:03.216Z"
+    },
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "url": "https://docs.github.com/en/rest/pulls/reviews",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T08:41:36.624Z"
+    },
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "url": "https://linear.app/developers/oauth-actor-authorization",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T08:41:35.651Z"
+    },
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "url": "https://linear.app/developers/webhooks",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T08:41:34.756Z"
+    },
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "url": "https://docs.github.com/en/rest/pulls/comments",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T08:41:33.876Z"
+    },
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "url": "https://linear.app/developers/graphql",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T08:41:31.646Z"
+    },
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "url": "https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T08:41:30.588Z"
+    },
+    {
+      "attempt_id": "01a0a407-62dc-7bc0-95e6-965a0a818188",
+      "url": "https://linear.app/developers/webhooks",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T07:48:54.702Z"
+    },
+    {
+      "attempt_id": "01a0a407-62dc-7bc0-95e6-965a0a818188",
+      "url": "https://linear.app/developers/oauth-actor-authorization",
+      "content_returned": 1,
+      "read_count": 1,
+      "last_read": "2026-09-15T07:48:50.931Z"
+    }
+  ],
+  "task_progress": [
+    {
+      "attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "completed": 50,
+      "total": 50,
+      "tasks_sha": "e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc",
+      "observed_at": "2026-09-15T12:05:16.933Z"
+    },
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "completed": 50,
+      "total": 50,
+      "tasks_sha": "e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc",
+      "observed_at": "2026-09-15T10:04:55.319Z"
+    },
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "completed": 50,
+      "total": 50,
+      "tasks_sha": "e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc",
+      "observed_at": "2026-09-15T08:57:45.408Z"
+    },
+    {
+      "attempt_id": "01a0a407-62dc-7bc0-95e6-965a0a818188",
+      "completed": 50,
+      "total": 50,
+      "tasks_sha": "e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc",
+      "observed_at": "2026-09-15T08:11:23.507Z"
+    },
+    {
+      "attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "completed": 50,
+      "total": 50,
+      "tasks_sha": "e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc",
+      "observed_at": "2026-09-15T06:32:05.134Z"
+    }
+  ],
+  "resource_recoveries": [
+    {
+      "failed_attempt_id": "01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40",
+      "to_visit_sequence": 58,
+      "requested_by": "sachin",
+      "source_sandbox_tier": "standard-2",
+      "target_sandbox_tier": "standard-2"
+    },
+    {
+      "failed_attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "to_visit_sequence": 51,
+      "requested_by": "sachin",
+      "source_sandbox_tier": "standard-2",
+      "target_sandbox_tier": "standard-2"
+    },
+    {
+      "failed_attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "to_visit_sequence": 44,
+      "requested_by": "sachin",
+      "source_sandbox_tier": "basic",
+      "target_sandbox_tier": "standard-2"
+    }
+  ]
+}

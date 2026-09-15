@@ -544,6 +544,32 @@ test("deployment seed is created only for an empty route list", async () => {
     if (linked === null) throw new Error("linked route is missing");
     const { route_digest: _savedDigest, ...routeForDigest } = linked;
     assert.equal(linked.route_digest, await repositoryRouteDigest(routeForDigest));
+
+    const implementation = {...updatedDefinition, name: 'implementation', version: 28, digest: 'd'.repeat(64)};
+    const orchestration = new D1OrchestrationStore(configured as unknown as D1Database);
+    await orchestration.registerDefinition({definition: implementation, projectId: 'configured-project', now: LATER});
+    configured.sqlite.prepare(`UPDATE project_workflow_policies SET definition_id=?,definition_version=?,definition_digest=?,
+      allowed_access_email='operator@example.com',allowed_linear_user_id='human-1',human_binding_revision=1,human_binding_checked_at=?
+      WHERE project_id='configured-project'`).run(implementation.name,implementation.version,implementation.digest,LATER);
+    const routes = new D1RepositoryRouteStore(configured as unknown as D1Database);
+    const selected = (await routes.read('configured-project'))!;
+    const selectedDigest = await repositoryRouteDigest(selected);
+    configured.sqlite.prepare("UPDATE project_workflow_policies SET route_digest=? WHERE project_id='configured-project'").run(selectedDigest);
+    const before = await routes.read('configured-project');
+    await registerBundledWorkflowDefinitions(environment(configured), {
+      definitions: {simple: updatedDefinition, implementation}, defaultDefinition: updatedDefinition,
+      now: () => new Date(LATER),
+    });
+    assert.deepEqual(await routes.read('configured-project'), before,
+      'Queue and scheduled registration must not replace the selected implementation route');
+
+    const upgraded = {...implementation, version: 29, digest: 'e'.repeat(64)};
+    await orchestration.registerDefinition({definition: upgraded, projectId: 'configured-project', now: LATER});
+    await orchestration.linkDefinitionToPolicy({projectId: 'configured-project', definition: upgraded, now: LATER});
+    const after = (await routes.read('configured-project'))!;
+    assert.equal(after.allowed_linear_user_id, 'human-1');
+    assert.equal(after.human_binding_revision, 1);
+    assert.equal(after.route_digest, await repositoryRouteDigest(after), 'A version update must include the human binding in its digest');
   } finally {
     configured.close();
   }
