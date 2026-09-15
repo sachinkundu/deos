@@ -43,6 +43,26 @@ test("implementation appears in the existing map before work starts and owns its
   assert.equal(phaseDisplayStatus(phase,"implementation","active"),"In progress");
 });
 
+test("review reconciliation blocks its interrupted phase without completing it or adding implementation", () => {
+  for (const interrupted of ["planning", "design"] as const) {
+    const visits = [visit(1, "planning_author", "planning"),
+      ...(interrupted === "design" ? [visit(2, "design_author", "design")] : []),
+      visit(3, "review_reconciliation", "review_reconciliation")];
+    const phases = workflowPhases(visits, [{ id: "design" }]);
+    assert.equal(phases.some(phase => phase.id === "implementation"), false);
+    assert.equal(latestPhaseId(visits), interrupted);
+    assert.equal(phaseDisplayStatus(phases.find(phase => phase.id === interrupted)!,
+      latestPhaseId(visits), "manual_reconciliation_required"), "Blocked");
+    assert.equal(phaseDisplayStatus(phases.find(phase => phase.id === "complete")!,
+      latestPhaseId(visits), "manual_reconciliation_required"), "Upcoming");
+    assert.equal(authorVisitStatus({ leftAt: null, attempts: [] }, "manual_reconciliation_required"), "Blocked");
+    const resumed = [...visits.slice(0, -1), { ...visits.at(-1)!, recovered: true },
+      visit(4, `${interrupted}_independent_response`, interrupted)];
+    assert.equal(phaseDisplayStatus(phases.find(phase => phase.id === interrupted)!,
+      latestPhaseId(resumed), "active"), "In progress");
+  }
+});
+
 test("implementation joins the shared human review branch only at its durable gate", () => {
   const visits=[visit(1,"planning_review","review","plan"),visit(2,"design_review","review","design"),visit(3,"implementation_build","implementation_build")];
   let phases = workflowPhases(visits);

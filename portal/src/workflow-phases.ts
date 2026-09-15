@@ -78,8 +78,14 @@ export const isDesignStageWorkflow = (
 ): boolean => definitionVersion >= 17 && stages.some((stage) => stage.id === "design");
 
 export const latestPhaseId = (visits: PhaseVisitLike[]): WorkflowPhaseId | null => {
-  const latest = visits.filter((visit) => visit.recovered !== true)
-    .sort((left, right) => right.sequence - left.sequence)[0];
+  const ordered = visits.filter((visit) => visit.recovered !== true)
+    .sort((left, right) => right.sequence - left.sequence);
+  const latest = ordered[0];
+  // Reconciliation is shared by planning and design. Keep the interrupted
+  // phase current while it waits for recovery instead of marking it complete.
+  if (latest?.nodeId === "review_reconciliation") {
+    return ordered.map(phaseForVisit).find((phase) => phase === "planning" || phase === "design") ?? null;
+  }
   return latest === undefined ? null : phaseForVisit(latest);
 };
 
@@ -95,7 +101,7 @@ const terminalPhaseStatus = (
   runStatus: string,
 ): "Failed" | "Blocked" | "Canceled" | null =>
   runStatus === "failed" ? "Failed"
-    : ["blocked", "denied"].includes(runStatus) ? "Blocked"
+    : ["blocked", "denied", "manual_reconciliation_required"].includes(runStatus) ? "Blocked"
       : runStatus === "canceled" ? "Canceled" : null;
 
 export const phaseDisplayStatus = (
@@ -106,6 +112,7 @@ export const phaseDisplayStatus = (
 ): WorkflowDisplayStatus => {
   if (phase.id === "complete" && runStatus === "succeeded") return "Succeeded";
   const terminalStatus = terminalPhaseStatus(runStatus);
+  if (phase.id === currentPhaseId && terminalStatus !== null) return terminalStatus;
   if (phase.id === "stopped" && terminalStatus !== null) return terminalStatus;
   if (currentPhaseId === "stopped" && phase.id === failedPhaseId && terminalStatus !== null) return terminalStatus;
   const terminal = ["succeeded", "failed", "blocked", "denied", "canceled"].includes(runStatus);
@@ -146,6 +153,7 @@ export const authorVisitStatus = (
   runStatus: string,
 ): "In progress" | "Complete" | "Upcoming" | "Failed" | "Blocked" => {
   if (visit === null) return "Upcoming";
+  if (visit.leftAt === null && runStatus === "manual_reconciliation_required") return "Blocked";
   const attempt = visit.attempts.at(-1);
   if (attempt?.outcome === "blocked") return "Blocked";
   if (

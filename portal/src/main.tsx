@@ -493,6 +493,7 @@ function TraceabilityWorkflowMap({
 
   const activeGate = projection.gateVisits.find(gate => gate.active);
   const reviewPhase = reviewPhaseForNode(projection.run.currentNode) ??
+    (currentPhaseId === "planning" || currentPhaseId === "design" ? currentPhaseId : null) ??
     ((activeGate?.gateKind ?? projection.gateVisits.at(-1)?.gateKind) === "design" ? "design" : "planning");
   const implementationGate = implementation.data?.gates[0];
   const reviewActive = currentPhaseId === "approval" && (reviewPhase === "implementation"
