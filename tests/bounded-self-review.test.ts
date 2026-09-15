@@ -114,7 +114,7 @@ test('parent tools receive the next phase after each completed child without wai
         assert.deepEqual(await f.stop(), {});
         const state = await f.readState();
         assert.equal(state.children.length, 2);
-        assert.equal(state.events.filter(event => event.type === 'repair_started').length, 1);
+        assert.equal(state.events.filter((event: { type: string }) => event.type === 'repair_started').length, 1);
         await writeFile(join(f.cwd, f.relative), 'Unreviewed change.\n');
         await assert.rejects(f.stop(), /author changed accepted review candidate/);
     } finally { await rm(f.root, { recursive: true, force: true }); }
