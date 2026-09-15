@@ -170,3 +170,12 @@ On September 15, the user posted comment 4457b29a-a39f-4855-a4c7-86fc026074e6 at
 The existing Linear webhook was enabled but subscribed only to Issue events. Comments were added to that same webhook, preserving its URL, signing secret and team scope. The [saved settings screenshot](linear-comment-webhook-enabled.png) shows Issue and Comment after a full page reload. The [read-back summary](linear-comment-webhook-repair.json) records the configuration and D1 evidence. No Worker deployment or code change was needed.
 
 The earlier reply has no provider delivery to replay. The user was asked to repeat it as a new comment, so Linear can emit a signed Comment.create. We did not create a reply, synthesize a delivery or move the human gate. Real comment delivery, gate acceptance, resumed implementation and full changed-behavior E2E remain pending.
+
+
+### Human reply received and implementation resumed
+
+The new human comment 2f478444-cb81-414b-9343-4964cd727f83 was created on September 15 at 03:55:56.138Z. Its real signed Linear delivery 5a6963d6-d298-4986-95fc-8b175ad3d66e reached ingress at 03:55:57.118Z and was classified relevant. The workflow read back the comment from the frozen human account, recorded eligibility and reply_received, and processed the inbox delivery at 03:56:14.892Z.
+
+The same Workflow continued automatically to implementation_build, visit 40. Attempt 01a0a335-573b-7020-8d70-5e4eb7ec1ba7, try 6, is running in its new sandbox. Its durable job context contains the exact accepted reply, and its input patch matches the saved clarification patch 3a627102c907d12ea29fcf792828d5382017858f7ebbc0d448d6f64cfdcd44ba. The initial 0/57 observation is the restored unchecked checklist. No manual retry, fabricated signal or issue transition was used.
+
+The [D1 read-back](sac-182-reply-resumed.json) records the provider delivery, eligibility, gate transition, running attempt and materialized reply. The user agreed to separate production rollout while requiring proof in a non-production environment. Final-tree checks, safe preview, changed-behavior E2E and the implementation PR remain pending.

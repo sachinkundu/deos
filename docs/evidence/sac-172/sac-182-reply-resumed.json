@@ -1,0 +1,109 @@
+{
+  "run": [
+    {
+      "status": "active",
+      "current_node": "implementation_build",
+      "current_visit_sequence": 40,
+      "definition_id": "implementation",
+      "definition_version": 27,
+      "definition_digest": "ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c",
+      "workflow_instance_id": "wf-v1-d5c2ifdot3p7rkggpzbd3h3tyxobiyyg7xnuijhfepnvvoyzdnva",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 1
+    }
+  ],
+  "attempt": {
+    "attempt_id": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+    "node_id": "implementation_build",
+    "visit_sequence": 40,
+    "state": "running",
+    "sandbox_id": "impl-v1-j3jra7ya3wbnvseonzsprhjnn7ef5m3xffjohgshxhwoqyusoa4q",
+    "process_id": "1f7cb751-d605-4af4-af2f-b1b4830483e5",
+    "result_class": null,
+    "cleanup_state": "pending",
+    "created_at": "2026-09-15T03:56:17.083Z",
+    "ended_at": null
+  },
+  "try": {
+    "attempt_id": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+    "try_sequence": 6,
+    "kind": "build",
+    "status": "running",
+    "input_patch_sha": "3a627102c907d12ea29fcf792828d5382017858f7ebbc0d448d6f64cfdcd44ba",
+    "output_patch_sha": null,
+    "public_error_code": null,
+    "updated_at": "2026-09-15T03:56:30.977Z"
+  },
+  "initialProgress": {
+    "attempt_id": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+    "completed": 0,
+    "total": 57,
+    "tasks_sha": "d952f4e2f6fc6145f15f18c25689c431dfc1389e18cdb76e2908677d2e4fc9e7",
+    "observed_at": "2026-09-15T03:56:34.862Z"
+  },
+  "delivery": [
+    {
+      "delivery_id": "5a6963d6-d298-4986-95fc-8b175ad3d66e",
+      "classification": "relevant",
+      "received_at": "2026-09-15T03:55:57.118000+00:00"
+    }
+  ],
+  "inbox": [
+    {
+      "delivery_id": "5a6963d6-d298-4986-95fc-8b175ad3d66e",
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "event_kind": "Comment.create",
+      "actor_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "actor_type": "user",
+      "provider_time": "2026-09-15T03:55:56.138Z",
+      "state": "processed",
+      "comment_id": "2f478444-cb81-414b-9343-4964cd727f83",
+      "created_at": "2026-09-15T03:56:04.796Z",
+      "sent_at": "2026-09-15T03:56:04.796Z",
+      "processed_at": "2026-09-15T03:56:14.892Z"
+    }
+  ],
+  "eligibility": [
+    {
+      "delivery_id": "5a6963d6-d298-4986-95fc-8b175ad3d66e",
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "gate_visit": 39,
+      "decision": "eligible",
+      "recorded_at": "2026-09-15T03:56:13.831Z"
+    }
+  ],
+  "gate": [
+    {
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "visit_sequence": 39,
+      "node_id": "implementation_clarification_wait",
+      "expected_event_kind": "comment",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "issue_id": "e75aad25-c32f-4c23-8184-b4b38388a631",
+      "human_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+      "question_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:sac-182-rollout-scope-v1",
+      "pr_number": null,
+      "head_sha": null,
+      "base_sha": "f2b994131d879967940e69ced07932dfffb8bc9a",
+      "state": "reply_received",
+      "decision_delivery_id": "5a6963d6-d298-4986-95fc-8b175ad3d66e",
+      "decision_outcome": "reply_received",
+      "opened_at": "2026-09-14T19:11:14.964Z",
+      "decided_at": "2026-09-15T03:56:14.852Z"
+    }
+  ],
+  "materializedReply": {
+    "id": "2f478444-cb81-414b-9343-4964cd727f83",
+    "body": "replying again, well you have to deploy somewhere to get proof. surely that's not production. yes let's split these and continue the work please",
+    "createdAt": "2026-09-15T03:55:56.138Z",
+    "updatedAt": "2026-09-15T03:55:56.131Z",
+    "editedAt": null,
+    "archivedAt": null,
+    "issue": {
+      "id": "e75aad25-c32f-4c23-8184-b4b38388a631"
+    },
+    "user": {
+      "id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b"
+    }
+  }
+}
