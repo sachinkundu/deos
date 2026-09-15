@@ -240,14 +240,14 @@ export function validateCandidate(
       "tasks_incomplete",
       "Required OpenSpec tasks remain incomplete",
     );
-  if (
-    !candidate.checks.length ||
-    candidate.checks.some((check) => check.exitCode !== 0)
-  )
+  if (!candidate.checks.length)
     throw new ImplementationError(
       "checks_incomplete",
-      "Required commands did not all pass",
+      "No recorded checks match the final candidate tree. Rerun required checks after the last repository edit.",
     );
+  const failedChecks = candidate.checks.filter((check) => check.exitCode !== 0);
+  if (failedChecks.length)
+    throw new ImplementationError("checks_incomplete", `Required commands failed: ${failedChecks.map(check => `${check.command} (exit ${check.exitCode})`).join("; ")}`);
   if (candidate.kind === "tasks") return;
   if (requirements.blockedProviders.length)
     throw new ImplementationError(

@@ -1,4 +1,5 @@
 import { recordCaughtError } from "./error-context.ts";
+import { isWorkflowEventTimeout } from "./workflow-timeout.ts";
 import type { AttemptCompletionHint } from "./attempt-completion.ts";
 import { transitionIdentity, visitIdentity } from "./orchestration-identity.ts";
 import type {
@@ -212,8 +213,9 @@ export class WorkflowOrchestrator {
             // attempt-progress wakes this same reconciliation loop immediately.
             // It is never interpreted as completion or a workflow transition.
           } catch (caughtError) {
-            if (!(caughtError instanceof Error) || caughtError.name !== "WorkflowTimeoutError") {
+            if (!isWorkflowEventTimeout(caughtError)) {
               recordCaughtError(caughtError, "src/workflow-orchestrator.ts:192");
+              throw caughtError;
             }
             // A timeout is the durable heartbeat checkpoint; the next loop
             // reloads D1 and reconciles the exact Sandbox/process identities.

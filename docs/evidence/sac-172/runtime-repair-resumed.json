@@ -1,0 +1,181 @@
+{
+  "run": [
+    {
+      "status": "active",
+      "current_node": "implementation_build",
+      "current_visit_sequence": 42,
+      "definition_id": "implementation",
+      "definition_version": 27,
+      "definition_digest": "ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c",
+      "workflow_instance_id": "wf-v1-cghsgyliqgxamwbycplagwgsfcvci7hakrwpgmwho5vmglrguo2q",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 1
+    }
+  ],
+  "active_attempts": [
+    {
+      "attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "node_id": "implementation_build",
+      "state": "running"
+    }
+  ],
+  "implementation_attempts": [
+    {
+      "attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "node_id": "implementation_build",
+      "visit_sequence": 42,
+      "state": "running",
+      "sandbox_id": "impl-v1-p4sefyfadjr6sqzjzi4r3v4ri555sahrbrh5lv2quex64qtkheva",
+      "process_id": "354b62e1-3073-4996-9286-be5f437b84dd",
+      "result_class": null,
+      "cleanup_state": "pending",
+      "created_at": "2026-09-15T06:06:17.449Z",
+      "ended_at": null
+    },
+    {
+      "attempt_id": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+      "node_id": "implementation_build",
+      "visit_sequence": 40,
+      "state": "failed",
+      "sandbox_id": "impl-v1-j3jra7ya3wbnvseonzsprhjnn7ef5m3xffjohgshxhwoqyusoa4q",
+      "process_id": "1f7cb751-d605-4af4-af2f-b1b4830483e5",
+      "result_class": "post_collection_validation_failed",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-15T03:56:17.083Z",
+      "ended_at": "2026-09-15T05:39:57.325Z"
+    },
+    {
+      "attempt_id": "01a0a134-fefc-75d9-b32e-d941983aa546",
+      "node_id": "implementation_build",
+      "visit_sequence": 37,
+      "state": "completed",
+      "sandbox_id": "impl-v1-5s2nwtx2xyo42e4oo7g7s4f5awd42i33pdbjvuuca4sfogyln73a",
+      "process_id": "dda0fa9c-cb87-487b-87d0-5ee4c31118d7",
+      "result_class": "needs_human",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-14T18:36:40.060Z",
+      "ended_at": "2026-09-14T19:11:08.698Z"
+    },
+    {
+      "attempt_id": "01a0a0d7-0ea0-715b-bf5e-a57a8c14965c",
+      "node_id": "implementation_build",
+      "visit_sequence": 35,
+      "state": "failed",
+      "sandbox_id": "impl-v1-kgyk6c52qtknrd5yorbndx6ngawafva6tqhpej2pyk6hbqiz3dtq",
+      "process_id": "5394d6f1-79de-42fd-8df5-aa948c71aed5",
+      "result_class": "supervisor_failed",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-14T16:54:03.680Z",
+      "ended_at": "2026-09-14T18:14:19.681Z"
+    },
+    {
+      "attempt_id": "01a0a02a-ea7e-7034-94c4-31a3b1301fd7",
+      "node_id": "implementation_build",
+      "visit_sequence": 33,
+      "state": "failed",
+      "sandbox_id": "impl-v1-cw637tfbteg2g3god7gl3662xpm6wya3dvcoqz5et4mbo4c7z4qa",
+      "process_id": "111e03dd-fdbd-4006-ba0c-ffdec4b9ef16",
+      "result_class": "supervisor_failed",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-14T13:46:02.238Z",
+      "ended_at": "2026-09-14T16:23:40.215Z"
+    }
+  ],
+  "implementation_tries": [
+    {
+      "attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "try_sequence": 7,
+      "kind": "build",
+      "status": "running",
+      "input_patch_sha": "81a3f091107316c8f7d8289aca9d28074e67f81671e1503977007d3527e215c7",
+      "output_patch_sha": null,
+      "public_error_code": null,
+      "updated_at": "2026-09-15T06:06:31.043Z"
+    },
+    {
+      "attempt_id": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+      "try_sequence": 6,
+      "kind": "build",
+      "status": "failed",
+      "input_patch_sha": "3a627102c907d12ea29fcf792828d5382017858f7ebbc0d448d6f64cfdcd44ba",
+      "output_patch_sha": null,
+      "public_error_code": "documentation_denied",
+      "updated_at": "2026-09-15T05:40:02.364Z"
+    },
+    {
+      "attempt_id": "01a0a134-fefc-75d9-b32e-d941983aa546",
+      "try_sequence": 5,
+      "kind": "build",
+      "status": "needs_human",
+      "input_patch_sha": "c839fa2b2a1ae0e31e0659e489af9e98f2c6c3c551ba3ef233b97dbdc89e70b8",
+      "output_patch_sha": "3a627102c907d12ea29fcf792828d5382017858f7ebbc0d448d6f64cfdcd44ba",
+      "public_error_code": "documentation_denied",
+      "updated_at": "2026-09-14T19:11:08.657Z"
+    },
+    {
+      "attempt_id": "01a0a0d7-0ea0-715b-bf5e-a57a8c14965c",
+      "try_sequence": 4,
+      "kind": "build",
+      "status": "failed",
+      "input_patch_sha": "ba672fcd7068c4db12c6bf15879dcc92ed4272fba20ed4c34824571711d259b4",
+      "output_patch_sha": null,
+      "public_error_code": "documentation_denied",
+      "updated_at": "2026-09-14T18:14:24.990Z"
+    },
+    {
+      "attempt_id": "01a0a02a-ea7e-7034-94c4-31a3b1301fd7",
+      "try_sequence": 3,
+      "kind": "build",
+      "status": "failed",
+      "input_patch_sha": "ba672fcd7068c4db12c6bf15879dcc92ed4272fba20ed4c34824571711d259b4",
+      "output_patch_sha": null,
+      "public_error_code": "documentation_denied",
+      "updated_at": "2026-09-14T16:23:44.867Z"
+    }
+  ],
+  "recovered_input": [
+    {
+      "attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "retry_source": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+      "input_patch_sha": "81a3f091107316c8f7d8289aca9d28074e67f81671e1503977007d3527e215c7",
+      "recovered_attempt": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7"
+    }
+  ],
+  "task_progress": [
+    {
+      "attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "completed": 50,
+      "total": 50,
+      "tasks_sha": "e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc",
+      "observed_at": "2026-09-15T06:06:48.947Z"
+    },
+    {
+      "attempt_id": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+      "completed": 50,
+      "total": 50,
+      "tasks_sha": "e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc",
+      "observed_at": "2026-09-15T05:37:56.350Z"
+    },
+    {
+      "attempt_id": "01a0a134-fefc-75d9-b32e-d941983aa546",
+      "completed": 0,
+      "total": 57,
+      "tasks_sha": "d952f4e2f6fc6145f15f18c25689c431dfc1389e18cdb76e2908677d2e4fc9e7",
+      "observed_at": "2026-09-14T19:07:59.719Z"
+    },
+    {
+      "attempt_id": "01a0a0d7-0ea0-715b-bf5e-a57a8c14965c",
+      "completed": 0,
+      "total": 57,
+      "tasks_sha": "d952f4e2f6fc6145f15f18c25689c431dfc1389e18cdb76e2908677d2e4fc9e7",
+      "observed_at": "2026-09-14T18:08:47.535Z"
+    },
+    {
+      "attempt_id": "01a0a02a-ea7e-7034-94c4-31a3b1301fd7",
+      "completed": 57,
+      "total": 57,
+      "tasks_sha": "f4776d30b0e9a93d74ce62f86505208fe40a35cf08e7c942b86c1ad8ecc775e4",
+      "observed_at": "2026-09-14T16:18:29.367Z"
+    }
+  ]
+}

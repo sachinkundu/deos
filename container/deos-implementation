@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
+import { implementationRequest } from '/deos/bin/implementation-client.mjs';
 const path=process.argv[2];
 if(!path || path==='--help') {
   process.stdout.write(JSON.stringify({usage:'deos-implementation REQUEST_FILE',examples:[
     {action:'check',argv:['npm','run','build']},
+    {action:'status'},
     {action:'check',argv:['node','scripts/demo.mjs'],behavior:true},
     {action:'preview',main:'src/index.ts',assets:'dist',d1:['DB'],r2:['BUCKET']},
     {action:'browser',operation:'navigate',url:'/'},
@@ -18,10 +20,9 @@ if(!path || path==='--help') {
     {action:'safe_test',operation:'linear.move',resourceId:'FROM_FIXTURE',operationId:'another-request-id',issueId:'FIXTURE_ISSUE',stateId:'FIXTURE_WORK_STATE'},
     {action:'safe_test',operation:'events',resourceId:'FROM_FIXTURE'},
     {action:'safe_test',operation:'proof',resourceId:'FROM_FIXTURE',githubOperationId:'unique-request-id',linearOperationId:'another-request-id'}
-  ],notes:['Save one JSON request per call.','Preview fields are optional except at least one of main or assets.','Browser state returns page content and console messages. Inspect each screenshot with view_image using the returned imagePath.','For documentation citations use the final canonical URL returned by the document call.']},null,2)+'\n');
+  ],notes:['Save each JSON request in /deos/output/requests/, outside the repository; request-file edits in the repository invalidate prior checks.','Call status before finishing to inspect checks and proof matching the current tree.','Preview fields are optional except at least one of main or assets.','Browser state returns page content and console messages. Inspect each screenshot with view_image using the returned imagePath.','For documentation citations use the final canonical URL returned by the document call.']},null,2)+'\n');
   process.exit(0);
 }
 const body=await readFile(path,'utf8');
-const endpoint=JSON.parse(body).action==='safe_test'?'provider-test':'tool';
-const response=await fetch(`http://127.0.0.1:8790/${endpoint}`,{method:'POST',headers:{'Content-Type':'application/json'},body});
-const text=await response.text();process.stdout.write(text+'\n');if(!response.ok)process.exitCode=1;
+const response=await implementationRequest(body);
+process.stdout.write(response.text+'\n');if(response.statusCode<200 || response.statusCode>=300)process.exitCode=1;

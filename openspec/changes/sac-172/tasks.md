@@ -31,6 +31,8 @@
 
 - [x] 4.7 Show Verification after Author and before Human Review. A full current checklist starts this display step; proof and PR preparation keep it active until the durable review handoff. Preserve failures, waits, retries and reopened tasks. Verify the map and staging canary.
 
+- [x] 4.8 Repair canary runner faults: classify expected RPC heartbeat timeouts, preserve long command responses, release failed preview processes, report current-tree checks, and verify a new attempt resumes from saved work. Full canary proof remains required by 5.4.
+
 ## 5. Verification and canary
 
 - [x] 5.1 Verify migrations, frozen graph compatibility, job contracts, isolation, denial cases, resource ambiguity, cleanup, proof freshness, citations, publication retries, and human gate behavior.

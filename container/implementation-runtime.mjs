@@ -18,6 +18,7 @@ import { join, resolve, relative } from "node:path";
 import { tmpdir } from "node:os";
 import { verifyNativeGrounding } from "./grounded-agent.mjs";
 import { trustGeneratedHooks } from "./native-review-setup.mjs";
+import { killProcessGroup, stopProcessGroup } from "./implementation-process.mjs";
 
 const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
@@ -27,6 +28,7 @@ export async function command(argv, cwd, options = {}) {
     const child = spawn(argv[0], argv.slice(1), {
       cwd,
       env: options.env ?? { PATH: process.env.PATH, HOME: "/root" },
+      detached: true,
       stdio: [options.stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
     if (options.stdin !== undefined) child.stdin.end(options.stdin);
@@ -36,7 +38,7 @@ export async function command(argv, cwd, options = {}) {
     let failure;
     const timer = setTimeout(() => {
       failure = new Error(`Command timed out: ${argv[0]}`);
-      child.kill("SIGKILL");
+      killProcessGroup(child, "SIGKILL");
     }, options.timeout ?? 600_000);
     const read = (into) => (data) => {
       size += data.length;
@@ -44,7 +46,7 @@ export async function command(argv, cwd, options = {}) {
         failure = new Error(
           `Command output exceeds 10485760 bytes: ${argv[0]}`,
         );
-        child.kill("SIGKILL");
+        killProcessGroup(child, "SIGKILL");
       } else into.push(data);
     };
     child.stdout.on("data", read(stdout));
@@ -177,6 +179,9 @@ export function localConfig(request, attemptId) {
     throw new Error("Preview entrypoint must be repository relative");
   if (request.assets !== undefined && !safe(request.assets))
     throw new Error("Preview assets must be repository relative");
+  if (request.assets && (request.assets.split("/").every(part => !part || part === ".") ||
+    request.assets.split("/").includes("node_modules")))
+    throw new Error("Preview assets must be a dedicated built-assets directory, not the repository root or node_modules");
   if (!request.main && !request.assets)
     throw new Error("Preview needs a Worker entrypoint or built assets");
   if (
@@ -355,6 +360,13 @@ export async function setupImplementation(job) {
   let preview = null;
   let previewLog = null;
   let previewError = null;
+  const stopPreview = async () => {
+    await stopProcessGroup(preview);
+    await previewLog?.close();
+    preview = null;
+    previewLog = null;
+    previewError = null;
+  };
   let chain = Promise.resolve();
   let providerChain = Promise.resolve();
   let stateWrites = Promise.resolve();
@@ -414,7 +426,14 @@ export async function setupImplementation(job) {
           treeSha: before.treeSha,
         };
         let result;
-        if (request.action === "check") {
+        if (request.action === "status") {
+          const checks = currentChecks(state.checks, before);
+          result = { ...subject,
+            checks: checks.map(({ command, exitCode }) => ({ command, exitCode })),
+            staleChecks: state.checks.length - checks.length,
+            proofKinds: [...new Set(state.proof.filter(p => p.treeSha === before.treeSha).map(p => p.kind))],
+          };
+        } else if (request.action === "check") {
           if (
             !Array.isArray(request.argv) ||
             !request.argv.length ||
@@ -531,6 +550,7 @@ export async function setupImplementation(job) {
             ["chown", "deos-author:deos-author", `${ROOT}/.wrangler`],
             job.cwd,
           );
+          try {
           previewLog = await open(`${ROOT}/preview.log`, "a", 0o600);
           preview = spawn(
             "runuser",
@@ -542,6 +562,7 @@ export async function setupImplementation(job) {
               "-i",
               "PATH=/usr/local/bin:/usr/bin:/bin",
               "HOME=/home/deos-author",
+              "NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt",
               "wrangler",
               "dev",
               "--local",
@@ -588,6 +609,11 @@ export async function setupImplementation(job) {
               `Preview did not become ready: ${await readFile(`${ROOT}/preview.log`, "utf8")}`,
             );
           result = await broker({ action: "preview", port: 8787 });
+          } catch (error) {
+            try { await stopPreview(); }
+            catch (cleanupError) { throw new AggregateError([error, cleanupError], "Preview startup and cleanup failed", { cause: error }); }
+            throw error;
+          }
         } else if (["browser", "document", "search", "safe_test"].includes(request.action)) {
           result = await broker({ ...request, subject });
           if (result.proof) state.proof.push(result.proof);
@@ -681,15 +707,8 @@ export async function setupImplementation(job) {
       );
     },
     async close() {
-      if (preview?.pid) {
-        try {
-          process.kill(-preview.pid, "SIGTERM");
-        } catch (error) {
-          if (error.code !== "ESRCH") throw error;
-        }
-      }
+      await stopPreview();
       server.closeAllConnections();
-      await previewLog?.close();
       await new Promise((resolveClose) => server.close(resolveClose));
     },
   };

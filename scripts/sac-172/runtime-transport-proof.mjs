@@ -1,0 +1,14 @@
+import {createServer} from 'node:http';
+import {once} from 'node:events';
+import {writeFile} from 'node:fs/promises';
+import {implementationRequest} from '../../container/implementation-client.mjs';
+const calls={};const started=Date.now();
+const server=createServer(async(req,res)=>{const data=[];for await(const c of req)data.push(c);const body=JSON.parse(Buffer.concat(data));calls[body.probe]=(calls[body.probe]??0)+1;setTimeout(()=>res.end(JSON.stringify({completed:true,probe:body.probe})),310000)});
+server.listen(0,'127.0.0.1');await once(server,'listening');const port=server.address().port;
+console.log('Started real 310-second delayed-response proof at '+new Date().toISOString());
+const old=fetch('http://127.0.0.1:'+port+'/tool',{method:'POST',body:JSON.stringify({action:'check',probe:'previous-fetch'})}).then(async r=>({body:await r.text(),elapsedMs:Date.now()-started})).catch(e=>({error:e.message,cause:e.cause?.code,elapsedMs:Date.now()-started}));
+const next=implementationRequest(JSON.stringify({action:'check',probe:'fixed-http'}),port).then(r=>({...r,elapsedMs:Date.now()-started}));
+const [previous,fixed]=await Promise.all([old,next]);server.closeAllConnections();server.close();await once(server,'close');
+const proof={startedAt:new Date(started).toISOString(),previous,fixed,calls};
+await writeFile(process.argv[2] ?? '/tmp/sac172-long-tool-proof.json',JSON.stringify(proof,null,2));console.log(JSON.stringify(proof,null,2));
+if(fixed.statusCode!==200||calls['fixed-http']!==1)process.exitCode=1;

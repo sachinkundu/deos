@@ -205,3 +205,17 @@ The 100 portal tests passed; after the final status-label and clarification refi
 Staging portal version `0cd564c5-f900-4825-8c14-58ed565c01b6` was active at 100 percent traffic on 15 September 2026 at 05:35:16 UTC. Wrangler again reported route-list authentication code 10000 after activation; API read-back and the live browser proved activation. The backend, ingress, container images, frozen workflow, visit 40 and running attempt were unchanged. SAC-182 still had no implementation PR. This UI proof does not complete the implementation canary or its required provider/behavior proof.
 
 Evidence: [checks and screenshots](verification-node.md), [deployment and D1 read-back](verification-node-readback.json), and [live staging map](verification-node-staging.png).
+
+
+### Runner repair deployed and saved work resumed
+
+On September 15, backend `691b1d8b-870e-4dd2-aca4-a44a33999f3d` was read back at 100 percent. Both implementation tiers completed rollout to container version 5, image `sha256:827095ccfc25f189e57003c9121e9269bac6e954a756c6a7f848047cb6c72709`, with four healthy instances each and no errors. Ingress and both portal surfaces were unchanged. See [deployment read-back](runtime-repair-deployment.json).
+
+The trusted same-definition retry was established at 06:06:12.043Z, moving the failed visit 41 to implementation build visit 42. New attempt `01a0a3ac-5d69-7e50-a1dd-9b883fe21acc` is running in a fresh sandbox and Workflow `wf-v1-cghsgyliqgxamwbycplagwgsfcvci7hakrwpgmwho5vmglrguo2q`. Its input patch is exactly `81a3f091107316c8f7d8289aca9d28074e67f81671e1503977007d3527e215c7`, recovered from failed try 6. The frozen v27 definition and human binding are unchanged. See [retry receipt](runtime-repair-retry.json) and [running attempt with recovered input](runtime-repair-resumed.json).
+
+The staging browser updated automatically to Workflow running, Author 50/50 complete, Verification in progress and Human Review upcoming. Earlier errors remain collapsed in history. These are the restored task boxes; final-tree checks, fresh preview/browser proof and changed-application provider E2E still have to pass. No implementation PR was created by this repair. The timeout diagnosis and local regression proof are in [runner repair evidence](runtime-repair.md).
+
+![Resumed verification on staging](runtime-recovered-map.png)
+
+
+The first real five-minute checkpoint ended at 06:11:51.501Z with the expected `WorkflowTimeoutError`. The new Workflow then completed its authority check and agent reconciliation at 06:11:54.304Z, entered the next wait, and remained running. D1 showed the same live process, a fresh heartbeat at 06:11:47.042Z and no new heartbeat-timeout error records. One earlier startup file-not-found diagnostic remains preserved. See [live checkpoint and D1 evidence](runtime-live-checkpoint.json).

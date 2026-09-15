@@ -125,6 +125,9 @@ test("local preview config cannot carry remote bindings, secrets or another try 
   );
   assert.equal(one.d1_databases[0].remote, undefined);
   assert.equal(one.services, undefined);
+  for (const assets of [".", "./", "node_modules", "portal/node_modules"]) {
+    assert.throws(() => localConfig({action:"preview",assets}, "one"), /dedicated built-assets/);
+  }
   assert.throws(
     () => localConfig({ action: "preview", main: "../prod.ts" }, "one"),
     /relative/,
