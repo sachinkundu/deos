@@ -21,17 +21,20 @@ export interface BrowserProvider {
   capacity(): Promise<{ available: boolean; retryAfterMs: number }>;
   create(host: string): Promise<{ id: string; disconnect(): Promise<void> }>;
   close(id: string): Promise<void>;
+  keepAlive(id: string): Promise<void>;
 }
 export class CloudflareBrowserProvider implements BrowserProvider {
   readonly binding: Parameters<typeof puppeteer.sessions>[0];
-  constructor(binding: Parameters<typeof puppeteer.sessions>[0]) {
+  readonly api: typeof puppeteer;
+  constructor(binding: Parameters<typeof puppeteer.sessions>[0], api = puppeteer) {
     this.binding = binding;
+    this.api = api;
   }
   async inventory() {
-    return (await puppeteer.sessions(this.binding)).map((s) => s.sessionId);
+    return (await this.api.sessions(this.binding)).map((s) => s.sessionId);
   }
   async capacity() {
-    const limits = await puppeteer.limits(this.binding);
+    const limits = await this.api.limits(this.binding);
     return {
       available:
         limits.activeSessions.length < limits.maxConcurrentSessions &&
@@ -43,15 +46,35 @@ export class CloudflareBrowserProvider implements BrowserProvider {
     };
   }
   async create(host: string) {
-    const browser = await puppeteer.launch(this.binding, {
-      keep_alive: 60_000,
+    const browser = await this.api.launch(this.binding, {
+      // Workflow reconciliation runs every five minutes while the author works.
+      // Keep the session available between those commands and refresh it there.
+      keep_alive: 600_000,
       guardrails: { allowedDomains: [host] },
     });
     return { id: browser.sessionId(), disconnect: () => browser.disconnect() };
   }
   async close(id: string) {
-    const browser = await puppeteer.connect(this.binding, id);
+    const browser = await this.api.connect(this.binding, id);
     await browser.close();
+  }
+  async keepAlive(id: string) {
+    const session = (await this.api.sessions(this.binding)).find(session => session.sessionId === id);
+    if (!session) throw new ImplementationError("browser_retired", "The assigned browser session has ended; a fresh try is required");
+    // A tool already using this session is keeping it active. Do not compete
+    // for its connection or replay the page action during maintenance.
+    if (session.connectionId) return;
+    const browser = await this.api.connect(this.binding, id);
+    let primaryError: unknown;
+    try { await browser.version(); }
+    catch (error) { primaryError = error; throw error; }
+    finally {
+      try { await browser.disconnect(); }
+      catch (error) {
+        if (primaryError) throw new AggregateError([primaryError, error], "Browser keep-alive and disconnect failed", {cause:primaryError});
+        throw error;
+      }
+    }
   }
 }
 export class ImplementationBrowserAllocator {
@@ -69,6 +92,18 @@ export class ImplementationBrowserAllocator {
     this.provider = provider;
     this.account = account;
     this.now = now;
+  }
+  async keepAlive(runId: string, attemptId: string) {
+    const row = await this.store.db.prepare(`SELECT r.* FROM implementation_resources r
+      JOIN agent_attempts a ON a.attempt_id=r.attempt_id AND a.run_id=r.run_id
+      JOIN implementation_tries t ON t.attempt_id=a.attempt_id AND t.run_id=a.run_id
+      WHERE r.run_id=? AND r.attempt_id=? AND r.kind='browser' AND r.status='ready'
+        AND a.state='running' AND t.status='running'`)
+      .bind(runId, attemptId).first<ImplementationResource>();
+    if (!row?.provider_resource_id || this.now().getTime() - Date.parse(row.updated_at) < 60_000) return;
+    await this.provider.keepAlive(row.provider_resource_id);
+    await this.store.db.prepare("UPDATE implementation_resources SET updated_at=? WHERE resource_id=? AND status='ready' AND provider_resource_id=?")
+      .bind(this.now().toISOString(), row.resource_id, row.provider_resource_id).run();
   }
   async acquire(
     runId: string,
@@ -266,7 +301,9 @@ export async function browserCommand(
     url?: string;
     selector?: string;
     text?: string;
+    documentStatus?: number;
   },
+  api = puppeteer,
 ) {
   if (input.url && new URL(input.url, origin).origin !== origin)
     throw new ImplementationError(
@@ -274,10 +311,15 @@ export async function browserCommand(
       "Browser navigation escaped the assigned preview",
     );
   const messages: { kind: string; text: string }[] = [];
-  const browser: Browser = await puppeteer.connect(binding, sessionId);
+  const browser: Browser = await api.connect(binding, sessionId);
   try {
     const pages = await browser.pages();
     const page = pages[0] ?? (await browser.newPage());
+    let documentStatus = input.documentStatus;
+    page.on("response", response => {
+      if (response.request().isNavigationRequest() && response.frame() === page.mainFrame())
+        documentStatus = response.status();
+    });
     page.on("console", (message) =>
       messages.push({ kind: message.type(), text: message.text() }),
     );
@@ -289,11 +331,13 @@ export async function browserCommand(
         "browser_tabs",
         "Unexpected additional browser page",
       );
-    if (input.operation === "navigate")
-      await page.goto(new URL(input.url ?? "/", origin).href, {
+    if (input.operation === "navigate") {
+      const response = await page.goto(new URL(input.url ?? "/", origin).href, {
         waitUntil: "networkidle0",
         timeout: 30_000,
       });
+      if (response) documentStatus = response.status();
+    }
     else if (input.operation === "click") {
       if (!input.selector) throw new Error("Click selector missing");
       await page.click(input.selector);
@@ -309,6 +353,8 @@ export async function browserCommand(
       );
     if (input.operation === "screenshot") {
       if(page.url()==='about:blank')throw new ImplementationError('preview_not_open','Navigate to the assigned preview before capturing proof');
+      if (documentStatus === undefined || documentStatus < 200 || documentStatus >= 400)
+        throw new ImplementationError("preview_document_failed", `The preview document returned ${documentStatus === undefined ? "an unknown HTTP status" : `HTTP ${documentStatus}`}. Navigate to a working application page before capturing visual proof. Error responses remain diagnostic evidence, not proof of a working screen.`);
       await page.addStyleTag({
         content:
           "[data-sensitive], input[type=password] { visibility: hidden !important; }",
@@ -318,11 +364,13 @@ export async function browserCommand(
           await page.screenshot({ type: "png", fullPage: true }),
         ),
         url: page.url(),
+        documentStatus,
         console: messages,
       };
     }
     return {
       url: page.url(),
+      documentStatus,
       title: await page.title(),
       content: await page.content(),
       console: messages,

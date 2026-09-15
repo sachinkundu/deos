@@ -12,6 +12,7 @@ import { verifyImplementationCandidate } from "./implementation-verification.ts"
 import { saveImplementationProgress } from "./implementation-progress.ts";
 import { readImplementationTaskProgress } from "./implementation-progress-reader.ts";
 import { ensureImplementationProgressWatcher } from "./implementation-progress-watcher.ts";
+import { CloudflareBrowserProvider, ImplementationBrowserAllocator } from "./implementation-browser.ts";
 import {
   ImplementationStore,
   type ImplementationInput,
@@ -377,6 +378,16 @@ export class ImplementationService {
       .run();
   }
   async progress(run: OrchestrationRunRecord, attempt: AgentAttemptRecord, sandbox: SandboxView) {
+    try {
+      await new ImplementationBrowserAllocator(this.store, new CloudflareBrowserProvider(this.env.IMPLEMENTATION_BROWSER))
+        .keepAlive(run.run_id, attempt.attempt_id);
+    } catch (error) {
+      // Maintenance never repeats a browser action or substitutes for proof.
+      // Preserve failure without interrupting source work still in progress.
+      recordCaughtError(error, `implementation.browser.keepAlive:${attempt.attempt_id}`);
+      try { await this.store.error(run.run_id, attempt.attempt_id, "browser.keepAlive", error); }
+      catch (secondary) { recordCaughtError(secondary, "implementation.browser.keepAlive.diagnostics"); }
+    }
     try { await ensureImplementationProgressWatcher(sandbox, attempt.absolute_deadline); }
     catch (error) {
       recordCaughtError(error, `implementation.progress.watch:${attempt.attempt_id}`);

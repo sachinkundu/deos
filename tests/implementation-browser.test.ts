@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ImplementationBrowserAllocator,
+  CloudflareBrowserProvider,
+  browserCommand,
   BrowserCapacityWait,
   type BrowserProvider,
 } from "../src/implementation-browser.ts";
@@ -18,6 +20,7 @@ class Provider implements BrowserProvider {
   creates = 0;
   available = true;
   ambiguous = false;
+  keptAlive: string[] = [];
   async inventory() {
     return [...this.live];
   }
@@ -33,6 +36,7 @@ class Provider implements BrowserProvider {
   async close(id: string) {
     this.live = this.live.filter((value) => value !== id);
   }
+  async keepAlive(id: string) { this.keptAlive.push(id); }
 }
 async function fixture() {
   const db = new ImplementationTestDatabase(),
@@ -128,6 +132,105 @@ test("browser capacity waits without allocation; one browser is reused within on
   } finally {
     f.db.close();
   }
+});
+test("reconciliation refreshes only the active try's existing browser and throttles repeat observations", async () => {
+  const f = await fixture();
+  try {
+    const one = await f.allocator.acquire("run-1", "one", "https://one.trycloudflare.com");
+    await f.allocator.acquire("run-1", "two", "https://two.trycloudflare.com");
+    await f.allocator.keepAlive("run-1", "one");
+    assert.deepEqual(f.provider.keptAlive, []);
+    f.advance();
+    await f.allocator.keepAlive("other-run", "one");
+    assert.deepEqual(f.provider.keptAlive, []);
+    await f.allocator.keepAlive("run-1", "one");
+    await f.allocator.keepAlive("run-1", "one");
+    assert.deepEqual(f.provider.keptAlive, [one.provider_resource_id]);
+    assert.equal(f.provider.creates, 2);
+    f.db.sqlite.prepare("UPDATE agent_attempts SET state='completed' WHERE attempt_id='one'").run();
+    f.advance();
+    await f.allocator.keepAlive("run-1", "one");
+    assert.deepEqual(f.provider.keptAlive, [one.provider_resource_id]);
+    await f.allocator.cleanup((await f.store.resource("two", "browser"))!);
+    await f.allocator.keepAlive("run-1", "two");
+    assert.deepEqual(f.provider.keptAlive, [one.provider_resource_id]);
+  } finally { f.db.close(); }
+});
+
+test("provider maintenance avoids connected sessions, detects expiry and disconnects after an actual command", async () => {
+  const calls: string[] = [];
+  let sessions: Array<{sessionId:string;connectionId?:string}> = [{sessionId:"owned"}];
+  let failure: Error | undefined;
+  let disconnectFailure: Error | undefined;
+  const provider = new CloudflareBrowserProvider({} as never, {
+    sessions: async () => sessions,
+    launch: async (_binding: unknown, options: {keep_alive:number;guardrails:{allowedDomains:string[]}}) => {
+      assert.equal(options.keep_alive, 600_000);
+      assert.deepEqual(options.guardrails.allowedDomains, ["owned.trycloudflare.com"]);
+      return {sessionId:()=>"owned",disconnect:async()=>{calls.push("launch-disconnect");}};
+    },
+    connect: async (_binding: unknown, id: string) => {
+      calls.push(`connect:${id}`);
+      return {
+        version: async () => { calls.push("version"); if(failure)throw failure; return "Chrome"; },
+        disconnect: async () => { calls.push("disconnect"); if(disconnectFailure)throw disconnectFailure; },
+      };
+    },
+  } as never);
+  await (await provider.create("owned.trycloudflare.com")).disconnect();
+  calls.length = 0;
+  await provider.keepAlive("owned");
+  assert.deepEqual(calls, ["connect:owned","version","disconnect"]);
+  calls.length = 0;
+  sessions = [{sessionId:"owned",connectionId:"busy"}];
+  await provider.keepAlive("owned");
+  assert.deepEqual(calls, []);
+  sessions = [];
+  await assert.rejects(provider.keepAlive("owned"), /assigned browser session has ended/);
+  assert.deepEqual(calls, []);
+  sessions = [{sessionId:"owned"}];
+  failure = new Error("original protocol failure");
+  await assert.rejects(provider.keepAlive("owned"), error => error===failure);
+  assert.deepEqual(calls, ["connect:owned","version","disconnect"]);
+  disconnectFailure = new Error("disconnect failed too");
+  await assert.rejects(provider.keepAlive("owned"), error => error instanceof AggregateError && error.cause===failure && error.errors[1]===disconnectFailure);
+});
+
+test("a real navigation status follows the browser across commands and failed documents cannot become visual proof", async () => {
+  let status = 401;
+  let screenshots = 0;
+  let disconnects = 0;
+  const frame = {};
+  let onResponse: (response: unknown) => void = () => {};
+  const response = () => ({status:()=>status,request:()=>({isNavigationRequest:()=>true}),frame:()=>frame});
+  const page = {
+    on: (name: string, callback: (response: unknown) => void) => { if(name==='response')onResponse=callback; },
+    goto: async () => response(),
+    click: async () => { onResponse(response()); },
+    mainFrame: () => frame,
+    url: () => 'https://owned.trycloudflare.com/settings',
+    title: async () => 'Settings',
+    content: async () => status===401 ? '{"error":"unauthorized"}' : '<h1>Settings</h1>',
+    addStyleTag: async () => {},
+    screenshot: async () => { screenshots++; return new Uint8Array([1,2,3]); },
+  };
+  const api = {connect:async()=>({pages:async()=>[page],disconnect:async()=>{disconnects++;}})} as never;
+  const navigate = await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'navigate',url:'/settings'},api);
+  assert.equal(navigate.documentStatus,401);
+  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:navigate.documentStatus},api),/HTTP 401/);
+  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot'},api),/unknown HTTP status/);
+  assert.equal(screenshots,0);
+  status=200;
+  const repaired = await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'navigate',url:'/settings'},api);
+  const proof = await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:repaired.documentStatus},api);
+  assert.equal(proof.documentStatus,200);
+  assert.equal(screenshots,1);
+  status=503;
+  const clicked = await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'click',selector:'button',documentStatus:200},api);
+  assert.equal(clicked.documentStatus,503);
+  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:clicked.documentStatus},api),/HTTP 503/);
+  assert.equal(screenshots,1);
+  assert.equal(disconnects,7);
 });
 test("lost allocation response quarantines this try and never creates a replacement browser", async () => {
   const f = await fixture();

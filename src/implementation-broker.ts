@@ -327,8 +327,13 @@ export class ImplementationBroker {
                 ? request.selector
                 : undefined,
             text: typeof request.text === "string" ? request.text : undefined,
+            documentStatus: JSON.parse(browser.metadata_json).documentStatus,
           },
         );
+        if (result.documentStatus !== undefined) {
+          await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=json_set(metadata_json,'$.documentStatus',?),updated_at=? WHERE resource_id=? AND status='ready' AND provider_resource_id=?")
+            .bind(result.documentStatus, new Date().toISOString(), browser.resource_id, browser.provider_resource_id).run();
+        }
         if ("image" in result && result.image) {
           const proof = await this.proof(
             claims,
@@ -340,6 +345,7 @@ export class ImplementationBroker {
           );
           return Response.json({
             url: result.url,
+            documentStatus: result.documentStatus,
             console: result.console,
             proof,
             imageBase64: Buffer.from(result.image).toString("base64"),
