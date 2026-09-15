@@ -5,6 +5,7 @@ import { ImplementationTestDatabase, seedRun, seedAttempt } from "./helpers/impl
 import type { LoadedWorkflowDefinition } from "../src/workflow-definition.ts";
 import { D1AgentAttemptStore } from "../src/sandbox-controller.ts";
 import { requireAttemptTier } from "../src/sandbox-tier.ts";
+import { readFileSync } from 'node:fs';
 
 function fixture(node: "implementation_tasks" | "implementation_build") {
   const db = new ImplementationTestDatabase(); seedRun(db); seedAttempt(db, "failed-attempt");
@@ -69,6 +70,7 @@ test("an explicit implementation recovery gives future attempts more resources w
   try {
     const before = f.db.sqlite.prepare("SELECT * FROM orchestration_runs WHERE run_id='run-1'").get()!;
     assert.equal(before.sandbox_tier, 'basic');
+    f.db.sqlite.exec(readFileSync('scripts/sandbox-tier-enforce.sql', 'utf8'));
     const retry = await f.store.prepare({ ...f.input, sandboxTier: 'standard-2' });
     assert.equal(retry.source_sandbox_tier, 'basic');
     assert.equal(retry.target_sandbox_tier, 'standard-2');
@@ -86,7 +88,7 @@ test("an explicit implementation recovery gives future attempts more resources w
     assert.equal(next.sandbox_tier, 'standard-2');
     assert.equal(requireAttemptTier(next.expected_sandbox_tier ?? after.sandbox_tier, next.sandbox_tier), 'standard-2');
     assert.throws(() => f.db.sqlite.exec("UPDATE implementation_retry_tiers SET target_sandbox_tier='basic'"), /immutable/);
-    assert.throws(() => f.db.sqlite.exec("UPDATE orchestration_runs SET sandbox_tier='standard-2'"), /immutable/);
+    assert.throws(() => f.db.sqlite.exec("UPDATE orchestration_runs SET sandbox_tier='standard-2'"), /cannot change after activation/);
     assert.throws(() => f.db.sqlite.exec("UPDATE agent_attempts SET sandbox_tier='standard-2' WHERE attempt_id='failed-attempt'"), /immutable/);
   } finally { f.db.close(); }
 });
