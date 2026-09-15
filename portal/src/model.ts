@@ -563,6 +563,7 @@ export class PortalReadStore {
         status: run.status,
         definitionVersion: run.definition_version,
         sandbox_tier: portalSandboxTier(run),
+        currentSandboxTier: attemptResult.results.at(-1)?.sandbox_tier ?? portalSandboxTier(run),
         definitionDigest: run.definition_digest,
         definitionName: definition.name,
         reviewSchema: definition.jobs.planning_author?.boundedReview ?? null,

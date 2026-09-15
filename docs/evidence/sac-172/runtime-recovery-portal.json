@@ -1,0 +1,41 @@
+{
+  "deployment": {
+    "id": "770aed5d-49dd-494f-b1a2-a640408948b5",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "sachin.kundu@pm.me",
+    "annotations": {
+      "workers/message": "SAC-172 implementation canary portal",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "10c033eb-fcf6-4825-93b4-f8bff4e6292f",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-09-15T07:53:26.533814Z"
+  },
+  "checks": {
+    "portalTests": 100,
+    "typecheck": "passed",
+    "build": "passed",
+    "diffCheck": "passed"
+  },
+  "wranglerResult": {
+    "exitCode": 1,
+    "operation": "post-activation route listing",
+    "code": 10000,
+    "message": "Authentication error"
+  },
+  "browser": {
+    "url": "https://deos-staging.voxdez.com/",
+    "issue": "SAC-182",
+    "runStatus": "active",
+    "sandboxTier": "Standard-2",
+    "currentStep": "Implementation verification",
+    "authorTasks": "50/50",
+    "humanReview": "Upcoming",
+    "screenshot": "runtime-recovery-portal.png"
+  }
+}

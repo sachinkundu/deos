@@ -61,7 +61,7 @@ import "./styles.css";
 
 type Theme = "system" | "light" | "dark";
 interface Issue { issueId?: string; key: string; title: string; url: string; observedAt: string }
-interface Run { sandbox_tier?: string | null; id: string; sequence: number; status: string; definitionVersion: number; startedAt: string; updatedAt: string; endedAt: string | null }
+interface Run { sandbox_tier?: string | null; currentSandboxTier?: string | null; id: string; sequence: number; status: string; definitionVersion: number; startedAt: string; updatedAt: string; endedAt: string | null }
 interface Stage { id: string; label: string; state: "active" | "complete" | "upcoming"; visits: number }
 interface Visit {
   sequence: number;
@@ -1189,10 +1189,10 @@ function App() {
       {retryMessage && <div className="retry-message" aria-live="polite"><ArrowClockwise />{retryMessage}</div>}
       {selectedIssue && <section className="issue-header">
         <div><span className="eyebrow">{selectedIssue.key}</span><h1>{selectedIssue.title}</h1><a href={selectedIssue.url} target="_blank" rel="noreferrer">Open issue <ArrowSquareOut /></a></div>
-        <div className="run-control"><label htmlFor="run">Workflow run</label><select id="run" value={runId} onChange={(event) => { setRunId(event.target.value); setSelectedVisit(null); setTranscriptAttempt(null); setRetryMessage(null); void loadProjection(event.target.value, true); }}>{runs.map((run) => <option value={run.id} key={run.id}>Run {run.sequence} · {human(run.status)}</option>)}</select></div>
+        <div className="run-control"><label htmlFor="run">Workflow run</label><select id="run" value={runId} onChange={(event) => { setRunId(event.target.value); setSelectedVisit(null); setTranscriptAttempt(null); setRetryMessage(null); void loadProjection(event.target.value, true); }}>{runs.map((run) => <option value={run.id} key={run.id}>Run {run.sequence} · {human(projection?.run.id === run.id ? projection.run.status : run.status)}</option>)}</select></div>
       </section>}
       {projection ? <>
-        <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span><span>Sandbox: {projection.run.sandbox_tier === "basic" ? "Basic" : projection.run.sandbox_tier === "standard-2" ? "Standard-2" : "Tier not recorded"}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : `Retry ${workflowStepLabel(projection.retry.retryNode)}`}</button>}</div></section>
+        <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span><span>Sandbox: {(projection.run.currentSandboxTier ?? projection.run.sandbox_tier) === "basic" ? "Basic" : (projection.run.currentSandboxTier ?? projection.run.sandbox_tier) === "standard-2" ? "Standard-2" : "Tier not recorded"}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : `Retry ${workflowStepLabel(projection.retry.retryNode)}`}</button>}</div></section>
         <RunErrors projection={projection} currentStep={implementationCurrentStep} />
         {groupedWorkflow ? <TraceabilityWorkflowMap
           projection={projection}
