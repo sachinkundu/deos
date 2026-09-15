@@ -85,12 +85,17 @@ can present it as a visual rather than a plain text block.
 ```mermaid
 flowchart TD
     DMV[Design merge verified] --> IT[Create tasks]
-    IT --> IB[Build in fresh try]
+    IT --> DP[Demo Plan · Claude]
+    DP -->|ready| IB[Build in fresh try]
+    DP -->|blocked| CW[Clarification wait]
     IB -->|complete| PC[Proof check]
     IB -->|needs human| CW[Clarification wait]
     CW -->|accepted comment| IB
     CW -->|other event| CW
-    PC --> BW[Write run branch]
+    PC --> DG[Demo Gate · Claude]
+    DG -->|pass| BW[Write run branch]
+    DG -->|needs work| IB
+    DG -->|blocked| CW
     BW --> IP[Publish or update PR]
     IP --> IR[Implementation review]
     IR -->|In Progress| IB
@@ -742,3 +747,90 @@ Rollback stops selecting the new workflow version and restores the prior
 default for future runs. Existing runs keep their frozen version. A run that
 cannot continue safely remains in its recorded wait or failure state; rollback
 does not rewrite its graph, merge its pull request, or deploy its code.
+
+
+## Amendment: independent demo plan and gate
+
+The user requires a demo plan and independent evidence judgment in this original
+implementation change. Every implementation must demonstrate the behavior in its
+approved proposal, specifications and design before it can publish an implementation
+PR or reach Human Review.
+
+After task generation, a fresh Claude reviewer reads the frozen approved artifacts.
+It saves concrete demo scenarios, each with stable IDs, approved requirement
+references, an isolated environment, steps, expected results and required evidence
+kinds. Every approved specification requirement must have coverage. Visual proof is
+preferred when it helps a person judge the outcome. Provider integrations require
+real provider delivery consumed by the changed application. A synthetic ingress
+request and an unrelated provider write cannot stand in for that flow.
+
+Codex receives the saved plan before implementation. It starts the changed app in
+its assigned Cloudflare Sandbox with per-attempt data, runs the scenarios, fixes
+failures, and captures proof for the final tree. It must use actual provider receipt
+fields. It cannot invent identifiers or seed the expected final state and call that
+end-to-end proof. Scratch request files stay outside the repository. Repairs may
+change code, so affected checks and evidence run again after the last repair.
+
+A separate fresh Claude invocation then reads the approved artifacts, changed files,
+check results and actual demo evidence. It has no implementer conversation or write
+authority. The existing first-party Claude OAuth runner supplies the model; there
+is no paid API fallback. The evidence tool accepts only IDs in that invocation's
+frozen manifest. It returns hash-checked text or actual image content, records which
+evidence was opened, and grants no arbitrary URL or provider access. Oversized
+artifacts fail with their original diagnostic; they are never silently truncated.
+
+The Demo Gate returns a clear summary and a result for every scenario:
+
+- Pass: all required scenarios are demonstrated on the current tree.
+- Needs work: concrete gaps go back to Codex for repairs and new evidence.
+- Blocked: an unavailable capability or human decision produces one clear question
+  and enters the existing clarification gate.
+
+The saved plan cannot be quietly weakened or dropped on a later attempt. Existing
+scenarios keep their requirements, steps and expected results. New requirements may
+be added. A fresh plan can incorporate clarification while preserving those saved
+obligations. After clarification, the workflow returns through Demo Plan before
+Codex continues.
+
+The semantic judgment complements the trusted evidence checks. It cannot waive
+proof hashes, current base/tree identity, sanitization, delivery receipts, source
+access, or a verified provider response. Publication and merge checks require the
+latest gate to pass for the exact accepted candidate and saved plan. A new candidate
+or plan invalidates that verdict. Each gate response must match the response recorded
+by the trusted Claude runner. A successful agent exit alone is not a passing gate.
+
+D1 stores immutable review rows by run, visit and reviewer attempt, with input,
+plan and candidate digests, base and tree, outcome, summary and R2 payload digest.
+A separate access table records the exact evidence opened by that reviewer. R2
+holds immutable plans and verdicts. These records support restart reconciliation
+without repeating accepted work or treating an old verdict as current.
+
+The portal keeps its existing workflow map and normal node styling. Implementation
+expands into Demo Plan (Claude), Author (Codex), Verification, and Demo Gate (Claude),
+then leads to Human Review after publication. Claude nodes show a concise response
+and scenario count. Expanding them shows checklist-style requirements, decisions,
+reasons and evidence links. A previous assessment remains inspectable but is marked
+as previous as soon as a new build or review starts. A full author task meter does
+not imply verification, demo acceptance or review readiness.
+
+New runs select the updated frozen definition. Existing runs keep theirs. The user
+has explicitly authorized moving the failed SAC-182 canary to this amended path.
+That exception requires a trusted, audited failed-run upgrade with expected source
+definition, failed attempt, visit and preserved approved input. It must reject active
+attempts or open human gates, retain the existing branch and saved patch, preserve
+planning/design history, human identity and resource policy, and dispatch at Demo
+Plan. Deployment by itself must never rewrite a frozen run. The old failure and
+source definition remain visible in history.
+
+
+The trusted supervisor sends its captured candidate and patch with the authenticated
+verification request. The author-facing tool server cannot invoke this operation,
+read the capability, or replace the root-owned capture. This avoids a nested Worker
+callback into the Sandbox that is waiting for verification. Old supervisor requests
+retain the legacy read path during rollout. Both paths use the same identity, patch,
+check, documentation and proof validator; final collection checks the captured files
+again. Phase timings identify capture, validation and completion without logging
+credentials or source contents. This removes a possible stall point; the three
+try-11 timeouts did not identify the exact original blocked operation.
+
+Quick-tunnel allocation can precede public readiness. The trusted relay exposes a fixed health response. Its creator checks that response on the same allocated URL before marking the resource ready. Only known gateway startup statuses receive bounded read retries. The probe never calls the changed app. Original failures and the successful read-back are retained.

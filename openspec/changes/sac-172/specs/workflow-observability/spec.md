@@ -1,5 +1,14 @@
 ## ADDED Requirements
 
+### Requirement: Show the independent demo decision
+
+Implementation SHALL show Demo Plan and Demo Gate as normal nodes with Claude as the author. Keep the existing visual style and Author, Verification, and Human Review nodes. Demo Gate SHALL show Pass, Needs work, or Blocked, the demonstrated count, and a short verdict. Selecting a node SHALL show the requirements, expected outcomes, per-demo decisions, and evidence, with visible images. Current-step text SHALL name the real demo visit. A stale verdict MUST NOT look like a current pass. Keep internal control data out of the default map.
+
+#### Scenario: Reviewer asks for more work
+
+- **WHEN** Claude finds two of six demos missing.
+- **THEN** Demo Gate shows four of six demonstrated and explains the gaps while Codex resumes work.
+
 ### Requirement: Signal task progress in the Author node
 
 The implementation phase SHALL contain Author followed by Verification, linked to Human Review. A compact meter SHALL show the author's checked tasks, total tasks, remaining tasks, and the last observed time. It SHALL keep the existing phase markers, status, and transcript controls. It MUST NOT add internal task or proof panels to the workflow map. Selecting the task counter SHALL open a read-only popup with OpenSpec sections, numbered tasks, and checked or unchecked states. Its counts and task text SHALL come from the same saved observation. The popup SHALL support keyboard dismissal and a narrow viewport.

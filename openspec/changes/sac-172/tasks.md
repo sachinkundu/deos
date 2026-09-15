@@ -17,7 +17,7 @@
 - [x] 3.1 Derive monotonic proof requirements from approved inputs and actual changed paths, and reject stale, missing, unsanitized, or unit-test-only behavior proof.
 - [x] 3.2 Save and hash-check immutable patches, tree manifests, proof, documentation sources, and original diagnostics in R2 before accepting their D1 index.
 - [x] 3.3 Publish checked snapshot commits to the reserved branch with guarded sequences and retry read-back; reject unrelated branch heads.
-- [x] 3.4 Create or update one implementation PR with exact checks, tasks, assumptions, visible proof, citations, and idempotent publication sequences.
+- [x] 3.4 Create or update one implementation PR with exact checks, assumptions, visible proof, citations, and idempotent publication sequences. Keep the task checklist in the saved artifact and portal rather than the PR body.
 - [x] 3.5 Detect base drift before effects and from cron, invalidate proof, and rebuild in a fresh try without carrying forward a stale merge choice.
 
 ## 4. Human authority and observation
@@ -44,6 +44,12 @@
 - [x] 4.13 Retry unconfirmed browser cleanup for finished attempts during scheduled reconciliation. Respect cleanup holds, leave active attempts and human gates unchanged, and retain original errors until provider absence is confirmed.
 
 ## 5. Verification and canary
+
+- [ ] 5.6 Save mandatory Claude demo plans and per-scenario verdicts, with approved-requirement coverage, independent evidence inspection, exact candidate binding, and publication enforcement.
+- [ ] 5.7 Run Demo Plan and Demo Gate as separate Claude jobs in fresh sessions, supply the plan and repair feedback to Codex, and preserve blocked and failed outcomes.
+- [ ] 5.8 Show both demo nodes in the existing portal style with clear verdicts, counts, requirements, and visible evidence. Verify keyboard and mobile use in the real staging browser.
+- [ ] 5.9 Add an audited failed-run upgrade into the new frozen demo workflow. Preserve SAC-182's saved work and human authority. Verify isolation, stale evidence, forged results, repair, and restart cases before deployment.
+- [ ] 5.10 Diagnose and repair the canary completion transport fault, validate the built runtime and preview path, deploy with activation read-back, and continue SAC-182 through the new demo contract.
 
 - [x] 5.1 Verify migrations, frozen graph compatibility, job contracts, isolation, denial cases, resource ambiguity, cleanup, proof freshness, citations, publication retries, and human gate behavior.
 - [x] 5.2 Run repository checks and exercise the built implementation in isolated staging as needed, recording actual outcomes and limitations.

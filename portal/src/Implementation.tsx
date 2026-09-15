@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import type { ImplementationProgress } from "../../src/implementation-progress.ts";
 import { ImplementationTasks } from "./ImplementationTasks.tsx";
+import type { ImplementationDemoView } from './implementation-demo-view.ts';
 export interface ImplementationView {
+  demo?: ImplementationDemoView;
   progress?: ImplementationProgress | null;
   status: string;
   branch: string;

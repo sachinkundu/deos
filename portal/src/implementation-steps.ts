@@ -1,5 +1,6 @@
 import type { ImplementationProgress } from "../../src/implementation-progress.ts";
 import type { WorkflowDisplayStatus } from "./workflow-phases.ts";
+import type { ImplementationDemoView } from './implementation-demo-view.ts';
 
 interface ImplementationVisit {
   sequence: number;
@@ -11,7 +12,9 @@ interface ImplementationVisit {
 export interface ImplementationSteps {
   author: WorkflowDisplayStatus;
   verification: WorkflowDisplayStatus;
-  current: "implementation_author" | "implementation_verification";
+  demoPlan: WorkflowDisplayStatus;
+  demoGate: WorkflowDisplayStatus;
+  current: "implementation_author" | "implementation_verification" | "implementation_demo_plan" | "implementation_demo_gate";
   description: string;
 }
 
@@ -26,6 +29,7 @@ const readyNodes = new Set(["implementation_review", "implementation_merge", "co
 export function implementationSteps(
   visits: readonly ImplementationVisit[], runStatus: string,
   progress: ImplementationProgress | null | undefined,
+  demo?: ImplementationDemoView | null,
 ): ImplementationSteps {
   const current = visits.filter(visit => !visit.recovered &&
     (visit.nodeId.startsWith("implementation_") || visit.nodeId === "code_merged"))
@@ -38,23 +42,44 @@ export function implementationSteps(
     progress.total > 0 && progress.completed === progress.total && build !== undefined &&
     Date.parse(progress.observedAt) >= Date.parse(build.enteredAt);
   const ready = latest !== undefined && readyNodes.has(latest.nodeId);
-  const verifying = ready || checklistDone || (work !== undefined && verificationNodes.has(work.nodeId));
+  const atPlan = work?.nodeId === 'implementation_demo_plan' || work?.nodeId === 'implementation_rebase_demo';
+  const atGate = work?.nodeId === 'implementation_demo_gate';
+  const verifying = ready || checklistDone || atGate || (work !== undefined && verificationNodes.has(work.nodeId));
   const result: ImplementationSteps = {
     author: !latest ? "Upcoming" : verifying ? "Complete" : "In progress",
     verification: ready ? "Complete" : verifying ? "In progress" : "Upcoming",
     current: verifying ? "implementation_verification" : "implementation_author",
+    demoPlan: demo?.plan?.current ? demo.plan.value.outcome === 'ready' ? 'Complete' : 'Blocked' : 'Upcoming',
+    demoGate: demo?.gate?.current ? ({pass:'Complete', needs_work:'Needs work', blocked:'Blocked'} as const)[demo.gate.value.outcome] : 'Upcoming',
     description: ready ? latest.nodeId === "implementation_review" ? "Ready for human review." : "Checks and proof complete." : verifying
       ? work?.nodeId === "implementation_publish" || work?.nodeId === "implementation_branch_write"
         ? "Preparing the implementation PR." : "Final checks and end-to-end proof."
       : "Checks, end-to-end proof and PR preparation follow the task checklist.",
   };
+  if (atPlan) {
+    result.current = 'implementation_demo_plan';
+    result.demoPlan = demo?.plan?.current ? result.demoPlan : 'In progress';
+    result.author = 'Upcoming';
+    result.verification = 'Upcoming';
+    result.description = 'Claude is defining the required demos from the approved plan.';
+  }
+  if (atGate) {
+    result.current = 'implementation_demo_gate';
+    result.demoGate = demo?.gate?.current ? result.demoGate : 'In progress';
+    result.verification = 'Complete';
+    result.description = 'Checks complete. Claude is inspecting the demo evidence.';
+  }
+  if (demo?.enabled && ['implementation_branch_write', 'implementation_publish'].includes(work?.nodeId ?? '')) {
+    result.verification = 'Complete';
+    result.current = 'implementation_demo_gate';
+  }
   if (!latest) return result;
   const stopped = runStatus === "failed" ? "Failed"
     : ["blocked", "denied", "manual_reconciliation_required"].includes(runStatus) ? "Blocked"
       : runStatus === "canceled" ? "Canceled" : null;
   const waiting = latest.nodeId === "implementation_clarification_wait";
   if (stopped || waiting) {
-    result[verifying ? "verification" : "author"] = stopped ?? "Blocked";
+    result[atPlan ? 'demoPlan' : atGate ? 'demoGate' : verifying ? "verification" : "author"] = stopped ?? "Blocked";
     if (waiting) result.description = "Waiting for your reply in Linear.";
   }
   return result;

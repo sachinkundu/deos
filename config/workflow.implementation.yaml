@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: implementation
-  version: 26
+  version: 28
 spec:
   implementationPolicy:
     uiPaths:
@@ -232,6 +232,34 @@ spec:
       permissionProfile: review_read_only
       providerAccess: [model.claude_review]
       reviewKind: design
+      reviewMode: discovery
+    implementation_demo_plan:
+      promptFile: prompts/implementation-demo-plan.md
+      inputs: [openspec_change, implementation_demo_context]
+      context: [approved_design_merge, implementation_checkpoint]
+      resultSchema: schemas/implementation-demo-agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, raw-review-output.json, claude-provider-proof.json]
+      agentRole: reviewer
+      modelProvider: claude
+      model: claude-opus-5
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: [model.claude_review]
+      reviewKind: demo_plan
+      reviewMode: discovery
+    implementation_demo_gate:
+      promptFile: prompts/implementation-demo-gate.md
+      inputs: [openspec_change, implementation_demo_context]
+      context: [approved_design_merge, implementation_checkpoint]
+      resultSchema: schemas/implementation-demo-agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, raw-review-output.json, claude-provider-proof.json]
+      agentRole: reviewer
+      modelProvider: claude
+      model: claude-opus-5
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: [model.claude_review]
+      reviewKind: demo_gate
       reviewMode: discovery
     implementation_tasks:
       promptFile: prompts/implementation-tasks.md
@@ -553,13 +581,25 @@ spec:
       job: implementation_tasks
       edges:
         {
-          completed: implementation_build,
+          completed: implementation_demo_plan,
           retry_fresh: implementation_tasks,
           failed: implementation_failed,
           blocked: implementation_failed,
           manual_reconciliation_required: implementation_manual_reconciliation,
           base_changed: implementation_rebase_tasks,
         }
+    implementation_demo_plan:
+      type: agent
+      job: implementation_demo_plan
+      edges: { ready: implementation_build, blocked: implementation_question, failed: implementation_failed, base_changed: implementation_rebase_demo }
+    implementation_demo_gate:
+      type: agent
+      job: implementation_demo_gate
+      edges: { pass: implementation_branch_write, needs_work: implementation_build, blocked: implementation_question, failed: implementation_failed, base_changed: implementation_rebase }
+    implementation_rebase_demo:
+      type: system_action
+      action: implementation.rebase
+      edges: { completed: implementation_demo_plan, failed: implementation_failed }
     implementation_build:
       type: agent
       job: implementation_build
@@ -578,7 +618,7 @@ spec:
       linearState: Human Review
       expectedEventKind: comment
       decisions: { reply_received: In Progress }
-      edges: { reply_received: implementation_build }
+      edges: { reply_received: implementation_demo_plan }
     implementation_review:
       type: human_gate
       linearState: Human Review
@@ -626,7 +666,7 @@ spec:
       action: implementation.check_proof
       edges:
         {
-          completed: implementation_branch_write,
+          completed: implementation_demo_gate,
           failed: implementation_failed,
           base_changed: implementation_rebase,
         }

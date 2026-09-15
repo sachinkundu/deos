@@ -73,3 +73,16 @@ test("merge recheck reopens verification for the reviewed base", () => {
   const history = [build, visit(41, "implementation_review"), visit(42, "implementation_merge_recheck")];
   assert.equal(implementationSteps(history, "active", null).verification, "In progress");
 });
+
+test('independent demo steps are distinct from author task completion and verification',()=>{
+  const history=[visit(39,'implementation_demo_plan'),build];
+  const plan=implementationSteps(history.slice(0,1),'active',null,{enabled:true,plan:null,gate:null});
+  assert.equal(plan.current,'implementation_demo_plan');assert.equal(plan.demoPlan,'In progress');assert.equal(plan.author,'Upcoming');
+  const gate=implementationSteps([...history,visit(41,'implementation_demo_gate')],'active',progress,{enabled:true,plan:null,gate:null});
+  assert.equal(gate.current,'implementation_demo_gate');assert.equal(gate.verification,'Complete');assert.equal(gate.demoGate,'In progress');
+  const failed=implementationSteps([...history,visit(41,'implementation_demo_gate'),visit(42,'implementation_failed')],'failed',progress,{enabled:true,plan:null,gate:null});
+  assert.equal(failed.demoGate,'Failed');assert.equal(failed.verification,'Complete');
+  const blocked=implementationSteps([...history,visit(41,'implementation_demo_gate'),visit(42,'implementation_question'),visit(43,'implementation_clarification_wait')],
+    'awaiting_human',progress,{enabled:true,plan:null,gate:null});
+  assert.equal(blocked.demoGate,'Blocked');assert.equal(blocked.description,'Waiting for your reply in Linear.');
+});

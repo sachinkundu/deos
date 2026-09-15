@@ -255,3 +255,19 @@ button { color:inherit; }
   .branching-flow .phase-summary-copy small { white-space: normal; overflow: visible; }
   .workflow-phase[data-phase="implementation"] .phase-substep { grid-template-columns: minmax(0,1fr); }
 }
+
+.implementation-demo { grid-column: 1 / -1; min-width: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.implementation-demo p { margin: 8px 0; }
+.demo-author, .demo-count { color: var(--muted); font-size: 12px; }
+.demo-previous { color: var(--muted); font-style: italic; }
+.demo-scenarios { list-style: none; padding: 0; margin: 12px 0 0; }
+.demo-scenarios > li { padding: 12px 0; border-top: 1px solid var(--line); }
+.demo-scenario-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.demo-scenario-title strong { flex: 1; min-width: 100px; }
+.demo-scenario-title > span:last-child { font-size: 11px; color: var(--muted); }
+.demo-scenarios details { margin-top: 8px; }
+.demo-scenarios summary { cursor: pointer; }
+.demo-scenarios summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.demo-source { color: var(--muted); font-size: 11px; }
+.demo-evidence { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.demo-evidence a { color: var(--blue); }

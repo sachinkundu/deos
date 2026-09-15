@@ -46,6 +46,34 @@ For provider work, completion SHALL include a real provider event from a safe te
 - **WHEN** any required task, check, or proof is incomplete.
 - **THEN** DEOS does not publish the work as ready for human review.
 
+### Requirement: Plan and judge demos independently
+
+Every implementation SHALL have a demo plan from a fresh Claude reviewer before Codex starts the build. The reviewer SHALL read the approved proposal, specs, and design. Each demo SHALL name the requirements it covers, the safe environment, steps, expected result, and evidence needed. All approved requirements SHALL be covered. Prefer visual proof where it shows the behavior. Nonvisual work SHALL still have real behavior proof. The implementer MUST NOT remove or weaken a saved requirement.
+
+After Codex supplies current evidence, a separate fresh Claude reviewer SHALL judge every planned demo. It SHALL inspect the actual proof and relevant code. It MUST NOT accept the implementer's summary, a fixture screenshot, or unrelated provider calls as proof that the changed application works. Required images SHALL be available as images. The service SHALL check evidence provenance, subject hashes, and reviewer access as well as the verdict.
+
+The gate SHALL return Pass, Needs work, or Blocked with a clear reason for each demo. Needs work SHALL return the saved patch and specific gaps to Codex in a fresh try. Blocked SHALL preserve the reason and use the clarification path. An execution or transport failure MUST NOT become a pass. PR publication and final Human Review SHALL require a pass for the exact current candidate and demo plan. Later changes SHALL require a new verdict.
+
+#### Scenario: Every implementation gets a demo contract
+
+- **WHEN** task creation completes from the approved design.
+- **THEN** Claude defines the required demos before Codex executes the tasks.
+
+#### Scenario: Evidence misses the changed flow
+
+- **WHEN** tests pass but evidence does not show a required application outcome.
+- **THEN** the gate names the missing outcome and returns work to Codex without publishing the PR.
+
+#### Scenario: A visual demo passes
+
+- **WHEN** the reviewer marks a visual demo passed.
+- **THEN** the service proves that the reviewer opened its current, hash-checked image and that the evidence belongs to the reviewed candidate.
+
+#### Scenario: An existing failed canary adopts the gate
+
+- **WHEN** an operator explicitly migrates a failed implementation run with no active agent or open human gate.
+- **THEN** a durable transition records both definition digests, preserves the approved design, human binding, patch, branch, and PR, and resumes at Demo Plan. A deploy alone MUST NOT rewrite frozen runs.
+
 ### Requirement: Pause for a needed human choice and resume from the reply
 
 The agent SHALL make safe, relevant assumptions when the approved work gives enough direction. If a choice would change product intent, safety, or the approved design, it SHALL return one clear question and the reason that work cannot safely continue.

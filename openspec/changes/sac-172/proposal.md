@@ -6,6 +6,8 @@ The DEOS flow now stops after design approval. A person must still start the bui
 
 - After the design is approved, merged, and checked, start a build agent with no local prompt.
 - Let that agent create the task list, build the change, run checks, inspect web work in a service-owned browser, and fix what it finds.
+- Require an independent Claude demo plan for every implementation, based on the approved proposal, specs, and design. Codex runs those demos. A fresh Claude demo gate inspects the evidence and must pass before PR publication.
+- Show Demo Plan and Demo Gate as normal portal nodes, with requirements, results, visible evidence, and clear reasons for any work still needed.
 - Give each run its own branch, work space, sandbox, browser, and safe test scope. Two runs must not share work or change the live site.
 - If no safe choice is possible, ask one clear question on the Linear issue, enter human review, watch for an allowed reply, and then resume in a fresh attempt.
 - Open one code pull request for human review. Put the task list, checks, and strong proof in it. Prefer visual proof. Use Showboat when a visual check does not fit. Unit tests alone are not proof.

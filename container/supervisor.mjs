@@ -119,11 +119,11 @@ const sessionTracker = () => {
 };
 
 const runChild = async ({ job, prompt, reviewer, resumeSessionId, transcript, validation, tracker, onPid }) => {
-  const reviewerRunner = job.reviewKind === "design"
+  const reviewerRunner = ['demo_plan', 'demo_gate'].includes(job.reviewKind) ? '/deos/bin/implementation-demo-runner.mjs' : job.reviewKind === "design"
     ? "/deos/bin/design-review-runner.mjs"
     : "/deos/bin/trace-review-runner.mjs";
   const child = spawn(reviewer ? "node" : "codex", reviewer
-    ? [reviewerRunner]
+    ? [...(['demo_plan', 'demo_gate'].includes(job.reviewKind) ? ['--experimental-strip-types'] : []), reviewerRunner]
     : codexArgs(job, resumeSessionId), {
     cwd: job.cwd,
     env: {

@@ -20,7 +20,7 @@ import type { CapabilityClaims } from "./capability-auth.ts";
 import { errorDetails, readResponseText, responseError } from "./error-details.ts";
 import { recordCaughtError } from "./error-context.ts";
 import { ImplementationProviderTest } from "./implementation-provider-test.ts";
-import { previewRelayHost, previewRelayProgram, previewRelaySandboxId } from "./implementation-preview.ts";
+import { previewRelayHost, previewRelayProgram, previewRelaySandboxId, waitForPreviewRelay } from "./implementation-preview.ts";
 
 export class ImplementationBroker {
   readonly store: ImplementationStore;
@@ -74,29 +74,44 @@ export class ImplementationBroker {
           "subject_invalid",
           "Tool subject differs from the checked run",
         );
-      const sandbox = getSandbox(
-        attempt.sandbox_tier === "standard-2"
-          ? this.env.ImplementationStandard2Sandbox
-          : this.env.ImplementationSandbox,
-        attempt.sandbox_id,
-        { normalizeId: true, keepAlive: true },
-      );
       if (request.action === "verify") {
-        // The author cannot supply a candidate or proof assertion to this gate.
-        const candidate = JSON.parse((await sandbox.readFile(
-          "/deos/output/implementation-candidate.json", { encoding: "utf8" },
-        )).content) as ImplementationCandidate;
-        const patch = (await sandbox.readFile("/deos/output/patch.diff", { encoding: "utf8" })).content;
+        // The broker token belongs to the root supervisor. Its author-facing
+        // server does not expose verify or accept capture/proof assertions.
+        // Older supervisors still use the file-read path during a rolling update.
+        const started = Date.now();
+        const phase = (value: string) => console.log({event:'implementation.verification',phase:value,
+          runId:claims.runId,attemptId:claims.attemptId,elapsedMs:Date.now()-started});
+        phase('capture');
+        let candidate: ImplementationCandidate, patch: string;
+        if (request.capture !== undefined) {
+          const capture = request.capture as {candidate: ImplementationCandidate; patch: string};
+          if (!capture || typeof capture !== 'object' || Array.isArray(capture) ||
+              Object.keys(capture).some(key => !['candidate','patch'].includes(key)) ||
+              !capture.candidate || typeof capture.patch !== 'string')
+            throw new ImplementationError('candidate_identity','Invalid trusted verification capture');
+          candidate = capture.candidate; patch = capture.patch;
+        } else {
+          const sandbox = getSandbox(attempt.sandbox_tier === 'standard-2'
+            ? this.env.ImplementationStandard2Sandbox : this.env.ImplementationSandbox,
+          attempt.sandbox_id,{normalizeId:true,keepAlive:true});
+          phase('legacy_candidate_read');
+          candidate = JSON.parse((await sandbox.readFile('/deos/output/implementation-candidate.json',{encoding:'utf8'})).content);
+          phase('legacy_patch_read');
+          patch = (await sandbox.readFile('/deos/output/patch.diff',{encoding:'utf8'})).content;
+        }
         if (candidate.treeSha !== subject.treeSha)
           throw new ImplementationError("candidate_identity", "Verification subject differs from the captured candidate");
         try {
+          phase('validate');
           await verifyImplementationCandidate(this.env.DB, work, input, claims.attemptId, candidate, patch);
+          phase('ready');
           return Response.json({ ready: true, subject });
         } catch (error) {
           if (!isRepairableVerificationError(error)) throw error;
           const diagnostic = await this.store.put(claims.runId, "verification-feedback.json", this.sanitize(JSON.stringify({
             attemptId: claims.attemptId, subject, occurredAt: new Date().toISOString(), error: errorDetails(error),
           })));
+          phase('repair_required');
           return Response.json({ ready: false, code: error.code, message: this.sanitize(error.message), diagnostic, subject });
         }
       }
@@ -147,10 +162,12 @@ export class ImplementationBroker {
               "preview_origin",
               "Expected a fresh isolated quick tunnel",
             );
+          const readiness = await this.store.put(claims.runId, "preview-readiness.json",
+            this.sanitize(JSON.stringify({origin, observations: await waitForPreviewRelay(origin)})));
           await this.env.DB.prepare(
-            "UPDATE implementation_resources SET status='ready',provider_resource_id=?,preview_origin=?,updated_at=? WHERE resource_id=? AND status='allocating'",
+            "UPDATE implementation_resources SET status='ready',provider_resource_id=?,preview_origin=?,metadata_json=?,updated_at=? WHERE resource_id=? AND status='allocating'",
           )
-            .bind(origin, origin, new Date().toISOString(), row.resource_id)
+            .bind(origin, origin, JSON.stringify({relaySandboxId, readiness}), new Date().toISOString(), row.resource_id)
             .run();
           return Response.json({ origin });
         } catch (error) {

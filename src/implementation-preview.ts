@@ -1,5 +1,6 @@
 import { sandboxIdentity } from "./orchestration-identity.ts";
 import { ImplementationError } from "./implementation-contract.ts";
+import { errorDetails, responseError } from "./error-details.ts";
 
 export const previewRelayHost = "implementation-preview.internal";
 export const previewRelaySandboxId = (attemptId: string) => sandboxIdentity(`implementation-preview:${attemptId}`, false);
@@ -11,6 +12,11 @@ import http from 'node:http';
 import { Readable } from 'node:stream';
 const server = http.createServer(async (request, response) => {
   try {
+    if (request.method === 'GET' && request.url === '/__deos/preview-ready') {
+      response.setHeader('Cache-Control', 'no-store');
+      response.end('deos-preview-ready');
+      return;
+    }
     const target = new URL(request.url, 'http://implementation-preview.internal');
     if (target.origin !== 'http://implementation-preview.internal') throw new Error('Invalid preview request target');
     const headers = new Headers();
@@ -39,6 +45,39 @@ const server = http.createServer(async (request, response) => {
 server.on('upgrade', (_request, socket) => socket.end('HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n'));
 server.listen(8787, '0.0.0.0');
 `;
+
+// Tunnel allocation can precede edge readiness (observed HTTP 530/1016).
+// Probe the same relay without forwarding requests into the changed app.
+export async function waitForPreviewRelay(origin: string, dependencies = {
+  fetch: globalThis.fetch.bind(globalThis),
+  now: () => Date.now(),
+  sleep: (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)),
+}) {
+  const deadline = dependencies.now() + 60_000;
+  const observations: {at: string; status: number; error?: unknown}[] = [];
+  const failures: Error[] = [];
+  for (;;) {
+    let response: Response;
+    try {
+      response = await dependencies.fetch(`${origin}/__deos/preview-ready`, {
+        redirect: 'manual', signal: AbortSignal.timeout(5_000),
+      });
+    } catch (error) {
+      throw new AggregateError([...failures, error], 'Isolated preview relay readiness request failed', {cause: error});
+    }
+    const at = new Date(dependencies.now()).toISOString();
+    if (response.status === 200 && await response.clone().text() === 'deos-preview-ready') {
+      observations.push({at, status: 200});
+      return observations;
+    }
+    const error = await responseError('Isolated preview relay readiness', response);
+    failures.push(error);
+    observations.push({at, status: response.status, error: errorDetails(error)});
+    if (![502, 503, 504, 530].includes(response.status) || dependencies.now() >= deadline)
+      throw Object.assign(new AggregateError(failures, 'Isolated preview relay did not become publicly ready'), {origin, observations});
+    await dependencies.sleep(Math.min(2_000, deadline - dependencies.now()));
+  }
+}
 
 export async function forwardImplementationPreview(
   request: Request,

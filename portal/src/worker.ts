@@ -201,11 +201,13 @@ export const routePortalRequest = async (
     const {implementationTaskSnapshot}=await import('./implementation-tasks.ts');
     const {candidate,progress}=await implementationTaskSnapshot(store,work,(attempts.results.at(-1) as {attempt_id?:string}|undefined)?.attempt_id);
     const question=await store.question(runId);
+    const {implementationDemoView}=await import('./implementation-demo-view.ts');
+    const demo=await implementationDemoView(env.DB,env.ARTIFACTS,work);
     return json(200,{status:work.status,branch:work.branch,prUrl:work.pr_url,approvedDesignSha:work.approved_design_sha,
       testedBaseSha:work.tested_base_sha,treeSha:work.tree_sha,mergeSha:work.merge_sha,
       candidateKind:candidate?.kind??null,tasks:candidate?.tasks??null,checks:candidate?.checks??[],assumptions:candidate?.assumptions??[],
       requirements:JSON.parse(work.requirements_json),attempts:attempts.results,proof:proof.results,gates:gates.results,
-      documentation:sources.results,errors:errors.results,progress,
+      documentation:sources.results,errors:errors.results,progress,demo,
       question:question?{status:question.status,...await store.read<Record<string,unknown>>(question.question_key,question.question_sha)}:null});
   }
   const detailPage = url.pathname.match(/^\/failure-detail\/([0-9a-f-]{36})$/i);

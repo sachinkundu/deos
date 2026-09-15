@@ -1,9 +1,39 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { forwardImplementationPreview, previewRelaySandboxId } from "../src/implementation-preview.ts";
+import { forwardImplementationPreview, previewRelaySandboxId, waitForPreviewRelay } from "../src/implementation-preview.ts";
 import { ImplementationStore } from "../src/implementation-store.ts";
 import { implementationPolicy } from "../src/implementation-contract.ts";
 import { ImplementationTestDatabase, ImplementationTestBucket, seedRun, seedAttempt } from "./helpers/implementation-fixture.ts";
+
+test('preview readiness waits on the same URL after origin DNS startup errors', async () => {
+  let now=0,calls=0;
+  const observations=await waitForPreviewRelay('https://assigned.trycloudflare.com',{
+    now:()=>now,sleep:async(ms)=>{now+=ms;},fetch:async(url,init)=>{
+      assert.equal(url,'https://assigned.trycloudflare.com/__deos/preview-ready');
+      assert.equal(init?.redirect,'manual');
+      return ++calls<3 ? new Response('error 1016 origin DNS',{status:530}) : new Response('deos-preview-ready');
+    },
+  });
+  assert.equal(calls,3);assert.deepEqual(observations.map(row=>row.status),[530,530,200]);
+  assert.match(JSON.stringify(observations),/error 1016 origin DNS/);
+});
+
+test('preview readiness is bounded and retains original errors without claiming a failed page is ready', async () => {
+  let now=0,calls=0;
+  await assert.rejects(waitForPreviewRelay('https://assigned.trycloudflare.com',{
+    now:()=>now,sleep:async(ms)=>{now+=ms;},fetch:async()=>{calls++;return new Response('origin DNS',{status:530});},
+  }),error=>error instanceof AggregateError && error.errors.length===31 && /origin DNS/.test(error.errors[0].message));
+  assert.equal(now,60_000);assert.equal(calls,31);
+  calls=0;
+  await assert.rejects(waitForPreviewRelay('https://assigned.trycloudflare.com',{
+    now:()=>0,sleep:async()=>assert.fail('unexpected retry'),fetch:async()=>{calls++;return new Response('unrelated app');},
+  }),/did not become publicly ready/);
+  assert.equal(calls,1);
+  const failure=new Error('transport reset');calls=0;
+  await assert.rejects(waitForPreviewRelay('https://assigned.trycloudflare.com',{
+    now:()=>0,sleep:async()=>{},fetch:async()=>{if(calls++)throw failure;return new Response('origin DNS',{status:530});},
+  }),error=>error instanceof AggregateError && error.cause===failure && error.errors.length===2);
+});
 
 test("preview forwarding uses only the live try's app and preserves request and response data", async () => {
   const db = new ImplementationTestDatabase();

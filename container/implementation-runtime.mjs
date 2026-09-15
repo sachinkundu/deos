@@ -713,7 +713,10 @@ export async function setupImplementation(job) {
         const candidate = await runtime.finish();
         const subject = { change: candidate.change, approvedDesignSha: candidate.approvedDesignSha,
           testedBaseSha: candidate.testedBaseSha, treeSha: candidate.treeSha };
-        const feedback = await broker({ action: "verify", subject });
+        // Only this root-owned supervisor has the broker capability. Send its
+        // captured files directly, avoiding a callback into the requesting Sandbox.
+        const patch = await readFile('/deos/output/patch.diff', 'utf8');
+        const feedback = await broker({ action: "verify", subject, capture: { candidate, patch } });
         if (feedback.ready === true) {
           const after = await snapshot(job.cwd);
           if (after.treeSha !== candidate.treeSha || after.testedBaseSha !== candidate.testedBaseSha)

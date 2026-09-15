@@ -1,5 +1,6 @@
 import { createLiveUpdatePreference, noticeText, reportClientError } from "./live-updates.ts";
 import { useImplementation, ImplementationTaskMeter } from "./Implementation.tsx";
+import { ImplementationDemo } from './ImplementationDemo.tsx';
 import { implementationSteps, implementationVerificationVisit } from "./implementation-steps.ts";
 import { BoundedReview } from "./BoundedReview.tsx";
 import type { SandboxStartupFailure } from "./sandbox-failures.ts";
@@ -259,6 +260,9 @@ const workflowStepLabel = (nodeId: string): string => ({
   implementation_tasks: "Implementation author",
   implementation_rebase_tasks: "Implementation author",
   implementation_build: "Implementation author",
+  implementation_demo_plan: "Demo plan",
+  implementation_rebase_demo: "Refresh demo plan",
+  implementation_demo_gate: "Demo gate",
   implementation_proof_check: "Implementation verification",
   implementation_branch_write: "Implementation verification",
   implementation_publish: "Implementation verification",
@@ -322,7 +326,7 @@ function TraceabilityWorkflowMap({
   const [reviewPaths, setReviewPaths] = useState<Array<{ kind: string; path: string }>>([]);
   const phases = useMemo(() => workflowPhases(projection.history, projection.stages), [projection.history, projection.stages]);
   const hasImplementation = phases.some(phase => phase.id === "implementation");
-  const implementationState = implementationSteps(projection.history, projection.run.status, implementation.data?.progress);
+  const implementationState = implementationSteps(projection.history, projection.run.status, implementation.data?.progress, implementation.data?.demo);
   useEffect(() => {
     const map = flowMap.current;
     if (!map) return;
@@ -427,7 +431,7 @@ function TraceabilityWorkflowMap({
     setExpandedSubstep(phaseId === "approval"
       ? (visit.gate?.gate_kind === "design" ? "design_review" : "planning_review")
       : phaseId === "design" ? designSubstepForNode(visit.nodeId)
-        : phaseId === "implementation" ? implementationVerificationVisit(visit.nodeId)
+        : phaseId === "implementation" ? ['implementation_demo_plan', 'implementation_demo_gate'].includes(visit.nodeId) ? visit.nodeId : implementationVerificationVisit(visit.nodeId)
           ? "implementation_verification" : "implementation_author" : null);
   };
 
@@ -440,6 +444,16 @@ function TraceabilityWorkflowMap({
     id: "implementation_author", label: "Author", icon: <UserCircle />,
     visit: latestVisitFor(implementationVisits, visit => ["implementation_tasks", "implementation_build"].includes(visit.nodeId)),
     status: implementationState.author,
+  };
+  const implementationDemoPlan = {
+    id: 'implementation_demo_plan', label: 'Demo plan', icon: <Eye />,
+    visit: latestVisitFor(implementationVisits, visit => visit.nodeId === 'implementation_demo_plan'),
+    status: implementationState.demoPlan,
+  };
+  const implementationDemoGate = {
+    id: 'implementation_demo_gate', label: 'Demo gate', icon: <Eye />,
+    visit: latestVisitFor(implementationVisits, visit => visit.nodeId === 'implementation_demo_gate'),
+    status: implementationState.demoGate,
   };
   const implementationVerification = {
     id: "implementation_verification", label: "Verification", icon: <CheckCircle />,
@@ -457,9 +471,12 @@ function TraceabilityWorkflowMap({
       View transcript{step.visit!.attempts.length > 1 ? ` · attempt ${step.visit!.attempts.indexOf(attempt) + 1}` : ""}
     </button>)}
     </div>
-    {step.id === "implementation_author" && <ImplementationTaskMeter progress={implementation.data?.progress} active={projection.run.status === "active"} error={implementation.error}
+    {step.id === "implementation_author" && <ImplementationTaskMeter progress={implementation.data?.progress} active={implementationState.author === "In progress"} error={implementation.error}
       runId={projection.run.id} freshness={projection.run.freshness} load={api} />}
     {step.id === "implementation_verification" && <p className="implementation-verification-note">{implementationState.description}</p>}
+    {['implementation_demo_plan', 'implementation_demo_gate'].includes(step.id) && <ImplementationDemo
+      kind={step.id === 'implementation_demo_plan' ? 'plan' : 'gate'} demo={implementation.data?.demo}
+      expanded={expandedSubstep === step.id} runId={projection.run.id} />}
     {projection.run.reviewSchema === "deos-bounded-review-v1" && expandedSubstep === step.id && ["planning_author", "design_author"].includes(step.id) &&
       <BoundedReview runId={projection.run.id} phase={step.id === "design_author" ? "design" : "planning"} load={api} onTranscript={onOpenTranscript} />}
   </div>;
@@ -533,9 +550,11 @@ function TraceabilityWorkflowMap({
             {phase.id === "approval" && renderApproval()}
             {expanded && phase.id === "design" && renderDesign()}
             {expanded && phase.id === "implementation" && <div className="phase-drill" aria-label="Implementation details">
+              {implementation.data?.demo?.enabled && <>{renderStep(implementationDemoPlan)}<div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div></>}
               {renderStep(implementationAuthor)}
               <div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div>
               {renderStep(implementationVerification)}
+              {implementation.data?.demo?.enabled && <><div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div>{renderStep(implementationDemoGate)}</>}
             </div>}
           </article>;
         })}

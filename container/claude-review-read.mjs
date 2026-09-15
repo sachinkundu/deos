@@ -20,11 +20,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   const { state, command } = JSON.parse(await readFile(process.argv[3], "utf8"));
   let sourceRoot;
-  if (state.phase === "design") {
+  if (state.phase === "design" || state.phase === "demo") {
     // Design review snapshots may include an unpublished draft absent from the
     // checkout. Materialize the frozen inputs, never substitute checkout files.
     const context = JSON.parse(state.reviewJob.materializedContext);
-    const sources = context.designReview.sources;
+    const sources = state.phase === 'demo' ? context.demo.sources : context.designReview.sources;
     if (sources.length !== state.before.length) throw new Error("design review source inventory mismatch");
     sourceRoot = await mkdtemp(join(dirname(process.argv[3]), "sources-"));
     const seen = new Set();

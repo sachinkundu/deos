@@ -1,6 +1,9 @@
 import implementationSource from "../config/workflow.implementation.yaml";
 import implementationTasks from "../config/prompts/implementation-tasks.md";
 import implementationBuild from "../config/prompts/implementation-build.md";
+import demoPlanPrompt from "../config/prompts/implementation-demo-plan.md";
+import demoGatePrompt from "../config/prompts/implementation-demo-gate.md";
+import demoAgentSchema from "../config/schemas/implementation-demo-agent-result-v1.json";
 import implementationSchema from "../config/schemas/implementation-result-v1.json";
 import workflowSource from "../config/workflow.deos.yaml";
 import simpleWorkflowSource from "../config/workflow.simple.yaml";
@@ -41,6 +44,8 @@ const prompts: Readonly<Record<string, string>> = Object.freeze({
   "prompts/implementation.md": implementationPrompt,
   "prompts/implementation-tasks.md": implementationTasks,
   "prompts/implementation-build.md": implementationBuild,
+  "prompts/implementation-demo-plan.md": demoPlanPrompt,
+  "prompts/implementation-demo-gate.md": demoGatePrompt,
   "prompts/code-review.md": codeReviewPrompt,
   "prompts/evidence-verification.md": evidenceVerificationPrompt,
   "prompts/openspec.md": openSpecPrompt,
@@ -54,6 +59,7 @@ const prompts: Readonly<Record<string, string>> = Object.freeze({
 
 const schemas: Readonly<Record<string, string>> = Object.freeze({
   "schemas/implementation-result-v1.json": JSON.stringify(implementationSchema),
+  "schemas/implementation-demo-agent-result-v1.json": JSON.stringify(demoAgentSchema),
   "schemas/agent-result-v1.json": JSON.stringify(agentResultSchema),
   "schemas/review-result-v1.json": JSON.stringify(reviewResultSchema),
   "schemas/trace-agent-result-v1.json": JSON.stringify(traceAgentResultSchema),

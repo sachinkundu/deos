@@ -4,6 +4,7 @@ import { ImplementationService } from "./implementation-service.ts";
 import { ImplementationBroker } from "./implementation-broker.ts";
 import { D1BoundedReviewStore } from "./bounded-review-store.ts";
 import { claudeRunner } from "./claude-environment.ts";
+import { ImplementationDemoService } from './implementation-demo.ts';
 import { D1NativeReviewStore } from "./native-review-store.ts";
 import { recordCaughtError } from "./error-context.ts";
 import {
@@ -186,6 +187,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       {
         claude: claudeRunner(env),
         claudeReviewSources: async (run, context, kind) => {
+          if (kind === 'demo_plan' || kind === 'demo_gate') return JSON.parse(context).demo.sources.map(
+            (source: { path: string; sha256: string }) => ({ path: source.path, sha256: source.sha256 }));
           if (kind === "design") return JSON.parse(context).designReview.sources.map(
             (source: { path: string; sha256: string }) => ({ path: source.path, sha256: source.sha256 }));
           const candidate = await env.DB.prepare(`SELECT file_list_json FROM planning_candidates
@@ -200,7 +203,12 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
           .finishSelfReviewAtLimit(runId, new Date().toISOString(), attemptId),
         now: () => new Date(),
         attemptId: defaultAttemptId,
-        materializeContext: (run, job) => job.inputs.includes('implementation_context') ? this.implementation.materialize(run, job) : jobInputs.materialize(run, job),
+        materializeContext: async (run, job) => {
+          if (job.inputs.includes('implementation_demo_context')) return new ImplementationDemoService(env.DB, env.ARTIFACTS)
+            .materialize(run, job, await this.implementation.materialize(run, job));
+          return job.inputs.includes('implementation_context') ? this.implementation.materialize(run, job) : jobInputs.materialize(run, job);
+        },
+        acceptDemoReview: input => new ImplementationDemoService(env.DB, env.ARTIFACTS).accept(input),
         implementationNetwork: async (run,attempt,sandbox) => {
           const saved = await this.implementation.store.requireRun(run.run_id);
           const input = await this.implementation.store.read<import('./implementation-store.ts').ImplementationInput>(saved.input_key, saved.input_sha);
@@ -1398,7 +1406,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       return observation;
     }
     catch(error) {
-      if(error instanceof BaseChangedError && definition.jobs[jobId].inputs.includes('implementation_context')) {
+      if(error instanceof BaseChangedError && (definition.jobs[jobId].inputs.includes('implementation_context') || definition.jobs[jobId].inputs.includes('implementation_demo_context'))) {
         await this.implementation.invalidate(run);
         return {state:'completed' as const,attemptId:null,sandboxId:null,manifestId:null,
           outcome:{kind:'agent' as const,outcome:'base_changed',providerReceiptsPresent:false,providerReceiptsComplete:true}};

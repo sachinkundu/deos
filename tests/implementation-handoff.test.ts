@@ -57,7 +57,7 @@ async function fixture() {
   });
   const input: HandoffInput = { version: 1, runId: "run-1", sourceWorkflowInstanceId: sourceId,
     sourceDefinitionDigest: source.digest, visitSequence: 28, designHeadSha: head,
-    humanUserId: "human", targetVersion: 27, requestedBy: "operator@example.com" };
+    humanUserId: "human", targetVersion: tail.version + 1, requestedBy: "operator@example.com" };
   const request = (extra: Partial<HandoffInput> = {}) => new Request("https://worker/implementation-handoffs", {
     method: "POST", headers: { Authorization: "Bearer secret" }, body: JSON.stringify({ ...input, ...extra }),
   });
@@ -67,7 +67,7 @@ async function fixture() {
 }
 
 test("handoff preserves every frozen planning/design job and node and only attaches the implementation tail", async () => {
-  const target = await implementationHandoffDefinition(source, tail, 27);
+  const target = await implementationHandoffDefinition(source, tail, tail.version + 1);
   assert.deepEqual(await restoreWorkflowDefinition(JSON.stringify(target), target.digest), target);
   for (const [id, job] of Object.entries(source.jobs)) assert.deepEqual(target.jobs[id], job);
   for (const [id, node] of Object.entries(source.nodes))
@@ -75,7 +75,7 @@ test("handoff preserves every frozen planning/design job and node and only attac
   assert.equal(target.nodes.merge_design_pr.edges.completed, "implementation_prepare");
   assert.equal(target.nodes.implementation_merge.edges.completed, "code_merged");
   assert.deepEqual(target.nodes.design_review, source.nodes.design_review);
-  await assert.rejects(implementationHandoffDefinition(target, tail, 28), /incompatible_definition/);
+  await assert.rejects(implementationHandoffDefinition(target, tail, tail.version + 2), /incompatible_definition/);
 });
 
 test("preflight is read-only; applying freezes the checked human and preserves the pending design approval", async () => {

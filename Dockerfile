@@ -35,6 +35,7 @@ COPY container/grounded-*.mjs /deos/bin/
 COPY vendor/agent-skills/ /deos/agent-skills/
 COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
 COPY container/implementation-*.mjs /deos/bin/
+COPY src/implementation-demo-contract.ts src/implementation-contract.ts src/implementation-hash.ts /deos/bin/
 COPY container/deos-implementation /usr/local/bin/deos-implementation
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
 COPY container/supervisor-io.mjs /deos/bin/supervisor-io.mjs

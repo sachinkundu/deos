@@ -1,4 +1,5 @@
 import { D1PlanningStore } from "./planning-store.ts";
+import { ImplementationDemoService } from './implementation-demo.ts';
 import { D1DesignStore } from "./design-store.ts";
 import {
   D1OrchestrationStore,
@@ -295,11 +296,15 @@ export class ImplementationService {
     const feedback = work.pr_number
       ? await implementationGitHub(this.env, run).feedback(work.pr_number)
       : null;
+    const demoEnabled = !!this.definition.jobs.implementation_demo_plan;
+    const demo = demoEnabled && job.id === 'implementation_build'
+      ? await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).buildInput(run.run_id) : null;
     return {
       context: JSON.stringify({
         ...input,
         issue: { ...issue, trust: "untrusted provider data" },
         implementationReviewFeedback: feedback,
+        ...(demo ? { demo } : {}),
         testedBaseSha: work.tested_base_sha,
         requirements: JSON.parse(work.requirements_json),
         prior,
@@ -522,6 +527,8 @@ export class ImplementationService {
         );
       await this.store.readBytes(row.r2_key, row.sha256);
     }
+    if (this.definition.jobs.implementation_demo_gate && run.current_node !== 'implementation_proof_check')
+      await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).requirePass(work);
     return candidate;
   }
   async prBody(work: ImplementationRun, candidate: ImplementationCandidate) {
@@ -536,8 +543,6 @@ export class ImplementationService {
       `${input.issue.title}\n\nImplements the approved design. Live release has not begun.`,
       `Linear: [${work.linear_identifier}](${input.issue.url})`,
       `Approved design: ${work.approved_design_sha}\nTested base: ${work.tested_base_sha}\nChecked tree: ${work.tree_sha}`,
-      "## Tasks",
-      candidate.tasks,
       "## Checks",
       ...candidate.checks.map((c) => `- ${c.command} — exit ${c.exitCode}`),
       "## Behavior proof",
@@ -583,8 +588,9 @@ export class ImplementationService {
       .run();
   }
   async postQuestion(run: OrchestrationRunRecord, work: ImplementationRun) {
-    const candidate = await this.store.candidate(work);
-    const question = candidate.question;
+    const question = run.previous_node?.startsWith('implementation_demo_')
+      ? await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).blocker(run)
+      : (await this.store.candidate(work)).question;
     if (!question)
       throw new ImplementationError(
         "question_missing",

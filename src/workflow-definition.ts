@@ -38,7 +38,7 @@ export interface WorkflowJob {
   reasoning?: string;
   permissionProfile?: "repository_write" | "review_read_only";
   providerAccess?: readonly ("model.openrouter_review" | "model.claude_review")[];
-  reviewKind?: "traceability" | "design";
+  reviewKind?: "traceability" | "design" | "demo_plan" | "demo_gate";
   reviewMode?: "discovery" | "recheck";
   boundedReview?: "deos-bounded-review-v1";
   grounding?: { schema: "deos-grounding-v1"; webSearch: "native-live"; skills: readonly { id: string; sha256: string }[] };
@@ -456,12 +456,16 @@ export const loadWorkflowDefinition = async (
         if (!(job.reviewMode === "discovery" || job.reviewMode === "recheck")) {
           throw new Error(`${label}.reviewMode is required for a reviewer`);
         }
-        if (job.reviewKind !== undefined && !(job.reviewKind === "traceability" || job.reviewKind === "design")) {
+        if (job.reviewKind !== undefined && !["traceability", "design", "demo_plan", "demo_gate"].includes(String(job.reviewKind))) {
           throw new Error(`${label}.reviewKind is invalid`);
         }
         if (job.reviewKind === "design" && job.reviewMode !== "discovery") {
           throw new Error(`${label} design review must use discovery mode`);
         }
+        if (["demo_plan", "demo_gate"].includes(String(job.reviewKind)) &&
+            (job.modelProvider !== "claude" || job.reviewMode !== "discovery" ||
+             !Array.isArray(job.inputs) || !job.inputs.includes("implementation_demo_context")))
+          throw new Error(`${label} demo review requires the independent Claude contract`);
       } else if (job.reviewMode !== undefined) {
         throw new Error(`${label}.reviewMode is only valid for a reviewer`);
       } else if (job.reviewKind !== undefined) {
@@ -491,7 +495,7 @@ export const loadWorkflowDefinition = async (
       requiredOutputs: stringArray(job, "requiredOutputs", label),
       ...(capabilities.length === 0 ? {} : { capabilities: Object.freeze([...capabilities]) }),
       ...agentConfiguration,
-      ...(job.reviewKind === undefined ? {} : { reviewKind: job.reviewKind as "traceability" | "design" }),
+      ...(job.reviewKind === undefined ? {} : { reviewKind: job.reviewKind as WorkflowJob['reviewKind'] }),
       ...(job.reviewMode === undefined ? {} : { reviewMode: job.reviewMode as "discovery" | "recheck" }),
       operation: parseJobOperation(job.operation, label),
     });

@@ -3,6 +3,7 @@ import { workflowInstanceIdentity } from "./orchestration-identity.ts";
 import type { WorkflowBinding, WorkflowInstanceHandle } from "./queue-consumer-core.ts";
 import { restoreWorkflowDefinition, type LoadedWorkflowDefinition } from "./workflow-definition.ts";
 import type { SandboxTier } from "./sandbox-tier.ts";
+import { validateDemoUpgrade } from './implementation-demo-upgrade-definition.ts';
 import {
   isAgentStageRetryNode,
   RETRYABLE_AGENT_ATTEMPT_STATES,
@@ -16,6 +17,7 @@ export { isAgentStageRetryNode, type AgentStageRetryNode } from "./stage-retry-c
 export type AgentStageRetryKind = "same_definition" | "compatible_tail";
 
 export interface AgentStageRetryRecord {
+  entry_node?: 'implementation_demo_plan' | null;
   source_sandbox_tier?: SandboxTier | null;
   target_sandbox_tier?: SandboxTier | null;
   retry_id: string;
@@ -90,6 +92,7 @@ interface StageRetrySource {
 }
 
 export interface StageRetryDefinitionPlan {
+  entryNode?: 'implementation_demo_plan';
   retryKind: AgentStageRetryKind;
   sourceDefinitionId: string;
   sourceDefinitionVersion: number;
@@ -134,6 +137,14 @@ export const planStageRetryDefinition = async (
     sourceDefinitionDigest: source.definition_digest,
     sourceWorkflowInstanceId: source.workflow_instance_id,
   };
+  if (source.definition_id === 'implementation' && retryNode === 'implementation_build' &&
+      targetDefinition.jobs?.implementation_demo_plan && targetDefinition.version > source.definition_version) {
+    if (source.target_registered !== 1 || !source.source_canonical_json) throw new Error('stage_retry_not_eligible');
+    validateDemoUpgrade(await restoreWorkflowDefinition(source.source_canonical_json, source.definition_digest), targetDefinition);
+    return {...base, retryKind:'compatible_tail', entryNode:'implementation_demo_plan', targetDefinitionId:targetDefinition.name,
+      targetDefinitionVersion:targetDefinition.version,targetDefinitionDigest:targetDefinition.digest,
+      targetWorkflowInstanceId:await workflowInstanceIdentity(`${source.run_id}:demo-upgrade:${source.current_visit_sequence+1}:${targetDefinition.digest}`)};
+  }
   if (source.definition_id === 'simple-traceability' && source.definition_version === 20 &&
       ['design_self_response', 'design_self_review'].includes(retryNode) && targetDefinition.version === 21) {
     if (source.target_registered !== 1 || !source.source_canonical_json) {
@@ -309,7 +320,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
         existing.state === "pending" &&
         (
           existing.workflow_instance_id !== existing.target_workflow_instance_id ||
-          existing.current_node !== existing.retry_node ||
+          existing.current_node !== (existing.entry_node ?? existing.retry_node) ||
           existing.current_visit_sequence !== existing.to_visit_sequence ||
           existing.run_status !== "active"
         )
@@ -345,7 +356,17 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
     const retryId = `stage-retry:${input.failedAttemptId}`;
     const transitionId = `transition:${retryId}`;
     const designLimitUpgrade = plan.retryKind === 'compatible_tail' && plan.sourceDefinitionVersion === 20;
-    const upgradeGuard = designLimitUpgrade
+    const upgradeGuard = plan.entryNode === 'implementation_demo_plan'
+      ? `AND ? = 'implementation_build'
+         AND EXISTS (SELECT 1 FROM workflow_definitions target WHERE target.definition_id=? AND target.version=? AND target.digest=?)
+         AND EXISTS (SELECT 1 FROM implementation_demo_upgrades upgrade
+           JOIN implementation_runs work ON work.run_id=upgrade.run_id
+           WHERE upgrade.failed_attempt_id=attempt.attempt_id AND upgrade.run_id=run.run_id
+             AND upgrade.source_definition_digest=run.definition_digest
+             AND upgrade.target_definition_digest=? AND upgrade.approved_input_sha=work.input_sha
+             AND upgrade.tested_base_sha=work.tested_base_sha AND upgrade.patch_sha IS work.patch_sha)
+         AND NOT EXISTS (SELECT 1 FROM implementation_gates gate WHERE gate.run_id=run.run_id AND gate.state='open')`
+      : designLimitUpgrade
       ? `AND run.definition_id = 'simple-traceability' AND run.definition_version = 20
          AND ? IN ('design_self_response', 'design_self_review')
          AND EXISTS (SELECT 1 FROM workflow_definitions AS target
@@ -390,12 +411,12 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
         source_definition_id, source_definition_version, source_definition_digest,
         target_definition_id, target_definition_version, target_definition_digest,
         source_workflow_instance_id, target_workflow_instance_id, source_delivery_id,
-        created_at, updated_at)
+        created_at, updated_at, entry_node)
        SELECT ?, run.run_id, attempt.attempt_id, ?, ?, run.current_visit_sequence,
               run.current_visit_sequence + 1, ?, 'pending', ?,
               run.definition_id, run.definition_version, run.definition_digest,
               ?, ?, ?, run.workflow_instance_id, ?,
-              COALESCE(run.selection_delivery_id, intent.source_delivery_id), ?, ?
+              COALESCE(run.selection_delivery_id, intent.source_delivery_id), ?, ?, ?
        FROM orchestration_runs AS run
        JOIN agent_attempts AS attempt ON attempt.run_id = run.run_id
        JOIN workflow_definitions AS source
@@ -447,6 +468,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
       plan.targetWorkflowInstanceId,
       input.now,
       input.now,
+      plan.entryNode ?? null,
       input.runId,
       plan.sourceDefinitionId,
       plan.sourceDefinitionVersion,
@@ -463,6 +485,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
         plan.targetDefinitionVersion,
         plan.targetDefinitionDigest,
       );
+      if (plan.entryNode) insertBindings.push(plan.targetDefinitionDigest);
     }
     const statements = [
       insert.bind(...insertBindings),
@@ -487,7 +510,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
         plan.targetDefinitionVersion,
         plan.targetDefinitionDigest,
         plan.targetWorkflowInstanceId,
-        input.retryNode,
+        plan.entryNode ?? input.retryNode,
         transitionId,
         input.now,
         input.runId,
@@ -518,13 +541,13 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
          (transition_id, run_id, from_node, to_node, from_visit_sequence,
           to_visit_sequence, cause_type, cause_reference, actor_id, actor_type,
           provider_operation_id, occurred_at)
-         SELECT retry.transition_id, retry.run_id, run.previous_node, retry.retry_node,
+         SELECT retry.transition_id, retry.run_id, run.previous_node, COALESCE(retry.entry_node,retry.retry_node),
                 retry.from_visit_sequence, retry.to_visit_sequence, 'operator_retry',
                 retry.failed_attempt_id, retry.requested_by, 'operator', NULL, ?
          FROM agent_stage_retries AS retry
          JOIN orchestration_runs AS run ON run.run_id = retry.run_id
          WHERE retry.retry_id = ? AND run.last_transition_id = retry.transition_id
-           AND run.current_node = retry.retry_node
+           AND run.current_node = COALESCE(retry.entry_node,retry.retry_node)
            AND run.current_visit_sequence = retry.to_visit_sequence
            AND run.definition_id = retry.target_definition_id
            AND run.definition_version = retry.target_definition_version

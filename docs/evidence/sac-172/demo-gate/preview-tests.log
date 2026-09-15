@@ -1,0 +1,11 @@
+✔ preview readiness waits on the same URL after origin DNS startup errors (18.005625ms)
+✔ preview readiness is bounded and retains original errors without claiming a failed page is ready (3.015ms)
+✔ preview forwarding uses only the live try's app and preserves request and response data (98.710416ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 214.9535

@@ -26,6 +26,7 @@ export type WorkflowDisplayStatus =
   | "Succeeded"
   | "In progress"
   | "Complete"
+  | "Needs work"
   | "Upcoming"
   | "Failed"
   | "Blocked"
@@ -124,7 +125,7 @@ export const reviewPhaseForNode = (nodeId: string): "planning" | "design" | "imp
 
 export const workflowStatusTone = (status: string): WorkflowStatusTone =>
   status === "In progress" ? "active"
-    : ["Failed", "Blocked", "Canceled"].includes(status) ? "failed"
+    : ["Failed", "Blocked", "Canceled", "Needs work"].includes(status) ? "failed"
       : ["Complete", "Succeeded", "Approved"].includes(status) ? "succeeded"
         : "upcoming";
 
