@@ -186,3 +186,12 @@ The [D1 read-back](sac-182-reply-resumed.json) records the provider delivery, el
 The Author task counter now opens a read-only OpenSpec checklist with task headings, numbers, checkboxes and All/Remaining/Done filters. The staging browser loaded the real SAC-182 checklist: 0 of 57 completed, across 9 sections. Keyboard navigation, return focus and mobile wrapping were checked with a separate local mixed-task fixture.
 
 [Showboat and browser evidence](task-checklist-popup.md) records the tests, active Worker versions, unchanged container images and healthy running canary. The [R2 read-back](task-checklist-r2-readback.json) matches the first post-deploy D1 progress observation. No implementation PR has been opened.
+
+
+### Author checklist moved to 50 of 50
+
+At 04:31:45.883Z on September 15, the active author sent a real task-edit progress signal. D1 recorded the new observation 1.767 seconds later: 50 of 50 tasks checked. The [signal read-back](sac-182-task-edit-signal.json), [hash-verified R2 snapshot](sac-182-task-progress-0433.json) and [live staging screenshot](sac-182-task-progress-50.png) prove the deployed file-change-to-workflow-to-checklist path. No operator event or retry was issued. This replaces the earlier limit that only initial deployed notification and local file edits were proved.
+
+The [new checklist](sac-182-progress-50-tasks.md) retains tasks 1.1 through 8.4 unchanged apart from checked boxes. It removes all seven section 9 tasks and replaces them with prose deferring deployment, feature enablement, live D1 read-back and production rollback to a separately approved post-merge change. The prose says this implementation still performs local preview and isolated safe-resource proof. Removing the original proof checklist does not waive the user requirement for changed-behavior provider E2E and final-tree verification before PR.
+
+The [durable read-back](sac-182-progress-50-readback.json) shows the same visit 40 attempt still running, with a current heartbeat. Only local_data was allocated and no implementation_proof rows existed for this try at the check. No new candidate or PR was recorded. Checked boxes alone do not establish accepted completion or passing final-tree tests.

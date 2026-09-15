@@ -1,0 +1,13 @@
+{
+  "key": "implementation/workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1/e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc/task-progress.md",
+  "bytes": 14005,
+  "sha256": "e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc",
+  "matchesD1": true,
+  "observation": {
+    "attempt_id": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+    "completed": 50,
+    "total": 50,
+    "tasks_sha": "e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc",
+    "observed_at": "2026-09-15T04:31:47.650Z"
+  }
+}
