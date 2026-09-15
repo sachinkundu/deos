@@ -530,7 +530,7 @@ export class SandboxAgentController {
     if ((job.modelProvider === "claude" || job.boundedReview) && attempt?.state === "collecting") {
       return this.reconcile(run, attempt, job);
     }
-    if (job.agentRole === "reviewer" && !job.boundedReview) {
+    if (job.agentRole === "reviewer" && !job.boundedReview && !job.inputs.includes('implementation_demo_context')) {
       const reuse = job.reviewKind === "design"
         ? this.dependencies.reuseDesignReview
         : this.dependencies.reuseTraceReview;

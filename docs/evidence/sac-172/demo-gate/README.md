@@ -11,3 +11,5 @@ The runtime fixture is a local process and isolation test with a stub broker and
 A separate private Cloudflare Sandbox probe demonstrated a quick tunnel initially returning HTTP 530/1016 and later the expected page. The preview readiness helper checks the same allocated relay, without calling the changed app. Allocation alone does not establish public readiness. Probe and cleanup receipts are attached separately.
 
 Activation, the audited SAC-182 upgrade, live Claude jobs, staging browser checks and the complete SAC-182 canary remain separate acceptance steps. SAC-172 has no implementation PR until the full agreed canary passes.
+
+Demo Plan and Demo Gate explicitly bypass reuse of prior planning and design reviews. A focused Sandbox controller regression verifies each role enters fresh allocation. The same demo attempt may still recover its own durable collection after interruption.

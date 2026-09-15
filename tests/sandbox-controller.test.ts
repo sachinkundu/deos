@@ -1680,6 +1680,23 @@ test("a categorized terminal failure replays through the configured failed edge"
 });
 
 
+for (const reviewKind of ['demo_plan', 'demo_gate'] as const) {
+  test(`${reviewKind} allocates its own review instead of reusing a planning or design verdict`, async () => {
+    const state = setup({
+      reuseTraceReview: async () => assert.fail('A planning verdict cannot satisfy a demo review'),
+      reuseDesignReview: async () => assert.fail('A design verdict cannot satisfy a demo review'),
+    });
+    state.attempts.findRetrySource = async () => { throw new Error('fresh demo allocation reached'); };
+    const demoDefinition = { ...definition, jobs: { ...definition.jobs, work: {
+      ...definition.jobs.work, agentRole: 'reviewer' as const, modelProvider: 'claude' as const,
+      model: 'claude-opus-5', reasoning: 'high' as const, reviewKind, inputs: ['implementation_demo_context'],
+    } } };
+    const demoRun = { ...run, independent_review_provider: 'claude', independent_review_model: 'claude-opus-5',
+      independent_review_reasoning: 'high', independent_review_account_binding: 'a'.repeat(64) };
+    await assert.rejects(state.controller.execute(demoRun, 'work', 'work', demoDefinition), /fresh demo allocation reached/);
+  });
+}
+
 test("completed Claude replay rechecks protected proof without starting another process", async () => {
   let proofReads = 0;
   let damaged = false;
