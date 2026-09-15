@@ -70,5 +70,25 @@ progress observation at 20:28:26 UTC retained 24 of 25 completed tasks and the
 same task-file SHA. The approved design, demo plan, definition v30, and final
 human gate were preserved. [Retry receipt](sac-225-build-retry.json).
 
-Real preview recovery and demo-gate acceptance remain pending. The calculator
-has no implementation PR yet.
+## First live recovery
+
+The new attempt allocated its preview at 20:40:59 UTC. Its first readiness
+window again returned HTTP 530/error 1016. The Worker then recovered the same
+tunnel from quarantine at 20:42:54.775 UTC. The immutable
+[reconciliation receipt](sac-225-live-preview-reconciliation.json) was read from
+R2 and matched SHA-256
+`23a13e67dc5c1867d8bdfa060b70f61c46836b35c0c2805327f4ad363a87b260`.
+No replacement tunnel or attempt was needed.
+
+The assigned Cloudflare browser loaded the calculator with HTTP 200. It saved
+ten images: the initial page and nine button actions for `1.5 + 2.25 = 3.75`.
+The final image was read from R2, hash-checked against D1, and visually inspected.
+See [proof metadata](sac-225-first-browser-proof.json).
+
+![Actual calculator button result](sac-225-calculator-button-result.png)
+
+This proves live preview recovery and real browser capture. These images belong
+to tree `c4f3717a8e4c3d57bece2d001ee8be712ba2d638`. A later local-workerd
+Showboat check at 20:47:14 used tree `207ab2908f34a205cff58c43dc05c66096ff7c99`,
+so final acceptance still requires matching final-tree visual evidence and the
+independent demo gate. The calculator has no implementation PR yet.
