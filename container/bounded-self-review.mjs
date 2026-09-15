@@ -122,6 +122,19 @@ export async function initializeBoundedReview(job) {
     }
     await save(`${ROOT}/state.json`, state);
 }
+async function advanceReceivedReview(state) {
+    if ((await snapshot(state)).digest !== state.checkedCandidate.digest)
+        throw new Error('author changed accepted review candidate');
+    if (state.slot === 'discovery' && state.cycle.findings.length) {
+        state.stage = 'repairing';
+        await journal(state, { type: 'repair_started' });
+        await save(`${ROOT}/repair-request.json`, { findings: state.cycle.findings });
+        return `Use your one repair turn to address the complete fixed finding set in ${ROOT}/repair-request.json. Run deterministic checks and finish. There is no second semantic repair.`;
+    }
+    state.stage = 'done';
+    await save(`${ROOT}/state.json`, state);
+    return 'The bounded self-review is complete. Make no more candidate changes. Finish the required output sidecars and return the completed author result.';
+}
 export async function executeBoundedHook(event) {
     const state = await load(`${ROOT}/state.json`);
     if (Date.now() >= Date.parse(state.deadline))
@@ -136,6 +149,10 @@ export async function executeBoundedHook(event) {
                 return deny('Reviewers cannot delegate or request another repair');
             return {};
         }
+        // A parent often continues with a tool after its child returns. Deliver
+        // the next phase here instead of requiring an otherwise unexplained Stop.
+        if (state.stage === 'received')
+            return deny(await advanceReceivedReview(state));
         if (event.tool_name.endsWith('spawn_agent')) {
             if (state.stage !== 'ready' || state.activeChild)
                 return deny('No review slot is available');
@@ -250,15 +267,7 @@ export async function executeBoundedHook(event) {
             return prepareChild(state, 'recheck');
         }
         if (state.stage === 'received') {
-            if (state.slot === 'discovery' && state.cycle.findings.length) {
-                state.stage = 'repairing';
-                await journal(state, { type: 'repair_started' });
-                await save(`${ROOT}/repair-request.json`, { findings: state.cycle.findings });
-                return block(`Use your one repair turn to address the complete fixed finding set in ${ROOT}/repair-request.json. Run deterministic checks and finish. There is no second semantic repair.`);
-            }
-            state.stage = 'done';
-            await save(`${ROOT}/state.json`, state);
-            return block('The bounded self-review is complete. Make no more candidate changes. Return the required completed author result.');
+            return block(await advanceReceivedReview(state));
         }
         return block('Await the current native review child.');
     }

@@ -51,3 +51,16 @@ audited continuation: both findings are fixed, no finding remains open, and
 the checked candidate digest is unchanged. All 534 backend tests, TypeScript,
 and generated binding checks pass for the collection fix. Deployment and
 successful workflow recovery still need separate read-back evidence.
+
+The collection fix was deployed as Worker version
+`31552a02-5e04-42a7-ac14-6dc436829e57` at 100% traffic. Container rollout was
+disabled to preserve the stopped author's files. The existing Workflow had
+already exhausted its collection retries and was `errored`.
+
+The next fix lets a parent tool call receive the next bounded-review phase
+as soon as a child returns. It retains the one-repair limit and checks that
+the reviewed candidate is unchanged. Final design completion now checks the
+required dispositions file against the exact supplied finding IDs. Missing
+or malformed output enters the existing same-session correction loop before
+the supervisor reports success. All 535 backend tests and types pass,
+including the hook transition and missing/invalid disposition cases.

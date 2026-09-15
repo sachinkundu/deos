@@ -868,6 +868,7 @@ export class SandboxAgentController {
         cwd: "/deos/workspace/repository",
         promptPath: "/deos/run/prompt.md",
         resultSchemaPath: "/deos/run/result-schema.json",
+        requiredOutputs: job.requiredOutputs,
         deadline: attempt.absolute_deadline,
         capabilityUrl: grant.url,
         capabilityToken: grant.token,

@@ -219,7 +219,13 @@ const main = async () => {
     return result;
   };
   const authorCheck = async () => {
-    const options = { cwd: job.cwd, change: job.openspecChange, reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined };
+    const needsDispositions = designAuthor && job.requiredOutputs?.includes('design-dispositions.json');
+    const context = needsDispositions ? JSON.parse(job.materializedContext) : null;
+    const options = { cwd: job.cwd, change: job.openspecChange,
+      reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined,
+      reviewDispositionsPath: needsDispositions ? `${OUTPUT_ROOT}/design-dispositions.json` : undefined,
+      expectedDispositionIds: (context?.designReviewFeedback?.findings ?? []).map(finding => finding.id),
+    };
     const check = await (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)(options);
     return job.grounding ? checkAuthorSources(check, options) : check;
   };
