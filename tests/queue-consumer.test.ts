@@ -758,6 +758,33 @@ test("labels and legacy selector state do not change the Claude default", async 
   assert.equal(unlabeled.runs[0].selection_value, "project_policy");
 });
 
+test('admission freezes the selected implementation flow and rejects mismatched policy versions', async () => {
+  const implementation = {...definition, name: 'implementation', version: 28, digest: 'd'.repeat(64)};
+  for (const mismatch of [false, true]) {
+    const store = new FakeStore(), workflow = new FakeWorkflow();
+    const register = store.registerDefinitionAndPolicy.bind(store);
+    store.registerDefinitionAndPolicy = input => register({...input, definition: {
+      ...implementation, version: mismatch ? 27 : 28,
+    }});
+    const body = queueBody(); seedEvidence(store, body);
+    const process = () => processQueueMessage({id: 'implementation-message', attempts: 1, body}, environment(workflow), {
+      store, definitions: {'simple-traceability-claude': claudeDefinition, implementation},
+      now: () => new Date(NOW), observe: () => {}, lifecycle: () => {},
+    });
+    if (mismatch) {
+      await assert.rejects(process(), (error: unknown) => error instanceof CategorizedWorkflowError && error.category === 'unexpected_failure');
+      assert.equal(store.runs.length, 0); assert.equal(workflow.creates, 0);
+    } else {
+      await process();
+      assert.equal(store.runs[0].definition_id, 'implementation');
+      assert.equal(store.runs[0].definition_version, 28);
+      assert.equal(store.runs[0].definition_digest, implementation.digest);
+      assert.equal(store.runs[0].selection_value, 'project_policy');
+      assert.equal(workflow.creates, 1);
+    }
+  }
+});
+
 test("the traceability selector is registered off and selects only after explicit enablement", async () => {
   const store = new FakeStore();
   await registerBundledWorkflowDefinitions(environment(new FakeWorkflow()), {

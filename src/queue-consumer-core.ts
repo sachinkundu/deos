@@ -550,10 +550,14 @@ export const processQueueMessage = async (
       if (selectorMatches.length > 1) throw new CategorizedWorkflowError("correlation_mismatch");
       const selected = selectorMatches[0];
       const selectedDefinition = selected === undefined
-        ? definition
+        ? bundled[policy.definition_id]
         : bundled[selected.selector!.definition_id];
       if (
         selectedDefinition === undefined ||
+        (selected === undefined && (
+          selectedDefinition.version !== policy.definition_version ||
+          selectedDefinition.digest !== policy.definition_digest
+        )) ||
         (selected !== undefined && (
           selectedDefinition.version !== selected.selector!.definition_version ||
           selectedDefinition.digest !== selected.selector!.definition_digest
