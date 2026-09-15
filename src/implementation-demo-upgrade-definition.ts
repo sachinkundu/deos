@@ -5,7 +5,7 @@ const stable = (value: unknown): string => JSON.stringify(value, (_key, item) =>
 
 export function validateDemoUpgrade(source: LoadedWorkflowDefinition, target: LoadedWorkflowDefinition): void {
   if (source.name !== 'implementation' || target.name !== source.name || !source.implementationPolicy ||
-      source.jobs.implementation_demo_plan || !target.jobs.implementation_demo_plan || !target.jobs.implementation_demo_gate ||
+      !target.jobs.implementation_demo_plan || !target.jobs.implementation_demo_gate ||
       target.version <= source.version || stable(source.implementationPolicy) !== stable(target.implementationPolicy) ||
       stable(source.execution) !== stable(target.execution) || source.start !== target.start)
     throw new Error('implementation_demo_upgrade_incompatible');

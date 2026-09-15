@@ -792,6 +792,28 @@ be added. A fresh plan can incorporate clarification while preserving those save
 obligations. After clarification, the workflow returns through Demo Plan before
 Codex continues.
 
+A canary exposed one exception that needs an explicit record: a reviewer can add
+an out-of-scope platform test, such as destroying its one assigned browser and
+allocating another within the same attempt. The existing operator upgrade may
+carry a correction request for an exact saved plan hash and list of scenario IDs,
+with a reason. It uses the same failed-attempt, cleanup, human-gate and frozen-input
+checks as other upgrades. The immutable upgrade audit grants the exception; issue
+comments and implementer output do not. No direct database edit is used.
+
+Only the next independent Demo Plan reviewer receives that grant. It may rewrite
+the named scenarios but cannot delete them, remove their approved requirement
+references, or remove required evidence kinds. It records a reason for each
+changed scenario. All other scenarios stay byte-for-byte unchanged. The new plan
+links to the prior plan; both remain stored. Once a new plan is saved the grant
+no longer matches, so later planning cannot reuse it. A stale prior plan fails
+acceptance. The portal displays correction reasons alongside their scenarios.
+
+The frozen demo input also includes the real runtime limits: one service browser
+per attempt, its keyboard and viewport controls, allowed documentation hosts,
+registered provider adapters, and deployment constraints. A required nonproduction
+hosted preview remains required. Without a trusted deployment path, the reviewer
+must report that missing capability, rather than substituting local-only proof.
+
 The semantic judgment complements the trusted evidence checks. It cannot waive
 proof hashes, current base/tree identity, sanitization, delivery receipts, source
 access, or a verified provider response. Publication and merge checks require the

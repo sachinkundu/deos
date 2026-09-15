@@ -22,13 +22,13 @@ const source=await loadWorkflowDefinition(JSON.stringify(old),{...bundle,prompts
   'prompts/openspec-design-author.md':'Frozen approved design instructions',
   'prompts/implementation-build.md':'Previous implementation instructions'}});
 const sourceId='wf-v1-'+ 'a'.repeat(52),base='b'.repeat(40);
-async function fixture() {
+async function fixture(from=source) {
   const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();seedRun(db);seedAttempt(db,'failed');
   const orchestration=new D1OrchestrationStore(db as unknown as D1Database);
-  await orchestration.registerDefinition({definition:source,projectId:'project',now:'2026-09-15T10:00:00Z'});
+  await orchestration.registerDefinition({definition:from,projectId:'project',now:'2026-09-15T10:00:00Z'});
   db.sqlite.prepare(`UPDATE orchestration_runs SET definition_version=?,definition_digest=?,workflow_instance_id=?,
     current_node='implementation_failed',current_visit_sequence=2,status='failed',terminal_cause='implementation_failed' WHERE run_id='run-1'`)
-    .run(source.version,source.digest,sourceId);
+    .run(from.version,from.digest,sourceId);
   db.sqlite.exec("UPDATE agent_attempts SET state='failed',cleanup_state='destroyed',ended_at='2026-09-15T10:00:00Z'");
   db.sqlite.prepare(`INSERT INTO dispatch_intents (run_id,source_delivery_id,workflow_instance_id,state,created_at,updated_at)
     VALUES ('run-1','delivery',?,'established','now','now')`).run(sourceId);
@@ -36,12 +36,12 @@ async function fixture() {
     VALUES ('failure','run-1','implementation_build','implementation_failed',1,2,'agent','agent:implementation_build:failed','now')`);
   const store=new ImplementationStore(db as unknown as D1Database,bucket as unknown as R2Bucket);
   await store.allocate({version:1,runId:'run-1',repository:'owner/repo',change:'sample',branch:'deos/agent/SAC-182/run-1',approvedDesignSha:base,testedBaseSha:base,
-    policy:source.implementationPolicy!,approvedFiles:[],issue:{},receipts:{},requirements:{kinds:[],reasons:[],blockedProviders:[]}}, {userId:'human',revision:1},'SAC-182',1);
+    policy:from.implementationPolicy!,approvedFiles:[],issue:{},receipts:{},requirements:{kinds:[],reasons:[],blockedProviders:[]}}, {userId:'human',revision:1},'SAC-182',1);
   const states=new Map([[sourceId,'errored']]);let creates=0,loseCreate=false;
   const workflows={async get(id:string){if(!states.has(id))throw new Error('instance absent');return {id,async status(){return {status:states.get(id)}}}},
     async createBatch(items:{id:string}[]){creates++;for(const item of items)states.set(item.id,'running');if(loseCreate)throw new Error('lost create reply');return Promise.all(items.map(item=>this.get(item.id)));}};
   const controller=new ImplementationDemoUpgradeController({DB:db,ARTIFACTS:bucket,ORCHESTRATION_WORKFLOW:workflows,STAGE_RETRY_SECRET:'secret'} as unknown as Env,tail);
-  const input={version:1,runId:'run-1',failedAttemptId:'failed',sourceDefinitionDigest:source.digest,sourceWorkflowInstanceId:sourceId,
+  const input={version:1,runId:'run-1',failedAttemptId:'failed',sourceDefinitionDigest:from.digest,sourceWorkflowInstanceId:sourceId,
     visitSequence:2,targetVersion:tail.version+1,requestedBy:'operator'};
   const request=(extra={})=>new Request('https://worker/implementation-demo-upgrades',{method:'POST',headers:{Authorization:'Bearer secret'},body:JSON.stringify({...input,...extra})});
   const plan=async()=>await (await controller.handle(request())).json() as {planDigest:string};
@@ -88,4 +88,29 @@ test('upgrade rejects changed inputs, active work, unfinished cleanup and wrong 
       assert.equal(f.creates(),0);assert.equal(f.db.sqlite.prepare('SELECT count(*) n FROM agent_stage_retries').get()!.n,0);
     } finally {f.db.close();}
   }
+});
+
+
+test('an existing demo workflow needs a current plan correction before an audited restart',async()=>{
+  const f=await fixture(tail);try {
+    await assert.rejects(f.plan(),/correction_required/);
+    seedAttempt(f.db,'saved-plan');
+    const value={version:1,scenarios:[{id:'browser-proof'}]};
+    const saved=await f.store.put('run-1','plan.json',JSON.stringify(value));
+    f.db.sqlite.prepare(`INSERT INTO implementation_demo_reviews VALUES
+      ('saved-plan','run-1',1,'plan','input',NULL,NULL,?,?,'ready','summary',?,?,'2026-09-15')`)
+      .run(base,base,saved.key,saved.sha256);
+    f.db.sqlite.exec("UPDATE agent_attempts SET node_id='implementation_demo_plan',state='completed',cleanup_state='destroyed' WHERE attempt_id='saved-plan'");
+    const correction={planSha256:saved.sha256,scenarioIds:['browser-proof'],reason:'Remove the invented platform reset while retaining final-tree application proof.'};
+    await assert.rejects(f.controller.handle(f.request({correction:{...correction,planSha256:'a'.repeat(64)}})),/plan_changed/);
+    await assert.rejects(f.controller.handle(f.request({correction:{...correction,scenarioIds:['unknown']}})),/scenario_missing/);
+    const preflight=await (await f.controller.handle(f.request({correction}))).json() as {planDigest:string};
+    const response=await f.controller.handle(f.request({correction,execute:true,planDigest:preflight.planDigest}));
+    assert.equal(response.status,202,await response.clone().text());
+    const audit=f.db.sqlite.prepare('SELECT plan_json FROM implementation_demo_upgrades').get()!;
+    assert.deepEqual(JSON.parse(String(audit.plan_json)).input.correction,correction);
+    assert.equal(f.db.sqlite.prepare("SELECT current_node FROM orchestration_runs WHERE run_id='run-1'").get()!.current_node,'implementation_demo_plan');
+    assert.equal(f.db.sqlite.prepare('SELECT count(*) n FROM implementation_demo_reviews').get()!.n,1);
+    assert.equal(f.creates(),1);
+  }finally{f.db.close();}
 });

@@ -50,6 +50,8 @@ For provider work, completion SHALL include a real provider event from a safe te
 
 Every implementation SHALL have a demo plan from a fresh Claude reviewer before Codex starts the build. The reviewer SHALL read the approved proposal, specs, and design. Each demo SHALL name the requirements it covers, the safe environment, steps, expected result, and evidence needed. All approved requirements SHALL be covered. Prefer visual proof where it shows the behavior. Nonvisual work SHALL still have real behavior proof. The implementer MUST NOT remove or weaken a saved requirement.
 
+The reviewer SHALL receive the real runtime capabilities. It MUST NOT replace an approved hosted preview with local-only proof or invent platform tests outside the approved application scope. An operator MAY request correction of a mistaken scenario through the audited failed-run upgrade. The request SHALL bind the saved plan hash, affected scenario IDs, and reason. Only the independent reviewer may revise those scenarios. It SHALL retain their approved requirement references and evidence kinds, explain each change, and leave every other scenario unchanged. Prior plans SHALL remain available. This correction MUST NOT waive approved behavior, evidence trust, or the final human gate.
+
 After Codex supplies current evidence, a separate fresh Claude reviewer SHALL judge every planned demo. It SHALL inspect the actual proof and relevant code. It MUST NOT accept the implementer's summary, a fixture screenshot, or unrelated provider calls as proof that the changed application works. Required images SHALL be available as images. The service SHALL check evidence provenance, subject hashes, and reviewer access as well as the verdict.
 
 The gate SHALL return Pass, Needs work, or Blocked with a clear reason for each demo. Needs work SHALL return the saved patch and specific gaps to Codex in a fresh try. Blocked SHALL preserve the reason and use the clarification path. An execution or transport failure MUST NOT become a pass. PR publication and final Human Review SHALL require a pass for the exact current candidate and demo plan. Later changes SHALL require a new verdict.
@@ -73,6 +75,11 @@ The gate SHALL return Pass, Needs work, or Blocked with a clear reason for each 
 
 - **WHEN** an operator explicitly migrates a failed implementation run with no active agent or open human gate.
 - **THEN** a durable transition records both definition digests, preserves the approved design, human binding, patch, branch, and PR, and resumes at Demo Plan. A deploy alone MUST NOT rewrite frozen runs.
+
+#### Scenario: A saved demo asks for an out-of-scope platform operation
+
+- **WHEN** an operator requests correction against the exact saved plan and scenario after the attempt has stopped and cleanup has completed.
+- **THEN** the independent reviewer receives the recorded reason and runtime limits, preserves approved coverage and evidence kinds, and records its correction. An author comment alone cannot permit a rewrite.
 
 ### Requirement: Pause for a needed human choice and resume from the reply
 

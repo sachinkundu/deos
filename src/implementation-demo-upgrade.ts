@@ -5,11 +5,14 @@ import { implementationDemoUpgradeDefinition } from './implementation-demo-upgra
 import { sha256Hex } from './implementation-hash.ts';
 import { AgentStageRetryController, D1AgentStageRetryStore } from './stage-retry.ts';
 import type { WorkflowBinding } from './queue-consumer-core.ts';
+import { ImplementationDemoService } from './implementation-demo.ts';
+import { validateDemoCorrectionRequest, type DemoCorrectionRequest, type DemoPlan } from './implementation-demo-contract.ts';
 
 interface UpgradeInput {
   version: 1; runId: string; failedAttemptId: string; sourceDefinitionDigest: string;
   sourceWorkflowInstanceId: string; visitSequence: number; targetVersion: number;
   requestedBy: string; execute?: boolean; planDigest?: string;
+  correction?: DemoCorrectionRequest;
 }
 interface UpgradePlan {
   input: UpgradeInput; targetDigest: string; approvedInputSha: string; testedBaseSha: string;
@@ -25,12 +28,13 @@ export class ImplementationDemoUpgradeController {
       return Response.json({error:'invalid_operator_capability'},{status:401});
     const input=await request.json() as UpgradeInput;
     if(!input || typeof input!=='object' || Array.isArray(input) || Object.keys(input).some(key=>![
-      'version','runId','failedAttemptId','sourceDefinitionDigest','sourceWorkflowInstanceId','visitSequence','targetVersion','requestedBy','execute','planDigest'].includes(key)) ||
+      'version','runId','failedAttemptId','sourceDefinitionDigest','sourceWorkflowInstanceId','visitSequence','targetVersion','requestedBy','execute','planDigest','correction'].includes(key)) ||
       input.version!==1 || typeof input.runId!=='string' || typeof input.failedAttemptId!=='string' ||
       !/^[a-f0-9]{64}$/.test(input.sourceDefinitionDigest) || typeof input.sourceWorkflowInstanceId!=='string' ||
       !Number.isSafeInteger(input.visitSequence) || input.visitSequence<1 || !Number.isSafeInteger(input.targetVersion) ||
       input.targetVersion<=this.tail.version || !/^[a-zA-Z0-9._@-]{1,100}$/.test(input.requestedBy) ||
       (input.execute!==undefined && typeof input.execute!=='boolean')) throw new Error('invalid_demo_upgrade_request');
+    if(input.correction!==undefined)validateDemoCorrectionRequest(input.correction);
     const identity={...input};delete identity.execute;delete identity.planDigest;
     const existing=await this.env.DB.prepare('SELECT plan_json,plan_digest FROM implementation_demo_upgrades WHERE failed_attempt_id=?')
       .bind(input.failedAttemptId).first<{plan_json:string;plan_digest:string}>();
@@ -62,7 +66,19 @@ export class ImplementationDemoUpgradeController {
     const source=await this.env.DB.prepare('SELECT canonical_json FROM workflow_definitions WHERE definition_id=? AND version=? AND digest=?')
       .bind(run.definition_id,run.definition_version,run.definition_digest).first<{canonical_json:string}>();
     if(!source)throw new Error('implementation_demo_upgrade_source_missing');
-    const target=await implementationDemoUpgradeDefinition(await restoreWorkflowDefinition(source.canonical_json,run.definition_digest),this.tail,input.targetVersion);
+    const frozen=await restoreWorkflowDefinition(source.canonical_json,run.definition_digest);
+    // Existing demo workflows may re-enter planning only for an explicit,
+    // hash-bound correction. An author cannot request this through its tools.
+    if(frozen.jobs.implementation_demo_plan && !input.correction)throw new Error('implementation_demo_correction_required');
+    if(input.correction) {
+      const demos=new ImplementationDemoService(this.env.DB,this.env.ARTIFACTS);
+      const prior=await demos.latest(input.runId,'plan');
+      if(!prior || prior.payload_sha!==input.correction.planSha256)throw new Error('implementation_demo_correction_plan_changed');
+      const value=await demos.read<DemoPlan>(prior);
+      if(input.correction.scenarioIds.some(id=>!value.scenarios.some(scenario=>scenario.id===id)))
+        throw new Error('implementation_demo_correction_scenario_missing');
+    }
+    const target=await implementationDemoUpgradeDefinition(frozen,this.tail,input.targetVersion);
     const plan: UpgradePlan={input:identity,targetDigest:target.digest,approvedInputSha:work.input_sha,testedBaseSha:work.tested_base_sha,
       patchSha:work.patch_sha,branch:work.branch,humanUserId:run.allowed_linear_user_id ?? null,humanRevision:run.human_binding_revision ?? null};
     const encoded=JSON.stringify(plan),digest=await sha256Hex(encoded);

@@ -9,9 +9,12 @@ export interface DemoScenario {
   steps: string[]; expected: string; evidenceKinds: ProofKind[];
 }
 export interface DemoQuestion { blockKey: string; question: string; reason: string }
+export interface DemoCorrectionRequest { planSha256: string; scenarioIds: string[]; reason: string }
+export interface DemoCorrection extends DemoCorrectionRequest { upgradeDigest: string; requestedBy: string }
 export interface DemoPlan {
   version: 1; inputSha256: string; outcome: 'ready' | 'blocked'; summary: string;
   scenarios: DemoScenario[]; question: DemoQuestion | null;
+  corrections?: { scenarioId: string; reason: string }[];
 }
 export interface DemoResult {
   version: 1; inputSha256: string; planSha256: string; outcome: DemoVerdict; summary: string;
@@ -27,6 +30,8 @@ export interface DemoContext {
   sources: DemoSource[]; evidence: DemoEvidence[];
   plan: { sha256: string; value: DemoPlan } | null;
   priorPlan: DemoPlan | null;
+  priorPlanSha256?: string | null;
+  correction?: DemoCorrection | null;
   feedback: DemoResult | null;
 }
 
@@ -35,6 +40,14 @@ const text = (value: unknown): value is string => typeof value === 'string' && v
 const id = (value: unknown): value is string => text(value) && /^[a-z0-9][a-z0-9._-]{0,119}$/.test(value);
 const unique = (values: readonly string[]) => new Set(values).size === values.length;
 const kinds = new Set<ProofKind>(['browser_image', 'showboat', 'provider_originated']);
+
+export function validateDemoCorrectionRequest(value: DemoCorrectionRequest): void {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      Object.keys(value).some(key => !['planSha256', 'scenarioIds', 'reason'].includes(key)) ||
+      !/^[a-f0-9]{64}$/.test(value.planSha256) || !text(value.reason) ||
+      !Array.isArray(value.scenarioIds) || !value.scenarioIds.length ||
+      !unique(value.scenarioIds) || !value.scenarioIds.every(id)) error('Invalid demo correction request');
+}
 
 export function demoRequirements(sources: readonly DemoSource[]): DemoRequirement[] {
   const requirements = sources.flatMap(source => source.path.startsWith('approved/') && source.path.includes('/specs/')
@@ -73,11 +86,24 @@ export function validateDemoPlan(plan: DemoPlan, context: DemoContext): void {
   }
   if (plan.outcome === 'ready' && (!plan.scenarios.length || context.requirements.some(requirement => !covered.has(requirement.id))))
     error('Ready demo plan must cover every approved requirement');
+  const corrections = plan.corrections ?? [];
+  if (!Array.isArray(corrections) || !unique(corrections.map(item => item?.scenarioId)) ||
+      corrections.some(item => !item || !id(item.scenarioId) || !text(item.reason)))
+    error('Invalid demo correction reasons');
+  const changed = new Set<string>();
   for (const prior of context.priorPlan?.scenarios ?? []) {
     const current = plan.scenarios.find(scenario => scenario.id === prior.id);
-    if (!current || JSON.stringify(current) !== JSON.stringify(prior))
+    if (current && JSON.stringify(current) === JSON.stringify(prior)) continue;
+    const grant = context.correction;
+    if (!current || !grant || grant.planSha256 !== context.priorPlanSha256 ||
+        !grant.scenarioIds.includes(prior.id) || !corrections.some(item => item.scenarioId === prior.id))
       error(`Saved demo requirement cannot be removed or rewritten: ${prior.id}`);
+    if (prior.requirementIds.some(value => !current!.requirementIds.includes(value)) ||
+        prior.evidenceKinds.some(value => !current!.evidenceKinds.includes(value)))
+      error(`Demo correction cannot remove approved coverage or evidence kinds: ${prior.id}`);
+    changed.add(prior.id);
   }
+  if (corrections.some(item => !changed.has(item.scenarioId))) error('Demo correction reason does not match a changed scenario');
 }
 
 export function validateDemoResult(result: DemoResult, context: DemoContext, accessedIds: readonly string[]): void {
@@ -111,7 +137,7 @@ const object = (properties: Record<string, unknown>) => ({ type: 'object', addit
 const question = { anyOf: [{ type: 'null' }, object({ blockKey: string, question: string, reason: string })] };
 export const demoPlanSchema = object({ version: { const: 1 }, inputSha256: string, outcome: { enum: ['ready', 'blocked'] }, summary: string,
   scenarios: list(object({ id: string, title: string, requirementIds: list(string, 1), environment: string, steps: list(string, 1), expected: string,
-    evidenceKinds: list({ enum: [...kinds] }, 1) })), question });
+    evidenceKinds: list({ enum: [...kinds] }, 1) })), corrections: list(object({ scenarioId: string, reason: string })), question });
 export const demoResultSchema = object({ version: { const: 1 }, inputSha256: string, planSha256: string,
   outcome: { enum: ['pass', 'needs_work', 'blocked'] }, summary: string,
   scenarios: list(object({ id: string, outcome: { enum: ['pass', 'needs_work', 'blocked'] }, reason: string, evidenceIds: list(string) })), question });

@@ -2,7 +2,7 @@ import { ImplementationError, subjectMatches } from './implementation-contract.t
 import { ImplementationStore, type ImplementationInput, type ImplementationRun } from './implementation-store.ts';
 import { sha256Hex } from './implementation-hash.ts';
 import { demoRequirements, validateDemoPlan, validateDemoResult,
-  type DemoContext, type DemoEvidence, type DemoKind, type DemoPlan, type DemoResult, type DemoSource } from './implementation-demo-contract.ts';
+  type DemoContext, type DemoCorrection, type DemoCorrectionRequest, type DemoEvidence, type DemoKind, type DemoPlan, type DemoResult, type DemoSource } from './implementation-demo-contract.ts';
 import type { AgentAttemptRecord } from './sandbox-controller.ts';
 import type { ArtifactCollectionResult } from './artifact-collector.ts';
 import type { OrchestrationRunRecord } from './orchestration-store.ts';
@@ -57,6 +57,31 @@ export class ImplementationDemoService {
     const build = JSON.parse(base.context);
     await addSource('context/issue-and-feedback.json', JSON.stringify({ issue: build.issue,
       feedback: build.implementationReviewFeedback, question: build.question, reply: build.reply }, null, 2));
+    await addSource('context/runtime-capabilities.json', JSON.stringify({
+      execution: 'Local workerd inside an isolated Cloudflare Sandbox',
+      browser: { sessionsPerAttempt: 1, resetWithinAttempt: false,
+        keyboard: true, viewport: { min: 200, max: 3840 },
+        navigation: 'Only the registered preview origin for this attempt' },
+      documentationHosts: input.policy.documentationHosts,
+      safeAdapters: input.policy.safeAdapters,
+      deployment: 'No provider credentials in the agent. An approved hosted preview requires an explicitly available trusted deployment path. Local workerd does not replace an approved hosted preview.',
+      recovery: 'Runtime failure ends the attempt. A fresh attempt restores saved work and must capture its own current evidence. Do not require destroying and reallocating a service browser within an application demo.',
+    }, null, 2));
+    let correction: DemoCorrection | null = null;
+    if (kind === 'plan' && priorRow) {
+      const audit = await this.db.prepare(`SELECT plan_json,plan_digest FROM implementation_demo_upgrades
+        WHERE run_id=? AND target_definition_digest=? ORDER BY created_at DESC LIMIT 1`)
+        .bind(run.run_id, run.definition_digest).first<{ plan_json: string; plan_digest: string }>();
+      if (audit) {
+        if (await sha256Hex(audit.plan_json) !== audit.plan_digest)
+          throw new ImplementationError('demo_context_integrity', 'Demo correction audit digest differs');
+        const saved = JSON.parse(audit.plan_json) as {input: {runId: string; requestedBy: string; correction?: DemoCorrectionRequest}; targetDigest: string; approvedInputSha: string};
+        if (saved.input.runId !== run.run_id || saved.targetDigest !== run.definition_digest || saved.approvedInputSha !== work.input_sha)
+          throw new ImplementationError('demo_context_integrity', 'Demo correction audit subject differs');
+        if (saved.input.correction?.planSha256 === priorRow.payload_sha)
+          correction = {...saved.input.correction, upgradeDigest: audit.plan_digest, requestedBy: saved.input.requestedBy};
+      }
+    }
     if (candidate) {
       if (!priorRow || priorRow.outcome !== 'ready' || !priorPlan) throw new ImplementationError('demo_plan_missing', 'Demo gate requires its saved ready plan');
       if (candidate.outcome !== 'completed' || candidate.kind !== 'build') throw new ImplementationError('implementation_incomplete', 'Demo gate requires a completed build candidate');
@@ -87,7 +112,8 @@ export class ImplementationDemoService {
     const content = { version: 1 as const, kind, runId: run.run_id, approvedInputSha: work.input_sha,
       subject, candidateSha: candidate ? work.candidate_sha : null, requirements: demoRequirements(sources),
       sources, evidence, plan: kind === 'gate' && priorRow && priorPlan ? { sha256: priorRow.payload_sha, value: priorPlan } : null,
-      priorPlan: kind === 'plan' ? priorPlan : null, feedback: gateRow ? await this.read<DemoResult>(gateRow) : null };
+      priorPlan: kind === 'plan' ? priorPlan : null, priorPlanSha256: kind === 'plan' ? priorRow?.payload_sha ?? null : null,
+      correction, feedback: gateRow ? await this.read<DemoResult>(gateRow) : null };
     const demo: DemoContext = { ...content, inputSha256: await sha256Hex(JSON.stringify(content)) };
     return { ...base, context: JSON.stringify({ demo }), continuationPatch: null };
   }
@@ -104,7 +130,13 @@ export class ImplementationDemoService {
     const work = await this.store.requireRun(run.run_id);
     if (work.input_sha !== context.approvedInputSha || work.tested_base_sha !== context.subject.testedBaseSha)
       throw new ImplementationError('stale_proof', 'Demo subject changed while the reviewer was running');
-    if (context.kind === 'plan') validateDemoPlan(result as DemoPlan, context);
+    if (context.kind === 'plan') {
+      const latestPlan = await this.latest(run.run_id, 'plan');
+      if (context.priorPlanSha256 !== undefined && latestPlan?.attempt_id !== attempt.attempt_id &&
+          (latestPlan?.payload_sha ?? null) !== context.priorPlanSha256)
+        throw new ImplementationError('stale_proof', 'Demo plan changed while the reviewer was running');
+      validateDemoPlan(result as DemoPlan, context);
+    }
     else {
       if (work.candidate_sha !== context.candidateSha || work.tree_sha !== context.subject.treeSha ||
           (await this.latest(run.run_id, 'plan'))?.payload_sha !== context.plan?.sha256)
@@ -119,7 +151,7 @@ export class ImplementationDemoService {
     await this.db.prepare(`INSERT OR IGNORE INTO implementation_demo_reviews
       (attempt_id,run_id,visit_sequence,kind,input_sha,plan_sha,candidate_sha,tested_base_sha,tree_sha,outcome,summary,payload_key,payload_sha,created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(attempt.attempt_id, run.run_id, attempt.visit_sequence, context.kind,
-        inputSha256, context.plan?.sha256 ?? null, context.candidateSha, context.subject.testedBaseSha, context.subject.treeSha,
+        inputSha256, context.plan?.sha256 ?? context.priorPlanSha256 ?? null, context.candidateSha, context.subject.testedBaseSha, context.subject.treeSha,
         result.outcome, result.summary, saved.key, saved.sha256, new Date().toISOString()).run();
     const accepted = await this.db.prepare('SELECT payload_sha FROM implementation_demo_reviews WHERE attempt_id=?')
       .bind(attempt.attempt_id).first<{ payload_sha: string }>();

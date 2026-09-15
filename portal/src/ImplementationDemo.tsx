@@ -20,6 +20,8 @@ export function ImplementationDemo({ kind, demo, expanded, runId }: {
         return <li key={scenario.id}>
           <div className="demo-scenario-title"><span aria-hidden="true">{result?.outcome === 'pass' ? '☑' : '☐'}</span><strong>{scenario.title}</strong><span>{label}</span></div>
           <p>{result?.reason ?? scenario.expected}</p>
+          {demo?.plan?.value.corrections?.filter(item => item.scenarioId === scenario.id).map(item =>
+            <p className="demo-previous" key={item.scenarioId}>Plan corrected: {item.reason}</p>)}
           <details><summary>Demo requirements</summary><p>{scenario.environment}</p><ol>{scenario.steps.map((step, index) => <li key={index}>{step}</li>)}</ol>
             <p>{scenario.expected}</p><p className="demo-source">Approved requirements: {scenario.requirementIds.map(id => id.replace(/^approved\//, '')).join(', ')}</p></details>
           {result && result.evidenceIds.length > 0 && <div className="demo-evidence">{result.evidenceIds.map((id, index) => <a key={id} href={proofUrl(id)} target="_blank" rel="noreferrer">View evidence {index + 1}</a>)}</div>}

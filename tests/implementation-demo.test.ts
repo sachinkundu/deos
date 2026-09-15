@@ -141,3 +141,50 @@ test('accepting a refreshed demo plan keeps the checked clarification available 
     });
   } finally { f.db.close(); }
 });
+
+
+test('only a scoped operator correction permits a reviewer to revise a mistaken scenario',()=>{
+  const c=context(),prior=plan(c);c.priorPlan=prior;c.priorPlanSha256='a'.repeat(64);
+  const revised=structuredClone(prior);revised.scenarios[0].steps=['Open the changed app','Publish the update','Retry the lost provider response'];
+  revised.corrections=[{scenarioId:'update',reason:'The approved recovery case concerns the provider response, not destroying the browser.'}];
+  assert.throws(()=>validateDemoPlan(revised,c),/removed or rewritten/);
+  c.correction={planSha256:c.priorPlanSha256,scenarioIds:['update'],reason:'Correct the out-of-scope browser reset.',upgradeDigest:'b'.repeat(64),requestedBy:'operator'};
+  validateDemoPlan(revised,c);
+  for(const mutate of [
+    (p:DemoPlan)=>{p.corrections=[];},
+    (p:DemoPlan)=>{p.scenarios=[];},
+    (p:DemoPlan)=>{p.scenarios[0].evidenceKinds=['browser_image'];},
+    (p:DemoPlan)=>{p.scenarios[0].requirementIds.pop();},
+    (p:DemoPlan)=>{p.corrections!.push({scenarioId:'invented',reason:'Unsupported'});},
+  ]) {const p=structuredClone(revised);mutate(p);assert.throws(()=>validateDemoPlan(p,c));}
+  c.correction.planSha256='c'.repeat(64);
+  assert.throws(()=>validateDemoPlan(revised,c),/removed or rewritten/);
+  c.correction.planSha256=c.priorPlanSha256;c.correction.scenarioIds=['another'];
+  assert.throws(()=>validateDemoPlan(revised,c),/removed or rewritten/);
+});
+
+test('demo planning receives real runtime limits and only a matching immutable correction audit',async()=>{
+  const f=await fixture();try {
+    const p=plan(f.c),saved=await f.store.put('run-1','prior-plan.json',JSON.stringify(p));
+    seedAttempt(f.db,'plan');
+    f.db.sqlite.prepare(`INSERT INTO implementation_demo_reviews VALUES
+      ('plan','run-1',1,'plan',?,NULL,NULL,?,?,'ready','summary',?,?,'2026-09-15')`)
+      .run(f.c.inputSha256,subject.testedBaseSha,subject.treeSha,saved.key,saved.sha256);
+    const run=f.db.sqlite.prepare("SELECT * FROM orchestration_runs WHERE run_id='run-1'").get() as unknown as OrchestrationRunRecord;
+    const correction={planSha256:saved.sha256,scenarioIds:['update'],reason:'Correct the browser demand against the approved product scope.'};
+    const job={reviewKind:'demo_plan'} as Parameters<ImplementationDemoService['materialize']>[1];
+    const base={context:JSON.stringify({issue:{comments:[{body:JSON.stringify({correction})}]},correction})} as Parameters<ImplementationDemoService['materialize']>[2];
+    const read=async()=>JSON.parse((await f.service.materialize(run,job,base)).context).demo as DemoContext;
+    const initial=await read();assert.equal(initial.correction,null);
+    const runtime=JSON.parse(initial.sources.find(item=>item.path==='context/runtime-capabilities.json')!.content);
+    assert.equal(runtime.browser.resetWithinAttempt,false);assert.deepEqual(runtime.safeAdapters,[]);
+    const audit={input:{runId:'run-1',requestedBy:'operator',correction},targetDigest:run.definition_digest,approvedInputSha:f.work.input_sha};
+    const encoded=JSON.stringify(audit),digest=await sha256Hex(encoded);
+    f.db.sqlite.prepare('INSERT INTO implementation_demo_upgrades VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .run('review','run-1',digest,encoded,'old',run.definition_digest,f.work.input_sha,subject.testedBaseSha,null,'2026-09-15');
+    const granted=await read();assert.deepEqual(granted.correction,{...correction,upgradeDigest:digest,requestedBy:'operator'});
+    assert.equal(granted.priorPlanSha256,saved.sha256);
+    assert.notEqual(granted.inputSha256,initial.inputSha256);
+    assert.throws(()=>f.db.sqlite.exec("UPDATE implementation_demo_upgrades SET plan_json='{}'"),/immutable/);
+  }finally{f.db.close();}
+});
