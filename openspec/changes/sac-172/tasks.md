@@ -41,6 +41,8 @@
 
 - [x] 4.12 Bound verification reads to 20 seconds and recover specific transport failures with at most three reads within the original attempt deadline. Keep provider actions and server rejections out of this retry path. Preserve each original error and verify a dropped response, same-session repairs, continuing heartbeats and a single completion signal in the built container.
 
+- [ ] 4.13 Retry unconfirmed browser cleanup for finished attempts during scheduled reconciliation. Respect cleanup holds, leave active attempts and human gates unchanged, and retain original errors until provider absence is confirmed.
+
 ## 5. Verification and canary
 
 - [x] 5.1 Verify migrations, frozen graph compatibility, job contracts, isolation, denial cases, resource ambiguity, cleanup, proof freshness, citations, publication retries, and human gate behavior.

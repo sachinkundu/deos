@@ -291,6 +291,22 @@ export class ImplementationBrowserAllocator {
       )
       .run();
   }
+
+  async reconcileCompletedAttempts() {
+    const resources = await this.store.db.prepare(`SELECT r.* FROM implementation_resources r
+      JOIN agent_attempts a ON a.attempt_id=r.attempt_id AND a.run_id=r.run_id
+      WHERE r.kind='browser' AND r.status='ready' AND r.provider_resource_id IS NOT NULL
+        AND a.state IN ('completed','blocked','failed','interrupted','absolute_timeout','canceled')
+        AND (a.cleanup_hold_until IS NULL OR a.cleanup_hold_until<=?)`)
+      .bind(this.now().toISOString())
+      .all<ImplementationResource>();
+    for (const resource of resources.results) {
+      try { await this.cleanup(resource); }
+      catch (error) {
+        await this.store.error(resource.run_id, resource.attempt_id, "cleanup.browser.reconciliation", error);
+      }
+    }
+  }
 }
 export async function browserCommand(
   binding: Parameters<typeof puppeteer.sessions>[0],

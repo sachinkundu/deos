@@ -76,4 +76,5 @@ export async function reconcileImplementations(env: Env) {
       );
     }
   }
+  await browsers.reconcileCompletedAttempts();
 }

@@ -157,6 +157,47 @@ test("reconciliation refreshes only the active try's existing browser and thrott
   } finally { f.db.close(); }
 });
 
+test("completed browser cleanup retries an unconfirmed close without changing successful work or active browsers", async () => {
+  const f = await fixture();
+  try {
+    const ended = await f.allocator.acquire("run-1", "one", "https://one.trycloudflare.com");
+    const active = await f.allocator.acquire("run-1", "two", "https://two.trycloudflare.com");
+    f.db.sqlite.prepare("UPDATE agent_attempts SET state='completed' WHERE attempt_id='one'").run();
+    f.db.sqlite.prepare("UPDATE implementation_tries SET status='completed' WHERE attempt_id='one'").run();
+    let closes = 0;
+    f.provider.close = async (id: string) => {
+      assert.equal(id, ended.provider_resource_id);
+      closes += 1;
+      // A successful close response need not remove the session from inventory immediately.
+      if (closes > 1) f.provider.live = f.provider.live.filter(value => value !== id);
+    };
+    f.db.sqlite.prepare("UPDATE agent_attempts SET cleanup_hold_until='2026-09-15T00:00:00Z' WHERE attempt_id='one'").run();
+    await f.allocator.reconcileCompletedAttempts();
+    assert.equal(closes, 0);
+    f.db.sqlite.prepare("UPDATE agent_attempts SET cleanup_hold_until=NULL WHERE attempt_id='one'").run();
+    await f.allocator.reconcileCompletedAttempts();
+    assert.equal((await f.store.resource("one", "browser"))!.status, "ready");
+    const errors = f.db.sqlite.prepare("SELECT operation,r2_key FROM implementation_effect_errors WHERE attempt_id='one'").all() as Array<{operation:string;r2_key:string}>;
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].operation, "cleanup.browser.reconciliation");
+    const originalError = await f.store.bucket.get(errors[0].r2_key);
+    assert.ok(originalError);
+    assert.match(await originalError.text(), /Browser close is not yet confirmed/);
+    await f.allocator.reconcileCompletedAttempts();
+    const cleaned = (await f.store.resource("one", "browser"))!;
+    assert.equal(cleaned.status, "destroyed");
+    const receipt = f.db.sqlite.prepare("SELECT cleanup_receipt FROM implementation_resources WHERE resource_id=?").get(cleaned.resource_id)!;
+    assert.equal(JSON.parse(String(receipt.cleanup_receipt)).absent, ended.provider_resource_id);
+    assert.deepEqual(f.provider.live, [active.provider_resource_id]);
+    assert.equal((await f.store.resource("two", "browser"))!.status, "ready");
+    assert.equal(f.db.sqlite.prepare("SELECT status FROM implementation_tries WHERE attempt_id='one'").get()!.status, "completed");
+    assert.equal(f.db.sqlite.prepare("SELECT status FROM orchestration_runs WHERE run_id='run-1'").get()!.status, "awaiting_human");
+    await f.allocator.reconcileCompletedAttempts();
+    assert.equal(closes, 2);
+    assert.equal(f.db.sqlite.prepare("SELECT COUNT(*) AS n FROM implementation_effect_errors WHERE attempt_id='one'").get()!.n, 1);
+  } finally { f.db.close(); }
+});
+
 test("provider maintenance avoids connected sessions, detects expiry and disconnects after an actual command", async () => {
   const calls: string[] = [];
   let sessions: Array<{sessionId:string;connectionId?:string}> = [{sessionId:"owned"}];
