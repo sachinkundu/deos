@@ -14,6 +14,7 @@ const repo = "/deos/workspace/repository";
 const sha = value => createHash("sha256").update(value).digest("hex");
 const file = (path, content) => writeFile(path, content, { mode: 0o600 });
 const sessionId = "local-process-proof-session";
+const capacityFailure = process.argv.includes("--capacity-failure");
 if (process.argv.includes("fake-codex")) {
   const args = process.argv.slice(process.argv.indexOf("fake-codex") + 1);
   if (args[0] === "app-server") {
@@ -39,6 +40,14 @@ if (process.argv.includes("fake-codex")) {
     calls.push({ args, prompt, pid: process.pid });
     await file("/proof-state/calls.json", JSON.stringify(calls));
     process.stdout.write(JSON.stringify({ type: "thread.started", thread_id: sessionId }) + "\n");
+    if (capacityFailure) {
+      await writeFile(`${repo}/value`, "saved", { flag: "r+" });
+      process.stdout.write(JSON.stringify({ type: "turn.started" }) + "\n");
+      const message = "Selected model is at capacity. Please try a different model.";
+      process.stdout.write(JSON.stringify({ type: "error", message }) + "\n");
+      process.stdout.write(JSON.stringify({ type: "turn.failed", error: { message } }) + "\n");
+      process.exit(1);
+    }
     const check = async behavior => {
       const path = `/deos/output/requests/check-${calls.length}-${behavior}.json`;
       await file(path, JSON.stringify({ action: "check", argv: ["node", "check.cjs"], ...(behavior ? { behavior: true } : {}) }));
@@ -72,7 +81,7 @@ if (process.argv.includes("fake-codex")) {
   await file("/proof-state/calls.json", "[]");
   await file("/root/.codex/models_cache.json", JSON.stringify({ models: [{ slug: "fixture-model" }] }));
   const self = new URL(import.meta.url).pathname;
-  await writeFile("/proof-bin/codex", `#!/bin/sh\nexec node --experimental-strip-types '${self}' fake-codex "$@"\n`);
+  await writeFile("/proof-bin/codex", `#!/bin/sh\nexec node --experimental-strip-types '${self}' ${capacityFailure ? "--capacity-failure " : ""}fake-codex "$@"\n`);
   await chmod("/proof-bin/codex", 0o755);
   const git = (...args) => execFileSync("git", args, { cwd: repo, encoding: "utf8" }).trim();
   git("init", "-q"); git("config", "user.name", "Test"); git("config", "user.email", "test@example.test");
@@ -151,6 +160,24 @@ if (process.argv.includes("fake-codex")) {
     const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
     await file("/proof-state/supervisor.log", output);
     await file("/proof-state/validation.txt", await readFile("/deos/output/validation.txt", "utf8"));
+    if (capacityFailure) {
+      const status = JSON.parse(await readFile("/deos/output/status.json", "utf8"));
+      const errors = await readFile("/deos/output/original-errors.jsonl", "utf8");
+      assert.equal(code, 1);
+      assert.equal(status.exitCode, 1);
+      assert.equal(status.safeErrorCategory, "codex_exit_nonzero");
+      assert.match(status.originalError.message, /Selected model is at capacity/);
+      assert.match(status.originalError.cause, /turn.failed/);
+      assert.match(errors, /Selected model is at capacity/);
+      assert.doesNotMatch(errors, /ENOENT.*result.json/);
+      assert.equal(await readFile(`${repo}/value`, "utf8"), "saved");
+      assert.equal(notifications, 1);
+      const summary = { proof: "local container with a deterministic provider capacity failure",
+        supervisorExit: code, status, savedWork: true, completionSignals: notifications,
+        missingResultDidNotMaskFailure: true };
+      await file("/proof-state/summary.json", JSON.stringify(summary, null, 2));
+      process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
+    } else {
     await file("/proof-state/diagnostics.jsonl", await readFile("/deos/output/implementation-diagnostics.jsonl", "utf8"));
     if (code !== 0) process.stderr.write(await readFile("/proof-state/validation.txt", "utf8"));
     assert.equal(code, 0, output);
@@ -178,5 +205,6 @@ if (process.argv.includes("fake-codex")) {
       verificationRequests, retainedTransportFailures: transportFailures.length };
     await file("/proof-state/summary.json", JSON.stringify(summary, null, 2));
     process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
+    }
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 }

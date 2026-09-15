@@ -21,6 +21,7 @@ import { errorDetails, readResponseText, responseError } from "./error-details.t
 import { recordCaughtError } from "./error-context.ts";
 import { ImplementationProviderTest } from "./implementation-provider-test.ts";
 import { previewRelayHost, previewRelayProgram, previewRelaySandboxId, waitForPreviewRelay } from "./implementation-preview.ts";
+import { reconcileImplementationPreview } from "./implementation-preview-reconciliation.ts";
 
 export class ImplementationBroker {
   readonly store: ImplementationStore;
@@ -139,7 +140,13 @@ export class ImplementationBroker {
         );
         if (row.status === "ready")
           return Response.json({ origin: row.preview_origin });
-        if (row.status !== "allocating" || row.create_window)
+        if (row.status === "quarantined" || (row.status === "allocating" && row.create_window)) {
+          return Response.json(await reconcileImplementationPreview(this.store, row, {
+            listTunnels: relayId => getSandbox(this.env.Sandbox, relayId, {normalizeId:true,keepAlive:true}).tunnels.list(),
+            fetch: globalThis.fetch.bind(globalThis), now: () => new Date(),
+          }));
+        }
+        if (row.status !== "allocating")
           throw new ImplementationError(
             "preview_quarantined",
             "Preview allocation needs reconciliation",
@@ -162,17 +169,21 @@ export class ImplementationBroker {
               "preview_origin",
               "Expected a fresh isolated quick tunnel",
             );
+          const recorded = await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=? WHERE resource_id=? AND status='allocating'")
+            .bind(JSON.stringify({relaySandboxId, tunnel}), row.resource_id).run();
+          if (recorded.meta.changes !== 1)
+            throw new ImplementationError("preview_reconciliation_changed", "Preview allocation changed before readiness was checked");
           const readiness = await this.store.put(claims.runId, "preview-readiness.json",
             this.sanitize(JSON.stringify({origin, observations: await waitForPreviewRelay(origin)})));
           await this.env.DB.prepare(
             "UPDATE implementation_resources SET status='ready',provider_resource_id=?,preview_origin=?,metadata_json=?,updated_at=? WHERE resource_id=? AND status='allocating'",
           )
-            .bind(origin, origin, JSON.stringify({relaySandboxId, readiness}), new Date().toISOString(), row.resource_id)
+            .bind(origin, origin, JSON.stringify({relaySandboxId, tunnel, readiness}), new Date().toISOString(), row.resource_id)
             .run();
           return Response.json({ origin });
         } catch (error) {
           try {
-            await this.env.DB.prepare("UPDATE implementation_resources SET status='quarantined' WHERE resource_id=?")
+            await this.env.DB.prepare("UPDATE implementation_resources SET status='quarantined' WHERE resource_id=? AND status='allocating'")
               .bind(row.resource_id).run();
           } catch (secondary) { recordCaughtError(secondary, "preview.quarantine"); }
           throw error;

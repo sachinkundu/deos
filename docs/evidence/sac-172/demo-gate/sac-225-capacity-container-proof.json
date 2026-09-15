@@ -1,0 +1,19 @@
+{
+  "proof": "local container with a deterministic provider capacity failure",
+  "supervisorExit": 1,
+  "status": {
+    "exitCode": 1,
+    "signal": null,
+    "timedOut": false,
+    "safeErrorCategory": "codex_exit_nonzero",
+    "originalError": {
+      "message": "Error: Selected model is at capacity. Please try a different model.",
+      "stack": "Error: Selected model is at capacity. Please try a different model.\n    at implementationProcessFailure (file:///deos/bin/implementation-process-failure.mjs:17:17)\n    at main (file:///deos/bin/supervisor.mjs:321:21)",
+      "cause": "{\n  process: { code: 1, signal: null },\n  failures: [\n    {\n      type: 'error',\n      message: 'Selected model is at capacity. Please try a different model.'\n    },\n    {\n      type: 'turn.failed',\n      error: { message: 'Selected model is at capacity. Please try a different model.' }\n    }\n  ],\n  malformed: [],\n  stderr: ''\n}"
+    },
+    "completedAt": "2026-09-15T20:17:45.384Z"
+  },
+  "savedWork": true,
+  "completionSignals": 1,
+  "missingResultDidNotMaskFailure": true
+}

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { setupImplementation } from "./implementation-runtime.mjs";
 import { runImplementationCompletion } from "./implementation-completion.mjs";
+import { implementationProcessFailure } from "./implementation-process-failure.mjs";
 import { checkAuthorSources } from "./grounded-review.mjs";
 import { provisionGrounding, verifyGroundingContext, verifyNativeGrounding } from "./grounded-agent.mjs";
 import { setupNativeReview } from "./native-review-setup.mjs";
-import { recordCaughtError } from "./original-errors.mjs";
+import { originalErrorText, recordCaughtError } from "./original-errors.mjs";
 import { notifyAttemptCompletion } from "./attempt-completion.mjs";
 import { appendFile, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
@@ -234,14 +235,14 @@ const main = async () => {
   if (implementation) {
     const sessionId = tracker.finish();
     const completion = await runImplementationCompletion({
-      result, outcome: await resultOutcome(), sessionId, deadline,
+      result, outcome: result.code === 0 ? await resultOutcome() : null, sessionId, deadline,
       feedbackRoot: "/deos/implementation/completion",
       journal: "/deos/output/implementation-diagnostics.jsonl",
       check: () => implementation.verify(),
       resume: async ({ sessionId: exactSessionId, prompt: correctionPrompt }) => {
         const resumed = await run(correctionPrompt, exactSessionId);
         if (tracker.finish() !== sessionId) throw new Error("Implementation verification resumed a different session");
-        return { ...resumed, outcome: await resultOutcome() };
+        return { ...resumed, outcome: resumed.code === 0 ? await resultOutcome() : null };
       },
     });
     result = completion.result;
@@ -315,6 +316,11 @@ const main = async () => {
     );
   }
   if (implementation) {
+    // A failed model turn may never write result.json. Preserve that original
+    // process failure rather than replacing it with a completion-file error.
+    const failure = implementationProcessFailure(result,
+      await readFile(TRANSCRIPT_PATH, "utf8"), await readFile(VALIDATION_PATH, "utf8"));
+    if (failure) throw failure;
     // A finish error must reach the fatal diagnostic handler before cleanup.
     // The outer finally still closes the runtime if finish or close fails.
     if (!implementationAccepted) await implementation.finish();
@@ -341,11 +347,11 @@ main().catch(async (error) => {
   try {
     await mkdir(OUTPUT_ROOT, { recursive: true, mode: 0o700 });
     await atomicJson(STATUS_PATH, {
-      exitCode: null,
-      signal: null,
+      exitCode: error.exitCode ?? null,
+      signal: error.signal ?? null,
       timedOut: false,
-      safeErrorCategory: "supervisor_failed",
-      originalError: { message: String(error), stack: error?.stack, cause: error?.cause ? String(error.cause) : null },
+      safeErrorCategory: error.safeErrorCategory ?? "supervisor_failed",
+      originalError: { message: String(error), stack: error?.stack, cause: error?.cause ? originalErrorText(error.cause) : null },
       completedAt: new Date().toISOString(),
     });
   } finally {

@@ -834,3 +834,12 @@ credentials or source contents. This removes a possible stall point; the three
 try-11 timeouts did not identify the exact original blocked operation.
 
 Quick-tunnel allocation can precede public readiness. The trusted relay exposes a fixed health response. Its creator checks that response on the same allocated URL before marking the resource ready. Only known gateway startup statuses receive bounded read retries. The probe never calls the changed app. Original failures and the successful read-back are retained.
+
+If the first readiness window ends, later tool calls and scheduled reconciliation
+may read the same relay's tunnel inventory and health again. They must not start
+another relay or create another tunnel. Recovery requires one matching tunnel,
+the original relay owner and allocation window, and the current active attempt.
+Once a tunnel identity has been saved, read-back must match it. A guarded write
+marks the preview ready only while those facts remain current. Missing or
+ambiguous inventory, a failed health response, and concurrent cleanup leave it
+unavailable. The original failure remains in the error history.

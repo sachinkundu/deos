@@ -9,6 +9,8 @@ import {
   ImplementationBrowserAllocator,
   CloudflareBrowserProvider,
 } from "./implementation-browser.ts";
+import { getSandbox } from "@cloudflare/sandbox";
+import { reconcileImplementationPreview } from "./implementation-preview-reconciliation.ts";
 
 /** Cron is a wake-up producer. Only the workflow consumes a saved event and changes its node. */
 export async function reconcileImplementations(env: Env) {
@@ -77,4 +79,22 @@ export async function reconcileImplementations(env: Env) {
     }
   }
   await browsers.reconcileCompletedAttempts();
+  const previews = await env.DB.prepare(`SELECT p.* FROM implementation_resources p
+    JOIN agent_attempts a ON a.attempt_id=p.attempt_id AND a.run_id=p.run_id
+    JOIN implementation_tries t ON t.attempt_id=a.attempt_id AND t.run_id=a.run_id
+    JOIN orchestration_runs r ON r.run_id=a.run_id
+    WHERE p.kind='preview' AND p.status='quarantined' AND a.state='running'
+      AND t.status='running' AND r.status='active'
+      AND r.current_visit_sequence=a.visit_sequence AND r.current_node=a.node_id`)
+    .all<import("./implementation-store.ts").ImplementationResource>();
+  for (const resource of previews.results) {
+    try {
+      await reconcileImplementationPreview(store, resource, {
+        listTunnels: relayId => getSandbox(env.Sandbox, relayId, {normalizeId:true,keepAlive:true}).tunnels.list(),
+        fetch: globalThis.fetch.bind(globalThis), now: () => new Date(),
+      });
+    } catch (error) {
+      await store.error(resource.run_id, resource.attempt_id, "preview_reconciliation", error);
+    }
+  }
 }
