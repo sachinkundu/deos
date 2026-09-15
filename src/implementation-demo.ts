@@ -124,7 +124,9 @@ export class ImplementationDemoService {
     const accepted = await this.db.prepare('SELECT payload_sha FROM implementation_demo_reviews WHERE attempt_id=?')
       .bind(attempt.attempt_id).first<{ payload_sha: string }>();
     if (accepted?.payload_sha !== saved.sha256) throw new ImplementationError('demo_result_integrity', 'Demo acceptance read-back differs');
-    if (result.outcome !== 'blocked') await this.db.prepare("UPDATE implementation_questions SET status='closed' WHERE run_id=? AND status='answered'")
+    // A refreshed plan consumes the reply as context, but the next author still
+    // needs it. Build acceptance closes the question once the author addresses it.
+    if (context.kind === 'gate' && result.outcome !== 'blocked') await this.db.prepare("UPDATE implementation_questions SET status='closed' WHERE run_id=? AND status='answered'")
       .bind(run.run_id).run();
     return result.outcome;
   }

@@ -108,3 +108,36 @@ test('publication requires an exact current pass and a new build makes the porta
     assert.equal((await view()).gate?.current,false);
   } finally {f.db.close();}
 });
+
+test('accepting a refreshed demo plan keeps the checked clarification available to the next author',async()=>{
+  const f=await fixture();
+  try {
+    const question=await f.store.put('run-1','question.json',JSON.stringify({blockKey:'browser',question:'May I resume with a fresh browser?'}));
+    const reply=await f.store.put('run-1','reply.json',JSON.stringify({body:'Resume from saved work and preserve the final preview requirement.'}));
+    f.db.sqlite.prepare(`INSERT INTO implementation_questions
+      (question_id,run_id,block_key,gate_visit,opened_delivery_id,opened_at,question_key,question_sha,status,reply_key,reply_sha)
+      VALUES ('question','run-1','browser',1,'opened','2026-09-15',?,?,'answered',?,?)`)
+      .run(question.key,question.sha256,reply.key,reply.sha256);
+    const c={...f.c,kind:'plan' as const,plan:null,candidateSha:null,evidence:[]};
+    const {inputSha256:_,...content}=c;
+    c.inputSha256=await sha256Hex(JSON.stringify(content));
+    const p=plan(c),bytes=JSON.stringify(p);
+    const saved=await f.store.put('run-1','raw-review-output.json',bytes);
+    f.db.sqlite.exec(`INSERT INTO artifact_manifests (manifest_id,run_id,attempt_id,r2_key,state,created_at)
+      VALUES ('manifest','run-1','review','manifest-key','complete','2026-09-15')`);
+    f.db.sqlite.prepare(`INSERT INTO artifacts (manifest_id,logical_name,r2_key,media_type,byte_size,sha256,created_at,policy_outcome)
+      VALUES ('manifest','raw-review-output.json',?,'application/json',?,?,'2026-09-15','accepted')`)
+      .run(saved.key,Buffer.byteLength(bytes),saved.sha256);
+    const attempt={...f.attempt,job_spec_json:JSON.stringify({reviewKind:'demo_plan',materializedContext:JSON.stringify({demo:c})})};
+    const run={run_id:'run-1'} as OrchestrationRunRecord;
+    const collection: ArtifactCollectionResult={manifestId:'manifest',aggregateDigest:saved.sha256,
+      objectCount:1,totalBytes:Buffer.byteLength(bytes),manifestKey:'manifest-key',manifestSha256:saved.sha256,
+      providerReceipts:[],result:{reviewOutcome:p.outcome,summary:p.summary}};
+    assert.equal(await f.service.accept({run,attempt,collection}),'ready');
+    const pending=await f.store.question('run-1');
+    assert.equal(pending?.status,'answered');
+    assert.deepEqual(await f.store.read(pending!.reply_key!,pending!.reply_sha!),{
+      body:'Resume from saved work and preserve the final preview requirement.',
+    });
+  } finally { f.db.close(); }
+});
