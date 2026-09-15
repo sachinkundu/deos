@@ -42,5 +42,15 @@ configured.
 All 555 backend tests pass. TypeScript checks, generated Worker binding checks,
 OpenSpec strict validation for SAC-172, and `git diff --check` pass.
 
-At this checkpoint the repair is local. No retry, production portal change,
-implementation PR, or final review approval has occurred.
+Commit `ca4b39a` is deployed as Worker
+`2da36a2c-0747-4268-8e2b-7c719baf4c9d` at 100 percent. The global active-attempt
+check was empty immediately before deployment. `--containers-rollout none`
+kept the existing image; read-back confirmed all four pools healthy at their
+previous versions. This also activates the earlier clarification handoff fix.
+See [activation read-back](sac-225-proof-repair-activation.json),
+[original errors](sac-225-third-author-original-errors.jsonl), and
+[the conflicting earlier receipt](sac-225-proof-collision.json).
+
+No retry, production portal change, implementation PR, or final review approval
+has occurred. Resolve the frozen demo-plan conflict and the protected Pages
+deployment path before starting another full author attempt.
