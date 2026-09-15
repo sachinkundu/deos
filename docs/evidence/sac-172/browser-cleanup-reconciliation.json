@@ -57,7 +57,50 @@
       "updated_at": "2026-09-15T10:04:54.852Z"
     }
   ],
-  "liveReconciliation": "Pending next scheduled invocation at or after 2026-09-15T10:30:00Z.",
+  "liveReconciliation": {
+    "observedAt": "2026-09-15T10:31:34Z",
+    "result": "Both pending browser resources now have provider absence receipts; Human Review visit 55 is unchanged.",
+    "resources": [
+      {
+        "attempt_id": "01a0a407-62dc-7bc0-95e6-965a0a818188",
+        "state": "completed",
+        "cleanup_state": "destroyed",
+        "browser_status": "destroyed",
+        "cleanup_receipt": "{\"absent\":\"b0565106-184c-4acd-99ca-6bbb765228b7\"}",
+        "updated_at": "2026-09-15T08:13:09.221Z"
+      },
+      {
+        "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+        "state": "failed",
+        "cleanup_state": "destroyed",
+        "browser_status": "destroyed",
+        "cleanup_receipt": "{\"absent\":\"14d88214-c26e-4ac9-94f4-7294b3e2a5b1\"}",
+        "updated_at": "2026-09-15T10:31:06.666Z"
+      },
+      {
+        "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+        "state": "completed",
+        "cleanup_state": "destroyed",
+        "browser_status": "destroyed",
+        "cleanup_receipt": "{\"absent\":\"4dca67f1-f32b-4088-b829-ed5a42a19b93\"}",
+        "updated_at": "2026-09-15T10:31:06.029Z"
+      }
+    ],
+    "workflow": [
+      {
+        "status": "awaiting_human",
+        "current_node": "implementation_review",
+        "current_visit_sequence": 55
+      }
+    ],
+    "scheduledInvocation": {
+      "version": "948c5eac-114e-4906-9d78-3a8509f4a309",
+      "timestampMs": 1789468266829,
+      "requestId": "f24ef20804fa9a5ad1a7b7e847e83db7",
+      "outcome": "ok",
+      "wallTimeMs": 11556
+    }
+  },
   "workflow": [
     {
       "status": "awaiting_human",

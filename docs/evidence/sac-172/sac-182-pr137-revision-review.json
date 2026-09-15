@@ -11,6 +11,12 @@
     "provider": "Hash-verified receipt and readback GitHub review5208458994; real signed Linear delivery40d1d464-1c2d-41c4-ac11-5b234fceeda0."
   },
   "acceptance": "Not complete. Stronger component integration proof still does not demonstrate signed-event consumption through the changed workflow, REQUEST_CHANGES/APPROVE, or required failure/recovery cases. This can use the agreed isolated changed-app environment; production deployment is not required.",
-  "cleanup": "Attempt10 completed but cleanup_state failed; browser closure original error still to inspect.",
+  "receiptFinding": {
+    "source": "scripts/demo-bettaview-review-continuation.mjs:118 at head 222d6298e4546a84cece21b2c5dd23c8d1a286d1",
+    "observedAt": "2026-09-15T10:29:00Z",
+    "evidence": "The actual completed demo output in the 10:05:58Z live transcript has githubReceipt keys [response], response.id 5208458994, and no top-level id or reviewId. The source expression githubReceipt.reviewId ?? githubReceipt.id ?? 1 therefore returns 1 to the continuation code instead of the real provider review ID.",
+    "impact": "The real provider write and readback are valid, but this demo does not prove that the continuation stores or uses the real GitHub receipt identity. Remove the fabricated fallback and assert the actual provider identity through the changed continuation path."
+  },
+  "cleanup": "Confirmed at 10:31 UTC: try9 and try10 browser resources are destroyed with provider absence receipts, both sandboxes remain destroyed, and SAC-182 remains awaiting Human Review at visit55. The scheduled invocation of backend 948c5eac-114e-4906-9d78-3a8509f4a309 completed successfully. Original errors remain retained.",
   "reader": "Private temporary reader successfully deleted after attempt completed."
 }
