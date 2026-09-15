@@ -64,3 +64,12 @@ required dispositions file against the exact supplied finding IDs. Missing
 or malformed output enters the existing same-session correction loop before
 the supervisor reports success. All 535 backend tests and types pass,
 including the hook transition and missing/invalid disposition cases.
+
+Restarting the failed collection step (its 41st occurrence) applied the fixed
+collector to the existing attempt. At 16:18 UTC, D1 recorded a complete
+`failure-v2` manifest with 13 objects and 722530 bytes, while both old partial
+manifests remained intact. The Sandbox was destroyed after collection.
+Recovery is eligible for `finalize`, retains the accepted recheck, and has
+SHA-256 `745a176a930533d3eae6aa7608ff6139b8b643052fc6e57c29bb74a6376becde`.
+The run moved to `agent_failed`, visit 14, with `collection_failed` on the
+attempt. This is recoverable output failure, not a new design finding.
