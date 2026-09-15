@@ -192,3 +192,32 @@ phase, Demo Plan, Author, Verification, Demo Gate, and Human Review branch.
 SAC-225 must receive the audited implementation handoff at its design human
 gate, before the canary's authorized design approval and merge. Implementation
 has not started. This remains an operator-assisted canary.
+
+## Design merged and implementation started, 15 September at 18:59 UTC
+
+The author applied all four findings and passed the trusted completion checks
+without repair. Its completion signal woke the Workflow at 18:44:31 UTC.
+Publication and the provider-originated Linear Human Review delivery completed;
+the design gate opened at visit 23 on head
+`32214be50b5936889489f48284f0741ab2e9112f`.
+
+The audited implementation handoff established v30 before approval. Its first
+pause returned an internal RPC error with the source paused and the gate
+unchanged. Exact replay succeeded. The new instance is
+`wf-v1-khqxu5oujf4hs2nrdne7ions3cxsroqwuym6daiovuaiptkimqeq`, with definition
+digest `29ff6356607fc69cd175a24631d3797d8b088ed22524afefd610dca06830db15`.
+
+Portal commit `79f08fe` also shows the configured demo steps before the first
+implementation record exists. All 102 portal tests, types and both builds passed.
+Staging version `6104497f-2a1b-4c55-b425-2ed4dcaf340e` is active at 100 percent;
+the live browser confirmed all four steps and their Human Review connection.
+
+The authorized Linear approval emitted delivery
+`71ae8f05-0306-41eb-a681-e71c1bf4d893`, processed at 18:58:29 UTC. Design PR32
+merged at 18:58:32 UTC with commit
+`a1dcf3d18e0d20e483e507079a1e1fbe8b490686`. D1 is active at
+`implementation_tasks`, visit 27. Codex attempt
+`01a0a66f-ffe9-7fef-bb15-6ff7f15b74b2` started at 18:59:13 UTC and is running.
+This generates the task checklist; code and demo acceptance remain pending.
+
+See [handoff, provider readback and browser proof](sac-225-implementation-handoff.md).
