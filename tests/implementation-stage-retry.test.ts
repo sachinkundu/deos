@@ -7,7 +7,7 @@ import { D1AgentAttemptStore } from "../src/sandbox-controller.ts";
 import { requireAttemptTier } from "../src/sandbox-tier.ts";
 import { readFileSync } from 'node:fs';
 
-function fixture(node: "implementation_tasks" | "implementation_build") {
+function fixture(node: "implementation_tasks" | "implementation_build" | "implementation_demo_plan" | "implementation_demo_gate") {
   const db = new ImplementationTestDatabase(); seedRun(db); seedAttempt(db, "failed-attempt");
   db.sqlite.prepare(`UPDATE orchestration_runs SET current_node='implementation_failed',current_visit_sequence=2,
     status='failed',terminal_cause='implementation_failed' WHERE run_id='run-1'`).run();
@@ -26,7 +26,7 @@ function fixture(node: "implementation_tasks" | "implementation_build") {
 }
 
 test("implementation retries preserve the frozen definition and human binding with one audited transition", async () => {
-  for (const node of ["implementation_tasks", "implementation_build"] as const) {
+  for (const node of ["implementation_tasks", "implementation_build", "implementation_demo_plan", "implementation_demo_gate"] as const) {
     const f = fixture(node);
     try {
       assert.equal(isAgentStageRetryNode(node), true);
@@ -105,4 +105,19 @@ test("a retry cannot be resized after preparation or while another agent is acti
     await assert.rejects(active.store.prepare({ ...active.input, sandboxTier: 'standard-2' }), /not_eligible/);
     assert.equal(active.db.sqlite.prepare('SELECT count(*) n FROM agent_stage_retries').get()!.n, 0);
   } finally { active.db.close(); }
+});
+
+test('demo retry migration preserves existing retry rows, tiers and their foreign-key guards', async () => {
+  const f = fixture('implementation_demo_plan');
+  try {
+    const retry = await f.store.prepare(f.input);
+    const before = f.db.sqlite.prepare('SELECT * FROM agent_stage_retries').all();
+    const tiers = f.db.sqlite.prepare('SELECT * FROM implementation_retry_tiers').all();
+    f.db.sqlite.exec(readFileSync('migrations/0046_implementation_demo_retries.sql','utf8'));
+    assert.deepEqual(f.db.sqlite.prepare('SELECT * FROM agent_stage_retries').all(),before);
+    assert.deepEqual(f.db.sqlite.prepare('SELECT * FROM implementation_retry_tiers').all(),tiers);
+    assert.deepEqual(f.db.sqlite.prepare('PRAGMA foreign_key_check').all(),[]);
+    assert.equal((await f.store.prepare(f.input)).retry_id,retry.retry_id);
+    assert.throws(()=>f.db.sqlite.exec("UPDATE implementation_retry_tiers SET target_sandbox_tier='standard-2'"),/immutable/);
+  } finally {f.db.close();}
 });

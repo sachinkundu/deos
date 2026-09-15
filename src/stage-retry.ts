@@ -281,7 +281,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
          AND ((run.current_node = 'agent_failed' AND run.terminal_cause = 'agent_execution_failed')
            OR (run.definition_id = 'implementation' AND run.current_node = 'implementation_failed'
              AND run.terminal_cause = 'implementation_failed'
-             AND attempt.node_id IN ('implementation_tasks','implementation_build')))
+             AND attempt.node_id IN ('implementation_tasks','implementation_build','implementation_demo_plan','implementation_demo_gate')))
          AND attempt.visit_sequence = run.current_visit_sequence - 1
          AND EXISTS (
            SELECT 1 FROM workflow_transitions_v2 AS failed_exit
@@ -431,7 +431,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
          AND ((run.current_node = 'agent_failed' AND run.terminal_cause = 'agent_execution_failed')
            OR (run.definition_id = 'implementation' AND run.current_node = 'implementation_failed'
              AND run.terminal_cause = 'implementation_failed'
-             AND attempt.node_id IN ('implementation_tasks','implementation_build')))
+             AND attempt.node_id IN ('implementation_tasks','implementation_build','implementation_demo_plan','implementation_demo_gate')))
          AND attempt.attempt_id = ? AND attempt.node_id = ?
          AND attempt.visit_sequence = run.current_visit_sequence - 1
          AND attempt.state IN ('failed', 'interrupted', 'absolute_timeout')

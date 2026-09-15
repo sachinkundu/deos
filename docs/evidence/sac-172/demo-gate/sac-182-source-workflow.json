@@ -1,0 +1,1605 @@
+{
+  "result": {
+    "params": {
+      "runId": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "sourceDeliveryId": "af60cf6e-d451-4a98-86ec-6aa23f47e047"
+    },
+    "trigger": {
+      "source": "binding"
+    },
+    "versionId": "37318e0d-5a4d-4a1b-ad0c-f08305c2beca",
+    "queued": "2026-09-15T09:29:00.607Z",
+    "start": "2026-09-15T09:29:02.076Z",
+    "end": "2026-09-15T12:05:56.139Z",
+    "success": false,
+    "error": {
+      "name": "Error",
+      "message": "NonRetryableError: implementation_failed"
+    },
+    "rollback": null,
+    "status": "errored",
+    "step_count": 75,
+    "steps": [
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-1",
+        "start": "2026-09-15T09:29:02.308Z",
+        "end": "2026-09-15T09:29:02.387Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:29:02.308Z",
+            "end": "2026-09-15T09:29:02.387Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T09:28:58.927Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-1",
+        "start": "2026-09-15T09:29:02.427Z",
+        "end": "2026-09-15T09:29:24.459Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:29:02.427Z",
+            "end": "2026-09-15T09:29:24.459Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a466-1267-734d-9ac7-59120044a1b4-1",
+        "start": "2026-09-15T09:29:24.489Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": null,
+        "end": "2026-09-15T09:29:24.868Z",
+        "output": "{\"kind\":\"attempt-progress\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\"}"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-2",
+        "start": "2026-09-15T09:29:24.900Z",
+        "end": "2026-09-15T09:29:24.961Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:29:24.900Z",
+            "end": "2026-09-15T09:29:24.961Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T09:29:23.411Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-2",
+        "start": "2026-09-15T09:29:24.999Z",
+        "end": "2026-09-15T09:29:26.808Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:29:24.999Z",
+            "end": "2026-09-15T09:29:26.808Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a466-1267-734d-9ac7-59120044a1b4-2",
+        "start": "2026-09-15T09:29:26.841Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": null,
+        "end": "2026-09-15T09:29:26.841Z",
+        "output": "{\"kind\":\"attempt-progress\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\"}"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-3",
+        "start": "2026-09-15T09:29:26.873Z",
+        "end": "2026-09-15T09:29:26.935Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:29:26.873Z",
+            "end": "2026-09-15T09:29:26.935Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T09:29:26.120Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-3",
+        "start": "2026-09-15T09:29:26.972Z",
+        "end": "2026-09-15T09:29:28.617Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:29:26.972Z",
+            "end": "2026-09-15T09:29:28.617Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a466-1267-734d-9ac7-59120044a1b4-3",
+        "start": "2026-09-15T09:29:28.651Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": {
+          "name": "WorkflowTimeoutError",
+          "message": "Execution timed out after 300000ms"
+        },
+        "end": "2026-09-15T09:34:30.282Z"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-4",
+        "start": "2026-09-15T09:34:30.282Z",
+        "end": "2026-09-15T09:34:30.347Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:34:30.282Z",
+            "end": "2026-09-15T09:34:30.347Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T09:29:27.919Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-4",
+        "start": "2026-09-15T09:34:30.385Z",
+        "end": "2026-09-15T09:34:32.186Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:34:30.385Z",
+            "end": "2026-09-15T09:34:32.186Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a466-1267-734d-9ac7-59120044a1b4-4",
+        "start": "2026-09-15T09:34:32.221Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": {
+          "name": "WorkflowTimeoutError",
+          "message": "Execution timed out after 300000ms"
+        },
+        "end": "2026-09-15T09:39:33.904Z"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-5",
+        "start": "2026-09-15T09:39:33.904Z",
+        "end": "2026-09-15T09:39:33.978Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:39:33.904Z",
+            "end": "2026-09-15T09:39:33.978Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T09:34:31.424Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-5",
+        "start": "2026-09-15T09:39:34.024Z",
+        "end": "2026-09-15T09:39:35.751Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:39:34.024Z",
+            "end": "2026-09-15T09:39:35.751Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a466-1267-734d-9ac7-59120044a1b4-5",
+        "start": "2026-09-15T09:39:35.788Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": {
+          "name": "WorkflowTimeoutError",
+          "message": "Execution timed out after 300000ms"
+        },
+        "end": "2026-09-15T09:44:37.461Z"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-6",
+        "start": "2026-09-15T09:44:37.461Z",
+        "end": "2026-09-15T09:44:37.535Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:44:37.461Z",
+            "end": "2026-09-15T09:44:37.535Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T09:39:35.032Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-6",
+        "start": "2026-09-15T09:44:37.578Z",
+        "end": "2026-09-15T09:44:39.391Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:44:37.578Z",
+            "end": "2026-09-15T09:44:39.391Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a466-1267-734d-9ac7-59120044a1b4-6",
+        "start": "2026-09-15T09:44:39.428Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": {
+          "name": "WorkflowTimeoutError",
+          "message": "Execution timed out after 300000ms"
+        },
+        "end": "2026-09-15T09:49:41.148Z"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-7",
+        "start": "2026-09-15T09:49:41.148Z",
+        "end": "2026-09-15T09:49:41.217Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:49:41.148Z",
+            "end": "2026-09-15T09:49:41.217Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T09:44:38.643Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-7",
+        "start": "2026-09-15T09:49:41.256Z",
+        "end": "2026-09-15T09:49:43.039Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:49:41.256Z",
+            "end": "2026-09-15T09:49:43.039Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a466-1267-734d-9ac7-59120044a1b4-7",
+        "start": "2026-09-15T09:49:43.074Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": {
+          "name": "WorkflowTimeoutError",
+          "message": "Execution timed out after 300000ms"
+        },
+        "end": "2026-09-15T09:54:44.850Z"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-8",
+        "start": "2026-09-15T09:54:44.850Z",
+        "end": "2026-09-15T09:54:44.926Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:54:44.850Z",
+            "end": "2026-09-15T09:54:44.926Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T09:49:42.316Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-8",
+        "start": "2026-09-15T09:54:44.969Z",
+        "end": "2026-09-15T09:54:47.130Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:54:44.969Z",
+            "end": "2026-09-15T09:54:47.130Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a466-1267-734d-9ac7-59120044a1b4-8",
+        "start": "2026-09-15T09:54:47.170Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": {
+          "name": "WorkflowTimeoutError",
+          "message": "Execution timed out after 300000ms"
+        },
+        "end": "2026-09-15T09:59:49.030Z"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-9",
+        "start": "2026-09-15T09:59:49.030Z",
+        "end": "2026-09-15T09:59:49.102Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:59:49.030Z",
+            "end": "2026-09-15T09:59:49.102Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T09:54:46.273Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-9",
+        "start": "2026-09-15T09:59:49.141Z",
+        "end": "2026-09-15T09:59:50.763Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T09:59:49.141Z",
+            "end": "2026-09-15T09:59:50.763Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a466-1267-734d-9ac7-59120044a1b4-9",
+        "start": "2026-09-15T09:59:50.803Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": {
+          "name": "WorkflowTimeoutError",
+          "message": "Execution timed out after 300000ms"
+        },
+        "end": "2026-09-15T10:04:52.707Z"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-10",
+        "start": "2026-09-15T10:04:52.707Z",
+        "end": "2026-09-15T10:04:52.775Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:04:52.707Z",
+            "end": "2026-09-15T10:04:52.775Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T09:59:50.103Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-10",
+        "start": "2026-09-15T10:04:52.815Z",
+        "end": "2026-09-15T10:04:56.311Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:04:52.815Z",
+            "end": "2026-09-15T10:04:56.311Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a466-1267-734d-9ac7-59120044a1b4-10",
+        "start": "2026-09-15T10:04:56.347Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": null,
+        "end": "2026-09-15T10:06:56.208Z",
+        "output": "{\"kind\":\"attempt-completed\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\"}"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-11",
+        "start": "2026-09-15T10:06:56.241Z",
+        "end": "2026-09-15T10:06:56.305Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:06:56.241Z",
+            "end": "2026-09-15T10:06:56.305Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_failed\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T10:04:55.319Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":51,\"last_transition_id\":\"transition:stage-retry:01a0a436-6328-7de2-bdfe-67b82f4cfcb2\",\"selection_kind\":\"default\",\"selection_value\":\"project_policy\",\"selection_label_name\":null,\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:51-11",
+        "start": "2026-09-15T10:06:56.344Z",
+        "end": "2026-09-15T10:07:23.027Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:06:56.344Z",
+            "end": "2026-09-15T10:07:12.652Z",
+            "success": false,
+            "error": {
+              "name": "Error",
+              "message": "Sandbox destruction failed"
+            }
+          },
+          {
+            "start": "2026-09-15T10:07:22.652Z",
+            "end": "2026-09-15T10:07:23.027Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"completed\",\"attemptId\":\"01a0a466-1267-734d-9ac7-59120044a1b4\",\"sandboxId\":\"impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq\",\"manifestId\":\"manifest:01a0a466-1267-734d-9ac7-59120044a1b4\",\"outcome\":{\"kind\":\"agent\",\"outcome\":\"completed\",\"providerReceiptsPresent\":false,\"providerReceiptsComplete\":false}}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "transition:implementation_build:completed:visit:51-1",
+        "start": "2026-09-15T10:07:23.065Z",
+        "end": "2026-09-15T10:07:23.165Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:07:23.065Z",
+            "end": "2026-09-15T10:07:23.165Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"transitioned\":true}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-12",
+        "start": "2026-09-15T10:07:23.200Z",
+        "end": "2026-09-15T10:07:23.262Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:07:23.200Z",
+            "end": "2026-09-15T10:07:23.262Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_build\",\"current_node\":\"implementation_proof_check\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T10:07:23.098Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":52,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:51:transition\",\"selection_kind\":\"default\",\"selection_v[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "system:implementation_proof_check:visit:52-1",
+        "start": "2026-09-15T10:07:23.300Z",
+        "end": "2026-09-15T10:07:26.245Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:07:23.300Z",
+            "end": "2026-09-15T10:07:26.245Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"kind\":\"system_action\",\"outcome\":\"completed\",\"providerReceiptsComplete\":true}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "transition:implementation_proof_check:completed:visit:52-1",
+        "start": "2026-09-15T10:07:26.283Z",
+        "end": "2026-09-15T10:07:27.137Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:07:26.283Z",
+            "end": "2026-09-15T10:07:27.137Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"transitioned\":true}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-13",
+        "start": "2026-09-15T10:07:27.170Z",
+        "end": "2026-09-15T10:07:27.239Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:07:27.170Z",
+            "end": "2026-09-15T10:07:27.239Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_proof_check\",\"current_node\":\"implementation_branch_write\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T10:07:26.319Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":53,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:52:transition\",\"selection_kind\":\"default\",\"sele[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "system:implementation_branch_write:visit:53-1",
+        "start": "2026-09-15T10:07:27.278Z",
+        "end": "2026-09-15T10:07:50.383Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:07:27.278Z",
+            "end": "2026-09-15T10:07:50.383Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"kind\":\"system_action\",\"outcome\":\"completed\",\"providerReceiptsComplete\":true}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "transition:implementation_branch_write:completed:visit:53-1",
+        "start": "2026-09-15T10:07:50.419Z",
+        "end": "2026-09-15T10:07:50.523Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:07:50.419Z",
+            "end": "2026-09-15T10:07:50.523Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"transitioned\":true}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-14",
+        "start": "2026-09-15T10:07:50.558Z",
+        "end": "2026-09-15T10:07:50.631Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:07:50.558Z",
+            "end": "2026-09-15T10:07:50.631Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_branch_write\",\"current_node\":\"implementation_publish\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T10:07:50.451Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":54,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:53:transition\",\"selection_kind\":\"default\",\"selectio[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "system:implementation_publish:visit:54-1",
+        "start": "2026-09-15T10:07:50.669Z",
+        "end": "2026-09-15T10:08:03.269Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:07:50.669Z",
+            "end": "2026-09-15T10:08:03.269Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"kind\":\"system_action\",\"outcome\":\"completed\",\"providerReceiptsComplete\":true}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "transition:implementation_publish:completed:visit:54-1",
+        "start": "2026-09-15T10:08:03.303Z",
+        "end": "2026-09-15T10:08:03.409Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:08:03.303Z",
+            "end": "2026-09-15T10:08:03.409Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"transitioned\":true}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-15",
+        "start": "2026-09-15T10:08:03.444Z",
+        "end": "2026-09-15T10:08:03.519Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:08:03.444Z",
+            "end": "2026-09-15T10:08:03.519Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_publish\",\"current_node\":\"implementation_review\",\"gate_origin_node\":\"implementation_publish\",\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T10:08:03.335Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":55,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:54:transition\",\"selection_kind\":\"defa[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "enter-gate:implementation_review:visit:55-1",
+        "start": "2026-09-15T10:08:03.562Z",
+        "end": "2026-09-15T10:08:04.061Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:08:03.562Z",
+            "end": "2026-09-15T10:08:04.061Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"providerOperationId\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:implementation_review:linear-enter-human-gate:55\",\"state\":\"awaiting_delivery\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "linear-operation:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:implementation_review:linear-enter-human-gate:55-1",
+        "start": "2026-09-15T10:08:04.102Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": null,
+        "end": "2026-09-15T10:08:20.563Z",
+        "output": "{\"deliveryId\":\"89ce8ada-114f-4116-a594-6dc92f0e2a91\"}"
+      },
+      {
+        "name": "claim:89ce8ada-114f-4116-a594-6dc92f0e2a91-1",
+        "start": "2026-09-15T10:08:20.600Z",
+        "end": "2026-09-15T10:08:20.712Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:08:20.600Z",
+            "end": "2026-09-15T10:08:20.712Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"delivery_id\":\"89ce8ada-114f-4116-a594-6dc92f0e2a91\",\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"event_kind\":\"Issue.update\",\"actor_id\":\"f010429f-7734-4f3f-9b4b-13a4abb9b4ab\",\"actor_type\":\"user\",\"provider_time\":\"2026-09-15T10:08:04.059Z\",\"from_state_id\":\"700c1b00-b9dd-4cfb-9d59-bd60c1d8d471\",\"from_state_name\":null,\"to_state_id\":\"71738607-03fd-49f2-b4be-b2aac29ccd13\",\"to_state_name\":\"Human Review\",\"payload_digest\":\"3a7890ebedc433ada6f391013e3be0891617cfbbe16e802e8ea21dcf631754da\",\"state\":\"claimed\",\"sent_at\":null,\"claimed_at\":\"2026-09-15T10:08:20.636Z\",\"processed_at\":null,\"created_at\":\"2026-09-15T10:08:13.053Z\",\"comment_id\":null}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "observe:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:implementation_review:linear-enter-human-gate:55:89ce8ada-114f-4116-a594-6dc92f0e2a91-1",
+        "start": "2026-09-15T10:08:20.749Z",
+        "end": "2026-09-15T10:08:21.079Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:08:20.749Z",
+            "end": "2026-09-15T10:08:21.079Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"providerOperationId\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:implementation_review:linear-enter-human-gate:55\",\"state\":\"confirmed\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-16",
+        "start": "2026-09-15T10:08:21.154Z",
+        "end": "2026-09-15T10:08:21.238Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:08:21.154Z",
+            "end": "2026-09-15T10:08:21.238Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_publish\",\"current_node\":\"implementation_review\",\"gate_origin_node\":\"implementation_publish\",\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T10:08:03.335Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":55,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:54:transition\",\"selection_kind\":\"defa[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "enter-gate:implementation_review:visit:55-2",
+        "start": "2026-09-15T10:08:21.277Z",
+        "end": "2026-09-15T10:08:21.438Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:08:21.277Z",
+            "end": "2026-09-15T10:08:21.438Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"providerOperationId\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:implementation_review:linear-enter-human-gate:55\",\"state\":\"confirmed\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "confirm-gate:implementation_review:visit:55-1",
+        "start": "2026-09-15T10:08:21.472Z",
+        "end": "2026-09-15T10:08:21.542Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T10:08:21.472Z",
+            "end": "2026-09-15T10:08:21.542Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"entered\":true}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "linear-event:implementation_review:visit:55-1",
+        "start": "2026-09-15T10:08:21.581Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": null,
+        "end": "2026-09-15T11:49:29.257Z",
+        "output": "{\"deliveryId\":\"c70dc121-ec9c-46c1-8983-a3045593697e\"}"
+      },
+      {
+        "name": "claim:c70dc121-ec9c-46c1-8983-a3045593697e-1",
+        "start": "2026-09-15T11:49:29.298Z",
+        "end": "2026-09-15T11:49:29.495Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T11:49:29.298Z",
+            "end": "2026-09-15T11:49:29.495Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"delivery_id\":\"c70dc121-ec9c-46c1-8983-a3045593697e\",\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"event_kind\":\"Issue.update\",\"actor_id\":\"8efc07d8-0d85-430f-84e7-f51bc6833a0b\",\"actor_type\":\"user\",\"provider_time\":\"2026-09-15T11:49:08.740Z\",\"from_state_id\":\"71738607-03fd-49f2-b4be-b2aac29ccd13\",\"from_state_name\":null,\"to_state_id\":\"700c1b00-b9dd-4cfb-9d59-bd60c1d8d471\",\"to_state_name\":\"In Progress\",\"payload_digest\":\"ce0fdd0f5cf25bd39dccf2e95323dc736ef49d0fcd12a5e64258f8ecd476155f\",\"state\":\"claimed\",\"sent_at\":\"2026-09-15T11:49:17.446Z\",\"claimed_at\":\"2026-09-15T11:49:29.337Z\",\"processed_at\":null,\"created_at\":\"2026-09-15T11:49:17.446Z\",\"comment_id\":null}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "transition:implementation_review:c70dc121-ec9c-46c1-8983-a3045593697e:visit:55-1",
+        "start": "2026-09-15T11:49:29.618Z",
+        "end": "2026-09-15T11:49:29.734Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T11:49:29.618Z",
+            "end": "2026-09-15T11:49:29.734Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"transitioned\":true}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-17",
+        "start": "2026-09-15T11:49:29.818Z",
+        "end": "2026-09-15T11:49:29.902Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T11:49:29.818Z",
+            "end": "2026-09-15T11:49:29.902Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_review\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T11:49:29.657Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":56,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:55:transition\",\"selection_kind\":\"default\",\"selection_value\"[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:56-1",
+        "start": "2026-09-15T11:49:29.943Z",
+        "end": "2026-09-15T11:49:55.840Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T11:49:29.943Z",
+            "end": "2026-09-15T11:49:55.840Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40\",\"sandboxId\":\"impl-v1-ceu67m6rzjx3mehx4t2oeftc73waknq6yqvulsnkgfdc4vbpnmfq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40-1",
+        "start": "2026-09-15T11:49:55.941Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": null,
+        "end": "2026-09-15T11:49:57.844Z",
+        "output": "{\"kind\":\"attempt-progress\",\"attemptId\":\"01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40\"}"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-18",
+        "start": "2026-09-15T11:49:57.881Z",
+        "end": "2026-09-15T11:49:57.951Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T11:49:57.881Z",
+            "end": "2026-09-15T11:49:57.951Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_review\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T11:49:55.206Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":56,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:55:transition\",\"selection_kind\":\"default\",\"selection_value\"[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:56-2",
+        "start": "2026-09-15T11:49:57.990Z",
+        "end": "2026-09-15T11:49:59.734Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T11:49:57.990Z",
+            "end": "2026-09-15T11:49:59.734Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40\",\"sandboxId\":\"impl-v1-ceu67m6rzjx3mehx4t2oeftc73waknq6yqvulsnkgfdc4vbpnmfq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40-2",
+        "start": "2026-09-15T11:49:59.773Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": null,
+        "end": "2026-09-15T11:49:59.837Z",
+        "output": "{\"kind\":\"attempt-progress\",\"attemptId\":\"01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40\"}"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-19",
+        "start": "2026-09-15T11:49:59.874Z",
+        "end": "2026-09-15T11:49:59.940Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T11:49:59.874Z",
+            "end": "2026-09-15T11:49:59.940Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_review\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T11:49:58.721Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":56,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:55:transition\",\"selection_kind\":\"default\",\"selection_value\"[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:56-3",
+        "start": "2026-09-15T11:49:59.984Z",
+        "end": "2026-09-15T11:50:01.260Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T11:49:59.984Z",
+            "end": "2026-09-15T11:50:01.260Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40\",\"sandboxId\":\"impl-v1-ceu67m6rzjx3mehx4t2oeftc73waknq6yqvulsnkgfdc4vbpnmfq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40-3",
+        "start": "2026-09-15T11:50:01.298Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": {
+          "name": "WorkflowTimeoutError",
+          "message": "Execution timed out after 300000ms"
+        },
+        "end": "2026-09-15T11:55:04.997Z"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-20",
+        "start": "2026-09-15T11:55:04.997Z",
+        "end": "2026-09-15T11:55:05.083Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T11:55:04.997Z",
+            "end": "2026-09-15T11:55:05.083Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_review\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T11:50:00.754Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":56,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:55:transition\",\"selection_kind\":\"default\",\"selection_value\"[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:56-4",
+        "start": "2026-09-15T11:55:05.122Z",
+        "end": "2026-09-15T11:55:06.521Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T11:55:05.122Z",
+            "end": "2026-09-15T11:55:06.521Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40\",\"sandboxId\":\"impl-v1-ceu67m6rzjx3mehx4t2oeftc73waknq6yqvulsnkgfdc4vbpnmfq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40-4",
+        "start": "2026-09-15T11:55:06.558Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": {
+          "name": "WorkflowTimeoutError",
+          "message": "Execution timed out after 300000ms"
+        },
+        "end": "2026-09-15T12:00:11.238Z"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-21",
+        "start": "2026-09-15T12:00:11.238Z",
+        "end": "2026-09-15T12:00:11.327Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T12:00:11.238Z",
+            "end": "2026-09-15T12:00:11.327Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_review\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T11:55:05.909Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":56,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:55:transition\",\"selection_kind\":\"default\",\"selection_value\"[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:56-5",
+        "start": "2026-09-15T12:00:11.379Z",
+        "end": "2026-09-15T12:00:12.829Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T12:00:11.379Z",
+            "end": "2026-09-15T12:00:12.829Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40\",\"sandboxId\":\"impl-v1-ceu67m6rzjx3mehx4t2oeftc73waknq6yqvulsnkgfdc4vbpnmfq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40-5",
+        "start": "2026-09-15T12:00:12.878Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": {
+          "name": "WorkflowTimeoutError",
+          "message": "Execution timed out after 300000ms"
+        },
+        "end": "2026-09-15T12:05:15.960Z"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-22",
+        "start": "2026-09-15T12:05:15.960Z",
+        "end": "2026-09-15T12:05:16.027Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T12:05:15.960Z",
+            "end": "2026-09-15T12:05:16.027Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_review\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T12:00:12.305Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":56,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:55:transition\",\"selection_kind\":\"default\",\"selection_value\"[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:56-6",
+        "start": "2026-09-15T12:05:16.069Z",
+        "end": "2026-09-15T12:05:17.367Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T12:05:16.069Z",
+            "end": "2026-09-15T12:05:17.367Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"running\",\"attemptId\":\"01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40\",\"sandboxId\":\"impl-v1-ceu67m6rzjx3mehx4t2oeftc73waknq6yqvulsnkgfdc4vbpnmfq\"}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent-event:01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40-6",
+        "start": "2026-09-15T12:05:17.404Z",
+        "finished": true,
+        "type": "waitForEvent",
+        "event_type": "linear-event",
+        "error": null,
+        "end": "2026-09-15T12:05:34.350Z",
+        "output": "{\"kind\":\"attempt-completed\",\"attemptId\":\"01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40\"}"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-23",
+        "start": "2026-09-15T12:05:34.380Z",
+        "end": "2026-09-15T12:05:34.438Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T12:05:34.380Z",
+            "end": "2026-09-15T12:05:34.438Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_review\",\"current_node\":\"implementation_build\",\"gate_origin_node\":null,\"status\":\"active\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T12:05:16.933Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":56,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:55:transition\",\"selection_kind\":\"default\",\"selection_value\"[truncated output]",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "agent:implementation_build:visit:56-7",
+        "start": "2026-09-15T12:05:34.479Z",
+        "end": "2026-09-15T12:05:55.348Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T12:05:34.479Z",
+            "end": "2026-09-15T12:05:55.348Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"state\":\"completed\",\"attemptId\":\"01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40\",\"sandboxId\":\"impl-v1-ceu67m6rzjx3mehx4t2oeftc73waknq6yqvulsnkgfdc4vbpnmfq\",\"manifestId\":\"manifest:01a0a4e6-a9b6-7cf4-8bd6-b8c5b9804b40:failure\",\"outcome\":{\"kind\":\"agent\",\"outcome\":\"failed\",\"providerReceiptsPresent\":false,\"providerReceiptsComplete\":false}}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "transition:implementation_build:failed:visit:56-1",
+        "start": "2026-09-15T12:05:55.382Z",
+        "end": "2026-09-15T12:05:55.501Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T12:05:55.382Z",
+            "end": "2026-09-15T12:05:55.501Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"transitioned\":true}",
+        "success": true,
+        "type": "step"
+      },
+      {
+        "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-24",
+        "start": "2026-09-15T12:05:55.534Z",
+        "end": "2026-09-15T12:05:55.598Z",
+        "attempts": [
+          {
+            "start": "2026-09-15T12:05:55.534Z",
+            "end": "2026-09-15T12:05:55.598Z",
+            "success": true,
+            "error": null
+          }
+        ],
+        "config": {
+          "retries": {
+            "limit": 5,
+            "delay": 10000,
+            "backoff": "exponential"
+          },
+          "timeout": "10 minutes"
+        },
+        "output": "{\"run_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1\",\"correlation_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631\",\"run_sequence\":1,\"project_id\":\"2a653831-c1ec-4db7-972a-d0d08ac0a3d8\",\"issue_id\":\"e75aad25-c32f-4c23-8184-b4b38388a631\",\"definition_id\":\"implementation\",\"definition_version\":27,\"definition_digest\":\"ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c\",\"workflow_instance_id\":\"wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq\",\"previous_node\":\"implementation_build\",\"current_node\":\"implementation_failed\",\"gate_origin_node\":null,\"status\":\"failed\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-14T08:01:17.447Z\",\"updated_at\":\"2026-09-15T12:05:55.417Z\",\"terminal_at\":\"2026-09-15T12:05:55.417Z\",\"terminal_cause\":\"implementation_failed\",\"current_visit_sequence\":57,\"last_transition_id\":\"workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:visit:56:transition\",\"se[truncated output]",
+        "success": true,
+        "type": "step"
+      }
+    ]
+  },
+  "success": true,
+  "errors": [],
+  "messages": []
+}

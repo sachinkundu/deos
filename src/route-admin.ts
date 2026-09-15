@@ -276,9 +276,11 @@ export class RouteAdminService {
       throw new RouteAdminError("route_not_found");
     }
     if (route.definition_id==='implementation') {
-      if(!route.allowed_linear_user_id||!route.human_binding_revision)throw new RouteAdminError('unauthorized_actor');
+      if(!route.allowed_linear_user_id||!route.human_binding_revision||
+        route.allowed_access_email?.toLowerCase()!==this.env.ROUTE_ADMIN_ALLOWED_EMAIL.toLowerCase())
+        throw new RouteAdminError('unauthorized_actor');
       const human=await this.linear.implementationUser(route.allowed_linear_user_id);
-      if(!human.active||human.isMe||human.email.toLowerCase()!==this.env.ROUTE_ADMIN_ALLOWED_EMAIL.toLowerCase())
+      if(!human.active||human.isMe||human.id!==route.allowed_linear_user_id)
         throw new RouteAdminError('unauthorized_actor');
     }
     const access = await this.liveAccess(

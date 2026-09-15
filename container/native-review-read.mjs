@@ -47,7 +47,8 @@ export const readCommand = (command) => {
 export const readSnapshot = async ({ op, args }, state, sourceRoot = "/deos/workspace/repository") => {
   const context = JSON.parse(state.reviewJob.materializedContext);
   const root = `openspec/changes/${state.change}/`;
-  const allowed = state.phase === "design" ? context.designReview.sources.map((source) => source.path) :
+  const allowed = state.phase === 'demo' ? context.demo.sources.map((source) => source.path) :
+    state.phase === "design" ? context.designReview.sources.map((source) => source.path) :
     state.before.filter((file) => file.path.startsWith(root) &&
       (file.path === `${root}proposal.md` || file.path === `${root}.openspec.yaml` || file.path.startsWith(`${root}specs/`))).map((file) => file.path);
   const normalize = (input) => {

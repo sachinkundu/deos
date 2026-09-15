@@ -159,6 +159,37 @@ test("enabling a route checks its frozen install and saves despite active runs",
   assert.equal((saved[0]?.access as { settingsUrl: string }).settingsUrl, installation.settingsUrl);
 });
 
+test("implementation dispatch checks the bound account id independently of its email", async () => {
+  const binding = {project_id: "project-1", trial_repository: "owner/repository",
+    github_installation_id: "154095438", github_settings_url: installation.settingsUrl,
+    definition_id: "implementation", allowed_access_email: "operator@example.com",
+    allowed_linear_user_id: "human-1", human_binding_revision: 1};
+  let human = {id: "human-1", active: true, isMe: false, email: "different@linear.example"};
+  let saves = 0;
+  const service = new RouteAdminService(env, () => new Date(NOW), {
+    routes: {read: async () => binding, saveWorkflow: async () => {
+      saves += 1; return {...route, dispatchEnabled: true};
+    }} as unknown as D1RepositoryRouteStore,
+    linear: {implementationUser: async (id: string) => {
+      assert.equal(id, "human-1"); return human;
+    }} as unknown as LinearCapabilityAdapter,
+    github: {checkRepository: async () => ({state: "passed", repository: installation.repositories[0],
+      settingsUrl: installation.settingsUrl, permissions: installation.permissions})} as unknown as GitHubAppCatalog,
+  });
+  const enable = () => service.saveWorkflow("operator@example.com", {
+    projectId: "project-1", dispatchEnabled: true, expectedRevision: 3,
+  });
+  assert.equal((await enable()).dispatchEnabled, true);
+  for (const invalid of [{...human, id: "another-human"}, {...human, active: false}, {...human, isMe: true}]) {
+    human = invalid;
+    await assert.rejects(enable(), (error: unknown) => error instanceof RouteAdminError && error.code === "unauthorized_actor");
+  }
+  human = {id: "human-1", active: true, isMe: false, email: "operator@example.com"};
+  binding.allowed_access_email = "another@example.com";
+  await assert.rejects(enable(), (error: unknown) => error instanceof RouteAdminError && error.code === "unauthorized_actor");
+  assert.equal(saves, 1);
+});
+
 test("creating a route pairs only provider-listed ids and records a disabled route", async () => {
   const created: Array<Record<string, unknown>> = [];
   const routes = {
