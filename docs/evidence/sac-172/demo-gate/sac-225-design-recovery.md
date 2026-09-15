@@ -73,3 +73,28 @@ Recovery is eligible for `finalize`, retains the accepted recheck, and has
 SHA-256 `745a176a930533d3eae6aa7608ff6139b8b643052fc6e57c29bb74a6376becde`.
 The run moved to `agent_failed`, visit 14, with `collection_failed` on the
 attempt. This is recoverable output failure, not a new design finding.
+
+The finalization retry completed at 16:30 UTC. The author saved an empty
+disposition array, passed its completion checks without a repair, and kept
+the accepted design. Design PR32 opened at head
+`f7d608cbed6e0bf6b88d9eb5c3eb38b4d04c9d22`.
+
+Claude finished independent review at 16:34 UTC with four concerns. The
+wrapper then rejected its source pointers: Claude used
+`/review/findings/0/message`, while the validator expected
+`/findings/0/message`. The cited URL was present in the referenced claim.
+The full receipt and original error remain in R2. Failure collection completed
+with eight objects and 127791 bytes; both Sandboxes were destroyed. D1 marks
+this independent slot eligible for retry.
+
+Commit `4cc04bb` canonicalizes an envelope-root pointer to the review-relative
+form. It still requires an existing review string and the exact cited URL.
+The saved provider receipt passes local revalidation with all four findings
+unchanged. Tests also reject missing claims, citations to the source inventory,
+and lookalike hosts, while preserving escaped JSON pointer keys. All 538 tests
+pass. This local replay is not durable workflow acceptance.
+
+Correction to the earlier type-check claim: the fresh check found two stale
+types from the preceding finalization change. Commit `b267742` updates the
+design-completion declaration and the review test callback type. TypeScript
+and generated Worker binding checks now pass.
