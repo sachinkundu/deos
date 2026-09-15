@@ -1,0 +1,109 @@
+# SAC-225 correction deployment read-back
+
+*2026-09-15T23:40:17Z by Showboat 0.6.1*
+<!-- showboat-id: 9ef2e829-28cc-4c47-8269-c171f2d9fad8 -->
+
+```bash
+rtk proxy python3 /tmp/sac225-demo-correction-readback.py --require-ready
+
+```
+
+```output
+{
+  "observedAt": "2026-09-15T23:40:21.120033+00:00",
+  "sourceCommit": "937a50b",
+  "backend": {
+    "versions": [
+      {
+        "version_id": "858e80b2-d5f2-4a4f-81e1-ba19692ea7c1",
+        "percentage": 100
+      }
+    ],
+    "createdOn": "2026-09-15T23:32:05.109824Z"
+  },
+  "staging": {
+    "versions": [
+      {
+        "version_id": "c0dcc4b3-4275-4e1e-b3d1-56176c8e6923",
+        "percentage": 100
+      }
+    ],
+    "createdOn": "2026-09-15T23:34:27.972054Z"
+  },
+  "applications": [
+    {
+      "id": "a030fe98-cbb0-423c-90aa-9e4d9cb896a2",
+      "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+      "version": 16,
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:3157a377247c5e6bb659a500e9e3cb018407a1813a41d208667e8689bdbf592c"
+    },
+    {
+      "id": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "name": "deos-queue-consumer-ts-implementationsandbox",
+      "version": 17,
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:3157a377247c5e6bb659a500e9e3cb018407a1813a41d208667e8689bdbf592c"
+    },
+    {
+      "id": "a03d8a75-5574-4d37-806d-8b07ed1a79c6",
+      "name": "deos-queue-consumer-ts-standard2sandbox",
+      "version": 22,
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:3157a377247c5e6bb659a500e9e3cb018407a1813a41d208667e8689bdbf592c"
+    },
+    {
+      "id": "a0344373-884d-4c06-b4c2-4e58295de498",
+      "name": "deos-queue-consumer-ts-sandbox",
+      "version": 80,
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:3157a377247c5e6bb659a500e9e3cb018407a1813a41d208667e8689bdbf592c"
+    }
+  ],
+  "ready": true
+}
+```
