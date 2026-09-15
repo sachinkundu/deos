@@ -1,0 +1,16 @@
+{
+  "receiptSha256": "d8e49088209fc6a8cb4e90aa185517b0973b3eaa8a97b9999aade81452480caa",
+  "inputSha256": "9474bdd83081e841c82fc41968bdfd697574b8af65467e43247b667123d50953",
+  "headSha": "f7d608cbed6e0bf6b88d9eb5c3eb38b4d04c9d22",
+  "outcome": "concerns",
+  "findings": [
+    "awaiting-rhs-transition-underdetermined",
+    "preview-deployment-mechanism-unspecified",
+    "result-exponent-notation-unspecified",
+    "unfinished-decimal-operand-normalization"
+  ],
+  "sources": 3,
+  "sourceSnapshots": 4,
+  "checks": "Receipt, transcript, frozen job, source hashes, unchanged review subject, grounding policy, result contract and line bounds passed.",
+  "scope": "Local revalidation only. No durable review acceptance, workflow advance, or human approval."
+}

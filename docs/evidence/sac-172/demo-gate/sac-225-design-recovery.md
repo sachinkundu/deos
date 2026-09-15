@@ -98,3 +98,37 @@ Correction to the earlier type-check claim: the fresh check found two stale
 types from the preceding finalization change. Commit `b267742` updates the
 design-completion declaration and the review test callback type. TypeScript
 and generated Worker binding checks now pass.
+
+The independent retry started at 17:11 UTC and stopped at 17:14 UTC. Its
+protected diagnostic records exit code 1, empty stdout/stderr, and no result
+or failure file observed by the status caller. The cause of the process exit
+is unproven. No retained issue telemetry was available for the requested
+Cloudflare log window. This attempt exhausted the independent slot's retry
+budget, so the run entered reconciliation.
+
+The previous operator retry had left the reconciliation wait at visit 12 open.
+That stale row prevented the new visit 20 wait from being inserted. The
+Workflow retried that bookkeeping error and then errored at 17:19 UTC.
+
+Commit `03e38ea` rechecks final files after observing runner exit and records
+the process status if no file exists. Regressions cover a late provider failure
+and a late valid receipt. The stage-retry transaction now consumes the exact
+wait it leaves. Migration 0048 closed two historical waits with recorded
+operator departures, retaining their rows and original causes. No provider
+approval or delivery was invented. All 539 tests, TypeScript, and generated
+bindings passed.
+
+Migration 0048 applied remotely. Worker version
+`9115de9d-d5e3-4a5b-9c5f-d6d398d3d59a` is active at 100 percent; container
+rollout was disabled, preserving image
+`sha256:0862624411f7280aabd3cb9835eead311f0ca4e12dc3a7880c8f71698b9514f0`.
+Restarting only the failed transition's first occurrence restored the wait at
+17:25 UTC. D1 shows visit 12 consumed and visit 20 awaiting. No agent was
+restarted, and the design has not advanced.
+
+The earlier complete Claude receipt still matches the current design input
+and head exactly. Local checks passed for its durable hash, transcript hash,
+source snapshots, frozen jobs, grounding policy, review result contract, and
+line bounds. It retains four concerns and three citations. See
+`sac-225-preserved-review-validation.json`. This proves a preserved review is
+available for audited reconciliation; it is not yet accepted by the workflow.
