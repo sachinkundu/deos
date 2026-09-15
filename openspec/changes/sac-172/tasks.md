@@ -37,6 +37,8 @@
 
 - [x] 4.10 Keep the assigned browser alive during active implementation, avoid competing with a connected browser command, preserve original maintenance failures, and reject failed HTTP documents as working-screen proof. Verify run isolation, inactive cleanup, real navigation status, and error-page rejection before activation. Repeat live proof in the next canary revision.
 
+- [x] 4.11 Include ordinary PR discussion comments in revision input alongside reviews and inline threads. Preserve full paginated provider data and read failures. Verify the actual canary comment with the patched loader; deployment and fresh-attempt pickup remain pending while the current attempt runs.
+
 ## 5. Verification and canary
 
 - [x] 5.1 Verify migrations, frozen graph compatibility, job contracts, isolation, denial cases, resource ambiguity, cleanup, proof freshness, citations, publication retries, and human gate behavior.

@@ -266,3 +266,13 @@ The browser was configured with a one-minute idle timeout. Cloudflare documents 
 The fix passed 504 JavaScript tests, type checking, generated bindings and strict OpenSpec. It deployed only after D1 showed no active agents. Backend `fd80b204-d504-47e2-85e6-cfec5f67688d` is active at 100 percent. Container version 8 and its image stayed unchanged, with four healthy instances in each implementation pool. The existing Human Review gate stayed open. This fix has local regression and deployment proof; its next live browser exercise remains pending. See [Showboat](browser-proof-repair.md) and [activation read-back](browser-proof-repair-deployment.json).
 
 ![Automatic implementation PR waiting for human review](sac-182-pr137-human-review.png)
+
+### Human revision received; ordinary PR comments were missing from input
+
+The user's real In Progress transition started try 9 at 08:37:02 UTC on September 15, at implementation build visit 49. Attempt `01a0a436-6328-7de2-bdfe-67b82f4cfcb2` uses Standard-2 and restores the exact last accepted patch `8a6ff3e0c147a0558a72723d084ac063251d0934935af4632921a9097ab77896`. Its saved review input contains empty reviews and comments arrays. At 08:42:20 UTC its heartbeat was still advancing. The restored 50/50 checklist does not prove revision completion.
+
+The two acceptance findings appeared in [PR discussion comment 5677258210](https://github.com/sachinkundu/deos/pull/137#issuecomment-5677258210) at 08:37:43 UTC, after the attempt started. The loader also had a separate defect: it read reviews and inline review comments, but omitted ordinary PR discussion comments. GitHub serves these through the [issue comments API](https://docs.github.com/en/rest/issues/comments#list-issue-comments). The patched loader adds the complete paginated discussion stream without dropping existing review data or hiding read failures.
+
+All 506 repository tests and type checking pass. A read-only call through the patched local loader returned the actual acceptance comment from GitHub. This used the local GitHub CLI account token, not the deployed application's credentials. It proves provider read-back, not deployed agent pickup. The active try retains its saved empty feedback; there is no live refresh path. No duplicate comment or human state change was sent by this repair.
+
+The feedback repair is pending activation until there are no healthy active agents. Backend `fd80b204-d504-47e2-85e6-cfec5f67688d` remains active, so try 9 does use the earlier browser fixes. Full changed-application proof and tasks 5.4/5.5 remain open. See [revision read-back](sac-182-revision-feedback.json) and [Showboat proof](pr-discussion-feedback.md).

@@ -59,6 +59,43 @@ async function fixture() {
     .run(tree, work.run_id);
   return { db, store, work: { ...work, tree_sha: tree } };
 }
+test("implementation feedback includes complete PR discussion, reviews, and inline threads", async () => {
+  const review = { id: 1, body: "Check the final tree", state: "CHANGES_REQUESTED" };
+  const inline = { id: 2, body: "Preserve the original error", path: "src/example.ts", line: 12 };
+  const discussions = Array.from({ length: 101 }, (_, index) => ({
+    id: index + 3,
+    body: index === 100 ? "Replace the unauthorized screenshot and test the real continuation service" : `Comment ${index}`,
+    user: { login: "reviewer" },
+    html_url: `https://github.test/owner/repo/pull/137#issuecomment-${index + 3}`,
+  }));
+  const calls: string[] = [];
+  const github = new ImplementationGitHub("https://github.test", "owner/repo", { token: async () => "test" },
+    (async (input, init) => {
+      assert.equal(init?.method ?? "GET", "GET");
+      const url = new URL(String(input));
+      const path = url.pathname.replace("/repos/owner/repo", "");
+      assert.equal(url.searchParams.get("per_page"), "100");
+      const page = Number(url.searchParams.get("page"));
+      calls.push(`${path}:${page}`);
+      if (path === "/pulls/137/reviews") return Response.json([review]);
+      if (path === "/pulls/137/comments") return Response.json([inline]);
+      if (path === "/issues/137/comments") return Response.json(discussions.slice((page - 1) * 100, page * 100));
+      throw new Error(`Unexpected feedback request ${url}`);
+    }) as typeof fetch);
+  assert.deepEqual(await github.feedback(137), {
+    trust: "untrusted provider data", reviews: [review], comments: [inline], discussionComments: discussions,
+  });
+  assert.deepEqual(calls, ["/pulls/137/reviews:1", "/pulls/137/comments:1", "/issues/137/comments:1", "/issues/137/comments:2"]);
+});
+test("a failed PR discussion read cannot become an empty successful feedback snapshot", async () => {
+  const failure = new Error("GitHub discussion read disconnected", { cause: new Error("connection reset") });
+  const github = new ImplementationGitHub("https://github.test", "owner/repo", { token: async () => "test" },
+    (async (input) => {
+      if (new URL(String(input)).pathname === "/repos/owner/repo/issues/137/comments") throw failure;
+      return Response.json([]);
+    }) as typeof fetch);
+  await assert.rejects(github.feedback(137), (error: unknown) => error === failure);
+});
 test("lost branch and PR replies reconcile the fixed identities; later proof updates the same PR", async () => {
   const f = await fixture();
   let branch: string | null = null,

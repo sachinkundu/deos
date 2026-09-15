@@ -125,6 +125,7 @@ export class ImplementationGitHub {
       trust: "untrusted provider data",
       reviews: await all(`/pulls/${number}/reviews`),
       comments: await all(`/pulls/${number}/comments`),
+      discussionComments: await all(`/issues/${number}/comments`),
     };
   }
   async current(run: ImplementationRun) {

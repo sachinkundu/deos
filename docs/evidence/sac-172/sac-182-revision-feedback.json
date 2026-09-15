@@ -1,0 +1,119 @@
+{
+  "deploymentStatus": "feedback patch not deployed while try 9 runs",
+  "run": [
+    {
+      "status": "active",
+      "current_node": "implementation_build",
+      "current_visit_sequence": 49,
+      "definition_id": "implementation",
+      "definition_version": 27,
+      "definition_digest": "ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c",
+      "workflow_instance_id": "wf-v1-k5kuq3ggfmfrxcucpwfvopkstvcdnqanxvef7bv6c26zdp7enojq",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 1,
+      "sandbox_tier": "basic"
+    }
+  ],
+  "latestAttempt": [
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "node_id": "implementation_build",
+      "visit_sequence": 49,
+      "state": "running",
+      "sandbox_id": "impl-v1-eip7xmlk3y3kafj5fhggn5l45dm6xa25z72t4x5rgbqqou2vbjla",
+      "sandbox_tier": "standard-2",
+      "heartbeat_at": "2026-09-15T08:42:20.107Z",
+      "process_id": "c7ac2263-6a8a-455d-ab1d-9a491497e1d7",
+      "result_class": null,
+      "cleanup_state": "pending",
+      "created_at": "2026-09-15T08:37:02.888Z",
+      "ended_at": null
+    }
+  ],
+  "latestTry": [
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "try_sequence": 9,
+      "kind": "build",
+      "status": "running",
+      "input_patch_sha": "8a6ff3e0c147a0558a72723d084ac063251d0934935af4632921a9097ab77896",
+      "output_patch_sha": null,
+      "public_error_code": "documentation_denied",
+      "updated_at": "2026-09-15T08:41:12.265Z"
+    }
+  ],
+  "savedFeedback": [
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "state": "running",
+      "heartbeat_at": "2026-09-15T08:37:20.062Z",
+      "review_feedback": "{\"trust\":\"untrusted provider data\",\"reviews\":[],\"comments\":[]}"
+    }
+  ],
+  "githubRead": {
+    "observedAt": "2026-09-15T08:43:40.617Z",
+    "claim": "Read-only live GitHub API using the local patched feedback loader; not deployed agent pickup",
+    "feedback": {
+      "trust": "untrusted provider data",
+      "reviews": [],
+      "comments": [],
+      "discussionComments": [
+        {
+          "url": "https://api.github.com/repos/sachinkundu/deos/issues/comments/5677258210",
+          "html_url": "https://github.com/sachinkundu/deos/pull/137#issuecomment-5677258210",
+          "issue_url": "https://api.github.com/repos/sachinkundu/deos/issues/137",
+          "id": 5677258210,
+          "node_id": "IC_kwDOT1GOUM8AAAABUmQV4g",
+          "user": {
+            "login": "sachinkundu",
+            "id": 233623,
+            "node_id": "MDQ6VXNlcjIzMzYyMw==",
+            "avatar_url": "https://avatars.githubusercontent.com/u/233623?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/sachinkundu",
+            "html_url": "https://github.com/sachinkundu",
+            "followers_url": "https://api.github.com/users/sachinkundu/followers",
+            "following_url": "https://api.github.com/users/sachinkundu/following{/other_user}",
+            "gists_url": "https://api.github.com/users/sachinkundu/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/sachinkundu/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/sachinkundu/subscriptions",
+            "organizations_url": "https://api.github.com/users/sachinkundu/orgs",
+            "repos_url": "https://api.github.com/users/sachinkundu/repos",
+            "events_url": "https://api.github.com/users/sachinkundu/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/sachinkundu/received_events",
+            "type": "User",
+            "user_view_type": "public",
+            "site_admin": false
+          },
+          "created_at": "2026-09-15T08:37:43Z",
+          "updated_at": "2026-09-15T08:37:43Z",
+          "body": "Two acceptance gaps remain:\n\n* The settings screenshot shows an authentication error.\n* The provider demo substitutes a stub for the real continuation service.",
+          "author_association": "OWNER",
+          "reactions": {
+            "url": "https://api.github.com/repos/sachinkundu/deos/issues/comments/5677258210/reactions",
+            "total_count": 0,
+            "+1": 0,
+            "-1": 0,
+            "laugh": 0,
+            "hooray": 0,
+            "confused": 0,
+            "heart": 0,
+            "rocket": 0,
+            "eyes": 0
+          },
+          "performed_via_github_app": null,
+          "minimized": null
+        }
+      ]
+    }
+  },
+  "validation": {
+    "repositoryTests": 506,
+    "typecheck": "passed"
+  },
+  "limits": [
+    "Local patched provider read used GitHub CLI account credentials.",
+    "Current attempt started before the comment and retains its empty snapshot.",
+    "Fresh deployed attempt pickup and full canary acceptance remain unproved."
+  ]
+}
