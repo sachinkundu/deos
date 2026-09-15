@@ -132,3 +132,26 @@ source snapshots, frozen jobs, grounding policy, review result contract, and
 line bounds. It retains four concerns and three citations. See
 `sac-225-preserved-review-validation.json`. This proves a preserved review is
 available for audited reconciliation; it is not yet accepted by the workflow.
+
+## Staging portal verification, 15 September at 17:47 UTC
+
+The live staging browser shows Implementation for SAC-182, with Demo Plan,
+Author, Verification, Demo Gate, and its Human Review branch. SAC-225 has no
+Implementation node because its frozen version 25 ends at the design merge.
+The route's newer definition does not change that saved run. Its audited
+implementation handoff remains pending until the design human gate, before
+the canary's authorized design approval and merge.
+
+Commit `556a843` corrects the shared reconciliation display. Planning or Design
+now remains Blocked while its review needs recovery, rather than appearing
+Complete. It also labels the Human Review branch with the interrupted phase.
+The portal suite passed all 102 tests; portal TypeScript and both builds passed.
+
+Staging Worker version `6d35a6ba-b694-44c8-b662-ca75bcee5fd7` was read back at
+100 percent traffic. Wrangler exited with an authentication error while listing
+zone routes after the Worker had activated. The deployment read-back and live
+browser were checked separately. The refreshed SAC-225 accessibility tree shows
+Design Blocked, Human Review Design, and Completed Upcoming. This is a browser
+state check, not screenshot or canary completion proof. The backend and container
+versions were not changed. SAC-225 remains at reconciliation visit 20 with no
+active agent, no design approval, and no implementation work started.
