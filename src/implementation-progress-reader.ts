@@ -15,5 +15,5 @@ export async function readImplementationTaskProgress(sandbox: SandboxView, chang
       command, ...output,
     });
   }
-  return { ...countImplementationTasks(output.stdout), tasksSha: await sha256Hex(output.stdout) };
+  return { ...countImplementationTasks(output.stdout), tasksSha: await sha256Hex(output.stdout), tasks: output.stdout };
 }

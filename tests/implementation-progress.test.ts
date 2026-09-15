@@ -29,6 +29,7 @@ test("progress read uses author permissions, rejects truncation and retains orig
     return {output:async()=>({stdout:"- [x] Done\n- [ ] Next",stderr:"",exitCode:0,timedOut:false,truncated:false})};
   }} as never,"sample");
   assert.equal(result?.completed,1); assert.equal(result?.total,2); assert.match(result!.tasksSha,/^[a-f0-9]{64}$/);
+  assert.equal(result?.tasks,"- [x] Done\n- [ ] Next");
   await assert.rejects(readImplementationTaskProgress({exists:async()=>({exists:true}),exec:async()=>({output:async()=>({
     stdout:"partial",stderr:"original stderr",exitCode:1,timedOut:false,truncated:true,
   })})} as never,"sample"), error=>error instanceof Error && error.message.includes("original stderr") && (error as Error & {stdout:string}).stdout==="partial");

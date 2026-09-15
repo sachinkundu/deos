@@ -388,9 +388,14 @@ export class ImplementationService {
       const work = await this.store.requireRun(run.run_id);
       const observedAt = new Date().toISOString();
       const counts = await readImplementationTaskProgress(sandbox, work.change_id);
-      if (counts) await saveImplementationProgress(this.env.DB, {
-        ...counts, runId:run.run_id, attemptId:attempt.attempt_id, testedBaseSha:work.tested_base_sha, observedAt,
-      });
+      if (counts) {
+        // Keep the checklist and meter on the same immutable observation. Store
+        // and verify its bytes before publishing the digest/counts in D1.
+        await this.store.put(run.run_id, "task-progress.md", counts.tasks, "text/markdown; charset=utf-8");
+        await saveImplementationProgress(this.env.DB, {
+          ...counts, runId:run.run_id, attemptId:attempt.attempt_id, testedBaseSha:work.tested_base_sha, observedAt,
+        });
+      }
     } catch (error) {
       // Optional observation cannot fail otherwise healthy author work. Preserve
       // the original error separately; the old observation visibly becomes stale.

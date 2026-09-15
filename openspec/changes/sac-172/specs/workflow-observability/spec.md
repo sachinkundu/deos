@@ -2,7 +2,12 @@
 
 ### Requirement: Signal task progress in the Author node
 
-The implementation phase SHALL contain one Author node linked to Human Review. A compact meter SHALL show the author's checked tasks, total tasks, remaining tasks, and the last observed time. It SHALL keep the existing phase markers, status, and transcript controls. It MUST NOT add internal task or proof panels.
+The implementation phase SHALL contain one Author node linked to Human Review. A compact meter SHALL show the author's checked tasks, total tasks, remaining tasks, and the last observed time. It SHALL keep the existing phase markers, status, and transcript controls. It MUST NOT add internal task or proof panels to the workflow map. Selecting the task counter SHALL open a read-only popup with OpenSpec sections, numbered tasks, and checked or unchecked states. Its counts and task text SHALL come from the same saved observation. The popup SHALL support keyboard dismissal and a narrow viewport.
+
+#### Scenario: Person opens the task checklist
+
+- **WHEN** a person selects the Author task counter.
+- **THEN** the portal loads a popup with the matching checklist, completed and remaining counts, and filters for all, remaining, or done tasks. The person cannot change task state through the popup.
 
 Checklist edits SHALL signal the current workflow through the attempt's scoped capability. The workflow SHALL read the actual checklist before saving counts. A signal MUST NOT carry a completion result or choose a human gate. The heartbeat SHALL reconcile missed signals as a fallback.
 

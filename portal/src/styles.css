@@ -143,6 +143,41 @@ button { color:inherit; }
 .implementation-task-progress progress::-moz-progress-bar { background: var(--blue); border-radius: 99px; }
 .task-progress-empty { color: var(--muted); font-size: 11px; }
 .implementation-task-progress.is-stale .task-progress-meta { color: var(--orange, #d8a754); }
+.task-progress-link { padding: 0; border: 0; background: none; color: var(--active-text); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.task-progress-link:hover { color: inherit; }
+.task-progress-link:focus-visible, .task-checklist-dialog button:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+.task-checklist-dialog { width: min(800px, calc(100vw - 48px)); max-width: none; height: min(820px, calc(100dvh - 64px)); max-height: none; padding: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: inherit; box-shadow: 0 28px 80px rgba(0,0,0,.35); overflow: hidden; }
+.task-checklist-dialog::backdrop { background: rgba(5,14,23,.68); backdrop-filter: blur(4px); }
+.task-checklist-shell { display: flex; flex-direction: column; height: 100%; }
+.task-checklist-dialog h2 { display: flex; align-items: center; gap: 10px; }
+.task-checklist-dialog h2 svg { color: var(--active-text); width: 24px; }
+.task-checklist-dialog .eyebrow { color: var(--active-text); }
+.task-checklist-summary { padding: 0 22px 16px; border-bottom: 1px solid var(--line); }
+.task-checklist-summary > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.task-checklist-summary span, .task-checklist-summary p { color: var(--muted); }
+.task-checklist-summary p { margin: 9px 0 0; font-size: 11px; }
+.task-checklist-summary progress { display: block; appearance: none; width: 100%; height: 7px; margin-top: 12px; border: 0; border-radius: 99px; overflow: hidden; background: var(--line); }
+.task-checklist-summary progress::-webkit-progress-bar { background: var(--line); border-radius: 99px; }
+.task-checklist-summary progress::-webkit-progress-value { background: var(--blue); border-radius: 99px; }
+.task-checklist-summary progress::-moz-progress-bar { background: var(--blue); border-radius: 99px; }
+.task-checklist-filters { display: flex; gap: 6px; padding: 14px 22px; }
+.task-checklist-filters button { display: flex; gap: 8px; align-items: center; border: 1px solid transparent; border-radius: 8px; padding: 7px 11px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.task-checklist-filters button[aria-pressed="true"] { color: inherit; background: var(--soft); border-color: var(--line); }
+.task-checklist-filters button span { font-size: 10px; font-variant-numeric: tabular-nums; }
+.task-checklist-body { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 22px 22px; }
+.task-checklist-section h3 { margin: 15px 0 9px; font-size: 13px; color: inherit; }
+.task-checklist-section:first-child h3 { margin-top: 3px; }
+.task-checklist-section ul { list-style: none; padding: 0; margin: 0; }
+.task-checklist-section li { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 1.65; }
+.task-checklist-section li > div { min-width: 0; overflow-wrap: anywhere; }
+.task-checklist-section code { font-size: .93em; padding: 1px 4px; border-radius: 3px; background: var(--soft); }
+.task-checklist-box { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 17px; height: 17px; margin-top: 2px; border: 1px solid var(--muted); border-radius: 4px; }
+.task-checklist-box svg { width: 13px; }
+.task-checklist-section .is-done { color: var(--muted); }
+.task-checklist-section .is-done .task-checklist-box { border-color: var(--green); background: var(--green); color: var(--panel); }
+.task-checklist-empty { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 36px 20px; color: var(--muted); font-size: 13px; }
+.task-checklist-error { padding: 10px 22px; font-size: 12px; border-bottom: 1px solid var(--line); }
+@media (max-width: 600px) { .task-checklist-dialog { width: calc(100vw - 20px); height: calc(100dvh - 32px); border-radius: 12px; } .task-checklist-dialog .transcript-header, .task-checklist-summary, .task-checklist-filters, .task-checklist-body { padding-left: 16px; padding-right: 16px; } .task-checklist-dialog h2 { font-size: 19px; } }
 @media (prefers-reduced-motion: reduce) { .implementation-task-progress progress::-webkit-progress-value { transition: none; } }
 .agent-step-heading { min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .agent-step-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }

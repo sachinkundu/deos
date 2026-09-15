@@ -161,7 +161,8 @@ export const routePortalRequest = async (
     const message = errorText(error);
     return json(message === "forbidden" ? 403 : 401, { error: message === "authentication unavailable" ? "authentication_unavailable" : "unauthorized" });
   }
-  const implementationRoute=url.pathname.match(/^\/api\/implementation\/([^/]+)(?:\/(proof|error)\/(.+))?$/);
+  const implementationTasksRoute=url.pathname.match(/^\/api\/implementation\/([^/]+)\/tasks$/);
+  const implementationRoute=implementationTasksRoute ?? url.pathname.match(/^\/api\/implementation\/([^/]+)(?:\/(proof|error)\/(.+))?$/);
   if(implementationRoute) {
     if(request.method!=='GET')return json(405,{error:'method_not_allowed'});
     const runId=decodeURIComponent(implementationRoute[1]);
@@ -169,6 +170,14 @@ export const routePortalRequest = async (
     const store=new ImplementationStore(env.DB,env.ARTIFACTS);
     const work=await store.run(runId);
     if(!work)return json(200,null);
+    if(implementationTasksRoute) {
+      const {loadImplementationChecklist,ChecklistPendingError}=await import('./implementation-tasks.ts');
+      try { return json(200,await loadImplementationChecklist(store,work)); }
+      catch(error) {
+        if(error instanceof ChecklistPendingError)return json(503,{error:error.message});
+        throw error;
+      }
+    }
     if(implementationRoute[2]==='error') {
       const saved=await env.DB.prepare('SELECT r2_key,sha256 FROM implementation_effect_errors WHERE run_id=? AND error_id=?')
         .bind(runId,decodeURIComponent(implementationRoute[3])).first<{r2_key:string;sha256:string}>();
@@ -189,11 +198,8 @@ export const routePortalRequest = async (
       env.DB.prepare('SELECT url,title,claim,artifact_locator FROM implementation_doc_sources WHERE run_id=? ORDER BY source_id').bind(runId).all(),
       env.DB.prepare('SELECT operation,error_id,created_at FROM implementation_effect_errors WHERE run_id=? ORDER BY created_at DESC').bind(runId).all(),
     ]);
-    const candidate=work.candidate_key ? await store.candidate(work) : null;
-    const {latestImplementationProgress,countImplementationTasks}=await import('../../src/implementation-progress.ts');
-    const savedProgress=candidate?.tasks ? {...countImplementationTasks(candidate.tasks),observedAt:work.updated_at,source:'saved' as const} : null;
-    const progress=candidate?.kind==='build' && work.source_attempt_id===(attempts.results.at(-1) as {attempt_id?:string}|undefined)?.attempt_id
-      ? savedProgress : await latestImplementationProgress(env.DB,runId) ?? savedProgress;
+    const {implementationTaskSnapshot}=await import('./implementation-tasks.ts');
+    const {candidate,progress}=await implementationTaskSnapshot(store,work,(attempts.results.at(-1) as {attempt_id?:string}|undefined)?.attempt_id);
     const question=await store.question(runId);
     return json(200,{status:work.status,branch:work.branch,prUrl:work.pr_url,approvedDesignSha:work.approved_design_sha,
       testedBaseSha:work.tested_base_sha,treeSha:work.tree_sha,mergeSha:work.merge_sha,
