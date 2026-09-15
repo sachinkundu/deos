@@ -489,6 +489,15 @@ through the existing hash-checking, no-store R2 route. It computes current or
 stale status from the proof subject and the latest checked head; it does not
 generate proof during page load.
 
+The canary UI keeps Implementation as a normal workflow node with one Author
+and the shared Human Review connection. The Author task counter opens a
+read-only popup on demand. It preserves OpenSpec headings, task numbers and
+checked states, with All, Remaining and Done filters. The trusted progress read
+saves the task text in R2 before its digest and counts in D1. The popup verifies
+that snapshot and never changes tasks or workflow authority. It supports
+keyboard focus, Escape, and a scrolling task list at mobile widths. Internal
+checks, branch details and proof records stay out of the default workflow map.
+
 The build clarification wait is shown inside the build stage with its question,
 safe reason, allowed reply, and resumed try. The final implementation review is
 a separate gate. Proof labels distinguish visual images, Showboat logs, real

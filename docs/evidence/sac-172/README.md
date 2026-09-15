@@ -179,3 +179,10 @@ The new human comment 2f478444-cb81-414b-9343-4964cd727f83 was created on Septem
 The same Workflow continued automatically to implementation_build, visit 40. Attempt 01a0a335-573b-7020-8d70-5e4eb7ec1ba7, try 6, is running in its new sandbox. Its durable job context contains the exact accepted reply, and its input patch matches the saved clarification patch 3a627102c907d12ea29fcf792828d5382017858f7ebbc0d448d6f64cfdcd44ba. The initial 0/57 observation is the restored unchecked checklist. No manual retry, fabricated signal or issue transition was used.
 
 The [D1 read-back](sac-182-reply-resumed.json) records the provider delivery, eligibility, gate transition, running attempt and materialized reply. The user agreed to separate production rollout while requiring proof in a non-production environment. Final-tree checks, safe preview, changed-behavior E2E and the implementation PR remain pending.
+
+
+### Clickable Author task checklist
+
+The Author task counter now opens a read-only OpenSpec checklist with task headings, numbers, checkboxes and All/Remaining/Done filters. The staging browser loaded the real SAC-182 checklist: 0 of 57 completed, across 9 sections. Keyboard navigation, return focus and mobile wrapping were checked with a separate local mixed-task fixture.
+
+[Showboat and browser evidence](task-checklist-popup.md) records the tests, active Worker versions, unchanged container images and healthy running canary. The [R2 read-back](task-checklist-r2-readback.json) matches the first post-deploy D1 progress observation. No implementation PR has been opened.
