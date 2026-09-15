@@ -1,0 +1,18 @@
+{
+  "observedAt": "2026-09-15T03:55:29.337003+00:00",
+  "commentId": "4457b29a-a39f-4855-a4c7-86fc026074e6",
+  "commentCreatedAt": "2026-09-15T03:44:13.040Z",
+  "actorId": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+  "inbox": [],
+  "gateEvents": [],
+  "deliveriesAfter0343": [],
+  "webhookId": "60686273-ed5f-4f16-b810-3b4044698134",
+  "beforeResources": [
+    "Issue"
+  ],
+  "afterResources": [
+    "Issue",
+    "Comment"
+  ],
+  "verification": "Linear settings read back after reload; no new human event consumed yet"
+}

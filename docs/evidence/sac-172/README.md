@@ -161,3 +161,12 @@ The [live staging screenshot](sac-182-clarification-staging.png) shows the Autho
 The recommended scope reply is to move production deployment and activation after merge, while keeping isolated end-to-end tests and final verification before the implementation PR. Do not defer all of 9.1–9.7 without preserving those requirements. The frozen clarification gate requires a new comment from the linked human account on SAC-182. The monitor stays quiet while that gate is unchanged.
 
 On resumption, completed tasks should be marked individually. Keep transient request files under `/deos/output/requests`, outside the checkout: this candidate includes `.deos-requests` files that changed its tree between checks. Preserve the required test suites, start the assigned safe preview, exercise the changed application behavior, and retain all final-tree checks and proof before publication. No SAC-182 implementation PR exists, and the SAC-172 implementation PR remains gated on the full canary.
+
+
+### Clarification reply delivery configuration
+
+On September 15, the user posted comment 4457b29a-a39f-4855-a4c7-86fc026074e6 at 03:44:13.040Z from the frozen human account. Linear MCP confirmed the reply. D1 had no matching inbox delivery or gate event, and visit 39 stayed open. The reply agrees to split production rollout while retaining proof in a non-production environment.
+
+The existing Linear webhook was enabled but subscribed only to Issue events. Comments were added to that same webhook, preserving its URL, signing secret and team scope. The [saved settings screenshot](linear-comment-webhook-enabled.png) shows Issue and Comment after a full page reload. The [read-back summary](linear-comment-webhook-repair.json) records the configuration and D1 evidence. No Worker deployment or code change was needed.
+
+The earlier reply has no provider delivery to replay. The user was asked to repeat it as a new comment, so Linear can emit a signed Comment.create. We did not create a reply, synthesize a delivery or move the human gate. Real comment delivery, gate acceptance, resumed implementation and full changed-behavior E2E remain pending.
