@@ -1660,7 +1660,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     return this.linear.observeHumanGateDelivery(operation, event);
   }
 
-  private async syncDesignReviewProviders(input: {
+  async syncDesignReviewProviders(input: {
     run: OrchestrationRunRecord;
     reviewAttemptId: string;
     phase: "self" | "independent";
@@ -1668,6 +1668,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
     findingCount: number;
     headSha: string | null;
     authorResponse?: { applied: number; declined: number; no_change: number };
+    receiptReconciliationId?: string;
   }): Promise<boolean> {
     const detailsUrl = `${this.env.PORTAL_BASE_URL.replace(/\/$/, "")}/runs/${encodeURIComponent(input.run.run_id)}/design-review`;
     const operations = new D1SystemActionStore(this.env.DB);
@@ -1685,7 +1686,15 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         operationId,
         runId: input.run.run_id,
         action: "github.upsert_design_review_check",
-        requestDigest: await sha256Hex(JSON.stringify({ ...input, detailsUrl })),
+        // Recovery may be replayed after the replacement has already started.
+        // Its provider request stays fixed even when the run's clock/node moves.
+        // Preserve legacy identities for all existing non-recovery operations.
+        requestDigest: await sha256Hex(JSON.stringify(input.receiptReconciliationId ? {
+          receiptReconciliationId: input.receiptReconciliationId, runId: input.run.run_id,
+          repository: work.repository, reviewAttemptId: input.reviewAttemptId, phase: input.phase,
+          outcome: input.outcome, findingCount: input.findingCount, headSha: input.headSha,
+          authorResponse: input.authorResponse ?? null, detailsUrl,
+        } : { ...input, detailsUrl })),
         now: new Date().toISOString(),
       });
       if (operation.state === "pending") {

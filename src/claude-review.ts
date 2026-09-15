@@ -83,7 +83,7 @@ export interface ClaudeReceipt {
 /** Success receipts contain normalized proof. Failures retain protected diagnostics separately. */
 export const validateClaudeTurn = (input: {
   events: unknown[]; appliedEfforts: unknown[]; attemptId: string; turn: number;
-  inputSha256: string; sessionId: string; enrollment: ClaudeEnrollment;
+  inputSha256: string; sessionId: string; enrollment: Pick<ClaudeEnrollment, 'accountBinding' | 'secretVersion'>;
 }): ClaudeReceipt => {
   const events = input.events.map(record);
   const inits = events.filter(e => e.type === "system" && e.subtype === "init");
