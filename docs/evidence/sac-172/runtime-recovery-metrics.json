@@ -1,0 +1,737 @@
+[
+  {
+    "avg": {
+      "cpuUtilization": 0.8015878078124413,
+      "memory": 156352512
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:06:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.8015878078124413,
+      "memory": 156352512
+    },
+    "sum": {
+      "allocatedCpu": 3.7498137705000003,
+      "allocatedMemory": 16105327510.38795,
+      "cpuTimeSec": 3.005805
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.18682487722134192,
+      "memory": 724238336
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:07:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.4988454144756064,
+      "memory": 725405696
+    },
+    "sum": {
+      "allocatedCpu": 9.9900614295,
+      "allocatedMemory": 42906987124.73351,
+      "cpuTimeSec": 1.8663920000000012
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.13133223863946838,
+      "memory": 732789145.6
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:08:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.25552742009421586,
+      "memory": 737357824
+    },
+    "sum": {
+      "allocatedCpu": 12.499573730000002,
+      "allocatedMemory": 53685260384.29074,
+      "cpuTimeSec": 1.6415969999999902
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.11902061186402328,
+      "memory": 738657831.3846154
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:09:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.20575540378382426,
+      "memory": 738938880
+    },
+    "sum": {
+      "allocatedCpu": 16.250597016,
+      "allocatedMemory": 69795782724.19519,
+      "cpuTimeSec": 1.9341559999999909
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 1.0610268794201483,
+      "memory": 880365568
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:10:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.0610268794201483,
+      "memory": 880365568
+    },
+    "sum": {
+      "allocatedCpu": 4.999816784,
+      "allocatedMemory": 21474049573.271896,
+      "cpuTimeSec": 5.304940000000002
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9760457531703787,
+      "memory": 1169240808.7272727
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:11:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.041299565432339,
+      "memory": 1172574208
+    },
+    "sum": {
+      "allocatedCpu": 13.749518356500001,
+      "allocatedMemory": 59053731676.919174,
+      "cpuTimeSec": 13.420158999999991
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 1.0280814209113291,
+      "memory": 1113431478.857143
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:12:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.0348486579368008,
+      "memory": 1160024064
+    },
+    "sum": {
+      "allocatedCpu": 17.499911616,
+      "allocatedMemory": 75161548073.6105,
+      "cpuTimeSec": 17.991333999999952
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9546521003200715,
+      "memory": 1164820480
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:14:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9546521003200715,
+      "memory": 1164820480
+    },
+    "sum": {
+      "allocatedCpu": 2.499850992,
+      "allocatedMemory": 10736778255.513157,
+      "cpuTimeSec": 2.386488000000014
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 1.0352458888555223,
+      "memory": 1058998681.6
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:15:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.0994464919903857,
+      "memory": 1155952640
+    },
+    "sum": {
+      "allocatedCpu": 18.75175377075,
+      "allocatedMemory": 80538169188.01593,
+      "cpuTimeSec": 19.412675999999976
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9781495355698933,
+      "memory": 1058388650.6666666
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:16:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.0174001745662427,
+      "memory": 1073393664
+    },
+    "sum": {
+      "allocatedCpu": 11.249506951499999,
+      "allocatedMemory": 48316264452.817154,
+      "cpuTimeSec": 11.00370000000001
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.653314103173192,
+      "memory": 1084299264
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:17:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.01972310644162,
+      "memory": 1159954432
+    },
+    "sum": {
+      "allocatedCpu": 19.9964640845,
+      "allocatedMemory": 85884159278.56609,
+      "cpuTimeSec": 13.063972000000064
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9803991194282138,
+      "memory": 1021118464
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:18:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9886756637862808,
+      "memory": 1027366912
+    },
+    "sum": {
+      "allocatedCpu": 9.999835583,
+      "allocatedMemory": 42948966794.36209,
+      "cpuTimeSec": 9.803830000000119
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9822307186581936,
+      "memory": 980387840
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:19:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9828668073161139,
+      "memory": 996155392
+    },
+    "sum": {
+      "allocatedCpu": 14.999561427,
+      "allocatedMemory": 64422625783.30809,
+      "cpuTimeSec": 14.733029999999928
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9889926228731073,
+      "memory": 993107968
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:20:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9889926228731073,
+      "memory": 993107968
+    },
+    "sum": {
+      "allocatedCpu": 7.499073125999999,
+      "allocatedMemory": 32208273826.482483,
+      "cpuTimeSec": 7.416527999999971
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9878304545933246,
+      "memory": 1004462080
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:21:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9878304545933246,
+      "memory": 1004462080
+    },
+    "sum": {
+      "allocatedCpu": 1.2499574135,
+      "allocatedMemory": 5368526212.375249,
+      "cpuTimeSec": 1.2347460000000012
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9763766281570585,
+      "memory": 1045545984
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:22:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9893146785823357,
+      "memory": 1108828160
+    },
+    "sum": {
+      "allocatedCpu": 20.0005524885,
+      "allocatedMemory": 85901718840.03891,
+      "cpuTimeSec": 19.528071999999895
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9816127004902961,
+      "memory": 1153546240
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:23:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9860587834919028,
+      "memory": 1159204864
+    },
+    "sum": {
+      "allocatedCpu": 7.499780714250001,
+      "allocatedMemory": 32211312894.875275,
+      "cpuTimeSec": 7.361879999999985
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9837950468607113,
+      "memory": 1157564006.4
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:24:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9844111009014263,
+      "memory": 1158770688
+    },
+    "sum": {
+      "allocatedCpu": 6.250322177999999,
+      "allocatedMemory": 26844929343.973488,
+      "cpuTimeSec": 6.149036000000052
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.8770949538473154,
+      "memory": 827461632
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:25:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9444929654644797,
+      "memory": 836497408
+    },
+    "sum": {
+      "allocatedCpu": 9.998370144,
+      "allocatedMemory": 42942672781.782814,
+      "cpuTimeSec": 8.769520000000057
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.1555768738742925,
+      "memory": 806533443.3684211
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:26:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.7622779271529576,
+      "memory": 820887552
+    },
+    "sum": {
+      "allocatedCpu": 23.75112642375,
+      "allocatedMemory": 102010311233.1677,
+      "cpuTimeSec": 3.69512600000013
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9767682325857393,
+      "memory": 851398656
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:27:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9767682325857393,
+      "memory": 851398656
+    },
+    "sum": {
+      "allocatedCpu": 2.499993262,
+      "allocatedMemory": 10737389300.510359,
+      "cpuTimeSec": 2.441913999999997
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9685763242556991,
+      "memory": 1094238208
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:28:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9716819788566616,
+      "memory": 1107951616
+    },
+    "sum": {
+      "allocatedCpu": 11.250082959,
+      "allocatedMemory": 48318738386.19191,
+      "cpuTimeSec": 10.896563999999898
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9624729449204753,
+      "memory": 964526802.8235294
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:29:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9849568410528196,
+      "memory": 979759104
+    },
+    "sum": {
+      "allocatedCpu": 21.24979627525,
+      "allocatedMemory": 91267180048.86136,
+      "cpuTimeSec": 20.452354000000014
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9833482492951898,
+      "memory": 1140902249.4117646
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:30:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9916831710218029,
+      "memory": 1158582272
+    },
+    "sum": {
+      "allocatedCpu": 21.2491241175,
+      "allocatedMemory": 91264293153.30736,
+      "cpuTimeSec": 20.89528899999982
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9854352675615377,
+      "memory": 1157967872
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:31:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9854352675615375,
+      "memory": 1157967872
+    },
+    "sum": {
+      "allocatedCpu": 3.7496648654999998,
+      "allocatedMemory": 16104687968.282738,
+      "cpuTimeSec": 3.6950520000000893
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.7267743007003676,
+      "memory": 811939719.5294118
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:32:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9606128984756855,
+      "memory": 877465600
+    },
+    "sum": {
+      "allocatedCpu": 21.251532951999998,
+      "allocatedMemory": 91274639018.70633,
+      "cpuTimeSec": 15.445068000000617
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9885272541388287,
+      "memory": 1080167594.6666667
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:33:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.0014246605613144,
+      "memory": 1155731456
+    },
+    "sum": {
+      "allocatedCpu": 30.001784853,
+      "allocatedMemory": 128856684765.26317,
+      "cpuTimeSec": 29.65758199999999
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 1.0103945380352382,
+      "memory": 1155229696
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:34:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.0347728585109877,
+      "memory": 1156149248
+    },
+    "sum": {
+      "allocatedCpu": 14.998531197,
+      "allocatedMemory": 64418200979.150734,
+      "cpuTimeSec": 15.154433999999924
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 1.022147087545175,
+      "memory": 1154217511.3846154
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:35:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.0737610699909654,
+      "memory": 1158787072
+    },
+    "sum": {
+      "allocatedCpu": 16.260806495,
+      "allocatedMemory": 69839632102.60939,
+      "cpuTimeSec": 16.620935999999915
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 1.0030900694212308,
+      "memory": 1150429094.9565217
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:36:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.0578383484981844,
+      "memory": 1157533696
+    },
+    "sum": {
+      "allocatedCpu": 28.7494322585,
+      "allocatedMemory": 123477871328.82492,
+      "cpuTimeSec": 28.83826999999974
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9758006361958765,
+      "memory": 1150899814.4
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:37:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.368214823383681,
+      "memory": 1153888256
+    },
+    "sum": {
+      "allocatedCpu": 24.987930009,
+      "allocatedMemory": 107322342183.39198,
+      "cpuTimeSec": 24.383238000000233
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9601959935313585,
+      "memory": 1151152947.2
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:38:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.1369629089099966,
+      "memory": 1155391488
+    },
+    "sum": {
+      "allocatedCpu": 21.797913281249997,
+      "allocatedMemory": 93621324664.01279,
+      "cpuTimeSec": 20.930269000000237
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.9623190590697904,
+      "memory": 1152312741.6470587
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:40:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.1790001086038924,
+      "memory": 1157455872
+    },
+    "sum": {
+      "allocatedCpu": 22.162967468,
+      "allocatedMemory": 95189220457.37193,
+      "cpuTimeSec": 21.327846000000136
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 1.0356876221645224,
+      "memory": 1159221248
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:41:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 1.0356876221645224,
+      "memory": 1159221248
+    },
+    "sum": {
+      "allocatedCpu": 2.499724767,
+      "allocatedMemory": 10736236123.26622,
+      "cpuTimeSec": 2.5889339999999947
+    }
+  },
+  {
+    "avg": {
+      "cpuUtilization": 0.4625841646858898,
+      "memory": 687627468.8
+    },
+    "dimensions": {
+      "applicationId": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "datetimeMinute": "2026-09-15T06:42:00Z",
+      "instanceId": "19ae2bee721ad6af369bccb584468e9bd8b619a1075472b12228c4e006faf265"
+    },
+    "max": {
+      "containerUptime": 0,
+      "cpuUtilization": 0.9180258453228828,
+      "memory": 834756608
+    },
+    "sum": {
+      "allocatedCpu": 6.24989184825,
+      "allocatedMemory": 26843081091.770744,
+      "cpuTimeSec": 2.8911009999998782
+    }
+  }
+]

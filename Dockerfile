@@ -2,12 +2,16 @@ FROM cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774d
 
 USER root
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-venv \
+COPY --from=ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45 /uv /usr/local/bin/uv
+
+# The repository requires Python >=3.11. Install outside /root so checked
+# commands running as deos-author use the same interpreter as image checks.
+RUN UV_PYTHON_INSTALL_DIR=/opt/deos-python UV_PYTHON_BIN_DIR=/usr/local/bin \
+      uv python install 3.11.16 --default \
     && python3 -m venv /opt/deos-tools \
     && /opt/deos-tools/bin/pip install --no-cache-dir showboat==0.6.1 \
     && ln -s /opt/deos-tools/bin/showboat /usr/local/bin/showboat \
-    && rm -rf /var/lib/apt/lists/*
+    && python3 -c 'from datetime import UTC; import sys; assert sys.version_info[:3] == (3, 11, 16)'
 
 RUN useradd --create-home --shell /bin/bash deos-author
 

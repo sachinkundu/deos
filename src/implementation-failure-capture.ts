@@ -55,6 +55,12 @@ export async function captureImplementationFailure(
   const kind = attempt.node_id === "implementation_tasks" ? "tasks" : attempt.node_id === "implementation_build" ? "build" : null;
   if (!kind) throw new Error("Failure capture requires an implementation attempt");
   const diagnostic: Record<string, unknown> = { attemptId: attempt.attempt_id, category, processId: process?.id ?? null };
+  try {
+    diagnostic.lastHeartbeat = JSON.parse((await sandbox.readFile('/deos/output/heartbeat.json', { encoding: 'utf8' })).content);
+  } catch (error) {
+    recordCaughtError(error, 'implementation.failure.heartbeat');
+    diagnostic.heartbeatReadError = errorDetails(error);
+  }
   if (process) {
     try { diagnostic.status = await process.status(); }
     catch (error) { recordCaughtError(error, "implementation.failure.process-status"); diagnostic.statusError = errorDetails(error); }

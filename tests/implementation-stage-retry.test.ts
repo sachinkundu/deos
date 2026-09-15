@@ -3,6 +3,8 @@ import test from "node:test";
 import { D1AgentStageRetryStore, isAgentStageRetryNode } from "../src/stage-retry.ts";
 import { ImplementationTestDatabase, seedRun, seedAttempt } from "./helpers/implementation-fixture.ts";
 import type { LoadedWorkflowDefinition } from "../src/workflow-definition.ts";
+import { D1AgentAttemptStore } from "../src/sandbox-controller.ts";
+import { requireAttemptTier } from "../src/sandbox-tier.ts";
 
 function fixture(node: "implementation_tasks" | "implementation_build") {
   const db = new ImplementationTestDatabase(); seedRun(db); seedAttempt(db, "failed-attempt");
@@ -60,4 +62,45 @@ test("implementation retry rejects active attempts, unfinished cleanup, wrong fa
       assert.equal(f.db.sqlite.prepare("SELECT count(*) n FROM agent_stage_retries").get()!.n, 0);
     } finally { f.db.close(); }
   }
+});
+
+test("an explicit implementation recovery gives future attempts more resources while preserving frozen history", async () => {
+  const f = fixture("implementation_build");
+  try {
+    const before = f.db.sqlite.prepare("SELECT * FROM orchestration_runs WHERE run_id='run-1'").get()!;
+    assert.equal(before.sandbox_tier, 'basic');
+    const retry = await f.store.prepare({ ...f.input, sandboxTier: 'standard-2' });
+    assert.equal(retry.source_sandbox_tier, 'basic');
+    assert.equal(retry.target_sandbox_tier, 'standard-2');
+    assert.equal((await f.store.prepare({ ...f.input, sandboxTier: 'standard-2' })).retry_id, retry.retry_id);
+    const after = f.db.sqlite.prepare("SELECT * FROM orchestration_runs WHERE run_id='run-1'").get()!;
+    for (const field of ['sandbox_tier', 'sandbox_tier_source', 'sandbox_tier_policy_version',
+      'definition_digest', 'allowed_linear_user_id', 'human_binding_revision']) assert.equal(after[field], before[field]);
+    const attempts = new D1AgentAttemptStore(f.db as unknown as D1Database);
+    const previous = (await attempts.findLatest('run-1', 'implementation_build'))!;
+    assert.equal(previous.sandbox_tier, 'basic');
+    assert.equal(previous.expected_sandbox_tier, null);
+    const next = await attempts.create({ attemptId: 'larger-attempt', sandboxId: 'larger-sandbox', runId: 'run-1',
+      nodeId: 'implementation_build', visitSequence: 3, jobSpecJson: '{}', jobSpecDigest: 'next',
+      absoluteDeadline: '2026-09-14T16:00:00Z', now: '2026-09-14T14:00:00Z' });
+    assert.equal(next.sandbox_tier, 'standard-2');
+    assert.equal(requireAttemptTier(next.expected_sandbox_tier ?? after.sandbox_tier, next.sandbox_tier), 'standard-2');
+    assert.throws(() => f.db.sqlite.exec("UPDATE implementation_retry_tiers SET target_sandbox_tier='basic'"), /immutable/);
+    assert.throws(() => f.db.sqlite.exec("UPDATE orchestration_runs SET sandbox_tier='standard-2'"), /immutable/);
+    assert.throws(() => f.db.sqlite.exec("UPDATE agent_attempts SET sandbox_tier='standard-2' WHERE attempt_id='failed-attempt'"), /immutable/);
+  } finally { f.db.close(); }
+});
+
+test("a retry cannot be resized after preparation or while another agent is active", async () => {
+  const f = fixture('implementation_build');
+  try {
+    await f.store.prepare(f.input);
+    await assert.rejects(f.store.prepare({ ...f.input, sandboxTier: 'standard-2' }), /identity_mismatch/);
+  } finally { f.db.close(); }
+  const active = fixture('implementation_build');
+  try {
+    seedAttempt(active.db, 'other-attempt');
+    await assert.rejects(active.store.prepare({ ...active.input, sandboxTier: 'standard-2' }), /not_eligible/);
+    assert.equal(active.db.sqlite.prepare('SELECT count(*) n FROM agent_stage_retries').get()!.n, 0);
+  } finally { active.db.close(); }
 });

@@ -53,6 +53,7 @@ test("failure capture retains exit details and refuses cleanup when the snapshot
     openspecChange: "sample", materializedContext: JSON.stringify({ approvedDesignSha: "a".repeat(40), testedBaseSha: "b".repeat(40) }),
   }) } as AgentAttemptRecord;
   const sandbox = {
+    readFile: async () => ({ content: JSON.stringify({ attemptId: 'failed', observedAt: '2026-09-15T06:31:48Z', processPid: 76 }) }),
     exists: async () => ({ exists: true }), writeFile: async (path: string, bytes: string) => { files.set(path, bytes); },
     exec: async () => ({ output: async () => ({ exitCode: 1, timedOut: false, truncated: false, stdout: "", stderr: "disk read failed" }) }),
   } as unknown as SandboxView;
@@ -67,5 +68,6 @@ test("failure capture retains exit details and refuses cleanup when the snapshot
   const evidence = JSON.parse(files.get("/deos/output/supervisor-process.json")!);
   assert.equal(evidence.status.exit.signal, 9);
   assert.equal(evidence.output.stderr, "original process diagnostic");
+  assert.equal(evidence.lastHeartbeat.observedAt, '2026-09-15T06:31:48Z');
   assert.equal(JSON.parse(files.get("/deos/run/implementation-recovery-request.json")!).kind, "build");
 });

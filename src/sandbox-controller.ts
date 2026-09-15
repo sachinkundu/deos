@@ -40,6 +40,7 @@ export type AgentAttemptState =
 
 export interface AgentAttemptRecord {
   sandbox_tier?: string | null;
+  expected_sandbox_tier?: string | null;
   native_evidence_id?: string;
   attempt_id: string;
   sandbox_id: string;
@@ -114,7 +115,11 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
 
   findLatest(runId: string, nodeId: string): Promise<AgentAttemptRecord | null> {
     return this.database.prepare(
-      `SELECT * FROM agent_attempts WHERE run_id = ? AND node_id = ?
+      `SELECT agent_attempts.*, (SELECT tiers.target_sandbox_tier FROM agent_stage_retries AS retry
+         JOIN implementation_retry_tiers AS tiers ON tiers.retry_id = retry.retry_id
+         WHERE retry.run_id = agent_attempts.run_id AND retry.to_visit_sequence <= agent_attempts.visit_sequence
+         ORDER BY retry.to_visit_sequence DESC LIMIT 1) AS expected_sandbox_tier
+       FROM agent_attempts WHERE run_id = ? AND node_id = ?
        ORDER BY created_at DESC, attempt_id DESC LIMIT 1`,
     ).bind(runId, nodeId).first<AgentAttemptRecord>();
   }
@@ -157,7 +162,11 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
       `INSERT INTO agent_attempts
        (attempt_id, sandbox_id, run_id, node_id, visit_sequence, job_spec_json, job_spec_digest,
         state, absolute_deadline, created_at, updated_at, sandbox_tier)
-       SELECT ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, sandbox_tier
+       SELECT ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?,
+         COALESCE((SELECT tiers.target_sandbox_tier FROM agent_stage_retries AS retry
+           JOIN implementation_retry_tiers AS tiers ON tiers.retry_id = retry.retry_id
+           WHERE retry.run_id = orchestration_runs.run_id AND retry.to_visit_sequence <= ?
+           ORDER BY retry.to_visit_sequence DESC LIMIT 1), sandbox_tier)
        FROM orchestration_runs WHERE run_id = ? AND sandbox_tier IN ('basic','standard-2')`,
     ).bind(
       input.attemptId,
@@ -170,6 +179,7 @@ export class D1AgentAttemptStore implements AgentAttemptStore {
       input.absoluteDeadline,
       input.now,
       input.now,
+      input.visitSequence,
       input.runId,
     ).run();
     const attempt = await this.findLatest(input.runId, input.nodeId);
@@ -720,7 +730,7 @@ export class SandboxAgentController {
     attempt: AgentAttemptRecord,
     job: WorkflowJob,
   ): Promise<AgentExecutionObservation> {
-    requireAttemptTier(run.sandbox_tier, attempt.sandbox_tier);
+    requireAttemptTier(attempt.expected_sandbox_tier ?? run.sandbox_tier, attempt.sandbox_tier);
     const started = this.dependencies.now().toISOString();
     if (!await this.attempts.setState(attempt.attempt_id, "pending", "starting", started)) {
       return {state:"running",attemptId:attempt.attempt_id,sandboxId:attempt.sandbox_id};
@@ -728,7 +738,7 @@ export class SandboxAgentController {
     attempt = {...attempt,state:"starting",started_at:started};
     console.log(JSON.stringify({event:"sandbox_attempt_start",run_id:run.run_id,
       attempt_id:attempt.attempt_id,sandbox_tier:attempt.sandbox_tier,stage:attempt.node_id,started_at:started}));
-    const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true, tier: requireAttemptTier(run.sandbox_tier, attempt.sandbox_tier) });
+    const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true, tier: requireAttemptTier(attempt.expected_sandbox_tier ?? run.sandbox_tier, attempt.sandbox_tier) });
     let lease: CredentialLease | null = null;
     let supervisor: SandboxProcessView | null = null;
     try {
@@ -1011,7 +1021,7 @@ export class SandboxAgentController {
     attempt: AgentAttemptRecord,
     job: WorkflowJob,
   ): Promise<AgentExecutionObservation> {
-    const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true, tier: requireAttemptTier(run.sandbox_tier, attempt.sandbox_tier) });
+    const sandbox = this.sandboxes.get(attempt.sandbox_id, { keepAlive: true, tier: requireAttemptTier(attempt.expected_sandbox_tier ?? run.sandbox_tier, attempt.sandbox_tier) });
     if (job.boundedReview && attempt.state === "collecting" && await this.dependencies.boundedReviews?.prepared(attempt.attempt_id, attempt.job_spec_digest)) {
       return this.completeBoundedCollection(run, attempt, sandbox);
     }

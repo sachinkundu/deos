@@ -2,6 +2,7 @@ import { recordCaughtError } from "./error-context.ts";
 import { workflowInstanceIdentity } from "./orchestration-identity.ts";
 import type { WorkflowBinding, WorkflowInstanceHandle } from "./queue-consumer-core.ts";
 import { restoreWorkflowDefinition, type LoadedWorkflowDefinition } from "./workflow-definition.ts";
+import type { SandboxTier } from "./sandbox-tier.ts";
 import {
   isAgentStageRetryNode,
   RETRYABLE_AGENT_ATTEMPT_STATES,
@@ -15,6 +16,8 @@ export { isAgentStageRetryNode, type AgentStageRetryNode } from "./stage-retry-c
 export type AgentStageRetryKind = "same_definition" | "compatible_tail";
 
 export interface AgentStageRetryRecord {
+  source_sandbox_tier?: SandboxTier | null;
+  target_sandbox_tier?: SandboxTier | null;
   retry_id: string;
   run_id: string;
   failed_attempt_id: string;
@@ -47,6 +50,7 @@ export interface AgentStageRetryRecord {
 
 export interface AgentStageRetryStore {
   prepare(input: {
+    sandboxTier?: "standard-2";
     runId: string;
     failedAttemptId: string;
     retryNode: AgentStageRetryRecord["retry_node"];
@@ -64,6 +68,7 @@ export interface AgentStageRetryStore {
 }
 
 interface StageRetrySource {
+  attempt_tier: SandboxTier;
   source_canonical_json?: string;
   run_id: string;
   definition_id: string;
@@ -195,10 +200,11 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
 
   private find(failedAttemptId: string): Promise<AgentStageRetryRecord | null> {
     return this.database.prepare(
-      `SELECT retry.*, run.workflow_instance_id, run.current_node,
+      `SELECT retry.*, tiers.source_sandbox_tier, tiers.target_sandbox_tier, run.workflow_instance_id, run.current_node,
               run.current_visit_sequence, run.status AS run_status
        FROM agent_stage_retries AS retry
        JOIN orchestration_runs AS run ON run.run_id = retry.run_id
+       LEFT JOIN implementation_retry_tiers AS tiers ON tiers.retry_id = retry.retry_id
        WHERE retry.failed_attempt_id = ?`,
     ).bind(failedAttemptId).first<AgentStageRetryRecord>();
   }
@@ -215,6 +221,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
               COALESCE(run.selection_delivery_id, intent.source_delivery_id) AS source_delivery_id,
               attempt.attempt_id, attempt.node_id AS attempt_node,
               attempt.state AS attempt_state, attempt.cleanup_state,
+              attempt.sandbox_tier AS attempt_tier,
               NOT EXISTS (
                 SELECT 1 FROM agent_attempts AS later
                 WHERE later.run_id = run.run_id AND later.node_id = attempt.node_id
@@ -284,6 +291,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
   }
 
   async prepare(input: {
+    sandboxTier?: "standard-2";
     runId: string;
     failedAttemptId: string;
     retryNode: AgentStageRetryRecord["retry_node"];
@@ -293,7 +301,8 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
   }): Promise<AgentStageRetryRecord> {
     const existing = await this.find(input.failedAttemptId);
     if (existing !== null) {
-      if (existing.run_id !== input.runId || existing.retry_node !== input.retryNode) {
+      if (existing.run_id !== input.runId || existing.retry_node !== input.retryNode ||
+          (input.sandboxTier !== undefined && existing.target_sandbox_tier !== input.sandboxTier)) {
         throw new Error("stage_retry_identity_mismatch");
       }
       if (
@@ -322,6 +331,9 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
       source.cleanup_state !== "destroyed" || source.is_latest_attempt !== 1 ||
       source.source_delivery_id === null
     ) throw new Error("stage_retry_not_eligible");
+    if (input.sandboxTier !== undefined &&
+        (!['implementation_tasks', 'implementation_build'].includes(input.retryNode) ||
+          input.sandboxTier !== 'standard-2')) throw new Error('stage_retry_tier_not_eligible');
     const bounded = await this.database.prepare(`SELECT job_spec_json FROM agent_attempts WHERE attempt_id = ?`)
       .bind(input.failedAttemptId).first<{ job_spec_json: string }>();
     if (bounded && JSON.parse(bounded.job_spec_json).boundedReview === 'deos-bounded-review-v1') {
@@ -403,6 +415,8 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
          AND attempt.visit_sequence = run.current_visit_sequence - 1
          AND attempt.state IN ('failed', 'interrupted', 'absolute_timeout')
          AND attempt.cleanup_state = 'destroyed'
+         AND NOT EXISTS (SELECT 1 FROM agent_attempts AS active
+           WHERE active.run_id = run.run_id AND active.state IN ('pending','starting','running','collecting'))
          AND COALESCE(run.selection_delivery_id, intent.source_delivery_id) IS NOT NULL
          AND NOT EXISTS (
            SELECT 1 FROM agent_attempts AS later
@@ -452,6 +466,11 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
     }
     const statements = [
       insert.bind(...insertBindings),
+      this.database.prepare(`INSERT OR IGNORE INTO implementation_retry_tiers
+        (retry_id, source_sandbox_tier, target_sandbox_tier)
+        SELECT retry.retry_id, attempt.sandbox_tier, COALESCE(?, attempt.sandbox_tier)
+        FROM agent_stage_retries AS retry JOIN agent_attempts AS attempt ON attempt.attempt_id = retry.failed_attempt_id
+        WHERE retry.retry_id = ?`).bind(input.sandboxTier ?? null, retryId),
       this.database.prepare(
         `UPDATE orchestration_runs
          SET definition_id = ?, definition_version = ?, definition_digest = ?,
@@ -516,7 +535,8 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
     const results = await this.database.batch(statements);
     if (results.some((result) => changes(result) !== 1)) {
       const raced = await this.find(input.failedAttemptId);
-      if (raced !== null && raced.run_id === input.runId && raced.retry_node === input.retryNode) {
+      if (raced !== null && raced.run_id === input.runId && raced.retry_node === input.retryNode &&
+          (input.sandboxTier === undefined || raced.target_sandbox_tier === input.sandboxTier)) {
         return raced;
       }
       throw new Error("stage_retry_not_eligible");
@@ -548,9 +568,10 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
       input.retryId,
     ).run();
     const row = await this.database.prepare(
-      `SELECT retry.*, run.workflow_instance_id
+      `SELECT retry.*, tiers.source_sandbox_tier, tiers.target_sandbox_tier, run.workflow_instance_id
        FROM agent_stage_retries AS retry
        JOIN orchestration_runs AS run ON run.run_id = retry.run_id
+       LEFT JOIN implementation_retry_tiers AS tiers ON tiers.retry_id = retry.retry_id
        WHERE retry.retry_id = ?`,
     ).bind(input.retryId).first<AgentStageRetryRecord>();
     if (row === null) throw new Error("stage_retry_observation_read_back_failed");
@@ -688,7 +709,7 @@ export class AgentStageRetryController {
     if (
       typeof body !== "object" || body === null || Array.isArray(body) ||
       Object.keys(body).some((key) => ![
-        "version", "runId", "failedAttemptId", "retryNode", "requestedBy",
+        "version", "runId", "failedAttemptId", "retryNode", "requestedBy", "sandboxTier",
       ].includes(key))
     ) return json(400, { error: "invalid_stage_retry" });
     const value = body as Record<string, unknown>;
@@ -696,6 +717,8 @@ export class AgentStageRetryController {
       value.version !== 1 || typeof value.runId !== "string" || value.runId.length === 0 ||
       typeof value.failedAttemptId !== "string" || value.failedAttemptId.length === 0 ||
       !isStageRetryNode(value.retryNode) ||
+      (value.sandboxTier !== undefined && (value.sandboxTier !== 'standard-2' ||
+        !['implementation_tasks', 'implementation_build'].includes(value.retryNode))) ||
       typeof value.requestedBy !== "string" || !/^[a-zA-Z0-9._@-]{1,100}$/.test(value.requestedBy)
     ) return json(400, { error: "invalid_stage_retry" });
 
@@ -706,6 +729,7 @@ export class AgentStageRetryController {
         failedAttemptId: value.failedAttemptId,
         retryNode: value.retryNode,
         requestedBy: value.requestedBy,
+        ...(value.sandboxTier === undefined ? {} : { sandboxTier: value.sandboxTier as "standard-2" }),
         targetDefinition: this.targetDefinition,
         now: this.now().toISOString(),
       });
