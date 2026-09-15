@@ -10,6 +10,7 @@ import {
   localConfig,
   readRegularFile,
   currentChecks,
+  recordCheck,
   // @ts-expect-error The container entrypoint is deployed as JavaScript.
 } from "../container/implementation-runtime.mjs";
 const git = (cwd: string, ...args: string[]) =>
@@ -177,4 +178,19 @@ test("trusted output reads refuse symlink and cross-directory targets", async ()
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("latest result replaces the same command in the same folder and keeps other folders", () => {
+  const subject = { treeSha: "tree", testedBaseSha: "base" };
+  const check = { command: "npm test", cwd: "/repo", exitCode: 1 };
+  let checks = recordCheck([], check, subject);
+  checks = recordCheck(checks, { ...check, cwd: "/repo/portal", exitCode: 0 }, subject);
+  checks = recordCheck(checks, { ...check, exitCode: 0 }, subject);
+  assert.equal(checks.length, 2);
+  assert.ok(checks.every((c: { exitCode: number }) => c.exitCode === 0));
+  checks = recordCheck(checks, check, subject);
+  assert.equal(currentChecks(checks, subject).filter((c: { exitCode: number }) => c.exitCode === 1).length, 1);
+  checks = recordCheck(checks, { ...check, exitCode: 0 }, { ...subject, treeSha: "fixed" });
+  assert.equal(currentChecks(checks, { ...subject, treeSha: "fixed" }).length, 1);
+  assert.equal(checks.find((c: { cwd: string }) => c.cwd === "/repo/portal").treeSha, "tree");
 });

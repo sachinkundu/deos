@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { setupImplementation } from "./implementation-runtime.mjs";
+import { runImplementationCompletion } from "./implementation-completion.mjs";
 import { checkAuthorSources } from "./grounded-review.mjs";
 import { provisionGrounding, verifyGroundingContext, verifyNativeGrounding } from "./grounded-agent.mjs";
 import { setupNativeReview } from "./native-review-setup.mjs";
 import { recordCaughtError } from "./original-errors.mjs";
 import { notifyAttemptCompletion } from "./attempt-completion.mjs";
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { finished } from "node:stream/promises";
 import { atomicJson, captureSupervisorStreams, recordHeartbeat } from "./supervisor-io.mjs";
@@ -36,7 +37,9 @@ let heartbeatTimer;
 let deadlineTimer;
 
 const finalizeMechanicalOutputs = async (job) => {
-  await writeFile(
+  // Implementation owns a matched candidate/patch snapshot. Never overwrite its
+  // verified patch with a later repository capture during mechanical cleanup.
+  if (!job.implementationKind) await writeFile(
     PATCH_PATH,
     await captureRepositoryPatch(job.cwd),
     { mode: 0o600 },
@@ -197,6 +200,7 @@ const main = async () => {
   }, Math.max(0, deadline - Date.now()));
   const run = async (childPrompt, resumeSessionId = null) => {
     if (Date.now() >= deadline) return { code: 124, signal: null };
+    if (resumeSessionId !== null) await rm(RESULT_PATH, { force: true });
     const result = await runChild({
       job,
       prompt: childPrompt,
@@ -220,6 +224,23 @@ const main = async () => {
     return job.grounding ? checkAuthorSources(check, options) : check;
   };
   let result = await run(prompt);
+  let implementationAccepted = false;
+  if (implementation) {
+    const sessionId = tracker.finish();
+    const completion = await runImplementationCompletion({
+      result, outcome: await resultOutcome(), sessionId, deadline,
+      feedbackRoot: "/deos/implementation/completion",
+      journal: "/deos/output/implementation-diagnostics.jsonl",
+      check: () => implementation.verify(),
+      resume: async ({ sessionId: exactSessionId, prompt: correctionPrompt }) => {
+        const resumed = await run(correctionPrompt, exactSessionId);
+        if (tracker.finish() !== sessionId) throw new Error("Implementation verification resumed a different session");
+        return { ...resumed, outcome: await resultOutcome() };
+      },
+    });
+    result = completion.result;
+    implementationAccepted = completion.accepted;
+  }
   const completionRounds = [];
   let completionOutcome = reviewer ? "not_applicable" : "not_run";
   let safeErrorCategory;
@@ -274,8 +295,6 @@ const main = async () => {
   }
   transcript.stream.end();
   validation.stream.end();
-  clearInterval(heartbeatTimer);
-  clearTimeout(deadlineTimer);
   await transcript.finalize(TRANSCRIPT_PATH);
   await validation.finalize(VALIDATION_PATH, false);
   if (planningAuthor) {
@@ -289,7 +308,13 @@ const main = async () => {
       { mode: 0o600 },
     );
   }
-  if (implementation) { try { await implementation.finish(); } finally { await implementation.close(); implementationRuntime=null; } }
+  if (implementation) {
+    // A finish error must reach the fatal diagnostic handler before cleanup.
+    // The outer finally still closes the runtime if finish or close fails.
+    if (!implementationAccepted) await implementation.finish();
+    await implementation.close();
+    implementationRuntime = null;
+  }
   await finalizeMechanicalOutputs(job);
   const timedOut = Date.now() >= deadline && result.code !== 0;
   await atomicJson(STATUS_PATH, {

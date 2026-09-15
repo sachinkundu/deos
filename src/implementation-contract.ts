@@ -197,6 +197,7 @@ export interface ImplementationCandidate extends ProofSubject {
   patchSha: string;
   checks: {
     command: string;
+    cwd?: string;
     exitCode: number;
     stdout: string;
     stderr: string;

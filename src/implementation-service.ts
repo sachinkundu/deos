@@ -8,6 +8,7 @@ import {
 import { LinearCapabilityAdapter } from "./linear-capability.ts";
 import { sha256Hex } from "./implementation-hash.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { verifyImplementationCandidate } from "./implementation-verification.ts";
 import { saveImplementationProgress } from "./implementation-progress.ts";
 import { readImplementationTaskProgress } from "./implementation-progress-reader.ts";
 import { ensureImplementationProgressWatcher } from "./implementation-progress-watcher.ts";
@@ -26,10 +27,8 @@ import {
   implementationBranch,
   proofRequirements,
   validateCandidate,
-  validateDocumentation,
   type ImplementationCandidate,
   type ProofRequirement,
-  type DocumentationAccess,
 } from "./implementation-contract.ts";
 import type {
   LoadedWorkflowDefinition,
@@ -417,49 +416,13 @@ export class ImplementationService {
         })
       ).content,
     ) as ImplementationCandidate;
-    if (
-      candidate.attemptId !== attempt.attempt_id ||
-      candidate.testedBaseSha !== work.tested_base_sha ||
-      candidate.approvedDesignSha !== work.approved_design_sha
-    )
-      throw new ImplementationError(
-        "candidate_identity",
-        "Implementation candidate has wrong attempt or approved base",
-      );
-    const input = await this.store.read<ImplementationInput>(
-      work.input_key,
-      work.input_sha,
-    );
-    const requirements = proofRequirements({
-      approvedText: input.approvedFiles.map((f) => f.content).join("\n"),
-      paths: candidate.files.map((f) => f.path),
-      policy: input.policy,
-      prior: JSON.parse(work.requirements_json) as ProofRequirement,
-    });
-    validateCandidate(
-      candidate,
-      {
-        change: work.change_id,
-        approvedDesignSha: work.approved_design_sha,
-        testedBaseSha: work.tested_base_sha,
-        treeSha: candidate.treeSha,
-      },
-      requirements,
-    );
-    const accesses = await this.env.DB.prepare(
-      "SELECT * FROM implementation_doc_access WHERE attempt_id=?",
-    )
-      .bind(attempt.attempt_id)
-      .all<DocumentationAccess>();
-    validateDocumentation(
-      candidate.sources,
-      accesses.results,
-      input.policy.documentationHosts,
-      candidate.files,
-    );
+    const input = await this.store.read<ImplementationInput>(work.input_key, work.input_sha);
     const patch = (
       await sandbox.readFile("/deos/output/patch.diff", { encoding: "utf8" })
     ).content;
+    const { requirements, accesses } = await verifyImplementationCandidate(
+      this.env.DB, work, input, attempt.attempt_id, candidate, patch,
+    );
     const diffSha = await sha256Hex(patch);
     await this.env.DB.prepare(
       `INSERT OR IGNORE INTO implementation_proof_requirements
@@ -479,30 +442,13 @@ export class ImplementationService {
     )
       .bind(JSON.stringify(requirements), run.run_id)
       .run();
-    for (const proof of candidate.proof) {
-      // Images and provider receipts are staged by the trusted broker, never accepted from agent claims.
-      const staged = await this.env.DB.prepare(
-        "SELECT sha256,tree_sha FROM implementation_proof WHERE proof_id=? AND run_id=? AND attempt_id=?",
-      )
-        .bind(proof.id, run.run_id, attempt.attempt_id)
-        .first<{ sha256: string; tree_sha: string }>();
-      if (
-        !staged ||
-        staged.sha256 !== proof.sha256 ||
-        staged.tree_sha !== candidate.treeSha
-      )
-        throw new ImplementationError(
-          "untrusted_proof",
-          `Proof was not captured by the trusted broker: ${proof.id}`,
-        );
-    }
     const sourceObject = await this.store.put(
       run.run_id,
       "documentation-sources.json",
       JSON.stringify(candidate.sources),
     );
     for (const source of candidate.sources) {
-      const access = accesses.results.find(
+      const access = accesses.find(
         (a) => a.url === source.url && a.content_returned === 1,
       )!;
       await this.env.DB.prepare(

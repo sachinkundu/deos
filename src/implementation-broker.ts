@@ -7,7 +7,9 @@ import {
   ImplementationError,
   type ProofSubject,
   type ImplementationProof,
+  type ImplementationCandidate,
 } from "./implementation-contract.ts";
+import { isRepairableVerificationError, verifyImplementationCandidate } from "./implementation-verification.ts";
 import {
   ImplementationBrowserAllocator,
   CloudflareBrowserProvider,
@@ -15,7 +17,7 @@ import {
   browserCommand,
 } from "./implementation-browser.ts";
 import type { CapabilityClaims } from "./capability-auth.ts";
-import { readResponseText, responseError } from "./error-details.ts";
+import { errorDetails, readResponseText, responseError } from "./error-details.ts";
 import { recordCaughtError } from "./error-context.ts";
 import { ImplementationProviderTest } from "./implementation-provider-test.ts";
 import { previewRelayHost, previewRelayProgram, previewRelaySandboxId } from "./implementation-preview.ts";
@@ -79,6 +81,25 @@ export class ImplementationBroker {
         attempt.sandbox_id,
         { normalizeId: true, keepAlive: true },
       );
+      if (request.action === "verify") {
+        // The author cannot supply a candidate or proof assertion to this gate.
+        const candidate = JSON.parse((await sandbox.readFile(
+          "/deos/output/implementation-candidate.json", { encoding: "utf8" },
+        )).content) as ImplementationCandidate;
+        const patch = (await sandbox.readFile("/deos/output/patch.diff", { encoding: "utf8" })).content;
+        if (candidate.treeSha !== subject.treeSha)
+          throw new ImplementationError("candidate_identity", "Verification subject differs from the captured candidate");
+        try {
+          await verifyImplementationCandidate(this.env.DB, work, input, claims.attemptId, candidate, patch);
+          return Response.json({ ready: true, subject });
+        } catch (error) {
+          if (!isRepairableVerificationError(error)) throw error;
+          const diagnostic = await this.store.put(claims.runId, "verification-feedback.json", this.sanitize(JSON.stringify({
+            attemptId: claims.attemptId, subject, occurredAt: new Date().toISOString(), error: errorDetails(error),
+          })));
+          return Response.json({ ready: false, code: error.code, message: this.sanitize(error.message), diagnostic, subject });
+        }
+      }
       if (request.action === "safe_test") {
         const result = await new ImplementationProviderTest(this.env).call(claims.runId, claims.attemptId, input.policy.safeAdapters, request);
         if ("providerDeliveryId" in result && "evidence" in result) {

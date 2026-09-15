@@ -1,0 +1,41 @@
+{
+  "observedAt": "2026-09-15T06:45:48.478906+00:00",
+  "run": [
+    {
+      "status": "failed",
+      "current_node": "implementation_failed",
+      "current_visit_sequence": 43,
+      "definition_id": "implementation",
+      "definition_version": 27,
+      "definition_digest": "ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c",
+      "workflow_instance_id": "wf-v1-cghsgyliqgxamwbycplagwgsfcvci7hakrwpgmwho5vmglrguo2q",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 1
+    }
+  ],
+  "attempt": {
+    "attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+    "node_id": "implementation_build",
+    "visit_sequence": 42,
+    "state": "interrupted",
+    "sandbox_id": "impl-v1-p4sefyfadjr6sqzjzi4r3v4ri555sahrbrh5lv2quex64qtkheva",
+    "process_id": "354b62e1-3073-4996-9286-be5f437b84dd",
+    "result_class": "heartbeat_expired",
+    "cleanup_state": "destroyed",
+    "created_at": "2026-09-15T06:06:17.449Z",
+    "ended_at": "2026-09-15T06:42:17.218Z"
+  },
+  "recoveredPatch": {
+    "sha256": "cdfaa685ebdf676271f2a26f6f8f0288953c054b6837176811325f735973b87f",
+    "treeSha": "564e38581a6084802684bb86c9074ea3e7c61359",
+    "changedPaths": 30,
+    "verification": "Applied to a private Git index and reproduced the exact saved tree"
+  },
+  "observations": {
+    "lastSavedHeartbeat": "2026-09-15T06:31:48.519Z",
+    "activeAtLastTranscript": "BettaView Vite build",
+    "buildProcessRssKiB": 737312,
+    "pythonFailure": "Sandbox Python 3.10 lacks datetime.UTC; repository requires >=3.11"
+  },
+  "limitation": "Heartbeat expiry cause is not established. No retry has been started by this repair."
+}

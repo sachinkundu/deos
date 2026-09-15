@@ -33,6 +33,8 @@
 
 - [x] 4.8 Repair canary runner faults: classify expected RPC heartbeat timeouts, preserve long command responses, release failed preview processes, report current-tree checks, and verify a new attempt resumes from saved work. Full canary proof remains required by 5.4.
 
+- [x] 4.9 Return repairable completion-check failures to the same live implementation session. Keep the original diagnostics, rerun stale checks and proof, and retain strict collection and human gates. Verify failed-test repair, stale evidence, working-directory identity and failure boundaries before activation.
+
 ## 5. Verification and canary
 
 - [x] 5.1 Verify migrations, frozen graph compatibility, job contracts, isolation, denial cases, resource ambiguity, cleanup, proof freshness, citations, publication retries, and human gate behavior.

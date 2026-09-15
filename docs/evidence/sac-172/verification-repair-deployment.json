@@ -1,0 +1,106 @@
+{
+  "observedAt": "2026-09-15T07:04:08.140671+00:00",
+  "deployments": {
+    "deos-queue-consumer-ts": {
+      "versions": [
+        {
+          "version_id": "d38a6614-07a2-46cb-8872-0af5190fa078",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-15T06:57:47.823999Z"
+    },
+    "deos-sample-project": {
+      "versions": [
+        {
+          "version_id": "7dcb3e04-2c21-4f8f-ab26-b389d4f8c175",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-14T12:29:19.555854Z"
+    },
+    "deos-workflow-portal-staging": {
+      "versions": [
+        {
+          "version_id": "0cd564c5-f900-4825-8c14-58ed565c01b6",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-15T05:35:16.178051Z"
+    }
+  },
+  "containers": [
+    {
+      "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:75b30bd96b76b119663c773ab1076869543f72ff81dd71ffc29cf493df236594",
+      "version": 7,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-implementationsandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:75b30bd96b76b119663c773ab1076869543f72ff81dd71ffc29cf493df236594",
+      "version": 7,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    }
+  ],
+  "run": [
+    {
+      "status": "failed",
+      "current_node": "implementation_failed",
+      "current_visit_sequence": 43,
+      "definition_id": "implementation",
+      "definition_version": 27,
+      "definition_digest": "ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c",
+      "workflow_instance_id": "wf-v1-cghsgyliqgxamwbycplagwgsfcvci7hakrwpgmwho5vmglrguo2q",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 1
+    }
+  ],
+  "activeAttempts": []
+}

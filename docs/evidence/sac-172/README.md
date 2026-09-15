@@ -219,3 +219,11 @@ The staging browser updated automatically to Workflow running, Author 50/50 comp
 
 
 The first real five-minute checkpoint ended at 06:11:51.501Z with the expected `WorkflowTimeoutError`. The new Workflow then completed its authority check and agent reconciliation at 06:11:54.304Z, entered the next wait, and remained running. D1 showed the same live process, a fresh heartbeat at 06:11:47.042Z and no new heartbeat-timeout error records. One earlier startup file-not-found diagnostic remains preserved. See [live checkpoint and D1 evidence](runtime-live-checkpoint.json).
+
+### Verification repair loop activated
+
+The same implementation session now receives repairable completion-check failures, fixes them and reruns verification before the attempt closes. The broker and final collection share one validator. The accepted candidate and patch remain paired, earlier diagnostic history remains intact, and the original deadline and human gates remain enforced. No workflow definition changed. See [executable repair evidence](verification-repair.md) and [container process proof](verification-repair-container.json).
+
+Backend `d38a6614-07a2-46cb-8872-0af5190fa078` is at 100 percent. Both implementation tiers completed version 7 with image `sha256:75b30bd96b76b119663c773ab1076869543f72ff81dd71ffc29cf493df236594`, four healthy instances each and no rollout errors. The final code passed 497 repository tests, type checking, generated bindings, strict OpenSpec validation, and a linux/amd64 container proof with two exact-session resumes and continuing heartbeats during verification. [Deployment read-back](verification-repair-deployment.json) and [source digests](verification-repair-sources.json) record the final activation. No portal, BettaView or ingress deployment was performed.
+
+SAC-182 try 7 had already been interrupted for an expired heartbeat before this repair was activated. The last transcript showed a BettaView Vite build; the heartbeat-loss cause is not established. Python tests also exposed the sandbox Python 3.10 versus repository >=3.11 mismatch. The exact latest saved patch was recovered and verified. [Canary state and recovery](verification-repair-canary.json) supersede the prior running status above. No new try or human transition was started by this repair. Full changed-application proof and the implementation PR remain pending.
