@@ -160,7 +160,8 @@ export class ClaudeRunner {
     const saved = await store.receipt(turn);
     if (saved) return response({ receipt: saved });
     const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: true, tier: await this.tier(attempt) });
-    if ((await sandbox.exists("/deos/claude/failure.json")).exists) {
+    const checkFailure = async () => {
+      if (!(await sandbox.exists("/deos/claude/failure.json")).exists) return;
       const failure = record(JSON.parse((await sandbox.readFile("/deos/claude/failure.json")).content));
       const stage = ["configuration", "client_start", "provider_turn", "receipt_validation", "receipt_write"].includes(String(failure.diagnosticStage))
         ? failure.diagnosticStage : "unknown";
@@ -178,20 +179,29 @@ export class ClaudeRunner {
         ? failure.cause as "auth_failure" | "plan_limit" : "review_failure",
         typeof failure.retryNotBefore === "string" && Number.isFinite(Date.parse(failure.retryNotBefore)) ? failure.retryNotBefore : null,
         { cause: diagnostic.originalError }), { diagnostic });
-    }
+    };
+    await checkFailure();
     const path = `/deos/claude/result-${turn.ordinal}.json`;
     if (!(await sandbox.exists(path)).exists) {
       const process = invocation.process_id ? await sandbox.getProcess(invocation.process_id) : null;
-      if (!process || (await process.status()).state !== "running") {
-        const output = process ? await process.output({ encoding: "utf8" }) : null;
-        // A failed failure.json write leaves the complete, redacted error on stderr.
-        // Collect that fallback before the invocation can be cleaned up.
-        throw Object.assign(new ClaudeReviewError("review_failure"), { diagnostic: {
-          providerMessage: output?.stderr || "Claude runner stopped without a result or failure file",
-          processId: invocation.process_id, output,
-        } });
+      const processStatus = process ? await process.status() : null;
+      if (!process || processStatus?.state !== "running") {
+        // The runner can atomically publish its final file between our first
+        // existence checks and this exit observation. Read those files again
+        // before cleanup, or we can discard the original failure/valid receipt.
+        await checkFailure();
+        if (!(await sandbox.exists(path)).exists) {
+          const output = process ? await process.output({ encoding: "utf8" }) : null;
+          // A failed failure.json write leaves the complete, redacted error on stderr.
+          // Collect that fallback before the invocation can be cleaned up.
+          throw Object.assign(new ClaudeReviewError("review_failure"), { diagnostic: {
+            providerMessage: output?.stderr || "Claude runner stopped without a result or failure file",
+            processId: invocation.process_id, processStatus, output,
+          } });
+        }
+      } else {
+        return response({ state: "running" }, 202);
       }
-      return response({ state: "running" }, 202);
     }
     const content = (await sandbox.readFile(path)).content;
     if (this.dependencies.token && content.includes(this.dependencies.token)) throw new ClaudeReviewError("review_failure");

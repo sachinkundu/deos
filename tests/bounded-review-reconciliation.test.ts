@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { BoundedReviewReconciliationController } from '../src/bounded-review-reconciliation.ts';
 import { D1AgentStageRetryStore } from '../src/stage-retry.ts';
 import { D1BoundedReviewStore } from '../src/bounded-review-store.ts';
@@ -21,7 +22,11 @@ async function fixture() {
       VALUES ('run-1','delivery','run-1','established','now','now');
     INSERT INTO workflow_transitions_v2
       (transition_id,run_id,from_node,to_node,from_visit_sequence,to_visit_sequence,cause_type,cause_reference,occurred_at)
-      VALUES ('failure','run-1','design_author','review_reconciliation',1,2,'agent','agent:design_author:manual_reconciliation_required','now');`);
+      VALUES ('failure','run-1','design_author','review_reconciliation',1,2,'agent','agent:design_author:manual_reconciliation_required','now');
+    INSERT INTO workflow_waits (wait_id,run_id,node_id,visit_sequence,status,resume_event_type,resume_event_json,
+      resume_event_digest,cancel_event_type,cancel_event_json,cancel_event_digest,cause_reference,created_at)
+      VALUES ('old-wait','run-1','review_reconciliation',2,'awaiting','resume','{}','resume-hash',
+        'cancel','{}','cancel-hash','agent:design_author:manual_reconciliation_required','now');`);
   const job = JSON.stringify({ materializedContext: '{}', model: 'model', boundedReview: 'deos-bounded-review-v1',
     nativeSelfReview: { schema: 'deos-bounded-review-v1' } });
   db.sqlite.prepare(`UPDATE agent_attempts SET job_spec_json=?,job_spec_digest=?,node_id='design_author',state='failed',
@@ -87,6 +92,23 @@ test('audited transcript restoration retains the failed recheck and resumes only
     assert.equal(f.db.sqlite.prepare("SELECT from_node FROM workflow_transitions_v2 WHERE transition_id=?").get(retry.transition_id)!.from_node, 'review_reconciliation');
     assert.equal((await f.retry.prepare(f.retryInput)).retry_id, retry.retry_id);
     assert.equal(f.db.sqlite.prepare('SELECT count(*) n FROM agent_attempts').get()!.n, 1);
+    assert.deepEqual({ ...f.db.sqlite.prepare('SELECT status,consumed_at,consumed_delivery_id FROM workflow_waits').get() },
+      { status: 'consumed', consumed_at: f.retryInput.now, consumed_delivery_id: null });
+    // Simulate the old deployment leaving its wait open. The migration derives
+    // closure from the recorded retry without inventing a provider delivery.
+    f.db.sqlite.exec("UPDATE workflow_waits SET status='awaiting',consumed_at=NULL");
+    const migration = readFileSync('migrations/0048_close_recovered_workflow_waits.sql', 'utf8');
+    f.db.sqlite.exec(migration);
+    assert.deepEqual({ ...f.db.sqlite.prepare('SELECT status,consumed_at,consumed_delivery_id FROM workflow_waits').get() },
+      { status: 'consumed', consumed_at: f.retryInput.now, consumed_delivery_id: null });
+    f.db.sqlite.exec(`INSERT INTO workflow_waits (wait_id,run_id,node_id,visit_sequence,status,resume_event_type,resume_event_json,
+      resume_event_digest,cancel_event_type,cancel_event_json,cancel_event_digest,cause_reference,created_at)
+      SELECT 'new-wait',run_id,node_id,4,'awaiting',resume_event_type,resume_event_json,resume_event_digest,
+        cancel_event_type,cancel_event_json,cancel_event_digest,'another-failure','later' FROM workflow_waits WHERE wait_id='old-wait'`);
+    f.db.sqlite.exec(migration);
+    assert.equal(f.db.sqlite.prepare("SELECT status FROM workflow_waits WHERE wait_id='new-wait'").get()!.status, 'awaiting');
+    assert.equal(f.db.sqlite.prepare("SELECT cause_reference FROM workflow_waits WHERE wait_id='old-wait'").get()!.cause_reference,
+      'agent:design_author:manual_reconciliation_required');
   } finally { f.db.close(); }
 });
 

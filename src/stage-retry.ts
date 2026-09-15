@@ -563,8 +563,17 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
            AND run.workflow_instance_id = retry.target_workflow_instance_id`,
       ).bind(input.now, retryId),
     );
+    const waitIndex = statements.length;
+    statements.push(this.database.prepare(`UPDATE workflow_waits SET status='consumed', consumed_at=?
+      WHERE run_id=? AND visit_sequence=? AND status='awaiting'
+        AND EXISTS (SELECT 1 FROM workflow_transitions_v2 transition
+          WHERE transition.transition_id=? AND transition.run_id=workflow_waits.run_id
+            AND transition.from_node=workflow_waits.node_id
+            AND transition.from_visit_sequence=workflow_waits.visit_sequence
+            AND transition.cause_type='operator_retry')`)
+      .bind(input.now, input.runId, source.current_visit_sequence, transitionId));
     const results = await this.database.batch(statements);
-    if (results.some((result) => changes(result) !== 1)) {
+    if (results.some((result, index) => index === waitIndex ? changes(result) > 1 : changes(result) !== 1)) {
       const raced = await this.find(input.failedAttemptId);
       if (raced !== null && raced.run_id === input.runId && raced.retry_node === input.retryNode &&
           (input.sandboxTier === undefined || raced.target_sandbox_tier === input.sandboxTier)) {
