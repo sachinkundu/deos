@@ -1,0 +1,66 @@
+{
+  "run": [
+    {
+      "status": "active",
+      "current_node": "implementation_build",
+      "current_visit_sequence": 51,
+      "definition_id": "implementation",
+      "definition_version": 27,
+      "definition_digest": "ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c",
+      "workflow_instance_id": "wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 1,
+      "sandbox_tier": "basic"
+    }
+  ],
+  "attempt": [
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "node_id": "implementation_build",
+      "visit_sequence": 51,
+      "state": "running",
+      "sandbox_id": "impl-v1-dv5tocnjwsy2jfnymdev4nep3kn4acgbhrf3hkfd3wkcf6lu7bwq",
+      "sandbox_tier": "standard-2",
+      "heartbeat_at": "2026-09-15T09:29:24.864Z",
+      "process_id": "3a5f1042-5895-456e-90c9-2610ae550cb3",
+      "result_class": null,
+      "cleanup_state": "pending",
+      "created_at": "2026-09-15T09:29:07.943Z",
+      "ended_at": null
+    }
+  ],
+  "try": [
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "try_sequence": 10,
+      "kind": "build",
+      "status": "running",
+      "input_patch_sha": "8a6ff3e0c147a0558a72723d084ac063251d0934935af4632921a9097ab77896",
+      "output_patch_sha": null,
+      "public_error_code": null,
+      "updated_at": "2026-09-15T09:29:21.304Z"
+    }
+  ],
+  "feedbackReadback": {
+    "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+    "visit_sequence": 51,
+    "state": "running",
+    "sandbox_tier": "standard-2",
+    "heartbeat_at": "2026-09-15T09:29:24.864Z",
+    "input_patch_sha": "8a6ff3e0c147a0558a72723d084ac063251d0934935af4632921a9097ab77896",
+    "review_feedback": {
+      "trust": "untrusted provider data",
+      "reviews": [],
+      "inlineComments": [],
+      "discussionComments": [
+        {
+          "id": 5677258210,
+          "html_url": "https://github.com/sachinkundu/deos/pull/137#issuecomment-5677258210",
+          "created_at": "2026-09-15T08:37:43Z",
+          "body": "Two acceptance gaps remain:\n\n* The settings screenshot shows an authentication error.\n* The provider demo substitutes a stub for the real continuation service."
+        }
+      ]
+    }
+  },
+  "limits": "Captured real PR feedback and running recovery; final verification and canary acceptance remain open."
+}

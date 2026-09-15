@@ -37,7 +37,7 @@
 
 - [x] 4.10 Keep the assigned browser alive during active implementation, avoid competing with a connected browser command, preserve original maintenance failures, and reject failed HTTP documents as working-screen proof. Verify run isolation, inactive cleanup, real navigation status, and error-page rejection before activation. Repeat live proof in the next canary revision.
 
-- [x] 4.11 Include ordinary PR discussion comments in revision input alongside reviews and inline threads. Preserve full paginated provider data and read failures. Verify the actual canary comment with the patched loader; deployment and fresh-attempt pickup remain pending while the current attempt runs.
+- [x] 4.11 Include ordinary PR discussion comments in revision input alongside reviews and inline threads. Preserve full paginated provider data and read failures. Verify the actual canary comment with the patched loader, then confirm deployed application read-back in the fresh attempt's saved context.
 
 - [x] 4.12 Bound verification reads to 20 seconds and recover specific transport failures with at most three reads within the original attempt deadline. Keep provider actions and server rejections out of this retry path. Preserve each original error and verify a dropped response, same-session repairs, continuing heartbeats and a single completion signal in the built container.
 

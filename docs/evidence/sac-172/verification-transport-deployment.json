@@ -1,0 +1,101 @@
+{
+  "sourceCommit": "26c0410",
+  "deployments": {
+    "deos-queue-consumer-ts": {
+      "versions": [
+        {
+          "version_id": "f5c50a51-f44f-4936-8b93-20c56ebf440e",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-15T09:21:19.000561Z"
+    },
+    "deos-sample-project": {
+      "versions": [
+        {
+          "version_id": "7dcb3e04-2c21-4f8f-ab26-b389d4f8c175",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-14T12:29:19.555854Z"
+    },
+    "deos-workflow-portal-staging": {
+      "versions": [
+        {
+          "version_id": "10c033eb-fcf6-4825-93b4-f8bff4e6292f",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-15T07:53:26.533814Z"
+    }
+  },
+  "containers": [
+    {
+      "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:8156a85e4c497fc55a23eb9a488cf61cbb4db0258e1b5c5019afae10256e2ebe",
+      "version": 9,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-implementationsandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:8156a85e4c497fc55a23eb9a488cf61cbb4db0258e1b5c5019afae10256e2ebe",
+      "version": 9,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 3,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 1
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    }
+  ],
+  "noActiveAttemptsBeforeDeploy": [],
+  "validation": {
+    "repositoryTests": 511,
+    "typecheck": "passed",
+    "generatedBindings": "passed",
+    "strictOpenSpec": "passed",
+    "localDeployedImageProof": "passed"
+  },
+  "liveLimit": "The deployed app now reads real PR discussion feedback; the new attempt has not completed its live verification or full changed-application E2E."
+}
