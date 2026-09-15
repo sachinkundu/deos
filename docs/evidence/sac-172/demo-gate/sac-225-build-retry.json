@@ -1,0 +1,32 @@
+{
+  "retry": {
+    "retry_id": "stage-retry:01a0a676-47aa-7434-a609-654bcd7a8be7",
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1",
+    "failed_attempt_id": "01a0a676-47aa-7434-a609-654bcd7a8be7",
+    "retry_node": "implementation_build",
+    "from_visit_sequence": 30,
+    "to_visit_sequence": 31,
+    "transition_id": "transition:stage-retry:01a0a676-47aa-7434-a609-654bcd7a8be7",
+    "state": "established",
+    "workflow_status": "queued",
+    "safe_error_category": null,
+    "requested_by": "sachin",
+    "created_at": "2026-09-15T20:27:52.929Z",
+    "updated_at": "2026-09-15T20:27:55.318Z",
+    "established_at": "2026-09-15T20:27:55.318Z",
+    "retry_kind": "same_definition",
+    "source_definition_id": "implementation",
+    "source_definition_version": 30,
+    "source_definition_digest": "29ff6356607fc69cd175a24631d3797d8b088ed22524afefd610dca06830db15",
+    "target_definition_id": "implementation",
+    "target_definition_version": 30,
+    "target_definition_digest": "29ff6356607fc69cd175a24631d3797d8b088ed22524afefd610dca06830db15",
+    "source_workflow_instance_id": "wf-v1-khqxu5oujf4hs2nrdne7ions3cxsroqwuym6daiovuaiptkimqeq",
+    "target_workflow_instance_id": "wf-v1-tu2aqcsrzp6avukewpelm4gmgoapmecjxdnx2qy3lfi3dzut3toa",
+    "source_delivery_id": "102c1930-b094-4362-9791-977d544bcaff",
+    "entry_node": null,
+    "source_sandbox_tier": "basic",
+    "target_sandbox_tier": "basic",
+    "workflow_instance_id": "wf-v1-tu2aqcsrzp6avukewpelm4gmgoapmecjxdnx2qy3lfi3dzut3toa"
+  }
+}

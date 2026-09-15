@@ -53,5 +53,22 @@ Downloaded failure artifacts were SHA-256 checked against D1:
 | Recovery manifest | `e0351564110d1fa1330006a75a66a1678ec2f7f64a3dc7a9f9d6085175d7ba60` |
 | Recovery patch | `368befe4f575df1cad6c53d95d4dd066fb54b1a63c3c1dc224ba14c6d400b3cb` |
 
-Deployment and real canary recovery remain pending. The calculator has not
-passed its demo gate and no implementation PR has been created.
+Commit `a3730d9` deployed as Worker `610c3edd-a023-4ec6-b0df-82e329cb5bfc`
+at 100 percent. All four container pools completed rollout to image
+`sha256:88f935668ca4ab24c04b107f09e3d82c71c0fb96c209812fcc78465a06d6bb17`
+with four healthy instances each and no errors. The same registry image passed
+the capacity-failure process test. The staging portal version stayed unchanged.
+See [Showboat checks](sac-225-recovery-checks.md) and
+[deployment read-back](sac-225-recovery-activation.json).
+
+The same-definition retry was established at 20:27:55 UTC after a global D1
+check showed no active attempts. New author attempt
+`01a0a6c1-449e-707f-b384-6b11ee59e5df` is running at visit 31 in
+`wf-v1-tu2aqcsrzp6avukewpelm4gmgoapmecjxdnx2qy3lfi3dzut3toa`.
+Its input patch SHA matches the saved recovery patch above. The first new
+progress observation at 20:28:26 UTC retained 24 of 25 completed tasks and the
+same task-file SHA. The approved design, demo plan, definition v30, and final
+human gate were preserved. [Retry receipt](sac-225-build-retry.json).
+
+Real preview recovery and demo-gate acceptance remain pending. The calculator
+has no implementation PR yet.
