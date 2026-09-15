@@ -32,3 +32,22 @@ Local checks: 533 backend tests passed, including source rejection, interrupted
 capture, audit replay, stale-run rejection, and same-definition retry. Backend
 types and generated Worker bindings passed. These are local checks. Live
 recovery and calculator demo acceptance are separate proof obligations.
+
+The resumed author accepted its recheck and exited at 15:55 UTC. It omitted
+`design-dispositions.json`, so normal collection failed after storing some
+outputs. Failure collection then reused those object keys. D1 rejects that
+collision because each artifact key belongs to one manifest.
+
+Failure collection now uses its own versioned prefix and manifest. Existing
+normal and partial failure receipts remain intact. Recovery also recognizes
+an accepted recheck as output finalization; it grants no further review or
+semantic repair. A real SQLite regression covers partial normal collection,
+failure capture, preservation of prior receipts, and replay.
+
+At 16:09 UTC, the read-only Sandbox process API confirmed that the supervisor
+had exited with code 0. The live reader saved the final transcript and review
+journal. The production verifier accepted that journal with the original
+audited continuation: both findings are fixed, no finding remains open, and
+the checked candidate digest is unchanged. All 534 backend tests, TypeScript,
+and generated binding checks pass for the collection fix. Deployment and
+successful workflow recovery still need separate read-back evidence.
