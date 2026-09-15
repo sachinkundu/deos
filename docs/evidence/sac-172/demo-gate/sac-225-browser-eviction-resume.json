@@ -1,0 +1,84 @@
+{
+  "capturedAt": "2026-09-15T22:04:00Z",
+  "run": {
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1",
+    "status": "active",
+    "current_node": "implementation_demo_plan",
+    "current_visit_sequence": 34,
+    "definition_id": "implementation",
+    "definition_version": 30,
+    "definition_digest": "29ff6356607fc69cd175a24631d3797d8b088ed22524afefd610dca06830db15",
+    "workflow_instance_id": "wf-v1-tu2aqcsrzp6avukewpelm4gmgoapmecjxdnx2qy3lfi3dzut3toa",
+    "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+    "human_binding_revision": 3,
+    "sandbox_tier": "basic",
+    "created_at": "2026-09-15T14:28:14.323Z",
+    "updated_at": "2026-09-15T22:03:07.465Z"
+  },
+  "attempt": {
+    "attempt_id": "01a0a718-6bea-70d3-bf83-14f5bfd49e05",
+    "node_id": "implementation_demo_plan",
+    "visit_sequence": 34,
+    "state": "running",
+    "sandbox_id": "sbx-v1-y2xcrbcw75djx5cvdj6huaep7phuacgvrwlrrerww4ua6nzjcrca",
+    "sandbox_tier": "basic",
+    "heartbeat_at": "2026-09-15T22:03:20.505Z",
+    "process_id": "31634094-fda6-40fd-99db-b804c25977a7",
+    "result_class": null,
+    "cleanup_state": "pending",
+    "created_at": "2026-09-15T22:03:10.698Z",
+    "ended_at": null
+  },
+  "replyCommentId": "0ca1f424-60ee-4882-8b9c-9c08760d7f82",
+  "providerDelivery": {
+    "delivery_id": "4b2fdc7e-9d40-4cb2-9089-4b6281123575",
+    "event_kind": "Comment.create",
+    "actor_type": "user",
+    "actor_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+    "from_state_name": null,
+    "to_state_name": "Human Review",
+    "state": "processed",
+    "provider_time": "2026-09-15T22:02:33.570Z",
+    "processed_at": "2026-09-15T22:03:07.570Z"
+  },
+  "savedCandidate": {
+    "treeSha": "8eb184220d08673abb7564089d72420f2dd54eb5",
+    "patchSha": "4186436ba4ee6d86b2e2d2d6c1a2e8c5cd52325344881868943a45c32c37ccec",
+    "outcome": "needs_human",
+    "checks": [
+      {
+        "command": "'npm' 'run' 'test:browser'",
+        "exitCode": 0,
+        "treeSha": "8eb184220d08673abb7564089d72420f2dd54eb5",
+        "testedBaseSha": "a1dcf3d18e0d20e483e507079a1e1fbe8b490686"
+      },
+      {
+        "command": "'npm' 'run' 'test:evidence'",
+        "exitCode": 0,
+        "treeSha": "8eb184220d08673abb7564089d72420f2dd54eb5",
+        "testedBaseSha": "a1dcf3d18e0d20e483e507079a1e1fbe8b490686"
+      },
+      {
+        "command": "'npm' 'run' 'build'",
+        "exitCode": 0,
+        "treeSha": "8eb184220d08673abb7564089d72420f2dd54eb5",
+        "testedBaseSha": "a1dcf3d18e0d20e483e507079a1e1fbe8b490686"
+      },
+      {
+        "command": "'npm' 'run' 'test:unit'",
+        "exitCode": 0,
+        "treeSha": "8eb184220d08673abb7564089d72420f2dd54eb5",
+        "testedBaseSha": "a1dcf3d18e0d20e483e507079a1e1fbe8b490686"
+      },
+      {
+        "command": "'node' 'scripts/demo-local-workerd.mjs'",
+        "exitCode": 0,
+        "treeSha": "8eb184220d08673abb7564089d72420f2dd54eb5",
+        "testedBaseSha": "a1dcf3d18e0d20e483e507079a1e1fbe8b490686"
+      }
+    ],
+    "proofKinds": [
+      "showboat"
+    ]
+  }
+}
