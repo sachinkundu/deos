@@ -31,7 +31,7 @@ async function fixture() {
     let source = await readFile('container/bounded-self-review.mjs', 'utf8');
     source = source.replaceAll('/deos/native-review', stateRoot).replaceAll('/deos/output', output)
         .replaceAll('/root/.codex/sessions/', sessions + '/');
-    for (const file of ['original-errors.mjs', 'trace-review-proof.mjs', 'bounded-review.mjs']) {
+    for (const file of ['original-errors.mjs', 'trace-review-proof.mjs', 'bounded-review.mjs', 'supervisor-io.mjs']) {
         source = source.replaceAll(`'./${file}'`, JSON.stringify(pathToFileURL(resolve('container', file)).href));
     }
     source = source.replaceAll("'./author-completion.mjs'", "'./check.mjs'")

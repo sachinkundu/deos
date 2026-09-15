@@ -277,11 +277,13 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
        JOIN dispatch_intents AS intent
          ON intent.run_id = run.run_id AND intent.workflow_instance_id = run.workflow_instance_id
        WHERE run.run_id = ? AND attempt.attempt_id = ?
-         AND run.status = 'failed'
-         AND ((run.current_node = 'agent_failed' AND run.terminal_cause = 'agent_execution_failed')
+         AND ((run.status = 'failed' AND ((run.current_node = 'agent_failed' AND run.terminal_cause = 'agent_execution_failed')
            OR (run.definition_id = 'implementation' AND run.current_node = 'implementation_failed'
              AND run.terminal_cause = 'implementation_failed'
-             AND attempt.node_id IN ('implementation_tasks','implementation_build','implementation_demo_plan','implementation_demo_gate')))
+             AND attempt.node_id IN ('implementation_tasks','implementation_build','implementation_demo_plan','implementation_demo_gate'))))
+           OR (run.status='manual_reconciliation_required' AND run.current_node='review_reconciliation'
+             AND EXISTS (SELECT 1 FROM bounded_review_recoveries recovery WHERE recovery.attempt_id=attempt.attempt_id
+               AND recovery.eligible=1 AND json_extract(recovery.recovery_json,'$.reconciliation.kind')='operator_transcript_restore')))
          AND attempt.visit_sequence = run.current_visit_sequence - 1
          AND EXISTS (
            SELECT 1 FROM workflow_transitions_v2 AS failed_exit
@@ -290,7 +292,8 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
              AND failed_exit.to_node = run.current_node
              AND failed_exit.from_visit_sequence = attempt.visit_sequence
              AND failed_exit.to_visit_sequence = run.current_visit_sequence
-             AND failed_exit.cause_reference = 'agent:' || attempt.node_id || ':failed'
+             AND failed_exit.cause_reference = 'agent:' || attempt.node_id ||
+               CASE WHEN run.current_node='review_reconciliation' THEN ':manual_reconciliation_required' ELSE ':failed' END
          )`,
     ).bind(
       targetDefinition.name,
@@ -427,11 +430,14 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
          ON intent.run_id = run.run_id AND intent.workflow_instance_id = run.workflow_instance_id
        WHERE run.run_id = ? AND run.definition_id = ? AND run.definition_version = ?
          AND run.definition_digest = ? AND run.workflow_instance_id = ?
-         AND run.current_visit_sequence = ? AND run.status = 'failed'
-         AND ((run.current_node = 'agent_failed' AND run.terminal_cause = 'agent_execution_failed')
+         AND run.current_visit_sequence = ?
+         AND ((run.status = 'failed' AND ((run.current_node = 'agent_failed' AND run.terminal_cause = 'agent_execution_failed')
            OR (run.definition_id = 'implementation' AND run.current_node = 'implementation_failed'
              AND run.terminal_cause = 'implementation_failed'
-             AND attempt.node_id IN ('implementation_tasks','implementation_build','implementation_demo_plan','implementation_demo_gate')))
+             AND attempt.node_id IN ('implementation_tasks','implementation_build','implementation_demo_plan','implementation_demo_gate'))))
+           OR (run.status='manual_reconciliation_required' AND run.current_node='review_reconciliation'
+             AND EXISTS (SELECT 1 FROM bounded_review_recoveries recovery WHERE recovery.attempt_id=attempt.attempt_id
+               AND recovery.eligible=1 AND json_extract(recovery.recovery_json,'$.reconciliation.kind')='operator_transcript_restore')))
          AND attempt.attempt_id = ? AND attempt.node_id = ?
          AND attempt.visit_sequence = run.current_visit_sequence - 1
          AND attempt.state IN ('failed', 'interrupted', 'absolute_timeout')
@@ -452,7 +458,8 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
              AND failed_exit.to_node = run.current_node
              AND failed_exit.from_visit_sequence = attempt.visit_sequence
              AND failed_exit.to_visit_sequence = run.current_visit_sequence
-             AND failed_exit.cause_reference = 'agent:' || attempt.node_id || ':failed'
+             AND failed_exit.cause_reference = 'agent:' || attempt.node_id ||
+               CASE WHEN run.current_node='review_reconciliation' THEN ':manual_reconciliation_required' ELSE ':failed' END
          )
          ${upgradeGuard}`,
     );
@@ -503,7 +510,8 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
              terminal_at = NULL, terminal_cause = NULL, updated_at = ?
          WHERE run_id = ? AND definition_id = ? AND definition_version = ?
            AND definition_digest = ? AND workflow_instance_id = ?
-           AND current_visit_sequence = ? AND current_node IN ('agent_failed','implementation_failed') AND status = 'failed'
+           AND current_visit_sequence = ? AND ((current_node IN ('agent_failed','implementation_failed') AND status = 'failed')
+             OR (current_node='review_reconciliation' AND status='manual_reconciliation_required'))
            AND EXISTS (SELECT 1 FROM agent_stage_retries WHERE retry_id = ?)`,
       ).bind(
         plan.targetDefinitionId,

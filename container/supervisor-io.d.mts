@@ -5,4 +5,5 @@ interface Capture {
   finalize(destination: string, replace?: boolean): Promise<void>;
 }
 export function captureSupervisorStreams(tempRoot?: string): Promise<{ transcript: Capture; validation: Capture }>;
+export function preserveInterruptedTranscript(tempRoot?: string, outputRoot?: string): Promise<void>;
 export function recordHeartbeat(write: () => Promise<void>, recordError?: (error: unknown, location: string) => void): Promise<void>;

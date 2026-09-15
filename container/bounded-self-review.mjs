@@ -6,6 +6,7 @@ import path from 'node:path';
 import { runAuthorCompletionCheck, runDesignCompletionCheck } from './author-completion.mjs';
 import { parseCodexFinalMessage } from './trace-review-proof.mjs';
 import { createReviewCycle, reduceReviewCycle, REVIEW_SCHEMA } from './bounded-review.mjs';
+import { preserveInterruptedTranscript } from './supervisor-io.mjs';
 const ROOT = '/deos/native-review';
 const OUTPUT = '/deos/output';
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -91,7 +92,7 @@ const prepareChild = async (state, slot) => {
         findings: slot === 'recheck' ? state.cycle.findings : undefined,
         instructions: slot === 'discovery'
             ? 'Read the pinned skills and review the complete checked candidate against the supplied context. Use native web search for current outside facts. Return a summary and findings with stable id, summary, and location. Return sources and searchDisposition. Cite each used source URL in its finding summary or the overall summary. Use the finding ID or summary as claimLocator. Do not write files.'
-            : 'Read the pinned skills and rate each original finding exactly once as fixed or open. Add no findings. Use native web search for current outside facts. Return ratings, claims, sources and searchDisposition. Cite each used source in claims keyed by original finding ID. Do not write files.',
+            : 'Read the pinned skills and rate each original finding exactly once as fixed or open. Add no findings. Use native web search for current outside facts. Return ratings, claims, sources and searchDisposition. Each source claimLocator must be an original finding ID, and claims[that ID] must include the full source URL, not a bracketed source ID or document description. Set sources_used whenever sources is nonempty, including sources carried from the supplied context. none_used and not_searched require sources: []. Do not write files.',
     };
     const file = `${ROOT}/${slot}-request.json`;
     await save(file, request);
@@ -266,6 +267,12 @@ export async function executeBoundedHook(event) {
 // Called after the parent process stops and before artifact collection/cleanup.
 // This records partial native bytes without accepting a result or granting a slot.
 export async function captureInterruptedBoundedReview() {
+    const results = await Promise.allSettled([preserveInterruptedTranscript(), captureInterruptedNativeChild()]);
+    const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1) throw new AggregateError(failures, 'Interrupted parent and child evidence capture failed');
+}
+async function captureInterruptedNativeChild() {
     const state = await load(`${ROOT}/state.json`);
     if (!state.activeChild || state.children.some(child => child.invocationId === state.activeChild))
         return;

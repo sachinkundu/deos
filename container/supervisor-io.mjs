@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { access, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, lstat, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { finished } from "node:stream/promises";
 import { recordCaughtError } from "./original-errors.mjs";
@@ -42,6 +42,25 @@ export const captureSupervisorStreams = async (tempRoot = "/tmp") => ({
   transcript: await trustedCapture("transcript.jsonl", tempRoot),
   validation: await trustedCapture("stderr.txt", tempRoot),
 });
+
+// The controller stops the process before failure collection. Its private
+// stream file may not yet have been finalized into the artifact directory.
+export const preserveInterruptedTranscript = async (tempRoot = "/tmp", outputRoot = "/deos/output") => {
+  const names = (await readdir(tempRoot)).filter(name => /^deos-transcript\.jsonl-[A-Za-z0-9]+$/.test(name));
+  const destination = join(outputRoot, "transcript.jsonl");
+  if (!names.length) {
+    await access(destination); // A completed supervisor already finalized it.
+    return;
+  }
+  if (names.length !== 1) throw new Error("Ambiguous interrupted supervisor transcript");
+  const root = join(tempRoot, names[0]);
+  const source = join(root, "transcript.jsonl");
+  if (!(await lstat(root)).isDirectory() || !(await lstat(source)).isFile())
+    throw new Error("Invalid interrupted supervisor transcript path");
+  const temporary = `${destination}.${randomUUID()}.tmp`;
+  await writeFile(temporary, await readFile(source), { mode: 0o600, flag: "wx" });
+  await rename(temporary, destination);
+};
 
 export const recordHeartbeat = (write, recordError = recordCaughtError) =>
   write().catch(error => recordError(error, "supervisor heartbeat"));

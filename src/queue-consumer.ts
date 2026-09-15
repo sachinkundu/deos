@@ -1,4 +1,5 @@
 import { reconcileImplementations } from "./implementation-reconciliation.ts";
+import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
 import { ImplementationBroker } from "./implementation-broker.ts";
 import { claudeRunner } from "./claude-environment.ts";
 import { AttemptCompletionNotifier } from "./attempt-completion.ts";
@@ -138,6 +139,14 @@ export default {
     if (path === "/cleanup-audit") return cleanupAuditor(env).handle(request);
     if (path === "/cleanup-attempts") return cleanupAuditor(env).handleDestroy(request);
     if (path === "/stage-retries") return (await stageRetryController(env)).handle(request);
+    if (path === '/bounded-review-reconciliations') {
+      if (!env.STAGE_RETRY_SECRET || request.headers.get('Authorization') !== `Bearer ${env.STAGE_RETRY_SECRET}`)
+        return Response.json({ error: 'invalid_operator_capability' }, { status: 401 });
+      const body = await request.clone().json() as { runId?: unknown };
+      if (typeof body?.runId !== 'string') return Response.json({ error: 'invalid_review_reconciliation' }, { status: 400 });
+      return captureWorkflowErrors(env.DB, env.ARTIFACTS, body.runId, path,
+        () => new BoundedReviewReconciliationController(env).handle(request));
+    }
     if (path === "/workflow-runtime-recoveries") {
       return workflowRuntimeRecoveryController(env).handle(request);
     }
