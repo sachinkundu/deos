@@ -63,8 +63,7 @@ export function ImplementationTaskMeter({ progress, active, error, runId, freshn
     <div className="task-progress-copy"><button type="button" className="task-progress-link" aria-haspopup="dialog"
       onClick={() => setOpen(true)}>{progress.completed} of {progress.total} tasks done</button><span>{remaining} remaining</span></div>
     <progress max={progress.total} value={progress.completed} aria-label="Author task checklist" />
-    <div className="task-progress-meta"><span>{stale ? "Progress update delayed" : progress.source === "saved" ? "Last saved checklist" : "Author checklist"}
-      {active && remaining === 0 ? " · Final checks still in progress" : ""}</span>
+    <div className="task-progress-meta"><span>{stale ? "Progress update delayed" : progress.source === "saved" ? "Last saved checklist" : "Author checklist"}</span>
       <time dateTime={progress.observedAt} title={new Date(progress.observedAt).toLocaleString()}>Updated {new Date(progress.observedAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</time>
     </div>
     {open && <ImplementationTasks key={runId} runId={runId} freshness={freshness} load={load} onClose={() => setOpen(false)} />}

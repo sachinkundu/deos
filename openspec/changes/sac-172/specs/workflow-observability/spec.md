@@ -2,7 +2,7 @@
 
 ### Requirement: Signal task progress in the Author node
 
-The implementation phase SHALL contain one Author node linked to Human Review. A compact meter SHALL show the author's checked tasks, total tasks, remaining tasks, and the last observed time. It SHALL keep the existing phase markers, status, and transcript controls. It MUST NOT add internal task or proof panels to the workflow map. Selecting the task counter SHALL open a read-only popup with OpenSpec sections, numbered tasks, and checked or unchecked states. Its counts and task text SHALL come from the same saved observation. The popup SHALL support keyboard dismissal and a narrow viewport.
+The implementation phase SHALL contain Author followed by Verification, linked to Human Review. A compact meter SHALL show the author's checked tasks, total tasks, remaining tasks, and the last observed time. It SHALL keep the existing phase markers, status, and transcript controls. It MUST NOT add internal task or proof panels to the workflow map. Selecting the task counter SHALL open a read-only popup with OpenSpec sections, numbered tasks, and checked or unchecked states. Its counts and task text SHALL come from the same saved observation. The popup SHALL support keyboard dismissal and a narrow viewport.
 
 #### Scenario: Person opens the task checklist
 
@@ -19,7 +19,12 @@ Checklist edits SHALL signal the current workflow through the attempt's scoped c
 #### Scenario: All tasks are checked but the run is active
 
 - **WHEN** the author marks all tasks complete while the workflow still has work to verify.
-- **THEN** the meter shows no remaining checklist tasks and says that final checks are still in progress. The human gate remains controlled by the workflow.
+- **THEN** Author shows its completed checklist and Verification becomes active, with a short explanation of final checks, end-to-end proof and PR preparation. The current-step label names Verification. Verification completes only at the durable review handoff. The human gate remains controlled by the workflow.
+
+#### Scenario: Work returns to Author
+
+- **WHEN** the current checklist reopens tasks or a new build starts after a review, clarification or retry.
+- **THEN** Author becomes active and Verification becomes upcoming until current work is ready to verify. An old full checklist or review cannot complete a new build. A failure or clarification wait pauses the unfinished step instead of showing it complete.
 
 #### Scenario: Progress cannot be refreshed
 
@@ -28,7 +33,7 @@ Checklist edits SHALL signal the current workflow through the attempt's scoped c
 
 ### Requirement: Show implementation progress and proof
 
-The portal SHALL show implementation progress through the Author node and link the final pull request from Human Review. The pull request and its linked evidence SHALL retain the checked design base, build tries, task state, branch, checks, and proof. Each proof item SHALL be marked as an image, a Showboat log, a real host event, or a fake event. Unit tests MUST NOT be the sole proof of how the app acts.
+The portal SHALL show implementation progress through Author and Verification and link the final pull request from Human Review. The pull request and its linked evidence SHALL retain the checked design base, build tries, task state, branch, checks, and proof. Each proof item SHALL be marked as an image, a Showboat log, a real host event, or a fake event. Unit tests MUST NOT be the sole proof of how the app acts.
 
 The linked evidence SHALL show which change and approved base each proof item covers. Old proof SHALL stay in the past. It MUST NOT look like proof for new work. The workflow SHALL keep the final gate blocked while any needed proof is stale.
 

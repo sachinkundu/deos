@@ -1,5 +1,6 @@
 import { createLiveUpdatePreference, noticeText, reportClientError } from "./live-updates.ts";
 import { useImplementation, ImplementationTaskMeter } from "./Implementation.tsx";
+import { implementationSteps, implementationVerificationVisit } from "./implementation-steps.ts";
 import { BoundedReview } from "./BoundedReview.tsx";
 import type { SandboxStartupFailure } from "./sandbox-failures.ts";
 import { TierTrial } from "./TierTrial.tsx";
@@ -258,9 +259,9 @@ const workflowStepLabel = (nodeId: string): string => ({
   implementation_tasks: "Implementation author",
   implementation_rebase_tasks: "Implementation author",
   implementation_build: "Implementation author",
-  implementation_proof_check: "Implementation author",
-  implementation_branch_write: "Implementation author",
-  implementation_publish: "Implementation author",
+  implementation_proof_check: "Implementation verification",
+  implementation_branch_write: "Implementation verification",
+  implementation_publish: "Implementation verification",
   implementation_review: "Review implementation",
   implementation_clarification_wait: "Answer implementation question",
   implementation_merge_recheck: "Recheck before merge",
@@ -303,11 +304,13 @@ const latestVisitFor = (visits: Visit[], predicate: (visit: Visit) => boolean): 
 
 function TraceabilityWorkflowMap({
   projection,
+  implementation,
   selectedVisit,
   onSelectVisit,
   onOpenTranscript,
 }: {
   projection: Projection;
+  implementation: ReturnType<typeof useImplementation>;
   selectedVisit: number | null;
   onSelectVisit: (sequence: number) => void;
   onOpenTranscript: (attemptId: string) => void;
@@ -319,7 +322,7 @@ function TraceabilityWorkflowMap({
   const [reviewPaths, setReviewPaths] = useState<Array<{ kind: string; path: string }>>([]);
   const phases = useMemo(() => workflowPhases(projection.history, projection.stages), [projection.history, projection.stages]);
   const hasImplementation = phases.some(phase => phase.id === "implementation");
-  const implementation = useImplementation(projection.run.id, projection.run.freshness, hasImplementation, api);
+  const implementationState = implementationSteps(projection.history, projection.run.status, implementation.data?.progress);
   useEffect(() => {
     const map = flowMap.current;
     if (!map) return;
@@ -361,7 +364,7 @@ function TraceabilityWorkflowMap({
       : stopped && failedPhaseId === "design" && failedLeafVisit !== null
         ? designSubstepForNode(failedLeafVisit.nodeId)
         : stopped && failedPhaseId === "implementation" && failedLeafVisit !== null
-          ? "implementation_author" : null);
+          ? implementationState.current : null);
     if (stopped && failedLeafVisit !== null) onSelectVisit(failedLeafVisit.sequence);
     setHistoryOpen(false);
   }, [projection.run.id, projection.run.status, failedPhaseId, failedLeafVisit?.nodeId, onSelectVisit]);
@@ -374,7 +377,7 @@ function TraceabilityWorkflowMap({
     setExpandedSubstep(next === "planning" ? planningSubstepForNode(latest?.nodeId ?? "planning_author")
       : next === "approval" ? (latest?.gate?.gate_kind === "design" ? "design_review" : "planning_review")
         : next === "design" ? designSubstepForNode(latest?.nodeId ?? "design_author")
-          : next === "implementation" ? "implementation_author" : null);
+          : next === "implementation" ? implementationState.current : null);
     if (latest !== undefined) onSelectVisit(latest.sequence);
   };
 
@@ -424,7 +427,8 @@ function TraceabilityWorkflowMap({
     setExpandedSubstep(phaseId === "approval"
       ? (visit.gate?.gate_kind === "design" ? "design_review" : "planning_review")
       : phaseId === "design" ? designSubstepForNode(visit.nodeId)
-        : phaseId === "implementation" ? "implementation_author" : null);
+        : phaseId === "implementation" ? implementationVerificationVisit(visit.nodeId)
+          ? "implementation_verification" : "implementation_author" : null);
   };
 
   const planningSteps = [
@@ -432,11 +436,16 @@ function TraceabilityWorkflowMap({
     { id: "self_review", label: "Self-review", visit: selfReviewVisit, status: selfReviewStatus, icon: <CheckCircle /> },
     { id: "independent_review", label: "Independent review", visit: independentReviewVisit, status: independentReviewStatus, icon: <Eye /> },
   ];
-  const implementationPhase = phases.find(phase => phase.id === "implementation");
   const implementationAuthor = {
     id: "implementation_author", label: "Author", icon: <UserCircle />,
     visit: latestVisitFor(implementationVisits, visit => ["implementation_tasks", "implementation_build"].includes(visit.nodeId)),
-    status: implementationPhase ? phaseDisplayStatus(implementationPhase, currentPhaseId, projection.run.status, failedPhaseId) : "Upcoming",
+    status: implementationState.author,
+  };
+  const implementationVerification = {
+    id: "implementation_verification", label: "Verification", icon: <CheckCircle />,
+    visit: implementationState.verification === "Upcoming" ? null : latestVisitFor(implementationVisits,
+      visit => visit.nodeId === "implementation_build" || implementationVerificationVisit(visit.nodeId)),
+    status: implementationState.verification,
   };
   const renderStep = (step: Omit<typeof planningSteps[number], "status"> & { status: WorkflowDisplayStatus }) => <div key={step.id} className={`phase-substep agent-step ${step.status === "In progress" ? "is-breathing" : ""} ${expandedSubstep === step.id ? "selected" : ""}`}>
     <button type="button" className="agent-step-heading" aria-expanded={expandedSubstep === step.id} onClick={() => selectSubstep(step.id, step.visit)}>
@@ -450,6 +459,7 @@ function TraceabilityWorkflowMap({
     </div>
     {step.id === "implementation_author" && <ImplementationTaskMeter progress={implementation.data?.progress} active={projection.run.status === "active"} error={implementation.error}
       runId={projection.run.id} freshness={projection.run.freshness} load={api} />}
+    {step.id === "implementation_verification" && <p className="implementation-verification-note">{implementationState.description}</p>}
     {projection.run.reviewSchema === "deos-bounded-review-v1" && expandedSubstep === step.id && ["planning_author", "design_author"].includes(step.id) &&
       <BoundedReview runId={projection.run.id} phase={step.id === "design_author" ? "design" : "planning"} load={api} onTranscript={onOpenTranscript} />}
   </div>;
@@ -481,19 +491,23 @@ function TraceabilityWorkflowMap({
 
   return <section className="workflow-panel phase-workflow-panel" aria-labelledby="workflow-title">
     <div className="section-heading phase-heading"><div><span className="eyebrow">Current run</span><h2 id="workflow-title">Workflow map</h2></div><span>Open a phase, then drill into its evidence</span></div>
-    <div className="current-step-banner"><span>{currentPhaseId === "stopped" ? "Failed step" : "Current step"}</span><strong className={workflowStatusTone(currentLeafStatus)}>{currentLeafVisit === null ? currentPhase?.label ?? "Unknown" : workflowStepLabel(currentLeafVisit.nodeId)}</strong></div>
+    <div className="current-step-banner"><span>{currentPhaseId === "stopped" ? "Failed step" : "Current step"}</span><strong className={workflowStatusTone(currentLeafStatus)}>{currentLeafVisit === null ? currentPhase?.label ?? "Unknown"
+      : currentLeafVisit.nodeId === "implementation_build" && implementationState.current === "implementation_verification"
+        ? "Implementation verification" : workflowStepLabel(currentLeafVisit.nodeId)}</strong></div>
     <div className="phase-workspace">
       <div className={`phase-map branching-flow ${hasImplementation ? "with-implementation" : ""}`} ref={flowMap}>
         <svg className="review-connectors" aria-hidden="true"><defs>{["complete", "active", "upcoming"].map(tone => <marker key={tone} id={`review-arrow-${tone}`} className={tone} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>)}</defs>{reviewPaths.map(edge => {
           const phase = phases.find(phase => phase.id === edge.kind);
-          const complete = phase && phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId) === "Complete";
+          const complete = phase && !(edge.kind === "implementation" && projection.run.currentNode === "implementation_clarification_wait") &&
+            phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId) === "Complete";
           const tone = reviewActive && edge.kind === reviewPhase ? "active" : complete ? "complete" : "upcoming";
           return <path key={edge.kind} data-from={edge.kind} d={edge.path} className={tone} markerEnd={`url(#review-arrow-${tone})`} />;
         })}</svg>
         {phases.filter((phase) => phase.visits.length > 0 || phase.id !== "stopped").map((phase, index) => {
           const expanded = expandedPhase === phase.id;
           const current = currentPhaseId === phase.id;
-          const status = phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId);
+          const status = phase.id === "implementation" && projection.run.currentNode === "implementation_clarification_wait"
+            ? "Blocked" : phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId);
           const successfulTerminal = status === "Succeeded";
           const phaseComplete = status === "Complete" || successfulTerminal ||
             ["Failed", "Blocked", "Canceled"].includes(status);
@@ -520,6 +534,8 @@ function TraceabilityWorkflowMap({
             {expanded && phase.id === "design" && renderDesign()}
             {expanded && phase.id === "implementation" && <div className="phase-drill" aria-label="Implementation details">
               {renderStep(implementationAuthor)}
+              <div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div>
+              {renderStep(implementationVerification)}
             </div>}
           </article>;
         })}
@@ -947,7 +963,7 @@ function DesignReviewPage({ runId }: { runId: string }) {
   </section>;
 }
 
-function RunErrors({ projection }: { projection: Projection }) {
+function RunErrors({ projection, currentStep }: { projection: Projection; currentStep?: string }) {
   const all = [...(projection.errors ?? []), ...(projection.legacyErrors ?? [])];
   const { failed, current, historical } = separateErrors(all, projection.run);
   const claudeFailures: Record<string, string> = {
@@ -967,7 +983,7 @@ function RunErrors({ projection }: { projection: Projection }) {
     : failed ? "Workflow stopped" : `Workflow ${human(status)}`;
   return <section className={`failure-panel ${failed ? "" : "run-health"}`} role={failed ? "alert" : "region"} aria-label="Current workflow status">
     <h2>{heading}</h2>
-    <p>{failed ? "Stopped at" : "Current step:"} <strong>{workflowStepLabel(projection.run.currentNode)}</strong></p>
+    <p>{failed ? "Stopped at" : "Current step:"} <strong>{currentStep ?? workflowStepLabel(projection.run.currentNode)}</strong></p>
     {current.map(renderError)}
     {failed && current.length === 0 && <p>{projection.run.terminalCause ? `${projection.run.terminalCause} — ` : ""}The original error for this failure was not recorded.</p>}
     {historical.length > 0 && <details className="error-history">
@@ -1123,6 +1139,11 @@ function App() {
   const firstRow = projection?.stages.slice(0, 4) ?? [];
   const secondRow = [...(projection?.stages.slice(4) ?? [])].reverse();
   const groupedWorkflow = projection !== null && isDesignStageWorkflow(projection.run.definitionVersion, projection.stages);
+  const implementation = useImplementation(projection?.run.id ?? "", projection?.run.freshness ?? "",
+    groupedWorkflow && workflowPhases(projection.history, projection.stages).some(phase => phase.id === "implementation"), api);
+  const implementationCurrentStep = projection?.run.currentNode === "implementation_build" &&
+    implementationSteps(projection.history, projection.run.status, implementation.data?.progress).current === "implementation_verification"
+      ? "Implementation verification" : undefined;
 
   const continueRun = useCallback(async () => {
     if (projection?.retry === null || projection === null || !runId) return;
@@ -1172,9 +1193,10 @@ function App() {
       </section>}
       {projection ? <>
         <section className="status-strip"><div><span className={`status-pill ${projection.run.status}`}>{human(projection.run.status)}</span><span>Definition v{projection.run.definitionVersion}</span><span>Sandbox: {projection.run.sandbox_tier === "basic" ? "Basic" : projection.run.sandbox_tier === "standard-2" ? "Standard-2" : "Tier not recorded"}</span></div><div className="run-status-actions"><span>Fresh as of {formatTime(projection.run.freshness)}</span>{projection.retry && <button type="button" className="retry-run" disabled={retrying} onClick={() => void continueRun()}>{retrying ? <SpinnerGap className="spin" /> : <ArrowClockwise />}{retrying ? "Starting…" : `Retry ${workflowStepLabel(projection.retry.retryNode)}`}</button>}</div></section>
-        <RunErrors projection={projection} />
+        <RunErrors projection={projection} currentStep={implementationCurrentStep} />
         {groupedWorkflow ? <TraceabilityWorkflowMap
           projection={projection}
+          implementation={implementation}
           selectedVisit={selectedVisit}
           onSelectVisit={setSelectedVisit}
           onOpenTranscript={setTranscriptAttempt}

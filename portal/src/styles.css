@@ -133,6 +133,9 @@ button { color:inherit; }
 .author-review-row { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); align-items: stretch; gap: 6px; }
 .author-review-arrow { width: 24px; height: 24px; align-self: center; color: var(--muted); }
 .agent-step { min-width: 0; cursor: default; }
+.implementation-verification-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.implementation-step-connector { display: flex; justify-content: center; color: var(--muted); }
+.implementation-step-connector svg { width: 18px; height: 18px; transform: rotate(90deg); }
 .implementation-task-progress { grid-column: 1 / -1; width: 100%; padding: 8px 0 2px; }
 .task-progress-copy, .task-progress-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .task-progress-copy { font-size: 12px; }.task-progress-copy > span, .task-progress-meta { color: var(--muted); }

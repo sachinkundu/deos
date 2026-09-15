@@ -489,8 +489,15 @@ through the existing hash-checking, no-store R2 route. It computes current or
 stale status from the proof subject and the latest checked head; it does not
 generate proof during page load.
 
-The canary UI keeps Implementation as a normal workflow node with one Author
-and the shared Human Review connection. The Author task counter opens a
+The canary UI keeps Implementation as a normal workflow node with Author,
+then Verification, and the shared Human Review connection. A full checklist
+from the current build moves the display to Verification. Final checks,
+end-to-end proof, and PR preparation keep that step active until the durable
+review handoff. Reopened tasks return to Author. New builds do not inherit an
+old full counter. Failures and clarification waits pause the current step.
+This is a portal projection of existing records, not a new workflow transition.
+The current-step banner also names Verification during that work.
+The Author task counter opens a
 read-only popup on demand. It preserves OpenSpec headings, task numbers and
 checked states, with All, Remaining and Done filters. The trusted progress read
 saves the task text in R2 before its digest and counts in D1. The popup verifies
