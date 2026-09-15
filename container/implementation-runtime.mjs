@@ -20,6 +20,7 @@ import { verifyNativeGrounding } from "./grounded-agent.mjs";
 import { trustGeneratedHooks } from "./native-review-setup.mjs";
 import { originalErrorText } from "./original-errors.mjs";
 import { killProcessGroup, stopProcessGroup } from "./implementation-process.mjs";
+import { requestVerification } from "./implementation-verification-transport.mjs";
 
 const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
@@ -347,16 +348,19 @@ export async function setupImplementation(job) {
   );
   const broker = async (payload) => {
     for (;;) {
-      const response = await fetch(`${job.capabilityUrl}/implementation`, {
+      const url = `${job.capabilityUrl}/implementation`;
+      const init = {
         method: "POST",
-        ...(payload.action === "verify" ? { signal: AbortSignal.timeout(Math.max(1, Date.parse(job.deadline) - Date.now())) } : {}),
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${job.capabilityToken}`,
           "Deos-Attempt": job.attemptId,
         },
         body: JSON.stringify(payload),
-      });
+      };
+      const response = payload.action === "verify"
+        ? await requestVerification(url, init, { deadline: Date.parse(job.deadline), journal })
+        : await fetch(url, init);
       if (response.status === 429 || response.status === 409) {
         const wait = await response.json();
         if (!["browser_capacity", "browser_quarantined"].includes(wait.error))

@@ -91,7 +91,7 @@ if (process.argv.includes("fake-codex")) {
     all: async () => { assert.match(sql, /implementation_doc_access/); return { results: [] }; },
     first: async () => { assert.match(sql, /implementation_proof/); return proofs.get(args[0]) ?? null; },
   }) }) };
-  let notifications = 0, heartbeatDuringVerification = false;
+  let notifications = 0, heartbeatDuringVerification = false, verificationRequests = 0, beforeHeartbeat;
   const server = createServer(async (req, res) => {
     try {
       let body = "";
@@ -108,12 +108,16 @@ if (process.argv.includes("fake-codex")) {
         result = { ...request.subject, id, kind: "showboat", path: "fixture-showboat.md", caption: "Actual local command", sha256: digest, sanitized: true };
       } else {
         assert.equal(request.action, "verify");
-        if (verification.length === 0) {
-          const before = JSON.parse(await readFile("/deos/output/heartbeat.json", "utf8"));
-          await new Promise(resolve => setTimeout(resolve, 32_000));
+        verificationRequests++;
+        if (verificationRequests === 1) {
+          beforeHeartbeat = JSON.parse(await readFile("/deos/output/heartbeat.json", "utf8"));
+          return; // Drop one read response; the built supervisor must recover.
+        }
+        if (verificationRequests === 2) {
+          await new Promise(resolve => setTimeout(resolve, 12_000));
           const after = JSON.parse(await readFile("/deos/output/heartbeat.json", "utf8"));
-          assert.equal(after.attemptId, before.attemptId);
-          assert.ok(Date.parse(after.observedAt) > Date.parse(before.observedAt));
+          assert.equal(after.attemptId, beforeHeartbeat.attemptId);
+          assert.ok(Date.parse(after.observedAt) > Date.parse(beforeHeartbeat.observedAt));
           heartbeatDuringVerification = true;
         }
         const candidate = JSON.parse(await readFile("/deos/output/implementation-candidate.json", "utf8"));
@@ -160,13 +164,18 @@ if (process.argv.includes("fake-codex")) {
     assert.equal(candidate.checks.length, 1);
     assert.equal(candidate.proof.length, 1); assert.equal(notifications, 1);
     assert.equal(rounds.filter(r => r.operation === "verification").length, 3);
+    assert.equal(verificationRequests, 4);
+    const transportFailures = rounds.filter(r => r.operation === "verification.transport");
+    assert.equal(transportFailures.length, 1);
+    assert.match(transportFailures[0].detail, /TimeoutError/);
     assert.equal(rounds.filter(r => r.operation === "check").length, 4);
     assert.ok(rounds.some(r => r.operation === "check" && r.result.exitCode === 1));
     const summary = { proof: "local container with deterministic model and broker fixtures", supervisorExit: code,
       agentProcesses: calls.map(c => ({ pid: c.pid, mode: c.args[1] === "resume" ? "resume" : "initial", sessionId })),
       verification: verification.map(({ ready, code, message }) => ({ ready, code, message })),
       finalTree: candidate.treeSha, matchedPatchSha: candidate.patchSha, finalChecks: candidate.checks.map(({ command, cwd, exitCode }) => ({ command, cwd, exitCode })),
-      retainedCheckRecords: 4, completionSignals: notifications, heartbeatDuringVerification };
+      retainedCheckRecords: 4, completionSignals: notifications, heartbeatDuringVerification,
+      verificationRequests, retainedTransportFailures: transportFailures.length };
     await file("/proof-state/summary.json", JSON.stringify(summary, null, 2));
     process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

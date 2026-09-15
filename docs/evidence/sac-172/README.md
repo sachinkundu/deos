@@ -276,3 +276,15 @@ The two acceptance findings appeared in [PR discussion comment 5677258210](https
 All 506 repository tests and type checking pass. A read-only call through the patched local loader returned the actual acceptance comment from GitHub. This used the local GitHub CLI account token, not the deployed application's credentials. It proves provider read-back, not deployed agent pickup. The active try retains its saved empty feedback; there is no live refresh path. No duplicate comment or human state change was sent by this repair.
 
 The feedback repair is pending activation until there are no healthy active agents. Backend `fd80b204-d504-47e2-85e6-cfec5f67688d` remains active, so try 9 does use the earlier browser fixes. Full changed-application proof and tasks 5.4/5.5 remain open. See [revision read-back](sac-182-revision-feedback.json) and [Showboat proof](pr-discussion-feedback.md).
+
+### Verification transport failure in try 9
+
+Try 9 stopped at 09:01:47 UTC on September 15 while the supervisor awaited the trusted verification response. The [original process error](verification-transport-failure.json) retains `TypeError: fetch failed` with cause `UND_ERR_HEADERS_TIMEOUT`. The last heartbeat in the sandbox was 09:01:20 UTC. This was a response timeout after the author finished, not heartbeat expiry. No matching verification request was found in the retained Worker logs for 08:55–09:03 UTC; those logs do not establish where transport stalled.
+
+The failure manifest retains the exact same patch `8a6ff3e0c147a0558a72723d084ac063251d0934935af4632921a9097ab77896`. PR 137 remains at its prior head. Resource cleanup initially could not confirm browser closure, which prevented sandbox destruction; scheduled cleanup subsequently marked the failed sandbox destroyed. The browser resource still needs its absence receipt reconciled.
+
+The [new image](sac-182-try9-home.png) shows the BettaView home page with a Settings entry point and matches a recorded HTTP 200. It does not exercise the checked-account Settings or review flow. Provider proof uses the same unchanged demo tree, so the real continuation-service gap remains.
+
+The runner now limits each complete verification response to 20 seconds. It retries only known transport failures, at most three requests, under the original deadline. Provider operations and HTTP rejections are never retried by this path. Every failure is saved before another read; exhausted retries and diagnostic failures retain the original cause.
+
+All 511 repository tests, type checking and generated bindings passed. The [built Linux container proof](verification-transport-container.json) dropped one verification response, retained its timeout, resumed the same agent session for failed and stale checks, kept heartbeats advancing, and emitted one completion signal after passing the final check. Its model and broker are deterministic fixtures; this is local process proof, not live provider E2E. Deployment and the next live recovery are recorded separately below.
