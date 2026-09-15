@@ -1,4 +1,4 @@
-import puppeteer, { type Browser } from "@cloudflare/puppeteer";
+import puppeteer, { type Browser, type KeyInput } from "@cloudflare/puppeteer";
 import {
   ImplementationStore,
   type ImplementationResource,
@@ -313,10 +313,13 @@ export async function browserCommand(
   sessionId: string,
   origin: string,
   input: {
-    operation: "navigate" | "state" | "click" | "fill" | "screenshot";
+    operation: "navigate" | "state" | "click" | "fill" | "press" | "viewport" | "screenshot";
     url?: string;
     selector?: string;
     text?: string;
+    key?: string;
+    width?: number;
+    height?: number;
     documentStatus?: number;
   },
   api = puppeteer,
@@ -361,6 +364,15 @@ export async function browserCommand(
       if (!input.selector || typeof input.text !== "string")
         throw new Error("Fill input missing");
       await page.type(input.selector, input.text);
+    } else if (input.operation === "press") {
+      if (!input.key || input.key.length > 64)
+        throw new ImplementationError("browser_key", "A single browser key name is required");
+      await page.keyboard.press(input.key as KeyInput);
+    } else if (input.operation === "viewport") {
+      if (!Number.isInteger(input.width) || !Number.isInteger(input.height) ||
+          input.width! < 200 || input.width! > 3840 || input.height! < 200 || input.height! > 3840)
+        throw new ImplementationError("browser_viewport", "Viewport width and height must be integers from 200 to 3840 CSS pixels");
+      await page.setViewport({width:input.width!,height:input.height!,deviceScaleFactor:1});
     }
     if (page.url() !== "about:blank" && new URL(page.url()).origin !== origin)
       throw new ImplementationError(

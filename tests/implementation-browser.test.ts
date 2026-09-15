@@ -273,6 +273,38 @@ test("a real navigation status follows the browser across commands and failed do
   assert.equal(screenshots,1);
   assert.equal(disconnects,7);
 });
+test("assigned browser dispatches real keys and changes viewport while preserving failed-document proof checks", async () => {
+  const keys:string[]=[];
+  const viewports:unknown[]=[];
+  let disconnects=0;
+  let onResponse:(response:unknown)=>void=()=>{};
+  const frame={};
+  const page={
+    on:(name:string,callback:(response:unknown)=>void)=>{if(name==='response')onResponse=callback;},
+    mainFrame:()=>frame,
+    url:()=> 'https://owned.trycloudflare.com/',
+    title:async()=> 'Calculator', content:async()=> '<output>3</output>',
+    keyboard:{press:async(key:string)=>{keys.push(key);}},
+    setViewport:async(viewport:unknown)=>{
+      viewports.push(viewport);
+      onResponse({status:()=>503,request:()=>({isNavigationRequest:()=>true}),frame:()=>frame});
+    },
+  };
+  const api={connect:async()=>({pages:async()=>[page],disconnect:async()=>{disconnects++;}})} as never;
+  for(const key of ['1','+','2','Enter','Escape'])
+    await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'press',key,documentStatus:200},api);
+  assert.deepEqual(keys,['1','+','2','Enter','Escape']);
+  const resized=await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'viewport',width:320,height:640,documentStatus:200},api);
+  assert.deepEqual(viewports,[{width:320,height:640,deviceScaleFactor:1}]);
+  assert.equal(resized.documentStatus,503,'A viewport-triggered navigation must preserve its actual HTTP status');
+  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:resized.documentStatus},api),/HTTP 503/);
+  for(const width of [0,319.5,3841])
+    await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'viewport',width,height:640},api),/integers from 200 to 3840/);
+  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'press'},api),/key name is required/);
+  assert.equal(viewports.length,1);
+  assert.equal(disconnects,11);
+});
+
 test("lost allocation response quarantines this try and never creates a replacement browser", async () => {
   const f = await fixture();
   try {

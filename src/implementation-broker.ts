@@ -330,7 +330,7 @@ export class ImplementationBroker {
           browser.provider_resource_id!,
         );
         if (
-          !["navigate", "state", "click", "fill", "screenshot"].includes(
+          !["navigate", "state", "click", "fill", "press", "viewport", "screenshot"].includes(
             String(request.operation),
           )
         )
@@ -348,6 +348,8 @@ export class ImplementationBroker {
               | "state"
               | "click"
               | "fill"
+              | "press"
+              | "viewport"
               | "screenshot",
             url: typeof request.url === "string" ? request.url : undefined,
             selector:
@@ -355,6 +357,9 @@ export class ImplementationBroker {
                 ? request.selector
                 : undefined,
             text: typeof request.text === "string" ? request.text : undefined,
+            key: typeof request.key === "string" ? request.key : undefined,
+            width: typeof request.width === "number" ? request.width : undefined,
+            height: typeof request.height === "number" ? request.height : undefined,
             documentStatus: JSON.parse(browser.metadata_json).documentStatus,
           },
         );
@@ -459,17 +464,20 @@ export class ImplementationBroker {
     caption: string,
     providerDeliveryId?: string,
   ): Promise<ImplementationProof> {
+    const filename = kind === "browser_image" ? "browser.png" : kind === "provider_originated" ? "provider-proof.json" : "showboat.md";
+    // Identical bytes can be captured again for another attempt or tree. The
+    // database owns one receipt per capture identity, including its object key.
     const object = await this.store.put(
       claims.runId,
-      kind === "browser_image" ? "browser.png" : kind === "provider_originated" ? "provider-proof.json" : "showboat.md",
+      `proof/${encodeURIComponent(claims.attemptId)}/${subject.treeSha}/${filename}`,
       content,
       mediaType,
     );
     const id = `${claims.attemptId}:${subject.treeSha}:${kind}:${object.sha256}`;
     await this.env.DB.prepare(
-      `INSERT OR IGNORE INTO implementation_proof
+      `INSERT INTO implementation_proof
       (proof_id,run_id,attempt_id,kind,approved_design_sha,tested_base_sha,tree_sha,r2_key,sha256,byte_size,media_type,caption,sanitized,created_at,provider_delivery_id)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)`,
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?,?) ON CONFLICT(proof_id) DO NOTHING`,
     )
       .bind(
         id,
@@ -488,12 +496,19 @@ export class ImplementationBroker {
         providerDeliveryId ?? null,
       )
       .run();
+    const saved = await this.env.DB.prepare(
+      `SELECT r2_key,caption FROM implementation_proof WHERE proof_id=? AND run_id=? AND attempt_id=?
+       AND tree_sha=? AND sha256=? AND approved_design_sha=? AND tested_base_sha=? AND sanitized=1`,
+    ).bind(id, claims.runId, claims.attemptId, subject.treeSha, object.sha256,
+      subject.approvedDesignSha, subject.testedBaseSha).first<{r2_key:string;caption:string}>();
+    if (!saved)
+      throw new ImplementationError("proof_persistence", `Captured proof receipt could not be read back: ${id}`);
     return {
       ...subject,
       id,
       kind,
-      path: object.key,
-      caption,
+      path: saved.r2_key,
+      caption: saved.caption,
       sha256: object.sha256,
       sanitized: true,
       ...(providerDeliveryId ? { providerDeliveryId } : {}),
