@@ -326,6 +326,8 @@ function TraceabilityWorkflowMap({
   const [reviewPaths, setReviewPaths] = useState<Array<{ kind: string; path: string }>>([]);
   const phases = useMemo(() => workflowPhases(projection.history, projection.stages), [projection.history, projection.stages]);
   const hasImplementation = phases.some(phase => phase.id === "implementation");
+  const hasImplementationDemo = projection.stages.some(stage => stage.id === "implementation_demo_plan") ||
+    Boolean(implementation.data?.demo?.enabled);
   const implementationState = implementationSteps(projection.history, projection.run.status, implementation.data?.progress, implementation.data?.demo);
   useEffect(() => {
     const map = flowMap.current;
@@ -551,11 +553,11 @@ function TraceabilityWorkflowMap({
             {phase.id === "approval" && renderApproval()}
             {expanded && phase.id === "design" && renderDesign()}
             {expanded && phase.id === "implementation" && <div className="phase-drill" aria-label="Implementation details">
-              {implementation.data?.demo?.enabled && <>{renderStep(implementationDemoPlan)}<div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div></>}
+              {hasImplementationDemo && <>{renderStep(implementationDemoPlan)}<div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div></>}
               {renderStep(implementationAuthor)}
               <div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div>
               {renderStep(implementationVerification)}
-              {implementation.data?.demo?.enabled && <><div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div>{renderStep(implementationDemoGate)}</>}
+              {hasImplementationDemo && <><div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div>{renderStep(implementationDemoGate)}</>}
             </div>}
           </article>;
         })}
