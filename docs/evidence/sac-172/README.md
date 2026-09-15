@@ -296,3 +296,12 @@ The [trusted failed-attempt recovery](verification-transport-retry.json) establi
 The staging browser shows Workflow running at Implementation verification. Prior errors remain in history. The previous PR and human binding are intact; no new human review choice was submitted, and no SAC-172 PR was opened. Full Settings/review UI proof, real continuation-service E2E and final acceptance remain required.
 
 ![SAC-182 running after verification transport recovery](verification-transport-resumed.png)
+
+
+### Terminal browser cleanup recovery
+
+SAC-182 try 10 completed, updated PR 137 to `222d6298e4546a84cece21b2c5dd23c8d1a286d1`, and reached Human Review at visit 55. All six GitHub CI jobs passed. The new proof uses actual continuation classes with local SQLite and real scoped provider writes, but stops at `awaiting_delivery`; it does not exercise signed-delivery consumption or all review choices. [Revision acceptance audit](sac-182-pr137-revision-review.json) records the remaining gaps. Full canary acceptance remains open.
+
+The browser close returned before inventory confirmed absence. The old scheduled browser pass handled only ambiguous allocations, leaving finished attempts' ready browser records without an absence receipt even after the sandbox was removed. Source `faf7996` retries cleanup for terminal attempts, respects cleanup holds, preserves the original error, and changes no active attempt or human gate. A regression proves delayed confirmation, successful retry, retained diagnostics, held/active exclusions, and unchanged completed work. All 512 repository tests, type checking, generated bindings and strict OpenSpec pass.
+
+Backend `948c5eac-114e-4906-9d78-3a8509f4a309` is active at 100 percent from 10:20:33 UTC. Container version 9 and its image remain unchanged. No agents were active before deployment. [Activation and pending cleanup evidence](browser-cleanup-reconciliation.json) records the state before the next scheduled invocation; provider-confirmed cleanup is still pending.
