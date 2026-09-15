@@ -2,6 +2,7 @@ import { D1BoundedReviewStore } from "./bounded-review-store.ts";
 import { claudeRunner } from "./claude-environment.ts";
 import { D1NativeReviewStore } from "./native-review-store.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { continueReviewToLinear, D1ReviewContinuationStore, LinearReviewTransitionAdapter, ReviewContinuationError } from "./review-continuation.ts";
 import {
   ArtifactCollector,
   D1ArtifactManifestStore,
@@ -1577,6 +1578,49 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       });
     }
     return this.linear.ensureHumanGate(run, node);
+  }
+
+  async continueBettaViewReview(run: OrchestrationRunRecord, _node: HumanGateWorkflowNode, reviewId: string): Promise<void> {
+    const reviews = new D1ReviewContinuationStore(this.env.DB);
+    await continueReviewToLinear(
+      reviews,
+      {
+        runId: run.run_id,
+        currentVisitSequence: run.current_visit_sequence,
+        definitionDigest: run.definition_digest,
+        status: run.status,
+      },
+      async (intent) => {
+        const pull = await githubForRun(this.env, run).readPullRequest(
+          intent.repository, intent.pull_request_number,
+        );
+        return pull.state === "open" && !pull.merged ? pull.headSha : "";
+      },
+      (issueId, stateId) => new LinearReviewTransitionAdapter(
+        this.env.LINEAR_API_URL, this.env.LINEAR_APP_ACCESS_TOKEN,
+      ).move(issueId, stateId),
+      reviewId,
+    );
+  }
+
+  async resolveBettaViewReviewChoice(
+    run: OrchestrationRunRecord,
+    _node: HumanGateWorkflowNode,
+    event: NonNullable<Awaited<ReturnType<D1OrchestrationStore["findInboxEvent"]>>>,
+  ): Promise<void> {
+    const reviews = new D1ReviewContinuationStore(this.env.DB);
+    const intent = await reviews.pendingForDelivery(run.run_id, {
+      issueId: run.issue_id, actorId: event.actor_id, fromStateId: event.from_state_id, toStateId: event.to_state_id,
+    });
+    if (!intent) return;
+    const pull = await githubForRun(this.env, run).readPullRequest(intent.repository, intent.pull_request_number);
+    const result = await reviews.correlateDelivery({
+      reviewId: intent.review_id, deliveryId: event.delivery_id, issueId: run.issue_id,
+      actorId: event.actor_id ?? "", fromStateId: event.from_state_id ?? "", toStateId: event.to_state_id ?? "",
+      operationId: intent.linear_operation_id ?? "", liveHead: pull.headSha,
+      expectedAppActorId: event.actor_id ?? "", humanReviewStateId: event.from_state_id ?? "", now: new Date().toISOString(),
+    });
+    if (result === "mismatch") throw new ReviewContinuationError("linear_delivery_mismatch");
   }
 
   async restoreHumanGate(

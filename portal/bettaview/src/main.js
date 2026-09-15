@@ -20,6 +20,8 @@ import {
 } from "./review-story-view.js";
 import { applyTheme, getInitialTheme, nextTheme } from "./theme.js";
 import { activeThreadReferences, draftReferenceKey, threadReferenceKey } from "./thread-links.js";
+import { discardReviewDraft, persistReviewDraft, restoreReviewDraft, uuidv7 } from "./review-drafts.js";
+import { continuationBlocked, renderAccountSettings, renderContinuationStatus } from "./review-continuation-view.js";
 import {
   MIN_THREAD_RAIL_WIDTH,
   clampThreadRailWidth,
@@ -40,7 +42,9 @@ function layoutWidth() {
   return document.body.clientWidth || document.documentElement.clientWidth;
 }
 
-const linkedPullRequestUrl = new URLSearchParams(window.location.search).get("pr")?.trim() || "";
+const startupParams = new URLSearchParams(window.location.search);
+const linkedPullRequestUrl = startupParams.get("pr")?.trim() || "";
+const settingsView = window.location.pathname === "/settings" || startupParams.get("view") === "settings";
 
 const state = {
   prUrl: linkedPullRequestUrl || getRecentPullRequest(),
@@ -53,6 +57,8 @@ const state = {
   selectedText: "",
   selectionRange: null,
   drafts: [],
+  reviewId: null,
+  continuationStatus: null,
   reviewEvent: "COMMENT",
   activeView: "pr",
   theme: getInitialTheme(),
@@ -108,6 +114,7 @@ function shell() {
           <button type="button" data-portal-view="review">Review</button>
         </nav>
       </div>
+      <a class="button ghost settings-link" href="/settings">Settings</a>
       <button id="theme-toggle" class="theme-toggle" type="button">
         <span class="theme-toggle-icon" aria-hidden="true"></span>
         <span class="theme-toggle-label"></span>
@@ -272,6 +279,10 @@ async function loadPullRequest({ preservePath = true, restoreRecent = false } = 
     state.data = data;
     state.traceabilityRun = null;
     state.prUrl = data.url;
+    const restoredDraft = restoreReviewDraft(localStorage, data.url, data.headSha);
+    state.reviewId = restoredDraft.reviewId;
+    state.drafts = restoredDraft.items;
+    state.reviewEvent = restoredDraft.event;
     const shareableUrl = new URL(window.location.href);
     shareableUrl.searchParams.set("pr", state.prUrl);
     window.history.replaceState(null, "", shareableUrl);
@@ -831,6 +842,7 @@ function renderWorkspace() {
   const activeThreads = threadsForActiveFile();
   const activeDrafts = draftsForActiveFile();
   const approveCapability = data.reviewCapabilities?.approve || { allowed: true, reason: null };
+  const continuationIsBlocked = continuationBlocked(data.reviewContinuation);
   const workspace = document.querySelector("#workspace");
   workspace.className = "workspace";
   workspace.innerHTML = `
@@ -845,11 +857,12 @@ function renderWorkspace() {
       </nav>
       <div class="review-actions">
         <span class="eyebrow">Submit review state</span>
-        <button data-review="COMMENT" class="button subtle ${state.reviewEvent === "COMMENT" ? "selected" : ""}">Comment</button>
-        <button data-review="APPROVE" class="button subtle ${state.reviewEvent === "APPROVE" ? "selected" : ""}" ${approveCapability.allowed ? "" : `disabled title="${escapeHtml(approveCapability.reason)}"`}>Approve</button>
-        <button data-review="REQUEST_CHANGES" class="button subtle danger ${state.reviewEvent === "REQUEST_CHANGES" ? "selected" : ""}">Request changes</button>
+        <button data-review="COMMENT" class="button subtle ${state.reviewEvent === "COMMENT" ? "selected" : ""}" ${continuationIsBlocked ? "disabled" : ""}>Comment</button>
+        <button data-review="APPROVE" class="button subtle ${state.reviewEvent === "APPROVE" ? "selected" : ""}" ${approveCapability.allowed && !continuationIsBlocked ? "" : `disabled title="${escapeHtml(approveCapability.reason || data.reviewContinuation?.reason)}"`}>Approve</button>
+        <button data-review="REQUEST_CHANGES" class="button subtle danger ${state.reviewEvent === "REQUEST_CHANGES" ? "selected" : ""}" ${continuationIsBlocked ? "disabled" : ""}>Request changes</button>
         ${approveCapability.allowed ? "" : `<p class="review-restriction">Signed in as @${escapeHtml(data.viewerLogin)}. ${escapeHtml(approveCapability.reason)}</p>`}
       </div>
+      ${renderContinuationStatus(data.reviewContinuation, state.continuationStatus)}
       <div class="file-rail-resizer" role="separator" aria-label="Resize changed files sidebar" aria-orientation="vertical" aria-valuemin="${MIN_FILE_RAIL_WIDTH}" tabindex="0"></div>
     </aside>
     <section class="document-column">
@@ -1071,6 +1084,7 @@ function updateDraftBar() {
 }
 
 function updateDraftUI() {
+  if (state.data && state.reviewId) persistReviewDraft(localStorage, { version: 1, reviewId: state.reviewId, prUrl: state.prUrl, headSha: state.data.headSha, event: state.reviewEvent, items: state.drafts });
   updateDraftBar();
   const threads = document.querySelector("#threads");
   if (!threads || !state.data) return;
@@ -1196,7 +1210,7 @@ function stageSelectionComment() {
     body: body.trim(),
     startLine: lines?.startLine || 1,
     endLine: lines?.endLine || lines?.startLine || 1,
-    clientSubmissionId: id(),
+    clientSubmissionId: uuidv7(),
   });
   button.textContent = "Add comment";
   closeSelectionComposer();
@@ -1363,7 +1377,7 @@ function setupDrawing(card, block, file) {
         body: body.trim(),
         startLine: block.startLine,
         endLine: block.endLine,
-        clientSubmissionId: id(),
+        clientSubmissionId: uuidv7(),
       });
       card.querySelector("textarea").value = "";
       commitDrawingState([]);
@@ -1378,29 +1392,47 @@ function setupDrawing(card, block, file) {
     }
   });
 }
-
-async function publishReview() {
-  if (!state.drafts.length) return;
+async function publishReview(event = state.reviewEvent) {
+  const linked = Boolean(state.data.reviewContinuation?.runId);
+  if (!state.drafts.length && event === "COMMENT") return;
   const button = document.querySelector("#publish-review");
-  button.disabled = true;
-  button.textContent = "Publishing…";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Publishing…";
+  }
   try {
-    const result = await request("/api/comments/batch", {
+    const payload = {
+      prUrl: state.prUrl,
+      headSha: state.data.headSha,
+      event,
+      comments: state.drafts,
+      reviewId: state.reviewId,
+      continuation: state.data.reviewContinuation,
+      reviewBody: state.drafts.length ? "" : `BettaView review: ${event.toLowerCase().replace("_", " ")}.`,
+    };
+    const result = await request(linked ? "/api/review-continuations/publish" : state.drafts.length ? "/api/comments/batch" : "/api/reviews", {
       method: "POST",
-      body: JSON.stringify({ prUrl: state.prUrl, headSha: state.data.headSha, event: state.reviewEvent, comments: state.drafts }),
+      body: JSON.stringify(linked ? payload : { ...payload, body: payload.reviewBody }),
     });
     const count = state.drafts.length;
+    if (linked) state.continuationStatus = result.continuation;
+    discardReviewDraft(localStorage, { prUrl: state.prUrl, headSha: state.data.headSha });
     state.drafts = [];
+    state.reviewId = uuidv7();
     state.reviewEvent = "COMMENT";
     closeSelectionComposer();
     updateDraftBar();
-    setNotice(`${result.published ?? count} comment${count === 1 ? "" : "s"} published from one review submission.`, "success");
+    setNotice(linked
+      ? `GitHub saved the review. Linear is ${result.continuation.linear.status.replaceAll("_", " ")}.`
+      : `${result.published ?? count} comment${count === 1 ? "" : "s"} published from one review submission.`, "success");
     await loadPullRequest();
   } catch (error) {
     setNotice(`${error.message} Your unpublished comments are still here.`, "error");
   } finally {
-    button.disabled = false;
-    button.textContent = "Publish review";
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Publish review";
+    }
   }
 }
 
@@ -1418,7 +1450,7 @@ function submitReply(commentId) {
     body: input.value.trim(),
     startLine: thread.line || thread.startLine || 1,
     endLine: thread.line || thread.startLine || 1,
-    clientSubmissionId: id(),
+    clientSubmissionId: uuidv7(),
   });
   input.value = "";
   updateDraftUI();
@@ -1429,22 +1461,14 @@ async function submitReview(event) {
   if (event === "APPROVE" && state.data.reviewCapabilities?.approve?.allowed === false) {
     return setNotice(state.data.reviewCapabilities.approve.reason, "error");
   }
+  state.reviewEvent = event;
+  updateDraftUI();
+  document.querySelectorAll("[data-review]").forEach((button) => button.classList.toggle("selected", button.dataset.review === event));
   if (state.drafts.length) {
-    state.reviewEvent = event;
-    document.querySelectorAll("[data-review]").forEach((button) => button.classList.toggle("selected", button.dataset.review === event));
     setNotice(`${event.replace("_", " ")} will be applied when the review is published.`, "success");
     return;
   }
-  try {
-    await request("/api/reviews", {
-      method: "POST",
-      body: JSON.stringify({ prUrl: state.prUrl, headSha: state.data.headSha, event, body: `BettaView experiment review: ${event.toLowerCase().replace("_", " ")}.` }),
-    });
-    setNotice(`${event.replace("_", " ")} review submitted.`, "success");
-    await loadPullRequest();
-  } catch (error) {
-    setNotice(error.message, "error");
-  }
+  await publishReview(event);
 }
 
 function sourceWordTokens(value) {
@@ -1730,8 +1754,32 @@ function goToLine(path, line) {
   }, 120);
 }
 
+function renderSettingsPage(account = null) {
+  const workspace = document.querySelector("#workspace");
+  workspace.className = "settings-page";
+  workspace.innerHTML = renderAccountSettings(account);
+  document.querySelector("#account-link-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector("button");
+    button.disabled = true;
+    try {
+      const nextAccount = await request("/api/settings/bettaview-account", {
+        method: "POST",
+        body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))),
+      });
+      renderSettingsPage(nextAccount);
+      setNotice("Checked account policy activated for future runs.", "success");
+    } catch (error) {
+      setNotice(error.message, "error");
+      button.disabled = false;
+    }
+  });
+}
+
 shell();
-if (state.prUrl) {
+if (settingsView) {
+  renderSettingsPage();
+} else if (state.prUrl) {
   loadPullRequest({ preservePath: false, restoreRecent: !linkedPullRequestUrl });
 } else {
   renderOpenPrompt();

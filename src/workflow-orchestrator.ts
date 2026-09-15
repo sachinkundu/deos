@@ -25,7 +25,9 @@ import type { LifecycleWriter } from "./lifecycle-telemetry.ts";
 export interface WorkflowWaitEvent {
   payload: Readonly<{ deliveryId: string }>;
 }
-type WorkflowWake = { deliveryId: string } | AttemptCompletionHint;
+type WorkflowWake = { deliveryId: string } | { reviewId: string } | AttemptCompletionHint;
+const isReviewWake = (event: { payload: Readonly<WorkflowWake> }): event is { payload: Readonly<{ reviewId: string }> } =>
+  "reviewId" in event.payload && typeof event.payload.reviewId === "string" && event.payload.reviewId.length > 0;
 const isLinearWake = (event: { payload: Readonly<WorkflowWake> }): event is WorkflowWaitEvent =>
   "deliveryId" in event.payload && typeof event.payload.deliveryId === "string" &&
   event.payload.deliveryId.length > 0;
@@ -60,6 +62,8 @@ export interface WorkflowNodeServices {
     node: HumanGateWorkflowNode,
     deliveryId: string,
   ): Promise<HumanGateOperation>;
+  continueBettaViewReview?(run: OrchestrationRunRecord, node: HumanGateWorkflowNode, reviewId: string): Promise<void>;
+  resolveBettaViewReviewChoice?(run: OrchestrationRunRecord, node: HumanGateWorkflowNode, event: NonNullable<Awaited<ReturnType<WorkflowRuntimeStore["findInboxEvent"]>>>): Promise<void>;
   observeHumanGateDelivery(
     run: OrchestrationRunRecord,
     node: HumanGateWorkflowNode,
@@ -275,6 +279,12 @@ export class WorkflowOrchestrator {
         `linear-event:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
         { type: "linear-event", timeout: "24h" },
       );
+      if (isReviewWake(event)) {
+        if (!this.services.continueBettaViewReview) throw new Error("BettaView review continuation service is unavailable");
+        await step.do(`continue-review:${event.payload.reviewId}:visit:${run.current_visit_sequence}`, () =>
+          this.services.continueBettaViewReview!(run, gateNode, event.payload.reviewId));
+        continue;
+      }
       if (!isLinearWake(event)) continue;
       const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
         this.store.claimInboxEvent(
@@ -283,6 +293,13 @@ export class WorkflowOrchestrator {
           this.now().toISOString(),
         ));
       if (claimed === null) continue;
+      if (this.services.resolveBettaViewReviewChoice) {
+        await step.do(`correlate-review-choice:${claimed.delivery_id}`, () =>
+          this.services.resolveBettaViewReviewChoice!(run, gateNode, claimed));
+      }
+      const bettaviewReview = this.store.findBettaViewReviewChoice
+        ? await step.do(`review-choice:${claimed.delivery_id}`, () => this.store.findBettaViewReviewChoice!(claimed.delivery_id))
+        : null;
       const decision = evaluateNodeOutcome(this.definition, instruction.nodeId, {
         kind: "linear_event",
         deliveryId: claimed.delivery_id,
@@ -294,6 +311,7 @@ export class WorkflowOrchestrator {
         humanGateStateId: this.options.humanGateStateId,
         approvalStateNames: this.options.approvalStateNames,
         rejectionStateNames: this.options.rejectionStateNames,
+        ...(bettaviewReview ? { bettaviewReview } : {}),
       });
       if (decision.kind === "repair_gate") {
         const operation = await step.do(
@@ -351,6 +369,12 @@ export class WorkflowOrchestrator {
           this.now().toISOString(),
         );
         continue;
+      }
+      if (bettaviewReview && this.store.completeBettaViewReviewChoice) {
+        const completed = await this.store.completeBettaViewReviewChoice(
+          bettaviewReview.reviewId, claimed.delivery_id, this.now().toISOString(),
+        );
+        if (!completed) throw new Error("BettaView review choice finalization compare-and-set failed");
       }
       await this.store.markInboxState(
         claimed.delivery_id,

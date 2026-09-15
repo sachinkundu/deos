@@ -213,6 +213,7 @@ export async function loadPullRequest(token, prUrl, env, accessToken) {
     traceabilityTargets: [],
     traceabilityReviews: trace ? [trace] : [],
     threads: reviewThreads,
+    reviewContinuation: story?.reviewContinuation ?? { readiness: "feature_disabled" },
     deos: story,
   };
 }
@@ -330,7 +331,9 @@ async function prepareBatchComment(token, context, draft, sourceCache) {
 
 export async function publishBatchReview(token, body) {
   const { prUrl, headSha, event = "COMMENT", comments } = body;
-  if (!Array.isArray(comments) || comments.length === 0) throw new Error("Add at least one comment before publishing.");
+  if (!Array.isArray(comments) || (comments.length === 0 && event === "COMMENT" && !body.reviewId)) {
+    throw new Error("Add at least one comment before publishing.");
+  }
   if (!["COMMENT", "APPROVE", "REQUEST_CHANGES"].includes(event)) throw new Error("Unsupported review state.");
   const context = await pullContext(token, prUrl);
   assertHead(context.pr, headSha);
@@ -340,7 +343,7 @@ export async function publishBatchReview(token, body) {
   const priorComments = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/comments?per_page=100`);
   const priorIds = new Set(priorComments.map((comment) => readMarker(comment.body)?.clientSubmissionId).filter(Boolean));
   const unpublished = comments.filter((comment) => !priorIds.has(comment.clientSubmissionId));
-  if (!unpublished.length) return { review: null, published: 0, duplicates: comments.length, assets: [] };
+  if (!unpublished.length && !body.reviewId) return { review: null, published: 0, duplicates: comments.length, assets: [] };
 
   const replyDrafts = unpublished.filter((draft) => draft.kind === "reply");
   const commentDrafts = unpublished.filter((draft) => draft.kind !== "reply");
@@ -389,29 +392,71 @@ export async function publishBatchReview(token, body) {
   const reviewComments = prepared.map((item) => ({
     path: item.path,
     line: item.line,
-    body: `${item.body}\n\n${marker(item.metadata)}`,
+    body: `${item.body}\n\n${marker(body.reviewId ? { ...item.metadata, reviewId: body.reviewId, contentItemId: item.draft.clientSubmissionId } : item.metadata)}`,
   }));
-  let review = null;
-  if (reviewComments.length) {
-    review = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/reviews`, {
-      method: "POST",
-      body: JSON.stringify(batchReviewPayload(headSha, reviewComments, event)),
-    });
-  }
+  // Replies are prerequisite writes because GitHub's create-review contract cannot bundle them.
   const replies = [];
   for (const draft of replyDrafts) {
-    const metadata = { kind: "reply", clientSubmissionId: draft.clientSubmissionId, headSha, path: draft.path };
-    replies.push(await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/comments/${Number(draft.commentId)}/replies`, {
-      method: "POST",
-      body: JSON.stringify({ body: `${draft.body.trim()}\n\n${marker(metadata)}` }),
-    }));
+    const metadata = {
+      kind: "reply",
+      clientSubmissionId: draft.clientSubmissionId,
+      reviewId: body.reviewId || null,
+      partId: `reply:${draft.clientSubmissionId}`,
+      headSha,
+      path: draft.path,
+    };
+    const part = { partId: `reply:${draft.clientSubmissionId}`, event: null, request: draft };
+    const permit = await body.beforePart?.(part);
+    try {
+      const reply = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/comments/${Number(draft.commentId)}/replies`, {
+        method: "POST",
+        body: JSON.stringify({ body: `${draft.body.trim()}\n\n${marker(metadata)}` }),
+      });
+      await body.afterPart?.({ ...part, permit, record: reply });
+      replies.push(reply);
+    } catch (cause) {
+      await body.partFailed?.({ ...part, permit, cause });
+      throw cause;
+    }
   }
-  if (!reviewComments.length && event !== "COMMENT") {
-    review = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/reviews`, {
-      method: "POST",
-      body: JSON.stringify({ commit_id: headSha, event, body: "" }),
-    });
+  const reviewMetadata = {
+    kind: "review_bundle",
+    reviewId: body.reviewId || null,
+    partId: "review_bundle",
+    headSha,
+    event,
+  };
+  let review;
+  const reviewPart = {
+    partId: "review_bundle",
+    event,
+    request: { reviewId: body.reviewId || null, headSha, event, comments: commentDrafts },
+  };
+  const reviewPermit = await body.beforePart?.(reviewPart);
+  if (reviewComments.length) {
+    const payload = batchReviewPayload(headSha, reviewComments, event);
+    payload.body = `${payload.body}\n\n${marker(reviewMetadata)}`;
+    try {
+      review = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/reviews`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    } catch (cause) {
+      await body.partFailed?.({ ...reviewPart, permit: reviewPermit, cause });
+      throw cause;
+    }
+  } else {
+    try {
+      review = await github(token, `/repos/${context.identity.owner}/${context.identity.repo}/pulls/${context.identity.number}/reviews`, {
+        method: "POST",
+        body: JSON.stringify({ commit_id: headSha, event, body: `${body.reviewBody?.trim() ? `${body.reviewBody.trim()}\n\n` : ""}${marker(reviewMetadata)}` }),
+      });
+    } catch (cause) {
+      await body.partFailed?.({ ...reviewPart, permit: reviewPermit, cause });
+      throw cause;
+    }
   }
+  await body.afterPart?.({ ...reviewPart, permit: reviewPermit, record: review });
   return { review, replies, published: reviewComments.length + replies.length, duplicates: comments.length - unpublished.length, assets };
 }
 

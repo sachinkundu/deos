@@ -3,9 +3,12 @@ import hmac
 import json
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from deos.fakes import FakeQueue, FakeStateStore
 from deos.ingress import (
     IngressRouteProof,
+    InvalidWebhook,
     LinearIngress,
     LinearIngressConfig,
     LinearWebhookACL,
@@ -78,11 +81,11 @@ def test_duplicate_delivery_is_acknowledged_without_second_enqueue() -> None:
     assert len(queue.events) == 1
 
 
-def test_invalid_signature_and_stale_timestamp_are_rejected() -> None:
+def test_invalid_signature_and_timestamp_outside_retry_window_are_rejected() -> None:
     ingress, queue, state = make_ingress()
     body = make_body(project_id="project-1", state="Started")
     invalid = ingress.handle(body, {"Linear-Timestamp": "1786442400", "Linear-Signature": "bad"})
-    stale = ingress.handle(body, headers(body, timestamp=NOW - timedelta(minutes=6)))
+    stale = ingress.handle(body, headers(body, timestamp=NOW - timedelta(hours=8, minutes=16)))
 
     assert invalid.status_code == 400
     assert stale.status_code == 400
@@ -208,3 +211,28 @@ def headers(body: bytes, timestamp: datetime | None = None) -> dict[str, str]:
     signed = body
     signature = hmac.new(SECRET, signed, hashlib.sha256).hexdigest()
     return {"Linear-Timestamp": timestamp_text, "Linear-Signature": signature}
+
+
+def test_linear_retry_timestamp_window_is_directional() -> None:
+    now = datetime(2026, 9, 14, 12, 0, tzinfo=UTC)
+    acl = LinearWebhookACL(
+        LinearIngressConfig(
+            signing_secret=b"secret",
+            relevant_project_ids=frozenset(),
+            relevant_transitions=frozenset(),
+        )
+    )
+    body = b"{}"
+
+    def headers(at: datetime) -> dict[str, str]:
+        return {
+            "Linear-Timestamp": str(int(at.timestamp() * 1000)),
+            "Linear-Signature": hmac.new(b"secret", body, hashlib.sha256).hexdigest(),
+        }
+
+    acl.verify(body, headers(now - timedelta(hours=8, minutes=15)), now)
+    acl.verify(body, headers(now + timedelta(minutes=5)), now)
+    with pytest.raises(InvalidWebhook, match="stale"):
+        acl.verify(body, headers(now - timedelta(hours=8, minutes=15, milliseconds=1)), now)
+    with pytest.raises(InvalidWebhook, match="future"):
+        acl.verify(body, headers(now + timedelta(minutes=5, milliseconds=1)), now)
