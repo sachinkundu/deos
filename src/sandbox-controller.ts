@@ -1106,6 +1106,12 @@ export class SandboxAgentController {
         observedAt = heartbeat.observedAt;
       } catch (caughtError) {
         recordCaughtError(caughtError, "src/sandbox-controller.ts:949");
+        // A timed-out transport cannot tell us whether the file is stale. Keep
+        // the last durable timestamp unchanged and observe again next poll.
+        // The absolute attempt deadline above still bounds repeated failures.
+        if (caughtError instanceof Error && ['AbortError', 'TimeoutError'].includes(caughtError.name)) {
+          return { state: 'running', attemptId: attempt.attempt_id, sandboxId: attempt.sandbox_id };
+        }
         observedAt = attempt.heartbeat_at ?? attempt.started_at ?? attempt.created_at;
       }
       if (this.dependencies.now().getTime() - Date.parse(observedAt) > this.config.heartbeatTimeoutMs) {

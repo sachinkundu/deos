@@ -1613,6 +1613,48 @@ test("expired heartbeat kills the process, destroys the Sandbox, and fails close
   assert.equal(setupResult.attempts.latest?.state, "interrupted");
 });
 
+test("a heartbeat transport abort cannot turn an old observation into a dead supervisor", async () => {
+  let clock = NOW;
+  const state = setup({ clock: () => clock });
+  await state.controller.execute(run, 'work', 'work', definition);
+  const previous = state.attempts.latest!.heartbeat_at;
+  const read = state.factory.sandbox.readFile.bind(state.factory.sandbox);
+  state.factory.sandbox.readFile = async (path) => {
+    if (path === '/deos/output/heartbeat.json') throw new DOMException('The operation was aborted', 'AbortError');
+    return read(path);
+  };
+  clock = new Date(NOW.getTime() + 10 * 60_000);
+  const result = await state.controller.execute(run, 'work', 'work', definition);
+  assert.equal(result.state, 'running');
+  assert.equal(state.attempts.latest!.heartbeat_at, previous);
+  assert.equal(state.factory.sandbox.supervisor.killed, false);
+  assert.equal(state.factory.sandbox.destroyed, false);
+  state.factory.sandbox.readFile = read;
+  state.factory.sandbox.files.set('/deos/output/heartbeat.json', JSON.stringify({
+    attemptId: state.attempts.latest!.attempt_id, observedAt: clock.toISOString(),
+  }));
+  assert.equal((await state.controller.execute(run, 'work', 'work', definition)).state, 'running');
+  assert.equal(state.attempts.latest!.heartbeat_at, clock.toISOString());
+});
+
+test("heartbeat transport trouble does not extend the absolute attempt deadline", async () => {
+  let clock = NOW;
+  const state = setup({ clock: () => clock });
+  await state.controller.execute(run, 'work', 'work', definition);
+  const read = state.factory.sandbox.readFile.bind(state.factory.sandbox);
+  state.factory.sandbox.readFile = async (path) => {
+    if (path === '/deos/output/heartbeat.json') throw new DOMException('The operation was aborted', 'AbortError');
+    return read(path);
+  };
+  clock = new Date(NOW.getTime() + 10 * 60_000);
+  assert.equal((await state.controller.execute(run, 'work', 'work', definition)).state, 'running');
+  clock = new Date(Date.parse(state.attempts.latest!.absolute_deadline) + 1);
+  const result = await state.controller.execute(run, 'work', 'work', definition);
+  assert.equal(result.state === 'completed' ? result.outcome.outcome : null, 'failed');
+  assert.equal(state.attempts.latest!.state, 'absolute_timeout');
+  assert.equal(state.factory.sandbox.supervisor.killed, true);
+});
+
 test("a replay after terminal persistence returns the same attempt without relaunching", async () => {
   const { controller, factory, attempts } = setup();
   await controller.execute(run, "work", "work", definition);

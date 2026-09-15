@@ -13,11 +13,18 @@
     "failure": "test_invalid_signature_and_stale_timestamp_are_rejected: stale response 200 instead of expected 400"
   },
   "runnerChecks": {
-    "javascript": 499,
+    "javascript": 501,
     "python": 72,
     "typecheck": "passed",
     "bindings": "passed",
     "openspec": "passed"
   },
-  "heartbeatCause": "Not conclusively established from retained evidence. Resource saturation observed; do not claim OOM or a Vite crash."
+  "heartbeatCause": "Not conclusively established from retained evidence. Resource saturation observed; do not claim OOM or a Vite crash.",
+  "heartbeatReadFailure": {
+    "occurredAt": "2026-09-15T06:40:18.937Z",
+    "name": "AbortError",
+    "message": "The operation was aborted",
+    "location": "SandboxAgentController.reconcile"
+  },
+  "watchdogRepair": "An AbortError or TimeoutError while reading the heartbeat preserves the last durable timestamp and waits for another observation; it no longer treats the last observed timestamp as proof of expiry. The absolute deadline remains enforced."
 }

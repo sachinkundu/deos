@@ -39,12 +39,12 @@ for app in read('containers/applications'):
                        'health': app['health'], 'progress': rollout['progress']})
 run = 'workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1'
 queries = [
-    'SELECT status,current_node,current_visit_sequence,definition_id,definition_version,definition_digest,workflow_instance_id,allowed_linear_user_id,human_binding_revision FROM orchestration_runs WHERE run_id=?',
+    'SELECT status,current_node,current_visit_sequence,definition_id,definition_version,definition_digest,workflow_instance_id,allowed_linear_user_id,human_binding_revision,sandbox_tier FROM orchestration_runs WHERE run_id=?',
     'SELECT state,target_workflow_instance_id,plan_digest FROM implementation_handoffs WHERE run_id=?',
     'SELECT visit_sequence,state,pull_request_number,approved_head_sha,decision_delivery_id,decision_outcome,created_at FROM human_gate_visits WHERE run_id=? AND visit_sequence>=22 ORDER BY visit_sequence',
     "SELECT attempt_id,node_id,state FROM agent_attempts WHERE run_id=? AND state IN ('pending','starting','running','collecting')",
     'SELECT adapter_binding,profile_sha,checked_at FROM implementation_test_profiles WHERE run_id=?',
-    "SELECT attempt_id,node_id,visit_sequence,state,sandbox_id,process_id,result_class,cleanup_state,created_at,ended_at FROM agent_attempts WHERE run_id=? AND node_id LIKE 'implementation_%' ORDER BY created_at DESC LIMIT 5",
+    "SELECT attempt_id,node_id,visit_sequence,state,sandbox_id,sandbox_tier,heartbeat_at,process_id,result_class,cleanup_state,created_at,ended_at FROM agent_attempts WHERE run_id=? AND node_id LIKE 'implementation_%' ORDER BY created_at DESC LIMIT 5",
     'SELECT retry_id,failed_attempt_id,retry_node,state,from_visit_sequence,to_visit_sequence,source_workflow_instance_id,target_workflow_instance_id FROM agent_stage_retries WHERE run_id=? ORDER BY created_at DESC LIMIT 5',
     'SELECT status,approved_design_sha,tested_base_sha,branch,tree_sha,pr_url FROM implementation_runs WHERE run_id=?',
     "SELECT step_name,message,detail_r2_key,occurred_at FROM workflow_errors WHERE run_id=? AND occurred_at>'2026-09-14T12:47:00Z' ORDER BY occurred_at DESC LIMIT 8",
@@ -52,6 +52,7 @@ queries = [
     "SELECT attempt_id,json_extract(job_spec_json,'$.retrySourceAttemptId') AS retry_source,json_extract(job_spec_json,'$.continuationPatch.sha256') AS input_patch_sha,json_extract(json_extract(job_spec_json,'$.materializedContext'),'$.priorFailure.attemptId') AS recovered_attempt FROM agent_attempts WHERE run_id=? AND node_id LIKE 'implementation_%' ORDER BY created_at DESC LIMIT 1",
     'SELECT attempt_id,url,content_returned,COUNT(*) AS read_count,MAX(created_at) AS last_read FROM implementation_doc_access WHERE run_id=? AND content_returned=1 GROUP BY attempt_id,url ORDER BY last_read DESC LIMIT 20',
     'SELECT attempt_id,completed,total,tasks_sha,observed_at FROM implementation_progress WHERE run_id=? ORDER BY observed_at DESC LIMIT 5',
+    'SELECT retry.failed_attempt_id,retry.to_visit_sequence,retry.requested_by,tiers.source_sandbox_tier,tiers.target_sandbox_tier FROM implementation_retry_tiers AS tiers JOIN agent_stage_retries AS retry ON retry.retry_id=tiers.retry_id WHERE retry.run_id=? ORDER BY retry.to_visit_sequence DESC LIMIT 5',
 ]
 rows = read('d1/database/4e854f8a-018a-42c4-a325-c4b8805c06b2/query',
             {'batch': [{'sql': sql, 'params': [run]} for sql in queries]})
@@ -62,4 +63,5 @@ print(json.dumps({'deployments': deployments, 'containers': containers,
                   'implementation_attempts': rows[5]['results'], 'retries': rows[6]['results'],
                   'implementation': rows[7]['results'], 'recent_errors': rows[8]['results'],
                   'implementation_tries': rows[9]['results'], 'recovered_input': rows[10]['results'],
-                  'document_reads': rows[11]['results'], 'task_progress': rows[12]['results']}, indent=2))
+                  'document_reads': rows[11]['results'], 'task_progress': rows[12]['results'],
+                  'resource_recoveries': rows[13]['results']}, indent=2))
