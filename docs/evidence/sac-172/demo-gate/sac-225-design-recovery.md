@@ -155,3 +155,40 @@ Design Blocked, Human Review Design, and Completed Upcoming. This is a browser
 state check, not screenshot or canary completion proof. The backend and container
 versions were not changed. SAC-225 remains at reconciliation visit 20 with no
 active agent, no design approval, and no implementation work started.
+
+## Saved independent review recovered, 15 September at 18:37 UTC
+
+Commit `9c26551` adds an authenticated, audited recovery for this narrow failure.
+It verifies the original provider receipt, transcript, source snapshots, frozen
+review subject, current GitHub head, and exact failed attempts before accepting
+the existing concerns. Both failed attempts and their original errors remain.
+The independent invalid count stays at two. Recovery grants no new reviewer
+invocation and follows the saved concerns edge to the author response.
+
+All 546 repository tests, TypeScript, generated bindings, and the Worker dry run
+passed. Migration 0049 adds the recovery audit. Worker version
+`e1e2464a-c870-494d-8491-4ad12d46a829` is active at 100 percent. The container
+image remains unchanged. Global active attempts were checked before migration
+and deployment.
+
+The first execute request paused the source Workflow, then Cloudflare returned
+an internal RPC error. Readback proved the audit was prepared and the run and
+review cycle were unchanged. The original error remains in durable diagnostics.
+Replaying the same request from that confirmed state succeeded. The audit is
+established; the source reconciliation wait is consumed; no provider delivery
+or approval was invented.
+
+D1 confirms the four original concerns are accepted and Codex author attempt
+`01a0a65b-fd30-712d-9d06-9a66762564e1` started at 18:37:21 UTC. Its state is
+running at `design_independent_response`, visit 21. The new Workflow instance is
+`wf-v1-e3gx5nyorpr4oof63br5mxg3kgdalmftohvsusg5j7i4srzmox2a`.
+GitHub PR32 has a completed neutral design review check from this recovery;
+that check is not a design approval. See
+[the Showboat remote readback](sac-225-receipt-recovery-showboat.md).
+
+The refreshed staging browser shows SAC-225 Design In progress. Its saved v25
+still has no implementation tail. SAC-182 v29 displays the real Implementation
+phase, Demo Plan, Author, Verification, Demo Gate, and Human Review branch.
+SAC-225 must receive the audited implementation handoff at its design human
+gate, before the canary's authorized design approval and merge. Implementation
+has not started. This remains an operator-assisted canary.
