@@ -35,6 +35,8 @@
 
 - [x] 4.9 Return repairable completion-check failures to the same live implementation session. Keep the original diagnostics, rerun stale checks and proof, and retain strict collection and human gates. Verify failed-test repair, stale evidence, working-directory identity and failure boundaries before activation.
 
+- [x] 4.10 Keep the assigned browser alive during active implementation, avoid competing with a connected browser command, preserve original maintenance failures, and reject failed HTTP documents as working-screen proof. Verify run isolation, inactive cleanup, real navigation status, and error-page rejection before activation. Repeat live proof in the next canary revision.
+
 ## 5. Verification and canary
 
 - [x] 5.1 Verify migrations, frozen graph compatibility, job contracts, isolation, denial cases, resource ambiguity, cleanup, proof freshness, citations, publication retries, and human gate behavior.

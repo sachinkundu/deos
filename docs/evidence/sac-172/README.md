@@ -249,3 +249,20 @@ At 07:45:42Z, the existing Workflow retry created try 8, attempt `01a0a407-62dc-
 The staging portal now uses fresh projected status in the run dropdown and shows the latest attempt's sandbox tier while retaining the original run tier in its API. The change passed all 100 portal tests, portal type checking and both canonical builds. Version `10c033eb-fcf6-4825-93b4-f8bff4e6292f` was read back at 100 percent at 07:53:26Z. Wrangler reported route-list authentication code 10000 after activation; the existing route and live browser served the new build. [Deployment evidence](runtime-recovery-portal.json) records both outcomes. No backend or container was redeployed while try 8 ran.
 
 ![Active SAC-182 verification on the recovered sandbox](runtime-recovery-portal.png)
+
+### Automatic implementation PR reached; acceptance evidence needs revision
+
+Try 8 completed at 08:13:08Z and the workflow created [implementation PR 137](https://github.com/sachinkundu/deos/pull/137) without operator publication. Its head is `cefbb9d9e9afc0bf66a3b678aed83e1b98f44d63`, checked tree `7923143c6f795f30d396e715895f3aae87ed96e9`, and output patch `8a6ff3e0c147a0558a72723d084ac063251d0934935af4632921a9097ab77896`. The workflow reached `implementation_review`, visit 48, and retained the frozen human binding. The sandbox was destroyed. GitHub CI passed Python 3.11, Python 3.14 and TypeScript. The live staging map shows Author and Verification complete, leading to Human Review.
+
+This proves the automatic PR handoff, but does not complete task 5.4. Inspecting the hash-verified proof found two gaps:
+
+- The image caption claims checked-account Settings, but the [actual image](sac-182-pr137-invalid-preview.png) is an HTTP authentication failure: `unauthorized / missing_access_token`.
+- The [provider demo output](sac-182-pr137-provider-demo.md) has real GitHub and Linear receipts. Its checked source imports BettaView's `publishContinuation`, then replaces the DEOS service with a local RPC stub. `markGitHubReady` invokes the safe Linear adapter directly. It does not exercise the implemented continuation service's durable intent, lease, nonce, signed-delivery correlation and workflow traversal. It only publishes COMMENT in the provider demo.
+
+[Review evidence](sac-182-pr137-evidence-review.json) retains exact subjects, CI results and original browser connection failures. No human review decision was submitted, and no SAC-172 implementation PR was opened. The next revision needs a working isolated Settings/review preview and proof through the real changed continuation service, including the agreed review choices and recovery behavior.
+
+The browser was configured with a one-minute idle timeout. Cloudflare documents [a ten-minute configurable inactivity window and commands to keep sessions alive](https://developers.cloudflare.com/browser-run/puppeteer/). A new fix uses that window and refreshes the same owned session during normal five-minute reconciliation. It skips connected sessions, never allocates a replacement during maintenance, stops maintaining inactive attempts, and preserves original failures. Browser navigation now records the actual document HTTP status. Failed or unobserved documents cannot be captured as working-screen proof; state and errors remain available for diagnosis.
+
+The fix passed 504 JavaScript tests, type checking, generated bindings and strict OpenSpec. It deployed only after D1 showed no active agents. Backend `fd80b204-d504-47e2-85e6-cfec5f67688d` is active at 100 percent. Container version 8 and its image stayed unchanged, with four healthy instances in each implementation pool. The existing Human Review gate stayed open. This fix has local regression and deployment proof; its next live browser exercise remains pending. See [Showboat](browser-proof-repair.md) and [activation read-back](browser-proof-repair-deployment.json).
+
+![Automatic implementation PR waiting for human review](sac-182-pr137-human-review.png)

@@ -1,0 +1,183 @@
+{
+  "run": [
+    {
+      "status": "awaiting_human",
+      "current_node": "implementation_review",
+      "current_visit_sequence": 48,
+      "definition_id": "implementation",
+      "definition_version": 27,
+      "definition_digest": "ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c",
+      "workflow_instance_id": "wf-v1-k5kuq3ggfmfrxcucpwfvopkstvcdnqanxvef7bv6c26zdp7enojq",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 1,
+      "sandbox_tier": "basic"
+    }
+  ],
+  "attempt": [
+    {
+      "attempt_id": "01a0a407-62dc-7bc0-95e6-965a0a818188",
+      "node_id": "implementation_build",
+      "visit_sequence": 44,
+      "state": "completed",
+      "sandbox_id": "impl-v1-tfqmguac4oelhcdyymct2uojh435fpeodiz3uqdpu5wp65efvyiq",
+      "sandbox_tier": "standard-2",
+      "heartbeat_at": "2026-09-15T08:11:06.584Z",
+      "process_id": "a5a9f821-39c3-4476-bf2d-c894b85c58f5",
+      "result_class": "completed",
+      "cleanup_state": "destroyed",
+      "created_at": "2026-09-15T07:45:42.620Z",
+      "ended_at": "2026-09-15T08:13:08.763Z"
+    }
+  ],
+  "implementation": [
+    {
+      "status": "review",
+      "approved_design_sha": "f2b994131d879967940e69ced07932dfffb8bc9a",
+      "tested_base_sha": "f2b994131d879967940e69ced07932dfffb8bc9a",
+      "branch": "deos/agent/SAC-182/run-1",
+      "tree_sha": "7923143c6f795f30d396e715895f3aae87ed96e9",
+      "pr_url": "https://github.com/sachinkundu/deos/pull/137"
+    }
+  ],
+  "pr": {
+    "url": "https://github.com/sachinkundu/deos/pull/137",
+    "headRefOid": "cefbb9d9e9afc0bf66a3b678aed83e1b98f44d63",
+    "baseRefOid": "f2b994131d879967940e69ced07932dfffb8bc9a",
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T08:14:24Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sachinkundu/deos/actions/runs/34945820822/job/104304838737",
+        "name": "python (3.11)",
+        "startedAt": "2026-09-15T08:14:04Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T08:14:07Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sachinkundu/deos/actions/runs/34945806129/job/104304790291",
+        "name": "python (3.11)",
+        "startedAt": "2026-09-15T08:13:54Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T08:14:24Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sachinkundu/deos/actions/runs/34945820822/job/104304838472",
+        "name": "python (3.14)",
+        "startedAt": "2026-09-15T08:14:04Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T08:14:07Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sachinkundu/deos/actions/runs/34945806129/job/104304789907",
+        "name": "python (3.14)",
+        "startedAt": "2026-09-15T08:13:53Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T08:16:47Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sachinkundu/deos/actions/runs/34945820822/job/104304838891",
+        "name": "typescript",
+        "startedAt": "2026-09-15T08:14:06Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-15T08:16:27Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sachinkundu/deos/actions/runs/34945806129/job/104304790037",
+        "name": "typescript",
+        "startedAt": "2026-09-15T08:13:52Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      }
+    ]
+  },
+  "proof": [
+    {
+      "proof_id": "01a0a407-62dc-7bc0-95e6-965a0a818188:7923143c6f795f30d396e715895f3aae87ed96e9:showboat:5eaf83da884000391e0aa838f5ab9f5ac0ff8dd7325391183d773148fd75af28",
+      "kind": "showboat",
+      "r2_key": "implementation/workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1/5eaf83da884000391e0aa838f5ab9f5ac0ff8dd7325391183d773148fd75af28/showboat.md",
+      "sha256": "5eaf83da884000391e0aa838f5ab9f5ac0ff8dd7325391183d773148fd75af28",
+      "byte_size": 3001,
+      "caption": "'node' 'scripts/demo-bettaview-review-continuation.mjs' '/deos/output/provider-demo-config.json'",
+      "provider_delivery_id": null,
+      "tree_sha": "7923143c6f795f30d396e715895f3aae87ed96e9",
+      "created_at": "2026-09-15T08:07:29.395Z"
+    },
+    {
+      "proof_id": "01a0a407-62dc-7bc0-95e6-965a0a818188:7923143c6f795f30d396e715895f3aae87ed96e9:provider_originated:b506661ee13b75c36b7682231d5a9accbe4aafc550f50081d36917fef61b9dbe",
+      "kind": "provider_originated",
+      "r2_key": "implementation/workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1/b506661ee13b75c36b7682231d5a9accbe4aafc550f50081d36917fef61b9dbe/provider-proof.json",
+      "sha256": "b506661ee13b75c36b7682231d5a9accbe4aafc550f50081d36917fef61b9dbe",
+      "byte_size": 5680,
+      "caption": "Real GitHub review and signed Linear event on this try's isolated resources",
+      "provider_delivery_id": "ca3f6869-8f59-4711-aeee-1be2da4d4925",
+      "tree_sha": "7923143c6f795f30d396e715895f3aae87ed96e9",
+      "created_at": "2026-09-15T08:07:40.539Z"
+    },
+    {
+      "proof_id": "01a0a407-62dc-7bc0-95e6-965a0a818188:7923143c6f795f30d396e715895f3aae87ed96e9:browser_image:05fbcd08077f08c47033b3e2d4f510b7a2f67dec7d603eedaa962d9717e89cb0",
+      "kind": "browser_image",
+      "r2_key": "implementation/workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1/05fbcd08077f08c47033b3e2d4f510b7a2f67dec7d603eedaa962d9717e89cb0/browser.png",
+      "sha256": "05fbcd08077f08c47033b3e2d4f510b7a2f67dec7d603eedaa962d9717e89cb0",
+      "byte_size": 8777,
+      "caption": "BettaView checked-account settings in the isolated local preview",
+      "provider_delivery_id": null,
+      "tree_sha": "7923143c6f795f30d396e715895f3aae87ed96e9",
+      "created_at": "2026-09-15T08:08:17.815Z"
+    }
+  ],
+  "findings": [
+    {
+      "kind": "invalid_visual_proof",
+      "proofSha": "05fbcd08077f08c47033b3e2d4f510b7a2f67dec7d603eedaa962d9717e89cb0",
+      "actual": "Screenshot is JSON unauthorized / missing_access_token",
+      "claimed": "BettaView checked-account settings"
+    },
+    {
+      "kind": "incomplete_changed_application_e2e",
+      "file": "scripts/demo-bettaview-review-continuation.mjs",
+      "lines": [
+        83,
+        142
+      ],
+      "actual": "Imports publishContinuation but replaces the DEOS continuation service with an in-memory RPC stub. Its markGitHubReady directly invokes safe_test linear.move.",
+      "missing": "Real continuation service, persisted intent/lease/receipt/nonce facts, signed delivery correlation and actual workflow traversal. COMMENT only; requested REQUEST_CHANGES/APPROVE and recovery cases are not shown by the provider demo."
+    }
+  ],
+  "browserFaults": [
+    {
+      "operation": "tool.browser",
+      "error": {
+        "stack": "Error: Unable to connect to existing session b0565106-184c-4acd-99ca-6bbb765228b7 (it may still be in use or not ready yet) - retry or launch a new browser: TypeError: Cannot read properties of null (reading 'accept')\n    at PuppeteerWorkers.connect (queue-consumer.js:30582:13)\n    at async browserCommand (queue-consumer.js:32443:19)\n    at async ImplementationBroker.handle (queue-consumer.js:50794:24)\n    at async queue-consumer.js:141:16",
+        "message": "Unable to connect to existing session b0565106-184c-4acd-99ca-6bbb765228b7 (it may still be in use or not ready yet) - retry or launch a new browser: TypeError: Cannot read properties of null (reading 'accept')",
+        "name": "Error"
+      }
+    },
+    {
+      "operation": "tool.browser",
+      "error": {
+        "stack": "ImplementationError: Browser operation is unsupported\n    at ImplementationBroker.handle (queue-consumer.js:50790:17)\n    at async queue-consumer.js:141:16",
+        "message": "Browser operation is unsupported",
+        "code": "browser_operation",
+        "name": "ImplementationError"
+      }
+    }
+  ],
+  "limits": "Automatic implementation-to-PR-to-Human-Review succeeded. Full canary acceptance remains open; no human state was changed and no SAC-172 PR was opened."
+}
