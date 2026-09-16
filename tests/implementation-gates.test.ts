@@ -210,6 +210,37 @@ test("clarification ignores bots, other people, old and edited comments; only a 
     f.db.close();
   }
 });
+test("publication failure posts one Linear question, retaining completed work and the original error",async()=>{
+  const f=await setup('comment'), original=globalThis.fetch;
+  f.db.sqlite.exec("UPDATE implementation_questions SET status='closed'");
+  const diagnostic=await f.store.error('run-1',null,'implementation.write_branch',
+    new Error('GitHub POST /git/trees HTTP 403: Resource not accessible by integration', {cause:new Error('provider response')}));
+  const comments:{id:string;body:string}[]=[];
+  globalThis.fetch=async(_url,init)=>{
+    const request=JSON.parse(String(init?.body));
+    if(request.query.includes('DeosIssueComments')) return Response.json({data:{issue:{comments:{nodes:comments}}}});
+    assert.match(request.query,/DeosCreateComment/);
+    comments.push({id:request.variables.commentId,body:request.variables.body});
+    return Response.json({data:{commentCreate:{success:true,comment:{id:request.variables.commentId}}}});
+  };
+  try {
+    const work=await f.store.requireRun('run-1');
+    const run={...f.run,selection_delivery_id:'opening',previous_node:'implementation_branch_write',current_node:'implementation_publication_question',current_visit_sequence:3};
+    await f.service.postPublicationQuestion(run,work);
+    await f.service.postPublicationQuestion(run,work);
+    assert.equal(comments.length,1);
+    assert.match(comments[0].body,/implementation is saved/);
+    assert.match(comments[0].body,/HTTP 403: Resource not accessible by integration/);
+    assert.match(comments[0].body,/Reply here/);
+    const question=await f.store.question('run-1');
+    assert.equal(question?.status,'open');
+    assert.equal(question?.gate_visit,4);
+    assert.equal(question?.linear_comment_id,comments[0].id);
+    assert.deepEqual(await f.store.requireRun('run-1'),work);
+    const saved=await f.store.read<{error:{cause:{message:string}}}>(diagnostic.key,diagnostic.sha256);
+    assert.equal(saved.error.cause.message,'provider response');
+  } finally {globalThis.fetch=original;f.db.close();}
+});
 test("final review cannot consume a comment or a different human state transition", async () => {
   const f = await setup("state");
   try {

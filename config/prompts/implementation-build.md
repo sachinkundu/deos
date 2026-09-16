@@ -38,6 +38,13 @@ question, a reason, and a stable blockKey. Reuse the same key if the saved reply
 does not answer the same blocker. A reply cannot grant additional capabilities.
 Do not post comments or change the issue state yourself.
 
+If the saved question and reply concern a publication blocker after coding, keep
+the finished implementation and demos. Apply the human's requested adjustment,
+run only useful checks for that adjustment, and explain what changed. Do not add
+new deployment infrastructure or seek broader access unless the human asks for
+it. The workflow will try publication again when you finish. If the reply leaves
+a necessary choice unresolved, return needs_human with that specific question.
+
 The completion hook saves your code, task list, command output and demo artifacts
 as review context. Return the requested result message. The service publishes
 the branch and PR and manages the human gates.

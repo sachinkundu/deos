@@ -6,6 +6,16 @@ The workflow only routes messages and publishes the saved result. Any older
 rollout notes below about completion, evidence or citation gates describe the
 retired behavior. They must not be restored as runtime requirements.
 
+Publication failures after coding use the existing Linear clarification mechanism.
+The service saves the original error, posts one question with that error and the
+fact that the implementation is saved, and enters a comment-based human gate.
+The human can request a code adjustment or resolve access and request another
+publication attempt. A trusted reply resumes Sol with the saved work and reply;
+it does not start another Claude review or grant new provider permissions.
+The portal keeps Author complete while Prepare PR waits for the human response.
+Existing failed publication visits adopt this path only through the audited retry,
+which records both frozen definitions and preserves final merge authority.
+
 ## Context
 
 The current flow already freezes its workflow definition, repository route,

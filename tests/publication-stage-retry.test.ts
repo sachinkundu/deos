@@ -88,7 +88,10 @@ const setup = async (retryNode: PublicationRetryNode = "publish_planning_revisio
   const terminalNode = implementation ? "implementation_failed" : "system_action_failed";
   const terminalCause = implementation ? "implementation_failed" : "system_action_invariant_failed";
   const definitionFile = implementation ? "config/workflow.implementation.yaml" : "config/workflow.simple-traceability.yaml";
-  const definition = await loadWorkflowDefinition(readFileSync(definitionFile, "utf8"), {
+  // Reproduce the older terminal publication failure that needs recovery.
+  const source = readFileSync(definitionFile, "utf8").replace('version: 35','version: 34')
+    .replaceAll('failed: implementation_publication_question','failed: implementation_failed');
+  const definition = await loadWorkflowDefinition(source, {
     prompts: Object.fromEntries(readdirSync("config/prompts").map(name => [`prompts/${name}`,readFileSync(`config/prompts/${name}`,"utf8")])),
     schemas: Object.fromEntries(readdirSync("config/schemas").map(name => [`schemas/${name}`,readFileSync(`config/schemas/${name}`,"utf8")])),
   });
@@ -182,6 +185,30 @@ test("implementation publication retry rejects a different failure or a human re
       assert.equal(database.sqlite.prepare("SELECT COUNT(*) AS n FROM publication_stage_retries").get()?.n,0);
     } finally {database.close();}
   }
+});
+
+test("old publication failure adopts the human handoff through an audited retry, without rerunning agents",async()=>{
+  const {database,definition,input}=await setup('implementation_branch_write');
+  try {
+    const tail=await loadWorkflowDefinition(readFileSync('config/workflow.implementation.yaml','utf8'),{
+      prompts:Object.fromEntries(readdirSync('config/prompts').map(name=>[`prompts/${name}`,readFileSync(`config/prompts/${name}`,'utf8')])),
+      schemas:Object.fromEntries(readdirSync('config/schemas').map(name=>[`schemas/${name}`,readFileSync(`config/schemas/${name}`,'utf8')])),
+    });
+    const store=new D1StageRetryStore(database as unknown as D1Database,tail);
+    const result=await store.prepare(input);
+    assert.equal(result.retry_kind,'compatible_tail');
+    assert.equal(result.source_definition_digest,definition.digest);
+    assert.notEqual(result.target_definition_digest,definition.digest);
+    assert.equal(result.current_node,'implementation_branch_write');
+    const row=database.sqlite.prepare('SELECT canonical_json FROM workflow_definitions WHERE digest=?').get(result.target_definition_digest);
+    const target=JSON.parse(String(row?.canonical_json));
+    assert.equal(target.nodes.implementation_branch_write.edges.failed,'implementation_publication_question');
+    assert.deepEqual(target.nodes.implementation_review,definition.nodes.implementation_review);
+    assert.deepEqual(target.implementationPolicy,definition.implementationPolicy);
+    assert.equal((await store.prepare(input)).retry_id,result.retry_id);
+    assert.equal(database.sqlite.prepare('SELECT COUNT(*) AS n FROM agent_attempts').get()?.n,0);
+    assert.equal(database.sqlite.prepare('SELECT definition_digest FROM orchestration_runs').get()?.definition_digest,target.digest);
+  } finally {database.close();}
 });
 
 test("portal exposes retry for the failed publication even with no failed agent attempt", () => {

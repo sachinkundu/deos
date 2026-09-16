@@ -58,6 +58,14 @@ test("clarification pauses the unfinished step and never completes verification"
   assert.equal(writing.verification, "Upcoming");
 });
 
+test("publication blocker keeps coding complete while waiting for a human reply",()=>{
+  const history=[build,visit(41,'implementation_branch_write'),visit(42,'implementation_publication_question'),visit(43,'implementation_publication_wait')];
+  const result=implementationSteps(history,'awaiting_human',progress);
+  assert.equal(result.author,'Complete');
+  assert.equal(result.verification,'Blocked');
+  assert.equal(result.description,'Waiting for your reply in Linear.');
+});
+
 test("failure stays on the interrupted step and recovery resets to the new build", () => {
   const history = [build, visit(41, "implementation_failed")];
   assert.equal(implementationSteps(history, "failed", progress).author, "Failed");

@@ -121,7 +121,7 @@ const stageRetryController = async (env: Env): Promise<AgentStageRetryController
   const targetDefinition = definitions["simple-traceability"];
   if (targetDefinition === undefined) throw new Error("traceability workflow definition is missing");
   return new AgentStageRetryController(
-    new D1StageRetryStore(env.DB),
+    new D1StageRetryStore(env.DB, definitions['implementation']),
     env.ORCHESTRATION_WORKFLOW as unknown as QueueConsumerEnv["ORCHESTRATION_WORKFLOW"],
     env.STAGE_RETRY_SECRET,
     targetDefinition,

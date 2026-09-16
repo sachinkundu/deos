@@ -36,7 +36,8 @@ export function implementationSteps(
     .sort((a, b) => b.sequence - a.sequence);
   const latest = current[0];
   const work = current.find(visit => !["implementation_failed", "implementation_question",
-    "implementation_clarification_wait", "implementation_manual_reconciliation"].includes(visit.nodeId));
+    "implementation_clarification_wait", "implementation_publication_question", "implementation_publication_wait",
+    "implementation_manual_reconciliation"].includes(visit.nodeId));
   const ready = latest !== undefined && readyNodes.has(latest.nodeId);
   const atPlan = work?.nodeId === 'implementation_demo_plan' || work?.nodeId === 'implementation_rebase_demo';
   const atGate = work?.nodeId === 'implementation_demo_gate';
@@ -71,7 +72,7 @@ export function implementationSteps(
   const stopped = runStatus === "failed" ? "Failed"
     : ["blocked", "denied", "manual_reconciliation_required"].includes(runStatus) ? "Blocked"
       : runStatus === "canceled" ? "Canceled" : null;
-  const waiting = latest.nodeId === "implementation_clarification_wait";
+  const waiting = ["implementation_clarification_wait", "implementation_publication_wait"].includes(latest.nodeId);
   if (stopped || waiting) {
     result[atPlan ? 'demoPlan' : atGate ? 'demoGate' : verifying ? "verification" : "author"] = stopped ?? "Blocked";
     if (waiting) result.description = "Waiting for your reply in Linear.";

@@ -67,6 +67,8 @@ export class ImplementationService {
         const work = await this.store.requireRun(run.run_id);
         if (action === "implementation.question")
           await this.postQuestion(run, work);
+        else if (action === "implementation.publication_question")
+          await this.postPublicationQuestion(run, work);
         else if (
           action === "implementation.merge_recheck" ||
           action === "implementation.merge"
@@ -516,10 +518,26 @@ export class ImplementationService {
       .bind(base, new Date().toISOString(), run.run_id)
       .run();
   }
-  async postQuestion(run: OrchestrationRunRecord, work: ImplementationRun) {
-    const question = run.previous_node?.startsWith('implementation_demo_')
+  async postPublicationQuestion(run: OrchestrationRunRecord, work: ImplementationRun) {
+    const operation = run.previous_node === 'implementation_branch_write'
+      ? 'implementation.write_branch' : run.previous_node === 'implementation_publish'
+        ? 'implementation.publish' : null;
+    if (!operation) throw new ImplementationError('publication_block_source', 'Publication blocker has no failed publication step');
+    const saved = await this.env.DB.prepare(`SELECT r2_key,sha256 FROM implementation_effect_errors
+      WHERE run_id=? AND operation=? ORDER BY created_at DESC LIMIT 1`)
+      .bind(run.run_id,operation).first<{r2_key:string;sha256:string}>();
+    if (!saved) throw new ImplementationError('publication_block_error_missing', 'Original publication error is missing');
+    const diagnostic = await this.store.read<{error:{message?:string}}>(saved.r2_key,saved.sha256);
+    await this.postQuestion(run,work,{
+      blockKey:`publication-${run.current_visit_sequence}`,
+      question:'The implementation is saved, but I could not publish it for review. How would you like me to proceed?',
+      reason:`${diagnostic.error.message ?? 'The publication request failed; the original diagnostic is saved.'}\n\nYou can ask me to change what is published, or resolve the access problem and ask me to try again. Your reply will go to the implementation agent with the saved code and evidence.`,
+    });
+  }
+  async postQuestion(run: OrchestrationRunRecord, work: ImplementationRun, publicationQuestion?: ImplementationCandidate['question']) {
+    const question = publicationQuestion ?? (run.previous_node?.startsWith('implementation_demo_')
       ? await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).blocker(run)
-      : (await this.store.candidate(work)).question;
+      : (await this.store.candidate(work)).question);
     if (!question)
       throw new ImplementationError(
         "question_missing",
@@ -538,9 +556,9 @@ export class ImplementationService {
     );
     const id = `${run.run_id}:${question.blockKey}`;
     await this.env.DB.prepare(
-      `INSERT OR IGNORE INTO implementation_questions
+      `INSERT INTO implementation_questions
       (question_id,run_id,block_key,gate_visit,opened_delivery_id,opened_at,question_key,question_sha,status)
-      VALUES (?,?,?,?,?,?,?,?,'open')`,
+      VALUES (?,?,?,?,?,?,?,?,'open') ON CONFLICT(question_id) DO NOTHING`,
     )
       .bind(
         id,

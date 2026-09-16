@@ -48,7 +48,7 @@ export const phaseForVisit = (visit: Pick<PhaseVisitLike, "nodeId" | "stageId" |
   if (visit.stageId === "claim") return "claim";
   if (visit.nodeId === "implementation_failed") return "stopped";
   if (visit.nodeId === "code_merged") return "complete";
-  if (["implementation_review", "implementation_clarification_wait"].includes(visit.nodeId)) return "approval";
+  if (["implementation_review", "implementation_clarification_wait", "implementation_publication_wait"].includes(visit.nodeId)) return "approval";
   if (visit.nodeId.startsWith("implementation_")) return "implementation";
   if (["planning_review", "design_review"].includes(visit.nodeId) || visit.gate !== null) return "approval";
   if (["planning", "independent_review", "plan_merge"].includes(visit.stageId)) return "planning";

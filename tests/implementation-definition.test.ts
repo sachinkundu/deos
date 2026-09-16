@@ -53,6 +53,11 @@ test("merged design leads to distinct task and build jobs, separate human decisi
     "state",
   );
   assert.equal(flow.nodes.implementation_merge.edges.completed, "code_merged");
+  for (const node of ['implementation_branch_write','implementation_publish'])
+    assert.equal(flow.nodes[node].edges.failed,'implementation_publication_question');
+  assert.equal(flow.nodes.implementation_publication_question.edges.completed,'implementation_publication_wait');
+  assert.equal(flow.nodes.implementation_publication_wait.type === 'human_gate' && flow.nodes.implementation_publication_wait.expectedEventKind,'comment');
+  assert.equal(flow.nodes.implementation_publication_wait.edges.reply_received,'implementation_build');
   assert.ok(
     !Object.values(flow.nodes).some(
       (n) => n.type === "system_action" && n.action.startsWith("release."),

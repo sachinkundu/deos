@@ -99,6 +99,16 @@ An allowed reply that answers the open question SHALL resume the same build run 
 - **WHEN** the approved work supports one safe choice within its stated scope.
 - **THEN** the agent records the assumption and continues without asking a person.
 
+#### Scenario: Finished code cannot be published
+
+- **WHEN** publishing the saved implementation branch or pull request fails.
+- **THEN** DEOS retains the code, demos and original provider error, posts one question on Linear, and waits for the allowed human reply. Sol receives the reply with the saved work and can adjust what is published. Claude is not invoked again, and no permission is widened by the workflow.
+
+#### Scenario: Publication question is retried
+
+- **WHEN** delivery of the question is retried after an interruption.
+- **THEN** DEOS reconciles the same Linear comment and waits at the same decision without posting duplicate questions or repeating the implementation.
+
 #### Scenario: A material choice is missing
 
 - **WHEN** the agent cannot continue without changing intent, safety, or the approved design.

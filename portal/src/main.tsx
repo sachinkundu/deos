@@ -268,6 +268,8 @@ const workflowStepLabel = (nodeId: string): string => ({
   implementation_publish: "Preparing implementation review",
   implementation_review: "Review implementation",
   implementation_clarification_wait: "Answer implementation question",
+  implementation_publication_question: "Ask about publication blocker",
+  implementation_publication_wait: "Answer publication question",
   implementation_merge_recheck: "Recheck before merge",
   implementation_merge: "Merge implementation",
   code_merged: "Code merged",
@@ -498,13 +500,14 @@ function TraceabilityWorkflowMap({
     (currentPhaseId === "planning" || currentPhaseId === "design" ? currentPhaseId : null) ??
     ((activeGate?.gateKind ?? projection.gateVisits.at(-1)?.gateKind) === "design" ? "design" : "planning");
   const implementationGate = implementation.data?.gates[0];
+  const implementationQuestionWait = ["implementation_clarification_wait", "implementation_publication_wait"].includes(projection.run.currentNode);
   const reviewActive = currentPhaseId === "approval" && (reviewPhase === "implementation"
     ? implementationGate?.state === "open" : Boolean(activeGate));
   const reviewProductUrl = reviewPhase === "implementation" ? implementation.data?.prUrl
     : reviewPhase === "planning" ? planningProduct?.url : designProduct?.url;
   const renderApproval = () => !reviewActive ? null : reviewPhase === "implementation"
     ? <div className="implementation-review-action">
-      {projection.run.currentNode === "implementation_clarification_wait" ? <><p>{implementation.data?.question?.question}</p><p className="phase-note">Reply to the question in Linear to continue.</p></>
+      {implementationQuestionWait ? <><p>{implementation.data?.question?.question}</p><p className="phase-note">Reply to the question in Linear to continue.</p></>
         : reviewProductUrl && <div className="phase-artifacts review-action"><a href={reviewProductUrl} target="_blank" rel="noreferrer"><GitPullRequest />Review implementation PR</a></div>}
     </div>
     : reviewProductUrl ? <div className="phase-artifacts review-action"><PullRequestActions url={reviewProductUrl} githubLabel="Review" /></div> : null;
@@ -518,7 +521,7 @@ function TraceabilityWorkflowMap({
       <div className={`phase-map branching-flow ${hasImplementation ? "with-implementation" : ""}`} ref={flowMap}>
         <svg className="review-connectors" aria-hidden="true"><defs>{["complete", "active", "upcoming"].map(tone => <marker key={tone} id={`review-arrow-${tone}`} className={tone} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>)}</defs>{reviewPaths.map(edge => {
           const phase = phases.find(phase => phase.id === edge.kind);
-          const complete = phase && !(edge.kind === "implementation" && projection.run.currentNode === "implementation_clarification_wait") &&
+          const complete = phase && !(edge.kind === "implementation" && implementationQuestionWait) &&
             phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId) === "Complete";
           const tone = reviewActive && edge.kind === reviewPhase ? "active" : complete ? "complete" : "upcoming";
           return <path key={edge.kind} data-from={edge.kind} d={edge.path} className={tone} markerEnd={`url(#review-arrow-${tone})`} />;
@@ -526,7 +529,7 @@ function TraceabilityWorkflowMap({
         {phases.filter((phase) => phase.visits.length > 0 || phase.id !== "stopped").map((phase, index) => {
           const expanded = expandedPhase === phase.id;
           const current = currentPhaseId === phase.id;
-          const status = phase.id === "implementation" && projection.run.currentNode === "implementation_clarification_wait"
+          const status = phase.id === "implementation" && implementationQuestionWait
             ? "Blocked" : phaseDisplayStatus(phase, currentPhaseId, projection.run.status, failedPhaseId);
           const successfulTerminal = status === "Succeeded";
           const phaseComplete = status === "Complete" || successfulTerminal ||

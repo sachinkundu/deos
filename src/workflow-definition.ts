@@ -137,7 +137,7 @@ export interface WorkflowBundleSources {
 
 const SYSTEM_ACTIONS = new Set([
   "implementation.prepare", "implementation.check_proof", "implementation.write_branch", "implementation.publish",
-  "implementation.question", "implementation.rebase", "implementation.merge_recheck", "implementation.merge",
+  "implementation.question", "implementation.publication_question", "implementation.rebase", "implementation.merge_recheck", "implementation.merge",
   "openspec.create_proposal_and_requirements",
   "openspec.create_delta_specs",
   "openspec.create_tasks",

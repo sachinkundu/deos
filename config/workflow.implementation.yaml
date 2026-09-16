@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: implementation
-  version: 34
+  version: 35
 spec:
   implementationPolicy:
     uiPaths:
@@ -677,7 +677,7 @@ spec:
       edges:
         {
           completed: implementation_publish,
-          failed: implementation_failed,
+          failed: implementation_publication_question,
           base_changed: implementation_rebase,
         }
     implementation_publish:
@@ -686,9 +686,19 @@ spec:
       edges:
         {
           completed: implementation_review,
-          failed: implementation_failed,
+          failed: implementation_publication_question,
           base_changed: implementation_rebase,
         }
+    implementation_publication_question:
+      type: system_action
+      action: implementation.publication_question
+      edges: { completed: implementation_publication_wait, failed: implementation_failed }
+    implementation_publication_wait:
+      type: human_gate
+      linearState: Human Review
+      expectedEventKind: comment
+      decisions: { reply_received: In Progress }
+      edges: { reply_received: implementation_build }
     implementation_question:
       type: system_action
       action: implementation.question
