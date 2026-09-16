@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 46 runtime/tool occurrences in 23 categories, including recovered errors and one stopped author stage; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; all six hosted demo scenarios completed at 16:50:23 UTC and repeated after scratch cleanup at 16:59:05; Sol returned completion, awaiting runtime finalization; PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 46 runtime/tool occurrences in 23 categories, including recovered errors and one stopped author stage; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; six hosted demo scenarios complete; build completed at 17:09:25 UTC, Claude review started at 17:09:44; PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -111,6 +111,11 @@ superseded by the [current contract](implementation-canary-lessons.md).
   or supervisor correction was needed. [Handoff](evidence/sac-172/packing-canary/demo-plan-handoff.json).
 - Sol implementation started at 16:17:28.710, attempt
   `01a0ab02-47f4-7ae3-aebc-5601103899eb`, visit30, with the same 29 tasks.
+- Build completed at 17:09:25.690 (51m57s), including app edits, recovered
+  failures, two successful six-scenario collections, and finalization delay.
+  Claude's single demo review began at 17:09:44.359, attempt
+  `01a0ab32-202f-795b-8208-b8e5cd90fdbf`, visit32. No supervisor application
+  edits, proof captures, or implementation-stage restarts occurred.
 
 ### Incidents
 
@@ -535,6 +540,10 @@ superseded by the [current contract](implementation-canary-lessons.md).
 - Real HTTP disconnect and normal-response regression tests pass; all 584
   repository tests and TypeScript pass. Pending safe rollout. No supervisor
   interrupted the cloud process or edited application code to recover it.
+- The original command eventually returned `Command timed out: showboat` with
+  SIGKILL; the abandoned queued request recorded `aborted` / ECONNRESET.
+  These are the outcomes of the same two interrupted calls, not extra failures.
+  Build finalization completed at 17:09:25 and advanced normally to Claude.
 - [Original commands and completion](evidence/sac-172/packing-canary/build-command-interruption.json).
 
 ### App development failures recovered by the implementation agent

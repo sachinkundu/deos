@@ -70,5 +70,33 @@
         "text": "{\"outcome\":\"completed\",\"summary\":\"Implemented the approved desktop packing-list app with add, rename, delete, pack/unpack, filtering, browser persistence, recovery states, cross-tab conflict handling, keyboard focus, and safe literal rendering. All 29 OpenSpec tasks are complete. Final checks passed: 36 tests, production build, strict TypeScript, and OpenSpec validation. Published immutable preview: https://eac475e0.deos-preview-982f7d6fcf337341.pages.dev. The final hosted collection contains 23 inspected screenshots across six clean 1440\u00d7900 scenarios with no console errors. Provider asset read-back and the hosted browser returned HTTP 200; direct sandbox curl to the hosted URL intermittently returned Cloudflare 520, while the local served-build Showboat check passed. Implementation followed current [Vite build](https://vite.dev/guide/build), [Vitest environment](https://vitest.dev/guide/environment), [storage event](https://developer.mozilla.org/en-US/docs/Web/API/Window/storage_event), and [randomUUID](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID) documentation.\",\"assumptions\":[\"The nonproduction preview is expected to remain available through human review, as assumed by the approved design.\",\"Browser-local data intentionally does not sync across devices or accounts.\"],\"providerReceipts\":[\"Static preview registration 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9; deployment eac475e0-2d97-44fd-a87d-61f42901d350; all checked assets HTTP 200.\",\"Final hosted demo collection 83cca8f1-3a72-48d6-a96e-2d8615f1d351, bound to final tree 3cdd00ad90f0c24db4e4f0359e7764bbd439c55a.\"],\"question\":null}"
       }
     }
-  ]
+  ],
+  "durableErrorsAfterClientExit": [
+    {
+      "operation": "tool",
+      "error": {
+        "message": "Command timed out: showboat",
+        "stack": "Error: Command timed out: showboat\n    at Timeout.<anonymous> (file:///deos/bin/implementation-runtime.mjs:42:17)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)",
+        "detail": "Error: Command timed out: showboat\n    at Timeout.<anonymous> (file:///deos/bin/implementation-runtime.mjs:42:17)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7) {\n  result: {\n    command: \"'showboat' 'exec' '/deos/implementation/showboat-1789577954234.md' 'bash'\",\n    exitCode: null,\n    signal: 'SIGKILL',\n    stdout: '',\n    stderr: ''\n  }\n}",
+        "result": {
+          "command": "'showboat' 'exec' '/deos/implementation/showboat-1789577954234.md' 'bash'",
+          "exitCode": null,
+          "signal": "SIGKILL",
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    },
+    {
+      "operation": "tool",
+      "error": {
+        "message": "aborted",
+        "stack": "Error: aborted\n    at abortIncoming (node:_http_server:838:17)\n    at socketOnClose (node:_http_server:832:3)\n    at Socket.emit (node:events:531:35)\n    at TCP.<anonymous> (node:net:347:12)",
+        "detail": "Error: aborted\n    at abortIncoming (node:_http_server:838:17)\n    at socketOnClose (node:_http_server:832:3)\n    at Socket.emit (node:events:531:35)\n    at TCP.<anonymous> (node:net:347:12) {\n  code: 'ECONNRESET'\n}"
+      }
+    }
+  ],
+  "buildEndedAt": "2026-09-16T17:09:25.690Z",
+  "nextStageStartedAt": "2026-09-16T17:09:44.359Z",
+  "recovery": "The existing command deadline killed the abandoned command; the queue drained and the saved completion advanced to one Claude demo review without a supervisor restart."
 }
