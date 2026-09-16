@@ -1,0 +1,74 @@
+{
+  "readAt": "2026-09-16T17:05:21.203Z",
+  "attemptId": "01a0ab02-47f4-7ae3-aebc-5601103899eb",
+  "processStatus": {
+    "id": "06d901a7-1549-4b22-8de4-0f8cf8dff134",
+    "pid": 72,
+    "command": [
+      "node",
+      "/deos/bin/supervisor.mjs"
+    ],
+    "cwd": "/deos/run",
+    "startedAt": "2026-09-16T16:17:43.780Z",
+    "state": "running"
+  },
+  "originalEvents": [
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_94",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"The clean-tree hosted screenshots are complete and match the inspected image hashes. The final local Showboat refresh is taking unexpectedly long on the preview socket; I\u2019m polling once more, then I\u2019ll stop it if needed and preserve the already successful served-build record rather than delay handoff.\",\"assumptions\":[],\"providerReceipts\":[\"final hosted demo collection 83cca8f1-3a72-48d6-a96e-2d8615f1d351\"],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_93",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/showboat-local.json\ndeos-implementation /deos/output/requests/status.json'\"",
+        "aggregated_output": "Interrupt\n",
+        "exit_code": 130,
+        "status": "failed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_95",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'node - <<'\\\\''NODE'\\\\''\nconst fs=require('\\\\''fs'\\\\'');\nfs.writeFileSync('\\\\''/deos/output/requests/probe-build.mjs'\\\\'',\"'`import { readFileSync, readdirSync, statSync } from \"node:fs\";'\"\\\\nconst html=readFileSync(\\\"dist/index.html\\\",\\\"utf8\\\");\\\\nconst title=html.match(/<title>([\"'^<]+)<'\"\\\\\\\\/title>/)?.[1];\\\\nconst files=readdirSync(\\\"dist/assets\\\").sort();\\\\nif(title\"'!==\"Carry On \u2014 Packing list\" || files.length!==2) process.exit(1);'\"\\\\nconsole.log(\\\"Production page:\\\", title);\\\\nconsole.log(\\\"Reviewable static assets:\\\");\\\\nfor(const file of files) console.log(\\\"-\\\", file, statSync(\\\"dist/assets/\\\"+file).size+\\\" bytes\\\");\\\\nconsole.log(\\\"External runtime URLs:\\\", /https?:\\\\\\\\/\\\\\\\\//.test(html) ? \\\"present\\\" : \\\"none\\\");\\\\n\"'`);\nfs.writeFileSync('\"'\\\\''/deos/output/requests/showboat-build.json'\\\\'',JSON.stringify({action:'\\\\''check'\\\\'',argv:['\\\\''node'\\\\'','\\\\''/deos/output/requests/probe-build.mjs'\\\\''],behavior:true,audience:'\\\\''review'\\\\''}));\nNODE\ndeos-implementation /deos/output/requests/showboat-build.json'\"",
+        "aggregated_output": "Interrupt\n",
+        "exit_code": 130,
+        "status": "failed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_96",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"The helper began hanging after the completed demo while refreshing Showboat/status, so I stopped those two stalled local-only calls. The successful served-build Showboat, passing checks, final provider receipt, and final hosted browser collection are already saved; I\u2019m doing one last read-only repository audit without changing evidence.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_97",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'git status --short\ngit diff --check\nfind . -maxdepth 2 -type d -name .wrangler -print\nsha256sum dist/index.html dist/assets/index-C56SEddd.css dist/assets/index-CEV-5nZq.js\nrg -n '\\\\''\"'^- '\"\\\\[ \\\\]'\\\\'' openspec/changes/sac-238/tasks.md || true'\"",
+        "aggregated_output": " M README.md\n?? .gitignore\n?? index.html\n?? openspec/changes/sac-238/tasks.md\n?? package-lock.json\n?? package.json\n?? src/\n?? tests/\n?? tsconfig.json\n?? vite.config.ts\n2ab362361a31e947db228bdb39da4d5f0b1625cac43c1f694578f3026615082d  dist/index.html\n156cbcbb58ef952a96b34c6f7233cd7f721f46e8b71f06e2c48e34d962abced3  dist/assets/index-C56SEddd.css\nd2f2f7d26980b6b43568a54741e6f9a3fa01f3748dc490f30b349f17f574a922  dist/assets/index-CEV-5nZq.js\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_98",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"Implemented the approved desktop packing-list app with add, rename, delete, pack/unpack, filtering, browser persistence, recovery states, cross-tab conflict handling, keyboard focus, and safe literal rendering. All 29 OpenSpec tasks are complete. Final checks passed: 36 tests, production build, strict TypeScript, and OpenSpec validation. Published immutable preview: https://eac475e0.deos-preview-982f7d6fcf337341.pages.dev. The final hosted collection contains 23 inspected screenshots across six clean 1440\u00d7900 scenarios with no console errors. Provider asset read-back and the hosted browser returned HTTP 200; direct sandbox curl to the hosted URL intermittently returned Cloudflare 520, while the local served-build Showboat check passed. Implementation followed current [Vite build](https://vite.dev/guide/build), [Vitest environment](https://vitest.dev/guide/environment), [storage event](https://developer.mozilla.org/en-US/docs/Web/API/Window/storage_event), and [randomUUID](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID) documentation.\",\"assumptions\":[\"The nonproduction preview is expected to remain available through human review, as assumed by the approved design.\",\"Browser-local data intentionally does not sync across devices or accounts.\"],\"providerReceipts\":[\"Static preview registration 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9; deployment eac475e0-2d97-44fd-a87d-61f42901d350; all checked assets HTTP 200.\",\"Final hosted demo collection 83cca8f1-3a72-48d6-a96e-2d8615f1d351, bound to final tree 3cdd00ad90f0c24db4e4f0359e7764bbd439c55a.\"],\"question\":null}"
+      }
+    }
+  ]
+}

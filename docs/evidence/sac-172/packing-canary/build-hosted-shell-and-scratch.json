@@ -1,0 +1,886 @@
+{
+  "readAt": "2026-09-16T16:59:12.475Z",
+  "attemptId": "01a0ab02-47f4-7ae3-aebc-5601103899eb",
+  "source": "/tmp/sac238-reader/2026-09-16T16-59-12.475Z.json",
+  "originalEvents": [
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_78",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'node - <<'\\\\''NODE'\\\\''\nconst fs=require('\\\\''fs'\\\\'');\nconst command=\\\"curl -fsS -o /tmp/carry-on-index.html -w '\\\\''Hosted page: HTTP %{http_code}; %{content_type}\\\\\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/ && grep -o '\\\\''<title>[\"'^<]*</title>'\"'\\\\'' /tmp/carry-on-index.html && curl -fsS -o /dev/null -w '\\\\''App script: HTTP %{http_code}; %{content_type}\\\\\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/assets/index-CEV-5nZq.js && curl -fsS -o /dev/null -w '\\\\''Stylesheet: HTTP %{http_code}; %{content_type}\\\\\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/assets/index-C56SEddd.css\\\";\nfs.writeFileSync('\\\\''/deos/output/requests/showboat-hosted.json'\\\\'',JSON.stringify({action:'\\\\''check'\\\\'',argv:['\\\\''bash'\\\\'','\\\\''-lc'\\\\'',command],behavior:true,audience:'\\\\''review'\\\\''}));\nNODE\ndeos-implementation /deos/output/requests/showboat-hosted.json'\"",
+        "aggregated_output": "{\"command\":\"'bash' '-lc' 'curl -fsS -o /tmp/carry-on-index.html -w '\\\\''Hosted page: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/ && grep -o '\\\\''<title>[^<]*</title>'\\\\'' /tmp/carry-on-index.html && curl -fsS -o /dev/null -w '\\\\''App script: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/assets/index-CEV-5nZq.js && curl -fsS -o /dev/null -w '\\\\''Stylesheet: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/assets/index-C56SEddd.css'\",\"exitCode\":22,\"signal\":null,\"stdout\":\"curl: (22) The requested URL returned error: 520\\nHosted page: HTTP 520; text/plain;charset=UTF-8\\n\",\"stderr\":\"\",\"cwd\":\"/deos/workspace/repository\"}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_79",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"The first Showboat reachability check hit a transient Cloudflare 520 from the sandbox, while the completed hosted browser run and provider asset read-back remained HTTP 200. I\u2019m retrying the same immutable URL once; if sandbox egress remains flaky, I\u2019ll keep the failure as diagnostic context and record a local served-build check for the PR link.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_80",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/showboat-hosted.json'\"",
+        "aggregated_output": "{\"command\":\"'bash' '-lc' 'curl -fsS -o /tmp/carry-on-index.html -w '\\\\''Hosted page: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/ && grep -o '\\\\''<title>[^<]*</title>'\\\\'' /tmp/carry-on-index.html && curl -fsS -o /dev/null -w '\\\\''App script: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/assets/index-CEV-5nZq.js && curl -fsS -o /dev/null -w '\\\\''Stylesheet: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/assets/index-C56SEddd.css'\",\"exitCode\":22,\"signal\":null,\"stdout\":\"curl: (22) The requested URL returned error: 520\\nHosted page: HTTP 520; text/plain;charset=UTF-8\\n\",\"stderr\":\"\",\"cwd\":\"/deos/workspace/repository\"}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_81",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'node - <<'\\\\''NODE'\\\\''\nconst fs=require('\\\\''fs'\\\\'');\nconst command=\\\"curl -fsS -o /tmp/carry-on-local.html -w '\\\\''Served app: HTTP %{http_code}; %{content_type}\\\\\\\\n'\\\\'' http://127.0.0.1:8787/ && grep -o '\\\\''<title>[\"'^<]*</title>'\"'\\\\'' /tmp/carry-on-local.html && curl -fsS -o /dev/null -w '\\\\''App script: HTTP %{http_code}; %{content_type}\\\\\\\\n'\\\\'' http://127.0.0.1:8787/assets/index-CEV-5nZq.js && curl -fsS -o /dev/null -w '\\\\''Stylesheet: HTTP %{http_code}; %{content_type}\\\\\\\\n'\\\\'' http://127.0.0.1:8787/assets/index-C56SEddd.css\\\";\nfs.writeFileSync('\\\\''/deos/output/requests/showboat-local.json'\\\\'',JSON.stringify({action:'\\\\''check'\\\\'',argv:['\\\\''bash'\\\\'','\\\\''-lc'\\\\'',command],behavior:true,audience:'\\\\''review'\\\\''}));\nNODE\ndeos-implementation /deos/output/requests/showboat-local.json'\"",
+        "aggregated_output": "{\"command\":\"'bash' '-lc' 'curl -fsS -o /tmp/carry-on-local.html -w '\\\\''Served app: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' http://127.0.0.1:8787/ && grep -o '\\\\''<title>[^<]*</title>'\\\\'' /tmp/carry-on-local.html && curl -fsS -o /dev/null -w '\\\\''App script: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' http://127.0.0.1:8787/assets/index-CEV-5nZq.js && curl -fsS -o /dev/null -w '\\\\''Stylesheet: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' http://127.0.0.1:8787/assets/index-C56SEddd.css'\",\"exitCode\":0,\"signal\":null,\"stdout\":\"Served app: HTTP 200; text/html; charset=utf-8\\n<title>Carry On \u2014 Packing list</title>\\nApp script: HTTP 200; text/javascript; charset=utf-8\\nStylesheet: HTTP 200; text/css; charset=utf-8\\n\",\"stderr\":\"\",\"cwd\":\"/deos/workspace/repository\"}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_82",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'git status --short\ngit diff --stat\ngit diff --check\nrg -n '\\\\''\"'^- '\"\\\\[[ x]\\\\]'\\\\'' openspec/changes/sac-238/tasks.md | tail -5\nnode -e \\\"const p=require('\\\\''./package.json'\\\\''); console.log(p.devDependencies)\\\"\nfind dist -maxdepth 2 -type f -printf '\\\\''%P %s bytes\\\\n'\\\\'' | sort'\"",
+        "aggregated_output": " M README.md\n?? .gitignore\n?? .wrangler/\n?? index.html\n?? openspec/changes/sac-238/tasks.md\n?? package-lock.json\n?? package.json\n?? src/\n?? tests/\n?? tsconfig.json\n?? vite.config.ts\n README.md | 21 +++++++++++++++++++--\n 1 file changed, 19 insertions(+), 2 deletions(-)\n42:- [x] 6.4 Run the complete automated suite and production build, confirm the finished static directory contains only the reviewable client assets, and record the exact passing commands and any limitations for implementation handoff.\n46:- [x] 7.1 Publish the finished static build directory through the trusted `static-preview-v1` `publish_preview` capability, confirm the returned immutable nonproduction URL serves the reviewed build anonymously, and do not add GitHub Actions, repository Pages configuration, provider credentials, or a production release.\n47:- [x] 7.2 Collect ordered real-app demonstrations against the hosted preview at 1440 by 900, with each independent scenario starting in a fresh browser context after both storage keys are removed and the empty state is verified.\n48:- [x] 7.3 Include paired screenshots in the same scenario for old/new rename states, present/deleted item states, and immediately pre/post-refresh states; across the sequence show a newly added item, packed and unpacked states, the To pack view, deletion, and the same saved names and packed states after reload.\n49:- [x] 7.4 Inspect every captured image and recheck the anonymous preview, then hand off the immutable URL, ordered screenshot evidence, and behavior-check results for the implementation pull request; if the URL or reviewed build is wrong or expires before review, republish the current build, replace the URL, and rerun only affected scenarios.\n{\n  '@types/node': '^22.20.3',\n  jsdom: '^30.0.1',\n  typescript: '^7.0.2',\n  vite: '^8.3.0',\n  vitest: '^5.0.1'\n}\nassets/index-C56SEddd.css 7643 bytes\nassets/index-CEV-5nZq.js 19923 bytes\nindex.html 550 bytes\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_83",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"The final audit found one runtime-generated `.wrangler/` directory from the local preview. It is not implementation code and would pollute the patch, so I\u2019m removing only that generated directory and then rechecking the worktree; no application or published asset changes are involved.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_84",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'find .wrangler -maxdepth 3 -type f -o -type d | sort\nrm -r -- .wrangler\ngit status --short\ngit diff --check\nnode - <<'\\\\''NODE'\\\\''\nconst fs=require('\\\\''fs'\\\\'');\nconst tasks=fs.readFileSync('\\\\''openspec/changes/sac-238/tasks.md'\\\\'','\\\\''utf8'\\\\'');\nconst all=[...tasks.matchAll(/\"'^- '\"\\\\[([ x])\\\\]/gm)];\nconsole.log(\"'`OpenSpec tasks: ${all.filter(x=>x[1]==='\"'\\\\''x'\\\\'').length}/\"'${all.length} complete`);\nNODE'\"'\"",
+        "aggregated_output": " M README.md\n?? .gitignore\n?? index.html\n?? openspec/changes/sac-238/tasks.md\n?? package-lock.json\n?? package.json\n?? src/\n?? tests/\n?? tsconfig.json\n?? vite.config.ts\nOpenSpec tasks: 29/29 complete\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_85",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/status.json'\"",
+        "aggregated_output": "{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"2c22db158ad4439ec07f76403fbbccd0db9bbc9d\",\"checks\":[{\"command\":\"'openspec' 'validate' 'sac-238' '--strict'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'openspec' 'status' '--change' 'sac-238' '--json'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'python3' '-c' 'from pathlib import Path; import hashlib, re, subprocess; root=Path('\\\\''/deos/workspace/repository'\\\\''); rel='\\\\''openspec/changes/sac-238/tasks.md'\\\\''; text=(root/rel).read_text(); tasks=re.findall(r'\\\\''^- \\\\[ \\\\] (\\\\d+\\\\.\\\\d+) .+$'\\\\'', text, re.M); headers=re.findall(r'\\\\''^## (\\\\d+)\\\\. .+$'\\\\'', text, re.M); assert len(tasks)==29, tasks; assert headers==[str(i) for i in range(1,8)], headers; assert len(tasks)==len(set(tasks)); expected={'\\\\''openspec/changes/sac-238/.openspec.yaml'\\\\'':'\\\\''50c36dfa766b2fc52e8a7d270b1d67cc487bcd95d1b4c8a5f929d62738e3c77e'\\\\'','\\\\''openspec/changes/sac-238/proposal.md'\\\\'':'\\\\''738364a44d2e6a74cbb29c5fe599c5180c7e12318919d841ed2d49c0bccb2b85'\\\\'','\\\\''openspec/changes/sac-238/specs/packing-list-web-app/spec.md'\\\\'':'\\\\''4b9b17c150238d22da2f6b4a9bff299095480dcc12ca0866f850e00f9dc677da'\\\\'','\\\\''openspec/changes/sac-238/design.md'\\\\'':'\\\\''183eba5a4a9944464e339f2ac7ebd5bceac4a88db1ec11d302af0d47654fe90d'\\\\''}; assert all(hashlib.sha256((root/p).read_bytes()).hexdigest()==h for p,h in expected.items()); status=subprocess.run(['\\\\''git'\\\\'','\\\\''status'\\\\'','\\\\''--short'\\\\''],cwd=root,text=True,capture_output=True,check=True).stdout.splitlines(); assert status==['\\\\''?? '\\\\''+rel], status; print('\\\\''Verified 7 numbered groups, 29 unique checkbox tasks, unchanged approved artifacts, and tasks.md as the only repository change.'\\\\'')'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'bash' '-lc' 'node --version && npm --version'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'npm' 'install' '--save-dev' 'vite' 'typescript' 'vitest' 'jsdom' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'npm' 'test'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'npm' 'install' '--save-dev' '@types/node' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'npm' 'run' 'build'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'bash' '-lc' 'curl -fsS -D - http://127.0.0.1:8787/ -o /tmp/packing-index.html && sed -n '\\\\''1,12p'\\\\'' /tmp/packing-index.html'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":7},{\"command\":\"'bash' '-lc' 'npm test && npm run build && openspec validate sac-238 --strict'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'bash' '-lc' 'curl -fsS -o /tmp/carry-on-index.html -w '\\\\''Hosted page: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/ && grep -o '\\\\''<title>[^<]*</title>'\\\\'' /tmp/carry-on-index.html && curl -fsS -o /dev/null -w '\\\\''App script: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/assets/index-CEV-5nZq.js && curl -fsS -o /dev/null -w '\\\\''Stylesheet: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/assets/index-C56SEddd.css'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":22},{\"command\":\"'bash' '-lc' 'curl -fsS -o /tmp/carry-on-local.html -w '\\\\''Served app: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' http://127.0.0.1:8787/ && grep -o '\\\\''<title>[^<]*</title>'\\\\'' /tmp/carry-on-local.html && curl -fsS -o /dev/null -w '\\\\''App script: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' http://127.0.0.1:8787/assets/index-CEV-5nZq.js && curl -fsS -o /dev/null -w '\\\\''Stylesheet: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' http://127.0.0.1:8787/assets/index-C56SEddd.css'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0}],\"proofKinds\":[\"showboat\",\"browser_image\"]}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_86",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"The status audit showed the runtime had included its untracked `.wrangler` scratch directory in the evidence tree hash. To keep generated preview files out of the implementation patch and bind proof to the clean final tree, I\u2019m adding the standard `.wrangler/` ignore, republishing the unchanged static assets, and will recapture the finalized scenario list once more against that clean tree.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_87",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'python3 - <<'\\\\''PY'\\\\''\nfrom pathlib import Path\np=Path('\\\\''.gitignore'\\\\''); lines=p.read_text().splitlines();\nif '\\\\''.wrangler/'\\\\'' not in lines: lines.append('\\\\''.wrangler/'\\\\'')\np.write_text('\\\\''\\\\n'\\\\''.join(lines)+'\\\\''\\\\n'\\\\'')\nPY\ngit diff --check\ndeos-implementation /deos/output/requests/publish.json'\"",
+        "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview eac475e0-2d97-44fd-a87d-61f42901d350 is queued: active; retry the same request to read it back\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview eac475e0-2d97-44fd-a87d-61f42901d350 is queued: active; retry the same request to read it back\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:373:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:533:20)\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview eac475e0-2d97-44fd-a87d-61f42901d350 is queued: active; retry the same request to read it back\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:373:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:533:20)\"}\n",
+        "exit_code": 1,
+        "status": "failed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_88",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/publish.json'\"",
+        "aggregated_output": "{\"version\":1,\"registrationId\":\"991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"provenance\":\"service_deployed_static_preview\",\"request\":{\"version\":1,\"runId\":\"workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1\",\"inputSha\":\"7ebd474b15dcccedcb496c6c7ffad6946d9be8a66b9dbacbc1d65b4c7dab78e7\",\"candidateSha\":\"991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"requestedBy\":\"deos-static-preview\",\"accountId\":\"c68856288112af7698f5be52ea94b96e\",\"projectId\":\"e2c006f1-3287-4658-80e6-34f24e0e5b98\",\"projectName\":\"deos-preview-982f7d6fcf337341\",\"deploymentId\":\"eac475e0-2d97-44fd-a87d-61f42901d350\",\"branch\":\"review\",\"build\":{\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"baseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"command\":\"Saved static build output\",\"logSha256\":\"326a8888615cb77bbb9d5eaf202a436ca45f58e8b4e7ac825ff82b1d6c142ec5\"},\"assets\":[{\"path\":\"assets/index-C56SEddd.css\",\"bytes\":7643,\"sha256\":\"156cbcbb58ef952a96b34c6f7233cd7f721f46e8b71f06e2c48e34d962abced3\"},{\"path\":\"assets/index-CEV-5nZq.js\",\"bytes\":19923,\"sha256\":\"d2f2f7d26980b6b43568a54741e6f9a3fa01f3748dc490f30b349f17f574a922\"},{\"path\":\"index.html\",\"bytes\":550,\"sha256\":\"2ab362361a31e947db228bdb39da4d5f0b1625cac43c1f694578f3026615082d\"}]},\"subject\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\"},\"origin\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev\",\"deployment\":{\"id\":\"eac475e0-2d97-44fd-a87d-61f42901d350\",\"projectId\":\"e2c006f1-3287-4658-80e6-34f24e0e5b98\",\"projectName\":\"deos-preview-982f7d6fcf337341\",\"branch\":\"review\",\"environment\":\"preview\",\"status\":\"success\",\"createdOn\":\"2026-09-16T16:54:35.085723Z\",\"url\":\"https://eac475e0.deos-preview-982f7d6fcf337341.pages.dev\"},\"assets\":[{\"path\":\"assets/index-C56SEddd.css\",\"bytes\":7643,\"sha256\":\"156cbcbb58ef952a96b34c6f7233cd7f721f46e8b71f06e2c48e34d962abced3\",\"url\":\"https://eac475e0.deos-preview-982f7d6fcf337341.pages.dev/assets/index-C56SEddd.css\",\"status\":200},{\"path\":\"assets/index-CEV-5nZq.js\",\"bytes\":19923,\"sha256\":\"d2f2f7d26980b6b43568a54741e6f9a3fa01f3748dc490f30b349f17f574a922\",\"url\":\"https://eac475e0.deos-preview-982f7d6fcf337341.pages.dev/assets/index-CEV-5nZq.js\",\"status\":200},{\"path\":\"index.html\",\"bytes\":550,\"sha256\":\"2ab362361a31e947db228bdb39da4d5f0b1625cac43c1f694578f3026615082d\",\"url\":\"https://eac475e0.deos-preview-982f7d6fcf337341.pages.dev/\",\"status\":200}],\"checkedAt\":\"2026-09-16T16:54:52.389Z\"}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_89",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/final-scenarios.json'\"",
+        "aggregated_output": "{\"collectionId\":\"83cca8f1-3a72-48d6-a96e-2d8615f1d351\",\"captures\":[{\"scenarioId\":\"add-items\",\"stepIndex\":1,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:a620b1789d648863744dcb7c9630f5140379598d915fc53c116e19e77eb4e7fa:139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/a620b1789d648863744dcb7c9630f5140379598d915fc53c116e19e77eb4e7fa/browser.png\",\"caption\":\"1. The hosted desktop app opens with an empty packing list and clear add and filter controls.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705.png\"},{\"scenarioId\":\"add-items\",\"stepIndex\":5,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:dbcb9c6f643c76d505458bfb12dc88c1a79852d36820dd2802dbeb4fc7fdcb95:6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/dbcb9c6f643c76d505458bfb12dc88c1a79852d36820dd2802dbeb4fc7fdcb95/browser.png\",\"caption\":\"2. Passport appears as a new To pack item.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a.png\"},{\"scenarioId\":\"add-items\",\"stepIndex\":12,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:659103dfbcdb7aaf578940b190e95b23621630b79b40fe01c32545881b6c4236:803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/659103dfbcdb7aaf578940b190e95b23621630b79b40fe01c32545881b6c4236/browser.png\",\"caption\":\"3. Three unpacked items retain insertion order, and <b>Hat</b> is visibly rendered as literal text.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065.png\"},{\"scenarioId\":\"rename-keeps-packed\",\"stepIndex\":8,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:087e4a012c7fe1db5a52fcdc242e2e0cba3b8db5f4b50ddef25ca71948bfc66a:a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/087e4a012c7fe1db5a52fcdc242e2e0cba3b8db5f4b50ddef25ca71948bfc66a/browser.png\",\"caption\":\"4. Rain coat is visibly packed while Socks remains To pack.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252.png\"},{\"scenarioId\":\"rename-keeps-packed\",\"stepIndex\":11,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:369e378db850d08eec7a88fa6d171dc936265259f9dba6723ed0540f4f9e05b2:cbfd6f2a21a6d09954392ccde65fca6a5630b106e95610d66a8f25b3def3085f\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/cbfd6f2a21a6d09954392ccde65fca6a5630b106e95610d66a8f25b3def3085f/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/369e378db850d08eec7a88fa6d171dc936265259f9dba6723ed0540f4f9e05b2/browser.png\",\"caption\":\"5. Rain coat is in focused rename mode with explicit Save and Cancel actions.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"cbfd6f2a21a6d09954392ccde65fca6a5630b106e95610d66a8f25b3def3085f\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-cbfd6f2a21a6d09954392ccde65fca6a5630b106e95610d66a8f25b3def3085f.png\"},{\"scenarioId\":\"rename-keeps-packed\",\"stepIndex\":16,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:9f6c8be1f01f1f5edf856284f4802d25542277ffc2caae13169fcce32d437d3e:6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/9f6c8be1f01f1f5edf856284f4802d25542277ffc2caae13169fcce32d437d3e/browser.png\",\"caption\":\"6. Jacket replaces Rain coat in place and remains visibly packed; Socks is unchanged.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a.png\"},{\"scenarioId\":\"pack-filter-unpack\",\"stepIndex\":7,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:3e891caae87aa7608f30d91a24b40f4be8f75fcab0d3afa42c3f0456abb6d9ab:e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/3e891caae87aa7608f30d91a24b40f4be8f75fcab0d3afa42c3f0456abb6d9ab/browser.png\",\"caption\":\"7. The All view shows Passport and Socks as To pack.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175.png\"},{\"scenarioId\":\"pack-filter-unpack\",\"stepIndex\":9,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:f001eed0e343efa696600257080fda3cd140f630d418201b560924af4180c4b5:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/f001eed0e343efa696600257080fda3cd140f630d418201b560924af4180c4b5/browser.png\",\"caption\":\"8. Passport is marked Packed with a checked control and crossed-out name; Socks remains To pack.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef.png\"},{\"scenarioId\":\"pack-filter-unpack\",\"stepIndex\":12,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:16445fc3aa0221d929b3a93394ce4f1c2a1d6cd2badecbc30a7d37cdef818d6a:90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/16445fc3aa0221d929b3a93394ce4f1c2a1d6cd2badecbc30a7d37cdef818d6a/browser.png\",\"caption\":\"9. The selected To pack view shows Socks and hides packed Passport.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4.png\"},{\"scenarioId\":\"pack-filter-unpack\",\"stepIndex\":15,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:7af15d5df6394dfe2751e19176a32fc3bc9439b7455a72aac4b8ab5f7d6a08fd:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/7af15d5df6394dfe2751e19176a32fc3bc9439b7455a72aac4b8ab5f7d6a08fd/browser.png\",\"caption\":\"10. Returning to All restores both items with their packed states intact.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef.png\"},{\"scenarioId\":\"pack-filter-unpack\",\"stepIndex\":17,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:ad067df30dd3c78e9ee3d0ec428a7c55c4ba565cf1e09b44ea8fbd68795ef877:cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/ad067df30dd3c78e9ee3d0ec428a7c55c4ba565cf1e09b44ea8fbd68795ef877/browser.png\",\"caption\":\"11. Passport can be marked not packed again from the All view.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c.png\"},{\"scenarioId\":\"pack-filter-unpack\",\"stepIndex\":22,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:b67e08f327e449db1d8935a8ca26f670abb603b22b9042607118ac92143d384b:9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/b67e08f327e449db1d8935a8ca26f670abb603b22b9042607118ac92143d384b/browser.png\",\"caption\":\"12. With every item packed, To pack shows the dedicated Nothing left to pack state.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28.png\"},{\"scenarioId\":\"delete-items\",\"stepIndex\":10,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:fc464fb3f1e0dfd0d2e28e514ccd33df5444f97beb656221c9254f5f39f61c4e:ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/fc464fb3f1e0dfd0d2e28e514ccd33df5444f97beb656221c9254f5f39f61c4e/browser.png\",\"caption\":\"13. Passport, Socks, and Jacket are present before deletion.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36.png\"},{\"scenarioId\":\"delete-items\",\"stepIndex\":12,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:915dd36f0838a4fd942a76cdb0b76601a491270e47b094e6ac343d6045c3e6b7:90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/915dd36f0838a4fd942a76cdb0b76601a491270e47b094e6ac343d6045c3e6b7/browser.png\",\"caption\":\"14. Socks is gone while Passport and Jacket remain in their original order.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e.png\"},{\"scenarioId\":\"delete-items\",\"stepIndex\":16,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:7607f6d78a172836c121c10218474d04cece890ea78d8b1c7d1e826fff7b80a9:139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/7607f6d78a172836c121c10218474d04cece890ea78d8b1c7d1e826fff7b80a9/browser.png\",\"caption\":\"15. Deleting the final rows returns the app to its empty-list state.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705.png\"},{\"scenarioId\":\"persist-refresh\",\"stepIndex\":17,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:9776a7930bc05cca9fe77a58e14068c033bbba0ffd0e7d362399e552ee548bc6:6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/9776a7930bc05cca9fe77a58e14068c033bbba0ffd0e7d362399e552ee548bc6/browser.png\",\"caption\":\"16. Before refresh, Jacket is packed, Socks is To pack, and deleted Hat is absent.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a.png\"},{\"scenarioId\":\"persist-refresh\",\"stepIndex\":21,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:81fe972046c423e8a4e317f353a25bd020e6336739a693057af51e179be20edc:6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/81fe972046c423e8a4e317f353a25bd020e6336739a693057af51e179be20edc/browser.png\",\"caption\":\"17. After a real reload, Jacket and Socks keep their saved states, Hat stays deleted, and the app returns to All.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a.png\"},{\"scenarioId\":\"invalid-name-recovery\",\"stepIndex\":5,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:a7ba7a80ddc22dc493b8fd060ec360c781152bd91a0edfd9c324efbe07d1975d:65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/a7ba7a80ddc22dc493b8fd060ec360c781152bd91a0edfd9c324efbe07d1975d/browser.png\",\"caption\":\"18. Passport is the known-good saved item and is visibly packed.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8.png\"},{\"scenarioId\":\"invalid-name-recovery\",\"stepIndex\":9,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:1b30b7d5e807102a5d3e282ad483eac459c18b4c71e545051d542bb643c5a034:f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/1b30b7d5e807102a5d3e282ad483eac459c18b4c71e545051d542bb643c5a034/browser.png\",\"caption\":\"19. A whitespace-only add is rejected with an inline message and creates no row.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a.png\"},{\"scenarioId\":\"invalid-name-recovery\",\"stepIndex\":13,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:2700ad886937c35c97198479281aa31f321eacd20e5634110efb101bc12ed91a:309b3ab9dc6a23f44550909e7bc960c2a5402633a607d6a96a9ff59a8f8f181c\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/309b3ab9dc6a23f44550909e7bc960c2a5402633a607d6a96a9ff59a8f8f181c/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/2700ad886937c35c97198479281aa31f321eacd20e5634110efb101bc12ed91a/browser.png\",\"caption\":\"20. A valid Socks item is added after the rejected input while packed Passport stays unchanged.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"309b3ab9dc6a23f44550909e7bc960c2a5402633a607d6a96a9ff59a8f8f181c\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-309b3ab9dc6a23f44550909e7bc960c2a5402633a607d6a96a9ff59a8f8f181c.png\"},{\"scenarioId\":\"invalid-name-recovery\",\"stepIndex\":19,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:2b842d6703046442e280f43ac27d48a8226fa50adf4289356b38ad620c77b6c5:593ada99b40c19ee89588dc24947448fdfddda842ae6b157789dcd8d3726ebec\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/593ada99b40c19ee89588dc24947448fdfddda842ae6b157789dcd8d3726ebec/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/2b842d6703046442e280f43ac27d48a8226fa50adf4289356b38ad620c77b6c5/browser.png\",\"caption\":\"21. A blank rename stays in edit mode with an associated validation message.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"593ada99b40c19ee89588dc24947448fdfddda842ae6b157789dcd8d3726ebec\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-593ada99b40c19ee89588dc24947448fdfddda842ae6b157789dcd8d3726ebec.png\"},{\"scenarioId\":\"invalid-name-recovery\",\"stepIndex\":22,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:ef0a864cee54005ae8265f5a8ca9eee0a9b3ccede6ef3f0471b229bb4795e8ad:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/ef0a864cee54005ae8265f5a8ca9eee0a9b3ccede6ef3f0471b229bb4795e8ad/browser.png\",\"caption\":\"22. Cancel closes the invalid rename and restores packed Passport unchanged.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef.png\"},{\"scenarioId\":\"invalid-name-recovery\",\"stepIndex\":25,\"url\":\"https://review.deos-preview-982f7d6fcf337341.pages.dev/\",\"documentStatus\":200,\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"console\":[],\"proof\":{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"id\":\"01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:add74a040beee582fb8ad5d3008c8db944f4fa92c48b80a77a07baf20d0319d5:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef\",\"kind\":\"browser_image\",\"path\":\"implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/add74a040beee582fb8ad5d3008c8db944f4fa92c48b80a77a07baf20d0319d5/browser.png\",\"caption\":\"23. Reload shows only the valid saved items: packed Passport and unpacked Socks.\\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9\",\"sha256\":\"3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef\",\"sanitized\":true},\"imagePath\":\"/deos/implementation/browser-3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef.png\"}]}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    }
+  ],
+  "recaptureJournal": [
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:55:00.230Z",
+      "event": "demo_started",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "plan": {
+        "action": "demo",
+        "scenarios": [
+          {
+            "id": "add-items",
+            "title": "Add unpacked items and render markup-like text literally",
+            "target": "hosted",
+            "url": "/",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "1. The hosted desktop app opens with an empty packing list and clear add and filter controls."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Passport"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "2. Passport appears as a new To pack item."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "<b>Hat</b>"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"<b>Hat</b>\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "3. Three unpacked items retain insertion order, and <b>Hat</b> is visibly rendered as literal text."
+              }
+            ]
+          },
+          {
+            "id": "rename-keeps-packed",
+            "title": "Rename a packed item without changing its state",
+            "target": "hosted",
+            "url": "/",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Rain coat"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Rain coat\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Rain coat\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "4. Rain coat is visibly packed while Socks remains To pack."
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Rename Rain coat\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "input[name=\"rename-item\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "5. Rain coat is in focused rename mode with explicit Save and Cancel actions."
+              },
+              {
+                "operation": "press",
+                "key": "a",
+                "modifiers": [
+                  "Control"
+                ]
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"rename-item\"]",
+                "text": "Jacket"
+              },
+              {
+                "operation": "click",
+                "selector": ".rename-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Jacket\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "6. Jacket replaces Rain coat in place and remains visibly packed; Socks is unchanged."
+              }
+            ]
+          },
+          {
+            "id": "pack-filter-unpack",
+            "title": "Pack, filter, unpack, and show the completed state",
+            "target": "hosted",
+            "url": "/",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Passport"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "7. The All view shows Passport and Socks as To pack."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Passport\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "8. Passport is marked Packed with a checked control and crossed-out name; Socks remains To pack."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-filter=\"to-pack\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "9. The selected To pack view shows Socks and hides packed Passport."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-filter=\"all\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "10. Returning to All restores both items with their packed states intact."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Passport\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "11. Passport can be marked not packed again from the All view."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Passport\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Socks\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-filter=\"to-pack\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"to-pack\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "12. With every item packed, To pack shows the dedicated Nothing left to pack state."
+              }
+            ]
+          },
+          {
+            "id": "delete-items",
+            "title": "Delete one item and then empty the list",
+            "target": "hosted",
+            "url": "/",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Passport"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Jacket"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Jacket\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "13. Passport, Socks, and Jacket are present before deletion."
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Delete Socks\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "14. Socks is gone while Passport and Jacket remain in their original order."
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Delete Passport\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Delete Jacket\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "15. Deleting the final rows returns the app to its empty-list state."
+              }
+            ]
+          },
+          {
+            "id": "persist-refresh",
+            "title": "Keep renamed, packed, and deleted state across refresh",
+            "target": "hosted",
+            "url": "/",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Rain coat"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Rain coat\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Hat"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Hat\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Rain coat\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Rename Rain coat\"]"
+              },
+              {
+                "operation": "press",
+                "key": "a",
+                "modifiers": [
+                  "Control"
+                ]
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"rename-item\"]",
+                "text": "Jacket"
+              },
+              {
+                "operation": "click",
+                "selector": ".rename-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Jacket\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Delete Hat\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "16. Before refresh, Jacket is packed, Socks is To pack, and deleted Hat is absent."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-filter=\"to-pack\"]"
+              },
+              {
+                "operation": "navigate",
+                "url": "/"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Jacket\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "17. After a real reload, Jacket and Socks keep their saved states, Hat stays deleted, and the app returns to All."
+              }
+            ]
+          },
+          {
+            "id": "invalid-name-recovery",
+            "title": "Reject blank names and recover without changing saved items",
+            "target": "hosted",
+            "url": "/",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Passport"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Passport\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "18. Passport is the known-good saved item and is visibly packed."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "   "
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "#add-error"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "19. A whitespace-only add is rejected with an inline message and creates no row."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "20. A valid Socks item is added after the rejected input while packed Passport stays unchanged."
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Rename Passport\"]"
+              },
+              {
+                "operation": "press",
+                "key": "a",
+                "modifiers": [
+                  "Control"
+                ]
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"rename-item\"]",
+                "text": " "
+              },
+              {
+                "operation": "click",
+                "selector": ".rename-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": ".row-error"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "21. A blank rename stays in edit mode with an associated validation message."
+              },
+              {
+                "operation": "click",
+                "selector": ".rename-form button[type=\"button\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "22. Cancel closes the invalid rename and restores packed Passport unchanged."
+              },
+              {
+                "operation": "navigate",
+                "url": "/"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "23. Reload shows only the valid saved items: packed Passport and unpacked Socks."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:55:00.232Z",
+      "event": "scenario_started",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "add-items"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:55:31.064Z",
+      "event": "scenario_completed",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "add-items"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:55:31.064Z",
+      "event": "scenario_started",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "rename-keeps-packed"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:56:04.363Z",
+      "event": "scenario_completed",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "rename-keeps-packed"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:56:04.363Z",
+      "event": "scenario_started",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "pack-filter-unpack"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:56:52.267Z",
+      "event": "scenario_completed",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "pack-filter-unpack"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:56:52.268Z",
+      "event": "scenario_started",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "delete-items"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:57:26.138Z",
+      "event": "scenario_completed",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "delete-items"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:57:26.138Z",
+      "event": "scenario_started",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "persist-refresh"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:58:09.765Z",
+      "event": "scenario_completed",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "persist-refresh"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:58:09.766Z",
+      "event": "scenario_started",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "invalid-name-recovery"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:59:05.479Z",
+      "event": "scenario_completed",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "scenarioId": "invalid-name-recovery"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T16:59:05.479Z",
+      "event": "demo_completed",
+      "collectionId": "83cca8f1-3a72-48d6-a96e-2d8615f1d351",
+      "captures": [
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:a620b1789d648863744dcb7c9630f5140379598d915fc53c116e19e77eb4e7fa:139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:dbcb9c6f643c76d505458bfb12dc88c1a79852d36820dd2802dbeb4fc7fdcb95:6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:659103dfbcdb7aaf578940b190e95b23621630b79b40fe01c32545881b6c4236:803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:087e4a012c7fe1db5a52fcdc242e2e0cba3b8db5f4b50ddef25ca71948bfc66a:a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:369e378db850d08eec7a88fa6d171dc936265259f9dba6723ed0540f4f9e05b2:cbfd6f2a21a6d09954392ccde65fca6a5630b106e95610d66a8f25b3def3085f",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:9f6c8be1f01f1f5edf856284f4802d25542277ffc2caae13169fcce32d437d3e:6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:3e891caae87aa7608f30d91a24b40f4be8f75fcab0d3afa42c3f0456abb6d9ab:e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:f001eed0e343efa696600257080fda3cd140f630d418201b560924af4180c4b5:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:16445fc3aa0221d929b3a93394ce4f1c2a1d6cd2badecbc30a7d37cdef818d6a:90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:7af15d5df6394dfe2751e19176a32fc3bc9439b7455a72aac4b8ab5f7d6a08fd:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:ad067df30dd3c78e9ee3d0ec428a7c55c4ba565cf1e09b44ea8fbd68795ef877:cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:b67e08f327e449db1d8935a8ca26f670abb603b22b9042607118ac92143d384b:9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:fc464fb3f1e0dfd0d2e28e514ccd33df5444f97beb656221c9254f5f39f61c4e:ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:915dd36f0838a4fd942a76cdb0b76601a491270e47b094e6ac343d6045c3e6b7:90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:7607f6d78a172836c121c10218474d04cece890ea78d8b1c7d1e826fff7b80a9:139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:9776a7930bc05cca9fe77a58e14068c033bbba0ffd0e7d362399e552ee548bc6:6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:81fe972046c423e8a4e317f353a25bd020e6336739a693057af51e179be20edc:6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:a7ba7a80ddc22dc493b8fd060ec360c781152bd91a0edfd9c324efbe07d1975d:65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:1b30b7d5e807102a5d3e282ad483eac459c18b4c71e545051d542bb643c5a034:f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:2700ad886937c35c97198479281aa31f321eacd20e5634110efb101bc12ed91a:309b3ab9dc6a23f44550909e7bc960c2a5402633a607d6a96a9ff59a8f8f181c",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:2b842d6703046442e280f43ac27d48a8226fa50adf4289356b38ad620c77b6c5:593ada99b40c19ee89588dc24947448fdfddda842ae6b157789dcd8d3726ebec",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:ef0a864cee54005ae8265f5a8ca9eee0a9b3ccede6ef3f0471b229bb4795e8ad:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef",
+        "01a0ab02-47f4-7ae3-aebc-5601103899eb:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:add74a040beee582fb8ad5d3008c8db944f4fa92c48b80a77a07baf20d0319d5:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef"
+      ]
+    }
+  ]
+}

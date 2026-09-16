@@ -1,0 +1,18 @@
+{
+  "run": "SAC-238",
+  "attemptId": "01a0ab02-47f4-7ae3-aebc-5601103899eb",
+  "observedAt": "2026-09-16T16:51:42.311Z",
+  "events": [
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_76",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'which montage || which magick\nmkdir -p /deos/output/inspection\nmontage \\\\\n  /deos/implementation/browser-139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705.png \\\\\n  /deos/implementation/browser-8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e.png \\\\\n  /deos/implementation/browser-803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065.png \\\\\n  /deos/implementation/browser-a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252.png \\\\\n  /deos/implementation/browser-761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8.png \\\\\n  -tile 2x3 -geometry 700x438+8+20 -label '\\\\''%f'\\\\'' /deos/output/inspection/sheet-1.png\nmontage \\\\\n  /deos/implementation/browser-6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a.png \\\\\n  /deos/implementation/browser-e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175.png \\\\\n  /deos/implementation/browser-3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef.png \\\\\n  /deos/implementation/browser-90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4.png \\\\\n  /deos/implementation/browser-cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c.png \\\\\n  /deos/implementation/browser-9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28.png \\\\\n  -tile 2x3 -geometry 700x438+8+20 -label '\\\\''%f'\\\\'' /deos/output/inspection/sheet-2.png\nmontage \\\\\n  /deos/implementation/browser-ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36.png \\\\\n  /deos/implementation/browser-90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e.png \\\\\n  /deos/implementation/browser-65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8.png \\\\\n  /deos/implementation/browser-bca2d934cbdbff7efb8441eebfb9eb9ade1b60734cebcb8c66e0641127318283.png \\\\\n  /deos/implementation/browser-718f9f3719d010d3ce7ba5a5fbfdc4ffc1231f3ca3b33268d7cadd2f9b7eb7da.png \\\\\n  /deos/implementation/browser-593ada99b40c19ee89588dc24947448fdfddda842ae6b157789dcd8d3726ebec.png \\\\\n  -tile 2x3 -geometry 700x438+8+20 -label '\\\\''%f'\\\\'' /deos/output/inspection/sheet-3.png\nls -lh /deos/output/inspection'\"",
+        "aggregated_output": "bash: line 4: montage: command not found\nbash: line 11: montage: command not found\nbash: line 19: montage: command not found\ntotal 0\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    }
+  ]
+}

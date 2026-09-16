@@ -26,6 +26,7 @@ const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
 const shellQuote = (text) => "'" + text.replaceAll("'", "'\\''") + "'";
 export async function command(argv, cwd, options = {}) {
+  options.signal?.throwIfAborted();
   return new Promise((resolveResult, reject) => {
     const child = spawn(argv[0], argv.slice(1), {
       cwd,
@@ -38,6 +39,12 @@ export async function command(argv, cwd, options = {}) {
     const stderr = [];
     let size = 0;
     let failure;
+    const cancel = () => {
+      if (failure) return;
+      failure = new Error(`Command canceled: ${argv[0]}`, { cause: options.signal.reason });
+      killProcessGroup(child, "SIGKILL");
+    };
+    options.signal?.addEventListener("abort", cancel, { once: true });
     const timer = setTimeout(() => {
       failure = new Error(`Command timed out: ${argv[0]}`);
       killProcessGroup(child, "SIGKILL");
@@ -55,10 +62,12 @@ export async function command(argv, cwd, options = {}) {
     child.stderr.on("data", read(stderr));
     child.once("error", (error) => {
       clearTimeout(timer);
+      options.signal?.removeEventListener("abort", cancel);
       reject(error);
     });
     child.once("close", (code, signal) => {
       clearTimeout(timer);
+      options.signal?.removeEventListener("abort", cancel);
       const result = {
         command: argv.map(shellQuote).join(" "),
         exitCode: code,
@@ -70,6 +79,20 @@ export async function command(argv, cwd, options = {}) {
       else resolveResult(result);
     });
   });
+}
+export async function responseCommand(response, argv, cwd, options = {}) {
+  const controller = new AbortController();
+  const disconnect = () => {
+    if (!response.writableEnded)
+      controller.abort(new Error("Implementation command client closed before its result"));
+  };
+  response.once("close", disconnect);
+  if (response.destroyed) disconnect();
+  try {
+    return await command(argv, cwd, { ...options, signal: controller.signal });
+  } finally {
+    response.off("close", disconnect);
+  }
 }
 async function checked(argv, cwd, env) {
   const result = await command(argv, cwd, { env });
@@ -502,7 +525,7 @@ export async function setupImplementation(job) {
             await writeFile(script, argv.map(shellQuote).join(" ") + "\n", {
               mode: 0o600,
             });
-            result = await command(["showboat", "exec", doc, "bash"], cwd, {
+            result = await responseCommand(res, ["showboat", "exec", doc, "bash"], cwd, {
               stdin: await readFile(script),
             });
             result.command = request.argv.map(shellQuote).join(" ");
@@ -519,7 +542,7 @@ export async function setupImplementation(job) {
               }),
             );
           } else {
-            result = await command(argv, cwd);
+            result = await responseCommand(res, argv, cwd);
             result.command = request.argv.map(shellQuote).join(" ");
             result.cwd = cwd;
           await appendFile(journal,JSON.stringify({operation:'check',...subject,result})+'\n');
@@ -577,7 +600,7 @@ export async function setupImplementation(job) {
               "--persist-to",
               `/deos/test-data/${job.attemptId}`,
             ],
-            { cwd: job.cwd, detached:true, stdio: ["ignore", previewLog.fd, previewLog.fd] },
+            { cwd: ROOT, detached:true, stdio: ["ignore", previewLog.fd, previewLog.fd] },
           );
           preview.on("error", (error) => {
             previewError = error;

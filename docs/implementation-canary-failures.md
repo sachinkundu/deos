@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 38 runtime/tool occurrences in 19 categories, including recovered errors and one stopped author stage; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; Claude selected six browser scenarios; browser fill bug diagnosed; Sol adjusted the scenario and is recapturing; PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 46 runtime/tool occurrences in 23 categories, including recovered errors and one stopped author stage; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; all six hosted demo scenarios completed at 16:50:23 UTC and repeated after scratch cleanup at 16:59:05; Sol returned completion, awaiting runtime finalization; PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -468,6 +468,74 @@ superseded by the [current contract](implementation-canary-lessons.md).
 - One observed failed operation so far. The underlying socket failure is not
   yet established; retain the complete error and cause rather than guessing.
   No supervisor restart. [Original journal](evidence/sac-172/packing-canary/build-demo-runtime-failures.json).
+
+#### PACK-20 — unavailable image compositor invoked during inspection
+
+- One shell command invoked montage three times after its tool lookup found
+  neither montage nor magick. All three invocations returned command not found;
+  a final directory listing made the overall shell result exit0.
+- Three failed tool invocations, observed at 16:51:42 UTC. No capture was changed
+  and the completed browser collection remained intact. Sol proceeded to inspect
+  original images. Native view_image is the supported inspection path; the
+  runtime skill now states this instead of inviting an assumed compositor.
+- [Original shell result](evidence/sac-172/packing-canary/build-image-inspection-tool.json).
+
+#### PACK-21 — hosted shell reachability checks returned HTTP 520
+
+- Build items78 and80 each ran the same curl command against the immutable
+  hosted preview; curl returned exit22 and HTTP520. The outer tool exited zero
+  while preserving the inner failure, so monitoring must read the actual result.
+- Browser scenarios and publisher asset read-back reported HTTP200. Sol retained
+  the shell failures and used its local server for the shell demonstration.
+- The configured sandbox host allowlist excludes this Pages host. That is
+  consistent with an egress restriction, but the original 520 lacks a cause body,
+  so the exact provider failure remains unproven. Do not claim an app outage or
+  label it a transient provider failure based on this result alone.
+- Runtime guidance now distinguishes hosted browser/publisher access from shell
+  access. No new provider permissions or supervisor application edits were made.
+- [Original results](evidence/sac-172/packing-canary/build-hosted-shell-and-scratch.json).
+
+#### PACK-22 — preview scratch entered the implementation snapshot
+
+- Sol's final audit found an untracked `.wrangler/` directory inside the app
+  repository. The preview launcher used the repository as its current directory,
+  despite already preparing a separate runtime scratch directory.
+- Sol removed the generated files and added an ignore rule. It then republished
+  and repeated all six scenarios solely to match the cleaned repository tree;
+  its own transcript and publication receipts state that served assets were
+  unchanged. This was an agent decision, not a workflow rejection.
+- One contamination occurrence, with avoidable recapture as its consequence.
+  The repeated collection ran from about 16:55 to 16:59:05 UTC and returned
+  23 screenshots. No supervisor changed the app, scenario list, or proof.
+- The runtime now launches Wrangler from its prepared scratch directory while
+  keeping app entrypoints and assets absolute. Guidance says metadata and scratch
+  cleanup alone do not require repeating unchanged demonstrations. Pending rollout.
+- The pinned Linux container probe reproduced `.wrangler` in the repository
+  before the change and no repository scratch after it, with HTTP200 in both
+  cases. [Executable probe](evidence/sac-172/packing-canary/preview-cwd-probe.mjs),
+  [results](evidence/sac-172/packing-canary/preview-cwd-probe.json).
+- [Original audit and recapture](evidence/sac-172/packing-canary/build-hosted-shell-and-scratch.json).
+
+#### PACK-23 — interrupted check clients left work blocking the queue
+
+- After the final screenshots, Sol's repeated local Showboat command stalled.
+  Sol interrupted item93, then tried another check/status call (item95), which
+  also stalled and was interrupted. Both clients returned exit130. Two failed
+  calls; the second shared the blocked command queue rather than starting a new
+  independent browser or app failure.
+- The local server's initial lack of response is not established. The runtime
+  detached check processes and did not cancel them when the client disconnected.
+  Later requests and finalization wait for that command queue to drain, bounded
+  by the command's existing ten-minute deadline. The agent had returned its
+  final completion by the 17:05:21 read while the runtime remained running.
+- Correction: check and Showboat subprocesses now stop as a group when their
+  client closes before a result. Cancellation keeps the original cause and
+  stdout/stderr in the existing durable error path. Successful commands retain
+  normal behavior. Runtime guidance also bounds network probes explicitly.
+- Real HTTP disconnect and normal-response regression tests pass; all 584
+  repository tests and TypeScript pass. Pending safe rollout. No supervisor
+  interrupted the cloud process or edited application code to recover it.
+- [Original commands and completion](evidence/sac-172/packing-canary/build-command-interruption.json).
 
 ### App development failures recovered by the implementation agent
 

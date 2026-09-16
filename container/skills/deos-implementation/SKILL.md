@@ -36,15 +36,20 @@ A human-requested revision updates the same PR without another automatic review.
   tasks, checks and proof, but fresh compute may need dependencies installed.
   Do not redo proposal, design, completed implementation, or unchanged demos.
   Before installing, add generated dependency and build directories to the
-  repository's `.gitignore` (for example `node_modules/`, `dist/`, `coverage/`).
+  repository's `.gitignore` (for example `node_modules/`, `dist/`, `coverage/`,
+  `.wrangler/`).
   Checks snapshot changed source files; dependencies and their executable
   symlinks are not implementation files to publish.
 - Build into a dedicated directory such as `dist`. Start `action: preview` with
   `assets: "dist"` and/or a Worker entry file. Do not serve the whole repository:
   unnecessary file watchers previously exhausted the runtime.
 - Check the app from the shell at `http://127.0.0.1:8787`. Use the assigned browser
-  to inspect the public preview URL. Shell fetch to a Quick Tunnel URL may be
-  blocked by egress even when browser access works. This is not an app failure.
+  to inspect the public preview URL. Shell fetch to a Quick Tunnel or hosted
+  Pages URL may be blocked by egress even when browser access works. Use browser
+  results and publisher read-back for hosted reachability; retain a shell failure
+  in diagnostics without treating it alone as an app failure.
+  Bound network probes explicitly, such as `curl --connect-timeout 5 --max-time 20`,
+  so an unresponsive development server does not consume the build deadline.
 - A tunnel may need time to become ready. Retry the same preview operation so
   the service can reconcile it. Do not allocate competing preview processes.
 
@@ -57,6 +62,9 @@ resetting browser state does not reset databases or provider resources.
 Await the entire collection before editing code, harness, preview, or steps.
 After an action fails, correct the cause and rerun from the starting state.
 Use screenshots of meaningful outcomes, inspect them, and describe what they show.
+Open the original `imagePath` returned by the browser with native `view_image`.
+ImageMagick tools such as `montage` are not installed. Inspection does not need
+composite images; keep the original browser captures for the PR.
 
 When `static-preview-v1` is listed in the input capabilities, a finished static
 build can use `{"action":"publish_preview","assets":"dist"}`. The service
@@ -84,7 +92,11 @@ tasks open until those actions finish; do not bulk-mark every task complete
 before collecting proof. Report the active phase alongside the task count.
 
 Resume the failed operation using saved work. Rerun only checks or demos affected
-by an actual edit or relevant environment change. Use the same provider operation
+by an actual edit or relevant environment change. Removing generated scratch
+files or updating ignore rules does not invalidate demonstrations of unchanged
+served assets. Keep the original evidence and explain the cleanup; do not repeat
+a collection merely to make its recorded tree hash match that metadata edit.
+Use the same provider operation
 ID only to recover the exact same request; changed data needs a new operation ID.
 Report the current action, outcome, and any blocking choice in plain language.
 If a required capability or human decision is missing, return one actionable

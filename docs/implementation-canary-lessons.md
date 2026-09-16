@@ -41,6 +41,10 @@ the original error and partial artifacts; the author repairs and starts from
 zero. Only a completed selected gallery reaches the PR. Other captures remain
 diagnostics. Descriptions name observed behavior, not intended outcomes.
 
+Use the browser driver's replacement operation for text fields; inserting text
+is not equivalent to filling a field. Inspect original captures with the native
+image viewer. Do not assume an image compositor is installed.
+
 ## Runtime and previews
 
 The container ships `container/skills/deos-implementation/SKILL.md`. It is installed
@@ -53,6 +57,17 @@ uses localhost. Cloudflare's service browser uses the public preview transport.
 Serving only the dedicated build output avoids unnecessary watchers. A pending
 tunnel is reconciled by its saved identity rather than repeatedly recreated.
 Native search and the document broker provide access to current primary docs.
+
+Wrangler runs from the runtime scratch directory, with absolute app entrypoints
+and asset paths. Generated files must not enter the application snapshot.
+Removing scratch files or changing ignore rules does not invalidate unchanged
+served-app demonstrations. Keep that evidence rather than recapturing for a new
+repository tree hash alone.
+
+Bound shell network probes. Hosted browser and trusted publisher access do not
+imply the sandbox shell has the same egress. If a check client is interrupted,
+stop its subprocess group and retain the cancellation and partial output so it
+cannot silently block later commands and finalization until the long deadline.
 
 Check development tools as the actual author account with its clean PATH during
 image construction. A binary bundled under the provider's private directory may

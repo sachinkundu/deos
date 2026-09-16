@@ -1,0 +1,29 @@
+{
+  "kind": "local pinned Linux container regression; not provider proof",
+  "image": "deos-queue-consumer-ts-sandbox:7264560f",
+  "command": "docker run --rm --platform linux/amd64 -i --entrypoint node deos-queue-consumer-ts-sandbox:7264560f --input-type=module < preview-cwd-probe.mjs",
+  "result": {
+    "wrangler": "4.125.0",
+    "results": [
+      {
+        "label": "before",
+        "cwd": "/tmp/preview-cwd-fixture/repository",
+        "httpStatus": 200,
+        "repositoryFiles": [
+          ".wrangler",
+          "dist"
+        ],
+        "hasScratch": true
+      },
+      {
+        "label": "after",
+        "cwd": "/tmp/preview-cwd-fixture/runtime",
+        "httpStatus": 200,
+        "repositoryFiles": [
+          "dist"
+        ],
+        "hasScratch": false
+      }
+    ]
+  }
+}
