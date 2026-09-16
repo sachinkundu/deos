@@ -185,6 +185,16 @@ An implementation merge MUST NOT deploy or release the change. Any live release 
 - **THEN** DEOS starts a fresh attempt on the same run branch and updates the same pull request.
 - **AND** Sol's response returns to human review without another automatic Claude review.
 
+#### Scenario: Agent output looks like approval
+
+- **WHEN** an agent, service user, check, comment, or unclear event looks like approval.
+- **THEN** DEOS ignores it as approval and keeps the human gate closed.
+
+#### Scenario: Implementation is merged
+
+- **WHEN** a trusted state event from the saved Linear user ID moves the issue from this gate to `Merging`.
+- **THEN** the trusted service may carry out the code merge but does not choose it or deploy it.
+
 ### Requirement: Recover the failed stage without repeating completed work
 
 Retries SHALL preserve approved inputs, accepted plans, saved code, branch, PR, prior stages and original diagnostics. Agent retries SHALL restore that context. Publication retries SHALL reconcile the saved candidate and provider operation without rerunning completed agent stages. Sol SHALL decide which checks to repeat after edits; the workflow SHALL NOT require a full test or evidence restart.
@@ -198,13 +208,3 @@ Retries SHALL preserve approved inputs, accepted plans, saved code, branch, PR, 
 
 - **WHEN** the delivery receipt and pending payload were saved but dispatch did not finish.
 - **THEN** the delivery retry or scheduled recovery sends the saved message under a lease; duplicate Queue delivery keeps the same inbox identity.
-
-#### Scenario: Agent output looks like approval
-
-- **WHEN** an agent, service user, check, comment, or unclear event looks like approval.
-- **THEN** DEOS ignores it as approval and keeps the human gate closed.
-
-#### Scenario: Implementation is merged
-
-- **WHEN** a trusted state event from the saved Linear user ID moves the issue from this gate to `Merging`.
-- **THEN** the trusted service may carry out the code merge but does not choose it or deploy it.

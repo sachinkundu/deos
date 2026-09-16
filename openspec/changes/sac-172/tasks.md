@@ -91,5 +91,6 @@
 - [x] 10.4 Add a trusted, run-owned static preview publisher and exclude diagnostic commands from reviewer-facing Showboat by default.
 - [x] 10.5 Repair SAC-226's interrupted delivery handoff with an atomic outbox, dispatch lease, scheduled replay and original-error retention.
 - [x] 10.6 Add activation-only frozen-definition migration that preserves SAC-182's failed state, design, work and PR without dispatching an agent.
-- [ ] 10.7 Complete repository and built-runtime checks, real preview-provider read-back and deployment activation checks; record exact results and limitations.
-- [ ] 10.8 Activate the sample-project definition and explicitly migrate SAC-182 while keeping it parked. Choose the next small web-app canary with the user.
+- [x] 10.7 Complete repository and built-runtime checks, real preview-provider read-back and deployment activation checks; record exact results and limitations in `docs/evidence/sac-172/canary-lessons/README.md`.
+- [x] 10.8 Activate sample-project definition v39 and explicitly migrate SAC-182 to v40 while keeping it parked. Verify its saved implementation and PR are unchanged.
+- [ ] 10.9 Choose the next small web-app canary with the user, then exercise the full chain to its implementation PR. Claude decides the demonstrations and their count; record any supervisor intervention.

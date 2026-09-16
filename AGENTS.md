@@ -46,6 +46,10 @@ Do not describe synthetic ingress as end-to-end provider verification.
 
 ## Tool selection
 
+- Always use the external browser (the connected Brave session on this laptop)
+  for browser work. Do not use the Codex in-app browser unless the user explicitly
+  requests it. This laptop rule does not replace the cloud agents' assigned
+  Cloudflare service browser.
 - Use Linear MCP by default for creating and transitioning test issues. Use
   Codex Browser only when a Linear login/configuration screen is required or
   when a screenshot is needed for visual proof.
