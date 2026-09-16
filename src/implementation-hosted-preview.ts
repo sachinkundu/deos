@@ -159,7 +159,10 @@ export class ImplementationHostedPreview {
     const token = this.env.IMPLEMENTATION_PAGES_READ_TOKEN;
     if (!token) throw new ImplementationError('hosted_preview_unconfigured', 'The trusted Pages read token is not configured');
     const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${request.accountId}/pages/projects/${request.projectName}/deployments/${request.deploymentId}`;
-    const response = await this.fetcher(apiUrl, { headers: { Authorization: `Bearer ${token}` }, redirect: 'error', signal: AbortSignal.timeout(20_000) });
+    // Workers supports manual redirects; never forward the credential to a redirect target.
+    const response = await this.fetcher(apiUrl, { headers: { Authorization: `Bearer ${token}` }, redirect: 'manual', signal: AbortSignal.timeout(20_000) });
+    if (response.status >= 300 && response.status < 400)
+      throw new ImplementationError('hosted_preview_provider', `Pages deployment read-back returned HTTP ${response.status}; redirects are not allowed`);
     const body = record(await response.json());
     if (!response.ok || body.success !== true) {
       // The successful API payload contains env_vars and build tokens. Never save it.

@@ -29,6 +29,7 @@ async function fixture() {
   const requests: Array<{url:string;init:RequestInit|undefined}> = [];
   const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url=String(input); requests.push({url,init});
+    if (init?.redirect === 'error') throw new TypeError('Workers does not support redirect: error');
     return url.startsWith('https://api.cloudflare.com/') ? Response.json({success:true,result:deployment}) : new Response(html);
   }) as typeof fetch;
   const env={DB:db as unknown as D1Database,ARTIFACTS:bucket as unknown as R2Bucket,IMPLEMENTATION_PAGES_READ_TOKEN:'private-pages-token'};
@@ -81,12 +82,16 @@ test('registration rejects stale code, active runs, malformed paths, production 
   } finally {f.db.close();}
 });
 
-test('changed bytes, redirect, provider failure and a run starting during read-back never grant a hosted preview', async()=>{
-  for (const mode of ['bytes','redirect','provider','race']) {
+test('changed bytes, redirects, provider failure and a run starting during read-back never grant a hosted preview', async()=>{
+  for (const mode of ['bytes','redirect','provider-redirect','provider','race']) {
     const f=await fixture();
     try {
       const fetcher = (async(input:RequestInfo|URL,init?:RequestInit)=>{
         if(String(input).startsWith('https://api.cloudflare.com/')) {
+          if(mode==='provider-redirect') {
+            assert.equal(init?.redirect,'manual');
+            return new Response('Redirect response is not JSON',{status:302,headers:{Location:'https://elsewhere.example/'}});
+          }
           if(mode==='provider')return Response.json({success:false,errors:[{code:9109,message:'permission denied'}]},{status:403});
           return f.fetcher(input,init);
         }
@@ -94,7 +99,7 @@ test('changed bytes, redirect, provider failure and a run starting during read-b
         return mode==='bytes'?new Response(f.html.replace('3','4')):mode==='redirect'?new Response(null,{status:302,headers:{Location:'https://elsewhere.example/'}}):new Response(f.html);
       }) as typeof fetch;
       await assert.rejects(new ImplementationHostedPreview(f.env,fetcher).register(f.request),
-        mode==='bytes'?/does not match/:mode==='redirect'?/HTTP 302/:mode==='provider'?/9109.*permission denied/:/Run changed/);
+        mode==='bytes'?/does not match/:mode==='redirect'?/HTTP 302/:mode==='provider-redirect'?/HTTP 302; redirects are not allowed/:mode==='provider'?/9109.*permission denied/:/Run changed/);
       assert.equal(f.db.sqlite.prepare('SELECT count(*) n FROM implementation_hosted_previews').get()!.n,0);
     } finally {f.db.close();}
   }
