@@ -1,0 +1,13 @@
+{
+  "runtimeCommit": "32745bc",
+  "tests": {
+    "command": "DEOS_BROWSER_EXECUTABLE=<external Brave> npm test",
+    "passed": 588,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "passed",
+  "skillValidation": "passed",
+  "browserProof": "Real local external Brave fill regression; cloud proof resumes in SAC-238",
+  "commandProof": "Real local subprocess/HTTP nested browser and cancellation regressions"
+}

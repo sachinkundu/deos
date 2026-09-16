@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 66 runtime/tool occurrences in 30 categories, including recovered errors and stopped author work; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; first six hosted scenarios complete; one Claude review completed; Sol response stopped at 17:43 with saved code and a browser-recovery question on Linear; PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 66 runtime/tool occurrences in 30 categories, including recovered errors and stopped author work; 4 app development check failures listed separately | 4 recovery interventions: resent approval, resumed design finalization, requested preview-path revision, answered browser-recovery question after runtime rollout | Proposal/specification PR34 merged; design PR35 merged; first six hosted scenarios complete; one Claude review completed; Sol response stopped at 17:43 with saved code; corrected runtime deployed; recovery answer consumed and saved implementation resumed at visit37 at 17:53:49; PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -666,8 +666,13 @@ superseded by the [current contract](implementation-canary-lessons.md).
   candidate and original diagnostics saved. DEOS posted its concrete browser
   recovery question on Linear and reached clarification wait visit35. No second
   Claude review or supervisor application edit occurred.
-- Safe rollout and same-stage recovery with a new assigned browser are next.
-  Preserve the existing implementation and approved plan; no planning restart.
+- Runtime commit32745bc is deployed: Worker6f4ba465 at100% and all four container
+  pools completed on image6f552ca4 with healthy instances. The supervisor replied
+  to the existing Linear question at17:53:20.341, authorizing same-stage recovery
+  with saved code and a fresh assigned browser. This is intervention4, not an
+  unattended recovery. D1 confirms the answer was consumed and a new build attempt
+  started at17:53:49.965 at visit37, preserving the same run and its earlier
+  completed stages. No implementation approval or release was authorized.
 - [Original scenarios, failures and handoff](evidence/sac-172/packing-canary/response-browser-retired.json).
 
 ### App development failures recovered by the implementation agent
@@ -691,6 +696,25 @@ that pass are not failures. All occurred in build attempt
 [First browser collection failure and response](evidence/sac-172/packing-canary/build-demo-rename-failure.json).
 
 ### Supervisor and measurement notes
+
+- The final response transcript and diagnostics were fetched from their durable
+  artifact keys and verified against SHA256. Audit found no additional failed
+  command occurrences beyond the recorded66. The inner exit143 for the nested
+  browser check is the outcome of item40, not a second failure. [Artifact index](evidence/sac-172/packing-canary/response-final-artifacts.json).
+
+- Source32745bc and earlier pending corrections are now deployed, including
+  readable skill discovery, native search alias, hosted browser access without
+  a local tunnel, replacement fill, scratch isolation, command cancellation,
+  ordered proof selection and separate check/browser queues. The existing
+  Workflow instance still executes its frozen code; the resumed attempt gets
+  the new container and current broker endpoints. [Deployment read-back](evidence/sac-172/packing-canary/harness-rollout.json),
+  [validation](evidence/sac-172/packing-canary/harness-validation.json),
+  [recovery reply](evidence/sac-172/packing-canary/browser-recovery-reply.md).
+
+- The first operator deployment read-back returned HTTP404 during the rolling
+  update. A new read succeeded and showed progressing pools; later reads showed
+  all four completed and healthy. This read-only operator incident is separate
+  from the cloud canary's failed-operation count. No deployment was repeated.
 
 - Claude's evidence feedback exposed a publishing limitation: authors could mark
   a Showboat record for review but could not later deselect it. The harness now
