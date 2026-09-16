@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 16 occurrences in 8 categories: 8 recovered agent tool errors, 3 startup diagnostics, 1 delayed signal, 2 deploy resets, 1 finalization failure, 1 optional-file diagnostic | 1 completed recovery intervention: resent approval; design finalization recovery being prepared | Proposal/specification PR34 merged; accepted design saved, finalization failed; implementation PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 16 occurrences in 8 categories: 8 recovered agent tool errors, 3 startup diagnostics, 1 delayed signal, 2 deploy resets, 1 finalization failure, 1 optional-file diagnostic | 2 recovery interventions: resent approval and resumed design finalization | Proposal/specification PR34 merged; saved design finalization resumed at 15:33 UTC; implementation PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -225,6 +225,20 @@ superseded by the [current contract](implementation-canary-lessons.md).
   request only with saved artifacts and a stopped process, preserving the failure.
 - Evidence: [completion receipt](evidence/sac-172/packing-canary/design-failure-author-completion.json),
   [author's blocked result](evidence/sac-172/packing-canary/design-failure-result.json).
+- Correction commit 55d2781 passed 576 repository tests and TypeScript. Worker
+  661245eb-447a-4c97-9ecd-df7c690df771 activated at 100% at 15:27:02. Basic
+  design pool completed rollout to image ad3aa3c3e7c01ec35ca88523451d375885131693b0af01e095940be6f1c6fced
+  with four healthy instances before recovery. The existing cleanup endpoint
+  returned200 and stage retry returned202 established at 15:32:59.
+- New attempt 01a0aad9-9688-761d-bdda-bf3607b78b12 runs at visit13 in replacement
+  instance wf-v1-vbk4ffy7gaysf3nmedbblykidgshsdj2rw7h4rhk4dfzpadaxn2q, same
+  definition v39. D1 confirms the original review identity, failure-v2 manifest
+  and exact saved patch hash 11d2cf885623e92dcee3c0c104a0d7493e033a10ac029ef8e5225a8854001e57.
+  This is an output-finalization retry, not a new draft or earlier-stage replay.
+  It completed at 15:34:41.188, about 1m40s after allocation. PR35 opened and
+  independent design review began at 15:35:01.908. No new self-review ran.
+  All four container rollouts are completed on the expected digest.
+  [Recovery receipt](evidence/sac-172/packing-canary/design-finalization-retry.json).
 
 #### PACK-08 — absent optional provider log recorded as an error
 
