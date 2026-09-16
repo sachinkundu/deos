@@ -1,0 +1,223 @@
+{
+  "url": "https://github.com/sachinkundu/deos-sample-project/pull/33",
+  "observedAt": "2026-09-16T10:11:03.559Z",
+  "images": [
+    {
+      "alt": "Local button evidence 02: pressed decimal, display 1.",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/c6beb4112aaf2d76e09969ccae1fb93d286a00dc08b70bfdd22554da75538490.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local button evidence 06: pressed decimal, right entry 2.",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/f019b742cb88c65bdfdfa422cf5952d58b1d838df52b7260996c85527e49b7d7.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local key evidence 02: trace records 2 then decimal, display 2.",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/933e596a3fdd48bbc684186d30daaab9a34c4a387708d672ebb55a59e8d43b98.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local exact error: 8 divided by 0 shows Cannot divide by zero and no number",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/8065267ab361307bc84a708c991a0e6d6a3a46228b8b0e67a787e6e3ba61bbc8.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local button subtraction 7 minus 10 equals negative 3",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/4163f514fefba4485da9c7ff6e551c8e3c4d02936a24f66319c9c09d7f39f0cf.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local Clear button resets partial state completely to 0",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/a9c5d6b40cd82c00484c67c8093dd712425e92e400c04be9b76518fbe175ae40.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local button evidence 03: pressed 5, display 1.5",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/d4c193078ecd4201c1b310f3ecbd855b561398f3da69ad630b637464e81b2357.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local button evidence 03: pressed 5, display 1.5",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/d4c193078ecd4201c1b310f3ecbd855b561398f3da69ad630b637464e81b2357.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local key evidence 03: trace records 2 decimal 5, display 2.5",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/5cb684ecc4bc2530fd571d72e17c0906b9d012a64dfa6881321da93c21ba0316.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local guarded input trace: premature Enter after 8 plus leaves pending display at 8",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/e850e014a714d730ce3504df7c3a515592f9c77cfff89119da3a8959e3f39f28.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local duplicate decimal key ignored: display remains 1.5 and trace records the key",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/0e84a9412f2a3c688c51d3ad2ce6644ff2271bd878d01275a81b74769cd604aa.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local button evidence 08: pressed 5, right entry 2.25",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/72e22a0a8975191aa4210c2f38356b425ad3d32506c8dcf2d61ba4744b411cb2.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local key evidence 04: trace records multiply, pending left operand stays 2.5",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/7b617b5ffd3454116971660becbbcd839b099a0ee676a632643b9e2f074b90b2.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local guarded input trace: premature Enter after 8 plus leaves pending display at 8",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/5cb0bca5ad90ac450768dfa1eea314c8b72daccad91173e17d89071e2a4c5c75.png?raw=true",
+      "width": 320
+    },
+    {
+      "alt": "Local locked error: digit, operator, equals, and keyboard digit attempts leave Cannot divide by zero unchanged",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/b0563f99bdb40dba6a68bc1290647182983f5b08cb39f8443fb9be40b4222455.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local pending calculation continues normally: 8 plus 2 Enter gives 10",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/72c97371532a972c113a3c79c817825452fa7f43153e70b7770ca33f8e0699a6.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local operator pending: 9 plus keeps display 9 with no invented right operand",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/cbcd95d5d6ac49d945baf8d3f2543b4c0cd1bb9fd041df56920a5a0d7710b369.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local duplicate decimal button ignored: display remains 1.5",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/b9880a120307719ea3aa99716a5cf9a3ea54aa50b69190f4a0bd4cbd24818f7e.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local duplicate decimal button ignored: display remains 1.5",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/b9880a120307719ea3aa99716a5cf9a3ea54aa50b69190f4a0bd4cbd24818f7e.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local key evidence 05: trace records 4, display 4",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/09f861c36a1e7373f658a9b49c4a5c86e607b3be57b6a170675e90db0e6fa99c.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local pending operator replacement: multiply replaces plus and 9 times 3 equals 27",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/9ef9c7ea5cf0ddbced6bcdc31823847a9c6b47e7e2d7a047d68a8ea36d714a7d.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local fresh calculation after button clear gives 2 plus 3 equals 5",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/e4d08a60c5f2ae34d8d3f6dfa2ea7a4dab2ff7acfb08f841e330a0e76466211d.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local pending calculation continues normally: 8 plus 2 Enter gives 10",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/896344557467bcd6dace722c51dd32b7bcf6d916649c936bc408ad7ebb430d1c.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local key evidence 06: trace records Enter, keyboard result 10",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/c46326f8d80a86d840140d0c99a9a632c6ca434825884a607274a3426baeb797.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local focused digit-button Enter dispatches calculate exactly once: 8 plus 2 gives 10, not an extra digit",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/01a2d79c6c20c40fc72d0b96c7d93b8bef264b2f9bf7a4fdf2770ef09e8264ae.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local fresh entry after result: digit 5 replaces 42 rather than appending",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/0fbc4e4c7769ac0c4d82ee073a0898e4474d74cd600b0dd8731783afd3f2d4d8.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "LOCAL origin — actual 320px button calculation 1.5 plus 2.25 equals 3.75",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/80725d80574c670b5b677d10893c7551ae30da3c33d8425584649e5245e2a2e2.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "Local key evidence 02: trace records 2 then decimal, display 2.",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/933e596a3fdd48bbc684186d30daaab9a34c4a387708d672ebb55a59e8d43b98.png?raw=true",
+      "width": 1280
+    },
+    {
+      "alt": "REFRESHED FINAL-TREE LOCAL proof — actual 320px Cannot divide by zero after corrected checks",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/62901a09ec6e26a286f5f17258c51533a2e2340d904a699134f73bcac364fd02.png?raw=true",
+      "width": 320
+    },
+    {
+      "alt": "REFRESHED FINAL-TREE LOCAL proof — visible trace 2 . 5 * 4 Enter and display 10 after corrected checks",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/d73e11fffd645c5df910727a017d205c87b42968de170314fd81910d1cc796b9.png?raw=true",
+      "width": 320
+    },
+    {
+      "alt": "REFRESHED FINAL-TREE LOCAL proof — actual 320px clear and 8 divided by 2 recovery displays 4",
+      "complete": true,
+      "height": 900,
+      "src": "https://github.com/sachinkundu/deos-sample-project/blob/3d14078d7e5793731567be3c925424fed442fd59/images/dd6db0043e5df8d49afc5c729a44c72bad8519e2918bab95be5c41d886ad9e42.png?raw=true",
+      "width": 320
+    }
+  ]
+}

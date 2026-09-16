@@ -70,3 +70,9 @@
 - [x] 7.1 Route publication failures to a durable Linear question and human reply, preserving the saved code, demos, original error and final PR review authority.
 - [x] 7.2 Show the publication wait in the portal with Author complete; resume Sol from the human answer without repeating Claude's review.
 - [x] 7.3 Validate and deploy the handoff, recover SAC-225 through it, apply the user's instruction to omit the GitHub Actions workflow, and reach the implementation PR.
+
+## 8. Review-ready proof presentation
+
+- [x] 8.1 Publish images and a combined Showboat file in the same GitHub repository so PR images render without a DEOS login, preserving the implementation head and human gate.
+- [x] 8.2 Apply the user's PR template and agent instructions; omit internal test results and agent discussion from the PR body.
+- [x] 8.3 Deploy the publisher, refresh SAC-225 PR33 from its saved work, and verify images in the real GitHub PR.

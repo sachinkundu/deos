@@ -1,6 +1,7 @@
 import { D1PlanningStore } from "./planning-store.ts";
 import { ImplementationDemoService } from './implementation-demo.ts';
 import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
+import { publishImplementationProof, implementationProofMarkdown, type PublishedImplementationProof } from './implementation-pr-proof.ts';
 import { D1DesignStore } from "./design-store.ts";
 import {
   D1OrchestrationStore,
@@ -88,7 +89,7 @@ export class ImplementationService {
             await github.publish(
               this.store,
               work,
-              await this.prBody(work, candidate),
+              await this.prBody(work, await publishImplementationProof(github, this.store, work, candidate)),
               work.candidate_sha!,
             );
           else if (
@@ -454,45 +455,25 @@ export class ImplementationService {
   singleDemoRepair() {
     return this.definition.nodes.implementation_proof_check?.edges.review_ready === 'implementation_branch_write';
   }
-  async prBody(work: ImplementationRun, candidate: ImplementationCandidate) {
-    const portal = this.env.PORTAL_BASE_URL.replace(/\/$/, "");
-    const proofLink = (id: string) =>
-      `${portal}/api/implementation/${encodeURIComponent(work.run_id)}/proof/${encodeURIComponent(id)}`;
+  async prBody(work: ImplementationRun, proof: PublishedImplementationProof) {
     const input = await this.store.read<ImplementationInput>(
       work.input_key,
       work.input_sha,
     );
-    const demo = this.singleDemoRepair()
-      ? await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).requireHandoff(work) : null;
+    const [plan, design] = await Promise.all([
+      new D1PlanningStore(this.env.DB).findRunWorkProduct(work.run_id),
+      new D1DesignStore(this.env.DB).findWorkProduct(work.run_id),
+    ]);
+    const pullLink = (number: number | null | undefined) => number
+      ? `[PR #${number}](https://github.com/${input.repository}/pull/${number})` : 'Not recorded';
     return [
       `${input.issue.title}\n\nImplements the approved design. Live release has not begun.`,
       `Linear: [${work.linear_identifier}](${input.issue.url})`,
-      `Approved design: ${work.approved_design_sha}\nTested base: ${work.tested_base_sha}\nChecked tree: ${work.tree_sha}`,
-      ...(demo ? ['## Demo review', demo.repaired
-        ? 'Claude reviewed the earlier build and requested changes. Sol completed its response to those findings. The changes have not had another independent demo review; the findings below are for your judgment.'
-        : 'Claude passed the demos for this candidate.',
-        demo.review.summary,
-        ...demo.review.scenarios.map(scenario => `- ${scenario.id}: ${scenario.outcome.replaceAll('_',' ')} — ${scenario.reason}`)] : []),
-      ...(candidate.summary ? ["## Implementation response", candidate.summary] : []),
-      "## Checks",
-      ...candidate.checks.map((c) => `- ${c.command} — exit ${c.exitCode}`),
-      "## Behavior proof",
-      ...candidate.proof.map((p) =>
-        p.kind === "browser_image"
-          ? `![${p.caption}](${proofLink(p.id)})`
-          : `- [${p.kind}: ${p.caption}](${proofLink(p.id)})`,
-      ),
-      "## Assumptions",
-      ...(candidate.assumptions.length
-        ? candidate.assumptions.map((a) => `- ${a}`)
-        : ["No additional assumptions."]),
-      "## Documentation",
-      ...(candidate.sources.length
-        ? candidate.sources.map(
-            (s) =>
-              `- [${s.title}](${s.url}): ${s.claim} (${s.artifactLocator})`,
-          )
-        : ["No external documentation used."]),
+      `Approved Proposal and Specs: ${pullLink(plan?.pull_request_number)}`,
+      `Approved design: ${pullLink(design?.pull_request_number)}`,
+      'Proof:',
+      ...implementationProofMarkdown(proof),
+      `This is the [Showboat file](${proof.showboatUrl}).`,
     ].join("\n\n");
   }
   async invalidate(run: OrchestrationRunRecord) {

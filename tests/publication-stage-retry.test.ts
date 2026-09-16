@@ -89,7 +89,8 @@ const setup = async (retryNode: PublicationRetryNode = "publish_planning_revisio
   const terminalCause = implementation ? "implementation_failed" : "system_action_invariant_failed";
   const definitionFile = implementation ? "config/workflow.implementation.yaml" : "config/workflow.simple-traceability.yaml";
   // Reproduce the older terminal publication failure that needs recovery.
-  const source = readFileSync(definitionFile, "utf8").replace('version: 35','version: 34')
+  const currentSource = readFileSync(definitionFile, "utf8");
+  const source = (implementation ? currentSource.replace(/^  version: \d+$/m, '  version: 34') : currentSource)
     .replaceAll('failed: implementation_publication_question','failed: implementation_failed');
   const definition = await loadWorkflowDefinition(source, {
     prompts: Object.fromEntries(readdirSync("config/prompts").map(name => [`prompts/${name}`,readFileSync(`config/prompts/${name}`,"utf8")])),

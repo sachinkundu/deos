@@ -16,6 +16,15 @@ The portal keeps Author complete while Prepare PR waits for the human response.
 Existing failed publication visits adopt this path only through the audited retry,
 which records both frozen definitions and preserves final merge authority.
 
+The implementation PR follows the user's proof-only presentation template:
+issue title, implementation/release statement, Linear link, approved planning
+and design PR links, numbered images with explanations, and one Showboat link.
+Internal test results and discussion between agents stay in transcripts.
+Publication copies review images and Showboat records into a content-addressed
+proof branch in the same GitHub repository. Commit-pinned repository image links
+render under GitHub's access rules, without a DEOS login. The proof branch has
+no implementation code or parent and never changes the reviewed code head.
+
 ## Context
 
 The current flow already freezes its workflow definition, repository route,
@@ -445,9 +454,7 @@ desired state reuses that key. A later revision gets a new sequence and digest,
 but updates the same pull request. The agent cannot choose another base,
 repository, pull request, sequence, or operation key.
 
-The pull request body is generated from checked records. It lists the approved
-planning and design commits, task checklist, exact checks, current proof links,
-provider-proof labels, documentation sources, and every safe assumption. Before
+The pull request body uses the proof-only presentation described above. Before
 each post, the trusted service reads the branch commit, pull request head, and
 target base. It rejects publication unless the branch and pull request head are
 the saved commit, that commit has the checked tree and tested-base parent, and

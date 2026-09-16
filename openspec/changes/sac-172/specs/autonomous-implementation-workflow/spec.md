@@ -52,7 +52,7 @@ Every implementation SHALL receive a demo plan from Claude based on the approved
 
 Sol SHALL implement the work, choose useful checks and demos, and report actual results and limitations. Claude SHALL review the first implementation once, inspect the available evidence and relevant code, and return Pass, Needs work, or Blocked. The workflow SHALL save and forward Claude's response unchanged. It MUST NOT audit citations, scenario coverage, input or evidence identity, or the judgment itself.
 
-Needs work SHALL pass Claude's findings to Sol. Sol SHALL act on them once and report what changed or remains unresolved. The workflow SHALL then publish the implementation PR for human judgment with Claude's original findings and Sol's response. It MUST NOT generate repair instructions, assess whether the findings were satisfied, or send the response back to Claude. Pass SHALL go directly to publication. Blocked SHALL use the clarification route. Execution and transport failures SHALL preserve their original errors. Only the authorized human may approve or request another revision.
+Needs work SHALL pass Claude's findings to Sol. Sol SHALL act on them once and report what changed or remains unresolved. The workflow SHALL then publish the implementation PR for human judgment. Claude's original findings and Sol's response SHALL remain in the transcripts. It MUST NOT generate repair instructions, assess whether the findings were satisfied, or send the response back to Claude. Pass SHALL go directly to publication. Blocked SHALL use the clarification route. Execution and transport failures SHALL preserve their original errors. Only the authorized human may approve or request another revision.
 
 #### Scenario: Every implementation gets a demo contract
 
@@ -131,7 +131,7 @@ An allowed reply that answers the open question SHALL resume the same build run 
 
 ### Requirement: Publish one proof-backed implementation pull request
 
-After the agent handoff completes, DEOS SHALL publish or update one run-scoped implementation pull request. It SHALL target the approved base branch. The pull request SHALL include the task list, code, tests, exact check results, and links to durable proof.
+After the agent handoff completes, DEOS SHALL publish or update one run-scoped implementation pull request. It SHALL target the approved base branch. The body SHALL contain the issue title, implementation and release statement, Linear link, approved Proposal and Specs PR link, approved design PR link, numbered behavior images with explanations, and one Showboat file link. Images SHALL render inside GitHub without requiring a DEOS session. Unit tests, internal test results, revision hashes, and discussion between agents SHALL remain in transcripts and saved diagnostics rather than the PR body.
 
 Proof SHALL show the changed behavior. For user-facing work, it SHALL include sanitized browser images of the changed state when a visual check is possible. When a visual check does not fit, it SHALL include Showboat records of the real commands and outputs. Unit test results MAY support the proof but MUST NOT be the only behavior proof.
 
@@ -140,7 +140,12 @@ Evidence SHALL retain its recorded origin and revision as context. The workflow 
 #### Scenario: User-facing work is complete
 
 - **WHEN** the agent has checked a user-facing change in its assigned browser.
-- **THEN** the pull request shows sanitized visual proof with the checks and task results.
+- **THEN** the pull request shows sanitized images with plain explanations and a Showboat link. The repository's existing access rules govern the proof files.
+
+#### Scenario: GitHub cannot authenticate to the portal
+
+- **WHEN** saved proof is available only through a protected DEOS endpoint.
+- **THEN** the publisher copies the review images and Showboat records into the same GitHub repository and embeds repository image links, without changing the implementation head or its human gate.
 
 #### Scenario: Visual proof does not fit
 

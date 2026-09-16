@@ -12,7 +12,7 @@ The DEOS flow now stops after design approval. A person must still start the bui
 - Give each run its own branch, work space, sandbox, browser, and safe test scope. Two runs must not share work or change the live site.
 - If no safe choice is possible, ask one clear question on the Linear issue, enter human review, watch for an allowed reply, and then resume in a fresh attempt.
 - If publishing finished work fails, keep the code and demos, ask what to do on Linear, and send the human reply to Sol. Publication faults must not leave a completed implementation silently stopped.
-- Open one code pull request for human review. Put the task list, checks, and strong proof in it. Prefer visual proof. Use Showboat when a visual check does not fit. Unit tests alone are not proof.
+- Open one code pull request for human review. Link the approved planning and design PRs, show numbered behavior images with explanations, and link one Showboat file. Keep internal checks and agent discussion in transcripts.
 - Keep merge and live release as later human choices. This flow must not deploy the change.
 
 ### Non-goals
