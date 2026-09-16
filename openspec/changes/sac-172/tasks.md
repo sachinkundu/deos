@@ -63,10 +63,10 @@
 - [x] 6.1 Remove workflow quality gates for tasks, registered checks, proof kinds, evidence freshness and documentation citations. Preserve command failures and artifacts as review context.
 - [x] 6.2 Remove the supervisor completion repair loop. Forward Claude findings unchanged to Sol once, then route Sol's response to human PR review without another judgment.
 - [x] 6.3 Align prompts and portal state with the agent handoff. Keep Author active until Sol finishes; show Claude Review and Prepare PR at their real visits.
-- [ ] 6.4 Validate and deploy the simplified runtime and staging portal, read back activation, and recover the calculator publication without re-running completed agent work.
+- [x] 6.4 Validate and deploy the simplified runtime and staging portal, read back activation, and recover calculator publication while preserving completed work. Limit any author continuation to the human's requested adjustment; do not repeat Claude's review.
 
 ## 7. Human help after coding
 
 - [x] 7.1 Route publication failures to a durable Linear question and human reply, preserving the saved code, demos, original error and final PR review authority.
 - [x] 7.2 Show the publication wait in the portal with Author complete; resume Sol from the human answer without repeating Claude's review.
-- [ ] 7.3 Validate and deploy the handoff, recover SAC-225 through it, apply the user's instruction to omit the GitHub Actions workflow, and reach the implementation PR.
+- [x] 7.3 Validate and deploy the handoff, recover SAC-225 through it, apply the user's instruction to omit the GitHub Actions workflow, and reach the implementation PR.

@@ -22,6 +22,10 @@ path. Auth, branch ownership and artifact storage integrity remain enforced.
 - Runtime image remains sha256:062e5dec9a2d502449a8ccddce62f718be94fc8e16cf5be2642cf308b6456445.
 - All four container rollouts completed. No production portal deployment or
   GitHub App permission change was made.
+- The sample project's future-run route was selected through authenticated
+  Settings and read back as implementation v35, route revision 21, dispatch
+  enabled, with the same human reviewer and repository. The current canary
+  remains frozen at compatible v36. Other project routes were not changed.
 
 ## Real calculator handoff
 
@@ -50,10 +54,31 @@ code and prior demo evidence. The live staging portal showed Author running
 with 24/25 tasks, reflecting the omitted task. This is a progress observation,
 not a claim that the PR is already published.
 
-The real Linear question, reply delivery and agent continuation are proven.
-Publication and final human PR review remain pending. The existing calculator
-preview used an authorized maintainer deployment fallback; this does not prove
-fully autonomous Cloudflare deployment.
+At 09:28:55 UTC, Sol completed its adjustment. Branch publication succeeded and
+the workflow opened [implementation PR #33](https://github.com/sachinkundu/deos-sample-project/pull/33),
+then reached implementation_review / awaiting_human at 09:29:21 UTC. Linear shows
+Human Review with the PR attached. The PR is open and not a draft; its head is
+72c46f9f2a3027600289cb60911e2857a08ee688 and it is not merged. Its 17 changed files
+contain no .github/workflows file. Claude's original findings, Sol's response,
+screenshots and command evidence remain in the PR. No new Claude job ran.
+The authenticated staging browser shows Implementation complete, its connecting
+edge to Human Review, and the Review implementation PR action pointing to PR33.
+The live screenshot was captured in the supervising Codex task.
+
+The new author chose a production rebuild and a focused comparison of unchanged
+runtime files. It reports matching built asset hashes for the existing preview.
+The saved npm audit command failed because its registry POST was outside the
+network policy. That failure is visible in the PR and did not stop publication;
+the workflow did not invent another completion or evidence gate.
+
+The real Linear question, reply delivery, author continuation and publication
+are proven. Human review remains pending. The existing calculator preview used
+an authorized maintainer deployment fallback; this does not prove fully
+autonomous Cloudflare deployment. SAC-182 remains stopped. No SAC-172 PR has
+been opened.
+
+The two-minute canary monitor is paused at the requested final human-review
+gate. No automatic continuation or merge is scheduled.
 
 Remote command output is recorded in
 [the Showboat document](publication-human-handoff-showboat.md).

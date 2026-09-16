@@ -374,3 +374,211 @@ rtk proxy python3 /tmp/sac182-d1-read.py /tmp/sac225-publication-human-proof-que
   "success": true
 }
 ```
+
+```bash
+rtk proxy python3 /tmp/sac225-publication-final-proof.py
+```
+
+```output
+{
+  "retry": [
+    {
+      "retry_kind": "compatible_tail",
+      "state": "established",
+      "source_definition_version": 33,
+      "target_definition_version": 36,
+      "retry_node": "implementation_branch_write",
+      "created_at": "2026-09-16T09:16:57.439Z",
+      "established_at": "2026-09-16T09:16:59.876Z"
+    }
+  ],
+  "question": [
+    {
+      "status": "closed",
+      "linear_comment_id": "112c4314-3041-45b7-9158-f6fb675df138",
+      "opened_at": "2026-09-16T09:17:13.394Z",
+      "answer_actor_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "answer_comment_id": "8899fb25-d368-420f-99c7-24e67c3065e6"
+    }
+  ],
+  "replyDelivery": [
+    {
+      "event_kind": "Comment.create",
+      "state": "processed",
+      "actor_type": "user",
+      "actor_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "comment_id": "8899fb25-d368-420f-99c7-24e67c3065e6",
+      "provider_time": "2026-09-16T09:20:42.615Z",
+      "processed_at": "2026-09-16T09:21:02.755Z"
+    }
+  ],
+  "transitions": [
+    {
+      "from_node": "implementation_failed",
+      "to_node": "implementation_branch_write",
+      "cause_type": "operator_retry",
+      "actor_type": "operator",
+      "occurred_at": "2026-09-16T09:16:57.439Z"
+    },
+    {
+      "from_node": "implementation_branch_write",
+      "to_node": "implementation_publication_question",
+      "cause_type": "workflow",
+      "actor_type": "workflow",
+      "occurred_at": "2026-09-16T09:17:12.596Z"
+    },
+    {
+      "from_node": "implementation_publication_question",
+      "to_node": "implementation_publication_wait",
+      "cause_type": "workflow",
+      "actor_type": "workflow",
+      "occurred_at": "2026-09-16T09:17:13.741Z"
+    },
+    {
+      "from_node": "implementation_publication_wait",
+      "to_node": "implementation_build",
+      "cause_type": "linear_event",
+      "actor_type": "user",
+      "occurred_at": "2026-09-16T09:21:02.646Z"
+    },
+    {
+      "from_node": "implementation_build",
+      "to_node": "implementation_proof_check",
+      "cause_type": "agent",
+      "actor_type": "agent",
+      "occurred_at": "2026-09-16T09:28:56.744Z"
+    },
+    {
+      "from_node": "implementation_proof_check",
+      "to_node": "implementation_branch_write",
+      "cause_type": "workflow",
+      "actor_type": "workflow",
+      "occurred_at": "2026-09-16T09:28:57.406Z"
+    },
+    {
+      "from_node": "implementation_branch_write",
+      "to_node": "implementation_publish",
+      "cause_type": "workflow",
+      "actor_type": "workflow",
+      "occurred_at": "2026-09-16T09:29:11.740Z"
+    },
+    {
+      "from_node": "implementation_publish",
+      "to_node": "implementation_review",
+      "cause_type": "workflow",
+      "actor_type": "workflow",
+      "occurred_at": "2026-09-16T09:29:21.468Z"
+    }
+  ],
+  "authors": [
+    {
+      "node_id": "implementation_build",
+      "state": "completed",
+      "started_at": "2026-09-16T09:21:06.495Z",
+      "ended_at": "2026-09-16T09:28:55.744Z"
+    },
+    {
+      "node_id": "implementation_build",
+      "state": "completed",
+      "started_at": "2026-09-16T06:16:09.841Z",
+      "ended_at": "2026-09-16T08:18:10.591Z"
+    }
+  ],
+  "run": [
+    {
+      "current_node": "implementation_review",
+      "status": "awaiting_human",
+      "definition_version": 36
+    }
+  ]
+}
+{
+  "pr": {
+    "url": "https://github.com/sachinkundu/deos-sample-project/pull/33",
+    "state": "OPEN",
+    "isDraft": false,
+    "headRefOid": "72c46f9f2a3027600289cb60911e2857a08ee688",
+    "mergedAt": null
+  },
+  "changedFiles": 17,
+  "actionsFiles": [],
+  "claudeFindingsIncluded": true,
+  "solResponseIncluded": true,
+  "failedAuditRecorded": true
+}
+```
+
+```bash
+rtk proxy python3 /tmp/sac182-d1-read.py /tmp/sac225-publication-future-route-query.json
+```
+
+```output
+{
+  "result": [
+    {
+      "results": [
+        {
+          "project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+          "definition_id": "implementation",
+          "definition_version": 35,
+          "route_revision": 21,
+          "workflow_revision": 14,
+          "dispatch_enabled": 1,
+          "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 1.814
+        },
+        "duration": 1.814,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 101584896,
+        "rows_read": 3,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "current_node": "implementation_review",
+          "current_visit_sequence": 55,
+          "status": "awaiting_human",
+          "definition_version": 36,
+          "definition_digest": "ebb46d0ee6c44446441250ed50d7d299a5c6303d6e773143e632b484d322bcfb",
+          "workflow_instance_id": "wf-v1-df45egskeqygyufuef6i3jg2yjxrknkxfjhevma524j7ucsebyia"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.6757
+        },
+        "duration": 0.6757,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 101584896,
+        "rows_read": 91,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}
+```
