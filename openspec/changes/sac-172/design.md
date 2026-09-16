@@ -820,7 +820,10 @@ artifacts fail with their original diagnostic; they are never silently truncated
 The Demo Gate returns a clear summary and a result for every scenario:
 
 - Pass: all required scenarios are demonstrated on the current tree.
-- Needs work: concrete gaps go back to Codex for repairs and new evidence.
+- Needs work: concrete gaps go back to Codex for one repair pass and new evidence,
+  then the implementation PR goes to Human Review. No automatic second demo
+  review runs. The original findings and the lack of a second independent review
+  stay visible for the human to judge and send back if needed.
 - Blocked: an unavailable capability or human decision produces one clear question
   and enters the existing clarification gate.
 
@@ -855,13 +858,19 @@ must report that missing capability, rather than substituting local-only proof.
 The semantic judgment complements the trusted evidence checks. It cannot waive
 proof hashes, current base/tree identity, sanitization, delivery receipts, source
 access, or a verified provider response. Publication and merge checks require the
-latest gate to pass for the exact accepted candidate and saved plan. A new candidate
-or plan invalidates that verdict. Each gate response must match the response recorded
+latest gate to pass for the exact accepted candidate and saved plan, or a completed
+repair pass that received that gate’s needs-work feedback. Tests and current-code
+proof still pass before publication. The repair never becomes an independent pass.
+A later human revision starts a new demo round; merge still requires the saved
+human choice for the exact published head. Each gate response must match the response recorded
 by the trusted Claude runner. A successful agent exit alone is not a passing gate.
 
 D1 stores immutable review rows by run, visit and reviewer attempt, with input,
 plan and candidate digests, base and tree, outcome, summary and R2 payload digest.
-A separate access table records the exact evidence opened by that reviewer. R2
+A separate access table records evidence opened by that reviewer for diagnostics.
+The workflow reads the verdict’s routing format and input identity. It does not
+audit findings, citations, scenario coverage, or aggregate judgment. Missing access
+rows do not reject the verdict or trigger another model turn. R2
 holds immutable plans and verdicts. These records support restart reconciliation
 without repeating accepted work or treating an old verdict as current.
 
@@ -903,3 +912,9 @@ Once a tunnel identity has been saved, read-back must match it. A guarded write
 marks the preview ready only while those facts remain current. Missing or
 ambiguous inventory, a failed health response, and concurrent cleanup leave it
 unavailable. The original failure remains in the error history.
+
+The single-repair policy can also recover a stopped Demo Gate whose full Claude
+response was saved before an old output check rejected it. The authenticated
+upgrade reads that immutable collection, records the unchanged Needs work verdict,
+preserves the failed attempt and original error, and resumes at Author. It makes
+no new Claude call and does not reset or manufacture a review result.

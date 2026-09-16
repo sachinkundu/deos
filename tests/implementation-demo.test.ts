@@ -10,6 +10,8 @@ import type { AgentAttemptRecord } from '../src/sandbox-controller.ts';
 import type { OrchestrationRunRecord } from '../src/orchestration-store.ts';
 import type { ArtifactCollectionResult } from '../src/artifact-collector.ts';
 import { implementationDemoView } from '../portal/src/implementation-demo-view.ts';
+import { ImplementationService } from '../src/implementation-service.ts';
+import type { LoadedWorkflowDefinition } from '../src/workflow-definition.ts';
 const subject = {change: 'sample', approvedDesignSha: 'a'.repeat(40), testedBaseSha: 'b'.repeat(40), treeSha: 'c'.repeat(40)};
 const sources = [{path:'approved/openspec/changes/sample/specs/service/spec.md', content:'### Requirement: Demonstrate a real update\n\n### Requirement: Recover a lost response',sha256:'d'.repeat(64)}];
 function context(): DemoContext {
@@ -40,23 +42,18 @@ test('ready plans cover all approved requirements and cannot weaken a saved scen
   const weak=structuredClone(p); weak.scenarios[0].steps.pop();
   assert.throws(()=>validateDemoPlan(weak,c),/removed or rewritten/);
 });
-test('pass requires inspected current evidence for every scenario, not captions or test counts',()=>{
+test('the workflow accepts reviewer judgments without auditing citations or re-deriving its outcome',()=>{
   const c=gateContext(),r=result(c);
-  validateDemoResult(r,c,['image','provider']);
-  assert.throws(()=>validateDemoResult(r,c,['provider']),/not inspected/);
-  const noProvider=structuredClone(r); noProvider.scenarios[0].evidenceIds=['image'];
-  assert.throws(()=>validateDemoResult(noProvider,c,['image']),/required inspected evidence/);
+  r.scenarios[0].evidenceIds=['unopened-or-mistyped-reference'];
+  r.scenarios[0].outcome='needs_work';
   c.evidence[0].treeSha='9'.repeat(40);
-  assert.throws(()=>validateDemoResult(r,c,['image','provider']),/current evidence/);
-});
-test('needs-work and blocked verdicts retain concrete gaps and cannot claim an aggregate pass',()=>{
-  const c=gateContext(),r=result(c); r.scenarios[0]={id:'update',outcome:'needs_work',reason:'The changed app never consumed the callback.',evidenceIds:[]};
-  assert.throws(()=>validateDemoResult(r,c,[]),/contradicts/);
-  r.outcome='needs_work';validateDemoResult(r,c,[]);
+  validateDemoResult(r,c);
+  r.outcome='needs_work';validateDemoResult(r,c);
   r.outcome='blocked';r.scenarios[0].outcome='blocked';
-  assert.throws(()=>validateDemoResult(r,c,[]),/clear question/);
+  assert.throws(()=>validateDemoResult(r,c),/clear question/);
   r.question={blockKey:'preview',question:'Which safe preview is available?',reason:'No preview capability is configured.'};
-  validateDemoResult(r,c,[]);
+  validateDemoResult(r,c);
+  assert.throws(()=>validateDemoResult({...r,inputSha256:'wrong-review'},c),/envelope/);
 });
 async function fixture() {
   const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();seedRun(db);seedAttempt(db,'review');
@@ -88,6 +85,68 @@ test('evidence reader returns actual image bytes, records access and rejects cro
     f.bucket.objects.set(f.c.evidence[0].r2Key,new Uint8Array([0]));
     await assert.rejects(f.service.evidence(f.attempt,'image'),/digest|hash|integrity/i);
   } finally {f.db.close();}
+});
+async function acceptGate(f:Awaited<ReturnType<typeof fixture>>,outcome:'pass'|'needs_work') {
+  const p=plan(f.c),ps=await f.store.put('run-1','plan.json',JSON.stringify(p));
+  seedAttempt(f.db,'plan');
+  f.db.sqlite.prepare(`INSERT INTO implementation_demo_reviews VALUES
+    ('plan','run-1',1,'plan',?,NULL,NULL,?,?,'ready','summary',?,?,'2026-09-15')`)
+    .run(f.c.inputSha256,subject.testedBaseSha,subject.treeSha,ps.key,ps.sha256);
+  f.c.plan={sha256:ps.sha256,value:p};
+  const {inputSha256:_,...content}=f.c;f.c.inputSha256=await sha256Hex(JSON.stringify(content));
+  const r=result(f.c);r.outcome=outcome;r.scenarios[0].outcome=outcome;
+  if(outcome==='needs_work')r.scenarios[0].reason='Show the required mobile layout.';
+  const bytes=JSON.stringify(r),saved=await f.store.put('run-1','raw-review-output.json',bytes);
+  f.db.sqlite.exec(`INSERT INTO artifact_manifests (manifest_id,run_id,attempt_id,r2_key,state,created_at)
+    VALUES ('manifest','run-1','review','manifest-key','complete','2026-09-15')`);
+  f.db.sqlite.prepare(`INSERT INTO artifacts (manifest_id,logical_name,r2_key,media_type,byte_size,sha256,created_at,policy_outcome)
+    VALUES ('manifest','raw-review-output.json',?,'application/json',?,?,'2026-09-15','accepted')`)
+    .run(saved.key,Buffer.byteLength(bytes),saved.sha256);
+  const attempt={...f.attempt,visit_sequence:2,job_spec_json:JSON.stringify({reviewKind:'demo_gate',materializedContext:JSON.stringify({demo:f.c})})};
+  const collection:ArtifactCollectionResult={manifestId:'manifest',aggregateDigest:saved.sha256,objectCount:1,totalBytes:Buffer.byteLength(bytes),
+    manifestKey:'manifest-key',manifestSha256:saved.sha256,providerReceipts:[],result:{reviewOutcome:r.outcome,summary:r.summary}};
+  assert.equal(await f.service.accept({run:{run_id:'run-1'} as OrchestrationRunRecord,attempt,collection}),outcome);
+  assert.equal(f.db.sqlite.prepare('SELECT count(*) n FROM implementation_demo_access').get()!.n,0);
+  return r;
+}
+test('pass and needs-work verdicts are accepted without evidence-open receipts',async()=>{
+  for(const outcome of ['pass','needs_work'] as const) {
+    const f=await fixture();try {
+      await acceptGate(f,outcome);
+      assert.equal((await f.service.latest('run-1','gate'))!.outcome,outcome);
+      assert.equal((await f.service.handoff(f.work))?.repaired,outcome==='pass'?false:undefined);
+    }finally{f.db.close();}
+  }
+});
+test('one completed repair goes directly to human review with original findings; a human revision starts a new round',async()=>{
+  const f=await fixture();try {
+    const verdict=await acceptGate(f,'needs_work');
+    seedAttempt(f.db,'repair');
+    const demo=await f.service.buildInput('run-1');
+    f.db.sqlite.prepare("UPDATE agent_attempts SET visit_sequence=3,state='completed',job_spec_json=? WHERE attempt_id='repair'")
+      .run(JSON.stringify({materializedContext:JSON.stringify({demo})}));
+    f.db.sqlite.prepare("UPDATE implementation_runs SET source_attempt_id='repair',candidate_sha=?,tree_sha=? WHERE run_id='run-1'")
+      .run('5'.repeat(64),'6'.repeat(40));
+    const work=await f.store.requireRun('run-1');
+    assert.deepEqual(await f.service.requireHandoff(work),{review:verdict,reviewedCandidateSha:f.c.candidateSha,repaired:true});
+    const definition={jobs:{implementation_demo_plan:{},implementation_demo_gate:{}},nodes:{implementation_proof_check:{edges:{review_ready:'implementation_branch_write'}}}} as unknown as LoadedWorkflowDefinition;
+    const service=new ImplementationService({DB:f.db,ARTIFACTS:f.bucket,PORTAL_BASE_URL:'https://portal.test'} as unknown as Env,definition);
+    const candidate={checks:[],proof:[],assumptions:[],sources:[]} as never;
+    service.checkProof=async()=>candidate;
+    const outcome=await service.execute({run_id:'run-1',current_node:'implementation_proof_check'} as OrchestrationRunRecord,'implementation.check_proof');
+    assert.equal(outcome.outcome,'review_ready');
+    const body=await service.prBody(work,candidate);
+    assert.match(body,/have not had another independent demo review/);assert.match(body,/Show the required mobile layout/);
+    f.db.sqlite.prepare('UPDATE workflow_definitions SET canonical_json=?').run(JSON.stringify(definition));
+    assert.equal((await implementationDemoView(f.db as unknown as D1Database,f.bucket as unknown as R2Bucket,work)).gate?.repairComplete,true);
+    f.db.sqlite.prepare("UPDATE agent_attempts SET job_spec_json='{}' WHERE attempt_id='repair'").run();
+    assert.equal(await f.service.handoff(work),null,'An unrelated later build does not count as the repair');
+    f.db.sqlite.prepare("UPDATE agent_attempts SET job_spec_json=? WHERE attempt_id='repair'").run(JSON.stringify({materializedContext:JSON.stringify({demo})}));
+    f.db.sqlite.exec(`INSERT INTO implementation_gates(run_id,visit_sequence,node_id,expected_event_kind,allowed_linear_user_id,issue_id,human_state_id,opened_at,decision_outcome)
+      VALUES ('run-1',4,'implementation_review','state','human','issue-1','review','now','revision_requested')`);
+    assert.equal(await f.service.handoff(work),null);
+    assert.equal((await service.execute({run_id:'run-1',current_node:'implementation_proof_check'} as OrchestrationRunRecord,'implementation.check_proof')).outcome,'completed');
+  }finally{f.db.close();}
 });
 test('publication requires an exact current pass and a new build makes the portal assessment stale',async()=>{
   const f=await fixture();

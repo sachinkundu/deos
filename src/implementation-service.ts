@@ -76,9 +76,13 @@ export class ImplementationService {
         )
           await this.merge(run, work, action === "implementation.merge");
         else {
-          const github = implementationGitHub(this.env, run);
           const candidate = await this.checkProof(run, work);
-          if (action === "implementation.check_proof") return completed();
+          if (action === "implementation.check_proof") {
+            if (this.singleDemoRepair() && await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).handoff(work))
+              return {kind:'system_action',outcome:'review_ready',providerReceiptsComplete:true};
+            return completed();
+          }
+          const github = implementationGitHub(this.env, run);
           if (action === "implementation.write_branch")
             await github.writeBranch(this.store, work, candidate);
           else if (action === "implementation.publish")
@@ -530,9 +534,15 @@ export class ImplementationService {
         );
       await this.store.readBytes(row.r2_key, row.sha256);
     }
-    if (this.definition.jobs.implementation_demo_gate && run.current_node !== 'implementation_proof_check')
-      await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).requirePass(work);
+    if (this.definition.jobs.implementation_demo_gate && run.current_node !== 'implementation_proof_check') {
+      const demos = new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS);
+      if (this.singleDemoRepair()) await demos.requireHandoff(work);
+      else await demos.requirePass(work);
+    }
     return candidate;
+  }
+  singleDemoRepair() {
+    return this.definition.nodes.implementation_proof_check?.edges.review_ready === 'implementation_branch_write';
   }
   async prBody(work: ImplementationRun, candidate: ImplementationCandidate) {
     const portal = this.env.PORTAL_BASE_URL.replace(/\/$/, "");
@@ -542,10 +552,17 @@ export class ImplementationService {
       work.input_key,
       work.input_sha,
     );
+    const demo = this.singleDemoRepair()
+      ? await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).requireHandoff(work) : null;
     return [
       `${input.issue.title}\n\nImplements the approved design. Live release has not begun.`,
       `Linear: [${work.linear_identifier}](${input.issue.url})`,
       `Approved design: ${work.approved_design_sha}\nTested base: ${work.tested_base_sha}\nChecked tree: ${work.tree_sha}`,
+      ...(demo ? ['## Demo review', demo.repaired
+        ? 'Claude reviewed the earlier build and requested changes. The author completed one repair pass. Those repairs have not had another independent demo review; the findings below are for your judgment.'
+        : 'Claude passed the demos for this candidate.',
+        demo.review.summary,
+        ...demo.review.scenarios.map(scenario => `- ${scenario.id}: ${scenario.outcome.replaceAll('_',' ')} — ${scenario.reason}`)] : []),
       "## Checks",
       ...candidate.checks.map((c) => `- ${c.command} — exit ${c.exitCode}`),
       "## Behavior proof",

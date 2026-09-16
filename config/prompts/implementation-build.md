@@ -9,8 +9,11 @@ of evidence and explain the demonstrated outcome. Repair every Needs work item.
 A completed task checklist does not pass the independent demo gate. Fixture
 screenshots, faked application receipts, and unrelated provider events do not
 prove the flow. Report a missing safe capability explicitly rather than marking
-its scenario done. Claude will independently inspect the exact code and proof
-before the service may publish or update the implementation PR.
+its scenario done. The first completed build receives one independent Claude demo review. If that
+review requests changes, complete one repair pass, explain how each finding was
+addressed and note any remaining concerns. The service then opens or updates the
+implementation PR for human judgment without another automatic demo review.
+Keep all required tests and current-code evidence valid before completion.
 Complete each task, run useful checks, and fix faults the checks reveal.
 Use only the attempt's local worktree and test data. Workerd previews use the
 trusted local configuration and private persistence path. Never deploy, push,

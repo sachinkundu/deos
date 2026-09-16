@@ -7,16 +7,20 @@ import { AgentStageRetryController, D1AgentStageRetryStore } from './stage-retry
 import type { WorkflowBinding } from './queue-consumer-core.ts';
 import { ImplementationDemoService } from './implementation-demo.ts';
 import { validateDemoCorrectionRequest, type DemoCorrectionRequest, type DemoPlan } from './implementation-demo-contract.ts';
+import { ClaudeReviewStore } from './claude-review-store.ts';
+import type { AgentAttemptRecord } from './sandbox-controller.ts';
 
 interface UpgradeInput {
   version: 1; runId: string; failedAttemptId: string; sourceDefinitionDigest: string;
   sourceWorkflowInstanceId: string; visitSequence: number; targetVersion: number;
   requestedBy: string; execute?: boolean; planDigest?: string;
   correction?: DemoCorrectionRequest;
+  handoffPolicy?: 'single_repair';
 }
 interface UpgradePlan {
   input: UpgradeInput; targetDigest: string; approvedInputSha: string; testedBaseSha: string;
   patchSha: string | null; branch: string; humanUserId: string | null; humanRevision: number | null;
+  savedReviewDigest?: string;
 }
 export class ImplementationDemoUpgradeController {
   readonly env: Env;
@@ -28,12 +32,13 @@ export class ImplementationDemoUpgradeController {
       return Response.json({error:'invalid_operator_capability'},{status:401});
     const input=await request.json() as UpgradeInput;
     if(!input || typeof input!=='object' || Array.isArray(input) || Object.keys(input).some(key=>![
-      'version','runId','failedAttemptId','sourceDefinitionDigest','sourceWorkflowInstanceId','visitSequence','targetVersion','requestedBy','execute','planDigest','correction'].includes(key)) ||
+      'version','runId','failedAttemptId','sourceDefinitionDigest','sourceWorkflowInstanceId','visitSequence','targetVersion','requestedBy','execute','planDigest','correction','handoffPolicy'].includes(key)) ||
       input.version!==1 || typeof input.runId!=='string' || typeof input.failedAttemptId!=='string' ||
       !/^[a-f0-9]{64}$/.test(input.sourceDefinitionDigest) || typeof input.sourceWorkflowInstanceId!=='string' ||
       !Number.isSafeInteger(input.visitSequence) || input.visitSequence<1 || !Number.isSafeInteger(input.targetVersion) ||
       input.targetVersion<=this.tail.version || !/^[a-zA-Z0-9._@-]{1,100}$/.test(input.requestedBy) ||
-      (input.execute!==undefined && typeof input.execute!=='boolean')) throw new Error('invalid_demo_upgrade_request');
+      (input.execute!==undefined && typeof input.execute!=='boolean') ||
+      (input.handoffPolicy!==undefined && (input.handoffPolicy!=='single_repair' || input.correction!==undefined))) throw new Error('invalid_demo_upgrade_request');
     if(input.correction!==undefined)validateDemoCorrectionRequest(input.correction);
     const identity={...input};delete identity.execute;delete identity.planDigest;
     const existing=await this.env.DB.prepare('SELECT plan_json,plan_digest FROM implementation_demo_upgrades WHERE failed_attempt_id=?')
@@ -55,7 +60,7 @@ export class ImplementationDemoUpgradeController {
       throw new Error('implementation_demo_upgrade_source_changed');
     const attempt=await this.env.DB.prepare('SELECT node_id,state,cleanup_state,visit_sequence FROM agent_attempts WHERE run_id=? AND attempt_id=?')
       .bind(input.runId,input.failedAttemptId).first<{node_id:string;state:string;cleanup_state:string;visit_sequence:number}>();
-    if(!attempt || attempt.node_id!=='implementation_build' || !['failed','interrupted','absolute_timeout'].includes(attempt.state) ||
+    if(!attempt || attempt.node_id!==(input.handoffPolicy ? 'implementation_demo_gate' : 'implementation_build') || !['failed','interrupted','absolute_timeout'].includes(attempt.state) ||
       attempt.cleanup_state!=='destroyed' || attempt.visit_sequence!==input.visitSequence-1)
       throw new Error('implementation_demo_upgrade_attempt_not_ready');
     const active=await this.env.DB.prepare(`SELECT 1 FROM agent_attempts WHERE run_id=? AND state IN ('pending','starting','running','collecting')
@@ -69,7 +74,10 @@ export class ImplementationDemoUpgradeController {
     const frozen=await restoreWorkflowDefinition(source.canonical_json,run.definition_digest);
     // Existing demo workflows may re-enter planning only for an explicit,
     // hash-bound correction. An author cannot request this through its tools.
-    if(frozen.jobs.implementation_demo_plan && !input.correction)throw new Error('implementation_demo_correction_required');
+    if(input.handoffPolicy && (!frozen.jobs.implementation_demo_gate ||
+      frozen.nodes.implementation_proof_check.edges.review_ready === 'implementation_branch_write'))
+      throw new Error('implementation_demo_handoff_policy_not_eligible');
+    if(frozen.jobs.implementation_demo_plan && !input.correction && !input.handoffPolicy)throw new Error('implementation_demo_correction_required');
     if(input.correction) {
       const demos=new ImplementationDemoService(this.env.DB,this.env.ARTIFACTS);
       const prior=await demos.latest(input.runId,'plan');
@@ -79,8 +87,10 @@ export class ImplementationDemoUpgradeController {
         throw new Error('implementation_demo_correction_scenario_missing');
     }
     const target=await implementationDemoUpgradeDefinition(frozen,this.tail,input.targetVersion);
+    const savedReviewDigest = input.handoffPolicy ? (await this.restoreSavedReview(input,true)).aggregateDigest : undefined;
     const plan: UpgradePlan={input:identity,targetDigest:target.digest,approvedInputSha:work.input_sha,testedBaseSha:work.tested_base_sha,
-      patchSha:work.patch_sha,branch:work.branch,humanUserId:run.allowed_linear_user_id ?? null,humanRevision:run.human_binding_revision ?? null};
+      patchSha:work.patch_sha,branch:work.branch,humanUserId:run.allowed_linear_user_id ?? null,humanRevision:run.human_binding_revision ?? null,
+      ...(savedReviewDigest ? {savedReviewDigest} : {})};
     const encoded=JSON.stringify(plan),digest=await sha256Hex(encoded);
     if(!input.execute)return Response.json({plan,planDigest:digest});
     if(input.planDigest!==digest)throw new Error('implementation_demo_upgrade_plan_changed');
@@ -92,11 +102,31 @@ export class ImplementationDemoUpgradeController {
     if(saved?.plan_digest!==digest)throw new Error('implementation_demo_upgrade_identity_mismatch');
     return this.resume(request,identity,target);
   }
-  private resume(request: Request,input: UpgradeInput,target: LoadedWorkflowDefinition) {
+  private async restoreSavedReview(input: UpgradeInput,dryRun:boolean) {
+    const attempt=await this.env.DB.prepare('SELECT * FROM agent_attempts WHERE run_id=? AND attempt_id=?')
+      .bind(input.runId,input.failedAttemptId).first<AgentAttemptRecord>();
+    if(!attempt || await sha256Hex(attempt.job_spec_json)!==attempt.job_spec_digest)throw new Error('saved_demo_job_mismatch');
+    const reviews=new ClaudeReviewStore(this.env.DB,this.env.ARTIFACTS);
+    const invocation=await reviews.invocation(attempt.attempt_id);
+    const collection=await reviews.collection(attempt.attempt_id,attempt.job_spec_digest);
+    if(invocation?.state!=='finished' || invocation.cleanup_state!=='destroyed' || !collection ||
+      collection.result.reviewOutcome!=='needs_work')throw new Error('saved_demo_findings_unavailable');
+    const run=await new D1OrchestrationStore(this.env.DB).findRun(input.runId);
+    if(!run)throw new Error('saved_demo_run_missing');
+    await new ImplementationDemoService(this.env.DB,this.env.ARTIFACTS).accept({run,attempt,collection,dryRun});
+    return collection;
+  }
+  private async resume(request: Request,input: UpgradeInput,target: LoadedWorkflowDefinition) {
+    if(input.handoffPolicy) {
+      const accepted=await this.env.DB.prepare('SELECT outcome FROM implementation_demo_reviews WHERE attempt_id=? AND run_id=?')
+        .bind(input.failedAttemptId,input.runId).first<{outcome:string}>();
+      if(!accepted)await this.restoreSavedReview(input,false);
+      else if(accepted.outcome!=='needs_work')throw new Error('saved_demo_recovery_outcome_changed');
+    }
     // The existing retry transaction rechecks the failed attempt, cleanup, frozen
     // inputs and absence of a live gate before it changes the run or dispatches.
     return new AgentStageRetryController(new D1AgentStageRetryStore(this.env.DB),this.env.ORCHESTRATION_WORKFLOW as unknown as WorkflowBinding,
       this.env.STAGE_RETRY_SECRET,target).handle(new Request(request.url,{method:'POST',headers:request.headers,body:JSON.stringify({version:1,
-        runId:input.runId,failedAttemptId:input.failedAttemptId,retryNode:'implementation_build',requestedBy:input.requestedBy})}));
+        runId:input.runId,failedAttemptId:input.failedAttemptId,retryNode:input.handoffPolicy?'implementation_demo_gate':'implementation_build',requestedBy:input.requestedBy})}));
   }
 }

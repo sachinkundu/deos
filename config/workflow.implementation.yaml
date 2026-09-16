@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: implementation
-  version: 28
+  version: 32
 spec:
   implementationPolicy:
     uiPaths:
@@ -667,6 +667,7 @@ spec:
       edges:
         {
           completed: implementation_demo_gate,
+          review_ready: implementation_branch_write,
           failed: implementation_failed,
           base_changed: implementation_rebase,
         }

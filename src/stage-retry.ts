@@ -17,7 +17,7 @@ export { isAgentStageRetryNode, type AgentStageRetryNode } from "./stage-retry-c
 export type AgentStageRetryKind = "same_definition" | "compatible_tail";
 
 export interface AgentStageRetryRecord {
-  entry_node?: 'implementation_demo_plan' | null;
+  entry_node?: 'implementation_demo_plan' | 'implementation_build' | null;
   source_sandbox_tier?: SandboxTier | null;
   target_sandbox_tier?: SandboxTier | null;
   retry_id: string;
@@ -92,7 +92,7 @@ interface StageRetrySource {
 }
 
 export interface StageRetryDefinitionPlan {
-  entryNode?: 'implementation_demo_plan';
+  entryNode?: 'implementation_demo_plan' | 'implementation_build';
   retryKind: AgentStageRetryKind;
   sourceDefinitionId: string;
   sourceDefinitionVersion: number;
@@ -137,11 +137,12 @@ export const planStageRetryDefinition = async (
     sourceDefinitionDigest: source.definition_digest,
     sourceWorkflowInstanceId: source.workflow_instance_id,
   };
-  if (source.definition_id === 'implementation' && retryNode === 'implementation_build' &&
+  if (source.definition_id === 'implementation' && (retryNode === 'implementation_build' ||
+      (retryNode === 'implementation_demo_gate' && targetDefinition.nodes?.implementation_proof_check?.edges.review_ready === 'implementation_branch_write')) &&
       targetDefinition.jobs?.implementation_demo_plan && targetDefinition.version > source.definition_version) {
     if (source.target_registered !== 1 || !source.source_canonical_json) throw new Error('stage_retry_not_eligible');
     validateDemoUpgrade(await restoreWorkflowDefinition(source.source_canonical_json, source.definition_digest), targetDefinition);
-    return {...base, retryKind:'compatible_tail', entryNode:'implementation_demo_plan', targetDefinitionId:targetDefinition.name,
+    return {...base, retryKind:'compatible_tail', entryNode:retryNode === 'implementation_build' ? 'implementation_demo_plan' : 'implementation_build', targetDefinitionId:targetDefinition.name,
       targetDefinitionVersion:targetDefinition.version,targetDefinitionDigest:targetDefinition.digest,
       targetWorkflowInstanceId:await workflowInstanceIdentity(`${source.run_id}:demo-upgrade:${source.current_visit_sequence+1}:${targetDefinition.digest}`)};
   }
@@ -359,8 +360,9 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
     const retryId = `stage-retry:${input.failedAttemptId}`;
     const transitionId = `transition:${retryId}`;
     const designLimitUpgrade = plan.retryKind === 'compatible_tail' && plan.sourceDefinitionVersion === 20;
-    const upgradeGuard = plan.entryNode === 'implementation_demo_plan'
-      ? `AND ? = 'implementation_build'
+    const demoUpgrade = plan.retryKind === 'compatible_tail' && plan.targetDefinitionId === 'implementation';
+    const upgradeGuard = demoUpgrade
+      ? `AND ? IN ('implementation_build','implementation_demo_gate')
          AND EXISTS (SELECT 1 FROM workflow_definitions target WHERE target.definition_id=? AND target.version=? AND target.digest=?)
          AND EXISTS (SELECT 1 FROM implementation_demo_upgrades upgrade
            JOIN implementation_runs work ON work.run_id=upgrade.run_id
@@ -368,6 +370,8 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
              AND upgrade.source_definition_digest=run.definition_digest
              AND upgrade.target_definition_digest=? AND upgrade.approved_input_sha=work.input_sha
              AND upgrade.tested_base_sha=work.tested_base_sha AND upgrade.patch_sha IS work.patch_sha)
+         AND (attempt.node_id='implementation_build' OR EXISTS (
+           SELECT 1 FROM implementation_demo_reviews review WHERE review.attempt_id=attempt.attempt_id AND review.run_id=run.run_id AND review.outcome='needs_work'))
          AND NOT EXISTS (SELECT 1 FROM implementation_gates gate WHERE gate.run_id=run.run_id AND gate.state='open')`
       : designLimitUpgrade
       ? `AND run.definition_id = 'simple-traceability' AND run.definition_version = 20
@@ -492,7 +496,7 @@ export class D1AgentStageRetryStore implements AgentStageRetryStore {
         plan.targetDefinitionVersion,
         plan.targetDefinitionDigest,
       );
-      if (plan.entryNode) insertBindings.push(plan.targetDefinitionDigest);
+      if (demoUpgrade) insertBindings.push(plan.targetDefinitionDigest);
     }
     const statements = [
       insert.bind(...insertBindings),

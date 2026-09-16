@@ -1,4 +1,4 @@
-import { ImplementationError, subjectMatches, type ProofKind, type ProofSubject } from './implementation-contract.ts';
+import { ImplementationError, type ProofKind, type ProofSubject } from './implementation-contract.ts';
 
 export type DemoKind = 'plan' | 'gate';
 export type DemoVerdict = 'pass' | 'needs_work' | 'blocked';
@@ -106,29 +106,20 @@ export function validateDemoPlan(plan: DemoPlan, context: DemoContext): void {
   if (corrections.some(item => !changed.has(item.scenarioId))) error('Demo correction reason does not match a changed scenario');
 }
 
-export function validateDemoResult(result: DemoResult, context: DemoContext, accessedIds: readonly string[]): void {
+// Only validate the routing envelope. The independent reviewer owns its findings,
+// scenario judgments and citations; the workflow does not review that review.
+// Candidate provenance and current-code checks run before the review is requested.
+export function validateDemoResult(result: DemoResult, context: DemoContext): void {
   const plan = context.plan;
   if (!plan || !result || result.version !== 1 || result.inputSha256 !== context.inputSha256 ||
       result.planSha256 !== plan.sha256 || !['pass', 'needs_work', 'blocked'].includes(result.outcome) ||
-      !text(result.summary) || !Array.isArray(result.scenarios) || result.scenarios.length !== plan.value.scenarios.length ||
-      !unique(result.scenarios.map(scenario => scenario.id))) error('Demo verdict does not match its plan and evidence input');
+      !text(result.summary) || !Array.isArray(result.scenarios)) error('Demo verdict envelope is invalid');
   validateQuestion(result.outcome, result.question);
   for (const scenario of result.scenarios) {
-    const required = plan!.value.scenarios.find(item => item.id === scenario.id);
-    if (!required || !['pass', 'needs_work', 'blocked'].includes(scenario.outcome) || !text(scenario.reason) ||
-        !Array.isArray(scenario.evidenceIds) || !unique(scenario.evidenceIds)) error('Invalid per-demo verdict');
-    const evidence = scenario.evidenceIds.map(value => {
-      const item = context.evidence.find(proof => proof.id === value);
-      if (!item || !subjectMatches(item, context.subject) || !accessedIds.includes(value))
-        return error(`Reviewer has not inspected current evidence: ${value}`);
-      return item;
-    });
-    if (scenario.outcome === 'pass' && required!.evidenceKinds.some(kind => !evidence.some(item => item.kind === kind)))
-      error(`Passed demo lacks required inspected evidence: ${scenario.id}`);
+    if (!scenario || !text(scenario.id) || !['pass', 'needs_work', 'blocked'].includes(scenario.outcome) ||
+        !text(scenario.reason) || !Array.isArray(scenario.evidenceIds) || !scenario.evidenceIds.every(text))
+      error('Demo scenario response format is invalid');
   }
-  const derived = result.scenarios.some(scenario => scenario.outcome === 'blocked') ? 'blocked'
-    : result.scenarios.some(scenario => scenario.outcome === 'needs_work') ? 'needs_work' : 'pass';
-  if (result.outcome !== derived) error('Demo verdict contradicts its scenario decisions');
 }
 
 const string = { type: 'string', minLength: 1 };

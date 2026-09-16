@@ -26,6 +26,8 @@ export function validateDemoUpgrade(source: LoadedWorkflowDefinition, target: Lo
       target.nodes.implementation_proof_check.edges.completed !== 'implementation_demo_gate' ||
       target.nodes.implementation_demo_gate.edges.pass !== 'implementation_branch_write' ||
       target.nodes.implementation_demo_gate.edges.needs_work !== 'implementation_build' ||
+      (target.nodes.implementation_proof_check.edges.review_ready !== undefined &&
+        target.nodes.implementation_proof_check.edges.review_ready !== 'implementation_branch_write') ||
       stable(target.nodes.implementation_review) !== stable(source.nodes.implementation_review))
     throw new Error('implementation_demo_upgrade_changed_gate');
 }

@@ -5,6 +5,7 @@ import {
 } from "./implementation-store.ts";
 import { ImplementationError } from "./implementation-contract.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { keyTraceScript, browserMeasurementScript } from './implementation-browser-evidence.ts';
 
 export class BrowserCapacityWait extends ImplementationError {
   readonly retryAfterMs: number;
@@ -320,7 +321,7 @@ export async function browserCommand(
   sessionId: string,
   origin: string,
   input: {
-    operation: "navigate" | "state" | "click" | "fill" | "press" | "viewport" | "screenshot";
+    operation: "navigate" | "state" | "click" | "fill" | "press" | "viewport" | "trace" | "measure" | "screenshot";
     url?: string;
     selector?: string;
     text?: string;
@@ -328,6 +329,10 @@ export async function browserCommand(
     width?: number;
     height?: number;
     documentStatus?: number;
+    viewport?: {width:number;height:number};
+    traceEnabled?: boolean;
+    enabled?: boolean;
+    modifiers?: string[];
   },
   api = puppeteer,
 ) {
@@ -338,6 +343,7 @@ export async function browserCommand(
     );
   const messages: { kind: string; text: string }[] = [];
   const browser: Browser = await api.connect(binding, sessionId);
+  let commandError: unknown;
   try {
     const pages = await browser.pages();
     const page = pages[0] ?? (await browser.newPage());
@@ -359,12 +365,30 @@ export async function browserCommand(
       );
     if (input.operation !== 'navigate' && page.url() !== 'about:blank' && new URL(page.url()).origin !== origin)
       throw new ImplementationError('browser_origin', 'Navigate to the selected preview before interacting with it');
+    // Cloudflare's connect() initializes a new Puppeteer Page wrapper with an
+    // 800x600 default. Restore the trusted persisted viewport on every command.
+    const viewport = input.operation === 'viewport' ? {width:input.width!,height:input.height!} : input.viewport;
+    if (viewport) {
+      if (!Number.isInteger(viewport.width) || !Number.isInteger(viewport.height) ||
+          viewport.width < 200 || viewport.width > 3840 || viewport.height < 200 || viewport.height > 3840)
+        throw new ImplementationError('browser_viewport', 'Viewport width and height must be integers from 200 to 3840 CSS pixels');
+      await page.setViewport({...viewport,deviceScaleFactor:1});
+    }
+    if (input.operation === 'trace' && typeof input.enabled !== 'boolean')
+      throw new ImplementationError('browser_trace', 'Trace enabled must be a boolean');
+    const traceEnabled = input.operation === 'trace' ? input.enabled : input.traceEnabled;
+    const applyTrace = async () => {
+      if (traceEnabled !== undefined && page.url() !== 'about:blank')
+        await page.evaluate(`${keyTraceScript}(${traceEnabled})`);
+    };
+    await applyTrace();
     if (input.operation === "navigate") {
       const response = await page.goto(new URL(input.url ?? "/", origin).href, {
         waitUntil: "networkidle0",
         timeout: 30_000,
       });
       if (response) documentStatus = response.status();
+      await applyTrace();
     }
     else if (input.operation === "click") {
       if (!input.selector) throw new Error("Click selector missing");
@@ -376,22 +400,36 @@ export async function browserCommand(
     } else if (input.operation === "press") {
       if (!input.key || input.key.length > 64)
         throw new ImplementationError("browser_key", "A single browser key name is required");
-      await page.keyboard.press(input.key as KeyInput);
-    } else if (input.operation === "viewport") {
-      if (!Number.isInteger(input.width) || !Number.isInteger(input.height) ||
-          input.width! < 200 || input.width! > 3840 || input.height! < 200 || input.height! > 3840)
-        throw new ImplementationError("browser_viewport", "Viewport width and height must be integers from 200 to 3840 CSS pixels");
-      await page.setViewport({width:input.width!,height:input.height!,deviceScaleFactor:1});
+      const modifiers = input.modifiers ?? [];
+      if (!Array.isArray(modifiers) || modifiers.length > 4 || new Set(modifiers).size !== modifiers.length ||
+          modifiers.some(key => !['Alt','Control','Meta','Shift'].includes(key)))
+        throw new ImplementationError('browser_key', 'Invalid keyboard modifiers');
+      const pressed: KeyInput[] = [];
+      let primaryError: unknown;
+      try {
+        for (const modifier of modifiers) { await page.keyboard.down(modifier as KeyInput); pressed.push(modifier as KeyInput); }
+        await page.keyboard.press(input.key as KeyInput);
+      } catch (error) { primaryError = error; throw error; }
+      finally {
+        const failures: unknown[] = [];
+        for (const modifier of pressed.reverse()) {
+          try { await page.keyboard.up(modifier); } catch (error) { failures.push(error); }
+        }
+        if (failures.length) throw new AggregateError(primaryError ? [primaryError,...failures] : failures,
+          'Could not release browser keyboard modifiers', {cause:primaryError ?? failures[0]});
+      }
     }
     if (page.url() !== "about:blank" && new URL(page.url()).origin !== origin)
       throw new ImplementationError(
         "browser_origin",
         "Browser left its preview origin",
       );
-    if (input.operation === "screenshot") {
+    if (input.operation === 'screenshot' || input.operation === 'measure') {
       if(page.url()==='about:blank')throw new ImplementationError('preview_not_open','Navigate to the assigned preview before capturing proof');
       if (documentStatus === undefined || documentStatus < 200 || documentStatus >= 400)
         throw new ImplementationError("preview_document_failed", `The preview document returned ${documentStatus === undefined ? "an unknown HTTP status" : `HTTP ${documentStatus}`}. Navigate to a working application page before capturing visual proof. Error responses remain diagnostic evidence, not proof of a working screen.`);
+    }
+    if (input.operation === "screenshot") {
       await page.addStyleTag({
         content:
           "[data-sensitive], input[type=password] { visibility: hidden !important; }",
@@ -402,8 +440,16 @@ export async function browserCommand(
         ),
         url: page.url(),
         documentStatus,
+        viewport,
+        traceEnabled,
         console: messages,
       };
+    }
+    let measurements: Record<string, unknown> | undefined;
+    if (input.operation === 'measure') {
+      const encoded = await page.evaluate(browserMeasurementScript);
+      if (typeof encoded !== 'string') throw new ImplementationError('browser_measurement', 'Browser measurements were not returned as JSON');
+      measurements = JSON.parse(encoded);
     }
     return {
       url: page.url(),
@@ -411,8 +457,16 @@ export async function browserCommand(
       title: await page.title(),
       content: await page.content(),
       console: messages,
+      viewport,
+      traceEnabled,
+      ...(measurements ? { measurements } : {}),
     };
-  } finally {
-    await browser.disconnect();
+  } catch (error) { commandError = error; throw error; }
+  finally {
+    try { await browser.disconnect(); }
+    catch (error) {
+      if (commandError) throw new AggregateError([commandError,error], 'Browser command and disconnect failed', {cause:commandError});
+      throw error;
+    }
   }
 }

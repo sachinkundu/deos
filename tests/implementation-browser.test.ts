@@ -335,6 +335,45 @@ test("assigned browser dispatches real keys and changes viewport while preservin
   assert.equal(disconnects,11);
 });
 
+test('viewport persists across reconnects through a key action and screenshot',async()=>{
+  let width=800,height=600,number='';
+  const captures:number[]=[];
+  const page={on:()=>{},url:()=> 'https://owned.trycloudflare.com/',
+    title:async()=> 'Calculator',content:async()=>number,
+    setViewport:async(value:{width:number;height:number})=>{width=value.width;height=value.height;},
+    keyboard:{press:async(key:string)=>{number+=key;}},
+    addStyleTag:async()=>{},screenshot:async()=>{captures.push(width);return new Uint8Array([width%256]);}};
+  const api={connect:async()=>{width=800;height=600;return {pages:async()=>[page],disconnect:async()=>{}};}} as never;
+  const resized=await browserCommand({} as never,'owned','https://owned.trycloudflare.com',
+    {operation:'viewport',width:320,height:720,documentStatus:200},api);
+  await browserCommand({} as never,'owned','https://owned.trycloudflare.com',
+    {operation:'press',key:'1',viewport:resized.viewport,documentStatus:200},api);
+  await browserCommand({} as never,'owned','https://owned.trycloudflare.com',
+    {operation:'screenshot',viewport:resized.viewport,documentStatus:200},api);
+  assert.deepEqual(captures,[320]);assert.equal(height,720);assert.equal(number,'1');
+});
+
+test('browser records actual measurements and trace controls; modifier cleanup preserves the original error',async()=>{
+  const commands:string[]=[];
+  const events:string[]=[];
+  const failure=new Error('Original key failure');let failed=false;
+  const page={on:()=>{},url:()=> 'https://owned.trycloudflare.com/',title:async()=> 'Calculator',content:async()=>'<output>3</output>',
+    evaluate:async(script:string)=>{commands.push(script);return script.startsWith('JSON.stringify')?JSON.stringify({viewport:{width:320},document:{scrollWidth:320,clientWidth:320}}):undefined;},
+    keyboard:{down:async(key:string)=>{events.push('down:'+key);},up:async(key:string)=>{events.push('up:'+key);},
+      press:async(key:string)=>{events.push('press:'+key);if(failed)throw failure;}}};
+  const api={connect:async()=>({pages:async()=>[page],disconnect:async()=>{}})} as never;
+  const trace=await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'trace',enabled:true,documentStatus:200},api);
+  assert.equal(trace.traceEnabled,true);assert.match(commands[0],/event.isTrusted/);
+  const measured=await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'measure',documentStatus:200},api);
+  assert.ok('measurements' in measured);
+  assert.deepEqual(measured.measurements,{viewport:{width:320},document:{scrollWidth:320,clientWidth:320}});
+  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'measure',documentStatus:503},api),/HTTP 503/);
+  failed=true;
+  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'press',key:'/',modifiers:['Control'],documentStatus:200},api),error=>error===failure);
+  assert.deepEqual(events,['down:Control','press:/','up:Control']);
+  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'press',key:'/',modifiers:['Invalid'],documentStatus:200},api),/Invalid keyboard modifiers/);
+});
+
 test("lost allocation response quarantines this try and never creates a replacement browser", async () => {
   const f = await fixture();
   try {

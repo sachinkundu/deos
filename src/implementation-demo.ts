@@ -1,3 +1,4 @@
+import { demoHandoff } from './implementation-demo-handoff.ts';
 import { ImplementationError, subjectMatches } from './implementation-contract.ts';
 import { ImplementationStore, type ImplementationInput, type ImplementationRun } from './implementation-store.ts';
 import { sha256Hex } from './implementation-hash.ts';
@@ -63,7 +64,10 @@ export class ImplementationDemoService {
     await addSource('context/runtime-capabilities.json', JSON.stringify({
       execution: 'Local workerd inside an isolated Cloudflare Sandbox',
       browser: { sessionsPerAttempt: 1, resetWithinAttempt: false,
-        keyboard: true, viewport: { min: 200, max: 3840 },
+        keyboard: true, keyboardModifiers: ['Alt','Control','Meta','Shift'],
+        keyTrace: 'operation: trace with enabled: true records real key events in a visible overlay. Turn it off with enabled: false for plain application proof.',
+        measurements: 'operation: measure records the live origin, CSS viewport, document width, element geometry and displayed text as Showboat proof.',
+        viewport: { min: 200, max: 3840, persistsAcrossCommands: true },
         navigation: hostedPreview ? 'The local preview and the checked immutable hosted preview, using target: hosted. Hosted proof must match its saved code tree.' : 'Only the registered preview origin for this attempt' },
       documentationHosts: input.policy.documentationHosts,
       safeAdapters: input.policy.safeAdapters,
@@ -120,7 +124,7 @@ export class ImplementationDemoService {
     const demo: DemoContext = { ...content, inputSha256: await sha256Hex(JSON.stringify(content)) };
     return { ...base, context: JSON.stringify({ demo }), continuationPatch: null };
   }
-  async accept({ run, attempt, collection }: { run: OrchestrationRunRecord; attempt: AgentAttemptRecord; collection: ArtifactCollectionResult }): Promise<string> {
+  async accept({ run, attempt, collection, dryRun = false }: { run: OrchestrationRunRecord; attempt: AgentAttemptRecord; collection: ArtifactCollectionResult; dryRun?: boolean }): Promise<string> {
     const job = JSON.parse(attempt.job_spec_json);
     const context: DemoContext = JSON.parse(job.materializedContext).demo;
     const { inputSha256, ...content } = context;
@@ -144,12 +148,11 @@ export class ImplementationDemoService {
       if (work.candidate_sha !== context.candidateSha || work.tree_sha !== context.subject.treeSha ||
           (await this.latest(run.run_id, 'plan'))?.payload_sha !== context.plan?.sha256)
         throw new ImplementationError('stale_proof', 'Demo verdict is for an older candidate or plan');
-      const accesses = await this.db.prepare('SELECT proof_id FROM implementation_demo_access WHERE attempt_id=?')
-        .bind(attempt.attempt_id).all<{ proof_id: string }>();
-      validateDemoResult(result as DemoResult, context, accesses.results.map(row => row.proof_id));
+      validateDemoResult(result as DemoResult, context);
     }
     if (collection.result.reviewOutcome !== result.outcome || collection.result.summary !== result.summary)
       throw new ImplementationError('demo_result_integrity', 'Demo summary differs from its trusted result');
+    if (dryRun) return result.outcome;
     const saved = await this.store.put(run.run_id, 'demo-review.json', JSON.stringify(result));
     await this.db.prepare(`INSERT OR IGNORE INTO implementation_demo_reviews
       (attempt_id,run_id,visit_sequence,kind,input_sha,plan_sha,candidate_sha,tested_base_sha,tree_sha,outcome,summary,payload_key,payload_sha,created_at)
@@ -172,6 +175,14 @@ export class ImplementationDemoService {
         gate.candidate_sha !== work.candidate_sha || gate.tree_sha !== work.tree_sha || gate.tested_base_sha !== work.tested_base_sha)
       throw new ImplementationError('demo_gate_incomplete', 'Current independent demo gate must pass before publication or final review');
     return this.read<DemoResult>(gate);
+  }
+  handoff(work: ImplementationRun) {
+    return demoHandoff(this.db,this.bucket,work);
+  }
+  async requireHandoff(work: ImplementationRun) {
+    const handoff = await this.handoff(work);
+    if (!handoff) throw new ImplementationError('demo_gate_incomplete', 'Demo review or its one repair pass must finish before human review');
+    return handoff;
   }
   async blocker(run: OrchestrationRunRecord) {
     const kind: DemoKind = run.previous_node === 'implementation_demo_plan' ? 'plan' : 'gate';

@@ -6,6 +6,9 @@ import {loadWorkflowDefinition,restoreWorkflowDefinition} from '../src/workflow-
 import {implementationDemoUpgradeDefinition,validateDemoUpgrade} from '../src/implementation-demo-upgrade-definition.ts';
 import {ImplementationDemoUpgradeController} from '../src/implementation-demo-upgrade.ts';
 import {ImplementationStore} from '../src/implementation-store.ts';
+import {ClaudeReviewStore} from '../src/claude-review-store.ts';
+import {sha256Hex} from '../src/implementation-hash.ts';
+import type {ArtifactCollectionResult} from '../src/artifact-collector.ts';
 import {D1OrchestrationStore} from '../src/orchestration-store.ts';
 import {ImplementationTestDatabase,ImplementationTestBucket,seedRun,seedAttempt} from './helpers/implementation-fixture.ts';
 const bundle={prompts:Object.fromEntries(readdirSync('config/prompts').map(name=>[`prompts/${name}`,readFileSync(`config/prompts/${name}`,'utf8')])),
@@ -45,7 +48,7 @@ async function fixture(from=source) {
     visitSequence:2,targetVersion:tail.version+1,requestedBy:'operator'};
   const request=(extra={})=>new Request('https://worker/implementation-demo-upgrades',{method:'POST',headers:{Authorization:'Bearer secret'},body:JSON.stringify({...input,...extra})});
   const plan=async()=>await (await controller.handle(request())).json() as {planDigest:string};
-  return {db,store,controller,input,request,plan,states,creates:()=>creates,loseCreate:()=>{loseCreate=true;}};
+  return {db,bucket,store,controller,input,request,plan,states,creates:()=>creates,loseCreate:()=>{loseCreate=true;}};
 }
 test('demo upgrade preserves approved history, policy, model choices and human gate while inserting mandatory demo roles',async()=>{
   const target=await implementationDemoUpgradeDefinition(source,tail,tail.version+1);
@@ -111,6 +114,69 @@ test('an existing demo workflow needs a current plan correction before an audite
     assert.deepEqual(JSON.parse(String(audit.plan_json)).input.correction,correction);
     assert.equal(f.db.sqlite.prepare("SELECT current_node FROM orchestration_runs WHERE run_id='run-1'").get()!.current_node,'implementation_demo_plan');
     assert.equal(f.db.sqlite.prepare('SELECT count(*) n FROM implementation_demo_reviews').get()!.n,1);
+    assert.equal(f.creates(),1);
+  }finally{f.db.close();}
+});
+
+
+async function seedSavedDemo(f:Awaited<ReturnType<typeof fixture>>) {
+  const work=await f.store.requireRun('run-1');
+  const tree='c'.repeat(40),candidate='d'.repeat(64);
+  f.db.sqlite.prepare("UPDATE implementation_runs SET candidate_sha=?,tree_sha=? WHERE run_id='run-1'").run(candidate,tree);
+  seedAttempt(f.db,'plan');
+  f.db.sqlite.exec("UPDATE agent_attempts SET state='completed',cleanup_state='destroyed' WHERE attempt_id='plan'");
+  const plan={version:1,inputSha256:'e'.repeat(64),outcome:'ready',summary:'Show the calculator',question:null,scenarios:[]};
+  const saved=await f.store.put('run-1','plan.json',JSON.stringify(plan));
+  f.db.sqlite.prepare(`INSERT INTO implementation_demo_reviews VALUES
+    ('plan','run-1',1,'plan','input',NULL,NULL,?,?,'ready','summary',?,?,'2026-09-15')`).run(base,tree,saved.key,saved.sha256);
+  const content={version:1,kind:'gate',runId:'run-1',approvedInputSha:work.input_sha,
+    subject:{change:'sample',approvedDesignSha:base,testedBaseSha:base,treeSha:tree},candidateSha:candidate,
+    requirements:[],sources:[],evidence:[],plan:{sha256:saved.sha256,value:plan},priorPlan:null,feedback:null};
+  const context={...content,inputSha256:await sha256Hex(JSON.stringify(content))};
+  const result={version:1,inputSha256:context.inputSha256,planSha256:saved.sha256,outcome:'needs_work',summary:'Show the true mobile width.',question:null,
+    scenarios:[{id:'mobile',outcome:'needs_work',reason:'Capture the 320px layout',evidenceIds:['unopened-image']}]};
+  const job=JSON.stringify({reviewKind:'demo_gate',materializedContext:JSON.stringify({demo:context})});
+  const jobDigest=await sha256Hex(job);
+  f.db.sqlite.prepare("UPDATE agent_attempts SET job_spec_json=?,job_spec_digest=? WHERE attempt_id='failed'").run(job,jobDigest);
+  const bytes=JSON.stringify(result),raw=await f.store.put('run-1','raw-review-output.json',bytes);
+  f.db.sqlite.exec(`INSERT INTO artifact_manifests (manifest_id,run_id,attempt_id,r2_key,state,created_at)
+    VALUES ('manifest','run-1','failed','manifest-key','complete','now')`);
+  f.db.sqlite.prepare(`INSERT INTO artifacts (manifest_id,logical_name,r2_key,media_type,byte_size,sha256,created_at,policy_outcome)
+    VALUES ('manifest','raw-review-output.json',?,'application/json',?,?,'now','accepted')`).run(raw.key,Buffer.byteLength(bytes),raw.sha256);
+  const collection:ArtifactCollectionResult={manifestId:'manifest',aggregateDigest:raw.sha256,objectCount:1,totalBytes:Buffer.byteLength(bytes),
+    manifestKey:'manifest-key',manifestSha256:raw.sha256,providerReceipts:[],result:{outcome:'completed',reviewOutcome:result.outcome,summary:result.summary}};
+  const reviews=new ClaudeReviewStore(f.db as unknown as D1Database,f.bucket as unknown as R2Bucket);
+  const enrollment={version:1,secretVersion:'one',accountBinding:'a'.repeat(64),tokenHmac:'b'.repeat(64),subscription:'pro',paidUsageEnabled:false} as const;
+  await reviews.claim({attemptId:'failed',runnerId:'runner',jobDigest,enrollment});await reviews.started('failed','process');
+  const turn=await reviews.claimTurn('failed',0,'f'.repeat(64),null);
+  await reviews.saveReceipt(turn,{attemptId:'failed',turn:0,inputSha256:'f'.repeat(64),accountBinding:enrollment.accountBinding,secretVersion:'one',sessionId:'session',result} as never);
+  await reviews.cleanup('failed','destroyed');await reviews.finish('failed');await reviews.saveCollection('failed',jobDigest,collection);
+}
+
+test('an audited failed demo review upgrade preserves the plan and resumes once under the single-repair handoff',async()=>{
+  const previous=structuredClone(document);previous.metadata.version=31;
+  delete previous.spec.nodes.implementation_proof_check.edges.review_ready;
+  const frozen=await loadWorkflowDefinition(JSON.stringify(previous),bundle);
+  const f=await fixture(frozen);try {
+    f.db.sqlite.exec("UPDATE agent_attempts SET node_id='implementation_demo_gate' WHERE attempt_id='failed'");
+    f.db.sqlite.exec("UPDATE workflow_transitions_v2 SET from_node='implementation_demo_gate',cause_reference='agent:implementation_demo_gate:failed'");
+    await seedSavedDemo(f);
+    const before=await f.store.requireRun('run-1');
+    const extra={handoffPolicy:'single_repair'};
+    const planned=await (await f.controller.handle(f.request(extra))).json() as {planDigest:string};
+    assert.equal(f.creates(),0);
+    const response=await f.controller.handle(f.request({...extra,execute:true,planDigest:planned.planDigest}));
+    assert.equal(response.status,202,await response.clone().text());
+    const run=f.db.sqlite.prepare("SELECT * FROM orchestration_runs WHERE run_id='run-1'").get()!;
+    assert.equal(run.current_node,'implementation_build');
+    assert.equal(run.definition_version,tail.version+1);
+    assert.deepEqual(await f.store.requireRun('run-1'),before);
+    const retry=f.db.sqlite.prepare('SELECT * FROM agent_stage_retries').get()!;
+    assert.equal(retry.entry_node,'implementation_build');assert.equal(retry.retry_node,'implementation_demo_gate');
+    assert.equal(f.db.sqlite.prepare('SELECT count(*) n FROM implementation_demo_reviews').get()!.n,2);
+    assert.equal(f.db.sqlite.prepare('SELECT count(*) n FROM claude_review_turns').get()!.n,1,'Recovery does not call Claude again');
+    assert.equal(f.db.sqlite.prepare("SELECT state FROM agent_attempts WHERE attempt_id='failed'").get()!.state,'failed','Original failure stays visible');
+    assert.equal((await f.controller.handle(f.request({...extra,execute:true,planDigest:planned.planDigest}))).status,200);
     assert.equal(f.creates(),1);
   }finally{f.db.close();}
 });

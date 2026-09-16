@@ -52,9 +52,9 @@ Every implementation SHALL have a demo plan from a fresh Claude reviewer before 
 
 The reviewer SHALL receive the real runtime capabilities. It MUST NOT replace an approved hosted preview with local-only proof or invent platform tests outside the approved application scope. An operator MAY request correction of a mistaken scenario through the audited failed-run upgrade. The request SHALL bind the saved plan hash, affected scenario IDs, and reason. Only the independent reviewer may revise those scenarios. It SHALL retain their approved requirement references and evidence kinds, explain each change, and leave every other scenario unchanged. Prior plans SHALL remain available. This correction MUST NOT waive approved behavior, evidence trust, or the final human gate.
 
-After Codex supplies current evidence, a separate fresh Claude reviewer SHALL judge every planned demo. It SHALL inspect the actual proof and relevant code. It MUST NOT accept the implementer's summary, a fixture screenshot, or unrelated provider calls as proof that the changed application works. Required images SHALL be available as images. The service SHALL check evidence provenance, subject hashes, and reviewer access as well as the verdict.
+After Codex supplies current evidence, a separate fresh Claude reviewer SHALL judge every planned demo. It SHALL inspect the actual proof and relevant code. It MUST NOT accept the implementer's summary, a fixture screenshot, or unrelated provider calls as proof that the changed application works. Required images SHALL be available as images. The service SHALL check candidate evidence provenance and subject hashes before review. It SHALL read the reviewer’s response using its routing format and input identity, without auditing its findings, citations, scenario coverage or aggregate judgment. Evidence access records are diagnostic only; missing access records MUST NOT reject a verdict or start another reviewer turn.
 
-The gate SHALL return Pass, Needs work, or Blocked with a clear reason for each demo. Needs work SHALL return the saved patch and specific gaps to Codex in a fresh try. Blocked SHALL preserve the reason and use the clarification path. An execution or transport failure MUST NOT become a pass. PR publication and final Human Review SHALL require a pass for the exact current candidate and demo plan. Later changes SHALL require a new verdict.
+The gate SHALL return Pass, Needs work, or Blocked with a clear reason for each demo. Needs work SHALL return the saved patch and specific gaps to Codex for at most one automatic repair pass per human review round. After that pass, the implementation PR SHALL go to Human Review with the original findings and an explicit statement that the repairs have not been independently reviewed again. The workflow MUST NOT start another automatic demo review of that repair. Blocked SHALL preserve the reason and use the clarification path. An execution or transport failure MUST NOT become a pass. PR publication and final Human Review SHALL require either a pass for the current candidate and plan or a completed repair pass that received the current review. Tests and current-code proof SHALL still pass. Only the authorized human may approve the PR or send it back. A human-requested revision starts a new review round; it does not grant merge authority.
 
 #### Scenario: Every implementation gets a demo contract
 
@@ -69,7 +69,12 @@ The gate SHALL return Pass, Needs work, or Blocked with a clear reason for each 
 #### Scenario: A visual demo passes
 
 - **WHEN** the reviewer marks a visual demo passed.
-- **THEN** the service proves that the reviewer opened its current, hash-checked image and that the evidence belongs to the reviewed candidate.
+- **THEN** the workflow accepts the reviewer’s judgment. Candidate evidence has already been checked before review; no later citation audit or second reviewer is required.
+
+#### Scenario: One repair pass ends at human review
+
+- **WHEN** the author completes repairs requested by the demo review and required checks pass.
+- **THEN** the service publishes the implementation PR for human judgment, retains the original demo findings, and does not repeat the demo review automatically.
 
 #### Scenario: An existing failed canary adopts the gate
 

@@ -50,7 +50,7 @@ export function implementationSteps(
     verification: ready ? "Complete" : verifying ? "In progress" : "Upcoming",
     current: verifying ? "implementation_verification" : "implementation_author",
     demoPlan: demo?.plan?.current ? demo.plan.value.outcome === 'ready' ? 'Complete' : 'Blocked' : 'Upcoming',
-    demoGate: demo?.gate?.current ? ({pass:'Complete', needs_work:'Needs work', blocked:'Blocked'} as const)[demo.gate.value.outcome] : 'Upcoming',
+    demoGate: demo?.gate?.repairComplete ? 'Needs work' : demo?.gate?.current ? ({pass:'Complete', needs_work:'Needs work', blocked:'Blocked'} as const)[demo.gate.value.outcome] : 'Upcoming',
     description: ready ? latest.nodeId === "implementation_review" ? "Ready for human review." : "Checks and proof complete." : verifying
       ? work?.nodeId === "implementation_publish" || work?.nodeId === "implementation_branch_write"
         ? "Preparing the implementation PR." : "Final checks and end-to-end proof."

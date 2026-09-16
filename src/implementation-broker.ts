@@ -337,7 +337,7 @@ export class ImplementationBroker {
           browser.provider_resource_id!,
         );
         if (
-          !["navigate", "state", "click", "fill", "press", "viewport", "screenshot"].includes(
+          !["navigate", "state", "click", "fill", "press", "viewport", "trace", "measure", "screenshot"].includes(
             String(request.operation),
           )
         )
@@ -365,6 +365,8 @@ export class ImplementationBroker {
               | "fill"
               | "press"
               | "viewport"
+              | "trace"
+              | "measure"
               | "screenshot",
             url: typeof request.url === "string" ? request.url : undefined,
             selector:
@@ -375,10 +377,22 @@ export class ImplementationBroker {
             key: typeof request.key === "string" ? request.key : undefined,
             width: typeof request.width === "number" ? request.width : undefined,
             height: typeof request.height === "number" ? request.height : undefined,
+            viewport: metadata.viewport,
+            traceEnabled: metadata.traceEnabled,
+            enabled: typeof request.enabled === 'boolean' ? request.enabled : undefined,
+            modifiers: request.modifiers as string[] | undefined,
             documentStatus: metadata.documentOrigin === origin || (!metadata.documentOrigin && !hostedOrigin)
               ? metadata.documentStatus : undefined,
           },
         );
+        if (result.viewport) {
+          await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=json_set(metadata_json,'$.viewport',json(?)) WHERE resource_id=? AND status='ready' AND provider_resource_id=?")
+            .bind(JSON.stringify(result.viewport),browser.resource_id,browser.provider_resource_id).run();
+        }
+        if (result.traceEnabled !== undefined) {
+          await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=json_set(metadata_json,'$.traceEnabled',json(?)) WHERE resource_id=? AND status='ready' AND provider_resource_id=?")
+            .bind(JSON.stringify(result.traceEnabled),browser.resource_id,browser.provider_resource_id).run();
+        }
         if (result.documentStatus !== undefined) {
           await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=json_set(metadata_json,'$.documentStatus',?,'$.documentOrigin',?),updated_at=? WHERE resource_id=? AND status='ready' AND provider_resource_id=?")
             .bind(result.documentStatus, origin, new Date().toISOString(), browser.resource_id, browser.provider_resource_id).run();
@@ -397,10 +411,18 @@ export class ImplementationBroker {
           return Response.json({
             url: result.url,
             documentStatus: result.documentStatus,
+            viewport: result.viewport,
+            traceEnabled: result.traceEnabled,
             console: result.console,
             proof,
             imageBase64: Buffer.from(result.image).toString("base64"),
           });
+        }
+        if ('measurements' in result && result.measurements) {
+          const proof = await this.proof(claims,subject,'showboat',
+            `# Live browser measurements\n\nCaptured from ${result.url}\n\n\`\`\`json\n${JSON.stringify(result.measurements,null,2)}\n\`\`\`\n`,
+            'text/markdown',this.sanitize(`Live browser layout and displayed text from ${result.url}`));
+          return Response.json({...result,proof});
         }
         return Response.json(result);
       }
