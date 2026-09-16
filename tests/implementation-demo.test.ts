@@ -118,7 +118,7 @@ test('pass and needs-work verdicts are accepted without evidence-open receipts',
     }finally{f.db.close();}
   }
 });
-test('one completed repair goes directly to human review with original findings; a human revision starts a new round',async()=>{
+test('one completed repair goes directly to human review with original findings; a completed human revision goes straight back to human review',async()=>{
   const f=await fixture();try {
     const verdict=await acceptGate(f,'needs_work');
     seedAttempt(f.db,'repair');
@@ -146,7 +146,9 @@ test('one completed repair goes directly to human review with original findings;
     f.db.sqlite.exec(`INSERT INTO implementation_gates(run_id,visit_sequence,node_id,expected_event_kind,allowed_linear_user_id,issue_id,human_state_id,opened_at,decision_outcome)
       VALUES ('run-1',4,'implementation_review','state','human','issue-1','review','now','revision_requested')`);
     assert.equal(await f.service.handoff(work),null);
-    assert.equal((await service.execute({run_id:'run-1',current_node:'implementation_proof_check'} as OrchestrationRunRecord,'implementation.check_proof')).outcome,'completed');
+    f.db.sqlite.prepare("UPDATE agent_attempts SET visit_sequence=5 WHERE attempt_id='repair'").run();
+    assert.equal((await f.service.handoff(work))?.repaired,true);
+    assert.equal((await service.execute({run_id:'run-1',current_node:'implementation_proof_check'} as OrchestrationRunRecord,'implementation.check_proof')).outcome,'review_ready');
   }finally{f.db.close();}
 });
 test('accepting a refreshed demo plan keeps the checked clarification available to the next author',async()=>{
@@ -176,6 +178,10 @@ test('accepting a refreshed demo plan keeps the checked clarification available 
     assert.equal(await f.service.accept({run,attempt,collection}),'ready');
     const pending=await f.store.question('run-1');
     assert.equal(pending?.status,'answered');
+    f.db.sqlite.exec("UPDATE implementation_questions SET status='closed'");
+    const history=await f.store.clarifications('run-1');
+    assert.equal(history.length,1);
+    assert.deepEqual(history[0].reply,{body:'Resume from saved work and preserve the final preview requirement.'});
     assert.deepEqual(await f.store.read(pending!.reply_key!,pending!.reply_sha!),{
       body:'Resume from saved work and preserve the final preview requirement.',
     });

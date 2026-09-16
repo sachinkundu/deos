@@ -24,10 +24,12 @@ test('GitHub proof preserves binary images, retries without duplicate writes, an
     const pixels=Uint8Array.from({length:20001},(_,i)=>i%256);
     const image=await store.put(work.run_id,'browser.png',pixels,'image/png');
     const record=await store.put(work.run_id,'showboat.md','# Demo\n\n```bash\ncalculator 1 + 2\n```\n\n```output\n3\n```');
+    const internal=await store.put(work.run_id,'internal.md','INTERNAL UNIT TEST RESULTS');
     const subject={change:'sample',approvedDesignSha:work.approved_design_sha,testedBaseSha:work.tested_base_sha,treeSha:'c'.repeat(40)};
     const candidate={...subject,proof:[
       {...subject,id:'image',kind:'browser_image',path:image.key,sha256:image.sha256,sanitized:true,caption:'One plus two shows 3 [result]\nCaptured from https://preview.test/'},
-      {...subject,id:'demo',kind:'showboat',path:record.key,sha256:record.sha256,sanitized:true,caption:'Live calculator command'},
+      {...subject,id:'demo',kind:'showboat',audience:'review',path:record.key,sha256:record.sha256,sanitized:true,caption:'Live calculator command'},
+    {...subject,id:'internal',kind:'showboat',path:internal.key,sha256:internal.sha256,sanitized:true,caption:'Internal tests'},
     ],checks:[{command:'unit tests',exitCode:1}],summary:'Claude said needs work, Sol replied.'} as ImplementationCandidate;
     const blobs=new Map<string,Buffer>(); let entries:{path:string;sha:string}[]=[];
     let ref:string|null=null, writes=0;const head='e'.repeat(40);
@@ -54,6 +56,7 @@ test('GitHub proof preserves binary images, retries without duplicate writes, an
     }) as typeof fetch);
     const published=await publishImplementationProof(github,store,work,candidate);
     assert.deepEqual(blobs.get(entries.find(v=>v.path.endsWith('.png'))!.sha),Buffer.from(pixels));
+    assert.doesNotMatch(blobs.get(entries.find(v=>v.path==='showboat.md')!.sha)!.toString(),/INTERNAL UNIT TEST/);
     const firstWrites=writes;
     assert.deepEqual(await publishImplementationProof(github,store,work,candidate),published);
     assert.equal(writes,firstWrites,'Replay reads the immutable proof branch');

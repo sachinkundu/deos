@@ -16,6 +16,7 @@ interface UpgradeInput {
   requestedBy: string; execute?: boolean; planDigest?: string;
   correction?: DemoCorrectionRequest;
   handoffPolicy?: 'single_repair';
+  mode?: 'activate_only';
 }
 interface UpgradePlan {
   input: UpgradeInput; targetDigest: string; approvedInputSha: string; testedBaseSha: string;
@@ -32,13 +33,14 @@ export class ImplementationDemoUpgradeController {
       return Response.json({error:'invalid_operator_capability'},{status:401});
     const input=await request.json() as UpgradeInput;
     if(!input || typeof input!=='object' || Array.isArray(input) || Object.keys(input).some(key=>![
-      'version','runId','failedAttemptId','sourceDefinitionDigest','sourceWorkflowInstanceId','visitSequence','targetVersion','requestedBy','execute','planDigest','correction','handoffPolicy'].includes(key)) ||
+      'version','runId','failedAttemptId','sourceDefinitionDigest','sourceWorkflowInstanceId','visitSequence','targetVersion','requestedBy','execute','planDigest','correction','handoffPolicy','mode'].includes(key)) ||
       input.version!==1 || typeof input.runId!=='string' || typeof input.failedAttemptId!=='string' ||
       !/^[a-f0-9]{64}$/.test(input.sourceDefinitionDigest) || typeof input.sourceWorkflowInstanceId!=='string' ||
       !Number.isSafeInteger(input.visitSequence) || input.visitSequence<1 || !Number.isSafeInteger(input.targetVersion) ||
       input.targetVersion<=this.tail.version || !/^[a-zA-Z0-9._@-]{1,100}$/.test(input.requestedBy) ||
       (input.execute!==undefined && typeof input.execute!=='boolean') ||
-      (input.handoffPolicy!==undefined && (input.handoffPolicy!=='single_repair' || input.correction!==undefined))) throw new Error('invalid_demo_upgrade_request');
+      (input.handoffPolicy!==undefined && (input.handoffPolicy!=='single_repair' || input.correction!==undefined)) ||
+      (input.mode!==undefined && (input.mode!=='activate_only' || input.correction!==undefined || input.handoffPolicy!==undefined))) throw new Error('invalid_demo_upgrade_request');
     if(input.correction!==undefined)validateDemoCorrectionRequest(input.correction);
     const identity={...input};delete identity.execute;delete identity.planDigest;
     const existing=await this.env.DB.prepare('SELECT plan_json,plan_digest FROM implementation_demo_upgrades WHERE failed_attempt_id=?')
@@ -51,6 +53,7 @@ export class ImplementationDemoUpgradeController {
         .bind('implementation',input.targetVersion,saved.targetDigest).first<{canonical_json:string;digest:string}>();
       if(!row)throw new Error('implementation_demo_upgrade_definition_missing');
       if(!input.execute)return Response.json({plan:saved,planDigest:existing.plan_digest});
+      if(input.mode==='activate_only') return this.activateOnly(identity,saved.targetDigest);
       return this.resume(request,identity,await restoreWorkflowDefinition(row.canonical_json,row.digest));
     }
     const orchestration=new D1OrchestrationStore(this.env.DB);
@@ -60,7 +63,8 @@ export class ImplementationDemoUpgradeController {
       throw new Error('implementation_demo_upgrade_source_changed');
     const attempt=await this.env.DB.prepare('SELECT node_id,state,cleanup_state,visit_sequence FROM agent_attempts WHERE run_id=? AND attempt_id=?')
       .bind(input.runId,input.failedAttemptId).first<{node_id:string;state:string;cleanup_state:string;visit_sequence:number}>();
-    if(!attempt || attempt.node_id!==(input.handoffPolicy ? 'implementation_demo_gate' : 'implementation_build') || !['failed','interrupted','absolute_timeout'].includes(attempt.state) ||
+    if(!attempt || !(input.mode==='activate_only' ? ['implementation_tasks','implementation_build','implementation_demo_plan','implementation_demo_gate'].includes(attempt.node_id)
+      : attempt.node_id===(input.handoffPolicy ? 'implementation_demo_gate' : 'implementation_build')) || !['failed','interrupted','absolute_timeout'].includes(attempt.state) ||
       attempt.cleanup_state!=='destroyed' || attempt.visit_sequence!==input.visitSequence-1)
       throw new Error('implementation_demo_upgrade_attempt_not_ready');
     const active=await this.env.DB.prepare(`SELECT 1 FROM agent_attempts WHERE run_id=? AND state IN ('pending','starting','running','collecting')
@@ -77,7 +81,7 @@ export class ImplementationDemoUpgradeController {
     if(input.handoffPolicy && (!frozen.jobs.implementation_demo_gate ||
       frozen.nodes.implementation_proof_check.edges.review_ready === 'implementation_branch_write'))
       throw new Error('implementation_demo_handoff_policy_not_eligible');
-    if(frozen.jobs.implementation_demo_plan && !input.correction && !input.handoffPolicy)throw new Error('implementation_demo_correction_required');
+    if(frozen.jobs.implementation_demo_plan && !input.correction && !input.handoffPolicy && !input.mode)throw new Error('implementation_demo_correction_required');
     if(input.correction) {
       const demos=new ImplementationDemoService(this.env.DB,this.env.ARTIFACTS);
       const prior=await demos.latest(input.runId,'plan');
@@ -100,7 +104,24 @@ export class ImplementationDemoUpgradeController {
     const saved=await this.env.DB.prepare('SELECT plan_digest FROM implementation_demo_upgrades WHERE failed_attempt_id=?')
       .bind(input.failedAttemptId).first<{plan_digest:string}>();
     if(saved?.plan_digest!==digest)throw new Error('implementation_demo_upgrade_identity_mismatch');
+    if(input.mode==='activate_only') return this.activateOnly(identity,target.digest);
     return this.resume(request,identity,target);
+  }
+  private async activateOnly(input:UpgradeInput,targetDigest:string) {
+    await this.env.DB.prepare(`UPDATE orchestration_runs SET definition_version=?,definition_digest=?,updated_at=?
+      WHERE run_id=? AND status='failed' AND current_node='implementation_failed' AND current_visit_sequence=?
+        AND workflow_instance_id=? AND definition_digest=?
+        AND NOT EXISTS (SELECT 1 FROM agent_attempts WHERE run_id=? AND state IN ('pending','starting','running','collecting'))
+        AND NOT EXISTS (SELECT 1 FROM implementation_gates WHERE run_id=? AND state='open')
+        AND EXISTS (SELECT 1 FROM agent_attempts WHERE attempt_id=? AND run_id=? AND cleanup_state='destroyed'
+          AND state IN ('failed','interrupted','absolute_timeout') AND visit_sequence=?)`)
+      .bind(input.targetVersion,targetDigest,new Date().toISOString(),input.runId,input.visitSequence,input.sourceWorkflowInstanceId,
+        input.sourceDefinitionDigest,input.runId,input.runId,input.failedAttemptId,input.runId,input.visitSequence-1).run();
+    const run=await new D1OrchestrationStore(this.env.DB).findRun(input.runId);
+    if(run?.definition_digest!==targetDigest || run.status!=='failed' || run.current_visit_sequence!==input.visitSequence)
+      throw new Error('implementation_demo_upgrade_source_changed');
+    return Response.json({activated:true,resumed:false,runId:input.runId,definitionVersion:run.definition_version,
+      definitionDigest:run.definition_digest,currentNode:run.current_node,visitSequence:run.current_visit_sequence});
   }
   private async restoreSavedReview(input: UpgradeInput,dryRun:boolean) {
     const attempt=await this.env.DB.prepare('SELECT * FROM agent_attempts WHERE run_id=? AND attempt_id=?')

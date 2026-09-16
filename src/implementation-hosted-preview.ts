@@ -20,7 +20,7 @@ export interface HostedPreviewRequest {
 export interface HostedPreviewReceipt {
   version: 1;
   registrationId: string;
-  provenance: 'maintainer_deployed_static_preview';
+  provenance: 'maintainer_deployed_static_preview' | 'service_deployed_static_preview';
   request: HostedPreviewRequest;
   subject: ProofSubject;
   origin: string;

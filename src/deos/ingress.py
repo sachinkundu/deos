@@ -202,12 +202,14 @@ class LinearIngress:
             DeliveryClassification.RELEVANT if relevant else DeliveryClassification.IRRELEVANT
         )
         delivery = Delivery.from_body(event.source_delivery_id, body, received_at, classification)
-        if not self._state.record_delivery(delivery):
+        fresh = self._state.record_delivery(delivery)
+        if not fresh and (not relevant or self._state.handoff_complete(delivery.delivery_id)):
             return IngressResult(status_code=200, classification=DeliveryClassification.DUPLICATE)
         if not relevant:
             return IngressResult(status_code=200, classification=classification)
 
         self._queue.enqueue(event)
+        self._state.mark_handoff_complete(delivery.delivery_id)
         return IngressResult(status_code=200, classification=classification, event=event)
 
 

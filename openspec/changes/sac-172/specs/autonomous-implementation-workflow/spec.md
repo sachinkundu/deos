@@ -50,6 +50,8 @@ For provider work, completion SHALL include a real provider event from a safe te
 
 Every implementation SHALL receive a demo plan from Claude based on the approved proposal, specs, design, and available runtime. Claude SHALL choose useful scenarios and prefer visual demonstrations where they explain behavior. The workflow SHALL forward the plan without checking requirement coverage or enforcing an evidence checklist.
 
+The demo count SHALL follow Claude's plan for the actual implementation. A canary-specific image count MUST NOT become a platform quota. Plans SHALL remain recommendations that agents can revise in light of accepted human direction.
+
 Sol SHALL implement the work, choose useful checks and demos, and report actual results and limitations. Claude SHALL review the first implementation once, inspect the available evidence and relevant code, and return Pass, Needs work, or Blocked. The workflow SHALL save and forward Claude's response unchanged. It MUST NOT audit citations, scenario coverage, input or evidence identity, or the judgment itself.
 
 Needs work SHALL pass Claude's findings to Sol. Sol SHALL act on them once and report what changed or remains unresolved. The workflow SHALL then publish the implementation PR for human judgment. Claude's original findings and Sol's response SHALL remain in the transcripts. It MUST NOT generate repair instructions, assess whether the findings were satisfied, or send the response back to Claude. Pass SHALL go directly to publication. Blocked SHALL use the clarification route. Execution and transport failures SHALL preserve their original errors. Only the authorized human may approve or request another revision.
@@ -77,12 +79,12 @@ Needs work SHALL pass Claude's findings to Sol. Sol SHALL act on them once and r
 #### Scenario: An existing failed canary adopts the gate
 
 - **WHEN** an operator explicitly migrates a failed implementation run with no active agent or open human gate.
-- **THEN** a durable transition records both definition digests, preserves the approved design, human binding, patch, branch, and PR, and resumes at Demo Plan. A deploy alone MUST NOT rewrite frozen runs.
+- **THEN** an immutable upgrade record retains both definition digests, the approved design, human binding, patch, branch, and PR. Activation-only migration leaves the failed visit and workflow instance stopped; an explicitly requested continuation resumes the chosen failed stage. A deploy alone MUST NOT rewrite frozen runs.
 
 #### Scenario: A saved demo asks for an out-of-scope platform operation
 
 - **WHEN** an operator requests correction against the exact saved plan and scenario after the attempt has stopped and cleanup has completed.
-- **THEN** the independent reviewer receives the recorded reason and runtime limits, preserves approved coverage and evidence kinds, and records its correction. An author comment alone cannot permit a rewrite.
+- **THEN** the next agent receives the recorded reason and actual runtime limits as context. Claude decides the appropriate correction without a workflow audit of coverage or evidence kinds.
 
 ### Requirement: Pause for a needed human choice and resume from the reply
 
@@ -93,6 +95,8 @@ Project setup SHALL bind the one allowed Gmail-backed human account to its exact
 The trusted flow SHALL post the question on the Linear issue and move the issue to `Human Review`. It SHALL then wait without keeping the old agent alive. A reply SHALL count only when trusted ingress proves a new Linear comment event on the same issue. The event actor SHALL match the saved user ID, and the comment SHALL come after the open question. An old, changed, deleted, or unclear comment MUST NOT resume work.
 
 An allowed reply that answers the open question SHALL resume the same build run in a fresh try with the reply and saved work. Service users, bots, and other people MUST NOT answer the gate.
+
+Accepted questions and replies SHALL remain available to subsequent implementation and demo agents after the active question closes. Agents SHALL apply relevant later human direction over earlier assumptions. An existing ready demo plan SHALL be reused after ordinary clarification; missing or blocked planning MAY return to Demo Plan.
 
 #### Scenario: Agent can make a safe assumption
 
@@ -179,6 +183,21 @@ An implementation merge MUST NOT deploy or release the change. Any live release 
 
 - **WHEN** a trusted state event from the saved Linear user ID moves the issue from this gate to `In Progress`.
 - **THEN** DEOS starts a fresh attempt on the same run branch and updates the same pull request.
+- **AND** Sol's response returns to human review without another automatic Claude review.
+
+### Requirement: Recover the failed stage without repeating completed work
+
+Retries SHALL preserve approved inputs, accepted plans, saved code, branch, PR, prior stages and original diagnostics. Agent retries SHALL restore that context. Publication retries SHALL reconcile the saved candidate and provider operation without rerunning completed agent stages. Sol SHALL decide which checks to repeat after edits; the workflow SHALL NOT require a full test or evidence restart.
+
+#### Scenario: PR publication fails after coding
+
+- **WHEN** the provider response is lost after a saved candidate was published.
+- **THEN** the retry reads back the same operation and PR before another write and does not restart implementation.
+
+#### Scenario: Linear request ends before Queue delivery
+
+- **WHEN** the delivery receipt and pending payload were saved but dispatch did not finish.
+- **THEN** the delivery retry or scheduled recovery sends the saved message under a lease; duplicate Queue delivery keeps the same inbox identity.
 
 #### Scenario: Agent output looks like approval
 

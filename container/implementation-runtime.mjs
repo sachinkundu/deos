@@ -44,9 +44,9 @@ export async function command(argv, cwd, options = {}) {
     }, options.timeout ?? 600_000);
     const read = (into) => (data) => {
       size += data.length;
-      if (size > 10 * 1024 * 1024) {
+      if (size > (options.maxOutputBytes ?? 10 * 1024 * 1024)) {
         failure = new Error(
-          `Command output exceeds 10485760 bytes: ${argv[0]}`,
+          `Command output exceeds ${options.maxOutputBytes ?? 10 * 1024 * 1024} bytes: ${argv[0]}`,
         );
         killProcessGroup(child, "SIGKILL");
       } else into.push(data);
@@ -286,11 +286,16 @@ export async function setupImplementation(job) {
     { mode: 0o600 },
   );
   await trustGeneratedHooks(job.cwd, job.model, hook);
+  const runtimeSkill = await readFile('/deos/bin/implementation-skill.md','utf8');
+  const runtimeSkillPath = '/root/.codex/skills/deos-implementation/SKILL.md';
+  await mkdir('/root/.codex/skills/deos-implementation',{recursive:true});
+  await writeFile(runtimeSkillPath,runtimeSkill,{mode:0o600});
+  await writeFile('/deos/run/runtime-guide.md',runtimeSkill,{mode:0o644});
   const grounding = await verifyNativeGrounding(
     {
       schema: "deos-implementation-grounding-v1",
       webSearch: "native-live",
-      skills: [],
+      skills: [{id:'deos-implementation',path:runtimeSkillPath}],
     },
     job.cwd,
   );
@@ -481,6 +486,7 @@ export async function setupImplementation(job) {
             "-i",
             "PATH=/usr/local/bin:/usr/bin:/bin",
             "HOME=/home/deos-author",
+            "NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt",
             ...request.argv,
           ];
           if (request.behavior === true) {
@@ -507,6 +513,7 @@ export async function setupImplementation(job) {
                 subject,
                 command: result,
                 document: await readFile(doc, "utf8"),
+                audience: request.audience === "review" ? "review" : "diagnostic",
               }),
             );
           } else {
@@ -516,6 +523,14 @@ export async function setupImplementation(job) {
           await appendFile(journal,JSON.stringify({operation:'check',...subject,result})+'\n');
             state.checks = recordCheck(state.checks, result, before);
           }
+        } else if (request.action === 'publish_preview') {
+          // Build files are controlled by the author. Read them with the same
+          // unprivileged identity, including during concurrent filesystem edits.
+          const capture = await command(['runuser','-u','deos-author','--','node',
+            '/deos/bin/implementation-static-assets.mjs',job.cwd,request.assets],job.cwd,
+            {maxOutputBytes:16 * 1024 * 1024});
+          if (capture.exitCode !== 0) throw Object.assign(new Error(`Static preview capture failed: ${capture.stderr}`),{result:capture});
+          result = await broker({action:'publish_preview',subject,files:JSON.parse(capture.stdout)});
         } else if (request.action === "preview") {
           if (preview)
             throw new Error("This try already has a preview process");

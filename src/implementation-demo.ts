@@ -60,7 +60,8 @@ export class ImplementationDemoService {
     const hostedPreview = await new ImplementationHostedPreview({DB:this.db, ARTIFACTS:this.bucket}).latest(work);
     if (hostedPreview) await addSource('context/hosted-preview.json', JSON.stringify(hostedPreview, null, 2));
     await addSource('context/issue-and-feedback.json', JSON.stringify({ issue: build.issue,
-      feedback: build.implementationReviewFeedback, question: build.question, reply: build.reply }, null, 2));
+      feedback: build.implementationReviewFeedback, question: build.question, reply: build.reply,
+      clarifications: await this.store.clarifications(run.run_id) }, null, 2));
     await addSource('context/runtime-capabilities.json', JSON.stringify({
       execution: 'Local workerd inside an isolated Cloudflare Sandbox',
       browser: { sessionsPerAttempt: 1, resetWithinAttempt: true, reallocateWithinAttempt: false,
@@ -72,7 +73,9 @@ export class ImplementationDemoService {
         navigation: hostedPreview ? 'The local preview and the checked immutable hosted preview, using target: hosted. The saved deployment receipt identifies its code revision for review.' : 'Only the registered preview origin for this attempt' },
       documentationHosts: input.policy.documentationHosts,
       safeAdapters: input.policy.safeAdapters,
-      deployment: 'No provider credentials in the agent. An approved hosted preview requires an explicitly available trusted deployment path. Local workerd does not replace an approved hosted preview.',
+      deployment: input.policy.safeAdapters.includes('static-preview-v1')
+        ? 'publish_preview accepts a finished static build directory and publishes it to a run-owned nonproduction Pages project. It returns an immutable review URL. No agent credentials, backend deployment, CI workflow, or production release. Use the local Worker for backend tests.'
+        : 'No provider credentials in the agent. An approved hosted preview requires an explicitly available trusted deployment path. Local workerd does not replace an approved hosted preview.',
       recovery: 'Runtime failure ends the attempt. A fresh attempt restores saved work and evidence. Sol decides which checks or demos need to run again. Do not require destroying and reallocating a service browser within an application demo.',
     }, null, 2));
     let correction: DemoCorrection | null = null;

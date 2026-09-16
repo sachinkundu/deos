@@ -17,6 +17,7 @@
   "dependencies": {
     "@cloudflare/puppeteer": "^1.4.0",
     "@cloudflare/sandbox": "0.13.0-next.738.2",
+    "@noble/hashes": "2.0.1",
     "@phosphor-icons/react": "2.1.10",
     "jose": "6.1.0",
     "react": "19.1.1",

@@ -508,6 +508,17 @@ export class ImplementationStore {
       .bind(runId, visit)
       .first<ImplementationGate>();
   }
+  async clarifications(runId: string) {
+    const rows = await this.db.prepare(`SELECT * FROM implementation_questions
+      WHERE run_id=? AND status IN ('answered','closed') AND reply_key IS NOT NULL
+      ORDER BY gate_visit,opened_at,question_id`).bind(runId).all<ImplementationQuestion>();
+    return Promise.all(rows.results.map(async row => ({
+      questionId: row.question_id, gateVisit: row.gate_visit,
+      actorId: row.answer_actor_id, commentId: row.answer_comment_id,
+      question: await this.read(row.question_key, row.question_sha),
+      reply: await this.read(row.reply_key!, row.reply_sha!),
+    })));
+  }
   question(runId: string) {
     return this.db
       .prepare(

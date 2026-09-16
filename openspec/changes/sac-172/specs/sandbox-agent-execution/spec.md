@@ -1,5 +1,14 @@
 ## ADDED Requirements
 
+### Requirement: Ship discovered runtime practices to future agents
+
+Implementation Sandboxes SHALL include the maintained runtime skill and readable guide, referenced by the implementation prompt and tool help. Hooks and checked commands SHALL supply the provider CA without disabling TLS verification. The guide SHALL cover scratch-file placement, documentation access, local checks, browser scenario resets, preview publishing and recovery from saved work.
+
+#### Scenario: A new implementation starts
+
+- **WHEN** its sandbox is materialized.
+- **THEN** the agent receives the working runtime instructions without needing a supervisor to rediscover them.
+
 ### Requirement: Isolate each implementation run and its tests
 
 The trusted runner SHALL give each build run its own branch and test name space. Each build try SHALL get a fresh sandbox, worktree, browser, and test scope. A run MUST NOT read or write the work, files, test data, session, or branch of another run. A retry or edit SHALL use a fresh try. It SHALL rebuild state from saved run facts and MUST NOT reuse the old try's tools.

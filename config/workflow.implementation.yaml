@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: implementation
-  version: 38
+  version: 39
 spec:
   implementationPolicy:
     uiPaths:
@@ -45,7 +45,7 @@ spec:
         docs.npmjs.com,
       ]
     packageHosts: [registry.npmjs.org, pypi.org, files.pythonhosted.org]
-    safeAdapters: []
+    safeAdapters: [static-preview-v1]
   start: claim_issue
   execution:
     attemptTimeout: 24h
@@ -618,7 +618,11 @@ spec:
       linearState: Human Review
       expectedEventKind: comment
       decisions: { reply_received: In Progress }
-      edges: { reply_received: implementation_demo_plan }
+      edges: { reply_received: implementation_resume }
+    implementation_resume:
+      type: system_action
+      action: implementation.resume
+      edges: { completed: implementation_build, plan_required: implementation_demo_plan, failed: implementation_failed }
     implementation_review:
       type: human_gate
       linearState: Human Review

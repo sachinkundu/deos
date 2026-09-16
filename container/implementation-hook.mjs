@@ -16,7 +16,7 @@ if (event.hook_event_name === "PreToolUse") {
     if (typeof original !== "string") result = deny("Shell command missing");
     else {
       const quote = "'" + original.replaceAll("'", "'\\''") + "'";
-      const command = `runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author bash -c ${quote}`;
+      const command = `runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c ${quote}`;
       result = {
         hookSpecificOutput: {
           hookEventName: "PreToolUse",

@@ -1,5 +1,21 @@
 ## ADDED Requirements
 
+### Requirement: Publish run-owned static review previews
+
+The trusted service SHALL offer an explicit static preview capability to enabled implementation runs. It SHALL accept a bounded build directory read as the unprivileged author, choose the run's account/project/preview branch itself, and keep credentials outside the agent. Worker code, bindings and production deployment SHALL remain outside this capability.
+
+The service SHALL save build bytes and publication state before the provider effect, reconcile ambiguous responses, and retain provider and asset read-back. It SHALL expose a stable run-owned browser origin and an immutable human review URL that survives sandbox cleanup. Preview revision SHALL remain context, not a completion quality gate.
+
+#### Scenario: Static app needs a durable review link
+
+- **WHEN** the author publishes its saved static build with the enabled capability.
+- **THEN** the service deploys it to that run's preview project and supplies the immutable review URL without exposing credentials.
+
+#### Scenario: Deployment succeeds but its response is lost
+
+- **WHEN** the same publish request is retried.
+- **THEN** the service locates the prior deployment by its saved operation identity instead of blindly creating another deployment.
+
 ### Requirement: Check maintainer previews before browser access
 
 When an approved design needs a hosted static preview, a trusted maintainer MAY

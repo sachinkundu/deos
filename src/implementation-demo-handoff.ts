@@ -18,9 +18,18 @@ export async function demoHandoff(db:D1Database,bucket:R2Bucket,work:Implementat
     db.prepare("SELECT MAX(visit_sequence) AS visit FROM implementation_gates WHERE run_id=? AND decision_outcome='revision_requested'")
       .bind(work.run_id).first<{visit:number|null}>(),
   ]);
-  if (!gate || !plan ||
-      gate.visit_sequence <= (human?.visit ?? 0)) return null;
+  if (!gate || !plan) return null;
   const review = await store.read<DemoResult>(gate.payload_key,gate.payload_sha);
+  // Human feedback is a continuation of the already reviewed implementation.
+  // After the author responds, hand it back to that human without another
+  // automatic Claude review. The original review remains in the transcript.
+  if (gate.visit_sequence <= (human?.visit ?? 0)) {
+    const response = work.source_attempt_id && await db.prepare(`SELECT visit_sequence FROM agent_attempts
+      WHERE attempt_id=? AND run_id=? AND node_id='implementation_build' AND state='completed'`)
+      .bind(work.source_attempt_id, work.run_id).first<{visit_sequence:number}>();
+    return response && response.visit_sequence > human!.visit!
+      ? {review, reviewedCandidateSha:gate.candidate_sha, repaired:true} : null;
+  }
   if (gate.outcome === 'pass')
     return {review, reviewedCandidateSha:gate.candidate_sha, repaired:false};
   if (gate.outcome !== 'needs_work' || !work.source_attempt_id) return null;

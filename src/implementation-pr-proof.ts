@@ -23,8 +23,10 @@ export async function publishImplementationProof(
   candidate: ImplementationCandidate,
 ): Promise<PublishedImplementationProof> {
   const images = candidate.proof.filter(proof => proof.kind === 'browser_image');
-  const records = candidate.proof.filter(proof => proof.kind === 'showboat');
-  const manifest = JSON.stringify({version: 1, runId: work.run_id,
+  // Old command captures include validation logs. Only deliberately selected
+  // behavior demonstrations belong in the reviewer document.
+  const records = candidate.proof.filter(proof => proof.kind === 'showboat' && proof.audience === 'review');
+  const manifest = JSON.stringify({version: 2, runId: work.run_id,
     proof: [...images, ...records].map(({id, kind, sha256, caption}) => ({id, kind, sha256, caption}))});
   const digest = await sha256Hex(manifest);
   const branch = `deos/proof/${work.linear_identifier}/run-${work.issue_run_sequence}/${digest}`;

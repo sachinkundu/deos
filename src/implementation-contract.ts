@@ -118,6 +118,7 @@ export interface ImplementationProof extends ProofSubject {
   sha256: string;
   sanitized: boolean;
   providerDeliveryId?: string | null;
+  audience?: "review" | "diagnostic";
 }
 export interface DocumentationSource {
   url: string;

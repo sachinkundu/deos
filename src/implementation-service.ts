@@ -64,6 +64,10 @@ export class ImplementationService {
     try {
       if (action === "implementation.prepare") await this.prepare(run);
       else if (action === "implementation.rebase") await this.rebase(run);
+      else if (action === "implementation.resume") {
+        const plan = await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).latest(run.run_id, 'plan');
+        return {kind:'system_action', outcome:plan?.outcome === 'ready' ? 'completed' : 'plan_required', providerReceiptsComplete:true};
+      }
       else {
         const work = await this.store.requireRun(run.run_id);
         if (action === "implementation.question")
@@ -316,6 +320,7 @@ export class ImplementationService {
           ? await this.store.read(question.question_key, question.question_sha)
           : null,
         reply,
+        clarifications: await this.store.clarifications(run.run_id),
         patchBaseSha: recovered?.candidate.testedBaseSha ?? work.patch_base_sha,
       }),
       repository: input.repository,
@@ -466,11 +471,13 @@ export class ImplementationService {
     ]);
     const pullLink = (number: number | null | undefined) => number
       ? `[PR #${number}](https://github.com/${input.repository}/pull/${number})` : 'Not recorded';
+    const preview = await new ImplementationHostedPreview(this.env).latest(work);
     return [
       `${input.issue.title}\n\nImplements the approved design. Live release has not begun.`,
       `Linear: [${work.linear_identifier}](${input.issue.url})`,
       `Approved Proposal and Specs: ${pullLink(plan?.pull_request_number)}`,
       `Approved design: ${pullLink(design?.pull_request_number)}`,
+      ...(preview ? [`Preview: [Open the web app](${preview.deployment.url})${preview.subject.treeSha === work.tree_sha ? '' : ' (built before the latest changes)'}`] : []),
       'Proof:',
       ...implementationProofMarkdown(proof),
       `This is the [Showboat file](${proof.showboatUrl}).`,

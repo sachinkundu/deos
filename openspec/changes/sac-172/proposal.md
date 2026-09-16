@@ -14,6 +14,10 @@ The DEOS flow now stops after design approval. A person must still start the bui
 - If publishing finished work fails, keep the code and demos, ask what to do on Linear, and send the human reply to Sol. Publication faults must not leave a completed implementation silently stopped.
 - Open one code pull request for human review. Link the approved planning and design PRs, show numbered behavior images with explanations, and link one Showboat file. Keep internal checks and agent discussion in transcripts.
 - Keep merge and live release as later human choices. This flow must not deploy the change.
+- Retain accepted human clarifications for later agents, resume failed stages from saved work, and keep runtime discoveries in shipped skills, hooks and instructions.
+- Let the trusted service publish bounded static builds to run-owned preview projects. This supplies a durable review URL without giving agents production deployment rights.
+- Save pending Queue handoffs with webhook receipts so retries and scheduled recovery finish interrupted delivery.
+- Consolidate the calculator lessons in this change. Keep SAC-182 parked after its explicit definition migration; use fresh small web apps for further canaries, ending at the implementation PR.
 
 ### Non-goals
 

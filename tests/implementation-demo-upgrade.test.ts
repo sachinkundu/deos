@@ -17,7 +17,7 @@ const document=parse(readFileSync('config/workflow.implementation.yaml','utf8'))
 const tail=await loadWorkflowDefinition(JSON.stringify(document),bundle);
 const old=structuredClone(document);old.metadata.version=27;
 for(const id of ['implementation_demo_plan','implementation_demo_gate'])delete old.spec.jobs[id];
-for(const id of ['implementation_demo_plan','implementation_demo_gate','implementation_rebase_demo'])delete old.spec.nodes[id];
+for(const id of ['implementation_demo_plan','implementation_demo_gate','implementation_rebase_demo','implementation_resume'])delete old.spec.nodes[id];
 old.spec.nodes.implementation_tasks.edges.completed='implementation_build';
 old.spec.nodes.implementation_proof_check.edges.completed='implementation_branch_write';
 old.spec.nodes.implementation_clarification_wait.edges.reply_received='implementation_build';
@@ -91,6 +91,25 @@ test('upgrade rejects changed inputs, active work, unfinished cleanup and wrong 
       assert.equal(f.creates(),0);assert.equal(f.db.sqlite.prepare('SELECT count(*) n FROM agent_stage_retries').get()!.n,0);
     } finally {f.db.close();}
   }
+});
+
+test('a failed demo stage can adopt fixes without dispatching or losing saved implementation',async()=>{
+  const f=await fixture(tail);try {
+    f.db.sqlite.exec("UPDATE agent_attempts SET node_id='implementation_demo_plan'");
+    const before=await f.store.requireRun('run-1');
+    const options={mode:'activate_only'};
+    const preflight=await (await f.controller.handle(f.request(options))).json() as {planDigest:string};
+    const execute={...options,execute:true,planDigest:preflight.planDigest};
+    const response=await f.controller.handle(f.request(execute));
+    assert.equal(response.status,200);
+    assert.equal((await response.json() as {resumed:boolean}).resumed,false);
+    const run=f.db.sqlite.prepare("SELECT * FROM orchestration_runs WHERE run_id='run-1'").get()!;
+    assert.equal(run.status,'failed');assert.equal(run.current_visit_sequence,2);
+    assert.equal(run.definition_version,tail.version+1);
+    assert.equal(f.creates(),0);
+    assert.deepEqual(await f.store.requireRun('run-1'),before);
+    assert.equal((await f.controller.handle(f.request(execute))).status,200);
+  }finally{f.db.close();}
 });
 
 

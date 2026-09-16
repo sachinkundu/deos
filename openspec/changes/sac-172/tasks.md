@@ -14,17 +14,17 @@
 
 ## 3. Proof and publication
 
-- [x] 3.1 Derive monotonic proof requirements from approved inputs and actual changed paths, and reject stale, missing, unsanitized, or unit-test-only behavior proof.
+- [x] 3.1 Retain proof origins and revisions as agent context. The original machine quality gates were removed by section 6; do not restore them.
 - [x] 3.2 Save and hash-check immutable patches, tree manifests, proof, documentation sources, and original diagnostics in R2 before accepting their D1 index.
 - [x] 3.3 Publish checked snapshot commits to the reserved branch with guarded sequences and retry read-back; reject unrelated branch heads.
-- [x] 3.4 Create or update one implementation PR with exact checks, assumptions, visible proof, citations, and idempotent publication sequences. Keep the task checklist in the saved artifact and portal rather than the PR body.
-- [x] 3.5 Detect base drift before effects and from cron, invalidate proof, and rebuild in a fresh try without carrying forward a stale merge choice.
+- [x] 3.4 Create or update one implementation PR with visible behavior proof and idempotent publication. Keep checklists and internal results in the portal and transcripts.
+- [x] 3.5 Detect base drift before provider effects and preserve human merge authority for the published head. Sol decides which checks and proof to refresh; no evidence quality gate.
 
 ## 4. Human authority and observation
 
 - [x] 4.1 Add trusted Linear-user catalog read-back to route settings and require the frozen binding for implementation selection.
 - [x] 4.2 Add durable comment-only clarification visits, one question per block, signed reply provenance checks, and fresh-try resume.
-- [x] 4.3 Keep final review state-only and require the exact saved human event, gate, PR head, base, and proof before merge; end at code merged without release.
+- [x] 4.3 Keep final review state-only and require the exact saved human event, gate and PR head before merge; end at code merged without release.
 - [x] 4.4 Show implementation tasks, attempts, branch, checks, proof gallery, stale subjects, clarification, and distinct release status through the protected portal.
 - [x] 4.5 Apply the user's UI refinement: show Author leading to Human Review, with a compact live checklist meter for tasks done and remaining, a last-update time, and no claim that checklist completion proves final checks. Checklist changes signal the workflow; the heartbeat reconciles missed signals.
 - [x] 4.6 Let the Author task counter open a read-only popup with OpenSpec sections, task numbers, completed and remaining tasks, and counts from the same saved observation. Verify keyboard use, mobile layout and the staging view.
@@ -33,7 +33,7 @@
 
 - [x] 4.8 Repair canary runner faults: classify expected RPC heartbeat timeouts, preserve long command responses, release failed preview processes, report current-tree checks, and verify a new attempt resumes from saved work. Full canary proof remains required by 5.4.
 
-- [x] 4.9 Return repairable completion-check failures to the same live implementation session. Keep the original diagnostics, rerun stale checks and proof, and retain strict collection and human gates. Verify failed-test repair, stale evidence, working-directory identity and failure boundaries before activation.
+- [x] 4.9 Preserve original completion failures and saved work. The old supervisor repair loop was removed by section 6; Sol owns repairs and decisions about repeating checks.
 
 - [x] 4.10 Keep the assigned browser alive during active implementation, avoid competing with a connected browser command, preserve original maintenance failures, and reject failed HTTP documents as working-screen proof. Verify run isolation, inactive cleanup, real navigation status, and error-page rejection before activation. Repeat live proof in the next canary revision.
 
@@ -48,7 +48,7 @@
 - [ ] 5.6 Save Claude demo plans and per-scenario findings as context, with no workflow review of coverage, citations or evidence identity.
 - [ ] 5.7 Run Demo Plan and Demo Gate as separate Claude jobs in fresh sessions, supply the plan and repair feedback to Codex, and preserve blocked and failed outcomes.
 - [ ] 5.8 Show both demo nodes in the existing portal style with clear verdicts, counts, requirements, and visible evidence. Verify keyboard and mobile use in the real staging browser.
-- [ ] 5.9 Add an audited failed-run upgrade into the new frozen demo workflow. Preserve SAC-182's saved work and human authority. Verify isolation, stale evidence, forged results, repair, and restart cases before deployment.
+- [ ] 5.9 Add an audited failed-run upgrade into the new frozen demo workflow. Preserve SAC-182's saved work and human authority. Verify isolation, authenticated transport, saved repair context and restart behavior.
 - [ ] 5.10 Diagnose and repair the canary completion transport and preview recovery faults, validate the built runtime and preview path, deploy with activation read-back, and continue the user-selected SAC-225 calculator through the new demo contract. Leave SAC-182 stopped.
 - [ ] 5.11 Add the approved maintainer static-preview recovery path with provider and asset read-back, immutable candidate binding, one browser with fixed origins, and preserved capture provenance. Verify rejection cases, activate the checked path, and demonstrate the calculator at its actual Pages preview before restarting the canary.
 
@@ -82,3 +82,14 @@
 - [x] 9.1 Add one queued scenario-list operation with fresh browser contexts, fixed harness settings, ordered actions and screenshot checkpoints, and original-error preservation.
 - [x] 9.2 Select only the completed collection for the PR and retain partial/exploratory captures as diagnostics. Keep checkpoint captions separate even for identical images.
 - [x] 9.3 Test competing requests, reset isolation and failure recovery in the real Cloudflare browser, run repository checks, and deploy with activation read-back. Preserve SAC-225's human review gate; its original images still require agent recapture.
+
+## 10. Consolidate canary lessons
+
+- [x] 10.1 Keep accepted clarification history in author and demo context; reuse ready plans and route human revisions to PR review after Sol responds.
+- [x] 10.2 Let Claude choose demonstration scope and count. Reconcile the proposal, design, specs and runtime instructions with the single-review mandate.
+- [x] 10.3 Ship a native runtime skill, readable guide, command help and CA hooks for development, isolated demos, preview publishing and recovery.
+- [x] 10.4 Add a trusted, run-owned static preview publisher and exclude diagnostic commands from reviewer-facing Showboat by default.
+- [x] 10.5 Repair SAC-226's interrupted delivery handoff with an atomic outbox, dispatch lease, scheduled replay and original-error retention.
+- [x] 10.6 Add activation-only frozen-definition migration that preserves SAC-182's failed state, design, work and PR without dispatching an agent.
+- [ ] 10.7 Complete repository and built-runtime checks, real preview-provider read-back and deployment activation checks; record exact results and limitations.
+- [ ] 10.8 Activate the sample-project definition and explicitly migrate SAC-182 while keeping it parked. Choose the next small web-app canary with the user.

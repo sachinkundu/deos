@@ -21,6 +21,7 @@ import { ImplementationProviderTest } from "./implementation-provider-test.ts";
 import { previewRelayHost, previewRelayProgram, previewRelaySandboxId, waitForPreviewRelay } from "./implementation-preview.ts";
 import { reconcileImplementationPreview } from "./implementation-preview-reconciliation.ts";
 import { ImplementationHostedPreview, hostedPreviewOrigin, type HostedPreviewEnv } from "./implementation-hosted-preview.ts";
+import { ImplementationStaticPreview, staticPreviewOrigin, type StaticPreviewEnv } from "./implementation-static-preview.ts";
 import { sha256Hex } from "./implementation-hash.ts";
 
 export class ImplementationBroker {
@@ -79,6 +80,11 @@ export class ImplementationBroker {
         // Compatibility for an older supervisor finishing during rollout.
         // The workflow acknowledges completion; it does not review the work.
         return Response.json({ ready: true, subject });
+      }
+      if (request.action === 'publish_preview') {
+        if (!input.policy.safeAdapters.includes('static-preview-v1'))
+          throw new ImplementationError('static_preview_denied','This run has no trusted static preview capability');
+        return Response.json(await new ImplementationStaticPreview(this.env).publish(work,claims.attemptId,subject,request.files));
       }
       if (request.action === "safe_test") {
         const result = await new ImplementationProviderTest(this.env).call(claims.runId, claims.attemptId, input.policy.safeAdapters, request);
@@ -255,8 +261,8 @@ export class ImplementationBroker {
             "Trusted Showboat output is missing",
           );
         const text = this.sanitize(request.document);
-        return Response.json(
-          await this.proof(
+        return Response.json({
+          ...await this.proof(
             claims,
             subject,
             "showboat",
@@ -264,7 +270,8 @@ export class ImplementationBroker {
             "text/markdown",
             this.sanitize(command.command),
           ),
-        );
+          audience: request.audience === 'review' ? 'review' : 'diagnostic',
+        });
       }
       if (request.action === "browser") {
         if (request.target !== undefined && request.target !== 'local' && request.target !== 'hosted')
@@ -290,7 +297,8 @@ export class ImplementationBroker {
           claims.runId,
           claims.attemptId,
           preview.preview_origin,
-          hosted ? [hosted.origin] : [],
+          [...new Set([...(hosted ? [hosted.origin] : []),
+            ...(input.policy.safeAdapters.includes('static-preview-v1') ? [await staticPreviewOrigin(work.run_id)] : [])])],
         );
         await this.store.assertResource(
           claims.runId,
@@ -450,6 +458,7 @@ export class ImplementationBroker {
       this.env.CAPABILITY_SIGNING_SECRET,
       this.env.OPENROUTER_API_KEY,
       (this.env as HostedPreviewEnv).IMPLEMENTATION_PAGES_READ_TOKEN,
+      (this.env as StaticPreviewEnv).IMPLEMENTATION_PREVIEW_TOKEN,
     ];
     for (const secret of secrets)
       if (secret && secret.length > 8)
