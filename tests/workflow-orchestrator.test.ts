@@ -808,6 +808,42 @@ test("unauthorized gate departure is repaired before a later human decision", as
   assert.equal(store.inbox.get("delivery-bot")?.state, "processed");
 });
 
+test("replaying a repaired gate does not reset its status before the next decision", async () => {
+  const store = new RuntimeStore();
+  const services = new NodeServices();
+  store.inbox.set("delivery-bot", inboxEvent("delivery-bot", "oauthclient"));
+  store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+  const cache = new Map<string, unknown>();
+  const deliveries = ["delivery-bot"];
+  const replayStep = (): WorkflowStepLike => {
+    const occurrences = new Map<string, number>();
+    let waitIndex = 0;
+    return {
+      async do<T>(name: string, callback: () => Promise<T>): Promise<T> {
+        const occurrence = (occurrences.get(name) ?? 0) + 1;
+        occurrences.set(name, occurrence);
+        const key = `${name}:${occurrence}`;
+        if (!cache.has(key)) cache.set(key, structuredClone(await callback()));
+        return structuredClone(cache.get(key)) as T;
+      },
+      async waitForEvent<T>(): Promise<{ payload: Readonly<T> }> {
+        const deliveryId = deliveries[waitIndex++];
+        if (!deliveryId) throw new Error("durable wait checkpoint");
+        return { payload: { deliveryId } as T };
+      },
+    };
+  };
+  const workflow = orchestrator(store, services);
+  await assert.rejects(workflow.run(store.run.run_id, replayStep()), /durable wait checkpoint/);
+  assert.equal(store.run.status, "awaiting_human");
+  deliveries.push("delivery-human");
+  const result = await workflow.run(store.run.run_id, replayStep());
+  assert.equal(result.outcome, "succeeded");
+  assert.equal(services.repairs, 1);
+  assert.equal(store.transitions.filter(({ from_node }) => from_node === "approval").length, 1);
+  assert.equal(store.inbox.get("delivery-human")?.state, "processed");
+});
+
 test("a failed provider gate repair blocks gate processing", async () => {
   const store = new RuntimeStore();
   const services = new NodeServices();

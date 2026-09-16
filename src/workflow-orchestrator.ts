@@ -322,20 +322,31 @@ export class WorkflowOrchestrator {
         if (operation.state === "manual_reconciliation_required") {
           throw new Error("human-gate repair requires manual reconciliation");
         }
-        const reset = await this.store.setRunStatus(
-          run.run_id,
-          run.current_node,
-          "awaiting_human",
-          "active",
-          this.now().toISOString(),
-        );
-        if (!reset) throw new Error("human-gate repair status compare-and-set failed");
-        await this.store.markInboxState(
-          claimed.delivery_id,
-          "claimed",
-          "processed",
-          this.now().toISOString(),
-        );
+        // Replaying a past repair must not reset a gate that has since been
+        // confirmed. Keep these writes behind the durable step checkpoint.
+        await step.do(`finish-gate-repair:${claimed.delivery_id}:visit:${run.current_visit_sequence}`, async () => {
+          const reset = await this.store.setRunStatus(
+            run.run_id,
+            run.current_node,
+            "awaiting_human",
+            "active",
+            this.now().toISOString(),
+          );
+          if (!reset) {
+            const current = await this.requireRun(run.run_id);
+            if (current.current_node !== run.current_node ||
+                current.current_visit_sequence !== run.current_visit_sequence || current.status !== "active") {
+              throw new Error("human-gate repair status compare-and-set failed");
+            }
+          }
+          await this.store.markInboxState(
+            claimed.delivery_id,
+            "claimed",
+            "processed",
+            this.now().toISOString(),
+          );
+          return { repaired: true };
+        });
         continue;
       }
       if (decision.kind === "wait") {
