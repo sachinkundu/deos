@@ -1,0 +1,28 @@
+{
+  "repository": "sachinkundu/deos-sample-project",
+  "pullRequest": 35,
+  "headSha": "3f18024ab76263bb37c1fce1aa7c8924f7e04391",
+  "path": "openspec/changes/sac-238/design.md",
+  "lines": [
+    {
+      "line": 28,
+      "text": "The page will run entirely in the desktop browser. A single application root owns the current list and selected filter. It delegates persistence to a small storage adapter and supplies derived rows and event handlers to focused UI components. An immutable static build is delivered by the repository's GitHub Pages deployment; Pages is a delivery boundary, not an application backend."
+    },
+    {
+      "line": 31,
+      "text": "+---------------- GitHub Pages preview ----------------+"
+    },
+    {
+      "line": 147,
+      "text": "The preview target is GitHub Pages. A GitHub Actions Pages deployment builds the exact pull-request head, uploads its static artifact, and deploys it to the repository's `github-pages` environment using the official Pages upload and deploy actions. The deployment step's `page_url` is the preview URL. Before handoff, put that URL, the deployed commit SHA, and the ordered screenshots in the final pull request description; then verify in a signed-out browser that the URL loads that commit and every image renders in sequence. The preview must remain reachable without repository credentials until human review concludes. Because a repository has one active Pages site, a later deployment may replace it; any replacement before review requires rerunning the behavior check and screenshots against the replacement and updating the recorded SHA."
+    },
+    {
+      "line": 164,
+      "text": "| GitHub Pages deployment fails, requires credentials, serves a different commit, or is replaced before review | The review is not ready. Repair and redeploy the PR head, then verify the URL and repeat the screenshot sequence before handoff. |"
+    },
+    {
+      "line": 180,
+      "text": "3. Build the pull-request head and deploy that immutable static artifact through GitHub Actions to the repository's GitHub Pages `github-pages` environment."
+    }
+  ]
+}

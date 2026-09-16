@@ -261,6 +261,7 @@ superseded by the [current contract](implementation-canary-lessons.md).
 - Intervention 3: posted the actual publisher contract on Linear at 15:45:14
   (comment `1bbc3477-da55-4bfd-92a9-7a703cea133a`) and requested revision
   through In Progress at 15:45:15. No manual sample-repository edit occurred.
+- [Original preview instructions](evidence/sac-172/packing-canary/design-preview-mismatch.json).
 - The same PR was revised by 15:51:33, head
   `59478ab92e3a9b73c81ed84d5fcd9075b09c87cc`. It uses publish_preview and
   preserves the earlier accepted behavior. Independent review began 15:51:52.
@@ -268,7 +269,10 @@ superseded by the [current contract](implementation-canary-lessons.md).
   planning, design, both design reviewers and demo planning. Explicitly name
   the supported publisher in that shared service context. Existing immutable
   workflow prompts and version identities are preserved. Do not add a workflow
-  quality check. Local 578 tests and TypeScript passed; deployment pending.
+  quality check. Local 578 tests and TypeScript passed. Source 191453e deployed as Worker
+  7264560f-c6dc-490f-841a-e74404c6455c at 100% on 16:00:21 UTC. All four
+  container rollouts completed to image 06ab1609f1088f11cf4b2e547826ee67b7db833307cec2423c95e2f556ae530c
+  before design approval. [Read-back](evidence/sac-172/packing-canary/context-runtime-rollout.json).
 
 #### PACK-10 — unrelated Cloudflare MCP connection requests OAuth
 
@@ -300,7 +304,7 @@ superseded by the [current contract](implementation-canary-lessons.md).
 - Select the latest completed design author by its declared design context and
   role, including response nodes and excluding reviewer or implementation
   patches. A SQLite regression exercises that ordering with all four kinds.
-  Local checks passed; deployment pending.
+  Local checks passed; shipped in the same 16:00 rollout as PACK-09.
 - [Restored draft read](evidence/sac-172/packing-canary/design-revision-restored-draft.json).
 
 ### Supervisor and measurement notes
