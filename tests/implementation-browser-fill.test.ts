@@ -34,7 +34,7 @@ test('real browser fill replaces an existing name and clears controlled input ac
       const page=(await browser.pages())[0]!;
       assert.equal(await page.$eval('output',element=>element.textContent),'Jacket');
       await call({operation:'fill',selector:'#name',text:''});
-      assert.equal(await page.$eval('#name',element=>element.value),'');
+      assert.equal(await page.$eval('#name',element=>(element as unknown as {value:string}).value),'');
       assert.equal(await page.$eval('output',element=>element.dataset.input),'');
     } finally {
       try {await browser?.close();} finally {await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}
