@@ -944,6 +944,13 @@ export class SandboxAgentController {
         const permissions = await sandbox.exec(["chmod", "600", "/deos/run/job.json"], { timeout: 30000 });
         if ((await permissions.waitForExit({ timeout: 30000 })).code !== 0) throw new Error("Implementation job protection failed");
       }
+      // Establish the initial liveness deadline before the first poll can race
+      // supervisor startup. Only the supervisor advances this timestamp later.
+      await sandbox.writeFile("/deos/output/heartbeat.json", JSON.stringify({
+        attemptId: attempt.attempt_id,
+        processPid: null,
+        observedAt: this.dependencies.now().toISOString(),
+      }), { encoding: "utf8" });
       supervisor = await sandbox.exec(
         ["node", "/deos/bin/supervisor.mjs"],
         { cwd: "/deos/run" },

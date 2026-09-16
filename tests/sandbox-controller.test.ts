@@ -1416,6 +1416,23 @@ test("a continuation patch digest mismatch fails before Codex starts and destroy
   assert.equal(factory.sandbox.commands.some(({ command }) => command[0] === "node"), false);
 });
 
+test("first process poll has a startup heartbeat without extending its timeout", async () => {
+  let time = new Date(NOW);
+  const { controller, attempts } = setup({ clock: () => time });
+  const errors: unknown[] = [];
+  await captureErrors(async found => { errors.push(...found); }, async () => {
+    await controller.execute(run, "work", "work", definition);
+    time = new Date(NOW.getTime() + 10_000);
+    assert.equal((await controller.execute(run, "work", "work", definition)).state, "running");
+  });
+  assert.deepEqual(errors, []);
+  assert.equal(attempts.latest?.heartbeat_at, NOW.toISOString());
+  time = new Date(NOW.getTime() + 6 * 60_000);
+  const expired = await controller.execute(run, "work", "work", definition);
+  assert.equal(expired.state === "completed" ? expired.outcome.outcome : null, "failed");
+  assert.equal(attempts.latest?.state, "interrupted");
+});
+
 test("running process reconciles the exact process and fresh supervisor heartbeat", async () => {
   const { controller, factory, attempts } = setup();
   await controller.execute(run, "work", "work", definition);
