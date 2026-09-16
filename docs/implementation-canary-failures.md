@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 66 runtime/tool occurrences in 30 categories, including recovered errors and stopped author work; 4 app development check failures listed separately | 4 recovery interventions: resent approval, resumed design finalization, requested preview-path revision, answered browser-recovery question after runtime rollout | Proposal/specification PR34 merged; design PR35 merged; first six hosted scenarios complete; one Claude review completed; Sol response stopped at 17:43 with saved code; corrected runtime deployed; recovery answer consumed and saved implementation resumed at visit37 at 17:53:49; PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 66 runtime/tool occurrences in 30 categories, including recovered errors and stopped author work; 4 app development check failures listed separately | 4 recovery interventions: resent approval, resumed design finalization, requested preview-path revision, answered browser-recovery question after runtime rollout | Proposal/specification PR34 and design PR35 merged; one Claude implementation review completed; saved implementation resumed on updated runtime; all six new hosted scenarios completed at18:08 with23captures and no new errors observed through18:09; Sol selecting final proof; PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -696,6 +696,15 @@ that pass are not failures. All occurred in build attempt
 [First browser collection failure and response](evidence/sac-172/packing-canary/build-demo-rename-failure.json).
 
 ### Supervisor and measurement notes
+
+- The resumed author preserved the application and immutable deployment. Its
+  single collection459b5d7f completed all six scenarios at18:08:02.164 with
+  23screenshots, including replacement rename, persistence and clearing invalid
+  input. This exercised the updated browser fill through the real hosted app.
+  The full live transcript/diagnostic audit through18:09:51 found no new failure.
+  Sol reported inspecting all captures and began selecting the final gallery.
+  This is completed capture, not yet a PR or an independent visual verdict.
+  [Original milestones and capture results](evidence/sac-172/packing-canary/recovery-demo-completed.json).
 
 - The final response transcript and diagnostics were fetched from their durable
   artifact keys and verified against SHA256. Audit found no additional failed
