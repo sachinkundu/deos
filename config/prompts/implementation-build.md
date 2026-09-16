@@ -19,6 +19,16 @@ change live data, approve a live workflow gate, choose a merge, or use personal 
 Call deos-implementation with a saved request file for command checks, preview,
 browser control, read-only first-party documents, and proof. Inspect changed
 web behavior in the assigned service browser and save sanitized screenshots.
+
+If the checked input includes hostedPreview, it is an immutable static preview
+deployed by a maintainer, with provider read-back and checked asset hashes. It
+does not grant deployment access. Start the usual local preview first; the one
+assigned browser can then use `target: "hosted"` on browser calls. Navigate when
+switching between local and hosted targets. Capture required hosted behavior
+against this URL and name it in the proof. The broker rejects hosted evidence
+if your code tree differs from the registered build. In that case finish safe
+local work and report the need for a new maintainer deployment. Do not pass off
+local images as hosted proof, reset the browser, or request provider tokens.
 Use real Showboat command/output records for nonvisual behavior. Unit tests
 support checks but do not replace behavior proof. Provider changes require a
 safe real resource and a verified provider event. Label synthetic ingress.

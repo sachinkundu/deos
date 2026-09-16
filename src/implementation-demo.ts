@@ -8,6 +8,7 @@ import type { ArtifactCollectionResult } from './artifact-collector.ts';
 import type { OrchestrationRunRecord } from './orchestration-store.ts';
 import type { MaterializedJobInput } from './job-inputs.ts';
 import type { WorkflowJob } from './workflow-definition.ts';
+import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
 
 export interface DemoReviewRow {
   attempt_id: string; run_id: string; visit_sequence: number; kind: DemoKind;
@@ -55,13 +56,15 @@ export class ImplementationDemoService {
       testedBaseSha: work.tested_base_sha, treeSha: candidate?.treeSha ?? work.tree_sha ?? work.tested_base_sha };
     const addSource = async (path: string, content: string) => { sources.push({ path, content, sha256: await sha256Hex(content) }); };
     const build = JSON.parse(base.context);
+    const hostedPreview = await new ImplementationHostedPreview({DB:this.db, ARTIFACTS:this.bucket}).latest(work);
+    if (hostedPreview) await addSource('context/hosted-preview.json', JSON.stringify(hostedPreview, null, 2));
     await addSource('context/issue-and-feedback.json', JSON.stringify({ issue: build.issue,
       feedback: build.implementationReviewFeedback, question: build.question, reply: build.reply }, null, 2));
     await addSource('context/runtime-capabilities.json', JSON.stringify({
       execution: 'Local workerd inside an isolated Cloudflare Sandbox',
       browser: { sessionsPerAttempt: 1, resetWithinAttempt: false,
         keyboard: true, viewport: { min: 200, max: 3840 },
-        navigation: 'Only the registered preview origin for this attempt' },
+        navigation: hostedPreview ? 'The local preview and the checked immutable hosted preview, using target: hosted. Hosted proof must match its saved code tree.' : 'Only the registered preview origin for this attempt' },
       documentationHosts: input.policy.documentationHosts,
       safeAdapters: input.policy.safeAdapters,
       deployment: 'No provider credentials in the agent. An approved hosted preview requires an explicitly available trusted deployment path. Local workerd does not replace an approved hosted preview.',
@@ -101,11 +104,11 @@ export class ImplementationDemoService {
       await addSource('context/tasks.md', candidate.tasks);
       for (const proof of candidate.proof) {
         const row = await this.db.prepare('SELECT * FROM implementation_proof WHERE run_id=? AND attempt_id=? AND proof_id=? AND sanitized=1')
-          .bind(run.run_id, candidate.attemptId, proof.id).first<{ r2_key: string; sha256: string; media_type: string }>();
+          .bind(run.run_id, candidate.attemptId, proof.id).first<{ r2_key: string; sha256: string; media_type: string; kind: DemoEvidence['kind']; caption: string }>();
         if (!row || row.sha256 !== proof.sha256 || !subjectMatches(proof, subject))
           throw new ImplementationError('untrusted_proof', `Demo evidence does not match candidate: ${proof.id}`);
         await this.store.readBytes(row.r2_key, row.sha256);
-        evidence.push({ ...subject, id: proof.id, kind: proof.kind, caption: proof.caption,
+        evidence.push({ ...subject, id: proof.id, kind: row.kind, caption: row.caption,
           sha256: row.sha256, r2Key: row.r2_key, contentType: row.media_type });
       }
     }

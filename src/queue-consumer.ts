@@ -9,6 +9,7 @@ import { CapabilityRouter } from "./capability-router.ts";
 import { verifyCapabilityToken } from "./capability-auth.ts";
 import { captureWorkflowErrors } from "./error-context.ts";
 import { ImplementationHandoffController } from "./implementation-handoff.ts";
+import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
 import { ImplementationDemoUpgradeController } from './implementation-demo-upgrade.ts';
 import { ImplementationProviderTest, type ReviewTestProfile } from "./implementation-provider-test.ts";
 import { D1CapabilityStore } from "./capability-store.ts";
@@ -164,6 +165,15 @@ export default {
         () => path === '/implementation-demo-upgrades'
           ? new ImplementationDemoUpgradeController(env, definition).handle(request)
           : new ImplementationHandoffController(env, definition).handle(request));
+    }
+    if (path === '/implementation-hosted-previews') {
+      if (request.method !== 'POST') return Response.json({error:'method_not_allowed'}, {status:405});
+      if (!env.STAGE_RETRY_SECRET || request.headers.get('Authorization') !== `Bearer ${env.STAGE_RETRY_SECRET}`)
+        return Response.json({error:'invalid_operator_capability'}, {status:401});
+      const body = await request.json() as {runId?:unknown};
+      if (typeof body?.runId !== 'string') return Response.json({error:'invalid_hosted_preview_request'}, {status:400});
+      return captureWorkflowErrors(env.DB, env.ARTIFACTS, body.runId, path,
+        async () => Response.json(await new ImplementationHostedPreview(env).register(body)));
     }
     if (path === "/implementation-test-profiles") {
       if (request.method !== "POST") return Response.json({ error: "method_not_allowed" }, { status: 405 });

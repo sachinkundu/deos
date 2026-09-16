@@ -47,11 +47,18 @@ test('supervisor verification capture completes without Sandbox callbacks and re
     assert.equal(response.status,200,'Identical content captured by a new attempt has its own durable proof receipt');
     assert.equal((await response.json()).ready,true);
     assert.equal(db.sqlite.prepare('SELECT count(*) n FROM implementation_proof').get()!.n,3);
+    const localImage=await broker.proof(claims,subject,'browser_image',new Uint8Array([1,2,3]),'image/png','Local URL',undefined,'a'.repeat(64));
+    const hostedImage=await broker.proof(claims,subject,'browser_image',new Uint8Array([1,2,3]),'image/png','Hosted URL',undefined,'b'.repeat(64));
+    assert.notEqual(localImage.id,hostedImage.id,'Identical bytes from different origins retain distinct receipts');
+    assert.notEqual(localImage.path,hostedImage.path);
+    assert.equal(hostedImage.caption,'Hosted URL');
+    response=await verify({...candidate,proof:[{...proof,caption:'Claiming a different capture location'}]});
+    assert.equal(response.status,400);assert.equal((await response.json()).error,'untrusted_proof');
     candidate.proof=[];response=await verify();assert.equal((await response.json()).ready,false);
     candidate.outcome='needs_human';candidate.question={blockKey:'preview',question:'Which safe preview can be used?',reason:'Assigned preview is unavailable.'} as never;
     response=await verify();assert.equal((await response.json()).ready,true,'A valid blocker is accepted without requiring a completed demo');
     response=await verify(candidate,'changed');assert.equal(response.status,400);assert.equal((await response.json()).error,'patch_integrity');
     response=await verify({...candidate,attemptId:'other'});assert.equal(response.status,400);assert.equal((await response.json()).error,'candidate_identity');
-    assert.equal(db.sqlite.prepare('SELECT count(*) n FROM implementation_effect_errors').get()!.n,2);
+    assert.equal(db.sqlite.prepare('SELECT count(*) n FROM implementation_effect_errors').get()!.n,3);
   } finally {db.close();await rm(dir,{recursive:true,force:true});}
 });

@@ -157,6 +157,36 @@ test("reconciliation refreshes only the active try's existing browser and thrott
   } finally { f.db.close(); }
 });
 
+test('one browser retains its fixed local and checked hosted origins; origin changes need a fresh try', async()=>{
+  const f=await fixture();
+  try {
+    const local='https://one.trycloudflare.com',hosted='https://a1b2c3d4.calculator.pages.dev';
+    let allowed:string[]=[];
+    const create=f.provider.create.bind(f.provider);
+    f.provider.create=async(host:string,additional:string[]=[])=>{allowed=[host,...additional];return create(host);};
+    const first=await f.allocator.acquire('run-1','one',local,[hosted]);
+    assert.deepEqual(allowed,['one.trycloudflare.com','a1b2c3d4.calculator.pages.dev']);
+    assert.equal((await f.allocator.acquire('run-1','one',local,[hosted])).provider_resource_id,first.provider_resource_id);
+    await assert.rejects(f.allocator.acquire('run-1','one',local,['https://other.pages.dev']),/cannot change/);
+    await assert.rejects(f.allocator.acquire('run-1','one',local),/cannot change/);
+    assert.equal(f.provider.creates,1);
+  } finally {f.db.close();}
+});
+
+test('switching preview targets requires navigation before any page interaction and resets HTTP status',async()=>{
+  let clicks=0,url='https://one.trycloudflare.com/',disconnected=0;
+  const page={on:()=>{},mainFrame:()=>({}),url:()=>url,click:async()=>{clicks++;},
+    goto:async(target:string)=>{url=target;return null;},title:async()=> 'Calculator',content:async()=> '<output>3</output>'};
+  const api={connect:async()=>({pages:async()=>[page],disconnect:async()=>{disconnected++;}})} as never;
+  const hosted='https://a1b2c3d4.calculator.pages.dev';
+  await assert.rejects(browserCommand({} as never,'session',hosted,{operation:'click',selector:'button',documentStatus:200},api),/Navigate/);
+  assert.equal(clicks,0);
+  const navigated=await browserCommand({} as never,'session',hosted,{operation:'navigate',documentStatus:200},api);
+  assert.equal(navigated.documentStatus,undefined,'An old successful response cannot authenticate a new page');
+  await assert.rejects(browserCommand({} as never,'session',hosted,{operation:'screenshot',documentStatus:navigated.documentStatus},api),/unknown HTTP status/);
+  assert.equal(disconnected,3);
+});
+
 test("completed browser cleanup retries an unconfirmed close without changing successful work or active browsers", async () => {
   const f = await fixture();
   try {

@@ -19,7 +19,7 @@ export class BrowserCapacityWait extends ImplementationError {
 export interface BrowserProvider {
   inventory(): Promise<string[]>;
   capacity(): Promise<{ available: boolean; retryAfterMs: number }>;
-  create(host: string): Promise<{ id: string; disconnect(): Promise<void> }>;
+  create(host: string, additionalHosts?: string[]): Promise<{ id: string; disconnect(): Promise<void> }>;
   close(id: string): Promise<void>;
   keepAlive(id: string): Promise<void>;
 }
@@ -45,12 +45,12 @@ export class CloudflareBrowserProvider implements BrowserProvider {
       ),
     };
   }
-  async create(host: string) {
+  async create(host: string, additionalHosts: string[] = []) {
     const browser = await this.api.launch(this.binding, {
       // Workflow reconciliation runs every five minutes while the author works.
       // Keep the session available between those commands and refresh it there.
       keep_alive: 600_000,
-      guardrails: { allowedDomains: [host] },
+      guardrails: { allowedDomains: [host, ...additionalHosts] },
     });
     return { id: browser.sessionId(), disconnect: () => browser.disconnect() };
   }
@@ -109,7 +109,9 @@ export class ImplementationBrowserAllocator {
     runId: string,
     attemptId: string,
     origin: string,
+    additionalOrigins: string[] = [],
   ): Promise<ImplementationResource> {
+    const origins = [...new Set([origin, ...additionalOrigins])].sort();
     let row = await this.store.allocateResource(
       runId,
       attemptId,
@@ -122,6 +124,9 @@ export class ImplementationBrowserAllocator {
           "browser_origin",
           "Browser is bound to another preview origin",
         );
+      const savedOrigins = JSON.parse(row.metadata_json).origins ?? [origin];
+      if (JSON.stringify([...savedOrigins].sort()) !== JSON.stringify(origins))
+        throw new ImplementationError('browser_origin', 'Browser allowed origins cannot change within a try');
       return row;
     }
     if (row.status === "destroyed")
@@ -161,7 +166,7 @@ export class ImplementationBrowserAllocator {
         .bind(
           now.toISOString(),
           new Date(now.getTime() + 90_000).toISOString(),
-          JSON.stringify({ before, origin }),
+          JSON.stringify({ before, origin, origins }),
           row.resource_id,
         )
         .run();
@@ -172,7 +177,8 @@ export class ImplementationBrowserAllocator {
         );
       let browser;
       try {
-        browser = await this.provider.create(new URL(origin).hostname);
+        browser = await this.provider.create(new URL(origin).hostname,
+          origins.filter(value => value !== origin).map(value => new URL(value).hostname));
       } catch (error) {
         const after = await this.provider.inventory().catch((secondary) => {
           recordCaughtError(secondary, "browser.inventory.after_create");
@@ -186,6 +192,7 @@ export class ImplementationBrowserAllocator {
             JSON.stringify({
               before,
               origin,
+              origins,
               candidates: after?.filter((id) => !before.includes(id)) ?? null,
             }),
             row.resource_id,
@@ -201,7 +208,7 @@ export class ImplementationBrowserAllocator {
           )
           .bind(
             browser.id,
-            JSON.stringify({ before, origin }),
+            JSON.stringify({ before, origin, origins }),
             this.now().toISOString(),
             row.resource_id,
           )
@@ -334,7 +341,7 @@ export async function browserCommand(
   try {
     const pages = await browser.pages();
     const page = pages[0] ?? (await browser.newPage());
-    let documentStatus = input.documentStatus;
+    let documentStatus = input.operation === 'navigate' ? undefined : input.documentStatus;
     page.on("response", response => {
       if (response.request().isNavigationRequest() && response.frame() === page.mainFrame())
         documentStatus = response.status();
@@ -350,6 +357,8 @@ export async function browserCommand(
         "browser_tabs",
         "Unexpected additional browser page",
       );
+    if (input.operation !== 'navigate' && page.url() !== 'about:blank' && new URL(page.url()).origin !== origin)
+      throw new ImplementationError('browser_origin', 'Navigate to the selected preview before interacting with it');
     if (input.operation === "navigate") {
       const response = await page.goto(new URL(input.url ?? "/", origin).href, {
         waitUntil: "networkidle0",

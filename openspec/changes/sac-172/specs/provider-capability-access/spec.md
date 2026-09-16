@@ -1,5 +1,40 @@
 ## ADDED Requirements
 
+### Requirement: Check maintainer previews before browser access
+
+When an approved design needs a hosted static preview, a trusted maintainer MAY
+deploy it outside the agent and register it for a stopped implementation. The
+registration SHALL bind the saved candidate, approved input, base, code tree,
+build log digest, exact Pages account, project, deployment and preview branch.
+The service SHALL read the successful nonproduction deployment from Pages and
+hash its served assets. It SHALL reject aliases, redirects, changed assets,
+wrong identities, stale work and a run that starts while checks are in flight.
+It SHALL retain an immutable receipt without provider keys or raw environment
+variables. Registration MUST NOT move the workflow or count as demo proof.
+
+A fresh attempt MAY browse that run's checked static deployment using its one
+service browser. The browser SHALL retain fixed local and hosted origins for
+the whole attempt. Hosted proof SHALL require the registered code tree and base.
+Switching targets SHALL require navigation and a fresh HTTP result. Each image
+receipt SHALL retain its actual origin, even when local and hosted images have
+identical bytes. The agent MUST NOT rewrite that provenance. This access adds
+no provider write, deploy, approval, merge or release capability.
+
+#### Scenario: A maintainer supplies the missing hosted preview
+
+- **WHEN** a stopped run has a saved build and the maintainer registers a matching successful preview.
+- **THEN** DEOS checks the provider and assets, saves the receipt, and supplies it to the next author and demo reviewers without marking a demo passed.
+
+#### Scenario: The author edits after the preview was deployed
+
+- **WHEN** the author's current code tree differs from the registered build.
+- **THEN** local checks may continue, but hosted evidence is rejected until a new checked deployment is available.
+
+#### Scenario: Local and hosted screens look the same
+
+- **WHEN** both targets return identical screenshot bytes.
+- **THEN** each capture retains a distinct receipt with its checked origin and the demo reviewer sees the service's saved provenance.
+
 ### Requirement: Give implementation work narrow service access
 
 DEOS SHALL use service-owned access for the build browser and safe test tools. It SHALL also use this access for trusted pull request acts. Access SHALL fit the run, repo, act, and try. Keys MUST stay out of prompts, commands, logs, patches, and proof.

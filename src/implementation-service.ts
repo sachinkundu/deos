@@ -1,5 +1,6 @@
 import { D1PlanningStore } from "./planning-store.ts";
 import { ImplementationDemoService } from './implementation-demo.ts';
+import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
 import { D1DesignStore } from "./design-store.ts";
 import {
   D1OrchestrationStore,
@@ -299,12 +300,14 @@ export class ImplementationService {
     const demoEnabled = !!this.definition.jobs.implementation_demo_plan;
     const demo = demoEnabled && job.id === 'implementation_build'
       ? await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).buildInput(run.run_id) : null;
+    const hostedPreview = await new ImplementationHostedPreview(this.env).latest(work);
     return {
       context: JSON.stringify({
         ...input,
         issue: { ...issue, trust: "untrusted provider data" },
         implementationReviewFeedback: feedback,
         ...(demo ? { demo } : {}),
+        ...(hostedPreview ? { hostedPreview } : {}),
         testedBaseSha: work.tested_base_sha,
         requirements: JSON.parse(work.requirements_json),
         prior,

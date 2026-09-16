@@ -293,6 +293,44 @@ The alternative was to run a browser process inside the build Sandbox. The
 service browser gives the agent the needed view while keeping its provider key
 and policy enforcement outside agent-controlled code.
 
+### 4a. Register checked maintainer static previews
+
+The calculator canary's approved design permits a maintainer deployment when
+protected CI is not yet available. The operator deploys its saved build outside
+the agent. A protected `/implementation-hosted-previews` endpoint registers the
+result only while the run is stopped and has no active attempt. The request
+names the current input, candidate, base and code tree, build command and log
+digest, and the complete static asset manifest. The Worker reads the exact
+Pages deployment with a private optional `IMPLEMENTATION_PAGES_READ_TOKEN`.
+It requires the specified account, project, nonproduction branch, successful
+deploy and immutable deployment URL, then hashes each public served asset.
+Neither the deployment token nor the raw Pages response enters agent context.
+
+Migration 0047 adds an immutable D1 index to the hash-checked R2 receipt. The
+guarded insert rechecks the saved candidate and stopped state after the remote
+reads. This operation never restarts a run, closes a gate or creates a proof
+item. The normal audited retry remains a separate operator action.
+
+The next attempt receives the receipt in its checked context. Its one browser
+is created with the local origin and this immutable hosted origin. Those
+origins cannot change within the attempt. `target: "hosted"` requires the
+registered code tree on every call. Switching targets requires navigation;
+the broker clears the prior document status before a navigation. Screenshots
+are stored with an origin scope, and their saved captions name the actual URL
+and registration. Demo Gate receives the service's saved capture provenance.
+An edit requires a new hosted build; the previous deployment is not evidence
+for the edited code. Local checks remain available.
+
+This is a bounded maintainer recovery path for public static previews. It is
+not an autonomous deployment adapter or permission to deploy application
+Workers, use shared live data, reuse an old browser, or publish a release.
+Apply the additive migration before activating the Worker. Keep the optional
+Pages token out of the Sandbox, source tree and logs. A live Pages deployment
+and fresh browser proof remain required before claiming canary completion.
+
+The provider read-back contract is the
+[Pages deployment endpoint](https://developers.cloudflare.com/api/resources/pages/subresources/projects/subresources/deployments/methods/get/).
+
 ### 5. Treat clarification as a durable build wait
 
 The build agent first makes and records every safe assumption supported by the

@@ -52,9 +52,10 @@ export async function verifyImplementationCandidate(
   validateDocumentation(candidate.sources, accesses.results, input.policy.documentationHosts, candidate.files);
   for (const proof of candidate.proof) {
     const staged = await db.prepare(
-      "SELECT sha256,tree_sha FROM implementation_proof WHERE proof_id=? AND run_id=? AND attempt_id=?",
-    ).bind(proof.id, work.run_id, attemptId).first<{ sha256: string; tree_sha: string }>();
-    if (!staged || staged.sha256 !== proof.sha256 || staged.tree_sha !== candidate.treeSha)
+      "SELECT sha256,tree_sha,kind,caption,r2_key,sanitized FROM implementation_proof WHERE proof_id=? AND run_id=? AND attempt_id=?",
+    ).bind(proof.id, work.run_id, attemptId).first<{ sha256: string; tree_sha: string; kind:string; caption:string; r2_key:string; sanitized:number }>();
+    if (!staged || staged.sha256 !== proof.sha256 || staged.tree_sha !== candidate.treeSha ||
+        staged.kind !== proof.kind || staged.caption !== proof.caption || staged.r2_key !== proof.path || staged.sanitized !== 1)
       throw new ImplementationError("untrusted_proof", `Proof was not captured by the trusted broker: ${proof.id}`);
   }
   return { requirements, accesses: accesses.results };

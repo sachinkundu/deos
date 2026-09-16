@@ -22,6 +22,8 @@ import { recordCaughtError } from "./error-context.ts";
 import { ImplementationProviderTest } from "./implementation-provider-test.ts";
 import { previewRelayHost, previewRelayProgram, previewRelaySandboxId, waitForPreviewRelay } from "./implementation-preview.ts";
 import { reconcileImplementationPreview } from "./implementation-preview-reconciliation.ts";
+import { ImplementationHostedPreview, hostedPreviewOrigin, type HostedPreviewEnv } from "./implementation-hosted-preview.ts";
+import { sha256Hex } from "./implementation-hash.ts";
 
 export class ImplementationBroker {
   readonly store: ImplementationStore;
@@ -303,6 +305,10 @@ export class ImplementationBroker {
         );
       }
       if (request.action === "browser") {
+        if (request.target !== undefined && request.target !== 'local' && request.target !== 'hosted')
+          throw new ImplementationError('browser_target', 'Browser target must be local or hosted');
+        const hosted = await new ImplementationHostedPreview(this.env).latest(work);
+        const hostedOrigin = request.target === 'hosted' ? hostedPreviewOrigin(hosted, subject) : null;
         const preview = await this.store.resource(claims.attemptId, "preview");
         if (!preview?.preview_origin)
           throw new ImplementationError(
@@ -322,6 +328,7 @@ export class ImplementationBroker {
           claims.runId,
           claims.attemptId,
           preview.preview_origin,
+          hosted ? [hosted.origin] : [],
         );
         await this.store.assertResource(
           claims.runId,
@@ -338,10 +345,18 @@ export class ImplementationBroker {
             "browser_operation",
             "Browser operation is unsupported",
           );
+        const origin = hostedOrigin ?? preview.preview_origin;
+        const metadata = JSON.parse(browser.metadata_json);
+        // A failed navigation must not leave a previous page's successful status
+        // available to a later screenshot, including when switching targets.
+        if (request.operation === 'navigate') {
+          await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=json_remove(metadata_json,'$.documentStatus','$.documentOrigin') WHERE resource_id=? AND status='ready'")
+            .bind(browser.resource_id).run();
+        }
         const result = await browserCommand(
           this.env.IMPLEMENTATION_BROWSER,
           browser.provider_resource_id!,
-          preview.preview_origin,
+          origin,
           {
             operation: request.operation as
               | "navigate"
@@ -360,12 +375,13 @@ export class ImplementationBroker {
             key: typeof request.key === "string" ? request.key : undefined,
             width: typeof request.width === "number" ? request.width : undefined,
             height: typeof request.height === "number" ? request.height : undefined,
-            documentStatus: JSON.parse(browser.metadata_json).documentStatus,
+            documentStatus: metadata.documentOrigin === origin || (!metadata.documentOrigin && !hostedOrigin)
+              ? metadata.documentStatus : undefined,
           },
         );
         if (result.documentStatus !== undefined) {
-          await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=json_set(metadata_json,'$.documentStatus',?),updated_at=? WHERE resource_id=? AND status='ready' AND provider_resource_id=?")
-            .bind(result.documentStatus, new Date().toISOString(), browser.resource_id, browser.provider_resource_id).run();
+          await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=json_set(metadata_json,'$.documentStatus',?,'$.documentOrigin',?),updated_at=? WHERE resource_id=? AND status='ready' AND provider_resource_id=?")
+            .bind(result.documentStatus, origin, new Date().toISOString(), browser.resource_id, browser.provider_resource_id).run();
         }
         if ("image" in result && result.image) {
           const proof = await this.proof(
@@ -374,7 +390,9 @@ export class ImplementationBroker {
             "browser_image",
             result.image,
             "image/png",
-            String(request.caption ?? "Changed state in the isolated preview"),
+            this.sanitize(`${String(request.caption ?? 'Changed state in the isolated preview')}\nCaptured from ${result.url}${hostedOrigin ? `; checked maintainer deployment ${hosted!.registrationId}` : ''}`),
+            undefined,
+            await sha256Hex(`${origin}\n${hostedOrigin ? hosted!.registrationId : 'local'}`),
           );
           return Response.json({
             url: result.url,
@@ -444,6 +462,7 @@ export class ImplementationBroker {
       this.env.CODEX_AUTH_ENCRYPTION_KEY,
       this.env.CAPABILITY_SIGNING_SECRET,
       this.env.OPENROUTER_API_KEY,
+      (this.env as HostedPreviewEnv).IMPLEMENTATION_PAGES_READ_TOKEN,
     ];
     for (const secret of secrets)
       if (secret && secret.length > 8)
@@ -463,17 +482,18 @@ export class ImplementationBroker {
     mediaType: string,
     caption: string,
     providerDeliveryId?: string,
+    captureScope?: string,
   ): Promise<ImplementationProof> {
     const filename = kind === "browser_image" ? "browser.png" : kind === "provider_originated" ? "provider-proof.json" : "showboat.md";
     // Identical bytes can be captured again for another attempt or tree. The
     // database owns one receipt per capture identity, including its object key.
     const object = await this.store.put(
       claims.runId,
-      `proof/${encodeURIComponent(claims.attemptId)}/${subject.treeSha}/${filename}`,
+      `proof/${encodeURIComponent(claims.attemptId)}/${subject.treeSha}/${captureScope ? `${captureScope}/` : ''}${filename}`,
       content,
       mediaType,
     );
-    const id = `${claims.attemptId}:${subject.treeSha}:${kind}:${object.sha256}`;
+    const id = `${claims.attemptId}:${subject.treeSha}:${kind}:${captureScope ? `${captureScope}:` : ''}${object.sha256}`;
     await this.env.DB.prepare(
       `INSERT INTO implementation_proof
       (proof_id,run_id,attempt_id,kind,approved_design_sha,tested_base_sha,tree_sha,r2_key,sha256,byte_size,media_type,caption,sanitized,created_at,provider_delivery_id)

@@ -50,6 +50,7 @@
 - [ ] 5.8 Show both demo nodes in the existing portal style with clear verdicts, counts, requirements, and visible evidence. Verify keyboard and mobile use in the real staging browser.
 - [ ] 5.9 Add an audited failed-run upgrade into the new frozen demo workflow. Preserve SAC-182's saved work and human authority. Verify isolation, stale evidence, forged results, repair, and restart cases before deployment.
 - [ ] 5.10 Diagnose and repair the canary completion transport and preview recovery faults, validate the built runtime and preview path, deploy with activation read-back, and continue the user-selected SAC-225 calculator through the new demo contract. Leave SAC-182 stopped.
+- [ ] 5.11 Add the approved maintainer static-preview recovery path with provider and asset read-back, immutable candidate binding, one browser with fixed origins, and preserved capture provenance. Verify rejection cases, activate the checked path, and demonstrate the calculator at its actual Pages preview before restarting the canary.
 
 - [x] 5.1 Verify migrations, frozen graph compatibility, job contracts, isolation, denial cases, resource ambiguity, cleanup, proof freshness, citations, publication retries, and human gate behavior.
 - [x] 5.2 Run repository checks and exercise the built implementation in isolated staging as needed, recording actual outcomes and limitations.
