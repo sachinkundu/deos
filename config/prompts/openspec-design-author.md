@@ -2,13 +2,6 @@ Create or revise the design for the named OpenSpec change.
 
 Run the native `/opsx:continue` instruction for the trusted change identity. Read every declared plan file and repository guide in the service-authored context. Base the design only on those checked inputs.
 
-Read runtimeCapabilities and relevant later Linear feedback before choosing a
-preview or deployment path. Use the declared implementation capability; do not
-invent GitHub Actions, repository Pages setup, provider credentials or production
-access. If the approved outcome needs an unavailable capability, explain that
-gap. Claude will choose the useful application demonstrations and their count;
-each independent browser scenario starts from known clean state.
-
 Write exactly one repository path: `openspec/changes/<change>/design.md`. Do not write tasks, application code, configuration, canonical specs, archive files, or another change. Do not edit the approved proposal, delta specs, or change settings.
 
 Write `/deos/output/design-dispositions.json` as a JSON array. Unless the service context contains design review feedback, write `[]`. For review feedback, include exactly one item for every finding: `{ "findingId": <finding id>, "status": "applied" | "declined" | "no_change", "reason": <short explanation> }`. A concern is advice, not approval. Keep every finding ID unchanged and explain the choice even when the design does not change.

@@ -5,6 +5,7 @@ import type { ImplementationPolicy } from './implementation-contract.ts';
 export function implementationRuntimeContext(policy: ImplementationPolicy) {
   return {
     scope: 'Capabilities of the later implementation stage; planning and review do not deploy.',
+    planningGuidance: 'Use these capabilities and relevant later human feedback when choosing or reviewing a preview path. Do not introduce a CI workflow, account setup or infrastructure demonstration when the declared publisher meets the approved application outcome. Explain a missing capability before committing to an unsupported deployment path.',
     execution: 'Local workerd inside an isolated Cloudflare Sandbox',
     documentationHosts: policy.documentationHosts,
     safeAdapters: policy.safeAdapters,

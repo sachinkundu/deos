@@ -8,5 +8,10 @@
     "attemptId": "01a0aae5-23a6-7ded-bb6f-93094754b269",
     "observedAt": "2026-09-16T15:47:51.716Z",
     "error": "2026-09-16T15:46:21.181195Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: \"Bearer realm=\\\"OAuth\\\", resource_metadata=\\\"https://mcp.cloudflare.com/.well-known/oauth-protected-resource/mcp\\\"\" })"
+  },
+  {
+    "attemptId": "01a0aaed-1de6-7b36-926c-4672a492beb2",
+    "observedAt": "2026-09-16T15:57:42.577Z",
+    "error": "2026-09-16T15:54:41.217336Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: \"Bearer realm=\\\"OAuth\\\", resource_metadata=\\\"https://mcp.cloudflare.com/.well-known/oauth-protected-resource/mcp\\\"\" })"
   }
 ]

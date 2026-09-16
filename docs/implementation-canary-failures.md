@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 20 occurrences in 11 categories, including recovered errors and one stopped author stage | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 revised and under independent review; implementation PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 21 occurrences in 11 categories, including recovered errors and one stopped author stage | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 revised and back at Human Review; implementation PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -266,16 +266,18 @@ superseded by the [current contract](implementation-canary-lessons.md).
   preserves the earlier accepted behavior. Independent review began 15:51:52.
 - General correction: provide one frozen-policy capability description to
   planning, design, both design reviewers and demo planning. Explicitly name
-  the supported publisher in author/reviewer instructions. Do not add a workflow
-  quality check. Local 577 tests and TypeScript passed; deployment pending.
+  the supported publisher in that shared service context. Existing immutable
+  workflow prompts and version identities are preserved. Do not add a workflow
+  quality check. Local 578 tests and TypeScript passed; deployment pending.
 
 #### PACK-10 — unrelated Cloudflare MCP connection requests OAuth
 
 - Recovered startup transport errors at 15:37:32.504549 and 15:46:21.181195
   UTC, in independent design response and human design revision respectively.
+  A third occurred at 15:54:41.217336 UTC in the next design response.
   Original: `Transport channel closed ... AuthRequired` for
   `https://mcp.cloudflare.com/.well-known/oauth-protected-resource/mcp`.
-- Both agents continued and completed. These are two occurrences, not stopped
+- All three agents continued and completed. These are three occurrences, not stopped
   stages. No credentials were added and no supervisor retry was required.
 - The base image has no root Codex config. Native-review and implementation
   setup disable account apps/plugins, while these ordinary author invocations
