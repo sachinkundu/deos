@@ -9,7 +9,12 @@ const older = '2026-09-16T13:55:00.000Z';
 async function fixture() {
   const db = new ImplementationTestDatabase(), bucket = new ImplementationTestBucket();
   seedRun(db);
-  db.sqlite.prepare("UPDATE orchestration_runs SET status='awaiting_human'").run();
+  db.sqlite.prepare("UPDATE orchestration_runs SET current_node='planning_review'").run();
+  db.sqlite.prepare(`INSERT INTO human_gate_visits
+    (run_id,visit_sequence,node_id,gate_kind,work_type,work_product_kind,round,state,repository,
+     pull_request_database_id,pull_request_number,pull_request_url,head_branch,base_branch,approved_head_sha,created_at)
+    VALUES ('run-1',1,'planning_review','plan','proposal_and_specs','planning',1,'open','owner/repo',
+      'pr-1',1,'https://github.com/owner/repo/pull/1','plan','main',?,'2026-09-16T13:54:00.000Z')`).run('a'.repeat(40));
   const store = new D1OrchestrationStore(db as unknown as D1Database);
   for (const [id, sent] of [['old',older],['fresh',now.toISOString()],['claimed',older]]) {
     await store.insertInboxEvent({ deliveryId:id,runId:'run-1',correlationId:'correlation-1',
@@ -64,5 +69,21 @@ test('preserves a failed send for retry and records its original cause', async (
     const diagnostic=f.db.sqlite.prepare('SELECT message,detail_r2_key FROM workflow_errors').get()!;
     assert.equal(diagnostic.message,'provider send unavailable');
     assert.match(await (await f.bucket.get(String(diagnostic.detail_r2_key)))!.text(),/upstream reset/);
+  } finally {f.db.close();}
+});
+
+test('never carries an unclaimed decision into a later gate visit', async () => {
+  const f = await fixture();
+  try {
+    f.db.sqlite.prepare("UPDATE human_gate_visits SET created_at='2026-09-16T13:56:00.000Z'").run();
+    await reconcileWorkflowEvents(f.env,now);
+    assert.deepEqual(f.sent,[]);
+    f.db.sqlite.prepare("UPDATE human_gate_visits SET created_at='2026-09-16T13:54:00.000Z'").run();
+    f.handle.status=async()=>{
+      f.db.sqlite.prepare('UPDATE orchestration_runs SET current_visit_sequence=2').run();
+      return {status:'waiting'};
+    };
+    await reconcileWorkflowEvents(f.env,now);
+    assert.deepEqual(f.sent,[]);
   } finally {f.db.close();}
 });
