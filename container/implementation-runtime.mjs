@@ -287,9 +287,11 @@ export async function setupImplementation(job) {
   );
   await trustGeneratedHooks(job.cwd, job.model, hook);
   const runtimeSkill = await readFile('/deos/bin/implementation-skill.md','utf8');
-  const runtimeSkillPath = '/root/.codex/skills/deos-implementation/SKILL.md';
-  await mkdir('/root/.codex/skills/deos-implementation',{recursive:true});
-  await writeFile(runtimeSkillPath,runtimeSkill,{mode:0o600});
+  // The native runtime discovers administrator skills here, and the unprivileged
+  // author can read them without gaining access to Codex's private credential home.
+  const runtimeSkillPath = '/etc/codex/skills/deos-implementation/SKILL.md';
+  await mkdir('/etc/codex/skills/deos-implementation',{recursive:true,mode:0o755});
+  await writeFile(runtimeSkillPath,runtimeSkill,{mode:0o644});
   await writeFile('/deos/run/runtime-guide.md',runtimeSkill,{mode:0o644});
   const grounding = await verifyNativeGrounding(
     {

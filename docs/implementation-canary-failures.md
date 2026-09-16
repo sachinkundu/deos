@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 23 occurrences in 12 categories, including recovered errors and one stopped author stage | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; Claude demo planning running; implementation PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 24 occurrences in 13 categories, including recovered errors and one stopped author stage | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; Claude selected six browser scenarios; implementation running; PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -105,6 +105,12 @@ superseded by the [current contract](implementation-canary-lessons.md).
 - Task generation completed at 16:14:30.993 (5m19s), producing 29 tasks in
   seven groups. Claude demo planning began at 16:14:35.312, attempt
   `01a0aaff-a29e-7eb3-8477-7b7ab1308a37`, visit29.
+- Claude demo planning completed ready at 16:17:25 (2m50s). It selected one
+  preview publication command and six browser scenarios. Its saved response
+  explicitly applies both later Linear instructions; no further clarification
+  or supervisor correction was needed. [Handoff](evidence/sac-172/packing-canary/demo-plan-handoff.json).
+- Sol implementation started at 16:17:28.710, attempt
+  `01a0ab02-47f4-7ae3-aebc-5601103899eb`, visit30, with the same 29 tasks.
 
 ### Incidents
 
@@ -344,6 +350,23 @@ superseded by the [current contract](implementation-canary-lessons.md).
   This container correction is pending the next safe rollout; do not interrupt
   the active agent to deploy a recovered-error fix.
 - [Original rejection](evidence/sac-172/packing-canary/task-author-tool-rejections.json).
+
+#### PACK-13 — advertised native skill path unreadable to the author
+
+- Build attempt 01a0ab02-47f4-7ae3-aebc-5601103899eb returned exit1:
+  `cat: /root/.codex/skills/deos-implementation/SKILL.md: Permission denied`,
+  observed at 16:18:27 UTC. Its next command loaded the public runtime guide.
+  The same author continued; no supervisor recovery was needed.
+- Cause: native skill discovery ran as root and advertised a file under the
+  private Codex credential home, while every author shell runs as deos-author.
+  Discovery alone did not prove the advertised file was readable by that author.
+- Install the same root-owned skill at the native administrator skill location,
+  /etc/codex/skills/deos-implementation/SKILL.md, mode644 under mode755
+  directories. Keep the credential home private. A real pinned Linux image probe
+  confirmed both native enabled-skill discovery at that path and a successful
+  read as deos-author with a clean PATH. No provider/model invocation was used.
+  Container syntax passes; this correction awaits the next safe rollout.
+- [Original command result](evidence/sac-172/packing-canary/implementation-skill-permission.json).
 
 ### Supervisor and measurement notes
 
