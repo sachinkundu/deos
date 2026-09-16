@@ -62,3 +62,33 @@ outstanding. SAC-182 remains stopped; SAC-226 remains in Backlog.
 
 Provider contract:
 [Pages deployment read-back](https://developers.cloudflare.com/api/resources/pages/subresources/projects/subresources/deployments/methods/get/).
+
+## Deployed read-back
+
+Source `e6e63e7` is pushed. Migration 0047 was applied and its table and immutable
+trigger were read back from D1. Backend version
+`7c2910da-b0e2-4851-af1b-1177513577c4` activated at
+2026-09-16T00:10:59.5057Z and was read back at 100% traffic. Global active attempts
+were zero immediately before activation. No container image changed, and no
+portal or BettaView deployment was performed.
+
+At 00:13:10 UTC, both implementation pools and the Basic pool were healthy 4/4.
+The shared Standard-2 pool reported one healthy and three starting instances,
+with no health errors or failed instances. The readiness check correctly stayed
+false; do not claim all pools are ready or restart the canary from this snapshot.
+
+The new route returns 405 for GET and 401 for an unauthenticated POST, without
+changing a run. An initial Python-default-user-agent probe received Cloudflare
+403 / code 1010 before reaching the Worker. Using the existing `deos-operator/1.0`
+client user agent reached the route and confirmed its method and authorization
+checks. This is route validation, not successful preview registration.
+
+D1 still shows SAC-225 failed at visit 36 on definition 30, its saved tree and
+base unchanged, zero registered hosted previews and no implementation PR.
+The saved registration template uses the current D1 candidate digest
+`0ee4ac484c25226c1b35209a96cea27a2aa1e5867fd0f2cf046b9028502faf8e`;
+the separately restored failed-attempt artifact has different metadata but the
+same checked code tree. An actual deployment ID is still required.
+
+Executable read-back is in `sac-225-hosted-preview-showboat.md`. The corresponding
+activation, D1 state and route-check JSON files are alongside this document.

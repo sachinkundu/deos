@@ -1,0 +1,121 @@
+{
+  "result": [
+    {
+      "results": [
+        {
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1",
+          "status": "failed",
+          "current_node": "implementation_failed",
+          "current_visit_sequence": 36,
+          "definition_version": 30
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 4.3412
+        },
+        "duration": 4.3412,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 98951168,
+        "rows_read": 90,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1",
+          "input_sha": "f0dd8c4f8ee8c6abfeb52b2f865ce22ac0db66211710460309ed3941a3159a3b",
+          "candidate_sha": "0ee4ac484c25226c1b35209a96cea27a2aa1e5867fd0f2cf046b9028502faf8e",
+          "tree_sha": "8eb184220d08673abb7564089d72420f2dd54eb5",
+          "tested_base_sha": "a1dcf3d18e0d20e483e507079a1e1fbe8b490686",
+          "pr_url": null
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 1.0243
+        },
+        "duration": 1.0243,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 98951168,
+        "rows_read": 91,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "name": "implementation_hosted_previews",
+          "sql": "CREATE TABLE implementation_hosted_previews (\n  registration_id TEXT PRIMARY KEY,\n  run_id TEXT NOT NULL REFERENCES implementation_runs(run_id),\n  input_sha TEXT NOT NULL,\n  candidate_sha TEXT NOT NULL,\n  tree_sha TEXT NOT NULL,\n  receipt_key TEXT NOT NULL,\n  receipt_sha TEXT NOT NULL,\n  created_at TEXT NOT NULL\n)"
+        },
+        {
+          "name": "implementation_hosted_preview_immutable",
+          "sql": "CREATE TRIGGER implementation_hosted_preview_immutable\nBEFORE UPDATE ON implementation_hosted_previews\nBEGIN SELECT RAISE(ABORT, 'hosted preview registration is immutable'); END"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.1933
+        },
+        "duration": 0.1933,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 98951168,
+        "rows_read": 307,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "registered_previews": 0
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.1865
+        },
+        "duration": 0.1865,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 98951168,
+        "rows_read": 0,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}
