@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 8 recovered agent command/tool errors, 3 recovered startup diagnostics and 1 delayed approval signal: 12 occurrences in 5 categories; delay cause not yet known | 1 recovery intervention: resent the same saved approval signal; general runtime corrections below | Proposal/specification PR34 merged; design author running; implementation PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 16 occurrences in 8 categories: 8 recovered agent tool errors, 3 startup diagnostics, 1 delayed signal, 2 deploy resets, 1 finalization failure, 1 optional-file diagnostic | 1 completed recovery intervention: resent approval; design finalization recovery being prepared | Proposal/specification PR34 merged; accepted design saved, finalization failed; implementation PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -194,6 +194,47 @@ superseded by the [current contract](implementation-canary-lessons.md).
   finish the turn with author JSON before editing or closing the child. Hook
   checks passed; the instruction change awaits the next safe container rollout.
 - Evidence: [original stderr errors](evidence/sac-172/packing-canary/recovered-hook-errors.json).
+
+#### PACK-06 — backend deployment resets live workflow RPCs
+
+- Original error: `Durable Object reset because its code was updated.` at
+  14:57:51.321 and 15:01:29.235 UTC. Both were recovered by Workflow replay;
+  the author continued in the same Sandbox and attempt.
+- These followed supervisor backend deployments during the design attempt.
+  `--containers-rollout none` preserves the image but does not prevent Worker
+  or Durable Object code resets. Prefer saved gates or stopped stages for all
+  deployments. Keep these two occurrences in this canary's total.
+
+#### PACK-07 — finalization uses stale review input and blocks its own correction
+
+- Design attempt `01a0aab2-bd2c-7ace-9c62-6563802125d0` passed its final self-review
+  at candidate3. Completion at 15:09:47.627 requested a disposition array for
+  `[]`, from the original launch input. The current author context had two
+  findings, and the author had correctly saved two responses.
+- The same-session correction was then denied by the done-state hook. The
+  author explicitly returned blocked; supervisor exited1 at 15:10:24.799 and
+  the run reached agent_failed at 15:10:47.131. This is one causal failure;
+  the hook rejection and propagated agent_execution_failed are not counted again.
+- Fix: use current service-authored native context for completion. Check
+  required sidecars before entering self-review. A stage retry after an accepted
+  native review restores the saved patch, responses and original review identity,
+  then performs output finalization only. It cannot allocate another self-review
+  or change the accepted repository candidate. Original failed outputs remain.
+- Recovery also needs an explicit release of the stopped failure Sandbox's
+  diagnostic hold. The existing authenticated cleanup endpoint now accepts that
+  request only with saved artifacts and a stopped process, preserving the failure.
+- Evidence: [completion receipt](evidence/sac-172/packing-canary/design-failure-author-completion.json),
+  [author's blocked result](evidence/sac-172/packing-canary/design-failure-result.json).
+
+#### PACK-08 — absent optional provider log recorded as an error
+
+- Original diagnostic: `ENOENT: no such file or directory, open
+  '/deos/output/provider-references.jsonl'` at 15:10:23.445 UTC.
+- No provider calls is valid for an author. The supervisor already emitted an
+  empty references array, but logged this expected absence as an original error.
+  It now initializes the append-only log before the agent starts.
+- This was not the cause of PACK-07. Count it once as recovered diagnostic noise.
+- Evidence: [original error](evidence/sac-172/packing-canary/design-failure-original-errors.jsonl).
 
 ### Supervisor and measurement notes
 

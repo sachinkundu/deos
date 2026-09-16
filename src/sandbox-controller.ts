@@ -629,6 +629,16 @@ export class SandboxAgentController {
         if (!recovery?.eligible) throw new Error('bounded review requires manual reconciliation');
         if (recovery.journal) reviewContinuation = { sourceAttemptId: retrySource.attempt_id };
       }
+      if (!job.boundedReview && frozenRetrySpec.nativeSelfReview &&
+          retrySource.result_class === 'author_completion_failed') {
+        const recovery = await this.dependencies.nativeReviews?.finalization(retrySource.attempt_id);
+        if (!recovery) throw new Error('native finalization recovery is unavailable');
+        frozenRetrySpec = { ...frozenRetrySpec, materializedContext: recovery.context,
+          continuationPatch: recovery.patch,
+          nativeSelfReview: { ...nativeRecord(frozenRetrySpec.nativeSelfReview),
+            finalizationSourceAttemptId: recovery.sourceAttemptId },
+          nativeFinalizationFiles: recovery.files };
+      }
       // Implementation retries keep the run's immutable design/policy and model,
       // but materialize the saved failed patch and its diagnostic for repair.
       if (job.inputs.includes('implementation_context')) frozenRetrySpec = null;
@@ -702,6 +712,7 @@ export class SandboxAgentController {
           }),
       ...(job.grounding ? { grounding: job.grounding, transcriptSchema: "deos-transcript-v1" } : {}),
       ...(job.boundedReview ? { boundedReview: job.boundedReview, reviewContinuation } : {}),
+      ...(frozenRetrySpec?.nativeFinalizationFiles ? { nativeFinalizationFiles: frozenRetrySpec.nativeFinalizationFiles } : {}),
       nativeSelfReview: frozenRetrySpec?.nativeSelfReview ?? (
         ["simple-traceability", "simple-traceability-claude", "implementation"].includes(run.definition_id) && run.definition_version >= 23 &&
         ["planning_author", "design_author"].includes(nodeId) ? {
@@ -779,7 +790,8 @@ export class SandboxAgentController {
         permissionProfile?: unknown;
         providerAccess?: unknown;
         reviewKind?: unknown;
-        nativeSelfReview?: unknown;
+        nativeSelfReview?: { finalizationSourceAttemptId?: string };
+        nativeFinalizationFiles?: Record<string, string>;
         reviewContinuation?: { sourceAttemptId: string } | null;
       };
       if (typeof durableJob.materializedContext !== "string") {
@@ -839,6 +851,9 @@ export class SandboxAgentController {
         ] : []),
         ...(durableJob.reviewContinuation ? [
           'This is an authenticated continuation of an interrupted review cycle. The supervisor restores the last checked candidate and remaining review action. Do not draft again or perform another repair. Follow the hook for the one unfinished action, then finish only the required output sidecars and result. Do not change a candidate after the hook declares review complete.',
+        ] : []),
+        ...(durableJob.nativeSelfReview?.finalizationSourceAttemptId ? [
+          'The design and its self-review are already complete. This retry restores that exact accepted design and its review responses. Do not rewrite repository files, run another reviewer, or repeat previous stages. Finish only the required output sidecars and completed author JSON. Keep the supplied review dispositions; they answer the latest findings in the current context.',
         ] : []),
       ].join("\n\n");
       const protectedPrompt = await this.dependencies.protectPrompt({
@@ -932,6 +947,11 @@ export class SandboxAgentController {
         throw new Error("attempt branch creation failed");
       }
       await this.restoreContinuationPatch(sandbox, durableJob.continuationPatch, implementationJob);
+      for (const [name, content] of Object.entries(durableJob.nativeFinalizationFiles ?? {})) {
+        if (!['design-dispositions.json', 'review-replies.json', 'author-sources.json'].includes(name))
+          throw new Error('invalid native finalization output path');
+        await sandbox.writeFile(`/deos/output/${name}`, content, { encoding: 'utf8' });
+      }
       if (job.agentRole === "reviewer" || designJob) {
         await sandbox.deleteFile("/usr/local/bin/deos-linear");
         await sandbox.deleteFile("/usr/local/bin/deos-github");
@@ -1221,11 +1241,14 @@ export class SandboxAgentController {
           if (native && !job.boundedReview) {
             const store = this.dependencies.nativeReviews;
             if (!store) throw new Error("native review store is missing");
-            const final = await store.finalCheckpoint(attempt.attempt_id);
+            const proofAttemptId = native.finalizationSourceAttemptId ?? attempt.attempt_id;
+            const final = await store.finalCheckpoint(proofAttemptId);
             const sequence = Number(final.request.candidateSequence);
-            const ready = await store.response(attempt.attempt_id, sequence, "candidate");
+            const ready = await store.response(proofAttemptId, sequence, "candidate");
             if (!ready || typeof ready.authorContext !== "string") throw new Error("native final candidate is missing");
-            const scoped = this.nativeAttempt(attempt, sequence, ready.authorContext);
+            // Reuse the original candidate identity and review on finalization;
+            // the new attempt records output completion, not a new design.
+            const scoped = this.nativeAttempt({ ...attempt, attempt_id: proofAttemptId }, sequence, ready.authorContext);
             if (job.inputs.includes("design_context")) await this.captureDesignCandidate(run, scoped, sandbox);
             else await this.capturePlanningCandidate(run, scoped, sandbox);
           } else if (job.inputs.includes("design_context")) {

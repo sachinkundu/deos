@@ -115,6 +115,16 @@ default to diagnostics. No supervisor cleanup should be needed to get this form.
 
 ## Repeated canaries
 
+Completion must use the latest service-authored review context. A launch snapshot
+can predate feedback handled in the same author session. Validate output sidecars
+before locking a reviewed candidate. If output finalization fails after review,
+restore the saved candidate and responses and finish that output step; reuse the
+accepted review and keep the original failure. Do not restart the design process.
+
+Backend-only deployment can reset live Durable Object calls even when container
+rollout is disabled. Prefer a human gate or stopped stage for deployment, and
+record any deployment-induced interruption in that canary's failure list.
+
 Use a fresh small web app in the sample project. Exercise proposal/specs, design,
 implementation, real browser use, Claude's single review, and publication. Stop
 at the implementation PR for the human. Track any supervisor intervention and

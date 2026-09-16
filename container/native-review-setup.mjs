@@ -1,4 +1,5 @@
 import { initializeBoundedReview } from "./bounded-self-review.mjs";
+import { repositoryManifest } from './native-self-review.mjs';
 import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
@@ -78,7 +79,8 @@ export const setupNativeReview = async (job) => {
   await writeFile("/deos/native-review/state.json", JSON.stringify({
     attemptId: job.attemptId, deadline: job.deadline, change: job.openspecChange, phase,
     authorPrompt: await readFile(job.promptPath, "utf8"), materializedContext: job.materializedContext,
-    candidateSequence: 0, checkpointSequence: 0, completionRepairs: 0, stage: "writing",
+    candidateSequence: 0, checkpointSequence: 0, completionRepairs: 0, stage: job.nativeSelfReview.finalizationSourceAttemptId ? 'finalizing' : 'writing',
+    ...(job.nativeSelfReview.finalizationSourceAttemptId ? { acceptedManifest: await repositoryManifest() } : {}),
   }), { mode: 0o600 });
   if (bounded) await initializeBoundedReview(job);
   await writeFile("/root/.codex/deos-reviewer.toml", [

@@ -116,7 +116,14 @@ const runAdapter = async (state) => {
 };
 
 const startCandidate = async (state) => {
-  const check = await (state.phase === "design" ? runDesignCompletionCheck : runAuthorCompletionCheck)({ cwd: CWD, change: state.change });
+  const context = JSON.parse(state.materializedContext);
+  const check = await (state.phase === "design" ? runDesignCompletionCheck : runAuthorCompletionCheck)({ cwd: CWD, change: state.change,
+    ...(state.phase === 'design' ? {
+      reviewRepliesPath: '/deos/output/review-replies.json',
+      reviewDispositionsPath: '/deos/output/design-dispositions.json',
+      expectedDispositionIds: (context.designReviewFeedback?.findings ?? []).map(finding => finding.id),
+    } : {}),
+  });
   if (!check.ok) {
     if (state.completionRepairs++ >= 2) throw new Error("author completion repair limit reached");
     await save(`${ROOT}/state.json`, state);
@@ -197,12 +204,12 @@ const executeHook = async (event) => {
       await save(`${ROOT}/state.json`, state);
       return { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "allow", updatedInput } };
     }
-    if (state.stage !== "writing" && !name.endsWith("wait_agent") && !name.endsWith("list_agents")) {
+    if (!['writing', 'finalizing'].includes(state.stage) && !name.endsWith("wait_agent") && !name.endsWith("list_agents")) {
       return deny(state.stage === "received"
         ? "The reviewer has returned. Finish this turn with the required author JSON so the completion hook can supply the next instruction. Do not edit files or close the reviewer before that instruction."
         : "Author tools are paused during review. Wait for the reviewer, then finish this turn with the required author JSON to receive the completion hook's next instruction. Do not edit files or close the reviewer yet.");
     }
-    if (name === "Bash" && state.stage === "writing") {
+    if (name === "Bash" && ['writing', 'finalizing'].includes(state.stage)) {
       const input = event.tool_input;
       const requested = input.command ?? input.cmd;
       if (typeof requested !== "string") return deny("Author shell command is missing");
@@ -254,7 +261,7 @@ const executeHook = async (event) => {
     return {};
   }
   if (!child && event.hook_event_name === "Stop") {
-    if (state.stage === "done") {
+    if (state.stage === "done" || state.stage === 'finalizing') {
       if (JSON.stringify(await repositoryManifest()) !== JSON.stringify(state.acceptedManifest)) throw new Error("author changed the accepted candidate");
       return {};
     }

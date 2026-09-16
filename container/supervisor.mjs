@@ -13,6 +13,7 @@ import { atomicJson, captureSupervisorStreams, recordHeartbeat } from "./supervi
 
 import {
   designCorrectionPrompt,
+  authorCompletionContext,
   runAuthorCompletionCheck,
   runBoundedAuthorCompletion,
   runDesignCompletionCheck,
@@ -156,6 +157,8 @@ const main = async () => {
   await mkdir(OUTPUT_ROOT, { recursive: true, mode: 0o700 });
   const job = JSON.parse(await readFile(JOB_PATH, "utf8"));
   completionJob = job;
+  // No provider calls is a normal outcome, not a missing-file diagnostic.
+  await appendFile(PROVIDER_REFERENCES_LOG_PATH, '', { mode: 0o600 });
   const required = ["attemptId", "runId", "nodeId", "cwd", "promptPath", "resultSchemaPath", "deadline"];
   if (required.some((key) => typeof job[key] !== "string" || job[key].length === 0)) {
     throw new Error("job specification is incomplete");
@@ -220,7 +223,7 @@ const main = async () => {
   };
   const authorCheck = async () => {
     const needsDispositions = designAuthor && job.requiredOutputs?.includes('design-dispositions.json');
-    const context = needsDispositions ? JSON.parse(job.materializedContext) : null;
+    const context = needsDispositions ? JSON.parse(await authorCompletionContext(job)) : null;
     const options = { cwd: job.cwd, change: job.openspecChange,
       reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined,
       reviewDispositionsPath: needsDispositions ? `${OUTPUT_ROOT}/design-dispositions.json` : undefined,

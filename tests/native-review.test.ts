@@ -50,6 +50,36 @@ test("checkpoint replay returns the saved response without repeating the reducer
   db.close();
 });
 
+test('failed native completion restores saved outputs and accepted review without another review call', async () => {
+  const { store, db, objects } = fixture();
+  db.exec(`ALTER TABLE agent_attempts ADD COLUMN manifest_id TEXT;
+    ALTER TABLE agent_attempts ADD COLUMN result_class TEXT;
+    ALTER TABLE agent_attempts ADD COLUMN job_spec_json TEXT;
+    ALTER TABLE agent_attempts ADD COLUMN state TEXT;
+    CREATE TABLE artifacts(manifest_id TEXT, logical_name TEXT, r2_key TEXT, sha256 TEXT);
+    UPDATE agent_attempts SET manifest_id='failure', result_class='author_completion_failed',job_spec_json='{}',state='failed';`);
+  const key = await store.allocate('author', 'design', 1, launch);
+  await store.started(key, 'author', child);
+  await store.complete(key, 'author', proof(key));
+  await store.accepted('author', 1);
+  const context = JSON.stringify({ designReviewFeedback: { findings: [{ id: 'safe-text' }] } });
+  await store.checkpoint('author', {attemptId:'author', sequence:0, candidateSequence:1, kind:'candidate'}, async () => ({action:'review',authorContext:context}));
+  await store.checkpoint('author', {attemptId:'author', sequence:1, candidateSequence:1, kind:'review_completed'}, async () => ({action:'stop'}));
+  for (const [name,content] of [['patch.diff','saved design patch'],['design-dispositions.json','[{"findingId":"safe-text","status":"applied","reason":"Use textContent"}]'],['review-replies.json','[]']]) {
+    objects.set(name,content);
+    db.prepare('INSERT INTO artifacts VALUES (?,?,?,?)').run('failure',name,name,await nativeDigest(content));
+  }
+  const recovery = await store.finalization('author');
+  assert.equal(recovery.context, context);
+  assert.equal(recovery.sourceAttemptId, 'author');
+  assert.equal(recovery.patch.manifestId, 'failure');
+  assert.equal(JSON.parse(recovery.files['design-dispositions.json'])[0].findingId, 'safe-text');
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM self_review_sessions').get()?.n,1);
+  objects.set('patch.diff','changed');
+  await assert.rejects(store.finalization('author'), /artifact changed: patch.diff/);
+  db.close();
+});
+
 test("native children use one parent attempt and immutable proof must survive read-back", async () => {
   const { store, db, objects } = fixture();
   const key = await store.allocate("author", "planning", 1, launch);

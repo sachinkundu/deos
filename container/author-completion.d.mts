@@ -32,6 +32,11 @@ export function authorCorrectionPrompt(
   round: number,
   maximumRepairs: number,
 ): string;
+export function authorCompletionContext(job: {
+  attemptId: string;
+  materializedContext: string;
+  nativeSelfReview?: { schema?: string } | null;
+}, readNativeState?: () => Promise<{ attemptId: string; materializedContext: string }>): Promise<string>;
 export function designCorrectionPrompt(
   check: AuthorCompletionCheck,
   round: number,

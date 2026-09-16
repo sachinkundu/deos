@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { DatabaseSync } from 'node:sqlite';
 
 import {
   CleanupAuditor,
+  D1CleanupAuditStore,
   type CleanupAuditStore,
 } from "../src/cleanup-audit.ts";
 import type { SandboxFactory, SandboxView } from "../src/sandbox-controller.ts";
@@ -10,6 +12,22 @@ import type { SandboxFactory, SandboxView } from "../src/sandbox-controller.ts";
 const SANDBOX_ID = `sbx-v1-${"a".repeat(30)}`;
 const ATTEMPT_ID = "01a0578b-245c-7734-89f2-fe641acb74d2";
 const NOW = new Date("2026-08-16T12:00:00.000Z");
+
+test('failure cleanup SQL requires a complete manifest and retains the original failure', async () => {
+  const db=new DatabaseSync(':memory:');
+  db.exec(`CREATE TABLE agent_attempts(attempt_id TEXT,sandbox_id TEXT,state TEXT,result_class TEXT,result_detail TEXT,
+    ended_at TEXT,updated_at TEXT,cleanup_state TEXT,manifest_id TEXT);
+    CREATE TABLE artifact_manifests(manifest_id TEXT,state TEXT);
+    INSERT INTO agent_attempts VALUES ('attempt','sandbox','failed','author_completion_failed','original',NULL,'before','pending','manifest');`);
+  const store=new D1CleanupAuditStore({prepare:(sql:string)=>({bind:(...args:any[])=>({run:async()=>({meta:{changes:db.prepare(sql).run(...args).changes}})})})} as unknown as D1Database);
+  assert.equal(await store.claimAttemptCleanup('attempt','sandbox','before','now',true),false);
+  db.exec("INSERT INTO artifact_manifests VALUES ('manifest','complete')");
+  assert.equal(await store.claimAttemptCleanup('attempt','sandbox','before','now',true),true);
+  assert.deepEqual({...db.prepare('SELECT state,result_class,result_detail FROM agent_attempts').get()},
+    {state:'failed',result_class:'author_completion_failed',result_detail:'original'});
+  assert.equal(await store.claimAttemptCleanup('attempt','sandbox','before','later',true),false);
+  db.close();
+});
 
 class Store implements CleanupAuditStore {
   readonly candidates = new Map<string, any>();
@@ -45,14 +63,17 @@ class Store implements CleanupAuditStore {
     item.linear_resource_id = resource;
     item.cleanup_state = "reported";
   }
-  async claimAttemptCleanup(attemptId: string, sandboxId: string, expectedUpdatedAt: string, now: string) {
+  async claimAttemptCleanup(attemptId: string, sandboxId: string, expectedUpdatedAt: string, now: string, releaseFailureHold = false) {
     const candidate = this.candidates.get(sandboxId);
     if (
-      candidate?.attempt_id !== attemptId || candidate.state !== "collecting" ||
+      candidate?.attempt_id !== attemptId || candidate.state !== (releaseFailureHold ? 'failed' : 'collecting') ||
+      (releaseFailureHold && !candidate.savedManifest) ||
       candidate.cleanup_state === "destroyed" || candidate.updated_at !== expectedUpdatedAt
     ) return false;
-    candidate.state = "interrupted";
-    candidate.result_class = "operator_cleanup";
+    if (!releaseFailureHold) {
+      candidate.state = "interrupted";
+      candidate.result_class = "operator_cleanup";
+    }
     candidate.updated_at = now;
     return true;
   }
@@ -132,6 +153,25 @@ const destroyRequest = (overrides: Record<string, unknown> = {}, secret = "audit
       ...overrides,
     }),
   });
+
+test('explicit failure hold release preserves the original error and requires saved outputs and a stopped process', async () => {
+  const {auditor,store,factory}=setup();
+  const row = {sandbox_id:SANDBOX_ID,sandbox_tier:'basic',attempt_id:ATTEMPT_ID,process_id:'process',
+    state:'failed',result_class:'author_completion_failed',result_detail:'original error',cleanup_state:'pending',
+    cleanup_hold_until:'2026-08-17T12:00:00.000Z',updated_at:NOW.toISOString(),savedManifest:false};
+  store.candidates.set(SANDBOX_ID,row);
+  assert.equal((await auditor.handleDestroy(destroyRequest())).status,409);
+  assert.equal((await auditor.handleDestroy(destroyRequest({releaseFailureHold:true}))).status,409);
+  row.savedManifest=true;
+  factory.sandbox.processState='running';
+  assert.equal((await auditor.handleDestroy(destroyRequest({releaseFailureHold:true}))).status,409);
+  factory.sandbox.processState='exited';
+  assert.equal((await auditor.handleDestroy(destroyRequest({releaseFailureHold:true}))).status,200);
+  assert.equal(row.state,'failed');
+  assert.equal(row.result_class,'author_completion_failed');
+  assert.equal(row.result_detail,'original error');
+  assert.equal(factory.sandbox.destroyed,true);
+});
 
 test("provider inventory endpoint is authenticated and reports standalone orphans once", async () => {
   const { auditor, store, creates } = setup();

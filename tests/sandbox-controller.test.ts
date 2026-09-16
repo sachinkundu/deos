@@ -655,6 +655,7 @@ interface SetupOptions {
   reuseTraceReview?: ConstructorParameters<typeof SandboxAgentController>[4]["reuseTraceReview"];
   reuseDesignReview?: ConstructorParameters<typeof SandboxAgentController>[4]["reuseDesignReview"];
   claude?: ConstructorParameters<typeof SandboxAgentController>[4]["claude"];
+  nativeReviews?: ConstructorParameters<typeof SandboxAgentController>[4]['nativeReviews'];
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -681,6 +682,7 @@ const setup = (options: SetupOptions = {}) => {
     {
       now: clock,
       claude: options.claude,
+      nativeReviews: options.nativeReviews,
       reuseTraceReview: options.reuseTraceReview,
       reuseDesignReview: options.reuseDesignReview,
       attemptId: () => "00000000-0000-7000-8000-000000000001",
@@ -894,6 +896,33 @@ for (const implementation of [false, true]) test(implementation
   assert.equal(retried.retrySourceJobSpecDigest, sourceAttempt.job_spec_digest);
   assert.equal(retried.visitSequence, 5);
   assert.notEqual(retried.deadline, source.deadline);
+});
+
+test('native completion retry restores the saved patch and responses with the original review identity', async () => {
+  const recovery = {sourceAttemptId:'original-review',context:JSON.stringify({latest:'review input'}),
+    patch:{attemptId:'failed',manifestId:'failure',r2Key:'saved-patch',sha256:await crypto.subtle.digest('SHA-256',
+      new TextEncoder().encode('# No repository changes in this attempt.\n')).then(x=>Buffer.from(x).toString('hex'))},
+    files:{'design-dispositions.json':'[]','review-replies.json':'[]'}};
+  const state=setup({nativeReviews:{finalization:async (id:string)=>{
+    assert.equal(id,'failed');return recovery;
+  }} as any});
+  await state.controller.execute({...run,current_visit_sequence:1},'work','work',definition);
+  const source={...state.attempts.latest!,attempt_id:'failed',state:'failed' as const,
+    cleanup_state:'destroyed' as const,result_class:'author_completion_failed',ended_at:'2026-08-16T09:58:00.000Z'};
+  const job=JSON.parse(source.job_spec_json);
+  job.nativeSelfReview={phase:'design'};
+  source.job_spec_json=JSON.stringify(job);
+  source.job_spec_digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(source.job_spec_json))
+    .then(x=>Buffer.from(x).toString('hex'));
+  state.attempts.latest=source;state.attempts.retrySource=source;
+  await state.controller.execute({...run,current_visit_sequence:3},'work','work',definition);
+  const restored=JSON.parse(state.attempts.latest!.job_spec_json);
+  assert.equal(restored.materializedContext,recovery.context);
+  assert.deepEqual(restored.continuationPatch,recovery.patch);
+  assert.equal(restored.nativeSelfReview.finalizationSourceAttemptId,'original-review');
+  assert.deepEqual(restored.nativeFinalizationFiles,recovery.files);
+  assert.equal(state.materializeCalls(),1,'retry must not rematerialize the original stage');
+  assert.equal(state.factory.sandbox.files.get('/deos/output/design-dispositions.json'),'[]');
 });
 
 test("first planning visit renders and protects the exact least-privilege prompt", async () => {

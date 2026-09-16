@@ -294,6 +294,18 @@ export const runDesignCompletionCheck = async ({ cwd, change, reviewRepliesPath,
   });
 };
 
+// Native self-review updates its service-authored input in place. The frozen
+// launch input predates those findings and must not erase their dispositions.
+export const authorCompletionContext = async (job, readNativeState = async () =>
+  JSON.parse(await readFile('/deos/native-review/state.json', 'utf8'))) => {
+  if (!job.nativeSelfReview || job.nativeSelfReview.schema === 'deos-bounded-review-v1')
+    return job.materializedContext;
+  const state = await readNativeState();
+  if (state.attemptId !== job.attemptId || typeof state.materializedContext !== 'string')
+    throw new Error('native completion context is missing or belongs to another attempt');
+  return state.materializedContext;
+};
+
 export const runBoundedAuthorCompletion = async ({
   initialCheck,
   initialResult,

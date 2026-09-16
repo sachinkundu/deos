@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   authorCorrectionPrompt,
+  authorCompletionContext,
   changedPathsFromPorcelain,
   designCorrectionPrompt,
   runAuthorCompletionCheck,
@@ -14,6 +15,14 @@ import {
 } from "../container/author-completion.mjs";
 
 const CHANGE = "add-review";
+test('native completion uses the latest review context instead of the original empty findings', async () => {
+  const original = JSON.stringify({ designReviewFeedback: { findings: [] } });
+  const current = JSON.stringify({ designReviewFeedback: { findings: [{ id: 'safe-text' }] } });
+  const job = { attemptId: 'author', materializedContext: original, nativeSelfReview: {} };
+  assert.equal(await authorCompletionContext(job, async () => ({ attemptId: 'author', materializedContext: current })), current);
+  assert.equal(await authorCompletionContext({ ...job, nativeSelfReview: null }), original);
+  await assert.rejects(authorCompletionContext(job, async () => ({ attemptId: 'other', materializedContext: current })), /another attempt/);
+});
 const ROOT = `openspec/changes/${CHANGE}`;
 const FILES = [
   `${ROOT}/.openspec.yaml`,
