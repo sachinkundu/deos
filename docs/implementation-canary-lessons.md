@@ -45,6 +45,12 @@ Use the browser driver's replacement operation for text fields; inserting text
 is not equivalent to filling a field. Inspect original captures with the native
 image viewer. Do not assume an image compositor is installed.
 
+The author can list proof with `action: status`, then submit `action: select_proof`
+with the IDs in the intended PR order. This chooses the complete reviewer gallery
+and Showboat records without deleting original diagnostics. It can deselect a
+failed or superseded capture that was previously marked for review. The workflow
+passes this selection through; it does not decide which evidence is good enough.
+
 ## Runtime and previews
 
 The container ships `container/skills/deos-implementation/SKILL.md`. It is installed

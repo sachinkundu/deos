@@ -94,6 +94,20 @@ export async function responseCommand(response, argv, cwd, options = {}) {
     response.off("close", disconnect);
   }
 }
+export function selectReviewProof(state, ids) {
+  if (!Array.isArray(ids) || ids.some(id => typeof id !== "string") ||
+      new Set(ids).size !== ids.length || ids.some(id => !state.proof.some(proof => proof.id === id)))
+    throw new Error("Choose distinct proof IDs from the status response");
+  state.reviewProofIds = [...ids];
+}
+export function selectedReviewProof(state) {
+  if (!state.reviewProofIds) return state.proof;
+  const proofs = new Map(state.proof.map(proof => [proof.id, proof]));
+  return state.reviewProofIds.flatMap(id => {
+    const proof = proofs.get(id);
+    return proof ? [{ ...proof, audience: "review" }] : [];
+  });
+}
 async function checked(argv, cwd, env) {
   const result = await command(argv, cwd, { env });
   if (result.exitCode !== 0)
@@ -484,7 +498,12 @@ export async function setupImplementation(job) {
           result = { ...subject,
             checks: checks.map(({ command, cwd, exitCode }) => ({ command, cwd, exitCode })),
             proofKinds: [...new Set(state.proof.map(p => p.kind))],
+            proof: state.proof.map(({ id, kind, caption, audience }) => ({ id, kind, caption, audience,
+              selected: state.reviewProofIds ? state.reviewProofIds.includes(id) : null })),
           };
+        } else if (request.action === "select_proof") {
+          selectReviewProof(state, request.ids);
+          result = { selected: selectedReviewProof(state).map(({ id, kind, caption }) => ({ id, kind, caption })) };
         } else if (request.action === "check") {
           if (
             !Array.isArray(request.argv) ||
@@ -711,7 +730,7 @@ export async function setupImplementation(job) {
         ),
         patchSha: sha(patch),
         checks: state.checks,
-        proof: state.proof,
+        proof: selectedReviewProof(state),
         sources,
         assumptions: result.assumptions,
         question: result.question,

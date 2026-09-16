@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 46 runtime/tool occurrences in 23 categories, including recovered errors and one stopped author stage; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; six hosted demo scenarios complete; build completed at 17:09:25 UTC, Claude review started at 17:09:44; PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 59 runtime/tool occurrences in 27 categories, including recovered errors and one stopped author stage; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; six hosted demo scenarios complete; Claude review completed with two evidence findings at 17:16:44; Sol response running; PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -116,6 +116,11 @@ superseded by the [current contract](implementation-canary-lessons.md).
   Claude's single demo review began at 17:09:44.359, attempt
   `01a0ab32-202f-795b-8208-b8e5cd90fdbf`, visit32. No supervisor application
   edits, proof captures, or implementation-stage restarts occurred.
+- Claude completed its single review at 17:16:44.020 (7m). It found the app real
+  and its main behavior demonstrated, then requested current hosted reachability
+  proof and clearer reload evidence. These are reviewer findings, not workflow
+  failures. Sol's one response pass started at 17:16:47.852, attempt
+  `01a0ab38-96a2-7887-9e4f-de399426a5c7`, visit33, with saved implementation.
 
 ### Incidents
 
@@ -165,6 +170,10 @@ superseded by the [current contract](implementation-canary-lessons.md).
   16:19:15.239945 UTC. It recovered through Node file writes. This attempt still
   uses the earlier image; the clearer correction is awaiting a safe rollout.
   [Build tool rejections](evidence/sac-172/packing-canary/build-tool-rejections.json).
+- Eighth occurrence: response attempt01a0ab38 tried the native patch tool at
+  17:18:56.050735 and recovered with tee. The clearer hook/skill correction is
+  still pending the safe rollout; this new attempt used the current live image.
+  [Response startup errors](evidence/sac-172/packing-canary/response-startup-errors.json).
 
 #### PACK-02 — heartbeat read before its first file existed
 
@@ -381,6 +390,10 @@ superseded by the [current contract](implementation-canary-lessons.md).
   read as deos-author with a clean PATH. No provider/model invocation was used.
   Container syntax passes; this correction awaits the next safe rollout.
 - [Original command result](evidence/sac-172/packing-canary/implementation-skill-permission.json).
+- The response attempt repeated the unreadable skill access in item2, then its
+  directory inspection in item4 returned permission denied. Two further failed
+  shell calls, with the same known path cause; it recovered through the public
+  runtime guide. [Original results](evidence/sac-172/packing-canary/response-startup-errors.json).
 
 #### PACK-14 — documentation search assumes an optional index exists
 
@@ -546,6 +559,61 @@ superseded by the [current contract](implementation-canary-lessons.md).
   Build finalization completed at 17:09:25 and advanced normally to Claude.
 - [Original commands and completion](evidence/sac-172/packing-canary/build-command-interruption.json).
 
+#### PACK-24 — hosted navigation resets and dependent browser calls
+
+- Final durable transcript audit recovered five earlier failed operations that
+  the compact progress snapshots omitted. These occurred before the first demo,
+  not during Claude review.
+- Item44: hosted navigation returned `net::ERR_CONNECTION_RESET`; its shell then
+  issued viewport and state requests, both refused because navigation had not
+  completed. Item45 repeated navigation and returned the same connection reset.
+  Item46 substituted the immutable deployment URL, which the browser refused as
+  outside its assigned review-alias origin.
+- Two transport failures, two dependent calls after failed navigation, and one
+  unsupported origin substitution. The connection-reset cause is unknown. Sol
+  continued through the local preview and later completed hosted navigation and
+  all scenarios. No supervisor recovery occurred.
+- Runtime guidance now says to use `target: "hosted", url: "/"` for assigned
+  routing and await successful navigation before other exploratory operations.
+  The immutable URL remains suitable for the human review link. No origin
+  restrictions were broadened or provider retries added.
+- [Original calls and recovery](evidence/sac-172/packing-canary/build-navigation-recovery.json).
+
+#### PACK-25 — browser close accepted before absence was confirmed
+
+- Build cleanup at 17:09:27 returned `Browser close is not yet confirmed`.
+  The aggregate cleanup error and its outer sandbox-destruction wrapper were
+  saved as two workflow_errors records. They describe one failed browser cleanup
+  operation, not two independent failures. The completed build still advanced.
+- The existing scheduled reconciler recovered it: D1 recorded the browser as
+  destroyed with an absence receipt at 17:16:23.797. Preview relay cleanup also
+  completed. No supervisor resource mutation or stage restart was needed.
+- Existing browser cleanup tests cover this delayed-absence path. This is a
+  recovered provider lifecycle incident; no speculative new retry was added.
+- [Original causes and durable recovery](evidence/sac-172/packing-canary/build-cleanup-recovery.json).
+
+#### PACK-26 — checks started before restoring dependencies
+
+- The response sandbox restored source but not node_modules. In item15, npm test
+  returned exit127 (`vitest: not found`), and npm run build returned exit127
+  (`tsc: not found`). These are two setup failures, not app assertions or defects.
+- Sol then installed the lockfile dependencies with npm ci. Runtime guidance
+  explicitly says to check tools and restore dependencies before tests/builds.
+- [Original calls](evidence/sac-172/packing-canary/response-command-recovery.json).
+
+#### PACK-27 — duplicate test runs were interrupted during diagnosis
+
+- With a checked suite still running, Sol launched another checked call and a
+  direct npm test/build command. It later stopped processes and switched to one
+  Vitest worker with file parallelism disabled. Items22 and23 returned exit143;
+  the direct output contained passing assertions followed by Terminated.
+- Two interrupted calls observed so far. Do not infer failing application
+  assertions or a provider capacity limit from these terminations. Sol owns the
+  suite and its recovery; the supervisor made no test/config/code changes.
+- The runtime guide now says to keep one suite active, inspect or stop its
+  existing execution, and use the runner's concurrency controls when appropriate.
+- [Original calls](evidence/sac-172/packing-canary/response-command-recovery.json).
+
 ### App development failures recovered by the implementation agent
 
 These are recorded for completeness, separately from platform/tool failures and
@@ -567,6 +635,16 @@ that pass are not failures. All occurred in build attempt
 [First browser collection failure and response](evidence/sac-172/packing-canary/build-demo-rename-failure.json).
 
 ### Supervisor and measurement notes
+
+- Claude's evidence feedback exposed a publishing limitation: authors could mark
+  a Showboat record for review but could not later deselect it. The harness now
+  offers status proof IDs and an explicit select_proof action. Only the author's
+  chosen records go to the candidate, in the chosen order; original records stay
+  in diagnostics. This adds no quality verdict or completion check. Source tests
+  cover ordering, original preservation, invalid tool input recovery and legacy
+  behavior; all 587 repository tests and TypeScript pass. Pending safe rollout,
+  so do not claim the live response agent can use it yet. This capability gap is
+  a review finding, separate from observed failed-operation counts.
 
 - The implementation author bulk-marked task checkboxes before demonstrations
   finished. The task counter therefore cannot be treated as proof completion.

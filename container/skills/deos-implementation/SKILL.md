@@ -34,12 +34,18 @@ A human-requested revision updates the same PR without another automatic review.
   must preserve `/etc/cloudflare/certs/cloudflare-containers-ca.crt`.
 - Install dependencies only when missing or changed. A resumed job restores code,
   tasks, checks and proof, but fresh compute may need dependencies installed.
+  Check that tools exist and install dependencies before invoking tests or builds.
   Do not redo proposal, design, completed implementation, or unchanged demos.
   Before installing, add generated dependency and build directories to the
   repository's `.gitignore` (for example `node_modules/`, `dist/`, `coverage/`,
   `.wrangler/`).
   Checks snapshot changed source files; dependencies and their executable
   symlinks are not implementation files to publish.
+- Keep one build or test suite active at a time. If a checked command is slow,
+  inspect its activity or stop that command before trying another route. Starting
+  the same suite directly while its checked copy is still running adds contention
+  and does not diagnose the wait. Use the test runner's concurrency controls when
+  the assigned sandbox needs them.
 - Build into a dedicated directory such as `dist`. Start `action: preview` with
   `assets: "dist"` and/or a Worker entry file. Do not serve the whole repository:
   unnecessary file watchers previously exhausted the runtime.
@@ -73,6 +79,10 @@ returns its immutable review URL. It does not run repository code with tokens.
 For a static-only app, publish the build and open it directly with `target:
 "hosted"`; a local preview process or Quick Tunnel is not required. Use a local
 preview when useful during development or when the app needs a local backend.
+For hosted browser navigation, use `url: "/"` so the service selects its assigned
+review origin. The immutable deployment URL is for the human review link; it is
+not necessarily an allowed origin in the current browser session. Await a
+successful navigation before issuing exploratory viewport or state commands.
 Use `target: "hosted"` in demo scenarios to capture that deployment. Publish
 before the first browser command, and republish after changing the build. Keep
 the build fixed while collecting. A pending response means retry the same request
@@ -106,3 +116,11 @@ The PR presents the issue, approved planning/design links, behavior images and
 explanations, current preview when available, and one Showboat link. Keep internal
 test results and agent discussion in transcripts. The workflow does not judge
 your checks, Claude's findings, or image quality. Final approval stays human.
+
+After the final collection, use `action: status` to list saved proof IDs and
+captions, then submit `{"action":"select_proof","ids":["..."]}` with every image
+and Showboat record you want in the PR, in presentation order. This replaces the
+previous selection, so include all intended proof, not only the newest capture.
+Omit obsolete or failed exploratory records from that selection; their original
+bytes and errors remain in diagnostics. Repeat selection if you collect new
+proof. Selecting evidence is your editorial decision, not a workflow quality test.

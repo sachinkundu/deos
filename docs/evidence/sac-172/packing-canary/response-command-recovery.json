@@ -1,0 +1,115 @@
+{
+  "readAt": "2026-09-16T17:23:24.308Z",
+  "attempt": {
+    "attempt_id": "01a0ab38-96a2-7887-9e4f-de399426a5c7",
+    "sandbox_id": "impl-v1-cx7fq73l4wemdpzqtzha6fx7hbyixy5ohz5cb5zj22hav3zp2wuq",
+    "sandbox_tier": "basic",
+    "process_id": "21d3b31e-7f1f-4115-9e8e-1a8e5e4c2dbf",
+    "state": "running",
+    "node_id": "implementation_build",
+    "heartbeat_at": "2026-09-16T17:22:17.253Z"
+  },
+  "originalEvents": [
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_16",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"The saved app source aligns with the approved architecture, and no code adjustment is warranted for Claude\u2019s evidence-only findings. I\u2019ve started the targeted verification: the full test suite, production build/typecheck, and strict OpenSpec validation.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_15",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/check-tests.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"argv\\\":[\\\"npm\\\",\\\"test\\\"],\\\"cwd\\\":\\\"/deos/workspace/repository\\\"}\nJSON\ntee /deos/output/requests/check-build.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"argv\\\":[\\\"npm\\\",\\\"run\\\",\\\"build\\\"],\\\"cwd\\\":\\\"/deos/workspace/repository\\\"}\nJSON\ntee /deos/output/requests/check-openspec.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"argv\\\":[\\\"openspec\\\",\\\"validate\\\",\\\"sac-238\\\",\\\"--strict\\\"],\\\"cwd\\\":\\\"/deos/workspace/repository\\\"}\nJSON\ndeos-implementation /deos/output/requests/check-tests.json\ndeos-implementation /deos/output/requests/check-build.json\ndeos-implementation /deos/output/requests/check-openspec.json'\"",
+        "aggregated_output": "{\"command\":\"'npm' 'test'\",\"exitCode\":127,\"signal\":null,\"stdout\":\"\\n> desktop-packing-list@1.0.0 test\\n> vitest run\\n\\n\",\"stderr\":\"sh: 1: vitest: not found\\n\",\"cwd\":\"/deos/workspace/repository\"}\n{\"command\":\"'npm' 'run' 'build'\",\"exitCode\":127,\"signal\":null,\"stdout\":\"\\n> desktop-packing-list@1.0.0 build\\n> tsc --noEmit && vite build\\n\\n\",\"stderr\":\"sh: 1: tsc: not found\\n\",\"cwd\":\"/deos/workspace/repository\"}\n{\"command\":\"'openspec' 'validate' 'sac-238' '--strict'\",\"exitCode\":0,\"signal\":null,\"stdout\":\"Note: OpenSpec collects anonymous usage stats. Opt out: OPENSPEC_TELEMETRY=0 or openspec config set telemetry.enabled false\\nChange 'sac-238' is valid\\n\",\"stderr\":\"\",\"cwd\":\"/deos/workspace/repository\"}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_17",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"Strict OpenSpec validation passed. Tests and build did not start because this fresh compute has no installed dependencies (`vitest` and `tsc` were missing), which the runtime classifies as an environment setup issue. I\u2019m installing the locked dependencies with the required Cloudflare CA, then rerunning only those two checks.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_18",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/check-install.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"argv\\\":[\\\"npm\\\",\\\"ci\\\",\\\"--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt\\\"],\\\"cwd\\\":\\\"/deos/workspace/repository\\\"}\nJSON\ndeos-implementation /deos/output/requests/check-install.json'\"",
+        "aggregated_output": "{\"command\":\"'npm' 'ci' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'\",\"exitCode\":0,\"signal\":null,\"stdout\":\"\\nadded 80 packages in 59s\\n\\n21 packages are looking for funding\\n  run `npm fund` for details\\n\",\"stderr\":\"\",\"cwd\":\"/deos/workspace/repository\"}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_21",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'ls -la node_modules/.bin/vitest node_modules/.bin/tsc dist 2>&1; tail -80 /deos/output/implementation-diagnostics.jsonl; tail -80 /deos/output/original-errors.jsonl'\"",
+        "aggregated_output": "ls: cannot access 'dist': No such file or directory\nlrwxrwxrwx 1 deos-author deos-author 21 Sep 16 17:20 node_modules/.bin/tsc -> ../typescript/bin/tsc\nlrwxrwxrwx 1 deos-author deos-author 20 Sep 16 17:20 node_modules/.bin/vitest -> ../vitest/vitest.mjs\ntail: cannot open '/deos/output/implementation-diagnostics.jsonl' for reading: Permission denied\n{\"location\":\"implementation progress signal\",\"message\":\"The operation was aborted due to timeout\",\"detail\":\"DOMException [TimeoutError]: The operation was aborted due to timeout\\n    at node:internal/deps/undici/undici:15157:13\\n    at async notify (file:///deos/run/implementation-progress-watcher.mjs:26:22)\",\"occurredAt\":\"2026-09-16T17:17:09.745Z\"}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_20",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/status.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"status\\\"}\nJSON\ndeos-implementation /deos/output/requests/status.json'\"",
+        "aggregated_output": "{\"change\":\"sac-238\",\"approvedDesignSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"testedBaseSha\":\"119bb5dad37429f25a574579f15e7f58be196fef\",\"treeSha\":\"3cdd00ad90f0c24db4e4f0359e7764bbd439c55a\",\"checks\":[{\"command\":\"'openspec' 'status' '--change' 'sac-238' '--json'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'python3' '-c' 'from pathlib import Path; import hashlib, re, subprocess; root=Path('\\\\''/deos/workspace/repository'\\\\''); rel='\\\\''openspec/changes/sac-238/tasks.md'\\\\''; text=(root/rel).read_text(); tasks=re.findall(r'\\\\''^- \\\\[ \\\\] (\\\\d+\\\\.\\\\d+) .+$'\\\\'', text, re.M); headers=re.findall(r'\\\\''^## (\\\\d+)\\\\. .+$'\\\\'', text, re.M); assert len(tasks)==29, tasks; assert headers==[str(i) for i in range(1,8)], headers; assert len(tasks)==len(set(tasks)); expected={'\\\\''openspec/changes/sac-238/.openspec.yaml'\\\\'':'\\\\''50c36dfa766b2fc52e8a7d270b1d67cc487bcd95d1b4c8a5f929d62738e3c77e'\\\\'','\\\\''openspec/changes/sac-238/proposal.md'\\\\'':'\\\\''738364a44d2e6a74cbb29c5fe599c5180c7e12318919d841ed2d49c0bccb2b85'\\\\'','\\\\''openspec/changes/sac-238/specs/packing-list-web-app/spec.md'\\\\'':'\\\\''4b9b17c150238d22da2f6b4a9bff299095480dcc12ca0866f850e00f9dc677da'\\\\'','\\\\''openspec/changes/sac-238/design.md'\\\\'':'\\\\''183eba5a4a9944464e339f2ac7ebd5bceac4a88db1ec11d302af0d47654fe90d'\\\\''}; assert all(hashlib.sha256((root/p).read_bytes()).hexdigest()==h for p,h in expected.items()); status=subprocess.run(['\\\\''git'\\\\'','\\\\''status'\\\\'','\\\\''--short'\\\\''],cwd=root,text=True,capture_output=True,check=True).stdout.splitlines(); assert status==['\\\\''?? '\\\\''+rel], status; print('\\\\''Verified 7 numbered groups, 29 unique checkbox tasks, unchanged approved artifacts, and tasks.md as the only repository change.'\\\\'')'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'bash' '-lc' 'node --version && npm --version'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'npm' 'install' '--save-dev' 'vite' 'typescript' 'vitest' 'jsdom' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'npm' 'install' '--save-dev' '@types/node' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'bash' '-lc' 'curl -fsS -D - http://127.0.0.1:8787/ -o /tmp/packing-index.html && sed -n '\\\\''1,12p'\\\\'' /tmp/packing-index.html'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":7},{\"command\":\"'bash' '-lc' 'npm test && npm run build && openspec validate sac-238 --strict'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'bash' '-lc' 'curl -fsS -o /tmp/carry-on-index.html -w '\\\\''Hosted page: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/ && grep -o '\\\\''<title>[^<]*</title>'\\\\'' /tmp/carry-on-index.html && curl -fsS -o /dev/null -w '\\\\''App script: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/assets/index-CEV-5nZq.js && curl -fsS -o /dev/null -w '\\\\''Stylesheet: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/assets/index-C56SEddd.css'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":22},{\"command\":\"'bash' '-lc' 'curl -fsS -o /tmp/carry-on-local.html -w '\\\\''Served app: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' http://127.0.0.1:8787/ && grep -o '\\\\''<title>[^<]*</title>'\\\\'' /tmp/carry-on-local.html && curl -fsS -o /dev/null -w '\\\\''App script: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' http://127.0.0.1:8787/assets/index-CEV-5nZq.js && curl -fsS -o /dev/null -w '\\\\''Stylesheet: HTTP %{http_code}; %{content_type}\\\\n'\\\\'' http://127.0.0.1:8787/assets/index-C56SEddd.css'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'npm' 'run' 'build'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":127},{\"command\":\"'openspec' 'validate' 'sac-238' '--strict'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'npm' 'ci' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0},{\"command\":\"'npm' 'test'\",\"cwd\":\"/deos/workspace/repository\",\"exitCode\":0}],\"proofKinds\":[\"showboat\",\"browser_image\"]}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_19",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'test -x node_modules/.bin/vitest && echo dependencies-ready\ndeos-implementation /deos/output/requests/check-tests.json\ndeos-implementation /deos/output/requests/check-build.json'\"",
+        "aggregated_output": "{\"command\":\"'npm' 'test'\",\"exitCode\":0,\"signal\":null,\"stdout\":\"\\n> desktop-packing-list@1.0.0 test\\n> vitest run\\n\\n\\n\\u001b[1m\\u001b[30m\\u001b[46m RUN \\u001b[49m\\u001b[39m\\u001b[22m \\u001b[36mv5.0.1 \\u001b[39m\\u001b[90m/deos/workspace/repository\\u001b[39m\\n\\n \\u001b[32m\u2713\\u001b[39m tests/app.test.ts \\u001b[2m(\\u001b[22m\\u001b[2m14 tests\\u001b[22m\\u001b[2m)\\u001b[22m\\u001b[33m 5483\\u001b[2mms\\u001b[22m\\u001b[39m\\n   \\u001b[32m\u2713\\u001b[39m rendered packing-list behavior \\u001b[2m(6)\\u001b[22m\\n     \\u001b[33m\\u001b[2m\u2713\\u001b[22m\\u001b[39m starts empty, adds unpacked items in order, and renders markup-like names literally\\u001b[33m 781\\u001b[2mms\\u001b[22m\\u001b[39m\\n     \\u001b[33m\\u001b[2m\u2713\\u001b[22m\\u001b[39m renames with Enter semantics, preserves packed state, and filters without writing\\u001b[33m 918\\u001b[2mms\\u001b[22m\\u001b[39m\\n     \\u001b[33m\\u001b[2m\u2713\\u001b[22m\\u001b[39m hands focus to the next row after deletion and persists deletion across a new app start\\u001b[33m 883\\u001b[2mms\\u001b[22m\\u001b[39m\\n     \\u001b[33m\\u001b[2m\u2713\\u001b[22m\\u001b[39m shows distinct empty-list and nothing-left-to-pack states\\u001b[33m 314\\u001b[2mms\\u001b[22m\\u001b[39m\\n     \\u001b[33m\\u001b[2m\u2713\\u001b[22m\\u001b[39m keeps blank forms open and Escape cancels rename without a write\\u001b[33m 493\\u001b[2mms\\u001b[22m\\u001b[39m\\n   \\u001b[32m\u2713\\u001b[39m storage failure and cross-tab orchestration \\u001b[2m(8)\\u001b[22m\\n     \\u001b[33m\\u001b[2m\u2713\\u001b[22m\\u001b[39m keeps a failed mutation usable and retries the full current document\\u001b[33m 316\\u001b[2mms\\u001b[22m\\u001b[39m\\n     \\u001b[33m\\u001b[2m\u2713\\u001b[22m\\u001b[39m adopts a valid external update, retains the filter, and announces it\\u001b[33m 301\\u001b[2mms\\u001b[22m\\u001b[39m\\n     \\u001b[33m\\u001b[2m\u2713\\u001b[22m\\u001b[39m holds only the latest external document during an unsaved conflict and confirms adoption\\u001b[33m 415\\u001b[2mms\\u001b[22m\\u001b[39m\\n \\u001b[32m\u2713\\u001b[39m tests/storage.test.ts \\u001b[2m(\\u001b[22m\\u001b[2m14 tests\\u001b[22m\\u001b[2m)\\u001b[22m\\u001b[32m 300\\u001b[2mms\\u001b[22m\\u001b[39m\\n \\u001b[32m\u2713\\u001b[39m tests/model.test.ts \\u001b[2m(\\u001b[22m\\u001b[2m8 tests\\u001b[22m\\u001b[2m)\\u001b[22m\\u001b[32m 205\\u001b[2mms\\u001b[22m\\u001b[39m\\n\\n\\u001b[2m Test Files \\u001b[22m \\u001b[1m\\u001b[32m3 passed\\u001b[39m\\u001b[22m\\u001b[90m (3)\\u001b[39m\\n\\u001b[2m      Tests \\u001b[22m \\u001b[1m\\u001b[32m36 passed\\u001b[39m\\u001b[22m\\u001b[90m (36)\\u001b[39m\\n\\u001b[2m   Start at \\u001b[22m 17:20:39\\n\\u001b[2m   Duration \\u001b[22m 50.70s\\u001b[2m (environment 80%, tests 13%, transform 5%, import 1%, setup 1%)\\u001b[22m\\n\\n\\u001b[2mEnvironment \\u001b[22m \\u001b[33mjsdom was created 3 times\\u001b[39m\\u001b[2m \u00b7 36.39s total, 80% of tracked time\\u001b[22m\\n\\u001b[2m            \\u001b[22m \\u001b[2mcreate it once per worker with \\u001b[22m\\u001b[33mpool: 'vmThreads'\\u001b[39m\\u001b[2m (keeps per-file isolation) or \\u001b[22m\\u001b[33misolate: false\\u001b[39m\\u001b[2m (shares it across files)\\u001b[22m\\n\\u001b[2m            \\u001b[22m \\u001b[2mlearn more: https://vitest.dev/guide/improving-performance#test-environments\\u001b[22m\\n\\n\",\"stderr\":\"\",\"cwd\":\"/deos/workspace/repository\"}\n{\"command\":\"'npm' 'run' 'build'\",\"exitCode\":0,\"signal\":null,\"stdout\":\"\\n> desktop-packing-list@1.0.0 build\\n> tsc --noEmit && vite build\\n\\nvite v8.3.0 building client environment for production...\\ntransforming...\\n\u2713 8 modules transformed.\\nrendering chunks...\\ncomputing gzip size...\\ndist/index.html                  0.55 kB \u2502 gzip: 0.33 kB\\ndist/assets/index-C56SEddd.css   7.64 kB \u2502 gzip: 2.55 kB\\ndist/assets/index-CEV-5nZq.js   19.92 kB \u2502 gzip: 6.17 kB\\n\\n\u2713 built in 501ms\\n\",\"stderr\":\"\",\"cwd\":\"/deos/workspace/repository\"}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_24",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"Dependency installation completed, but the first rerun exposed a fresh-compute limitation: Vitest starts and then the command is terminated by the 30-second execution window before reporting results. I\u2019m checking whether this is worker-pool startup pressure and will use Vitest\u2019s supported single-worker mode if so; I won\u2019t weaken or replace the suite.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_22",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/check-tests.json'\"",
+        "aggregated_output": "Terminated\n",
+        "exit_code": 143,
+        "status": "failed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_23",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'npm test && npm run build'\"",
+        "aggregated_output": "\n> desktop-packing-list@1.0.0 test\n> vitest run\n\n\n\u001b[1m\u001b[30m\u001b[46m RUN \u001b[49m\u001b[39m\u001b[22m \u001b[36mv5.0.1 \u001b[39m\u001b[90m/deos/workspace/repository\u001b[39m\n\n \u001b[32m\u2713\u001b[39m tests/app.test.ts \u001b[2m(\u001b[22m\u001b[2m14 tests\u001b[22m\u001b[2m)\u001b[22m\u001b[33m 27501\u001b[2mms\u001b[22m\u001b[39m\n   \u001b[32m\u2713\u001b[39m rendered packing-list behavior \u001b[2m(6)\u001b[22m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m starts empty, adds unpacked items in order, and renders markup-like names literally\u001b[33m 3410\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m renames with Enter semantics, preserves packed state, and filters without writing\u001b[33m 3695\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m hands focus to the next row after deletion and persists deletion across a new app start\u001b[33m 2392\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m shows distinct empty-list and nothing-left-to-pack states\u001b[33m 2592\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m keeps blank forms open and Escape cancels rename without a write\u001b[33m 2401\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m supports the declared desktop structure at a 1440 by 900 viewport\u001b[33m 520\u001b[2mms\u001b[22m\u001b[39m\n   \u001b[32m\u2713\u001b[39m storage failure and cross-tab orchestration \u001b[2m(8)\u001b[22m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m keeps a failed mutation usable and retries the full current document\u001b[33m 1179\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m blocks mutations on unread startup data and retries access without overwriting\u001b[33m 898\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m preserves invalid startup data, then backs it up before confirmed reset\u001b[33m 797\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m requires explicit replacement when a recovery copy already exists\u001b[33m 1306\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m adopts a valid external update, retains the filter, and announces it\u001b[33m 1207\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m holds only the latest external document during an unsaved conflict and confirms adoption\u001b[33m 2803\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m keeps the last valid list read-only after an invalid external write and can restore it\u001b[33m 1784\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m\u2713\u001b[22m\u001b[39m treats external key removal as a valid empty list\u001b[33m 2506\u001b[2mms\u001b[22m\u001b[39m\nTerminated\n",
+        "exit_code": 143,
+        "status": "failed"
+      }
+    }
+  ]
+}
