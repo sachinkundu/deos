@@ -76,3 +76,9 @@
 - [x] 8.1 Publish images and a combined Showboat file in the same GitHub repository so PR images render without a DEOS login, preserving the implementation head and human gate.
 - [x] 8.2 Apply the user's PR template and agent instructions; omit internal test results and agent discussion from the PR body.
 - [x] 8.3 Deploy the publisher, refresh SAC-225 PR33 from its saved work, and verify images in the real GitHub PR.
+
+## 9. Repeatable demo collection
+
+- [x] 9.1 Add one queued scenario-list operation with fresh browser contexts, fixed harness settings, ordered actions and screenshot checkpoints, and original-error preservation.
+- [x] 9.2 Select only the completed collection for the PR and retain partial/exploratory captures as diagnostics. Keep checkpoint captions separate even for identical images.
+- [x] 9.3 Test competing requests, reset isolation and failure recovery in the real Cloudflare browser, run repository checks, and deploy with activation read-back. Preserve SAC-225's human review gate; its original images still require agent recapture.

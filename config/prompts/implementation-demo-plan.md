@@ -4,6 +4,12 @@ using the frozen repository reader. Use the supplied requirements as context and
 For each scenario give the safe environment, concrete steps, observable expected
 result, and needed evidence. Prefer images of the actual changed application
 where they explain behavior. Backend work requires real commands and outcomes.
+For browser work, give an explicit list of screenshot checkpoints. Each scenario
+starts from a fresh browser context and known safe test data, runs its actions in
+order, and captures the resulting state before the next scenario resets. Keep
+the harness and viewport fixed within a scenario. Distinguish intended outcomes
+from observed results; the implementer must recapture after correcting a failed
+sequence rather than carry its partial images into the PR.
 Provider work needs real safe-resource events consumed by the changed flow.
 Tests, fixture screenshots, unrelated provider calls, and an author's claim do
 not demonstrate the application. Include relevant failure and recovery cases.

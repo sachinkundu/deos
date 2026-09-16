@@ -20,6 +20,7 @@ import { verifyNativeGrounding } from "./grounded-agent.mjs";
 import { trustGeneratedHooks } from "./native-review-setup.mjs";
 import { originalErrorText } from "./original-errors.mjs";
 import { killProcessGroup, stopProcessGroup } from "./implementation-process.mjs";
+import { collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementationToolQueue } from "./implementation-browser-demo.mjs";
 
 const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
@@ -380,12 +381,22 @@ export async function setupImplementation(job) {
     previewLog = null;
     previewError = null;
   };
-  let chain = Promise.resolve();
+  const toolQueue = implementationToolQueue();
   let providerChain = Promise.resolve();
   let stateWrites = Promise.resolve();
   const persistState = () => {
     stateWrites = stateWrites.then(() => writeFile(`${ROOT}/state.json`, JSON.stringify(state), { mode: 0o600 }));
     return stateWrites;
+  };
+  const browserResult = async (request, subject) => {
+    const result = await broker({ ...request, subject });
+    if (result.imageBase64) {
+      const imagePath = `${ROOT}/browser-${result.proof.sha256}.png`;
+      await writeFile(imagePath, Buffer.from(result.imageBase64, "base64"), { mode: 0o644 });
+      delete result.imageBase64;
+      result.imagePath = imagePath;
+    }
+    return result;
   };
   const server = createServer((req, res) => {
     // A checked test process may call the provider adapter while its enclosing
@@ -415,8 +426,7 @@ export async function setupImplementation(job) {
       });
       return;
     }
-    chain = chain
-      .then(async () => {
+    toolQueue.run(async () => {
         if (req.method !== "POST" || req.url !== "/tool") {
           res.writeHead(404);
           res.end();
@@ -589,29 +599,29 @@ export async function setupImplementation(job) {
             catch (cleanupError) { throw new AggregateError([error, cleanupError], "Preview startup and cleanup failed", { cause: error }); }
             throw error;
           }
+        } else if (request.action === "demo") {
+          beginBrowserDemo(state);
+          await persistState();
+          result = await collectBrowserDemo(request, {
+            browser: step => browserResult(step, subject),
+            record: event => appendFile(journal, JSON.stringify({ operation: "demo", ...subject,
+              occurredAt: new Date().toISOString(), ...event }) + "\n"),
+          });
+          finishBrowserDemo(state, result);
         } else if (["browser", "document", "search", "safe_test"].includes(request.action)) {
-          result = await broker({ ...request, subject });
-          if (result.proof) state.proof.push(result.proof);
-          if (result.imageBase64) {
-            const imagePath = `${ROOT}/browser-${result.proof.sha256}.png`;
-            await writeFile(
-              imagePath,
-              Buffer.from(result.imageBase64, "base64"),
-              { mode: 0o644 },
-            );
-            delete result.imageBase64;
-            result.imagePath = imagePath;
-          }
+          result = await browserResult(request, subject);
+          if (result.proof && !(state.demoCollection && result.proof.kind === "browser_image"))
+            state.proof.push(result.proof);
         } else throw new Error("Unsupported implementation tool action");
         await persistState();
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(result));
-      })
-      .catch(async (error) => {
+      }, async (error) => {
         const diagnostic = {
           message: error.message,
           stack: error.stack,
           cause: error.cause,
+          detail: originalErrorText(error),
           result: error.result,
         };
         try {
@@ -632,7 +642,7 @@ export async function setupImplementation(job) {
   });
   const runtime = {
     async finish() {
-      await chain;
+      await toolQueue.drain();
       await providerChain;
       await stateWrites;
       const { patch, ...snap } = await snapshot(job.cwd);

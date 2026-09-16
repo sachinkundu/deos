@@ -1,0 +1,536 @@
+{
+  "sessionId": "71f1eafc-78ed-45fc-83d1-db82d4286fdf",
+  "starts": [
+    {
+      "value": "0",
+      "local": null,
+      "session": null,
+      "cookie": "",
+      "pages": 1,
+      "contexts": 2
+    },
+    {
+      "value": "0",
+      "local": null,
+      "session": null,
+      "cookie": "",
+      "pages": 1,
+      "contexts": 2
+    },
+    {
+      "value": "0",
+      "local": null,
+      "session": null,
+      "cookie": "",
+      "pages": 1,
+      "contexts": 2
+    },
+    {
+      "value": "0",
+      "local": null,
+      "session": null,
+      "cookie": "",
+      "pages": 1,
+      "contexts": 2
+    },
+    {
+      "value": "0",
+      "local": null,
+      "session": null,
+      "cookie": "",
+      "pages": 1,
+      "contexts": 2
+    }
+  ],
+  "calls": [
+    "reset",
+    "click",
+    "screenshot",
+    "reset",
+    "click",
+    "click",
+    "screenshot",
+    "reset",
+    "click",
+    "screenshot",
+    "click",
+    "reset",
+    "screenshot",
+    "click",
+    "reset",
+    "click",
+    "screenshot"
+  ],
+  "captures": [
+    {
+      "scenarioId": "one",
+      "stepIndex": 1,
+      "state": {
+        "value": "1",
+        "local": "1",
+        "session": "1",
+        "cookie": "count=1",
+        "pages": 1,
+        "contexts": 2
+      },
+      "proof": {
+        "id": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa:one:1",
+        "kind": "browser_image",
+        "caption": "Counter after 1 clicks",
+        "sha256": "fae3afbef35a8dd521a318f75252b03d521e9e682d8832256798501113393185"
+      },
+      "bytes": 12140
+    },
+    {
+      "scenarioId": "two",
+      "stepIndex": 2,
+      "state": {
+        "value": "2",
+        "local": "2",
+        "session": "2",
+        "cookie": "count=2",
+        "pages": 1,
+        "contexts": 2
+      },
+      "proof": {
+        "id": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa:two:2",
+        "kind": "browser_image",
+        "caption": "Counter after 2 clicks",
+        "sha256": "d37acd7dec23f1469fc06fb7539ef389983cd296a45727c0b8125cd5aa79b0fa"
+      },
+      "bytes": 12255
+    },
+    {
+      "scenarioId": "one-again",
+      "stepIndex": 1,
+      "state": {
+        "value": "1",
+        "local": "1",
+        "session": "1",
+        "cookie": "count=1",
+        "pages": 1,
+        "contexts": 2
+      },
+      "proof": {
+        "id": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa:one-again:1",
+        "kind": "browser_image",
+        "caption": "Counter after 1 clicks",
+        "sha256": "fae3afbef35a8dd521a318f75252b03d521e9e682d8832256798501113393185"
+      },
+      "bytes": 12140
+    }
+  ],
+  "failed": {
+    "message": "Demo failure stopped at step 2: No element found for selector: #does-not-exist",
+    "cause": "No element found for selector: #does-not-exist"
+  },
+  "recovered": [
+    {
+      "scenarioId": "recovered",
+      "stepIndex": 1,
+      "state": {
+        "value": "1",
+        "local": "1",
+        "session": "1",
+        "cookie": "count=1",
+        "pages": 1,
+        "contexts": 2
+      },
+      "proof": {
+        "id": "36a42585-925e-4635-b3fc-19ca2c257992:recovered:1",
+        "kind": "browser_image",
+        "caption": "Counter after 1 clicks",
+        "sha256": "fae3afbef35a8dd521a318f75252b03d521e9e682d8832256798501113393185"
+      },
+      "bytes": 12140
+    }
+  ],
+  "selected": [
+    {
+      "id": "36a42585-925e-4635-b3fc-19ca2c257992:recovered:1",
+      "kind": "browser_image",
+      "caption": "Counter after 1 clicks",
+      "sha256": "fae3afbef35a8dd521a318f75252b03d521e9e682d8832256798501113393185"
+    }
+  ],
+  "events": [
+    {
+      "event": "demo_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "plan": {
+        "action": "demo",
+        "scenarios": [
+          {
+            "id": "one",
+            "url": "/fixture",
+            "steps": [
+              {
+                "operation": "click",
+                "selector": "button"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Counter after 1 clicks"
+              }
+            ]
+          },
+          {
+            "id": "two",
+            "url": "/fixture",
+            "steps": [
+              {
+                "operation": "click",
+                "selector": "button"
+              },
+              {
+                "operation": "click",
+                "selector": "button"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Counter after 2 clicks"
+              }
+            ]
+          },
+          {
+            "id": "one-again",
+            "url": "/fixture",
+            "steps": [
+              {
+                "operation": "click",
+                "selector": "button"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Counter after 1 clicks"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "event": "scenario_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one"
+    },
+    {
+      "event": "step_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one",
+      "stepIndex": 0,
+      "step": {
+        "operation": "click",
+        "selector": "button"
+      }
+    },
+    {
+      "event": "step_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one",
+      "stepIndex": 0
+    },
+    {
+      "event": "step_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one",
+      "stepIndex": 1,
+      "step": {
+        "operation": "screenshot",
+        "caption": "Counter after 1 clicks"
+      }
+    },
+    {
+      "event": "step_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one",
+      "stepIndex": 1
+    },
+    {
+      "event": "scenario_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one"
+    },
+    {
+      "event": "scenario_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "two"
+    },
+    {
+      "event": "step_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "two",
+      "stepIndex": 0,
+      "step": {
+        "operation": "click",
+        "selector": "button"
+      }
+    },
+    {
+      "event": "step_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "two",
+      "stepIndex": 0
+    },
+    {
+      "event": "step_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "two",
+      "stepIndex": 1,
+      "step": {
+        "operation": "click",
+        "selector": "button"
+      }
+    },
+    {
+      "event": "step_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "two",
+      "stepIndex": 1
+    },
+    {
+      "event": "step_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "two",
+      "stepIndex": 2,
+      "step": {
+        "operation": "screenshot",
+        "caption": "Counter after 2 clicks"
+      }
+    },
+    {
+      "event": "step_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "two",
+      "stepIndex": 2
+    },
+    {
+      "event": "scenario_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "two"
+    },
+    {
+      "event": "scenario_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one-again"
+    },
+    {
+      "event": "step_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one-again",
+      "stepIndex": 0,
+      "step": {
+        "operation": "click",
+        "selector": "button"
+      }
+    },
+    {
+      "event": "step_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one-again",
+      "stepIndex": 0
+    },
+    {
+      "event": "step_started",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one-again",
+      "stepIndex": 1,
+      "step": {
+        "operation": "screenshot",
+        "caption": "Counter after 1 clicks"
+      }
+    },
+    {
+      "event": "step_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one-again",
+      "stepIndex": 1
+    },
+    {
+      "event": "scenario_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "scenarioId": "one-again"
+    },
+    {
+      "event": "demo_completed",
+      "collectionId": "70e1a4f3-c814-41c7-946f-4ffd8d208dfa",
+      "captures": [
+        "70e1a4f3-c814-41c7-946f-4ffd8d208dfa:one:1",
+        "70e1a4f3-c814-41c7-946f-4ffd8d208dfa:two:2",
+        "70e1a4f3-c814-41c7-946f-4ffd8d208dfa:one-again:1"
+      ]
+    },
+    {
+      "event": "demo_started",
+      "collectionId": "bf656151-5454-4966-a25b-9a120a2b86f3",
+      "plan": {
+        "action": "demo",
+        "scenarios": [
+          {
+            "id": "failure",
+            "url": "/fixture",
+            "steps": [
+              {
+                "operation": "screenshot",
+                "caption": "Initial state"
+              },
+              {
+                "operation": "click",
+                "selector": "#does-not-exist"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Must never capture"
+              }
+            ]
+          },
+          {
+            "id": "must-not-start",
+            "url": "/fixture",
+            "steps": [
+              {
+                "operation": "click",
+                "selector": "button"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Counter after 1 clicks"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "event": "scenario_started",
+      "collectionId": "bf656151-5454-4966-a25b-9a120a2b86f3",
+      "scenarioId": "failure"
+    },
+    {
+      "event": "step_started",
+      "collectionId": "bf656151-5454-4966-a25b-9a120a2b86f3",
+      "scenarioId": "failure",
+      "stepIndex": 0,
+      "step": {
+        "operation": "screenshot",
+        "caption": "Initial state"
+      }
+    },
+    {
+      "event": "step_completed",
+      "collectionId": "bf656151-5454-4966-a25b-9a120a2b86f3",
+      "scenarioId": "failure",
+      "stepIndex": 0
+    },
+    {
+      "event": "step_started",
+      "collectionId": "bf656151-5454-4966-a25b-9a120a2b86f3",
+      "scenarioId": "failure",
+      "stepIndex": 1,
+      "step": {
+        "operation": "click",
+        "selector": "#does-not-exist"
+      }
+    },
+    {
+      "event": "demo_failed",
+      "collectionId": "bf656151-5454-4966-a25b-9a120a2b86f3",
+      "scenarioId": "failure",
+      "stepIndex": 1,
+      "captures": [
+        {
+          "scenarioId": "failure",
+          "stepIndex": 0,
+          "state": {
+            "value": "0",
+            "local": null,
+            "session": null,
+            "cookie": "",
+            "pages": 1,
+            "contexts": 2
+          },
+          "proof": {
+            "id": "bf656151-5454-4966-a25b-9a120a2b86f3:failure:0",
+            "kind": "browser_image",
+            "caption": "Initial state",
+            "sha256": "2f5d4dbda6175992ab81c3635a6e6c356cb6752e290dee47e3cdd3c37b625a5e"
+          },
+          "bytes": 12287
+        }
+      ],
+      "error": "Error: Demo failure stopped at step 2: No element found for selector: #does-not-exist\n    at collectBrowserDemo (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:20737:19)\n    at async probe (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:20835:5)\n    ... 2 lines matching cause stack trace ...\n    at async drainBody (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:20885:12) {\n  result: {\n    collectionId: 'bf656151-5454-4966-a25b-9a120a2b86f3',\n    scenarioId: 'failure',\n    stepIndex: 1,\n    captures: [\n      {\n        scenarioId: 'failure',\n        stepIndex: 0,\n        state: { value: '0', local: null, session: null, cookie: '', pages: 1, contexts: 2 },\n        proof: {\n          id: 'bf656151-5454-4966-a25b-9a120a2b86f3:failure:0',\n          kind: 'browser_image',\n          caption: 'Initial state',\n          sha256: '2f5d4dbda6175992ab81c3635a6e6c356cb6752e290dee47e3cdd3c37b625a5e'\n        },\n        bytes: 12287\n      }\n    ]\n  },\n  [cause]: Error: No element found for selector: #does-not-exist\n      at assert (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:3178:11)\n      at CdpFrame.click (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:10264:9)\n      at async browserCommand (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:20561:7)\n      at async browser (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:20799:23)\n      at async collectBrowserDemo (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:20722:24)\n      at async probe (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:20835:5)\n      at async Object.fetch (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:20875:12)\n      at async jsonError (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:20913:12)\n      at async drainBody (file:///private/tmp/sac172-scenarios-probe/.wrangler/tmp/dev-SGVYdc/browser-scenarios-canary.js:20885:12)\n}"
+    },
+    {
+      "event": "demo_started",
+      "collectionId": "36a42585-925e-4635-b3fc-19ca2c257992",
+      "plan": {
+        "action": "demo",
+        "scenarios": [
+          {
+            "id": "recovered",
+            "url": "/fixture",
+            "steps": [
+              {
+                "operation": "click",
+                "selector": "button"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Counter after 1 clicks"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "event": "scenario_started",
+      "collectionId": "36a42585-925e-4635-b3fc-19ca2c257992",
+      "scenarioId": "recovered"
+    },
+    {
+      "event": "step_started",
+      "collectionId": "36a42585-925e-4635-b3fc-19ca2c257992",
+      "scenarioId": "recovered",
+      "stepIndex": 0,
+      "step": {
+        "operation": "click",
+        "selector": "button"
+      }
+    },
+    {
+      "event": "step_completed",
+      "collectionId": "36a42585-925e-4635-b3fc-19ca2c257992",
+      "scenarioId": "recovered",
+      "stepIndex": 0
+    },
+    {
+      "event": "step_started",
+      "collectionId": "36a42585-925e-4635-b3fc-19ca2c257992",
+      "scenarioId": "recovered",
+      "stepIndex": 1,
+      "step": {
+        "operation": "screenshot",
+        "caption": "Counter after 1 clicks"
+      }
+    },
+    {
+      "event": "step_completed",
+      "collectionId": "36a42585-925e-4635-b3fc-19ca2c257992",
+      "scenarioId": "recovered",
+      "stepIndex": 1
+    },
+    {
+      "event": "scenario_completed",
+      "collectionId": "36a42585-925e-4635-b3fc-19ca2c257992",
+      "scenarioId": "recovered"
+    },
+    {
+      "event": "demo_completed",
+      "collectionId": "36a42585-925e-4635-b3fc-19ca2c257992",
+      "captures": [
+        "36a42585-925e-4635-b3fc-19ca2c257992:recovered:1"
+      ]
+    }
+  ]
+}

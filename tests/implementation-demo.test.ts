@@ -197,7 +197,10 @@ test('demo planning receives real runtime limits and only a matching immutable c
     const read=async()=>JSON.parse((await f.service.materialize(run,job,base)).context).demo as DemoContext;
     const initial=await read();assert.equal(initial.correction,null);
     const runtime=JSON.parse(initial.sources.find(item=>item.path==='context/runtime-capabilities.json')!.content);
-    assert.equal(runtime.browser.resetWithinAttempt,false);assert.deepEqual(runtime.safeAdapters,[]);
+    assert.equal(runtime.browser.resetWithinAttempt,true);
+    assert.equal(runtime.browser.reallocateWithinAttempt,false);
+    assert.match(runtime.browser.demoCollection,/fresh context/);
+    assert.deepEqual(runtime.safeAdapters,[]);
     const audit={input:{runId:'run-1',requestedBy:'operator',correction},targetDigest:run.definition_digest,approvedInputSha:f.work.input_sha};
     const encoded=JSON.stringify(audit),digest=await sha256Hex(encoded);
     f.db.sqlite.prepare('INSERT INTO implementation_demo_upgrades VALUES (?,?,?,?,?,?,?,?,?,?)')

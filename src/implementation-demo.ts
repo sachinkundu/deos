@@ -63,7 +63,8 @@ export class ImplementationDemoService {
       feedback: build.implementationReviewFeedback, question: build.question, reply: build.reply }, null, 2));
     await addSource('context/runtime-capabilities.json', JSON.stringify({
       execution: 'Local workerd inside an isolated Cloudflare Sandbox',
-      browser: { sessionsPerAttempt: 1, resetWithinAttempt: false,
+      browser: { sessionsPerAttempt: 1, resetWithinAttempt: true, reallocateWithinAttempt: false,
+        demoCollection: 'One action: demo request holds the browser for the ordered scenario list. Each scenario starts with a fresh context; browser storage, cookies and page state reset, while server data must be prepared separately. Fixed viewport and target per scenario. A failed action stops collection; fix the cause and rerun from zero. Only the completed collection is selected for PR images.',
         keyboard: true, keyboardModifiers: ['Alt','Control','Meta','Shift'],
         keyTrace: 'operation: trace with enabled: true records real key events in a visible overlay. Turn it off with enabled: false for plain application proof.',
         measurements: 'operation: measure records the live origin, CSS viewport, document width, element geometry and displayed text as Showboat proof.',

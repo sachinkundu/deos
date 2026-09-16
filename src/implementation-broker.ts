@@ -299,7 +299,7 @@ export class ImplementationBroker {
           browser.provider_resource_id!,
         );
         if (
-          !["navigate", "state", "click", "fill", "press", "viewport", "trace", "measure", "screenshot"].includes(
+          !["reset", "navigate", "state", "click", "fill", "press", "wait", "viewport", "trace", "measure", "screenshot"].includes(
             String(request.operation),
           )
         )
@@ -311,7 +311,7 @@ export class ImplementationBroker {
         const metadata = JSON.parse(browser.metadata_json);
         // A failed navigation must not leave a previous page's successful status
         // available to a later screenshot, including when switching targets.
-        if (request.operation === 'navigate') {
+        if (request.operation === 'navigate' || request.operation === 'reset') {
           await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=json_remove(metadata_json,'$.documentStatus','$.documentOrigin') WHERE resource_id=? AND status='ready'")
             .bind(browser.resource_id).run();
         }
@@ -321,11 +321,13 @@ export class ImplementationBroker {
           origin,
           {
             operation: request.operation as
+              | "reset"
               | "navigate"
               | "state"
               | "click"
               | "fill"
               | "press"
+              | "wait"
               | "viewport"
               | "trace"
               | "measure"
@@ -368,7 +370,8 @@ export class ImplementationBroker {
             "image/png",
             this.sanitize(`${String(request.caption ?? 'Changed state in the isolated preview')}\nCaptured from ${result.url}${hostedOrigin ? `; checked maintainer deployment ${hosted!.registrationId}` : ''}`),
             undefined,
-            await sha256Hex(`${origin}\n${hostedOrigin ? hosted!.registrationId : 'local'}`),
+            await sha256Hex(JSON.stringify([origin, hostedOrigin ? hosted!.registrationId : 'local',
+              request.captureId ?? null, request.caption ?? null])),
           );
           return Response.json({
             url: result.url,

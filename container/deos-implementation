@@ -8,6 +8,12 @@ if(!path || path==='--help') {
     {action:'status'},
     {action:'check',argv:['node','scripts/demo.mjs'],behavior:true},
     {action:'preview',main:'src/index.ts',assets:'dist',d1:['DB'],r2:['BUCKET']},
+    {action:'demo',scenarios:[{id:'saved-note',url:'/',target:'local',viewport:{width:1280,height:900},steps:[
+      {operation:'fill',selector:'input[name=title]',text:'Canary note'},
+      {operation:'click',selector:'button[type=submit]'},
+      {operation:'wait',selector:'[data-state=saved]'},
+      {operation:'screenshot',caption:'The saved note appears in the list'}
+    ]}]},
     {action:'browser',operation:'navigate',url:'/'},
     {action:'browser',operation:'state'},
     {action:'browser',operation:'viewport',width:320,height:720},
@@ -25,7 +31,7 @@ if(!path || path==='--help') {
     {action:'safe_test',operation:'linear.move',resourceId:'FROM_FIXTURE',operationId:'another-request-id',issueId:'FIXTURE_ISSUE',stateId:'FIXTURE_WORK_STATE'},
     {action:'safe_test',operation:'events',resourceId:'FROM_FIXTURE'},
     {action:'safe_test',operation:'proof',resourceId:'FROM_FIXTURE',githubOperationId:'unique-request-id',linearOperationId:'another-request-id'}
-  ],notes:['Save each JSON request in /deos/output/requests/, outside the repository; keep scratch files out of the implementation patch.','Status lists recorded command results and evidence for review; it is not a completion gate.','Preview fields are optional except at least one of main or assets.','Browser state returns page content and console messages. Inspect each screenshot with view_image using the returned imagePath.','For documentation citations use the final canonical URL returned by the document call.']},null,2)+'\n');
+  ],notes:['Save each JSON request in /deos/output/requests/, outside the repository; keep scratch files out of the implementation patch.','Status lists recorded command results and evidence for review; it is not a completion gate.','Preview fields are optional except at least one of main or assets.','Collect the final screenshot list with one action:demo request. It resets to a fresh browser context before every scenario and waits for every action, in order. Scenario steps support click, fill, press, wait (visible selector), navigate, and screenshot. The viewport and target stay fixed within a scenario. A fresh browser context clears browser state, not server data; prepare independent safe test data if needed.','Invoke demo directly, never from inside action:check. Await completion before editing app code, harness, preview, or the scenario file. A failed action stops the collection and returns its original error. Fix the cause and rerun the complete list from zero.','Starting a demo replaces previous browser images in the PR selection. Only that completed collection is selected; exploratory screenshots and partial failed collections remain available as diagnostics. The workflow does not judge screenshot content.','Browser state returns page content and console messages. Inspect each demo capture using its returned imagePath. Captions must describe that capture; correct the plan and rerun if they do not.','For documentation citations use the final canonical URL returned by the document call.']},null,2)+'\n');
   process.exit(0);
 }
 const body=await readFile(path,'utf8');

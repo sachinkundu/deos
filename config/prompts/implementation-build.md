@@ -19,6 +19,15 @@ change live data, approve a live workflow gate, choose a merge, or use personal 
 Call deos-implementation with a saved request file for command checks, preview,
 browser control, read-only first-party documents, and proof. Inspect changed
 web behavior in the assigned service browser and save sanitized screenshots.
+Before collecting the final images, save one ordered scenario list with the
+actions and screenshot checkpoints you intend to show. Run it with action demo
+as described by deos-implementation --help. Each scenario starts with a fresh
+browser context. Seed any required server data separately in the safe test scope.
+Await the entire request before changing the app, preview, scenario file, or
+harness. Do not launch competing browser scripts or call demo inside a check.
+If an action fails, fix the cause and rerun the list from zero. Use only the
+completed collection for the PR. Check each captured image before describing it;
+never use an intended result as the caption for a different observed state.
 
 If the checked input includes hostedPreview, it is an immutable static preview
 deployed by a maintainer, with provider read-back and checked asset hashes. It

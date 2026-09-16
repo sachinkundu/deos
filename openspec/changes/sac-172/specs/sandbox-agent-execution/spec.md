@@ -49,6 +49,38 @@ The agent SHALL also have read-only web search for current first-party docs. Bro
 - **WHEN** a check would need the allowed person's Google cookies or personal login.
 - **THEN** the runner keeps that session out and the agent uses a safe test path or reports a block.
 
+### Requirement: Collect browser demos as isolated scenarios
+
+The author SHALL save an ordered list of actions and screenshot checkpoints
+before collecting review images. One demo request SHALL hold the browser tool
+queue for that whole list. Each scenario SHALL start in a fresh browser context
+at its chosen preview URL. Cookies, local storage, session storage, page state,
+focus and held keys MUST NOT carry over. The target and viewport SHALL stay fixed
+within a scenario. The author SHALL prepare any needed server data separately
+in the safe test scope and await collection before editing the app or harness.
+
+Each action SHALL finish before the next starts. An action failure SHALL stop
+the collection and retain the original error, scenario, step and partial
+captures in diagnostics. A new collection SHALL replace the selected browser
+gallery; only its completed screenshot list SHALL be published. Exploratory and
+partial captures SHALL remain available as diagnostics. This is collection
+behavior, not a workflow quality gate: no image judgment or extra review is added.
+
+#### Scenario: Two browser scripts would otherwise overlap
+
+- **WHEN** a demo list is running and another browser request arrives.
+- **THEN** the second request waits until the complete list finishes or stops.
+
+#### Scenario: A previous scenario changed browser state
+
+- **WHEN** the next scenario starts.
+- **THEN** it gets a fresh context in the same assigned browser and runs from its stated initial page.
+
+#### Scenario: A click fails before its planned screenshot
+
+- **WHEN** the browser cannot perform that click.
+- **THEN** collection stops with the original error, takes no later screenshots, and does not publish the partial gallery. The author may fix the cause and rerun the list from zero.
+
 ### Requirement: Preserve implementation failures and resumable work
 
 The trusted runner SHALL keep the first error, stack, cause chain, failed act, patch, checks, proof, and task state. It SHALL do so before clean-up when each item exists. It SHALL hide keys but keep useful facts. A clean-up or proof-write fault MUST NOT replace the first error. Saved work SHALL name the old attempt but MUST NOT grant reuse of its browser or test tools.

@@ -25,6 +25,23 @@ proof branch in the same GitHub repository. Commit-pinned repository image links
 render under GitHub's access rules, without a DEOS login. The proof branch has
 no implementation code or parent and never changes the reviewed code head.
 
+Browser proof collection uses a saved scenario list, following the user's
+16 September correction. A single `demo` tool request occupies the runtime queue
+for the entire list. Each scenario creates a fresh context in the existing
+assigned browser, closes prior contexts/pages, sets its viewport, and navigates
+to its starting URL. Browser state resets; server fixtures remain the author's
+responsibility. The runner awaits each action and captures only the listed
+checkpoints. The request is copied at the start, so a caller cannot edit its
+steps during execution. Neither target nor harness controls are scenario steps.
+
+An action failure stops collection and keeps its original cause and partial
+captures in the journal. Starting a collection removes prior browser images
+from the selected gallery. Only a complete collection replaces that gallery;
+later exploratory screenshots stay in diagnostics. Each checkpoint has its own
+capture identity, so identical pixels do not borrow another checkpoint's caption.
+The workflow does not judge the screenshots, require the collection to pass, or
+add another agent review. The author fixes a failed sequence and reruns from zero.
+
 ## Context
 
 The current flow already freezes its workflow definition, repository route,

@@ -321,7 +321,7 @@ export async function browserCommand(
   sessionId: string,
   origin: string,
   input: {
-    operation: "navigate" | "state" | "click" | "fill" | "press" | "viewport" | "trace" | "measure" | "screenshot";
+    operation: "reset" | "navigate" | "state" | "click" | "fill" | "press" | "wait" | "viewport" | "trace" | "measure" | "screenshot";
     url?: string;
     selector?: string;
     text?: string;
@@ -346,8 +346,21 @@ export async function browserCommand(
   let commandError: unknown;
   try {
     const pages = await browser.pages();
-    const page = pages[0] ?? (await browser.newPage());
-    let documentStatus = input.operation === 'navigate' ? undefined : input.documentStatus;
+    let page = pages[0];
+    if (input.operation === 'reset') {
+      // Replace the context, not just the URL: cookies, storage, DOM, input
+      // focus and held keys from a previous scenario must not survive.
+      const priorContexts = browser.browserContexts();
+      const context = await browser.createBrowserContext();
+      page = await context.newPage();
+      for (const prior of priorContexts) {
+        if (prior === browser.defaultBrowserContext()) {
+          for (const oldPage of await prior.pages()) await oldPage.close();
+        } else await prior.close();
+      }
+    }
+    page ??= await browser.newPage();
+    let documentStatus = ['navigate', 'reset'].includes(input.operation) ? undefined : input.documentStatus;
     page.on("response", response => {
       if (response.request().isNavigationRequest() && response.frame() === page.mainFrame())
         documentStatus = response.status();
@@ -358,16 +371,16 @@ export async function browserCommand(
     page.on("pageerror", (error) =>
       messages.push({ kind: "pageerror", text: String(error) }),
     );
-    if (pages.length > 1)
+    if (pages.length > 1 && input.operation !== 'reset')
       throw new ImplementationError(
         "browser_tabs",
         "Unexpected additional browser page",
       );
-    if (input.operation !== 'navigate' && page.url() !== 'about:blank' && new URL(page.url()).origin !== origin)
+    if (!['navigate', 'reset'].includes(input.operation) && page.url() !== 'about:blank' && new URL(page.url()).origin !== origin)
       throw new ImplementationError('browser_origin', 'Navigate to the selected preview before interacting with it');
     // Cloudflare's connect() initializes a new Puppeteer Page wrapper with an
     // 800x600 default. Restore the trusted persisted viewport on every command.
-    const viewport = input.operation === 'viewport' ? {width:input.width!,height:input.height!} : input.viewport;
+    const viewport = ['viewport', 'reset'].includes(input.operation) ? {width:input.width!,height:input.height!} : input.viewport;
     if (viewport) {
       if (!Number.isInteger(viewport.width) || !Number.isInteger(viewport.height) ||
           viewport.width < 200 || viewport.width > 3840 || viewport.height < 200 || viewport.height > 3840)
@@ -376,13 +389,13 @@ export async function browserCommand(
     }
     if (input.operation === 'trace' && typeof input.enabled !== 'boolean')
       throw new ImplementationError('browser_trace', 'Trace enabled must be a boolean');
-    const traceEnabled = input.operation === 'trace' ? input.enabled : input.traceEnabled;
+    const traceEnabled = input.operation === 'reset' ? false : input.operation === 'trace' ? input.enabled : input.traceEnabled;
     const applyTrace = async () => {
       if (traceEnabled !== undefined && page.url() !== 'about:blank')
         await page.evaluate(`${keyTraceScript}(${traceEnabled})`);
     };
     await applyTrace();
-    if (input.operation === "navigate") {
+    if (input.operation === "navigate" || input.operation === "reset") {
       const response = await page.goto(new URL(input.url ?? "/", origin).href, {
         waitUntil: "networkidle0",
         timeout: 30_000,
@@ -390,7 +403,10 @@ export async function browserCommand(
       if (response) documentStatus = response.status();
       await applyTrace();
     }
-    else if (input.operation === "click") {
+    else if (input.operation === "wait") {
+      if (!input.selector) throw new Error("Wait selector missing");
+      await page.waitForSelector(input.selector, { visible: true, timeout: 30_000 });
+    } else if (input.operation === "click") {
       if (!input.selector) throw new Error("Click selector missing");
       await page.click(input.selector);
     } else if (input.operation === "fill") {
