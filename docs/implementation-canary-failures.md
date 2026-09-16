@@ -27,8 +27,8 @@ not a complete baseline, and cannot establish a percentage improvement.
 
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
-| [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged and issue Done on 2026-09-16 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 0 observed at startup; still running | 0 at startup | Planning author started on workflow v39; implementation PR pending |
+| [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged and issue Canceled on 2026-09-16; workflow retirement defect recorded as CAL-22 |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 1 recovered agent command failure and 1 recovered startup diagnostic; no stopped workflow so far | 0 run recovery interventions; 1 preventive instruction correction validated locally | Proposal/specification PR34 at Human Review; implementation PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -63,6 +63,7 @@ superseded by the [current contract](implementation-canary-lessons.md).
 | CAL-19 | PR proof included internal checks/discussion and broken or mismatched images | Review gallery and diagnostic output separated; user template retained | [Current contract](implementation-canary-lessons.md) |
 | CAL-20 | Shared-browser scenarios interleaved; captions and screenshot state disagreed | One ordered scenario-list request, fresh context per scenario, fixed app/harness, selected completed gallery | [Browser scenarios](evidence/sac-172/browser-scenarios.md), [current contract](implementation-canary-lessons.md) |
 | CAL-21 | Model capacity interrupted work | Capacity fallback remains deferred in SAC-235; do not silently change model | [Capacity record](evidence/sac-172/demo-gate/sac-225-capacity-container-proof.json) |
+| CAL-22 | Retirement cancellation was classified eligible but its transition returned stale; run remained at implementation Human Review | PR33 is closed and Linear is Canceled. No agent is running. Cause and durable recovery remain under investigation; do not repeatedly toggle Linear or edit D1 directly | Cancellation delivery `63d8cb42-d05c-4f2e-91bf-790e781cb864`, eligible 2026-09-16 14:16:38.624 UTC, inbox duplicate 14:16:38.850 UTC, gate visit 65 |
 
 ## SAC-238 run record
 
@@ -75,12 +76,42 @@ superseded by the [current contract](implementation-canary-lessons.md).
   `e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c`.
 - Runtime source at start: `d994b64`; documentation branch head `5485dbe`.
 - Planning attempt started: 2026-09-16 14:06:51 UTC.
-- No unexpected workflow failure has been observed at startup. This is not a
-  completion result. Append incidents and stage outcomes below as they occur.
+- Planning author completed at 14:23:15 UTC. Independent discovery completed at
+  14:26:09 UTC; its response stage completed at 14:29:18 UTC. Review corrections
+  completed within those attempts; no stage restart occurred.
+- Proposal/specification [PR34](https://github.com/sachinkundu/deos-sample-project/pull/34)
+  reached Human Review at 14:29:36 UTC. Approved scope remains desktop only.
 
 ### Incidents
 
-None observed yet.
+#### PACK-01 — unavailable shell editor command
+
+- Stage: planning author, first attempt, item `item_12`; observed in the live
+  transcript captured at 2026-09-16 14:12:30 UTC. The event itself has no timestamp.
+- Original error: `bash: line 1: apply_patch: command not found`, exit 127.
+- Cause: the author used a shell executable that is not installed in its clean
+  PATH. The runtime requires shell-based file edits but did not name the available
+  editing tools.
+- Recovery: the same agent wrote the files with installed shell tools and passed
+  strict OpenSpec validation. No supervisor retry or edit of its files occurred.
+- General correction: author prompts and the runtime skill now name Python,
+  Node, cat and tee, and state that apply_patch is not a shell executable. This
+  source correction passed TypeScript checks, all 42 sandbox-controller tests,
+  diff checks and a Wrangler deployment dry run. Activation is pending at the
+  proposal/specification human gate, before starting design.
+- Evidence: [original command result](evidence/sac-172/packing-canary/pack-01.json).
+
+#### PACK-02 — heartbeat read before its first file existed
+
+- Stage: planning author startup, 2026-09-16 14:07:09.457 UTC.
+- Original error: `File not found: /deos/output/heartbeat.json`.
+- Durable diagnostic: `065205ee-1131-4b05-9971-d30b088b9282` in
+  `workflow_errors`; original details retained in its referenced R2 object.
+- Recovery: polling subsequently found fresh heartbeats; the same attempt
+  completed without supervisor intervention. No stage was stopped.
+- Cause: the controller attempted to read the heartbeat before its initial
+  file was present. Whether the startup timing needs a code change remains
+  under investigation; do not suppress unrelated read failures.
 
 ### Supervisor and measurement notes
 
@@ -93,3 +124,7 @@ None observed yet.
   unattended workflow defects.
 - Calculator closure is user-authorized canary retirement, not an implementation
   merge or a release. Its original PR, images and failure evidence remain.
+- A token-protected temporary Wrangler preview reads the currently running
+  canary's transcripts. It performs no code edits, process launches, restarts or
+  provider actions. This is observation, not a recovery intervention. It expires
+  on 2026-09-17 and must be stopped when monitoring ends.

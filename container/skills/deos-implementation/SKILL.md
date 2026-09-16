@@ -18,6 +18,8 @@ A human-requested revision updates the same PR without another automatic review.
 
 # Use the supported runtime
 
+- Edit files through the shell with Python, Node, `cat` or `tee`. `apply_patch`
+  is not a shell executable in this runtime; do not invoke it from the shell.
 - Save request JSON and scratch scripts under `/deos/output/requests/`, outside
   the repository. Write each complete request before calling
   `deos-implementation REQUEST_FILE`. Read `deos-implementation --help`.
