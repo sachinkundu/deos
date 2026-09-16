@@ -26,12 +26,19 @@ A human-requested revision updates the same PR without another automatic review.
   `deos-implementation REQUEST_FILE`. Read `deos-implementation --help`.
 - Search current official documentation with native web search and open sources
   with `action: document`. Restricted shell networking does not prevent research.
+  `action: search` only searches a site's optional `/llms.txt` index; it is not a
+  general search engine. If that index returns 404, use native web search and
+  open the relevant official page instead of retrying the missing index.
 - Shell and checked Node commands receive the Cloudflare CA through
   `NODE_EXTRA_CA_CERTS`. Do not disable TLS verification. A nested clean environment
   must preserve `/etc/cloudflare/certs/cloudflare-containers-ca.crt`.
 - Install dependencies only when missing or changed. A resumed job restores code,
   tasks, checks and proof, but fresh compute may need dependencies installed.
   Do not redo proposal, design, completed implementation, or unchanged demos.
+  Before installing, add generated dependency and build directories to the
+  repository's `.gitignore` (for example `node_modules/`, `dist/`, `coverage/`).
+  Checks snapshot changed source files; dependencies and their executable
+  symlinks are not implementation files to publish.
 - Build into a dedicated directory such as `dist`. Start `action: preview` with
   `assets: "dist"` and/or a Worker entry file. Do not serve the whole repository:
   unnecessary file watchers previously exhausted the runtime.
@@ -55,6 +62,9 @@ When `static-preview-v1` is listed in the input capabilities, a finished static
 build can use `{"action":"publish_preview","assets":"dist"}`. The service
 publishes only static assets to an isolated nonproduction Pages project and
 returns its immutable review URL. It does not run repository code with tokens.
+For a static-only app, publish the build and open it directly with `target:
+"hosted"`; a local preview process or Quick Tunnel is not required. Use a local
+preview when useful during development or when the app needs a local backend.
 Use `target: "hosted"` in demo scenarios to capture that deployment. Publish
 before the first browser command, and republish after changing the build. Keep
 the build fixed while collecting. A pending response means retry the same request
@@ -68,6 +78,10 @@ intended for the PR. Ordinary checks, unit tests, and exploratory commands stay
 in diagnostics. Browser measurement output stays there too.
 
 # Resume and report
+
+Update task checkboxes as their work finishes. Keep demonstration and handoff
+tasks open until those actions finish; do not bulk-mark every task complete
+before collecting proof. Report the active phase alongside the task count.
 
 Resume the failed operation using saved work. Rerun only checks or demos affected
 by an actual edit or relevant environment change. Use the same provider operation

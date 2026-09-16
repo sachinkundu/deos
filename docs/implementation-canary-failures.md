@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 24 occurrences in 13 categories, including recovered errors and one stopped author stage | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; Claude selected six browser scenarios; implementation running; PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 34 runtime/tool occurrences in 17 categories, including recovered errors and one stopped author stage; 5 app development check/demo failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; Claude selected six browser scenarios; hosted browser caught a rename keyboard defect; Sol repairing and recapturing; PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -155,6 +155,11 @@ superseded by the [current contract](implementation-canary-lessons.md).
   apply_patch executable are unavailable. The hook now names supported editing
   tools, and the shipped skill says the same. This correction is pending rollout.
   [Original rejection](evidence/sac-172/packing-canary/task-author-tool-rejections.json).
+
+- Seventh occurrence: the build author tried the native patch tool at
+  16:19:15.239945 UTC. It recovered through Node file writes. This attempt still
+  uses the earlier image; the clearer correction is awaiting a safe rollout.
+  [Build tool rejections](evidence/sac-172/packing-canary/build-tool-rejections.json).
 
 #### PACK-02 — heartbeat read before its first file existed
 
@@ -351,6 +356,10 @@ superseded by the [current contract](implementation-canary-lessons.md).
   the active agent to deploy a recovered-error fix.
 - [Original rejection](evidence/sac-172/packing-canary/task-author-tool-rejections.json).
 
+- Second occurrence: the build author received the same webrun rejection at
+  16:19:03.851964 UTC and continued with the documentation broker. The build
+  still uses the earlier image. [Build rejection](evidence/sac-172/packing-canary/build-tool-rejections.json).
+
 #### PACK-13 — advertised native skill path unreadable to the author
 
 - Build attempt 01a0ab02-47f4-7ae3-aebc-5601103899eb returned exit1:
@@ -368,7 +377,93 @@ superseded by the [current contract](implementation-canary-lessons.md).
   Container syntax passes; this correction awaits the next safe rollout.
 - [Original command result](evidence/sac-172/packing-canary/implementation-skill-permission.json).
 
+#### PACK-14 — documentation search assumes an optional index exists
+
+- The build author's request to search developer.mozilla.org returned
+  `First-party document fetch HTTP 404` for `/llms.txt`. Vite and Vitest index
+  searches in the same shell command succeeded. The broker retained the full
+  MDN HTML error body and stack; the shell command exited1.
+- Cause: the broker's search action searches only an optional llms.txt document,
+  but the runtime instructions did not explain that limitation. MDN's absent
+  index does not mean MDN documentation is unavailable.
+- The author recovered using direct official documentation URLs. Clarify the
+  index limitation in the runtime skill and allow the actual native web-search
+  alias (PACK-12). Do not retry a missing index or hide its original error.
+- One occurrence, command item_11 in the build attempt. No supervisor recovery.
+  [Complete original result](evidence/sac-172/packing-canary/build-document-search.json).
+
+#### PACK-15 — generated dependencies included in the candidate snapshot
+
+- The first check request failed before running npm test:
+  `Unsupported candidate mode: 120000 ... node_modules/.bin/nanoid`.
+- Cause: the new repository had no ignore rules for installed dependencies.
+  The runtime snapshots changed source before a checked command, so Git also
+  staged generated dependency symlinks. The agent added node_modules/, dist/,
+  coverage/ and log patterns to .gitignore, then the same request ran normally.
+- Teach authors to establish generated-directory ignore rules before installing
+  dependencies. Do not broaden candidate publishing to include node_modules.
+  One occurrence, command item_23; no supervisor recovery.
+- [Original result and recovery](evidence/sac-172/packing-canary/build-check-repairs.json).
+
+#### PACK-16 — local relay readiness delays and dependent connection failure
+
+- Build item_34 returned `Isolated preview relay did not become publicly ready`;
+  the same preview request, item_35, returned HTTP530, error1016. A subsequent
+  local curl (item_37) failed with connection refused because startup cleanup
+  had stopped the local process after the failed public relay setup.
+- Three observed failed operations from one readiness/recovery sequence.
+  The agent retried the same preview request; item_43 returned the existing
+  origin and the browser then loaded the app successfully. No supervisor action.
+- Cloudflare's relay DNS/readiness was temporarily unavailable; its underlying
+  cause is not established. Original operation diagnostics remain in D1/R2.
+  Static-only hosted demonstrations should not need this separate relay path
+  (PACK-17). Local preview startup still cleans up after a failed setup.
+- [Original results and recovery](evidence/sac-172/packing-canary/build-preview-recovery.json).
+
+#### PACK-17 — hosted browser incorrectly requires a local preview
+
+- The static publisher succeeded and checked all three assets with HTTP200.
+  Nevertheless, three hosted browser calls in item_41 returned `preview_missing:
+  Start the safe preview before opening a browser`.
+- Cause: the broker unconditionally required a ready local preview resource
+  before it selected the requested hosted target. That made an already deployed
+  app depend on an unrelated local process and tunnel.
+- Require the local resource only for local browser commands. Allocate a hosted
+  session directly from the run's published URL, and preserve that session's
+  allowed origins if a local allocation is later added or fails. A regression
+  runs the real broker, allocator and D1 store with provider I/O replaced: hosted
+  navigation works without a Sandbox, reuses its browser after a failed local
+  allocation, and local requests still reject an unready local resource.
+- Three occurrences. The active author recovered the local relay itself and
+  continued with the hosted browser. General correction awaits the safe rollout.
+- [Original calls](evidence/sac-172/packing-canary/build-preview-recovery.json).
+
+### App development failures recovered by the implementation agent
+
+These are recorded for completeness, separately from platform/tool failures and
+operator interventions. Count failed command executions, not each assertion or
+compiler diagnostic within one execution. Intentional negative-case assertions
+that pass are not failures. All occurred in build attempt
+01a0ab02-47f4-7ae3-aebc-5601103899eb.
+
+| ID | Failed command | Observed failure | Recovery |
+| --- | --- | --- | --- |
+| APP-01 | npm test, item_25 | Two failed behavior tests and unhandled focus errors: packing a row referenced an absent control; explicit recovery-copy replacement retained the older rejected value | Sol repaired the app; the subsequent run passed all 36 tests |
+| APP-02 | npm run build, item_27 | Vite/Node type setup and Web Crypto type declarations did not compile | Sol installed Node types and corrected compiler and type declarations |
+| APP-03 | npm run build, item_30 | Crypto.getRandomValues did not satisfy the app's CryptoSource signature | Sol matched the browser API generic signature |
+| APP-04 | npm run build, item_31 | Test CryptoSource implementation cast generic ArrayBufferView directly to Uint8Array | Sol corrected the test cast; item_32 passed TypeScript and the production build |
+| APP-05 | Hosted demo collection bccafe46-988a-4028-bc5e-897819ea280e, 16:40:16.978 UTC | Rename scenario timed out after 30000ms waiting for Jacket: Enter did not submit the rename form in the real browser | Sol is repairing the Enter handler, adding a real key-event test, then rebuilding, republishing and recapturing from zero; no supervisor app edit |
+
+[Original command results and repairs](evidence/sac-172/packing-canary/build-check-repairs.json).
+
+[First browser collection failure and response](evidence/sac-172/packing-canary/build-demo-rename-failure.json).
+
 ### Supervisor and measurement notes
+
+- Static publication returned `static_preview_pending` while Cloudflare's
+  deployment was queued, then the same request read back success. This is an
+  expected asynchronous provider state, excluded from unexpected failure counts.
+  The original pending result is retained alongside the preview recovery evidence.
 
 - The local skill validator initially used a Python without PyYAML and returned
   ModuleNotFoundError. Use the repository's uv environment. This is an operator

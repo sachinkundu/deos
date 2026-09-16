@@ -279,16 +279,31 @@ export class ImplementationBroker {
         const hosted = await new ImplementationHostedPreview(this.env).latest(work);
         const hostedOrigin = request.target === 'hosted' ? hostedPreviewOrigin(hosted, subject) : null;
         const preview = await this.store.resource(claims.attemptId, "preview");
-        if (!preview?.preview_origin)
+        if (!hostedOrigin && !preview?.preview_origin)
           throw new ImplementationError(
             "preview_missing",
             "Start the safe preview before opening a browser",
           );
-        await this.store.assertResource(
+        if (!hostedOrigin) await this.store.assertResource(
           claims.runId,
           claims.attemptId,
-          preview.resource_id,
+          preview!.resource_id,
         );
+        const origin = hostedOrigin ?? preview!.preview_origin!;
+        const existingBrowser = await this.store.resource(claims.attemptId, "browser");
+        const savedBinding = existingBrowser?.status === "ready"
+          ? JSON.parse(existingBrowser.metadata_json) : null;
+        // A hosted deployment is a complete browser target. It does not need a
+        // local process or tunnel. Once allocated, retain the browser's original
+        // domain binding even if a local preview is created later in this try.
+        const allocationOrigin = savedBinding?.origin ??
+          (preview?.status === "ready" ? preview.preview_origin : null) ?? origin;
+        const allowedOrigins: string[] = savedBinding
+          ? savedBinding.origins ?? [savedBinding.origin]
+          : [...new Set([allocationOrigin, ...(hosted ? [hosted.origin] : []),
+            ...(input.policy.safeAdapters.includes('static-preview-v1') ? [await staticPreviewOrigin(work.run_id)] : [])])];
+        if (!allowedOrigins.includes(origin))
+          throw new ImplementationError('browser_origin', 'Requested target is outside this browser session; resume in a fresh try to change its allowed origins');
         const allocator = new ImplementationBrowserAllocator(
           this.store,
           new CloudflareBrowserProvider(this.env.IMPLEMENTATION_BROWSER),
@@ -296,9 +311,8 @@ export class ImplementationBroker {
         const browser = await allocator.acquire(
           claims.runId,
           claims.attemptId,
-          preview.preview_origin,
-          [...new Set([...(hosted ? [hosted.origin] : []),
-            ...(input.policy.safeAdapters.includes('static-preview-v1') ? [await staticPreviewOrigin(work.run_id)] : [])])],
+          allocationOrigin,
+          allowedOrigins.filter(value => value !== allocationOrigin),
         );
         await this.store.assertResource(
           claims.runId,
@@ -315,7 +329,6 @@ export class ImplementationBroker {
             "browser_operation",
             "Browser operation is unsupported",
           );
-        const origin = hostedOrigin ?? preview.preview_origin;
         const metadata = JSON.parse(browser.metadata_json);
         // A failed navigation must not leave a previous page's successful status
         // available to a later screenshot, including when switching targets.
