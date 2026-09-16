@@ -67,6 +67,13 @@ The service retains build bytes and provider receipts, reads back the deployment
 and makes a current review URL available after sandbox cleanup. This does not
 provide backend or production deployment; backend demos use isolated workerd.
 
+Pass the frozen implementation capabilities to proposal, design, review and demo
+agents. A supported publisher discovered only during demo planning is too late:
+the approved design may already require an unavailable CI or hosting path.
+Reviewers receive the same capability description as authors. Keep unrelated
+account apps and plugins disabled for all cloud agent roles; use the run's
+declared tools and native documentation access.
+
 ## Recovery and progress
 
 Retry the failed stage of the same run. Preserve its approved inputs, branch,

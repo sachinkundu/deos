@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { DatabaseSync } from 'node:sqlite';
+import { implementationPolicy } from '../src/implementation-contract.ts';
+import { implementationRuntimeContext } from '../src/implementation-runtime-context.ts';
 
 import {
   JobInputMaterializer,
@@ -185,6 +188,7 @@ test("materializer records the OpenSpec operation and latest cumulative patch re
   const context = JSON.parse(result.context);
   assert.deepEqual(context.openspec, { change: "sac-123", instruction: "/opsx:continue" });
   assert.deepEqual(context.repository.continuationPatch, result.continuationPatch);
+  assert.equal(context.runtimeCapabilities, null, 'Planning-only workflows must not advertise an implementation capability');
 });
 
 test("materializer gives the next author trusted deterministic rejection feedback", async () => {
@@ -371,6 +375,21 @@ test("planning materializer allocates one run branch and preserves both feedback
 });
 
 test("design materializer anchors checked plan files and guidance to one exact merge commit", async () => {
+  const patches = new DatabaseSync(':memory:');
+  patches.exec(`CREATE TABLE agent_attempts (attempt_id TEXT,run_id TEXT,node_id TEXT,job_spec_json TEXT,state TEXT,manifest_id TEXT);
+    CREATE TABLE artifact_manifests (manifest_id TEXT,state TEXT,completed_at TEXT);
+    CREATE TABLE artifacts (manifest_id TEXT,logical_name TEXT,r2_key TEXT,sha256 TEXT);`);
+  for (const [id, node, role, inputs, time] of [
+    ['original', 'design_author', 'author', ['design_context'], '01'],
+    ['response', 'design_independent_response', 'author', ['design_context'], '02'],
+    ['review', 'design_independent_review', 'reviewer', ['design_context'], '03'],
+    ['other', 'implementation_tasks', 'author', ['implementation_context'], '04'],
+  ] as const) {
+    patches.prepare('INSERT INTO agent_attempts VALUES (?,?,?,?,?,?)').run(id, 'workflow:project-1:issue-1:run:1', node,
+      JSON.stringify({agentRole:role,inputs}), 'completed', id);
+    patches.prepare('INSERT INTO artifact_manifests VALUES (?,?,?)').run(id,'complete',time);
+    patches.prepare('INSERT INTO artifacts VALUES (?,?,?,?)').run(id,'patch.diff',`${id}/patch.diff`,'f'.repeat(64));
+  }
   const mergeCommit = "a".repeat(40);
   const guidanceContent = `${"Repository rule. ".repeat(2_500)}\n`;
   const planPaths = [
@@ -428,6 +447,7 @@ test("design materializer anchors checked plan files and guidance to one exact m
           return Promise.resolve({ meta: { changes: 1 } });
         },
         first() {
+          if (sql.includes("f.logical_name = 'patch.diff'")) return Promise.resolve(patches.prepare(sql).get(...values as string[]) ?? null);
           if (sql.includes("SELECT * FROM run_work_products")) return Promise.resolve(planning);
           if (sql.includes("SELECT * FROM design_work_products")) return Promise.resolve(design);
           return Promise.resolve(null);
@@ -460,6 +480,7 @@ test("design materializer anchors checked plan files and guidance to one exact m
         readRefs.push(ref);
         return [{ path: "AGENTS.md", content: guidanceContent }];
       },
+      implementationPolicy: {...implementationPolicy, safeAdapters:['static-preview-v1']},
     },
   );
   const result = await materializer.materialize({
@@ -486,7 +507,7 @@ test("design materializer anchors checked plan files and guidance to one exact m
     operation: { kind: "openspec", instruction: "/opsx:continue" },
   });
   assert.equal(result.checkoutCommit, mergeCommit);
-  assert.equal(result.continuationPatch, null);
+  assert.equal(result.continuationPatch?.attemptId, 'response', 'A human revision must restore the latest design response, not the older self-reviewed draft or a later reviewer patch');
   assert.match(result.designWorkProduct?.remote_branch ?? "", /^deos\/design\/[a-f0-9]{24}$/);
   assert.deepEqual(new Set(readRefs), new Set([mergeCommit]));
   const context = JSON.parse(result.context);
@@ -495,4 +516,15 @@ test("design materializer anchors checked plan files and guidance to one exact m
   assert.equal(context.design.guidance.files[0].content, guidanceContent);
   assert.equal(context.design.guidance.files[0].content.includes("[truncated"), false);
   assert.equal(context.design.baseCommit, mergeCommit);
+  assert.deepEqual(context.runtimeCapabilities.safeAdapters, ['static-preview-v1']);
+  assert.match(context.runtimeCapabilities.deployment, /Cloudflare Pages/);
+  assert.match(context.runtimeCapabilities.deployment, /No agent credentials, GitHub Actions workflow/);
+  patches.close();
+});
+
+test('runtime context does not invent hosted deployment for runs without the adapter', () => {
+  const context = implementationRuntimeContext(implementationPolicy);
+  assert.deepEqual(context.safeAdapters, []);
+  assert.match(context.deployment, /No hosted deployment capability is declared/);
+  assert.equal(context.deployment.includes('publish_preview accepts'), false);
 });

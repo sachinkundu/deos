@@ -4,6 +4,8 @@ import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { WorkflowJob } from "./workflow-definition.ts";
 import { D1PlanningStore, type RunWorkProductRecord } from "./planning-store.ts";
 import { D1DesignStore, type DesignWorkProductRecord } from "./design-store.ts";
+import type { ImplementationPolicy } from './implementation-contract.ts';
+import { implementationRuntimeContext } from './implementation-runtime-context.ts';
 import { sha256Hex } from "./trace-review.ts";
 import {
   canonicalDesignReviewJson,
@@ -57,6 +59,7 @@ export interface MaterializedJobInput {
 }
 
 interface JobInputDependencies {
+  implementationPolicy?: ImplementationPolicy;
   fetch: typeof fetch;
   now: () => Date;
   readGitHubReviewFeedback: (
@@ -150,6 +153,7 @@ export class JobInputMaterializer {
   private readonly readGitHubReviewFeedback: JobInputDependencies["readGitHubReviewFeedback"];
   private readonly readGitHubFile: JobInputDependencies["readGitHubFile"];
   private readonly readGitHubGuidance: JobInputDependencies["readGitHubGuidance"];
+  private readonly runtimeCapabilities: ReturnType<typeof implementationRuntimeContext> | null;
 
   constructor(
     database: D1Database,
@@ -169,6 +173,8 @@ export class JobInputMaterializer {
       throw new Error("trusted GitHub file reader is unavailable");
     });
     this.readGitHubGuidance = dependencies.readGitHubGuidance ?? (async () => []);
+    this.runtimeCapabilities = dependencies.implementationPolicy
+      ? implementationRuntimeContext(dependencies.implementationPolicy) : null;
   }
 
   async materialize(run: OrchestrationRunRecord, job: WorkflowJob): Promise<MaterializedJobInput> {
@@ -263,6 +269,7 @@ export class JobInputMaterializer {
       ...(job.grounding ? { agentInputs: { schema: "deos-grounding-v1", jobKind: job.id,
         role: job.agentRole, checkedContextFiles, policy: job.grounding } } : {}),
       version: 1,
+      runtimeCapabilities: this.runtimeCapabilities,
       declaredInputs: job.inputs,
       declaredContext: job.context,
       linearIssue: {
@@ -422,6 +429,9 @@ export class JobInputMaterializer {
       ...approvedPlan.map(({ path, content, sha256 }) => ({ path, content, sha256 })),
       { path: candidatePath, content: designContent, sha256: await sha256Hex(designContent) },
       ...guidance,
+      ...(this.runtimeCapabilities ? [{ path: 'context/runtime-capabilities.json',
+        content: JSON.stringify(this.runtimeCapabilities, null, 2),
+        sha256: await sha256Hex(JSON.stringify(this.runtimeCapabilities, null, 2)) }] : []),
     ].sort((left, right) => left.path.localeCompare(right.path));
     const reviewInput: DesignReviewInput = {
       version: 1,
@@ -714,7 +724,9 @@ export class JobInputMaterializer {
        FROM agent_attempts a
        JOIN artifact_manifests m ON m.manifest_id = a.manifest_id
        JOIN artifacts f ON f.manifest_id = m.manifest_id AND f.logical_name = 'patch.diff'
-       WHERE a.run_id = ? AND a.node_id IN ('design_author', 'design_revision_author')
+       WHERE a.run_id = ?
+         AND COALESCE(json_extract(a.job_spec_json, '$.agentRole'), 'author') = 'author'
+         AND EXISTS (SELECT 1 FROM json_each(a.job_spec_json, '$.inputs') WHERE value = 'design_context')
          AND a.state = 'completed' AND m.state = 'complete'
        ORDER BY m.completed_at DESC, a.attempt_id DESC LIMIT 1`,
     ).bind(runId).first<ContinuationPatchRow>().then((row) => row === null ? null : ({

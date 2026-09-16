@@ -89,7 +89,7 @@ const validateSources = (sources: readonly DesignReviewSource[]): readonly Desig
   const sorted = [...sources].sort((left, right) => left.path.localeCompare(right.path));
   const seen = new Set<string>();
   for (const source of sorted) {
-    if (seen.has(source.path) || !SOURCE_PATH.test(source.path) || !SHA256.test(source.sha256)) {
+    if (seen.has(source.path) || (!SOURCE_PATH.test(source.path) && source.path !== 'context/runtime-capabilities.json') || !SHA256.test(source.sha256)) {
       throw new Error("design review source is invalid");
     }
     seen.add(source.path);

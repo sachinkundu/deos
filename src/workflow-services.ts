@@ -139,6 +139,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       env.LINEAR_API_URL,
       env.LINEAR_APP_ACCESS_TOKEN,
       {
+        implementationPolicy: definition.implementationPolicy,
         readGitHubReviewFeedback: (repository, pullRequestNumber, installationId) =>
           new GitHubCapabilityAdapter(
             env.GITHUB_API_URL,

@@ -79,6 +79,8 @@ const codexArgs = (job, sessionId = null) => {
     "--output-last-message",
     RESULT_PATH,
     "--dangerously-bypass-approvals-and-sandbox",
+    "--config", "features.apps=false",
+    "--config", "features.plugins=false",
   );
   if (job.grounding) args.push("--config", 'web_search="live"');
   if (typeof job.model === "string" && job.model.length > 0) {

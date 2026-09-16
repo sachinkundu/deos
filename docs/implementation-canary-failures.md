@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 16 occurrences in 8 categories: 8 recovered agent tool errors, 3 startup diagnostics, 1 delayed signal, 2 deploy resets, 1 finalization failure, 1 optional-file diagnostic | 2 recovery interventions: resent approval and resumed design finalization | Proposal/specification PR34 merged; saved design finalization resumed at 15:33 UTC; implementation PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 20 occurrences in 11 categories, including recovered errors and one stopped author stage | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 revised and under independent review; implementation PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -125,7 +125,7 @@ superseded by the [current contract](implementation-canary-lessons.md).
   include the two shell exit127 failures above.
 - The runtime hook now names usable editing tools in its corrective message,
   rather than merely saying "use the shell" and inviting the missing-command
-  attempt. This container instruction correction is awaiting the next safe rollout.
+  attempt. This container instruction correction shipped in the 15:27 rollout.
   [Original stderr errors](evidence/sac-172/packing-canary/recovered-hook-errors.json).
 
 #### PACK-02 — heartbeat read before its first file existed
@@ -177,7 +177,7 @@ superseded by the [current contract](implementation-canary-lessons.md).
   the author shell resets PATH and cannot find it there.
 - Correction: expose that existing pinned binary in /usr/local/bin and test it
   as deos-author with the actual clean PATH during image build. Local image
-  build passed and printed ripgrep15.2.0; cloud rollout waits for a safe gate.
+  build passed and printed ripgrep15.2.0; the 15:27 cloud rollout includes it.
 - Evidence: [original design command results](evidence/sac-172/packing-canary/design-command-failures.json).
 
 #### PACK-05 — author acts before the review handoff completes
@@ -192,7 +192,7 @@ superseded by the [current contract](implementation-canary-lessons.md).
   turn to run the completion handoff. The rejection did not explain that next
   action clearly. Guidance now explicitly says to await the reviewer and then
   finish the turn with author JSON before editing or closing the child. Hook
-  checks passed; the instruction change awaits the next safe container rollout.
+  checks passed; the instruction change shipped in the 15:27 container rollout.
 - Evidence: [original stderr errors](evidence/sac-172/packing-canary/recovered-hook-errors.json).
 
 #### PACK-06 — backend deployment resets live workflow RPCs
@@ -250,7 +250,64 @@ superseded by the [current contract](implementation-canary-lessons.md).
 - This was not the cause of PACK-07. Count it once as recovered diagnostic noise.
 - Evidence: [original error](evidence/sac-172/packing-canary/design-failure-original-errors.jsonl).
 
+#### PACK-09 — design invents an unavailable preview delivery path
+
+- At Human Review 15:43:31 UTC, PR35 head
+  `3f18024ab76263bb37c1fce1aa7c8924f7e04391` required GitHub Actions and
+  GitHub Pages. The implementation has a trusted Cloudflare Pages publisher;
+  GitHub workflow publication already failed in CAL-18.
+- Cause: only demo planning received runtime capabilities. Design and its
+  independent reviewer lacked that context when choosing the preview host.
+- Intervention 3: posted the actual publisher contract on Linear at 15:45:14
+  (comment `1bbc3477-da55-4bfd-92a9-7a703cea133a`) and requested revision
+  through In Progress at 15:45:15. No manual sample-repository edit occurred.
+- The same PR was revised by 15:51:33, head
+  `59478ab92e3a9b73c81ed84d5fcd9075b09c87cc`. It uses publish_preview and
+  preserves the earlier accepted behavior. Independent review began 15:51:52.
+- General correction: provide one frozen-policy capability description to
+  planning, design, both design reviewers and demo planning. Explicitly name
+  the supported publisher in author/reviewer instructions. Do not add a workflow
+  quality check. Local 577 tests and TypeScript passed; deployment pending.
+
+#### PACK-10 — unrelated Cloudflare MCP connection requests OAuth
+
+- Recovered startup transport errors at 15:37:32.504549 and 15:46:21.181195
+  UTC, in independent design response and human design revision respectively.
+  Original: `Transport channel closed ... AuthRequired` for
+  `https://mcp.cloudflare.com/.well-known/oauth-protected-resource/mcp`.
+- Both agents continued and completed. These are two occurrences, not stopped
+  stages. No credentials were added and no supervisor retry was required.
+- The base image has no root Codex config. Native-review and implementation
+  setup disable account apps/plugins, while these ordinary author invocations
+  did not. The precise connection source is not established; inherited account
+  integration discovery is a working explanation, not a proven cause.
+- Apply the existing apps/plugins-disabled setting to every cloud Codex launch,
+  preserving native documentation search and declared trusted tools. Verify on a
+  subsequent non-native author before claiming the connection noise is fixed.
+- [Original stderr](evidence/sac-172/packing-canary/unexpected-mcp-auth.json).
+
+#### PACK-11 — human design revision restores an older draft
+
+- Revision startup restored the 157-line original author's draft, despite a
+  later completed independent-response candidate and published 183-line design.
+  Observed in the live file read at 15:47:51 UTC.
+- Cause: designContinuationPatch selected only design_author and
+  design_revision_author node names, excluding design_independent_response.
+- The author reconstructed the accepted changes from the supplied context and
+  retained them in PR35. No extra supervisor action was needed beyond PACK-09.
+- Select the latest completed design author by its declared design context and
+  role, including response nodes and excluding reviewer or implementation
+  patches. A SQLite regression exercises that ordering with all four kinds.
+  Local checks passed; deployment pending.
+- [Restored draft read](evidence/sac-172/packing-canary/design-revision-restored-draft.json).
+
 ### Supervisor and measurement notes
+
+- Two diagnostic search commands in the response/revision returned exit1 with
+  no output because their final `rg --files -g AGENTS.md` had no match. The
+  agent explicitly recorded that optional repository guidance was absent. This
+  expected search result is not counted as a runtime failure.
+  [Raw results](evidence/sac-172/packing-canary/expected-search-no-match.json).
 
 - 2026-09-16 before trigger: the first read-only preflight query used nonexistent
   `agent_attempts.status`; D1 returned `no such column: status`. Corrected the

@@ -10,6 +10,7 @@ import type { OrchestrationRunRecord } from './orchestration-store.ts';
 import type { MaterializedJobInput } from './job-inputs.ts';
 import type { WorkflowJob } from './workflow-definition.ts';
 import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
+import { implementationRuntimeContext } from './implementation-runtime-context.ts';
 
 export interface DemoReviewRow {
   attempt_id: string; run_id: string; visit_sequence: number; kind: DemoKind;
@@ -63,7 +64,7 @@ export class ImplementationDemoService {
       feedback: build.implementationReviewFeedback, question: build.question, reply: build.reply,
       clarifications: await this.store.clarifications(run.run_id) }, null, 2));
     await addSource('context/runtime-capabilities.json', JSON.stringify({
-      execution: 'Local workerd inside an isolated Cloudflare Sandbox',
+      ...implementationRuntimeContext(input.policy),
       browser: { sessionsPerAttempt: 1, resetWithinAttempt: true, reallocateWithinAttempt: false,
         demoCollection: 'One action: demo request holds the browser for the ordered scenario list. Each scenario starts with a fresh context; browser storage, cookies and page state reset, while server data must be prepared separately. Fixed viewport and target per scenario. A failed action stops collection; fix the cause and rerun from zero. Only the completed collection is selected for PR images.',
         keyboard: true, keyboardModifiers: ['Alt','Control','Meta','Shift'],
@@ -71,11 +72,6 @@ export class ImplementationDemoService {
         measurements: 'operation: measure records the live origin, CSS viewport, document width, element geometry and displayed text as Showboat proof.',
         viewport: { min: 200, max: 3840, persistsAcrossCommands: true },
         navigation: hostedPreview ? 'The local preview and the checked immutable hosted preview, using target: hosted. The saved deployment receipt identifies its code revision for review.' : 'Only the registered preview origin for this attempt' },
-      documentationHosts: input.policy.documentationHosts,
-      safeAdapters: input.policy.safeAdapters,
-      deployment: input.policy.safeAdapters.includes('static-preview-v1')
-        ? 'publish_preview accepts a finished static build directory and publishes it to a run-owned nonproduction Pages project. It returns an immutable review URL. No agent credentials, backend deployment, CI workflow, or production release. Use the local Worker for backend tests.'
-        : 'No provider credentials in the agent. An approved hosted preview requires an explicitly available trusted deployment path. Local workerd does not replace an approved hosted preview.',
       recovery: 'Runtime failure ends the attempt. A fresh attempt restores saved work and evidence. Sol decides which checks or demos need to run again. Do not require destroying and reallocating a service browser within an application demo.',
     }, null, 2));
     let correction: DemoCorrection | null = null;
