@@ -1,0 +1,32 @@
+{
+  "retry": {
+    "retry_id": "stage-retry:01a0a71b-189a-7e4a-8191-2939b1af2e97",
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1",
+    "failed_attempt_id": "01a0a71b-189a-7e4a-8191-2939b1af2e97",
+    "retry_node": "implementation_build",
+    "from_visit_sequence": 36,
+    "to_visit_sequence": 37,
+    "transition_id": "transition:stage-retry:01a0a71b-189a-7e4a-8191-2939b1af2e97",
+    "state": "established",
+    "workflow_status": "queued",
+    "safe_error_category": null,
+    "requested_by": "codex-canary-recovery",
+    "created_at": "2026-09-16T03:56:36.745Z",
+    "updated_at": "2026-09-16T03:56:38.869Z",
+    "established_at": "2026-09-16T03:56:38.869Z",
+    "retry_kind": "compatible_tail",
+    "source_definition_id": "implementation",
+    "source_definition_version": 30,
+    "source_definition_digest": "29ff6356607fc69cd175a24631d3797d8b088ed22524afefd610dca06830db15",
+    "target_definition_id": "implementation",
+    "target_definition_version": 31,
+    "target_definition_digest": "177e21cdfdb99ebba377670e98c5837609f7a2f33655124e107fe12094d3b98c",
+    "source_workflow_instance_id": "wf-v1-tu2aqcsrzp6avukewpelm4gmgoapmecjxdnx2qy3lfi3dzut3toa",
+    "target_workflow_instance_id": "wf-v1-iihutseczcz7negzrwyhn3g37gukcbkzsy7sc4zq4otuumks7nwa",
+    "source_delivery_id": "102c1930-b094-4362-9791-977d544bcaff",
+    "entry_node": "implementation_demo_plan",
+    "source_sandbox_tier": "basic",
+    "target_sandbox_tier": "basic",
+    "workflow_instance_id": "wf-v1-iihutseczcz7negzrwyhn3g37gukcbkzsy7sc4zq4otuumks7nwa"
+  }
+}

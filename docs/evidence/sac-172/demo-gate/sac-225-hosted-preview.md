@@ -1,5 +1,50 @@
 # Checked hosted preview for the calculator canary
 
+## Current outcome at 03:58 UTC, September 16
+
+The maintainer preview is deployed at
+<https://11fa3ef4.sac-225-calculator.pages.dev>. Cloudflare reports deployment
+`11fa3ef4-fb4e-422e-93d7-3da6de660c9d` successful on preview branch
+`review-sac-225`. DEOS independently read that provider deployment and checked
+the exact bytes and SHA-256 of all three served assets. Registration returned
+HTTP 200 and saved an immutable D1/R2 receipt. See
+`sac-225-pages-deployment.json` and `sac-225-hosted-preview-receipt.json`.
+
+The user explicitly authorized the existing broader operator token for this
+canary. It was installed only in the trusted Worker and used by the maintainer
+deployment process. It was not supplied to the coding agent or CI. A separate
+Pages token is a later configuration improvement, not a remaining blocker.
+
+The first real registration exposed an unsupported Workers fetch option:
+`redirect: error`. The original error is retained under workflow error
+`d2a5de61-8ef9-4c3e-a33a-cd50dd7e19d8`. Source `8dd41e5` uses manual redirects
+and rejects any redirect before parsing the provider response. Regression
+coverage includes the Workers option restriction and a non-JSON API redirect.
+All 564 backend tests, TypeScript, and the Worker dry run passed after this fix.
+
+Backend version `0bd315ca-6f82-4450-ab15-422fdb031240` is active at 100%.
+All four container pools were healthy 4/4 at read-back, with the same container
+image. The deployment used `--containers-rollout none`. Global active attempts
+were zero immediately before secret activation, Pages deployment, backend
+deployment, and the subsequent workflow retry. The portal was not redeployed.
+
+A fresh audited correction preflight preserved the approved input, base, patch,
+branch, and human binding. Its execution established the retry at visit 37 on
+definition 31, digest
+`177e21cdfdb99ebba377670e98c5837609f7a2f33655124e107fe12094d3b98c`.
+D1 shows the independent demo-plan attempt running. The correction permits
+revision only of scenario `sac-225-demo-14`; it does not grant a demo pass.
+The old Workflow instance was absent during replacement; its original
+`instance.not_found` diagnostic was retained, and the replacement was created
+successfully. See the correction preflight and retry JSON alongside this file.
+
+A manual Codex Browser smoke check on the actual hosted URL showed `2 + 3 = 5`.
+This is operator verification, not autonomous author or Demo Gate proof. Fresh
+workflow evidence, independent demo approval, and the final implementation PR
+remain outstanding. SAC-182 stays stopped and SAC-226 stays in Backlog.
+
+The sections below retain the earlier preparation and deployment record.
+
 The saved calculator implementation was restored at its approved base. Its Git
 tree exactly matches `8eb184220d08673abb7564089d72420f2dd54eb5`.
 An isolated, credential-free Linux build passed 24 unit tests, 16 desktop and

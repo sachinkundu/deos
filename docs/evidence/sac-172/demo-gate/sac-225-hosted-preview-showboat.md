@@ -260,3 +260,83 @@ rtk proxy python3 /tmp/sac225-hosted-preview-route-check.py
   }
 ]
 ```
+
+```bash
+rtk proxy python3 /tmp/sac225-authorized-pages-operator.py read
+rtk proxy python3 /tmp/sac225-hosted-live-summary.py
+
+```
+
+```output
+{
+  "id": "11fa3ef4-fb4e-422e-93d7-3da6de660c9d",
+  "project_id": "daa31fe2-6778-4317-a527-f89811f93010",
+  "project_name": "sac-225-calculator",
+  "environment": "preview",
+  "url": "https://11fa3ef4.sac-225-calculator.pages.dev",
+  "created_on": "2026-09-16T03:52:44.751904Z",
+  "short_id": "11fa3ef4",
+  "status": "success",
+  "branch": "review-sac-225"
+}
+{
+  "run": [
+    {
+      "status": "active",
+      "current_node": "implementation_demo_plan",
+      "current_visit_sequence": 37,
+      "definition_version": 31,
+      "definition_digest": "177e21cdfdb99ebba377670e98c5837609f7a2f33655124e107fe12094d3b98c",
+      "workflow_instance_id": "wf-v1-iihutseczcz7negzrwyhn3g37gukcbkzsy7sc4zq4otuumks7nwa",
+      "updated_at": "2026-09-16T03:56:36.745Z"
+    }
+  ],
+  "latestAttempt": [
+    {
+      "attempt_id": "01a0a85c-1819-767f-9b44-d260865c1c3f",
+      "node_id": "implementation_demo_plan",
+      "visit_sequence": 37,
+      "state": "running",
+      "sandbox_id": "sbx-v1-nwiiopwioeoqk2ojgcv3k3drrdmy6jlfrmwybhrq36zaqglf7cxa",
+      "sandbox_tier": "basic",
+      "heartbeat_at": "2026-09-16T03:56:51.459Z",
+      "process_id": "12c8dfa6-6da4-4243-bc3f-610a16fee50b",
+      "result_class": null,
+      "cleanup_state": "pending",
+      "created_at": "2026-09-16T03:56:42.905Z",
+      "ended_at": null
+    }
+  ],
+  "latestDemoReview": [
+    {
+      "attempt_id": "01a0a718-6bea-70d3-bf83-14f5bfd49e05",
+      "kind": "plan",
+      "outcome": "ready",
+      "payload_sha": "38675909e511a44f300edc6752d23c1f706a89180e5a8760948d234217f2962f",
+      "created_at": "2026-09-15T22:06:02.752Z"
+    }
+  ],
+  "hostedPreview": [
+    {
+      "registration_id": "30def9095a61f81951f8d0e6100cb095503945341bcd2ee6ddbdca62cd54f837",
+      "receipt_key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1/b0f868eefdd282af34af0c543d51d06b1fb50f0b2d6ee876eadc2b65e2ec2cd6/hosted-preview.json",
+      "receipt_sha": "b0f868eefdd282af34af0c543d51d06b1fb50f0b2d6ee876eadc2b65e2ec2cd6",
+      "created_at": "2026-09-16T03:55:53.899Z"
+    }
+  ],
+  "recentErrors": [
+    {
+      "step_name": "/implementation-demo-upgrades",
+      "message": "(instance.not_found) Instance not found",
+      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ad5dc0e9d-be0d-4504-82a1-62c14340c91c%3Arun%3A1/4b7e331d-9215-449a-ad93-0a4df28b01c2.json",
+      "occurred_at": "2026-09-16T03:56:37.695Z"
+    },
+    {
+      "step_name": "/implementation-hosted-previews",
+      "message": "Invalid redirect value, must be one of \"follow\" or \"manual\" (\"error\" won't be implemented since it does not make sense at the edge; use \"manual\" and check the response status code).",
+      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ad5dc0e9d-be0d-4504-82a1-62c14340c91c%3Arun%3A1/d2a5de61-8ef9-4c3e-a33a-cd50dd7e19d8.json",
+      "occurred_at": "2026-09-16T03:53:26.234Z"
+    }
+  ]
+}
+```
