@@ -94,6 +94,11 @@ For nonvisual behavior, `action: check` with `behavior: true` captures executabl
 Showboat output. Add `audience: "review"` only for a concise behavior demonstration
 intended for the PR. Ordinary checks, unit tests, and exploratory commands stay
 in diagnostics. Browser measurement output stays there too.
+Checked shell commands may call the browser tool: the command waits separately
+from the browser queue. Browser calls still wait for any running demo collection.
+Keep multi-step browser demonstrations in one `action: demo` request so unrelated
+browser requests cannot interleave their steps. Do not wrap one checked command
+inside another; invoke the inner executable directly.
 
 # Resume and report
 

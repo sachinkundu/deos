@@ -9,6 +9,21 @@ export function implementationToolQueue() {
   };
 }
 
+export function implementationRequestQueue() {
+  const commands = implementationToolQueue();
+  const tools = implementationToolQueue();
+  return {
+    // A shell check may await browser requests from its child process. Holding
+    // the browser queue until that process exits would deadlock both requests.
+    // All browser calls, including whole demo collections, still share one queue.
+    run: (action, work, onError) => (action === "check" ? commands : tools).run(work, onError),
+    drain: async () => {
+      await commands.drain();
+      await tools.drain();
+    },
+  };
+}
+
 // This entire request runs inside the runtime's tool queue. It must never
 // enqueue its individual steps on that queue or launch them in parallel.
 export async function collectBrowserDemo(request, { browser, record }) {

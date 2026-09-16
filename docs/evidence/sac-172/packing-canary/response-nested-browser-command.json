@@ -1,0 +1,253 @@
+{
+  "readAt": "2026-09-16T17:42:52.228Z",
+  "attempt": {
+    "attempt_id": "01a0ab38-96a2-7887-9e4f-de399426a5c7",
+    "sandbox_id": "impl-v1-cx7fq73l4wemdpzqtzha6fx7hbyixy5ohz5cb5zj22hav3zp2wuq",
+    "sandbox_tier": "basic",
+    "process_id": "21d3b31e-7f1f-4115-9e8e-1a8e5e4c2dbf",
+    "state": "running",
+    "node_id": "implementation_build",
+    "heartbeat_at": "2026-09-16T17:37:48.172Z"
+  },
+  "originalEvents": [
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_41",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"The hosted service browser confirmed the registered review origin at HTTP 200 with no console errors. I\u2019m also recording one concise reviewer-facing hosted reachability check for the page and its two built assets; this nested check is taking longer than ordinary browser navigation, so I\u2019m allowing the trusted runtime to finish before starting the final demo, as required.\",\"assumptions\":[],\"providerReceipts\":[\"https://review.deos-preview-982f7d6fcf337341.pages.dev/ \u2014 service-browser HTTP 200\"],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_40",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/browser-hosted-css.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"browser\\\",\\\"operation\\\":\\\"navigate\\\",\\\"url\\\":\\\"/assets/index-C56SEddd.css\\\",\\\"target\\\":\\\"hosted\\\"}\nJSON\ntee /deos/output/requests/browser-hosted-js.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"browser\\\",\\\"operation\\\":\\\"navigate\\\",\\\"url\\\":\\\"/assets/index-CEV-5nZq.js\\\",\\\"target\\\":\\\"hosted\\\"}\nJSON\ntee /deos/output/requests/verify-hosted-browser.sh >/dev/null <<'\\\\''SH'\\\\''\n#\"'!/bin/sh\nset -eu\npage=$(deos-implementation /deos/output/requests/browser-hosted-navigate.json)\ncss=$(deos-implementation /deos/output/requests/browser-hosted-css.json)\njs=$(deos-implementation /deos/output/requests/browser-hosted-js.json)\nprintf '\"'\\\\''%s\\\\n'\\\\'' \\\"\"'$page\" | jq -r '\"'\\\\''\\\"Hosted app: HTTP \\\\(.documentStatus) \u2014 \\\\(.title) \u2014 \\\\(.url)\\\"'\\\\''\nprintf '\\\\''%s\\\\n'\\\\'' \\\"\"'$css\" | jq -r '\"'\\\\''\\\"Hosted stylesheet: HTTP \\\\(.documentStatus) \u2014 \\\\(.url)\\\"'\\\\''\nprintf '\\\\''%s\\\\n'\\\\'' \\\"\"'$js\" | jq -r '\"'\\\\''\\\"Hosted application script: HTTP \\\\(.documentStatus) \u2014 \\\\(.url)\\\"'\\\\''\nSH\nchmod +x /deos/output/requests/verify-hosted-browser.sh\ntee /deos/output/requests/showboat-hosted.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"argv\\\":[\\\"/deos/output/requests/verify-hosted-browser.sh\\\"],\\\"cwd\\\":\\\"/deos/workspace/repository\\\",\\\"behavior\\\":true,\\\"audience\\\":\\\"review\\\"}\nJSON\ndeos-implementation /deos/output/requests/showboat-hosted.json'\"",
+        "aggregated_output": "Interrupt\n",
+        "exit_code": 130,
+        "status": "failed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_42",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"The nested reviewer check could not complete because a check cannot hold the runtime queue while requesting the same browser, so I stopped that exact operation rather than leaving it hung. I\u2019m recording the immutable preview\u2019s trusted provider read-back as the single concise Showboat instead; the live hosted behavior itself remains demonstrated by the assigned browser and the upcoming screenshots.\",\"assumptions\":[],\"providerReceipts\":[\"Hosted service-browser navigation returned HTTP 200 at the registered review origin.\"],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_44",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'ps -eo pid,ppid,stat,etime,cmd | rg '\\\\''(verify-hosted|deos-implementation|show-hosted)'\\\\'' | sed -n '\\\\''1,200p'\\\\'''\"",
+        "aggregated_output": "   2508    2504 S          08:40 runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt /deos/output/requests/verify-hosted-browser.sh\n   2509    2508 S          08:40 /bin/sh /deos/output/requests/verify-hosted-browser.sh\n   2510    2509 Sl         08:40 node /usr/local/bin/deos-implementation /deos/output/requests/browser-hosted-navigate.json\n   2621     197 Ss         05:37 runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c tee /deos/output/requests/show-hosted-receipt.sh >/dev/null <<'SH' #!/bin/sh set -eu jq -r '   .hostedPreview as $preview |   \"Hosted review preview: \\($preview.origin)\",   \"Deployment status: \\($preview.deployment.status)\",   ($preview.assets[] | \"HTTP \\(.status) ??? \\(.path)\") ' /deos/run/implementation-input.json SH chmod +x /deos/output/requests/show-hosted-receipt.sh tee /deos/output/requests/showboat-hosted-receipt.json >/dev/null <<'JSON' {\"action\":\"check\",\"argv\":[\"/deos/output/requests/show-hosted-receipt.sh\"],\"cwd\":\"/deos/workspace/repository\",\"behavior\":true,\"audience\":\"review\"} JSON deos-implementation /deos/output/requests/showboat-hosted-receipt.json\n   2624    2621 Sl         05:37 node /usr/local/bin/deos-implementation /deos/output/requests/showboat-hosted-receipt.json\n   2719     197 Ss         00:00 runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c ps -eo pid,ppid,stat,etime,cmd | rg '(verify-hosted|deos-implementation|show-hosted)' | sed -n '1,200p'\n   2722    2719 S          00:00 bash -c ps -eo pid,ppid,stat,etime,cmd | rg '(verify-hosted|deos-implementation|show-hosted)' | sed -n '1,200p'\n   2724    2722 S          00:00 rg (verify-hosted|deos-implementation|show-hosted)\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_45",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'kill 2510 2509 2508 2>/dev/null || true'\"",
+        "aggregated_output": "",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_43",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/show-hosted-receipt.sh >/dev/null <<'\\\\''SH'\\\\''\n#\"'!/bin/sh\nset -eu\njq -r '\"'\\\\''\n  .hostedPreview as \"'$preview |\n  \"Hosted review preview: '\"\\\\(\"'$preview.origin)\",\n  \"Deployment status: '\"\\\\(\"'$preview.deployment.status)\",\n  ($preview.assets[] | \"HTTP '\"\\\\(.status) \u2014 \\\\(.path)\\\")\n'\\\\'' /deos/run/implementation-input.json\nSH\nchmod +x /deos/output/requests/show-hosted-receipt.sh\ntee /deos/output/requests/showboat-hosted-receipt.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"argv\\\":[\\\"/deos/output/requests/show-hosted-receipt.sh\\\"],\\\"cwd\\\":\\\"/deos/workspace/repository\\\",\\\"behavior\\\":true,\\\"audience\\\":\\\"review\\\"}\nJSON\ndeos-implementation /deos/output/requests/showboat-hosted-receipt.json'\"",
+        "aggregated_output": "{\"command\":\"'/deos/output/requests/show-hosted-receipt.sh'\",\"exitCode\":0,\"signal\":null,\"stdout\":\"Hosted review preview: https://review.deos-preview-982f7d6fcf337341.pages.dev\\nDeployment status: success\\nHTTP 200 \u2014 assets/index-C56SEddd.css\\nHTTP 200 \u2014 assets/index-CEV-5nZq.js\\nHTTP 200 \u2014 index.html\\n\",\"stderr\":\"\",\"cwd\":\"/deos/workspace/repository\"}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    }
+  ],
+  "originalDiagnostics": [
+    {
+      "operation": "tool",
+      "error": {
+        "message": "Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Isolated preview relay did not become publicly ready\"}",
+        "stack": "Error: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Isolated preview relay did not become publicly ready\"}\n    at broker (file:///deos/bin/implementation-runtime.mjs:373:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:611:20)",
+        "detail": "Error: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Isolated preview relay did not become publicly ready\"}\n    at broker (file:///deos/bin/implementation-runtime.mjs:373:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:611:20)"
+      }
+    },
+    {
+      "operation": "tool",
+      "error": {
+        "message": "aborted",
+        "stack": "Error: aborted\n    at abortIncoming (node:_http_server:838:17)\n    at socketOnClose (node:_http_server:832:3)\n    at Socket.emit (node:events:531:35)\n    at TCP.<anonymous> (node:net:347:12)",
+        "detail": "Error: aborted\n    at abortIncoming (node:_http_server:838:17)\n    at socketOnClose (node:_http_server:832:3)\n    at Socket.emit (node:events:531:35)\n    at TCP.<anonymous> (node:net:347:12) {\n  code: 'ECONNRESET'\n}"
+      }
+    },
+    {
+      "operation": "check",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "result": {
+        "command": "'/deos/output/requests/show-hosted-receipt.sh'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "Hosted review preview: https://review.deos-preview-982f7d6fcf337341.pages.dev\nDeployment status: success\nHTTP 200 \u2014 assets/index-C56SEddd.css\nHTTP 200 \u2014 assets/index-CEV-5nZq.js\nHTTP 200 \u2014 index.html\n",
+        "stderr": "",
+        "cwd": "/deos/workspace/repository"
+      }
+    },
+    {
+      "operation": "tool",
+      "error": {
+        "message": "Demo rename-keeps-packed-state stopped at step 14: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Waiting for selector `[data-item-name=\\\"Jacket\\\"].is-packed` failed: Protocol error (Runtime.callFunctionOn): Target closed\"}",
+        "stack": "Error: Demo rename-keeps-packed-state stopped at step 14: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Waiting for selector `[data-item-name=\\\"Jacket\\\"].is-packed` failed: Protocol error (Runtime.callFunctionOn): Target closed\"}\n    at collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:74:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20)",
+        "cause": {},
+        "detail": "Error: Demo rename-keeps-packed-state stopped at step 14: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Waiting for selector `[data-item-name=\\\"Jacket\\\"].is-packed` failed: Protocol error (Runtime.callFunctionOn): Target closed\"}\n    at collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:74:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20) {\n  result: {\n    collectionId: '6450ae4e-0780-4f34-bd6e-44a29cecfe04',\n    scenarioId: 'rename-keeps-packed-state',\n    stepIndex: 13,\n    captures: [\n      {\n        scenarioId: 'add-items-safely',\n        stepIndex: 4,\n        url: 'https://review.deos-preview-982f7d6fcf337341.pages.dev/',\n        documentStatus: 200,\n        viewport: { width: 1440, height: 900 },\n        traceEnabled: false,\n        console: [],\n        proof: {\n          change: 'sac-238',\n          approvedDesignSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          testedBaseSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          treeSha: '3cdd00ad90f0c24db4e4f0359e7764bbd439c55a',\n          id: '01a0ab38-96a2-7887-9e4f-de399426a5c7:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:0ddd40f53eb797ad42de417b790eedefd8bb396f09c92ae635a175e06395d933:8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e',\n          kind: 'browser_image',\n          path: 'implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e/proof/01a0ab38-96a2-7887-9e4f-de399426a5c7/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/0ddd40f53eb797ad42de417b790eedefd8bb396f09c92ae635a175e06395d933/browser.png',\n          caption: 'Passport appears as a new unpacked item and the add field is ready for the next entry.\\n' +\n            'Captured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9',\n          sha256: '8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e',\n          sanitized: true\n        },\n        imagePath: '/deos/implementation/browser-8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e.png'\n      },\n      {\n        scenarioId: 'add-items-safely',\n        stepIndex: 8,\n        url: 'https://review.deos-preview-982f7d6fcf337341.pages.dev/',\n        documentStatus: 200,\n        viewport: { width: 1440, height: 900 },\n        traceEnabled: false,\n        console: [],\n        proof: {\n          change: 'sac-238',\n          approvedDesignSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          testedBaseSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          treeSha: '3cdd00ad90f0c24db4e4f0359e7764bbd439c55a',\n          id: '01a0ab38-96a2-7887-9e4f-de399426a5c7:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:f531a2223acd89295c1c023bdda632677c4e29ae340580dd20db1da62a2fd675:4096249c7594570000a2fb160a0c76aa81a544a34050082052be69ca4d7bd848',\n          kind: 'browser_image',\n          path: 'implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/4096249c7594570000a2fb160a0c76aa81a544a34050082052be69ca4d7bd848/proof/01a0ab38-96a2-7887-9e4f-de399426a5c7/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/f531a2223acd89295c1c023bdda632677c4e29ae340580dd20db1da62a2fd675/browser.png',\n          caption: 'The markup-like name <b>Hat</b> is displayed as literal text beneath Passport, and both items remain unpacked.\\n' +\n            'Captured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9',\n          sha256: '4096249c7594570000a2fb160a0c76aa81a544a34050082052be69ca4d7bd848',\n          sanitized: true\n        },\n        imagePath: '/deos/implementation/browser-4096249c7594570000a2fb160a0c76aa81a544a34050082052be69ca4d7bd848.png'\n      },\n      {\n        scenarioId: 'rename-keeps-packed-state',\n        stepIndex: 7,\n        url: 'https://review.deos-preview-982f7d6fcf337341.pages.dev/',\n        documentStatus: 200,\n        viewport: { width: 1440, height: 900 },\n        traceEnabled: false,\n        console: [],\n        proof: {\n          change: 'sac-238',\n          approvedDesignSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          testedBaseSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          treeSha: '3cdd00ad90f0c24db4e4f0359e7764bbd439c55a',\n          id: '01a0ab38-96a2-7887-9e4f-de399426a5c7:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:fd9d2a1072db76e70d3a3a147e48b6696ec7840da0a3dd81ca31bc433c6bd5f6:a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252',\n          kind: 'browser_image',\n          path: 'implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252/proof/01a0ab38-96a2-7887-9e4f-de399426a5c7/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/fd9d2a1072db76e70d3a3a147e48b6696ec7840da0a3dd81ca31bc433c6bd5f6/browser.png',\n          caption: 'Before renaming, Rain coat is visibly packed while Socks is still to pack.\\n' +\n            'Captured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9',\n          sha256: 'a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252',\n          sanitized: true\n        },\n        imagePath: '/deos/implementation/browser-a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252.png'\n      },\n      {\n        scenarioId: 'rename-keeps-packed-state',\n        stepIndex: 10,\n        url: 'https://review.deos-preview-982f7d6fcf337341.pages.dev/',\n        documentStatus: 200,\n        viewport: { width: 1440, height: 900 },\n        traceEnabled: false,\n        console: [],\n        proof: {\n          change: 'sac-238',\n          approvedDesignSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          testedBaseSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          treeSha: '3cdd00ad90f0c24db4e4f0359e7764bbd439c55a',\n          id: '01a0ab38-96a2-7887-9e4f-de399426a5c7:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:88b18d3a6e21bf44dce2352197177113d3a6be21c52d681143f3c45f2111c055:95e3af2a14cc86cc731384f56a18d1712db17c8ed4a759ad3d8c7fb9f52728af',\n          kind: 'browser_image',\n          path: 'implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/95e3af2a14cc86cc731384f56a18d1712db17c8ed4a759ad3d8c7fb9f52728af/proof/01a0ab38-96a2-7887-9e4f-de399426a5c7/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/88b18d3a6e21bf44dce2352197177113d3a6be21c52d681143f3c45f2111c055/browser.png',\n          caption: 'The Rain coat row opens a focused rename form with explicit Save and Cancel actions.\\n' +\n            'Captured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9',\n          sha256: '95e3af2a14cc86cc731384f56a18d1712db17c8ed4a759ad3d8c7fb9f52728af',\n          sanitized: true\n        },\n        imagePath: '/deos/implementation/browser-95e3af2a14cc86cc731384f56a18d1712db17c8ed4a759ad3d8c7fb9f52728af.png'\n      }\n    ]\n  },\n  [cause]: Error: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Waiting for selector `[data-item-name=\\\"Jacket\\\"].is-packed` failed: Protocol error (Runtime.callFunctionOn): Target closed\"}\n      at broker (file:///deos/bin/implementation-runtime.mjs:373:15)\n      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n      at async browserResult (file:///deos/bin/implementation-runtime.mjs:397:20)\n      at async collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:63:24)\n      at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20)\n}",
+        "result": {
+          "collectionId": "6450ae4e-0780-4f34-bd6e-44a29cecfe04",
+          "scenarioId": "rename-keeps-packed-state",
+          "stepIndex": 13,
+          "captures": [
+            {
+              "scenarioId": "add-items-safely",
+              "stepIndex": 4,
+              "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+              "documentStatus": 200,
+              "viewport": {
+                "width": 1440,
+                "height": 900
+              },
+              "traceEnabled": false,
+              "console": [],
+              "proof": {
+                "change": "sac-238",
+                "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+                "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+                "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+                "id": "01a0ab38-96a2-7887-9e4f-de399426a5c7:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:0ddd40f53eb797ad42de417b790eedefd8bb396f09c92ae635a175e06395d933:8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e",
+                "kind": "browser_image",
+                "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e/proof/01a0ab38-96a2-7887-9e4f-de399426a5c7/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/0ddd40f53eb797ad42de417b790eedefd8bb396f09c92ae635a175e06395d933/browser.png",
+                "caption": "Passport appears as a new unpacked item and the add field is ready for the next entry.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+                "sha256": "8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e",
+                "sanitized": true
+              },
+              "imagePath": "/deos/implementation/browser-8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e.png"
+            },
+            {
+              "scenarioId": "add-items-safely",
+              "stepIndex": 8,
+              "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+              "documentStatus": 200,
+              "viewport": {
+                "width": 1440,
+                "height": 900
+              },
+              "traceEnabled": false,
+              "console": [],
+              "proof": {
+                "change": "sac-238",
+                "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+                "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+                "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+                "id": "01a0ab38-96a2-7887-9e4f-de399426a5c7:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:f531a2223acd89295c1c023bdda632677c4e29ae340580dd20db1da62a2fd675:4096249c7594570000a2fb160a0c76aa81a544a34050082052be69ca4d7bd848",
+                "kind": "browser_image",
+                "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/4096249c7594570000a2fb160a0c76aa81a544a34050082052be69ca4d7bd848/proof/01a0ab38-96a2-7887-9e4f-de399426a5c7/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/f531a2223acd89295c1c023bdda632677c4e29ae340580dd20db1da62a2fd675/browser.png",
+                "caption": "The markup-like name <b>Hat</b> is displayed as literal text beneath Passport, and both items remain unpacked.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+                "sha256": "4096249c7594570000a2fb160a0c76aa81a544a34050082052be69ca4d7bd848",
+                "sanitized": true
+              },
+              "imagePath": "/deos/implementation/browser-4096249c7594570000a2fb160a0c76aa81a544a34050082052be69ca4d7bd848.png"
+            },
+            {
+              "scenarioId": "rename-keeps-packed-state",
+              "stepIndex": 7,
+              "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+              "documentStatus": 200,
+              "viewport": {
+                "width": 1440,
+                "height": 900
+              },
+              "traceEnabled": false,
+              "console": [],
+              "proof": {
+                "change": "sac-238",
+                "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+                "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+                "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+                "id": "01a0ab38-96a2-7887-9e4f-de399426a5c7:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:fd9d2a1072db76e70d3a3a147e48b6696ec7840da0a3dd81ca31bc433c6bd5f6:a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252",
+                "kind": "browser_image",
+                "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252/proof/01a0ab38-96a2-7887-9e4f-de399426a5c7/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/fd9d2a1072db76e70d3a3a147e48b6696ec7840da0a3dd81ca31bc433c6bd5f6/browser.png",
+                "caption": "Before renaming, Rain coat is visibly packed while Socks is still to pack.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+                "sha256": "a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252",
+                "sanitized": true
+              },
+              "imagePath": "/deos/implementation/browser-a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252.png"
+            },
+            {
+              "scenarioId": "rename-keeps-packed-state",
+              "stepIndex": 10,
+              "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+              "documentStatus": 200,
+              "viewport": {
+                "width": 1440,
+                "height": 900
+              },
+              "traceEnabled": false,
+              "console": [],
+              "proof": {
+                "change": "sac-238",
+                "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+                "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+                "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+                "id": "01a0ab38-96a2-7887-9e4f-de399426a5c7:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:88b18d3a6e21bf44dce2352197177113d3a6be21c52d681143f3c45f2111c055:95e3af2a14cc86cc731384f56a18d1712db17c8ed4a759ad3d8c7fb9f52728af",
+                "kind": "browser_image",
+                "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/95e3af2a14cc86cc731384f56a18d1712db17c8ed4a759ad3d8c7fb9f52728af/proof/01a0ab38-96a2-7887-9e4f-de399426a5c7/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/88b18d3a6e21bf44dce2352197177113d3a6be21c52d681143f3c45f2111c055/browser.png",
+                "caption": "The Rain coat row opens a focused rename form with explicit Save and Cancel actions.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+                "sha256": "95e3af2a14cc86cc731384f56a18d1712db17c8ed4a759ad3d8c7fb9f52728af",
+                "sanitized": true
+              },
+              "imagePath": "/deos/implementation/browser-95e3af2a14cc86cc731384f56a18d1712db17c8ed4a759ad3d8c7fb9f52728af.png"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tool",
+      "error": {
+        "message": "Demo add-items-safely stopped at reset: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Unable to connect to existing session c437ff84-53df-4624-b511-d5a7677a5c37 (it may still be in use or not ready yet) - retry or launch a new browser: TypeError: Cannot read properties of null (reading 'accept')\"}",
+        "stack": "Error: Demo add-items-safely stopped at reset: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Unable to connect to existing session c437ff84-53df-4624-b511-d5a7677a5c37 (it may still be in use or not ready yet) - retry or launch a new browser: TypeError: Cannot read properties of null (reading 'accept')\"}\n    at collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:74:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20)",
+        "cause": {},
+        "detail": "Error: Demo add-items-safely stopped at reset: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Unable to connect to existing session c437ff84-53df-4624-b511-d5a7677a5c37 (it may still be in use or not ready yet) - retry or launch a new browser: TypeError: Cannot read properties of null (reading 'accept')\"}\n    at collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:74:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20) {\n  result: {\n    collectionId: '6a73250f-cd4a-4a55-8cee-9659c9896c69',\n    scenarioId: 'add-items-safely',\n    stepIndex: -1,\n    captures: []\n  },\n  [cause]: Error: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Unable to connect to existing session c437ff84-53df-4624-b511-d5a7677a5c37 (it may still be in use or not ready yet) - retry or launch a new browser: TypeError: Cannot read properties of null (reading 'accept')\"}\n      at broker (file:///deos/bin/implementation-runtime.mjs:373:15)\n      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n      at async browserResult (file:///deos/bin/implementation-runtime.mjs:397:20)\n      at async collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:58:7)\n      at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20)\n}",
+        "result": {
+          "collectionId": "6a73250f-cd4a-4a55-8cee-9659c9896c69",
+          "scenarioId": "add-items-safely",
+          "stepIndex": -1,
+          "captures": []
+        }
+      }
+    },
+    {
+      "operation": "tool",
+      "error": {
+        "message": "Demo add-items-safely stopped at reset: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Unable to connect to existing session c437ff84-53df-4624-b511-d5a7677a5c37 (it may still be in use or not ready yet) - retry or launch a new browser: TypeError: Cannot read properties of null (reading 'accept')\"}",
+        "stack": "Error: Demo add-items-safely stopped at reset: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Unable to connect to existing session c437ff84-53df-4624-b511-d5a7677a5c37 (it may still be in use or not ready yet) - retry or launch a new browser: TypeError: Cannot read properties of null (reading 'accept')\"}\n    at collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:74:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20)",
+        "cause": {},
+        "detail": "Error: Demo add-items-safely stopped at reset: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Unable to connect to existing session c437ff84-53df-4624-b511-d5a7677a5c37 (it may still be in use or not ready yet) - retry or launch a new browser: TypeError: Cannot read properties of null (reading 'accept')\"}\n    at collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:74:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20) {\n  result: {\n    collectionId: 'e767c665-2c64-41d2-8f2a-3190db84e3d5',\n    scenarioId: 'add-items-safely',\n    stepIndex: -1,\n    captures: []\n  },\n  [cause]: Error: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Unable to connect to existing session c437ff84-53df-4624-b511-d5a7677a5c37 (it may still be in use or not ready yet) - retry or launch a new browser: TypeError: Cannot read properties of null (reading 'accept')\"}\n      at broker (file:///deos/bin/implementation-runtime.mjs:373:15)\n      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n      at async browserResult (file:///deos/bin/implementation-runtime.mjs:397:20)\n      at async collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:58:7)\n      at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20)\n}",
+        "result": {
+          "collectionId": "e767c665-2c64-41d2-8f2a-3190db84e3d5",
+          "scenarioId": "add-items-safely",
+          "stepIndex": -1,
+          "captures": []
+        }
+      }
+    }
+  ]
+}

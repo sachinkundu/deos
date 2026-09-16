@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 // @ts-expect-error The container runner is JavaScript.
-import {collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementationToolQueue} from '../container/implementation-browser-demo.mjs';
+import {collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementationToolQueue, implementationRequestQueue} from '../container/implementation-browser-demo.mjs';
 
 const scenario = (id: string, key: string) => ({id, steps: [
   {operation:'press',key}, {operation:'screenshot',caption:`Entered ${key}`},
@@ -21,13 +21,13 @@ test('a complete frozen scenario list holds the queue against other demos and ra
     return step.operation === 'screenshot' ? {proof:{id:step.captureId,kind:'browser_image',caption:step.caption},display} : {};
   };
   const request = {action:'demo',scenarios:[scenario('one','7'),scenario('two','5')]};
-  const queue = implementationToolQueue();
-  const first = queue.run(()=>collectBrowserDemo(request,{browser,record:async (event: any)=>events.push(event)}), (error: Error)=>{throw error;});
+  const queue = implementationRequestQueue();
+  const first = queue.run('demo',()=>collectBrowserDemo(request,{browser,record:async (event: any)=>events.push(event)}), (error: Error)=>{throw error;});
   await firstStep;
   // Neither caller mutation nor a competing request may alter this collection.
   request.scenarios[1].steps[0].key = '9';
-  const raw = queue.run(()=>browser({operation:'press',key:'8'}), (error: Error)=>{throw error;});
-  const second = queue.run(()=>collectBrowserDemo({action:'demo',scenarios:[scenario('three','2')]},
+  const raw = queue.run('browser',()=>browser({operation:'press',key:'8'}), (error: Error)=>{throw error;});
+  const second = queue.run('demo',()=>collectBrowserDemo({action:'demo',scenarios:[scenario('three','2')]},
     {browser,record:async (event: any)=>events.push(event)}), (error: Error)=>{throw error;});
   assert.deepEqual(calls,['reset:','press:7']);
   release();

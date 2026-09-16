@@ -6,6 +6,62 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 // @ts-expect-error The container runtime is JavaScript.
 import { responseCommand } from "../container/implementation-runtime.mjs";
+// @ts-expect-error The container runtime is JavaScript.
+import { implementationRequestQueue } from "../container/implementation-browser-demo.mjs";
+
+test("a checked subprocess can await its browser request without releasing command serialization", {timeout:10000}, async () => {
+  const root = await mkdtemp(join(tmpdir(), "deos-nested-browser-"));
+  const script = join(root, "browser-check.mjs");
+  await writeFile(script, `const response = await fetch(process.argv[2]);
+if (!response.ok) throw new Error(await response.text());
+console.log(await response.text());
+`);
+  const queue = implementationRequestQueue();
+  const events: string[] = [];
+  let started!: () => void;
+  const firstStarted = new Promise<void>(resolve => { started = resolve; });
+  let origin = "";
+  const server = createServer((req, res) => {
+    const action = req.url === "/browser" ? "browser" : "check";
+    void queue.run(action, async () => {
+      if (action === "browser") {
+        events.push("browser");
+        res.end("hosted browser reached");
+      } else if (req.url === "/first") {
+        events.push("first started");
+        started();
+        const result = await responseCommand(res, [process.execPath, script, `${origin}/browser`], root,
+          {timeout:3000});
+        events.push("first completed");
+        res.end(JSON.stringify(result));
+      } else {
+        events.push("second started");
+        res.end("second completed");
+      }
+    }, (error: Error) => { res.statusCode = 500; res.end(String(error)); });
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  origin = `http://127.0.0.1:${address.port}`;
+  try {
+    const first = fetch(`${origin}/first`);
+    await firstStarted;
+    const second = fetch(`${origin}/second`);
+    const response = await first;
+    assert.equal(response.status, 200, await response.clone().text());
+    const result = await response.json() as {exitCode:number; stdout:string};
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.stdout, "hosted browser reached\n");
+    assert.equal(await (await second).text(), "second completed");
+    await queue.drain();
+    assert.deepEqual(events, ["first started", "browser", "first completed", "second started"]);
+  } finally {
+    await queue.drain();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+    await rm(root, {recursive:true, force:true});
+  }
+});
 
 test("disconnecting a command client stops its process and retains its output", {timeout:10000}, async () => {
   const root = await mkdtemp(join(tmpdir(), "deos-command-disconnect-"));

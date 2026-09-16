@@ -74,6 +74,10 @@ Bound shell network probes. Hosted browser and trusted publisher access do not
 imply the sandbox shell has the same egress. If a check client is interrupted,
 stop its subprocess group and retain the cancellation and partial output so it
 cannot silently block later commands and finalization until the long deadline.
+Checked shell work must not hold the browser queue: a Showboat script can call
+the assigned browser and await its result. Serialize shell checks separately,
+keep whole demo collections and individual browser calls on the same browser
+queue, and drain both before finalizing the candidate.
 
 Check development tools as the actual author account with its clean PATH during
 image construction. A binary bundled under the provider's private directory may

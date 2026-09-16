@@ -1,0 +1,20 @@
+{
+  "readAt": "2026-09-16T17:42:52.228Z",
+  "attempt": {
+    "attempt_id": "01a0ab38-96a2-7887-9e4f-de399426a5c7",
+    "sandbox_id": "impl-v1-cx7fq73l4wemdpzqtzha6fx7hbyixy5ohz5cb5zj22hav3zp2wuq",
+    "sandbox_tier": "basic",
+    "process_id": "21d3b31e-7f1f-4115-9e8e-1a8e5e4c2dbf",
+    "state": "running",
+    "node_id": "implementation_build",
+    "heartbeat_at": "2026-09-16T17:37:48.172Z"
+  },
+  "originalErrors": [
+    {
+      "location": "implementation progress signal",
+      "message": "The operation was aborted due to timeout",
+      "detail": "DOMException [TimeoutError]: The operation was aborted due to timeout\n    at node:internal/deps/undici/undici:15157:13\n    at async notify (file:///deos/run/implementation-progress-watcher.mjs:26:22)",
+      "occurredAt": "2026-09-16T17:17:09.745Z"
+    }
+  ]
+}

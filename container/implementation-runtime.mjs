@@ -20,7 +20,7 @@ import { verifyNativeGrounding } from "./grounded-agent.mjs";
 import { trustGeneratedHooks } from "./native-review-setup.mjs";
 import { originalErrorText } from "./original-errors.mjs";
 import { killProcessGroup, stopProcessGroup } from "./implementation-process.mjs";
-import { collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementationToolQueue } from "./implementation-browser-demo.mjs";
+import { collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementationRequestQueue } from "./implementation-browser-demo.mjs";
 
 const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
@@ -425,7 +425,8 @@ export async function setupImplementation(job) {
     previewLog = null;
     previewError = null;
   };
-  const toolQueue = implementationToolQueue();
+  const toolQueue = implementationRequestQueue();
+  const pendingRequests = new Set();
   let providerChain = Promise.resolve();
   let stateWrites = Promise.resolve();
   const persistState = () => {
@@ -470,7 +471,28 @@ export async function setupImplementation(job) {
       });
       return;
     }
-    toolQueue.run(async () => {
+    const toolError = async (error) => {
+      const diagnostic = {
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause,
+        detail: originalErrorText(error),
+        result: error.result,
+      };
+      try {
+        await appendFile(journal,JSON.stringify({operation:'tool',error:diagnostic})+'\n');
+        await writeFile(`${ROOT}/last-error.json`, JSON.stringify(diagnostic), {mode:0o600});
+      } catch(secondary) {
+        diagnostic.storageError={message:secondary.message,stack:secondary.stack};
+        process.stderr.write(JSON.stringify(diagnostic)+'\n');
+      }
+      if (!res.headersSent)
+        res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(diagnostic));
+    };
+    // Read the request before selecting its queue. A checked subprocess can
+    // call the browser while its enclosing check waits for the subprocess.
+    const dispatch = async () => {
         if (req.method !== "POST" || req.url !== "/tool") {
           res.writeHead(404);
           res.end();
@@ -485,6 +507,7 @@ export async function setupImplementation(job) {
           chunks.push(chunk);
         }
         const request = JSON.parse(Buffer.concat(chunks).toString());
+        return toolQueue.run(request.action, async () => {
         const before = await snapshot(job.cwd);
         const subject = {
           change: job.openspecChange,
@@ -675,25 +698,10 @@ export async function setupImplementation(job) {
         await persistState();
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(result));
-      }, async (error) => {
-        const diagnostic = {
-          message: error.message,
-          stack: error.stack,
-          cause: error.cause,
-          detail: originalErrorText(error),
-          result: error.result,
-        };
-        try {
-          await appendFile(journal,JSON.stringify({operation:'tool',error:diagnostic})+'\n');
-          await writeFile(`${ROOT}/last-error.json`, JSON.stringify(diagnostic), {mode:0o600});
-        } catch(secondary) {
-          diagnostic.storageError={message:secondary.message,stack:secondary.stack};
-          process.stderr.write(JSON.stringify(diagnostic)+'\n');
-        }
-        if (!res.headersSent)
-          res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(diagnostic));
-      });
+        }, toolError);
+    };
+    const pending = dispatch().catch(toolError).finally(() => pendingRequests.delete(pending));
+    pendingRequests.add(pending);
   });
   await new Promise((resolveServer, reject) => {
     server.once("error", reject);
@@ -701,6 +709,8 @@ export async function setupImplementation(job) {
   });
   const runtime = {
     async finish() {
+      // Include requests whose bodies were still arriving before queue routing.
+      while (pendingRequests.size) await Promise.all([...pendingRequests]);
       await toolQueue.drain();
       await providerChain;
       await stateWrites;

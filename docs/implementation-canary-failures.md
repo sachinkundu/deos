@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 61 runtime/tool occurrences in 27 categories, including recovered errors and one stopped author stage; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; six hosted demo scenarios complete; Claude review completed with two evidence findings at 17:16:44; Sol response passed checks and reached hosted browser at 17:30; PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 66 runtime/tool occurrences in 30 categories, including recovered errors and stopped author work; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; first six hosted scenarios complete; one Claude review completed; Sol response stopped at 17:43 with saved code and a browser-recovery question on Linear; PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -620,6 +620,55 @@ superseded by the [current contract](implementation-canary-lessons.md).
 - The runtime guide now says to keep one suite active, inspect or stop its
   existing execution, and use the runner's concurrency controls when appropriate.
 - [Original calls](evidence/sac-172/packing-canary/response-command-recovery.json).
+
+#### PACK-28 — checked shell browser calls deadlock on their enclosing queue
+
+- Response item40 wrapped browser requests in a reviewer Showboat command. The
+  check held the runtime tool queue while its subprocess waited for a browser
+  request on that same queue. The agent interrupted the client (exit130), but
+  the deployed runtime left its child processes alive. A following Showboat
+  waited behind it for over five minutes.
+- Sol inspected the processes and stopped that exact child chain in item45.
+  The next Showboat then completed successfully with the trusted hosted receipt.
+  One failed call; the waiting successful call and later aborted wrapper are
+  consequences, not additional occurrences. No supervisor process mutation.
+- Correction: serialize checks separately from browser tools. Whole demo lists
+  and raw browser calls still share one queue. Finalization waits for incoming
+  requests and both queues. The existing pending client-cancellation fix also
+  stops abandoned process groups. This adds no quality gate or verdict check.
+- A real subprocess/HTTP regression proves a check can await a browser request
+  while a second check remains serialized. Demo-interleaving regression still
+  passes. All 588 repository tests, TypeScript and skill validation pass.
+- [Original calls and recovery](evidence/sac-172/packing-canary/response-nested-browser-command.json).
+
+#### PACK-29 — one progress notification timed out
+
+- The response progress watcher recorded `The operation was aborted due to
+  timeout` at 17:17:09.745, including the original notify stack. This was found
+  in the full reader capture, not the compact command tail.
+- One signal delivery failure. Later D1 heartbeats and the final stage transition
+  were received; it did not stop implementation. The exact network cause is
+  unknown. Retain the existing fallback rather than inventing another workflow.
+- [Original diagnostic](evidence/sac-172/packing-canary/response-progress-signal-timeout.json).
+
+#### PACK-30 — browser target closed and could not reconnect
+
+- The response collection passed its add scenario, then stopped at 17:41:42.656
+  while waiting for the renamed packed row: `Protocol error
+  (Runtime.callFunctionOn): Target closed`. Two subsequent collection resets at
+  17:41:59.688 and 17:42:20.813 could not connect to the assigned session, with
+  `Cannot read properties of null (reading 'accept')`. Three failed operations.
+- Sol changed its own scenario from Enter to Save and retried the saved list.
+  Its claim that Enter caused the closure is unproven. The earlier deployed fill
+  defect also remained present, and this reconstructed scenario omitted the
+  prior select-all workaround. The exact cause of session closure is unknown.
+- Sol returned needs_human; the attempt finished at 17:43:03.330 with source,
+  candidate and original diagnostics saved. DEOS posted its concrete browser
+  recovery question on Linear and reached clarification wait visit35. No second
+  Claude review or supervisor application edit occurred.
+- Safe rollout and same-stage recovery with a new assigned browser are next.
+  Preserve the existing implementation and approved plan; no planning restart.
+- [Original scenarios, failures and handoff](evidence/sac-172/packing-canary/response-browser-retired.json).
 
 ### App development failures recovered by the implementation agent
 
