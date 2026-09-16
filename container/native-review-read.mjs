@@ -60,6 +60,11 @@ export const readSnapshot = async ({ op, args }, state, sourceRoot = "/deos/work
   };
   const read = async (name) => {
     name = normalize(name);
+    if (state.phase === 'design' && name === 'context/runtime-capabilities.json') {
+      // Service context is not a repository file. Read the same frozen bytes
+      // supplied to the external reviewer, without adding scratch files to Git.
+      return context.designReview.sources.find(source => source.path === name).content;
+    }
     const file = `${sourceRoot}/${name}`;
     const stat = await lstat(file);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("review source is not a regular file");
