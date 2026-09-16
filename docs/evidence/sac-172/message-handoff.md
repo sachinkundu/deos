@@ -1,5 +1,10 @@
 # Implementation message handoff — 16 September 2026
 
+Later update: the user chose to omit GitHub Actions rather than broaden App
+permissions. The permission request below is historical and no longer pending.
+See [the publication human handoff](publication-human-handoff.md) for the deployed
+question/reply flow and the real calculator continuation.
+
 Sol implements and demonstrates the work. Claude reviews once. If Claude returns
 findings, Sol responds once, then the workflow publishes for human review. The
 workflow does not assess that response or generate repair instructions.
