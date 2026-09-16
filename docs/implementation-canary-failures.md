@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 59 runtime/tool occurrences in 27 categories, including recovered errors and one stopped author stage; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; six hosted demo scenarios complete; Claude review completed with two evidence findings at 17:16:44; Sol response running; PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 61 runtime/tool occurrences in 27 categories, including recovered errors and one stopped author stage; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; six hosted demo scenarios complete; Claude review completed with two evidence findings at 17:16:44; Sol response passed checks and reached hosted browser at 17:30; PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -437,6 +437,9 @@ superseded by the [current contract](implementation-canary-lessons.md).
   Static-only hosted demonstrations should not need this separate relay path
   (PACK-17). Local preview startup still cleans up after a failed setup.
 - [Original results and recovery](evidence/sac-172/packing-canary/build-preview-recovery.json).
+- Fourth occurrence: response attempt01a0ab38 item33 returned the same public
+  relay readiness error. The same agent retried and reached a healthy local
+  preview, then the hosted browser. [Response recovery](evidence/sac-172/packing-canary/response-preview-recovery.json).
 
 #### PACK-17 — hosted browser incorrectly requires a local preview
 
@@ -512,6 +515,10 @@ superseded by the [current contract](implementation-canary-lessons.md).
 - Runtime guidance now distinguishes hosted browser/publisher access from shell
   access. No new provider permissions or supervisor application edits were made.
 - [Original results](evidence/sac-172/packing-canary/build-hosted-shell-and-scratch.json).
+- Third occurrence: response item37 retried shell HEAD against the registered
+  review alias and returned exit22 / HTTP520. It kept this as diagnostic work
+  and switched to the service browser, which returned HTTP200 with a clean
+  console. [Original result and browser recovery](evidence/sac-172/packing-canary/response-preview-recovery.json).
 
 #### PACK-22 — preview scratch entered the implementation snapshot
 
