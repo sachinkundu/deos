@@ -54,7 +54,11 @@ COPY config/prompts/openspec-traceability-recheck.md /deos/config/prompts/opensp
 COPY container/deos-github /usr/local/bin/deos-github
 COPY container/deos-linear /usr/local/bin/deos-linear
 
-RUN chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin/trace-review-runner.mjs \
+# Codex bundles ripgrep, but its private PATH is lost in the author account's
+# clean environment. Expose the binary from the pinned linux-x64 package.
+RUN ln -s /usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path/rg /usr/local/bin/rg \
+    && runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin rg --version \
+    && chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin/trace-review-runner.mjs \
       /deos/bin/design-review-runner.mjs \
       /usr/local/bin/deos-github /usr/local/bin/deos-linear /usr/local/bin/deos-implementation \
     && for file in /deos/bin/*.mjs; do node --check "$file" || exit 1; done \

@@ -1,0 +1,59 @@
+[
+  [
+    {
+      "delivery_id": "68e9a8d2-f16c-441c-b580-dd6e24f99502",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1",
+      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8",
+      "event_kind": "Issue.update",
+      "actor_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "actor_type": "user",
+      "provider_time": "2026-09-16T14:46:25.682Z",
+      "from_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+      "from_state_name": null,
+      "to_state_id": "0bc91def-cb76-4e55-a39f-680181382528",
+      "to_state_name": "Merging",
+      "payload_digest": "33032b31925d5f8da95da2de408201912717d267d18092b607b8e4e28d7288b5",
+      "state": "sent",
+      "sent_at": "2026-09-16T14:46:35.859Z",
+      "claimed_at": null,
+      "processed_at": null,
+      "created_at": "2026-09-16T14:46:35.859Z",
+      "comment_id": null
+    }
+  ],
+  [
+    {
+      "error_id": "cc31d8f7-626e-461b-a9c5-9c2a8eac84c9",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1",
+      "node_id": "planning_independent_response",
+      "visit_sequence": 5,
+      "step_name": "agent:planning_independent_response:visit:5",
+      "location": "src/sandbox-controller.ts:949",
+      "message": "File not found: /deos/output/heartbeat.json",
+      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/cc31d8f7-626e-461b-a9c5-9c2a8eac84c9.json",
+      "occurred_at": "2026-09-16T14:26:31.645Z"
+    },
+    {
+      "error_id": "4fd45796-77a9-4146-9a69-643290d350f2",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1",
+      "node_id": "independent_discovery",
+      "visit_sequence": 4,
+      "step_name": "agent:independent_discovery:visit:4",
+      "location": "src/sandbox-controller.ts:949",
+      "message": "File not found: /deos/output/heartbeat.json",
+      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/4fd45796-77a9-4146-9a69-643290d350f2.json",
+      "occurred_at": "2026-09-16T14:23:50.749Z"
+    },
+    {
+      "error_id": "065205ee-1131-4b05-9971-d30b088b9282",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1",
+      "node_id": "planning_author",
+      "visit_sequence": 2,
+      "step_name": "agent:planning_author:visit:2",
+      "location": "src/sandbox-controller.ts:949",
+      "message": "File not found: /deos/output/heartbeat.json",
+      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/065205ee-1131-4b05-9971-d30b088b9282.json",
+      "occurred_at": "2026-09-16T14:07:09.457Z"
+    }
+  ]
+]

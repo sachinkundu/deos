@@ -27,8 +27,8 @@ not a complete baseline, and cannot establish a percentage improvement.
 
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
-| [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged and issue Canceled on 2026-09-16; workflow retirement defect recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 1 recovered agent command failure and 1 recovered startup diagnostic; no stopped workflow so far | 0 run recovery interventions; 1 preventive instruction correction validated locally | Proposal/specification PR34 at Human Review; implementation PR pending |
+| [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 3 recovered agent command failures, 3 recovered startup diagnostics and 1 delayed approval signal: 7 occurrences in 4 categories; delay cause not yet known | 1 recovery intervention: resent the same saved approval signal; general runtime corrections below | Proposal/specification PR34 merged; design author running; implementation PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -63,7 +63,7 @@ superseded by the [current contract](implementation-canary-lessons.md).
 | CAL-19 | PR proof included internal checks/discussion and broken or mismatched images | Review gallery and diagnostic output separated; user template retained | [Current contract](implementation-canary-lessons.md) |
 | CAL-20 | Shared-browser scenarios interleaved; captions and screenshot state disagreed | One ordered scenario-list request, fresh context per scenario, fixed app/harness, selected completed gallery | [Browser scenarios](evidence/sac-172/browser-scenarios.md), [current contract](implementation-canary-lessons.md) |
 | CAL-21 | Model capacity interrupted work | Capacity fallback remains deferred in SAC-235; do not silently change model | [Capacity record](evidence/sac-172/demo-gate/sac-225-capacity-container-proof.json) |
-| CAL-22 | Retirement cancellation was classified eligible but its transition returned stale; run remained at implementation Human Review | PR33 is closed and Linear is Canceled. No agent is running. Cause and durable recovery remain under investigation; do not repeatedly toggle Linear or edit D1 directly | Cancellation delivery `63d8cb42-d05c-4f2e-91bf-790e781cb864`, eligible 2026-09-16 14:16:38.624 UTC, inbox duplicate 14:16:38.850 UTC, gate visit 65 |
+| CAL-22 | Retirement cancellation was classified eligible but its transition returned stale; run remained at implementation Human Review | Earlier gate-repair status writes replayed outside a durable step. Fixed in d362d69 with a failing-then-passing replay regression and 40 passing orchestrator tests; deployed backend 53de82b2 at 100%. Recovered the retired instance's engine from current D1 gate, then repeated the authorized cancellation. No earlier stage/agent reran. D1 now terminal canceled at visit66; PR33 closed, Linear Canceled | Cancellation delivery `63d8cb42-d05c-4f2e-91bf-790e781cb864`, eligible 2026-09-16 14:16:38.624 UTC, inbox duplicate 14:16:38.850 UTC, gate visit65; [runtime evidence](evidence/sac-172/packing-canary/cal-22.json) |
 
 ## SAC-238 run record
 
@@ -81,6 +81,14 @@ superseded by the [current contract](implementation-canary-lessons.md).
   completed within those attempts; no stage restart occurred.
 - Proposal/specification [PR34](https://github.com/sachinkundu/deos-sample-project/pull/34)
   reached Human Review at 14:29:36 UTC. Approved scope remains desktop only.
+- Authorized approval: Linear Merging at 14:46:25.682 UTC, delivery
+  `68e9a8d2-f16c-441c-b580-dd6e24f99502`. Review hold was 16m49s, largely
+  supervisor diagnosis/deployment time, not agent execution.
+- PR34 merged by DEOS at 14:50:24 UTC, merge commit
+  `3b1eaf1ef29cb7385ba9310232a77778b5693aa6`.
+- Design author started at 14:50:36.050 UTC, attempt
+  `01a0aab2-bd2c-7ace-9c62-6563802125d0`. Draft written and strict OpenSpec
+  validation passed by the 14:56:25 UTC live read.
 
 ### Incidents
 
@@ -97,9 +105,17 @@ superseded by the [current contract](implementation-canary-lessons.md).
 - General correction: author prompts and the runtime skill now name Python,
   Node, cat and tee, and state that apply_patch is not a shell executable. This
   source correction passed TypeScript checks, all 42 sandbox-controller tests,
-  diff checks and a Wrangler deployment dry run. Activation is pending at the
-  proposal/specification human gate, before starting design.
+  diff checks and a Wrangler deployment dry run. Commit a7f2eab deployed with
+  backend 691c736c and container image `630039625fcdf41cc034dbb445a4c871669e24b48dcfc7b2288d6f9211e04648`.
+  All four container rollouts completed before approval. Later backend 53de82b2
+  preserves it. An existing Cloudflare instance retains its own version; do not
+  claim its already rendered prompts changed. The implementation skill is in
+  the new container image.
 - Evidence: [original command result](evidence/sac-172/packing-canary/pack-01.json).
+- Second occurrence: design author item8, captured at 14:56:25 UTC. Same
+  exit127 and recovery via tee. The in-flight Cloudflare instance still renders
+  its original prompt version; deployment does not rewrite that code or prompt.
+  [Original design command results](evidence/sac-172/packing-canary/design-command-failures.json).
 
 #### PACK-02 — heartbeat read before its first file existed
 
@@ -109,9 +125,47 @@ superseded by the [current contract](implementation-canary-lessons.md).
   `workflow_errors`; original details retained in its referenced R2 object.
 - Recovery: polling subsequently found fresh heartbeats; the same attempt
   completed without supervisor intervention. No stage was stopped.
-- Cause: the controller attempted to read the heartbeat before its initial
-  file was present. Whether the startup timing needs a code change remains
-  under investigation; do not suppress unrelated read failures.
+- Two further occurrences: independent discovery at 14:23:50.749 UTC
+  (`4fd45796-77a9-4146-9a69-643290d350f2`) and planning response at
+  14:26:31.645 UTC (`cc31d8f7-626e-461b-a9c5-9c2a8eac84c9`). All recovered.
+- Cause: the first poll races the supervisor's initial heartbeat write.
+  Commit 97c5bf0 seeds the initial deadline before launching the supervisor;
+  later timestamps still come only from the supervisor. Regression demonstrates
+  a clean first poll and unchanged expiry if no real heartbeat follows.
+  All 43 controller tests and TypeScript checks passed. Backend
+  `8e98578e-6f03-4a4a-9ef1-43e2bd92a75e` read back at 100%.
+
+#### PACK-03 — approval signal sent but not consumed promptly
+
+- Linear approval at 14:46:25.682 UTC; delivery handoff sent at 14:46:29.678 UTC.
+  The Queue consumer saved the inbox as sent at 14:46:35.859 UTC.
+- At 14:49 UTC the workflow still waited at the exact `linear-event` step and
+  the inbox remained unclaimed. No new agent had started and PR34 was open.
+- The reason is unknown; a successful send does not establish consumption.
+- Supervisor intervention: at 14:50:15.432 UTC resent only the same saved
+  delivery ID via Cloudflare's event API. API accepted it. The planning PR
+  merged at 14:50:24 and design started at 14:50:36. This followed the retry;
+  it does not prove why the first signal was delayed.
+  No repeat Linear approval, manual merge, stage restart or source edit.
+- General mitigation in f9a272a: the existing 15-minute scheduled reconciler
+  resends old unclaimed signals with their original delivery IDs. It does not
+  decide an outcome or repeat an agent. Paused, retired and claimed work is
+  skipped, and failures preserve the original provider cause. Three new SQLite
+  tests plus 61 related tests and TypeScript checks passed; activation pending.
+
+#### PACK-04 — bundled ripgrep absent from the author's clean PATH
+
+- Stage: design author item2, captured at 14:51:48 UTC.
+- Original error: `bash: line 1: rg: command not found`. The enclosing pipeline
+  exited zero, so exit-code-only monitoring would miss it.
+- Recovery: the same agent used find and direct reads. No supervisor action
+  was needed to continue the attempt.
+- Cause: the pinned Codex package contains rg in its private codex-path folder;
+  the author shell resets PATH and cannot find it there.
+- Correction: expose that existing pinned binary in /usr/local/bin and test it
+  as deos-author with the actual clean PATH during image build. Local image
+  build passed and printed ripgrep15.2.0; cloud rollout waits for a safe gate.
+- Evidence: [original design command results](evidence/sac-172/packing-canary/design-command-failures.json).
 
 ### Supervisor and measurement notes
 
@@ -124,6 +178,12 @@ superseded by the [current contract](implementation-canary-lessons.md).
   unattended workflow defects.
 - Calculator closure is user-authorized canary retirement, not an implementation
   merge or a release. Its original PR, images and failure evidence remain.
+- CAL-22 recovery: first paused the old instance. Preserved provider step
+  records and verified D1's gate65 had no active attempt. Restarted only the
+  Cloudflare engine; DEOS loaded the same saved gate, not earlier agents. Moved
+  the issue back through Human Review at 14:53:23.925 and Canceled at
+  14:53:34.054. D1 then recorded canceled visit66. This is a calculator
+  retirement intervention, excluded from SAC-238's count.
 - A token-protected temporary Wrangler preview reads the currently running
   canary's transcripts. It performs no code edits, process launches, restarts or
   provider actions. This is observation, not a recovery intervention. It expires
