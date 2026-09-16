@@ -92,3 +92,12 @@ same checked code tree. An actual deployment ID is still required.
 
 Executable read-back is in `sac-225-hosted-preview-showboat.md`. The corresponding
 activation, D1 state and route-check JSON files are alongside this document.
+
+## Ready read-back
+
+At 2026-09-16T00:19:26.712487Z, all four pools were healthy 4/4 with no
+starting or failed instances and no health errors. Shared Standard-2 is now
+version 23; all pools retain the expected image. Backend activation remains
+100% on the expected version. The read-back readiness check is now true.
+See `sac-225-hosted-preview-ready.json`. The separately requested Pages token
+is still absent; no preview deployment, registration or canary retry occurred.
