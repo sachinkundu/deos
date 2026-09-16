@@ -258,6 +258,7 @@ button { color:inherit; }
 
 .implementation-demo { grid-column: 1 / -1; min-width: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 .implementation-demo p { margin: 8px 0; }
+.demo-summary.is-collapsed { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .demo-author, .demo-count { color: var(--muted); font-size: 12px; }
 .demo-previous { color: var(--muted); font-style: italic; }
 .demo-scenarios { list-style: none; padding: 0; margin: 12px 0 0; }

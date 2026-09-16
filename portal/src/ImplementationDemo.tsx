@@ -11,9 +11,9 @@ export function ImplementationDemo({ kind, demo, expanded, runId }: {
   return <div className="implementation-demo">
     <span className="demo-author">Claude · Independent {kind === 'plan' ? 'demo plan' : 'demo review'}</span>
     {review && <>
-      {gate?.repairComplete ? <p className="demo-previous">One repair pass complete · these findings await human judgment. Repairs have not been independently reviewed again.</p>
+      {gate?.repairComplete ? <p className="demo-previous">Sol’s response is complete. These findings and changes await your review.</p>
         : !review.current && <p className="demo-previous">Previous assessment</p>}
-      <p>{review.value.summary}</p>
+      <p className={expanded ? "demo-summary" : "demo-summary is-collapsed"}>{review.value.summary}</p>
       <span className="demo-count">{kind === 'plan' ? `${scenarios.length} demo scenarios` : `${done} of ${scenarios.length} scenarios demonstrated`}</span>
       {expanded && <ul className="demo-scenarios">{scenarios.map(scenario => {
         const result = gate?.value.scenarios.find(item => item.id === scenario.id);
