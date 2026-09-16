@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 66 runtime/tool occurrences in 30 categories, including recovered errors and stopped author work; 4 app development check failures listed separately | 4 recovery interventions: resent approval, resumed design finalization, requested preview-path revision, answered browser-recovery question after runtime rollout | Proposal/specification PR34 and design PR35 merged; one Claude implementation review completed; saved implementation resumed on updated runtime; all six new hosted scenarios completed at18:08 with23captures and no new errors observed through18:09; Sol selecting final proof; PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 66 runtime/tool occurrences in 30 categories, including recovered errors and stopped author work; 4 app development check failures listed separately | 4 recovery interventions: resent approval, resumed design finalization, requested preview-path revision, answered browser-recovery question after runtime rollout | [PR36](https://github.com/sachinkundu/deos-sample-project/pull/36) opened at 18:11:37 UTC, about 4h05m after trigger; D1 and Linear at implementation Human Review. Six scenarios completed, 17 selected images load in external Brave. Final resumed attempt had no new observed failures. PR remains unmerged; this was a supervised run. |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -702,9 +702,25 @@ that pass are not failures. All occurred in build attempt
   23screenshots, including replacement rename, persistence and clearing invalid
   input. This exercised the updated browser fill through the real hosted app.
   The full live transcript/diagnostic audit through18:09:51 found no new failure.
-  Sol reported inspecting all captures and began selecting the final gallery.
-  This is completed capture, not yet a PR or an independent visual verdict.
+  Sol reported inspecting all captures and selected 17 images plus one successful
+  Showboat receipt. PR36 opened at 18:11:37 UTC; D1 reached implementation_review,
+  awaiting_human, visit41 at 18:11:42.796. Linear also reports Human Review and
+  links PR36. The final resumed attempt lasted 17m06s. Its durable transcript and
+  diagnostics were hash-verified: all 14 command executions exited zero and all
+  six scenarios completed without a new diagnostic failure. Earlier errors
+  printed from saved input are retained history, not new occurrences.
+  External Brave loaded the immutable preview and all 17 PR image elements at
+  1440x900. This confirms rendering, not an independent verdict on every caption.
+  The monitor is paused and its temporary live reader stopped at this endpoint.
+  [Final outcome](evidence/sac-172/packing-canary/final-outcome.json).
   [Original milestones and capture results](evidence/sac-172/packing-canary/recovery-demo-completed.json).
+
+- Remaining presentation finding: published captions repeat a hosted URL and
+  internal deployment registration hash. Keep that provenance in diagnostics
+  and remove it from the human-facing caption in a general publisher correction.
+  This is a packaging finding, not an additional failed command or a reason to
+  rerun the app or its demonstrations. PR36 has not been hand-edited by the
+  supervisor.
 
 - The final response transcript and diagnostics were fetched from their durable
   artifact keys and verified against SHA256. Audit found no additional failed
@@ -731,8 +747,8 @@ that pass are not failures. All occurred in build attempt
   chosen records go to the candidate, in the chosen order; original records stay
   in diagnostics. This adds no quality verdict or completion check. Source tests
   cover ordering, original preservation, invalid tool input recovery and legacy
-  behavior; all 587 repository tests and TypeScript pass. Pending safe rollout,
-  so do not claim the live response agent can use it yet. This capability gap is
+  behavior; the subsequent 588-test validation and safe rollout are recorded
+  above. The final resumed agent used select_proof successfully. This capability gap is
   a review finding, separate from observed failed-operation counts.
 
 - The implementation author bulk-marked task checkboxes before demonstrations

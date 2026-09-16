@@ -1,0 +1,123 @@
+{
+  "issue": "SAC-238",
+  "recordedAt": "2026-09-16T18:18:22.573511+00:00",
+  "run": {
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1",
+    "status": "awaiting_human",
+    "current_node": "implementation_review",
+    "current_visit_sequence": 41,
+    "definition_version": 39,
+    "workflow_instance_id": "wf-v1-vbk4ffy7gaysf3nmedbblykidgshsdj2rw7h4rhk4dfzpadaxn2q",
+    "created_at": "2026-09-16T14:06:32.753Z",
+    "updated_at": "2026-09-16T18:11:42.796Z",
+    "terminal_cause": null
+  },
+  "pullRequest": {
+    "url": "https://github.com/sachinkundu/deos-sample-project/pull/36",
+    "createdAt": "2026-09-16T18:11:37Z",
+    "state": "OPEN",
+    "isDraft": false,
+    "headSha": "f2154315b9c4699950848208552f1b374152d27f",
+    "proofCommit": "75add3ebd7c3737c9b4a6027d0f021afa85d79db"
+  },
+  "linearState": "Human Review",
+  "preview": "https://eac475e0.deos-preview-982f7d6fcf337341.pages.dev",
+  "finalAttempt": {
+    "id": "01a0ab5a-7eaf-7aa7-a841-231452176741",
+    "outcome": "completed",
+    "patchSha": "88fc8b564ffe5bbe568cff1e6bf97cf9a71bc6724d1800786114f50df5ec7456",
+    "commandExits": [
+      {
+        "id": "item_1",
+        "exitCode": 0
+      },
+      {
+        "id": "item_2",
+        "exitCode": 0
+      },
+      {
+        "id": "item_4",
+        "exitCode": 0
+      },
+      {
+        "id": "item_5",
+        "exitCode": 0
+      },
+      {
+        "id": "item_6",
+        "exitCode": 0
+      },
+      {
+        "id": "item_7",
+        "exitCode": 0
+      },
+      {
+        "id": "item_8",
+        "exitCode": 0
+      },
+      {
+        "id": "item_11",
+        "exitCode": 0
+      },
+      {
+        "id": "item_12",
+        "exitCode": 0
+      },
+      {
+        "id": "item_14",
+        "exitCode": 0
+      },
+      {
+        "id": "item_15",
+        "exitCode": 0
+      },
+      {
+        "id": "item_23",
+        "exitCode": 0
+      },
+      {
+        "id": "item_24",
+        "exitCode": 0
+      },
+      {
+        "id": "item_25",
+        "exitCode": 0
+      }
+    ],
+    "diagnosticEvents": {
+      "demo_started": 1,
+      "scenario_started": 6,
+      "step_started": 121,
+      "step_completed": 121,
+      "scenario_completed": 6,
+      "demo_completed": 1
+    },
+    "selectedProofKinds": {
+      "browser_image": 17,
+      "showboat": 1
+    },
+    "newObservedFailures": 0
+  },
+  "browserInspection": {
+    "browser": "External Brave",
+    "previewLoads": true,
+    "prImageElements": 17,
+    "allComplete": true,
+    "allNaturalSize": [
+      1440,
+      900
+    ],
+    "scope": "Image rendering checked in the live PR DOM and initial screenshot; not an independent verdict on every caption"
+  },
+  "wholeRun": {
+    "elapsedSecondsTriggerToPr": 14710.814,
+    "runtimeToolFailureOccurrences": 66,
+    "runtimeToolFailureCategories": 30,
+    "appDevelopmentFailedCommands": 4,
+    "supervisorRecoveryInterventions": 4,
+    "unattended": false
+  },
+  "remainingPresentationFinding": "Published captions repeat hosted URL and internal registration hash; general publisher cleanup remains. Supervisor did not hand-edit PR.",
+  "monitor": "paused",
+  "temporaryReader": "stopped"
+}
