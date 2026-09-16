@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 3 recovered agent command failures, 3 recovered startup diagnostics and 1 delayed approval signal: 7 occurrences in 4 categories; delay cause not yet known | 1 recovery intervention: resent the same saved approval signal; general runtime corrections below | Proposal/specification PR34 merged; design author running; implementation PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 8 recovered agent command/tool errors, 3 recovered startup diagnostics and 1 delayed approval signal: 12 occurrences in 5 categories; delay cause not yet known | 1 recovery intervention: resent the same saved approval signal; general runtime corrections below | Proposal/specification PR34 merged; design author running; implementation PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -92,7 +92,7 @@ superseded by the [current contract](implementation-canary-lessons.md).
 
 ### Incidents
 
-#### PACK-01 — unavailable shell editor command
+#### PACK-01 — unsupported editing tool selection
 
 - Stage: planning author, first attempt, item `item_12`; observed in the live
   transcript captured at 2026-09-16 14:12:30 UTC. The event itself has no timestamp.
@@ -116,6 +116,17 @@ superseded by the [current contract](implementation-canary-lessons.md).
   exit127 and recovery via tee. The in-flight Cloudflare instance still renders
   its original prompt version; deployment does not rewrite that code or prompt.
   [Original design command results](evidence/sac-172/packing-canary/design-command-failures.json).
+- A later full stderr audit found three earlier native patch-tool rejections:
+  planning at 14:08:45.692615 and 14:09:28.786649 UTC, and design at
+  14:53:42.540713 UTC. Original message: `Command blocked by PreToolUse hook:
+  Use the shell tool to read or edit repository files. Trusted review control
+  files are outside the author account.` These are recovered agent tool
+  selection errors, not three more stopped stages. The five total occurrences
+  include the two shell exit127 failures above.
+- The runtime hook now names usable editing tools in its corrective message,
+  rather than merely saying "use the shell" and inviting the missing-command
+  attempt. This container instruction correction is awaiting the next safe rollout.
+  [Original stderr errors](evidence/sac-172/packing-canary/recovered-hook-errors.json).
 
 #### PACK-02 — heartbeat read before its first file existed
 
@@ -150,8 +161,10 @@ superseded by the [current contract](implementation-canary-lessons.md).
 - General mitigation in f9a272a: the existing 15-minute scheduled reconciler
   resends old unclaimed signals with their original delivery IDs. It does not
   decide an outcome or repeat an agent. Paused, retired and claimed work is
-  skipped, and failures preserve the original provider cause. Three new SQLite
-  tests plus 61 related tests and TypeScript checks passed; activation pending.
+  skipped, and failures preserve the original provider cause. Four new SQLite
+  tests plus 61 related tests and TypeScript checks passed. A further check
+  excludes events from an earlier gate and a concurrent gate change. Backend
+  `a56ba4ac-5dd2-41c4-a6c4-5e5abc9a666a` read back at 100%.
 
 #### PACK-04 — bundled ripgrep absent from the author's clean PATH
 
@@ -166,6 +179,21 @@ superseded by the [current contract](implementation-canary-lessons.md).
   as deos-author with the actual clean PATH during image build. Local image
   build passed and printed ripgrep15.2.0; cloud rollout waits for a safe gate.
 - Evidence: [original design command results](evidence/sac-172/packing-canary/design-command-failures.json).
+
+#### PACK-05 — author acts before the review handoff completes
+
+- Stage: planning author, 14:15:16.968736 and 14:15:25.483946 UTC.
+- Original messages: `Command blocked by PreToolUse hook: Author tools are
+  paused until checked review and durable proof complete` for a file edit, and
+  the same reason for `multi_agent_v1close_agent`.
+- Recovery: the author subsequently yielded to the completion hook and resumed
+  normally. No supervisor action or stage retry occurred.
+- Cause: the native child had returned, but the author had not yet ended its
+  turn to run the completion handoff. The rejection did not explain that next
+  action clearly. Guidance now explicitly says to await the reviewer and then
+  finish the turn with author JSON before editing or closing the child. Hook
+  checks passed; the instruction change awaits the next safe container rollout.
+- Evidence: [original stderr errors](evidence/sac-172/packing-canary/recovered-hook-errors.json).
 
 ### Supervisor and measurement notes
 

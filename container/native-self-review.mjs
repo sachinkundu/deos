@@ -68,12 +68,14 @@ const instruct = (state) => {
     "The trusted validator requests a proof correction from the same reviewer.",
     `Use the native follow-up tool for child ${pending.sessionId}; the hook will supply the exact correction input.`,
     "Await its result. Do not use repository tools while review is active.",
+    "After the result arrives, finish this turn with the required author JSON. The completion hook supplies the next action; do not repair or close the reviewer before that instruction.",
   ].join("\n");
   return [
     "The trusted completion check has prepared the next self-review input.",
     "Use multi_agent_v1.spawn_agent with agent_type=deos_reviewer and fork_context=false.",
     "Use message='Run the prepared review'. The trusted hook supplies the complete checked review context and schema.",
     "Await the child. Do not read, edit, run repository commands, or send your own context to it.",
+    "After the result arrives, finish this turn with the required author JSON. The completion hook supplies the next action; do not repair or close the reviewer before that instruction.",
   ].join("\n");
 };
 
@@ -196,7 +198,9 @@ const executeHook = async (event) => {
       return { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "allow", updatedInput } };
     }
     if (state.stage !== "writing" && !name.endsWith("wait_agent") && !name.endsWith("list_agents")) {
-      return deny("Author tools are paused until checked review and durable proof complete");
+      return deny(state.stage === "received"
+        ? "The reviewer has returned. Finish this turn with the required author JSON so the completion hook can supply the next instruction. Do not edit files or close the reviewer before that instruction."
+        : "Author tools are paused during review. Wait for the reviewer, then finish this turn with the required author JSON to receive the completion hook's next instruction. Do not edit files or close the reviewer yet.");
     }
     if (name === "Bash" && state.stage === "writing") {
       const input = event.tool_input;
@@ -208,7 +212,7 @@ const executeHook = async (event) => {
         updatedInput: { ...input, ...(input.command === undefined ? { cmd: command } : { command }) } } };
     }
     if (name.endsWith("wait_agent") || name.endsWith("list_agents") || name.endsWith("update_plan")) return {};
-    return deny("Use the shell tool to read or edit repository files. Trusted review control files are outside the author account.");
+    return deny("Use the shell tool with Python, Node, cat or tee to read or edit repository files. Do not use the native patch tool or invoke apply_patch in the shell; that executable is unavailable. Trusted review control files are outside the author account.");
   }
   if (event.hook_event_name === "SubagentStart") {
     if (!child || state.stage !== "launching" || state.activeChild || event.model !== state.reviewJob.model) {
