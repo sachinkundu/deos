@@ -1,5 +1,5 @@
 import { D1AgentStageRetryStore, type AgentStageRetryRecord, type AgentStageRetryStore } from "./stage-retry.ts";
-import { isPublicationRetryNode, publicationRetryActions } from "./stage-retry-contract.ts";
+import { isPublicationRetryNode, publicationRetryActions, publicationRetryFailure } from "./stage-retry-contract.ts";
 import { workflowInstanceIdentity } from "./orchestration-identity.ts";
 import { restoreWorkflowDefinition } from "./workflow-definition.ts";
 
@@ -18,6 +18,7 @@ export class D1StageRetryStore implements AgentStageRetryStore {
 
   async prepare(input: Parameters<AgentStageRetryStore["prepare"]>[0]): Promise<AgentStageRetryRecord> {
     if (!isPublicationRetryNode(input.retryNode)) return this.agents.prepare(input);
+    const failure = publicationRetryFailure(input.retryNode);
     const existing = await this.find(input.failedAttemptId);
     if (existing) {
       if (existing.run_id !== input.runId || existing.retry_node !== input.retryNode)
@@ -38,11 +39,11 @@ export class D1StageRetryStore implements AgentStageRetryStore {
       JOIN workflow_transitions_v2 failure ON failure.transition_id = run.last_transition_id
         AND failure.run_id = run.run_id AND failure.to_visit_sequence = run.current_visit_sequence
         AND failure.from_visit_sequence = run.current_visit_sequence - 1
-      WHERE run.run_id = ? AND run.status = 'failed' AND run.current_node = 'system_action_failed'
-        AND run.terminal_cause = 'system_action_invariant_failed'
+      WHERE run.run_id = ? AND run.status = 'failed' AND run.current_node = ?
+        AND run.terminal_cause = ?
         AND failure.transition_id = ? AND failure.from_node = ?
-        AND failure.to_node = 'system_action_failed' AND failure.cause_reference = ?`)
-      .bind(input.runId, input.failedAttemptId, input.retryNode,
+        AND failure.to_node = ? AND failure.cause_reference = ?`)
+      .bind(input.runId, failure.node, failure.cause, input.failedAttemptId, input.retryNode, failure.node,
         `system:${publicationRetryActions[input.retryNode]}:failed`)
       .first<{ definition_id: string; definition_version: number; definition_digest: string;
         canonical_json: string; current_visit_sequence: number; workflow_instance_id: string;
@@ -51,7 +52,7 @@ export class D1StageRetryStore implements AgentStageRetryStore {
     const definition = await restoreWorkflowDefinition(source.canonical_json, source.definition_digest);
     const node = definition.nodes[input.retryNode];
     if (node?.type !== "system_action" || node.action !== publicationRetryActions[input.retryNode] ||
-        node.edges.failed !== "system_action_failed") throw new Error("stage_retry_not_eligible");
+        node.edges.failed !== failure.node) throw new Error("stage_retry_not_eligible");
     const retryId = `publication-retry:${input.failedAttemptId}`;
     const transitionId = `transition:${retryId}`;
     const targetId = await workflowInstanceIdentity(`${input.runId}:publication-retry:${source.current_visit_sequence + 1}`);
@@ -66,17 +67,17 @@ export class D1StageRetryStore implements AgentStageRetryStore {
           'same_definition',definition_id,definition_version,definition_digest,
           definition_id,definition_version,definition_digest,workflow_instance_id,?,?
         FROM orchestration_runs WHERE run_id = ? AND current_visit_sequence = ?
-          AND status = 'failed' AND current_node = 'system_action_failed'
+          AND status = 'failed' AND current_node = ?
           AND last_transition_id = ? AND workflow_instance_id = ?`)
         .bind(retryId,input.failedAttemptId,input.retryNode,transitionId,input.requestedBy,input.now,input.now,
-          targetId,source.source_delivery_id,input.runId,source.current_visit_sequence,input.failedAttemptId,source.workflow_instance_id),
+          targetId,source.source_delivery_id,input.runId,source.current_visit_sequence,failure.node,input.failedAttemptId,source.workflow_instance_id),
       this.db.prepare(`UPDATE orchestration_runs SET workflow_instance_id = ?, previous_node = current_node,
         current_node = ?,current_visit_sequence = current_visit_sequence+1,last_transition_id = ?,
         status = 'active',gate_origin_node = NULL,terminal_at = NULL,terminal_cause = NULL,updated_at = ?
-        WHERE run_id = ? AND status = 'failed' AND current_node = 'system_action_failed'
+        WHERE run_id = ? AND status = 'failed' AND current_node = ?
           AND current_visit_sequence = ? AND last_transition_id = ? AND workflow_instance_id = ?
           AND EXISTS (SELECT 1 FROM publication_stage_retries WHERE retry_id = ?)`)
-        .bind(targetId,input.retryNode,transitionId,input.now,input.runId,source.current_visit_sequence,
+        .bind(targetId,input.retryNode,transitionId,input.now,input.runId,failure.node,source.current_visit_sequence,
           input.failedAttemptId,source.workflow_instance_id,retryId),
       this.db.prepare(`UPDATE dispatch_intents SET workflow_instance_id = ?,safe_error_category = NULL,updated_at = ?
         WHERE run_id = ? AND workflow_instance_id = ? AND source_delivery_id = ?
@@ -85,11 +86,11 @@ export class D1StageRetryStore implements AgentStageRetryStore {
       this.db.prepare(`INSERT OR IGNORE INTO workflow_transitions_v2
         (transition_id,run_id,from_node,to_node,from_visit_sequence,to_visit_sequence,
          cause_type,cause_reference,actor_id,actor_type,provider_operation_id,occurred_at)
-        SELECT retry.transition_id,retry.run_id,'system_action_failed',retry.retry_node,
+        SELECT retry.transition_id,retry.run_id,?,retry.retry_node,
           retry.from_visit_sequence,retry.to_visit_sequence,'operator_retry',retry.failed_attempt_id,
           retry.requested_by,'operator',NULL,? FROM publication_stage_retries retry
         JOIN orchestration_runs run ON run.run_id = retry.run_id AND run.last_transition_id = retry.transition_id
-        WHERE retry.retry_id = ?`).bind(input.now,retryId),
+        WHERE retry.retry_id = ?`).bind(failure.node,input.now,retryId),
     ]);
     const prepared = await this.find(input.failedAttemptId);
     if (!prepared || (results.some(r => (r.meta.changes ?? 0) !== 1) &&

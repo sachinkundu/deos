@@ -5,6 +5,7 @@ import {
   isStageRetryNode,
   isPublicationRetryNode,
   publicationRetryActions,
+  publicationRetryFailure,
   RETRYABLE_AGENT_ATTEMPT_STATES,
 } from "../../src/stage-retry-contract.ts";
 import { presentationStagesForDefinition, validatePresentationManifest } from "./manifests.ts";
@@ -91,15 +92,16 @@ export const portalRunRetry = (
   ) {
     return { failedAttemptId: retryRow.failed_attempt_id, retryNode: retryRow.retry_node };
   }
-  if (run.status === "failed" && run.current_node === "system_action_failed" &&
-      run.terminal_cause === "system_action_invariant_failed") {
+  if (run.status === "failed") {
     const failedExit = transitions.find((t) =>
       t.to_node === run.current_node && t.to_visit_sequence === run.current_visit_sequence &&
       t.from_visit_sequence === run.current_visit_sequence - 1 &&
       isPublicationRetryNode(t.from_node) &&
+      publicationRetryFailure(t.from_node).node === run.current_node &&
+      publicationRetryFailure(t.from_node).cause === run.terminal_cause &&
       t.cause_reference === `system:${publicationRetryActions[t.from_node]}:failed`);
-    return failedExit?.transition_id
-      ? { failedAttemptId: failedExit.transition_id, retryNode: failedExit.from_node } : null;
+    if (failedExit?.transition_id)
+      return { failedAttemptId: failedExit.transition_id, retryNode: failedExit.from_node };
   }
   const failedAttempt = [...attempts].reverse().find((attempt) =>
     attempt.visit_sequence === run.current_visit_sequence - 1

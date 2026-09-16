@@ -6,6 +6,7 @@ import { D1StageRetryStore } from "../src/publication-stage-retry.ts";
 import { AgentStageRetryController } from "../src/stage-retry.ts";
 import { loadWorkflowDefinition } from "../src/workflow-definition.ts";
 import { portalRunRetry, PORTAL_SELECTS } from "../portal/src/model.ts";
+import { publicationRetryActions, type PublicationRetryNode } from "../src/stage-retry-contract.ts";
 
 class SqliteD1Statement {
   private readonly database: DatabaseSync;
@@ -81,9 +82,13 @@ class SqliteD1Database {
 }
 
 
-const setup = async () => {
+const setup = async (retryNode: PublicationRetryNode = "publish_planning_revision") => {
   const database = new SqliteD1Database();
-  const definition = await loadWorkflowDefinition(readFileSync("config/workflow.simple-traceability.yaml", "utf8"), {
+  const implementation = retryNode.startsWith("implementation_");
+  const terminalNode = implementation ? "implementation_failed" : "system_action_failed";
+  const terminalCause = implementation ? "implementation_failed" : "system_action_invariant_failed";
+  const definitionFile = implementation ? "config/workflow.implementation.yaml" : "config/workflow.simple-traceability.yaml";
+  const definition = await loadWorkflowDefinition(readFileSync(definitionFile, "utf8"), {
     prompts: Object.fromEntries(readdirSync("config/prompts").map(name => [`prompts/${name}`,readFileSync(`config/prompts/${name}`,"utf8")])),
     schemas: Object.fromEntries(readdirSync("config/schemas").map(name => [`schemas/${name}`,readFileSync(`config/schemas/${name}`,"utf8")])),
   });
@@ -93,18 +98,18 @@ const setup = async () => {
   database.sqlite.prepare(`INSERT INTO orchestration_runs
     (run_id,correlation_id,run_sequence,project_id,issue_id,definition_id,definition_version,definition_digest,
      workflow_instance_id,current_node,current_visit_sequence,status,terminal_cause,last_transition_id,created_at,updated_at)
-    VALUES ('run','correlation',1,'project','issue',?,?,?,'old-workflow','system_action_failed',15,
-      'failed','system_action_invariant_failed','failure','now','now')`)
-    .run(definition.name,definition.version,definition.digest);
+    VALUES ('run','correlation',1,'project','issue',?,?,?,'old-workflow',?,15,
+      'failed',?,'failure','now','now')`)
+    .run(definition.name,definition.version,definition.digest,terminalNode,terminalCause);
   database.sqlite.exec(`INSERT INTO dispatch_intents
     (run_id,source_delivery_id,workflow_instance_id,state,created_at,updated_at)
-    VALUES ('run','delivery','old-workflow','established','now','now');
-    INSERT INTO workflow_transitions_v2
+    VALUES ('run','delivery','old-workflow','established','now','now');`);
+  database.sqlite.prepare(`INSERT INTO workflow_transitions_v2
     (transition_id,run_id,from_node,to_node,from_visit_sequence,to_visit_sequence,cause_type,cause_reference,occurred_at)
-    VALUES ('failure','run','publish_planning_revision','system_action_failed',14,15,'system_action',
-      'system:github.publish_planning_candidate:failed','now');`);
+    VALUES ('failure','run',?,?,14,15,'system_action',?,'now')`)
+    .run(retryNode,terminalNode,`system:${publicationRetryActions[retryNode]}:failed`);
   return { database, definition, store: new D1StageRetryStore(database as unknown as D1Database),
-    input: { runId: "run",failedAttemptId: "failure",retryNode: "publish_planning_revision" as const,
+    input: { runId: "run",failedAttemptId: "failure",retryNode,
       requestedBy: "operator@example.com",targetDefinition: definition,now: "later" } };
 };
 
@@ -140,6 +145,41 @@ test("publication retry rejects stale, mismatched and nonfailure visits without 
       await assert.rejects(store.prepare(input),/stage_retry_not_eligible/);
       assert.equal(database.sqlite.prepare("SELECT COUNT(*) AS n FROM publication_stage_retries").get()?.n,0);
       assert.equal(database.sqlite.prepare("SELECT workflow_instance_id FROM orchestration_runs").get()?.workflow_instance_id,"old-workflow");
+    } finally {database.close();}
+  }
+});
+
+for (const retryNode of ["implementation_branch_write", "implementation_publish"] as const) {
+  test(`${retryNode} retry resumes only publication on its frozen definition`, async () => {
+    const { database,store,input } = await setup(retryNode);
+    try {
+      const run = database.sqlite.prepare("SELECT * FROM orchestration_runs").get() as never;
+      const transitions = database.sqlite.prepare("SELECT * FROM workflow_transitions_v2").all() as never;
+      assert.deepEqual(portalRunRetry(run,[],transitions,null),{failedAttemptId:"failure",retryNode});
+      const prepared = await store.prepare(input);
+      assert.equal(prepared.retry_node,retryNode);
+      assert.equal(prepared.current_node,retryNode);
+      assert.equal(prepared.to_visit_sequence,16);
+      assert.equal(prepared.source_definition_digest,prepared.target_definition_digest);
+      assert.equal((await store.prepare(input)).retry_id,prepared.retry_id);
+      assert.equal(database.sqlite.prepare("SELECT COUNT(*) AS n FROM agent_attempts").get()?.n,0);
+      assert.equal(database.sqlite.prepare("SELECT from_node FROM workflow_transitions_v2 WHERE cause_type='operator_retry'").get()?.from_node,"implementation_failed");
+      assert.equal(database.sqlite.prepare("SELECT COUNT(*) AS n FROM publication_stage_retries").get()?.n,1);
+    } finally {database.close();}
+  });
+}
+
+test("implementation publication retry rejects a different failure or a human review wait", async () => {
+  for (const sql of [
+    "UPDATE orchestration_runs SET terminal_cause='other_failure'",
+    "UPDATE workflow_transitions_v2 SET cause_reference='system:implementation.check_proof:failed'",
+    "UPDATE orchestration_runs SET current_node='implementation_human_review',status='active'",
+  ]) {
+    const {database,store,input} = await setup("implementation_branch_write");
+    try {
+      database.sqlite.exec(sql);
+      await assert.rejects(store.prepare(input),/stage_retry_not_eligible/);
+      assert.equal(database.sqlite.prepare("SELECT COUNT(*) AS n FROM publication_stage_retries").get()?.n,0);
     } finally {database.close();}
   }
 });
