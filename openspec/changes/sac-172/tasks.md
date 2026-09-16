@@ -45,7 +45,7 @@
 
 ## 5. Verification and canary
 
-- [ ] 5.6 Save mandatory Claude demo plans and per-scenario verdicts, with approved-requirement coverage, independent evidence inspection, exact candidate binding, and publication enforcement.
+- [ ] 5.6 Save Claude demo plans and per-scenario findings as context, with no workflow review of coverage, citations or evidence identity.
 - [ ] 5.7 Run Demo Plan and Demo Gate as separate Claude jobs in fresh sessions, supply the plan and repair feedback to Codex, and preserve blocked and failed outcomes.
 - [ ] 5.8 Show both demo nodes in the existing portal style with clear verdicts, counts, requirements, and visible evidence. Verify keyboard and mobile use in the real staging browser.
 - [ ] 5.9 Add an audited failed-run upgrade into the new frozen demo workflow. Preserve SAC-182's saved work and human authority. Verify isolation, stale evidence, forged results, repair, and restart cases before deployment.
@@ -57,3 +57,10 @@
 - [x] 5.3 After implementation is ready, stop with the user to select a useful first automatic canary issue and its expected proof. The user selected SAC-182; exercise the real review choices and their resulting workflow transitions.
 - [ ] 5.4 Run the agreed canary through the real provider workflow to its implementation PR, with browser or Showboat proof, durable read-back, and concurrent-run isolation checks.
 - [ ] 5.5 Publish the SAC-172 implementation PR only after all agreed tests and canary evidence pass.
+
+## 6. Agent handoff simplification
+
+- [x] 6.1 Remove workflow quality gates for tasks, registered checks, proof kinds, evidence freshness and documentation citations. Preserve command failures and artifacts as review context.
+- [x] 6.2 Remove the supervisor completion repair loop. Forward Claude findings unchanged to Sol once, then route Sol's response to human PR review without another judgment.
+- [x] 6.3 Align prompts and portal state with the agent handoff. Keep Author active until Sol finishes; show Claude Review and Prepare PR at their real visits.
+- [ ] 6.4 Validate and deploy the simplified runtime and staging portal, read back activation, and recover the calculator publication without re-running completed agent work.

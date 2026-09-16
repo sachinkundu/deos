@@ -7,9 +7,7 @@ import {
   ImplementationError,
   type ProofSubject,
   type ImplementationProof,
-  type ImplementationCandidate,
 } from "./implementation-contract.ts";
-import { isRepairableVerificationError, verifyImplementationCandidate } from "./implementation-verification.ts";
 import {
   ImplementationBrowserAllocator,
   CloudflareBrowserProvider,
@@ -17,7 +15,7 @@ import {
   browserCommand,
 } from "./implementation-browser.ts";
 import type { CapabilityClaims } from "./capability-auth.ts";
-import { errorDetails, readResponseText, responseError } from "./error-details.ts";
+import { readResponseText, responseError } from "./error-details.ts";
 import { recordCaughtError } from "./error-context.ts";
 import { ImplementationProviderTest } from "./implementation-provider-test.ts";
 import { previewRelayHost, previewRelayProgram, previewRelaySandboxId, waitForPreviewRelay } from "./implementation-preview.ts";
@@ -78,45 +76,9 @@ export class ImplementationBroker {
           "Tool subject differs from the checked run",
         );
       if (request.action === "verify") {
-        // The broker token belongs to the root supervisor. Its author-facing
-        // server does not expose verify or accept capture/proof assertions.
-        // Older supervisors still use the file-read path during a rolling update.
-        const started = Date.now();
-        const phase = (value: string) => console.log({event:'implementation.verification',phase:value,
-          runId:claims.runId,attemptId:claims.attemptId,elapsedMs:Date.now()-started});
-        phase('capture');
-        let candidate: ImplementationCandidate, patch: string;
-        if (request.capture !== undefined) {
-          const capture = request.capture as {candidate: ImplementationCandidate; patch: string};
-          if (!capture || typeof capture !== 'object' || Array.isArray(capture) ||
-              Object.keys(capture).some(key => !['candidate','patch'].includes(key)) ||
-              !capture.candidate || typeof capture.patch !== 'string')
-            throw new ImplementationError('candidate_identity','Invalid trusted verification capture');
-          candidate = capture.candidate; patch = capture.patch;
-        } else {
-          const sandbox = getSandbox(attempt.sandbox_tier === 'standard-2'
-            ? this.env.ImplementationStandard2Sandbox : this.env.ImplementationSandbox,
-          attempt.sandbox_id,{normalizeId:true,keepAlive:true});
-          phase('legacy_candidate_read');
-          candidate = JSON.parse((await sandbox.readFile('/deos/output/implementation-candidate.json',{encoding:'utf8'})).content);
-          phase('legacy_patch_read');
-          patch = (await sandbox.readFile('/deos/output/patch.diff',{encoding:'utf8'})).content;
-        }
-        if (candidate.treeSha !== subject.treeSha)
-          throw new ImplementationError("candidate_identity", "Verification subject differs from the captured candidate");
-        try {
-          phase('validate');
-          await verifyImplementationCandidate(this.env.DB, work, input, claims.attemptId, candidate, patch);
-          phase('ready');
-          return Response.json({ ready: true, subject });
-        } catch (error) {
-          if (!isRepairableVerificationError(error)) throw error;
-          const diagnostic = await this.store.put(claims.runId, "verification-feedback.json", this.sanitize(JSON.stringify({
-            attemptId: claims.attemptId, subject, occurredAt: new Date().toISOString(), error: errorDetails(error),
-          })));
-          phase('repair_required');
-          return Response.json({ ready: false, code: error.code, message: this.sanitize(error.message), diagnostic, subject });
-        }
+        // Compatibility for an older supervisor finishing during rollout.
+        // The workflow acknowledges completion; it does not review the work.
+        return Response.json({ ready: true, subject });
       }
       if (request.action === "safe_test") {
         const result = await new ImplementationProviderTest(this.env).call(claims.runId, claims.attemptId, input.policy.safeAdapters, request);
@@ -275,13 +237,13 @@ export class ImplementationBroker {
         };
         if (
           !command ||
-          command.exitCode !== 0 ||
+          typeof command.exitCode !== "number" ||
           typeof command.stdout !== "string" ||
           typeof command.stderr !== "string"
         )
           throw new ImplementationError(
             "showboat_failed",
-            "A successful real behavior command is required",
+            "Command result must include its exit code, stdout and stderr",
           );
         if (
           typeof request.document !== "string" ||

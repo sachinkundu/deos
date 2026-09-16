@@ -1,3 +1,11 @@
+## Current agent handoff mandate
+
+The user revised implementation on 16 September 2026: Sol does the work, Claude
+reviews once, and Sol acts on Claude's findings once before human PR review.
+The workflow only routes messages and publishes the saved result. Any older
+rollout notes below about completion, evidence or citation gates describe the
+retired behavior. They must not be restored as runtime requirements.
+
 ## Context
 
 The current flow already freezes its workflow definition, repository route,
@@ -377,64 +385,26 @@ cannot leave that gate. At most one binding kind is open for a run at a time.
 The alternative was to keep an agent process waiting. A durable wait costs no
 live Sandbox and makes reply authority a trusted ingress decision.
 
-### 6. Bind proof to the exact behavior subject
+### 6. Route agent judgments without quality gates
 
-Each accepted proof item records this subject:
+Sol owns implementation, useful checks and demos. Claude proposes demonstrations
+and reviews the first implementation once. If Claude returns findings, Sol acts
+on them once. The completed response goes to the implementation PR for human
+review with the original findings. The workflow does not instruct repairs or
+judge whether Sol satisfied them.
 
-```text
-change + approved_design_sha + tested_base_sha + implementation_tree_sha
-```
+The workflow saves and forwards command results, tasks and evidence. It does not
+require passing registered checks, particular evidence kinds, current-tree proof,
+document citations, scenario coverage, or a second review of Claude's response.
+The old `implementation.check_proof` action remains a routing alias for frozen
+runs. Its legacy broker endpoint acknowledges completion without judging output.
+The supervisor runs the author once and collects its result; it never resumes
+that session with generated verification failures.
 
-The approved design SHA proves the contract. The tested base SHA is the target
-branch head used to build and check the patch. The implementation tree SHA
-identifies the exact tasks, code, and tests. A changed tree or base makes the
-affected proof stale. The service must rerun the affected checks before another
-pull request update or final gate.
+Resource ownership, authenticated capabilities, filesystem isolation, immutable
+storage and branch publication remain transport responsibilities. Human approval
+and merge authority remain explicit. Original transport errors are retained.
 
-Before task execution, trusted code creates a proof-requirement snapshot from
-the union of the approved proposal, delta specs, design, the immutable
-workflow-version path policy, and the planned affected components. It
-recomputes that snapshot from the actual cumulative diff before every proof
-check. Requirements can stay the same or become stronger; an agent declaration
-cannot remove one. The snapshot always requires behavior proof beyond unit
-tests. A match to configured UI paths or approved user-interface behavior
-requires `browser_image`. A match to provider ingress or adapter paths, or an
-approved provider-integration requirement, requires `provider_originated` when
-the trusted safe-resource registry has a matching test adapter. Other changed
-behavior requires `showboat`.
-
-If UI work cannot be rendered in the assigned safe preview, the run records a
-capability or implementation failure rather than accepting an agent's
-`nonvisual` claim. `showboat` may replace a browser image only when the checked
-planning and design inputs classify the behavior as nonvisual. If a required
-provider adapter has no safe real resource, readiness is blocked for a trusted
-capability decision; synthetic ingress never lowers that requirement. An agent
-may request extra proof kinds, but its classification is advisory only.
-
-Proof items have a declared kind: `browser_image`, `showboat`,
-`provider_originated`, `synthetic_ingress`, or `unit_test`. Provider delivery
-records remain separate from synthetic ingress, and unit tests may support but
-never satisfy the behavior-proof requirement alone.
-
-Read-only documentation access produces `documentation-sources.json`. Every
-opened first-party document from which content was returned must have one entry
-with its title, canonical HTTPS URL, the implementation claim it informed, and
-an artifact path-and-line citation. The broker's attempt access log is the
-trusted inventory: the completion hook rejects a missing citation, a cited URL
-that was not opened, or a non-first-party URL. The artifact is hash-checked in
-R2, indexed in D1, and linked from the pull request. Search result listings that
-return no document content are logged but are not treated as used sources.
-
-The completion hook checks task completion, command results, the trusted proof
-requirement snapshot, proof kinds, subject hashes, sanitization status,
-documentation citations, and required provider receipts. It writes immutable
-payloads to R2, reads them back by SHA-256, and commits their accepted index in
-D1. If proof storage fails after a build failure, both errors are kept and the
-build error remains primary.
-
-The alternative was to attach proof to an attempt. Attempts are lifecycle
-records, while a subject digest lets trusted code state exactly when evidence
-became stale.
 
 ### 7. Publish the checked tree and one pull request idempotently
 

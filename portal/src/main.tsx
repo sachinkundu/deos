@@ -263,9 +263,9 @@ const workflowStepLabel = (nodeId: string): string => ({
   implementation_demo_plan: "Demo plan",
   implementation_rebase_demo: "Refresh demo plan",
   implementation_demo_gate: "Demo gate",
-  implementation_proof_check: "Implementation verification",
-  implementation_branch_write: "Implementation verification",
-  implementation_publish: "Implementation verification",
+  implementation_proof_check: "Preparing implementation review",
+  implementation_branch_write: "Preparing implementation review",
+  implementation_publish: "Preparing implementation review",
   implementation_review: "Review implementation",
   implementation_clarification_wait: "Answer implementation question",
   implementation_merge_recheck: "Recheck before merge",
@@ -453,12 +453,12 @@ function TraceabilityWorkflowMap({
     status: implementationState.demoPlan,
   };
   const implementationDemoGate = {
-    id: 'implementation_demo_gate', label: 'Demo gate', icon: <Eye />,
+    id: 'implementation_demo_gate', label: 'Claude review', icon: <Eye />,
     visit: latestVisitFor(implementationVisits, visit => visit.nodeId === 'implementation_demo_gate'),
     status: implementationState.demoGate,
   };
   const implementationVerification = {
-    id: "implementation_verification", label: "Verification", icon: <CheckCircle />,
+    id: "implementation_verification", label: "Prepare PR", icon: <CheckCircle />,
     visit: implementationState.verification === "Upcoming" ? null : latestVisitFor(implementationVisits,
       visit => visit.nodeId === "implementation_build" || implementationVerificationVisit(visit.nodeId)),
     status: implementationState.verification,
@@ -513,7 +513,7 @@ function TraceabilityWorkflowMap({
     <div className="section-heading phase-heading"><div><span className="eyebrow">Current run</span><h2 id="workflow-title">Workflow map</h2></div><span>Open a phase, then drill into its evidence</span></div>
     <div className="current-step-banner"><span>{currentPhaseId === "stopped" ? "Failed step" : "Current step"}</span><strong className={workflowStatusTone(currentLeafStatus)}>{currentLeafVisit === null ? currentPhase?.label ?? "Unknown"
       : currentLeafVisit.nodeId === "implementation_build" && implementationState.current === "implementation_verification"
-        ? "Implementation verification" : workflowStepLabel(currentLeafVisit.nodeId)}</strong></div>
+        ? "Preparing implementation review" : workflowStepLabel(currentLeafVisit.nodeId)}</strong></div>
     <div className="phase-workspace">
       <div className={`phase-map branching-flow ${hasImplementation ? "with-implementation" : ""}`} ref={flowMap}>
         <svg className="review-connectors" aria-hidden="true"><defs>{["complete", "active", "upcoming"].map(tone => <marker key={tone} id={`review-arrow-${tone}`} className={tone} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>)}</defs>{reviewPaths.map(edge => {
@@ -555,9 +555,9 @@ function TraceabilityWorkflowMap({
             {expanded && phase.id === "implementation" && <div className="phase-drill" aria-label="Implementation details">
               {hasImplementationDemo && <>{renderStep(implementationDemoPlan)}<div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div></>}
               {renderStep(implementationAuthor)}
+              {hasImplementationDemo && <><div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div>{renderStep(implementationDemoGate)}</>}
               <div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div>
               {renderStep(implementationVerification)}
-              {hasImplementationDemo && <><div className="implementation-step-connector" aria-hidden="true"><ArrowRight /></div>{renderStep(implementationDemoGate)}</>}
             </div>}
           </article>;
         })}
@@ -1165,7 +1165,7 @@ function App() {
     groupedWorkflow && workflowPhases(projection.history, projection.stages).some(phase => phase.id === "implementation"), api);
   const implementationCurrentStep = projection?.run.currentNode === "implementation_build" &&
     implementationSteps(projection.history, projection.run.status, implementation.data?.progress).current === "implementation_verification"
-      ? "Implementation verification" : undefined;
+      ? "Preparing implementation review" : undefined;
 
   const continueRun = useCallback(async () => {
     if (projection?.retry === null || projection === null || !runId) return;

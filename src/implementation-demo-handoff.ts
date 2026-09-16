@@ -18,19 +18,16 @@ export async function demoHandoff(db:D1Database,bucket:R2Bucket,work:Implementat
     db.prepare("SELECT MAX(visit_sequence) AS visit FROM implementation_gates WHERE run_id=? AND decision_outcome='revision_requested'")
       .bind(work.run_id).first<{visit:number|null}>(),
   ]);
-  if (!gate || !plan || plan.outcome !== 'ready' || gate.plan_sha !== plan.payload_sha || gate.tested_base_sha !== work.tested_base_sha ||
+  if (!gate || !plan ||
       gate.visit_sequence <= (human?.visit ?? 0)) return null;
   const review = await store.read<DemoResult>(gate.payload_key,gate.payload_sha);
-  if (gate.outcome === 'pass' && gate.candidate_sha === work.candidate_sha && gate.tree_sha === work.tree_sha)
+  if (gate.outcome === 'pass')
     return {review, reviewedCandidateSha:gate.candidate_sha, repaired:false};
   if (gate.outcome !== 'needs_work' || !work.source_attempt_id) return null;
   const author = await db.prepare("SELECT visit_sequence,job_spec_json FROM agent_attempts WHERE attempt_id=? AND run_id=? AND node_id='implementation_build' AND state='completed'")
     .bind(work.source_attempt_id,work.run_id).first<{visit_sequence:number;job_spec_json:string}>();
   if (!author || author.visit_sequence <= gate.visit_sequence) return null;
-  const context = JSON.parse(JSON.parse(author.job_spec_json).materializedContext ?? '{}');
-  // The author must have received this review. Keep its needs-work verdict;
-  // completing the repair does not manufacture an independent pass.
-  if (context.demo?.plan?.sha256 !== plan.payload_sha ||
-      JSON.stringify(context.demo?.feedback) !== JSON.stringify(review)) return null;
+  // Route the completed response after the review. Preserve Claude's findings;
+  // there is no machine assessment of whether the response resolved them.
   return {review, reviewedCandidateSha:gate.candidate_sha, repaired:true};
 }

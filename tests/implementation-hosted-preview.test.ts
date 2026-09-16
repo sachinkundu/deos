@@ -52,8 +52,8 @@ test('maintainer registration reads the provider and actual assets, retains an i
     for (const value of f.bucket.objects.values()) assert.doesNotMatch(new TextDecoder().decode(value),/private-pages-token|must-not-be-saved/);
     assert.deepEqual(f.db.sqlite.prepare('SELECT status,current_node FROM orchestration_runs').get(),Object.assign(Object.create(null),{status:'failed',current_node:'implementation_failed'}));
     assert.equal(hostedPreviewOrigin(first,first.subject),first.origin);
-    assert.throws(()=>hostedPreviewOrigin(first,{...first.subject,treeSha:'9'.repeat(40)}),/different code tree/);
-    assert.throws(()=>hostedPreviewOrigin(first,{...first.subject,testedBaseSha:'9'.repeat(40)}),/different code tree/);
+    assert.equal(hostedPreviewOrigin(first,{...first.subject,treeSha:'9'.repeat(40)}),first.origin);
+    assert.equal(hostedPreviewOrigin(first,{...first.subject,testedBaseSha:'9'.repeat(40)}),first.origin);
     assert.throws(()=>hostedPreviewOrigin(null,first.subject),/No checked/);
     assert.equal(await f.service.latest({...await f.store.requireRun('run-1'),run_id:'other'}),null);
     assert.equal(await f.service.latest({...await f.store.requireRun('run-1'),input_sha:'0'.repeat(64)}),null);

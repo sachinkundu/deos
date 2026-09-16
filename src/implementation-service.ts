@@ -10,7 +10,6 @@ import {
 import { LinearCapabilityAdapter } from "./linear-capability.ts";
 import { sha256Hex } from "./implementation-hash.ts";
 import { recordCaughtError } from "./error-context.ts";
-import { verifyImplementationCandidate } from "./implementation-verification.ts";
 import { saveImplementationProgress } from "./implementation-progress.ts";
 import { readImplementationTaskProgress } from "./implementation-progress-reader.ts";
 import { ensureImplementationProgressWatcher } from "./implementation-progress-watcher.ts";
@@ -28,8 +27,6 @@ import {
   BaseChangedError,
   ImplementationError,
   implementationBranch,
-  proofRequirements,
-  validateCandidate,
   type ImplementationCandidate,
   type ProofRequirement,
 } from "./implementation-contract.ts";
@@ -76,7 +73,7 @@ export class ImplementationService {
         )
           await this.merge(run, work, action === "implementation.merge");
         else {
-          const candidate = await this.checkProof(run, work);
+          const candidate = await this.store.candidate(work);
           if (action === "implementation.check_proof") {
             if (this.singleDemoRepair() && await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).handoff(work))
               return {kind:'system_action',outcome:'review_ready',providerReceiptsComplete:true};
@@ -233,11 +230,7 @@ export class ImplementationService {
         "Issue identifier is missing",
       );
     const branch = implementationBranch(issue.identifier, run.run_sequence);
-    const requirements = proofRequirements({
-      approvedText: approvedFiles.map((f) => f.content).join("\n"),
-      paths: [],
-      policy: this.definition.implementationPolicy,
-    });
+    const requirements: ProofRequirement = { kinds: [], reasons: [], blockedProviders: [] };
     const input: ImplementationInput = {
       version: 1,
       runId: run.run_id,
@@ -439,58 +432,11 @@ export class ImplementationService {
         })
       ).content,
     ) as ImplementationCandidate;
-    const input = await this.store.read<ImplementationInput>(work.input_key, work.input_sha);
     const patch = (
       await sandbox.readFile("/deos/output/patch.diff", { encoding: "utf8" })
     ).content;
-    const { requirements, accesses } = await verifyImplementationCandidate(
-      this.env.DB, work, input, attempt.attempt_id, candidate, patch,
-    );
-    const diffSha = await sha256Hex(patch);
-    await this.env.DB.prepare(
-      `INSERT OR IGNORE INTO implementation_proof_requirements
-      SELECT ?,COALESCE(MAX(requirement_sequence),0)+1,?,?,?,? FROM implementation_proof_requirements WHERE run_id=?`,
-    )
-      .bind(
-        run.run_id,
-        work.input_sha,
-        diffSha,
-        JSON.stringify(requirements),
-        new Date().toISOString(),
-        run.run_id,
-      )
-      .run();
-    await this.env.DB.prepare(
-      "UPDATE implementation_runs SET requirements_json=? WHERE run_id=?",
-    )
-      .bind(JSON.stringify(requirements), run.run_id)
-      .run();
-    const sourceObject = await this.store.put(
-      run.run_id,
-      "documentation-sources.json",
-      JSON.stringify(candidate.sources),
-    );
-    for (const source of candidate.sources) {
-      const access = accesses.find(
-        (a) => a.url === source.url && a.content_returned === 1,
-      )!;
-      await this.env.DB.prepare(
-        "INSERT OR IGNORE INTO implementation_doc_sources VALUES (?,?,?,?,?,?,?,?,?,?)",
-      )
-        .bind(
-          `${attempt.attempt_id}:${access.access_id}`,
-          run.run_id,
-          attempt.attempt_id,
-          source.url,
-          source.title,
-          source.claim,
-          source.artifactLocator,
-          access.access_id,
-          sourceObject.key,
-          sourceObject.sha256,
-        )
-        .run();
-    }
+    // Store the author's output, including failed checks and incomplete tasks.
+    // Claude and the human reviewer receive those facts without a quality gate.
     await this.store.checkpoint(work, candidate, patch);
     const question = await this.store.question(run.run_id);
     if (
@@ -502,44 +448,6 @@ export class ImplementationService {
       )
         .bind(question.question_id)
         .run();
-  }
-  async checkProof(run: OrchestrationRunRecord, work: ImplementationRun) {
-    await implementationGitHub(this.env, run).current(work);
-    const candidate = await this.store.candidate(work);
-    validateCandidate(
-      candidate,
-      {
-        change: work.change_id,
-        approvedDesignSha: work.approved_design_sha,
-        testedBaseSha: work.tested_base_sha,
-        treeSha: work.tree_sha!,
-      },
-      JSON.parse(work.requirements_json),
-    );
-    if (candidate.outcome !== "completed" || candidate.kind !== "build")
-      throw new ImplementationError(
-        "implementation_incomplete",
-        "A complete build is required",
-      );
-    for (const proof of candidate.proof) {
-      const row = await this.env.DB.prepare(
-        "SELECT r2_key,sha256 FROM implementation_proof WHERE proof_id=? AND run_id=? AND tree_sha=? AND tested_base_sha=?",
-      )
-        .bind(proof.id, work.run_id, work.tree_sha, work.tested_base_sha)
-        .first<{ r2_key: string; sha256: string }>();
-      if (!row || row.sha256 !== proof.sha256)
-        throw new ImplementationError(
-          "proof_index",
-          "Proof is absent from the accepted index",
-        );
-      await this.store.readBytes(row.r2_key, row.sha256);
-    }
-    if (this.definition.jobs.implementation_demo_gate && run.current_node !== 'implementation_proof_check') {
-      const demos = new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS);
-      if (this.singleDemoRepair()) await demos.requireHandoff(work);
-      else await demos.requirePass(work);
-    }
-    return candidate;
   }
   singleDemoRepair() {
     return this.definition.nodes.implementation_proof_check?.edges.review_ready === 'implementation_branch_write';
@@ -559,10 +467,11 @@ export class ImplementationService {
       `Linear: [${work.linear_identifier}](${input.issue.url})`,
       `Approved design: ${work.approved_design_sha}\nTested base: ${work.tested_base_sha}\nChecked tree: ${work.tree_sha}`,
       ...(demo ? ['## Demo review', demo.repaired
-        ? 'Claude reviewed the earlier build and requested changes. The author completed one repair pass. Those repairs have not had another independent demo review; the findings below are for your judgment.'
+        ? 'Claude reviewed the earlier build and requested changes. Sol completed its response to those findings. The changes have not had another independent demo review; the findings below are for your judgment.'
         : 'Claude passed the demos for this candidate.',
         demo.review.summary,
         ...demo.review.scenarios.map(scenario => `- ${scenario.id}: ${scenario.outcome.replaceAll('_',' ')} — ${scenario.reason}`)] : []),
+      ...(candidate.summary ? ["## Implementation response", candidate.summary] : []),
       "## Checks",
       ...candidate.checks.map((c) => `- ${c.command} — exit ${c.exitCode}`),
       "## Behavior proof",
@@ -886,9 +795,9 @@ export class ImplementationService {
     )
       throw new BaseChangedError((await github.ref("main"))!);
     if (!pull.merged) {
-      await this.checkProof(run, work);
+      await this.store.candidate(work);
       if (!execute) return;
-      await this.checkProof(run, work);
+      await this.store.candidate(work);
       try {
         await github.json(`/pulls/${work.pr_number}/merge`, {
           method: "PUT",

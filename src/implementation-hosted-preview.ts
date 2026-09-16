@@ -1,4 +1,4 @@
-import { ImplementationError, subjectMatches, type ProofSubject } from './implementation-contract.ts';
+import { ImplementationError, type ProofSubject } from './implementation-contract.ts';
 import { ImplementationStore, type ImplementationRun } from './implementation-store.ts';
 import { sha256Hex } from './implementation-hash.ts';
 
@@ -195,7 +195,5 @@ export class ImplementationHostedPreview {
 
 export function hostedPreviewOrigin(receipt: HostedPreviewReceipt | null, subject: ProofSubject): string {
   if (!receipt) throw new ImplementationError('hosted_preview_missing', 'No checked hosted preview is available for this run');
-  if (!subjectMatches(receipt.subject, subject))
-    throw new ImplementationError('hosted_preview_stale', 'The hosted preview is for a different code tree or base; it needs a new maintainer deployment');
   return receipt.origin;
 }

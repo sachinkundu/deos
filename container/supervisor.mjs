@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { setupImplementation } from "./implementation-runtime.mjs";
-import { runImplementationCompletion } from "./implementation-completion.mjs";
 import { implementationProcessFailure } from "./implementation-process-failure.mjs";
 import { checkAuthorSources } from "./grounded-review.mjs";
 import { provisionGrounding, verifyGroundingContext, verifyNativeGrounding } from "./grounded-agent.mjs";
@@ -231,23 +230,6 @@ const main = async () => {
     return job.grounding ? checkAuthorSources(check, options) : check;
   };
   let result = await run(prompt);
-  let implementationAccepted = false;
-  if (implementation) {
-    const sessionId = tracker.finish();
-    const completion = await runImplementationCompletion({
-      result, outcome: result.code === 0 ? await resultOutcome() : null, sessionId, deadline,
-      feedbackRoot: "/deos/implementation/completion",
-      journal: "/deos/output/implementation-diagnostics.jsonl",
-      check: () => implementation.verify(),
-      resume: async ({ sessionId: exactSessionId, prompt: correctionPrompt }) => {
-        const resumed = await run(correctionPrompt, exactSessionId);
-        if (tracker.finish() !== sessionId) throw new Error("Implementation verification resumed a different session");
-        return { ...resumed, outcome: resumed.code === 0 ? await resultOutcome() : null };
-      },
-    });
-    result = completion.result;
-    implementationAccepted = completion.accepted;
-  }
   const completionRounds = [];
   let completionOutcome = reviewer ? "not_applicable" : "not_run";
   let safeErrorCategory;
@@ -323,7 +305,9 @@ const main = async () => {
     if (failure) throw failure;
     // A finish error must reach the fatal diagnostic handler before cleanup.
     // The outer finally still closes the runtime if finish or close fails.
-    if (!implementationAccepted) await implementation.finish();
+    // Capture the author's output once. Claude owns review; the workflow never
+    // resumes the author with its own test or evidence repair instructions.
+    await implementation.finish();
     await implementation.close();
     implementationRuntime = null;
   }

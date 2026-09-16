@@ -9,7 +9,6 @@ import {
   snapshot,
   localConfig,
   readRegularFile,
-  currentChecks,
   recordCheck,
   // @ts-expect-error The container entrypoint is deployed as JavaScript.
 } from "../container/implementation-runtime.mjs";
@@ -147,22 +146,6 @@ test("local preview config cannot carry remote bindings, secrets or another try 
   );
 });
 
-test("check acceptance is tied to the exact final tree and base", () => {
-  const checks = [
-    { command: "check", exitCode: 0, treeSha: "old", testedBaseSha: "base" },
-    { command: "check", exitCode: 0, treeSha: "new", testedBaseSha: "base" },
-    {
-      command: "other",
-      exitCode: 0,
-      treeSha: "new",
-      testedBaseSha: "old-base",
-    },
-  ];
-  assert.deepEqual(
-    currentChecks(checks, { treeSha: "new", testedBaseSha: "base" }),
-    [checks[1]],
-  );
-});
 test("trusted output reads refuse symlink and cross-directory targets", async () => {
   const root = await mkdtemp(join(tmpdir(), "implementation-output-"));
   try {
@@ -189,8 +172,8 @@ test("latest result replaces the same command in the same folder and keeps other
   assert.equal(checks.length, 2);
   assert.ok(checks.every((c: { exitCode: number }) => c.exitCode === 0));
   checks = recordCheck(checks, check, subject);
-  assert.equal(currentChecks(checks, subject).filter((c: { exitCode: number }) => c.exitCode === 1).length, 1);
+  assert.equal(checks.filter((c: { exitCode: number }) => c.exitCode === 1).length, 1);
   checks = recordCheck(checks, { ...check, exitCode: 0 }, { ...subject, treeSha: "fixed" });
-  assert.equal(currentChecks(checks, { ...subject, treeSha: "fixed" }).length, 1);
+  assert.equal(checks.length, 2);
   assert.equal(checks.find((c: { cwd: string }) => c.cwd === "/repo/portal").treeSha, "tree");
 });

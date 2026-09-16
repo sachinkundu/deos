@@ -20,7 +20,6 @@ import { verifyNativeGrounding } from "./grounded-agent.mjs";
 import { trustGeneratedHooks } from "./native-review-setup.mjs";
 import { originalErrorText } from "./original-errors.mjs";
 import { killProcessGroup, stopProcessGroup } from "./implementation-process.mjs";
-import { requestVerification } from "./implementation-verification-transport.mjs";
 
 const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
@@ -240,20 +239,13 @@ export async function readRegularFile(path, root) {
     await file.close();
   }
 }
-export function currentChecks(checks, subject) {
-  return checks.filter(
-    (check) =>
-      check.treeSha === subject.treeSha &&
-      check.testedBaseSha === subject.testedBaseSha,
-  );
-}
 export function recordCheck(checks, result, subject) {
   return [...checks.filter(check => check.command !== result.command || check.cwd !== result.cwd),
     { ...result, treeSha: subject.treeSha, testedBaseSha: subject.testedBaseSha }];
 }
 class CompletionOutputError extends Error {
   constructor(path, cause) {
-    super(`Repair the missing or invalid JSON output at ${path}: ${cause.message}`, { cause });
+    super(`Missing or invalid JSON output at ${path}: ${cause.message}`, { cause });
     this.code = "completion_output_invalid";
   }
 }
@@ -342,10 +334,10 @@ export async function setupImplementation(job) {
   );
   const journal='/deos/output/implementation-diagnostics.jsonl';
   await writeFile(journal,'',{mode:0o600,flag:'wx'});
-  const state = { checks: [], proof: [] };
   const input = JSON.parse(
     await readFile("/deos/run/implementation-input.json", "utf8"),
   );
+  const state = { checks: input.prior?.checks ?? [], proof: input.prior?.proof ?? [] };
   const broker = async (payload) => {
     for (;;) {
       const url = `${job.capabilityUrl}/implementation`;
@@ -358,9 +350,7 @@ export async function setupImplementation(job) {
         },
         body: JSON.stringify(payload),
       };
-      const response = payload.action === "verify"
-        ? await requestVerification(url, init, { deadline: Date.parse(job.deadline), journal })
-        : await fetch(url, init);
+      const response = await fetch(url, init);
       if (response.status === 429 || response.status === 409) {
         const wait = await response.json();
         if (!["browser_capacity", "browser_quarantined"].includes(wait.error))
@@ -450,11 +440,10 @@ export async function setupImplementation(job) {
         };
         let result;
         if (request.action === "status") {
-          const checks = currentChecks(state.checks, before);
+          const checks = state.checks;
           result = { ...subject,
             checks: checks.map(({ command, cwd, exitCode }) => ({ command, cwd, exitCode })),
-            staleChecks: state.checks.length - checks.length,
-            proofKinds: [...new Set(state.proof.filter(p => p.treeSha === before.treeSha).map(p => p.kind))],
+            proofKinds: [...new Set(state.proof.map(p => p.kind))],
           };
         } else if (request.action === "check") {
           if (
@@ -485,14 +474,6 @@ export async function setupImplementation(job) {
             ...request.argv,
           ];
           if (request.behavior === true) {
-            if (
-              /(?:^|\s)(?:pytest|jest|vitest)(?:\s|$)|--test(?:\s|$)|(?:npm|pnpm|yarn)\s+(?:run\s+)?test(?:\s|$)/.test(
-                requested,
-              )
-            )
-              throw new Error(
-                "Unit-test output cannot replace a behavior demonstration",
-              );
             const doc = `${ROOT}/showboat-${Date.now()}.md`;
             await checked(
               ["showboat", "init", doc, `${job.openspecChange} behavior check`],
@@ -510,15 +491,6 @@ export async function setupImplementation(job) {
             result.cwd = cwd;
           await appendFile(journal,JSON.stringify({operation:'check',...subject,result})+'\n');
             state.checks = recordCheck(state.checks, result, before);
-            if (result.exitCode !== 0)
-              throw Object.assign(new Error("Behavior command failed"), {
-                result,
-              });
-            const after = await snapshot(job.cwd);
-            if (after.treeSha !== before.treeSha)
-              throw new Error(
-                "Behavior check changed the candidate tree; rerun against the completed tree",
-              );
             state.proof.push(
               await broker({
                 action: "showboat",
@@ -533,9 +505,6 @@ export async function setupImplementation(job) {
             result.cwd = cwd;
           await appendFile(journal,JSON.stringify({operation:'check',...subject,result})+'\n');
             state.checks = recordCheck(state.checks, result, before);
-            const after = await snapshot(job.cwd);
-            if (after.treeSha !== before.treeSha)
-              throw Object.assign(new Error("Check changed the candidate tree; rerun against the completed tree"), { result });
           }
         } else if (request.action === "preview") {
           if (preview)
@@ -672,12 +641,17 @@ export async function setupImplementation(job) {
       const result = await completionJson("/deos/output/result.json");
       if (!result || !["completed", "needs_human", "failed"].includes(result.outcome))
         throw new CompletionOutputError("/deos/output/result.json", new Error("Expected an outcome of completed, needs_human or failed"));
-      const sources = await completionJson("/deos/output/documentation-sources.json");
+      // Documentation and evidence are review context, not completion gates.
+      // Supply the legacy artifact so already frozen jobs can still collect it.
+      const sources = [];
+      try { await writeFile("/deos/output/documentation-sources.json", JSON.stringify(sources), {mode: 0o600, flag: "wx"}); }
+      catch (error) { if (error.code !== "EEXIST") throw error; }
       const candidate = {
         version: 1,
         attemptId: job.attemptId,
         kind: job.implementationKind,
         outcome: result.outcome,
+        summary: result.summary,
         change: job.openspecChange,
         approvedDesignSha: input.approvedDesignSha,
         ...snap,
@@ -686,19 +660,12 @@ export async function setupImplementation(job) {
           job.cwd,
         ),
         patchSha: sha(patch),
-        checks: currentChecks(state.checks, snap),
-        proof: state.proof.filter((p) => p.treeSha === snap.treeSha),
+        checks: state.checks,
+        proof: state.proof,
         sources,
         assumptions: result.assumptions,
         question: result.question,
       };
-      if (job.implementationKind === "tasks") {
-        const check = await command(
-          ["openspec", "validate", job.openspecChange, "--strict"],
-          job.cwd,
-        );
-        candidate.checks.push(check);
-      }
       await writeFile(`${ROOT}/candidate.json`, JSON.stringify(candidate), {
         mode: 0o600,
       });
@@ -707,26 +674,6 @@ export async function setupImplementation(job) {
         "/deos/output/implementation-candidate.json",
       );
       return candidate;
-    },
-    async verify() {
-      try {
-        const candidate = await runtime.finish();
-        const subject = { change: candidate.change, approvedDesignSha: candidate.approvedDesignSha,
-          testedBaseSha: candidate.testedBaseSha, treeSha: candidate.treeSha };
-        // Only this root-owned supervisor has the broker capability. Send its
-        // captured files directly, avoiding a callback into the requesting Sandbox.
-        const patch = await readFile('/deos/output/patch.diff', 'utf8');
-        const feedback = await broker({ action: "verify", subject, capture: { candidate, patch } });
-        if (feedback.ready === true) {
-          const after = await snapshot(job.cwd);
-          if (after.treeSha !== candidate.treeSha || after.testedBaseSha !== candidate.testedBaseSha)
-            return { ready: false, code: "candidate_changed", message: "The repository changed during verification. Stop background edits, rerun checks and refresh proof on the final tree." };
-        }
-        return feedback;
-      } catch (error) {
-        if (!(error instanceof CompletionOutputError)) throw error;
-        return { ready: false, code: error.code, message: error.message, originalError: originalErrorText(error) };
-      }
     },
     async close() {
       await stopPreview();

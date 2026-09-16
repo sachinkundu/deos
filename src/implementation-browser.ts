@@ -424,11 +424,6 @@ export async function browserCommand(
         "browser_origin",
         "Browser left its preview origin",
       );
-    if (input.operation === 'screenshot' || input.operation === 'measure') {
-      if(page.url()==='about:blank')throw new ImplementationError('preview_not_open','Navigate to the assigned preview before capturing proof');
-      if (documentStatus === undefined || documentStatus < 200 || documentStatus >= 400)
-        throw new ImplementationError("preview_document_failed", `The preview document returned ${documentStatus === undefined ? "an unknown HTTP status" : `HTTP ${documentStatus}`}. Navigate to a working application page before capturing visual proof. Error responses remain diagnostic evidence, not proof of a working screen.`);
-    }
     if (input.operation === "screenshot") {
       await page.addStyleTag({
         content:

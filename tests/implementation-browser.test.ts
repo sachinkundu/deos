@@ -176,6 +176,7 @@ test('one browser retains its fixed local and checked hosted origins; origin cha
 test('switching preview targets requires navigation before any page interaction and resets HTTP status',async()=>{
   let clicks=0,url='https://one.trycloudflare.com/',disconnected=0;
   const page={on:()=>{},mainFrame:()=>({}),url:()=>url,click:async()=>{clicks++;},
+    addStyleTag:async()=>{},screenshot:async()=>new Uint8Array([1]),
     goto:async(target:string)=>{url=target;return null;},title:async()=> 'Calculator',content:async()=> '<output>3</output>'};
   const api={connect:async()=>({pages:async()=>[page],disconnect:async()=>{disconnected++;}})} as never;
   const hosted='https://a1b2c3d4.calculator.pages.dev';
@@ -183,7 +184,7 @@ test('switching preview targets requires navigation before any page interaction 
   assert.equal(clicks,0);
   const navigated=await browserCommand({} as never,'session',hosted,{operation:'navigate',documentStatus:200},api);
   assert.equal(navigated.documentStatus,undefined,'An old successful response cannot authenticate a new page');
-  await assert.rejects(browserCommand({} as never,'session',hosted,{operation:'screenshot',documentStatus:navigated.documentStatus},api),/unknown HTTP status/);
+  await browserCommand({} as never,'session',hosted,{operation:'screenshot',documentStatus:navigated.documentStatus},api);
   assert.equal(disconnected,3);
 });
 
@@ -267,7 +268,7 @@ test("provider maintenance avoids connected sessions, detects expiry and disconn
   await assert.rejects(provider.keepAlive("owned"), error => error instanceof AggregateError && error.cause===failure && error.errors[1]===disconnectFailure);
 });
 
-test("a real navigation status follows the browser across commands and failed documents cannot become visual proof", async () => {
+test("a real navigation status follows the browser across commands and failed documents remain available for review", async () => {
   let status = 401;
   let screenshots = 0;
   let disconnects = 0;
@@ -288,22 +289,22 @@ test("a real navigation status follows the browser across commands and failed do
   const api = {connect:async()=>({pages:async()=>[page],disconnect:async()=>{disconnects++;}})} as never;
   const navigate = await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'navigate',url:'/settings'},api);
   assert.equal(navigate.documentStatus,401);
-  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:navigate.documentStatus},api),/HTTP 401/);
-  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot'},api),/unknown HTTP status/);
-  assert.equal(screenshots,0);
+  await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:navigate.documentStatus},api);
+  await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot'},api);
+  assert.equal(screenshots,2);
   status=200;
   const repaired = await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'navigate',url:'/settings'},api);
   const proof = await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:repaired.documentStatus},api);
   assert.equal(proof.documentStatus,200);
-  assert.equal(screenshots,1);
+  assert.equal(screenshots,3);
   status=503;
   const clicked = await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'click',selector:'button',documentStatus:200},api);
   assert.equal(clicked.documentStatus,503);
-  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:clicked.documentStatus},api),/HTTP 503/);
-  assert.equal(screenshots,1);
+  await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:clicked.documentStatus},api);
+  assert.equal(screenshots,4);
   assert.equal(disconnects,7);
 });
-test("assigned browser dispatches real keys and changes viewport while preserving failed-document proof checks", async () => {
+test("assigned browser dispatches real keys and changes viewport while preserving document status", async () => {
   const keys:string[]=[];
   const viewports:unknown[]=[];
   let disconnects=0;
@@ -314,6 +315,7 @@ test("assigned browser dispatches real keys and changes viewport while preservin
     mainFrame:()=>frame,
     url:()=> 'https://owned.trycloudflare.com/',
     title:async()=> 'Calculator', content:async()=> '<output>3</output>',
+    addStyleTag:async()=>{},screenshot:async()=>new Uint8Array([1]),
     keyboard:{press:async(key:string)=>{keys.push(key);}},
     setViewport:async(viewport:unknown)=>{
       viewports.push(viewport);
@@ -327,7 +329,7 @@ test("assigned browser dispatches real keys and changes viewport while preservin
   const resized=await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'viewport',width:320,height:640,documentStatus:200},api);
   assert.deepEqual(viewports,[{width:320,height:640,deviceScaleFactor:1}]);
   assert.equal(resized.documentStatus,503,'A viewport-triggered navigation must preserve its actual HTTP status');
-  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:resized.documentStatus},api),/HTTP 503/);
+  await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'screenshot',documentStatus:resized.documentStatus},api);
   for(const width of [0,319.5,3841])
     await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'viewport',width,height:640},api),/integers from 200 to 3840/);
   await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'press'},api),/key name is required/);
@@ -367,7 +369,7 @@ test('browser records actual measurements and trace controls; modifier cleanup p
   const measured=await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'measure',documentStatus:200},api);
   assert.ok('measurements' in measured);
   assert.deepEqual(measured.measurements,{viewport:{width:320},document:{scrollWidth:320,clientWidth:320}});
-  await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'measure',documentStatus:503},api),/HTTP 503/);
+  await browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'measure',documentStatus:503},api);
   failed=true;
   await assert.rejects(browserCommand({} as never,'owned','https://owned.trycloudflare.com',{operation:'press',key:'/',modifiers:['Control'],documentStatus:200},api),error=>error===failure);
   assert.deepEqual(events,['down:Control','press:/','up:Control']);

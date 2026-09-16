@@ -9,7 +9,7 @@ import {implementationPolicy} from '../src/implementation-contract.ts';
 import {sha256Hex} from '../src/implementation-hash.ts';
 import {ImplementationTestDatabase,ImplementationTestBucket,seedRun,seedAttempt} from './helpers/implementation-fixture.ts';
 
-test('supervisor verification capture completes without Sandbox callbacks and retains the same identity and proof gates',async()=>{
+test('legacy verification calls acknowledge completion without judging checks, tasks or evidence',async()=>{
   const dir=await mkdtemp(join(tmpdir(),'verification-broker-'));
   const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();seedRun(db);seedAttempt(db,'attempt');
   try {
@@ -52,13 +52,18 @@ test('supervisor verification capture completes without Sandbox callbacks and re
     assert.notEqual(localImage.id,hostedImage.id,'Identical bytes from different origins retain distinct receipts');
     assert.notEqual(localImage.path,hostedImage.path);
     assert.equal(hostedImage.caption,'Hosted URL');
-    response=await verify({...candidate,proof:[{...proof,caption:'Claiming a different capture location'}]});
-    assert.equal(response.status,400);assert.equal((await response.json()).error,'untrusted_proof');
-    candidate.proof=[];response=await verify();assert.equal((await response.json()).ready,false);
-    candidate.outcome='needs_human';candidate.question={blockKey:'preview',question:'Which safe preview can be used?',reason:'Assigned preview is unavailable.'} as never;
-    response=await verify();assert.equal((await response.json()).ready,true,'A valid blocker is accepted without requiring a completed demo');
-    response=await verify(candidate,'changed');assert.equal(response.status,400);assert.equal((await response.json()).error,'patch_integrity');
-    response=await verify({...candidate,attemptId:'other'});assert.equal(response.status,400);assert.equal((await response.json()).error,'candidate_identity');
-    assert.equal(db.sqlite.prepare('SELECT count(*) n FROM implementation_effect_errors').get()!.n,3);
+    for (const value of [
+      {...candidate, tasks:'- [ ] Unfinished'},
+      {...candidate, checks:[{command:'test',exitCode:1,stdout:'',stderr:'Real failure'}]},
+      {...candidate, proof:[]},
+      {...candidate, proof:[{...proof,treeSha:'f'.repeat(40),caption:'Changed caption'}]},
+      {...candidate, sources:[]},
+    ]) {
+      response=await verify(value);
+      assert.equal(response.status,200);
+      assert.equal((await response.json()).ready,true);
+    }
+    assert.equal(db.sqlite.prepare('SELECT count(*) n FROM implementation_effect_errors').get()!.n,0);
+
   } finally {db.close();await rm(dir,{recursive:true,force:true});}
 });

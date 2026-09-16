@@ -44,17 +44,15 @@ For provider work, completion SHALL include a real provider event from a safe te
 #### Scenario: A task is still open
 
 - **WHEN** any required task, check, or proof is incomplete.
-- **THEN** DEOS does not publish the work as ready for human review.
+- **THEN** DEOS retains the unfinished task or failed check as review context. Claude and the human judge the work; the workflow does not reject completion.
 
 ### Requirement: Plan and judge demos independently
 
-Every implementation SHALL have a demo plan from a fresh Claude reviewer before Codex starts the build. The reviewer SHALL read the approved proposal, specs, and design. Each demo SHALL name the requirements it covers, the safe environment, steps, expected result, and evidence needed. All approved requirements SHALL be covered. Prefer visual proof where it shows the behavior. Nonvisual work SHALL still have real behavior proof. The implementer MUST NOT remove or weaken a saved requirement.
+Every implementation SHALL receive a demo plan from Claude based on the approved proposal, specs, design, and available runtime. Claude SHALL choose useful scenarios and prefer visual demonstrations where they explain behavior. The workflow SHALL forward the plan without checking requirement coverage or enforcing an evidence checklist.
 
-The reviewer SHALL receive the real runtime capabilities. It MUST NOT replace an approved hosted preview with local-only proof or invent platform tests outside the approved application scope. An operator MAY request correction of a mistaken scenario through the audited failed-run upgrade. The request SHALL bind the saved plan hash, affected scenario IDs, and reason. Only the independent reviewer may revise those scenarios. It SHALL retain their approved requirement references and evidence kinds, explain each change, and leave every other scenario unchanged. Prior plans SHALL remain available. This correction MUST NOT waive approved behavior, evidence trust, or the final human gate.
+Sol SHALL implement the work, choose useful checks and demos, and report actual results and limitations. Claude SHALL review the first implementation once, inspect the available evidence and relevant code, and return Pass, Needs work, or Blocked. The workflow SHALL save and forward Claude's response unchanged. It MUST NOT audit citations, scenario coverage, input or evidence identity, or the judgment itself.
 
-After Codex supplies current evidence, a separate fresh Claude reviewer SHALL judge every planned demo. It SHALL inspect the actual proof and relevant code. It MUST NOT accept the implementer's summary, a fixture screenshot, or unrelated provider calls as proof that the changed application works. Required images SHALL be available as images. The service SHALL check candidate evidence provenance and subject hashes before review. It SHALL read the reviewer’s response using its routing format and input identity, without auditing its findings, citations, scenario coverage or aggregate judgment. Evidence access records are diagnostic only; missing access records MUST NOT reject a verdict or start another reviewer turn.
-
-The gate SHALL return Pass, Needs work, or Blocked with a clear reason for each demo. Needs work SHALL return the saved patch and specific gaps to Codex for at most one automatic repair pass per human review round. After that pass, the implementation PR SHALL go to Human Review with the original findings and an explicit statement that the repairs have not been independently reviewed again. The workflow MUST NOT start another automatic demo review of that repair. Blocked SHALL preserve the reason and use the clarification path. An execution or transport failure MUST NOT become a pass. PR publication and final Human Review SHALL require either a pass for the current candidate and plan or a completed repair pass that received the current review. Tests and current-code proof SHALL still pass. Only the authorized human may approve the PR or send it back. A human-requested revision starts a new review round; it does not grant merge authority.
+Needs work SHALL pass Claude's findings to Sol. Sol SHALL act on them once and report what changed or remains unresolved. The workflow SHALL then publish the implementation PR for human judgment with Claude's original findings and Sol's response. It MUST NOT generate repair instructions, assess whether the findings were satisfied, or send the response back to Claude. Pass SHALL go directly to publication. Blocked SHALL use the clarification route. Execution and transport failures SHALL preserve their original errors. Only the authorized human may approve or request another revision.
 
 #### Scenario: Every implementation gets a demo contract
 
@@ -69,11 +67,11 @@ The gate SHALL return Pass, Needs work, or Blocked with a clear reason for each 
 #### Scenario: A visual demo passes
 
 - **WHEN** the reviewer marks a visual demo passed.
-- **THEN** the workflow accepts the reviewer’s judgment. Candidate evidence has already been checked before review; no later citation audit or second reviewer is required.
+- **THEN** the workflow accepts the reviewer’s judgment. No evidence audit or second reviewer is required.
 
 #### Scenario: One repair pass ends at human review
 
-- **WHEN** the author completes repairs requested by the demo review and required checks pass.
+- **WHEN** Sol completes its response to Claude’s findings.
 - **THEN** the service publishes the implementation PR for human judgment, retains the original demo findings, and does not repeat the demo review automatically.
 
 #### Scenario: An existing failed canary adopts the gate
@@ -123,11 +121,11 @@ An allowed reply that answers the open question SHALL resume the same build run 
 
 ### Requirement: Publish one proof-backed implementation pull request
 
-When all tasks and checks pass, DEOS SHALL publish or update one run-scoped implementation pull request. It SHALL target the approved base branch. The pull request SHALL include the task list, code, tests, exact check results, and links to durable proof.
+After the agent handoff completes, DEOS SHALL publish or update one run-scoped implementation pull request. It SHALL target the approved base branch. The pull request SHALL include the task list, code, tests, exact check results, and links to durable proof.
 
 Proof SHALL show the changed behavior. For user-facing work, it SHALL include sanitized browser images of the changed state when a visual check is possible. When a visual check does not fit, it SHALL include Showboat records of the real commands and outputs. Unit test results MAY support the proof but MUST NOT be the only behavior proof.
 
-Each proof item SHALL state which change and approved base it checks. Before each pull request post and move to final review, a trusted check SHALL confirm that all needed proof still fits the current work. A later change to the code or base SHALL make affected proof stale. DEOS MUST NOT mark the pull request ready or open the final gate until the current work has complete proof.
+Evidence SHALL retain its recorded origin and revision as context. The workflow MUST NOT require particular proof kinds, passing command results, a full task checklist, citation receipts, or matching evidence hashes to advance. Claude and the human decide whether the work and demos are sufficient. Filesystem isolation, authenticated access, durable storage and reserved branch publication remain transport responsibilities.
 
 #### Scenario: User-facing work is complete
 
@@ -142,12 +140,12 @@ Each proof item SHALL state which change and approved base it checks. Before eac
 #### Scenario: Only unit tests exist
 
 - **WHEN** all unit tests pass but no proof shows the changed behavior.
-- **THEN** DEOS keeps the work out of the final human gate.
+- **THEN** Claude receives that limitation and decides what to recommend to Sol.
 
 #### Scenario: Work changes after proof
 
 - **WHEN** the code or approved base changes after proof was saved.
-- **THEN** DEOS marks the affected proof stale and blocks the final gate until the current work has new proof.
+- **THEN** Sol decides which checks or demonstrations to repeat and reports the result; the workflow forwards the saved evidence without blocking on its revision.
 
 ### Requirement: Keep final approval and release with a person
 

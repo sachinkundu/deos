@@ -25,7 +25,7 @@ const verificationNodes = new Set([
 const readyNodes = new Set(["implementation_review", "implementation_merge", "code_merged"]);
 
 // A presentation of the current durable visit, not another workflow transition.
-// Checklist completion starts verification; only the real review handoff ends it.
+// Agent completion advances the flow; task counts never claim completion.
 export function implementationSteps(
   visits: readonly ImplementationVisit[], runStatus: string,
   progress: ImplementationProgress | null | undefined,
@@ -37,24 +37,20 @@ export function implementationSteps(
   const latest = current[0];
   const work = current.find(visit => !["implementation_failed", "implementation_question",
     "implementation_clarification_wait", "implementation_manual_reconciliation"].includes(visit.nodeId));
-  const build = current.find(visit => visit.nodeId === "implementation_build");
-  const checklistDone = work?.nodeId === "implementation_build" && progress?.source === "author" &&
-    progress.total > 0 && progress.completed === progress.total && build !== undefined &&
-    Date.parse(progress.observedAt) >= Date.parse(build.enteredAt);
   const ready = latest !== undefined && readyNodes.has(latest.nodeId);
   const atPlan = work?.nodeId === 'implementation_demo_plan' || work?.nodeId === 'implementation_rebase_demo';
   const atGate = work?.nodeId === 'implementation_demo_gate';
-  const verifying = ready || checklistDone || atGate || (work !== undefined && verificationNodes.has(work.nodeId));
+  const verifying = ready || atGate || (work !== undefined && verificationNodes.has(work.nodeId));
   const result: ImplementationSteps = {
     author: !latest ? "Upcoming" : verifying ? "Complete" : "In progress",
-    verification: ready ? "Complete" : verifying ? "In progress" : "Upcoming",
+    verification: ready ? "Complete" : verifying && !atGate ? "In progress" : "Upcoming",
     current: verifying ? "implementation_verification" : "implementation_author",
     demoPlan: demo?.plan?.current ? demo.plan.value.outcome === 'ready' ? 'Complete' : 'Blocked' : 'Upcoming',
     demoGate: demo?.gate?.repairComplete ? 'Needs work' : demo?.gate?.current ? ({pass:'Complete', needs_work:'Needs work', blocked:'Blocked'} as const)[demo.gate.value.outcome] : 'Upcoming',
-    description: ready ? latest.nodeId === "implementation_review" ? "Ready for human review." : "Checks and proof complete." : verifying
+    description: ready ? latest.nodeId === "implementation_review" ? "Ready for human review." : "Implementation published." : verifying
       ? work?.nodeId === "implementation_publish" || work?.nodeId === "implementation_branch_write"
-        ? "Preparing the implementation PR." : "Final checks and end-to-end proof."
-      : "Checks, end-to-end proof and PR preparation follow the task checklist.",
+        ? "Preparing the implementation PR." : "Passing the implementation to review."
+      : "Sol is implementing and demonstrating the work.",
   };
   if (atPlan) {
     result.current = 'implementation_demo_plan';
@@ -66,13 +62,11 @@ export function implementationSteps(
   if (atGate) {
     result.current = 'implementation_demo_gate';
     result.demoGate = demo?.gate?.current ? result.demoGate : 'In progress';
-    result.verification = 'Complete';
-    result.description = 'Checks complete. Claude is inspecting the demo evidence.';
+    result.verification = 'Upcoming';
+    result.description = 'Claude is reviewing the implementation and demos.';
   }
-  if (demo?.enabled && ['implementation_branch_write', 'implementation_publish'].includes(work?.nodeId ?? '')) {
-    result.verification = 'Complete';
-    result.current = 'implementation_demo_gate';
-  }
+  if (work?.nodeId === 'implementation_build' && demo?.gate?.value.outcome === 'needs_work')
+    result.description = 'Sol is acting on Claude’s findings before human review.';
   if (!latest) return result;
   const stopped = runStatus === "failed" ? "Failed"
     : ["blocked", "denied", "manual_reconciliation_required"].includes(runStatus) ? "Blocked"

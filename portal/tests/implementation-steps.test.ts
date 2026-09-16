@@ -7,12 +7,11 @@ const visit = (sequence: number, nodeId: string, enteredAt = "2026-09-15T03:56:1
 const progress: ImplementationProgress = {completed: 50, total: 50, source: "author", observedAt: "2026-09-15T04:31:47Z"};
 const build = visit(40, "implementation_build");
 
-test("a full current checklist starts verification without claiming review readiness", () => {
+test("a full checklist stays with Sol until the agent finishes", () => {
   const steps = implementationSteps([build], "active", progress);
-  assert.equal(steps.author, "Complete");
-  assert.equal(steps.verification, "In progress");
-  assert.equal(steps.current, "implementation_verification");
-  assert.equal(steps.description, "Final checks and end-to-end proof.");
+  assert.equal(steps.author, "In progress");
+  assert.equal(steps.verification, "Upcoming");
+  assert.equal(steps.current, "implementation_author");
 });
 
 test("empty, partial and reopened checklists stay with Author", () => {
@@ -51,8 +50,8 @@ test("proof and publication stay active until the durable review handoff", () =>
 test("clarification pauses the unfinished step and never completes verification", () => {
   const history = [build, visit(41, "implementation_question"), visit(42, "implementation_clarification_wait")];
   const verifying = implementationSteps(history, "awaiting_human", progress);
-  assert.equal(verifying.author, "Complete");
-  assert.equal(verifying.verification, "Blocked");
+  assert.equal(verifying.author, "Blocked");
+  assert.equal(verifying.verification, "Upcoming");
   assert.equal(verifying.description, "Waiting for your reply in Linear.");
   const writing = implementationSteps(history, "awaiting_human", {...progress, completed: 20});
   assert.equal(writing.author, "Blocked");
@@ -61,9 +60,9 @@ test("clarification pauses the unfinished step and never completes verification"
 
 test("failure stays on the interrupted step and recovery resets to the new build", () => {
   const history = [build, visit(41, "implementation_failed")];
-  assert.equal(implementationSteps(history, "failed", progress).verification, "Failed");
+  assert.equal(implementationSteps(history, "failed", progress).author, "Failed");
   assert.equal(implementationSteps(history, "failed", {...progress, completed: 20}).author, "Failed");
-  assert.equal(implementationSteps(history, "canceled", progress).verification, "Canceled");
+  assert.equal(implementationSteps(history, "canceled", progress).author, "Canceled");
   const recovered = [build, {...history[1], recovered: true}, visit(42, "implementation_build", "2026-09-15T05:00:00Z")];
   assert.equal(implementationSteps(recovered, "active", progress).author, "In progress");
   assert.equal(implementationSteps(recovered, "active", progress).verification, "Upcoming");
@@ -79,9 +78,9 @@ test('independent demo steps are distinct from author task completion and verifi
   const plan=implementationSteps(history.slice(0,1),'active',null,{enabled:true,plan:null,gate:null});
   assert.equal(plan.current,'implementation_demo_plan');assert.equal(plan.demoPlan,'In progress');assert.equal(plan.author,'Upcoming');
   const gate=implementationSteps([...history,visit(41,'implementation_demo_gate')],'active',progress,{enabled:true,plan:null,gate:null});
-  assert.equal(gate.current,'implementation_demo_gate');assert.equal(gate.verification,'Complete');assert.equal(gate.demoGate,'In progress');
+  assert.equal(gate.current,'implementation_demo_gate');assert.equal(gate.verification,'Upcoming');assert.equal(gate.demoGate,'In progress');
   const failed=implementationSteps([...history,visit(41,'implementation_demo_gate'),visit(42,'implementation_failed')],'failed',progress,{enabled:true,plan:null,gate:null});
-  assert.equal(failed.demoGate,'Failed');assert.equal(failed.verification,'Complete');
+  assert.equal(failed.demoGate,'Failed');assert.equal(failed.verification,'Upcoming');
   const blocked=implementationSteps([...history,visit(41,'implementation_demo_gate'),visit(42,'implementation_question'),visit(43,'implementation_clarification_wait')],
     'awaiting_human',progress,{enabled:true,plan:null,gate:null});
   assert.equal(blocked.demoGate,'Blocked');assert.equal(blocked.description,'Waiting for your reply in Linear.');

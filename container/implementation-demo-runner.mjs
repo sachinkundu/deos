@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { claudeReviewJudgment, finishClaudeReview } from './claude-review-adapter.mjs';
-import { demoPlanSchema, demoResultSchema, validateDemoPlan } from './implementation-demo-contract.ts';
+import { demoPlanSchema, demoResultSchema } from './implementation-demo-contract.ts';
 import { recordCaughtError } from './original-errors.mjs';
 
 try {
@@ -20,9 +20,6 @@ try {
     JSON.stringify(contract, null, 2)].join('\n\n');
   const schema = context.kind === 'plan' ? demoPlanSchema : demoResultSchema;
   const { result } = await claudeReviewJudgment({ job, prompt, schema, sessionId: null });
-  if (context.kind === 'plan') validateDemoPlan(result, context);
-  else if (result.inputSha256 !== inputSha256 || result.planSha256 !== context.plan.sha256)
-    throw new Error('Demo verdict identity mismatch');
   await writeFile('/deos/output/raw-review-output.json', JSON.stringify(result));
   await writeFile('/deos/output/result.json', JSON.stringify({ outcome: 'completed', reviewOutcome: result.outcome,
     summary: result.summary, providerReceipts: [] }));

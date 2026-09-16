@@ -14,7 +14,7 @@ variables. Registration MUST NOT move the workflow or count as demo proof.
 
 A fresh attempt MAY browse that run's checked static deployment using its one
 service browser. The browser SHALL retain fixed local and hosted origins for
-the whole attempt. Hosted proof SHALL require the registered code tree and base.
+the whole attempt. The saved receipt SHALL expose the deployment revision as review context.
 Switching targets SHALL require navigation and a fresh HTTP result. Each image
 receipt SHALL retain its actual origin, even when local and hosted images have
 identical bytes. The agent MUST NOT rewrite that provenance. This access adds
@@ -28,7 +28,7 @@ no provider write, deploy, approval, merge or release capability.
 #### Scenario: The author edits after the preview was deployed
 
 - **WHEN** the author's current code tree differs from the registered build.
-- **THEN** local checks may continue, but hosted evidence is rejected until a new checked deployment is available.
+- **THEN** the agent may continue using that preview and explains the revision difference for Claude and human review.
 
 #### Scenario: Local and hosted screens look the same
 
@@ -48,7 +48,7 @@ The service user MUST NOT count as the allowed human account. It MUST NOT approv
 
 #### Scenario: Agent publishes implementation work
 
-- **WHEN** the build patch and proof pass trusted checks.
+- **WHEN** the implementation and review messages complete their handoff.
 - **THEN** the trusted GitHub tool makes or updates the one pull request for the run and saves its receipt.
 
 #### Scenario: Service identity attempts approval

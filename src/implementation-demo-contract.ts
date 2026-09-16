@@ -66,53 +66,20 @@ function validateQuestion(outcome: string, question: DemoQuestion | null) {
   } else if (question !== null) error('Only a blocked demo may request clarification');
 }
 
-export function validateDemoPlan(plan: DemoPlan, context: DemoContext): void {
-  if (!plan || plan.version !== 1 || plan.inputSha256 !== context.inputSha256 ||
-      !['ready', 'blocked'].includes(plan.outcome) || !text(plan.summary) || !Array.isArray(plan.scenarios))
-    error('Demo plan identity or result is invalid');
+// Decode only the message shape used by the state machine. Claude owns scope,
+// scenario coverage and whether the supplied work is sufficient.
+export function validateDemoPlan(plan: DemoPlan, _context: DemoContext): void {
+  if (!plan || !['ready', 'blocked'].includes(plan.outcome) ||
+      typeof plan.summary !== 'string' || !Array.isArray(plan.scenarios))
+    error('Demo plan routing message is invalid');
   validateQuestion(plan.outcome, plan.question);
-  const seen = new Set<string>();
-  const covered = new Set<string>();
-  for (const scenario of plan.scenarios) {
-    if (!scenario || !id(scenario.id) || seen.has(scenario.id) || !text(scenario.title) ||
-        !text(scenario.environment) || !text(scenario.expected) || !Array.isArray(scenario.steps) ||
-        !scenario.steps.length || !scenario.steps.every(text) || !Array.isArray(scenario.requirementIds) ||
-        !scenario.requirementIds.length || !unique(scenario.requirementIds) ||
-        !scenario.requirementIds.every(value => context.requirements.some(requirement => requirement.id === value)) ||
-        !Array.isArray(scenario.evidenceKinds) || !scenario.evidenceKinds.length || !unique(scenario.evidenceKinds) ||
-        !scenario.evidenceKinds.every(value => kinds.has(value))) error('Invalid demo scenario or approved requirement reference');
-    seen.add(scenario.id);
-    scenario.requirementIds.forEach(value => covered.add(value));
-  }
-  if (plan.outcome === 'ready' && (!plan.scenarios.length || context.requirements.some(requirement => !covered.has(requirement.id))))
-    error('Ready demo plan must cover every approved requirement');
-  const corrections = plan.corrections ?? [];
-  if (!Array.isArray(corrections) || !unique(corrections.map(item => item?.scenarioId)) ||
-      corrections.some(item => !item || !id(item.scenarioId) || !text(item.reason)))
-    error('Invalid demo correction reasons');
-  const changed = new Set<string>();
-  for (const prior of context.priorPlan?.scenarios ?? []) {
-    const current = plan.scenarios.find(scenario => scenario.id === prior.id);
-    if (current && JSON.stringify(current) === JSON.stringify(prior)) continue;
-    const grant = context.correction;
-    if (!current || !grant || grant.planSha256 !== context.priorPlanSha256 ||
-        !grant.scenarioIds.includes(prior.id) || !corrections.some(item => item.scenarioId === prior.id))
-      error(`Saved demo requirement cannot be removed or rewritten: ${prior.id}`);
-    if (prior.requirementIds.some(value => !current!.requirementIds.includes(value)) ||
-        prior.evidenceKinds.some(value => !current!.evidenceKinds.includes(value)))
-      error(`Demo correction cannot remove approved coverage or evidence kinds: ${prior.id}`);
-    changed.add(prior.id);
-  }
-  if (corrections.some(item => !changed.has(item.scenarioId))) error('Demo correction reason does not match a changed scenario');
 }
 
 // Only validate the routing envelope. The independent reviewer owns its findings,
 // scenario judgments and citations; the workflow does not review that review.
-// Candidate provenance and current-code checks run before the review is requested.
-export function validateDemoResult(result: DemoResult, context: DemoContext): void {
-  const plan = context.plan;
-  if (!plan || !result || result.version !== 1 || result.inputSha256 !== context.inputSha256 ||
-      result.planSha256 !== plan.sha256 || !['pass', 'needs_work', 'blocked'].includes(result.outcome) ||
+// Historical evidence is passed through so the reviewer can assess its relevance.
+export function validateDemoResult(result: DemoResult, _context: DemoContext): void {
+  if (!result || !['pass', 'needs_work', 'blocked'].includes(result.outcome) ||
       !text(result.summary) || !Array.isArray(result.scenarios)) error('Demo verdict envelope is invalid');
   validateQuestion(result.outcome, result.question);
   for (const scenario of result.scenarios) {

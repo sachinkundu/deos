@@ -1,5 +1,5 @@
 import { demoHandoff } from './implementation-demo-handoff.ts';
-import { ImplementationError, subjectMatches } from './implementation-contract.ts';
+import { ImplementationError } from './implementation-contract.ts';
 import { ImplementationStore, type ImplementationInput, type ImplementationRun } from './implementation-store.ts';
 import { sha256Hex } from './implementation-hash.ts';
 import { demoRequirements, validateDemoPlan, validateDemoResult,
@@ -68,11 +68,11 @@ export class ImplementationDemoService {
         keyTrace: 'operation: trace with enabled: true records real key events in a visible overlay. Turn it off with enabled: false for plain application proof.',
         measurements: 'operation: measure records the live origin, CSS viewport, document width, element geometry and displayed text as Showboat proof.',
         viewport: { min: 200, max: 3840, persistsAcrossCommands: true },
-        navigation: hostedPreview ? 'The local preview and the checked immutable hosted preview, using target: hosted. Hosted proof must match its saved code tree.' : 'Only the registered preview origin for this attempt' },
+        navigation: hostedPreview ? 'The local preview and the checked immutable hosted preview, using target: hosted. The saved deployment receipt identifies its code revision for review.' : 'Only the registered preview origin for this attempt' },
       documentationHosts: input.policy.documentationHosts,
       safeAdapters: input.policy.safeAdapters,
       deployment: 'No provider credentials in the agent. An approved hosted preview requires an explicitly available trusted deployment path. Local workerd does not replace an approved hosted preview.',
-      recovery: 'Runtime failure ends the attempt. A fresh attempt restores saved work and must capture its own current evidence. Do not require destroying and reallocating a service browser within an application demo.',
+      recovery: 'Runtime failure ends the attempt. A fresh attempt restores saved work and evidence. Sol decides which checks or demos need to run again. Do not require destroying and reallocating a service browser within an application demo.',
     }, null, 2));
     let correction: DemoCorrection | null = null;
     if (kind === 'plan' && priorRow) {
@@ -109,11 +109,8 @@ export class ImplementationDemoService {
       for (const proof of candidate.proof) {
         const row = await this.db.prepare('SELECT * FROM implementation_proof WHERE run_id=? AND attempt_id=? AND proof_id=? AND sanitized=1')
           .bind(run.run_id, candidate.attemptId, proof.id).first<{ r2_key: string; sha256: string; media_type: string; kind: DemoEvidence['kind']; caption: string }>();
-        if (!row || row.sha256 !== proof.sha256 || !subjectMatches(proof, subject))
-          throw new ImplementationError('untrusted_proof', `Demo evidence does not match candidate: ${proof.id}`);
-        await this.store.readBytes(row.r2_key, row.sha256);
-        evidence.push({ ...subject, id: proof.id, kind: row.kind, caption: row.caption,
-          sha256: row.sha256, r2Key: row.r2_key, contentType: row.media_type });
+        evidence.push({ ...proof, r2Key: row?.r2_key ?? proof.path,
+          contentType: row?.media_type ?? (proof.kind === 'browser_image' ? 'image/png' : 'text/plain') });
       }
     }
     const content = { version: 1 as const, kind, runId: run.run_id, approvedInputSha: work.input_sha,
@@ -128,30 +125,16 @@ export class ImplementationDemoService {
     const job = JSON.parse(attempt.job_spec_json);
     const context: DemoContext = JSON.parse(job.materializedContext).demo;
     const { inputSha256, ...content } = context;
-    if (context.runId !== run.run_id || inputSha256 !== await sha256Hex(JSON.stringify(content)))
-      throw new ImplementationError('demo_context_integrity', 'Demo input digest differs from the frozen job');
     const artifact = await this.db.prepare("SELECT r2_key,sha256 FROM artifacts WHERE manifest_id=? AND logical_name='raw-review-output.json'")
       .bind(collection.manifestId).first<{ r2_key: string; sha256: string }>();
     if (!artifact) throw new ImplementationError('demo_result_missing', 'Demo result artifact is missing');
     const result = await this.store.read<DemoPlan | DemoResult>(artifact.r2_key, artifact.sha256);
-    const work = await this.store.requireRun(run.run_id);
-    if (work.input_sha !== context.approvedInputSha || work.tested_base_sha !== context.subject.testedBaseSha)
-      throw new ImplementationError('stale_proof', 'Demo subject changed while the reviewer was running');
     if (context.kind === 'plan') {
-      const latestPlan = await this.latest(run.run_id, 'plan');
-      if (context.priorPlanSha256 !== undefined && latestPlan?.attempt_id !== attempt.attempt_id &&
-          (latestPlan?.payload_sha ?? null) !== context.priorPlanSha256)
-        throw new ImplementationError('stale_proof', 'Demo plan changed while the reviewer was running');
       validateDemoPlan(result as DemoPlan, context);
     }
     else {
-      if (work.candidate_sha !== context.candidateSha || work.tree_sha !== context.subject.treeSha ||
-          (await this.latest(run.run_id, 'plan'))?.payload_sha !== context.plan?.sha256)
-        throw new ImplementationError('stale_proof', 'Demo verdict is for an older candidate or plan');
       validateDemoResult(result as DemoResult, context);
     }
-    if (collection.result.reviewOutcome !== result.outcome || collection.result.summary !== result.summary)
-      throw new ImplementationError('demo_result_integrity', 'Demo summary differs from its trusted result');
     if (dryRun) return result.outcome;
     const saved = await this.store.put(run.run_id, 'demo-review.json', JSON.stringify(result));
     await this.db.prepare(`INSERT OR IGNORE INTO implementation_demo_reviews
@@ -167,14 +150,6 @@ export class ImplementationDemoService {
     if (context.kind === 'gate' && result.outcome !== 'blocked') await this.db.prepare("UPDATE implementation_questions SET status='closed' WHERE run_id=? AND status='answered'")
       .bind(run.run_id).run();
     return result.outcome;
-  }
-  async requirePass(work: ImplementationRun): Promise<DemoResult> {
-    const plan = await this.latest(work.run_id, 'plan');
-    const gate = await this.latest(work.run_id, 'gate');
-    if (!plan || plan.outcome !== 'ready' || !gate || gate.outcome !== 'pass' || gate.plan_sha !== plan.payload_sha ||
-        gate.candidate_sha !== work.candidate_sha || gate.tree_sha !== work.tree_sha || gate.tested_base_sha !== work.tested_base_sha)
-      throw new ImplementationError('demo_gate_incomplete', 'Current independent demo gate must pass before publication or final review');
-    return this.read<DemoResult>(gate);
   }
   handoff(work: ImplementationRun) {
     return demoHandoff(this.db,this.bucket,work);
@@ -198,7 +173,7 @@ export class ImplementationDemoService {
     if (context.runId !== attempt.run_id || inputSha256 !== await sha256Hex(JSON.stringify(content)))
       throw new ImplementationError('demo_context_integrity', 'Demo evidence input changed');
     const evidence = context.evidence.find(item => item.id === evidenceId);
-    if (!evidence || !subjectMatches(evidence, context.subject)) throw new ImplementationError('demo_access_denied', 'Evidence is outside this frozen demo review');
+    if (!evidence) throw new ImplementationError('demo_access_denied', 'Evidence is outside this review message');
     const bytes = await this.store.readBytes(evidence.r2Key, evidence.sha256);
     const image = evidence.contentType.startsWith('image/');
     if (bytes.byteLength > (image ? 8_000_000 : 2_000_000)) throw new ImplementationError('demo_evidence_size', `Evidence is too large for one review tool response: ${bytes.byteLength}`);
