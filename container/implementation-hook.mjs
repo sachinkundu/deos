@@ -32,7 +32,8 @@ if (event.hook_event_name === "PreToolUse") {
     }
   } else if (
     event.tool_name === "WebSearch" ||
-    event.tool_name === "web_search"
+    event.tool_name === "web_search" ||
+    event.tool_name === "webrun"
   ) {
     result = {
       hookSpecificOutput: {
@@ -55,7 +56,7 @@ if (event.hook_event_name === "PreToolUse") {
     };
   } else if (!event.tool_name.endsWith("update_plan"))
     result = deny(
-      "Use shell tools for repository work and deos-implementation for checked browser, commands and docs. Provider tools and child agents are unavailable.",
+      "Edit repository and request files through the shell with Python, Node, cat or tee. Native patch tools and an apply_patch shell executable are not provided. Use native web search for research and deos-implementation for browser, commands and docs. Provider mutation tools and child agents are unavailable.",
     );
 }
 if (event.hook_event_name === "SubagentStart")

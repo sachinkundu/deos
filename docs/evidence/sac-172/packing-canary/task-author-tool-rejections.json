@@ -1,0 +1,7 @@
+[
+  {
+    "attemptId": "01a0aafa-b258-70a4-967a-238a02e8b2f5",
+    "observedAt": "2026-09-16T16:13:53.162Z",
+    "stderr": "2026-09-16T16:10:34.939307Z ERROR codex_core::tools::router: error=Tool call blocked by PreToolUse hook: Use shell tools for repository work and deos-implementation for checked browser, commands and docs. Provider tools and child agents are unavailable.. Tool: webrun\n2026-09-16T16:10:47.556030Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: Use shell tools for repository work and deos-implementation for checked browser, commands and docs. Provider tools and child agents are unavailable.. Command: *** Begin Patch\n*** Add File: /deos/output/requests/search-openspec-tasks.json\n+{\n+  \"action\": \"search\",\n+  \"query\": \"OpenSpec opsx continue tasks.md artifact instructions\",\n+  \"host\": \"openspec.dev\"\n+}\n*** End Patch\n"
+  }
+]

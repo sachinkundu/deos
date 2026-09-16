@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 21 occurrences in 11 categories, including recovered errors and one stopped author stage | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 revised and back at Human Review; implementation PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 23 occurrences in 12 categories, including recovered errors and one stopped author stage | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; Claude demo planning running; implementation PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -90,6 +90,22 @@ superseded by the [current contract](implementation-canary-lessons.md).
   `01a0aab2-bd2c-7ace-9c62-6563802125d0`. Draft written and strict OpenSpec
   validation passed by the 14:56:25 UTC live read.
 
+- Final design response completed at 15:59:13 UTC. Design Human Review opened
+  at 15:59:39.920, PR35 head `1a54fc9b4d2dbf414ee7894603d18127162331b6`.
+- The supervisor held approval for the safe platform rollout. Worker activated
+  at 16:00:21; all container rollouts had completed by the 16:07 read-back.
+- Authorized design approval: Linear Merging at 16:08:32.878 UTC, delivery
+  `e181cc57-0a74-4c6e-825e-b37ad9d958f5`. Gate hold was about 8m53s,
+  mostly deployment time. This normal approval needed no event resend.
+- DEOS merged PR35 at 16:09:01, merge commit
+  `119bb5dad37429f25a574579f15e7f58be196fef`.
+- Implementation task generation started at 16:09:11.730, attempt
+  `01a0aafa-b258-70a4-967a-238a02e8b2f5`, visit28. This is about 2h03m
+  after the first trigger, including the recorded failure recovery and holds.
+- Task generation completed at 16:14:30.993 (5m19s), producing 29 tasks in
+  seven groups. Claude demo planning began at 16:14:35.312, attempt
+  `01a0aaff-a29e-7eb3-8477-7b7ab1308a37`, visit29.
+
 ### Incidents
 
 #### PACK-01 — unsupported editing tool selection
@@ -127,6 +143,12 @@ superseded by the [current contract](implementation-canary-lessons.md).
   rather than merely saying "use the shell" and inviting the missing-command
   attempt. This container instruction correction shipped in the 15:27 rollout.
   [Original stderr errors](evidence/sac-172/packing-canary/recovered-hook-errors.json).
+- Sixth occurrence: implementation task author attempted a native patch for a
+  request file at 16:10:47.556030 UTC. The implementation hook rejected it; the
+  same agent recovered with tee. Clarify that both native patch tools and a shell
+  apply_patch executable are unavailable. The hook now names supported editing
+  tools, and the shipped skill says the same. This correction is pending rollout.
+  [Original rejection](evidence/sac-172/packing-canary/task-author-tool-rejections.json).
 
 #### PACK-02 — heartbeat read before its first file existed
 
@@ -307,7 +329,28 @@ superseded by the [current contract](implementation-canary-lessons.md).
   Local checks passed; shipped in the same 16:00 rollout as PACK-09.
 - [Restored draft read](evidence/sac-172/packing-canary/design-revision-restored-draft.json).
 
+#### PACK-12 — current native web-search name rejected by the implementation hook
+
+- At 16:10:34.939307 UTC, the implementation task author received
+  `Tool call blocked by PreToolUse hook ... Tool: webrun`.
+- Cause: the hook allowed WebSearch and web_search but omitted the current
+  runtime's webrun name. The prompt and runtime skill explicitly advertise
+  native research, so this is an inconsistent tool boundary.
+- The same author continued through the installed OpenSpec CLI and drafted
+  29 tasks. No supervisor restart or sample-app edit occurred.
+- Accept the observed native tool alias while preserving restrictions on
+  provider mutations and privileged file edits. All 580 repository tests pass,
+  including executable hook regressions; the updated runtime skill validates.
+  This container correction is pending the next safe rollout; do not interrupt
+  the active agent to deploy a recovered-error fix.
+- [Original rejection](evidence/sac-172/packing-canary/task-author-tool-rejections.json).
+
 ### Supervisor and measurement notes
+
+- The local skill validator initially used a Python without PyYAML and returned
+  ModuleNotFoundError. Use the repository's uv environment. This is an operator
+  tool setup error, excluded from cloud canary counts. The validator passed with
+  `uv run --with pyyaml python .../quick_validate.py container/skills/deos-implementation`.
 
 - Two diagnostic search commands in the response/revision returned exit1 with
   no output because their final `rg --files -g AGENTS.md` had no match. The
