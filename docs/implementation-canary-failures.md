@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 34 runtime/tool occurrences in 17 categories, including recovered errors and one stopped author stage; 5 app development check/demo failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; Claude selected six browser scenarios; hosted browser caught a rename keyboard defect; Sol repairing and recapturing; PR pending |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 38 runtime/tool occurrences in 19 categories, including recovered errors and one stopped author stage; 4 app development check failures listed separately | 3 recovery interventions: resent approval, resumed design finalization, requested preview-path revision | Proposal/specification PR34 merged; design PR35 merged; 29 tasks generated; Claude selected six browser scenarios; browser fill bug diagnosed; Sol adjusted the scenario and is recapturing; PR pending |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -438,6 +438,37 @@ superseded by the [current contract](implementation-canary-lessons.md).
   continued with the hosted browser. General correction awaits the safe rollout.
 - [Original calls](evidence/sac-172/packing-canary/build-preview-recovery.json).
 
+#### PACK-18 — browser fill types into an existing value
+
+- Three demo collections timed out waiting for the renamed Jacket row, at
+  16:40:16.978, 16:43:15.448 and 16:44:55.465 UTC. The first was initially
+  recorded as APP-05 and attributed to Enter not submitting. That diagnosis
+  was premature: changing the keyboard handler and then using Save still failed.
+- The real cloud page state at 16:45 showed `Rain coatJacket`. The app had saved
+  exactly the value entered by the harness. DEOS implemented fill with
+  Puppeteer Page.type, which inserts text rather than replacing the field value.
+  Sol found the cause itself and adjusted its scenario to select existing text
+  first. No supervisor app edit or live scenario edit was made.
+- Replace the runtime fill operation with the library's fill API. The pinned
+  library clears an empty string without an input event, so clearing a text field
+  uses selection and a real Backspace event to notify controlled inputs.
+- A real external Brave regression using the pinned Cloudflare Puppeteer and
+  actual browserCommand failed before the patch (JacketRain coat instead of
+  Jacket), then passed replacement, Enter submission and empty input events
+  across separate connections. This is local runtime proof, not a claim that
+  the active cloud run has received the fix. Deployment is pending a safe pause.
+- [Original cloud failures, state and agent recovery](evidence/sac-172/packing-canary/build-demo-runtime-failures.json).
+  [Real browser regression](evidence/sac-172/packing-canary/browser-fill-regression.json).
+
+#### PACK-19 — browser tool socket closes during a collection
+
+- At 16:46:17.193 UTC, collection33bc5ccc stopped in the rename scenario while
+  adding Socks with `fetch failed`. The agent reported a socket close and retried
+  the same saved scenario list from zero without editing the app or harness.
+- One observed failed operation so far. The underlying socket failure is not
+  yet established; retain the complete error and cause rather than guessing.
+  No supervisor restart. [Original journal](evidence/sac-172/packing-canary/build-demo-runtime-failures.json).
+
 ### App development failures recovered by the implementation agent
 
 These are recorded for completeness, separately from platform/tool failures and
@@ -452,13 +483,18 @@ that pass are not failures. All occurred in build attempt
 | APP-02 | npm run build, item_27 | Vite/Node type setup and Web Crypto type declarations did not compile | Sol installed Node types and corrected compiler and type declarations |
 | APP-03 | npm run build, item_30 | Crypto.getRandomValues did not satisfy the app's CryptoSource signature | Sol matched the browser API generic signature |
 | APP-04 | npm run build, item_31 | Test CryptoSource implementation cast generic ArrayBufferView directly to Uint8Array | Sol corrected the test cast; item_32 passed TypeScript and the production build |
-| APP-05 | Hosted demo collection bccafe46-988a-4028-bc5e-897819ea280e, 16:40:16.978 UTC | Rename scenario timed out after 30000ms waiting for Jacket: Enter did not submit the rename form in the real browser | Sol is repairing the Enter handler, adding a real key-event test, then rebuilding, republishing and recapturing from zero; no supervisor app edit |
+| APP-05 (reclassified) | First hosted rename failure | Initially attributed to the app's Enter handler; the later real page state established the runtime fill defect | Counted under PACK-18, not as an additional app failure; original diagnosis retained |
 
 [Original command results and repairs](evidence/sac-172/packing-canary/build-check-repairs.json).
 
 [First browser collection failure and response](evidence/sac-172/packing-canary/build-demo-rename-failure.json).
 
 ### Supervisor and measurement notes
+
+- The implementation author bulk-marked task checkboxes before demonstrations
+  finished. The task counter therefore cannot be treated as proof completion.
+  Runtime instructions now require incremental updates and keeping demo/handoff
+  tasks open until finished. Progress reports use the live demo journal as well.
 
 - Static publication returned `static_preview_pending` while Cloudflare's
   deployment was queued, then the same request read back success. This is an

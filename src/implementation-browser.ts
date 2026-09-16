@@ -412,7 +412,23 @@ export async function browserCommand(
     } else if (input.operation === "fill") {
       if (!input.selector || typeof input.text !== "string")
         throw new Error("Fill input missing");
-      await page.type(input.selector, input.text);
+      if (input.text === "") {
+        // This pinned Puppeteer version clears via a DOM assignment for an
+        // empty fill, without notifying controlled inputs. Select the content
+        // and delete it with a real key event instead.
+        await page.focus(input.selector);
+        await page.$eval(input.selector, element => {
+          if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") element.select();
+          else if (element.isContentEditable) {
+            const range = element.ownerDocument.createRange();
+            range.selectNodeContents(element);
+            const selection = element.ownerDocument.getSelection();
+            if (!selection) throw new Error("Editable field selection is unavailable");
+            selection.removeAllRanges();selection.addRange(range);
+          } else throw new Error("Clearing requires a text input, textarea or editable element");
+        });
+        await page.keyboard.press("Backspace");
+      } else await page.locator(input.selector).fill(input.text);
     } else if (input.operation === "press") {
       if (!input.key || input.key.length > 64)
         throw new ImplementationError("browser_key", "A single browser key name is required");
