@@ -313,3 +313,21 @@ D1 confirms decision delivery1188717d-42f1-4fb1-ac2f-2ea2d1d323d4 consumed
 16:30:03.919. New cloud design revision attempt
 01a0b034-3b71-7147-8326-6286790fc2fe started16:30:08.409, visit29.
 STORE-08 was reported once to the user; no action needed from them.
+
+## 2026-09-17 16:36 UTC — Single-writer revision audited
+
+Reviewed all of PR44 head ac60ae1a5d4756e4e94e6834d080048bab1a0cc3. It restores
+conditional-insert single-writer ownership, permits reconciliation only when
+the completed object exists, and forbids retry puts. Start a new save preserves
+fields and warns that the old request may still finish. The paused-writer/
+concurrent-delete test schedule now explicitly verifies absence and quota.
+STORE-07's persistent deletion recovery remains. The demonstration now uses
+adjacent fresh browser scenarios against unchanged D1/R2 state, with no reseeding.
+STORE-08 is addressed in design, pending implementation verification.
+
+Hash-verified revision transcript:134,559bytes,16completed commands,1nonzero
+exit from known STORE-04 empty AGENTS.md discovery; cloud author reran reads
+and completed. Zero provider errors. Trusted completion passed. Evidence:
+design-third-revision-audit.json. D1 at16:36:40 confirms independent review
+01a0b039-dded-78cc-87cb-666446bfe4b7 running at visit31. No new durable error
+and no open gate; wait for review/response before approval.

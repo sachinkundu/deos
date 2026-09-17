@@ -225,3 +225,11 @@ Final round-two response audit:106,372bytes,7completed commands,1nonzero
 exit (the already-recorded third STORE-04 no-match lookup), zero provider
 error events. Trusted completion passed. All six independent dispositions
 were applied; structural validation did not detect the new semantic race.
+
+STORE-08 recovery at16:36UTC: cloud revision head
+ac60ae1a5d4756e4e94e6834d080048bab1a0cc3 restores single-writer ownership and
+adds the exact paused-writer test schedule. Design correction verified by the
+supervisor; real implementation behavior remains pending. STORE-04 also
+recurred once in this author (fourth observed occurrence), recovered by the
+cloud agent. Its original command/output is retained in
+design-third-revision-audit.json. No new workflow deployment was made.
