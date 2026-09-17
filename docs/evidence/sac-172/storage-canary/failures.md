@@ -490,3 +490,29 @@ Repeated --wait submissions reference the same immutable requestId. Diagnostics
 show only one collection started so far, providing prospective deduplication
 behavior; verify final collection count before claiming completed protection.
 Do not count concurrent waiting clients or exit75 reads as new failed operations.
+
+### STORE-21 — Native patch hook rejections recovered through allowed shell
+
+Live author stderr preserves two actual rejected native patch calls:18:04:51.390
+in the first resumed build (CSS fix) and18:35:05.573 in the demo response
+(scripts/verify-remote-storage.mjs). Exact message: `Command blocked by PreToolUse
+hook: Edit repository and request files through the shell with Python, Node,
+cat or tee. Native patch tools and an apply_patch shell executable are not
+provided.` Full original stderr and intended commands are retained in
+native-patch-hook-errors.json; shell recovery commands are in
+native-patch-shell-recovery.json. The cloud author used the permitted shell;
+no guard was disabled and no supervisor app edit occurred.
+
+Correction to earlier STORE-17 audit: the JSONL transcript has no native patch
+failure event, but the separate live stderr does. The earlier statement excluded
+that executed rejection based on an incomplete evidence surface. Count both
+hook rejections now, not merely the second. This also exposes a workflow
+diagnostic gap: the completed manifest inventory does not include stderr.txt;
+these errors survived through supervisor live capture, not normal completed
+artifact collection. Durable native stderr retention needs fixing. Do not claim
+zero native tool failures just because provider error events are absent.
+
+STORE-20 recovery confirmed: exactly one demo collection started and completed
+18:32:37.899, all seven scenarios, despite multiple --wait submissions for the
+same requestId. The compact request and existing operation deduplication worked.
+The author reports inspecting all images and is packaging raw storage evidence.

@@ -657,3 +657,27 @@ Final duplicate suppression and complete proof still need confirmation.
 All three run-owned environment sets must be retired after durable PR proof.
 Sampler90910 active. New STORE-20 notice sent once. Continue without interrupting
 active cloud work; preserve review feedback routing and next gate verdict.
+
+## 2026-09-17 18:38 UTC — Seven-scenario proof complete; stderr audit corrected
+
+Response01a0b097 remains activevisit46. One final-demo-v3 collection63ceab04
+completed all seven scenarios18:32:37.899, including both validation messages
+and genuine remote capacity rejection against explicitly seeded reservations.
+Multiple same-ID --wait clients did not create duplicate collection starts.
+Agent inspected all captures and is adding raw provider readbacks through a
+repository verifier script so the reviewer can inspect its source. Expected
+synthetic capacity rows are being removed; remote environments stay until PR.
+
+STORE-21: native patch hook blocked a script edit18:35; author recovered through
+allowed shell. Retrospective private snapshot also proves the CSS edit's earlier
+18:04 native patch rejection. These errors appear only in separate stderr, not
+JSONL tool events, correcting the earlier audit's exclusion. Both original
+messages preserved in native-patch-hook-errors.json; current permitted-shell
+recovery in native-patch-shell-recovery.json. Normal completed manifests omit
+stderr.txt, so durable stderr retention is still a workflow gap to address.
+No runtime deployment or app edit by supervisor; user notified of this error.
+
+Audit at18:36:55:39completed shell commands, known task/size failures and four
+exit75 waiting reads, zero new failed trusted operations. Full operation/demo
+receipts in demo-response-1837-audit.json. Three resource sets still tracked;
+all require final cleanup. Sampler90910 active; next gate result pending.
