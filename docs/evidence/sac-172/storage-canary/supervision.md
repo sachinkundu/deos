@@ -278,3 +278,20 @@ D1 at16:14:29 confirms independent design review attempt
 Do not approve until its result and any response are inspected and a fresh
 D1 gate is open. Evidence: design-revision-audit.json. No user notification
 was sent because this is ordinary recovery progress.
+
+## 2026-09-17 16:21 UTC — Round-two response active
+
+Independent review01a0b024-e450-7fa5-8db1-a981f5a0f7d5 completed16:17:12.641
+and its sandbox was destroyed. Six bounded concerns are saved in
+design-round-two-review.json: save-abandon/retry messaging, missing-index
+delete branch, recovery timestamp projection, summary consistency, lost-delete
+response reconciliation, and fresh-context evidence collection. STORE-07's
+recovery design is accepted by this reviewer. Cloud response
+01a0b028-742d-7dc7-8184-91cb81fbb16c is running. One known STORE-04 no-match
+lookup recurrence recovered locally; no new durable workflow error.
+
+Supervisor source check confirms container/implementation-browser-demo.mjs
+creates one fresh context per scenario and disallows resets inside a scenario.
+src/implementation-demo.ts explicitly states server data is prepared separately.
+Thus the fresh-context proof can use an immediately following scenario without
+resetting D1/R2. Inspect the response's resolution before gate approval.

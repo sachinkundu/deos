@@ -1,0 +1,16 @@
+{
+  "observedAt": "2026-09-17T16:21:09.626Z",
+  "attemptId": "01a0b028-742d-7dc7-8184-91cb81fbb16c",
+  "scope": "full available live transcript, attempt unfinished",
+  "nonzeroCommands": [
+    {
+      "id": "item_1",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"git status --short && command -v openspec && openspec --help && rg --files -g 'AGENTS.md' -g '\"'!node_modules'\"' -g '\"'!vendor'\"' && sed -n '1,260p' openspec/changes/sac-246/design.md\"",
+      "aggregated_output": "Usage: openspec [options] [command]\n\nAI-native system for spec-driven development\n\nOptions:\n  -V, --version                      output the version number\n  --no-color                         Disable color output\n  -h, --help                         display help for command\n\nCommands:\n  init [options] [path]              Initialize OpenSpec in your project\n  update [options] [path]            Update OpenSpec instruction files\n  list [options]                     List items (changes by default). Use\n                                     --specs to list specs.\n  view [options]                     Display an interactive dashboard of specs\n                                     and changes\n  change                             Manage OpenSpec change proposals\n  archive [options] [change-name]    Archive a completed change and update main\n                                     specs\n  spec                               Manage and view OpenSpec specifications\n  config [options]                   View and modify global OpenSpec\n                                     configuration\n  schema                             Manage workflow schemas [experimental]\n  store                              Create and manage stores - standalone\n                                     OpenSpec repos you register on this machine\n  doctor [options]                   Report relationship health for the resolved\n                                     OpenSpec root\n  context [options]                  Print the working context for the resolved\n                                     OpenSpec root\n  workset [options]                  Compose, keep, and open personal working\n                                     views (purely local)\n  validate [options] [item-name]     Validate changes and specs\n  show [options] [item-name]         Show a change or spec\n  feedback [options] <message>       Submit feedback about OpenSpec\n  completion                         Manage shell completions for OpenSpec CLI\n  status [options]                   Display artifact completion status for a\n                                     change\n  instructions [options] [artifact]  Output enriched instructions for artifacts,\n                                     apply, or archive\n  templates [options]                Show resolved template paths for all\n                                     artifacts in a schema\n  schemas [options]                  List available workflow schemas with\n                                     descriptions\n  new                                Create new items\n  help [command]                     display help for command\n",
+      "exit_code": 1,
+      "status": "failed"
+    }
+  ],
+  "providerErrors": []
+}

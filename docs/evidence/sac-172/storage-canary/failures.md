@@ -193,3 +193,10 @@ failure/retry test requirement. Supervisor reviewed the full current design.
 The design fix is verified at head bfcf9e084136134b2dfab551ee378c2c925670ef;
 its implementation and test behavior remain to be verified by the canary.
 Independent review is running; no gate was bypassed.
+
+STORE-04 recurrence during round-two design response: first chained discovery
+command exited1 because `rg --files -g AGENTS.md` matched no file. The cloud
+agent continued with a separate file read and design edits. Third observed
+occurrence of this known discovery issue; no new runtime failure or user
+action. Full available live transcript audit is saved in
+design-round-two-response-live-audit.json; final durable audit remains pending.
