@@ -1,0 +1,1237 @@
+[
+  {
+    "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+    "application": {
+      "id": "a030fe98-cbb0-423c-90aa-9e4d9cb896a2",
+      "created_at": "2026-09-14T12:04:53.328Z",
+      "updated_at": "2026-09-17T13:20:37.956Z",
+      "account_id": "c68856288112af7698f5be52ea94b96e",
+      "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+      "version": 29,
+      "scheduling_policy": "default",
+      "instances": 4,
+      "max_instances": 4,
+      "configuration": {
+        "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+        "vcpu": 1,
+        "memory": "6GiB",
+        "memory_mib": 6144,
+        "disk": {
+          "size_mb": 12000,
+          "size": "12GB"
+        },
+        "network": {
+          "assign_ipv6": "none",
+          "assign_ipv4": "none",
+          "mode": "private"
+        },
+        "command": [],
+        "entrypoint": [],
+        "runtime": "firecracker",
+        "observability": {
+          "logs": {
+            "enabled": true
+          }
+        }
+      },
+      "constraints": {
+        "tiers": [
+          1,
+          2
+        ]
+      },
+      "durable_objects": {
+        "namespace_id": "546c532bdce7479ebe60662148bfe3c6"
+      },
+      "rollout_active_grace_period": 0,
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "network": {
+        "bandwidth_limit_mbps": 1000
+      }
+    },
+    "rollouts": [
+      {
+        "id": "9cbcf2fa-aef5-4516-8e88-89db663ac517",
+        "created_at": "2026-09-17T13:15:39.255000064Z",
+        "last_updated_at": "2026-09-17T13:15:39.255000064Z",
+        "description": "Progressive update",
+        "status": "completed",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:32185ef3925e88b07bd778f73e50284efbfb1e8ab58294f08a5912c1c35caf52",
+          "vcpu": 1,
+          "memory": "6GiB",
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 1,
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "memory": "6GiB"
+        },
+        "current_version": 28,
+        "target_version": 29,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 25
+            },
+            "description": "Rollout to 25% of instances (modified to target at least 1 instance)",
+            "started_at": "2026-09-17T13:15:39.255000064Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T13:17:52.148Z"
+          },
+          {
+            "id": 2,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Step 2 of 2 - rollout at 100% of instances",
+            "started_at": "2026-09-17T13:17:52.148Z",
+            "reason": "current step(id=2) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T13:20:38.007000064Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 2,
+          "current_step": 2,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      },
+      {
+        "id": "b251ffa4-00e2-4010-9848-c60e7b06ef4a",
+        "created_at": "2026-09-17T11:15:31.441999872Z",
+        "last_updated_at": "2026-09-17T11:15:31.441999872Z",
+        "description": "Progressive update",
+        "status": "replaced",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:b14f001b65b1c6f82033d3f89fc8f01ba3fb30bccb05f470dfe37f70ac78e83f",
+          "vcpu": 1,
+          "memory": "6GiB",
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:32185ef3925e88b07bd778f73e50284efbfb1e8ab58294f08a5912c1c35caf52",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 1,
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "memory": "6GiB"
+        },
+        "current_version": 27,
+        "target_version": 28,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Rollout to 100% of instances",
+            "started_at": "2026-09-17T11:15:31.441999872Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T11:18:03.095000064Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 1,
+          "current_step": 1,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      },
+      {
+        "id": "cf84754a-c48f-4db5-a1a3-add3fe20038b",
+        "created_at": "2026-09-17T08:54:44.072999936Z",
+        "last_updated_at": "2026-09-17T08:54:44.072999936Z",
+        "description": "Progressive update",
+        "status": "replaced",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:37c9e64061dae2afa13d76c257464e6e1dd19127605f3ddda6cd62bc5ac01ca0",
+          "vcpu": 1,
+          "memory": "6GiB",
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:b14f001b65b1c6f82033d3f89fc8f01ba3fb30bccb05f470dfe37f70ac78e83f",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 1,
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "memory": "6GiB"
+        },
+        "current_version": 26,
+        "target_version": 27,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Rollout to 100% of instances",
+            "started_at": "2026-09-17T08:54:44.072999936Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T08:57:23.767000064Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 1,
+          "current_step": 1,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "deos-queue-consumer-ts-implementationsandbox",
+    "application": {
+      "id": "a03d2322-d47e-405d-86d1-9366e458cf5e",
+      "created_at": "2026-09-14T12:04:26.615000064Z",
+      "updated_at": "2026-09-17T13:21:03.726000128Z",
+      "account_id": "c68856288112af7698f5be52ea94b96e",
+      "name": "deos-queue-consumer-ts-implementationsandbox",
+      "version": 30,
+      "scheduling_policy": "default",
+      "instances": 4,
+      "max_instances": 4,
+      "configuration": {
+        "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+        "vcpu": 0.25,
+        "memory": "1GiB",
+        "memory_mib": 1024,
+        "disk": {
+          "size_mb": 4000,
+          "size": "4GB"
+        },
+        "network": {
+          "assign_ipv6": "none",
+          "assign_ipv4": "none",
+          "mode": "private"
+        },
+        "command": [],
+        "entrypoint": [],
+        "runtime": "firecracker",
+        "observability": {
+          "logs": {
+            "enabled": true
+          }
+        }
+      },
+      "constraints": {
+        "tiers": [
+          1,
+          2
+        ]
+      },
+      "durable_objects": {
+        "namespace_id": "197deeff700b499794eddb7a8f31333a"
+      },
+      "rollout_active_grace_period": 0,
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "network": {
+        "bandwidth_limit_mbps": 250
+      }
+    },
+    "rollouts": [
+      {
+        "id": "3582a6b9-ffdf-44ca-8e2a-0e80cefc2170",
+        "created_at": "2026-09-17T13:15:24.100999936Z",
+        "last_updated_at": "2026-09-17T13:15:24.100999936Z",
+        "description": "Progressive update",
+        "status": "completed",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:32185ef3925e88b07bd778f73e50284efbfb1e8ab58294f08a5912c1c35caf52",
+          "vcpu": 0.25,
+          "memory": "1GiB",
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 0.25,
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "memory": "1GiB"
+        },
+        "current_version": 29,
+        "target_version": 30,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 25
+            },
+            "description": "Rollout to 25% of instances (modified to target at least 1 instance)",
+            "started_at": "2026-09-17T13:15:24.100999936Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T13:18:02.476999936Z"
+          },
+          {
+            "id": 2,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Step 2 of 2 - rollout at 100% of instances",
+            "started_at": "2026-09-17T13:18:02.476999936Z",
+            "reason": "current step(id=2) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T13:21:03.807000064Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 2,
+          "current_step": 2,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      },
+      {
+        "id": "c909f748-bd73-41d5-ab9d-aab068606598",
+        "created_at": "2026-09-17T11:15:13.708Z",
+        "last_updated_at": "2026-09-17T11:15:13.708Z",
+        "description": "Progressive update",
+        "status": "replaced",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:b14f001b65b1c6f82033d3f89fc8f01ba3fb30bccb05f470dfe37f70ac78e83f",
+          "vcpu": 0.25,
+          "memory": "1GiB",
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:32185ef3925e88b07bd778f73e50284efbfb1e8ab58294f08a5912c1c35caf52",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 0.25,
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "memory": "1GiB"
+        },
+        "current_version": 28,
+        "target_version": 29,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Rollout to 100% of instances",
+            "started_at": "2026-09-17T11:15:13.708Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T11:18:15.259000064Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 1,
+          "current_step": 1,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      },
+      {
+        "id": "2c9cf231-0190-481f-bc94-ec31fd346efa",
+        "created_at": "2026-09-17T08:54:27.172999936Z",
+        "last_updated_at": "2026-09-17T08:54:27.172999936Z",
+        "description": "Progressive update",
+        "status": "replaced",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:37c9e64061dae2afa13d76c257464e6e1dd19127605f3ddda6cd62bc5ac01ca0",
+          "vcpu": 0.25,
+          "memory": "1GiB",
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:b14f001b65b1c6f82033d3f89fc8f01ba3fb30bccb05f470dfe37f70ac78e83f",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 0.25,
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "memory": "1GiB"
+        },
+        "current_version": 27,
+        "target_version": 28,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Rollout to 100% of instances",
+            "started_at": "2026-09-17T08:54:27.172999936Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T08:56:49.116Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 1,
+          "current_step": 1,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "deos-queue-consumer-ts-standard2sandbox",
+    "application": {
+      "id": "a03d8a75-5574-4d37-806d-8b07ed1a79c6",
+      "created_at": "2026-09-12T16:13:33.12Z",
+      "updated_at": "2026-09-17T13:18:46.028999936Z",
+      "account_id": "c68856288112af7698f5be52ea94b96e",
+      "name": "deos-queue-consumer-ts-standard2sandbox",
+      "version": 37,
+      "scheduling_policy": "default",
+      "instances": 4,
+      "max_instances": 4,
+      "configuration": {
+        "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+        "vcpu": 1,
+        "memory": "6GiB",
+        "memory_mib": 6144,
+        "disk": {
+          "size_mb": 12000,
+          "size": "12GB"
+        },
+        "network": {
+          "assign_ipv6": "none",
+          "assign_ipv4": "none",
+          "mode": "private"
+        },
+        "command": [],
+        "entrypoint": [],
+        "runtime": "firecracker",
+        "observability": {
+          "logs": {
+            "enabled": true
+          }
+        }
+      },
+      "constraints": {
+        "tiers": [
+          1,
+          2
+        ]
+      },
+      "durable_objects": {
+        "namespace_id": "9adf9541c4d54994b6d7be044dd51005"
+      },
+      "rollout_active_grace_period": 0,
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "network": {
+        "bandwidth_limit_mbps": 1000
+      }
+    },
+    "rollouts": [
+      {
+        "id": "735d31c6-bcdb-4e95-abeb-eb501951c542",
+        "created_at": "2026-09-17T13:14:59.228999936Z",
+        "last_updated_at": "2026-09-17T13:14:59.228999936Z",
+        "description": "Progressive update",
+        "status": "completed",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:32185ef3925e88b07bd778f73e50284efbfb1e8ab58294f08a5912c1c35caf52",
+          "vcpu": 1,
+          "memory": "6GiB",
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 1,
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "memory": "6GiB"
+        },
+        "current_version": 36,
+        "target_version": 37,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 25
+            },
+            "description": "Rollout to 25% of instances (modified to target at least 1 instance)",
+            "started_at": "2026-09-17T13:14:59.228999936Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T13:17:00.407000064Z"
+          },
+          {
+            "id": 2,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Step 2 of 2 - rollout at 100% of instances",
+            "started_at": "2026-09-17T13:17:00.407000064Z",
+            "reason": "current step(id=2) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T13:18:46.127000064Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 2,
+          "current_step": 2,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      },
+      {
+        "id": "7a8212aa-c0c8-4505-b498-848fcf849b94",
+        "created_at": "2026-09-17T11:14:56.239000064Z",
+        "last_updated_at": "2026-09-17T11:14:56.239000064Z",
+        "description": "Progressive update",
+        "status": "replaced",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:b14f001b65b1c6f82033d3f89fc8f01ba3fb30bccb05f470dfe37f70ac78e83f",
+          "vcpu": 1,
+          "memory": "6GiB",
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:32185ef3925e88b07bd778f73e50284efbfb1e8ab58294f08a5912c1c35caf52",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 1,
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "memory": "6GiB"
+        },
+        "current_version": 35,
+        "target_version": 36,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Rollout to 100% of instances",
+            "started_at": "2026-09-17T11:14:56.239000064Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T11:16:50.467000064Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 1,
+          "current_step": 1,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      },
+      {
+        "id": "6b4c2f08-1096-4e17-b1f3-4dd379120052",
+        "created_at": "2026-09-17T08:54:10.742000128Z",
+        "last_updated_at": "2026-09-17T08:54:10.742000128Z",
+        "description": "Progressive update",
+        "status": "replaced",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:37c9e64061dae2afa13d76c257464e6e1dd19127605f3ddda6cd62bc5ac01ca0",
+          "vcpu": 1,
+          "memory": "6GiB",
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:b14f001b65b1c6f82033d3f89fc8f01ba3fb30bccb05f470dfe37f70ac78e83f",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 1,
+          "memory_mib": 6144,
+          "disk": {
+            "size_mb": 12000,
+            "size": "12GB"
+          },
+          "memory": "6GiB"
+        },
+        "current_version": 34,
+        "target_version": 35,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Rollout to 100% of instances",
+            "started_at": "2026-09-17T08:54:10.742000128Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T08:55:48.960999936Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 1,
+          "current_step": 1,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "deos-queue-consumer-ts-sandbox",
+    "application": {
+      "id": "a0344373-884d-4c06-b4c2-4e58295de498",
+      "created_at": "2026-08-16T07:52:21.590000128Z",
+      "updated_at": "2026-09-17T13:40:32.420999936Z",
+      "account_id": "c68856288112af7698f5be52ea94b96e",
+      "name": "deos-queue-consumer-ts-sandbox",
+      "version": 94,
+      "scheduling_policy": "default",
+      "instances": 4,
+      "max_instances": 4,
+      "configuration": {
+        "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+        "vcpu": 0.25,
+        "memory": "1GiB",
+        "memory_mib": 1024,
+        "disk": {
+          "size_mb": 4000,
+          "size": "4GB"
+        },
+        "network": {
+          "assign_ipv6": "none",
+          "assign_ipv4": "none",
+          "mode": "private"
+        },
+        "command": [],
+        "entrypoint": [],
+        "runtime": "firecracker",
+        "observability": {
+          "logs": {
+            "enabled": true
+          }
+        }
+      },
+      "constraints": {
+        "tiers": [
+          1,
+          2
+        ]
+      },
+      "durable_objects": {
+        "namespace_id": "3132c2f21e9c48339cb72292268a1589"
+      },
+      "rollout_active_grace_period": 0,
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 1,
+          "assigned": 0,
+          "healthy": 3,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "network": {
+        "bandwidth_limit_mbps": 250
+      }
+    },
+    "rollouts": [
+      {
+        "id": "12515996-3b20-4388-b73d-1257efaf2507",
+        "created_at": "2026-09-17T13:35:34.267000064Z",
+        "last_updated_at": "2026-09-17T13:35:34.267000064Z",
+        "description": "Progressive update",
+        "status": "completed",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 1,
+            "assigned": 0,
+            "healthy": 3,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+          "vcpu": 0.25,
+          "memory": "1GiB",
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 0.25,
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "memory": "1GiB"
+        },
+        "current_version": 93,
+        "target_version": 94,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 25
+            },
+            "description": "Rollout to 25% of instances (modified to target at least 1 instance)",
+            "started_at": "2026-09-17T13:35:34.267000064Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T13:38:15.795000064Z"
+          },
+          {
+            "id": 2,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Step 2 of 2 - rollout at 100% of instances",
+            "started_at": "2026-09-17T13:38:15.795000064Z",
+            "reason": "current step(id=2) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T13:40:32.934000128Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 2,
+          "current_step": 2,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      },
+      {
+        "id": "7f8d7d33-dfc2-455f-9b95-a7aa47a17912",
+        "created_at": "2026-09-17T13:14:41.54Z",
+        "last_updated_at": "2026-09-17T13:14:41.54Z",
+        "description": "Progressive update",
+        "status": "replaced",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:32185ef3925e88b07bd778f73e50284efbfb1e8ab58294f08a5912c1c35caf52",
+          "vcpu": 0.25,
+          "memory": "1GiB",
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 0.25,
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "memory": "1GiB"
+        },
+        "current_version": 92,
+        "target_version": 93,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 25
+            },
+            "description": "Rollout to 25% of instances (modified to target at least 1 instance)",
+            "started_at": "2026-09-17T13:14:41.54Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T13:16:18.875000064Z"
+          },
+          {
+            "id": 2,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Step 2 of 2 - rollout at 100% of instances",
+            "started_at": "2026-09-17T13:16:18.875000064Z",
+            "reason": "current step(id=2) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T13:18:52.124999936Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 2,
+          "current_step": 2,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      },
+      {
+        "id": "586a54e3-9628-4bf9-b5b9-7abdb006b9fb",
+        "created_at": "2026-09-17T11:14:39.720999936Z",
+        "last_updated_at": "2026-09-17T11:14:39.720999936Z",
+        "description": "Progressive update",
+        "status": "replaced",
+        "health": {
+          "errors": [],
+          "instances": {
+            "active": 0,
+            "assigned": 0,
+            "healthy": 4,
+            "stopped": 0,
+            "failed": 0,
+            "scheduling": 0,
+            "starting": 0
+          }
+        },
+        "kind": "full_auto",
+        "strategy": "rolling",
+        "current_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:b14f001b65b1c6f82033d3f89fc8f01ba3fb30bccb05f470dfe37f70ac78e83f",
+          "vcpu": 0.25,
+          "memory": "1GiB",
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          }
+        },
+        "target_configuration": {
+          "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:32185ef3925e88b07bd778f73e50284efbfb1e8ab58294f08a5912c1c35caf52",
+          "observability": {
+            "logs": {
+              "enabled": true
+            }
+          },
+          "vcpu": 0.25,
+          "memory_mib": 1024,
+          "disk": {
+            "size_mb": 4000,
+            "size": "4GB"
+          },
+          "memory": "1GiB"
+        },
+        "current_version": 91,
+        "target_version": 92,
+        "steps": [
+          {
+            "id": 1,
+            "status": "completed",
+            "step_size": {
+              "percentage": 100
+            },
+            "description": "Rollout to 100% of instances",
+            "started_at": "2026-09-17T11:14:39.720999936Z",
+            "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+            "completed_at": "2026-09-17T11:17:10.912Z"
+          }
+        ],
+        "progress": {
+          "total_steps": 1,
+          "current_step": 1,
+          "updated_instances": 4,
+          "total_instances": 4,
+          "version_distribution": {
+            "target_version_instances": 4,
+            "current_version_instances": 0,
+            "target_version_percentage": 100
+          }
+        }
+      }
+    ]
+  }
+]

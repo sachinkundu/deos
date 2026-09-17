@@ -9,7 +9,9 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 parser = argparse.ArgumentParser()
-parser.add_argument('mode', choices=['preflight', 'deploy', 'readback'])
+parser.add_argument('mode', choices=['preflight', 'deploy', 'readback', 'ready'])
+parser.add_argument('--containers-rollout', choices=['gradual', 'none'], default='gradual')
+parser.add_argument('--image-sha', help='Required expected image digest for the ready check')
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[2]
 helper = runpy.run_path(str(root / '.agents/skills/cloudflare-container-load/scripts/query_container_load.py'))
@@ -76,10 +78,10 @@ if args.mode in ['preflight', 'deploy']:
             secret_file.write_text(json.dumps({'IMPLEMENTATION_ENVIRONMENT_TOKEN': token}))
             secret_file.chmod(0o600)
             subprocess.run(['npx', 'wrangler', 'deploy', '--config', config,
-                            '--secrets-file', str(secret_file), '--containers-rollout', 'gradual'],
+                            '--secrets-file', str(secret_file), '--containers-rollout', args.containers_rollout],
                            cwd=root, env=environment, check=True)
 
-if args.mode in ['preflight', 'readback']:
+if args.mode in ['preflight', 'readback', 'ready']:
     deployments = api('workers/scripts/deos-queue-consumer-ts/deployments')['deployments']
     current = max(deployments, key=lambda row: row['created_on'])
     print(json.dumps({'worker_deployment': current}), flush=True)
@@ -88,6 +90,26 @@ if args.mode in ['preflight', 'readback']:
     for item in apps:
         if item['name'].startswith('deos-queue-consumer-ts-'):
             app = api(f"containers/applications/{item['id']}")
-            rows.append({'name': app['name'], 'image': app['configuration']['image'], 'health': app['health'], 'version': app['version']})
+            rollouts = api(f"containers/applications/{item['id']}/rollouts")
+            latest = max(rollouts, key=lambda rollout: rollout['created_at']) if rollouts else None
+            rows.append({'name': app['name'], 'image': app['configuration']['image'], 'health': app['health'], 'version': app['version'],
+                         'rollout': None if latest is None else {key: latest[key] for key in ['id', 'status', 'created_at', 'target_version', 'progress', 'steps']}})
     print(json.dumps({'container_pools': rows}), flush=True)
     print(json.dumps({'implementation_definitions': query("SELECT definition_id,version,digest FROM workflow_definitions WHERE definition_id='implementation' ORDER BY version DESC LIMIT 2")}), flush=True)
+    if args.mode == 'ready':
+        if not args.image_sha or len(args.image_sha) != 64:
+            raise RuntimeError('ready requires --image-sha with the expected container digest')
+        if len(rows) != 4:
+            raise RuntimeError('Expected exactly four DEOS container pools')
+        for row in rows:
+            rollout = row['rollout']
+            if not row['image'].endswith('@sha256:' + args.image_sha):
+                raise RuntimeError('Unexpected image for ' + row['name'])
+            if not rollout or rollout['status'] != 'completed' or rollout['target_version'] != row['version']:
+                raise RuntimeError('Container rollout is not completed for ' + row['name'])
+            distribution = rollout['progress']['version_distribution']
+            if distribution['target_version_percentage'] != 100 or distribution['current_version_instances'] != 0:
+                raise RuntimeError('Container replacement remains in progress for ' + row['name'])
+            if row['health']['errors'] or row['health']['instances']['failed']:
+                raise RuntimeError('Container health errors remain for ' + row['name'])
+        print(json.dumps({'ready': True, 'expected_image_sha': args.image_sha}), flush=True)
