@@ -350,3 +350,18 @@ continuity proof merely because the reviewer lacked the full harness contract.
 
 No new runtime error or user-facing report. D1 still records only the same six
 workflow error rows, latest the already-reported15:51 memory reset.
+
+## User clarification — prioritize workflow and implementation gates
+
+The user clarified that this is trial software: the objective is the workflow
+itself, especially implementation gates, not the best possible application.
+Keep review proportional. Advance authorized prerequisite gates once the
+approved small canary is adequate to exercise real D1/R2, browser proof and
+resource cleanup. Do not introduce further design cycles for polish, rare
+application edge cases or production hardening; record nonblocking concerns
+instead. Request correction only when an issue prevents the intended canary
+proof, breaks a required workflow transition, invalidates evidence, or risks
+unowned resources/data. Cloud agents continue to own all app changes.
+Verify actual implementation gate behavior, review feedback routing, durable
+proof before cleanup, and final unmerged implementation PR. Error-only user
+notifications remain in force.
