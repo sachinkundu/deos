@@ -223,3 +223,21 @@ are in design-self-review-progress.json. These are design quality findings;
 no new workflow/provider error or open gate is present. Keep review scope
 small at the eventual design gate and inspect the full final design; do not
 locally write its storage protocol or interrupt the active author.
+
+15:53UTC: STORE-06 is a new provider runtime error. At15:51:24.796 the sandbox
+reconciliation call reported a Durable Object memory-limit reset. Full original
+stack retained in design-memory-reset-error.json; sanitized provider timeline
+is in design-memory-reset-telemetry.json. The same author recovered automatically
+and completed15:52:41.644, cleanup succeeded, PR44 opened, and independent
+design reviewer01a0b012-4263-73de-80f5-8b1cb190e648 started15:53:01.936. No
+operator retry, plan edit or deployment. User notified once; do not repeat it.
+The allocating operation/root cause remains unproven. Do not deploy speculative
+repairs while the independent reviewer is active.
+
+Design author final audit:27 completed commands, no nonzero exits or provider
+error events inside the author transcript; the external memory reset is counted
+separately. All stage artifacts were downloaded and hash-verified. The design
+loop reached its allowed stop after three reviews and the final author revision;
+this is not an extra clean semantic pass. Inspect independent review/response
+and final PR44 design before its gate. PR44 initial head
+01bd2fd792420128a4eb4b344bd233fa554db67e is not yet approved.

@@ -1,0 +1,66 @@
+[
+  {
+    "event.time": "2026-09-17T15:52:41.687Z",
+    "event.name": "deos.orchestration.codex.outcome",
+    "service.name": "deos-queue-consumer-ts",
+    "deos.telemetry.schema_version": "2",
+    "deos.workflow.correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+    "deos.workflow.stage": "codex.outcome",
+    "deos.workflow.outcome": "succeeded",
+    "deos.workflow.run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1"
+  },
+  {
+    "event.time": "2026-09-17T15:52:41.687Z",
+    "event.name": "deos.orchestration.artifact.manifest",
+    "service.name": "deos-queue-consumer-ts",
+    "deos.telemetry.schema_version": "2",
+    "deos.workflow.correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+    "deos.workflow.stage": "artifact.manifest",
+    "deos.workflow.outcome": "succeeded",
+    "deos.workflow.run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1"
+  },
+  {
+    "event.time": "2026-09-17T15:52:42.277Z",
+    "event.name": "deos.orchestration.sandbox.cleanup",
+    "service.name": "deos-queue-consumer-ts",
+    "deos.telemetry.schema_version": "2",
+    "deos.workflow.correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+    "deos.workflow.stage": "sandbox.cleanup",
+    "deos.workflow.outcome": "succeeded",
+    "deos.workflow.run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1"
+  },
+  {
+    "event.time": "2026-09-17T15:52:42.472Z",
+    "event.name": "deos.orchestration.workflow.step",
+    "service.name": "deos-queue-consumer-ts",
+    "deos.telemetry.schema_version": "2",
+    "deos.workflow.correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+    "deos.workflow.stage": "workflow.step",
+    "deos.workflow.outcome": "succeeded",
+    "deos.workflow.run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+    "deos.workflow.visit_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:15",
+    "deos.workflow.traversal_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:15:transition"
+  },
+  {
+    "event.time": "2026-09-17T15:52:53.826Z",
+    "event.name": "deos.orchestration.workflow.step",
+    "service.name": "deos-queue-consumer-ts",
+    "deos.telemetry.schema_version": "2",
+    "deos.workflow.correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+    "deos.workflow.stage": "workflow.step",
+    "deos.workflow.outcome": "succeeded",
+    "deos.workflow.run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+    "deos.workflow.visit_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:16",
+    "deos.workflow.traversal_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:16:transition"
+  },
+  {
+    "event.time": "2026-09-17T15:53:09.697Z",
+    "event.name": "deos.orchestration.sandbox.attempt",
+    "service.name": "deos-queue-consumer-ts",
+    "deos.telemetry.schema_version": "2",
+    "deos.workflow.correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+    "deos.workflow.stage": "sandbox.attempt",
+    "deos.workflow.outcome": "running",
+    "deos.workflow.run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1"
+  }
+]

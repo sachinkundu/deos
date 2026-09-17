@@ -7,6 +7,29 @@ Preflight/extension failures are in
 
 ## Automatically fixed
 
+### STORE-06 — Cloudflare Durable Object memory reset recovered
+
+At15:51:24.796UTC during design_author, Cloudflare reported:
+`Durable Object's isolate exceeded its memory limit and was reset.`
+The preserved original error includes `overloaded:true`, `durableObjectReset:true`
+and the SandboxAgentController.reconcile / executeAgent stack. See
+design-memory-reset-error.json and the original D1 error
+b0e2caee-dfd4-409c-919d-e15c28041b09. This is a real provider runtime failure,
+not a design-review quality finding.
+
+The workflow recovered without an operator retry or deployment. The same
+design author completed15:52:41.644, its sandbox was cleaned, design PR44 was
+published, and independent design review started15:53:01.936. All final design
+and review artifacts were retrieved from R2 and hash-verified against D1.
+The complete author transcript and original reset are retained separately.
+
+The operation that exhausted memory is not yet identified. The stack localizes
+the failed sandbox reconciliation call but does not establish a memory leak,
+oversized request, or another source. The bounded issue telemetry window has
+normal collection/publication/transition records, but no more precise cause.
+Do not claim the underlying memory-pressure cause is fixed. No backend change
+or deployment was made while the next review was active. User notified once.
+
 ### STORE-04 — File discovery stopped on a no-match search
 
 The second planning attempt's first command returned exit1 after printing its
