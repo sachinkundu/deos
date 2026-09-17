@@ -122,6 +122,44 @@ superseded by the [current contract](implementation-canary-lessons.md).
   failures. Sol's one response pass started at 17:16:47.852, attempt
   `01a0ab38-96a2-7887-9e4f-de399426a5c7`, visit33, with saved implementation.
 
+### Recovery grouping
+
+This groups the observed recovery during SAC-238, not who later fixed the
+underlying platform code. Self-recovery includes an agent using a workaround,
+a normal workflow retry, or continuing past nonblocking diagnostic noise. It
+does not mean the root cause was permanently fixed. The supervisor also shipped
+general fixes for many of these cases after the agent had already recovered.
+
+| Recovery | Categories | Occurrences | Supervisor rescue actions |
+| --- | --- | --- | --- |
+| Cloud agent/workflow recovered or continued without a supervisor rescue | 26 | 60 | 0 |
+| Supervisor intervention needed for progress or usable PR delivery | 5 | 7 | 5 |
+
+The four application development failures APP-01 through APP-04 were also
+repaired by Sol without supervisor application edits; they remain separate from
+the 67 platform/tool/publication occurrences above.
+
+| Needed supervisor intervention | Action that restored progress or delivery |
+| --- | --- |
+| PACK-03: unconsumed approval signal | Resent the same saved delivery ID; the workflow then consumed it and merged the planning PR |
+| PACK-07: stale finalization context and blocked correction | Fixed the harness, released the stopped diagnostic hold, and retried only output finalization from saved work |
+| PACK-09: design chose an unavailable preview path | Supplied the actual runtime publisher contract and requested a design revision; the cloud author revised it |
+| PACK-30: browser target closed, followed by two failed reconnects | Deployed runtime fixes at the stopped gate and answered the agent's Linear question to resume saved work with a fresh browser |
+| PACK-31: PR images missing in GitHub mobile | Fixed the publisher and mechanically replaced the existing gallery's relative URLs; the user confirmed success |
+
+| Recovered without a supervisor rescue | Recorded issues |
+| --- | --- |
+| Tool selection and setup | PACK-01, PACK-04, PACK-10, PACK-12, PACK-13, PACK-14, PACK-20, PACK-26 |
+| Agent handoff and saved context | PACK-05, PACK-11; PACK-11 needed no additional rescue beyond the design revision already counted under PACK-09 |
+| Source/scratch handling | PACK-15, PACK-22 |
+| Preview and browser operations | PACK-16, PACK-17, PACK-18, PACK-19, PACK-21, PACK-24 |
+| Command execution and queue recovery | PACK-23, PACK-27, PACK-28 |
+| Workflow lifecycle and diagnostic noise | PACK-02, PACK-06, PACK-08, PACK-25, PACK-29 |
+
+PACK-06's two connection resets were caused by supervisor deployments during
+active work. Workflow replay recovered them without a separate rescue. They
+remain failures in the total, and the deployment-at-a-stopped-gate lesson remains.
+
 ### Incidents
 
 #### PACK-01 — unsupported editing tool selection
