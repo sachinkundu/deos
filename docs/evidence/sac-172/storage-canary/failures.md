@@ -249,3 +249,19 @@ Supervisor read-only tooling also hit a shell glob error on an unquoted GitHub
 query-string path (`zsh:1: no matches found`). Reissued through a literal argv
 list and read the exact approved file. No workflow state or app was changed
 by that failed lookup.
+
+### STORE-10 — Unavailable package version stopped the first dependency install
+
+Build operation sac246-install-1 started17:12:21.827 and failed17:13:06.424.
+Original npm error: `ETARGET`, `No matching version found for
+@cloudflare/workers-types@^4.20260917.0.` The cloud author selected an
+unavailable version. This is one failed operation, surfaced both by --wait
+and a later status read; do not double-count it. Three observed CLI exit75
+status responses mean running and are not failed operations.
+
+The cloud author changed workers-types and miniflare selectors to latest and
+started sac246-install-2 at17:19:51.710; still running in the17:20:56 snapshot.
+Recovery is owned by the cloud agent. No local application edit or runtime
+deployment was made. Exact command and nested stderr retained in
+build-live-audit-1720.json; final durable manifest audit pending. User notified
+once that the dependency install is being corrected; no action required.

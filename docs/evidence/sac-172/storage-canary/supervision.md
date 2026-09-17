@@ -440,3 +440,20 @@ so this alone is not a portal regression. A new external Brave tab359704860
 opened successfully after using connected browser ID1 (display-name lookup
 was rejected). No checklist screenshot or visual update claim is made yet.
 No runtime deployment or application edit was made.
+
+## 2026-09-17 17:20 UTC — Dependency error under cloud recovery
+
+Same build attempt remains active, no new workflow error row. STORE-10: first
+trusted install failed ETARGET because workers-types^4.20260917.0 is absent.
+The cloud author changed its dependency selectors and retried; supervisor
+only observed/logged. Live audit21completed commands includes2exit1 reads
+of the same failed operation and3exit75 running-status responses; zero
+provider errors. Keep semantic operation counts separate from shell exits.
+
+Progress is not end-only: D1/sampler saw0,1,2,4,6,10 completed tasks so far.
+The current author command marks16tasks completed sequentially in one batch
+after a block of implementation work, before install2 has finished. That can
+produce visible count jumps even though individual signals are delivered.
+Record this author behavior separately from transport latency; implementation
+checks/review gates must still validate the claimed work. No intervention is
+needed just to force cosmetic1-by-1 updates. Sampler71437 remains active.
