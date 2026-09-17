@@ -162,6 +162,9 @@ interface CleanupAuditDependencies {
   fetch: typeof fetch;
   now: () => Date;
   lifecycle?: LifecycleWriter;
+  beforeDestroy?: (candidate: CleanupCandidate) => Promise<void>;
+  afterDestroy?: (candidate: CleanupCandidate) => Promise<void>;
+  reconcileDestroyed?: () => Promise<void>;
 }
 
 export class CleanupAuditor {
@@ -171,6 +174,7 @@ export class CleanupAuditor {
   private readonly request: typeof fetch;
   private readonly now: () => Date;
   private readonly lifecycle?: LifecycleWriter;
+  private readonly cleanupDependencies: Partial<CleanupAuditDependencies>;
 
   constructor(
     store: CleanupAuditStore,
@@ -184,9 +188,11 @@ export class CleanupAuditor {
     this.request = dependencies.fetch ?? ((input, init) => fetch(input, init));
     this.now = dependencies.now ?? (() => new Date());
     this.lifecycle = dependencies.lifecycle;
+    this.cleanupDependencies = dependencies;
   }
 
   async scheduled(): Promise<void> {
+    await this.cleanupDependencies.reconcileDestroyed?.();
     const now = this.now().toISOString();
     for (const candidate of await this.store.knownLive()) {
       const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: true, tier: requireSandboxTier(candidate.sandbox_tier) });
@@ -197,7 +203,9 @@ export class CleanupAuditor {
       const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: false, tier: requireSandboxTier(candidate.sandbox_tier) });
       try {
         await sandbox.setKeepAlive(false);
+        await this.cleanupDependencies.beforeDestroy?.(candidate);
         await sandbox.destroy();
+        await this.cleanupDependencies.afterDestroy?.(candidate);
         if (candidate.attempt_id !== null) {
           await this.store.markAttemptCleanup(
             candidate.attempt_id,
@@ -335,7 +343,9 @@ export class CleanupAuditor {
     )) return Response.json({ error: "cleanup_target_changed" }, { status: 409 });
     try {
       await sandbox.setKeepAlive(false);
+      await this.cleanupDependencies.beforeDestroy?.(candidate);
       await sandbox.destroy();
+      await this.cleanupDependencies.afterDestroy?.(candidate);
       await this.store.markAttemptCleanup(
         candidate.attempt_id,
         "destroyed",

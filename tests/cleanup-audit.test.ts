@@ -8,6 +8,7 @@ import {
   type CleanupAuditStore,
 } from "../src/cleanup-audit.ts";
 import type { SandboxFactory, SandboxView } from "../src/sandbox-controller.ts";
+import {markImplementationDataDestroyed,reconcileDestroyedImplementationData} from '../src/implementation-cleanup.ts';
 
 const SANDBOX_ID = `sbx-v1-${"a".repeat(30)}`;
 const ATTEMPT_ID = "01a0578b-245c-7734-89f2-fe641acb74d2";
@@ -100,7 +101,7 @@ class Factory implements SandboxFactory {
   get() { return this.sandbox as unknown as SandboxView; }
 }
 
-const setup = () => {
+const setup = (dependencies: ConstructorParameters<typeof CleanupAuditor>[3] = {}) => {
   const store = new Store();
   const factory = new Factory();
   const issues: Array<{ id: string; description: string }> = [];
@@ -130,6 +131,7 @@ const setup = () => {
         issues.push(issue);
         return Response.json({ data: { issueCreate: { success: true, issue: { id: issue.id } } } });
       },
+      ...dependencies,
     },
   );
   return { store, factory, auditor, creates: () => creates };
@@ -325,4 +327,51 @@ test("scheduled reconciliation waits for a failed Sandbox hold to expire", async
   await auditor.scheduled();
   assert.equal(factory.sandbox.destroyed, false);
   assert.equal(candidate.cleanup_state, "pending");
+});
+
+test('scheduled cleanup waits for resource absence, then records data cleanup after sandbox destruction',async()=>{
+  const events:string[]=[];let confirmed=false;
+  const {auditor,store,factory}=setup({
+    beforeDestroy:async()=>{events.push('resources');if(!confirmed)throw new Error('Browser close is not yet confirmed');},
+    afterDestroy:async()=>{assert.equal(factory.sandbox.destroyed,true);events.push('data');},
+    reconcileDestroyed:async()=>{events.push('reconcile');},
+  });
+  const row={sandbox_id:SANDBOX_ID,sandbox_tier:'basic',attempt_id:ATTEMPT_ID,process_id:null,
+    run_id:'run',state:'completed',cleanup_state:'pending'};
+  store.candidates.set(SANDBOX_ID,row);store.terminal=[row];
+  await auditor.scheduled();
+  assert.equal(factory.sandbox.destroyed,false);assert.equal(row.cleanup_state,'failed');
+  assert.deepEqual(events,['reconcile','resources']);
+  confirmed=true;await auditor.scheduled();
+  assert.equal(row.cleanup_state,'destroyed');assert.deepEqual(events,['reconcile','resources','reconcile','resources','data']);
+});
+
+test('operator cleanup also runs resource and post-destruction hooks',async()=>{
+  const events:string[]=[];
+  const {auditor,store,factory}=setup({beforeDestroy:async()=>{events.push('before');},
+    afterDestroy:async()=>{assert.equal(factory.sandbox.destroyed,true);events.push('after');}});
+  store.candidates.set(SANDBOX_ID,{sandbox_id:SANDBOX_ID,sandbox_tier:'basic',attempt_id:ATTEMPT_ID,
+    state:'collecting',cleanup_state:'pending',updated_at:NOW.toISOString(),process_id:null});
+  assert.equal((await auditor.handleDestroy(destroyRequest())).status,200);
+  assert.deepEqual(events,['before','after']);
+});
+
+test('data cleanup reconciliation is scoped, idempotent and never claims browser/provider absence',async()=>{
+  const db=new DatabaseSync(':memory:');
+  db.exec(`CREATE TABLE agent_attempts(attempt_id TEXT PRIMARY KEY,sandbox_id TEXT,state TEXT,cleanup_state TEXT);
+    CREATE TABLE implementation_resources(attempt_id TEXT,kind TEXT,status TEXT,cleanup_receipt TEXT,updated_at TEXT);
+    INSERT INTO agent_attempts VALUES ('done','sandbox-done','completed','destroyed'),('active','sandbox-active','running','pending');
+    INSERT INTO implementation_resources VALUES ('done','local_data','ready',NULL,'before'),('done','browser','ready',NULL,'before'),
+      ('active','local_data','ready',NULL,'before');`);
+  const database={prepare:(sql:string)=>({bind:(...args:any[])=>({run:async()=>({meta:{changes:db.prepare(sql).run(...args).changes}})})})} as unknown as D1Database;
+  try {
+    await markImplementationDataDestroyed(database,'done','wrong-sandbox','wrong');
+    assert.equal(db.prepare("SELECT status FROM implementation_resources WHERE attempt_id='done' AND kind='local_data'").get()?.status,'ready');
+    await reconcileDestroyedImplementationData(database,'after');
+    await reconcileDestroyedImplementationData(database,'later');
+    const rows=db.prepare('SELECT * FROM implementation_resources ORDER BY attempt_id,kind').all();
+    assert.equal(rows[0].status,'ready');assert.equal(rows[1].status,'ready');
+    assert.equal(rows[2].status,'destroyed');assert.equal(rows[2].updated_at,'after');
+    assert.deepEqual(JSON.parse(String(rows[2].cleanup_receipt)),{sandboxDestroyed:'sandbox-done'});
+  } finally {db.close();}
 });

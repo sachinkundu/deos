@@ -29,6 +29,10 @@ A human-requested revision updates the same PR without another automatic review.
   `action: search` only searches a site's optional `/llms.txt` index; it is not a
   general search engine. If that index returns 404, use native web search and
   open the relevant official page instead of retrying the missing index.
+  Optional repository-guide searches may return no matches. Handle that outcome
+  separately from permission or IO errors, and do not chain unrelated inventory
+  behind a search that may return exit 1. Use the supplied OpenSpec instructions;
+  a slash-command name is not evidence of an installed `opsx` executable.
 - Shell and checked Node commands receive the Cloudflare CA through
   `NODE_EXTRA_CA_CERTS`. Do not disable TLS verification. A nested clean environment
   must preserve `/etc/cloudflare/certs/cloudflare-containers-ca.crt`.
@@ -58,6 +62,13 @@ A human-requested revision updates the same PR without another automatic review.
   on tests/builds to prevent execution unless installation completed successfully.
   Reuse an ID only to retrieve identical work. After an edit or intentional rerun,
   use a new ID. Failed results are retained; they are not silently retried.
+  Await the submission acknowledgement before polling it. If acknowledgement is
+  missing, resubmit the exact saved request with the same ID; an unknown ID is
+  not a reason to create another operation.
+  Direct bash/sh checks stop at unhandled errors (bash pipelines too). In native
+  shell sequences use `set -e` and, for bash, `set -o pipefail`, or explicitly
+  save and return the primary command's status after diagnostic commands. A
+  successful echo or curl must not replace a failed tool's exit status.
 - `action: status` never waits for a demo or check. It includes operation
   summaries, last activity, deadlines and saved proof image paths. `running`
   without recent output means no progress was observed; it does not establish a
@@ -65,8 +76,13 @@ A human-requested revision updates the same PR without another automatic review.
   copy to diagnose silence. Use `action: cancel` with the requestId for a queued
   operation or running check. A running demo cannot be canceled mid-action;
   a client disconnect leaves the existing operation available for retrieval.
-- Build into a dedicated directory such as `dist`. Start `action: preview` with
-  `assets: "dist"` and/or a Worker entry file. Do not serve the whole repository:
+- Use `action: diagnostics` for recent tool errors, operation receipts and
+  progress-delivery timing. `status` includes these errors even if a surrounding
+  shell command returned zero. Do not read protected diagnostics or heartbeat files.
+- Build into a dedicated directory such as `dist`. `action: preview` with only
+  `assets: "dist"` uses the hosted static publisher when available. A Worker
+  entrypoint, D1/R2 bindings, or explicit `target: "local"` uses the local runtime.
+  The returned `status.preview.target` distinguishes these paths. Do not serve the whole repository:
   unnecessary file watchers previously exhausted the runtime.
 - Check the app from the shell at `http://127.0.0.1:8787`. Use the assigned browser
   to inspect the public preview URL. Shell fetch to a Quick Tunnel or hosted
@@ -137,9 +153,16 @@ inside another; invoke the inner executable directly.
 
 # Resume and report
 
-Update task checkboxes as their work finishes. Keep demonstration and handoff
-tasks open until those actions finish; do not bulk-mark every task complete
-before collecting proof. Report the active phase alongside the task count.
+Use `{"action":"task","taskId":"1.2","state":"active"}` before working on
+an existing task, then send `state: "completed"` immediately when its work finishes.
+Save each request in a file. This updates one checkbox atomically, records a
+timestamped task event, and wakes the existing file watcher. `state: "pending"`
+reopens a task; repeated completion is idempotent. Report tasks as they finish,
+not in a batch after the whole build. If one edit finishes several tasks, report
+that honestly; do not invent elapsed time or animate fake progress. Keep demo
+and handoff tasks open until those actions finish. Status includes the latest
+task and notification timing; notification acknowledgement is not proof that
+the portal has displayed it. Task completion remains your judgment.
 
 Resume the failed operation using saved work. Rerun only checks or demos affected
 by an actual edit or relevant environment change. Removing generated scratch
@@ -161,6 +184,9 @@ After the final collection, use `action: status` to list saved proof IDs and
 captions, then submit `{"action":"select_proof","ids":["..."]}` with every image
 and Showboat record you want in the PR, in presentation order. This replaces the
 previous selection, so include all intended proof, not only the newest capture.
+`proofScenarios` in status groups captures by scenario and shows their selection.
+Review this map before handoff: keep the before/after states needed to show each
+claimed transition and recovery. The map is descriptive, not a coverage gate.
 Omit obsolete or failed exploratory records from that selection; their original
 bytes and errors remain in diagnostics. Repeat selection if you collect new
 proof. Selecting evidence is your editorial decision, not a workflow quality test.

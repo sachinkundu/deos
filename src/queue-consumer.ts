@@ -3,6 +3,7 @@ import { reconcileWorkflowEvents } from './workflow-event-reconciliation.ts';
 import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
 import { IndependentReviewReconciliationController } from './independent-review-reconciliation.ts';
 import { ImplementationBroker } from "./implementation-broker.ts";
+import { markImplementationDataDestroyed, reconcileDestroyedImplementationData } from "./implementation-cleanup.ts";
 import { claudeRunner } from "./claude-environment.ts";
 import { AttemptCompletionNotifier } from "./attempt-completion.ts";
 import { D1StageRetryStore } from "./publication-stage-retry.ts";
@@ -107,7 +108,15 @@ const cleanupAuditor = (env: Env): CleanupAuditor => new CleanupAuditor(
     linearTeamId: env.LINEAR_TEAM_ID,
     auditSecret: env.CLEANUP_AUDIT_SECRET,
   },
-  { lifecycle: writeLifecycleObservation },
+  { lifecycle: writeLifecycleObservation,
+    beforeDestroy: async candidate => {
+      if (candidate.attempt_id) await new ImplementationBroker(env).cleanup(candidate.attempt_id);
+    },
+    afterDestroy: async candidate => {
+      if (candidate.attempt_id) await markImplementationDataDestroyed(env.DB, candidate.attempt_id, candidate.sandbox_id, new Date().toISOString());
+    },
+    reconcileDestroyed: () => reconcileDestroyedImplementationData(env.DB, new Date().toISOString()),
+  },
 );
 
 const completionReconciler = (env: Env): WorkflowCompletionReconciler =>

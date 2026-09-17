@@ -34,7 +34,7 @@ export function implementationRequest(body, port = 8790) {
       response.once("end", () => resolve({ statusCode: response.statusCode, text: Buffer.concat(chunks).toString() }));
     });
     req.once("error", reject);
-    if (['check','demo','operation','status','cancel'].includes(action))
+    if (['check','demo','operation','status','diagnostics','cancel'].includes(action))
       req.setTimeout(10_000, () => req.destroy(new Error('Local tool response timed out after 10000ms; retrieve the same requestId before retrying work')));
     req.end(body);
   });

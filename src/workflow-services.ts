@@ -2,6 +2,7 @@ import { configureImplementationNetwork } from "./implementation-network.ts";
 import { BaseChangedError } from "./implementation-contract.ts";
 import { ImplementationService } from "./implementation-service.ts";
 import { ImplementationBroker } from "./implementation-broker.ts";
+import { markImplementationDataDestroyed } from "./implementation-cleanup.ts";
 import { D1BoundedReviewStore } from "./bounded-review-store.ts";
 import { claudeRunner } from "./claude-environment.ts";
 import { ImplementationDemoService } from './implementation-demo.ts';
@@ -225,8 +226,7 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         implementationCleanup: attempt => new ImplementationBroker(env).cleanup(attempt.attempt_id),
         implementationFailure: async (attempt,operation,error) => {await this.implementation.store.error(attempt.run_id,attempt.attempt_id,operation,error);},
         implementationDestroyed: async attempt => {
-          await env.DB.prepare("UPDATE implementation_resources SET status='destroyed',cleanup_receipt=?,updated_at=? WHERE attempt_id=? AND kind='local_data'")
-            .bind(JSON.stringify({sandboxDestroyed:attempt.sandbox_id}),new Date().toISOString(),attempt.attempt_id).run();
+          await markImplementationDataDestroyed(env.DB, attempt.attempt_id, attempt.sandbox_id, new Date().toISOString());
         },
         readContinuationPatch: async (reference) => {
           const object = await env.ARTIFACTS.get(reference.r2Key);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp, mkdir, writeFile, rename, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, rename, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "node:http";
@@ -131,6 +131,13 @@ test('a lost progress signal retries without another task edit, while rejected c
       else await new Promise(resolve=>setTimeout(resolve,1300));
       assert.equal(calls,expected,'no retries after delivery or credential rejection');
       assert.match(errors,mode==='lost'?/fetch failed/:mode==='timeout'?/TimeoutError/:/403: revoked/);
+      const observation=JSON.parse(await readFile(join(directory,'implementation-progress-signal.json'),'utf8'));
+      assert.equal(observation.outcome,mode==='denied'?'failed':'delivered');
+      assert.equal(observation.consecutiveFailures,mode==='denied'?1:0);
+      assert.equal(observation.retryAfterMs,null);
+      assert.ok(Number.isFinite(observation.durationMs));
+      if(mode!=='denied')assert.ok(observation.lastSuccessAt);
+      assert.equal(JSON.stringify(observation).includes('Bearer'),false);
     } finally {
       child.kill('SIGTERM');await closed;
       await new Promise<void>(resolve=>server.close(()=>resolve()));await rm(directory,{recursive:true,force:true});

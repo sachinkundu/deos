@@ -4,12 +4,14 @@ import type { SandboxView } from "./sandbox-controller.ts";
 // image restart. It only sends wake-up hints; the Worker reads and counts tasks.
 export const implementationProgressWatcher = String.raw`
 import { watch } from 'node:fs';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { readFile, writeFile, rename } from 'node:fs/promises';
+import { join, dirname } from 'node:path';
 const { recordCaughtError } = await import(process.argv[3]);
 const job = JSON.parse(await readFile(process.argv[2], 'utf8'));
 if (!/^[a-z0-9][a-z0-9-]*$/.test(job.openspecChange)) throw new Error('Invalid progress watcher change');
 let timer, closed = false, sending = false, pending = false, retryDelay = 1000;
+let consecutiveFailures = 0, lastSuccessAt = null;
+const observationPath = join(dirname(process.argv[2]), 'implementation-progress-signal.json');
 const watcher = watch(join(job.cwd, 'openspec', 'changes', job.openspecChange), (_event, name) => {
   if (name === null || String(name) === 'tasks.md') schedule();
 });
@@ -27,6 +29,8 @@ async function notify() {
   if (sending) { pending = true; return; }
   sending = true;
   let retry = false;
+  const started = Date.now();
+  let outcome = 'failed', lastError = null;
   try {
     const response = await fetch(job.capabilityUrl + '/attempt-progress', {
       method:'POST', headers:{Authorization:'Bearer ' + job.capabilityToken,'Deos-Attempt':job.attemptId,'Content-Type':'application/json'},
@@ -38,14 +42,26 @@ async function notify() {
       throw new Error('Progress notification HTTP ' + response.status + ': ' + await response.text());
     }
     await response.arrayBuffer();
+    outcome = 'delivered';
+    consecutiveFailures = 0;
+    lastSuccessAt = new Date().toISOString();
     retryDelay = 1000;
   } catch (error) {
+    consecutiveFailures++;
+    lastError = {name:error.name,message:String(error.message).replaceAll(job.capabilityToken,'[redacted]')};
     retry = retry || error.name === 'TimeoutError' ||
       (error.name === 'TypeError' && ['UND_ERR_SOCKET','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT',
         'UND_ERR_BODY_TIMEOUT','ECONNRESET','ECONNREFUSED','ETIMEDOUT','EAI_AGAIN'].includes(error.cause?.code));
     recordCaughtError(error, 'implementation progress signal');
   }
   finally {
+    const observation = {attemptedAt:new Date(started).toISOString(),observedAt:new Date().toISOString(),
+      durationMs:Date.now()-started,outcome,retryAfterMs:retry && !closed ? retryDelay : null,
+      consecutiveFailures,lastSuccessAt,lastError};
+    try {
+      await writeFile(observationPath+'.tmp',JSON.stringify(observation),{mode:0o600});
+      await rename(observationPath+'.tmp',observationPath);
+    } catch (error) { recordCaughtError(error, 'implementation progress observation write'); }
     sending = false;
     if (retry && !closed) {
       pending = false;

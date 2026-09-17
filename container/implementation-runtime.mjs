@@ -22,6 +22,7 @@ import { originalErrorText } from "./original-errors.mjs";
 import { killProcessGroup, stopProcessGroup } from "./implementation-process.mjs";
 import { collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementationRequestQueue } from "./implementation-browser-demo.mjs";
 import { ImplementationOperations } from "./implementation-operations.mjs";
+import { previewTarget, checkedCommandArgv, proofSelectionSummary, progressSignalObservation, withPreviewTarget } from './implementation-guidance.mjs';
 
 const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
@@ -254,7 +255,7 @@ export function localConfig(request, attemptId) {
     throw new Error("Preview needs a Worker entrypoint or built assets");
   if (
     Object.keys(request).some(
-      (key) => !["action", "main", "assets", "d1", "r2"].includes(key),
+      (key) => !["action", "main", "assets", "d1", "r2", "target"].includes(key),
     )
   )
     throw new Error("Preview request contains unsupported configuration");
@@ -468,7 +469,7 @@ export async function setupImplementation(job) {
     return stateWrites;
   };
   const browserResult = async (request, subject) => {
-    const result = await broker({ ...request, subject });
+    const result = await broker({ ...withPreviewTarget(request,state.preview?.target ?? (input.hostedPreview ? 'hosted' : 'local')), subject });
     if (result.imageBase64) {
       const imagePath = `${ROOT}/browser-${result.proof.sha256}.png`;
       await writeFile(imagePath, Buffer.from(result.imageBase64, "base64"), { mode: 0o644 });
@@ -521,6 +522,9 @@ export async function setupImplementation(job) {
       try {
         await appendFile(journal,JSON.stringify({operation:'tool',error:diagnostic})+'\n');
         await writeFile(`${ROOT}/last-error.json`, JSON.stringify(diagnostic), {mode:0o600});
+        state.toolErrors = [...(state.toolErrors ?? []), {observedAt:new Date().toISOString(),
+          ...JSON.parse(JSON.stringify(diagnostic).replaceAll(job.capabilityToken,'[redacted]'))}].slice(-20);
+        await persistState();
       } catch(secondary) {
         diagnostic.storageError={message:secondary.message,stack:secondary.stack};
         process.stderr.write(JSON.stringify(diagnostic)+'\n');
@@ -553,7 +557,15 @@ export async function setupImplementation(job) {
         // Read-only observation must never wait behind the work being observed.
         if (request.action === 'operation') return reply(operations.status(request.requestId));
         if (request.action === 'cancel') return reply(await operations.cancel(request.requestId));
+        if (request.action === 'diagnostics') return reply({errors:state.toolErrors ?? [],
+          operations:operations.list(),task:state.task ?? null,
+          progressSignal:await progressSignalObservation('/deos/run/implementation-progress-signal.json')});
         if (request.action === 'status') return reply({
+          task:state.task ?? null,
+          progressSignal:await progressSignalObservation('/deos/run/implementation-progress-signal.json'),
+          recentToolErrors:state.toolErrors ?? [],
+          preview:state.preview ?? input.hostedPreview ?? null,
+          proofScenarios:proofSelectionSummary(state),
           checks: state.checks.map(({ command, cwd, exitCode, treeSha, testedBaseSha }) => ({ command, cwd, exitCode, treeSha, testedBaseSha })),
           operations: operations.list(),
           proofKinds: [...new Set(state.proof.map(p => p.kind))],
@@ -570,9 +582,20 @@ export async function setupImplementation(job) {
           treeSha: before.treeSha,
         };
         let result;
-        if (request.action === "select_proof") {
+        if (request.action === 'task') {
+          const requestPath = `${ROOT}/task-request.json`;
+          await writeFile(requestPath,JSON.stringify(request),{mode:0o644});
+          await chmod(ROOT,0o711);
+          const changed = await command(['runuser','-u','deos-author','--','node',
+            '/deos/bin/implementation-task.mjs',job.cwd,job.openspecChange,requestPath],job.cwd);
+          if (changed.exitCode !== 0) throw Object.assign(new Error(`Task update failed: ${changed.stderr}`),{result:changed});
+          result = JSON.parse(changed.stdout);
+          state.task = result;
+          await appendFile(journal,JSON.stringify({operation:'task',...result})+'\n');
+        } else if (request.action === "select_proof") {
           selectReviewProof(state, request.ids);
-          result = { selected: selectedReviewProof(state).map(({ id, kind, caption }) => ({ id, kind, caption })) };
+          result = { selected: selectedReviewProof(state).map(({ id, kind, caption }) => ({ id, kind, caption })),
+            scenarios:proofSelectionSummary(state) };
         } else if (request.action === "check") {
           if (
             !Array.isArray(request.argv) ||
@@ -600,7 +623,7 @@ export async function setupImplementation(job) {
             "PATH=/usr/local/bin:/usr/bin:/bin",
             "HOME=/home/deos-author",
             "NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt",
-            ...request.argv,
+            ...checkedCommandArgv(request.argv),
           ];
           if (request.behavior === true) {
             const doc = `${ROOT}/showboat-${Date.now()}.md`;
@@ -638,14 +661,17 @@ export async function setupImplementation(job) {
           await appendFile(journal,JSON.stringify({operation:'check',...subject,result})+'\n');
             state.checks = recordCheck(state.checks, result, before);
           }
-        } else if (request.action === 'publish_preview') {
+        } else if (request.action === 'publish_preview' ||
+          (request.action === 'preview' && previewTarget(request,input.policy) === 'hosted')) {
+          if (request.action === 'preview') localConfig(request,job.attemptId);
           // Build files are controlled by the author. Read them with the same
           // unprivileged identity, including during concurrent filesystem edits.
           const capture = await command(['runuser','-u','deos-author','--','node',
             '/deos/bin/implementation-static-assets.mjs',job.cwd,request.assets],job.cwd,
             {maxOutputBytes:16 * 1024 * 1024});
           if (capture.exitCode !== 0) throw Object.assign(new Error(`Static preview capture failed: ${capture.stderr}`),{result:capture});
-          result = await broker({action:'publish_preview',subject,files:JSON.parse(capture.stdout)});
+          result = {target:'hosted',...await broker({action:'publish_preview',subject,files:JSON.parse(capture.stdout)})};
+          state.preview = result;
         } else if (request.action === "preview") {
           const config = localConfig(request, job.attemptId);
           result = await previewSession.ensure(config, {
@@ -736,10 +762,12 @@ export async function setupImplementation(job) {
           }
           },
           });
+          result = {target:'local',...result};
+          state.preview = result;
         } else if (request.action === "demo") {
           beginBrowserDemo(state);
           await persistState();
-          result = await collectBrowserDemo(request, {
+          result = await collectBrowserDemo(withPreviewTarget(request,state.preview?.target ?? (input.hostedPreview ? 'hosted' : 'local')), {
             browser: step => browserResult(step, subject),
             record: async event => {
               await appendFile(journal, JSON.stringify({ operation: "demo", ...subject,
@@ -758,7 +786,7 @@ export async function setupImplementation(job) {
         return result;
         };
         if (['check', 'demo'].includes(request.action))
-          return reply(await operations.submit(request, execute));
+          return reply(await operations.submit(withPreviewTarget(request,state.preview?.target ?? (input.hostedPreview ? 'hosted' : 'local')), execute));
         return toolQueue.run(request.action, async () => reply(await execute(request)), toolError);
     };
     const pending = dispatch().catch(toolError).finally(() => pendingRequests.delete(pending));
@@ -776,6 +804,8 @@ export async function setupImplementation(job) {
       await toolQueue.drain();
       await providerChain;
       await stateWrites;
+      const signal = await progressSignalObservation('/deos/run/implementation-progress-signal.json');
+      if (signal) await appendFile(journal,JSON.stringify({operation:'progress_signal',...signal})+'\n');
       const { patch, ...snap } = await snapshot(job.cwd);
       await writeFile(`${ROOT}/patch.diff`, patch, { mode: 0o600 });
       await rename(`${ROOT}/patch.diff`, "/deos/output/patch.diff");

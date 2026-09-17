@@ -86,6 +86,8 @@ Final audit: 21 recorded workflow/tool events across 15 problem groups, includin
 
 ## Final outcome
 
+Post-run follow-up: [workflow repairs are prepared](prepared-repairs.md) with local regression tests. They have not been deployed or validated in another canary; original run failures and counts below remain unchanged.
+
 - PR42 is open and ready for human review at671e0e1cd80d38c880dd10849238c62c13cb9bfa, unmerged/unreleased. Implementation gate30 is open since11:38:52.648 with no approval decision.
 - Final five-scenario collection completed11:35:25.664:16captures,13selected images plus one Showboat record. Cloud31tests/build pass. Source bytes for all17PR files match the reviewed candidate.
 - Connected external Brave verified the live preview and eight published behavior screenshots, including all three requested proof corrections. All13image URLs returnedHTTP200 without auth and matched their namedSHA256,1440x900. No replacement proof was authored locally.

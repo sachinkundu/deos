@@ -102,8 +102,11 @@ export async function collectBrowserDemo(request, { browser, record }) {
 export function beginBrowserDemo(state) {
   state.demoCollection = true;
   state.proof = state.proof.filter(proof => proof.kind !== "browser_image");
+  state.proofLocations = {};
 }
 
 export function finishBrowserDemo(state, result) {
   state.proof.push(...result.captures.map(capture => capture.proof));
+  state.proofLocations = Object.fromEntries(result.captures.map(c => [c.proof.id,
+    {collectionId:result.collectionId,scenarioId:c.scenarioId,stepIndex:c.stepIndex}]));
 }

@@ -42,7 +42,7 @@ export class ImplementationOperations {
   }
   status(id) {
     const entry = this.entries.get(id);
-    if (!entry) throw new Error(`Unknown operation: ${id}`);
+    if (!entry) throw new Error(`Unknown operation: ${id}. Submission is not recorded yet. Await the original submission or resubmit the identical saved request with this same requestId; do not create another ID to recover missing acknowledgement.`);
     if (entry.storageError) throw entry.storageError;
     const record = structuredClone(entry.record);
     record.observedAt = new Date().toISOString();

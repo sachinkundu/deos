@@ -477,7 +477,7 @@ export class ImplementationService {
       `Linear: [${work.linear_identifier}](${input.issue.url})`,
       `Approved Proposal and Specs: ${pullLink(plan?.pull_request_number)}`,
       `Approved design: ${pullLink(design?.pull_request_number)}`,
-      ...(preview ? [`Preview: [Open the web app](${preview.deployment.url})${preview.subject.treeSha === work.tree_sha ? '' : ' (built before the latest changes)'}`] : []),
+      ...(preview ? [`Preview: [Open the web app](${preview.deployment.url})${preview.subject.treeSha === work.tree_sha ? '' : ' (published from an earlier repository snapshot; later edits may include checklist or source changes)'}`] : []),
       'Proof:',
       ...implementationProofMarkdown(proof),
       `This is the [Showboat file](${proof.showboatUrl}).`,

@@ -10,7 +10,7 @@ export function implementationRuntimeContext(policy: ImplementationPolicy) {
     documentationHosts: policy.documentationHosts,
     safeAdapters: policy.safeAdapters,
     deployment: policy.safeAdapters.includes('static-preview-v1')
-      ? 'publish_preview accepts a finished static build directory and publishes it to a run-owned nonproduction Cloudflare Pages project. It returns an immutable review URL that remains available after Sandbox cleanup. No agent credentials, GitHub Actions workflow, repository Pages setup, backend deployment, or production release is needed. Use local workerd for backend tests.'
+      ? 'preview with only a finished assets directory defaults to the run-owned nonproduction static Cloudflare Pages publisher; publish_preview is also explicit. It returns an immutable review URL that remains available after Sandbox cleanup. Use target:hosted for that browser. A Worker entrypoint, D1/R2 bindings, or target:local selects local workerd instead. D1/R2 there are isolated local emulations, not remote provider resources. No agent credentials, GitHub Actions workflow, backend deployment, or production release capability is granted.'
       : 'No hosted deployment capability is declared. Do not assume GitHub Actions, GitHub Pages, provider credentials, or production access. If hosted delivery is required, identify the missing capability before committing to that path.',
     demonstrations: 'Claude chooses useful application scenarios and their count. Sol captures them in one ordered collection, with a fresh browser context and known data per scenario. Keep the application and harness fixed while collecting. Capture each observed result before the next scenario resets.',
   };

@@ -269,3 +269,35 @@ the frozen source inventory. It does not walk the sandbox or grant access to
 unlisted files. File hashes, traversal rejection and read-only syntax still
 apply. Tool help names this supported search form. Resume the failed review
 from its saved app and proof; do not rerun successful demonstrations.
+
+## Reading-canary follow-up repairs (prepared, not deployed)
+
+Use the task tool to report one existing task active, completed or reopened as
+work happens. It records actual file changes and timestamps; it does not decide
+whether work is complete or invent intermediate progress. Adoption and portal
+latency still need a live canary.
+
+Assets-only preview defaults to the authorized hosted publisher. Backend entrypoints,
+D1/R2 bindings and explicit local requests retain local workerd. Browser and demo
+defaults follow the chosen preview; an explicit target remains authoritative.
+The local D1/R2 bindings are emulated storage, not a remote provider deployment.
+
+Checked shell commands fail on unhandled errors and bash pipeline failures.
+Retain a tool's primary exit status through diagnostic native shell commands;
+recent tool errors remain available through status and diagnostics. Do not read
+private runtime files to obtain errors. Delivery telemetry reports latency and
+recovery separately from task completion or portal rendering.
+
+Cleanup must reconcile browser/provider absence, destroy the sandbox, then mark
+local data and attempt cleanup. Scheduled/operator cleanup must use the same
+resource hooks as normal completion. Historical local-data metadata can be
+reconciled only from a recorded terminal sandbox destruction; never infer
+browser/provider absence from it.
+
+Group selected and omitted screenshots by scenario for the author to inspect.
+This is descriptive evidence, not a coverage gate. Browser measurements are
+diagnostic output and are not supported steps in an ordered screenshot demo.
+
+See the [prepared repair report](evidence/sac-172/reading-canary/prepared-repairs.md)
+for validation and limitations, and the [D1/R2 canary brief](evidence/sac-172/reading-canary/next-storage-canary.md)
+for the backend capability required before that next run.
