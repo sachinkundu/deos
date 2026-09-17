@@ -726,7 +726,12 @@ export class JobInputMaterializer {
        JOIN artifacts f ON f.manifest_id = m.manifest_id AND f.logical_name = 'patch.diff'
        WHERE a.run_id = ?
          AND COALESCE(json_extract(a.job_spec_json, '$.agentRole'), 'author') = 'author'
-         AND EXISTS (SELECT 1 FROM json_each(a.job_spec_json, '$.inputs') WHERE value = 'design_context')
+         AND EXISTS (
+           SELECT 1 FROM json_each(COALESCE(
+             json_extract(json_extract(a.job_spec_json, '$.materializedContext'), '$.declaredInputs'),
+             json_extract(a.job_spec_json, '$.inputs')
+           )) WHERE value = 'design_context'
+         )
          AND a.state = 'completed' AND m.state = 'complete'
        ORDER BY m.completed_at DESC, a.attempt_id DESC LIMIT 1`,
     ).bind(runId).first<ContinuationPatchRow>().then((row) => row === null ? null : ({

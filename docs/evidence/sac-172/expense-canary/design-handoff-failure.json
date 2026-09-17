@@ -1,0 +1,16 @@
+{
+  "attempt": "01a0adf5-4113-7158-9450-cfe1803f60a7",
+  "node": "design_independent_response",
+  "durableInputs": null,
+  "continuationPatch": null,
+  "checkoutCommit": "269b5811afd556c144f7d1357a12f89a88db0d38",
+  "declaredInputs": [
+    "linear_issue",
+    "openspec_change",
+    "design_context",
+    "design_review_feedback"
+  ],
+  "priorDesignPresent": true,
+  "priorDesignSourceAttempt": "01a0ade5-ba70-795b-826e-2027c1e35e27",
+  "cause": "designContinuationPatch queried $.inputs, but durable jobs store materializedContext.declaredInputs. Prior design was present in context but missing from filesystem."
+}

@@ -386,7 +386,7 @@ test("design materializer anchors checked plan files and guidance to one exact m
     ['other', 'implementation_tasks', 'author', ['implementation_context'], '04'],
   ] as const) {
     patches.prepare('INSERT INTO agent_attempts VALUES (?,?,?,?,?,?)').run(id, 'workflow:project-1:issue-1:run:1', node,
-      JSON.stringify({agentRole:role,inputs}), 'completed', id);
+      JSON.stringify({agentRole:role,materializedContext:JSON.stringify({declaredInputs:inputs})}), 'completed', id);
     patches.prepare('INSERT INTO artifact_manifests VALUES (?,?,?)').run(id,'complete',time);
     patches.prepare('INSERT INTO artifacts VALUES (?,?,?,?)').run(id,'patch.diff',`${id}/patch.diff`,'f'.repeat(64));
   }
