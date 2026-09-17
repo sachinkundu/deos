@@ -90,4 +90,21 @@ was needed. GitHub CI and staging deployment are checked separately.
     frozen runs stay unchanged, and conflicting version reuse remains rejected.
     Initial and final test logs are retained separately.
 
-No full cloud-agent canary attempt yet. SAC-246 is prepared in Backlog.
+14. RouteAdmin selection succeeded with the deployed repair. The first enable
+    request then returned `stale_workflow_revision`: the supervisor sent route
+    revision28, but saveWorkflow expects workflow revision21. D1 confirmed no
+    state change. Corrected that request using the supported method's contract.
+    This is a supervisor request error, not an app or storage failure.
+
+The corrected full suite passed614 tests with one skipped. Backend5a65c8a2 is
+at100%; all four pools serve48e32b0b. Definition41 is now registered through
+RouteAdmin without waiting for cron. See registry-activation-final.log.
+
+15. Local evidence edits had a rejected patch hunk referencing absent text;
+    no file was changed. Corrected the patch. Two earlier local source lookups
+    named nonexistent workflow/test paths; subsequent source discovery found
+    the correct files. These are operator-only errors, excluded from canary counts.
+
+SAC-246 started through real Linear Todo at13:37:18UTC. Its failure log now lives
+under ../sac-172/storage-canary/. Preflight events above stay separate from the
+cloud-agent failure count. No supervisor canary application code was written.

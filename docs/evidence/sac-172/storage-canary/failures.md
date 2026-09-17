@@ -1,12 +1,13 @@
 # SAC-246 failure log
 
-Prospective log, 17 September 2026. The cloud-agent canary has not started yet.
+Prospective log, 17 September 2026. Run1 started13:37:26UTC from a genuine Linear
+Todo event, on frozen implementation v41. The first planning agent is starting.
 Preflight/extension failures are in
 [the extension log](../../temporary-environments/failures.md).
 
 ## Automatically fixed
 
-No cloud-agent failures observed yet.
+No cloud-agent failures observed yet; full transcript audit remains pending.
 
 ## Fixed by supervisor
 

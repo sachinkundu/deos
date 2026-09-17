@@ -32,7 +32,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 - [Supervision contract](evidence/sac-172/storage-canary/supervision.md), [failure log](evidence/sac-172/storage-canary/failures.md) and [read-only D1 collector](evidence/sac-172/storage-canary/readback.py).
 - The user authorizes automatic prerequisite gates and routine answers. Cloudflare agents alone build the app and its tests and proof. Stop at an unmerged implementation PR, then confirm deletion of all temporary app resources while retaining GitHub evidence.
 - Baseline repairs are on main through PR138. The temporary environment extension is in draft PR139, with passing CI and a real provider lifecycle probe. That probe is not the full cloud-agent canary. Preflight operator and extension errors are recorded in the [extension failure log](evidence/temporary-environments/failures.md).
-- Run not yet started. No reliability conclusion or cloud-agent failure count yet.
+- Genuine Linear Todo event13:37:18.201UTC created run1 at13:37:26.619 on frozen implementation v41. Cloud planning author started. No reliability conclusion or completed cloud-agent failure count yet.
 
 ### SAC-245 prospective reading-queue canary
 

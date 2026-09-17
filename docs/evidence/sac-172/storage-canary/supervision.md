@@ -27,12 +27,29 @@ and objects. Fresh browser contexts do not reset shared storage; agents own
 fixture reset. Do not substitute emulated storage or the local adapter fixture
 for canary proof.
 
-Preflight: backend 6587a7d1-71f1-4faf-bd3e-6f6381cf9d3a at 100%; all four runner
+Preflight after registry repair: backend 5a65c8a2-da87-4cc5-8539-5e7b2a37cc96 at 100%; all four runner
 pools healthy on image 48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2.
 Migration0053 applied. New frozen implementation definition is v41; v40 was
-already used for a previous custom test profile. Select v41 for this project
-through RouteAdmin, enable dispatch, verify D1, then transition this issue to
-Todo through Linear MCP. Never edit workflow D1 records manually.
+already used for a previous custom test profile. RouteAdmin selected and
+registered v41, then enabled dispatch at13:37:01UTC, route revision29.
+Never edit workflow D1 records manually.
+
+RUN STARTED: genuine Linear Todo transition13:37:18.201UTC, delivery
+191ed8b3-0611-4036-99fd-9b67a924d2f9 received13:37:19.397. Run1 created13:37:26.619,
+frozen v41 digest79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f,
+workflow wf-v1-4wvaym3kaom5m6ieeotnkmaihqshyy76jgh5hwkigmwkgkhkijgq.
+Planning author01a0af96-705a-77f2-85ab-cd28486c6450 running since13:37:47.529.
+Do not start another run or resend Todo. No canary workflow errors observed yet.
+The registration failure before launch is repaired and logged separately in
+the extension evidence. Check the next scheduled cycle registers the other new
+traceability variants26/27 without digest errors; do not deploy during active
+author work. Existing run definitions remain unchanged.
+
+13:38:54UTC live reader confirms the author understands this is the remote
+Worker/D1 metadata/R2 text path. Native process started13:37:59.257; no D1 errors.
+Full private snapshot /tmp/sac246-reader/2026-09-17T13-38-54.579Z.json retained.
+The temporary RouteAdmin helper has been stopped; the read-only reader remains
+active on8806 (exec session66526). Heartbeat supervision is active every5minutes.
 
 Read authoritative state with:
 `rtk proxy python3 docs/evidence/sac-172/storage-canary/readback.py`.

@@ -5,7 +5,8 @@ The extension adds a trusted temporary Worker/D1/R2 tool to DEOS. It is on
 
 Validated before rollout:
 
-- 614 backend tests: 613 passed, one skipped. Typecheck and runtime syntax passed.
+- Initial614 backend tests:613 passed, one skipped. After the registry repair,
+  the615-test suite passed614 with one skipped. Typecheck and runtime syntax passed.
 - The Linux container image built and the backend deployment dry run passed.
 - A real Cloudflare Worker used a newly created D1 database and R2 bucket. The
   probe asserted insert/read/delete in D1 and put/get/delete in R2. Readback
@@ -18,10 +19,12 @@ Validated before rollout:
   pending. Version 40 was already frozen for an existing provider-test profile;
   this extension uses version 41.
 
-Rollout completed on17September: migration0053 applied, Worker6587a7d1 at100%,
-all four container pools healthy on image48e32b0b. All PR139 CI jobs passed.
+Rollout completed on17September: migration0053 applied, Worker5a65c8a2 at100%,
+all four container pools serve image48e32b0b. Initial PR139 CI jobs passed;
+the registration repair is running through CI again.
 [Activation readback](activation.log) and [rollout output](rollout.log) preserve
-the provider result. The sample project must select definition41 before launch.
+the provider result. The registry repair and final activation have separate
+registry-* logs. The sample project selects definition41 and SAC-246 has started.
 
 The adapter probe is not the cloud-agent canary. [SAC-246 supervision](../sac-172/storage-canary/supervision.md)
 tracks that next run. Agent use, screenshots, cloud
