@@ -21,3 +21,7 @@ Use /Users/sachin/code/deos-sac-172 as the current SAC-172 workflow checkout. Re
 Extend docs/implementation-canary-failures.md with this run. Save prospective snapshots and transcript evidence in this directory. Count repeated occurrences separately, with app check failures, workflow failures, quality findings and operator errors separated. Normal authorized gate approvals are not recovery interventions.
 
 Suggested behavior checks, subject to Claude's useful demo selection: lunch EUR12.50 plus coffee EUR3.20 totals EUR15.70; edit coffee to EUR4.00 and total becomes EUR16.50; category filter, refresh and delete preserve correct state; blank names and invalid amounts are rejected. Fixed categories and positive amounts are reasonable defaults. Use browser-local storage and the supported static-preview-v1 publisher.
+
+05:44 UTC: planning PR37 full diff reviewed, head fce33fa90c308d5e6a061b1a4ef2d7b81827f3a2. D1 planning_review gate8 open, no active attempts or workflow errors. Approved via Linear comment and Merging under explicit user authorization. Await normal consumption and merge; do not resend without evidence. No supervisor artifact edits.
+
+05:45 UTC: approval consumed normally, PR37 merged at05:44:58, merge269b5811afd556c144f7d1357a12f89a88db0d38. Design author01a0ade5-ba70-795b-826e-2027c1e35e27 running. No action pending at planning gate.

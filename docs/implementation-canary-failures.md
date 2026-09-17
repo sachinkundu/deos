@@ -36,6 +36,8 @@ not a complete baseline, and cannot establish a percentage improvement.
 - Automatic supervision every five minutes: `run-expense-tracker-canary-to-pr`, attached to the user's current task. Normal progress stays quiet; completion and substantive problems notify.
 - Operator-only setup error at about 05:26 UTC: first heartbeat creation returned `targetThreadId: Missing targetThreadId or destination=thread.` No automation was created by that request. Retried with the explicit current task and thread destination; creation succeeded. Excluded from cloud workflow failure counts.
 
+- Planning gate: author completed 05:37:41 UTC, independent discovery 05:40:53, response finalized before Human Review at 05:44:23.705. Full PR37 diff reviewed; approved head `fce33fa90c308d5e6a061b1a4ef2d7b81827f3a2`. Genuine Linear approval at 05:44:42.439, delivery `7f427cef-87d5-403a-b907-b11c59d4ad56`, consumed 05:44:55.426. PR37 merged 05:44:58 as `269b5811afd556c144f7d1357a12f89a88db0d38`; design author running by 05:45. Normal gate approval, no recovery. Full completed transcript audit pending; no D1 workflow errors observed.
+
 | ID | Time / stage | Original failure or mismatch | Cause / response / outcome | Evidence |
 | --- | --- | --- | --- | --- |
 
