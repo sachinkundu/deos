@@ -1,0 +1,24 @@
+✔ Demo readers open the exact frozen approved, candidate and context inventory (1382.34175ms)
+✔ Claude reader launches with large file context and preserves command errors (309.527584ms)
+✔ Claude root listing aliases expose only the frozen inventory (0.851083ms)
+✔ Claude file reader executes quoted searches over frozen sources without shell expansion (497.271459ms)
+✔ Claude broker retains rejected HTTP response, request context, and stack (132.03925ms)
+✔ demo MCP returns actual image content and is unavailable to ordinary reviewers (216.061083ms)
+✔ trusted process preserves HTTP 401, full provider error and stderr (628.516584ms)
+✔ trusted process preserves HTTP 403, full provider error and stderr (511.753667ms)
+✔ trusted process retains malformed output and its original parser exception (513.47625ms)
+✔ trusted process retains exit status and complete stderr (505.095875ms)
+✔ trusted process retains spawn ENOENT and attempted executable (198.009417ms)
+✔ trusted process retains broker failure causes (519.519625ms)
+✔ failure-file write errors retain both failures and redact fallback diagnostics (508.5705ms)
+✔ native design reviewer reads service capabilities without requiring an invented repository file (1.215333ms)
+✔ review commands parse quoted regex data, escapes, and joined word fragments (0.574ms)
+✔ review commands reject real shell syntax, malformed quoting, and executable operations (0.224667ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3493.997667

@@ -15,7 +15,7 @@ for await (const line of createInterface({ input: process.stdin })) {
         serverInfo: { name: "deos-read-only", version: "1" } });
     } else if (request.method === "tools/list") {
       send(request.id, { tools: [{ name: "read_repository", description:
-        "Read only frozen review sources. Start with bare ls (no arguments) to list all allowed file paths. Use pwd with no arguments; cat FILE; head or tail [-n COUNT] FILE; sed -n START,ENDp FILE; rg [-n] [-i] [-F] [--] PATTERN [FILE]; wc -l FILE. Quote search patterns and paths containing spaces. Quoted regex alternatives, anchors, and escapes are literal argument data; nothing is expanded or run through a shell. No other flags, writes, glob expansion, pipelines, or redirection.",
+        "Read only frozen review sources. Start with bare ls (no arguments) to list all allowed file paths. Use pwd with no arguments; cat FILE; head or tail [-n COUNT] FILE; sed -n START,ENDp FILE; rg [-n] [-i] [-F] [--] PATTERN [FILE_OR_DIRECTORY]; wc -l FILE. Search directories select only listed frozen files beneath that path, never unlisted filesystem entries. Quote search patterns and paths containing spaces. Quoted regex alternatives, anchors, and escapes are literal argument data; nothing is expanded or run through a shell. No other flags, writes, glob expansion, pipelines, or redirection.",
         inputSchema: { type: "object", properties: { command: { type: "string", maxLength: 8192 } },
           required: ["command"], additionalProperties: false } },
         ...(process.env.DEOS_DEMO_REVIEW === '1' ? [{ name: 'read_demo_evidence',

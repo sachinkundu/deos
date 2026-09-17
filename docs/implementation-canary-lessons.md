@@ -259,3 +259,13 @@ are separate signals; tolerate transient delivery errors when recovery succeeds.
 A Pages asset redirect is followed only within the immutable deployment origin,
 for at most3redirects and a shared20second deadline. Final size and SHA256 must
 still match. Authenticated provider API redirects remain forbidden.
+
+## Reading-canary review search
+
+SAC-245's Claude reviewer searched `candidate/src` with `rg`. The broker had
+listed frozen files but accepted only file arguments; this ordinary directory
+search ended the review. Directory search now expands path prefixes only within
+the frozen source inventory. It does not walk the sandbox or grant access to
+unlisted files. File hashes, traversal rejection and read-only syntax still
+apply. Tool help names this supported search form. Resume the failed review
+from its saved app and proof; do not rerun successful demonstrations.

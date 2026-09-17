@@ -19,6 +19,8 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 
 | READ-11 | 10:40 task write; investigated 10:53–10:57 | Portal checklist jumped from 0/23 to 17/23 without intermediate counts | Cloud author item49 marks the first17 tasks in one tasks.md write after tests/build. Existing instruction to update checkboxes as work finishes was not followed. No 1–16 file states were emitted. | Recorded as a progress-reporting defect, not an implementation/provider failure. Watcher already reacts to file changes (750ms debounce); visible portal polls every5s. Corrective action: explicit per-task completion reporting/checkpoints in the author workflow; do not simulate increments. No live change during the active canary. | [Exact cloud command and saved observations](checklist-batch-reporting.json) |
 
+| READ-12 | 11:08:09, implementation Claude review | `rg -n "innerHTML\|seed\|fixture\|demo" candidate/src` rejected with `review path is not in the checked input`; broker then marked review_failure and run failed | Frozen-source reader accepted individual files only; reviewer supplied a directory. One causal incident, six propagated D1 error records. | Saved app/proof retained. Supervisor added safe directory-prefix expansion over frozen inventory only and updated tool help.16targeted tests/typecheck pass; exact command on26saved input files now exits0. Deployment and same-stage review retry pending. | [Original errors and repair validation](review-directory-failure.json) |
+
 ## Normal actions
 
 - 09:14:29: D1 preflight confirmed no run and no active attempts; implementation v39 enabled, backend 8027527b at 100%.
@@ -40,6 +42,8 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 - 10:53 UTC investigation: two local source searches named nonexistent guessed paths and returned exit2 (`No such file or directory`). Continued with actual source paths. Local inventory assumptions only; no cloud request or canary state affected. Excluded from cloud failure counts.
 
 - 11:04UTC: local evidence staging named readback-20260917T110224Z.json instead of the existing110228Z snapshot; Git rejected the nonexistent path (exit128). Corrected to the collector-reported filename. No cloud effect.
+
+- 11:12UTC recovery discovery: one broad local search named scripts/sac-172 from the wrong checkout and hit an unrelated protected /tmp semaphore; another named test instead of tests. Original diagnostics were `No such file or directory` and `Permission denied`; the first was masked by a successful pipeline. Narrowed to observed paths. No cloud impact; excluded from cloud failure counts.
 
 ## Expected nonzero results
 

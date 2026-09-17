@@ -51,9 +51,13 @@ export const readSnapshot = async ({ op, args }, state, sourceRoot = "/deos/work
     state.phase === "design" ? context.designReview.sources.map((source) => source.path) :
     state.before.filter((file) => file.path.startsWith(root) &&
       (file.path === `${root}proposal.md` || file.path === `${root}.openspec.yaml` || file.path.startsWith(`${root}specs/`))).map((file) => file.path);
-  const normalize = (input) => {
-    let name = input.replace(/^\/deos\/workspace\/repository\//, "").replace(/^\.\//, "");
+  const checkedPath = (input) => {
+    const name = input.replace(/^\/deos\/workspace\/repository\//, "").replace(/^\.\//, "");
     if (name.startsWith("/") || name.split("/").includes("..")) throw new Error("review path is outside the checked input");
+    return name;
+  };
+  const normalize = (input) => {
+    const name = checkedPath(input);
     if (allowed.includes(name)) return name;
     if (allowed.includes(root + name)) return root + name;
     throw new Error("review path is not in the checked input");
@@ -102,7 +106,18 @@ export const readSnapshot = async ({ op, args }, state, sourceRoot = "/deos/work
     if (typeof pattern !== "string" || pattern.length > 256) throw new Error("invalid review search pattern");
     const matcher = flags.includes("-F") ? null : new RegExp(pattern, flags.includes("-i") ? "i" : "");
     const found = [];
-    for (const name of args.length ? args : allowed) {
+    // Expand only frozen inventory prefixes, never walk a sandbox directory.
+    const files = args.length ? args.flatMap(input => {
+      const name = checkedPath(input).replace(/\/+$/, "");
+      if (name === "." || name === "") return allowed;
+      if (allowed.includes(name)) return [name];
+      if (allowed.includes(root + name)) return [root + name];
+      const prefix = [name + "/", root + name + "/"];
+      const matches = allowed.filter(path => prefix.some(dir => path.startsWith(dir)));
+      if (matches.length === 0) throw new Error("review path is not in the checked input");
+      return matches;
+    }) : allowed;
+    for (const name of new Set(files)) {
       const lines = (await read(name)).split("\n");
       lines.forEach((line, index) => {
         const match = matcher ? matcher.test(line) : (flags.includes("-i") ? line.toLowerCase().includes(pattern.toLowerCase()) : line.includes(pattern));
