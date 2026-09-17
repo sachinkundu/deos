@@ -46,6 +46,10 @@ Do not describe synthetic ingress as end-to-end provider verification.
 
 ## Tool selection
 
+- Always use the external browser (the connected Brave session on this laptop)
+  for browser work. Do not use the Codex in-app browser unless the user explicitly
+  requests it. This laptop rule does not replace the cloud agents' assigned
+  Cloudflare service browser.
 - Use Linear MCP by default for creating and transitioning test issues. Use
   Codex Browser only when a Linear login/configuration screen is required or
   when a screenshot is needed for visual proof.
@@ -72,7 +76,24 @@ For the maintained provider-proof procedure, evidence hierarchy, and PR
 packaging guidance, read
 [`docs/linear-cloudflare-e2e-lessons.md`](docs/linear-cloudflare-e2e-lessons.md).
 
+For cloud implementation and canaries, also read
+[`docs/implementation-canary-lessons.md`](docs/implementation-canary-lessons.md)
+and the shipped
+[`deos-implementation` skill](container/skills/deos-implementation/SKILL.md).
+Claude chooses the demonstrations and their count. Sol implements and captures
+them, receives Claude's review once, then returns its response to human PR review.
+Keep accepted human answers in later agent context. Resume failed stages from
+saved work. Update the relevant runtime skill, hook or tool help when a canary
+reveals a reusable development lesson. Do not add workflow checks on agent judgment.
+
 ## Production BettaView and portal
+
+- Before deploying backend code, secrets, or a container image, read D1 for
+  pending, starting, running and collecting attempts. Deploy at a stopped gate
+  with no active attempt; do not interrupt an author to ship a harness fix.
+  `--containers-rollout none` still resets Worker/Durable Object connections.
+  If an urgent deployment must interrupt work, obtain explicit direction first
+  and retain the resulting interruption in the failure log.
 
 - The live `bettaview.voxdez.com` app is maintained in this repository at
   `portal/bettaview/`. Start all live BettaView UI and API work there.

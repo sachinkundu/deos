@@ -1,0 +1,58 @@
+{
+  "result": [
+    {
+      "results": [
+        {
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1",
+          "status": "canceled",
+          "current_node": "canceled",
+          "current_visit_sequence": 42,
+          "workflow_instance_id": "wf-v1-vbk4ffy7gaysf3nmedbblykidgshsdj2rw7h4rhk4dfzpadaxn2q",
+          "terminal_cause": null
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.2461
+        },
+        "duration": 0.2461,
+        "changes": 0,
+        "last_row_id": 5048,
+        "changed_db": false,
+        "size_after": 108355584,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.1584
+        },
+        "duration": 0.1584,
+        "changes": 0,
+        "last_row_id": 5048,
+        "changed_db": false,
+        "size_after": 108355584,
+        "rows_read": 6,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}

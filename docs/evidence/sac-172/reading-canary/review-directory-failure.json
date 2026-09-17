@@ -1,0 +1,181 @@
+{
+  "cause": "Reviewer rg targeted candidate/src, a frozen inventory directory. The reader accepted only individual files; its tool failure terminated the Claude review. Six durable error records describe one causal incident.",
+  "failedAttemptId": "01a0af0a-5455-75df-b4fd-67be4ba83875",
+  "errors": [
+    {
+      "record": {
+        "error_id": "e14d1675-3f8b-4ca6-ab61-35844c6d4781",
+        "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+        "node_id": "implementation_demo_gate",
+        "visit_sequence": 23,
+        "step_name": "/capabilities/claude/tools",
+        "location": "src/claude-runner.ts:handle:tools",
+        "message": "Claude read tool did not complete successfully",
+        "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/e14d1675-3f8b-4ca6-ab61-35844c6d4781.json",
+        "occurred_at": "2026-09-17T11:08:10.198Z"
+      },
+      "detail": {
+        "stack": "Error: Claude read tool did not complete successfully\n    at ClaudeRunner.read (queue-consumer.js:56886:31)\n    at async ClaudeRunner.handle (queue-consumer.js:56688:48)\n    at async queue-consumer.js:145:16",
+        "message": "Claude read tool did not complete successfully",
+        "command": "rg -n \"innerHTML|seed|fixture|demo\" candidate/src",
+        "exitCode": 1,
+        "truncated": false,
+        "timedOut": false,
+        "stdout": "",
+        "stderr": "{\"event\":\"deos.original_error\",\"location\":\"container/claude-review-read.mjs\",\"message\":\"review path is not in the checked input\",\"detail\":\"Error: review path is not in the checked input\\n    at normalize (file:///deos/bin/native-review-read.mjs:59:11)\\n    at read (file:///deos/bin/native-review-read.mjs:62:12)\\n    at readSnapshot (file:///deos/bin/native-review-read.mjs:106:28)\\n    at file:///deos/bin/claude-review-read.mjs:44:22\",\"occurredAt\":\"2026-09-17T11:08:09.465Z\"}\n",
+        "name": "Error"
+      }
+    },
+    {
+      "record": {
+        "error_id": "6281f50b-e770-4b36-9a96-4dc6a936df52",
+        "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+        "node_id": "implementation_demo_gate",
+        "visit_sequence": 23,
+        "step_name": "/capabilities/claude/status",
+        "location": "src/claude-runner.ts:handle:status",
+        "message": "review_failure",
+        "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/6281f50b-e770-4b36-9a96-4dc6a936df52.json",
+        "occurred_at": "2026-09-17T11:08:12.302Z"
+      },
+      "detail": {
+        "stack": "ClaudeReviewError: review_failure\n    at ClaudeRunner.assertRunning (queue-consumer.js:56785:50)\n    at ClaudeRunner.status (queue-consumer.js:56794:51)\n    at async ClaudeRunner.handle (queue-consumer.js:56687:49)\n    at async queue-consumer.js:145:16",
+        "message": "review_failure",
+        "causeCode": "review_failure",
+        "retryNotBefore": null,
+        "name": "ClaudeReviewError"
+      }
+    },
+    {
+      "record": {
+        "error_id": "5a50e973-786c-433f-afe8-cf702ac53879",
+        "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+        "node_id": "implementation_demo_gate",
+        "visit_sequence": 23,
+        "step_name": "agent:implementation_demo_gate:visit:23",
+        "location": "sandbox original error",
+        "message": "review path is not in the checked input",
+        "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/5a50e973-786c-433f-afe8-cf702ac53879.json",
+        "occurred_at": "2026-09-17T11:08:16.179Z"
+      },
+      "detail": {
+        "location": "container/claude-review-read.mjs",
+        "message": "review path is not in the checked input",
+        "detail": "Error: review path is not in the checked input\n    at normalize (file:///deos/bin/native-review-read.mjs:59:11)\n    at read (file:///deos/bin/native-review-read.mjs:62:12)\n    at readSnapshot (file:///deos/bin/native-review-read.mjs:106:28)\n    at file:///deos/bin/claude-review-read.mjs:44:22",
+        "occurredAt": "2026-09-17T11:08:09.465Z"
+      }
+    },
+    {
+      "record": {
+        "error_id": "6861bae6-0e25-4589-9714-93959378f383",
+        "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+        "node_id": "implementation_demo_gate",
+        "visit_sequence": 23,
+        "step_name": "agent:implementation_demo_gate:visit:23",
+        "location": "sandbox original error",
+        "message": "review_failure",
+        "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/6861bae6-0e25-4589-9714-93959378f383.json",
+        "occurred_at": "2026-09-17T11:08:16.179Z"
+      },
+      "detail": {
+        "location": "implementation.demo.runner",
+        "message": "review_failure",
+        "detail": "Error: review_failure\n    at invoke (file:///deos/bin/claude-review-adapter.mjs:12:22)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async claudeReviewJudgment (file:///deos/bin/claude-review-adapter.mjs:26:16)\n    at async file:///deos/bin/implementation-demo-runner.mjs:22:22",
+        "occurredAt": "2026-09-17T11:08:13.070Z"
+      }
+    },
+    {
+      "record": {
+        "error_id": "309254cb-61af-4007-b3e3-f7d446c5e5fd",
+        "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+        "node_id": "implementation_failed",
+        "visit_sequence": 24,
+        "step_name": "workflow runtime",
+        "location": "src/deos-workflow.ts:81",
+        "message": "implementation_failed",
+        "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/309254cb-61af-4007-b3e3-f7d446c5e5fd.json",
+        "occurred_at": "2026-09-17T11:08:33.929Z"
+      },
+      "detail": {
+        "stack": "WorkflowFailureError: implementation_failed\n    at WorkflowOrchestrator.run (queue-consumer.js:68998:15)\n    at async DeosWorkflow.runCaptured (queue-consumer.js:69485:14)\n    at async queue-consumer.js:145:16",
+        "message": "implementation_failed",
+        "safeCause": "implementation_failed",
+        "name": "WorkflowFailureError"
+      }
+    },
+    {
+      "record": {
+        "error_id": "2af3941c-f906-4ca9-aada-b95d883088f5",
+        "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+        "node_id": "implementation_failed",
+        "visit_sequence": 24,
+        "step_name": "workflow runtime",
+        "location": "uncaught",
+        "message": "implementation_failed",
+        "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/2af3941c-f906-4ca9-aada-b95d883088f5.json",
+        "occurred_at": "2026-09-17T11:08:33.929Z"
+      },
+      "detail": {
+        "stack": "NonRetryableError: implementation_failed\n    at DeosWorkflow.runCaptured (queue-consumer.js:69489:29)\n    at async queue-consumer.js:145:16",
+        "message": "implementation_failed",
+        "name": "NonRetryableError",
+        "cause": {
+          "stack": "WorkflowFailureError: implementation_failed\n    at WorkflowOrchestrator.run (queue-consumer.js:68998:15)\n    at async DeosWorkflow.runCaptured (queue-consumer.js:69485:14)\n    at async queue-consumer.js:145:16",
+          "message": "implementation_failed",
+          "safeCause": "implementation_failed",
+          "name": "WorkflowFailureError"
+        }
+      }
+    }
+  ],
+  "repair": "Directory rg selects only approved frozen inventory paths by complete directory prefix. No filesystem directory walk. Per-file SHA validation and traversal/shell rejection remain. Tool help updated.",
+  "validation": {
+    "targetedTests": 16,
+    "typecheck": "pass",
+    "exactSavedInputReplay": {
+      "sourceCount": 26,
+      "command": "rg -n \"innerHTML|seed|fixture|demo\" candidate/src",
+      "exitCode": 0
+    }
+  },
+  "deployment": {
+    "workerVersion": "e0c1144d-cd88-4387-b9ab-b226c5ec95a5",
+    "trafficPercent": 100,
+    "imageDigest": "32185ef3925e88b07bd778f73e50284efbfb1e8ab58294f08a5912c1c35caf52",
+    "allFourPools": "completed, four healthy instances each",
+    "noActiveAttemptsBeforeDeployment": true,
+    "codeCommit": "d7a4e7e"
+  },
+  "retry": {
+    "retry": {
+      "retry_id": "stage-retry:01a0af0a-5455-75df-b4fd-67be4ba83875",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+      "failed_attempt_id": "01a0af0a-5455-75df-b4fd-67be4ba83875",
+      "retry_node": "implementation_demo_gate",
+      "from_visit_sequence": 24,
+      "to_visit_sequence": 25,
+      "transition_id": "transition:stage-retry:01a0af0a-5455-75df-b4fd-67be4ba83875",
+      "state": "established",
+      "workflow_status": "queued",
+      "safe_error_category": null,
+      "requested_by": "sachin",
+      "created_at": "2026-09-17T11:19:45.357Z",
+      "updated_at": "2026-09-17T11:19:48.181Z",
+      "established_at": "2026-09-17T11:19:48.181Z",
+      "retry_kind": "same_definition",
+      "source_definition_id": "implementation",
+      "source_definition_version": 39,
+      "source_definition_digest": "e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c",
+      "target_definition_id": "implementation",
+      "target_definition_version": 39,
+      "target_definition_digest": "e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c",
+      "source_workflow_instance_id": "wf-v1-m6ek5brhdw5sac2jrr3oqvwk23zwh6axxhpopobfvv4vawu2bujq",
+      "target_workflow_instance_id": "wf-v1-7t3xyh5eb4di7rnpd6ftxivfw6bnnmkqodavmxt32rpimjskh4oq",
+      "source_delivery_id": "de0b70ea-1ca2-4f87-ad55-a621fdc7505d",
+      "entry_node": null,
+      "source_sandbox_tier": "basic",
+      "target_sandbox_tier": "basic",
+      "workflow_instance_id": "wf-v1-7t3xyh5eb4di7rnpd6ftxivfw6bnnmkqodavmxt32rpimjskh4oq"
+    }
+  }
+}

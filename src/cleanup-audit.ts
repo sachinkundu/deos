@@ -38,6 +38,7 @@ export interface CleanupAuditStore {
     sandboxId: string,
     expectedUpdatedAt: string,
     now: string,
+    releaseFailureHold?: boolean,
   ): Promise<boolean>;
   markAttemptCleanup(attemptId: string, state: "destroyed" | "failed", category: string | null, now: string): Promise<void>;
 }
@@ -119,14 +120,19 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
     sandboxId: string,
     expectedUpdatedAt: string,
     now: string,
+    releaseFailureHold = false,
   ): Promise<boolean> {
     const result = await this.database.prepare(
       `UPDATE agent_attempts
-       SET state = 'interrupted', result_class = 'operator_cleanup',
-           result_detail = NULL, ended_at = COALESCE(ended_at, ?), updated_at = ?
-       WHERE attempt_id = ? AND sandbox_id = ? AND state = 'collecting'
+       SET state = CASE WHEN state='collecting' THEN 'interrupted' ELSE state END,
+           result_class = CASE WHEN state='collecting' THEN 'operator_cleanup' ELSE result_class END,
+           result_detail = CASE WHEN state='collecting' THEN NULL ELSE result_detail END,
+           ended_at = COALESCE(ended_at, ?), updated_at = ?
+       WHERE attempt_id = ? AND sandbox_id = ?
+         AND ((state='collecting' AND ?=0) OR (state='failed' AND ?=1 AND EXISTS
+           (SELECT 1 FROM artifact_manifests m WHERE m.manifest_id=agent_attempts.manifest_id AND m.state='complete')))
          AND cleanup_state <> 'destroyed' AND updated_at = ?`,
-    ).bind(now, now, attemptId, sandboxId, expectedUpdatedAt).run();
+    ).bind(now, now, attemptId, sandboxId, Number(releaseFailureHold), Number(releaseFailureHold), expectedUpdatedAt).run();
     return (result.meta.changes ?? 0) === 1;
   }
 
@@ -156,6 +162,9 @@ interface CleanupAuditDependencies {
   fetch: typeof fetch;
   now: () => Date;
   lifecycle?: LifecycleWriter;
+  beforeDestroy?: (candidate: CleanupCandidate) => Promise<void>;
+  afterDestroy?: (candidate: CleanupCandidate) => Promise<void>;
+  reconcileDestroyed?: () => Promise<void>;
 }
 
 export class CleanupAuditor {
@@ -165,6 +174,7 @@ export class CleanupAuditor {
   private readonly request: typeof fetch;
   private readonly now: () => Date;
   private readonly lifecycle?: LifecycleWriter;
+  private readonly cleanupDependencies: Partial<CleanupAuditDependencies>;
 
   constructor(
     store: CleanupAuditStore,
@@ -178,9 +188,11 @@ export class CleanupAuditor {
     this.request = dependencies.fetch ?? ((input, init) => fetch(input, init));
     this.now = dependencies.now ?? (() => new Date());
     this.lifecycle = dependencies.lifecycle;
+    this.cleanupDependencies = dependencies;
   }
 
   async scheduled(): Promise<void> {
+    await this.cleanupDependencies.reconcileDestroyed?.();
     const now = this.now().toISOString();
     for (const candidate of await this.store.knownLive()) {
       const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: true, tier: requireSandboxTier(candidate.sandbox_tier) });
@@ -191,7 +203,9 @@ export class CleanupAuditor {
       const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: false, tier: requireSandboxTier(candidate.sandbox_tier) });
       try {
         await sandbox.setKeepAlive(false);
+        await this.cleanupDependencies.beforeDestroy?.(candidate);
         await sandbox.destroy();
+        await this.cleanupDependencies.afterDestroy?.(candidate);
         if (candidate.attempt_id !== null) {
           await this.store.markAttemptCleanup(
             candidate.attempt_id,
@@ -283,7 +297,7 @@ export class CleanupAuditor {
     }
     if (
       typeof body !== "object" || body === null || Array.isArray(body) ||
-      Object.keys(body).some((key) => !["version", "attemptId", "sandboxId", "expectedUpdatedAt"].includes(key))
+      Object.keys(body).some((key) => !["version", "attemptId", "sandboxId", "expectedUpdatedAt", "releaseFailureHold"].includes(key))
     ) return Response.json({ error: "invalid_cleanup_request" }, { status: 400 });
     const input = body as Record<string, unknown>;
     if (
@@ -292,6 +306,7 @@ export class CleanupAuditor {
       typeof input.sandboxId !== "string" || !/^sbx-v1-[a-z2-7]{20,80}$/.test(input.sandboxId) ||
       typeof input.expectedUpdatedAt !== "string" || input.expectedUpdatedAt.length > 64 ||
       Number.isNaN(Date.parse(input.expectedUpdatedAt))
+      || (input.releaseFailureHold !== undefined && input.releaseFailureHold !== true)
     ) return Response.json({ error: "invalid_cleanup_request" }, { status: 400 });
 
     const candidate = await this.store.candidate(input.sandboxId);
@@ -309,8 +324,8 @@ export class CleanupAuditor {
     }
     if (
       candidate.updated_at !== input.expectedUpdatedAt ||
-      candidate.state !== "collecting" ||
-      (candidate.cleanup_hold_until !== null && candidate.cleanup_hold_until > this.now().toISOString())
+      candidate.state !== (input.releaseFailureHold === true ? 'failed' : 'collecting') ||
+      (input.releaseFailureHold !== true && candidate.cleanup_hold_until !== null && candidate.cleanup_hold_until > this.now().toISOString())
     ) return Response.json({ error: "cleanup_target_changed" }, { status: 409 });
 
     const sandbox = this.sandboxes.get(candidate.sandbox_id, { keepAlive: false, tier: requireSandboxTier(candidate.sandbox_tier) });
@@ -324,10 +339,13 @@ export class CleanupAuditor {
       candidate.sandbox_id,
       input.expectedUpdatedAt,
       claimedAt,
+      input.releaseFailureHold === true,
     )) return Response.json({ error: "cleanup_target_changed" }, { status: 409 });
     try {
       await sandbox.setKeepAlive(false);
+      await this.cleanupDependencies.beforeDestroy?.(candidate);
       await sandbox.destroy();
+      await this.cleanupDependencies.afterDestroy?.(candidate);
       await this.store.markAttemptCleanup(
         candidate.attempt_id,
         "destroyed",

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "cloudflare-service-bindings",
+    "url": "https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/",
+    "title": "Service bindings",
+    "claimLocator": "openspec/changes/sac-182/tasks.md:19"
+  },
+  {
+    "id": "github-review-comments",
+    "url": "https://docs.github.com/en/rest/pulls/comments",
+    "title": "REST API endpoints for pull request review comments",
+    "claimLocator": "openspec/changes/sac-182/tasks.md:31"
+  },
+  {
+    "id": "github-pull-request-reviews",
+    "url": "https://docs.github.com/en/rest/pulls/reviews",
+    "title": "REST API endpoints for pull request reviews",
+    "claimLocator": "openspec/changes/sac-182/tasks.md:32"
+  },
+  {
+    "id": "linear-graphql",
+    "url": "https://linear.app/developers/graphql",
+    "title": "Getting started with Linear GraphQL",
+    "claimLocator": "openspec/changes/sac-182/tasks.md:43"
+  },
+  {
+    "id": "linear-oauth-actor",
+    "url": "https://linear.app/developers/oauth-actor-authorization",
+    "title": "OAuth actor authorization",
+    "claimLocator": "openspec/changes/sac-182/tasks.md:43"
+  },
+  {
+    "id": "linear-webhooks",
+    "url": "https://linear.app/developers/webhooks",
+    "title": "Webhooks",
+    "claimLocator": "openspec/changes/sac-182/tasks.md:45"
+  }
+]

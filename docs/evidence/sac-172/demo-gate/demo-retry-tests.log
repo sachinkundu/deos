@@ -1,0 +1,46 @@
+✔ demo upgrade preserves approved history, policy, model choices and human gate while inserting mandatory demo roles (19.611ms)
+{
+  'event.name': 'deos.orchestration.stage_retry',
+  'deos.workflow.outcome': 'prepared',
+  'deos.stage_retry.id': 'stage-retry:failed',
+  'deos.workflow.run_id': 'run-1',
+  'deos.workflow.node_id': 'implementation_build',
+  'deos.stage_retry.kind': 'compatible_tail',
+  'deos.stage_retry.source_definition_version': 27,
+  'deos.stage_retry.target_definition_version': 29,
+  'deos.stage_retry.source_workflow_instance_id': 'wf-v1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  'deos.stage_retry.target_workflow_instance_id': 'wf-v1-jc2bylojjxtxetquaphfvezjbexusilcqc56iy74c63svqxp6kaq',
+  'cloudflare.workflow.status': undefined,
+  'error.type': undefined
+}
+{"event":"deos.original_error","location":"src/stage-retry.ts:636","error":{"stack":"Error: instance absent\n    at Object.get (file:///Users/sachin/code/deos-sac-172/tests/implementation-demo-upgrade.test.ts:41:66)\n    at AgentStageRetryController.locateReplacement (file:///Users/sachin/code/deos-sac-172/src/stage-retry.ts:701:35)\n    at AgentStageRetryController.handle (file:///Users/sachin/code/deos-sac-172/src/stage-retry.ts:770:35)\n    at async TestContext.<anonymous> (file:///Users/sachin/code/deos-sac-172/tests/implementation-demo-upgrade.test.ts:67:20)\n    at async Test.run (node:internal/test_runner/test:1404:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)","message":"instance absent","name":"Error"},"occurredAt":"2026-09-15T13:58:42.779Z"}
+{"event":"deos.original_error","location":"src/stage-retry.ts:646","error":{"stack":"Error: lost create reply\n    at Object.createBatch (file:///Users/sachin/code/deos-sac-172/tests/implementation-demo-upgrade.test.ts:42:128)\n    at AgentStageRetryController.locateReplacement (file:///Users/sachin/code/deos-sac-172/src/stage-retry.ts:707:44)\n    at async AgentStageRetryController.handle (file:///Users/sachin/code/deos-sac-172/src/stage-retry.ts:770:24)\n    at async TestContext.<anonymous> (file:///Users/sachin/code/deos-sac-172/tests/implementation-demo-upgrade.test.ts:67:20)\n    at async Test.run (node:internal/test_runner/test:1404:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)","message":"lost create reply","name":"Error"},"occurredAt":"2026-09-15T13:58:42.779Z"}
+{
+  'event.name': 'deos.orchestration.stage_retry',
+  'deos.workflow.outcome': 'established',
+  'deos.stage_retry.id': 'stage-retry:failed',
+  'deos.workflow.run_id': 'run-1',
+  'deos.workflow.node_id': 'implementation_build',
+  'deos.stage_retry.kind': 'compatible_tail',
+  'deos.stage_retry.source_definition_version': 27,
+  'deos.stage_retry.target_definition_version': 29,
+  'deos.stage_retry.source_workflow_instance_id': 'wf-v1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  'deos.stage_retry.target_workflow_instance_id': 'wf-v1-jc2bylojjxtxetquaphfvezjbexusilcqc56iy74c63svqxp6kaq',
+  'cloudflare.workflow.status': 'running',
+  'error.type': undefined
+}
+✔ preflight is read-only and execution records one restart at Demo Plan without losing work or frozen history (154.920916ms)
+✔ upgrade rejects changed inputs, active work, unfinished cleanup and wrong source before dispatch (450.892417ms)
+✔ implementation retries preserve the frozen definition and human binding with one audited transition (413.443333ms)
+✔ implementation retry rejects active attempts, unfinished cleanup, wrong failure cause and human gates (500.675125ms)
+✔ an explicit implementation recovery gives future attempts more resources while preserving frozen history (99.954291ms)
+✔ a retry cannot be resized after preparation or while another agent is active (200.805292ms)
+✔ demo retry migration preserves existing retry rows, tiers and their foreign-key guards (108.794042ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1456.981417

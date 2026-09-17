@@ -1,0 +1,156 @@
+{
+  "recordedAt": "2026-09-17T03:32:37.983209+00:00",
+  "url": "https://github.com/sachinkundu/deos-sample-project/pull/36",
+  "head": "f2154315b9c4699950848208552f1b374152d27f",
+  "state": "open",
+  "merged": false,
+  "renderedApiImageCount": 17,
+  "publicImageChecksWithoutCookiesOrAuthorization": [
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/098adeb244d3f253b855be9e4ceb64e81714eef5b60fcd98274c877936c4bb77.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/718f9f3719d010d3ce7ba5a5fbfdc4ffc1231f3ca3b33268d7cadd2f9b7eb7da.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/b21d7ef98a916e8a9a803f10ed7fc80ce9bed3016ce24be9416e99e458450fd9.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/75add3ebd7c3737c9b4a6027d0f021afa85d79db/images/d46cb56655ffaf722237420209254c4849d48987bd297ef4ab6c83d86c3507b6.png",
+      "status": 200,
+      "contentType": "image/png",
+      "redirected": false
+    }
+  ],
+  "mobileClientRetest": "User confirmed images display in GitHub mobile on 2026-09-17: good now works",
+  "resolution": {
+    "status": "resolved",
+    "confirmedBy": "user",
+    "viewer": "GitHub mobile app",
+    "date": "2026-09-17",
+    "originalFailureRetainedInTotals": true
+  },
+  "codeCommit": "5ddb411",
+  "tests": {
+    "pass": 588,
+    "skip": 1,
+    "fail": 0,
+    "typecheck": "passed"
+  },
+  "incident": {
+    "id": "PACK-31",
+    "reportedViewer": "GitHub mobile app",
+    "failureOccurrences": 1,
+    "affectedImageElements": 17,
+    "supervisorIntervention": 5,
+    "causeEvidence": "GitHub API body_html retained relative img src values; raw files remained public and available",
+    "scope": "Mechanical publication repair; no application changes or image recapture"
+  },
+  "bodyRepair": {
+    "beforeSha256": "aabc7de0aa76340b58696848c42adddb13e75fc899c9ddf0339e8a345d23c454",
+    "afterSha256": "0f75829972fb94184efe7e4c3642e013fdcff0bf2bf1bf6a01d24f3e9425d196",
+    "sameCodeHead": true,
+    "sameProofCommit": "75add3ebd7c3737c9b4a6027d0f021afa85d79db",
+    "request": "scripts/sac-172/repair-pr-proof-links.mjs",
+    "reviewState": "implementation_review, awaiting_human, visit41"
+  },
+  "browser": {
+    "name": "external Brave",
+    "imageCount": 17,
+    "loaded": 17,
+    "naturalWidth": 1440,
+    "naturalHeight": 900
+  },
+  "deployment": {
+    "worker": "deos-queue-consumer-ts",
+    "version": "6af4b501-e84b-4254-924d-d92576dc290e",
+    "percentage": 100,
+    "createdOn": "2026-09-17T03:32:10.356032Z",
+    "sourceCommit": "5ddb411",
+    "containersRollout": "none",
+    "unchangedContainerDigest": "sha256:6f552ca4529de6319b35d96895b3d31606d708bbbb7684a51f5e1ce16ed71337",
+    "containerPoolsHealthy": 4,
+    "portalAndIngressUnchanged": true
+  }
+}

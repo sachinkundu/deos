@@ -1,0 +1,118 @@
+{
+  "recordedAt": "2026-09-15T06:13:00.320651+00:00",
+  "workflow": {
+    "status": "running",
+    "versionId": "0d072164-5b0c-4d50-8890-38d1f7465c8c",
+    "error": null,
+    "step_count": 12
+  },
+  "steps": [
+    {
+      "name": "agent:implementation_build:visit:42-3",
+      "start": "2026-09-15T06:06:47.746Z",
+      "end": "2026-09-15T06:06:49.921Z",
+      "attempts": [
+        {
+          "start": "2026-09-15T06:06:47.746Z",
+          "end": "2026-09-15T06:06:49.921Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "agent-event:01a0a3ac-5d69-7e50-a1dd-9b883fe21acc-3",
+      "start": "2026-09-15T06:06:49.959Z",
+      "finished": true,
+      "type": "waitForEvent",
+      "event_type": "linear-event",
+      "error": {
+        "name": "WorkflowTimeoutError",
+        "message": "Execution timed out after 300000ms"
+      },
+      "end": "2026-09-15T06:11:51.501Z"
+    },
+    {
+      "name": "authority:workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1-4",
+      "start": "2026-09-15T06:11:51.501Z",
+      "end": "2026-09-15T06:11:51.570Z",
+      "attempts": [
+        {
+          "start": "2026-09-15T06:11:51.501Z",
+          "end": "2026-09-15T06:11:51.570Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "agent:implementation_build:visit:42-4",
+      "start": "2026-09-15T06:11:51.611Z",
+      "end": "2026-09-15T06:11:54.304Z",
+      "attempts": [
+        {
+          "start": "2026-09-15T06:11:51.611Z",
+          "end": "2026-09-15T06:11:54.304Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "agent-event:01a0a3ac-5d69-7e50-a1dd-9b883fe21acc-4",
+      "start": "2026-09-15T06:11:54.340Z",
+      "finished": false,
+      "type": "waitForEvent",
+      "event_type": "linear-event",
+      "error": null
+    }
+  ],
+  "attempt": [
+    {
+      "attempt_id": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+      "state": "running",
+      "started_at": "2026-09-15T06:06:17.730Z",
+      "heartbeat_at": "2026-09-15T06:11:47.042Z",
+      "process_id": "354b62e1-3073-4996-9286-be5f437b84dd",
+      "result_class": null
+    }
+  ],
+  "errorsSinceRecovery": [
+    {
+      "step_name": "agent:implementation_build:visit:42",
+      "message": "File not found: /deos/output/heartbeat.json",
+      "occurred_at": "2026-09-15T06:06:41.311Z",
+      "detail_r2_key": "original-errors/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/5705a7bd-e62a-4bf3-aacc-9a9618f5d0f6.json"
+    }
+  ]
+}

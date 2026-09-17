@@ -1,4 +1,5 @@
 import { recordCaughtError } from "./error-context.ts";
+import { isWorkflowEventTimeout } from "./workflow-timeout.ts";
 import type { AttemptCompletionHint } from "./attempt-completion.ts";
 import { transitionIdentity, visitIdentity } from "./orchestration-identity.ts";
 import type {
@@ -39,6 +40,7 @@ export interface WorkflowStepLike {
 }
 
 export interface WorkflowNodeServices {
+  implementationGateDecision?(run: OrchestrationRunRecord,node: HumanGateWorkflowNode,event: NonNullable<Awaited<ReturnType<WorkflowRuntimeStore["findInboxEvent"]>>>): Promise<EdgeDecision>;
   requestLinearDone(issueId: string): Promise<import("./linear-transition.ts").LinearTransitionRequestResult>;
   executeAgent(
     run: OrchestrationRunRecord,
@@ -192,7 +194,7 @@ export class WorkflowOrchestrator {
           ),
         );
         if (execution.state === "running") {
-          const nativeHeartbeat = ["simple-traceability", "simple-traceability-claude"].includes(run.definition_id) &&
+          const nativeHeartbeat = ["simple-traceability", "simple-traceability-claude", "implementation"].includes(run.definition_id) &&
             run.definition_version >= 23 && ["planning_author", "design_author"].includes(instruction.nodeId);
           // A hint can arrive just before the supervisor closes its HTTP request.
           // Give that exact attempt one short follow-up wait, then resume heartbeats.
@@ -208,9 +210,12 @@ export class WorkflowOrchestrator {
                 event.payload.attemptId === execution.attemptId) {
               completionHint = execution.attemptId;
             }
+            // attempt-progress wakes this same reconciliation loop immediately.
+            // It is never interpreted as completion or a workflow transition.
           } catch (caughtError) {
-            if (!(caughtError instanceof Error) || caughtError.name !== "WorkflowTimeoutError") {
+            if (!isWorkflowEventTimeout(caughtError)) {
               recordCaughtError(caughtError, "src/workflow-orchestrator.ts:192");
+              throw caughtError;
             }
             // A timeout is the durable heartbeat checkpoint; the next loop
             // reloads D1 and reconciles the exact Sandbox/process identities.
@@ -283,11 +288,14 @@ export class WorkflowOrchestrator {
           this.now().toISOString(),
         ));
       if (claimed === null) continue;
-      const decision = evaluateNodeOutcome(this.definition, instruction.nodeId, {
+      const decision = gateNode.expectedEventKind
+        ? await this.services.implementationGateDecision!(run,gateNode,claimed)
+        : claimed.event_kind.startsWith('Comment.') ? { kind: 'wait' as const, reason: 'unrelated_event' as const }
+        : evaluateNodeOutcome(this.definition, instruction.nodeId, {
         kind: "linear_event",
         deliveryId: claimed.delivery_id,
         actorId: claimed.actor_id,
-        actorType: claimed.actor_type,
+        actorType: run.definition_id === 'implementation' && claimed.actor_id !== run.allowed_linear_user_id ? 'unauthorized' : claimed.actor_type,
         fromStateId: claimed.from_state_id,
         fromStateName: claimed.from_state_name,
         toStateName: claimed.to_state_name,
@@ -314,20 +322,31 @@ export class WorkflowOrchestrator {
         if (operation.state === "manual_reconciliation_required") {
           throw new Error("human-gate repair requires manual reconciliation");
         }
-        const reset = await this.store.setRunStatus(
-          run.run_id,
-          run.current_node,
-          "awaiting_human",
-          "active",
-          this.now().toISOString(),
-        );
-        if (!reset) throw new Error("human-gate repair status compare-and-set failed");
-        await this.store.markInboxState(
-          claimed.delivery_id,
-          "claimed",
-          "processed",
-          this.now().toISOString(),
-        );
+        // Replaying a past repair must not reset a gate that has since been
+        // confirmed. Keep these writes behind the durable step checkpoint.
+        await step.do(`finish-gate-repair:${claimed.delivery_id}:visit:${run.current_visit_sequence}`, async () => {
+          const reset = await this.store.setRunStatus(
+            run.run_id,
+            run.current_node,
+            "awaiting_human",
+            "active",
+            this.now().toISOString(),
+          );
+          if (!reset) {
+            const current = await this.requireRun(run.run_id);
+            if (current.current_node !== run.current_node ||
+                current.current_visit_sequence !== run.current_visit_sequence || current.status !== "active") {
+              throw new Error("human-gate repair status compare-and-set failed");
+            }
+          }
+          await this.store.markInboxState(
+            claimed.delivery_id,
+            "claimed",
+            "processed",
+            this.now().toISOString(),
+          );
+          return { repaired: true };
+        });
         continue;
       }
       if (decision.kind === "wait") {
@@ -446,7 +465,7 @@ export class WorkflowOrchestrator {
       deliveryId: claimed.delivery_id,
       eventKind: claimed.event_kind,
       actorId: claimed.actor_id,
-      actorType: claimed.actor_type,
+      actorType: run.definition_id === "implementation" && claimed.actor_id !== run.allowed_linear_user_id ? "unauthorized" : claimed.actor_type,
       toStateName: claimed.to_state_name,
     });
     if (decision.kind === "reject") {
@@ -546,7 +565,10 @@ export class WorkflowOrchestrator {
       providerOperationId: null,
       now: this.now().toISOString(),
       wait,
-      humanGateDecision: run.definition_version >= 17 && decision.actorType === "user" &&
+      implementationGateDecision: this.definition.nodes[decision.fromNode]?.type === 'human_gate' &&
+          (this.definition.nodes[decision.fromNode] as HumanGateWorkflowNode).expectedEventKind && decision.actorType === 'user'
+        ? { deliveryId: decision.causeReference, outcome: decision.outcome } : undefined,
+      humanGateDecision: !(this.definition.nodes[decision.fromNode] as HumanGateWorkflowNode).expectedEventKind && run.definition_version >= 17 && decision.actorType === "user" &&
           ["revision_requested", "merge_authorized", "canceled"].includes(decision.outcome)
         ? {
             deliveryId: decision.causeReference,

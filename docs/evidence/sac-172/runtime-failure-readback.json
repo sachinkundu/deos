@@ -1,0 +1,26 @@
+{
+  "timeoutGroups": [
+    {
+      "step_name": "workflow runtime",
+      "message": "Execution timed out after 300000ms",
+      "count": 74,
+      "first_at": "2026-09-14T13:22:14.478Z",
+      "last_at": "2026-09-15T05:37:53.624Z"
+    }
+  ],
+  "originalHeartbeatError": {
+    "stack": "WorkflowTimeoutError: Execution timed out after 300000ms\n    at ContextImpl.waitForEvent (index.js:24169:26)",
+    "message": "Execution timed out after 300000ms",
+    "remote": true,
+    "durableObjectId": "f2c9f31d5b988711a7c07a84bfa73cc37249eecca34bea207d51bca6c825954a",
+    "name": "Error"
+  },
+  "failedAttemptId": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+  "failedAt": "2026-09-15T05:39:57.325Z",
+  "candidateSha256": "2a1b844d619e1e9f864447f818fab44000aedc8c6320c5cc677cc5d16c631d7c",
+  "savedPatchSha256": "81a3f091107316c8f7d8289aca9d28074e67f81671e1503977007d3527e215c7",
+  "savedPatchBytes": 259147,
+  "checks": [],
+  "treeSha": "f06dcddda83b8d8705a73766e9864ef0919c7a3e",
+  "recordedAt": "2026-09-15T06:02:32.161293+00:00"
+}

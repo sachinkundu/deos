@@ -1,0 +1,14 @@
+{
+  "observedAt": "2026-09-15T22:44:22.523333+00:00",
+  "rows": [
+    {
+      "proof_id": "01a0a6c1-449e-707f-b384-6b11ee59e5df:c4f3717a8e4c3d57bece2d001ee8be712ba2d638:browser_image:88f1def22c061df0daae098fa681ce5e8d38710c231644ed230d907c88514f7b",
+      "attempt_id": "01a0a6c1-449e-707f-b384-6b11ee59e5df",
+      "tree_sha": "c4f3717a8e4c3d57bece2d001ee8be712ba2d638",
+      "r2_key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1/88f1def22c061df0daae098fa681ce5e8d38710c231644ed230d907c88514f7b/browser.png",
+      "sha256": "88f1def22c061df0daae098fa681ce5e8d38710c231644ed230d907c88514f7b",
+      "caption": "SAC-225 calculator initial desktop preview",
+      "created_at": "2026-09-15T20:43:21.807Z"
+    }
+  ]
+}

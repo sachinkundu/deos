@@ -1,0 +1,108 @@
+{
+  "prHead": "671e0e1cd80d38c880dd10849238c62c13cb9bfa",
+  "comparison": "Reviewed candidate source bytes vs published PR Git blobs",
+  "files": [
+    {
+      "path": ".gitignore",
+      "reviewedBlobSha": "59a4459bf499adc0264ea5140157e66d63281452",
+      "prBlobSha": "59a4459bf499adc0264ea5140157e66d63281452",
+      "matches": true
+    },
+    {
+      "path": "index.html",
+      "reviewedBlobSha": "e79f54de6947ae43565e44780be630128fc020fd",
+      "prBlobSha": "e79f54de6947ae43565e44780be630128fc020fd",
+      "matches": true
+    },
+    {
+      "path": "openspec/changes/sac-245/tasks.md",
+      "reviewedBlobSha": "6bd959cd1ef88394e21eaa147bbf6cbb7f6658d3",
+      "prBlobSha": "6bd959cd1ef88394e21eaa147bbf6cbb7f6658d3",
+      "matches": true
+    },
+    {
+      "path": "package-lock.json",
+      "reviewedBlobSha": "db37d9aa3f150056a76380e4e37c54b54c5f99e3",
+      "prBlobSha": "db37d9aa3f150056a76380e4e37c54b54c5f99e3",
+      "matches": true
+    },
+    {
+      "path": "package.json",
+      "reviewedBlobSha": "2d27b1ca3a59d6af113418a14c9aec54356589c6",
+      "prBlobSha": "2d27b1ca3a59d6af113418a14c9aec54356589c6",
+      "matches": true
+    },
+    {
+      "path": "src/app.ts",
+      "reviewedBlobSha": "384285e0e2aa0413167baa60cb941c6eae5da09f",
+      "prBlobSha": "384285e0e2aa0413167baa60cb941c6eae5da09f",
+      "matches": true
+    },
+    {
+      "path": "src/controller.ts",
+      "reviewedBlobSha": "9c9c199bae33f7f255fa37b21a2cb86137ceec80",
+      "prBlobSha": "9c9c199bae33f7f255fa37b21a2cb86137ceec80",
+      "matches": true
+    },
+    {
+      "path": "src/id.ts",
+      "reviewedBlobSha": "a402ba432fa8314d5ea6805cffd5cc6c2a36dfa2",
+      "prBlobSha": "a402ba432fa8314d5ea6805cffd5cc6c2a36dfa2",
+      "matches": true
+    },
+    {
+      "path": "src/main.ts",
+      "reviewedBlobSha": "0a0b497aa0ca2bd06b5280f802cdbb6bb840612b",
+      "prBlobSha": "0a0b497aa0ca2bd06b5280f802cdbb6bb840612b",
+      "matches": true
+    },
+    {
+      "path": "src/storage.ts",
+      "reviewedBlobSha": "e73c59d87fe1f56048c9de1bbfbb8c7180a66148",
+      "prBlobSha": "e73c59d87fe1f56048c9de1bbfbb8c7180a66148",
+      "matches": true
+    },
+    {
+      "path": "src/styles.css",
+      "reviewedBlobSha": "c9b57d65dc7802a976bad1dc44f5841c34d72afc",
+      "prBlobSha": "c9b57d65dc7802a976bad1dc44f5841c34d72afc",
+      "matches": true
+    },
+    {
+      "path": "src/types.ts",
+      "reviewedBlobSha": "629ed0e25d79dee5803f0cfedb63b14f42dd563f",
+      "prBlobSha": "629ed0e25d79dee5803f0cfedb63b14f42dd563f",
+      "matches": true
+    },
+    {
+      "path": "test/app.test.ts",
+      "reviewedBlobSha": "f72823dcbc07b718bd4f1ad0627a3f246020451b",
+      "prBlobSha": "f72823dcbc07b718bd4f1ad0627a3f246020451b",
+      "matches": true
+    },
+    {
+      "path": "test/controller.test.ts",
+      "reviewedBlobSha": "7024187154301a9695630dd92c274ca6fc997c5e",
+      "prBlobSha": "7024187154301a9695630dd92c274ca6fc997c5e",
+      "matches": true
+    },
+    {
+      "path": "test/helpers.ts",
+      "reviewedBlobSha": "c2d88e27e8b4542012b86667186e926a7b2676b8",
+      "prBlobSha": "c2d88e27e8b4542012b86667186e926a7b2676b8",
+      "matches": true
+    },
+    {
+      "path": "tsconfig.json",
+      "reviewedBlobSha": "02567e363bf3e640d5f58e7708b0c542d704502a",
+      "prBlobSha": "02567e363bf3e640d5f58e7708b0c542d704502a",
+      "matches": true
+    },
+    {
+      "path": "vite.config.ts",
+      "reviewedBlobSha": "ab9e3c8215c1377166b2526e24191d1b88d28bf7",
+      "prBlobSha": "ab9e3c8215c1377166b2526e24191d1b88d28bf7",
+      "matches": true
+    }
+  ]
+}

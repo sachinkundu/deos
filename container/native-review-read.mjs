@@ -47,18 +47,28 @@ export const readCommand = (command) => {
 export const readSnapshot = async ({ op, args }, state, sourceRoot = "/deos/workspace/repository") => {
   const context = JSON.parse(state.reviewJob.materializedContext);
   const root = `openspec/changes/${state.change}/`;
-  const allowed = state.phase === "design" ? context.designReview.sources.map((source) => source.path) :
+  const allowed = state.phase === 'demo' ? context.demo.sources.map((source) => source.path) :
+    state.phase === "design" ? context.designReview.sources.map((source) => source.path) :
     state.before.filter((file) => file.path.startsWith(root) &&
       (file.path === `${root}proposal.md` || file.path === `${root}.openspec.yaml` || file.path.startsWith(`${root}specs/`))).map((file) => file.path);
-  const normalize = (input) => {
-    let name = input.replace(/^\/deos\/workspace\/repository\//, "").replace(/^\.\//, "");
+  const checkedPath = (input) => {
+    const name = input.replace(/^\/deos\/workspace\/repository\//, "").replace(/^\.\//, "");
     if (name.startsWith("/") || name.split("/").includes("..")) throw new Error("review path is outside the checked input");
+    return name;
+  };
+  const normalize = (input) => {
+    const name = checkedPath(input);
     if (allowed.includes(name)) return name;
     if (allowed.includes(root + name)) return root + name;
     throw new Error("review path is not in the checked input");
   };
   const read = async (name) => {
     name = normalize(name);
+    if (state.phase === 'design' && name === 'context/runtime-capabilities.json') {
+      // Service context is not a repository file. Read the same frozen bytes
+      // supplied to the external reviewer, without adding scratch files to Git.
+      return context.designReview.sources.find(source => source.path === name).content;
+    }
     const file = `${sourceRoot}/${name}`;
     const stat = await lstat(file);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("review source is not a regular file");
@@ -96,7 +106,18 @@ export const readSnapshot = async ({ op, args }, state, sourceRoot = "/deos/work
     if (typeof pattern !== "string" || pattern.length > 256) throw new Error("invalid review search pattern");
     const matcher = flags.includes("-F") ? null : new RegExp(pattern, flags.includes("-i") ? "i" : "");
     const found = [];
-    for (const name of args.length ? args : allowed) {
+    // Expand only frozen inventory prefixes, never walk a sandbox directory.
+    const files = args.length ? args.flatMap(input => {
+      const name = checkedPath(input).replace(/\/+$/, "");
+      if (name === "." || name === "") return allowed;
+      if (allowed.includes(name)) return [name];
+      if (allowed.includes(root + name)) return [root + name];
+      const prefix = [name + "/", root + name + "/"];
+      const matches = allowed.filter(path => prefix.some(dir => path.startsWith(dir)));
+      if (matches.length === 0) throw new Error("review path is not in the checked input");
+      return matches;
+    }) : allowed;
+    for (const name of new Set(files)) {
       const lines = (await read(name)).split("\n");
       lines.forEach((line, index) => {
         const match = matcher ? matcher.test(line) : (flags.includes("-i") ? line.toLowerCase().includes(pattern.toLowerCase()) : line.includes(pattern));

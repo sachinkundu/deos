@@ -1,0 +1,146 @@
+{
+  "scope": "Historical endpoint analysis at implementation Human Review, plus recorded cleanup through 11:46:23 UTC. No live PR decision is inferred.",
+  "verifiedCollectedArtifacts": 71,
+  "countingUnit": "Failed command/request or asynchronous notification/cleanup incident; propagated wrappers collapsed; two protected-file denials in one command count once.",
+  "events": [
+    {
+      "id": "READ-01",
+      "occurrences": 1,
+      "class": "discovery",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-02",
+      "occurrences": 1,
+      "class": "artifact_structure",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-03",
+      "occurrences": 1,
+      "class": "discovery",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-04",
+      "occurrences": 2,
+      "class": "discovery",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-05",
+      "occurrences": 1,
+      "class": "discovery",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-06",
+      "occurrences": 2,
+      "class": "progress_transport",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-07",
+      "occurrences": 1,
+      "class": "operation_order",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-08",
+      "occurrences": 2,
+      "class": "local_preview",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-09",
+      "occurrences": 1,
+      "class": "hosted_preview",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-10",
+      "occurrences": 2,
+      "class": "hosted_navigation",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-11",
+      "occurrences": 1,
+      "class": "reporting_defect",
+      "inWorkflowToolTotal": false
+    },
+    {
+      "id": "READ-12",
+      "occurrences": 1,
+      "class": "review_reader",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-13",
+      "occurrences": 1,
+      "class": "local_preview",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-14",
+      "occurrences": 1,
+      "class": "protected_diagnostics",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-15",
+      "occurrences": 2,
+      "class": "local_preview",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-16",
+      "occurrences": 1,
+      "class": "preview_dependency",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-17",
+      "occurrences": 1,
+      "class": "cleanup_confirmation",
+      "inWorkflowToolTotal": true
+    },
+    {
+      "id": "READ-18",
+      "occurrences": 1,
+      "class": "resource_metadata",
+      "inWorkflowToolTotal": false
+    }
+  ],
+  "workflowToolEvents": 21,
+  "discoveryMisses": 5,
+  "workflowToolProblemGroups": 15,
+  "groupingNote": "16 included READ IDs; READ-01 and READ-03 share one missing-guidance inventory group. Groups with unknown provider causes are symptom categories, not established distinct root causes.",
+  "appTestFailureOccurrencesObserved": 0,
+  "supervisorRecovery": {
+    "repairEpisodes": 1,
+    "workflowDeployments": 1,
+    "savedStageRetries": 1,
+    "localAppEdits": 0
+  },
+  "timingSeconds": {
+    "readingTriggerToHumanReview": 8596.408,
+    "expenseTriggerToHumanReview": 8428.339,
+    "failedReviewAttempt": 221.926,
+    "failedAttemptEndToRetryStart": 681.162,
+    "readingInitialBuild": 2259.132,
+    "expenseInitialBuild": 4455.09,
+    "proofResponse": 804.881,
+    "gateApprovalWaits": 571.05,
+    "cleanupUnconfirmedToBrowserAbsent": 489.9
+  },
+  "sources": [
+    "failures.md",
+    "latest.json",
+    "final-resources-and-gate.json",
+    "build-final-audit.json",
+    "response-final-audit.json",
+    "../expense-canary/completion.json",
+    "../../../implementation-canary-failures.md"
+  ]
+}

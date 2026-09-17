@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deos.dev/schemas/implementation-demo-agent-result-v1.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["outcome", "reviewOutcome", "summary", "providerReceipts"],
+  "properties": {
+    "outcome": {"const": "completed"},
+    "reviewOutcome": {"enum": ["ready", "pass", "needs_work", "blocked"]},
+    "summary": {"type": "string", "minLength": 1},
+    "providerReceipts": {"type": "array", "maxItems": 0}
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "checklist": {
+    "alert": null,
+    "done": 50,
+    "tasks": 50,
+    "title": "Task checklist"
+  },
+  "bundle": [
+    "https://deos-staging.voxdez.com/assets/index-B4RkTsNa.js"
+  ],
+  "focused": "50 of 50 tasks done",
+  "nodes": [
+    "AuthorComplete50 of 50 tasks done0 remainingAuthor checklistUpdated 08:37 AM",
+    "VerificationIn progressFinal checks and end-to-end proof."
+  ],
+  "status": "Workflow runningCurrent step: Implementation verification",
+  "step": "Current stepImplementation verification"
+}

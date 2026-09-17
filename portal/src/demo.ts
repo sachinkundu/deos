@@ -114,7 +114,7 @@ let recentDemo = {
   })),
 };
 
-export const demoApi = (path: string): unknown => {
+const baseDemoApi = (path: string): unknown => {
   if (path === "/api/recent-issues") return structuredClone(recentDemo);
   if (path.startsWith("/api/issues?") && new URL(path, "http://demo").searchParams.get("query")?.toUpperCase() === issue.key) {
     recentDemo = { ...recentDemo, snapshotVersion: recentDemo.snapshotVersion + 1 };
@@ -280,4 +280,50 @@ export const demoApi = (path: string): unknown => {
     };
   }
   throw new Error("No matching workflow was found.");
+};
+
+// Local visual scenarios only. The production API never reads these fixtures.
+export const demoApi = (path: string): unknown => {
+  const scenario = new URLSearchParams(window.location.search).get("implementation");
+  const enabled = ["build", "review", "failed", "complete"].includes(scenario ?? "");
+  const reviewing = scenario === "review";
+  const completed = scenario === "complete";
+  const failed = scenario === "failed";
+  const status = reviewing ? "awaiting_human" : completed ? "succeeded" : failed ? "failed" : "active";
+  const currentNode = reviewing ? "implementation_review" : completed ? "code_merged" : failed ? "implementation_failed" : "implementation_build";
+  if (enabled && path.startsWith("/api/implementation/")) return {
+    status: reviewing ? "review" : completed ? "merged" : "build",
+    branch: "deos/agent/DEMO/run-1", prUrl: reviewing || completed ? "https://github.com/example/portal/pull/42" : null,
+    approvedDesignSha: "a".repeat(40), testedBaseSha:"b".repeat(40), treeSha:"c".repeat(40), mergeSha:completed ? "d".repeat(40) : null,
+    tasks:"## 1. Build and verify\n- [x] 1.1 Create the implementation plan.\n- [ ] 1.2 Implement and test the approved behavior.\n- [ ] 1.3 Capture browser and provider proof.",
+    candidateKind:reviewing || completed ? "build" : "tasks",checks:[{command:"npm test",exitCode:0,stdout:"All checks passed.\n",stderr:""}],
+    progress:{completed:reviewing || completed ? 57 : 23,total:57,observedAt:new Date().toISOString(),source:"author"},
+    assumptions:[],attempts:[],proof:[],documentation:[],errors:[],question:null,
+    gates:reviewing ? [{expected_event_kind:"state",state:"open",head_sha:"c".repeat(40),base_sha:"b".repeat(40)}] : [],
+  };
+  const value = baseDemoApi(path);
+  if (!enabled) return value;
+  if (path.startsWith("/api/issues/") && path.endsWith("/runs")) return {...value as object, runs:[{...run,status,definitionVersion:27,currentNode}]};
+  if (!path.startsWith("/api/runs/")) return value;
+  const implementationNodes = ["implementation_prepare","implementation_tasks","implementation_build",
+    ...(reviewing || completed ? ["implementation_proof_check","implementation_branch_write","implementation_publish","implementation_review"] : []),
+    ...(completed ? ["implementation_merge_recheck","implementation_merge","code_merged"] : []),
+    ...(failed ? ["implementation_failed"] : [])];
+  const implementationHistory = implementationNodes.map((nodeId,index) => ({
+    sequence:23+index,nodeId,label:nodeId.replaceAll("_"," "),
+    stageId:nodeId === "implementation_failed" ? "stopped" : nodeId === "code_merged" ? "complete" : nodeId,
+    cycle:1,recovered:false,state:nodeId === currentNode ? status : "completed",
+    enteredAt:run.updatedAt,leftAt:nodeId === currentNode && !completed && !failed ? null : run.updatedAt,
+    attempts:["implementation_tasks","implementation_build"].includes(nodeId) ? [{id:demoAttemptId,
+      state:nodeId === "implementation_build" && failed ? "failed" : nodeId === currentNode ? "running" : "completed",
+      outcome:nodeId === "implementation_build" && failed ? "failed" : nodeId === currentNode ? null : "completed",
+      startedAt:run.updatedAt,endedAt:nodeId === currentNode ? null : run.updatedAt,transcriptAvailable:true}] : [],
+    waits:[],links:[],gate:null,
+  }));
+  return {...value as object,
+    run:{...run,status,definitionVersion:27,currentNode,currentVisitSequence:implementationHistory.at(-1)!.sequence,freshness:run.updatedAt,endedAt:completed || failed ? run.updatedAt : null},
+    history:[...history.filter(visit=>visit.nodeId !== "done"),...implementationHistory],
+    stages:[...Object.entries(stageLabels).map(([id,label])=>({id,label,state:"complete",visits:1})),
+      {id:"implementation_tasks",label:"Tasks",state:"complete",visits:1},{id:"implementation_build",label:"Build and test",state:"active",visits:1}],
+  };
 };

@@ -1,0 +1,170 @@
+{
+  "result": [
+    {
+      "results": [
+        {
+          "attempt_id": "01a0a884-fcf0-7699-ac70-659be75e098d",
+          "kind": "gate",
+          "outcome": "needs_work",
+          "payload_sha": "ceb38fa5326a64e9f1524c597e4a107310008d516bc9eeba77f9f8e5500f09ad"
+        },
+        {
+          "attempt_id": "01a0a85c-1819-767f-9b44-d260865c1c3f",
+          "kind": "plan",
+          "outcome": "ready",
+          "payload_sha": "ef16d0f2f73b8c432ddecb68183f6fdf11cb103a4da35b888876b86d537eef54"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.4369
+        },
+        "duration": 0.4369,
+        "changes": 0,
+        "last_row_id": 3871,
+        "changed_db": false,
+        "size_after": 100458496,
+        "rows_read": 2,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "attempt_id": "01a0a8b7-340b-727d-8db1-b4d1f2ef0287",
+          "node_id": "implementation_build",
+          "state": "running",
+          "created_at": "2026-09-16T05:36:13.835Z"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 1.7424
+        },
+        "duration": 1.7424,
+        "changes": 0,
+        "last_row_id": 3871,
+        "changed_db": false,
+        "size_after": 100458496,
+        "rows_read": 564,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "completed": 25,
+          "total": 25,
+          "observed_at": "2026-09-16T05:36:38.727Z"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.1195
+        },
+        "duration": 0.1195,
+        "changes": 0,
+        "last_row_id": 3871,
+        "changed_db": false,
+        "size_after": 100458496,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.2695
+        },
+        "duration": 0.2695,
+        "changes": 0,
+        "last_row_id": 3871,
+        "changed_db": false,
+        "size_after": 100458496,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "new_claude_invocations": 0
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 1.2713
+        },
+        "duration": 1.2713,
+        "changes": 0,
+        "last_row_id": 3871,
+        "changed_db": false,
+        "size_after": 100458496,
+        "rows_read": 570,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "pr_number": null,
+          "pr_url": null,
+          "status": "proof",
+          "tree_sha": "8eb184220d08673abb7564089d72420f2dd54eb5"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.1141
+        },
+        "duration": 0.1141,
+        "changes": 0,
+        "last_row_id": 3871,
+        "changed_db": false,
+        "size_after": 100458496,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}

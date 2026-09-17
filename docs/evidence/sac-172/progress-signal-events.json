@@ -1,0 +1,43 @@
+[
+  {
+    "source": {
+      "event": "sandbox.progress_notified",
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "attempt_id": "01a0a02a-ea7e-7034-94c4-31a3b1301fd7",
+      "workflow_instance_id": "wf-v1-e5gu5tea6xkrn6x7c6ji3nw6zg6itg5llahafblrli7gvf6upmza"
+    },
+    "dataset": "cloudflare-workers",
+    "timestamp": 1789402396330,
+    "$workers": {
+      "truncated": false,
+      "scriptName": "deos-queue-consumer-ts",
+      "scriptVersion": {
+        "id": "f15c90ec-e13d-48f4-9b80-f12b0377d56b"
+      },
+      "eventType": "fetch",
+      "executionModel": "stateless",
+      "requestId": "2869753ca4b94249d433a5a893630a80",
+      "event": {
+        "request": {
+          "method": "POST",
+          "url": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities/attempt-progress",
+          "path": "/capabilities/attempt-progress"
+        }
+      },
+      "traceId": "b1f9e007a29529bbf7561332187c3143",
+      "spanId": "81abf1bc98071c1d"
+    },
+    "$metadata": {
+      "id": "01M2GB3DNA000000000000000D",
+      "requestId": "2869753ca4b94249d433a5a893630a80",
+      "rayId": "a3b0ad890ef6723e",
+      "traceId": "b1f9e007a29529bbf7561332187c3143",
+      "spanId": "81abf1bc98071c1d",
+      "trigger": "POST /capabilities/attempt-progress",
+      "service": "deos-queue-consumer-ts",
+      "account": "c68856288112af7698f5be52ea94b96e",
+      "type": "cf-worker",
+      "origin": "fetch"
+    }
+  }
+]

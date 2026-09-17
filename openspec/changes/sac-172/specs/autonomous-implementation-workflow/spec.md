@@ -44,7 +44,47 @@ For provider work, completion SHALL include a real provider event from a safe te
 #### Scenario: A task is still open
 
 - **WHEN** any required task, check, or proof is incomplete.
-- **THEN** DEOS does not publish the work as ready for human review.
+- **THEN** DEOS retains the unfinished task or failed check as review context. Claude and the human judge the work; the workflow does not reject completion.
+
+### Requirement: Plan and judge demos independently
+
+Every implementation SHALL receive a demo plan from Claude based on the approved proposal, specs, design, and available runtime. Claude SHALL choose useful scenarios and prefer visual demonstrations where they explain behavior. The workflow SHALL forward the plan without checking requirement coverage or enforcing an evidence checklist.
+
+The demo count SHALL follow Claude's plan for the actual implementation. A canary-specific image count MUST NOT become a platform quota. Plans SHALL remain recommendations that agents can revise in light of accepted human direction.
+
+Sol SHALL implement the work, choose useful checks and demos, and report actual results and limitations. Claude SHALL review the first implementation once, inspect the available evidence and relevant code, and return Pass, Needs work, or Blocked. The workflow SHALL save and forward Claude's response unchanged. It MUST NOT audit citations, scenario coverage, input or evidence identity, or the judgment itself.
+
+Needs work SHALL pass Claude's findings to Sol. Sol SHALL act on them once and report what changed or remains unresolved. The workflow SHALL then publish the implementation PR for human judgment. Claude's original findings and Sol's response SHALL remain in the transcripts. It MUST NOT generate repair instructions, assess whether the findings were satisfied, or send the response back to Claude. Pass SHALL go directly to publication. Blocked SHALL use the clarification route. Execution and transport failures SHALL preserve their original errors. Only the authorized human may approve or request another revision.
+
+#### Scenario: Every implementation gets a demo contract
+
+- **WHEN** task creation completes from the approved design.
+- **THEN** Claude defines the required demos before Codex executes the tasks.
+
+#### Scenario: Evidence misses the changed flow
+
+- **WHEN** tests pass but evidence does not show a required application outcome.
+- **THEN** the gate names the missing outcome and returns work to Codex without publishing the PR.
+
+#### Scenario: A visual demo passes
+
+- **WHEN** the reviewer marks a visual demo passed.
+- **THEN** the workflow accepts the reviewer’s judgment. No evidence audit or second reviewer is required.
+
+#### Scenario: One repair pass ends at human review
+
+- **WHEN** Sol completes its response to Claude’s findings.
+- **THEN** the service publishes the implementation PR for human judgment, retains the original demo findings, and does not repeat the demo review automatically.
+
+#### Scenario: An existing failed canary adopts the gate
+
+- **WHEN** an operator explicitly migrates a failed implementation run with no active agent or open human gate.
+- **THEN** an immutable upgrade record retains both definition digests, the approved design, human binding, patch, branch, and PR. Activation-only migration leaves the failed visit and workflow instance stopped; an explicitly requested continuation resumes the chosen failed stage. A deploy alone MUST NOT rewrite frozen runs.
+
+#### Scenario: A saved demo asks for an out-of-scope platform operation
+
+- **WHEN** an operator requests correction against the exact saved plan and scenario after the attempt has stopped and cleanup has completed.
+- **THEN** the next agent receives the recorded reason and actual runtime limits as context. Claude decides the appropriate correction without a workflow audit of coverage or evidence kinds.
 
 ### Requirement: Pause for a needed human choice and resume from the reply
 
@@ -56,10 +96,22 @@ The trusted flow SHALL post the question on the Linear issue and move the issue 
 
 An allowed reply that answers the open question SHALL resume the same build run in a fresh try with the reply and saved work. Service users, bots, and other people MUST NOT answer the gate.
 
+Accepted questions and replies SHALL remain available to subsequent implementation and demo agents after the active question closes. Agents SHALL apply relevant later human direction over earlier assumptions. An existing ready demo plan SHALL be reused after ordinary clarification; missing or blocked planning MAY return to Demo Plan.
+
 #### Scenario: Agent can make a safe assumption
 
 - **WHEN** the approved work supports one safe choice within its stated scope.
 - **THEN** the agent records the assumption and continues without asking a person.
+
+#### Scenario: Finished code cannot be published
+
+- **WHEN** publishing the saved implementation branch or pull request fails.
+- **THEN** DEOS retains the code, demos and original provider error, posts one question on Linear, and waits for the allowed human reply. Sol receives the reply with the saved work and can adjust what is published. Claude is not invoked again, and no permission is widened by the workflow.
+
+#### Scenario: Publication question is retried
+
+- **WHEN** delivery of the question is retried after an interruption.
+- **THEN** DEOS reconciles the same Linear comment and waits at the same decision without posting duplicate questions or repeating the implementation.
 
 #### Scenario: A material choice is missing
 
@@ -83,16 +135,21 @@ An allowed reply that answers the open question SHALL resume the same build run 
 
 ### Requirement: Publish one proof-backed implementation pull request
 
-When all tasks and checks pass, DEOS SHALL publish or update one run-scoped implementation pull request. It SHALL target the approved base branch. The pull request SHALL include the task list, code, tests, exact check results, and links to durable proof.
+After the agent handoff completes, DEOS SHALL publish or update one run-scoped implementation pull request. It SHALL target the approved base branch. The body SHALL contain the issue title, implementation and release statement, Linear link, approved Proposal and Specs PR link, approved design PR link, numbered behavior images with explanations, and one Showboat file link. Images SHALL render inside GitHub without requiring a DEOS session. Unit tests, internal test results, revision hashes, and discussion between agents SHALL remain in transcripts and saved diagnostics rather than the PR body.
 
 Proof SHALL show the changed behavior. For user-facing work, it SHALL include sanitized browser images of the changed state when a visual check is possible. When a visual check does not fit, it SHALL include Showboat records of the real commands and outputs. Unit test results MAY support the proof but MUST NOT be the only behavior proof.
 
-Each proof item SHALL state which change and approved base it checks. Before each pull request post and move to final review, a trusted check SHALL confirm that all needed proof still fits the current work. A later change to the code or base SHALL make affected proof stale. DEOS MUST NOT mark the pull request ready or open the final gate until the current work has complete proof.
+Evidence SHALL retain its recorded origin and revision as context. The workflow MUST NOT require particular proof kinds, passing command results, a full task checklist, citation receipts, or matching evidence hashes to advance. Claude and the human decide whether the work and demos are sufficient. Filesystem isolation, authenticated access, durable storage and reserved branch publication remain transport responsibilities.
 
 #### Scenario: User-facing work is complete
 
 - **WHEN** the agent has checked a user-facing change in its assigned browser.
-- **THEN** the pull request shows sanitized visual proof with the checks and task results.
+- **THEN** the pull request shows sanitized images with plain explanations and a Showboat link. The repository's existing access rules govern the proof files.
+
+#### Scenario: GitHub cannot authenticate to the portal
+
+- **WHEN** saved proof is available only through a protected DEOS endpoint.
+- **THEN** the publisher copies the review images and Showboat records into the same GitHub repository and embeds repository image links, without changing the implementation head or its human gate.
 
 #### Scenario: Visual proof does not fit
 
@@ -102,12 +159,12 @@ Each proof item SHALL state which change and approved base it checks. Before eac
 #### Scenario: Only unit tests exist
 
 - **WHEN** all unit tests pass but no proof shows the changed behavior.
-- **THEN** DEOS keeps the work out of the final human gate.
+- **THEN** Claude receives that limitation and decides what to recommend to Sol.
 
 #### Scenario: Work changes after proof
 
 - **WHEN** the code or approved base changes after proof was saved.
-- **THEN** DEOS marks the affected proof stale and blocks the final gate until the current work has new proof.
+- **THEN** Sol decides which checks or demonstrations to repeat and reports the result; the workflow forwards the saved evidence without blocking on its revision.
 
 ### Requirement: Keep final approval and release with a person
 
@@ -126,6 +183,7 @@ An implementation merge MUST NOT deploy or release the change. Any live release 
 
 - **WHEN** a trusted state event from the saved Linear user ID moves the issue from this gate to `In Progress`.
 - **THEN** DEOS starts a fresh attempt on the same run branch and updates the same pull request.
+- **AND** Sol's response returns to human review without another automatic Claude review.
 
 #### Scenario: Agent output looks like approval
 
@@ -136,3 +194,17 @@ An implementation merge MUST NOT deploy or release the change. Any live release 
 
 - **WHEN** a trusted state event from the saved Linear user ID moves the issue from this gate to `Merging`.
 - **THEN** the trusted service may carry out the code merge but does not choose it or deploy it.
+
+### Requirement: Recover the failed stage without repeating completed work
+
+Retries SHALL preserve approved inputs, accepted plans, saved code, branch, PR, prior stages and original diagnostics. Agent retries SHALL restore that context. Publication retries SHALL reconcile the saved candidate and provider operation without rerunning completed agent stages. Sol SHALL decide which checks to repeat after edits; the workflow SHALL NOT require a full test or evidence restart.
+
+#### Scenario: PR publication fails after coding
+
+- **WHEN** the provider response is lost after a saved candidate was published.
+- **THEN** the retry reads back the same operation and PR before another write and does not restart implementation.
+
+#### Scenario: Linear request ends before Queue delivery
+
+- **WHEN** the delivery receipt and pending payload were saved but dispatch did not finish.
+- **THEN** the delivery retry or scheduled recovery sends the saved message under a lease; duplicate Queue delivery keeps the same inbox identity.

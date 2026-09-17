@@ -30,6 +30,7 @@ export type LabelSelectionEvidence =
   | { status: "unavailable" };
 
 export interface QueueBody {
+  comment_id?: string | null;
   start_slow_ok?: true;
   sandbox_tier_policy_version?: string;
   event_id: string;
@@ -179,6 +180,7 @@ const emit = (
 
 const toInboxEvent = (event: QueueBody, runId: string | null): WorkflowInboxEvent => ({
   deliveryId: event.source_delivery_id,
+  commentId: event.comment_id ?? null,
   runId,
   correlationId: event.correlation_id,
   eventKind: event.event_kind,
@@ -306,6 +308,9 @@ export const registerBundledWorkflowDefinitions = async (
     : await store.listPolicies();
   if (store.linkDefinitionToPolicy !== undefined) {
     for (const policy of policies) {
+      // Registration may advance the same flow, but must preserve a flow
+      // explicitly selected through RouteAdmin, including implementation.
+      if (policy.definition_id !== definition.name) continue;
       await store.linkDefinitionToPolicy({
         projectId: policy.project_id,
         definition,
@@ -535,7 +540,7 @@ export const processQueueMessage = async (
         return;
       }
       verifyLabelEvidence();
-      const selectorMatches = evidence.names === null || policy === null
+      const selectorMatches = policy?.definition_id === "implementation" || evidence.names === null || policy === null
         ? []
         : (await Promise.all(evidence.names.map(async (labelName) => ({
             labelName,
@@ -545,10 +550,14 @@ export const processQueueMessage = async (
       if (selectorMatches.length > 1) throw new CategorizedWorkflowError("correlation_mismatch");
       const selected = selectorMatches[0];
       const selectedDefinition = selected === undefined
-        ? definition
+        ? bundled[policy.definition_id]
         : bundled[selected.selector!.definition_id];
       if (
         selectedDefinition === undefined ||
+        (selected === undefined && (
+          selectedDefinition.version !== policy.definition_version ||
+          selectedDefinition.digest !== policy.definition_digest
+        )) ||
         (selected !== undefined && (
           selectedDefinition.version !== selected.selector!.definition_version ||
           selectedDefinition.digest !== selected.selector!.definition_digest

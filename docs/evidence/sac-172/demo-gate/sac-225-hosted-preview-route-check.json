@@ -1,0 +1,16 @@
+[
+  {
+    "method": "GET",
+    "status": 405,
+    "body": {
+      "error": "method_not_allowed"
+    }
+  },
+  {
+    "method": "POST",
+    "status": 401,
+    "body": {
+      "error": "invalid_operator_capability"
+    }
+  }
+]

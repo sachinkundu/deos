@@ -1,0 +1,262 @@
+{
+  "kind": "local-browser-validation",
+  "url": "https://11fa3ef4.sac-225-calculator.pages.dev/",
+  "trace": "Evidence key trace | https://11fa3ef4.sac-225-calculator.pages.dev | 320 CSS px 2 · . · 5 · * · 4 · Enter",
+  "geometry": {
+    "origin": "https://11fa3ef4.sac-225-calculator.pages.dev",
+    "viewport": {
+      "width": 320,
+      "height": 720,
+      "deviceScaleFactor": 1
+    },
+    "document": {
+      "scrollWidth": 320,
+      "clientWidth": 320
+    },
+    "elements": [
+      {
+        "tag": "MAIN",
+        "id": "",
+        "text": "\n      \n        \n          Everyday arithmetic\n          Simple calculator\n          Use the buttons or your keyboard.\n        \n\n        10\n\n        \n          Clear\n          ÷\n\n          7\n          8\n          9\n          ×\n\n          4\n          5\n          6\n          −\n\n          1\n          2\n          3\n          +\n\n          0\n          .\n          =\n        \n      \n    ",
+        "left": 0,
+        "right": 320,
+        "top": 0,
+        "bottom": 720,
+        "width": 320,
+        "height": 720,
+        "fontSize": "16px"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "text": "\n        \n          Everyday arithmetic\n          Simple calculator\n          Use the buttons or your keyboard.\n        \n\n        10\n\n        \n          Clear\n          ÷\n\n          7\n          8\n          9\n          ×\n\n          4\n          5\n          6\n          −\n\n          1\n          2\n          3\n          +\n\n          0\n          .\n          =\n        \n      ",
+        "left": 8,
+        "right": 312,
+        "top": 121.421875,
+        "bottom": 598.5625,
+        "width": 304,
+        "height": 477.140625,
+        "fontSize": "16px"
+      },
+      {
+        "tag": "OUTPUT",
+        "id": "display",
+        "text": "10",
+        "left": 23,
+        "right": 297,
+        "top": 229.5625,
+        "bottom": 299.5625,
+        "width": 274,
+        "height": 70,
+        "fontSize": "32px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Clear",
+        "left": 23,
+        "right": 226.5,
+        "top": 311.5625,
+        "bottom": 359.5625,
+        "width": 203.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "÷",
+        "left": 234.5,
+        "right": 297,
+        "top": 311.5625,
+        "bottom": 359.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "7",
+        "left": 23,
+        "right": 85.5,
+        "top": 367.5625,
+        "bottom": 415.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "8",
+        "left": 93.5,
+        "right": 156,
+        "top": 367.5625,
+        "bottom": 415.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "9",
+        "left": 164,
+        "right": 226.5,
+        "top": 367.5625,
+        "bottom": 415.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "×",
+        "left": 234.5,
+        "right": 297,
+        "top": 367.5625,
+        "bottom": 415.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "4",
+        "left": 23,
+        "right": 85.5,
+        "top": 423.5625,
+        "bottom": 471.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "5",
+        "left": 93.5,
+        "right": 156,
+        "top": 423.5625,
+        "bottom": 471.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "6",
+        "left": 164,
+        "right": 226.5,
+        "top": 423.5625,
+        "bottom": 471.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "−",
+        "left": 234.5,
+        "right": 297,
+        "top": 423.5625,
+        "bottom": 471.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "1",
+        "left": 23,
+        "right": 85.5,
+        "top": 479.5625,
+        "bottom": 527.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "2",
+        "left": 93.5,
+        "right": 156,
+        "top": 479.5625,
+        "bottom": 527.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "3",
+        "left": 164,
+        "right": 226.5,
+        "top": 479.5625,
+        "bottom": 527.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "+",
+        "left": 234.5,
+        "right": 297,
+        "top": 479.5625,
+        "bottom": 527.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "0",
+        "left": 23,
+        "right": 156,
+        "top": 535.5625,
+        "bottom": 583.5625,
+        "width": 133,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": ".",
+        "left": 164,
+        "right": 226.5,
+        "top": 535.5625,
+        "bottom": 583.5625,
+        "width": 62.5,
+        "height": 48,
+        "fontSize": "18px"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "=",
+        "left": 235.4375,
+        "right": 296.0625,
+        "top": 538.282470703125,
+        "bottom": 584.842529296875,
+        "width": 60.625,
+        "height": 46.56005859375,
+        "fontSize": "18px"
+      }
+    ]
+  },
+  "syntheticKeyIgnored": true,
+  "traceRemoved": true,
+  "sensitiveDescendantsRedacted": true
+}

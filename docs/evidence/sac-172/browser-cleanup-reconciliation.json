@@ -1,0 +1,118 @@
+{
+  "sourceCommit": "faf7996",
+  "deployedAt": "2026-09-15T10:20:33.551172Z",
+  "backend": {
+    "versions": [
+      {
+        "version_id": "948c5eac-114e-4906-9d78-3a8509f4a309",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-09-15T10:20:33.551172Z"
+  },
+  "containers": [
+    {
+      "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:8156a85e4c497fc55a23eb9a488cf61cbb4db0258e1b5c5019afae10256e2ebe",
+      "version": 9,
+      "rollout": "completed"
+    },
+    {
+      "name": "deos-queue-consumer-ts-implementationsandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:8156a85e4c497fc55a23eb9a488cf61cbb4db0258e1b5c5019afae10256e2ebe",
+      "version": 9,
+      "rollout": "completed"
+    }
+  ],
+  "validation": {
+    "repositoryTests": 512,
+    "failed": 0,
+    "typecheck": "passed",
+    "workerBindings": "passed",
+    "strictOpenSpec": "passed"
+  },
+  "beforeReconciliation": [
+    {
+      "attempt_id": "01a0a407-62dc-7bc0-95e6-965a0a818188",
+      "state": "completed",
+      "cleanup_state": "destroyed",
+      "browser_status": "destroyed",
+      "cleanup_receipt": "{\"absent\":\"b0565106-184c-4acd-99ca-6bbb765228b7\"}",
+      "updated_at": "2026-09-15T08:13:09.221Z"
+    },
+    {
+      "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+      "state": "failed",
+      "cleanup_state": "destroyed",
+      "browser_status": "ready",
+      "cleanup_receipt": null,
+      "updated_at": "2026-09-15T08:57:44.939Z"
+    },
+    {
+      "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+      "state": "completed",
+      "cleanup_state": "destroyed",
+      "browser_status": "ready",
+      "cleanup_receipt": null,
+      "updated_at": "2026-09-15T10:04:54.852Z"
+    }
+  ],
+  "liveReconciliation": {
+    "observedAt": "2026-09-15T10:31:34Z",
+    "result": "Both pending browser resources now have provider absence receipts; Human Review visit 55 is unchanged.",
+    "resources": [
+      {
+        "attempt_id": "01a0a407-62dc-7bc0-95e6-965a0a818188",
+        "state": "completed",
+        "cleanup_state": "destroyed",
+        "browser_status": "destroyed",
+        "cleanup_receipt": "{\"absent\":\"b0565106-184c-4acd-99ca-6bbb765228b7\"}",
+        "updated_at": "2026-09-15T08:13:09.221Z"
+      },
+      {
+        "attempt_id": "01a0a436-6328-7de2-bdfe-67b82f4cfcb2",
+        "state": "failed",
+        "cleanup_state": "destroyed",
+        "browser_status": "destroyed",
+        "cleanup_receipt": "{\"absent\":\"14d88214-c26e-4ac9-94f4-7294b3e2a5b1\"}",
+        "updated_at": "2026-09-15T10:31:06.666Z"
+      },
+      {
+        "attempt_id": "01a0a466-1267-734d-9ac7-59120044a1b4",
+        "state": "completed",
+        "cleanup_state": "destroyed",
+        "browser_status": "destroyed",
+        "cleanup_receipt": "{\"absent\":\"4dca67f1-f32b-4088-b829-ed5a42a19b93\"}",
+        "updated_at": "2026-09-15T10:31:06.029Z"
+      }
+    ],
+    "workflow": [
+      {
+        "status": "awaiting_human",
+        "current_node": "implementation_review",
+        "current_visit_sequence": 55
+      }
+    ],
+    "scheduledInvocation": {
+      "version": "948c5eac-114e-4906-9d78-3a8509f4a309",
+      "timestampMs": 1789468266829,
+      "requestId": "f24ef20804fa9a5ad1a7b7e847e83db7",
+      "outcome": "ok",
+      "wallTimeMs": 11556
+    }
+  },
+  "workflow": [
+    {
+      "status": "awaiting_human",
+      "current_node": "implementation_review",
+      "current_visit_sequence": 55,
+      "definition_id": "implementation",
+      "definition_version": 27,
+      "definition_digest": "ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c",
+      "workflow_instance_id": "wf-v1-qwhdbzjc2u7lfo4ym52ytbw432zx5s45p36e6pj5quenjk3b6gyq",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 1,
+      "sandbox_tier": "basic"
+    }
+  ]
+}

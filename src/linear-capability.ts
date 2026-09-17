@@ -59,6 +59,53 @@ export class LinearCapabilityAdapter {
     this.request = dependencies.fetch ?? ((input, init) => fetch(input, init));
   }
 
+  async implementationContext(id: string): Promise<Record<string,unknown>> {
+    let after: string|null=null;const comments:unknown[]=[];let issue:Record<string,unknown>|null=null;
+    for(;;) {
+      const payload=await this.graphql(`query ImplementationIssue($id: String!, $after:String) {
+        issue(id:$id) { id identifier title description url state {id name} project {id name}
+          comments(first:100,after:$after) {nodes {id body createdAt updatedAt editedAt archivedAt user {id name}}
+            pageInfo {hasNextPage endCursor} } }
+      }`,{id,after}) as {data:{issue:Record<string,unknown>&{comments:{nodes:unknown[];pageInfo:{hasNextPage:boolean;endCursor:string|null}}}}};
+      const found=payload.data?.issue;if(!found||found.id!==id)throw new Error('Implementation issue read-back differs');
+      const {comments:page,...rest}=found;issue=rest;comments.push(...page.nodes);
+      if(!page.pageInfo.hasNextPage)return {...issue,comments};
+      if(!page.pageInfo.endCursor||page.pageInfo.endCursor===after)throw new Error('Linear comment pagination did not advance');
+      after=page.pageInfo.endCursor;
+    }
+  }
+
+  async readImplementationComment(id: string): Promise<{
+    id: string; body: string; createdAt: string; updatedAt: string; editedAt: string | null; archivedAt: string | null;
+    issue: { id: string } | null; user: { id: string } | null;
+  }> {
+    const payload = await this.graphql(`query ImplementationReply($id: String!) {
+      comment(id: $id) { id body createdAt updatedAt editedAt archivedAt issue { id } user { id } }
+    }`, { id }) as { data: { comment: Awaited<ReturnType<LinearCapabilityAdapter['readImplementationComment']>> } };
+    if (!payload.data?.comment || payload.data.comment.id !== id) throw new Error('Linear comment read-back missing');
+    return payload.data.comment;
+  }
+
+  async implementationUsers(): Promise<Array<{ id: string; name: string; email: string; active: boolean; isMe: boolean }>> {
+    const result = []; let after: string | null = null;
+    for (;;) {
+      const payload = await this.graphql(`query ImplementationUsers($after: String) { users(first: 100, after: $after) {
+        nodes { id name email active isMe } pageInfo { hasNextPage endCursor }
+      } }`, { after }) as { data: { users: { nodes: Array<{ id: string; name: string; email: string; active: boolean; isMe: boolean }>; pageInfo: { hasNextPage: boolean; endCursor: string } } } };
+      result.push(...payload.data.users.nodes);
+      if (!payload.data.users.pageInfo.hasNextPage) return result;
+      after = payload.data.users.pageInfo.endCursor;
+    }
+  }
+
+  async implementationUser(id: string): Promise<{ id: string; email: string; active: boolean; isMe: boolean }> {
+    const payload = await this.graphql(`query ImplementationUser($id: String!) { user(id: $id) { id email active isMe } }`, { id }) as {
+      data: { user: { id: string; email: string; active: boolean; isMe: boolean } }
+    };
+    if (payload.data?.user?.id !== id) throw new Error('Linear human user read-back differs');
+    return payload.data.user;
+  }
+
   async upsertNote(input: LinearNoteRequest, operationId: string): Promise<LinearNoteReceipt> {
     const marker = await commentIdentity(input.issueId, `note:${operationId}`);
     const existing = await this.findComment(input.issueId, marker);

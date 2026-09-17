@@ -1,0 +1,77 @@
+{
+  "result": [
+    {
+      "results": [
+        {
+          "logical_name": "documentation-sources.json",
+          "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/attempts/01a0ab38-96a2-7887-9e4f-de399426a5c7/documentation-sources.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "byte_size": 2
+        },
+        {
+          "logical_name": "implementation-candidate.json",
+          "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/attempts/01a0ab38-96a2-7887-9e4f-de399426a5c7/implementation-candidate.json",
+          "sha256": "ad618e218ca730b33cfa570ac5a1ae2e014b696bbd3f926c5f88a575d24698aa",
+          "byte_size": 226105
+        },
+        {
+          "logical_name": "implementation-diagnostics.jsonl",
+          "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/attempts/01a0ab38-96a2-7887-9e4f-de399426a5c7/implementation-diagnostics.jsonl",
+          "sha256": "64c472034911c6ef391e75594a3ad3ddbd4f9f2226992b213cd5eda058c45a22",
+          "byte_size": 169828
+        },
+        {
+          "logical_name": "patch.diff",
+          "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/attempts/01a0ab38-96a2-7887-9e4f-de399426a5c7/patch.diff",
+          "sha256": "88fc8b564ffe5bbe568cff1e6bf97cf9a71bc6724d1800786114f50df5ec7456",
+          "byte_size": 146072
+        },
+        {
+          "logical_name": "provider-references.json",
+          "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/attempts/01a0ab38-96a2-7887-9e4f-de399426a5c7/provider-references.json",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+          "byte_size": 3
+        },
+        {
+          "logical_name": "result.json",
+          "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/attempts/01a0ab38-96a2-7887-9e4f-de399426a5c7/result.json",
+          "sha256": "4e7204695a206d55a9d5bed5d3d91f2bd4819c02a6dfa4665538d43ab7a1a618",
+          "byte_size": 1375
+        },
+        {
+          "logical_name": "transcript.jsonl",
+          "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/attempts/01a0ab38-96a2-7887-9e4f-de399426a5c7/transcript.jsonl",
+          "sha256": "49875c531ebc995b0e850d516e3896f268586e15f2d8613f6219ce2d335ed19f",
+          "byte_size": 1051846
+        },
+        {
+          "logical_name": "validation.txt",
+          "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/attempts/01a0ab38-96a2-7887-9e4f-de399426a5c7/validation.txt",
+          "sha256": "46ce1ae4319a827edabbeb53c8e199740762c1b21d800a89333d9f55953a3a1e",
+          "byte_size": 722
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.3963
+        },
+        "duration": 0.3963,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 107134976,
+        "rows_read": 19,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}

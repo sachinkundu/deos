@@ -1,0 +1,11 @@
+{
+  "scope": "Local Linux container fixture; no provider or Cloudflare ingress proof",
+  "authorCannotCallVerify": true,
+  "authorCannotReadCapability": true,
+  "authorCannotReplaceCapture": true,
+  "supervisorCaptureMatchesFiles": true,
+  "verifications": 1,
+  "isolatedWorkerdPreview": true,
+  "previews": 1,
+  "demoContractImports": true
+}

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { runAuthorCompletionCheck, runDesignCompletionCheck } from './author-completion.mjs';
 import { parseCodexFinalMessage } from './trace-review-proof.mjs';
 import { createReviewCycle, reduceReviewCycle, REVIEW_SCHEMA } from './bounded-review.mjs';
+import { preserveInterruptedTranscript } from './supervisor-io.mjs';
 const ROOT = '/deos/native-review';
 const OUTPUT = '/deos/output';
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -91,7 +92,7 @@ const prepareChild = async (state, slot) => {
         findings: slot === 'recheck' ? state.cycle.findings : undefined,
         instructions: slot === 'discovery'
             ? 'Read the pinned skills and review the complete checked candidate against the supplied context. Use native web search for current outside facts. Return a summary and findings with stable id, summary, and location. Return sources and searchDisposition. Cite each used source URL in its finding summary or the overall summary. Use the finding ID or summary as claimLocator. Do not write files.'
-            : 'Read the pinned skills and rate each original finding exactly once as fixed or open. Add no findings. Use native web search for current outside facts. Return ratings, claims, sources and searchDisposition. Cite each used source in claims keyed by original finding ID. Do not write files.',
+            : 'Read the pinned skills and rate each original finding exactly once as fixed or open. Add no findings. Use native web search for current outside facts. Return ratings, claims, sources and searchDisposition. Each source claimLocator must be an original finding ID, and claims[that ID] must include the full source URL, not a bracketed source ID or document description. Set sources_used whenever sources is nonempty, including sources carried from the supplied context. none_used and not_searched require sources: []. Do not write files.',
     };
     const file = `${ROOT}/${slot}-request.json`;
     await save(file, request);
@@ -121,6 +122,19 @@ export async function initializeBoundedReview(job) {
     }
     await save(`${ROOT}/state.json`, state);
 }
+async function advanceReceivedReview(state) {
+    if ((await snapshot(state)).digest !== state.checkedCandidate.digest)
+        throw new Error('author changed accepted review candidate');
+    if (state.slot === 'discovery' && state.cycle.findings.length) {
+        state.stage = 'repairing';
+        await journal(state, { type: 'repair_started' });
+        await save(`${ROOT}/repair-request.json`, { findings: state.cycle.findings });
+        return `Use your one repair turn to address the complete fixed finding set in ${ROOT}/repair-request.json. Run deterministic checks and finish. There is no second semantic repair.`;
+    }
+    state.stage = 'done';
+    await save(`${ROOT}/state.json`, state);
+    return 'The bounded self-review is complete. Make no more candidate changes. Finish the required output sidecars and return the completed author result.';
+}
 export async function executeBoundedHook(event) {
     const state = await load(`${ROOT}/state.json`);
     if (Date.now() >= Date.parse(state.deadline))
@@ -135,6 +149,10 @@ export async function executeBoundedHook(event) {
                 return deny('Reviewers cannot delegate or request another repair');
             return {};
         }
+        // A parent often continues with a tool after its child returns. Deliver
+        // the next phase here instead of requiring an otherwise unexplained Stop.
+        if (state.stage === 'received')
+            return deny(await advanceReceivedReview(state));
         if (event.tool_name.endsWith('spawn_agent')) {
             if (state.stage !== 'ready' || state.activeChild)
                 return deny('No review slot is available');
@@ -249,15 +267,7 @@ export async function executeBoundedHook(event) {
             return prepareChild(state, 'recheck');
         }
         if (state.stage === 'received') {
-            if (state.slot === 'discovery' && state.cycle.findings.length) {
-                state.stage = 'repairing';
-                await journal(state, { type: 'repair_started' });
-                await save(`${ROOT}/repair-request.json`, { findings: state.cycle.findings });
-                return block(`Use your one repair turn to address the complete fixed finding set in ${ROOT}/repair-request.json. Run deterministic checks and finish. There is no second semantic repair.`);
-            }
-            state.stage = 'done';
-            await save(`${ROOT}/state.json`, state);
-            return block('The bounded self-review is complete. Make no more candidate changes. Return the required completed author result.');
+            return block(await advanceReceivedReview(state));
         }
         return block('Await the current native review child.');
     }
@@ -266,6 +276,12 @@ export async function executeBoundedHook(event) {
 // Called after the parent process stops and before artifact collection/cleanup.
 // This records partial native bytes without accepting a result or granting a slot.
 export async function captureInterruptedBoundedReview() {
+    const results = await Promise.allSettled([preserveInterruptedTranscript(), captureInterruptedNativeChild()]);
+    const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1) throw new AggregateError(failures, 'Interrupted parent and child evidence capture failed');
+}
+async function captureInterruptedNativeChild() {
     const state = await load(`${ROOT}/state.json`);
     if (!state.activeChild || state.children.some(child => child.invocationId === state.activeChild))
         return;

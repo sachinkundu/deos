@@ -488,8 +488,10 @@ export class ArtifactCollector {
   }
 
   async collectFailure(input: FailureArtifactCollectionInput): Promise<FailureArtifactCollectionResult> {
-    const manifestId = `manifest:${input.attemptId}:failure`;
-    const prefix = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}`;
+    // A normal collection can fail after writing some receipts. Failure evidence
+    // owns separate immutable keys; legacy partial failure manifests stay intact.
+    const manifestId = `manifest:${input.attemptId}:failure-v2`;
+    const prefix = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}/failure-v2`;
     const expectedFiles = [...new Set([...input.expectedFiles, "status.json", "original-errors.jsonl"])]
       .filter((name) => name.length > 0)
       .sort();

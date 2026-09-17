@@ -1,0 +1,41 @@
+{
+  "run": [
+    {
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1",
+      "status": "active",
+      "current_node": "design_independent_review",
+      "current_visit_sequence": 15,
+      "definition_version": 39,
+      "workflow_instance_id": "wf-v1-vbk4ffy7gaysf3nmedbblykidgshsdj2rw7h4rhk4dfzpadaxn2q",
+      "created_at": "2026-09-16T14:06:32.753Z",
+      "updated_at": "2026-09-16T15:34:53.434Z",
+      "terminal_cause": null
+    }
+  ],
+  "attempts": [
+    {
+      "attempt_id": "01a0aadb-6b95-72ef-84a9-24973039df4f",
+      "node_id": "design_independent_review",
+      "state": "running",
+      "started_at": "2026-09-16T15:35:01.908Z",
+      "heartbeat_at": "2026-09-16T15:35:09.624Z",
+      "ended_at": null,
+      "result_class": null,
+      "result_detail": null,
+      "sandbox_id": "sbx-v1-27twmv2mlua7lqmtfub5dkprxs7ptv6kzsmo2655h6w4v7mb7h7q",
+      "cleanup_state": "pending"
+    },
+    {
+      "attempt_id": "01a0aad9-9688-761d-bdda-bf3607b78b12",
+      "node_id": "design_author",
+      "state": "completed",
+      "started_at": "2026-09-16T15:33:01.812Z",
+      "heartbeat_at": "2026-09-16T15:34:26.462Z",
+      "ended_at": "2026-09-16T15:34:41.188Z",
+      "result_class": "completed",
+      "result_detail": null,
+      "sandbox_id": "sbx-v1-v5grracutrkrkhlfxr5vvh7wvtnddgn5iobkdu6iorthbtwqj3xa",
+      "cleanup_state": "destroyed"
+    }
+  ]
+}

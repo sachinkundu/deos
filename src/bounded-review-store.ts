@@ -357,7 +357,8 @@ export class D1BoundedReviewStore {
                     cycle = reduceReviewCycle(cycle, event);
                     journal.events.push(event);
                 }
-                const slot = cycle.recheck.status === 'unavailable' ? 'finalize' : cycle.discovery.status === 'accepted' ? 'recheck' : 'discovery';
+                const slot = ['accepted', 'unavailable', 'not_required'].includes(cycle.recheck.status)
+                    ? 'finalize' : cycle.discovery.status === 'accepted' ? 'recheck' : 'discovery';
                 const eligible = cycle.status === 'active' && (slot === 'finalize' || ['failed', 'pending'].includes(cycle[slot].status) && cycle[slot].invocations.length < 2);
                 const prior = await this.read(attempt.run_id, cycle.phase);
                 if (prior) {

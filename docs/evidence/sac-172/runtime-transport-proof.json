@@ -1,0 +1,17 @@
+{
+  "startedAt": "2026-09-15T05:49:09.753Z",
+  "previous": {
+    "error": "fetch failed",
+    "cause": "UND_ERR_HEADERS_TIMEOUT",
+    "elapsedMs": 301371
+  },
+  "fixed": {
+    "statusCode": 200,
+    "text": "{\"completed\":true,\"probe\":\"fixed-http\"}",
+    "elapsedMs": 310017
+  },
+  "calls": {
+    "fixed-http": 1,
+    "previous-fetch": 1
+  }
+}

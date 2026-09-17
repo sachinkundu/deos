@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "registrationId": "30def9095a61f81951f8d0e6100cb095503945341bcd2ee6ddbdca62cd54f837",
+  "provenance": "maintainer_deployed_static_preview",
+  "request": {
+    "version": 1,
+    "runId": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1",
+    "inputSha": "f0dd8c4f8ee8c6abfeb52b2f865ce22ac0db66211710460309ed3941a3159a3b",
+    "candidateSha": "0ee4ac484c25226c1b35209a96cea27a2aa1e5867fd0f2cf046b9028502faf8e",
+    "treeSha": "8eb184220d08673abb7564089d72420f2dd54eb5",
+    "requestedBy": "sachin-maintainer",
+    "accountId": "c68856288112af7698f5be52ea94b96e",
+    "projectId": "daa31fe2-6778-4317-a527-f89811f93010",
+    "projectName": "sac-225-calculator",
+    "deploymentId": "11fa3ef4-fb4e-422e-93d7-3da6de660c9d",
+    "branch": "review-sac-225",
+    "build": {
+      "treeSha": "8eb184220d08673abb7564089d72420f2dd54eb5",
+      "baseSha": "a1dcf3d18e0d20e483e507079a1e1fbe8b490686",
+      "command": "npm run test:unit && npm run test:browser && npm run build",
+      "logSha256": "aa5c3132ad8e7b9cdcc537aa7ca149b8e051dea1ecc25437a312960b2e920122"
+    },
+    "assets": [
+      {
+        "path": "assets/index-BmItL76X.css",
+        "bytes": 2532,
+        "sha256": "e1d0ec6e9f3fd7dc642e55f1a73bcbcc73c98de59d38b529574f27ab8b3a5932"
+      },
+      {
+        "path": "assets/index-CRAn43Vl.js",
+        "bytes": 10771,
+        "sha256": "f31b040a72a43ba0f334b9a8189ea66eb07ab5d36c0a1f9511f5c4ac62de6d8f"
+      },
+      {
+        "path": "index.html",
+        "bytes": 2906,
+        "sha256": "26bf667843e86cd293032e509fc5634c5be9f476d9780083d83c46d706f60288"
+      }
+    ]
+  },
+  "subject": {
+    "change": "sac-225",
+    "approvedDesignSha": "a1dcf3d18e0d20e483e507079a1e1fbe8b490686",
+    "testedBaseSha": "a1dcf3d18e0d20e483e507079a1e1fbe8b490686",
+    "treeSha": "8eb184220d08673abb7564089d72420f2dd54eb5"
+  },
+  "origin": "https://11fa3ef4.sac-225-calculator.pages.dev",
+  "deployment": {
+    "id": "11fa3ef4-fb4e-422e-93d7-3da6de660c9d",
+    "projectId": "daa31fe2-6778-4317-a527-f89811f93010",
+    "projectName": "sac-225-calculator",
+    "branch": "review-sac-225",
+    "environment": "preview",
+    "status": "success",
+    "createdOn": "2026-09-16T03:52:44.751904Z",
+    "url": "https://11fa3ef4.sac-225-calculator.pages.dev"
+  },
+  "assets": [
+    {
+      "path": "assets/index-BmItL76X.css",
+      "bytes": 2532,
+      "sha256": "e1d0ec6e9f3fd7dc642e55f1a73bcbcc73c98de59d38b529574f27ab8b3a5932",
+      "url": "https://11fa3ef4.sac-225-calculator.pages.dev/assets/index-BmItL76X.css",
+      "status": 200
+    },
+    {
+      "path": "assets/index-CRAn43Vl.js",
+      "bytes": 10771,
+      "sha256": "f31b040a72a43ba0f334b9a8189ea66eb07ab5d36c0a1f9511f5c4ac62de6d8f",
+      "url": "https://11fa3ef4.sac-225-calculator.pages.dev/assets/index-CRAn43Vl.js",
+      "status": 200
+    },
+    {
+      "path": "index.html",
+      "bytes": 2906,
+      "sha256": "26bf667843e86cd293032e509fc5634c5be9f476d9780083d83c46d706f60288",
+      "url": "https://11fa3ef4.sac-225-calculator.pages.dev/",
+      "status": 200
+    }
+  ],
+  "checkedAt": "2026-09-16T03:55:53.899Z"
+}

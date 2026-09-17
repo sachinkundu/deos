@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "registrationId": "4bbac1d32fd4f25c21655bc80ebe8f095369d50a3005aff51766ffea91724dcb",
+  "provenance": "service_deployed_static_preview",
+  "request": {
+    "version": 1,
+    "runId": "provider-probe-static-preview-2026-09-16-lessons",
+    "inputSha": "fe77359f615ffce8ae7dc97e03fcdf66cae810de9f110a1aa04d0e61c5154235",
+    "candidateSha": "4bbac1d32fd4f25c21655bc80ebe8f095369d50a3005aff51766ffea91724dcb",
+    "treeSha": "cccccccccccccccccccccccccccccccccccccccc",
+    "requestedBy": "deos-static-preview",
+    "accountId": "c68856288112af7698f5be52ea94b96e",
+    "projectId": "ebe389e0-052a-4cd2-b4ab-f1e75455e7fc",
+    "projectName": "deos-preview-61f7991affd89c9c",
+    "deploymentId": "f97c9fbe-1674-4314-bb8f-9864855bf710",
+    "branch": "review",
+    "build": {
+      "treeSha": "cccccccccccccccccccccccccccccccccccccccc",
+      "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "command": "Saved static build output",
+      "logSha256": "5ad19b3ebf81b647964a8e0fe1c4d6ea9ad65807143409ae9d50bd14d59104bc"
+    },
+    "assets": [
+      {
+        "path": "app.js",
+        "bytes": 99,
+        "sha256": "7c14c8827ebf0876ee03e1b2368e837798709b3b06c70d68b91ceac02c80b917"
+      },
+      {
+        "path": "index.html",
+        "bytes": 355,
+        "sha256": "5cc848f9d1b02f5004a9f847966f91dbacb3dd65b303b5feb1ffdf40bb545e01"
+      }
+    ]
+  },
+  "subject": {
+    "change": "preview-probe",
+    "approvedDesignSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "testedBaseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "treeSha": "cccccccccccccccccccccccccccccccccccccccc"
+  },
+  "origin": "https://review.deos-preview-61f7991affd89c9c.pages.dev",
+  "deployment": {
+    "id": "f97c9fbe-1674-4314-bb8f-9864855bf710",
+    "projectId": "ebe389e0-052a-4cd2-b4ab-f1e75455e7fc",
+    "projectName": "deos-preview-61f7991affd89c9c",
+    "branch": "review",
+    "environment": "preview",
+    "status": "success",
+    "createdOn": "2026-09-16T13:36:02.943498Z",
+    "url": "https://f97c9fbe.deos-preview-61f7991affd89c9c.pages.dev"
+  },
+  "assets": [
+    {
+      "path": "app.js",
+      "bytes": 99,
+      "sha256": "7c14c8827ebf0876ee03e1b2368e837798709b3b06c70d68b91ceac02c80b917",
+      "url": "https://f97c9fbe.deos-preview-61f7991affd89c9c.pages.dev/app.js",
+      "status": 200
+    },
+    {
+      "path": "index.html",
+      "bytes": 355,
+      "sha256": "5cc848f9d1b02f5004a9f847966f91dbacb3dd65b303b5feb1ffdf40bb545e01",
+      "url": "https://f97c9fbe.deos-preview-61f7991affd89c9c.pages.dev/",
+      "status": 200
+    }
+  ],
+  "checkedAt": "2026-09-16T13:36:11.858Z"
+}

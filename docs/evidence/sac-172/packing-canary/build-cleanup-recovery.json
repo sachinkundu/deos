@@ -1,0 +1,96 @@
+{
+  "originalErrors": [
+    {
+      "row": {
+        "error_id": "09aba25a-37fe-4c2e-bdfe-ef800178c112",
+        "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1",
+        "node_id": "implementation_build",
+        "visit_sequence": 30,
+        "step_name": "agent:implementation_build:visit:30",
+        "location": "uncaught",
+        "message": "Sandbox destruction failed",
+        "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/09aba25a-37fe-4c2e-bdfe-ef800178c112.json",
+        "occurred_at": "2026-09-16T17:09:27.695Z"
+      },
+      "original": {
+        "stack": "Error: Sandbox destruction failed\n    at SandboxAgentController.cleanup (queue-consumer.js:60780:17)\n    at async SandboxAgentController.collect (queue-consumer.js:60176:9)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64103:31)\n    at async queue-consumer.js:141:16",
+        "message": "Sandbox destruction failed",
+        "cause": {
+          "stack": "AggregateError: Implementation resource cleanup failed\n    at ImplementationBroker.cleanup (queue-consumer.js:56424:17)\n    at async SandboxAgentController.cleanup (queue-consumer.js:60760:11)\n    at async SandboxAgentController.collect (queue-consumer.js:60176:9)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64103:31)\n    at async queue-consumer.js:141:16",
+          "message": "Implementation resource cleanup failed",
+          "cause": {
+            "stack": "ImplementationError: Browser close is not yet confirmed\n    at ImplementationBrowserAllocator.cleanup (queue-consumer.js:25608:17)\n    at async ImplementationBroker.cleanup (queue-consumer.js:56388:15)\n    at async SandboxAgentController.cleanup (queue-consumer.js:60760:11)\n    at async SandboxAgentController.collect (queue-consumer.js:60176:9)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64103:31)\n    at async queue-consumer.js:141:16",
+            "message": "Browser close is not yet confirmed",
+            "code": "browser_cleanup_unconfirmed",
+            "name": "ImplementationError"
+          },
+          "errors": [
+            {
+              "stack": "ImplementationError: Browser close is not yet confirmed\n    at ImplementationBrowserAllocator.cleanup (queue-consumer.js:25608:17)\n    at async ImplementationBroker.cleanup (queue-consumer.js:56388:15)\n    at async SandboxAgentController.cleanup (queue-consumer.js:60760:11)\n    at async SandboxAgentController.collect (queue-consumer.js:60176:9)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64103:31)\n    at async queue-consumer.js:141:16",
+              "message": "Browser close is not yet confirmed",
+              "code": "browser_cleanup_unconfirmed",
+              "name": "ImplementationError"
+            }
+          ],
+          "name": "AggregateError"
+        },
+        "name": "Error"
+      }
+    },
+    {
+      "row": {
+        "error_id": "53373711-cd6f-4ceb-a6cc-e526157a49bb",
+        "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1",
+        "node_id": "implementation_build",
+        "visit_sequence": 30,
+        "step_name": "agent:implementation_build:visit:30",
+        "location": "src/sandbox-controller.ts:1563",
+        "message": "Implementation resource cleanup failed",
+        "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Acdd0bff1-00fd-42db-adcd-6e693228bee8%3Arun%3A1/53373711-cd6f-4ceb-a6cc-e526157a49bb.json",
+        "occurred_at": "2026-09-16T17:09:27.653Z"
+      },
+      "original": {
+        "stack": "AggregateError: Implementation resource cleanup failed\n    at ImplementationBroker.cleanup (queue-consumer.js:56424:17)\n    at async SandboxAgentController.cleanup (queue-consumer.js:60760:11)\n    at async SandboxAgentController.collect (queue-consumer.js:60176:9)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64103:31)\n    at async queue-consumer.js:141:16",
+        "message": "Implementation resource cleanup failed",
+        "cause": {
+          "stack": "ImplementationError: Browser close is not yet confirmed\n    at ImplementationBrowserAllocator.cleanup (queue-consumer.js:25608:17)\n    at async ImplementationBroker.cleanup (queue-consumer.js:56388:15)\n    at async SandboxAgentController.cleanup (queue-consumer.js:60760:11)\n    at async SandboxAgentController.collect (queue-consumer.js:60176:9)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64103:31)\n    at async queue-consumer.js:141:16",
+          "message": "Browser close is not yet confirmed",
+          "code": "browser_cleanup_unconfirmed",
+          "name": "ImplementationError"
+        },
+        "errors": [
+          {
+            "stack": "ImplementationError: Browser close is not yet confirmed\n    at ImplementationBrowserAllocator.cleanup (queue-consumer.js:25608:17)\n    at async ImplementationBroker.cleanup (queue-consumer.js:56388:15)\n    at async SandboxAgentController.cleanup (queue-consumer.js:60760:11)\n    at async SandboxAgentController.collect (queue-consumer.js:60176:9)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64103:31)\n    at async queue-consumer.js:141:16",
+            "message": "Browser close is not yet confirmed",
+            "code": "browser_cleanup_unconfirmed",
+            "name": "ImplementationError"
+          }
+        ],
+        "name": "AggregateError"
+      }
+    }
+  ],
+  "recoveredResources": [
+    {
+      "kind": "browser",
+      "status": "destroyed",
+      "provider_resource_id": "a684e044-215e-45a6-a9c8-a5216d98b3e2",
+      "cleanup_receipt": "{\"absent\":\"a684e044-215e-45a6-a9c8-a5216d98b3e2\"}",
+      "updated_at": "2026-09-16T17:16:23.797Z"
+    },
+    {
+      "kind": "local_data",
+      "status": "ready",
+      "provider_resource_id": null,
+      "cleanup_receipt": null,
+      "updated_at": "2026-09-16T16:17:43.133Z"
+    },
+    {
+      "kind": "preview",
+      "status": "destroyed",
+      "provider_resource_id": "https://optional-advised-schools-should.trycloudflare.com",
+      "cleanup_receipt": "{\"absent\":\"https://optional-advised-schools-should.trycloudflare.com\",\"relaySandboxDestroyed\":\"sbx-v1-dsbqbrc3rl2lqcvcsituhgyq6z2a4i6dc3rktga6fuzoxazl4jea\"}",
+      "updated_at": "2026-09-16T16:35:03.231Z"
+    }
+  ]
+}

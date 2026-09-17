@@ -1,16 +1,19 @@
 #!/usr/bin/env node
+import { setupImplementation } from "./implementation-runtime.mjs";
+import { implementationProcessFailure } from "./implementation-process-failure.mjs";
 import { checkAuthorSources } from "./grounded-review.mjs";
 import { provisionGrounding, verifyGroundingContext, verifyNativeGrounding } from "./grounded-agent.mjs";
 import { setupNativeReview } from "./native-review-setup.mjs";
-import { recordCaughtError } from "./original-errors.mjs";
+import { originalErrorText, recordCaughtError } from "./original-errors.mjs";
 import { notifyAttemptCompletion } from "./attempt-completion.mjs";
-import { createWriteStream } from "node:fs";
-import { access, appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { finished } from "node:stream/promises";
+import { atomicJson, captureSupervisorStreams, recordHeartbeat } from "./supervisor-io.mjs";
 
 import {
   designCorrectionPrompt,
+  authorCompletionContext,
   runAuthorCompletionCheck,
   runBoundedAuthorCompletion,
   runDesignCompletionCheck,
@@ -34,40 +37,10 @@ let completionJob = null;
 let heartbeatTimer;
 let deadlineTimer;
 
-const atomicJson = async (path, value) => {
-  const temporary = `${path}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(value)}\n`, { mode: 0o600 });
-  await rename(temporary, path);
-};
-
-const trustedCapture = async (name) => {
-  const root = await mkdtemp(`/tmp/deos-${name}-`);
-  const path = `${root}/${name}`;
-  return {
-    stream: createWriteStream(path, { flags: "wx", mode: 0o600 }),
-    async finalize(destination, replace = true) {
-      await finished(this.stream);
-      let shouldWrite = replace;
-      if (!replace) {
-        try {
-          await access(destination);
-        } catch (caughtError) {
-          recordCaughtError(caughtError, "container/supervisor.mjs:46");
-          shouldWrite = true;
-        }
-      }
-      if (shouldWrite) {
-        const temporary = `${destination}.tmp`;
-        await writeFile(temporary, await readFile(path), { mode: 0o600 });
-        await rename(temporary, destination);
-      }
-      await rm(root, { recursive: true, force: true });
-    },
-  };
-};
-
 const finalizeMechanicalOutputs = async (job) => {
-  await writeFile(
+  // Implementation owns a matched candidate/patch snapshot. Never overwrite its
+  // verified patch with a later repository capture during mechanical cleanup.
+  if (!job.implementationKind) await writeFile(
     PATCH_PATH,
     await captureRepositoryPatch(job.cwd),
     { mode: 0o600 },
@@ -106,6 +79,8 @@ const codexArgs = (job, sessionId = null) => {
     "--output-last-message",
     RESULT_PATH,
     "--dangerously-bypass-approvals-and-sandbox",
+    "--config", "features.apps=false",
+    "--config", "features.plugins=false",
   );
   if (job.grounding) args.push("--config", 'web_search="live"');
   if (typeof job.model === "string" && job.model.length > 0) {
@@ -147,11 +122,11 @@ const sessionTracker = () => {
 };
 
 const runChild = async ({ job, prompt, reviewer, resumeSessionId, transcript, validation, tracker, onPid }) => {
-  const reviewerRunner = job.reviewKind === "design"
+  const reviewerRunner = ['demo_plan', 'demo_gate'].includes(job.reviewKind) ? '/deos/bin/implementation-demo-runner.mjs' : job.reviewKind === "design"
     ? "/deos/bin/design-review-runner.mjs"
     : "/deos/bin/trace-review-runner.mjs";
   const child = spawn(reviewer ? "node" : "codex", reviewer
-    ? [reviewerRunner]
+    ? [...(['demo_plan', 'demo_gate'].includes(job.reviewKind) ? ['--experimental-strip-types'] : []), reviewerRunner]
     : codexArgs(job, resumeSessionId), {
     cwd: job.cwd,
     env: {
@@ -179,10 +154,13 @@ const runChild = async ({ job, prompt, reviewer, resumeSessionId, transcript, va
   return result;
 };
 
+let implementationRuntime = null;
 const main = async () => {
   await mkdir(OUTPUT_ROOT, { recursive: true, mode: 0o700 });
   const job = JSON.parse(await readFile(JOB_PATH, "utf8"));
   completionJob = job;
+  // No provider calls is a normal outcome, not a missing-file diagnostic.
+  await appendFile(PROVIDER_REFERENCES_LOG_PATH, '', { mode: 0o600 });
   const required = ["attemptId", "runId", "nodeId", "cwd", "promptPath", "resultSchemaPath", "deadline"];
   if (required.some((key) => typeof job[key] !== "string" || job[key].length === 0)) {
     throw new Error("job specification is incomplete");
@@ -192,15 +170,15 @@ const main = async () => {
   const prompt = await readFile(job.promptPath, "utf8");
   const grounding = await provisionGrounding(job.grounding);
   await setupNativeReview(job);
+  const implementation = implementationRuntime = await setupImplementation(job);
   if (grounding) {
     const effective = job.modelProvider === "claude" ? grounding : await verifyNativeGrounding(grounding, job.cwd);
     await atomicJson(`${OUTPUT_ROOT}/agent-input-manifest.json`, { ...effective, attemptId: job.attemptId, jobKind: job.nodeId,
       contextFiles: verifyGroundingContext(job.materializedContext, job.grounding) });
   }
-  const transcript = await trustedCapture("transcript.jsonl");
-  const validation = await trustedCapture("stderr.txt");
+  const { transcript, validation } = await captureSupervisorStreams();
   const reviewer = job.agentRole === "reviewer";
-  const planningAuthor = job.agentRole === "author" &&
+  const planningAuthor = !job.implementationKind && job.agentRole === "author" &&
     typeof job.openspecChange === "string" &&
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(job.openspecChange);
   const designAuthor = planningAuthor && job.designOnly === true;
@@ -211,7 +189,7 @@ const main = async () => {
     processPid: activePid,
     observedAt: new Date().toISOString(),
   });
-  heartbeatTimer = setInterval(() => void heartbeat(), 30_000);
+  heartbeatTimer = setInterval(() => void recordHeartbeat(heartbeat), 30_000);
   deadlineTimer = setTimeout(() => {
     if (activePid === null) return;
     try {
@@ -227,6 +205,7 @@ const main = async () => {
   }, Math.max(0, deadline - Date.now()));
   const run = async (childPrompt, resumeSessionId = null) => {
     if (Date.now() >= deadline) return { code: 124, signal: null };
+    if (resumeSessionId !== null) await rm(RESULT_PATH, { force: true });
     const result = await runChild({
       job,
       prompt: childPrompt,
@@ -245,7 +224,13 @@ const main = async () => {
     return result;
   };
   const authorCheck = async () => {
-    const options = { cwd: job.cwd, change: job.openspecChange, reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined };
+    const needsDispositions = designAuthor && job.requiredOutputs?.includes('design-dispositions.json');
+    const context = needsDispositions ? JSON.parse(await authorCompletionContext(job)) : null;
+    const options = { cwd: job.cwd, change: job.openspecChange,
+      reviewRepliesPath: designAuthor ? `${OUTPUT_ROOT}/review-replies.json` : undefined,
+      reviewDispositionsPath: needsDispositions ? `${OUTPUT_ROOT}/design-dispositions.json` : undefined,
+      expectedDispositionIds: (context?.designReviewFeedback?.findings ?? []).map(finding => finding.id),
+    };
     const check = await (designAuthor ? runDesignCompletionCheck : runAuthorCompletionCheck)(options);
     return job.grounding ? checkAuthorSources(check, options) : check;
   };
@@ -304,8 +289,6 @@ const main = async () => {
   }
   transcript.stream.end();
   validation.stream.end();
-  clearInterval(heartbeatTimer);
-  clearTimeout(deadlineTimer);
   await transcript.finalize(TRANSCRIPT_PATH);
   await validation.finalize(VALIDATION_PATH, false);
   if (planningAuthor) {
@@ -318,6 +301,20 @@ const main = async () => {
       `\nTrusted author completion hook: ${completionOutcome}.\n${scoreLines.join("\n")}${scoreLines.length ? "\n" : ""}`,
       { mode: 0o600 },
     );
+  }
+  if (implementation) {
+    // A failed model turn may never write result.json. Preserve that original
+    // process failure rather than replacing it with a completion-file error.
+    const failure = implementationProcessFailure(result,
+      await readFile(TRANSCRIPT_PATH, "utf8"), await readFile(VALIDATION_PATH, "utf8"));
+    if (failure) throw failure;
+    // A finish error must reach the fatal diagnostic handler before cleanup.
+    // The outer finally still closes the runtime if finish or close fails.
+    // Capture the author's output once. Claude owns review; the workflow never
+    // resumes the author with its own test or evidence repair instructions.
+    await implementation.finish();
+    await implementation.close();
+    implementationRuntime = null;
   }
   await finalizeMechanicalOutputs(job);
   const timedOut = Date.now() >= deadline && result.code !== 0;
@@ -339,17 +336,18 @@ main().catch(async (error) => {
   try {
     await mkdir(OUTPUT_ROOT, { recursive: true, mode: 0o700 });
     await atomicJson(STATUS_PATH, {
-      exitCode: null,
-      signal: null,
+      exitCode: error.exitCode ?? null,
+      signal: error.signal ?? null,
       timedOut: false,
-      safeErrorCategory: "supervisor_failed",
-      originalError: { message: String(error), stack: error?.stack, cause: error?.cause ? String(error.cause) : null },
+      safeErrorCategory: error.safeErrorCategory ?? "supervisor_failed",
+      originalError: { message: String(error), stack: error?.stack, cause: error?.cause ? originalErrorText(error.cause) : null },
       completedAt: new Date().toISOString(),
     });
   } finally {
     process.exitCode = 1;
   }
 }).finally(async () => {
+  if(implementationRuntime) { try { await implementationRuntime.close(); } catch(error) { recordCaughtError(error,"implementation cleanup");process.exitCode=1; } }
   clearInterval(heartbeatTimer);
   clearTimeout(deadlineTimer);
   if (completionJob !== null) await notifyAttemptCompletion(completionJob);

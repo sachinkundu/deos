@@ -1,0 +1,27 @@
+{
+  "snapshot": "/tmp/sac243-reader/2026-09-17T06-50-04.762Z.json",
+  "events": [
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_63",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'python - <<'\\\\''PY'\\\\''\nimport json, pathlib\npathlib.Path('\\\\''/deos/output/requests/publish-preview.json'\\\\'').write_text(json.dumps({'\\\\''action'\\\\'':'\\\\''publish_preview'\\\\'','\\\\''assets'\\\\'':'\\\\''dist'\\\\''})+'\\\\''\\\\n'\\\\'')\nPY\ndeos-implementation /deos/output/requests/publish-preview.json'\"",
+        "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview c3e7c7cd-1cbc-4150-9aa4-7085234ac528 was deployed but its served files are not confirmed yet; retry this same publish_preview request to read it back: ImplementationError: Hosted asset https://c3e7c7cd.deos-preview-554b6e57d5a22469.pages.dev/allowlist-probe.html returned HTTP 308\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview c3e7c7cd-1cbc-4150-9aa4-7085234ac528 was deployed but its served files are not confirmed yet; retry this same publish_preview request to read it back: ImplementationError: Hosted asset https://c3e7c7cd.deos-preview-554b6e57d5a22469.pages.dev/allowlist-probe.html returned HTTP 308\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:439:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async file:///deos/bin/implementation-runtime.mjs:629:20\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview c3e7c7cd-1cbc-4150-9aa4-7085234ac528 was deployed but its served files are not confirmed yet; retry this same publish_preview request to read it back: ImplementationError: Hosted asset https://c3e7c7cd.deos-preview-554b6e57d5a22469.pages.dev/allowlist-probe.html returned HTTP 308\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:439:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async file:///deos/bin/implementation-runtime.mjs:629:20\"}\n",
+        "exit_code": 1,
+        "status": "failed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_64",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/publish-preview.json'\"",
+        "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview c3e7c7cd-1cbc-4150-9aa4-7085234ac528 was deployed but its served files are not confirmed yet; retry this same publish_preview request to read it back: ImplementationError: Hosted asset https://c3e7c7cd.deos-preview-554b6e57d5a22469.pages.dev/allowlist-probe.html returned HTTP 308\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview c3e7c7cd-1cbc-4150-9aa4-7085234ac528 was deployed but its served files are not confirmed yet; retry this same publish_preview request to read it back: ImplementationError: Hosted asset https://c3e7c7cd.deos-preview-554b6e57d5a22469.pages.dev/allowlist-probe.html returned HTTP 308\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:439:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async file:///deos/bin/implementation-runtime.mjs:629:20\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview c3e7c7cd-1cbc-4150-9aa4-7085234ac528 was deployed but its served files are not confirmed yet; retry this same publish_preview request to read it back: ImplementationError: Hosted asset https://c3e7c7cd.deos-preview-554b6e57d5a22469.pages.dev/allowlist-probe.html returned HTTP 308\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:439:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async file:///deos/bin/implementation-runtime.mjs:629:20\"}\n",
+        "exit_code": 1,
+        "status": "failed"
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "run": {
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1",
+    "status": "active",
+    "current_node": "implementation_build",
+    "current_visit_sequence": 31,
+    "definition_id": "implementation",
+    "definition_version": 30,
+    "definition_digest": "29ff6356607fc69cd175a24631d3797d8b088ed22524afefd610dca06830db15",
+    "workflow_instance_id": "wf-v1-tu2aqcsrzp6avukewpelm4gmgoapmecjxdnx2qy3lfi3dzut3toa",
+    "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+    "human_binding_revision": 3,
+    "sandbox_tier": "basic",
+    "created_at": "2026-09-15T14:28:14.323Z",
+    "updated_at": "2026-09-15T20:28:26.135Z"
+  },
+  "attempt": {
+    "attempt_id": "01a0a6c1-449e-707f-b384-6b11ee59e5df",
+    "node_id": "implementation_build",
+    "visit_sequence": 31,
+    "state": "running",
+    "sandbox_id": "impl-v1-irz3tux4t4lhnj6biuoxacigdaabfdarivgj2o7ainddupcp7dpa",
+    "sandbox_tier": "basic",
+    "heartbeat_at": "2026-09-15T20:28:24.365Z",
+    "process_id": "e0c44422-c3c1-4f90-8b94-77758429e66d",
+    "result_class": null,
+    "cleanup_state": "pending",
+    "created_at": "2026-09-15T20:27:59.006Z",
+    "ended_at": null
+  },
+  "progress": {
+    "attempt_id": "01a0a6c1-449e-707f-b384-6b11ee59e5df",
+    "completed": 24,
+    "total": 25,
+    "tasks_sha": "5532798c4e33ce00af62c5a796e61d5ac1c36e8e0182ae627808fa671c406026",
+    "observed_at": "2026-09-15T20:28:26.135Z"
+  },
+  "try": {
+    "attempt_id": "01a0a6c1-449e-707f-b384-6b11ee59e5df",
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1",
+    "try_sequence": 3,
+    "kind": "build",
+    "sandbox_id": "impl-v1-irz3tux4t4lhnj6biuoxacigdaabfdarivgj2o7ainddupcp7dpa",
+    "status": "running",
+    "tested_base_sha": "a1dcf3d18e0d20e483e507079a1e1fbe8b490686",
+    "input_patch_sha": "368befe4f575df1cad6c53d95d4dd066fb54b1a63c3c1dc224ba14c6d400b3cb",
+    "output_patch_sha": null,
+    "primary_error_manifest": null,
+    "public_error_code": null,
+    "created_at": "2026-09-15T20:28:09.960Z",
+    "updated_at": "2026-09-15T20:28:09.960Z"
+  }
+}

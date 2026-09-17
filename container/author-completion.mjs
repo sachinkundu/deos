@@ -202,7 +202,7 @@ export const designCorrectionPrompt = (check, round, maximumRepairs) => [
   "Do not write tasks or implementation code. Return completed only when design.md is valid.",
 ].join("\n");
 
-export const runDesignCompletionCheck = async ({ cwd, change, reviewRepliesPath, execute = command }) => {
+export const runDesignCompletionCheck = async ({ cwd, change, reviewRepliesPath, reviewDispositionsPath, expectedDispositionIds = [], execute = command }) => {
   if (!safeChange(change)) throw new Error("design completion change identity is invalid");
   const expectedPath = `openspec/changes/${change}/design.md`;
   const failures = [];
@@ -224,6 +224,22 @@ export const runDesignCompletionCheck = async ({ cwd, change, reviewRepliesPath,
       if (!(error instanceof SyntaxError) && error?.code !== "ENOENT" &&
         error?.message !== "invalid reply shape") throw error;
       failures.push(`Write ${reviewRepliesPath} as a JSON array of { "commentId": <positive root review comment ID>, "body": <non-empty reply> }. Use commentId, not threadId, and include each root at most once. Use [] when no replies are needed.`);
+    }
+  }
+  if (reviewDispositionsPath !== undefined) {
+    if (!Array.isArray(expectedDispositionIds) || expectedDispositionIds.some(id => typeof id !== 'string' || !id.trim()) ||
+      new Set(expectedDispositionIds).size !== expectedDispositionIds.length)
+      throw new Error('invalid trusted design disposition finding IDs');
+    try {
+      const dispositions = JSON.parse(await readFile(reviewDispositionsPath, 'utf8'));
+      if (!Array.isArray(dispositions) || dispositions.some(item => item === null || typeof item !== 'object' ||
+        typeof item.findingId !== 'string' || !['applied', 'declined', 'no_change'].includes(item.status) ||
+        typeof item.reason !== 'string' || !item.reason.trim()) ||
+        JSON.stringify(dispositions.map(item => item.findingId).sort()) !== JSON.stringify([...expectedDispositionIds].sort()))
+        throw new Error('invalid design disposition set');
+    } catch (error) {
+      if (!(error instanceof SyntaxError) && error?.code !== 'ENOENT' && error?.message !== 'invalid design disposition set') throw error;
+      failures.push(`Write ${reviewDispositionsPath} as a JSON array with exactly these finding IDs: ${JSON.stringify(expectedDispositionIds)}. Each item needs findingId, status (applied, declined, or no_change), and a non-empty reason. Use [] when there are no findings. Original failure: ${error.message}`);
     }
   }
   const status = await execute(
@@ -276,6 +292,18 @@ export const runDesignCompletionCheck = async ({ cwd, change, reviewRepliesPath,
     readabilityByFile: Object.freeze({}),
     failures: Object.freeze(failures),
   });
+};
+
+// Native self-review updates its service-authored input in place. The frozen
+// launch input predates those findings and must not erase their dispositions.
+export const authorCompletionContext = async (job, readNativeState = async () =>
+  JSON.parse(await readFile('/deos/native-review/state.json', 'utf8'))) => {
+  if (!job.nativeSelfReview || job.nativeSelfReview.schema === 'deos-bounded-review-v1')
+    return job.materializedContext;
+  const state = await readNativeState();
+  if (state.attemptId !== job.attemptId || typeof state.materializedContext !== 'string')
+    throw new Error('native completion context is missing or belongs to another attempt');
+  return state.materializedContext;
 };
 
 export const runBoundedAuthorCompletion = async ({

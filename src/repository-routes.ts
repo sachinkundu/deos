@@ -14,6 +14,10 @@ export type GitHubAccessState =
   | "unavailable";
 
 export interface RepositoryRouteRecord {
+  allowed_access_email?: string | null;
+  allowed_linear_user_id?: string | null;
+  human_binding_revision?: number | null;
+  human_binding_checked_at?: string | null;
   project_id: string;
   linear_project_name: string | null;
   definition_id: string;
@@ -61,6 +65,8 @@ export interface FrozenRunRouteRecord {
 }
 
 export interface RepositoryRouteView {
+  allowedLinearUserId?: string | null;
+  humanBindingRevision?: number | null;
   projectId: string;
   projectName: string;
   repository: string;
@@ -114,6 +120,8 @@ const sha256Hex = async (value: string): Promise<string> => {
 export const canonicalRouteJson = (
   route: Omit<RepositoryRouteRecord, "route_digest">,
 ): string => JSON.stringify({
+  ...(route.allowed_linear_user_id ? { humanBinding: { userId: route.allowed_linear_user_id,
+    email: route.allowed_access_email, revision: route.human_binding_revision } } : {}),
   projectId: route.project_id,
   projectName: route.linear_project_name,
   repository: route.trial_repository,
@@ -167,6 +175,8 @@ interface RepositoryRouteViewRow extends RepositoryRouteRecord {
 const view = (row: RepositoryRouteViewRow): RepositoryRouteView => {
   const route = requireCompleteRoute(row);
   return {
+    allowedLinearUserId: route.allowed_linear_user_id ?? null,
+    humanBindingRevision: route.human_binding_revision ?? null,
     projectId: route.project_id,
     projectName: route.linear_project_name,
     repository: route.trial_repository,

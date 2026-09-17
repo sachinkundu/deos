@@ -16,7 +16,7 @@ export interface ValidatedAgentOutcome {
 
 export interface ValidatedSystemOutcome {
   kind: "system_action";
-  outcome: "completed" | "failed" | "review_feedback_changed" | "unchanged";
+  outcome: "completed" | "failed" | "review_feedback_changed" | "unchanged" | "base_changed" | "review_ready" | "plan_required";
   providerReceiptsComplete: boolean;
 }
 

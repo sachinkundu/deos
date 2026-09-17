@@ -1,0 +1,118 @@
+{
+  "result": [
+    {
+      "results": [
+        {
+          "project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+          "definition_id": "simple-traceability-claude",
+          "definition_version": 25,
+          "definition_digest": "5fe1ce25baab0d098f22b11aa3454b05ae9ce9131ab8ec6f2cd12d877e3df8af",
+          "trial_repository": "sachinkundu/deos-sample-project",
+          "start_state_name": "Todo",
+          "human_gate_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+          "dispatch_enabled": 1,
+          "updated_at": "2026-09-15T14:21:06.290Z",
+          "repository_revision": 2,
+          "repository_updated_by": "sachinkundu@gmail.com",
+          "repository_updated_at": "2026-08-25T05:25:30.698Z",
+          "workflow_revision": 10,
+          "workflow_updated_by": "sachinkundu@gmail.com",
+          "workflow_updated_at": "2026-09-15T14:08:40.918Z",
+          "independent_review_provider": "openrouter",
+          "independent_review_model": "deepseek/deepseek-v4-pro",
+          "independent_review_revision": 2,
+          "independent_review_updated_by": "sachinkundu@gmail.com",
+          "independent_review_updated_at": "2026-08-27T08:50:05.059Z",
+          "linear_project_name": "deos-sample-project",
+          "github_installation_id": "154095438",
+          "route_revision": 17,
+          "route_digest": "c15330b2bc8c05bb886081947a835137dc05c44b3185333a3bf79c4d6098e831",
+          "route_updated_by": "deployment",
+          "route_updated_at": "2026-09-15T14:15:25.533Z",
+          "github_access_state": "passed",
+          "github_access_checked_at": "2026-09-15T14:21:06.290Z",
+          "github_access_permissions_digest": "b6ccfdd9af0228a09493fa1bfb36a7ee0b06101790486f229e7891358098d437",
+          "github_settings_url": "https://github.com/settings/installations/154095438",
+          "allowed_access_email": "sachinkundu@gmail.com",
+          "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+          "human_binding_revision": 1,
+          "human_binding_checked_at": "2026-09-15T14:06:23.867Z"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.3824
+        },
+        "duration": 0.3824,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 95895552,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "result_id": "6debcd8e-9e4d-47ff-a212-40a53489ae5b:stale-route",
+          "delivery_id": "6debcd8e-9e4d-47ff-a212-40a53489ae5b",
+          "project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+          "queued_route_revision": 17,
+          "queued_route_digest": "d100c4f552013d1c561fbe14b5a220f478a7c2aa2c42406430cb74c7b5ae9b4e",
+          "outcome": "stale_route",
+          "safe_error_category": "atomic_route_guard_failed",
+          "recorded_at": "2026-09-15T14:21:06.290Z"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.5849
+        },
+        "duration": 0.5849,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 95895552,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.2889
+        },
+        "duration": 0.2889,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 95895552,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}

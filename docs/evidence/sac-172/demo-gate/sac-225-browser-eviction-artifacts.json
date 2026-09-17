@@ -1,0 +1,50 @@
+[
+  {
+    "logical_name": "documentation-sources.json",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ad5dc0e9d-be0d-4504-82a1-62c14340c91c%3Arun%3A1/attempts/01a0a6c1-449e-707f-b384-6b11ee59e5df/documentation-sources.json",
+    "sha256": "e474d6877d5372f90c2cdb5161b853b4002bc6c7d65835fd96dc9a0a76cbdc02",
+    "byte_size": 1056
+  },
+  {
+    "logical_name": "implementation-candidate.json",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ad5dc0e9d-be0d-4504-82a1-62c14340c91c%3Arun%3A1/attempts/01a0a6c1-449e-707f-b384-6b11ee59e5df/implementation-candidate.json",
+    "sha256": "0ee4ac484c25226c1b35209a96cea27a2aa1e5867fd0f2cf046b9028502faf8e",
+    "byte_size": 211813
+  },
+  {
+    "logical_name": "implementation-diagnostics.jsonl",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ad5dc0e9d-be0d-4504-82a1-62c14340c91c%3Arun%3A1/attempts/01a0a6c1-449e-707f-b384-6b11ee59e5df/implementation-diagnostics.jsonl",
+    "sha256": "68553f9f12e33254581658d2194438b8400f5e2d128ddbe25292138a5f8a0f15",
+    "byte_size": 80853
+  },
+  {
+    "logical_name": "patch.diff",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ad5dc0e9d-be0d-4504-82a1-62c14340c91c%3Arun%3A1/attempts/01a0a6c1-449e-707f-b384-6b11ee59e5df/patch.diff",
+    "sha256": "4186436ba4ee6d86b2e2d2d6c1a2e8c5cd52325344881868943a45c32c37ccec",
+    "byte_size": 147771
+  },
+  {
+    "logical_name": "provider-references.json",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ad5dc0e9d-be0d-4504-82a1-62c14340c91c%3Arun%3A1/attempts/01a0a6c1-449e-707f-b384-6b11ee59e5df/provider-references.json",
+    "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "byte_size": 3
+  },
+  {
+    "logical_name": "result.json",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ad5dc0e9d-be0d-4504-82a1-62c14340c91c%3Arun%3A1/attempts/01a0a6c1-449e-707f-b384-6b11ee59e5df/result.json",
+    "sha256": "1f52714949c333b2387eea197f53e71bac6bb635efc59bc14cc8dca9f1ea3467",
+    "byte_size": 1148
+  },
+  {
+    "logical_name": "transcript.jsonl",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ad5dc0e9d-be0d-4504-82a1-62c14340c91c%3Arun%3A1/attempts/01a0a6c1-449e-707f-b384-6b11ee59e5df/transcript.jsonl",
+    "sha256": "37940e2acfdc89a0676dda648d3625fb8d6e0f6596a302f1a594f00a1dd27b55",
+    "byte_size": 638818
+  },
+  {
+    "logical_name": "validation.txt",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ad5dc0e9d-be0d-4504-82a1-62c14340c91c%3Arun%3A1/attempts/01a0a6c1-449e-707f-b384-6b11ee59e5df/validation.txt",
+    "sha256": "c5d75ce559b68c39f260ffb30ef08987265fbd287342c76d31df08d3b5426d13",
+    "byte_size": 898
+  }
+]

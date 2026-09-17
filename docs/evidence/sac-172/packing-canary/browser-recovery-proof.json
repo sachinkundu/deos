@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-09-17T04:56:53.688Z",
+  "kind": "real Cloudflare browser lifecycle with local storage fixtures",
+  "firstSession": "68635b86-344f-45df-aa60-f69f82d3d97e",
+  "replacementSession": "03633f14-1759-4558-bdae-8974ccfa4cd2",
+  "firstPage": {
+    "url": "https://example.com/",
+    "title": "Example Domain",
+    "documentStatus": 200
+  },
+  "recoveredPage": {
+    "url": "https://example.com/",
+    "title": "Example Domain",
+    "documentStatus": 200
+  },
+  "providerHistory": {
+    "sessionId": "68635b86-344f-45df-aa60-f69f82d3d97e",
+    "startTime": 1789621000510,
+    "endTime": 1789621005756,
+    "closeReason": 1,
+    "closeReasonText": "NormalClosure"
+  },
+  "replacement": {
+    "previousSessionId": "68635b86-344f-45df-aa60-f69f82d3d97e",
+    "absentAt": "2026-09-17T04:56:46.048Z",
+    "receipt": {
+      "key": "implementation/run-1/df788a87fb4a2473af6ac567cd8b030f41bdcabde73a427e4be8cf4967cf02c2/browser-replacement.json",
+      "sha256": "df788a87fb4a2473af6ac567cd8b030f41bdcabde73a427e4be8cf4967cf02c2",
+      "byteSize": 785
+    }
+  },
+  "cleanup": "destroyed",
+  "workflowStarted": false
+}

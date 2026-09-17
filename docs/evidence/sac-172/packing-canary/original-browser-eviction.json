@@ -1,0 +1,14 @@
+{
+  "sessionId": "c437ff84-53df-4624-b511-d5a7677a5c37",
+  "history": {
+    "sessionId": "c437ff84-53df-4624-b511-d5a7677a5c37",
+    "startTime": 1789579752746,
+    "endTime": 1789580508295,
+    "closeReason": 11,
+    "closeReasonText": "BrowserSessionEvicted"
+  },
+  "readAt": "2026-09-17T05:03:52.828299+00:00",
+  "provider": "Cloudflare Browser Run puppeteer.history",
+  "interpretation": "BrowserSessionEvicted: provider infrastructure maintenance or release deployment; original exact provider trigger is not exposed",
+  "documentation": "https://developers.cloudflare.com/browser-run/reference/browser-close-reasons/"
+}

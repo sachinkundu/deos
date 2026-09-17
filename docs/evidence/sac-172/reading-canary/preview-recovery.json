@@ -1,0 +1,268 @@
+{
+  "observedAt": "2026-09-17T10:45:08.369Z",
+  "privateSource": "/tmp/sac245-reader/2026-09-17T10-45-08.369Z.json",
+  "failures": [
+    {
+      "line": 104,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_49",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'node - <<'\\\\''NODE'\\\\''\nconst fs = require('\\\\''fs'\\\\'')\nconst path = '\\\\''openspec/changes/sac-245/tasks.md'\\\\''\nlet text = fs.readFileSync(path, '\\\\''utf8'\\\\'')\ntext = text.replace(/- \\\\[ \\\\] ((?:1|2|3|4)\\\\.[1-5]\\\\b)/g, '\\\\''- [x] \"'$1'\"'\\\\'')\ntext = text.replace('\\\\''- [ ] 4.6 '\\\\'', '\\\\''- [x] 4.6 '\\\\'')\nfs.writeFileSync(path, text)\nNODE\ntee /deos/output/requests/preview-local-1.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"preview\\\",\\\"assets\\\":\\\"dist\\\"}\nJSON\ndeos-implementation /deos/output/requests/preview-local-1.json'\"",
+          "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay did not become publicly ready\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay did not become publicly ready\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay did not become publicly ready\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\"}\n",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    },
+    {
+      "line": 111,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_58",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/publish-preview-1.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"publish_preview\\\",\\\"assets\\\":\\\"dist\\\"}\nJSON\ndeos-implementation /deos/output/requests/publish-preview-1.json'\"",
+          "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview b4729f5d-d497-402a-a7f5-f5b348bb0df5 was deployed but its served files are not confirmed yet; retry this same publish_preview request to read it back: ImplementationError: Hosted asset https://b4729f5d.deos-preview-6788ae86271dbb20.pages.dev/assets/index-BrN4B9mY.js returned HTTP 522\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview b4729f5d-d497-402a-a7f5-f5b348bb0df5 was deployed but its served files are not confirmed yet; retry this same publish_preview request to read it back: ImplementationError: Hosted asset https://b4729f5d.deos-preview-6788ae86271dbb20.pages.dev/assets/index-BrN4B9mY.js returned HTTP 522\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:648:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"static_preview_pending\\\",\\\"message\\\":\\\"Preview b4729f5d-d497-402a-a7f5-f5b348bb0df5 was deployed but its served files are not confirmed yet; retry this same publish_preview request to read it back: ImplementationError: Hosted asset https://b4729f5d.deos-preview-6788ae86271dbb20.pages.dev/assets/index-BrN4B9mY.js returned HTTP 522\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:648:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\"}\n",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    },
+    {
+      "line": 116,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_60",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/browser-hosted-navigate.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"browser\\\",\\\"operation\\\":\\\"navigate\\\",\\\"target\\\":\\\"hosted\\\",\\\"url\\\":\\\"/\\\"}\nJSON\ndeos-implementation /deos/output/requests/browser-hosted-navigate.json'\"",
+          "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"net::ERR_CONNECTION_RESET at https://review.deos-preview-6788ae86271dbb20.pages.dev/\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"net::ERR_CONNECTION_RESET at https://review.deos-preview-6788ae86271dbb20.pages.dev/\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async browserResult (file:///deos/bin/implementation-runtime.mjs:471:20)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:753:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"net::ERR_CONNECTION_RESET at https://review.deos-preview-6788ae86271dbb20.pages.dev/\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async browserResult (file:///deos/bin/implementation-runtime.mjs:471:20)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:753:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\"}\n",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    },
+    {
+      "line": 118,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_61",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/browser-hosted-navigate.json'\"",
+          "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"net::ERR_CONNECTION_RESET at https://review.deos-preview-6788ae86271dbb20.pages.dev/\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"net::ERR_CONNECTION_RESET at https://review.deos-preview-6788ae86271dbb20.pages.dev/\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async browserResult (file:///deos/bin/implementation-runtime.mjs:471:20)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:753:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"net::ERR_CONNECTION_RESET at https://review.deos-preview-6788ae86271dbb20.pages.dev/\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async browserResult (file:///deos/bin/implementation-runtime.mjs:471:20)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:753:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\"}\n",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    }
+  ],
+  "successfulReceipts": [
+    {
+      "line": 80,
+      "receipts": [
+        {
+          "requestId": "test-1",
+          "state": "queued",
+          "retrieve": {
+            "action": "operation",
+            "requestId": "test-1"
+          }
+        },
+        {
+          "requestId": "test-1",
+          "action": "check",
+          "fingerprint": "f4008206be2eaa250b17380a124b8398d62d9a4f3baa0dbe63d2af54d905078a",
+          "state": "completed",
+          "createdAt": "2026-09-17T10:38:39.355Z",
+          "lastActivityAt": "2026-09-17T10:39:07.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:38:39.357Z",
+          "commandDeadline": "2026-09-17T10:48:39.357Z",
+          "progress": {
+            "event": "command_output",
+            "outputBytes": 695
+          },
+          "result": {
+            "command": "'npm' 'test'",
+            "exitCode": 0,
+            "signal": null,
+            "stdout": "\n> sac-245-reading-queue@1.0.0 test\n> vitest run\n\n\n RUN  v3.2.7 /deos/workspace/repository\n\n \u2713 test/controller.test.ts (24 tests) 401ms\n \u2713 test/app.test.ts (7 tests) 2703ms\n   \u2713 reading queue shell > shows selected filters and a filtered empty state without hiding global counts  396ms\n   \u2713 reading queue shell > announces storage failures while retaining the visible queue and retry draft  301ms\n   \u2713 reading queue shell > keeps the active filter selected when moving its final row away  1209ms\n\n Test Files  2 passed (2)\n      Tests  31 passed (31)\n   Start at  10:38:45\n   Duration  19.41s (transform 2.10s, setup 0ms, collect 2.71s, tests 3.10s, environment 6.99s, prepare 2.29s)\n\n",
+            "stderr": "",
+            "cwd": "/deos/workspace/repository"
+          },
+          "finishedAt": "2026-09-17T10:39:07.167Z",
+          "observedAt": "2026-09-17T10:39:07.554Z",
+          "inactiveForMs": 387
+        }
+      ]
+    },
+    {
+      "line": 91,
+      "receipts": [
+        {
+          "requestId": "build-1",
+          "state": "queued",
+          "retrieve": {
+            "action": "operation",
+            "requestId": "build-1"
+          }
+        },
+        {
+          "requestId": "build-1",
+          "action": "check",
+          "fingerprint": "e323c6d69073317a6c18059f6caadf780b66add6a396ecf9f8a22822687756e3",
+          "state": "completed",
+          "createdAt": "2026-09-17T10:39:23.756Z",
+          "lastActivityAt": "2026-09-17T10:40:06.447Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:39:23.757Z",
+          "commandDeadline": "2026-09-17T10:49:23.757Z",
+          "progress": {
+            "event": "command_output",
+            "outputBytes": 407
+          },
+          "result": {
+            "command": "'npm' 'run' 'build'",
+            "exitCode": 0,
+            "signal": null,
+            "stdout": "\n> sac-245-reading-queue@1.0.0 build\n> tsc --noEmit && vite build\n\nvite v7.3.6 building client environment for production...\ntransforming...\n\u2713 9 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                  0.49 kB \u2502 gzip: 0.31 kB\ndist/assets/index-BZYleh6D.css   7.56 kB \u2502 gzip: 2.30 kB\ndist/assets/index-BrN4B9mY.js   12.93 kB \u2502 gzip: 4.42 kB\n\u2713 built in 1.61s\n",
+            "stderr": "",
+            "cwd": "/deos/workspace/repository"
+          },
+          "finishedAt": "2026-09-17T10:40:06.447Z",
+          "observedAt": "2026-09-17T10:40:06.766Z",
+          "inactiveForMs": 319
+        }
+      ]
+    },
+    {
+      "line": 100,
+      "receipts": [
+        {
+          "requestId": "local-preview-health-1",
+          "state": "queued",
+          "retrieve": {
+            "action": "operation",
+            "requestId": "local-preview-health-1"
+          }
+        },
+        {
+          "requestId": "local-preview-health-1",
+          "action": "check",
+          "fingerprint": "4edbc8533f6077c9bca47ab06fbe4e0b2f992c615f2046448cf74406a02a4c85",
+          "state": "completed",
+          "createdAt": "2026-09-17T10:41:12.453Z",
+          "lastActivityAt": "2026-09-17T10:41:13.865Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:41:12.455Z",
+          "commandDeadline": "2026-09-17T10:51:12.455Z",
+          "progress": {
+            "event": "command_output",
+            "outputBytes": 494
+          },
+          "result": {
+            "command": "'curl' '--connect-timeout' '5' '--max-time' '20' '-fsS' 'http://127.0.0.1:8787/'",
+            "exitCode": 0,
+            "signal": null,
+            "stdout": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <meta name=\"description\" content=\"A private, browser-local reading queue.\" />\n    <title>Marginalia \u2014 Reading queue</title>\n    <script type=\"module\" crossorigin src=\"/assets/index-BrN4B9mY.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-BZYleh6D.css\">\n  </head>\n  <body>\n    <div id=\"app\"></div>\n  </body>\n</html>\n",
+            "stderr": "",
+            "cwd": "/deos/workspace/repository"
+          },
+          "finishedAt": "2026-09-17T10:41:13.865Z",
+          "observedAt": "2026-09-17T10:41:14.646Z",
+          "inactiveForMs": 781
+        }
+      ]
+    },
+    {
+      "line": 114,
+      "receipts": [
+        {
+          "version": 1,
+          "registrationId": "9f01b42ad9e1770e6145143638a0f3444aefa42e33a50c7d08c927b9b68733e4",
+          "provenance": "service_deployed_static_preview",
+          "request": {
+            "version": 1,
+            "runId": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+            "inputSha": "2e534c5d4f069ecedb4409872e2fda58e5d17f4030fb63ba03312aa39f3a6c10",
+            "candidateSha": "9f01b42ad9e1770e6145143638a0f3444aefa42e33a50c7d08c927b9b68733e4",
+            "treeSha": "c798abe4853adee5997c3d675c77503aefab6ec4",
+            "requestedBy": "deos-static-preview",
+            "accountId": "c68856288112af7698f5be52ea94b96e",
+            "projectId": "09e1e6e7-fbe6-42b8-bcd1-def733a5081b",
+            "projectName": "deos-preview-6788ae86271dbb20",
+            "deploymentId": "b4729f5d-d497-402a-a7f5-f5b348bb0df5",
+            "branch": "review",
+            "build": {
+              "treeSha": "c798abe4853adee5997c3d675c77503aefab6ec4",
+              "baseSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+              "command": "Saved static build output",
+              "logSha256": "180ba4b9a0c18eb05bbec643e3d4b765f5795d04e28bee9419957f37d6edfb19"
+            },
+            "assets": [
+              {
+                "path": "assets/index-BrN4B9mY.js",
+                "bytes": 12932,
+                "sha256": "2ef087804a09479d4d6b99b764ad04841a91a4cd8f337d6da9b8fb66f81cc2ce"
+              },
+              {
+                "path": "assets/index-BZYleh6D.css",
+                "bytes": 7558,
+                "sha256": "f0327fd440e22ce223d0378b99937bef42089ccab53175242683e3d5ca4f84c9"
+              },
+              {
+                "path": "index.html",
+                "bytes": 494,
+                "sha256": "beba5be32c36081ac380e4939e452d1acbb4a9371af49bf9480a03acdf7d3c0a"
+              }
+            ]
+          },
+          "subject": {
+            "change": "sac-245",
+            "approvedDesignSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+            "testedBaseSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+            "treeSha": "c798abe4853adee5997c3d675c77503aefab6ec4"
+          },
+          "origin": "https://review.deos-preview-6788ae86271dbb20.pages.dev",
+          "deployment": {
+            "id": "b4729f5d-d497-402a-a7f5-f5b348bb0df5",
+            "projectId": "09e1e6e7-fbe6-42b8-bcd1-def733a5081b",
+            "projectName": "deos-preview-6788ae86271dbb20",
+            "branch": "review",
+            "environment": "preview",
+            "status": "success",
+            "createdOn": "2026-09-17T10:43:15.081832Z",
+            "url": "https://b4729f5d.deos-preview-6788ae86271dbb20.pages.dev"
+          },
+          "assets": [
+            {
+              "path": "assets/index-BrN4B9mY.js",
+              "bytes": 12932,
+              "sha256": "2ef087804a09479d4d6b99b764ad04841a91a4cd8f337d6da9b8fb66f81cc2ce",
+              "url": "https://b4729f5d.deos-preview-6788ae86271dbb20.pages.dev/assets/index-BrN4B9mY.js",
+              "status": 200
+            },
+            {
+              "path": "assets/index-BZYleh6D.css",
+              "bytes": 7558,
+              "sha256": "f0327fd440e22ce223d0378b99937bef42089ccab53175242683e3d5ca4f84c9",
+              "url": "https://b4729f5d.deos-preview-6788ae86271dbb20.pages.dev/assets/index-BZYleh6D.css",
+              "status": 200
+            },
+            {
+              "path": "index.html",
+              "bytes": 494,
+              "sha256": "beba5be32c36081ac380e4939e452d1acbb4a9371af49bf9480a03acdf7d3c0a",
+              "url": "https://b4729f5d.deos-preview-6788ae86271dbb20.pages.dev/",
+              "status": 200
+            }
+          ],
+          "checkedAt": "2026-09-17T10:43:32.723Z"
+        }
+      ]
+    }
+  ]
+}

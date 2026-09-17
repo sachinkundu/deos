@@ -1,0 +1,10 @@
+{
+  "clip": {
+    "height": 890,
+    "width": 2262,
+    "x": 392,
+    "y": 428.109375
+  },
+  "status": "Workflow running\n\nCurrent step: Implementation verification\n\nEarlier errors and diagnostics (213)",
+  "text": "CURRENT RUN\nWorkflow map\nOpen a phase, then drill into its evidence\nCurrent step\nImplementation verification\n1\nClaim issue\nComplete\n2\nPlanning\nComplete\nBettaView PR#135\nProposal\nSpec: bettaview-review-continuation\nSpec: workflow-state\nHuman Review\nImplementation\nUpcoming\n3\nDesign\nComplete\nBettaView PR#136\ndesign.md\n4\nImplementation\nIn progress\nAuthor\nComplete\n50 of 50 tasks done\n0 remaining\nAuthor checklist\nUpdated 09:06 AM\nVerification\nIn progress\n\nFinal checks and end-to-end proof.\n\n5\nCompleted\nUpcoming\nHistory"
+}

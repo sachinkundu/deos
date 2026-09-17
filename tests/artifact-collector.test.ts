@@ -3,10 +3,12 @@ import test from "node:test";
 
 import {
   ArtifactCollector,
+  D1ArtifactManifestStore,
   type ArtifactManifestStore,
   type ArtifactObjectStore,
   type SandboxArtifactReader,
 } from "../src/artifact-collector.ts";
+import { ImplementationTestDatabase, seedRun } from './helpers/implementation-fixture.ts';
 
 const NOW = new Date("2026-08-16T09:00:00.000Z");
 const schema = {
@@ -97,6 +99,26 @@ const input = {
   requiredFiles: ["transcript.jsonl", "result.json"],
   resultSchema: schema,
 };
+
+test('partial normal collection cannot collide with failure evidence receipts', async () => {
+  const db = new ImplementationTestDatabase();
+  try {
+    seedRun(db, input.runId);
+    const { reader, objects } = setup();
+    const collector = new ArtifactCollector(reader, objects, new D1ArtifactManifestStore(db as unknown as D1Database), () => NOW);
+    await assert.rejects(collector.collect({ ...input, requiredFiles: [...input.requiredFiles, 'missing.json'] }), /missing file/);
+    const before = db.sqlite.prepare('SELECT * FROM artifacts ORDER BY logical_name').all();
+    const result = await collector.collectFailure({ runId: input.runId, attemptId: input.attemptId,
+      outputRoot: input.outputRoot, expectedFiles: [...input.requiredFiles, 'missing.json'], fallbackErrorCategory: 'missing_output' });
+    await collector.verifyDurable(result);
+    assert.deepEqual(result.absentFiles, ['missing.json', 'original-errors.jsonl', 'status.json']);
+    assert.equal(result.storedFiles.length, 2);
+    assert.deepEqual(db.sqlite.prepare('SELECT * FROM artifacts WHERE manifest_id=? ORDER BY logical_name').all(`manifest:${input.attemptId}`), before);
+    assert.equal(db.sqlite.prepare('SELECT state FROM artifact_manifests WHERE manifest_id=?').get(result.manifestId)!.state, 'complete');
+    assert.deepEqual(await collector.collectFailure({ runId: input.runId, attemptId: input.attemptId,
+      outputRoot: input.outputRoot, expectedFiles: [...input.requiredFiles, 'missing.json'], fallbackErrorCategory: 'missing_output' }), result);
+  } finally { db.close(); }
+});
 
 test("collector validates and writes immutable checksum-verified artifacts", async () => {
   const { collector, objects, manifests } = setup();
@@ -233,7 +255,7 @@ test("failure collection preserves every available safe output and records absen
   assert.equal(result.objectCount, 4);
   assert.equal(manifests.state, "complete");
   assert.equal(objects.values.has(result.manifestKey), true);
-  const summaryKey = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}/failure-summary.json`;
+  const summaryKey = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}/failure-v2/failure-summary.json`;
   const summary = JSON.parse(new TextDecoder().decode(objects.values.get(summaryKey)?.content));
   assert.equal(summary.safeErrorCategory, "codex_exit_nonzero");
   assert.deepEqual(summary.absentFiles, ["original-errors.jsonl", "patch.diff", "result.json"]);

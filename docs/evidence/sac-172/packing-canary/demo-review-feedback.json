@@ -1,0 +1,63 @@
+{
+  "result": [
+    {
+      "results": [
+        {
+          "images_opened": 21,
+          "first_open": "2026-09-16T17:10:40.995Z",
+          "latest_open": "2026-09-16T17:12:54.040Z"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.2024
+        },
+        "duration": 0.2024,
+        "changes": 0,
+        "last_row_id": 61,
+        "changed_db": false,
+        "size_after": 107098112,
+        "rows_read": 21,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "outcome": "needs_work",
+          "summary": "The changed application itself is real and demonstrated well. I opened all 17 distinct browser images: they show the actual \"Carry On\" packing list running at a 1440x900 desktop viewport, served from the checked hosted preview origin https://review.deos-preview-982f7d6fcf337341.pages.dev/ (caption provenance matches registration 991d5cece8... in context/hosted-preview.json, whose build tree 3cdd00ad matches the reviewed subject tree and whose three assets were service-checked at HTTP 200). The source is a genuine client app (src/main.ts wires window.localStorage; item names are rendered with textContent, so the literal <b>Hat</b> row in image 3 is real safe rendering, not a fixture). Add, rename-keeps-packed, pack/unpack, All vs To pack including the \"Nothing left to pack\" state, delete with untouched neighbours, and in-app validation/cancel are all shown end to end through the real UI. Two fixable evidence gaps remain. (1) The publish/reachability scenario has no passing hosted proof: both \"review\"-audience curl showboats fail with HTTP 520 against https://3587f2f2.deos-preview-982f7d6fcf337341.pages.dev/ \u2014 a URL that is neither the registered origin nor the registered deployment URL (eac475e0...) \u2014 and the only successful HTTP check is http://127.0.0.1:8787/, exactly the local substitution the approved plan forbids as hosted proof. A third showboat is a plain connection-refused failure. So the gallery for this scenario currently advertises a broken preview URL and a localhost check. (2) The refresh scenario's before and after images are the same file byte for byte (sha 6b2be931..., which is also the rename scenario's final image), and the plan's post-reload measure text proof was never captured, so the reload itself is asserted only by the caption. The same applies to the reload checkpoint in the validation scenario (image 23 is byte-identical to image 22 and image 8). No faked service state, fabricated receipts, or bypassed app paths were found; later human direction (Linear 2026-09-16 15:45 and 16:08) to use only publish_preview/static-preview-v1 with no CI, credentials, or production release was respected, and no provider-originated evidence was invented for this credential-free client app.",
+          "created_at": "2026-09-16T17:16:43.915Z",
+          "payload_key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/a3a55950b7aadee687957ac41e17247335c55467ced2cc8315665c28702d9039/demo-review.json",
+          "payload_sha": "a3a55950b7aadee687957ac41e17247335c55467ced2cc8315665c28702d9039"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.1598
+        },
+        "duration": 0.1598,
+        "changes": 0,
+        "last_row_id": 61,
+        "changed_db": false,
+        "size_after": 107098112,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}

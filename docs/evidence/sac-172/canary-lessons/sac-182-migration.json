@@ -1,0 +1,9 @@
+{
+  "activated": true,
+  "resumed": false,
+  "runId": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+  "definitionVersion": 40,
+  "definitionDigest": "6c0d38dd3480e945df0018ebb68c98305dc3b98848f58976dde003246cfe44dc",
+  "currentNode": "implementation_failed",
+  "visitSequence": 59
+}

@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readCommand } from "../container/native-review-read.mjs";
+import { readCommand, readSnapshot } from "../container/native-review-read.mjs";
+
+test('native design reviewer reads service capabilities without requiring an invented repository file', async () => {
+  const path = 'context/runtime-capabilities.json';
+  const content = JSON.stringify({safeAdapters:['static-preview-v1']});
+  const state = {phase:'design',change:'sac-238',before:[],reviewJob:{materializedContext:JSON.stringify({
+    designReview:{sources:[{path,content}]},
+  })}};
+  assert.equal(await readSnapshot(readCommand(`cat ${path}`),state,'/nonexistent-repository'),content);
+  await assert.rejects(readSnapshot(readCommand('cat context/undeclared.json'),state), /not in the checked input/);
+});
 
 test("review commands parse quoted regex data, escapes, and joined word fragments", () => {
   for (const [command, args] of [

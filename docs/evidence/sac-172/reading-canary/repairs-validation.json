@@ -1,0 +1,38 @@
+{
+  "status": "prepared_not_deployed",
+  "scope": "Workflow runtime, cleanup, tools and guidance only; no sample app changes",
+  "focused": {
+    "tests": 35,
+    "pass": 35,
+    "fail": 0
+  },
+  "finalFullSuite": {
+    "tests": 609,
+    "pass": 608,
+    "fail": 0,
+    "skipped": 1
+  },
+  "typecheck": "pass",
+  "runtimeSyntax": "pass",
+  "whitespace": "pass",
+  "firstFullSuite": {
+    "tests": 609,
+    "pass": 607,
+    "fail": 1,
+    "skipped": 1,
+    "cause": "Capability prose omitted the provider name Cloudflare Pages; restored the name without weakening the assertion."
+  },
+  "providerCanary": "not run",
+  "deployment": "not performed",
+  "openProviderCauses": [
+    "relay 530/1016",
+    "hosted 522",
+    "connection reset",
+    "progress notification timeout"
+  ],
+  "nextCanary": {
+    "brief": "next-storage-canary.md",
+    "launch": "not started",
+    "requires": "Isolated remote Worker, D1 and R2 preview capability; current backend bindings are local emulations"
+  }
+}

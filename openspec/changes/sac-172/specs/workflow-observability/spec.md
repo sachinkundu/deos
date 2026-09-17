@@ -1,25 +1,69 @@
 ## ADDED Requirements
 
+### Requirement: Show the independent demo decision
+
+Implementation SHALL show Demo Plan and Demo Gate as normal nodes with Claude as the author. Keep the existing visual style and Author, Prepare PR, and Human Review nodes. Demo Gate SHALL show Pass, Needs work, or Blocked, the demonstrated count, and a short verdict. Selecting a node SHALL show the requirements, expected outcomes, per-demo decisions, and evidence, with visible images. Current-step text SHALL name the real demo visit. A stale verdict MUST NOT look like a current pass. Keep internal control data out of the default map.
+
+#### Scenario: Reviewer asks for more work
+
+- **WHEN** Claude finds two of six demos missing.
+- **THEN** Demo Gate shows four of six demonstrated and explains the gaps while Codex resumes work.
+
+### Requirement: Signal task progress in the Author node
+
+The implementation phase SHALL contain Author followed by Claude Review and Prepare PR, linked to Human Review. A compact meter SHALL show the author's checked tasks, total tasks, remaining tasks, and the last observed time. It SHALL keep the existing phase markers, status, and transcript controls. It MUST NOT add internal task or proof panels to the workflow map. Selecting the task counter SHALL open a read-only popup with OpenSpec sections, numbered tasks, and checked or unchecked states. Its counts and task text SHALL come from the same saved observation. The popup SHALL support keyboard dismissal and a narrow viewport.
+
+#### Scenario: Person opens the task checklist
+
+- **WHEN** a person selects the Author task counter.
+- **THEN** the portal loads a popup with the matching checklist, completed and remaining counts, and filters for all, remaining, or done tasks. The person cannot change task state through the popup.
+
+Checklist edits SHALL signal the current workflow through the attempt's scoped capability. The workflow SHALL read the actual checklist before saving counts. A signal MUST NOT carry a completion result or choose a human gate. The heartbeat SHALL reconcile missed signals as a fallback.
+
+Transient signal delivery failures SHALL be retained and retried with capped
+backoff without requiring another task edit. Success or the attempt deadline
+SHALL stop retries. Rejected credentials SHALL stop the watcher.
+
+#### Scenario: The author checks off a task
+
+- **WHEN** the active author saves a changed task checklist, including an atomic file replacement.
+- **THEN** a progress signal wakes the workflow, which reads and saves that attempt's counts for the portal.
+
+#### Scenario: All tasks are checked but the run is active
+
+- **WHEN** the author marks all tasks complete while the workflow still has work to verify.
+- **THEN** Author keeps its completed checklist and remains active until Sol finishes. Claude Review names the actual reviewer job. Prepare PR names the branch and PR publication steps. Task counts never claim that agent work is complete.
+
+#### Scenario: Work returns to Author
+
+- **WHEN** the current checklist reopens tasks or a new build starts after a review, clarification or retry.
+- **THEN** Author becomes active and Prepare PR becomes upcoming until agent work finishes. An old full checklist or review cannot complete a new build. A failure or clarification wait pauses the unfinished step instead of showing it complete.
+
+#### Scenario: Progress cannot be refreshed
+
+- **WHEN** a progress read fails or an old attempt sends a late signal.
+- **THEN** the original error is retained or the old signal is rejected. No count is invented. The view shows the observation time and marks delayed updates. A fresh try does not inherit a prior try's live counter.
+
 ### Requirement: Show implementation progress and proof
 
-The portal SHALL show the checked design base, build tries, task state, branch, pull request, checks, and proof. It SHALL mark each proof item as an image, a Showboat log, a real host event, or a fake event. Unit tests MUST NOT be the sole proof of how the app acts.
+The portal SHALL show implementation progress through Author, Claude Review and Prepare PR and link the final pull request from Human Review. The pull request and its linked evidence SHALL retain the checked design base, build tries, task state, branch, checks, and proof. Each proof item SHALL be marked as an image, a Showboat log, a real host event, or a fake event. Unit tests MUST NOT be the sole proof of how the app acts.
 
-The view SHALL show which change and approved base each proof item covers. Old proof SHALL stay in the past. It MUST NOT look like proof for new work. The portal SHALL show the final gate as blocked while any needed proof is stale.
+The linked evidence SHALL show which change and approved base each proof item covers. Old proof SHALL stay in the past. It MUST NOT look like proof for new work. The workflow SHALL preserve evidence for Claude and human judgment without enforcing freshness.
 
 #### Scenario: Implementation is active
 
 - **WHEN** a person opens a run while the build is in flight.
-- **THEN** the portal shows the task state, try, branch, base, and last safe step.
+- **THEN** the portal shows Author as active with its checklist meter, status, and existing transcript controls.
 
 #### Scenario: Pull request is ready
 
 - **WHEN** the build enters its final human gate.
-- **THEN** the portal links the exact pull request, check results, task list, and current behavior proof.
+- **THEN** the shared Human Review node links the exact pull request, which contains check results, the task list, and current behavior proof.
 
 #### Scenario: Work changes after proof
 
 - **WHEN** an edit changes the patch after proof was saved.
-- **THEN** the portal marks the affected proof as stale and shows the final gate as blocked until the current work has new proof.
+- **THEN** the evidence retains its recorded revision for review; the workflow does not block the human handoff on evidence freshness.
 
 ### Requirement: Show clarification waits and replies
 

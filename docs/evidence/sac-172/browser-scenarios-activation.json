@@ -1,0 +1,166 @@
+{
+  "deployments": {
+    "deos-queue-consumer-ts": {
+      "versions": [
+        {
+          "version_id": "3d4d13a0-e867-48f4-9642-6c2399e1de53",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-16T10:47:50.569881Z"
+    },
+    "deos-sample-project": {
+      "versions": [
+        {
+          "version_id": "7dcb3e04-2c21-4f8f-ab26-b389d4f8c175",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-14T12:29:19.555854Z"
+    },
+    "deos-workflow-portal-staging": {
+      "versions": [
+        {
+          "version_id": "a7aa4e85-1a53-4cee-b9da-72f15cae008c",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-16T09:16:24.328259Z"
+    }
+  },
+  "containers": [
+    {
+      "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:6a2005fa8d275ffb297826dfbaf77ffb6b921d206a750536df64af90c7e9c18a",
+      "version": 19,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 1,
+        "current_step": 1,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-implementationsandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:6a2005fa8d275ffb297826dfbaf77ffb6b921d206a750536df64af90c7e9c18a",
+      "version": 20,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 1,
+        "current_step": 1,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-standard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:6a2005fa8d275ffb297826dfbaf77ffb6b921d206a750536df64af90c7e9c18a",
+      "version": 27,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 1,
+        "current_step": 1,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:6a2005fa8d275ffb297826dfbaf77ffb6b921d206a750536df64af90c7e9c18a",
+      "version": 83,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 3,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 1,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 1,
+        "current_step": 1,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    }
+  ],
+  "canary": {
+    "current_node": "implementation_review",
+    "current_visit_sequence": 55,
+    "status": "awaiting_human",
+    "definition_version": 36,
+    "definition_digest": "ebb46d0ee6c44446441250ed50d7d299a5c6303d6e773143e632b484d322bcfb",
+    "workflow_instance_id": "wf-v1-df45egskeqygyufuef6i3jg2yjxrknkxfjhevma524j7ucsebyia"
+  },
+  "route": {
+    "project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+    "definition_id": "implementation",
+    "definition_version": 38,
+    "route_revision": 25,
+    "workflow_revision": 18,
+    "dispatch_enabled": 1,
+    "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "failure": "heartbeat_expired",
+  "attemptId": "01a0a3ac-5d69-7e50-a1dd-9b883fe21acc",
+  "lastHeartbeat": "2026-09-15T06:31:48.519Z",
+  "lastActiveCommand": "npm run bettaview:build",
+  "recoveredPatchSha": "cdfaa685ebdf676271f2a26f6f8f0288953c054b6837176811325f735973b87f",
+  "recoveredTreeSha": "564e38581a6084802684bb86c9074ea3e7c61359",
+  "pythonBefore": "3.10.12",
+  "pythonAfter": "3.11.16",
+  "canaryPythonProof": {
+    "passed": 73,
+    "failed": 1,
+    "failure": "test_invalid_signature_and_stale_timestamp_are_rejected: stale response 200 instead of expected 400"
+  },
+  "runnerChecks": {
+    "javascript": 501,
+    "python": 72,
+    "typecheck": "passed",
+    "bindings": "passed",
+    "openspec": "passed"
+  },
+  "heartbeatCause": "Not conclusively established from retained evidence. Resource saturation observed; do not claim OOM or a Vite crash.",
+  "heartbeatReadFailure": {
+    "occurredAt": "2026-09-15T06:40:18.937Z",
+    "name": "AbortError",
+    "message": "The operation was aborted",
+    "location": "SandboxAgentController.reconcile"
+  },
+  "watchdogRepair": "An AbortError or TimeoutError while reading the heartbeat preserves the last durable timestamp and waits for another observation; it no longer treats the last observed timestamp as proof of expiry. The absolute deadline remains enforced."
+}

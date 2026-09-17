@@ -9,6 +9,44 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
 
+test('Demo readers open the exact frozen approved, candidate and context inventory', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'claude-demo-read-'));
+  const execute = promisify(execFile);
+  const request = join(dir, 'request.json');
+  const sources = ['approved/openspec/changes/sample/proposal.md', 'candidate/src/app.ts', 'candidate/src/nested/storage.ts', 'candidate/src-other/hidden.ts', 'context/checks.json']
+    .map(path => ({path, content: `Frozen ${path}\n`, sha256: createHash('sha256').update(`Frozen ${path}\n`).digest('hex')}));
+  const state = {phase: 'demo', change: 'sample', before: sources.map(({content: _content,...source})=>source),
+    reviewJob: {materializedContext: JSON.stringify({demo:{sources}})}};
+  const read = async(command: string) => {
+    await writeFile(request, JSON.stringify({state,command}));
+    return execute(process.execPath,[resolve('container/claude-review-read.mjs'),'--request-file',request],
+      {env:{...process.env,DEOS_ERROR_OUTPUT_ROOT:dir}});
+  };
+  try {
+    assert.equal((await read('ls')).stdout,sources.map(source=>source.path).join('\n')+'\n');
+    for(const source of sources)assert.equal((await read(`cat ${source.path}`)).stdout,source.content);
+    const expected = sources.filter(source => source.path.startsWith('candidate/src/'))
+      .map(source => `${source.path}:1:${source.content}`).join('');
+    // Reproduce SAC-245's failed directory search and test exact prefix boundaries.
+    for (const directory of ['candidate/src', 'candidate/src/', './candidate/src', '/deos/workspace/repository/candidate/src']) {
+      assert.equal((await read(`rg -n "Frozen|seed|fixture|demo" ${directory}`)).stdout, expected);
+    }
+    assert.equal((await read('rg Frozen candidate/src candidate/src/app.ts')).stdout, expected);
+    assert.equal((await read('rg absent candidate/src')).stdout, '\n');
+    assert.equal((await read('rg Frozen .')).stdout,
+      sources.map(source => `${source.path}:1:${source.content}`).join(''));
+    for (const directory of ['candidate/sr', 'candidate/missing', '../candidate', 'candidate/src/../../', '/etc']) {
+      await assert.rejects(read(`rg Frozen ${directory}`), (error: any) =>
+        /not in the checked input|outside the checked input/.test(error.stderr));
+    }
+    await assert.rejects(read('cat candidate/src'), (error: any) => error.stderr.includes('not in the checked input'));
+    await assert.rejects(read('cat openspec/changes/sample/proposal.md'),(error: any)=>error.stderr.includes('not in the checked input'));
+    await assert.rejects(read('cat ../.env'),(error: any)=>error.stderr.includes('outside the checked input'));
+    sources[0].content='tampered';state.reviewJob.materializedContext=JSON.stringify({demo:{sources}});
+    await assert.rejects(read(`cat ${sources[0].path}`),(error: any)=>error.stderr.includes('source hash mismatch'));
+  } finally {await rm(dir,{recursive:true,force:true});}
+});
+
 test("Claude reader launches with large file context and preserves command errors", async () => {
   const dir = await mkdtemp(join(tmpdir(), "claude-read-"));
   const run = promisify(execFile);

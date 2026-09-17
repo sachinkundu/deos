@@ -17,6 +17,7 @@ export class ClaudeRunner {
   private readonly dependencies: {
     db: D1Database; store: ClaudeReviewStore; sandboxes: SandboxFactory;
     token: string | undefined; secretVersion: string | undefined; signingKey: string;
+    demoEvidence?: (attempt: AgentAttemptRecord, evidenceId: string) => Promise<Record<string, unknown>>;
   };
   constructor(dependencies: ClaudeRunner["dependencies"]) { this.dependencies = dependencies; }
 
@@ -32,8 +33,13 @@ export class ClaudeRunner {
   }
 
   private async tier(attempt: AgentAttemptRecord) {
-    const run = await this.dependencies.db.prepare("SELECT sandbox_tier FROM orchestration_runs WHERE run_id = ?")
-      .bind(attempt.run_id).first<{sandbox_tier:string}>();
+    const run = await this.dependencies.db.prepare(`SELECT COALESCE((
+      SELECT tiers.target_sandbox_tier FROM agent_stage_retries retry
+      JOIN implementation_retry_tiers tiers ON tiers.retry_id=retry.retry_id
+      WHERE retry.run_id=run.run_id AND retry.to_visit_sequence<=?
+      ORDER BY retry.to_visit_sequence DESC LIMIT 1),run.sandbox_tier) AS sandbox_tier
+      FROM orchestration_runs run WHERE run_id=?`)
+      .bind(attempt.visit_sequence, attempt.run_id).first<{sandbox_tier:string}>();
     return requireAttemptTier(run?.sandbox_tier, attempt.sandbox_tier);
   }
 
@@ -46,13 +52,21 @@ export class ClaudeRunner {
       if (path.endsWith("/review")) return await this.review(body, attempt, job, token, url);
       if (path.endsWith("/status")) return await this.status(body, attempt);
       if (path.endsWith("/tools")) return await this.read(body, attempt, job);
+      if (path.endsWith('/demo-evidence')) {
+        if (!['demo_plan', 'demo_gate'].includes(String(job.reviewKind)) || Object.keys(body).length !== 1 ||
+            typeof body.evidenceId !== 'string' || !this.dependencies.demoEvidence) throw new ClaudeReviewError('review_failure');
+        const invocation = await this.dependencies.store.invocation(attempt.attempt_id);
+        if (!invocation) throw new ClaudeReviewError('review_failure');
+        this.assertRunning(invocation);
+        return response(await this.dependencies.demoEvidence(attempt, body.evidenceId));
+      }
       if (path.endsWith("/finish")) {
         await this.finish(attempt.attempt_id);
         return response({ state: "finished" });
       }
       throw new ClaudeReviewError("review_failure");
     } catch (error) {
-      const operation = ["review", "status", "tools", "finish"].find(name => path.endsWith(`/${name}`)) ?? "unknown";
+      const operation = ["review", "status", "tools", "demo-evidence", "finish"].find(name => path.endsWith(`/${name}`)) ?? "unknown";
       // Keep the thrown value, including nested causes and SDK details. Public
       // classification must not replace the protected diagnostic evidence.
       let diagnostic = JSON.stringify(errorDetails(error));
@@ -93,7 +107,8 @@ export class ClaudeRunner {
       const sandbox = this.dependencies.sandboxes.get(runnerId, { keepAlive: true, tier: await this.tier(attempt) });
       await sandbox.mkdir("/deos/claude", { recursive: true });
       await sandbox.writeFile("/deos/claude/config.json", JSON.stringify({ attemptId: attempt.attempt_id,
-        deadline: attempt.absolute_deadline, capabilityToken, capabilityUrl, enrollment, grounding: job.grounding ?? null }));
+        deadline: attempt.absolute_deadline, capabilityToken, capabilityUrl, enrollment, grounding: job.grounding ?? null,
+        demo: ['demo_plan', 'demo_gate'].includes(String(job.reviewKind)) }));
       const process = await sandbox.exec(["node", "--experimental-strip-types", "/deos/bin/claude-trusted-runner.mjs"], {
         cwd: "/deos/claude", env: { CLAUDE_CODE_OAUTH_TOKEN: this.dependencies.token! },
         timeout: Math.max(1, Date.parse(attempt.absolute_deadline) - Date.now()),
@@ -145,7 +160,8 @@ export class ClaudeRunner {
     const saved = await store.receipt(turn);
     if (saved) return response({ receipt: saved });
     const sandbox = this.dependencies.sandboxes.get(invocation.runner_id, { keepAlive: true, tier: await this.tier(attempt) });
-    if ((await sandbox.exists("/deos/claude/failure.json")).exists) {
+    const checkFailure = async () => {
+      if (!(await sandbox.exists("/deos/claude/failure.json")).exists) return;
       const failure = record(JSON.parse((await sandbox.readFile("/deos/claude/failure.json")).content));
       const stage = ["configuration", "client_start", "provider_turn", "receipt_validation", "receipt_write"].includes(String(failure.diagnosticStage))
         ? failure.diagnosticStage : "unknown";
@@ -163,20 +179,29 @@ export class ClaudeRunner {
         ? failure.cause as "auth_failure" | "plan_limit" : "review_failure",
         typeof failure.retryNotBefore === "string" && Number.isFinite(Date.parse(failure.retryNotBefore)) ? failure.retryNotBefore : null,
         { cause: diagnostic.originalError }), { diagnostic });
-    }
+    };
+    await checkFailure();
     const path = `/deos/claude/result-${turn.ordinal}.json`;
     if (!(await sandbox.exists(path)).exists) {
       const process = invocation.process_id ? await sandbox.getProcess(invocation.process_id) : null;
-      if (!process || (await process.status()).state !== "running") {
-        const output = process ? await process.output({ encoding: "utf8" }) : null;
-        // A failed failure.json write leaves the complete, redacted error on stderr.
-        // Collect that fallback before the invocation can be cleaned up.
-        throw Object.assign(new ClaudeReviewError("review_failure"), { diagnostic: {
-          providerMessage: output?.stderr || "Claude runner stopped without a result or failure file",
-          processId: invocation.process_id, output,
-        } });
+      const processStatus = process ? await process.status() : null;
+      if (!process || processStatus?.state !== "running") {
+        // The runner can atomically publish its final file between our first
+        // existence checks and this exit observation. Read those files again
+        // before cleanup, or we can discard the original failure/valid receipt.
+        await checkFailure();
+        if (!(await sandbox.exists(path)).exists) {
+          const output = process ? await process.output({ encoding: "utf8" }) : null;
+          // A failed failure.json write leaves the complete, redacted error on stderr.
+          // Collect that fallback before the invocation can be cleaned up.
+          throw Object.assign(new ClaudeReviewError("review_failure"), { diagnostic: {
+            providerMessage: output?.stderr || "Claude runner stopped without a result or failure file",
+            processId: invocation.process_id, processStatus, output,
+          } });
+        }
+      } else {
+        return response({ state: "running" }, 202);
       }
-      return response({ state: "running" }, 202);
     }
     const content = (await sandbox.readFile(path)).content;
     if (this.dependencies.token && content.includes(this.dependencies.token)) throw new ClaudeReviewError("review_failure");
@@ -219,7 +244,7 @@ export class ClaudeRunner {
     if (!invocation) throw new ClaudeReviewError("review_failure");
     this.assertRunning(invocation);
     if (!Array.isArray(job.claudeReviewSources) || job.claudeReviewSources.length === 0) throw new ClaudeReviewError("review_failure");
-    const state = { phase: job.reviewKind === "design" ? "design" : "planning", change: job.openspecChange,
+    const state = { phase: ['demo_plan', 'demo_gate'].includes(String(job.reviewKind)) ? 'demo' : job.reviewKind === "design" ? "design" : "planning", change: job.openspecChange,
       before: job.claudeReviewSources, reviewJob: { materializedContext: job.materializedContext } };
     const sandbox = this.dependencies.sandboxes.get(attempt.sandbox_id, { keepAlive: true, tier: await this.tier(attempt) });
     const requestPath = `/deos/claude-read/request-${crypto.randomUUID()}.json`;

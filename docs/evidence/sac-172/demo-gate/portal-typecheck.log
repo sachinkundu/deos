@@ -1,0 +1,2 @@
+> portal:typecheck
+> tsc --noEmit -p portal/tsconfig.json

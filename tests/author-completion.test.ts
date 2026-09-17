@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   authorCorrectionPrompt,
+  authorCompletionContext,
   changedPathsFromPorcelain,
   designCorrectionPrompt,
   runAuthorCompletionCheck,
@@ -14,6 +15,14 @@ import {
 } from "../container/author-completion.mjs";
 
 const CHANGE = "add-review";
+test('native completion uses the latest review context instead of the original empty findings', async () => {
+  const original = JSON.stringify({ designReviewFeedback: { findings: [] } });
+  const current = JSON.stringify({ designReviewFeedback: { findings: [{ id: 'safe-text' }] } });
+  const job = { attemptId: 'author', materializedContext: original, nativeSelfReview: {} };
+  assert.equal(await authorCompletionContext(job, async () => ({ attemptId: 'author', materializedContext: current })), current);
+  assert.equal(await authorCompletionContext({ ...job, nativeSelfReview: null }), original);
+  await assert.rejects(authorCompletionContext(job, async () => ({ attemptId: 'other', materializedContext: current })), /another attempt/);
+});
 const ROOT = `openspec/changes/${CHANGE}`;
 const FILES = [
   `${ROOT}/.openspec.yaml`,
@@ -230,6 +239,34 @@ test("design completion validates scope and repairs malformed replies in the sam
     assert.equal(repaired.rounds.length, 2);
     await writeFile(reviewRepliesPath, "[]");
     assert.equal((await check()).ok, true);
+    const reviewDispositionsPath = `${cwd}/design-dispositions.json`;
+    const dispositionCheck = (expectedDispositionIds: string[] = []) => runDesignCompletionCheck({
+      cwd, change: CHANGE, execute, reviewRepliesPath, reviewDispositionsPath, expectedDispositionIds,
+    });
+    assert.equal((await dispositionCheck()).ok, false, 'missing dispositions require same-session completion');
+    await writeFile(reviewDispositionsPath, '[]');
+    assert.equal((await dispositionCheck()).ok, true);
+    for (const invalid of ['{', '{}', '[]',
+      JSON.stringify([{ findingId: 'wrong', status: 'applied', reason: 'Done' }]),
+      JSON.stringify([{ findingId: 'F1', status: 'unknown', reason: 'Done' }]),
+      JSON.stringify([{ findingId: 'F1', status: 'applied', reason: ' ' }]),
+      JSON.stringify([{ findingId: 'F1', status: 'applied', reason: 'Done' }, { findingId: 'F1', status: 'applied', reason: 'Done' }]),
+    ]) {
+      await writeFile(reviewDispositionsPath, invalid);
+      assert.equal((await dispositionCheck(['F1'])).ok, false);
+    }
+    const corrected = await runBoundedAuthorCompletion({
+      initialCheck: await dispositionCheck(['F1']), initialResult: { code: 0, signal: null, outcome: 'completed' },
+      sessionId: 'design-session', maximumRepairs: 2, correctionPrompt: designCorrectionPrompt,
+      resume: async ({ sessionId, prompt }) => {
+        assert.equal(sessionId, 'design-session');
+        assert.match(prompt, /design-dispositions.json/);
+        await writeFile(reviewDispositionsPath, JSON.stringify([{ findingId: 'F1', status: 'applied', reason: 'Clarified the event flow.' }]));
+        return { code: 0, signal: null, outcome: 'completed' };
+      }, check: () => dispositionCheck(['F1']),
+    });
+    assert.equal(corrected.check.ok, true);
+    assert.deepEqual((await dispositionCheck(['F1'])).changedPaths, [designPath]);
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }

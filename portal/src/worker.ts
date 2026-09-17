@@ -50,6 +50,8 @@ type PortalRuntimeEnv = Pick<Env, "DB" | "ARTIFACTS" | "ASSETS"> & PortalDeploym
 };
 
 interface RouteAdminBinding {
+  implementationHumans(actorEmail:string):Promise<unknown>;
+  saveImplementation(actorEmail:string,input:unknown):Promise<unknown>;
   createTierTrial(actorEmail:string,input:unknown):Promise<void>;
   overview(actorEmail: string): Promise<unknown>;
   createRoute(actorEmail: string, input: unknown): Promise<unknown>;
@@ -159,6 +161,55 @@ export const routePortalRequest = async (
     const message = errorText(error);
     return json(message === "forbidden" ? 403 : 401, { error: message === "authentication unavailable" ? "authentication_unavailable" : "unauthorized" });
   }
+  const implementationTasksRoute=url.pathname.match(/^\/api\/implementation\/([^/]+)\/tasks$/);
+  const implementationRoute=implementationTasksRoute ?? url.pathname.match(/^\/api\/implementation\/([^/]+)(?:\/(proof|error)\/(.+))?$/);
+  if(implementationRoute) {
+    if(request.method!=='GET')return json(405,{error:'method_not_allowed'});
+    const runId=decodeURIComponent(implementationRoute[1]);
+    const {ImplementationStore}=await import('../../src/implementation-store.ts');
+    const store=new ImplementationStore(env.DB,env.ARTIFACTS);
+    const work=await store.run(runId);
+    if(!work)return json(200,null);
+    if(implementationTasksRoute) {
+      const {loadImplementationChecklist,ChecklistPendingError}=await import('./implementation-tasks.ts');
+      try { return json(200,await loadImplementationChecklist(store,work)); }
+      catch(error) {
+        if(error instanceof ChecklistPendingError)return json(503,{error:error.message});
+        throw error;
+      }
+    }
+    if(implementationRoute[2]==='error') {
+      const saved=await env.DB.prepare('SELECT r2_key,sha256 FROM implementation_effect_errors WHERE run_id=? AND error_id=?')
+        .bind(runId,decodeURIComponent(implementationRoute[3])).first<{r2_key:string;sha256:string}>();
+      if(!saved)return json(404,{error:'diagnostic_not_found'});
+      return new Response(await store.readBytes(saved.r2_key,saved.sha256),{headers:{...securityHeaders,'Content-Type':'application/json'}});
+    }
+    if(implementationRoute[2]==='proof') {
+      const proof=await env.DB.prepare('SELECT * FROM implementation_proof WHERE run_id=? AND proof_id=? AND sanitized=1')
+        .bind(runId,decodeURIComponent(implementationRoute[3])).first<{r2_key:string;sha256:string;media_type:string}>();
+      if(!proof)return json(404,{error:'proof_not_found'});
+      return new Response(await store.readBytes(proof.r2_key,proof.sha256),{headers:{...securityHeaders,'Content-Type':proof.media_type,
+        'Content-Disposition':'inline'}});
+    }
+    const [attempts,proof,gates,sources,errors]=await Promise.all([
+      env.DB.prepare('SELECT attempt_id,try_sequence,kind,status,tested_base_sha,created_at,updated_at FROM implementation_tries WHERE run_id=? ORDER BY try_sequence').bind(runId).all(),
+      env.DB.prepare('SELECT proof_id,kind,caption,tested_base_sha,tree_sha,created_at FROM implementation_proof WHERE run_id=? AND sanitized=1 ORDER BY created_at DESC').bind(runId).all(),
+      env.DB.prepare('SELECT expected_event_kind,state,opened_at,decided_at,decision_outcome,head_sha,base_sha FROM implementation_gates WHERE run_id=? ORDER BY visit_sequence DESC').bind(runId).all(),
+      env.DB.prepare('SELECT url,title,claim,artifact_locator FROM implementation_doc_sources WHERE run_id=? ORDER BY source_id').bind(runId).all(),
+      env.DB.prepare('SELECT operation,error_id,created_at FROM implementation_effect_errors WHERE run_id=? ORDER BY created_at DESC').bind(runId).all(),
+    ]);
+    const {implementationTaskSnapshot}=await import('./implementation-tasks.ts');
+    const {candidate,progress}=await implementationTaskSnapshot(store,work,(attempts.results.at(-1) as {attempt_id?:string}|undefined)?.attempt_id);
+    const question=await store.question(runId);
+    const {implementationDemoView}=await import('./implementation-demo-view.ts');
+    const demo=await implementationDemoView(env.DB,env.ARTIFACTS,work);
+    return json(200,{status:work.status,branch:work.branch,prUrl:work.pr_url,approvedDesignSha:work.approved_design_sha,
+      testedBaseSha:work.tested_base_sha,treeSha:work.tree_sha,mergeSha:work.merge_sha,
+      candidateKind:candidate?.kind??null,tasks:candidate?.tasks??null,checks:candidate?.checks??[],assumptions:candidate?.assumptions??[],
+      requirements:JSON.parse(work.requirements_json),attempts:attempts.results,proof:proof.results,gates:gates.results,
+      documentation:sources.results,errors:errors.results,progress,demo,
+      question:question?{status:question.status,...await store.read<Record<string,unknown>>(question.question_key,question.question_sha)}:null});
+  }
   const detailPage = url.pathname.match(/^\/failure-detail\/([0-9a-f-]{36})$/i);
   if (detailPage !== null && request.method === "GET") {
     const escape = (text: string): string => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -210,6 +261,10 @@ export const routePortalRequest = async (
       await routeAdmin(env).createTierTrial(identity.email,JSON.parse(body));
       return json(201,{saved:true});
     }
+    if(url.pathname === '/api/settings/implementation-humans') {
+      if(request.method!=='GET')return json(405,{error:'method_not_allowed'});
+      return json(200,await routeAdmin(env).implementationHumans(identity.email));
+    }
     if (url.pathname === "/api/settings/routes") {
       if (request.method === "GET") {
         const overview = await routeAdmin(env).overview(identity.email) as Record<string,unknown>;
@@ -229,7 +284,7 @@ export const routePortalRequest = async (
       return json(201, await routeAdmin(env).createRoute(identity.email, parsed.value));
     }
     const routeSettingsMatch = url.pathname.match(
-      /^\/api\/settings\/routes\/([A-Za-z0-9][A-Za-z0-9_-]{0,99})\/(repository|workflow|review|recheck)$/,
+      /^\/api\/settings\/routes\/([A-Za-z0-9][A-Za-z0-9_-]{0,99})\/(repository|workflow|review|recheck|implementation)$/,
     );
     if (routeSettingsMatch !== null) {
       const action = routeSettingsMatch[2];
@@ -246,7 +301,7 @@ export const routePortalRequest = async (
         ? ["repository", "githubInstallationId", "expectedRevision"]
         : action === "workflow"
           ? ["dispatchEnabled", "expectedRevision"]
-          : action === "review" ? ["model", "expectedRevision"] : [];
+          : action === "review" ? ["model", "expectedRevision"] : action === "implementation" ? ["userId","expectedRevision"] : [];
       if (!exactBody(body, allowed)) return json(400, { error: "invalid_request" });
       const input = { ...body, projectId: routeSettingsMatch[1] };
       const admin = routeAdmin(env);
@@ -256,7 +311,7 @@ export const routePortalRequest = async (
           ? await admin.saveWorkflow(identity.email, input)
           : action === "review"
             ? await admin.saveReview(identity.email, input)
-            : await admin.recheck(identity.email, { projectId: routeSettingsMatch[1] });
+            : action === "implementation" ? await admin.saveImplementation(identity.email,input) : await admin.recheck(identity.email, { projectId: routeSettingsMatch[1] });
       return json(200, value);
     }
     if ([

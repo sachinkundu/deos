@@ -1,0 +1,20 @@
+{
+  "kind": "local-container-proof",
+  "webSearch": "live",
+  "preview": {
+    "count": 2
+  },
+  "checks": [
+    {
+      "command": "'node' '-e' 'fetch(\"http://127.0.0.1:8787/\").then(r=>r.json()).then(v=>{if(v.count<2)process.exit(1);console.log(JSON.stringify(v))})'",
+      "exitCode": 0
+    }
+  ],
+  "denials": [
+    "private config",
+    "Git config write",
+    "Git directory replacement"
+  ],
+  "providerOriginated": false,
+  "treeSha": "76bd13ce735cab12ce2c9f0a767054ad7750f9f5"
+}

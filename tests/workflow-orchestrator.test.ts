@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { captureErrors } from "../src/error-context.ts";
 
 import type {
   OrchestrationRunRecord,
@@ -807,6 +808,42 @@ test("unauthorized gate departure is repaired before a later human decision", as
   assert.equal(store.inbox.get("delivery-bot")?.state, "processed");
 });
 
+test("replaying a repaired gate does not reset its status before the next decision", async () => {
+  const store = new RuntimeStore();
+  const services = new NodeServices();
+  store.inbox.set("delivery-bot", inboxEvent("delivery-bot", "oauthclient"));
+  store.inbox.set("delivery-human", inboxEvent("delivery-human", "user"));
+  const cache = new Map<string, unknown>();
+  const deliveries = ["delivery-bot"];
+  const replayStep = (): WorkflowStepLike => {
+    const occurrences = new Map<string, number>();
+    let waitIndex = 0;
+    return {
+      async do<T>(name: string, callback: () => Promise<T>): Promise<T> {
+        const occurrence = (occurrences.get(name) ?? 0) + 1;
+        occurrences.set(name, occurrence);
+        const key = `${name}:${occurrence}`;
+        if (!cache.has(key)) cache.set(key, structuredClone(await callback()));
+        return structuredClone(cache.get(key)) as T;
+      },
+      async waitForEvent<T>(): Promise<{ payload: Readonly<T> }> {
+        const deliveryId = deliveries[waitIndex++];
+        if (!deliveryId) throw new Error("durable wait checkpoint");
+        return { payload: { deliveryId } as T };
+      },
+    };
+  };
+  const workflow = orchestrator(store, services);
+  await assert.rejects(workflow.run(store.run.run_id, replayStep()), /durable wait checkpoint/);
+  assert.equal(store.run.status, "awaiting_human");
+  deliveries.push("delivery-human");
+  const result = await workflow.run(store.run.run_id, replayStep());
+  assert.equal(result.outcome, "succeeded");
+  assert.equal(services.repairs, 1);
+  assert.equal(store.transitions.filter(({ from_node }) => from_node === "approval").length, 1);
+  assert.equal(store.inbox.get("delivery-human")?.state, "processed");
+});
+
 test("a failed provider gate repair blocks gate processing", async () => {
   const store = new RuntimeStore();
   const services = new NodeServices();
@@ -1205,7 +1242,7 @@ test("native initial authors reconcile promptly while old and later author paths
       do: async (_name, callback) => callback(),
       waitForEvent: async (_name, options) => {
         timeout = options.timeout;
-        throw new Error("checkpoint timeout");
+        throw Object.assign(new Error("checkpoint timeout"), {name: "WorkflowTimeoutError"});
       },
     };
     await assert.rejects(new WorkflowOrchestrator(store, traceabilityDefinition, new RunningServices(), {
@@ -1220,6 +1257,7 @@ test("a completion hint wakes normal reconciliation and covers the exit race for
   for (const [payload, expected] of [
     [{ kind: "attempt-completed", attemptId: "attempt" }, ["5m", "10s", "5m"]],
     [{ kind: "attempt-completed", attemptId: "old-attempt" }, ["5m", "5m", "5m"]],
+    [{ kind: "attempt-progress", attemptId: "attempt" }, ["5m", "5m", "5m"]],
     [{ deliveryId: "delivery" }, ["5m", "5m", "5m"]],
   ] as const) {
     const run = { ...makeRun(traceabilityDefinition), definition_version: 22, current_node: "planning_author" };
@@ -1246,5 +1284,33 @@ test("a completion hint wakes normal reconciliation and covers the exit race for
     assert.deepEqual(waits, expected);
     assert.equal(store.run.status, "active");
     assert.equal(store.run.current_node, "planning_author");
+  }
+});
+
+
+test("RPC heartbeat expiry reconciles quietly while unexpected wait errors propagate with their cause", async () => {
+  for (const expected of [true, false]) {
+    const run = {...makeRun(traceabilityDefinition), definition_version:22, current_node:"planning_author"};
+    const store = new RuntimeStore(run);
+    const original = expected ? Object.assign(new Error("Execution timed out after 300000ms"), {
+      remote:true, stack:"WorkflowTimeoutError: Execution timed out after 300000ms\n    at ContextImpl.waitForEvent (index.js:24169:26)",
+    }) : new Error("event storage disconnected", {cause:new Error("original socket cause")});
+    const finished = new Error("reconciled");
+    let calls=0;
+    class RunningServices extends NodeServices {
+      override executeAgent(): ReturnType<WorkflowNodeServices["executeAgent"]> {
+        if(calls++ > 0) throw finished;
+        return Promise.resolve({state:"running",attemptId:"attempt",sandboxId:"sandbox"});
+      }
+    }
+    const written: unknown[]=[];
+    await assert.rejects(captureErrors(async errors=>{written.push(...errors)},()=>new WorkflowOrchestrator(store,traceabilityDefinition,new RunningServices(),{
+      humanGateStateId:"human-state",approvalStateNames:["Merging"],rejectionStateNames:["Canceled"],
+    }).run(run.run_id,{do:async(_name,callback)=>callback(),waitForEvent:async()=>{throw original}})),
+    error=>error===(expected?finished:original));
+    assert.equal(calls,expected?2:1);
+    const diagnostics=JSON.stringify(written);
+    if(expected) assert.doesNotMatch(diagnostics,/Execution timed out/);
+    else assert.match(diagnostics,/original socket cause/);
   }
 });

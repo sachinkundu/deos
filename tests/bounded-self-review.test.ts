@@ -31,7 +31,7 @@ async function fixture() {
     let source = await readFile('container/bounded-self-review.mjs', 'utf8');
     source = source.replaceAll('/deos/native-review', stateRoot).replaceAll('/deos/output', output)
         .replaceAll('/root/.codex/sessions/', sessions + '/');
-    for (const file of ['original-errors.mjs', 'trace-review-proof.mjs', 'bounded-review.mjs']) {
+    for (const file of ['original-errors.mjs', 'trace-review-proof.mjs', 'bounded-review.mjs', 'supervisor-io.mjs']) {
         source = source.replaceAll(`'./${file}'`, JSON.stringify(pathToFileURL(resolve('container', file)).href));
     }
     source = source.replaceAll("'./author-completion.mjs'", "'./check.mjs'")
@@ -94,4 +94,28 @@ test('native child writes restore the checked candidate and preserve the failed 
     finally {
         await rm(f.root, { recursive: true, force: true });
     }
+});
+
+test('parent tools receive the next phase after each completed child without waiting for Stop', async () => {
+    const f = await fixture();
+    const tool = () => f.hook.executeBoundedHook({ hook_event_name: 'PreToolUse', tool_name: 'exec_command' });
+    try {
+        await f.stop();
+        await f.child('discovery', { findings: [{ id: 'F1', summary: 'Explain the output', location: 'design.md:1' }], sources: [], searchDisposition: 'none_used' });
+        assert.match((await tool()).hookSpecificOutput.permissionDecisionReason, /one repair turn/);
+        assert.equal((await f.readState()).stage, 'repairing');
+        assert.deepEqual(await tool(), {});
+        await writeFile(join(f.cwd, f.relative), f.candidate + 'The output is saved.\n');
+        await f.stop();
+        await f.child('recheck', { ratings: { F1: 'fixed' }, sources: [], searchDisposition: 'none_used' });
+        assert.match((await tool()).hookSpecificOutput.permissionDecisionReason, /complete.*output sidecars/);
+        assert.equal((await f.readState()).stage, 'done');
+        assert.deepEqual(await tool(), {});
+        assert.deepEqual(await f.stop(), {});
+        const state = await f.readState();
+        assert.equal(state.children.length, 2);
+        assert.equal(state.events.filter((event: { type: string }) => event.type === 'repair_started').length, 1);
+        await writeFile(join(f.cwd, f.relative), 'Unreviewed change.\n');
+        await assert.rejects(f.stop(), /author changed accepted review candidate/);
+    } finally { await rm(f.root, { recursive: true, force: true }); }
 });

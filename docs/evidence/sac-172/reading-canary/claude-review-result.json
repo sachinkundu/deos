@@ -1,0 +1,16 @@
+{
+  "source": {
+    "attempt_id": "01a0af18-1e0a-72ca-9e22-82fcc05ab00c",
+    "logical_name": "result.json",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/attempts/01a0af18-1e0a-72ca-9e22-82fcc05ab00c/result.json",
+    "sha256": "8922de25d0ecb8341f62a73d66ddd5b9aa5248466a864acd84601b9f88378adb",
+    "byte_size": 2358,
+    "local": "/tmp/sac245-artifacts/31f125d54dd8-result.json"
+  },
+  "result": {
+    "outcome": "completed",
+    "reviewOutcome": "needs_work",
+    "summary": "The work is genuine and the app runs for real: candidate/src/main.ts wires the controller to window.localStorage with no server or fixture, candidate/src/app.ts renders every user value with textContent only, and context/hosted-preview.json records a real Cloudflare Pages preview deployment (b4729f5d, status success, origin https://review.deos-preview-6788ae86271dbb20.pages.dev, three assets fetched 200) whose asset names and byte sizes match the build output in context/checks.json. The nine browser images are all 1440x900 captures of that published build, not fixtures, and they show authentic app state transitions. Add, blank-title rejection and recovery, edit-keeps-status, delete plus refresh persistence, and literal rendering of markup-like and very long text are all convincingly demonstrated. Three saved plan scenarios are, however, not demonstrated by the saved evidence. (1) D3 has no images at all for the status cycle: nothing shows a book moved back out of Finished to To read, which is an explicit approved spec scenario (spec.md:51 \"Move a book back\"), and no image pairs a single move with its before/after counts within one scenario. (2) D4 has no image of a status filter selected over an empty result: the approved spec scenario \"Show an empty status\" (spec.md:73) requires Finished selected with a status-specific empty state, and the only empty state captured is first-run All. (3) D5 shows the blank-author error but never shows the saved row afterwards, so \"keeps the saved author\" (spec.md:36) is asserted rather than shown. The planned Showboat measure outputs for D1, D4 and D7 (live origin, CSS viewport, count text, row geometry) and the publish_preview adapter response are also absent; the only Showboat item is the local dist asset/no-network check, so origin and viewport rest on the trusted hosted-preview record rather than in-page measurement. None of this indicates faked state or a bypassed app path; it is a recapture gap. Clarification history applied: Sachin's two Linear approvals direct implementation with a hosted preview and real browser proof and require the final PR to stay unmerged for human review. No later human answer changes scope, and nothing here expands provider permissions or approves a human gate.",
+    "providerReceipts": []
+  }
+}

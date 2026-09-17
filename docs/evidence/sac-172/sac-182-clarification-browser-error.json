@@ -1,0 +1,1 @@
+{"operation":"tool.browser","error":{"stack":"ImplementationError: Start the safe preview before opening a browser\n    at ImplementationBroker.handle (queue-consumer.js:50690:17)\n    at async queue-consumer.js:141:16","message":"Start the safe preview before opening a browser","code":"preview_missing","name":"ImplementationError"}}

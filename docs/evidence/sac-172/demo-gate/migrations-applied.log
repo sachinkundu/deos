@@ -1,0 +1,36 @@
+
+ ⛅️ wrangler 4.125.0 (update available 4.131.2)
+───────────────────────────────────────────────
+Resource location: remote
+
+Migrations to be applied:
+┌──────────────────────────────────────┐
+│ name                                 │
+├──────────────────────────────────────┤
+│ 0044_implementation_demo.sql         │
+├──────────────────────────────────────┤
+│ 0045_implementation_demo_upgrade.sql │
+└──────────────────────────────────────┘
+? About to apply 2 migration(s)
+Your database may not be available to serve requests during the migration, continue?
+🤖 Using fallback value in non-interactive context: yes
+🌀 Executing on remote database DB (4e854f8a-018a-42c4-a325-c4b8805c06b2):
+🌀 To execute on your local development database, remove the --remote flag from your wrangler command.
+🚣 Executed 4 commands in 5.03ms
+┌──────────────────────────────────────┬────────┐
+│ name                                 │ status │
+├──────────────────────────────────────┼────────┤
+│ 0044_implementation_demo.sql         │ ✅     │
+├──────────────────────────────────────┼────────┤
+│ 0045_implementation_demo_upgrade.sql │ 🕒️    │
+└──────────────────────────────────────┴────────┘
+🌀 Executing on remote database DB (4e854f8a-018a-42c4-a325-c4b8805c06b2):
+🌀 To execute on your local development database, remove the --remote flag from your wrangler command.
+🚣 Executed 5 commands in 15.51ms
+┌──────────────────────────────────────┬────────┐
+│ name                                 │ status │
+├──────────────────────────────────────┼────────┤
+│ 0044_implementation_demo.sql         │ ✅     │
+├──────────────────────────────────────┼────────┤
+│ 0045_implementation_demo_upgrade.sql │ ✅     │
+└──────────────────────────────────────┴────────┘

@@ -1,0 +1,44 @@
+{"event":"deos.original_error","location":"src/cleanup-audit.ts:194","error":{"stack":"Error: Browser close is not yet confirmed\n    at Object.beforeDestroy (file:///Users/sachin/code/deos-sac-172/tests/cleanup-audit.test.ts:335:74)\n    at CleanupAuditor.scheduled (file:///Users/sachin/code/deos-sac-172/src/cleanup-audit.ts:206:55)\n    at async TestContext.<anonymous> (file:///Users/sachin/code/deos-sac-172/tests/cleanup-audit.test.ts:342:3)\n    at async Test.run (node:internal/test_runner/test:1404:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)","message":"Browser close is not yet confirmed","name":"Error"},"occurredAt":"2026-09-17T12:23:21.924Z"}
+✔ failure cleanup SQL requires a complete manifest and retains the original failure (2.085083ms)
+✔ explicit failure hold release preserves the original error and requires saved outputs and a stopped process (20.629666ms)
+✔ provider inventory endpoint is authenticated and reports standalone orphans once (1.206042ms)
+✔ operator cleanup destroys one exact stopped tracked Sandbox and records D1 cleanup (0.45475ms)
+✔ operator cleanup rejects changed targets and a process that is still running (0.338166ms)
+✔ known destroyed Sandbox is excluded from external orphan reporting (0.204042ms)
+✔ known live Sandbox is excluded from external orphan reporting (0.182125ms)
+✔ held failed Sandbox stays tracked and is excluded from external orphan reporting (0.189708ms)
+✔ scheduled reconciliation destroys D1-known terminal Sandboxes (0.197167ms)
+✔ scheduled reconciliation waits for a failed Sandbox hold to expire (0.144ms)
+✔ scheduled cleanup waits for resource absence, then records data cleanup after sandbox destruction (0.931792ms)
+✔ operator cleanup also runs resource and post-destruction hooks (0.228625ms)
+✔ data cleanup reconciliation is scoped, idempotent and never claims browser/provider absence (0.477291ms)
+✔ trusted snapshot uses the actual Git tree, includes binary bytes, and refuses symlinks (411.800792ms)
+✔ atomic ref write speaks the real Git protocol and rejects a raced prior head (250.7825ms)
+✔ local preview config cannot carry remote bindings, secrets or another try persistence (0.5325ms)
+✔ trusted output reads refuse symlink and cross-directory targets (1.886958ms)
+✔ latest result replaces the same command in the same folder and keeps other folders (0.179459ms)
+✔ lost submit reply, duplicate submit and immediate status preserve one running demo and its results (33.873125ms)
+✔ cancel removes queued demo work; active demo cannot be blindly canceled (2.908209ms)
+✔ dependency exit failure prevents a subsequent real command; explicit cancellation retains output (96.715958ms)
+✔ interrupted operation cannot silently replay after runtime restart (1.55ms)
+✔ checklist counts ignore code examples, accept checked case, and allow reopening tasks (1.48925ms)
+✔ progress read uses author permissions, rejects truncation and retains original transport errors (3.091875ms)
+✔ live counts are scoped to the current try and base, reject old observations, and never change workflow status (122.4855ms)
+✔ real file notifications signal task changes and atomic replacements before the heartbeat (4644.559333ms)
+✔ a lost progress signal retries without another task edit, while rejected credentials stop it (10168.861167ms)
+✔ author selection controls PR order and keeps obsolete captures in the saved evidence (0.9505ms)
+✔ unknown IDs are rejected by the tool without replacing the author's valid selection (0.277542ms)
+✔ legacy jobs keep their gallery and an explicit empty selection is allowed (0.072667ms)
+✔ one real task transition at a time preserves content, fences and idempotent retries (19.247ms)
+✔ static preview defaults to hosted while backend and explicit local requests keep local D1/R2 (0.465583ms)
+✔ a failed checked shell command or pipeline cannot be hidden by a later successful echo (17.394583ms)
+✔ scenario selection map shows omitted captures without deciding coverage or losing original proof (0.317916ms)
+✔ progress diagnostics distinguishes absent telemetry from unreadable or malformed telemetry (1.625959ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15064.434042

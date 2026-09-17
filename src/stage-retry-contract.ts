@@ -15,7 +15,11 @@ export type AgentStageRetryNode =
   | "design_independent_review"
   | "design_self_response"
   | "design_independent_response"
-  | "design_final_review";
+  | "design_final_review"
+  | "implementation_tasks"
+  | "implementation_build"
+  | "implementation_demo_plan"
+  | "implementation_demo_gate";
 
 export const RETRYABLE_AGENT_ATTEMPT_STATES = [
   "failed",
@@ -41,6 +45,10 @@ const agentStageRetryNodes = new Set<unknown>([
   "design_self_response",
   "design_independent_response",
   "design_final_review",
+  "implementation_tasks",
+  "implementation_build",
+  "implementation_demo_plan",
+  "implementation_demo_gate",
 ]);
 
 export const isAgentStageRetryNode = (value: unknown): value is AgentStageRetryNode =>
@@ -54,8 +62,14 @@ export const publicationRetryActions = {
   publish_design: "github.publish_design_candidate",
   publish_design_response: "github.publish_design_candidate",
   publish_design_revision: "github.publish_design_candidate",
+  implementation_branch_write: "implementation.write_branch",
+  implementation_publish: "implementation.publish",
 } as const;
 export type PublicationRetryNode = keyof typeof publicationRetryActions;
+export const publicationRetryFailure = (node: PublicationRetryNode) =>
+  node === "implementation_branch_write" || node === "implementation_publish"
+    ? { node: "implementation_failed", cause: "implementation_failed" }
+    : { node: "system_action_failed", cause: "system_action_invariant_failed" };
 export type StageRetryNode = AgentStageRetryNode | PublicationRetryNode;
 export const isPublicationRetryNode = (value: unknown): value is PublicationRetryNode =>
   typeof value === "string" && Object.hasOwn(publicationRetryActions, value);

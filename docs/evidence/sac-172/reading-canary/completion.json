@@ -1,0 +1,36 @@
+{
+  "pr": "https://github.com/sachinkundu/deos-sample-project/pull/42",
+  "prHead": "671e0e1cd80d38c880dd10849238c62c13cb9bfa",
+  "preview": "https://b4729f5d.deos-preview-6788ae86271dbb20.pages.dev",
+  "state": "implementation_review; awaiting_human; unmerged and unreleased",
+  "validation": {
+    "cloudTests": 31,
+    "finalScenarios": 5,
+    "finalCaptures": 16,
+    "publishedImages": 13,
+    "unauthenticatedImageHashes": "all match",
+    "publishedImagesVisuallyInspectedInBrave": [
+      2,
+      3,
+      4,
+      7,
+      8,
+      9,
+      12,
+      13
+    ],
+    "reviewedCandidateFilesMatchPR": 17,
+    "verifiedCollectedArtifactFiles": 71
+  },
+  "supervisorInterventions": [
+    "One workflow-only reader fix and deployment",
+    "One same-stage Claude review retry"
+  ],
+  "noLocalAppEdits": true,
+  "remainingFollowups": [
+    "READ-11 author batched checklist updates",
+    "READ-18 stale local_data cleanup metadata"
+  ],
+  "cleanup": "Browser, preview and sandbox confirmed destroyed; original errors retained",
+  "monitor": "Pause on completion"
+}

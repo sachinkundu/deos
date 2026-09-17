@@ -1,0 +1,13 @@
+{
+  "kind": "local runtime regression, not cloud canary evidence",
+  "browser": "External Brave, isolated headless profile",
+  "library": "@cloudflare/puppeteer 1.4.0",
+  "test": "tests/implementation-browser-fill.test.ts",
+  "command": "DEOS_BROWSER_EXECUTABLE=\"/Applications/Brave Browser.app/Contents/MacOS/Brave Browser\" node --experimental-strip-types --test tests/implementation-browser-fill.test.ts",
+  "before": "\u2716 real browser fill replaces an existing name and clears controlled input across reconnects (1596.153292ms)\n\u2139 tests 1\n\u2139 suites 0\n\u2139 pass 0\n\u2139 fail 1\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 1935.140833\n\n\u2716 failing tests:\n\ntest at tests/implementation-browser-fill.test.ts:7:1\n\u2716 real browser fill replaces an existing name and clears controlled input across reconnects (1596.153292ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  + actual - expected\n  \n  + 'JacketRain coat'\n  - 'Jacket'\n           ^\n  \n      at TestContext.<anonymous> (file:///Users/sachin/code/deos-sac-172/tests/implementation-browser-fill.test.ts:35:14)\n      at async Test.run (node:internal/test_runner/test:1404:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 'JacketRain coat',\n    expected: 'Jacket',\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n",
+  "after": "\u2714 real browser fill replaces an existing name and clears controlled input across reconnects (1877.518083ms)\n\u2139 tests 1\n\u2139 suites 0\n\u2139 pass 1\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 2162.634167\n",
+  "references": [
+    "https://pptr.dev/api/puppeteer.page.type",
+    "https://pptr.dev/api/puppeteer.locator.fill"
+  ]
+}

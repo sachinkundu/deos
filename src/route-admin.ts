@@ -9,6 +9,7 @@ import { LinearCapabilityAdapter, type LinearProjectChoice } from "./linear-capa
 import {
   D1RepositoryRouteStore,
   permissionsDigest,
+  repositoryRouteDigest,
   RepositoryRouteError,
   REQUIRED_GITHUB_PERMISSIONS,
   type RepositoryRouteView,
@@ -274,6 +275,14 @@ export class RouteAdminService {
     if (route?.github_installation_id === null || route === null) {
       throw new RouteAdminError("route_not_found");
     }
+    if (route.definition_id==='implementation') {
+      if(!route.allowed_linear_user_id||!route.human_binding_revision||
+        route.allowed_access_email?.toLowerCase()!==this.env.ROUTE_ADMIN_ALLOWED_EMAIL.toLowerCase())
+        throw new RouteAdminError('unauthorized_actor');
+      const human=await this.linear.implementationUser(route.allowed_linear_user_id);
+      if(!human.active||human.isMe||human.id!==route.allowed_linear_user_id)
+        throw new RouteAdminError('unauthorized_actor');
+    }
     const access = await this.liveAccess(
       projectId,
       route.trial_repository,
@@ -322,6 +331,41 @@ export class RouteAdminService {
       actorEmail,
       now: this.now().toISOString(),
     }).catch((error: unknown) => { throw this.storeError(error); });
+  }
+
+  async implementationHumans(actorEmail: string) {
+    this.actor(actorEmail);
+    return (await this.linear.implementationUsers()).filter(user => user.active && !user.isMe);
+  }
+
+  async saveImplementation(actorEmail: string, input: { projectId: string; userId: string; expectedRevision: number }): Promise<RepositoryRouteView> {
+    this.actor(actorEmail);
+    if (!exactInput(input,['projectId','userId','expectedRevision'])) throw new RouteAdminError('invalid_input');
+    const projectId=normalizeIdentifier(input.projectId), userId=normalizeIdentifier(input.userId);
+    const revision=normalizeRevision(input.expectedRevision);
+    const user=await this.linear.implementationUser(userId);
+    if (!user.active || user.isMe || user.id !== userId)
+      throw new RouteAdminError('unauthorized_actor');
+    const route=await this.routes.read(projectId);
+    if(!route)throw new RouteAdminError('route_not_found');
+    if(route.route_revision!==revision)throw new RouteAdminError('stale_workflow_revision');
+    const definition=(await this.loadDefinitions()).implementation;
+    if(!definition?.implementationPolicy)throw new Error('Implementation definition is unavailable');
+    const now=this.now().toISOString();
+    const candidate={...route,definition_id:definition.name,definition_version:definition.version,definition_digest:definition.digest,
+      allowed_access_email:this.env.ROUTE_ADMIN_ALLOWED_EMAIL.toLowerCase(),allowed_linear_user_id:user.id,
+      human_binding_revision:(route.human_binding_revision??0)+1,human_binding_checked_at:now,
+      workflow_revision:route.workflow_revision+1,route_revision:revision+1,dispatch_enabled:0};
+    const digest=await repositoryRouteDigest(candidate);
+    const saved=await this.env.DB.prepare(`UPDATE project_workflow_policies SET definition_id=?,definition_version=?,definition_digest=?,
+      allowed_access_email=?,allowed_linear_user_id=?,human_binding_revision=?,human_binding_checked_at=?,
+      workflow_revision=?,route_revision=?,route_digest=?,dispatch_enabled=0,route_updated_by=?,route_updated_at=?
+      WHERE project_id=? AND route_revision=?`).bind(definition.name,definition.version,definition.digest,candidate.allowed_access_email,user.id,
+        candidate.human_binding_revision,now,candidate.workflow_revision,candidate.route_revision,digest,actorEmail,now,projectId,revision).run();
+    if(saved.meta.changes!==1)throw new RouteAdminError('stale_workflow_revision');
+    const result=await this.routes.readView(projectId);
+    if(result?.routeDigest!==digest||result.allowedLinearUserId!==userId)throw new RouteAdminError('route_read_back_failed');
+    return result;
   }
 
   async recheck(actorEmail: string, input: { projectId: string }): Promise<RepositoryRouteView> {

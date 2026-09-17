@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sachin/code/deos-sac-172
+configfile: pyproject.toml
+testpaths: tests
+collected 72 items
+
+tests/test_design_review_stage_migration.py ..                           [  2%]
+tests/test_design_semantic_review_migration.py .....                     [  9%]
+tests/test_dispatch.py ..                                                [ 12%]
+tests/test_implementation_provider_events.py .                           [ 13%]
+tests/test_ingress.py ..........                                         [ 27%]
+tests/test_lifecycle_migration.py ..                                     [ 30%]
+tests/test_multi_repository_route_migration.py ....                      [ 36%]
+tests/test_operator_portal_migration.py ..                               [ 38%]
+tests/test_portal_release.py .....................                       [ 68%]
+tests/test_sandbox_tier.py ........                                      [ 79%]
+tests/test_sandbox_tier_migration.py ...                                 [ 83%]
+tests/test_simple_planning_migration.py ..                               [ 86%]
+tests/test_skeleton.py .                                                 [ 87%]
+tests/test_telemetry.py .....                                            [ 94%]
+tests/test_trace_review_migration.py ..                                  [ 97%]
+tests/test_workflow_controls_migration.py ..                             [100%]
+
+============================== 72 passed in 3.66s ==============================

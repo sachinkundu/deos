@@ -1,0 +1,50 @@
+{
+  "proof": "local container with deterministic model and broker fixtures",
+  "supervisorExit": 0,
+  "agentProcesses": [
+    {
+      "pid": 62,
+      "mode": "initial",
+      "sessionId": "local-process-proof-session"
+    },
+    {
+      "pid": 118,
+      "mode": "resume",
+      "sessionId": "local-process-proof-session"
+    },
+    {
+      "pid": 178,
+      "mode": "resume",
+      "sessionId": "local-process-proof-session"
+    }
+  ],
+  "verification": [
+    {
+      "ready": false,
+      "code": "checks_incomplete",
+      "message": "Required commands failed: 'node' 'check.cjs' (exit 1)"
+    },
+    {
+      "ready": false,
+      "code": "checks_incomplete",
+      "message": "No recorded checks match the final candidate tree. Rerun required checks after the last repository edit."
+    },
+    {
+      "ready": true
+    }
+  ],
+  "finalTree": "2b5c00a5a0434b400e5219b09aa374bb71a85c33",
+  "matchedPatchSha": "834fc8791ff92ecea49952a32d88b12017bc087f0c75e9f0c14b780cd64385fe",
+  "finalChecks": [
+    {
+      "command": "'node' 'check.cjs'",
+      "cwd": "/deos/workspace/repository",
+      "exitCode": 0
+    }
+  ],
+  "retainedCheckRecords": 4,
+  "completionSignals": 1,
+  "heartbeatDuringVerification": true,
+  "verificationRequests": 4,
+  "retainedTransportFailures": 1
+}

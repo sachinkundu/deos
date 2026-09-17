@@ -32,6 +32,11 @@ export function authorCorrectionPrompt(
   round: number,
   maximumRepairs: number,
 ): string;
+export function authorCompletionContext(job: {
+  attemptId: string;
+  materializedContext: string;
+  nativeSelfReview?: { schema?: string } | null;
+}, readNativeState?: () => Promise<{ attemptId: string; materializedContext: string }>): Promise<string>;
 export function designCorrectionPrompt(
   check: AuthorCompletionCheck,
   round: number,
@@ -41,6 +46,8 @@ export function runDesignCompletionCheck(input: {
   cwd: string;
   change: string;
   reviewRepliesPath?: string;
+  reviewDispositionsPath?: string;
+  expectedDispositionIds?: readonly string[];
   execute?: (args: string[], cwd: string, timeout?: number) => Promise<CommandResult>;
 }): Promise<AuthorCompletionCheck>;
 export function runBoundedAuthorCompletion(input: {

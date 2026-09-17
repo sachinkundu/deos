@@ -1,0 +1,154 @@
+{
+  "run": "SAC-238",
+  "attemptId": "01a0ab02-47f4-7ae3-aebc-5601103899eb",
+  "events": [
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_57",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"The atomic collection failed in the rename scenario: the real browser did not commit on Enter, so the expected Jacket row never appeared. I\u2019m fixing that actual keyboard path by explicitly submitting the rename form on Enter, strengthening the test to use a real key event, then I\u2019ll rebuild, republish, and rerun the entire scenario list from zero; partial images will not be used.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "f122c40e8294d4c1b11781438e6bb92d0772f425",
+      "occurredAt": "2026-09-16T16:40:16.978Z",
+      "event": "demo_failed",
+      "collectionId": "bccafe46-988a-4028-bc5e-897819ea280e",
+      "scenarioId": "rename-keeps-packed",
+      "stepIndex": 14,
+      "captures": [
+        {
+          "scenarioId": "add-items",
+          "stepIndex": 1,
+          "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+          "documentStatus": 200,
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "traceEnabled": false,
+          "console": [],
+          "proof": {
+            "change": "sac-238",
+            "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+            "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+            "treeSha": "f122c40e8294d4c1b11781438e6bb92d0772f425",
+            "id": "01a0ab02-47f4-7ae3-aebc-5601103899eb:f122c40e8294d4c1b11781438e6bb92d0772f425:browser_image:501323ad1d161d2ae2fca96dd838ca587c52a79e128eefcf9c85c929eee53f4c:139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705",
+            "kind": "browser_image",
+            "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/f122c40e8294d4c1b11781438e6bb92d0772f425/501323ad1d161d2ae2fca96dd838ca587c52a79e128eefcf9c85c929eee53f4c/browser.png",
+            "caption": "1. The hosted desktop app opens with an empty packing list and clear add and filter controls.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 504510e60bd25fda8d346f3fddb5388160e34fbb5b0a5103999bdace01396839",
+            "sha256": "139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705",
+            "sanitized": true
+          },
+          "imagePath": "/deos/implementation/browser-139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705.png"
+        },
+        {
+          "scenarioId": "add-items",
+          "stepIndex": 5,
+          "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+          "documentStatus": 200,
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "traceEnabled": false,
+          "console": [],
+          "proof": {
+            "change": "sac-238",
+            "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+            "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+            "treeSha": "f122c40e8294d4c1b11781438e6bb92d0772f425",
+            "id": "01a0ab02-47f4-7ae3-aebc-5601103899eb:f122c40e8294d4c1b11781438e6bb92d0772f425:browser_image:a96ddeaccfadf240415d1db63959a8d532c7eda3e48dcbd32e77ee5161181ad0:8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e",
+            "kind": "browser_image",
+            "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/f122c40e8294d4c1b11781438e6bb92d0772f425/a96ddeaccfadf240415d1db63959a8d532c7eda3e48dcbd32e77ee5161181ad0/browser.png",
+            "caption": "2. Passport appears as a new To pack item.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 504510e60bd25fda8d346f3fddb5388160e34fbb5b0a5103999bdace01396839",
+            "sha256": "8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e",
+            "sanitized": true
+          },
+          "imagePath": "/deos/implementation/browser-8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e.png"
+        },
+        {
+          "scenarioId": "add-items",
+          "stepIndex": 12,
+          "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+          "documentStatus": 200,
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "traceEnabled": false,
+          "console": [],
+          "proof": {
+            "change": "sac-238",
+            "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+            "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+            "treeSha": "f122c40e8294d4c1b11781438e6bb92d0772f425",
+            "id": "01a0ab02-47f4-7ae3-aebc-5601103899eb:f122c40e8294d4c1b11781438e6bb92d0772f425:browser_image:8556954aceda578fe68cd0671cea64b943d017cac075e7ba9dca52ae9a11d7ab:803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065",
+            "kind": "browser_image",
+            "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/f122c40e8294d4c1b11781438e6bb92d0772f425/8556954aceda578fe68cd0671cea64b943d017cac075e7ba9dca52ae9a11d7ab/browser.png",
+            "caption": "3. Three unpacked items retain insertion order, and <b>Hat</b> is visibly rendered as literal text.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 504510e60bd25fda8d346f3fddb5388160e34fbb5b0a5103999bdace01396839",
+            "sha256": "803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065",
+            "sanitized": true
+          },
+          "imagePath": "/deos/implementation/browser-803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065.png"
+        },
+        {
+          "scenarioId": "rename-keeps-packed",
+          "stepIndex": 8,
+          "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+          "documentStatus": 200,
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "traceEnabled": false,
+          "console": [],
+          "proof": {
+            "change": "sac-238",
+            "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+            "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+            "treeSha": "f122c40e8294d4c1b11781438e6bb92d0772f425",
+            "id": "01a0ab02-47f4-7ae3-aebc-5601103899eb:f122c40e8294d4c1b11781438e6bb92d0772f425:browser_image:638fb860ee10ca0d90c18f78d9a0bf04e89545aca05762a4efc817f8b2cf4458:a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252",
+            "kind": "browser_image",
+            "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/f122c40e8294d4c1b11781438e6bb92d0772f425/638fb860ee10ca0d90c18f78d9a0bf04e89545aca05762a4efc817f8b2cf4458/browser.png",
+            "caption": "4. Rain coat is visibly packed while Socks remains To pack.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 504510e60bd25fda8d346f3fddb5388160e34fbb5b0a5103999bdace01396839",
+            "sha256": "a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252",
+            "sanitized": true
+          },
+          "imagePath": "/deos/implementation/browser-a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252.png"
+        },
+        {
+          "scenarioId": "rename-keeps-packed",
+          "stepIndex": 11,
+          "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+          "documentStatus": 200,
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "traceEnabled": false,
+          "console": [],
+          "proof": {
+            "change": "sac-238",
+            "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+            "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+            "treeSha": "f122c40e8294d4c1b11781438e6bb92d0772f425",
+            "id": "01a0ab02-47f4-7ae3-aebc-5601103899eb:f122c40e8294d4c1b11781438e6bb92d0772f425:browser_image:536a3e4c1d709523844f63b20f0e13139227e9549f0af698b9b10927b4a99041:761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8",
+            "kind": "browser_image",
+            "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/f122c40e8294d4c1b11781438e6bb92d0772f425/536a3e4c1d709523844f63b20f0e13139227e9549f0af698b9b10927b4a99041/browser.png",
+            "caption": "5. Rain coat is in focused rename mode with explicit Save and Cancel actions.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 504510e60bd25fda8d346f3fddb5388160e34fbb5b0a5103999bdace01396839",
+            "sha256": "761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8",
+            "sanitized": true
+          },
+          "imagePath": "/deos/implementation/browser-761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8.png"
+        }
+      ],
+      "error": "Error: Demo rename-keeps-packed stopped at step 15: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Waiting for selector `[data-item-name=\\\"Jacket\\\"]` failed: Waiting failed: 30000ms exceeded\"}\n    at collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:74:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20) {\n  result: {\n    collectionId: 'bccafe46-988a-4028-bc5e-897819ea280e',\n    scenarioId: 'rename-keeps-packed',\n    stepIndex: 14,\n    captures: [\n      {\n        scenarioId: 'add-items',\n        stepIndex: 1,\n        url: 'https://review.deos-preview-982f7d6fcf337341.pages.dev/',\n        documentStatus: 200,\n        viewport: { width: 1440, height: 900 },\n        traceEnabled: false,\n        console: [],\n        proof: {\n          change: 'sac-238',\n          approvedDesignSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          testedBaseSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          treeSha: 'f122c40e8294d4c1b11781438e6bb92d0772f425',\n          id: '01a0ab02-47f4-7ae3-aebc-5601103899eb:f122c40e8294d4c1b11781438e6bb92d0772f425:browser_image:501323ad1d161d2ae2fca96dd838ca587c52a79e128eefcf9c85c929eee53f4c:139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705',\n          kind: 'browser_image',\n          path: 'implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/f122c40e8294d4c1b11781438e6bb92d0772f425/501323ad1d161d2ae2fca96dd838ca587c52a79e128eefcf9c85c929eee53f4c/browser.png',\n          caption: '1. The hosted desktop app opens with an empty packing list and clear add and filter controls.\\n' +\n            'Captured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 504510e60bd25fda8d346f3fddb5388160e34fbb5b0a5103999bdace01396839',\n          sha256: '139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705',\n          sanitized: true\n        },\n        imagePath: '/deos/implementation/browser-139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705.png'\n      },\n      {\n        scenarioId: 'add-items',\n        stepIndex: 5,\n        url: 'https://review.deos-preview-982f7d6fcf337341.pages.dev/',\n        documentStatus: 200,\n        viewport: { width: 1440, height: 900 },\n        traceEnabled: false,\n        console: [],\n        proof: {\n          change: 'sac-238',\n          approvedDesignSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          testedBaseSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          treeSha: 'f122c40e8294d4c1b11781438e6bb92d0772f425',\n          id: '01a0ab02-47f4-7ae3-aebc-5601103899eb:f122c40e8294d4c1b11781438e6bb92d0772f425:browser_image:a96ddeaccfadf240415d1db63959a8d532c7eda3e48dcbd32e77ee5161181ad0:8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e',\n          kind: 'browser_image',\n          path: 'implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/f122c40e8294d4c1b11781438e6bb92d0772f425/a96ddeaccfadf240415d1db63959a8d532c7eda3e48dcbd32e77ee5161181ad0/browser.png',\n          caption: '2. Passport appears as a new To pack item.\\n' +\n            'Captured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 504510e60bd25fda8d346f3fddb5388160e34fbb5b0a5103999bdace01396839',\n          sha256: '8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e',\n          sanitized: true\n        },\n        imagePath: '/deos/implementation/browser-8ca21e0319e303a5a6d33e228936e38a47ce1d86fc2c4bbd0ac09208cb06992e.png'\n      },\n      {\n        scenarioId: 'add-items',\n        stepIndex: 12,\n        url: 'https://review.deos-preview-982f7d6fcf337341.pages.dev/',\n        documentStatus: 200,\n        viewport: { width: 1440, height: 900 },\n        traceEnabled: false,\n        console: [],\n        proof: {\n          change: 'sac-238',\n          approvedDesignSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          testedBaseSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          treeSha: 'f122c40e8294d4c1b11781438e6bb92d0772f425',\n          id: '01a0ab02-47f4-7ae3-aebc-5601103899eb:f122c40e8294d4c1b11781438e6bb92d0772f425:browser_image:8556954aceda578fe68cd0671cea64b943d017cac075e7ba9dca52ae9a11d7ab:803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065',\n          kind: 'browser_image',\n          path: 'implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/f122c40e8294d4c1b11781438e6bb92d0772f425/8556954aceda578fe68cd0671cea64b943d017cac075e7ba9dca52ae9a11d7ab/browser.png',\n          caption: '3. Three unpacked items retain insertion order, and <b>Hat</b> is visibly rendered as literal text.\\n' +\n            'Captured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 504510e60bd25fda8d346f3fddb5388160e34fbb5b0a5103999bdace01396839',\n          sha256: '803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065',\n          sanitized: true\n        },\n        imagePath: '/deos/implementation/browser-803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065.png'\n      },\n      {\n        scenarioId: 'rename-keeps-packed',\n        stepIndex: 8,\n        url: 'https://review.deos-preview-982f7d6fcf337341.pages.dev/',\n        documentStatus: 200,\n        viewport: { width: 1440, height: 900 },\n        traceEnabled: false,\n        console: [],\n        proof: {\n          change: 'sac-238',\n          approvedDesignSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          testedBaseSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          treeSha: 'f122c40e8294d4c1b11781438e6bb92d0772f425',\n          id: '01a0ab02-47f4-7ae3-aebc-5601103899eb:f122c40e8294d4c1b11781438e6bb92d0772f425:browser_image:638fb860ee10ca0d90c18f78d9a0bf04e89545aca05762a4efc817f8b2cf4458:a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252',\n          kind: 'browser_image',\n          path: 'implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/f122c40e8294d4c1b11781438e6bb92d0772f425/638fb860ee10ca0d90c18f78d9a0bf04e89545aca05762a4efc817f8b2cf4458/browser.png',\n          caption: '4. Rain coat is visibly packed while Socks remains To pack.\\n' +\n            'Captured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 504510e60bd25fda8d346f3fddb5388160e34fbb5b0a5103999bdace01396839',\n          sha256: 'a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252',\n          sanitized: true\n        },\n        imagePath: '/deos/implementation/browser-a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252.png'\n      },\n      {\n        scenarioId: 'rename-keeps-packed',\n        stepIndex: 11,\n        url: 'https://review.deos-preview-982f7d6fcf337341.pages.dev/',\n        documentStatus: 200,\n        viewport: { width: 1440, height: 900 },\n        traceEnabled: false,\n        console: [],\n        proof: {\n          change: 'sac-238',\n          approvedDesignSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          testedBaseSha: '119bb5dad37429f25a574579f15e7f58be196fef',\n          treeSha: 'f122c40e8294d4c1b11781438e6bb92d0772f425',\n          id: '01a0ab02-47f4-7ae3-aebc-5601103899eb:f122c40e8294d4c1b11781438e6bb92d0772f425:browser_image:536a3e4c1d709523844f63b20f0e13139227e9549f0af698b9b10927b4a99041:761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8',\n          kind: 'browser_image',\n          path: 'implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8/proof/01a0ab02-47f4-7ae3-aebc-5601103899eb/f122c40e8294d4c1b11781438e6bb92d0772f425/536a3e4c1d709523844f63b20f0e13139227e9549f0af698b9b10927b4a99041/browser.png',\n          caption: '5. Rain coat is in focused rename mode with explicit Save and Cancel actions.\\n' +\n            'Captured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 504510e60bd25fda8d346f3fddb5388160e34fbb5b0a5103999bdace01396839',\n          sha256: '761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8',\n          sanitized: true\n        },\n        imagePath: '/deos/implementation/browser-761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8.png'\n      }\n    ]\n  },\n  [cause]: Error: Implementation broker HTTP 400: {\"error\":\"implementation_tool_failed\",\"message\":\"Waiting for selector `[data-item-name=\\\"Jacket\\\"]` failed: Waiting failed: 30000ms exceeded\"}\n      at broker (file:///deos/bin/implementation-runtime.mjs:373:15)\n      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n      at async browserResult (file:///deos/bin/implementation-runtime.mjs:397:20)\n      at async collectBrowserDemo (file:///deos/bin/implementation-browser-demo.mjs:63:24)\n      at async toolQueue.run.diagnostic.message (file:///deos/bin/implementation-runtime.mjs:620:20)\n}"
+    }
+  ]
+}

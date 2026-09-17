@@ -655,6 +655,7 @@ interface SetupOptions {
   reuseTraceReview?: ConstructorParameters<typeof SandboxAgentController>[4]["reuseTraceReview"];
   reuseDesignReview?: ConstructorParameters<typeof SandboxAgentController>[4]["reuseDesignReview"];
   claude?: ConstructorParameters<typeof SandboxAgentController>[4]["claude"];
+  nativeReviews?: ConstructorParameters<typeof SandboxAgentController>[4]['nativeReviews'];
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -681,6 +682,7 @@ const setup = (options: SetupOptions = {}) => {
     {
       now: clock,
       claude: options.claude,
+      nativeReviews: options.nativeReviews,
       reuseTraceReview: options.reuseTraceReview,
       reuseDesignReview: options.reuseDesignReview,
       attemptId: () => "00000000-0000-7000-8000-000000000001",
@@ -742,6 +744,8 @@ const setup = (options: SetupOptions = {}) => {
         };
       },
       collector: () => collector as unknown as ArtifactCollector,
+      implementationNetwork: async () => {},
+      implementationStart: async () => {},
       providerReceipts: {
         verify: async (_runId, _attemptId, operationIds) =>
           operationIds === undefined || operationIds.length > 0,
@@ -804,8 +808,11 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.match(prompt, /requirements-publish-v1/);
 });
 
-test("stage retry preserves the failed attempt's frozen input with a new attempt identity", async () => {
-  const state = setup({ materializedContext: JSON.stringify({ source: "fresh-provider-read" }) });
+for (const implementation of [false, true]) test(implementation
+  ? "implementation retry refreshes recovery context while preserving the frozen model and source identity"
+  : "stage retry preserves the failed attempt's frozen input with a new attempt identity", async () => {
+  const state = setup({ materializedContext: JSON.stringify({ source: "fresh-provider-read" }),
+    ...(implementation ? {checkoutCommit:"a".repeat(40)} : {}) });
   const sourceJobSpec = JSON.stringify({
     version: 1,
     attemptId: "source-attempt",
@@ -872,15 +879,16 @@ test("stage retry preserves the failed attempt's frozen input with a new attempt
     { ...run, current_visit_sequence: 5, updated_at: "2026-08-16T10:00:00.000Z" },
     "work",
     "work",
-    definition,
+    implementation ? { ...definition, jobs: { ...definition.jobs,
+      work: { ...definition.jobs.work, inputs: ['implementation_context'] } } } : definition,
   );
 
   assert.equal(observation.state, "running");
-  assert.equal(state.materializeCalls(), 0);
+  assert.equal(state.materializeCalls(), implementation ? 1 : 0);
   assert.notEqual(state.attempts.latest?.attempt_id, sourceAttempt.attempt_id);
   const retried = JSON.parse(state.attempts.latest?.job_spec_json ?? "{}");
   const source = JSON.parse(sourceJobSpec);
-  assert.equal(retried.materializedContext, source.materializedContext);
+  assert.equal(retried.materializedContext, implementation ? JSON.stringify({ source: "fresh-provider-read" }) : source.materializedContext);
   assert.equal(retried.modelProvider, source.modelProvider);
   assert.equal(retried.model, source.model);
   assert.equal(retried.reasoning, source.reasoning);
@@ -888,6 +896,33 @@ test("stage retry preserves the failed attempt's frozen input with a new attempt
   assert.equal(retried.retrySourceJobSpecDigest, sourceAttempt.job_spec_digest);
   assert.equal(retried.visitSequence, 5);
   assert.notEqual(retried.deadline, source.deadline);
+});
+
+test('native completion retry restores the saved patch and responses with the original review identity', async () => {
+  const recovery = {sourceAttemptId:'original-review',context:JSON.stringify({latest:'review input'}),
+    patch:{attemptId:'failed',manifestId:'failure',r2Key:'saved-patch',sha256:await crypto.subtle.digest('SHA-256',
+      new TextEncoder().encode('# No repository changes in this attempt.\n')).then(x=>Buffer.from(x).toString('hex'))},
+    files:{'design-dispositions.json':'[]','review-replies.json':'[]'}};
+  const state=setup({nativeReviews:{finalization:async (id:string)=>{
+    assert.equal(id,'failed');return recovery;
+  }} as any});
+  await state.controller.execute({...run,current_visit_sequence:1},'work','work',definition);
+  const source={...state.attempts.latest!,attempt_id:'failed',state:'failed' as const,
+    cleanup_state:'destroyed' as const,result_class:'author_completion_failed',ended_at:'2026-08-16T09:58:00.000Z'};
+  const job=JSON.parse(source.job_spec_json);
+  job.nativeSelfReview={phase:'design'};
+  source.job_spec_json=JSON.stringify(job);
+  source.job_spec_digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(source.job_spec_json))
+    .then(x=>Buffer.from(x).toString('hex'));
+  state.attempts.latest=source;state.attempts.retrySource=source;
+  await state.controller.execute({...run,current_visit_sequence:3},'work','work',definition);
+  const restored=JSON.parse(state.attempts.latest!.job_spec_json);
+  assert.equal(restored.materializedContext,recovery.context);
+  assert.deepEqual(restored.continuationPatch,recovery.patch);
+  assert.equal(restored.nativeSelfReview.finalizationSourceAttemptId,'original-review');
+  assert.deepEqual(restored.nativeFinalizationFiles,recovery.files);
+  assert.equal(state.materializeCalls(),1,'retry must not rematerialize the original stage');
+  assert.equal(state.factory.sandbox.files.get('/deos/output/design-dispositions.json'),'[]');
 });
 
 test("first planning visit renders and protects the exact least-privilege prompt", async () => {
@@ -1410,6 +1445,23 @@ test("a continuation patch digest mismatch fails before Codex starts and destroy
   assert.equal(factory.sandbox.commands.some(({ command }) => command[0] === "node"), false);
 });
 
+test("first process poll has a startup heartbeat without extending its timeout", async () => {
+  let time = new Date(NOW);
+  const { controller, attempts } = setup({ clock: () => time });
+  const errors: unknown[] = [];
+  await captureErrors(async found => { errors.push(...found); }, async () => {
+    await controller.execute(run, "work", "work", definition);
+    time = new Date(NOW.getTime() + 10_000);
+    assert.equal((await controller.execute(run, "work", "work", definition)).state, "running");
+  });
+  assert.deepEqual(errors, []);
+  assert.equal(attempts.latest?.heartbeat_at, NOW.toISOString());
+  time = new Date(NOW.getTime() + 6 * 60_000);
+  const expired = await controller.execute(run, "work", "work", definition);
+  assert.equal(expired.state === "completed" ? expired.outcome.outcome : null, "failed");
+  assert.equal(attempts.latest?.state, "interrupted");
+});
+
 test("running process reconciles the exact process and fresh supervisor heartbeat", async () => {
   const { controller, factory, attempts } = setup();
   await controller.execute(run, "work", "work", definition);
@@ -1440,6 +1492,21 @@ test("non-zero supervisor exit persists failure evidence before cleanup", async 
   assert.equal(collector.verifiedDurable, 1);
   assert.equal(collector.verified, 1);
   assert.equal(factory.sandbox.destroyed, true);
+});
+
+test("implementation failure capture must succeed before collection and destructive cleanup", async () => {
+  const state = setup({ checkoutCommit: "1".repeat(40), materializedContext: JSON.stringify({ approvedDesignSha: "a".repeat(40), testedBaseSha: "b".repeat(40) }) });
+  const implementation = { ...definition, jobs: { ...definition.jobs, work: { ...definition.jobs.work, inputs: ["implementation_context"] } } };
+  await state.controller.execute(run, "implementation_build", "work", implementation);
+  state.factory.sandbox.files.set("/deos/run/implementation-input.json", "{}");
+  state.factory.sandbox.supervisor.state = "exited";
+  state.factory.sandbox.supervisor.exitCode = 137;
+  state.factory.sandbox.supervisor.stderr = "process stopped without finalizing";
+  await assert.rejects(state.controller.execute(run, "implementation_build", "work", implementation), /Implementation failure capture failed/);
+  assert.equal(state.factory.sandbox.destroyed, false);
+  assert.equal(state.collector.failureCollections, 0);
+  assert.equal(state.attempts.latest?.state, "running");
+  assert.match(state.factory.sandbox.files.get("/deos/output/supervisor-process.json")!, /process stopped without finalizing/);
 });
 
 test("failed attempt can retain a credential-free Sandbox until a durable cleanup deadline", async () => {
@@ -1592,6 +1659,48 @@ test("expired heartbeat kills the process, destroys the Sandbox, and fails close
   assert.equal(setupResult.attempts.latest?.state, "interrupted");
 });
 
+test("a heartbeat transport abort cannot turn an old observation into a dead supervisor", async () => {
+  let clock = NOW;
+  const state = setup({ clock: () => clock });
+  await state.controller.execute(run, 'work', 'work', definition);
+  const previous = state.attempts.latest!.heartbeat_at;
+  const read = state.factory.sandbox.readFile.bind(state.factory.sandbox);
+  state.factory.sandbox.readFile = async (path) => {
+    if (path === '/deos/output/heartbeat.json') throw new DOMException('The operation was aborted', 'AbortError');
+    return read(path);
+  };
+  clock = new Date(NOW.getTime() + 10 * 60_000);
+  const result = await state.controller.execute(run, 'work', 'work', definition);
+  assert.equal(result.state, 'running');
+  assert.equal(state.attempts.latest!.heartbeat_at, previous);
+  assert.equal(state.factory.sandbox.supervisor.killed, false);
+  assert.equal(state.factory.sandbox.destroyed, false);
+  state.factory.sandbox.readFile = read;
+  state.factory.sandbox.files.set('/deos/output/heartbeat.json', JSON.stringify({
+    attemptId: state.attempts.latest!.attempt_id, observedAt: clock.toISOString(),
+  }));
+  assert.equal((await state.controller.execute(run, 'work', 'work', definition)).state, 'running');
+  assert.equal(state.attempts.latest!.heartbeat_at, clock.toISOString());
+});
+
+test("heartbeat transport trouble does not extend the absolute attempt deadline", async () => {
+  let clock = NOW;
+  const state = setup({ clock: () => clock });
+  await state.controller.execute(run, 'work', 'work', definition);
+  const read = state.factory.sandbox.readFile.bind(state.factory.sandbox);
+  state.factory.sandbox.readFile = async (path) => {
+    if (path === '/deos/output/heartbeat.json') throw new DOMException('The operation was aborted', 'AbortError');
+    return read(path);
+  };
+  clock = new Date(NOW.getTime() + 10 * 60_000);
+  assert.equal((await state.controller.execute(run, 'work', 'work', definition)).state, 'running');
+  clock = new Date(Date.parse(state.attempts.latest!.absolute_deadline) + 1);
+  const result = await state.controller.execute(run, 'work', 'work', definition);
+  assert.equal(result.state === 'completed' ? result.outcome.outcome : null, 'failed');
+  assert.equal(state.attempts.latest!.state, 'absolute_timeout');
+  assert.equal(state.factory.sandbox.supervisor.killed, true);
+});
+
 test("a replay after terminal persistence returns the same attempt without relaunching", async () => {
   const { controller, factory, attempts } = setup();
   await controller.execute(run, "work", "work", definition);
@@ -1616,6 +1725,23 @@ test("a categorized terminal failure replays through the configured failed edge"
   assert.equal(replay.state === "completed" ? replay.outcome.providerReceiptsComplete : true, false);
 });
 
+
+for (const reviewKind of ['demo_plan', 'demo_gate'] as const) {
+  test(`${reviewKind} allocates its own review instead of reusing a planning or design verdict`, async () => {
+    const state = setup({
+      reuseTraceReview: async () => assert.fail('A planning verdict cannot satisfy a demo review'),
+      reuseDesignReview: async () => assert.fail('A design verdict cannot satisfy a demo review'),
+    });
+    state.attempts.findRetrySource = async () => { throw new Error('fresh demo allocation reached'); };
+    const demoDefinition = { ...definition, jobs: { ...definition.jobs, work: {
+      ...definition.jobs.work, agentRole: 'reviewer' as const, modelProvider: 'claude' as const,
+      model: 'claude-opus-5', reasoning: 'high' as const, reviewKind, inputs: ['implementation_demo_context'],
+    } } };
+    const demoRun = { ...run, independent_review_provider: 'claude', independent_review_model: 'claude-opus-5',
+      independent_review_reasoning: 'high', independent_review_account_binding: 'a'.repeat(64) };
+    await assert.rejects(state.controller.execute(demoRun, 'work', 'work', demoDefinition), /fresh demo allocation reached/);
+  });
+}
 
 test("completed Claude replay rechecks protected proof without starting another process", async () => {
   let proofReads = 0;
@@ -1701,4 +1827,27 @@ test("capacity refusal preserves original error and portal classification throug
   assert.ok(failure);
   assert.match(JSON.stringify(failure.error), /Provider capacity exhausted/);
   assert.match(JSON.stringify(failure.error), /account resource limit/);
+});
+
+test("implementation rebase preserves the checked patch and original conflict without applying partial work", async () => {
+  const patchContent = "diff --git a/app.txt b/app.txt\n--- a/app.txt\n+++ b/app.txt\n@@ -1 +1 @@\n-old\n+saved implementation\n";
+  const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(patchContent)))].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  const reference = {attemptId:"prior",manifestId:"manifest",r2Key:"patch",sha256:digest};
+  const {controller,factory} = setup({patchContent});
+  const captured: string[][] = [];
+  factory.sandbox.exec = async command => {
+    captured.push([...command]);
+    const process = new Process("conflict",123);
+    process.state="exited";process.exitCode=1;process.stderr="error: patch failed: app.txt:1\nerror: app.txt: patch does not apply";
+    return process;
+  };
+  const restore = Reflect.get(controller,"restoreContinuationPatch") as (sandbox:SandboxView,value:unknown,preserve:boolean)=>Promise<void>;
+  await restore.call(controller,factory.sandbox,reference,true);
+  assert.equal(factory.sandbox.files.get("/deos/run/continuation.patch"),patchContent);
+  const diagnostic=JSON.parse(factory.sandbox.files.get("/deos/run/continuation-conflict.json")!);
+  assert.match(diagnostic.output.stderr,/app.txt: patch does not apply/);
+  assert.equal(diagnostic.patchSha256,digest);
+  assert.equal(captured.length,1);assert.ok(captured[0].includes("--check"));
+  await assert.rejects(restore.call(controller,factory.sandbox,reference,false),/app.txt: patch does not apply/);
+  assert.equal(factory.sandbox.files.has("/deos/run/continuation.patch"),false);
 });

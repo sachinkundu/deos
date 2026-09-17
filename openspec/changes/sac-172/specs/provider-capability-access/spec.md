@@ -1,5 +1,56 @@
 ## ADDED Requirements
 
+### Requirement: Publish run-owned static review previews
+
+The trusted service SHALL offer an explicit static preview capability to enabled implementation runs. It SHALL accept a bounded build directory read as the unprivileged author, choose the run's account/project/preview branch itself, and keep credentials outside the agent. Worker code, bindings and production deployment SHALL remain outside this capability.
+
+The service SHALL save build bytes and publication state before the provider effect, reconcile ambiguous responses, and retain provider and asset read-back. It SHALL expose a stable run-owned browser origin and an immutable human review URL that survives sandbox cleanup. Preview revision SHALL remain context, not a completion quality gate.
+
+#### Scenario: Static app needs a durable review link
+
+- **WHEN** the author publishes its saved static build with the enabled capability.
+- **THEN** the service deploys it to that run's preview project and supplies the immutable review URL without exposing credentials.
+
+#### Scenario: Deployment succeeds but its response is lost
+
+- **WHEN** the same publish request is retried.
+- **THEN** the service locates the prior deployment by its saved operation identity instead of blindly creating another deployment.
+
+### Requirement: Check maintainer previews before browser access
+
+When an approved design needs a hosted static preview, a trusted maintainer MAY
+deploy it outside the agent and register it for a stopped implementation. The
+registration SHALL bind the saved candidate, approved input, base, code tree,
+build log digest, exact Pages account, project, deployment and preview branch.
+The service SHALL read the successful nonproduction deployment from Pages and
+hash its served assets. It SHALL reject aliases, redirects, changed assets,
+wrong identities, stale work and a run that starts while checks are in flight.
+It SHALL retain an immutable receipt without provider keys or raw environment
+variables. Registration MUST NOT move the workflow or count as demo proof.
+
+A fresh attempt MAY browse that run's checked static deployment using its one
+service browser. The browser SHALL retain fixed local and hosted origins for
+the whole attempt. The saved receipt SHALL expose the deployment revision as review context.
+Switching targets SHALL require navigation and a fresh HTTP result. Each image
+receipt SHALL retain its actual origin, even when local and hosted images have
+identical bytes. The agent MUST NOT rewrite that provenance. This access adds
+no provider write, deploy, approval, merge or release capability.
+
+#### Scenario: A maintainer supplies the missing hosted preview
+
+- **WHEN** a stopped run has a saved build and the maintainer registers a matching successful preview.
+- **THEN** DEOS checks the provider and assets, saves the receipt, and supplies it to the next author and demo reviewers without marking a demo passed.
+
+#### Scenario: The author edits after the preview was deployed
+
+- **WHEN** the author's current code tree differs from the registered build.
+- **THEN** the agent may continue using that preview and explains the revision difference for Claude and human review.
+
+#### Scenario: Local and hosted screens look the same
+
+- **WHEN** both targets return identical screenshot bytes.
+- **THEN** each capture retains a distinct receipt with its checked origin and the demo reviewer sees the service's saved provenance.
+
 ### Requirement: Give implementation work narrow service access
 
 DEOS SHALL use service-owned access for the build browser and safe test tools. It SHALL also use this access for trusted pull request acts. Access SHALL fit the run, repo, act, and try. Keys MUST stay out of prompts, commands, logs, patches, and proof.
@@ -13,7 +64,7 @@ The service user MUST NOT count as the allowed human account. It MUST NOT approv
 
 #### Scenario: Agent publishes implementation work
 
-- **WHEN** the build patch and proof pass trusted checks.
+- **WHEN** the implementation and review messages complete their handoff.
 - **THEN** the trusted GitHub tool makes or updates the one pull request for the run and saves its receipt.
 
 #### Scenario: Service identity attempts approval

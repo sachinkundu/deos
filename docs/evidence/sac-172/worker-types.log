@@ -1,0 +1,8 @@
+
+> types:check
+> wrangler types worker-configuration.d.ts --include-runtime false --config wrangler.queue-consumer-ts.jsonc --check
+
+
+ ⛅️ wrangler 4.125.0
+────────────────────
+✨ Types at worker-configuration.d.ts are up to date.

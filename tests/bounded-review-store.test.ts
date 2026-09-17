@@ -120,6 +120,13 @@ test('D1/R2 collection requires cleanup, survives replay, and keeps later head c
         assert.equal(resumed.recheck.invocations.length, 1);
         assert.deepEqual(resumed.openIds, ['F1']);
         assert.equal(resumed.originAttemptId, 'failed-author');
+        await db.prepare("UPDATE agent_attempts SET state='failed',result_class='missing_output_sidecar' WHERE attempt_id='resumed-author'").run();
+        const finalize = await store.recordFailure('resumed-author');
+        assert.equal(finalize.eligible, true);
+        assert.equal(finalize.slot, 'finalize');
+        assert.equal(finalize.cycle.recheck.invocations.length, 1);
+        assert.equal(finalize.cycle.recheck.status, 'accepted');
+        assert.deepEqual(finalize.cycle.openIds, ['F1']);
     }
     finally {
         await mf.dispose();

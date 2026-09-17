@@ -24,12 +24,19 @@ class FakeStateStore:
     deliveries: dict[str, Delivery] = field(default_factory=dict)
     transitions: list[Transition] = field(default_factory=list)
     runs: dict[str, WorkflowRun] = field(default_factory=dict)
+    handed_off: set[str] = field(default_factory=lambda: set[str]())
 
     def record_delivery(self, delivery: Delivery) -> bool:
         if delivery.delivery_id in self.deliveries:
             return False
         self.deliveries[delivery.delivery_id] = delivery
         return True
+
+    def handoff_complete(self, delivery_id: str) -> bool:
+        return delivery_id in self.handed_off
+
+    def mark_handoff_complete(self, delivery_id: str) -> None:
+        self.handed_off.add(delivery_id)
 
     def record_transition(self, transition: Transition) -> None:
         self.transitions.append(transition)

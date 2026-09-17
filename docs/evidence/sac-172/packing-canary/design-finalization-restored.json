@@ -1,0 +1,11 @@
+[
+  {
+    "attempt_id": "01a0aad9-9688-761d-bdda-bf3607b78b12",
+    "node_id": "design_author",
+    "state": "running",
+    "retry_source": "01a0aab2-bd2c-7ace-9c62-6563802125d0",
+    "original_review": "01a0aab2-bd2c-7ace-9c62-6563802125d0",
+    "restored_manifest": "manifest:01a0aab2-bd2c-7ace-9c62-6563802125d0:failure-v2",
+    "restored_patch_sha": "11d2cf885623e92dcee3c0c104a0d7493e033a10ac029ef8e5225a8854001e57"
+  }
+]

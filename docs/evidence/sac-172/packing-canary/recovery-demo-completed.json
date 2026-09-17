@@ -1,0 +1,1525 @@
+{
+  "readAt": "2026-09-16T18:09:51.509Z",
+  "attempt": {
+    "attempt_id": "01a0ab5a-7eaf-7aa7-a841-231452176741",
+    "sandbox_id": "impl-v1-tthrl4dgg474naqxitqxresgstjc6uyvvdccbo4obua72gzo2quq",
+    "sandbox_tier": "basic",
+    "process_id": "55793cce-5de3-4f2f-a544-6400b0655f96",
+    "state": "running",
+    "node_id": "implementation_build",
+    "heartbeat_at": "2026-09-16T18:04:18.329Z"
+  },
+  "originalMilestones": [
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T17:57:04.860Z",
+      "event": "demo_started",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "plan": {
+        "action": "demo",
+        "scenarios": [
+          {
+            "id": "demo-add-items",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "The hosted desktop app opens with an empty packing list, add field, and All / To pack filters."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Passport"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Passport appears as a new unpacked item and the add field is cleared."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "<b>Hat</b>"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"<b>Hat</b>\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Passport, Socks, and the literal text <b>Hat</b> appear in insertion order, all unpacked."
+              }
+            ]
+          },
+          {
+            "id": "demo-rename-keeps-packed",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Rain coat"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Rain coat\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Rain coat\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Before rename, Rain coat is visibly packed while Socks remains unpacked."
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Rename Rain coat\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "input[name=\"rename-item\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Rain coat is in focused edit mode with Save and Cancel actions."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"rename-item\"]",
+                "text": "Jacket"
+              },
+              {
+                "operation": "press",
+                "key": "Enter"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Jacket\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "After rename, Jacket remains packed in place, Rain coat is gone, and Socks is unchanged."
+              }
+            ]
+          },
+          {
+            "id": "demo-pack-unpack-filter",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Passport"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "The All view initially shows Passport and Socks unpacked."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Passport\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Passport is packed while Socks remains unpacked, with checkbox, label, and text treatment showing state."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-filter=\"to-pack\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "The selected To pack view shows Socks and hides packed Passport."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-filter=\"all\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Passport\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Back in All, Passport can be marked not packed again and both unpacked items are visible."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Passport\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Socks\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-filter=\"to-pack\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"to-pack\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "With every item packed, To pack shows its dedicated Nothing left to pack state."
+              }
+            ]
+          },
+          {
+            "id": "demo-delete-item",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Passport"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Jacket"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Jacket\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Before deletion, Passport, Socks, and Jacket are visible in insertion order."
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Delete Socks\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Jacket\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "After deleting Socks, Passport and Jacket remain in order and focus moves to Jacket\u2019s Delete control."
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Delete Passport\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Delete Jacket\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Deleting the remaining items returns the app to its empty-list state."
+              }
+            ]
+          },
+          {
+            "id": "demo-persist-across-refresh",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Rain coat"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Rain coat\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Hat"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Hat\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Rain coat\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Rename Rain coat\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "input[name=\"rename-item\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"rename-item\"]",
+                "text": "Jacket"
+              },
+              {
+                "operation": "press",
+                "key": "Enter"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Jacket\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Delete Hat\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-filter=\"to-pack\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Immediately before refresh, To pack is selected and shows only Socks; packed Jacket is filtered out and deleted Hat is absent."
+              },
+              {
+                "operation": "navigate",
+                "url": "/"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Jacket\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "After the real refresh, All is restored by default with Jacket still packed, Socks unpacked, and Hat still absent."
+              }
+            ]
+          },
+          {
+            "id": "demo-invalid-name-recovery",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"list\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Passport"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-item-name=\"Passport\"] input[type=\"checkbox\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "The known-good state contains packed Passport."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "   "
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "#add-error"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "A whitespace-only add is rejected inline and creates no new row."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"item-name\"]",
+                "text": "Socks"
+              },
+              {
+                "operation": "click",
+                "selector": ".add-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "After valid input, Socks is added unpacked and the validation message clears without changing packed Passport."
+              },
+              {
+                "operation": "click",
+                "selector": "button[aria-label=\"Rename Passport\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "input[name=\"rename-item\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"rename-item\"]",
+                "text": " "
+              },
+              {
+                "operation": "click",
+                "selector": ".rename-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": ".rename-form .field-error"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "A blank rename stays in edit mode with an associated validation message."
+              },
+              {
+                "operation": "press",
+                "key": "Escape"
+              },
+              {
+                "operation": "wait",
+                "selector": "button[aria-label=\"Rename Passport\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Escape cancels the invalid rename and restores Passport with its packed state intact."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-filter=\"to-pack\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Socks\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Before the recovery refresh, To pack shows only the valid unpacked Socks item."
+              },
+              {
+                "operation": "navigate",
+                "url": "/"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-item-name=\"Passport\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "After refresh, All shows only the valid saved items: packed Passport and unpacked Socks."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T17:58:29.087Z",
+      "event": "scenario_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-add-items"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T17:59:56.641Z",
+      "event": "scenario_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-rename-keeps-packed"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:01:49.075Z",
+      "event": "scenario_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-pack-unpack-filter"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:03:28.732Z",
+      "event": "scenario_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-delete-item"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:05:39.500Z",
+      "event": "scenario_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-persist-across-refresh"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:08:02.164Z",
+      "event": "scenario_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-invalid-name-recovery"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:08:02.164Z",
+      "event": "demo_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "captures": [
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:9bcc60cd5e0c0a851413695f0ac4ca23145f96fb8f875c7af7d5863715ac40b6:139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:daf5be20ee9981689c677b5dfc699458243a8432166f7849e083d8ee3167b0cc:6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:5d326177f925d5c30ceb8ccbe9d6780c95249de2cd95ba73fb8e1bd794a91d43:803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:139ddc2efc9a3caa52c70240c805fc175ea1fb570b85afed0d1ad1f9a62a7595:a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:59208c5625566eb251b264a1fc167ca0914d9f493308624cd8cc2991d8e87392:761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:514b1b88cdddfc82c64e4da067c3164a40f3e24098a8dc39f1b596ae63f53f8f:098adeb244d3f253b855be9e4ceb64e81714eef5b60fcd98274c877936c4bb77",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:afbbd798b8c2ed91a375725634cee16df3e24f88fec827a4a9df8deda4d3a20e:e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:7149103ff7a4a07698d3eeef6670fd4e799d969dcbf5cc6bc5b7b3dbe1e79329:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:ff8e371f725366e8e320b055a0ef0bded23d626f09d2344fb93cb0cc1fd569ca:90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:41846884f0cd31fca7f00ba91ec989506b71adb075ed121754b9ef4d845de9b0:cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:22752bb447fa87ae5bdb7beba05bf843b5d866e2b52d377720a8cefa81732c84:9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:83ae484294452fd1a6bd6a3ae8964a5ca256d3478622574748feae89c2b4503a:ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:e0075cc196bc3a66ce974a7e7ee5320782e41cb3de672467835321a8dfcc27f7:90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:6561bf02611a718ec083a999b232a94f5b73204598d4297c16ccbf80149d5c5e:139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:57b0594744825b743ee260c6a9c65f56caf59a3ce64cd8886bd323345df50ebe:90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:e73419c6c81e87defc8b9e406d302fbe802e5b713bca0cdc4be323b85fa90759:6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:2b48126823711cc387952c18850b47b89a370954ab70d786aa996caf2920607a:65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:cab0b88f3e332de965a6e88b2e0bdeead9a4251a1ec789c5b3ae9f95707b8e32:f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:a84ec3b07ddbcad2c664249c576c58f8127f438977f15266408e3deb5ed5bb9c:718f9f3719d010d3ce7ba5a5fbfdc4ffc1231f3ca3b33268d7cadd2f9b7eb7da",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:d77cda4d2cf4135bc4972427d15e028b6c8a5bf1e3b1f047bf3b42d3f4d2f506:b21d7ef98a916e8a9a803f10ed7fc80ce9bed3016ce24be9416e99e458450fd9",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:13cf4fdb9557e2c4dc4242190a42646dfb38dd295a91959d2e1e742efacb92c0:d46cb56655ffaf722237420209254c4849d48987bd297ef4ab6c83d86c3507b6",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:af3ac6dfee0d719ef54f9324becfefeb1a5b839789eb6aee52d8c693b5c55fb1:90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4",
+        "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:65a563bc0909594daf0f23d49b093e6e184208354deb576c2325028099b983d0:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef"
+      ]
+    }
+  ],
+  "originalCaptureResults": [
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T17:57:29.762Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-add-items",
+      "stepIndex": 1,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:9bcc60cd5e0c0a851413695f0ac4ca23145f96fb8f875c7af7d5863715ac40b6:139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/9bcc60cd5e0c0a851413695f0ac4ca23145f96fb8f875c7af7d5863715ac40b6/browser.png",
+          "caption": "The hosted desktop app opens with an empty packing list, add field, and All / To pack filters.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T17:57:50.097Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-add-items",
+      "stepIndex": 5,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:daf5be20ee9981689c677b5dfc699458243a8432166f7849e083d8ee3167b0cc:6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/daf5be20ee9981689c677b5dfc699458243a8432166f7849e083d8ee3167b0cc/browser.png",
+          "caption": "Passport appears as a new unpacked item and the add field is cleared.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-6337c7b2ad4b3d874dc8c465ebbc71124eb23539e93b5584111772c1041c047a.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T17:58:29.087Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-add-items",
+      "stepIndex": 12,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:5d326177f925d5c30ceb8ccbe9d6780c95249de2cd95ba73fb8e1bd794a91d43:803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/5d326177f925d5c30ceb8ccbe9d6780c95249de2cd95ba73fb8e1bd794a91d43/browser.png",
+          "caption": "Passport, Socks, and the literal text <b>Hat</b> appear in insertion order, all unpacked.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-803351fed36088ff582d69f40f7da27c99afc7e9a3476811a77e754d8c8fe065.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T17:59:21.870Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-rename-keeps-packed",
+      "stepIndex": 8,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:139ddc2efc9a3caa52c70240c805fc175ea1fb570b85afed0d1ad1f9a62a7595:a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/139ddc2efc9a3caa52c70240c805fc175ea1fb570b85afed0d1ad1f9a62a7595/browser.png",
+          "caption": "Before rename, Rain coat is visibly packed while Socks remains unpacked.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-a896cb03b6a277ce1921b1e21f0c75c9ea838ad771c52ebe0c6f3a6204825252.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T17:59:39.124Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-rename-keeps-packed",
+      "stepIndex": 11,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:59208c5625566eb251b264a1fc167ca0914d9f493308624cd8cc2991d8e87392:761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/59208c5625566eb251b264a1fc167ca0914d9f493308624cd8cc2991d8e87392/browser.png",
+          "caption": "Rain coat is in focused edit mode with Save and Cancel actions.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-761bcadcbfe33b9eff3098012ed99a5d73c8c07826fce218de03f0b247bb8da8.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T17:59:56.640Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-rename-keeps-packed",
+      "stepIndex": 15,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:514b1b88cdddfc82c64e4da067c3164a40f3e24098a8dc39f1b596ae63f53f8f:098adeb244d3f253b855be9e4ceb64e81714eef5b60fcd98274c877936c4bb77",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/098adeb244d3f253b855be9e4ceb64e81714eef5b60fcd98274c877936c4bb77/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/514b1b88cdddfc82c64e4da067c3164a40f3e24098a8dc39f1b596ae63f53f8f/browser.png",
+          "caption": "After rename, Jacket remains packed in place, Rain coat is gone, and Socks is unchanged.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "098adeb244d3f253b855be9e4ceb64e81714eef5b60fcd98274c877936c4bb77",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-098adeb244d3f253b855be9e4ceb64e81714eef5b60fcd98274c877936c4bb77.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:00:43.099Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-pack-unpack-filter",
+      "stepIndex": 7,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:afbbd798b8c2ed91a375725634cee16df3e24f88fec827a4a9df8deda4d3a20e:e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/afbbd798b8c2ed91a375725634cee16df3e24f88fec827a4a9df8deda4d3a20e/browser.png",
+          "caption": "The All view initially shows Passport and Socks unpacked.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-e5a27bb4d584170802d5b682944e35c50c85fd5959b364f70eede51ed1d28175.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:00:52.756Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-pack-unpack-filter",
+      "stepIndex": 9,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:7149103ff7a4a07698d3eeef6670fd4e799d969dcbf5cc6bc5b7b3dbe1e79329:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/7149103ff7a4a07698d3eeef6670fd4e799d969dcbf5cc6bc5b7b3dbe1e79329/browser.png",
+          "caption": "Passport is packed while Socks remains unpacked, with checkbox, label, and text treatment showing state.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:01:06.582Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-pack-unpack-filter",
+      "stepIndex": 12,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:ff8e371f725366e8e320b055a0ef0bded23d626f09d2344fb93cb0cc1fd569ca:90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/ff8e371f725366e8e320b055a0ef0bded23d626f09d2344fb93cb0cc1fd569ca/browser.png",
+          "caption": "The selected To pack view shows Socks and hides packed Passport.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:01:24.969Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-pack-unpack-filter",
+      "stepIndex": 16,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:41846884f0cd31fca7f00ba91ec989506b71adb075ed121754b9ef4d845de9b0:cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/41846884f0cd31fca7f00ba91ec989506b71adb075ed121754b9ef4d845de9b0/browser.png",
+          "caption": "Back in All, Passport can be marked not packed again and both unpacked items are visible.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-cdc33eda717fa3bf34a79d3e0804bcebeed937cbc220a16f1d007ddfdc25287c.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:01:49.075Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-pack-unpack-filter",
+      "stepIndex": 21,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:22752bb447fa87ae5bdb7beba05bf843b5d866e2b52d377720a8cefa81732c84:9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/22752bb447fa87ae5bdb7beba05bf843b5d866e2b52d377720a8cefa81732c84/browser.png",
+          "caption": "With every item packed, To pack shows its dedicated Nothing left to pack state.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-9c33d8ecb05287f2ed6e2eff0f1785a302489f3978a91db7a530b8fa9b67de28.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:02:56.867Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-delete-item",
+      "stepIndex": 10,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:83ae484294452fd1a6bd6a3ae8964a5ca256d3478622574748feae89c2b4503a:ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/83ae484294452fd1a6bd6a3ae8964a5ca256d3478622574748feae89c2b4503a/browser.png",
+          "caption": "Before deletion, Passport, Socks, and Jacket are visible in insertion order.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-ce3e4fb5d590937db7b67ff77c187efefe65d5eef925d291167685736b0d1e36.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:03:10.392Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-delete-item",
+      "stepIndex": 13,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:e0075cc196bc3a66ce974a7e7ee5320782e41cb3de672467835321a8dfcc27f7:90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/e0075cc196bc3a66ce974a7e7ee5320782e41cb3de672467835321a8dfcc27f7/browser.png",
+          "caption": "After deleting Socks, Passport and Jacket remain in order and focus moves to Jacket\u2019s Delete control.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-90ff782e7189cecd64421e7d8c87899f21a1aafb2fed40ce4223e219802cad6e.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:03:28.731Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-delete-item",
+      "stepIndex": 17,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:6561bf02611a718ec083a999b232a94f5b73204598d4297c16ccbf80149d5c5e:139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/6561bf02611a718ec083a999b232a94f5b73204598d4297c16ccbf80149d5c5e/browser.png",
+          "caption": "Deleting the remaining items returns the app to its empty-list state.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-139942781e3af3eb119ca8539561b40ac016023db2b8aacc610b39e9b8706705.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:05:27.686Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-persist-across-refresh",
+      "stepIndex": 19,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:57b0594744825b743ee260c6a9c65f56caf59a3ce64cd8886bd323345df50ebe:90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/57b0594744825b743ee260c6a9c65f56caf59a3ce64cd8886bd323345df50ebe/browser.png",
+          "caption": "Immediately before refresh, To pack is selected and shows only Socks; packed Jacket is filtered out and deleted Hat is absent.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:05:39.500Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-persist-across-refresh",
+      "stepIndex": 22,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:e73419c6c81e87defc8b9e406d302fbe802e5b713bca0cdc4be323b85fa90759:6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/e73419c6c81e87defc8b9e406d302fbe802e5b713bca0cdc4be323b85fa90759/browser.png",
+          "caption": "After the real refresh, All is restored by default with Jacket still packed, Socks unpacked, and Hat still absent.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-6b2be9319e5daf84c01d63941df98a7868eacb01e9b2bf5f25105d9b19a3494a.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:06:15.238Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-invalid-name-recovery",
+      "stepIndex": 5,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:2b48126823711cc387952c18850b47b89a370954ab70d786aa996caf2920607a:65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/2b48126823711cc387952c18850b47b89a370954ab70d786aa996caf2920607a/browser.png",
+          "caption": "The known-good state contains packed Passport.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-65dea39bc289c0cf090d86c41f39aa092f1c7c113598a93458cb63bdada6edc8.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:06:34.019Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-invalid-name-recovery",
+      "stepIndex": 9,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:cab0b88f3e332de965a6e88b2e0bdeead9a4251a1ec789c5b3ae9f95707b8e32:f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/cab0b88f3e332de965a6e88b2e0bdeead9a4251a1ec789c5b3ae9f95707b8e32/browser.png",
+          "caption": "A whitespace-only add is rejected inline and creates no new row.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-f68371edb7a11ee59238fff1fe2fa9015bfdd3bf99614c5e4d8dcd169fb3712a.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:06:58.169Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-invalid-name-recovery",
+      "stepIndex": 13,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:a84ec3b07ddbcad2c664249c576c58f8127f438977f15266408e3deb5ed5bb9c:718f9f3719d010d3ce7ba5a5fbfdc4ffc1231f3ca3b33268d7cadd2f9b7eb7da",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/718f9f3719d010d3ce7ba5a5fbfdc4ffc1231f3ca3b33268d7cadd2f9b7eb7da/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/a84ec3b07ddbcad2c664249c576c58f8127f438977f15266408e3deb5ed5bb9c/browser.png",
+          "caption": "After valid input, Socks is added unpacked and the validation message clears without changing packed Passport.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "718f9f3719d010d3ce7ba5a5fbfdc4ffc1231f3ca3b33268d7cadd2f9b7eb7da",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-718f9f3719d010d3ce7ba5a5fbfdc4ffc1231f3ca3b33268d7cadd2f9b7eb7da.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:07:26.358Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-invalid-name-recovery",
+      "stepIndex": 19,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:d77cda4d2cf4135bc4972427d15e028b6c8a5bf1e3b1f047bf3b42d3f4d2f506:b21d7ef98a916e8a9a803f10ed7fc80ce9bed3016ce24be9416e99e458450fd9",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/b21d7ef98a916e8a9a803f10ed7fc80ce9bed3016ce24be9416e99e458450fd9/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/d77cda4d2cf4135bc4972427d15e028b6c8a5bf1e3b1f047bf3b42d3f4d2f506/browser.png",
+          "caption": "A blank rename stays in edit mode with an associated validation message.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "b21d7ef98a916e8a9a803f10ed7fc80ce9bed3016ce24be9416e99e458450fd9",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-b21d7ef98a916e8a9a803f10ed7fc80ce9bed3016ce24be9416e99e458450fd9.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:07:37.238Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-invalid-name-recovery",
+      "stepIndex": 22,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:13cf4fdb9557e2c4dc4242190a42646dfb38dd295a91959d2e1e742efacb92c0:d46cb56655ffaf722237420209254c4849d48987bd297ef4ab6c83d86c3507b6",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/d46cb56655ffaf722237420209254c4849d48987bd297ef4ab6c83d86c3507b6/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/13cf4fdb9557e2c4dc4242190a42646dfb38dd295a91959d2e1e742efacb92c0/browser.png",
+          "caption": "Escape cancels the invalid rename and restores Passport with its packed state intact.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "d46cb56655ffaf722237420209254c4849d48987bd297ef4ab6c83d86c3507b6",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-d46cb56655ffaf722237420209254c4849d48987bd297ef4ab6c83d86c3507b6.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:07:50.558Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-invalid-name-recovery",
+      "stepIndex": 25,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:af3ac6dfee0d719ef54f9324becfefeb1a5b839789eb6aee52d8c693b5c55fb1:90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/af3ac6dfee0d719ef54f9324becfefeb1a5b839789eb6aee52d8c693b5c55fb1/browser.png",
+          "caption": "Before the recovery refresh, To pack shows only the valid unpacked Socks item.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-90d30f00e2913423ba6ec0b2884c0be5d5ec25e035b5c75bfe11ab05d0754ba4.png"
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-238",
+      "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+      "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+      "occurredAt": "2026-09-16T18:08:02.164Z",
+      "event": "step_completed",
+      "collectionId": "459b5d7f-c752-4aa7-80b4-45d4643efcc4",
+      "scenarioId": "demo-invalid-name-recovery",
+      "stepIndex": 28,
+      "result": {
+        "url": "https://review.deos-preview-982f7d6fcf337341.pages.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "proof": {
+          "change": "sac-238",
+          "approvedDesignSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "testedBaseSha": "119bb5dad37429f25a574579f15e7f58be196fef",
+          "treeSha": "3cdd00ad90f0c24db4e4f0359e7764bbd439c55a",
+          "id": "01a0ab5a-7eaf-7aa7-a841-231452176741:3cdd00ad90f0c24db4e4f0359e7764bbd439c55a:browser_image:65a563bc0909594daf0f23d49b093e6e184208354deb576c2325028099b983d0:3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:cdd0bff1-00fd-42db-adcd-6e693228bee8:run:1/3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef/proof/01a0ab5a-7eaf-7aa7-a841-231452176741/3cdd00ad90f0c24db4e4f0359e7764bbd439c55a/65a563bc0909594daf0f23d49b093e6e184208354deb576c2325028099b983d0/browser.png",
+          "caption": "After refresh, All shows only the valid saved items: packed Passport and unpacked Socks.\nCaptured from https://review.deos-preview-982f7d6fcf337341.pages.dev/; checked maintainer deployment 991d5cece85fb692f61ad323dda5f301166309e6d5aeca365e0a2b5a4a0b6ae9",
+          "sha256": "3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-3560d9f57b8232e0ec68772800ecf4d992f505c709fac7bc212f484a434d82ef.png"
+      }
+    }
+  ],
+  "agentInspectionStatements": [
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_21",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"The complete collection succeeded: 23 sanitized hosted screenshots, all at 1440\u00d7900 with HTTP 200 and no console errors. The previously ambiguous persistence proof is now visibly distinct before and after refresh. I\u2019m inspecting every capture next before selecting the reviewer gallery.\",\"assumptions\":[],\"providerReceipts\":[\"Collection 459b5d7f-c752-4aa7-80b4-45d4643efcc4 completed against https://review.deos-preview-982f7d6fcf337341.pages.dev/.\"],\"question\":null}"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_22",
+        "type": "agent_message",
+        "text": "{\"outcome\":\"completed\",\"summary\":\"All 23 images match their captions on inspection. The hosted UI clearly shows add and literal text rendering, packed-state-preserving rename, pack/unpack and filtering, deletion with focus handoff, distinct pre/post-refresh views with saved state restored, and inline validation recovery. I\u2019m now retrieving the proof IDs and will select a concise ordered subset plus one successful hosted-preview Showboat record.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+      }
+    }
+  ],
+  "observedErrors": []
+}

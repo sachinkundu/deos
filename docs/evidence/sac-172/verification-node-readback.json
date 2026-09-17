@@ -1,0 +1,151 @@
+{
+  "deployments": {
+    "deos-queue-consumer-ts": {
+      "versions": [
+        {
+          "version_id": "ecd04427-5c16-4616-a221-f9b46715e483",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-15T04:14:56.811573Z"
+    },
+    "deos-sample-project": {
+      "versions": [
+        {
+          "version_id": "7dcb3e04-2c21-4f8f-ab26-b389d4f8c175",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-14T12:29:19.555854Z"
+    },
+    "deos-workflow-portal-staging": {
+      "versions": [
+        {
+          "version_id": "0cd564c5-f900-4825-8c14-58ed565c01b6",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-15T05:35:16.178051Z"
+    }
+  },
+  "containers": [
+    {
+      "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:d2237e07339cb8358aba7da5399700ce37e709fb529dacc3695291d04afd2431",
+      "version": 4,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-implementationsandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:d2237e07339cb8358aba7da5399700ce37e709fb529dacc3695291d04afd2431",
+      "version": 4,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 1,
+          "assigned": 0,
+          "healthy": 3,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    }
+  ],
+  "run": [
+    {
+      "status": "active",
+      "current_node": "implementation_build",
+      "current_visit_sequence": 40,
+      "definition_id": "implementation",
+      "definition_version": 27,
+      "definition_digest": "ad7fec5d557145b5dc8332c1a514a3ff9f3597fd3feee23f9f8e77e526b22f1c",
+      "workflow_instance_id": "wf-v1-d5c2ifdot3p7rkggpzbd3h3tyxobiyyg7xnuijhfepnvvoyzdnva",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 1
+    }
+  ],
+  "active_attempts": [
+    {
+      "attempt_id": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+      "node_id": "implementation_build",
+      "state": "running"
+    }
+  ],
+  "task_progress": [
+    {
+      "attempt_id": "01a0a335-573b-7020-8d70-5e4eb7ec1ba7",
+      "completed": 50,
+      "total": 50,
+      "tasks_sha": "e3d8995d02952aa86940a51decfd82637864e4706b2d39164a1437c189727ebc",
+      "observed_at": "2026-09-15T05:32:32.860Z"
+    },
+    {
+      "attempt_id": "01a0a134-fefc-75d9-b32e-d941983aa546",
+      "completed": 0,
+      "total": 57,
+      "tasks_sha": "d952f4e2f6fc6145f15f18c25689c431dfc1389e18cdb76e2908677d2e4fc9e7",
+      "observed_at": "2026-09-14T19:07:59.719Z"
+    },
+    {
+      "attempt_id": "01a0a0d7-0ea0-715b-bf5e-a57a8c14965c",
+      "completed": 0,
+      "total": 57,
+      "tasks_sha": "d952f4e2f6fc6145f15f18c25689c431dfc1389e18cdb76e2908677d2e4fc9e7",
+      "observed_at": "2026-09-14T18:08:47.535Z"
+    },
+    {
+      "attempt_id": "01a0a02a-ea7e-7034-94c4-31a3b1301fd7",
+      "completed": 57,
+      "total": 57,
+      "tasks_sha": "f4776d30b0e9a93d74ce62f86505208fe40a35cf08e7c942b86c1ad8ecc775e4",
+      "observed_at": "2026-09-14T16:18:29.367Z"
+    }
+  ],
+  "implementation": [
+    {
+      "status": "clarification",
+      "approved_design_sha": "f2b994131d879967940e69ced07932dfffb8bc9a",
+      "tested_base_sha": "f2b994131d879967940e69ced07932dfffb8bc9a",
+      "branch": "deos/agent/SAC-182/run-1",
+      "tree_sha": "e0ac2d18e079a390c1de14baaacedc201aec2335",
+      "pr_url": null
+    }
+  ]
+}

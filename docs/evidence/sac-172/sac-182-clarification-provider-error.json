@@ -1,0 +1,1 @@
+{"operation":"tool.safe_test","error":{"stack":"Error: provider_test_proof_subject_changed\n    at ImplementationProviderTest.proof (queue-consumer.js:50376:93)\n    at async ImplementationBroker.handle (queue-consumer.js:50541:24)\n    at async queue-consumer.js:141:16","message":"provider_test_proof_subject_changed","name":"Error"}}

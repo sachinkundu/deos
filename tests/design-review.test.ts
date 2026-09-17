@@ -87,6 +87,11 @@ test("canonical design review inputs bind model, context, and exact head", async
   });
   assert.equal(first.inputSha256, second.inputSha256);
   assert.equal(first.inputSha256.length, 64);
+  for (const phase of ['self', 'independent'] as const) {
+    const runtimeSource = {path:'context/runtime-capabilities.json',sha256:'9'.repeat(64)};
+    const withRuntime = await validateDesignReviewInput({...input(phase),sources:[...input(phase).sources,runtimeSource]});
+    assert.ok(withRuntime.input.sources.some(source => source.path === runtimeSource.path));
+  }
   await assert.rejects(
     validateDesignReviewInput({ ...input("independent"), headSha: null }),
     /independent design review input is invalid/,

@@ -31,6 +31,35 @@ export class D1NativeReviewStore {
   private bucket: R2Bucket;
   constructor(db: D1Database, bucket: R2Bucket) { this.db = db; this.bucket = bucket; }
 
+  async finalization(attemptId: string) {
+    const source = await this.db.prepare(`SELECT manifest_id, result_class, job_spec_json FROM agent_attempts
+      WHERE attempt_id = ? AND state = 'failed'`).bind(attemptId)
+      .first<{ manifest_id: string; result_class: string; job_spec_json: string }>();
+    if (!source || source.result_class !== 'author_completion_failed')
+      throw new Error('native finalization source is not a failed completion');
+    const job = JSON.parse(source.job_spec_json);
+    const proofAttemptId = job.nativeSelfReview?.finalizationSourceAttemptId ?? attemptId;
+    const final = await this.finalCheckpoint(proofAttemptId);
+    const sequence = Number(final.request.candidateSequence);
+    const ready = await this.response(proofAttemptId, sequence, 'candidate');
+    if (typeof ready?.authorContext !== 'string') throw new Error('native finalization context is missing');
+    const rows = await this.db.prepare(`SELECT logical_name,r2_key,sha256 FROM artifacts
+      WHERE manifest_id=? AND logical_name IN ('patch.diff','design-dispositions.json','review-replies.json','author-sources.json')`)
+      .bind(source.manifest_id).all<{ logical_name: string; r2_key: string; sha256: string }>();
+    const patch = rows.results.find(row => row.logical_name === 'patch.diff');
+    if (!patch) throw new Error('native finalization patch is missing');
+    const files: Record<string, string> = {};
+    for (const row of rows.results) {
+      const object = await this.bucket.get(row.r2_key);
+      if (!object) throw new Error(`native finalization artifact is missing: ${row.logical_name}`);
+      const content = await object.text();
+      if (await nativeDigest(content) !== row.sha256) throw new Error(`native finalization artifact changed: ${row.logical_name}`);
+      if (row.logical_name !== 'patch.diff') files[row.logical_name] = content;
+    }
+    return { sourceAttemptId: proofAttemptId, context: ready.authorContext, files,
+      patch: { attemptId, manifestId: source.manifest_id, r2Key: patch.r2_key, sha256: patch.sha256 } };
+  }
+
   async response(attemptId: string, candidate: number, kind: string) {
     const row = await this.db.prepare(`SELECT response_json FROM self_review_checkpoints
       WHERE author_attempt_id = ? AND json_extract(request_json, '$.candidateSequence') = ?

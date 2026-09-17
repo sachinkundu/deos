@@ -1,0 +1,22 @@
+[
+  {
+    "operation": "check",
+    "change": "sac-243",
+    "approvedDesignSha": "d863ba43593da153f35e35b9c3ebbbc578f63bf6",
+    "testedBaseSha": "d863ba43593da153f35e35b9c3ebbbc578f63bf6",
+    "treeSha": "9f457a47df33031e1df64bb10d929389bc3a1766",
+    "result": {
+      "command": "'npm' 'test'",
+      "exitCode": 127,
+      "signal": null,
+      "stdout": "\n> test\n> vitest run\n\n",
+      "stderr": "sh: 1: vitest: not found\n",
+      "cwd": "/deos/workspace/repository"
+    }
+  },
+  {
+    "source": "35bc01708a6c-validation.txt",
+    "occurredAt": "2026-09-17T06:28:37.743746Z",
+    "error": "2026-09-17T06:28:37.743746Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: Edit repository and request files through the shell with Python, Node, cat or tee. Native patch tools and an apply_patch shell executable are not provided. Use native web search for research and deos-implementation for browser, commands and docs. Provider mutation tools and child agents are unavailable.."
+  }
+]

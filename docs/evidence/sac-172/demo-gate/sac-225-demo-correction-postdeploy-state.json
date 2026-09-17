@@ -1,0 +1,88 @@
+{
+  "result": [
+    {
+      "results": [
+        {
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:d5dc0e9d-be0d-4504-82a1-62c14340c91c:run:1",
+          "status": "failed",
+          "current_node": "implementation_failed",
+          "current_visit_sequence": 36,
+          "definition_version": 30
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 3.28
+        },
+        "duration": 3.28,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 98938880,
+        "rows_read": 90,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "correction_records": 0
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.2463
+        },
+        "duration": 0.2463,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 98938880,
+        "rows_read": 0,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "patch_sha": "4186436ba4ee6d86b2e2d2d6c1a2e8c5cd52325344881868943a45c32c37ccec",
+          "tree_sha": "8eb184220d08673abb7564089d72420f2dd54eb5",
+          "pr_url": null
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.1829
+        },
+        "duration": 0.1829,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 98938880,
+        "rows_read": 91,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}

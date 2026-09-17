@@ -1,0 +1,72 @@
+[
+  {
+    "line": "2026-09-16T14:08:45.692615Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: Use the shell tool to read or edit repository files. Trusted review control files are outside the author account.. Command: *** Begin Patch",
+    "attempt": {
+      "attempt_id": "01a0aa8a-af2e-777a-89c7-8c98325719d6",
+      "sandbox_id": "sbx-v1-wiwjknnrpchikph7btfs5c6i24hogljvmkw7z6wgyej7uxp2dtaq",
+      "sandbox_tier": "basic",
+      "process_id": "477cfda0-70ed-4646-b27d-e9bbff9656a4",
+      "state": "running",
+      "node_id": "planning_author",
+      "heartbeat_at": "2026-09-16T14:19:49.984Z"
+    },
+    "readAt": "2026-09-16T14:20:12.617Z",
+    "source": "2026-09-16T14-20-12.617Z.json"
+  },
+  {
+    "line": "2026-09-16T14:09:28.786649Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: Use the shell tool to read or edit repository files. Trusted review control files are outside the author account.. Command: *** Begin Patch",
+    "attempt": {
+      "attempt_id": "01a0aa8a-af2e-777a-89c7-8c98325719d6",
+      "sandbox_id": "sbx-v1-wiwjknnrpchikph7btfs5c6i24hogljvmkw7z6wgyej7uxp2dtaq",
+      "sandbox_tier": "basic",
+      "process_id": "477cfda0-70ed-4646-b27d-e9bbff9656a4",
+      "state": "running",
+      "node_id": "planning_author",
+      "heartbeat_at": "2026-09-16T14:19:49.984Z"
+    },
+    "readAt": "2026-09-16T14:20:12.617Z",
+    "source": "2026-09-16T14-20-12.617Z.json"
+  },
+  {
+    "line": "2026-09-16T14:15:16.968736Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: Author tools are paused until checked review and durable proof complete. Command: perl -0pi -e 's/The screenshots MUST show item input, a changed name, both packed states, the `To pack` view, and the saved list after a refresh\\./The screenshots MUST form a sequence that shows item input, a changed name, both packed states, the `To pack` view, a deleted item gone from the list, and the saved list after a refresh./; s/they show the real app with the set input, name, packed states, filter, and saved list\\./they show the real app with the set input, name, packed states, filter, deleted item, and saved list./' openspec/changes/sac-238/specs/packing-list-web-app/spec.md",
+    "attempt": {
+      "attempt_id": "01a0aa8a-af2e-777a-89c7-8c98325719d6",
+      "sandbox_id": "sbx-v1-wiwjknnrpchikph7btfs5c6i24hogljvmkw7z6wgyej7uxp2dtaq",
+      "sandbox_tier": "basic",
+      "process_id": "477cfda0-70ed-4646-b27d-e9bbff9656a4",
+      "state": "running",
+      "node_id": "planning_author",
+      "heartbeat_at": "2026-09-16T14:19:49.984Z"
+    },
+    "readAt": "2026-09-16T14:20:12.617Z",
+    "source": "2026-09-16T14-20-12.617Z.json"
+  },
+  {
+    "line": "2026-09-16T14:15:25.483946Z ERROR codex_core::tools::router: error=Tool call blocked by PreToolUse hook: Author tools are paused until checked review and durable proof complete. Tool: multi_agent_v1close_agent",
+    "attempt": {
+      "attempt_id": "01a0aa8a-af2e-777a-89c7-8c98325719d6",
+      "sandbox_id": "sbx-v1-wiwjknnrpchikph7btfs5c6i24hogljvmkw7z6wgyej7uxp2dtaq",
+      "sandbox_tier": "basic",
+      "process_id": "477cfda0-70ed-4646-b27d-e9bbff9656a4",
+      "state": "running",
+      "node_id": "planning_author",
+      "heartbeat_at": "2026-09-16T14:19:49.984Z"
+    },
+    "readAt": "2026-09-16T14:20:12.617Z",
+    "source": "2026-09-16T14-20-12.617Z.json"
+  },
+  {
+    "line": "2026-09-16T14:53:42.540713Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: Use the shell tool to read or edit repository files. Trusted review control files are outside the author account.. Command: *** Begin Patch",
+    "attempt": {
+      "attempt_id": "01a0aab2-bd2c-7ace-9c62-6563802125d0",
+      "sandbox_id": "sbx-v1-zyorxnknp3qmj4ozq4jfpy34jza2lcjmwxdoufzr4bukgf4gpwha",
+      "sandbox_tier": "basic",
+      "process_id": "b67aae90-2690-4aad-b5d0-61f0303cf578",
+      "state": "running",
+      "node_id": "design_author",
+      "heartbeat_at": "2026-09-16T15:03:34.064Z"
+    },
+    "readAt": "2026-09-16T15:04:01.686Z",
+    "source": "2026-09-16T15-04-01.686Z.json"
+  }
+]

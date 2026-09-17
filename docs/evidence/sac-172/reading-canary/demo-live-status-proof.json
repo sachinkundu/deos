@@ -1,0 +1,109 @@
+{
+  "observedAt": "2026-09-17T10:51:35.534Z",
+  "privateSource": "/tmp/sac245-reader/2026-09-17T10-51-35.534Z.json",
+  "recentStatusReceipts": [
+    {
+      "requestId": "demo-final-1",
+      "action": "demo",
+      "fingerprint": "459a9f9409e2d00a103869dee3fa5071772305af699cffd3f43328f2fda430ef",
+      "state": "running",
+      "createdAt": "2026-09-17T10:46:24.644Z",
+      "lastActivityAt": "2026-09-17T10:50:15.112Z",
+      "deadline": "2026-09-18T10:26:43.214Z",
+      "startedAt": "2026-09-17T10:46:24.646Z",
+      "progress": {
+        "event": "step_started",
+        "collectionId": "1be239f2-0eea-4b1b-a7e5-a49653fbd59c",
+        "scenarioId": "D4-filters-and-global-counts",
+        "stepIndex": 1,
+        "step": {
+          "operation": "fill",
+          "selector": "#book-author",
+          "text": "Octavia E. Butler"
+        }
+      },
+      "observedAt": "2026-09-17T10:50:17.757Z",
+      "inactiveForMs": 2645
+    },
+    {
+      "requestId": "demo-final-1",
+      "action": "demo",
+      "fingerprint": "459a9f9409e2d00a103869dee3fa5071772305af699cffd3f43328f2fda430ef",
+      "state": "running",
+      "createdAt": "2026-09-17T10:46:24.644Z",
+      "lastActivityAt": "2026-09-17T10:50:39.980Z",
+      "deadline": "2026-09-18T10:26:43.214Z",
+      "startedAt": "2026-09-17T10:46:24.646Z",
+      "progress": {
+        "event": "step_started",
+        "collectionId": "1be239f2-0eea-4b1b-a7e5-a49653fbd59c",
+        "scenarioId": "D4-filters-and-global-counts",
+        "stepIndex": 5,
+        "step": {
+          "operation": "fill",
+          "selector": "#book-author",
+          "text": "Frank Herbert"
+        }
+      },
+      "observedAt": "2026-09-17T10:50:42.255Z",
+      "inactiveForMs": 2275
+    },
+    {
+      "requestId": "demo-final-1",
+      "action": "demo",
+      "fingerprint": "459a9f9409e2d00a103869dee3fa5071772305af699cffd3f43328f2fda430ef",
+      "state": "running",
+      "createdAt": "2026-09-17T10:46:24.644Z",
+      "lastActivityAt": "2026-09-17T10:51:03.052Z",
+      "deadline": "2026-09-18T10:26:43.214Z",
+      "startedAt": "2026-09-17T10:46:24.646Z",
+      "progress": {
+        "event": "step_started",
+        "collectionId": "1be239f2-0eea-4b1b-a7e5-a49653fbd59c",
+        "scenarioId": "D4-filters-and-global-counts",
+        "stepIndex": 9,
+        "step": {
+          "operation": "click",
+          "selector": "[data-filter=\"reading\"]"
+        }
+      },
+      "observedAt": "2026-09-17T10:51:08.453Z",
+      "inactiveForMs": 5401
+    }
+  ],
+  "milestones": [
+    {
+      "operation": "demo",
+      "change": "sac-245",
+      "approvedDesignSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "testedBaseSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "treeSha": "c798abe4853adee5997c3d675c77503aefab6ec4",
+      "occurredAt": "2026-09-17T10:46:41.109Z",
+      "event": "scenario_completed",
+      "collectionId": "1be239f2-0eea-4b1b-a7e5-a49653fbd59c",
+      "scenarioId": "D1-first-run"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-245",
+      "approvedDesignSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "testedBaseSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "treeSha": "c798abe4853adee5997c3d675c77503aefab6ec4",
+      "occurredAt": "2026-09-17T10:48:10.812Z",
+      "event": "scenario_completed",
+      "collectionId": "1be239f2-0eea-4b1b-a7e5-a49653fbd59c",
+      "scenarioId": "D2-add-validation-recovery"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-245",
+      "approvedDesignSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "testedBaseSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "treeSha": "c798abe4853adee5997c3d675c77503aefab6ec4",
+      "occurredAt": "2026-09-17T10:50:00.191Z",
+      "event": "scenario_completed",
+      "collectionId": "1be239f2-0eea-4b1b-a7e5-a49653fbd59c",
+      "scenarioId": "D3-status-transitions"
+    }
+  ]
+}

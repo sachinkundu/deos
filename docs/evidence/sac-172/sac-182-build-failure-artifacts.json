@@ -1,0 +1,45 @@
+{
+  "attempt": [
+    {
+      "attempt_id": "01a0a02a-ea7e-7034-94c4-31a3b1301fd7",
+      "state": "failed",
+      "result_class": "supervisor_failed",
+      "result_detail": null,
+      "manifest_id": "manifest:01a0a02a-ea7e-7034-94c4-31a3b1301fd7:failure",
+      "cleanup_state": "destroyed",
+      "ended_at": "2026-09-14T16:23:40.215Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "manifest_id": "manifest:01a0a02a-ea7e-7034-94c4-31a3b1301fd7:failure",
+      "logical_name": "failure-summary.json",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/attempts/01a0a02a-ea7e-7034-94c4-31a3b1301fd7/failure-summary.json",
+      "media_type": "application/json",
+      "byte_size": 385,
+      "sha256": "689de4ad7b01fc83da2e436f9f44d9e1a4aba416e63244079f6b8a1727ca3aa4",
+      "created_at": "2026-09-14T16:23:39.838Z",
+      "policy_outcome": "accepted"
+    },
+    {
+      "manifest_id": "manifest:01a0a02a-ea7e-7034-94c4-31a3b1301fd7:failure",
+      "logical_name": "implementation-diagnostics.jsonl",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/attempts/01a0a02a-ea7e-7034-94c4-31a3b1301fd7/implementation-diagnostics.jsonl",
+      "media_type": "application/json",
+      "byte_size": 1178891,
+      "sha256": "feccf698eb5bdd34ed20b863c7b9c4b6bcb14202cf648ba06d19b40240af4538",
+      "created_at": "2026-09-14T16:23:39.275Z",
+      "policy_outcome": "accepted"
+    },
+    {
+      "manifest_id": "manifest:01a0a02a-ea7e-7034-94c4-31a3b1301fd7:failure",
+      "logical_name": "original-errors.jsonl",
+      "r2_key": "runs/workflow%3A2a653831-c1ec-4db7-972a-d0d08ac0a3d8%3Ae75aad25-c32f-4c23-8184-b4b38388a631%3Arun%3A1/attempts/01a0a02a-ea7e-7034-94c4-31a3b1301fd7/original-errors.jsonl",
+      "media_type": "application/json",
+      "byte_size": 40634,
+      "sha256": "5872868b72cc2762b111a1991387c154986cd7df5e97b8eb9636106cbccf9a55",
+      "created_at": "2026-09-14T16:23:39.566Z",
+      "policy_outcome": "accepted"
+    }
+  ]
+}

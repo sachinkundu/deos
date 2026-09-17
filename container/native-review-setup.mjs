@@ -1,4 +1,5 @@
 import { initializeBoundedReview } from "./bounded-self-review.mjs";
+import { repositoryManifest } from './native-self-review.mjs';
 import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
@@ -9,7 +10,7 @@ const COMMAND = "node /deos/bin/native-self-review.mjs hook";
 
 // The parent trust bypass does not reach child sessions. Discover and trust the
 // exact generated hooks through the pinned runtime's own config contract.
-const trustGeneratedHooks = async (cwd, model, command = COMMAND) => {
+export const trustGeneratedHooks = async (cwd, model, command = COMMAND) => {
   const child = spawn("codex", ["app-server"], {
     env: { PATH: process.env.PATH, HOME: "/root", CODEX_HOME: "/root/.codex" },
     stdio: ["pipe", "pipe", "inherit"],
@@ -59,6 +60,7 @@ const trustGeneratedHooks = async (cwd, model, command = COMMAND) => {
       }
       await appendFile(CONFIG, `\n[hooks.state.${JSON.stringify(hook.key)}]\ntrusted_hash = ${JSON.stringify(hook.currentHash)}\nenabled = true\n`);
     }
+    await mkdir("/deos/native-review",{recursive:true,mode:0o700});
     await writeFile("/deos/native-review/hook-receipt.json", JSON.stringify(entry));
   } finally {
     clearTimeout(timer);
@@ -77,7 +79,8 @@ export const setupNativeReview = async (job) => {
   await writeFile("/deos/native-review/state.json", JSON.stringify({
     attemptId: job.attemptId, deadline: job.deadline, change: job.openspecChange, phase,
     authorPrompt: await readFile(job.promptPath, "utf8"), materializedContext: job.materializedContext,
-    candidateSequence: 0, checkpointSequence: 0, completionRepairs: 0, stage: "writing",
+    candidateSequence: 0, checkpointSequence: 0, completionRepairs: 0, stage: job.nativeSelfReview.finalizationSourceAttemptId ? 'finalizing' : 'writing',
+    ...(job.nativeSelfReview.finalizationSourceAttemptId ? { acceptedManifest: await repositoryManifest() } : {}),
   }), { mode: 0o600 });
   if (bounded) await initializeBoundedReview(job);
   await writeFile("/root/.codex/deos-reviewer.toml", [

@@ -89,6 +89,7 @@ class ApplicationEvent:
     issue_url: str | None = None
     label_selection_evidence: LabelSelectionEvidence = LabelSelectionEvidence("unavailable")
     start_slow_ok: bool | None = None
+    comment_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,6 +138,10 @@ class StatePort(Protocol):
     def record_delivery(self, delivery: Delivery) -> bool:
         """Return false when the delivery id has already been recorded."""
         ...
+
+    def handoff_complete(self, delivery_id: str) -> bool: ...
+
+    def mark_handoff_complete(self, delivery_id: str) -> None: ...
 
     def record_transition(self, transition: Transition) -> None: ...
 

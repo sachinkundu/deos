@@ -1,0 +1,46 @@
+{
+  "attemptId": "01a0a5e7-dfe0-707e-9db1-21e917fd2b5d",
+  "receiptKey": "protected/claude-reviews/2c7a69a887546e6c0e38c3ac9a402e679486543de0a479369d858b31addfe7e4/0.json",
+  "receiptSha256": "d8e49088209fc6a8cb4e90aa185517b0973b3eaa8a97b9999aade81452480caa",
+  "model": "claude-opus-5",
+  "paidUsage": false,
+  "outcome": "concerns",
+  "findingIds": [
+    "preview-deployment-mechanism-unspecified",
+    "unfinished-decimal-operand-normalization",
+    "result-exponent-notation-unspecified",
+    "awaiting-rhs-transition-underdetermined"
+  ],
+  "submittedSources": [
+    {
+      "id": "cloudflare-pages-preview-deployments",
+      "url": "https://developers.cloudflare.com/pages/configuration/preview-deployments/",
+      "title": "Preview deployments \u00b7 Cloudflare Pages docs",
+      "claimLocator": "/review/findings/0/message"
+    },
+    {
+      "id": "big-js-constructor-validation",
+      "url": "https://mikemcl.github.io/big.js/#big",
+      "title": "big.js API \u2014 Big constructor and invalid number errors",
+      "claimLocator": "/review/findings/1/message"
+    },
+    {
+      "id": "big-js-ne-pe-thresholds",
+      "url": "https://mikemcl.github.io/big.js/#ne",
+      "title": "big.js API \u2014 Big.NE and Big.PE exponential notation thresholds",
+      "claimLocator": "/review/findings/2/message"
+    }
+  ],
+  "failure": "uncited_search_result: source must be cited by an existing claim",
+  "failureManifest": {
+    "state": "complete",
+    "objectCount": 8,
+    "totalBytes": 127791
+  },
+  "recovery": {
+    "eligible": true,
+    "slot": "independent"
+  },
+  "localRevalidation": "Accepted all three citations after canonicalizing the /review envelope prefix. Findings unchanged. This is not workflow acceptance.",
+  "recordedAt": "2026-09-15T17:07:12Z"
+}

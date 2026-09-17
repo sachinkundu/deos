@@ -1,0 +1,10 @@
+{
+  "run": "SAC-238",
+  "attemptId": "01a0ab02-47f4-7ae3-aebc-5601103899eb",
+  "observedAt": "2026-09-16T16:32:03.567Z",
+  "source": "Read-only live sandbox transcript capture",
+  "stderrLines": [
+    "2026-09-16T16:19:03.851964Z ERROR codex_core::tools::router: error=Tool call blocked by PreToolUse hook: Use shell tools for repository work and deos-implementation for checked browser, commands and docs. Provider tools and child agents are unavailable.. Tool: webrun",
+    "2026-09-16T16:19:15.239945Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: Use shell tools for repository work and deos-implementation for checked browser, commands and docs. Provider tools and child agents are unavailable.. Command: *** Begin Patch"
+  ]
+}

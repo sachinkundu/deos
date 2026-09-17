@@ -1,0 +1,16 @@
+{
+  "observedAt": "2026-09-17T07:50:32.483266+00:00",
+  "node": "implementation_review",
+  "activeAttempts": [],
+  "workflowErrors": [],
+  "pr": "https://github.com/sachinkundu/deos-sample-project/pull/39",
+  "head": "d619fc9c5b810e6aa5482cbe23cb64b076d990c8",
+  "prState": "OPEN",
+  "draft": false,
+  "linearState": "Human Review",
+  "preview": "https://5d8ffabe.deos-preview-554b6e57d5a22469.pages.dev",
+  "reviewOutcome": "pass",
+  "browserVerification": "Brave: preview rendered empty ledger; PR images rendered correct populated ledger and totals. All15public image URLs HTTP200 and SHA256 match filename.",
+  "automation": "PAUSED",
+  "temporaryReader": "stopped"
+}

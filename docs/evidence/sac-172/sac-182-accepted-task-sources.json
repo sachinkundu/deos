@@ -1,0 +1,38 @@
+[
+  {
+    "url": "https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/",
+    "title": "Service bindings",
+    "claim": "Service bindings enable private Worker-to-Worker calls, and Cloudflare Access context does not propagate through HTTP or RPC service-binding invocations.",
+    "artifactLocator": "openspec/changes/sac-182/tasks.md:19"
+  },
+  {
+    "url": "https://docs.github.com/en/rest/pulls/comments",
+    "title": "REST API endpoints for pull request review comments",
+    "claim": "A review-comment reply targets a top-level comment, and review-comment records expose user, commit, and reply-relation facts for verification.",
+    "artifactLocator": "openspec/changes/sac-182/tasks.md:31"
+  },
+  {
+    "url": "https://docs.github.com/en/rest/pulls/reviews",
+    "title": "REST API endpoints for pull request reviews",
+    "claim": "The create-review API accepts a commit ID, review body, review event, and inline comments, with COMMENT, REQUEST_CHANGES, and APPROVE review events.",
+    "artifactLocator": "openspec/changes/sac-182/tasks.md:32"
+  },
+  {
+    "url": "https://linear.app/developers/graphql",
+    "title": "Getting started with Linear GraphQL",
+    "claim": "Linear issueUpdate accepts a stateId, and clients must inspect GraphQL errors even when the HTTP response is 200.",
+    "artifactLocator": "openspec/changes/sac-182/tasks.md:43"
+  },
+  {
+    "url": "https://linear.app/developers/oauth-actor-authorization",
+    "title": "OAuth actor authorization",
+    "claim": "OAuth actor authorization can attribute API actions to the installed app rather than the authorizing user.",
+    "artifactLocator": "openspec/changes/sac-182/tasks.md:43"
+  },
+  {
+    "url": "https://linear.app/developers/webhooks",
+    "title": "Webhooks",
+    "claim": "Linear signs the raw webhook body with HMAC-SHA256, requires HTTP 200, treats responses slower than five seconds as failures, and retries failed deliveries with backoff.",
+    "artifactLocator": "openspec/changes/sac-182/tasks.md:45"
+  }
+]

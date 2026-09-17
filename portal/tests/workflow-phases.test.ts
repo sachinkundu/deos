@@ -6,6 +6,7 @@ import {
   reviewVisitStatus,
   isDesignAuthorVisit,
   designSubstepForNode,
+  reviewPhaseForNode,
   isDesignStageWorkflow,
   isPlanningAuthorVisit,
   latestPhaseId,
@@ -29,6 +30,65 @@ const visit = (
   nodeId,
   stageId,
   gate: gateKind === null ? null : { gate_kind: gateKind, round: 1, decision_outcome: null },
+});
+
+test("implementation appears in the existing map before work starts and owns its build visits", () => {
+  const stages = [{id:"design"},{id:"implementation_tasks"},{id:"implementation_build"}];
+  const before = workflowPhases([visit(1,"design_author","design")],stages);
+  assert.deepEqual(before.map(phase=>phase.id),["claim","planning","approval","design","implementation","complete"]);
+  const builds = [visit(1,"implementation_prepare","implementation_prepare"),visit(2,"implementation_tasks","implementation_tasks"),visit(3,"implementation_build","implementation_build")];
+  const phase = workflowPhases(builds, stages).find(phase=>phase.id === "implementation")!;
+  assert.equal(phase.visits.length,3);
+  assert.equal(latestPhaseId(builds),"implementation");
+  assert.equal(phaseDisplayStatus(phase,"implementation","active"),"In progress");
+});
+
+test("review reconciliation blocks its interrupted phase without completing it or adding implementation", () => {
+  for (const interrupted of ["planning", "design"] as const) {
+    const visits = [visit(1, "planning_author", "planning"),
+      ...(interrupted === "design" ? [visit(2, "design_author", "design")] : []),
+      visit(3, "review_reconciliation", "review_reconciliation")];
+    const phases = workflowPhases(visits, [{ id: "design" }]);
+    assert.equal(phases.some(phase => phase.id === "implementation"), false);
+    assert.equal(latestPhaseId(visits), interrupted);
+    assert.equal(phaseDisplayStatus(phases.find(phase => phase.id === interrupted)!,
+      latestPhaseId(visits), "manual_reconciliation_required"), "Blocked");
+    assert.equal(phaseDisplayStatus(phases.find(phase => phase.id === "complete")!,
+      latestPhaseId(visits), "manual_reconciliation_required"), "Upcoming");
+    assert.equal(authorVisitStatus({ leftAt: null, attempts: [] }, "manual_reconciliation_required"), "Blocked");
+    const resumed = [...visits.slice(0, -1), { ...visits.at(-1)!, recovered: true },
+      visit(4, `${interrupted}_independent_response`, interrupted)];
+    assert.equal(phaseDisplayStatus(phases.find(phase => phase.id === interrupted)!,
+      latestPhaseId(resumed), "active"), "In progress");
+  }
+});
+
+test("implementation joins the shared human review branch only at its durable gate", () => {
+  const visits=[visit(1,"planning_review","review","plan"),visit(2,"design_review","review","design"),visit(3,"implementation_build","implementation_build")];
+  let phases = workflowPhases(visits);
+  assert.equal(phaseDisplayStatus(phases.find(phase=>phase.id === "approval")!,"implementation","active"),"Upcoming");
+  visits.push(visit(4,"implementation_review","implementation_review"));
+  phases = workflowPhases(visits);
+  assert.equal(latestPhaseId(visits),"approval");
+  assert.equal(phaseDisplayStatus(phases.find(phase=>phase.id === "approval")!,"approval","awaiting_human"),"In progress");
+  assert.equal(phaseDisplayStatus(phases.find(phase=>phase.id === "implementation")!,"approval","awaiting_human"),"Complete");
+  assert.equal(reviewPhaseForNode("implementation_review"),"implementation");
+  assert.equal(phaseForVisit(visit(5,"implementation_clarification_wait","implementation_clarification_wait")),"approval");
+  visits.push(visit(5,"implementation_build","implementation_build"));
+  assert.equal(latestPhaseId(visits),"implementation");
+  assert.equal(reviewVisitStatus({sequence:3,leftAt:"done",attempts:[]},"active",{sequence:5}),"Upcoming");
+});
+
+test("implementation failure, retry and final merge preserve the map state", () => {
+  const visits=[visit(1,"implementation_build","implementation_build"),visit(2,"implementation_failed","stopped")];
+  assert.equal(stoppedPhaseSourceId(visits),"implementation");
+  assert.equal(phaseDisplayStatus(workflowPhases(visits).find(phase=>phase.id === "implementation")!,"stopped","failed","implementation"),"Failed");
+  const recovered = [...visits.slice(0,1),{...visits[1],recovered:true},visit(3,"implementation_build","implementation_build")];
+  assert.equal(workflowPhases(recovered).some(phase=>phase.id === "stopped"),false);
+  assert.equal(latestPhaseId(recovered),"implementation");
+  recovered.push(visit(4,"code_merged","complete"));
+  assert.equal(latestPhaseId(recovered),"complete");
+  assert.equal(phaseDisplayStatus(workflowPhases(recovered).find(phase=>phase.id === "complete")!,"complete","succeeded"),"Succeeded");
 });
 
 test("version 17 folds granular nodes into progressive planning and design phases", () => {
