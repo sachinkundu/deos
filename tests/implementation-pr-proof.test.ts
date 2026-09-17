@@ -12,7 +12,7 @@ import {D1DesignStore} from '../src/design-store.ts';
 import {ImplementationTestDatabase, ImplementationTestBucket, seedRun} from './helpers/implementation-fixture.ts';
 import type {LoadedWorkflowDefinition} from '../src/workflow-definition.ts';
 
-test('GitHub proof preserves binary images, retries without duplicate writes, and uses the requested PR template', async()=>{
+for (const privateRepository of [false, true]) test(`GitHub proof preserves binary images, replay and the PR template for ${privateRepository ? 'private' : 'public'} repositories`, async()=>{
   const db=new ImplementationTestDatabase(); seedRun(db);
   const bucket=new ImplementationTestBucket();
   const store=new ImplementationStore(db as unknown as D1Database,bucket as unknown as R2Bucket);
@@ -27,7 +27,7 @@ test('GitHub proof preserves binary images, retries without duplicate writes, an
     const internal=await store.put(work.run_id,'internal.md','INTERNAL UNIT TEST RESULTS');
     const subject={change:'sample',approvedDesignSha:work.approved_design_sha,testedBaseSha:work.tested_base_sha,treeSha:'c'.repeat(40)};
     const candidate={...subject,proof:[
-      {...subject,id:'image',kind:'browser_image',path:image.key,sha256:image.sha256,sanitized:true,caption:'One plus two shows 3 [result]\nCaptured from https://preview.test/'},
+      {...subject,id:'image',kind:'browser_image',path:image.key,sha256:image.sha256,sanitized:true,caption:`One plus two shows 3 [result]\nCaptured from https://preview.test/; checked maintainer deployment ${'1'.repeat(64)}`},
       {...subject,id:'demo',kind:'showboat',audience:'review',path:record.key,sha256:record.sha256,sanitized:true,caption:'Live calculator command'},
     {...subject,id:'internal',kind:'showboat',path:internal.key,sha256:internal.sha256,sanitized:true,caption:'Internal tests'},
     ],checks:[{command:'unit tests',exitCode:1}],summary:'Claude said needs work, Sol replied.'} as ImplementationCandidate;
@@ -36,6 +36,7 @@ test('GitHub proof preserves binary images, retries without duplicate writes, an
     const github=new ImplementationGitHub('https://api.github.com','owner/repo',{token:async()=>'test'},(async(url,init)=>{
       const path=new URL(String(url)).pathname.replace('/repos/owner/repo','');
       const body=init?.body ? JSON.parse(String(init.body)):null;
+      if(path==='')return Response.json({private:privateRepository});
       if(init?.method==='POST')writes++;
       if(path.startsWith('/git/ref/heads/deos/proof/'))return ref?Response.json({object:{sha:ref}}):Response.json({}, {status:404});
       if(path==='/git/blobs'){
@@ -60,7 +61,11 @@ test('GitHub proof preserves binary images, retries without duplicate writes, an
     const firstWrites=writes;
     assert.deepEqual(await publishImplementationProof(github,store,work,candidate),published);
     assert.equal(writes,firstWrites,'Replay reads the immutable proof branch');
-    assert.equal(published.images[0].url,`../blob/${head}/images/${image.sha256}.png?raw=true`);
+    assert.equal(published.images[0].url,privateRepository
+      ? `../blob/${head}/images/${image.sha256}.png?raw=true`
+      : `https://raw.githubusercontent.com/owner/repo/${head}/images/${image.sha256}.png`);
+    if (!privateRepository) assert.equal(new URL(published.images[0].url).pathname,`/owner/repo/${head}/images/${image.sha256}.png`);
+    assert.doesNotMatch(blobs.get(entries.find(v=>v.path==='showboat.md')!.sha)!.toString(),/Captured from|checked maintainer deployment/);
     assert.match(blobs.get(entries.find(v=>v.path==='showboat.md')!.sha)!.toString(),/calculator 1 \+ 2/);
     await new D1PlanningStore(db as unknown as D1Database).allocateRunWorkProduct({runId:work.run_id,repository:'owner/repo',changeId:'sample',now:work.created_at});
     await new D1DesignStore(db as unknown as D1Database).allocate({runId:work.run_id,repository:'owner/repo',baseCommit:'a'.repeat(40),changeId:'sample',now:work.created_at});

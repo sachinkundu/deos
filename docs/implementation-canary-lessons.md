@@ -139,6 +139,13 @@ Use the issue title, implementation/release statement, Linear link, approved
 planning/spec and design PR links, useful behavior images and explanations, and
 one Showboat link. Include the immutable preview URL when available. Images live
 in the same GitHub repository under commit-pinned links; GitHub needs no DEOS login.
+For public repositories, publish absolute raw image URLs. GitHub's API leaves
+relative image paths unchanged, so a desktop PR page loading them does not prove
+that another review client can resolve them. Read back the published Markdown and
+check the image URLs without a browser session. Keep private-repository proof
+under GitHub's existing authenticated rendering; never publish private images or
+embed access tokens to work around a viewer limitation. Captions describe the
+behavior; generated capture URLs and registration hashes stay in diagnostics.
 
 The Showboat document contains images and explicitly selected nonvisual behavior
 demonstrations. Internal command checks, unit results, browser measurements and

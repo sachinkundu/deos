@@ -11,7 +11,16 @@ export interface PublishedImplementationProof {
 
 const markdownText = (value: string) => value.replace(/[\\[\]<>]/g, '\\$&');
 export const proofCaption = (caption: string) => caption
-  .replace(/\nCaptured from https?:\/\/[^\s]+\s*$/, '').trim();
+  .replace(/\nCaptured from https?:\/\/[^\s]+(?:; checked maintainer deployment [a-f0-9]{64})?\s*$/, '').trim();
+
+export function implementationProofImageUrl(repository: string, commit: string, sha256: string, publicRepository: boolean) {
+  // API consumers receive relative Markdown unchanged. Public images need no
+  // page base URL, GitHub cookie, redirect or expiring download token.
+  if (publicRepository)
+    return `https://raw.githubusercontent.com/${repository}/${commit}/images/${sha256}.png`;
+  // Preserve GitHub's authenticated rendering for private repositories.
+  return `../blob/${commit}/images/${sha256}.png?raw=true`;
+}
 
 // Review assets live in the same repository as the PR. GitHub can render them
 // without a DEOS session, and private repositories keep their own access rules.
@@ -26,7 +35,8 @@ export async function publishImplementationProof(
   // Old command captures include validation logs. Only deliberately selected
   // behavior demonstrations belong in the reviewer document.
   const records = candidate.proof.filter(proof => proof.kind === 'showboat' && proof.audience === 'review');
-  const manifest = JSON.stringify({version: 2, runId: work.run_id,
+  const publicRepository = (await github.json<{private: boolean}>('')).private === false;
+  const manifest = JSON.stringify({version: 3, runId: work.run_id,
     proof: [...images, ...records].map(({id, kind, sha256, caption}) => ({id, kind, sha256, caption}))});
   const digest = await sha256Hex(manifest);
   const branch = `deos/proof/${work.linear_identifier}/run-${work.issue_run_sequence}/${digest}`;
@@ -86,7 +96,7 @@ export async function publishImplementationProof(
   return {
     commit,
     images: images.map(proof => ({caption: proofCaption(proof.caption),
-      url: `../blob/${commit}/images/${proof.sha256}.png?raw=true`})),
+      url: implementationProofImageUrl(github.repository, commit, proof.sha256, publicRepository)})),
     showboatUrl: `https://github.com/${github.repository}/blob/${commit}/showboat.md`,
   };
 }
