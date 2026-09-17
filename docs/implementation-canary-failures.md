@@ -196,7 +196,14 @@ erase the original failures or turn the supervised run into an unattended one.
 | PACK-19 | The original nested cause is `UND_ERR_SOCKET: other side closed` between the sandbox and tool broker, not a proven browser crash. Lost-response errors now identify the operation and tell the agent to restart the saved scenario with fixture resets. The harness never repeats an ambiguous click. The network cause remains unknown. |
 | PACK-25 | Browser close was accepted before inventory confirmed absence. Existing scheduled reconciliation recovered it without rerunning implementation. Keep this as a recovered lifecycle incident; no new provider retry or quality gate is needed. |
 | PACK-29 | The watcher logged a timeout but retried only after another file edit. It now resends transient failures with capped backoff, stops on success, rejected credentials or its deadline, and preserves the original error. |
-| PACK-30 | The allocator returned the dead session indefinitely. An explicit scenario reset can now replace a provider-confirmed absent session once in the same active attempt. It retains the old receipt and origins, never replaces a live/uncertain session, and cannot loop through replacements. Browser failures retain provider inventory and available close history. The original closure cause remains unknown. |
+| PACK-30 | The allocator returned the dead session indefinitely. An explicit scenario reset can now replace a provider-confirmed absent session once in the same active attempt. It retains the old receipt and origins, never replaces a live/uncertain session, and cannot loop through replacements. Browser failures retain provider inventory and available close history. Subsequent provider history confirms `BrowserSessionEvicted`; see the receipt below. |
+
+The [original session's provider history](evidence/sac-172/packing-canary/original-browser-eviction.json)
+records close reason11, `BrowserSessionEvicted`, at 2026-09-16T17:41:48.295Z.
+[Cloudflare documents this reason](https://developers.cloudflare.com/browser-run/reference/browser-close-reasons/)
+as infrastructure maintenance or a Browser Run release deployment, not application
+code. This disproves the earlier attribution to pressing Enter. The provider
+does not expose which maintenance/release operation caused this particular event.
 
 Validation: 594 repository tests passed, one skipped, zero failed; TypeScript and
 OpenSpec validation passed. Real HTTP regressions prove retained local service,
@@ -210,8 +217,19 @@ workerd supported. Correcting its temporary config to the repository's existing
 2026-08-27 date allowed the probe to start. This was a supervisor verification
 setup error, outside SAC-238's historical run counts.
 
-Deployment of this follow-up is pending the stopped-boundary check and runtime
-rollout. The earlier deployment coverage table remains the last activated record.
+Source37f6622 is deployed as Worker `c303af4e-27e4-48da-955f-03cb0db7c32f`
+at100%. All four container pools completed on image
+`sha256:944784117beeadf0153b590e2a23ed32f64c173467de06f4dab1d21c01d8cc0d`,
+each with four healthy instances and no failures. D1 read-back found no active
+agent attempts before or after deployment. SAC-238 remains at implementation
+review visit41. [Activation and boundary receipt](evidence/sac-172/packing-canary/remaining-six-rollout.json).
+
+Current correction coverage is29categories:20with deployed code/configuration
+fixes or mitigations and9with deployed runtime guidance. PACK-06 remains an
+operator deployment rule and PACK-25 an existing successful cleanup recovery.
+This does not claim that transient provider failures are prevented: PACK-16's
+DNS failure and PACK-19's broker socket cause remain unknown. PACK-30's provider
+eviction is now identified, with recovery from a confirmed-ended session tested.
 
 ### Incidents
 
@@ -765,6 +783,9 @@ rollout. The earlier deployment coverage table remains the last activated record
   started at17:53:49.965 at visit37, preserving the same run and its earlier
   completed stages. No implementation approval or release was authorized.
 - [Original scenarios, failures and handoff](evidence/sac-172/packing-canary/response-browser-retired.json).
+- Follow-up on17September: provider history now confirms `BrowserSessionEvicted`,
+  close reason11. The earlier unknown-cause note and Enter hypothesis are superseded
+  by the [provider receipt](evidence/sac-172/packing-canary/original-browser-eviction.json).
 
 #### PACK-31 — published proof images missing in GitHub mobile
 

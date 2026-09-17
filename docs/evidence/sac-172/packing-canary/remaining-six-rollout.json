@@ -1,0 +1,321 @@
+{
+  "deployments": {
+    "deos-queue-consumer-ts": {
+      "versions": [
+        {
+          "version_id": "c303af4e-27e4-48da-955f-03cb0db7c32f",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-17T05:02:22.095653Z"
+    },
+    "deos-sample-project": {
+      "versions": [
+        {
+          "version_id": "cf41c86e-e6e3-4324-b7b0-202460aec79d",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-16T13:42:48.320203Z"
+    },
+    "deos-workflow-portal-staging": {
+      "versions": [
+        {
+          "version_id": "85b21832-f3d7-439f-8b5d-e48004db41ae",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-16T13:44:30.966283Z"
+    }
+  },
+  "containers": [
+    {
+      "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:944784117beeadf0153b590e2a23ed32f64c173467de06f4dab1d21c01d8cc0d",
+      "version": 25,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-implementationsandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:944784117beeadf0153b590e2a23ed32f64c173467de06f4dab1d21c01d8cc0d",
+      "version": 26,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-standard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:944784117beeadf0153b590e2a23ed32f64c173467de06f4dab1d21c01d8cc0d",
+      "version": 33,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:944784117beeadf0153b590e2a23ed32f64c173467de06f4dab1d21c01d8cc0d",
+      "version": 89,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    }
+  ],
+  "checkedAt": "2026-09-17T05:09:08.881885+00:00",
+  "sourceCommit": "37f6622",
+  "before": [
+    {
+      "results": [],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.5354
+        },
+        "duration": 0.5354,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 107532288,
+        "rows_read": 4,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e4477173-5f34-4c7e-aaef-3570cc903b3f:run:3",
+          "status": "active",
+          "current_node": "self_recheck_before_publish",
+          "current_visit_sequence": 5
+        },
+        {
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:568be9be-f416-4822-af8e-281467f8877d:run:1",
+          "status": "active",
+          "current_node": "planning_self_repair",
+          "current_visit_sequence": 4
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.2539
+        },
+        "duration": 0.2539,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 107532288,
+        "rows_read": 91,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "issue_id": "cdd0bff1-00fd-42db-adcd-6e693228bee8",
+          "status": "awaiting_human",
+          "current_node": "implementation_review",
+          "current_visit_sequence": 41
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.1736
+        },
+        "duration": 0.1736,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 107532288,
+        "rows_read": 91,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "after": [
+    {
+      "results": [],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.522
+        },
+        "duration": 0.522,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 107532288,
+        "rows_read": 4,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e4477173-5f34-4c7e-aaef-3570cc903b3f:run:3",
+          "status": "active",
+          "current_node": "self_recheck_before_publish",
+          "current_visit_sequence": 5
+        },
+        {
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:568be9be-f416-4822-af8e-281467f8877d:run:1",
+          "status": "active",
+          "current_node": "planning_self_repair",
+          "current_visit_sequence": 4
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 2.4088
+        },
+        "duration": 2.4088,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 107532288,
+        "rows_read": 91,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "issue_id": "cdd0bff1-00fd-42db-adcd-6e693228bee8",
+          "status": "awaiting_human",
+          "current_node": "implementation_review",
+          "current_visit_sequence": 41
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.1962
+        },
+        "duration": 0.1962,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 107532288,
+        "rows_read": 91,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ]
+}

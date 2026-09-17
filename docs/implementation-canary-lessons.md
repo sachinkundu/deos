@@ -213,6 +213,10 @@ same active attempt, with the same origins and an archived resource receipt.
 Do not replace a live or uncertain session, retry a click, revive cleaned work,
 or allocate indefinitely. A second session loss asks for help with saved work.
 This recovers browser loss; it does not prove its original cause is eliminated.
+The later provider read-back classified the actual SAC-238 loss as
+`BrowserSessionEvicted`. Cloudflare defines that as infrastructure maintenance
+or its own release deployment, not app code. Keep recovery separate from a claim
+that the application caused a service eviction.
 
 ## Provider contracts consulted
 

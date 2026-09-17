@@ -23,6 +23,7 @@ const provider:BrowserProvider={
   create:async()=>{const result=await call('create');owned.push(result.id);return {...result,disconnect:async()=>{}};},
   close:async id=>{await call('close',id);},keepAlive:async()=>{},
 };
+let primaryError: unknown;
 try {
   seedRun(db);seedAttempt(db,'browser-recovery');
   const work=await store.allocate({version:1,runId:'run-1',repository:'test/fixture',change:'sample',branch:'test/fixture',
@@ -51,8 +52,15 @@ try {
     replacement:JSON.parse(second.metadata_json).replacement,
     cleanup:(await store.resource('browser-recovery','browser'))!.status,workflowStarted:false};
   await writeFile(request.output,JSON.stringify(receipt,null,2)+'\n');console.log(JSON.stringify(receipt,null,2));
-} finally {
-  const live=await provider.inventory();
-  for(const id of owned)if(live.includes(id))await provider.close(id);
-  db.close();
+} catch(error) {primaryError=error;throw error;}
+finally {
+  try {
+    if(owned.length) {
+      const live=await provider.inventory();
+      for(const id of owned)if(live.includes(id))await provider.close(id);
+    }
+  } catch(error) {
+    throw new AggregateError(primaryError ? [primaryError,error] : [error],
+      'Browser diagnostic cleanup failed', {cause:primaryError ?? error});
+  } finally {db.close();}
 }

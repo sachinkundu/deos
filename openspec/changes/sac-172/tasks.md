@@ -99,4 +99,4 @@
 
 - [x] 11.1 Diagnose PACK-06, 16, 19, 25, 29 and 30, distinguishing provider causes, recovery gaps and deployment practice. Preserve their original counts.
 - [x] 11.2 Retain healthy local previews across relay failure; retry missed progress signals; provide one confirmed-absent browser replacement at scenario reset with original diagnostics and fixed origins. Do not replay ambiguous actions or add judgment gates.
-- [ ] 11.3 Verify dropped responses and resource recovery locally and with the real Cloudflare browser, deploy at a stopped boundary, and read back Worker and container activation. Keep canaries parked.
+- [x] 11.3 Verify dropped responses and resource recovery locally and with the real Cloudflare browser, deploy at a stopped boundary, and read back Worker and container activation. Keep canaries parked. Worker c303af4e at100%; all four pools healthy on94478411. See the remaining-six rollout receipt.
