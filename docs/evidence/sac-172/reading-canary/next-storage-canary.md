@@ -41,15 +41,31 @@ between independent scenarios; a browser reset alone does not clear D1/R2.
 
 Provider evidence must independently confirm matching D1 rows and R2 keys,
 object bytes/hash after save, and absence from both stores after delete.
-The review preview must reach the deployed Worker and its isolated remote D1/R2,
+The test browser must reach the deployed Worker and its isolated remote D1/R2,
 with original provider errors retained. Local workerd/emulator checks may support
 development but must be labeled as such. Reading DEOS's own orchestration D1 or
 artifact bucket does not count as the application's storage proof.
 
-Stop at a review-ready implementation PR, with a working backend preview and
-useful real screenshots. Keep implementation unmerged and unreleased. Preserve
-preview/data for human review under an explicit cleanup policy; retiring the
-canary must remove only its own resources.
+Stop at a review-ready implementation PR with useful real screenshots and the
+test/provider evidence. Keep implementation unmerged and unreleased. A live
+backend preview is needed during testing, not throughout human PR review.
+
+The user clarified the lifecycle: provision resources as needed, test the app,
+capture screenshots, publish the PR and its durable evidence, then destroy the
+temporary application infrastructure. For this brief, completion of the PR means
+the review-ready PR and evidence have been published; cleanup does not wait for
+merge. Complete any cloud review/author response and resulting retests first.
+
+Verify that the selected screenshots and supporting evidence are readable from
+their durable publication before cleanup. The current proof publisher copies
+screenshots and the review demonstration document into a separate GitHub proof
+branch; these do not depend on the app's R2 bucket. Preserve that proof branch,
+the implementation branch, and DEOS's durable logs/evidence. Delete only the
+run-owned test Worker, D1 database, R2 objects/bucket, and other temporary test
+resources. Record deletion receipts and verify provider absence; retain original
+errors and report cleanup failures. The PR must say the temporary environment
+was retired rather than advertise a working preview. If revisions need another
+test, provision a new isolated environment and refresh the evidence.
 
 ## Capability prerequisite before launch
 
@@ -57,12 +73,15 @@ The existing `preview` tool creates local D1/R2 bindings in the isolated sandbox
 The existing persistent publisher deploys static assets to Pages. Neither is a
 general backend publisher with remote D1/R2. Do not assume this capability exists.
 
-Prepare a narrow trusted backend-preview adapter with one Worker, one D1 database
-and one R2 bucket per canary run, or equivalently isolated pre-provisioned test
-resources. Provider credentials stay in the trusted service. The author receives
-only the assigned bindings and scoped operations, not a general deployment token.
+Prepare a narrow trusted temporary-environment capability. The implementation
+agent requests the Worker, D1 database and R2 bucket it needs; the workflow
+provisions them with identities scoped to that run. Provider credentials stay in
+the trusted service. The author receives the assigned bindings and scoped
+provision/deploy/test operations, not a general deployment token.
 Use stable resource identities, repeatable deployment readback, exact schema
-migration scope, provider receipts and idempotent cleanup. Deny production and
+migration scope, provider receipts and idempotent cleanup after PR publication.
+Track allocations before creation and clean up failed/abandoned runs as well.
+Deny production and
 other-run targets. Verify the intended deployed Worker and remote storage before
 starting the full canary. No access to production DEOS DB/ARTIFACTS may be reused
 as application storage.

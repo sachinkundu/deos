@@ -56,9 +56,11 @@ these repairs. Frozen runs keep their own workflow policy.
 The [next canary brief](next-storage-canary.md) proposes a small D1/R2 app. The
 current local D1/R2 bindings are emulated inside the isolated cloud sandbox;
 the persistent hosted publisher serves static assets only. A real remote-storage
-canary therefore needs the narrow backend preview capability described in that
-brief before launch. It must not be silently downgraded to browser storage or
-local emulation.
+canary therefore needs the narrow temporary-environment capability described in
+that brief before launch. The user's clarified lifecycle is to provision remote
+storage for testing, publish the PR and durable screenshots/evidence, then delete
+the temporary app infrastructure. A persistent review deployment is not required.
+It must not be silently downgraded to browser storage or local emulation.
 
 ## Provider references checked
 
