@@ -379,3 +379,9 @@ missing request file and four local preview calls. Zero native provider error
 events does not erase these recorded tool/provider failures. Supervisor-only
 read searches also named two nonexistent paths (test and src/implementation.ts),
 returned exit2 and were corrected; no remote effect or cloud incident count.
+
+STORE-14 activation verified17:50UTC: public flag read back and backend7ecbe986
+at100percent, expected container digest and completed rollouts. Linear answer
+sent17:51:12; remote proof remains pending because the authoritative gate has
+not yet consumed its delivered wake. Built-in wake reconciliation is due18:00;
+record its result separately and do not claim the app resumed yet.

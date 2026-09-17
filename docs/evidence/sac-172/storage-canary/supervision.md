@@ -513,3 +513,27 @@ also occurred four times and remains a separate limitation; direct remote
 publish_environment is the approved route. STORE-15 missing request file was
 cloud-recovered. Full final transcript audit is build-clarification-audit.json.
 User was notified of1042 and safe stopped-gate repair once; no action needed.
+
+17:51UTC activation verified: backend7ecbe986 at100percent, public routing flag
+read back, all4container pools still on48e32b0b digest with completed rollouts.
+Answered the actual Linear clarification thread with comment
+7f8a3536-301c-453f-8297-809e210dd5b0 at17:51:12.875. Do not post another reply.
+Provider deliveryb681b655-a213-48a7-a6f2-dea1d40b0ffe reached D1 and was marked
+sent17:51:20.988, but was not claimed at17:54. Gate41 remains open and question
+unanswered in D1. Workflow provider status is running, its last step is waiting
+for linear-event. This is not a confirmed resume; do not claim one.
+
+Existing reconcileWorkflowEvents handles sent-but-unclaimed gate wakes after
+2minutes, on the15minute scheduled cycle (next18:00UTC). Allow this built-in
+recovery to operate and verify the same delivery is consumed, without duplicate
+comments or manual D1 mutation. If still unclaimed after the cycle, investigate
+the exact provider wake/instance path and log a new gate reliability incident.
+Private full provider step history: /tmp/sac246-artifacts/clarification-workflow-status.json.
+Saved durable gate/inbox evidence: clarification-reply-readback.json and
+clarification-reply-inbox.json. Current resumed work remains pending. Old app
+resources remain tracked; no manual deletion or app data mutation performed.
+
+Supervisor read-only diagnostics also used a nonexistent workflow_inbox table
+(HTTP400) and unexpanded source globs (zsh no matches); corrected to actual
+workflow_event_inbox and repository-wide search. No remote write occurred.
+These operator lookup mistakes are excluded from cloud failure counts.
