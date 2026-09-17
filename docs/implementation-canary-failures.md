@@ -980,3 +980,7 @@ Evidence: [original commands and check output](evidence/sac-172/expense-canary/i
 
 - EXP-06: local preview relay failed to become publicly ready (item55), then same-relay reconciliation returned HTTP530, code1016 (item56). Two occurrences. Local app returned HTTP200 meanwhile. DNS/provider root cause remains unknown; no deployment or runtime reset performed.
 - EXP-07: browser navigation, viewport and state requests (items59,60,61) each returned `preview_missing: Start the safe preview before opening a browser` after the pending relay. Three occurrences. Agent is still active and owns the choice to reconcile or use the already-supported hosted preview. No supervisor intervention yet.
+
+06:50UTC outcome for EXP-06/07: Sol used the supported hosted publisher without supervisor intervention. All6static assets read back HTTP200 and exploratory service-browser checks worked at1440x900. Ordered9-scenario demonstration collection is next; local relay root cause remains unknown.
+
+- EXP-08: hosted publication followed by same-request readback (items63/64) each returned `static_preview_pending` because `allowlist-probe.html` returned HTTP308. Two occurrences, one URL/readback compatibility cause. Sol adjusted the static output and obtained a new successful hosted revision. No supervisor intervention. Evidence: [original errors](evidence/sac-172/expense-canary/hosted-redirect-failures.json).
