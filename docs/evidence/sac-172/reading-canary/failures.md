@@ -10,6 +10,7 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 | READ-02 | 09:50–09:56 observation window, design author completion | Completion hook rejected structure: content existed, but Component Diagram, Event Flow and Minimal Data Model were not explicit section headings | Author's own coverage check accepted the content without the required headings; trusted completion validation caught the mismatch | Cloud author added the three headings and reran deterministic checks successfully in the same attempt. Artifact-validation occurrence, no supervisor edit/retry/deployment. | [Author repair reports](design-repair-evidence.json); full private09:56:28 snapshot |
 | READ-03 | 10:06–10:09, design independent response, item_4 | AGENTS.md inventory returned exit1 with no output | No matching guide in the disposable repository; same cause as READ-01 | Author continued, confirmed no guide was present, and read the native OpenSpec instructions. No supervisor intervention. | [Captured response transcript](design-response-observation.json) |
 | READ-04 | 10:06–10:09, design independent response, items5–6 | `command -v opsx` and a search for `opsx:continue` both returned exit1 | The author probed for an absent executable/slash-command instruction; two failed discovery commands, one missing-tool assumption | Author used the available `openspec` CLI and continued the revision. No runtime change or retry required. | [Captured response transcript](design-response-observation.json) |
+| READ-05 | 10:17–10:22, task generation, item10 | Repository search for `opsx`, OpenSpec and task guidance returned exit1 with no output | No matching additional guidance outside the supplied change | Author continued using provided instructions and completed23tasks. Two trusted checks used stable operation IDs and returned completed/exit0. No supervisor intervention. | [Verified task transcript](task-generation-audit.json) |
 
 ## Normal actions
 
@@ -26,6 +27,10 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 ## Expected nonzero results
 
 - Design response item34: `git diff --no-index --check /dev/null openspec/changes/sac-245/design.md` exited1 with no output. The comparison has a new nonempty file; this is the expected difference exit status, not a whitespace error. Retained in [raw exit scan](design-response-audit.json), excluded from unexpected failure counts.
+
+## External context
+
+- At about10:24UTC Sachin reported that the staging portal was broken by his own changes. Current D1 showed task generation complete and demo planning active, with no workflow errors. No canary impact is established; supervise through D1 and cloud artifacts. Do not classify this as a canary failure or repair the portal without a separate request. Reassess if backend/shared configuration changes affect the run.
 
 ## Planning quality findings
 

@@ -1,0 +1,27 @@
+{
+  "filesVerified": 52,
+  "failures": [
+    {
+      "source": {
+        "attempt_id": "01a0aedf-2681-7fc0-8d7a-09ef8c99d582",
+        "logical_name": "transcript.jsonl",
+        "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/attempts/01a0aedf-2681-7fc0-8d7a-09ef8c99d582/transcript.jsonl",
+        "sha256": "6b3d193a333f6f6e72d9454d311b3a8219da7597f6c14ab8ecb5a10e60ef5279",
+        "byte_size": 513252,
+        "local": "/tmp/sac245-artifacts/59f7668718ab-transcript.jsonl"
+      },
+      "line": 25,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_10",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'rg -n \\\"opsx|OpenSpec|tasks.md|spec-driven\\\" . -g '\\\\''\"'!openspec/changes/sac-245/**'\"'\\\\'' -g '\\\\''\"'!node_modules'\"'\\\\'' -g '\\\\''\"'!'\"\\\\.git/**'\\\\'''\"",
+          "aggregated_output": "",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    }
+  ]
+}
