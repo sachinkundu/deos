@@ -1,0 +1,161 @@
+{
+  "attemptId": "01a0b039-dded-78cc-87cb-666446bfe4b7",
+  "sha256": "0eb8e37db66845c2aeaca56cc1299ead91ad87b911b2830860ba0b2f2c0f4b58",
+  "review": {
+    "version": 1,
+    "inputSha256": "902eef554de6c9fdf8ea28b0e4ed13cbb4fa3ddff85188f757184466eb62d300",
+    "phase": "independent",
+    "outcome": "concerns",
+    "summary": "The design satisfies the approved requirements in substance: one desktop screen with no login, a same-origin Worker API for list/save/read/delete, D1 as the saved index with R2 bodies keyed from the index row, blank-field rejection with field-named messages and no storage writes, action-specific failure messages, plain-text rendering through text-safe DOM APIs, cloud-backed list rebuild on every page load, publishing only through the declared temporary-environment adapter, and proof captured before cleanup with the pull request left unmerged. The latest human revision request is addressed directly: token-based write takeover is removed, only the request whose reservation insert changes one row may put, an exact retry may reconcile a present object but never writes an absent one, DELETE against a `creating` operation returns 409 so no late put can follow a deletion, \"Start a new save\" preserves the form, picks a new ID, and explicitly states the old attempt was not canceled, the deletion retry UI is preserved, and the fresh-browser proof now uses direct adjacent-scenario cloud-state continuity instead of reseeding. Six bounded concerns remain. The largest is the `failed` save path: it releases the reservation on a \"definitely failed\" put whose classification is never defined, and DELETE for a `failed` operation returns 404, so an object that lands under that prefix after the release has no cleanup path and is not represented in the reserved-byte sum, contradicting the design's own claim that cleanup failure cannot evade the cap. Next, a stranded `creating` reservation permanently consumes the 100-object and 1,048,576-byte ceilings with no user or API release path, yet the mapped message tells the person to delete a snippet, which cannot free that capacity, and the Decisions section still claims such a reservation cannot block a later save. Smaller gaps: the owner's response code is undefined when its guarded activation loses to a concurrent reconciler and delete, the activation batch enumerates only all-one-row and all-zero-row outcomes although a D1 batch commits regardless of affected-row counts, the timestamp format that makes TEXT `created_at` ordering chronological is never specified, and the mandatory fresh-context proof has no fallback if the runner cannot retain storage between adjacent scenarios while reseeding is forbidden. This is advice only and approves no human gate.",
+    "findings": [
+      {
+        "id": "activation-batch-partial-row-count-unhandled",
+        "severity": "low",
+        "category": "correctness",
+        "message": "The activation batch defines behavior only for the all-one-row and all-zero-row outcomes: \"Both statements use the same guard and must each affect one row for this request to report activation; if both affect zero, the request lost the precondition\". A D1 `batch()` commits whatever its statements did unless a statement raises an error; a row-count mismatch does not roll anything back on its own. If the `INSERT ... SELECT` applies while the conditional `UPDATE` matches zero rows, the transaction would commit a `snippets` row whose operation is still `creating`, which is precisely the integrity state the delete guard later reports as `500 DELETE_INDEX_MISSING` and the list logs as a fault. Even if the shared guard makes the mismatch unreachable in practice, the design should state that the Worker treats any outcome other than one-and-one or zero-and-zero as an explicit abort or integrity error rather than leaving it to implementation choice.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 70,
+            "endLine": 70
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 85,
+            "endLine": 85
+          }
+        ]
+      },
+      {
+        "id": "failed-save-releases-reservation-without-cleanup-path",
+        "severity": "medium",
+        "category": "correctness",
+        "message": "The `failed` save path can strand an unbounded, uncleanable R2 object. Step 6 lets the owner mark the operation `failed` and release its reserved bytes when the put \"definitely fails\" and a post-settle prefix inspection shows no object, but the design never defines what distinguishes a definite failure from the indeterminate case, and that classification is the only thing keeping the release safe. If a put that was classified as definitely failed is still committed by R2 after the prefix inspection, the object exists under `snippets/<id>/` with zero reserved bytes, so it is not counted by the capacity trigger, it is invisible to list and read, and DELETE for a `failed` operation returns `404` (lines 92 and 195), leaving no API path to remove it. This contradicts the stated invariants that \"every possible R2 object is represented in the reserved-byte sum before it can exist\" and that \"cleanup failure cannot evade the cap\" (line 150). Either define the definite-failure condition precisely, or keep the reservation charged for `failed` operations and give them the same idempotent absence-check cleanup that `deleted` receives.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 86,
+            "endLine": 86
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 150,
+            "endLine": 150
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 92,
+            "endLine": 92
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 195,
+            "endLine": 195
+          }
+        ]
+      },
+      {
+        "id": "fresh-context-proof-has-no-fallback",
+        "severity": "low",
+        "category": "operability",
+        "message": "The mandatory fresh-browser-context proof now depends entirely on a harness behavior the declared capability does not promise, with no stated fallback. The runtime capability says only that demonstrations are captured \"with a fresh browser context and known data per scenario\"; the design requires the immediately following scenario to \"reset browser state but do not reset or reseed D1 or R2\" and then forbids the alternative outright: \"Do not seed a replacement state solely for this screenshot\". The approved specification requires this evidence (`Scenario: Open a fresh browser context`, and the proof requirement that saved data appear after a refresh or in a fresh context). If the runner resets storage between scenarios, the implementation stage is left with a required proof it is explicitly forbidden to produce another way. Add a permitted fallback - for example, seeding through the app's own API in the fresh-context scenario and labeling it as such - so the approved evidence is obtainable under either harness behavior.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 221,
+            "endLine": 222
+          },
+          {
+            "path": "context/runtime-capabilities.json",
+            "startLine": 29,
+            "endLine": 29
+          },
+          {
+            "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+            "startLine": 81,
+            "endLine": 85
+          }
+        ]
+      },
+      {
+        "id": "owner-response-undefined-after-losing-activation",
+        "severity": "low",
+        "category": "completeness",
+        "message": "The response returned to the client when the insert-winning owner loses its guarded activation is unspecified. Step 5 says that if both statements affect zero rows the owner \"lost the precondition, made no change, and reloads the operation\", but the state-to-response mapping in step 3 (`409 IDEMPOTENCY_CONFLICT` for `deleting`, `deleted`, or `failed`; `200` for an exact `active` replay) is written only for the reconciler whose insert reported zero rows. The deterministic test in the Migration Plan exercises exactly this schedule - the owner pauses after its put, a reconciler activates, the snippet is deleted to `deleted`, then the owner resumes - and asserts only that the activation loses, not what the owner returns or what the browser shows. Without an explicit mapping the owner could report a `500` storage failure for a save whose data was legitimately deleted, or worse claim success. State that the owner follows the same observed-state mapping as a reconciler.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 83,
+            "endLine": 83
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 85,
+            "endLine": 85
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 223,
+            "endLine": 223
+          }
+        ]
+      },
+      {
+        "id": "stranded-reservation-wedges-shelf-with-misleading-message",
+        "severity": "medium",
+        "category": "operability",
+        "message": "A stranded `creating` reservation is unreleasable by any user or API action, yet the design treats it as harmless. DELETE against `creating` returns `409 SAVE_IN_PROGRESS` (line 92), only the owner may mark the operation `failed` (line 86), and no lease, timer, or takeover is permitted (line 22), so an abandoned reservation holds its object slot and up to 65,536 bytes until the environment is destroyed. With a 1,048,576-byte ceiling, about sixteen abandoned maximum-size saves exhaust the shelf, after which every new save receives `SHELF_LIMIT_REACHED` whose mapped message is \"The snippet shelf is full. Delete a snippet before saving another\" (line 66) - guidance the person cannot act on, because deleting visible snippets does not free capacity held by invisible `creating` rows. The Decisions section asserts such a reservation \"cannot corrupt saved data, block a new random ID, or exceed the hard limits\" (line 164), but capacity exhaustion does block every later save. State the interaction explicitly and either distinguish the exhausted-by-in-flight case in the message or record the wedged-shelf outcome as an accepted canary trade-off in Risks.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 66,
+            "endLine": 66
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 68,
+            "endLine": 68
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 86,
+            "endLine": 86
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 164,
+            "endLine": 164
+          }
+        ]
+      },
+      {
+        "id": "timestamp-format-for-text-ordering-unspecified",
+        "severity": "low",
+        "category": "completeness",
+        "message": "List ordering correctness depends on a timestamp format the design never fixes. `created_at` is declared `TEXT` in both tables, the list orders by projected `created_at DESC, id DESC`, and the index `snippets_created_at` plus the partial `operations_visible_created_at` index are built on that text column. Lexicographic comparison of TEXT matches chronological order only for a fixed-width, zero-padded, single-timezone representation such as ISO-8601 UTC with constant precision. The design states only that the reservation timestamp \"will also become the snippet's `created_at`\" and is copied at activation. Name the exact format so ordering, the index, and the D1 readback evidence in the proof are deterministic.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 57,
+            "endLine": 57
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 112,
+            "endLine": 112
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 123,
+            "endLine": 123
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 152,
+            "endLine": 152
+          }
+        ]
+      }
+    ]
+  }
+}
