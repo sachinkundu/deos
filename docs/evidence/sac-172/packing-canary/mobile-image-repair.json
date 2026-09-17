@@ -103,7 +103,14 @@
       "redirected": false
     }
   ],
-  "mobileClientRetest": "Awaiting user; no native GitHub mobile session available",
+  "mobileClientRetest": "User confirmed images display in GitHub mobile on 2026-09-17: good now works",
+  "resolution": {
+    "status": "resolved",
+    "confirmedBy": "user",
+    "viewer": "GitHub mobile app",
+    "date": "2026-09-17",
+    "originalFailureRetainedInTotals": true
+  },
   "codeCommit": "5ddb411",
   "tests": {
     "pass": 588,

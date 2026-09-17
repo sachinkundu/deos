@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile app scope | Prospective from first trigger, 2026-09-16 14:06:26 UTC; next-day review-client report included | 67 runtime/tool/publication occurrences in 31 categories, including one user-reported mobile PR gallery failure; 4 app development check failures listed separately | 5 recovery interventions: resent approval, resumed design finalization, requested preview-path revision, answered browser-recovery question after runtime rollout, repaired published image links | [PR36](https://github.com/sachinkundu/deos-sample-project/pull/36) opened at 18:11:37 UTC, about 4h05m after trigger; remains at implementation Human Review. Desktop rendering passed, but the user reported missing images in GitHub mobile on September 17. Direct image links repaired; all 17 load in Brave and return anonymous HTTP200. Mobile user confirmation remains pending. PR unmerged; supervised run. |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile app scope | Prospective from first trigger, 2026-09-16 14:06:26 UTC; next-day review-client report included | 67 runtime/tool/publication occurrences in 31 categories, including one user-reported mobile PR gallery failure; 4 app development check failures listed separately | 5 recovery interventions: resent approval, resumed design finalization, requested preview-path revision, answered browser-recovery question after runtime rollout, repaired published image links | [PR36](https://github.com/sachinkundu/deos-sample-project/pull/36) opened at 18:11:37 UTC, about 4h05m after trigger; remains at implementation Human Review. Desktop rendering passed, but the user reported missing images in GitHub mobile on September 17. Direct image links repaired; all 17 load in Brave and return anonymous HTTP200. User confirmed the images now display in GitHub mobile on September 17. PR unmerged; supervised run. |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -700,7 +700,9 @@ superseded by the [current contract](implementation-canary-lessons.md).
   1 skipped, zero failed; TypeScript passed. Read-back of PR36's API HTML has
   17 absolute image URLs. All 16 distinct URLs return anonymous HTTP200 image/png
   without redirects; all 17 image elements render at1440x900 in external Brave.
-  User confirmation in GitHub mobile remains pending.
+  On 2026-09-17 the user confirmed the repair in GitHub mobile: "good now works".
+  PACK-31 is resolved with confirmation from the affected viewer. Keep the
+  original failure and supervisor intervention in the run totals.
 - Worker6af4b501-e84b-4254-924d-d92576dc290e deployed without a container rollout.
   [Repair receipt and verification](evidence/sac-172/packing-canary/mobile-image-repair.json).
 
