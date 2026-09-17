@@ -1,0 +1,524 @@
+{
+  "readAt": "2026-09-17T11:33:28.511Z",
+  "attemptId": "01a0af1c-7810-7e6a-a369-97c33af972e4",
+  "records": [
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_23",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tail -40 /deos/output/implementation-diagnostics.jsonl; cat /deos/output/heartbeat.json'\"",
+        "aggregated_output": "tail: cannot open '/deos/output/implementation-diagnostics.jsonl' for reading: Permission denied\ncat: /deos/output/heartbeat.json: Permission denied\n",
+        "exit_code": 1,
+        "status": "failed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_18",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'python3 - <<'\\\\''PY'\\\\''\nimport json\nopen('\\\\''/deos/output/requests/preview-review.json'\\\\'','\\\\''w'\\\\'').write(json.dumps({'\\\\''action'\\\\'':'\\\\''preview'\\\\'','\\\\''assets'\\\\'':'\\\\''dist'\\\\''}))\nPY\ndeos-implementation /deos/output/requests/preview-review.json'\"",
+        "aggregated_output": "{\"message\":\"Preview did not become ready: \\n \u26c5\ufe0f wrangler 4.125.0\\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\\n[wrangler:warn] Unable to fetch the `Request.cf` object! Falling back to a default placeholder...\\nSyntaxError: Unexpected token 'O', \\\"Origin is disallowed\\\" is not valid JSON\\n    at JSON.parse (<anonymous>)\\n    at setupCf (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:81479:27)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async #assembleConfig (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:112339:21)\\n    at async #assembleAndUpdateConfig (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:112695:21)\\n    at async Mutex.runWith (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:85701:48)\\n\",\"stack\":\"Error: Preview did not become ready: \\n \u26c5\ufe0f wrangler 4.125.0\\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\\n[wrangler:warn] Unable to fetch the `Request.cf` object! Falling back to a default placeholder...\\nSyntaxError: Unexpected token 'O', \\\"Origin is disallowed\\\" is not valid JSON\\n    at JSON.parse (<anonymous>)\\n    at setupCf (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:81479:27)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async #assembleConfig (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:112339:21)\\n    at async #assembleAndUpdateConfig (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:112695:21)\\n    at async Mutex.runWith (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:85701:48)\\n\\n    at start (file:///deos/bin/implementation-runtime.mjs:729:19)\\n    at async LocalPreviewSession.ensure (file:///deos/bin/implementation-runtime.mjs:40:7)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\",\"detail\":\"Error: Preview did not become ready: \\n \u26c5\ufe0f wrangler 4.125.0\\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\\n[wrangler:warn] Unable to fetch the `Request.cf` object! Falling back to a default placeholder...\\nSyntaxError: Unexpected token 'O', \\\"Origin is disallowed\\\" is not valid JSON\\n    at JSON.parse (<anonymous>)\\n    at setupCf (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:81479:27)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async #assembleConfig (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:112339:21)\\n    at async #assembleAndUpdateConfig (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:112695:21)\\n    at async Mutex.runWith (/usr/local/lib/node_modules/wrangler/node_modules/miniflare/dist/src/index.js:85701:48)\\n\\n    at start (file:///deos/bin/implementation-runtime.mjs:729:19)\\n    at async LocalPreviewSession.ensure (file:///deos/bin/implementation-runtime.mjs:40:7)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\"}\n",
+        "exit_code": 1,
+        "status": "failed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_19",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/preview-review.json'\"",
+        "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay did not become publicly ready\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay did not become publicly ready\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay did not become publicly ready\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\"}\n",
+        "exit_code": 1,
+        "status": "failed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_21",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/preview-review.json; curl --connect-timeout 3 --max-time 10 -I http://127.0.0.1:8787/ || true'\"",
+        "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay reconciliation HTTP 530: error code: 1016\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay reconciliation HTTP 530: error code: 1016\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay reconciliation HTTP 530: error code: 1016\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\"}\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: public, max-age=0, must-revalidate\r\nETag: \"a8f7908565ef2a73cc904acd8cc72f27\"\r\nCF-Cache-Status: HIT\r\n\r\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_24",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'python3 - <<'\\\\''PY'\\\\''\nimport json\nopen('\\\\''/deos/output/requests/browser-local.json'\\\\'','\\\\''w'\\\\'').write(json.dumps({'\\\\''action'\\\\'':'\\\\''browser'\\\\'','\\\\''operation'\\\\'':'\\\\''navigate'\\\\'','\\\\''url'\\\\'':'\\\\''/'\\\\'','\\\\''target'\\\\'':'\\\\''local'\\\\''}))\nPY\ndeos-implementation /deos/output/requests/browser-local.json'\"",
+        "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"preview_missing\\\",\\\"message\\\":\\\"Start the safe preview before opening a browser\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"preview_missing\\\",\\\"message\\\":\\\"Start the safe preview before opening a browser\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async browserResult (file:///deos/bin/implementation-runtime.mjs:471:20)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:753:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"preview_missing\\\",\\\"message\\\":\\\"Start the safe preview before opening a browser\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async browserResult (file:///deos/bin/implementation-runtime.mjs:471:20)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:753:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\"}\n",
+        "exit_code": 1,
+        "status": "failed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_25",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/preview-review.json\ncode=\"'$?\necho exit_code=$code'\"'\"",
+        "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay reconciliation HTTP 530: error code: 1016\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay reconciliation HTTP 530: error code: 1016\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay reconciliation HTTP 530: error code: 1016\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\"}\nexit_code=1\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    }
+  ],
+  "demoProgress": [
+    {
+      "operation": "demo",
+      "change": "sac-245",
+      "approvedDesignSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "testedBaseSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "treeSha": "fec7c8116681088fe17758e30a50b519d3769d28",
+      "occurredAt": "2026-09-17T11:31:49.870Z",
+      "event": "demo_started",
+      "collectionId": "9877d4d2-1259-4ca5-8e52-25292293af0c",
+      "plan": {
+        "action": "demo",
+        "requestId": "demo-final-review-1",
+        "scenarios": [
+          {
+            "id": "status-cycle",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "screenshot",
+                "caption": "The hosted desktop preview opens with all three counts at zero and the All books filter selected."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": "Kindred"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"author\"]",
+                "text": "Octavia E. Butler"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Kindred\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": "Dune"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"author\"]",
+                "text": "Frank Herbert"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Dune\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Kindred and Dune begin in To read, with the global counts showing 2, 0, and 0."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Kindred\"] button[data-status=\"reading\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Moving Kindred to Reading updates its badge and changes the global counts to 1, 1, and 0."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Kindred\"] button[data-status=\"finished\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Moving Kindred to Finished updates its badge and changes the global counts to 1, 0, and 1."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Kindred\"] button[data-status=\"to-read\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Moving Kindred back to To read restores counts of 2, 0, and 0 while preserving book order."
+              }
+            ]
+          },
+          {
+            "id": "validation-and-filters",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": "Kindred"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"author\"]",
+                "text": "Octavia E. Butler"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Kindred\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": ""
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"author\"]",
+                "text": "Ursula K. Le Guin"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "A blank title shows the inline Add a title error and leaves the saved Kindred row unchanged."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": "The Dispossessed"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"The Dispossessed\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Kindred\"] button[data-status=\"reading\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "button[data-filter=\"reading\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "The selected Reading filter shows only Kindred while global counts still include The Dispossessed in To read."
+              },
+              {
+                "operation": "click",
+                "selector": "button[data-filter=\"finished\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-empty-state=\"finished\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "The selected Finished filter shows its explicit empty state while the global To read and Reading counts remain visible and unchanged."
+              }
+            ]
+          },
+          {
+            "id": "edit-recovery",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": "Dune"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"author\"]",
+                "text": "Frank Herbert"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Dune\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Dune\"] button[data-status=\"reading\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Dune\"] button[data-action=\"edit\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"edit-title\"]",
+                "text": "Dune Messiah"
+              },
+              {
+                "operation": "click",
+                "selector": "button[data-action=\"save-edit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Dune Messiah\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Editing changes Dune to Dune Messiah while preserving its Reading status and count."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Dune Messiah\"] button[data-action=\"edit\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"edit-author\"]",
+                "text": "   "
+              },
+              {
+                "operation": "click",
+                "selector": "button[data-action=\"save-edit\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "A blank author edit shows the inline Add an author error without committing the draft."
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"edit-author\"]",
+                "text": "Frank Herbert"
+              },
+              {
+                "operation": "click",
+                "selector": "button[data-action=\"save-edit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Dune Messiah\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "After correcting the rejected edit, Dune Messiah still shows Frank Herbert and Reading with the error cleared."
+              }
+            ]
+          },
+          {
+            "id": "delete-and-refresh",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": "Kindred"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"author\"]",
+                "text": "Octavia E. Butler"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Kindred\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": "Dune"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"author\"]",
+                "text": "Frank Herbert"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Dune\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": "The Dispossessed"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"author\"]",
+                "text": "Ursula K. Le Guin"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"The Dispossessed\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Kindred\"] button[data-status=\"finished\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Dune\"] button[data-status=\"reading\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Three saved books occupy Finished, Reading, and To read with one global count in each status."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Dune\"] button[data-action=\"delete\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Deleting Dune removes its row and reduces only the Reading count to zero."
+              },
+              {
+                "operation": "navigate",
+                "url": "/"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Kindred\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "After refresh, Kindred and The Dispossessed reload in order with their statuses and counts, and Dune stays deleted."
+              }
+            ]
+          },
+          {
+            "id": "safe-text-and-refresh",
+            "url": "/",
+            "target": "hosted",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": "<img src=x onerror=alert(1)>Neuromancer"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"author\"]",
+                "text": "<b>William</b> Gibson"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"<img src=x onerror=alert(1)>Neuromancer\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"title\"]",
+                "text": "A Very Long Journey Through Imagined Libraries, Unfinished Margins, Borrowed Maps, and Every Quiet Chapter Waiting Patiently on the Reading Desk"
+              },
+              {
+                "operation": "fill",
+                "selector": "input[name=\"author\"]",
+                "text": "A Patient Author"
+              },
+              {
+                "operation": "click",
+                "selector": "#book-form button[type=\"submit\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"A Very Long Journey Through Imagined Libraries, Unfinished Margins, Borrowed Maps, and Every Quiet Chapter Waiting Patiently on the Reading Desk\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Markup-looking title and author text display literally, and the long title wraps without displacing the row controls."
+              },
+              {
+                "operation": "navigate",
+                "url": "/"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"<img src=x onerror=alert(1)>Neuromancer\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "After refresh, both literal markup-looking text and the wrapped long title reload from browser storage."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-245",
+      "approvedDesignSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "testedBaseSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "treeSha": "fec7c8116681088fe17758e30a50b519d3769d28",
+      "occurredAt": "2026-09-17T11:32:34.967Z",
+      "event": "scenario_completed",
+      "collectionId": "9877d4d2-1259-4ca5-8e52-25292293af0c",
+      "scenarioId": "status-cycle"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-245",
+      "approvedDesignSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "testedBaseSha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+      "treeSha": "fec7c8116681088fe17758e30a50b519d3769d28",
+      "occurredAt": "2026-09-17T11:33:14.435Z",
+      "event": "scenario_completed",
+      "collectionId": "9877d4d2-1259-4ca5-8e52-25292293af0c",
+      "scenarioId": "validation-and-filters"
+    }
+  ],
+  "outcome": "Cloud author moved to the existing hosted preview. One intentional revised final collection is running; first two scenarios completed. Local app returned HTTP200 despite public relay failure. No supervisor intervention or app edits."
+}
