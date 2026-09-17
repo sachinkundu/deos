@@ -31,11 +31,15 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 
 - 10:53:38UTC: same demo collection remains active; D1–D4 completed and D5 reached its final screenshot. Author continues polling demo-final-1. No new runtime failure observed.
 
+- 11:02UTC: all seven scenarios completed in the original demo-final-1 collection at10:57:47.682. Same-operation result retrieval returned image paths without recapture; author selected9images and one Showboat record. Final OpenSpec checks pass,23/23tasks reported, author handoff still active. Full captured transcript has no new unexpected command exits; original-errors contains only READ-06. [Saved completion/result/selection evidence](demo-completed-proof.json).
+
 ## Operator errors
 
 - 09:36 UTC: local helper discovery with `rg --files /tmp` encountered `Permission denied (os error 13)` for an unrelated device semaphore. Discovery was narrowed to `/tmp/*.py`; no cloud request or run state was affected. One local inventory error, excluded from cloud workflow counts.
 
 - 10:53 UTC investigation: two local source searches named nonexistent guessed paths and returned exit2 (`No such file or directory`). Continued with actual source paths. Local inventory assumptions only; no cloud request or canary state affected. Excluded from cloud failure counts.
+
+- 11:04UTC: local evidence staging named readback-20260917T110224Z.json instead of the existing110228Z snapshot; Git rejected the nonexistent path (exit128). Corrected to the collector-reported filename. No cloud effect.
 
 ## Expected nonzero results
 
