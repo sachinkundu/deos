@@ -1,0 +1,181 @@
+{
+  "policy": [
+    {
+      "project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+      "definition_id": "implementation",
+      "definition_version": 39,
+      "definition_digest": "e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c",
+      "trial_repository": "sachinkundu/deos-sample-project",
+      "start_state_name": "Todo",
+      "human_gate_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+      "dispatch_enabled": 1,
+      "updated_at": "2026-09-17T05:25:25.632Z",
+      "repository_revision": 2,
+      "repository_updated_by": "sachinkundu@gmail.com",
+      "repository_updated_at": "2026-08-25T05:25:30.698Z",
+      "workflow_revision": 20,
+      "workflow_updated_by": "sachinkundu@gmail.com",
+      "workflow_updated_at": "2026-09-16T13:48:24.462Z",
+      "independent_review_provider": "openrouter",
+      "independent_review_model": "deepseek/deepseek-v4-pro",
+      "independent_review_revision": 2,
+      "independent_review_updated_by": "sachinkundu@gmail.com",
+      "independent_review_updated_at": "2026-08-27T08:50:05.059Z",
+      "linear_project_name": "deos-sample-project",
+      "github_installation_id": "154095438",
+      "route_revision": 27,
+      "route_digest": "30cc95d68f7b78faa83f7bd885dbdc786cd7b1a65d88b9b69ba6172035ac5940",
+      "route_updated_by": "sachinkundu@gmail.com",
+      "route_updated_at": "2026-09-16T13:48:24.462Z",
+      "github_access_state": "passed",
+      "github_access_checked_at": "2026-09-17T05:25:25.632Z",
+      "github_access_permissions_digest": "b6ccfdd9af0228a09493fa1bfb36a7ee0b06101790486f229e7891358098d437",
+      "github_settings_url": "https://github.com/settings/installations/154095438",
+      "allowed_access_email": "sachinkundu@gmail.com",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 6,
+      "human_binding_checked_at": "2026-09-16T13:47:01.644Z"
+    }
+  ],
+  "run": [
+    {
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:32952e35-b116-41a0-a704-6f37b0946ec4:run:1",
+      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:32952e35-b116-41a0-a704-6f37b0946ec4",
+      "run_sequence": 1,
+      "project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+      "issue_id": "32952e35-b116-41a0-a704-6f37b0946ec4",
+      "definition_id": "implementation",
+      "definition_version": 39,
+      "definition_digest": "e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c",
+      "workflow_instance_id": "wf-v1-kvfw4v6vuisgslywjbw5otben66abdj2uyglkj6u6lio6jvqwwqa",
+      "previous_node": "claim_issue",
+      "current_node": "planning_author",
+      "gate_origin_node": null,
+      "status": "active",
+      "accumulated_data_json": "{}",
+      "created_at": "2026-09-17T05:25:25.632Z",
+      "updated_at": "2026-09-17T05:25:40.545Z",
+      "terminal_at": null,
+      "terminal_cause": null,
+      "current_visit_sequence": 2,
+      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:32952e35-b116-41a0-a704-6f37b0946ec4:run:1:visit:1:transition",
+      "selection_kind": "default",
+      "selection_value": "project_policy",
+      "selection_label_name": null,
+      "selection_reason": null,
+      "selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
+      "selection_delivery_id": "32156fc7-6925-4a89-9fcc-8eb0d637d379",
+      "selection_observed_at": "2026-09-17T05:25:17.011Z",
+      "selection_provider_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+      "author_model_provider": "codex",
+      "author_model": "gpt-5.6-sol",
+      "author_reasoning": "high",
+      "independent_review_provider": "claude",
+      "independent_review_model": "claude-opus-5",
+      "independent_review_reasoning": "high",
+      "route_project_name": "deos-sample-project",
+      "route_repository": "sachinkundu/deos-sample-project",
+      "route_github_installation_id": "154095438",
+      "route_revision": 27,
+      "route_digest": "30cc95d68f7b78faa83f7bd885dbdc786cd7b1a65d88b9b69ba6172035ac5940",
+      "route_start_state_name": "Todo",
+      "route_human_gate_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+      "route_repository_revision": 2,
+      "route_workflow_revision": 20,
+      "route_review_revision": 2,
+      "independent_review_account_binding": "922b8a5e0d14cb8098f83d4bb8b2e3d8a29a6b8af84e7b2c92d019e778dd14cd",
+      "sandbox_tier": "basic",
+      "sandbox_tier_source": "legacy_basic",
+      "sandbox_tier_policy_version": "legacy-basic-v1",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 6
+    }
+  ],
+  "deliveries": [
+    {
+      "delivery_id": "4e8d36cc-390a-4846-a673-c51c080f8196",
+      "payload_hash": "a1f500f26a4a78c09eb726f2bdc28dba9ef10b476b3f47bf7a05dd33c407044e",
+      "received_at": "2026-09-17T05:24:19.003000+00:00",
+      "classification": "irrelevant",
+      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:32952e35-b116-41a0-a704-6f37b0946ec4",
+      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
+      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+      "route_project_id": null,
+      "route_revision": null,
+      "route_digest": null,
+      "start_slow_ok": null,
+      "sandbox_tier_policy_version": "legacy-basic-v1"
+    },
+    {
+      "delivery_id": "32156fc7-6925-4a89-9fcc-8eb0d637d379",
+      "payload_hash": "d50138f117b188a46e4f7c416bfbfdfc1c183af3fc5dcf25482bf2cd17758b4f",
+      "received_at": "2026-09-17T05:25:17.756999+00:00",
+      "classification": "relevant",
+      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:32952e35-b116-41a0-a704-6f37b0946ec4",
+      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
+      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+      "route_revision": 27,
+      "route_digest": "30cc95d68f7b78faa83f7bd885dbdc786cd7b1a65d88b9b69ba6172035ac5940",
+      "start_slow_ok": null,
+      "sandbox_tier_policy_version": "legacy-basic-v1"
+    },
+    {
+      "delivery_id": "479039fb-1636-44c8-bead-603ee4a34fa6",
+      "payload_hash": "d4e6da9349b73fb4698cecf1e39f7fe2e8c79c12d55af242deaf574b5b45cfcb",
+      "received_at": "2026-09-17T05:25:40.804000+00:00",
+      "classification": "relevant",
+      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:32952e35-b116-41a0-a704-6f37b0946ec4",
+      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
+      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+      "route_revision": 27,
+      "route_digest": "30cc95d68f7b78faa83f7bd885dbdc786cd7b1a65d88b9b69ba6172035ac5940",
+      "start_slow_ok": null,
+      "sandbox_tier_policy_version": "legacy-basic-v1"
+    }
+  ],
+  "active_attempts_all": [
+    {
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:32952e35-b116-41a0-a704-6f37b0946ec4:run:1",
+      "attempt_id": "01a0add3-ee2d-7474-9a3e-650fd5df015c",
+      "node_id": "planning_author",
+      "state": "starting"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt_id": "01a0add3-ee2d-7474-9a3e-650fd5df015c",
+      "node_id": "planning_author",
+      "state": "starting",
+      "started_at": "2026-09-17T05:25:42.939Z",
+      "ended_at": null,
+      "result_class": null,
+      "cleanup_state": "pending",
+      "sandbox_id": "sbx-v1-tshuei4jlbpr66gbtmgfi4ti5yjb7oyo5isqn3dtjdu4umeql57q"
+    }
+  ],
+  "gates": [],
+  "errors": [],
+  "implementation": [],
+  "tries": [],
+  "progress": [],
+  "deployment": {
+    "id": "9d449456-a82b-49f0-a493-c7ea1a17935d",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "sachin.kundu@pm.me",
+    "annotations": {
+      "workers/message": "SAC-172 recover remaining canary transport gaps",
+      "workers/triggered_by": "upload"
+    },
+    "versions": [
+      {
+        "version_id": "c303af4e-27e4-48da-955f-03cb0db7c32f",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-09-17T05:02:22.095653Z"
+  },
+  "observed_at": "2026-09-17T05:25:47.466076+00:00"
+}

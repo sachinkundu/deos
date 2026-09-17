@@ -25,6 +25,21 @@ not a complete baseline, and cannot establish a percentage improvement.
 
 ## Runs
 
+### SAC-243 prospective expense-tracker canary
+
+- Created 2026-09-17 05:24:17 UTC: [SAC-243](https://linear.app/sachinkundu/issue/SAC-243/build-a-desktop-expense-tracker), sample project. Scope: one desktop screen, euro expenses, categories, visible-list total, browser-local persistence.
+- User explicitly authorizes automatic proposal/specification and design approvals, routine answers, and safe workflow recovery. Cloudflare agents alone edit application implementation and capture proof. Stop at implementation PR, unmerged/unreleased.
+- Preflight D1: no existing run for this issue and no active attempts. Project selects implementation v39, digest `e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c`; dispatch enabled. Backend version `c303af4e-27e4-48da-955f-03cb0db7c32f` at 100%, deployed 05:02:22 UTC.
+- Prospective read-backs and supervision contract: [expense-canary evidence](evidence/sac-172/expense-canary/supervision.md). Read-only collector: `evidence/sac-172/expense-canary/readback.py`.
+- Current result: in flight. No failure count or reliability conclusion yet. Record all observed occurrences and interventions below as work proceeds.
+- Genuine Todo trigger at 05:25:17.011 UTC; delivery `32156fc7-6925-4a89-9fcc-8eb0d637d379`. Run created at 05:25:25.632 UTC; planning author started at 05:25:42.939 UTC. Provider receipt and D1 run confirmed. No synthetic trigger was used.
+- Automatic supervision every five minutes: `run-expense-tracker-canary-to-pr`, attached to the user's current task. Normal progress stays quiet; completion and substantive problems notify.
+- Operator-only setup error at about 05:26 UTC: first heartbeat creation returned `targetThreadId: Missing targetThreadId or destination=thread.` No automation was created by that request. Retried with the explicit current task and thread destination; creation succeeded. Excluded from cloud workflow failure counts.
+
+| ID | Time / stage | Original failure or mismatch | Cause / response / outcome | Evidence |
+| --- | --- | --- | --- | --- |
+
+
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
