@@ -233,3 +233,19 @@ supervisor; real implementation behavior remains pending. STORE-04 also
 recurred once in this author (fourth observed occurrence), recovered by the
 cloud agent. Its original command/output is retained in
 design-third-revision-audit.json. No new workflow deployment was made.
+
+### STORE-09 — Recovered shell quoting error in cloud design checks
+
+Round-three response01a0b03d-6f2b-783c-90e7-ef267cf33f07 issued a search
+with an unmatched literal backtick inside its shell expression. Bash returned
+exit2: `unexpected EOF while looking for matching` followed by a backtick,
+then `syntax error: unexpected end of file`. The cloud author corrected the
+search and completed validation. Full exact command/output is saved in
+design-round-three-response-audit.json. Final audit:170,104bytes,21completed
+commands,1nonzero exit,zero provider error events. Trusted completion passed.
+This was automatically fixed by the cloud author, not an application defect.
+
+Supervisor read-only tooling also hit a shell glob error on an unquoted GitHub
+query-string path (`zsh:1: no matches found`). Reissued through a literal argv
+list and read the exact approved file. No workflow state or app was changed
+by that failed lookup.

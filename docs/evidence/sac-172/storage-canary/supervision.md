@@ -365,3 +365,30 @@ unowned resources/data. Cloud agents continue to own all app changes.
 Verify actual implementation gate behavior, review feedback routing, durable
 proof before cleanup, and final unmerged implementation PR. Error-only user
 notifications remain in force.
+
+## 2026-09-17 16:57 UTC — Design approved for workflow canary
+
+Reviewed PR44 head08a4eeb14b1d10061d8d6145e2c9cae43d02bf9e, all six applied
+dispositions and hash-verified final response. Single-writer ownership and
+delete recovery remain; uncertain writes stay charged rather than releasing
+quota; atomic activation uses a guarded insert and aborting trigger. The
+accepted stranded-reservation capacity limit is appropriate for a disposable
+trial. Preferred browser proof retains actual state between adjacent fresh
+contexts; a labeled seeded fallback is present but not needed by this runner.
+No further design-polish loop was requested, following the user's clarification
+that implementation workflow gates are the test objective.
+
+D1 gate34 round3 was open for that exact head with six unchanged error rows.
+Approved through Linear comment107ace4a-5ec0-4076-a54e-c8662f05908e16:57:38.956
+and transitioned to Merging16:57:39.509. This approves prerequisite design
+only; final implementation remains unmerged. Await provider consumption,
+GitHub merge and implementation entry. STORE-09 is a recovered author shell
+quoting error; no new application/workflow outage was seen.
+
+D1 confirms approval deliveryf549f8b7-4827-4995-9a9b-a37dc515df68 consumed
+16:58:20.426. GitHub PR44 merged16:58:24 to
+412a3f46aacb3a970b2415509d91f2ba7ae3f77e. The implementation input freezes
+that approved design commit and branch deos/agent/SAC-246/run-1. Cloud task
+author01a0b04e-3f97-7d40-ae56-85d9af678743 started16:58:33.395, visit37.
+At16:59:10 the progress table is still empty, providing a prospective baseline
+for initial-checklist publication. No new workflow error.

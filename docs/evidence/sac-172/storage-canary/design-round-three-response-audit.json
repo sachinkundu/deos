@@ -1,0 +1,19 @@
+{
+  "attemptId": "01a0b03d-6f2b-783c-90e7-ef267cf33f07",
+  "transcriptSha256": "96a8ea7245228e2ba356c5308ad9e8b2cde3f71443298ad00498f706b08b6c94",
+  "transcriptBytes": 170104,
+  "completedCommands": 21,
+  "nonzeroCommands": [
+    {
+      "id": "item_18",
+      "type": "command_execution",
+      "command": "/bin/bash -lc 'rg -n \"failed|definitely|transactional `batch|SHELF_LIMIT_REACHED|ACTIVATION_PRECONDITION_LOST|strftime|fresh-context|seeded fallback|observed-state\" openspec/changes/sac-246/design.md'",
+      "aggregated_output": "/bin/bash: -c: line 1: unexpected EOF while looking for matching ``'\n/bin/bash: -c: line 2: syntax error: unexpected end of file\n",
+      "exit_code": 2,
+      "status": "failed"
+    }
+  ],
+  "providerErrors": [],
+  "outputErrorLines": [],
+  "reviewedHead": "08a4eeb14b1d10061d8d6145e2c9cae43d02bf9e"
+}

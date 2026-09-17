@@ -1,0 +1,3 @@
+Approved the design in PR #44 at head 08a4eeb14b1d10061d8d6145e2c9cae43d02bf9e for this small workflow canary. The single-writer save rule, recoverable delete, real D1/R2 deployment, browser proof and cleanup order are adequate to test the workflow. All six latest review concerns have dispositions and trusted validation passed. Bounded abandoned reservations are an accepted limitation of this disposable trial; do not add production hardening.
+
+Proceed to implementation and exercise its gates. Use the preferred adjacent fresh-browser scenario against unchanged cloud data, since this runner supports it. Capture screenshots and storage proof before resource cleanup. Leave the final implementation PR unmerged and unreleased.
