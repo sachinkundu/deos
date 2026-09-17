@@ -147,3 +147,10 @@ running with live process3109827b-24f2-4785-9604-3fcf296f07c0. It has completed
 real cloud-authored discovery commands without a repeated quota error so far.
 This proves execution resumed, not that the complete stage will finish. Continue
 the existing supervision and collect the full result before advancing any gate.
+
+14:53:27UTC: D1 still has planning_author visit6 running, with no open gate or
+app resources. Live process and heartbeat are current. The author completed12
+commands with no nonzero exits in the captured transcript and has entered its
+trusted fresh-context self-review. No repeated quota error observed. Full private
+snapshot /tmp/sac246-reader/2026-09-17T14-53-27.307Z.json retained. Do not treat
+its interim completed-shaped waiting message as a completed workflow stage.
