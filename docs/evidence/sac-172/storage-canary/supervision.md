@@ -392,3 +392,24 @@ that approved design commit and branch deos/agent/SAC-246/run-1. Cloud task
 author01a0b04e-3f97-7d40-ae56-85d9af678743 started16:58:33.395, visit37.
 At16:59:10 the progress table is still empty, providing a prospective baseline
 for initial-checklist publication. No new workflow error.
+
+## 2026-09-17 17:05 UTC — Tasks completed and initial progress signal verified
+
+Task author01a0b04e-3f97-7d40-ae56-85d9af678743 completed17:03:49.924 and
+its sandbox was destroyed. Hash-verified full transcript286,823bytes has12
+completed commands, zero nonzero exits and zero provider errors. Trusted
+OpenSpec and task-behavior checks passed:6groups,32unchecked tasks.
+
+The initial checklist signal started17:02:10.032, delivered17:02:10.652
+(620ms), and D1 observed0/32 at17:02:12.242, roughly98seconds before task
+stage completion. Thus the initial list was not withheld until that stage
+finished. Its32items were authored as one artifact; this does not yet prove
+incremental completed-task counts during implementation or live portal display.
+Saved exact progress receipt in initial-task-progress-proof.json.
+
+Demo planner01a0b053-24ac-7fcb-8277-1300bdbe8e25 started17:03:54.147 and is
+active at visit38. No temporary app resources allocated yet, no new errors.
+A bounded read-only D1 sampler now records changed node/count observations
+every15seconds for at most1hour in sampled-progress.jsonl. Exec session71437
+is running; inspect/poll it on later heartbeats rather than launching duplicate
+samplers. The sampler changes no runtime and never sends user notifications.

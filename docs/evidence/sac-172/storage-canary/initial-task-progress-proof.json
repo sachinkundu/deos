@@ -1,0 +1,30 @@
+{
+  "attemptId": "01a0b04e-3f97-7d40-ae56-85d9af678743",
+  "diagnosticsSha256": "38cafb1e5c008b00427b599b449598a23ac4a26ecc7de1376dd21f0c7d2dd666",
+  "signals": [
+    {
+      "operation": "progress_signal",
+      "attemptedAt": "2026-09-17T17:02:10.032Z",
+      "observedAt": "2026-09-17T17:02:10.652Z",
+      "durationMs": 620,
+      "outcome": "delivered",
+      "retryAfterMs": null,
+      "consecutiveFailures": 0,
+      "lastSuccessAt": "2026-09-17T17:02:10.652Z",
+      "lastError": null
+    }
+  ],
+  "durableProgress": [
+    {
+      "attempt_id": "01a0b04e-3f97-7d40-ae56-85d9af678743",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "tested_base_sha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "completed": 0,
+      "total": 32,
+      "tasks_sha": "3bd94b78ff5b142a26274c4e3c86d09b6240f2338878688d0471a44ef66f2b47",
+      "observed_at": "2026-09-17T17:02:12.242Z"
+    }
+  ],
+  "taskStageEndedAt": "2026-09-17T17:03:49.924Z",
+  "conclusion": "Initial unchecked 0/32 task list reached D1 before task-author completion; this is not evidence of incremental completion during build or visual portal rendering."
+}
