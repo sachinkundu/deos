@@ -25,6 +25,13 @@ not a complete baseline, and cannot establish a percentage improvement.
 
 ## Runs
 
+### SAC-245 prospective reading-queue canary
+
+- User authorizes automatic prerequisite gates, routine answers and safe workflow repairs. Cloudflare agents alone author application implementation and proof. Stop at the completed implementation PR, unmerged/unreleased.
+- [Supervision contract](evidence/sac-172/reading-canary/supervision.md), [prospective failure and intervention log](evidence/sac-172/reading-canary/failures.md), and [read-only D1 collector](evidence/sac-172/reading-canary/readback.py).
+- Preflight 2026-09-17 09:14:29 UTC: no existing run or active attempts; implementation v39 enabled; corrected Worker 8027527b-c89b-4cbd-8c57-dc98793964e6 at 100%.
+- In flight. No final count or reliability conclusion yet. Observe command completion, demo status and existing-result retrieval introduced after the expense canary.
+
 ### SAC-243 prospective expense-tracker canary
 
 - Created 2026-09-17 05:24:17 UTC: [SAC-243](https://linear.app/sachinkundu/issue/SAC-243/build-a-desktop-expense-tracker), sample project. Scope: one desktop screen, euro expenses, categories, visible-list total, browser-local persistence.
