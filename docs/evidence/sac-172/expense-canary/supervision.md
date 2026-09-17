@@ -6,6 +6,10 @@ Instance: wf-v1-kvfw4v6vuisgslywjbw5otben66abdj2uyglkj6u6lio6jvqwwqa.
 Genuine Linear Todo trigger: 2026-09-17T05:25:17.011Z; delivery 32156fc7-6925-4a89-9fcc-8eb0d637d379.
 First author starting at 05:25:42.939Z, attempt 01a0add3-ee2d-7474-9a3e-650fd5df015c.
 
+Read-only live transcript reader: `/tmp/sac243-reader/read.py`; run with `rtk proxy python3`. Its token-protected remote development session is on localhost 8803, inspector 9303, originally exec session 9765. It only reads current attempt process/file state; it does not launch or modify cloud work. If needed restart using `rtk proxy python3 /tmp/sac172-operator-command.py npx wrangler dev --config /tmp/sac243-reader/wrangler.json --remote --port 8803 --inspector-port 9303 --show-interactive-dev-session=false`. Never print token.json. Captures are private under `/tmp/sac243-reader`, and latest-path.txt points to the complete snapshot; audit full captures, not only the reader's tail. Reader expires 2026-09-18 05:30 UTC. Stop it after monitoring completes.
+
+05:33 UTC checkpoint: author still active. Strict OpenSpec validation and readability checks passed. Prepared self-review raised two traceability findings (category values and amount-validation rules missing from proposal); trusted-hook continuation is in progress. These are review findings, not established workflow failures. No intervention or new approval performed.
+
 Authorized by Sachin on 2026-09-17 in task 01a0adc7-c699-7553-b07f-5a261c833db9.
 
 Create a fresh small desktop expense tracker in deos-sample-project. Run through normal provider-originated workflow, automatically reviewing and approving proposal/specification and design gates. Answer routine clarification questions on Sachin's behalf, including permission to use the assigned Cloudflare service browser. Stop at the finished implementation PR, unmerged and unreleased. Notify Sachin on completion or a problem that needs attention; remain quiet about routine monitoring.
