@@ -2,7 +2,7 @@
 
 Started prospectively on 17 September 2026, before the real Linear trigger. Endpoint: implementation PR ready for human review, unmerged and unreleased. Cloudflare agents alone author app code and proof.
 
-No failures observed at preflight. This is an in-flight observation, not a reliability conclusion. Full transcript auditing is required before final counts.
+Final audit: 21 recorded workflow/tool events across 15 problem groups, including five low-severity discovery misses. Checklist reporting (READ-11) and stale cleanup metadata (READ-18) are separate non-execution defects. No app test failure was observed. One supervisor repair episode required a workflow deployment and saved-stage review retry. See the [failure analysis](failure-analysis.md) and [count ledger](failure-analysis-metrics.json) for definitions, comparison and priorities. The timestamped entries below preserve the original observations and later outcomes.
 
 | ID | UTC time / stage | Original failure or mismatch | Cause | Recovery and outcome | Evidence |
 | --- | --- | --- | --- | --- | --- |
