@@ -11,9 +11,11 @@ import {
 } from "./implementation-browser.ts";
 import { getSandbox } from "@cloudflare/sandbox";
 import { reconcileImplementationPreview } from "./implementation-preview-reconciliation.ts";
+import { ImplementationEnvironment } from './implementation-environment.ts';
 
 /** Cron is a wake-up producer. Only the workflow consumes a saved event and changes its node. */
 export async function reconcileImplementations(env: Env) {
+  await new ImplementationEnvironment(env).reconcile();
   const store = new ImplementationStore(env.DB, env.ARTIFACTS);
   const authority = new D1OrchestrationStore(env.DB);
   const runs = await env.DB.prepare(

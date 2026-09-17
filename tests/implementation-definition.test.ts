@@ -26,7 +26,7 @@ test("merged design leads to distinct task and build jobs, separate human decisi
     readFileSync("config/workflow.implementation.yaml", "utf8"),
     bundle,
   );
-  assert.deepEqual(flow.implementationPolicy, {...implementationPolicy,safeAdapters:['static-preview-v1']});
+  assert.deepEqual(flow.implementationPolicy, {...implementationPolicy,safeAdapters:['static-preview-v1','temporary-environment-v1']});
   assert.equal(flow.nodes.implementation_clarification_wait.edges.reply_received,'implementation_resume');
   assert.equal(flow.nodes.implementation_resume.edges.plan_required,'implementation_demo_plan');
   const presentation = validatePresentationManifest(flow);

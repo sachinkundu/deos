@@ -47,6 +47,7 @@
     "SANDBOX_FAILURE_RETENTION_MINUTES": "0",
     "CAPABILITY_BASE_URL": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities",
     "IMPLEMENTATION_PREVIEW_ACCOUNT_ID": "c68856288112af7698f5be52ea94b96e",
+    "IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID": "c68856288112af7698f5be52ea94b96e",
     "PORTAL_BASE_URL": "https://deos.voxdez.com",
     "ROUTE_ADMIN_ALLOWED_EMAIL": "sachinkundu@gmail.com"
   },

@@ -16,6 +16,11 @@ if(!path || path==='--help') {
     {action:'check',requestId:'install-1',argv:['npm','ci']},
     {action:'check',requestId:'test-1',dependsOn:['install-1'],argv:['npm','test']},
     {action:'publish_preview',assets:'dist'},
+    {action:'publish_environment',requestId:'remote-build-1',main:'build/worker.mjs',assets:'dist',d1:['DB'],r2:['BUCKET']},
+    {action:'storage',requestId:'schema-1',operation:'migrate',id:'001',statements:['CREATE TABLE snippets (id TEXT PRIMARY KEY, title TEXT, object_key TEXT)']},
+    {action:'storage',requestId:'inspect-1',operation:'query',sql:'SELECT * FROM snippets'},
+    {action:'storage',requestId:'objects-1',operation:'objects'},
+    {action:'storage',requestId:'request-1',operation:'request',method:'GET',path:'/api/snippets'},
     {action:'check',requestId:'behavior-1',argv:['node','scripts/demo.mjs'],behavior:true,audience:'review'},
     {action:'preview',main:'src/index.ts',assets:'dist',d1:['DB'],r2:['BUCKET']},
     {action:'demo',requestId:'demo-1',scenarios:[{id:'saved-note',url:'/',target:'local',viewport:{width:1280,height:900},steps:[
