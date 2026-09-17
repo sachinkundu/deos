@@ -138,5 +138,44 @@
       "exitCode": 0
     }
   },
-  "deployment": "pending; no active attempts confirmed before rollout"
+  "deployment": {
+    "workerVersion": "e0c1144d-cd88-4387-b9ab-b226c5ec95a5",
+    "trafficPercent": 100,
+    "imageDigest": "32185ef3925e88b07bd778f73e50284efbfb1e8ab58294f08a5912c1c35caf52",
+    "allFourPools": "completed, four healthy instances each",
+    "noActiveAttemptsBeforeDeployment": true,
+    "codeCommit": "d7a4e7e"
+  },
+  "retry": {
+    "retry": {
+      "retry_id": "stage-retry:01a0af0a-5455-75df-b4fd-67be4ba83875",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+      "failed_attempt_id": "01a0af0a-5455-75df-b4fd-67be4ba83875",
+      "retry_node": "implementation_demo_gate",
+      "from_visit_sequence": 24,
+      "to_visit_sequence": 25,
+      "transition_id": "transition:stage-retry:01a0af0a-5455-75df-b4fd-67be4ba83875",
+      "state": "established",
+      "workflow_status": "queued",
+      "safe_error_category": null,
+      "requested_by": "sachin",
+      "created_at": "2026-09-17T11:19:45.357Z",
+      "updated_at": "2026-09-17T11:19:48.181Z",
+      "established_at": "2026-09-17T11:19:48.181Z",
+      "retry_kind": "same_definition",
+      "source_definition_id": "implementation",
+      "source_definition_version": 39,
+      "source_definition_digest": "e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c",
+      "target_definition_id": "implementation",
+      "target_definition_version": 39,
+      "target_definition_digest": "e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c",
+      "source_workflow_instance_id": "wf-v1-m6ek5brhdw5sac2jrr3oqvwk23zwh6axxhpopobfvv4vawu2bujq",
+      "target_workflow_instance_id": "wf-v1-7t3xyh5eb4di7rnpd6ftxivfw6bnnmkqodavmxt32rpimjskh4oq",
+      "source_delivery_id": "de0b70ea-1ca2-4f87-ad55-a621fdc7505d",
+      "entry_node": null,
+      "source_sandbox_tier": "basic",
+      "target_sandbox_tier": "basic",
+      "workflow_instance_id": "wf-v1-7t3xyh5eb4di7rnpd6ftxivfw6bnnmkqodavmxt32rpimjskh4oq"
+    }
+  }
 }

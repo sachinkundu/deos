@@ -47,18 +47,18 @@
       "definition_id": "implementation",
       "definition_version": 39,
       "definition_digest": "e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c",
-      "workflow_instance_id": "wf-v1-7t3xyh5eb4di7rnpd6ftxivfw6bnnmkqodavmxt32rpimjskh4oq",
-      "previous_node": "implementation_failed",
-      "current_node": "implementation_demo_gate",
+      "workflow_instance_id": "wf-v1-m6ek5brhdw5sac2jrr3oqvwk23zwh6axxhpopobfvv4vawu2bujq",
+      "previous_node": "implementation_demo_gate",
+      "current_node": "implementation_failed",
       "gate_origin_node": null,
-      "status": "active",
+      "status": "failed",
       "accumulated_data_json": "{}",
       "created_at": "2026-09-17T09:15:44.488Z",
-      "updated_at": "2026-09-17T11:19:45.357Z",
-      "terminal_at": null,
-      "terminal_cause": null,
-      "current_visit_sequence": 25,
-      "last_transition_id": "transition:stage-retry:01a0af0a-5455-75df-b4fd-67be4ba83875",
+      "updated_at": "2026-09-17T11:08:33.306Z",
+      "terminal_at": "2026-09-17T11:08:33.306Z",
+      "terminal_cause": "implementation_failed",
+      "current_visit_sequence": 24,
+      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1:visit:23:transition",
       "selection_kind": "default",
       "selection_value": "project_policy",
       "selection_label_name": null,
@@ -331,14 +331,7 @@
       "sandbox_tier_policy_version": "legacy-basic-v1"
     }
   ],
-  "active_attempts_all": [
-    {
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
-      "attempt_id": "01a0af18-1e0a-72ca-9e22-82fcc05ab00c",
-      "node_id": "implementation_demo_gate",
-      "state": "running"
-    }
-  ],
+  "active_attempts_all": [],
   "attempts": [
     {
       "attempt_id": "01a0aea6-d157-7cdf-88a4-f0b4468266d4",
@@ -439,16 +432,6 @@
       "result_class": "codex_exit_nonzero",
       "cleanup_state": "destroyed",
       "sandbox_id": "sbx-v1-cuvefjpbr4apefuklygzp4gfyhzgbw7jz37khkgsc5jckjwmddwa"
-    },
-    {
-      "attempt_id": "01a0af18-1e0a-72ca-9e22-82fcc05ab00c",
-      "node_id": "implementation_demo_gate",
-      "state": "running",
-      "started_at": "2026-09-17T11:19:49.297Z",
-      "ended_at": null,
-      "result_class": null,
-      "cleanup_state": "pending",
-      "sandbox_id": "sbx-v1-hgyh27owynzj7k4lstmgndb27goi7gde4whe5a2hottg5ipbc2da"
     }
   ],
   "gates": [
@@ -649,5 +632,5 @@
     ],
     "created_on": "2026-09-17T11:14:03.743273Z"
   },
-  "observed_at": "2026-09-17T11:20:16.189440+00:00"
+  "observed_at": "2026-09-17T11:19:33.912042+00:00"
 }

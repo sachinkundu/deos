@@ -19,7 +19,7 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 
 | READ-11 | 10:40 task write; investigated 10:53–10:57 | Portal checklist jumped from 0/23 to 17/23 without intermediate counts | Cloud author item49 marks the first17 tasks in one tasks.md write after tests/build. Existing instruction to update checkboxes as work finishes was not followed. No 1–16 file states were emitted. | Recorded as a progress-reporting defect, not an implementation/provider failure. Watcher already reacts to file changes (750ms debounce); visible portal polls every5s. Corrective action: explicit per-task completion reporting/checkpoints in the author workflow; do not simulate increments. No live change during the active canary. | [Exact cloud command and saved observations](checklist-batch-reporting.json) |
 
-| READ-12 | 11:08:09, implementation Claude review | `rg -n "innerHTML\|seed\|fixture\|demo" candidate/src` rejected with `review path is not in the checked input`; broker then marked review_failure and run failed | Frozen-source reader accepted individual files only; reviewer supplied a directory. One causal incident, six propagated D1 error records. | Saved app/proof retained. Supervisor added safe directory-prefix expansion over frozen inventory only and updated tool help.16targeted tests/typecheck pass; exact command on26saved input files now exits0. Deployment and same-stage review retry pending. | [Original errors and repair validation](review-directory-failure.json) |
+| READ-12 | 11:08:09, implementation Claude review | `rg -n "innerHTML\|seed\|fixture\|demo" candidate/src` rejected with `review path is not in the checked input`; broker then marked review_failure and run failed | Frozen-source reader accepted individual files only; reviewer supplied a directory. One causal incident, six propagated D1 error records. | Saved app/proof retained. Supervisor added safe directory-prefix expansion over frozen inventory only and updated tool help.16targeted tests/typecheck pass; exact command on26saved input files now exits0. Worker e0c1144d and image32185ef activated at100%, all four pools healthy. Same-definition review retry established11:19:48; new review attempt01a0af18 confirmed running11:20:16 with the same saved candidate/patch. One supervisor code/deployment intervention and one retry; no app edits or demo recapture. | [Original errors and repair validation](review-directory-failure.json) |
 
 ## Normal actions
 
@@ -35,6 +35,8 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 
 - 11:02UTC: all seven scenarios completed in the original demo-final-1 collection at10:57:47.682. Same-operation result retrieval returned image paths without recapture; author selected9images and one Showboat record. Final OpenSpec checks pass,23/23tasks reported, author handoff still active. Full captured transcript has no new unexpected command exits; original-errors contains only READ-06. [Saved completion/result/selection evidence](demo-completed-proof.json).
 
+- 11:20UTC: supervisor verified new Claude review attempt running after READ-12 recovery. Saved build candidate and patch are unchanged. Full build audit contains99completed commands, five unexpected exits already logged, and expected pending receipts. [Build audit](build-final-audit.json).
+
 ## Operator errors
 
 - 09:36 UTC: local helper discovery with `rg --files /tmp` encountered `Permission denied (os error 13)` for an unrelated device semaphore. Discovery was narrowed to `/tmp/*.py`; no cloud request or run state was affected. One local inventory error, excluded from cloud workflow counts.
@@ -44,6 +46,8 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 - 11:04UTC: local evidence staging named readback-20260917T110224Z.json instead of the existing110228Z snapshot; Git rejected the nonexistent path (exit128). Corrected to the collector-reported filename. No cloud effect.
 
 - 11:12UTC recovery discovery: one broad local search named scripts/sac-172 from the wrong checkout and hit an unrelated protected /tmp semaphore; another named test instead of tests. Original diagnostics were `No such file or directory` and `Permission denied`; the first was masked by a successful pipeline. Narrowed to observed paths. No cloud impact; excluded from cloud failure counts.
+
+- 11:14UTC: local diff check found a trailing blank line in the copied typecheck log (exit2). Trimmed that log-only formatting; runtime source and tests were unaffected.
 
 ## Expected nonzero results
 
