@@ -462,3 +462,18 @@ At17:21:51 live readback confirms install2 completed17:21:30.114 with exit0.
 STORE-10 is automatically fixed. Task receipts also show individual counts
 16,17,18 emitted17:21:19.812,17:21:22.727,17:21:25.423. The burst comes from
 authored batch marking, while the signal path continues delivering each count.
+
+## 2026-09-17 17:28 UTC — Typecheck recovery and tests underway
+
+Same build attempt remains active atvisit39,18/32tasks, no app environment
+allocated yet. Live transcript34completed commands contains7nonzero exits:
+four exit75 running-status reads, two exit1 observations of the already-logged
+failed install, and one exit2 typecheck. STORE-11 type errors were corrected
+by the cloud author; retry passed17:28:12.618. Full original output and
+terminal operation receipts are retained in build-operations-1728.json.
+No provider error event or new workflow error row. Tests began next.
+
+Sampler71437 remains active through approximately18:07UTC. Counts remain
+prospectively captured; no visual portal claim has been made. Continue to let
+cloud implementation checks/review gates operate, recording failures and
+recovery without local application changes. STORE-11 user notice sent once.

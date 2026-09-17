@@ -270,3 +270,18 @@ STORE-10 recovery confirmed: sac246-install-2 completed17:21:30.114, exit0,
 84packages installed and empty stderr. Saved full operation receipt in
 dependency-install-recovery.json. The cloud agent fixed its own dependency
 selection; no supervisor code change was needed. Build remains in progress.
+
+### STORE-11 — Typecheck caught initial application/test typing errors
+
+Trusted operation sac246-typecheck-1 failed17:27:11.710 with exit2. Original
+output includes TS2345 Uint8Array/BufferSource incompatibility in the hashing
+helper, missing DOM globals/types in browser tests, a missing JavaScript module
+declaration, and possibly-undefined R2 customMetadata. These are one failed
+typecheck operation with multiple diagnostics, not separate workflow failures.
+Exact full diagnostics and recovery receipts are in build-operations-1728.json.
+
+The cloud author revised its TypeScript settings, hash input and test typing,
+ran formatting, then sac246-typecheck-2 passed17:28:12.618 with exit0 and empty
+stderr. Automatically fixed by the author; no supervisor implementation edits.
+The next test operation was running at17:28:30. Final build manifest and
+independent gates still need to validate the complete candidate.
