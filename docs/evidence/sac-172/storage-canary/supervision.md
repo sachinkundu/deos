@@ -154,3 +154,15 @@ commands with no nonzero exits in the captured transcript and has entered its
 trusted fresh-context self-review. No repeated quota error observed. Full private
 snapshot /tmp/sac246-reader/2026-09-17T14-53-27.307Z.json retained. Do not treat
 its interim completed-shaped waiting message as a completed workflow stage.
+
+15:01UTC: planning author completed with its trusted checks passed at15:00:08.735.
+Full normal artifacts, patch and self-review artifacts downloaded from R2 and
+matched to D1 hashes; planning-author-completion.json records receipts. Native
+self-review raised13 quality/traceability findings, all resolved by cloud authors
+and accepted on recheck. No supervisor plan edits. Independent discovery is now
+running as attempt01a0afe2-3a1f-75f3-8343-5653debd6ef5, started15:00:34.096.
+Planning PR43 exists at46846063426db1f8e246cdb3ef9e658e6addc277; its three-file
+diff was inspected and fits the intended one-screen Worker/D1/R2 canary scope.
+No human gate is open yet. Recheck its final head/diff after independent feedback
+and author response before approval. The usage-limit recovery finished the
+planning author stage successfully; no reset was consumed.

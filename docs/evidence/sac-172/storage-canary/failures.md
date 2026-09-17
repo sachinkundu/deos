@@ -30,6 +30,13 @@ were captured before its filesystem disappeared. The second attempt's full
 transcript and patch were recovered from R2 and verified against D1 hashes.
 This is not a complete audit of the lost portion of attempt1.
 
+Planning quality findings, separate from runtime failures: the successful third
+author's native self-review produced13 traceability/scope concerns (including10
+directional disagreements). Cloud authors resolved all13 and the recheck passed.
+Trusted final OpenSpec, whitespace and readability checks passed15:00:08.735UTC
+without a completion-repair round. See planning-self-review.json and
+planning-author-completion.json. These findings are not13 failed workflow events.
+
 ## Fixed by supervisor
 
 ### STORE-01 — Supervisor started the canary before the rollout finished
@@ -100,6 +107,12 @@ work, no active attempts and completed rollouts in every pool, the supervisor
 cleaned the stopped sandbox through the supported endpoint and requested one
 same-run, same-v41 planning retry. Its cloud execution will verify availability.
 If the same limit recurs, stop retries until a quota/account change is confirmed.
+
+Recovery outcome: the third author finished its entire planning stage with
+trusted checks passed at15:00:08.735UTC. Planning PR43 was published and the run
+advanced to independent discovery. The cloud quota was usable for that stage;
+the reason it became available is not established. No quota reset was consumed
+by the supervisor. Retain the provider-limit incident in the run's totals.
 
 The failed planning patch is retained as evidence; current planning continuation
 selects completed attempts only. This retry recreates the unfinished planning
