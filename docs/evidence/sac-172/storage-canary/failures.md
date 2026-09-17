@@ -162,3 +162,27 @@ The complete cloud-agent path, incremental task updates, real browser persistenc
 PR evidence publication and automatic resource teardown need this run's proof.
 The prior adapter probe verifies provider mechanics, not these end-to-end claims.
 No implementation Worker, D1 database or R2 bucket existed when planning failed.
+
+### STORE-07 — Failed deletion has no browser recovery path
+
+Supervisor review of PR44 head beca148afbbd4fbdfbaa99dbbe2acad23bf37ae5
+found that the API retains deleting state and expects a retry, while the UI
+disables further delete actions for deletePending rows. Refresh can therefore
+leave a user stuck. If cleanup removed the saved index row before its final
+absence check failed, the join-based list also loses the ID needed for retry.
+This is a design defect found before implementation, not an observed storage
+outage. Six earlier independent concerns were applied by the cloud agent,
+but this recovery gap remained in the resulting design.
+
+At16:07:32UTC the supervisor posted concrete feedback in Linear comment
+c548bb3e-afcb-406a-b663-f796ed67eab2 and requested a design revision by moving
+Human Review to In Progress at16:07:33.034. The requested fix distinguishes
+in-flight from persisted incomplete deletion, retains an actionable ID across
+refresh, uses the existing idempotent DELETE, and adds a failure/retry test.
+Cloud agents own the revision; no sample-app implementation or design was
+locally edited. Status: awaiting revised design and verification.
+
+Supervisor tooling note: one read-only source search failed before execution
+with `zsh:1: no matches found: workflows/implementation*`. A repository-wide
+search found the actual config/workflow.implementation.yaml transition mapping.
+No workflow state or artifacts were affected by that search mistake.

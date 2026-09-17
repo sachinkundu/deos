@@ -22,7 +22,7 @@ with urlopen(request, timeout=30) as response:
 if not result['success']:
     raise RuntimeError(result)
 (OUT / 'manifest-index.json').write_text(json.dumps(result['result'][0]['results'], indent=2)+'\n')
-wanted = {'transcript.jsonl', 'implementation-diagnostics.jsonl', 'original-errors.jsonl', 'validation.txt', 'trace-validation.txt', 'review-validation.txt', 'failure-summary.json', 'result.json', 'status.json', 'author-completion.json', 'patch.diff', 'recovery-patch.diff', 'review-dispositions.json', 'review-replies.json'}
+wanted = {'transcript.jsonl', 'implementation-diagnostics.jsonl', 'original-errors.jsonl', 'validation.txt', 'trace-validation.txt', 'review-validation.txt', 'failure-summary.json', 'result.json', 'status.json', 'author-completion.json', 'patch.diff', 'recovery-patch.diff', 'review-dispositions.json', 'design-dispositions.json', 'review-replies.json'}
 wanted.update({'claude-provider-proof.json', 'raw-review-output.json', 'normalized-review.json'})
 rows = [r for r in result['result'][0]['results'] if r['logical_name'] in wanted]
 env = os.environ.copy()

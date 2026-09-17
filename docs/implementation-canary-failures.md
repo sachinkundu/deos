@@ -1057,3 +1057,12 @@ Progress notification timeout remains3seconds with transient retries1–30second
 Validation: full suite601tests,600pass,1skip; typecheck and whitespace checks pass. Local HTTP disconnect/dedup/status/restart tests and real child-process failure/dependency/cancellation tests pass. These are regression checks, not a new provider-originated canary. Deployment activation is recorded separately after rollout.
 
 Repairs activated: Worker `8027527b-c89b-4cbd-8c57-dc98793964e6` at100percent, all four container pools on `b14f001b65b1c6f82033d3f89fc8f01ba3fb30bccb05f470dfe37f70ac78e83f`, four healthy instances each, completed rollouts with no health errors. Final source9262871 includes hosted-only proof path traversal. No active attempts were interrupted. [Activation receipt](evidence/sac-172/expense-canary/operation-repairs-activation.json); [validation and proposed next canary](evidence/sac-172/expense-canary/operation-repairs.md).
+
+### SAC-246 STORE-07: deletion retry unavailable in design
+
+The supervisor found that PR44 disabled all actions for incomplete deletion,
+contradicting its API retry recovery. Removing the saved index row could also
+hide the ID across refresh. Sent precise feedback through Linear and requested
+a cloud-authored design revision; D1 confirmed the consumed decision and new
+author attempt16:08UTC. No sample implementation code was edited locally.
+Details and pending verification: storage-canary/failures.md STORE-07.

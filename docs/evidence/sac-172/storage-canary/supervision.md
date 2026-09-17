@@ -241,3 +241,22 @@ loop reached its allowed stop after three reviews and the final author revision;
 this is not an extra clean semantic pass. Inspect independent review/response
 and final PR44 design before its gate. PR44 initial head
 01bd2fd792420128a4eb4b344bd233fa554db67e is not yet approved.
+
+## 2026-09-17 16:07 UTC — Design revision requested
+
+Reviewed full PR44 head beca148afbbd4fbdfbaa99dbbe2acad23bf37ae5 and the
+hash-verified independent review/response. All six independent concerns have
+applied dispositions. Response transcript:78,888bytes,9completed commands,
+zero nonzero exits and zero provider error events. Trusted completion passed.
+The supervisor found STORE-07: failed deletion can become permanently disabled
+or disappear from the retry UI after refresh. Concrete feedback was saved and
+sent through Linear; the authorized revision transition was requested. This is
+a review intervention, not an application code edit. See design-response-audit.json
+and design-revision-feedback.md. User notified once of the defect; retain
+error-only communication and do not send routine progress or completion notices.
+
+D1 at16:08:17UTC confirms revision decision delivery
+173f42b2-575d-4bb4-a971-69662f21ef6a consumed at16:07:57.752. The same frozen
+v41 run is active at design_revision_author visit22, attempt
+01a0b01f-ffa9-7429-9728-26761f261760 started16:08:02.341. No new workflow
+errors appeared in this observation. Design PR44 remains unmerged.
