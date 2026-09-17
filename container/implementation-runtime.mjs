@@ -472,6 +472,9 @@ export async function setupImplementation(job) {
     if (result.imageBase64) {
       const imagePath = `${ROOT}/browser-${result.proof.sha256}.png`;
       await writeFile(imagePath, Buffer.from(result.imageBase64, "base64"), { mode: 0o644 });
+      // Exact public proof paths must also work before a local preview exists.
+      // Traversal permits known files; listing and private files remain protected.
+      await chmod(ROOT, 0o711);
       delete result.imageBase64;
       result.imagePath = imagePath;
       state.imagePaths ??= {};
