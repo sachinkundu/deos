@@ -11,6 +11,8 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 | READ-03 | 10:06–10:09, design independent response, item_4 | AGENTS.md inventory returned exit1 with no output | No matching guide in the disposable repository; same cause as READ-01 | Author continued, confirmed no guide was present, and read the native OpenSpec instructions. No supervisor intervention. | [Captured response transcript](design-response-observation.json) |
 | READ-04 | 10:06–10:09, design independent response, items5–6 | `command -v opsx` and a search for `opsx:continue` both returned exit1 | The author probed for an absent executable/slash-command instruction; two failed discovery commands, one missing-tool assumption | Author used the available `openspec` CLI and continued the revision. No runtime change or retry required. | [Captured response transcript](design-response-observation.json) |
 | READ-05 | 10:17–10:22, task generation, item10 | Repository search for `opsx`, OpenSpec and task guidance returned exit1 with no output | No matching additional guidance outside the supplied change | Author continued using provided instructions and completed23tasks. Two trusted checks used stable operation IDs and returned completed/exit0. No supervisor intervention. | [Verified task transcript](task-generation-audit.json) |
+| READ-06 | 10:27:39.565, implementation build progress watcher | `DOMException [TimeoutError]: The operation was aborted due to timeout` from notify in implementation-progress-watcher.mjs | Transient progress HTTP notification exceeded its3-second timeout; underlying network cause unknown | Run continued; D1 task progress was recorded10:28:05.528 and live heartbeat continued10:31:13.810. Existing bounded recovery in use; no restart or deployment. Retain the original error, and do not infer from later progress alone which retry delivered it. | [Original error and live capture](build-start-errors.json) |
+| READ-07 | 10:29, implementation build, item10 | `Unknown operation: env-versions-1`, exit1, full original stack retained | The author queried the operation before its other shell sequence finished document fetches and submitted that check | It submitted a new env-versions-2 check, which completed; the original env-versions-1 then also submitted and completed. One duplicated version probe, not a duplicated demo. No supervisor intervention. Status was responsive and distinguished unknown from running/completed. | [Ordered command and receipt evidence](build-start-errors.json) |
 
 ## Normal actions
 
@@ -31,6 +33,7 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 ## External context
 
 - At about10:24UTC Sachin reported that the staging portal was broken by his own changes. Current D1 showed task generation complete and demo planning active, with no workflow errors. No canary impact is established; supervise through D1 and cloud artifacts. Do not classify this as a canary failure or repair the portal without a separate request. Reassess if backend/shared configuration changes affect the run.
+- Before10:31UTC Sachin reported staging was back. No canary interruption was observed during the portal incident.
 
 ## Planning quality findings
 

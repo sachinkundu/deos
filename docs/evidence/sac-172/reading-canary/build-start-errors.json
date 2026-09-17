@@ -1,0 +1,108 @@
+{
+  "observedAt": "2026-09-17T10:31:38.322Z",
+  "privateSource": "/tmp/sac245-reader/2026-09-17T10-31-38.322Z.json",
+  "attempt": {
+    "attempt_id": "01a0aee7-838e-7960-861e-c77dce71a2e2",
+    "sandbox_id": "impl-v1-2lchd6unm6kkrnls4upt6yeg75qixm2tazj5yx4pvvmu2qekvgva",
+    "sandbox_tier": "basic",
+    "process_id": "61a119f1-8144-4bb9-90d9-60a478499226",
+    "state": "running",
+    "node_id": "implementation_build",
+    "heartbeat_at": "2026-09-17T10:27:43.766Z"
+  },
+  "originalErrors": [
+    {
+      "location": "implementation progress signal",
+      "message": "The operation was aborted due to timeout",
+      "detail": "DOMException [TimeoutError]: The operation was aborted due to timeout\n    at node:internal/deps/undici/undici:15157:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async notify (file:///deos/run/implementation-progress-watcher.mjs:27:22)",
+      "occurredAt": "2026-09-17T10:27:39.565Z"
+    }
+  ],
+  "events": [
+    {
+      "line": 17,
+      "event": {
+        "type": "item.started",
+        "item": {
+          "id": "item_9",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'mkdir -p /deos/output/requests\ntee /deos/output/requests/doc-localstorage.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"document\\\",\\\"url\\\":\\\"https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage\\\"}\nJSON\ntee /deos/output/requests/doc-randomuuid.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"document\\\",\\\"url\\\":\\\"https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID\\\"}\nJSON\ntee /deos/output/requests/doc-vite-build.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"document\\\",\\\"url\\\":\\\"https://vite.dev/guide/build\\\"}\nJSON\ntee /deos/output/requests/doc-vitest-environment.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"document\\\",\\\"url\\\":\\\"https://vitest.dev/config/environment\\\"}\nJSON\ntee /deos/output/requests/env-versions.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"requestId\\\":\\\"env-versions-1\\\",\\\"argv\\\":[\\\"bash\\\",\\\"-lc\\\",\\\"node --version && npm --version\\\"]}\nJSON\ndeos-implementation /deos/output/requests/doc-localstorage.json\ndeos-implementation /deos/output/requests/doc-randomuuid.json\ndeos-implementation /deos/output/requests/doc-vite-build.json\ndeos-implementation /deos/output/requests/doc-vitest-environment.json\ndeos-implementation --wait /deos/output/requests/env-versions.json'\"",
+          "aggregated_output": "",
+          "exit_code": null,
+          "status": "in_progress"
+        }
+      }
+    },
+    {
+      "line": 18,
+      "event": {
+        "type": "item.started",
+        "item": {
+          "id": "item_10",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/env-versions-status.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"operation\\\",\\\"requestId\\\":\\\"env-versions-1\\\"}\nJSON\ndeos-implementation /deos/output/requests/env-versions-status.json'\"",
+          "aggregated_output": "",
+          "exit_code": null,
+          "status": "in_progress"
+        }
+      }
+    },
+    {
+      "line": 19,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_10",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/env-versions-status.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"operation\\\",\\\"requestId\\\":\\\"env-versions-1\\\"}\nJSON\ndeos-implementation /deos/output/requests/env-versions-status.json'\"",
+          "aggregated_output": "{\"message\":\"Unknown operation: env-versions-1\",\"stack\":\"Error: Unknown operation: env-versions-1\\n    at ImplementationOperations.status (file:///deos/bin/implementation-operations.mjs:45:23)\\n    at dispatch (file:///deos/bin/implementation-runtime.mjs:554:69)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\",\"detail\":\"Error: Unknown operation: env-versions-1\\n    at ImplementationOperations.status (file:///deos/bin/implementation-operations.mjs:45:23)\\n    at dispatch (file:///deos/bin/implementation-runtime.mjs:554:69)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\"}\n",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    },
+    {
+      "line": 20,
+      "event": {
+        "type": "item.started",
+        "item": {
+          "id": "item_11",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/env-versions-2.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"requestId\\\":\\\"env-versions-2\\\",\\\"argv\\\":[\\\"bash\\\",\\\"-lc\\\",\\\"node --version && npm --version\\\"]}\nJSON\ndeos-implementation --wait /deos/output/requests/env-versions-2.json'\"",
+          "aggregated_output": "",
+          "exit_code": null,
+          "status": "in_progress"
+        }
+      }
+    },
+    {
+      "line": 21,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_11",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'tee /deos/output/requests/env-versions-2.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"requestId\\\":\\\"env-versions-2\\\",\\\"argv\\\":[\\\"bash\\\",\\\"-lc\\\",\\\"node --version && npm --version\\\"]}\nJSON\ndeos-implementation --wait /deos/output/requests/env-versions-2.json'\"",
+          "aggregated_output": "{\"requestId\":\"env-versions-2\",\"state\":\"queued\",\"retrieve\":{\"action\":\"operation\",\"requestId\":\"env-versions-2\"}}\n{\"requestId\":\"env-versions-2\",\"action\":\"check\",\"fingerprint\":\"3248f14e7bd323f4cc4a73f99fc8e1e8eae02d77198bffba3818ccde4672cf22\",\"state\":\"completed\",\"createdAt\":\"2026-09-17T10:29:30.472Z\",\"lastActivityAt\":\"2026-09-17T10:29:31.765Z\",\"deadline\":\"2026-09-18T10:26:43.214Z\",\"startedAt\":\"2026-09-17T10:29:30.552Z\",\"commandDeadline\":\"2026-09-17T10:39:30.552Z\",\"progress\":{\"event\":\"command_output\",\"outputBytes\":16},\"result\":{\"command\":\"'bash' '-lc' 'node --version && npm --version'\",\"exitCode\":0,\"signal\":null,\"stdout\":\"v22.23.2\\n10.9.8\\n\",\"stderr\":\"\",\"cwd\":\"/deos/workspace/repository\"},\"finishedAt\":\"2026-09-17T10:29:31.765Z\",\"observedAt\":\"2026-09-17T10:29:32.577Z\",\"inactiveForMs\":812}\n",
+          "exit_code": 0,
+          "status": "completed"
+        }
+      }
+    },
+    {
+      "line": 22,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_9",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'mkdir -p /deos/output/requests\ntee /deos/output/requests/doc-localstorage.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"document\\\",\\\"url\\\":\\\"https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage\\\"}\nJSON\ntee /deos/output/requests/doc-randomuuid.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"document\\\",\\\"url\\\":\\\"https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID\\\"}\nJSON\ntee /deos/output/requests/doc-vite-build.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"document\\\",\\\"url\\\":\\\"https://vite.dev/guide/build\\\"}\nJSON\ntee /deos/output/requests/doc-vitest-environment.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"document\\\",\\\"url\\\":\\\"https://vitest.dev/config/environment\\\"}\nJSON\ntee /deos/output/requests/env-versions.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"requestId\\\":\\\"env-versions-1\\\",\\\"argv\\\":[\\\"bash\\\",\\\"-lc\\\",\\\"node --version && npm --version\\\"]}\nJSON\ndeos-implementation /deos/output/requests/doc-localstorage.json\ndeos-implementation /deos/output/requests/doc-randomuuid.json\ndeos-implementation /deos/output/requests/doc-vite-build.json\ndeos-implementation /deos/output/requests/doc-vitest-environment.json\ndeos-implementation --wait /deos/output/requests/env-versions.json'\"",
+          "exit_code": 0,
+          "status": "completed",
+          "aggregated_output_excerpt": "\\\"2026-03-23T08:21:24.000Z\\\" data-v-1206e81d></time></p></div></div><nav class=\\\"prev-next\\\" aria-labelledby=\\\"doc-footer-aria-label\\\" data-v-455907be><span class=\\\"visually-hidden\\\" id=\\\"doc-footer-aria-label\\\" data-v-455907be>Pager</span><div class=\\\"pager\\\" data-v-455907be><a class='VPLink link pager-link prev' data-v-455907be href='/config/injectcjsglobals'><!--[--><span class=\\\"desc\\\" data-v-455907be>Previous page</span><span class=\\\"title\\\" data-v-455907be>injectCjsGlobals</span><!--]--></a></div><div class=\\\"pager\\\" data-v-455907be><a class='VPLink link pager-link next' data-v-455907be href='/config/environmentoptions'><!--[--><span class=\\\"desc\\\" data-v-455907be>Next page</span><span class=\\\"title\\\" data-v-455907be>environmentOptions</span><!--]--></a></div></nav></footer><!--[--><!--]--></div></div></div><!--[--><!--]--></div></div></div><footer class=\\\"VPFooter has-sidebar\\\" data-v-6e95a5a2 data-v-6ebd6efa><div class=\\\"container\\\" data-v-6ebd6efa><!----><p class=\\\"copyright\\\" data-v-6ebd6efa>\u00a9 2026 VoidZero Inc. and Vitest contributors.</p></div></footer><!--[--><!--]--></div></div></div></div>\\n    \\n    \\n  </body>\\n</html>\",\"accessId\":\"93914658-879f-4170-9722-cce2c92f7aa9\"}\n{\"requestId\":\"env-versions-1\",\"state\":\"queued\",\"retrieve\":{\"action\":\"operation\",\"requestId\":\"env-versions-1\"}}\n{\"requestId\":\"env-versions-1\",\"action\":\"check\",\"fingerprint\":\"b8fd0d1e1b97629a147a2a9a459b55c127bbedd5257c14c831debaec417cf2f3\",\"state\":\"completed\",\"createdAt\":\"2026-09-17T10:29:34.360Z\",\"lastActivityAt\":\"2026-09-17T10:29:35.667Z\",\"deadline\":\"2026-09-18T10:26:43.214Z\",\"startedAt\":\"2026-09-17T10:29:34.365Z\",\"commandDeadline\":\"2026-09-17T10:39:34.366Z\",\"progress\":{\"event\":\"command_output\",\"outputBytes\":16},\"result\":{\"command\":\"'bash' '-lc' 'node --version && npm --version'\",\"exitCode\":0,\"signal\":null,\"stdout\":\"v22.23.2\\n10.9.8\\n\",\"stderr\":\"\",\"cwd\":\"/deos/workspace/repository\"},\"finishedAt\":\"2026-09-17T10:29:35.667Z\",\"observedAt\":\"2026-09-17T10:29:36.474Z\",\"inactiveForMs\":807}\n",
+          "full_output_retained_in_private_source": true
+        }
+      }
+    }
+  ]
+}
