@@ -385,3 +385,16 @@ at100percent, expected container digest and completed rollouts. Linear answer
 sent17:51:12; remote proof remains pending because the authoritative gate has
 not yet consumed its delivered wake. Built-in wake reconciliation is due18:00;
 record its result separately and do not claim the app resumed yet.
+
+STORE-14 recovery verified: original clarification reply consumed17:54:33,
+saved implementation resumed at26/32, genuine broker publication passed17:58:52,
+and migration plus real D1/R2/API readbacks passed. Exact receipts in
+resumed-publication-proof.json; gate evidence in clarification-resumed.json.
+This verifies the runner configuration repair, not yet browser/PR/cleanup gates.
+The earlier191second gate wake delay resolved without duplicate/operator replay
+before the next scheduled reconciliation; underlying cause remains unknown.
+
+Fresh-sandbox observation: a find command returned1 because generated build/dist
+were absent. Source/tasks were restored; cloud author installed and rebuilt, then
+published the identical bundle. Treat as expected missing generated outputs,
+not lost implementation or a new infrastructure incident.

@@ -537,3 +537,33 @@ Supervisor read-only diagnostics also used a nonexistent workflow_inbox table
 (HTTP400) and unexpanded source globs (zsh no matches); corrected to actual
 workflow_event_inbox and repository-wide search. No remote write occurred.
 These operator lookup mistakes are excluded from cloud failure counts.
+
+## 2026-09-17 18:01 UTC — Clarification consumed and real publication passes
+
+The original reply delivery was claimed17:54:32.185 and processed17:54:33.054,
+with eligible gate decision; new build01a0b081-92a0-79d2-9df4-8acfb32e703b
+is running atvisit43. No duplicate reply or operator wake replay was sent.
+The191second sent-to-claim delay resolved before18:00 scheduled reconciliation;
+its cause is unknown, and there is no evidence that the reconciler recovered it.
+clarification-resumed.json preserves the accepted answer and gate receipts.
+
+Saved source/tasks resumed at26/32. Fresh sandbox lacked generated build/dist,
+so one discovery command reported those missing directories (exit1); the author
+installed dependencies and rebuilt successfully. This expected fresh-checkout
+absence did not require recreating the implementation. Full live audit through
+18:00:16 has16completed commands, this one nonzero, no native provider errors.
+
+STORE-14 repair now has genuine broker-path proof: remote-resume-1 succeeded
+17:58:52.179 with the same bundle digest ecf89468… and new run-owned environment
+deos-tmp-fd06b452d4155750a21db179. OneD1 DB7dea7ba9-6982-4f94-ba4f-4b21475c2bff,
+oneR2 bucket, Worker version49c936aa-d181-424a-b99d-b6acb96618c6. Migration passed
+17:59:08.970; real D1 empty query, R2 empty list and API200 empty list passed.
+resumed-publication-proof.json retains full trusted operation receipts.
+
+D1 now27/32tasks; author is exercising deployed API fixtures before the ordered
+browser collection. No actual browser persistence or PR cleanup proof yet.
+Two environments remain owned by this run, including the earlier allocating
+one; final cleanup must delete both. No new deployment or app edit this cycle.
+Sampler71437 remains running until about18:07; check it before launching another.
+One supervisor audit snippet had a Python syntax typo before execution, corrected
+immediately; no remote effect and excluded from cloud error counts.
