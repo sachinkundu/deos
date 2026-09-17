@@ -207,3 +207,11 @@ self-review of candidate2. Full snapshot15-34-00.952 retained privately.16
 completed author commands, no nonzero exits or provider error events in the
 available transcript. D1 and local heartbeats are current. No open gate and no
 new workflow error; no intervention or user notification.
+
+15:40:31UTC: design candidate3 is now under native self-review. Candidate2
+review raised three further quality concerns: save replay, total unauthenticated
+storage growth, and title rendering. Cloud author revised the design and
+submitted the next candidate. Exact first two review results are saved in
+design-self-review-progress.json.21 completed commands, no nonzero exits or
+provider error events in the captured author transcript. No open gate or new
+runtime error; continue normal supervision without notification.

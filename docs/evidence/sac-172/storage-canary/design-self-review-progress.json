@@ -1,0 +1,209 @@
+{
+  "attemptId": "01a0afea-5256-732d-b2d8-f71a1b183de4",
+  "observedAt": "2026-09-17T15:40:31.649Z",
+  "reviewResults": [
+    {
+      "agentId": "01a0aff0-7340-7f62-a1e6-6c073bf8c0f5",
+      "result": {
+        "version": 1,
+        "inputSha256": "87fbc03d5a007604e2dec4182cb1ab74c83ffb71832c72644ddcceb1b967202f",
+        "phase": "self",
+        "outcome": "concerns",
+        "summary": "The design has five concrete gaps involving concurrent deletion, retry semantics, post-save UI consistency, unbounded public writes, and demonstration isolation.",
+        "findings": [
+          {
+            "id": "concurrent-delete-can-restore-orphan",
+            "severity": "high",
+            "category": "correctness",
+            "message": "Two concurrent deletes can both capture the same body. After one request successfully removes both stores, the other can observe that its D1 delete affected no row and restore the captured R2 body, leaving an orphan object after a successful delete. Compensation must be conditional on this request still owning the row/state it is compensating.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 81,
+                "endLine": 83
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 147,
+                "endLine": 147
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 48,
+                "endLine": 48
+              }
+            ]
+          },
+          {
+            "id": "delete-retry-state-is-contradictory",
+            "severity": "medium",
+            "category": "consistency",
+            "message": "If a delete succeeds but its response is lost, a retry receives 404. The general delete flow says every failure keeps the current state and reports that the snippet was not deleted, while the failure table says an absent row clears stale browser data. The design must define one idempotent replay outcome so the UI does not retain and misreport an already-deleted snippet.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 57,
+                "endLine": 57
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 83,
+                "endLine": 84
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 134,
+                "endLine": 134
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 138,
+                "endLine": 138
+              }
+            ]
+          },
+          {
+            "id": "saved-title-depends-on-fallible-refresh",
+            "severity": "medium",
+            "category": "completeness",
+            "message": "After storage returns 201, the browser relies on separate list and read requests to expose the new snippet, but no fallback uses the metadata already returned by POST. If either follow-up fails, the form may be cleared while the successfully saved title is absent, contrary to the requirement that it appear after save succeeds.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 55,
+                "endLine": 55
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 76,
+                "endLine": 76
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 9,
+                "endLine": 9
+              }
+            ]
+          },
+          {
+            "id": "public-writes-have-no-size-bound",
+            "severity": "medium",
+            "category": "security",
+            "message": "The unauthenticated temporary URL permits mutation, yet the design defines no title, body, or request-size limit and only says large bodies should be streaming-compatible where practical. An accidental or hostile oversized save can exhaust Worker memory or consume temporary storage; the API should define enforceable bounds and a clear rejection response.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 61,
+                "endLine": 61
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 146,
+                "endLine": 148
+              }
+            ]
+          },
+          {
+            "id": "scenario-context-isolation-weakened",
+            "severity": "low",
+            "category": "operability",
+            "message": "The runtime instructions require a fresh browser context and known data per demonstration scenario, while the migration plan requests fresh contexts only where considered required. The collection plan should preserve the per-scenario isolation requirement explicitly.",
+            "sourceRanges": [
+              {
+                "path": "context/runtime-capabilities.json",
+                "startLine": 29,
+                "endLine": 29
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 155,
+                "endLine": 155
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "agentId": "01a0affe-d28c-71f3-bcb6-5d19a3f76837",
+      "result": {
+        "version": 1,
+        "inputSha256": "f38f8f69929ee537083fe07fe21b5b6bfb556ce8eda30d2fe33c9da6db93d06f",
+        "phase": "self",
+        "outcome": "concerns",
+        "summary": "The design has three concrete concerns involving save replay behavior, unbounded unauthenticated storage growth, and unspecified safe rendering of titles.",
+        "findings": [
+          {
+            "id": "save-retry-can-create-duplicates",
+            "severity": "medium",
+            "category": "correctness",
+            "message": "A POST can commit both stores before its response is interrupted. Because each request receives a new server-generated ID and the browser is told to retry, replaying the preserved form creates a second snippet for one save intent. Define an idempotency key or reconciliation behavior for uncertain save results.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 64,
+                "endLine": 64
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 75,
+                "endLine": 79
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 146,
+                "endLine": 146
+              }
+            ]
+          },
+          {
+            "id": "unauthenticated-storage-growth-is-unbounded",
+            "severity": "medium",
+            "category": "security",
+            "message": "The stated mitigation bounds each POST but does not bound request frequency, total snippets, or aggregate stored bytes. Anyone with the temporary URL can therefore create unlimited D1 rows and R2 objects, and the unpaginated list response grows with them. Add a deployment-wide quota or equivalent write-abuse bound.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 55,
+                "endLine": 56
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 62,
+                "endLine": 62
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 154,
+                "endLine": 154
+              }
+            ]
+          },
+          {
+            "id": "title-rendering-safety-unspecified",
+            "severity": "medium",
+            "category": "security",
+            "message": "Titles are preserved exactly and inserted into the list, but only body rendering is required to use a text node. A title containing markup can become stored script or HTML injection if the implementation uses HTML insertion. Require titles, including titles interpolated into messages, to be rendered only through text-safe DOM APIs.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 64,
+                "endLine": 64
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 71,
+                "endLine": 71
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 79,
+                "endLine": 79
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
