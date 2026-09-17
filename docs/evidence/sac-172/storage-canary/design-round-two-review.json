@@ -1,0 +1,141 @@
+{
+  "attemptId": "01a0b024-e450-7fa5-8db1-a981f5a0f7d5",
+  "sha256": "debb7ef3c292b8cd053d52041680059e4ada35f3be81eae7a264a72923454c42",
+  "review": {
+    "version": 1,
+    "inputSha256": "923dcb0fc3e2df3cc2e151fa043ba2d6bb82e2d5da23b13b6f9f8ee41410a9aa",
+    "phase": "independent",
+    "outcome": "concerns",
+    "summary": "The revised design satisfies the approved requirements in substance: one desktop screen with no login, a same-origin Worker API for list/save/read/delete, D1 as the saved index with R2 bodies keyed from the index row, blank-field rejection with field-named messages and no storage writes, action-specific failure messages, plain-text rendering through text-safe DOM APIs, cloud-backed reload on every page load and in a fresh browser context, temporary-environment publishing within the declared adapter, and proof-before-cleanup with the pull request left unmerged. The human request for a recoverable delete is addressed: persisted deletePending is separated from the local in-flight set, the copied delete_title keeps the ID discoverable after the index row is gone, and \"Retry delete\" reuses the same idempotent DELETE route with a matching implementation test. Six bounded concerns remain, none of which blocks the approach. The largest is asymmetric recovery for save: the owner token is generated inside a single Worker request and never leaves it, so a request that dies between the D1 reservation and the R2 put strands that ID in creating forever while the browser's retry reuses the same tuple and receives 409 SAVE_IN_PROGRESS indefinitely, with no stated user path to a new attempt and no message mapping for save 409 codes. The delete fence also mandates a guard that requires the snippet row to exist, but only enumerates deleting/deleted for the zero-row branch, leaving the active-with-missing-row integrity case undefined. Smaller gaps: the Context paragraph still asserts that operation records are never part of the snippet list, the list's created_at source for a recovery item whose index row is absent is unspecified, an interrupted delete with no response can leave a stale local \"Deletion incomplete\" item without a mandated authoritative list reload, and the persistence demonstration assumes a second fresh browser context against unchanged cloud state inside one scenario, which the declared per-scenario capture model does not clearly provide. This is advice only and approves no human gate.",
+    "findings": [
+      {
+        "id": "context-contradicts-recovery-item-projection",
+        "severity": "low",
+        "category": "consistency",
+        "message": "The Context section still says the retained operation record 'only fences stale save retries and is never part of the snippet list', which predates the round-2 recovery behavior. The data model and delete flow now project a `deleting` operation's canonical ID and copied title into the list response, including when the saved index row is already absent, so an operation record can appear in the list. The statement is only true for `deleted` tombstones; as written the design's own summary contradicts its list contract.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 5,
+            "endLine": 5
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 99,
+            "endLine": 99
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 147,
+            "endLine": 147
+          }
+        ]
+      },
+      {
+        "id": "delete-transition-guard-missing-row-branch",
+        "severity": "medium",
+        "category": "correctness",
+        "message": "The delete claim statement is guarded on the operation being `active` AND its snippet row existing, but the zero-row branch is only defined as 'reloads the operation and follows `deleting` or `deleted`'. The design itself admits an anomaly where a snippet row can exist or be missing outside a matching active operation (save step 5 reports an integrity error rather than advancing state). If a reload after a zero-row result still observes `active` with no snippet row, the specified behavior is an undefined loop: the request can neither claim the transition nor follow another state, and no response code or message is assigned. Either drop the row-existence condition from the guard (capturing `delete_title` via COALESCE) or state the terminal response for `active` with an absent index row.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 90,
+            "endLine": 90
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 83,
+            "endLine": 83
+          }
+        ]
+      },
+      {
+        "id": "interrupted-delete-may-show-stale-recovery-item",
+        "severity": "low",
+        "category": "operability",
+        "message": "The deletePending state is described as server-persisted and authoritative, yet the interrupted-delete path lets the browser 'retain or reload' the ID as deletePending without requiring an authoritative list refresh. If a delete actually completed and only the `204` response was lost, the browser can keep showing that ID as a 'Deletion incomplete' recovery item with an enabled 'Retry delete' even though the server no longer lists it, contradicting the stated rule that the persisted flag drives the recovery label. The design should require a list reload (or treat an absent ID in the reloaded list as removed) whenever a delete ends without a definite response.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 93,
+            "endLine": 93
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 49,
+            "endLine": 49
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 194,
+            "endLine": 194
+          }
+        ]
+      },
+      {
+        "id": "persistence-proof-depends-on-unreset-second-context",
+        "severity": "low",
+        "category": "operability",
+        "message": "The demonstration plan requires, inside one scenario, saving two snippets, deleting one, and then opening a second fresh browser context 'against that unchanged cloud state before any reset'. The declared capability describes one ordered collection with a fresh browser context and known data per scenario and each observed result captured before the next scenario resets; it does not state that a single scenario may open a second context or that cloud data survives between contexts without reset. The design neither confirms this is supported nor gives a fallback (for example, capturing the fresh-context check as the next scenario without an intervening data reset), so the approved fresh-context proof could fail to be collectible as planned.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 213,
+            "endLine": 214
+          },
+          {
+            "path": "context/runtime-capabilities.json",
+            "startLine": 29,
+            "endLine": 29
+          }
+        ]
+      },
+      {
+        "id": "recovery-item-created-at-source-unspecified",
+        "severity": "low",
+        "category": "completeness",
+        "message": "The list returns `id`, `title`, `created_at`, and `deletePending` and is ordered by `created_at DESC, id DESC`, but only `title` has a stated fallback (`COALESCE(snippets.title, snippet_operations.delete_title)`). For a recovery item whose `snippets` row has already been removed, the source of `created_at` is not specified, and the only declared index covers `snippets (created_at DESC, id DESC)`, which cannot serve the merged operations/left-join ordering. The design asserts ordering 'remains stable' but does not say the projection must fall back to `snippet_operations.created_at`, leaving the stable ordering claim unproven for the exact case the recovery path exists to cover.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 57,
+            "endLine": 57
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 126,
+            "endLine": 127
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 147,
+            "endLine": 147
+          }
+        ]
+      },
+      {
+        "id": "save-stranded-in-creating-has-no-user-recovery",
+        "severity": "medium",
+        "category": "completeness",
+        "message": "Save recovery is asymmetric with the delete recovery the design just added. Only the request whose owner token created the reservation may write R2 (step 4), and that token is generated server-side inside one Worker request and never returned, so no later request can ever become the writer. If the request dies or its outcome is indeterminate between the reservation insert and the R2 put, the operation stays `creating` with no object (step 6). The browser's retry always reuses the same pending tuple (step 1), so every retry hits the `creating`-with-absent-object branch and returns `409 SAVE_IN_PROGRESS` permanently. The design states the non-goal of automatic recovery but never defines the user-visible path: when the browser may abandon the stranded ID and start an intentional save with a new ID, or what message the 409 save codes (SAVE_IN_PROGRESS, IDEMPOTENCY_CONFLICT, SHELF_LIMIT_REACHED, ACTIVITY_LIMIT_REACHED) map to. Under the approved 'Report failed actions' requirement this leaves a person able to be stuck unable to save that text at all, which is the same stranding the delete retry was added to remove.",
+        "sourceRanges": [
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 79,
+            "endLine": 85
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 22,
+            "endLine": 22
+          },
+          {
+            "path": "openspec/changes/sac-246/design.md",
+            "startLine": 183,
+            "endLine": 185
+          }
+        ]
+      }
+    ]
+  }
+}

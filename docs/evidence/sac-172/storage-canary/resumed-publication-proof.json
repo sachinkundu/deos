@@ -1,0 +1,279 @@
+{
+  "observedAt": "2026-09-17T18:00:16.560Z",
+  "attemptId": "01a0b081-92a0-79d2-9df4-8acfb32e703b",
+  "commandCount": 16,
+  "nonzeroCommands": [
+    {
+      "id": "item_11",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'python - <<'\\\\''PY'\\\\''\nimport json\nfrom pathlib import Path\np=Path('\\\\''/deos/output/requests/task-6.2-active.json'\\\\'')\np.write_text(json.dumps({'\\\\''action'\\\\'':'\\\\''task'\\\\'','\\\\''taskId'\\\\'':'\\\\''6.2'\\\\'','\\\\''state'\\\\'':'\\\\''active'\\\\''}, indent=2)+'\\\\''\\\\n'\\\\'')\nPY\ndeos-implementation /deos/output/requests/task-6.2-active.json\nfind build dist -maxdepth 2 -type f -print -exec wc -c {} \\\\;'\"",
+      "aggregated_output": "{\"changed\":false,\"taskId\":\"6.2\",\"state\":\"active\",\"text\":\"6.2 Publish the fixed build to the supported temporary Worker environment with exactly one D1 binding, one R2 binding, and built assets, apply the migration, and verify the API does not expose or route to production resources.\",\"completed\":26,\"total\":32,\"tasksSha\":\"f28c4c8d54b56045515b8977be9b34702bf3077f38101c33c24429fdab90c27f\",\"observedAt\":\"2026-09-17T17:56:28.295Z\"}\nfind: 'build': No such file or directory\nfind: 'dist': No such file or directory\n",
+      "exit_code": 1,
+      "status": "failed"
+    }
+  ],
+  "providerErrors": [],
+  "terminalOperations": [
+    {
+      "requestId": "install-resume-1",
+      "action": "check",
+      "fingerprint": "4ef8a59bf361b594ee0c2c681942fb4007c5a2148a248ab782015c17e85afb18",
+      "state": "completed",
+      "createdAt": "2026-09-17T17:56:43.811Z",
+      "lastActivityAt": "2026-09-17T17:58:21.188Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T17:56:43.885Z",
+      "commandDeadline": "2026-09-17T18:06:43.885Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 299
+      },
+      "result": {
+        "command": "'npm' 'ci' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "\nadded 90 packages in 2m\n\n19 packages are looking for funding\n  run `npm fund` for details\n",
+        "stderr": "npm notice\nnpm notice New major version of npm available! 10.9.8 -> 12.0.2\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2\nnpm notice To update run: npm install -g npm@12.0.2\nnpm notice\n",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-17T17:58:21.188Z",
+      "observedAt": "2026-09-17T17:58:21.190Z",
+      "inactiveForMs": 2
+    },
+    {
+      "requestId": "build-resume-1",
+      "action": "check",
+      "fingerprint": "7ed1cf52fe2f9444c192d9281fa2c43303d993bba3306d7ea72f8938cd2c1a2f",
+      "state": "completed",
+      "createdAt": "2026-09-17T17:58:21.799Z",
+      "lastActivityAt": "2026-09-17T17:58:25.200Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T17:58:21.801Z",
+      "commandDeadline": "2026-09-17T18:08:21.801Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 108
+      },
+      "result": {
+        "command": "'npm' 'run' 'build'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "\n> snippet-shelf-canary@1.0.0 build\n> node scripts/build.mjs\n\nBuilt build/worker.mjs and dist static assets\n",
+        "stderr": "",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-17T17:58:25.200Z",
+      "observedAt": "2026-09-17T17:58:26.010Z",
+      "inactiveForMs": 810
+    },
+    {
+      "requestId": "remote-resume-1",
+      "action": "publish_environment",
+      "fingerprint": "aa7eebd70c4ba1d3a0473af55bae6b916e6a868bf75b7b81eea9c8ee2edfe6ea",
+      "state": "completed",
+      "createdAt": "2026-09-17T17:58:36.407Z",
+      "lastActivityAt": "2026-09-17T17:58:52.179Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T17:58:36.485Z",
+      "result": {
+        "target": "remote",
+        "origin": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev",
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "subject": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "6b7bbbad6b994eec47a2145392d5d30a5a3a974c"
+        },
+        "config": {
+          "d1": [
+            "DB"
+          ],
+          "r2": [
+            "BODIES"
+          ]
+        },
+        "databaseId": "7dea7ba9-6982-4f94-ba4f-4b21475c2bff",
+        "bucket": "deos-tmp-fd06b452d4155750a21db179",
+        "bundleSha": "ecf89468ceabf6e4b518d15a1956dc42f71d90cfa001d74914f97423c402ba74",
+        "version": "49c936aa-d181-424a-b99d-b6acb96618c6",
+        "checkedAt": "2026-09-17T17:58:51.961Z",
+        "temporary": true
+      },
+      "finishedAt": "2026-09-17T17:58:52.179Z",
+      "observedAt": "2026-09-17T17:58:52.700Z",
+      "inactiveForMs": 521
+    },
+    {
+      "requestId": "migration-resume-1",
+      "action": "storage",
+      "fingerprint": "df0e2439a01d4bb94ba850d8fd42fd2dace0004755fb4848d9ee4034195a2205",
+      "state": "completed",
+      "createdAt": "2026-09-17T17:59:06.201Z",
+      "lastActivityAt": "2026-09-17T17:59:08.970Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T17:59:06.283Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "id": "0001_snippet_shelf",
+          "digest": "925a2aac4bd72f8838a78088ab276922c61f7b3b70f107e134153386f8137845",
+          "reused": false
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/82c646fe310ac6287a7890e3eb8446fe71ff5788851f5de8ae5024c4e0082874/environment-storage-evidence.json",
+          "sha256": "82c646fe310ac6287a7890e3eb8446fe71ff5788851f5de8ae5024c4e0082874",
+          "byteSize": 2603
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "6b7bbbad6b994eec47a2145392d5d30a5a3a974c",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:6b7bbbad6b994eec47a2145392d5d30a5a3a974c:showboat:ee01963416339cc363c2b3664ca05583b831c1f0258a6d04e88c9ba3dea51fe1",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/ee01963416339cc363c2b3664ca05583b831c1f0258a6d04e88c9ba3dea51fe1/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/6b7bbbad6b994eec47a2145392d5d30a5a3a974c/showboat.md",
+          "caption": "Real temporary Cloudflare environment: migrate",
+          "sha256": "ee01963416339cc363c2b3664ca05583b831c1f0258a6d04e88c9ba3dea51fe1",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T17:59:08.970Z",
+      "observedAt": "2026-09-17T17:59:09.314Z",
+      "inactiveForMs": 344
+    },
+    {
+      "requestId": "initial-d1-resume-1",
+      "action": "storage",
+      "fingerprint": "c28e905e724f87257aad96d51c317f0b144ca6454ce473948c9efd060d055ce2",
+      "state": "completed",
+      "createdAt": "2026-09-17T17:59:19.701Z",
+      "lastActivityAt": "2026-09-17T17:59:22.216Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T17:59:19.703Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "success": true,
+          "meta": {
+            "served_by": "v3-prod",
+            "served_by_region": "EEUR",
+            "served_by_colo": "VIE",
+            "served_by_primary": true,
+            "timings": {
+              "sql_duration_ms": 0.2334
+            },
+            "duration": 0.2334,
+            "changes": 0,
+            "last_row_id": 1,
+            "changed_db": false,
+            "size_after": 53248,
+            "rows_read": 1,
+            "rows_written": 0,
+            "total_attempts": 1
+          },
+          "results": []
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/a5241891d5457c18f82c66308edc68a20d5d745707bd9ae3fd18eb1f4efc5413/environment-storage-evidence.json",
+          "sha256": "a5241891d5457c18f82c66308edc68a20d5d745707bd9ae3fd18eb1f4efc5413",
+          "byteSize": 535
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "6b7bbbad6b994eec47a2145392d5d30a5a3a974c",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:6b7bbbad6b994eec47a2145392d5d30a5a3a974c:showboat:28e703e34bd9a15b3f51acd834bbbcf926f2649aea186d44d5fb4fdabaf4fdb5",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/28e703e34bd9a15b3f51acd834bbbcf926f2649aea186d44d5fb4fdabaf4fdb5/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/6b7bbbad6b994eec47a2145392d5d30a5a3a974c/showboat.md",
+          "caption": "Real temporary Cloudflare environment: query",
+          "sha256": "28e703e34bd9a15b3f51acd834bbbcf926f2649aea186d44d5fb4fdabaf4fdb5",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T17:59:22.216Z",
+      "observedAt": "2026-09-17T17:59:22.892Z",
+      "inactiveForMs": 676
+    },
+    {
+      "requestId": "initial-r2-resume-1",
+      "action": "storage",
+      "fingerprint": "4cb96be8a0a48656edabb0badc2eb328815872980bee67818baff1a494170991",
+      "state": "completed",
+      "createdAt": "2026-09-17T17:59:23.806Z",
+      "lastActivityAt": "2026-09-17T17:59:27.103Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T17:59:23.887Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "objects": [],
+          "truncated": false,
+          "cursor": null
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/5de8b70c05e1bf1fa585f8df3a7f4baed979eab61fcf10f0f205c16ac878f839/environment-storage-evidence.json",
+          "sha256": "5de8b70c05e1bf1fa585f8df3a7f4baed979eab61fcf10f0f205c16ac878f839",
+          "byteSize": 181
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "6b7bbbad6b994eec47a2145392d5d30a5a3a974c",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:6b7bbbad6b994eec47a2145392d5d30a5a3a974c:showboat:72727664c984f262393085e480bbf01db61b4cee2bfe52434a4b88fbad7e6a25",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/72727664c984f262393085e480bbf01db61b4cee2bfe52434a4b88fbad7e6a25/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/6b7bbbad6b994eec47a2145392d5d30a5a3a974c/showboat.md",
+          "caption": "Real temporary Cloudflare environment: objects",
+          "sha256": "72727664c984f262393085e480bbf01db61b4cee2bfe52434a4b88fbad7e6a25",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T17:59:27.103Z",
+      "observedAt": "2026-09-17T17:59:28.010Z",
+      "inactiveForMs": 907
+    },
+    {
+      "requestId": "initial-api-resume-1",
+      "action": "storage",
+      "fingerprint": "01d85537c6cc30ff991a2a71a2e8586464bab42f64ceb2014a53b127ec160e22",
+      "state": "completed",
+      "createdAt": "2026-09-17T17:59:28.492Z",
+      "lastActivityAt": "2026-09-17T17:59:30.833Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T17:59:28.493Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "status": 200,
+          "body": "{\"snippets\":[]}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f21df62dfd3376c20af5baa375520a91e90944837f6f4036f942ad09710b72ad/environment-request-evidence.json",
+          "sha256": "f21df62dfd3376c20af5baa375520a91e90944837f6f4036f942ad09710b72ad",
+          "byteSize": 214
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "6b7bbbad6b994eec47a2145392d5d30a5a3a974c",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:6b7bbbad6b994eec47a2145392d5d30a5a3a974c:showboat:f70a8adbd6270d1684ad0c8224e141a7e550c25e4647309dde5064e46b13eb4f",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f70a8adbd6270d1684ad0c8224e141a7e550c25e4647309dde5064e46b13eb4f/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/6b7bbbad6b994eec47a2145392d5d30a5a3a974c/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "f70a8adbd6270d1684ad0c8224e141a7e550c25e4647309dde5064e46b13eb4f",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T17:59:30.833Z",
+      "observedAt": "2026-09-17T17:59:31.616Z",
+      "inactiveForMs": 783
+    }
+  ]
+}

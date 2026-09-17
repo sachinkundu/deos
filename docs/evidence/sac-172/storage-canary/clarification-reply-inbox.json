@@ -1,0 +1,44 @@
+[
+  {
+    "results": [
+      {
+        "delivery_id": "b681b655-a213-48a7-a6f2-dea1d40b0ffe",
+        "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+        "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+        "event_kind": "Comment.create",
+        "actor_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+        "actor_type": "user",
+        "provider_time": "2026-09-17T17:51:12.875Z",
+        "from_state_id": null,
+        "from_state_name": null,
+        "to_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+        "to_state_name": "Human Review",
+        "payload_digest": "74660af6618047c65242ddede4f3fa1af847a8d440011b21883e67e3e50c896c",
+        "state": "sent",
+        "sent_at": "2026-09-17T17:51:20.988Z",
+        "claimed_at": null,
+        "processed_at": null,
+        "created_at": "2026-09-17T17:51:20.988Z",
+        "comment_id": "7f8a3536-301c-453f-8297-809e210dd5b0"
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "WEUR",
+      "served_by_colo": "AMS",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.3206
+      },
+      "duration": 0.3206,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 120082432,
+      "rows_read": 1,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]

@@ -1,0 +1,1744 @@
+{
+  "observedAt": "2026-09-17T18:36:55.746Z",
+  "attemptId": "01a0b097-22b7-79a0-ba91-ca5a94e5627c",
+  "completedCommandCount": 39,
+  "nonzeroCommands": [
+    {
+      "id": "item_9",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'find dist -maxdepth 3 -type f -printf '\\\\''%p %s bytes\\\\n'\\\\'' 2>/dev/null | sort\nls -ld node_modules 2>/dev/null || true\nnode --version\npython - <<'\\\\''PY'\\\\''\nimport json\nfrom pathlib import Path\np=Path('\\\\''/deos/output/requests/task-6.2-active.json'\\\\'')\np.write_text(json.dumps({'\\\\''action'\\\\'':'\\\\''task'\\\\'','\\\\''taskId'\\\\'':'\\\\''6.2'\\\\'','\\\\''state'\\\\'':'\\\\''active'\\\\''}, indent=2)+'\\\\''\\\\n'\\\\'')\nPY\ndeos-implementation /deos/output/requests/task-6.2-active.json'\"",
+      "aggregated_output": "v22.23.2\n{\"message\":\"Task update failed: file:///deos/bin/implementation-task.mjs:34\\n    throw new Error(`Task ${request.taskId} is completed; reopen it with state pending before marking active`);\\n          ^\\n\\nError: Task 6.2 is completed; reopen it with state pending before marking active\\n    at transitionTask (file:///deos/bin/implementation-task.mjs:34:11)\\n    at updateTask (file:///deos/bin/implementation-task.mjs:55:31)\\n    at async file:///deos/bin/implementation-task.mjs:66:39\\n\\nNode.js v22.23.2\\n\",\"stack\":\"Error: Task update failed: file:///deos/bin/implementation-task.mjs:34\\n    throw new Error(`Task ${request.taskId} is completed; reopen it with state pending before marking active`);\\n          ^\\n\\nError: Task 6.2 is completed; reopen it with state pending before marking active\\n    at transitionTask (file:///deos/bin/implementation-task.mjs:34:11)\\n    at updateTask (file:///deos/bin/implementation-task.mjs:55:31)\\n    at async file:///deos/bin/implementation-task.mjs:66:39\\n\\nNode.js v22.23.2\\n\\n    at execute (file:///deos/bin/implementation-runtime.mjs:591:59)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async file:///deos/bin/implementation-runtime.mjs:805:64\",\"detail\":\"Error: Task update failed: file:///deos/bin/implementation-task.mjs:34\\n    throw new Error(`Task ${request.taskId} is completed; reopen it with state pending before marking active`);\\n          ^\\n\\nError: Task 6.2 is completed; reopen it with state pending before marking active\\n    at transitionTask (file:///deos/bin/implementation-task.mjs:34:11)\\n    at updateTask (file:///deos/bin/implementation-task.mjs:55:31)\\n    at async file:///deos/bin/implementation-task.mjs:66:39\\n\\nNode.js v22.23.2\\n\\n    at execute (file:///deos/bin/implementation-runtime.mjs:591:59)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async file:///deos/bin/implementation-runtime.mjs:805:64 {\\n  result: {\\n    command: \\\"'runuser' '-u' 'deos-author' '--' 'node' '/deos/bin/implementation-task.mjs' '/deos/workspace/repository' 'sac-246' '/deos/implementation/task-request.json'\\\",\\n    exitCode: 1,\\n    signal: null,\\n    stdout: '',\\n    stderr: 'file:///deos/bin/implementation-task.mjs:34\\\\n' +\\n      '    throw new Error(`Task ${request.taskId} is completed; reopen it with state pending before marking active`);\\\\n' +\\n      '          ^\\\\n' +\\n      '\\\\n' +\\n      'Error: Task 6.2 is completed; reopen it with state pending before marking active\\\\n' +\\n      '    at transitionTask (file:///deos/bin/implementation-task.mjs:34:11)\\\\n' +\\n      '    at updateTask (file:///deos/bin/implementation-task.mjs:55:31)\\\\n' +\\n      '    at async file:///deos/bin/implementation-task.mjs:66:39\\\\n' +\\n      '\\\\n' +\\n      'Node.js v22.23.2\\\\n'\\n  }\\n}\",\"result\":{\"command\":\"'runuser' '-u' 'deos-author' '--' 'node' '/deos/bin/implementation-task.mjs' '/deos/workspace/repository' 'sac-246' '/deos/implementation/task-request.json'\",\"exitCode\":1,\"signal\":null,\"stdout\":\"\",\"stderr\":\"file:///deos/bin/implementation-task.mjs:34\\n    throw new Error(`Task ${request.taskId} is completed; reopen it with state pending before marking active`);\\n          ^\\n\\nError: Task 6.2 is completed; reopen it with state pending before marking active\\n    at transitionTask (file:///deos/bin/implementation-task.mjs:34:11)\\n    at updateTask (file:///deos/bin/implementation-task.mjs:55:31)\\n    at async file:///deos/bin/implementation-task.mjs:66:39\\n\\nNode.js v22.23.2\\n\"}}\n",
+      "exit_code": 1,
+      "status": "failed"
+    },
+    {
+      "id": "item_11",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'python - <<'\\\\''PY'\\\\''\nimport json\nfrom pathlib import Path\nPath('\\\\''/deos/output/requests/op-install-resume.json'\\\\'').write_text(json.dumps({'\\\\''action'\\\\'':'\\\\''operation'\\\\'','\\\\''requestId'\\\\'':'\\\\''install-resume-1'\\\\''},indent=2)+'\\\\''\\\\n'\\\\'')\nPY\ndeos-implementation /deos/output/requests/op-install-resume.json'\"",
+      "aggregated_output": "{\"requestId\":\"install-resume-1\",\"action\":\"check\",\"fingerprint\":\"4ef8a59bf361b594ee0c2c681942fb4007c5a2148a248ab782015c17e85afb18\",\"state\":\"running\",\"createdAt\":\"2026-09-17T18:21:57.094Z\",\"lastActivityAt\":\"2026-09-17T18:21:57.096Z\",\"deadline\":\"2026-09-18T18:18:09.975Z\",\"startedAt\":\"2026-09-17T18:21:57.096Z\",\"commandDeadline\":\"2026-09-17T18:31:57.097Z\",\"observedAt\":\"2026-09-17T18:22:08.780Z\",\"inactiveForMs\":11684}\n",
+      "exit_code": 75,
+      "status": "failed"
+    },
+    {
+      "id": "item_12",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/op-install-resume.json'\"",
+      "aggregated_output": "{\"requestId\":\"install-resume-1\",\"action\":\"check\",\"fingerprint\":\"4ef8a59bf361b594ee0c2c681942fb4007c5a2148a248ab782015c17e85afb18\",\"state\":\"running\",\"createdAt\":\"2026-09-17T18:21:57.094Z\",\"lastActivityAt\":\"2026-09-17T18:21:57.096Z\",\"deadline\":\"2026-09-18T18:18:09.975Z\",\"startedAt\":\"2026-09-17T18:21:57.096Z\",\"commandDeadline\":\"2026-09-17T18:31:57.097Z\",\"observedAt\":\"2026-09-17T18:22:17.796Z\",\"inactiveForMs\":20700}\n",
+      "exit_code": 75,
+      "status": "failed"
+    },
+    {
+      "id": "item_13",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'deos-implementation /deos/output/requests/op-install-resume.json'\"",
+      "aggregated_output": "{\"requestId\":\"install-resume-1\",\"action\":\"check\",\"fingerprint\":\"4ef8a59bf361b594ee0c2c681942fb4007c5a2148a248ab782015c17e85afb18\",\"state\":\"running\",\"createdAt\":\"2026-09-17T18:21:57.094Z\",\"lastActivityAt\":\"2026-09-17T18:21:57.096Z\",\"deadline\":\"2026-09-18T18:18:09.975Z\",\"startedAt\":\"2026-09-17T18:21:57.096Z\",\"commandDeadline\":\"2026-09-17T18:31:57.097Z\",\"observedAt\":\"2026-09-17T18:22:25.393Z\",\"inactiveForMs\":28297}\n",
+      "exit_code": 75,
+      "status": "failed"
+    },
+    {
+      "id": "item_26",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'python - <<'\\\\''PY'\\\\''\nimport json\nfrom pathlib import Path\n\ndef fill(selector,text): return {'\\\\''operation'\\\\'':'\\\\''fill'\\\\'','\\\\''selector'\\\\'':selector,'\\\\''text'\\\\'':text}\ndef click(selector): return {'\\\\''operation'\\\\'':'\\\\''click'\\\\'','\\\\''selector'\\\\'':selector}\ndef wait(selector): return {'\\\\''operation'\\\\'':'\\\\''wait'\\\\'','\\\\''selector'\\\\'':selector}\ndef shot(caption): return {'\\\\''operation'\\\\'':'\\\\''screenshot'\\\\'','\\\\''caption'\\\\'':caption}\ndef nav(url='\\\\''/'\\\\''): return {'\\\\''operation'\\\\'':'\\\\''navigate'\\\\'','\\\\''url'\\\\'':url}\n\nscenarios=[]\nscenarios.append({\n '\\\\''id'\\\\'':'\\\\''empty-cloud-shelf'\\\\'', '\\\\''url'\\\\'':'\\\\''/'\\\\'', '\\\\''target'\\\\'':'\\\\''remote'\\\\'', '\\\\''viewport'\\\\'':{'\\\\''width'\\\\'':1440,'\\\\''height'\\\\'':900},\n '\\\\''steps'\\\\'':[\n   wait('\\\\''.empty-card'\\\\''),\n   shot('\\\\''The newly migrated remote shelf opens empty on one desktop screen, with no login and the D1 + R2 cloud badge visible.'\\\\'')\n ]\n})\nscenarios.append({\n '\\\\''id'\\\\'':'\\\\''save-read-refresh-delete'\\\\'', '\\\\''url'\\\\'':'\\\\''/'\\\\'', '\\\\''target'\\\\'':'\\\\''remote'\\\\'', '\\\\''viewport'\\\\'':{'\\\\''width'\\\\'':1440,'\\\\''height'\\\\'':900},\n '\\\\''steps'\\\\'':[\n   wait('\\\\''.empty-card'\\\\''),\n   fill('\\\\''#title'\\\\'','\\\\''Greeting'\\\\''), fill('\\\\''#text'\\\\'','\\\\''Hello, team\"'!'\"'\\\\''), click('\\\\''#save-button'\\\\''), wait('\\\\''[data-title=\\\"Greeting\\\"]'\\\\''),\n   fill('\\\\''#title'\\\\'','\\\\''Sign-off'\\\\''), fill('\\\\''#text'\\\\'','\\\\''Kind regards'\\\\''), click('\\\\''#save-button'\\\\''), wait('\\\\''[data-title=\\\"Sign-off\\\"]'\\\\''),\n   click('\\\\''[data-title=\\\"Sign-off\\\"] .snippet-title'\\\\''), wait('\\\\''#reader[data-reader-state=\\\"ready\\\"]'\\\\''),\n   shot('\\\\''Two cloud-backed snippets are listed, and selecting Sign-off shows its own Kind regards body.'\\\\''),\n   nav('\\\\''/'\\\\''), wait('\\\\''[data-title=\\\"Sign-off\\\"]'\\\\''), click('\\\\''[data-title=\\\"Sign-off\\\"] .snippet-title'\\\\''), wait('\\\\''#reader[data-reader-state=\\\"ready\\\"]'\\\\''),\n   shot('\\\\''After a page reload, both saved titles return and Sign-off opens again from cloud storage.'\\\\''),\n   click('\\\\''[data-title=\\\"Sign-off\\\"] .delete-button'\\\\''), wait('\\\\''#status[data-status=\\\"success\\\"]'\\\\''),\n   click('\\\\''[data-title=\\\"Greeting\\\"] .snippet-title'\\\\''), wait('\\\\''#reader[data-reader-state=\\\"ready\\\"]'\\\\''),\n   shot('\\\\''After deleting Sign-off, Greeting remains listed and readable with Hello, team\"'!.'\"'\\\\'')\n ]\n})\nscenarios.append({\n '\\\\''id'\\\\'':'\\\\''fresh-browser-continuity'\\\\'', '\\\\''url'\\\\'':'\\\\''/'\\\\'', '\\\\''target'\\\\'':'\\\\''remote'\\\\'', '\\\\''viewport'\\\\'':{'\\\\''width'\\\\'':1440,'\\\\''height'\\\\'':900},\n '\\\\''steps'\\\\'':[\n   wait('\\\\''[data-title=\\\"Greeting\\\"]'\\\\''),\n   shot('\\\\''A fresh browser context rebuilds the unchanged cloud shelf with Greeting listed, Sign-off absent, and no reader selection carried over.'\\\\''),\n   click('\\\\''[data-title=\\\"Greeting\\\"] .snippet-title'\\\\''), wait('\\\\''#reader[data-reader-state=\\\"ready\\\"]'\\\\''),\n   shot('\\\\''Selecting Greeting in the fresh context reads Hello, team\"'! from the remote shelf.'\"'\\\\'')\n ]\n})\nscenarios.append({\n '\\\\''id'\\\\'':'\\\\''both-validation-errors'\\\\'', '\\\\''url'\\\\'':'\\\\''/'\\\\'', '\\\\''target'\\\\'':'\\\\''remote'\\\\'', '\\\\''viewport'\\\\'':{'\\\\''width'\\\\'':1440,'\\\\''height'\\\\'':900},\n '\\\\''steps'\\\\'':[\n   wait('\\\\''[data-title=\\\"Greeting\\\"]'\\\\''),\n   fill('\\\\''#text'\\\\'','\\\\''Hello'\\\\''), click('\\\\''#save-button'\\\\''), wait('\\\\''#status[data-status=\\\"error\\\"]'\\\\''),\n   shot('\\\\''Submitting text without a title shows the title-required error and leaves Greeting as the only saved snippet.'\\\\''),\n   fill('\\\\''#title'\\\\'','\\\\''Empty note'\\\\''), fill('\\\\''#text'\\\\'','\\\\''   '\\\\''), click('\\\\''#save-button'\\\\''),\n   shot('\\\\''Submitting Empty note with spaces-only text shows the text-required error and leaves the cloud shelf unchanged.'\\\\'')\n ]\n})\nscenarios.append({\n '\\\\''id'\\\\'':'\\\\''plain-text-markup'\\\\'', '\\\\''url'\\\\'':'\\\\''/'\\\\'', '\\\\''target'\\\\'':'\\\\''remote'\\\\'', '\\\\''viewport'\\\\'':{'\\\\''width'\\\\'':1440,'\\\\''height'\\\\'':900},\n '\\\\''steps'\\\\'':[\n   wait('\\\\''[data-title=\\\"Greeting\\\"]'\\\\''),\n   fill('\\\\''#title'\\\\'','\\\\''Markup sample'\\\\''), fill('\\\\''#text'\\\\'','\\\\''<b>Hello</b>'\\\\''), click('\\\\''#save-button'\\\\''), wait('\\\\''[data-title=\\\"Markup sample\\\"]'\\\\''),\n   click('\\\\''[data-title=\\\"Markup sample\\\"] .snippet-title'\\\\''), wait('\\\\''#reader[data-reader-state=\\\"ready\\\"]'\\\\''),\n   shot('\\\\''Markup-looking content is displayed literally as <b>Hello</b> in the plain-text reader.'\\\\'')\n ]\n})\ncapacity_steps=[wait('\\\\''[data-title=\\\"Markup sample\\\"]'\\\\'')]\n# Greeting and Markup sample reserve 24 bytes. These 16 saves reach the exact 1,048,576-byte approved ceiling.\nfor i in range(1,17):\n    title=f'\\\\''Capacity {i:02d}'\\\\''\n    body='\\\\''x'\\\\''*(65512 if i==1 else 65536)\n    capacity_steps += [fill('\\\\''#title'\\\\'',title), fill('\\\\''#text'\\\\'',body), click('\\\\''#save-button'\\\\''), wait(f'\\\\''[data-title=\\\"{title}\\\"]'\\\\'')]\ncapacity_steps += [\n fill('\\\\''#title'\\\\'','\\\\''Overflow'\\\\''), fill('\\\\''#text'\\\\'','\\\\''Cannot fit'\\\\''), click('\\\\''#save-button'\\\\''), wait('\\\\''#save-recovery:not([hidden])'\\\\''),\n shot('\\\\''A real remote save beyond the approved capacity is rejected with a clear no-capacity message, the form preserved, and no success state.'\\\\''),\n click('\\\\''#start-new-save'\\\\'')\n]\nfor i in range(1,17):\n    title=f'\\\\''Capacity {i:02d}'\\\\''\n    capacity_steps += [click(f'\\\\''[data-title=\\\"{title}\\\"] .delete-button'\\\\''), wait('\\\\''#status[data-status=\\\"success\\\"]'\\\\'')]\nscenarios.append({\n '\\\\''id'\\\\'':'\\\\''real-failed-save-and-cleanup'\\\\'', '\\\\''url'\\\\'':'\\\\''/'\\\\'', '\\\\''target'\\\\'':'\\\\''remote'\\\\'', '\\\\''viewport'\\\\'':{'\\\\''width'\\\\'':1440,'\\\\''height'\\\\'':900},\n '\\\\''steps'\\\\'':capacity_steps\n})\nscenarios.append({\n '\\\\''id'\\\\'':'\\\\''final-cloud-state'\\\\'', '\\\\''url'\\\\'':'\\\\''/'\\\\'', '\\\\''target'\\\\'':'\\\\''remote'\\\\'', '\\\\''viewport'\\\\'':{'\\\\''width'\\\\'':1440,'\\\\''height'\\\\'':900},\n '\\\\''steps'\\\\'':[\n   wait('\\\\''[data-title=\\\"Greeting\\\"]'\\\\''), wait('\\\\''[data-title=\\\"Markup sample\\\"]'\\\\''),\n   shot('\\\\''After capacity-fixture cleanup, a new browser context shows only the two intended cloud snippets and an empty reader.'\\\\''),\n   click('\\\\''[data-title=\\\"Markup sample\\\"] .snippet-title'\\\\''), wait('\\\\''#reader[data-reader-state=\\\"ready\\\"]'\\\\''),\n   shot('\\\\''The final remote shelf opens Markup sample as literal plain text while Greeting remains listed.'\\\\'')\n ]\n})\nreq={'\\\\''action'\\\\'':'\\\\''demo'\\\\'','\\\\''requestId'\\\\'':'\\\\''final-demo-v2'\\\\'','\\\\''scenarios'\\\\'':scenarios}\nPath('\\\\''/deos/output/requests/final-demo-v2.json'\\\\'').write_text(json.dumps(req,ensure_ascii=False,indent=2)+'\\\\''\\\\n'\\\\'')\nprint('\\\\''saved'\\\\'',len(scenarios),'\\\\''scenarios'\\\\'',sum(len(s['\\\\''steps'\\\\'']) for s in scenarios),'\\\\''steps'\\\\'',Path('\\\\''/deos/output/requests/final-demo-v2.json'\\\\'').stat().st_size,'\\\\''bytes'\\\\'')\nPY\ndeos-implementation --wait /deos/output/requests/final-demo-v2.json'\"",
+      "aggregated_output": "saved 7 scenarios 155 steps 1067534 bytes\n{\"message\":\"Tool request exceeds 1048576 bytes\",\"stack\":\"Error: Tool request exceeds 1048576 bytes\\n    at dispatch (file:///deos/bin/implementation-runtime.mjs:549:19)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\",\"detail\":\"Error: Tool request exceeds 1048576 bytes\\n    at dispatch (file:///deos/bin/implementation-runtime.mjs:549:19)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\"}\n",
+      "exit_code": 1,
+      "status": "failed"
+    },
+    {
+      "id": "item_34",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'python - <<'\\\\''PY'\\\\''\nimport json\nfrom pathlib import Path\nPath('\\\\''/deos/output/requests/op-demo-v3.json'\\\\'').write_text(json.dumps({'\\\\''action'\\\\'':'\\\\''operation'\\\\'','\\\\''requestId'\\\\'':'\\\\''final-demo-v3'\\\\''},indent=2)+'\\\\''\\\\n'\\\\'')\nPY\ndeos-implementation /deos/output/requests/op-demo-v3.json'\"",
+      "aggregated_output": "{\"requestId\":\"final-demo-v3\",\"action\":\"demo\",\"fingerprint\":\"d4791c7c5fe43dc0a49369534c685e87bf781926a449ac2958e78809f8723fbf\",\"state\":\"running\",\"createdAt\":\"2026-09-17T18:28:14.675Z\",\"lastActivityAt\":\"2026-09-17T18:31:12.454Z\",\"deadline\":\"2026-09-18T18:18:09.975Z\",\"startedAt\":\"2026-09-17T18:28:14.676Z\",\"progress\":{\"event\":\"step_started\",\"collectionId\":\"63ceab04-730b-45ea-96f7-fc65559db589\",\"scenarioId\":\"plain-text-markup\",\"stepIndex\":1,\"step\":{\"operation\":\"fill\",\"selector\":\"#title\",\"text\":\"Markup sample\"}},\"observedAt\":\"2026-09-17T18:31:19.074Z\",\"inactiveForMs\":6620}\n",
+      "exit_code": 75,
+      "status": "failed"
+    }
+  ],
+  "providerErrors": [],
+  "messages": [
+    {
+      "id": "item_0",
+      "type": "agent_message",
+      "text": "{\"outcome\":\"completed\",\"summary\":\"I\u2019m using the deos-implementation skill because this change requires the assigned runtime, browser, and reviewer-proof workflow. I\u2019ll first read its full contract plus the checked OpenSpec inputs and saved work, then implement and validate within the attempt worktree.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+    },
+    {
+      "id": "item_3",
+      "type": "agent_message",
+      "text": "{\"outcome\":\"completed\",\"summary\":\"The attempt contains a substantial saved implementation and prior remote D1/R2 proof. The accepted human clarification says the temporary-environment routing issue is repaired and that the remote environment\u2014not the broken local relay\u2014is the required proof path. I\u2019m now auditing the saved code, task state, prior checks, and any Claude findings before deciding what must be changed or rerun.\",\"assumptions\":[\"The latest accepted clarification supersedes the earlier temporary-origin blocker.\"],\"providerReceipts\":[],\"question\":null}"
+    },
+    {
+      "id": "item_8",
+      "type": "agent_message",
+      "text": "{\"outcome\":\"completed\",\"summary\":\"Claude\u2019s review found no code defect or fabricated evidence; the gap is proof quality. I\u2019m addressing it by reprovisioning the repaired temporary Worker, capturing a visibly distinct fresh-context sequence, both validation cases, a real remote save failure, and raw D1/R2 correspondence. I will keep the existing implementation unless the new exercise exposes a defect.\",\"assumptions\":[\"A real capacity rejection is an appropriate deployed failed-save demonstration because it exercises the approved SHELF_LIMIT_REACHED mapping without fault injection.\"],\"providerReceipts\":[],\"question\":null}"
+    },
+    {
+      "id": "item_16",
+      "type": "agent_message",
+      "text": "{\"outcome\":\"completed\",\"summary\":\"The saved implementation has been restored, but the fresh sandbox needed dependencies. The checked `npm ci` is still active with no failure reported; I\u2019m waiting on that single operation rather than starting a competing install.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+    },
+    {
+      "id": "item_25",
+      "type": "agent_message",
+      "text": "{\"outcome\":\"completed\",\"summary\":\"The repaired temporary environment is live with exactly one D1 (`DB`) and one R2 (`BODIES`) binding. Migration succeeded; baseline reads show zero D1 rows, zero R2 objects, `GET /api/snippets` returns an empty list, and an unknown API route returns JSON 404 rather than the app shell. I\u2019m now running the single ordered remote browser collection required by the deos-implementation skill; the app and scenario file will remain fixed until it finishes.\",\"assumptions\":[],\"providerReceipts\":[\"temporary environment deos-tmp-873042d0a43055bc7dd07526\",\"migration 001-snippet-shelf\"],\"question\":null}"
+    },
+    {
+      "id": "item_32",
+      "type": "agent_message",
+      "text": "{\"outcome\":\"completed\",\"summary\":\"The final seven-scenario collection is still running normally against the fixed remote build. It includes the empty baseline, main save/read/refresh/delete flow, a visually distinct fresh-context first paint and selection, both field-validation errors, literal markup, a real D1 capacity rejection, and the final cloud state. I\u2019m continuing to wait on this same operation and will not modify the app or scenario mid-run.\",\"assumptions\":[],\"providerReceipts\":[],\"question\":null}"
+    },
+    {
+      "id": "item_38",
+      "type": "agent_message",
+      "text": "{\"outcome\":\"completed\",\"summary\":\"The ordered remote collection completed successfully, and I inspected every captured state. The fresh-context first paint is now visibly distinct (Greeting listed, empty reader, Sign-off absent); both validation messages are visible; the real capacity rejection preserves the Overflow form without a success state; and the final context contains only Greeting and Markup sample. I\u2019m now collecting raw D1/R2/API readbacks, then removing the labeled synthetic capacity reservations used solely to trigger the remote failure.\",\"assumptions\":[],\"providerReceipts\":[\"final demo collection 63ceab04-730b-45ea-96f7-fc65559db589\"],\"question\":null}"
+    }
+  ],
+  "stderr": [
+    {
+      "path": "/tmp/deos-stderr.txt-1mtExy/stderr.txt",
+      "content": "2026-09-17T18:35:05.573447Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: Edit repository and request files through the shell with Python, Node, cat or tee. Native patch tools and an apply_patch shell executable are not provided. Use native web search for research and deos-implementation for browser, commands and docs. Provider mutation tools and child agents are unavailable.. Command: *** Begin Patch\n*** Add File: /deos/workspace/repository/scripts/verify-remote-storage.mjs\n+import { readFileSync } from \"node:fs\";\n+import { basename } from \"node:path\";\n+import { spawnSync } from \"node:child_process\";\n+\n+const requestPaths = process.argv.slice(2);\n+\n+if (requestPaths.length === 0) {\n+  throw new Error(\"Pass one or more saved deos-implementation request files.\");\n+}\n+\n+function lastJsonLine(output) {\n+  const lines = output.trim().split(\"\\n\").reverse();\n+  for (const line of lines) {\n+    try {\n+      return JSON.parse(line);\n+    } catch {\n+      // Keep looking for the completed operation record.\n+    }\n+  }\n+  throw new Error(\"The trusted runtime returned no JSON operation record.\");\n+}\n+\n+for (const requestPath of requestPaths) {\n+  const request = JSON.parse(readFileSync(requestPath, \"utf8\"));\n+  const run = spawnSync(\"deos-implementation\", [\"--wait\", requestPath], {\n+    encoding: \"utf8\",\n+  });\n+\n+  if (run.status !== 0) {\n+    process.stderr.write(run.stdout);\n+    process.stderr.write(run.stderr);\n+    process.exit(run.status ?? 1);\n+  }\n+\n+  const operation = lastJsonLine(run.stdout);\n+  const providerResult = operation.result?.result ?? operation.result;\n+  const printable = { ...providerResult };\n+  if (typeof printable.contentBase64 === \"string\") {\n+    printable.contentUtf8 = Buffer.from(\n+      printable.contentBase64,\n+      \"base64\",\n+    ).toString(\"utf8\");\n+  }\n+\n+  console.log(`## ${basename(requestPath)}`);\n+  console.log(\n+    JSON.stringify(\n+      {\n+        request: {\n+          operation: request.operation,\n+          sql: request.sql,\n+          id: request.id,\n+          method: request.method,\n+          path: request.path,\n+          key: request.key,\n+        },\n+        environment: operation.result?.environment,\n+        result: printable,\n+      },\n+      null,\n+      2,\n+    ),\n+  );\n+}\n*** End Patch\n"
+    }
+  ],
+  "operations": [
+    {
+      "requestId": "install-resume-1",
+      "action": "check",
+      "fingerprint": "4ef8a59bf361b594ee0c2c681942fb4007c5a2148a248ab782015c17e85afb18",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:21:57.094Z",
+      "lastActivityAt": "2026-09-17T18:23:42.689Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:21:57.096Z",
+      "commandDeadline": "2026-09-17T18:31:57.097Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 299
+      },
+      "result": {
+        "command": "'npm' 'ci' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "\nadded 90 packages in 2m\n\n19 packages are looking for funding\n  run `npm fund` for details\n",
+        "stderr": "npm notice\nnpm notice New major version of npm available! 10.9.8 -> 12.0.2\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2\nnpm notice To update run: npm install -g npm@12.0.2\nnpm notice\n",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-17T18:23:42.689Z",
+      "observedAt": "2026-09-17T18:23:43.480Z",
+      "inactiveForMs": 791
+    },
+    {
+      "requestId": "build-resume-1",
+      "action": "check",
+      "fingerprint": "7ed1cf52fe2f9444c192d9281fa2c43303d993bba3306d7ea72f8938cd2c1a2f",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:23:50.086Z",
+      "lastActivityAt": "2026-09-17T18:23:52.900Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:23:50.088Z",
+      "commandDeadline": "2026-09-17T18:33:50.088Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 108
+      },
+      "result": {
+        "command": "'npm' 'run' 'build'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "\n> snippet-shelf-canary@1.0.0 build\n> node scripts/build.mjs\n\nBuilt build/worker.mjs and dist static assets\n",
+        "stderr": "",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-17T18:23:52.900Z",
+      "observedAt": "2026-09-17T18:23:53.281Z",
+      "inactiveForMs": 381
+    },
+    {
+      "requestId": "remote-proof-v2",
+      "action": "publish_environment",
+      "fingerprint": "7b3b20c03118889f2faf47e2104996305f89434c7c02b539a9347515f5d49dc5",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:24:00.574Z",
+      "lastActivityAt": "2026-09-17T18:24:25.933Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:24:00.576Z",
+      "result": {
+        "target": "remote",
+        "origin": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev",
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "subject": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "532dd7aa9bf92aae2e865c971801f57c1cedb8f8"
+        },
+        "config": {
+          "d1": [
+            "DB"
+          ],
+          "r2": [
+            "BODIES"
+          ]
+        },
+        "databaseId": "2e0f38d6-9ec4-481d-9674-0b68a5fae591",
+        "bucket": "deos-tmp-873042d0a43055bc7dd07526",
+        "bundleSha": "0e003a14ef7d8e9059d29f12d859edcbfb608147694e2c81c73a02eba66fce50",
+        "version": "800f614d-b68f-4a16-9815-0feadcb9044c",
+        "checkedAt": "2026-09-17T18:24:25.519Z",
+        "temporary": true
+      },
+      "finishedAt": "2026-09-17T18:24:25.933Z",
+      "observedAt": "2026-09-17T18:24:26.888Z",
+      "inactiveForMs": 955
+    },
+    {
+      "requestId": "schema-v2",
+      "action": "storage",
+      "fingerprint": "5dbfa4db3de7c4e7fbcbe6071ce874f739a353b188ad5c3bcfaaddaa4365711c",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:24:37.280Z",
+      "lastActivityAt": "2026-09-17T18:24:40.019Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:24:37.281Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "id": "001-snippet-shelf",
+          "digest": "925a2aac4bd72f8838a78088ab276922c61f7b3b70f107e134153386f8137845",
+          "reused": false
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/6d220ad04dd8e2af169f431f20ea50aaa39ef1179f7674bd3ac865e24c6ab27c/environment-storage-evidence.json",
+          "sha256": "6d220ad04dd8e2af169f431f20ea50aaa39ef1179f7674bd3ac865e24c6ab27c",
+          "byteSize": 2601
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "532dd7aa9bf92aae2e865c971801f57c1cedb8f8",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:532dd7aa9bf92aae2e865c971801f57c1cedb8f8:showboat:92618554d9204206802b36a24fc4436947e9e2f2208cb58f222021a524b41df9",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/92618554d9204206802b36a24fc4436947e9e2f2208cb58f222021a524b41df9/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/532dd7aa9bf92aae2e865c971801f57c1cedb8f8/showboat.md",
+          "caption": "Real temporary Cloudflare environment: migrate",
+          "sha256": "92618554d9204206802b36a24fc4436947e9e2f2208cb58f222021a524b41df9",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:24:40.019Z",
+      "observedAt": "2026-09-17T18:24:40.319Z",
+      "inactiveForMs": 300
+    },
+    {
+      "requestId": "baseline-d1-v2",
+      "action": "storage",
+      "fingerprint": "28a520dc28926fe621791d64944c8d10342d4a05c5a50eea921efbda5630d5b9",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:24:49.182Z",
+      "lastActivityAt": "2026-09-17T18:24:51.472Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:24:49.185Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "success": true,
+          "meta": {
+            "served_by": "v3-prod",
+            "served_by_region": "EEUR",
+            "served_by_colo": "ARN",
+            "served_by_primary": true,
+            "timings": {
+              "sql_duration_ms": 0.4034
+            },
+            "duration": 0.4034,
+            "changes": 0,
+            "last_row_id": 1,
+            "changed_db": false,
+            "size_after": 53248,
+            "rows_read": 1,
+            "rows_written": 0,
+            "total_attempts": 1
+          },
+          "results": []
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/1fc8811b6cd527b009fb9ca2f448801a63fc8df39f9ac9a3e34b7270399c7332/environment-storage-evidence.json",
+          "sha256": "1fc8811b6cd527b009fb9ca2f448801a63fc8df39f9ac9a3e34b7270399c7332",
+          "byteSize": 535
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "532dd7aa9bf92aae2e865c971801f57c1cedb8f8",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:532dd7aa9bf92aae2e865c971801f57c1cedb8f8:showboat:9549af0c3d898b016ddbf4005d18cf3e549872fa6155d83d65bda122a6231924",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/9549af0c3d898b016ddbf4005d18cf3e549872fa6155d83d65bda122a6231924/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/532dd7aa9bf92aae2e865c971801f57c1cedb8f8/showboat.md",
+          "caption": "Real temporary Cloudflare environment: query",
+          "sha256": "9549af0c3d898b016ddbf4005d18cf3e549872fa6155d83d65bda122a6231924",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:24:51.472Z",
+      "observedAt": "2026-09-17T18:24:52.292Z",
+      "inactiveForMs": 820
+    },
+    {
+      "requestId": "baseline-r2-v2",
+      "action": "storage",
+      "fingerprint": "4f487a2288a283264d5883583e2339b8d1e2afe19cf9b5e0a2f1263a0ef5ef9f",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:24:53.084Z",
+      "lastActivityAt": "2026-09-17T18:24:56.560Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:24:53.085Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "objects": [],
+          "truncated": false,
+          "cursor": null
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/7bd6260460e3aac0343f9b5817a8f8754c8bb56b9c38a23b955d822eeefb9d1b/environment-storage-evidence.json",
+          "sha256": "7bd6260460e3aac0343f9b5817a8f8754c8bb56b9c38a23b955d822eeefb9d1b",
+          "byteSize": 181
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "532dd7aa9bf92aae2e865c971801f57c1cedb8f8",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:532dd7aa9bf92aae2e865c971801f57c1cedb8f8:showboat:a8b5cbb10a13e335f42b6a2b9164d0744fdac73c5fcef91d56cf719f96e5a770",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/a8b5cbb10a13e335f42b6a2b9164d0744fdac73c5fcef91d56cf719f96e5a770/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/532dd7aa9bf92aae2e865c971801f57c1cedb8f8/showboat.md",
+          "caption": "Real temporary Cloudflare environment: objects",
+          "sha256": "a8b5cbb10a13e335f42b6a2b9164d0744fdac73c5fcef91d56cf719f96e5a770",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:24:56.560Z",
+      "observedAt": "2026-09-17T18:24:57.292Z",
+      "inactiveForMs": 732
+    },
+    {
+      "requestId": "baseline-api-v2",
+      "action": "storage",
+      "fingerprint": "85e7922b5b2b74c2900f7f09b1c71a4a50314a959a8f2a95c74ce4240a55115a",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:24:57.980Z",
+      "lastActivityAt": "2026-09-17T18:25:01.036Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:24:57.982Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "status": 200,
+          "body": "{\"snippets\":[]}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/45615a7923da700eb67742be6bf6cb04a4bc9811bea75c4f7ba059958f450afa/environment-request-evidence.json",
+          "sha256": "45615a7923da700eb67742be6bf6cb04a4bc9811bea75c4f7ba059958f450afa",
+          "byteSize": 214
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "532dd7aa9bf92aae2e865c971801f57c1cedb8f8",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:532dd7aa9bf92aae2e865c971801f57c1cedb8f8:showboat:fb3f31554346b852e44a4dca8c81123a3b9281f1137025e8922be3c4a021805c",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/fb3f31554346b852e44a4dca8c81123a3b9281f1137025e8922be3c4a021805c/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/532dd7aa9bf92aae2e865c971801f57c1cedb8f8/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "fb3f31554346b852e44a4dca8c81123a3b9281f1137025e8922be3c4a021805c",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:25:01.036Z",
+      "observedAt": "2026-09-17T18:25:01.105Z",
+      "inactiveForMs": 69
+    },
+    {
+      "requestId": "api-isolation-v2",
+      "action": "storage",
+      "fingerprint": "54ff3b81e65065ec5e95a5eecf76eda666c71d5e883679786d734aee5fcf8ddf",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:25:01.590Z",
+      "lastActivityAt": "2026-09-17T18:25:04.695Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:25:01.593Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "status": 404,
+          "body": "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"That API route does not exist.\"}}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/0cfab1e8c95f16f1a022d5c3f629833c63f66612e40e418012311257bd5212f3/environment-request-evidence.json",
+          "sha256": "0cfab1e8c95f16f1a022d5c3f629833c63f66612e40e418012311257bd5212f3",
+          "byteSize": 283
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "532dd7aa9bf92aae2e865c971801f57c1cedb8f8",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:532dd7aa9bf92aae2e865c971801f57c1cedb8f8:showboat:2be4be148a17bfe33a846da745b6e92adc3d09dca181c309afe4185416f58b1d",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/2be4be148a17bfe33a846da745b6e92adc3d09dca181c309afe4185416f58b1d/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/532dd7aa9bf92aae2e865c971801f57c1cedb8f8/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "2be4be148a17bfe33a846da745b6e92adc3d09dca181c309afe4185416f58b1d",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:25:04.695Z",
+      "observedAt": "2026-09-17T18:25:04.792Z",
+      "inactiveForMs": 97
+    },
+    {
+      "requestId": "capacity-fixture-v2",
+      "action": "storage",
+      "fingerprint": "4c54a4098c754338d315572d3d3a799b9639f351bde8331fc2af6d734744e9cf",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:27:38.583Z",
+      "lastActivityAt": "2026-09-17T18:27:42.784Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:27:38.585Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "id": "synthetic-capacity-fixture-v2",
+          "digest": "f374ee913b922a3a38e42a8fe2d642662b9faf317b28d89676c841998e205008",
+          "reused": false
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f3ceb92aef30fe0b97fb02d4ddb27f6b412bd99cefcea7a7ae465e508609899b/environment-storage-evidence.json",
+          "sha256": "f3ceb92aef30fe0b97fb02d4ddb27f6b412bd99cefcea7a7ae465e508609899b",
+          "byteSize": 7596
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:showboat:4c386d76f519197394da4e7a9871b0fa672516763df1741ab7e35fd1e7ff5451",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/4c386d76f519197394da4e7a9871b0fa672516763df1741ab7e35fd1e7ff5451/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/showboat.md",
+          "caption": "Real temporary Cloudflare environment: migrate",
+          "sha256": "4c386d76f519197394da4e7a9871b0fa672516763df1741ab7e35fd1e7ff5451",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:27:42.784Z",
+      "observedAt": "2026-09-17T18:27:43.705Z",
+      "inactiveForMs": 921
+    },
+    {
+      "requestId": "final-demo-v3",
+      "action": "demo",
+      "fingerprint": "d4791c7c5fe43dc0a49369534c685e87bf781926a449ac2958e78809f8723fbf",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:28:14.675Z",
+      "lastActivityAt": "2026-09-17T18:32:37.903Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:28:14.676Z",
+      "progress": {
+        "event": "demo_completed",
+        "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589"
+      },
+      "result": {
+        "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589",
+        "captures": [
+          {
+            "scenarioId": "empty-cloud-shelf",
+            "stepIndex": 1,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:c7154bab29f9f52a5c1ee21f446a87e65a3db9749860e76adef9569caeca0941:c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/c7154bab29f9f52a5c1ee21f446a87e65a3db9749860e76adef9569caeca0941/browser.png",
+              "caption": "The newly migrated remote shelf opens empty on one desktop screen, with no login and the D1 + R2 cloud badge visible.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 11,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:afeeb6f73881ccd327f449bc9c526a6d298af937304fe32c0c64870cdbad6cf9:0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/afeeb6f73881ccd327f449bc9c526a6d298af937304fe32c0c64870cdbad6cf9/browser.png",
+              "caption": "Two cloud-backed snippets are listed, and selecting Sign-off shows its own Kind regards body.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 16,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:08bb9606822029c6c0b7ac5336229032bc24b4baecdd713e2322b8aac57b7d26:0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/08bb9606822029c6c0b7ac5336229032bc24b4baecdd713e2322b8aac57b7d26/browser.png",
+              "caption": "After a page reload, both saved titles return and Sign-off opens again from cloud storage.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 21,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:451e625cc09547eba0086427703529ef017ddc1cdced37169017690119a74a9e:ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/451e625cc09547eba0086427703529ef017ddc1cdced37169017690119a74a9e/browser.png",
+              "caption": "After deleting Sign-off, Greeting remains listed and readable with Hello, team!.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281.png"
+          },
+          {
+            "scenarioId": "fresh-browser-continuity",
+            "stepIndex": 1,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:4ece03efb8d94a3561f9aeac1984c6c6c11956963c862cf21dcba17e03b7c197:e0bf2dd8a6c979dd00c6ccb2d72902eb30690d2668a65ea6733c49a30499dcea",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/e0bf2dd8a6c979dd00c6ccb2d72902eb30690d2668a65ea6733c49a30499dcea/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/4ece03efb8d94a3561f9aeac1984c6c6c11956963c862cf21dcba17e03b7c197/browser.png",
+              "caption": "A fresh browser context rebuilds the unchanged cloud shelf with Greeting listed, Sign-off absent, and no reader selection carried over.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "e0bf2dd8a6c979dd00c6ccb2d72902eb30690d2668a65ea6733c49a30499dcea",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-e0bf2dd8a6c979dd00c6ccb2d72902eb30690d2668a65ea6733c49a30499dcea.png"
+          },
+          {
+            "scenarioId": "fresh-browser-continuity",
+            "stepIndex": 4,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:15aaaae5e2ce2ced6143767dec70d15a4b98f685b7746995add7c7ede835bed1:ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/15aaaae5e2ce2ced6143767dec70d15a4b98f685b7746995add7c7ede835bed1/browser.png",
+              "caption": "Selecting Greeting in the fresh context reads Hello, team! from the remote shelf.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281.png"
+          },
+          {
+            "scenarioId": "both-validation-errors",
+            "stepIndex": 4,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:d214669053db64a51436fb3874b5102f1f1877ba7970eb84c6e130ae98ea25e7:21721392e4d9f8d758f5164ec7b553f20e25c83eef36723e9312b980127e71b9",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/21721392e4d9f8d758f5164ec7b553f20e25c83eef36723e9312b980127e71b9/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/d214669053db64a51436fb3874b5102f1f1877ba7970eb84c6e130ae98ea25e7/browser.png",
+              "caption": "Submitting text without a title shows the title-required error and leaves Greeting as the only saved snippet.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "21721392e4d9f8d758f5164ec7b553f20e25c83eef36723e9312b980127e71b9",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-21721392e4d9f8d758f5164ec7b553f20e25c83eef36723e9312b980127e71b9.png"
+          },
+          {
+            "scenarioId": "both-validation-errors",
+            "stepIndex": 8,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:9c09ad11aeab06d10d039f3aa3ea2cea6df5e1b5156754cca8306a5eaaf4c4e4:87d7190b16b84299c9860c8b5ff4e5202a8df4ac897b02608166f06e861d772f",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/87d7190b16b84299c9860c8b5ff4e5202a8df4ac897b02608166f06e861d772f/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/9c09ad11aeab06d10d039f3aa3ea2cea6df5e1b5156754cca8306a5eaaf4c4e4/browser.png",
+              "caption": "Submitting Empty note with spaces-only text shows the text-required error and leaves the cloud shelf unchanged.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "87d7190b16b84299c9860c8b5ff4e5202a8df4ac897b02608166f06e861d772f",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-87d7190b16b84299c9860c8b5ff4e5202a8df4ac897b02608166f06e861d772f.png"
+          },
+          {
+            "scenarioId": "plain-text-markup",
+            "stepIndex": 7,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:7a09ea42b15e4eba353fb730206fdcda68a681ae12c6a81c574c9f87e28c10ae:c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/7a09ea42b15e4eba353fb730206fdcda68a681ae12c6a81c574c9f87e28c10ae/browser.png",
+              "caption": "Markup-looking content is displayed literally as <b>Hello</b> in the plain-text reader.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe.png"
+          },
+          {
+            "scenarioId": "real-failed-save",
+            "stepIndex": 5,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:8b6600c65ffd93ba29ffdc8307593b1dcbf9b5ccbaf95ae15a257205f85a2da9:c11f4a8a8e8c99dba19a5f93a09e2016813ae800ff4344a87dd244df376fe8e1",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c11f4a8a8e8c99dba19a5f93a09e2016813ae800ff4344a87dd244df376fe8e1/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/8b6600c65ffd93ba29ffdc8307593b1dcbf9b5ccbaf95ae15a257205f85a2da9/browser.png",
+              "caption": "A real remote save beyond the approved capacity is rejected with a clear no-capacity message, the form preserved, and no success state.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "c11f4a8a8e8c99dba19a5f93a09e2016813ae800ff4344a87dd244df376fe8e1",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-c11f4a8a8e8c99dba19a5f93a09e2016813ae800ff4344a87dd244df376fe8e1.png"
+          },
+          {
+            "scenarioId": "final-cloud-state",
+            "stepIndex": 2,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:efaba27db09f12db74837602016192c18df22503551cbdb04604a0f14e27f7c8:20c1e865b42cd10bd33384514d132ed6854070f52b64df45d76bc0093abdc095",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/20c1e865b42cd10bd33384514d132ed6854070f52b64df45d76bc0093abdc095/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/efaba27db09f12db74837602016192c18df22503551cbdb04604a0f14e27f7c8/browser.png",
+              "caption": "A final new browser context shows only the two intended cloud snippets and an empty reader.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "20c1e865b42cd10bd33384514d132ed6854070f52b64df45d76bc0093abdc095",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-20c1e865b42cd10bd33384514d132ed6854070f52b64df45d76bc0093abdc095.png"
+          },
+          {
+            "scenarioId": "final-cloud-state",
+            "stepIndex": 5,
+            "url": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+              "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:679ccba4b221ec6a5d8a6e8bb8c064772afec755205fb54db9b06a83e67824bf:c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/679ccba4b221ec6a5d8a6e8bb8c064772afec755205fb54db9b06a83e67824bf/browser.png",
+              "caption": "The final remote shelf opens Markup sample as literal plain text while Greeting remains listed.\nCaptured from https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev/",
+              "sha256": "c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe.png"
+          }
+        ]
+      },
+      "finishedAt": "2026-09-17T18:32:37.903Z",
+      "observedAt": "2026-09-17T18:32:38.770Z",
+      "inactiveForMs": 867
+    },
+    {
+      "requestId": "capacity-state-v2",
+      "action": "storage",
+      "fingerprint": "c95dbd34009065839d80d054f1da545bbea73527d0d578d7ca7244a63546ef93",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:33:34.875Z",
+      "lastActivityAt": "2026-09-17T18:33:37.272Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:33:34.877Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "success": true,
+          "meta": {
+            "served_by": "v3-prod",
+            "served_by_region": "EEUR",
+            "served_by_colo": "ARN",
+            "served_by_primary": true,
+            "timings": {
+              "sql_duration_ms": 0.1954
+            },
+            "duration": 0.1954,
+            "changes": 0,
+            "last_row_id": 0,
+            "changed_db": false,
+            "size_after": 61440,
+            "rows_read": 38,
+            "rows_written": 0,
+            "total_attempts": 1
+          },
+          "results": [
+            {
+              "state": "active",
+              "operation_count": 2,
+              "reserved_bytes": 24
+            },
+            {
+              "state": "creating",
+              "operation_count": 16,
+              "reserved_bytes": 1048540
+            },
+            {
+              "state": "deleted",
+              "operation_count": 1,
+              "reserved_bytes": 0
+            }
+          ]
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/2438d7182be047b346f048cd88c910cc6b22b359fdc39b6c4a10c523e289e941/environment-storage-evidence.json",
+          "sha256": "2438d7182be047b346f048cd88c910cc6b22b359fdc39b6c4a10c523e289e941",
+          "byteSize": 766
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:showboat:1ec45776594d2368ddf6cbb1e6f20bdc8869c649561eeda92a67e6ab4836da3e",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/1ec45776594d2368ddf6cbb1e6f20bdc8869c649561eeda92a67e6ab4836da3e/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/showboat.md",
+          "caption": "Real temporary Cloudflare environment: query",
+          "sha256": "1ec45776594d2368ddf6cbb1e6f20bdc8869c649561eeda92a67e6ab4836da3e",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:33:37.272Z",
+      "observedAt": "2026-09-17T18:33:37.986Z",
+      "inactiveForMs": 714
+    },
+    {
+      "requestId": "capacity-overflow-absent-v2",
+      "action": "storage",
+      "fingerprint": "66b13438df0d3c587913fb62671c1ddf3cba25b7822c408c9e787172dcf00c04",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:33:38.675Z",
+      "lastActivityAt": "2026-09-17T18:33:41.262Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:33:38.677Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "success": true,
+          "meta": {
+            "served_by": "v3-prod",
+            "served_by_region": "EEUR",
+            "served_by_colo": "ARN",
+            "served_by_primary": true,
+            "timings": {
+              "sql_duration_ms": 0.2337
+            },
+            "duration": 0.2337,
+            "changes": 0,
+            "last_row_id": 0,
+            "changed_db": false,
+            "size_after": 61440,
+            "rows_read": 2,
+            "rows_written": 0,
+            "total_attempts": 1
+          },
+          "results": [
+            {
+              "overflow_rows": 0
+            }
+          ]
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c51a4fe36bb7f0aee0a0090fa7154336f5204db924b69c11793df01bda3c56e5/environment-storage-evidence.json",
+          "sha256": "c51a4fe36bb7f0aee0a0090fa7154336f5204db924b69c11793df01bda3c56e5",
+          "byteSize": 537
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:showboat:3f025e4c75107da3c270a8c95dd5866412f466a065a241dc3af2abdcbbdb60ae",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/3f025e4c75107da3c270a8c95dd5866412f466a065a241dc3af2abdcbbdb60ae/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/showboat.md",
+          "caption": "Real temporary Cloudflare environment: query",
+          "sha256": "3f025e4c75107da3c270a8c95dd5866412f466a065a241dc3af2abdcbbdb60ae",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:33:41.262Z",
+      "observedAt": "2026-09-17T18:33:41.793Z",
+      "inactiveForMs": 531
+    },
+    {
+      "requestId": "capacity-fixture-cleanup-v2",
+      "action": "storage",
+      "fingerprint": "ce605c9cfb20af89b3027b6d51d886e1a7867f62f6ad67ff8cdd10363694f0a1",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:33:42.483Z",
+      "lastActivityAt": "2026-09-17T18:33:45.481Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:33:42.486Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "id": "synthetic-capacity-cleanup-v2",
+          "digest": "70ef6f41dfeb49d46163afd305a354bc8b3a01a630443baf16d4e62ca90d97ee",
+          "reused": false
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c34bc769f0a486e8a4c1252db091ed585eaaa52a5e89782339ed2950fba2d40e/environment-storage-evidence.json",
+          "sha256": "c34bc769f0a486e8a4c1252db091ed585eaaa52a5e89782339ed2950fba2d40e",
+          "byteSize": 472
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:showboat:e2ea34b5a3d928fea1f4ccfcac62a1294d35eef7494265ec72351b02b3e86745",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/e2ea34b5a3d928fea1f4ccfcac62a1294d35eef7494265ec72351b02b3e86745/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/showboat.md",
+          "caption": "Real temporary Cloudflare environment: migrate",
+          "sha256": "e2ea34b5a3d928fea1f4ccfcac62a1294d35eef7494265ec72351b02b3e86745",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:33:45.481Z",
+      "observedAt": "2026-09-17T18:33:45.678Z",
+      "inactiveForMs": 197
+    },
+    {
+      "requestId": "final-d1-snippets-v2",
+      "action": "storage",
+      "fingerprint": "f647dae885b7f19240b49eccb0cd0404f791ec12975a8483f22ee1df705694e7",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:33:58.874Z",
+      "lastActivityAt": "2026-09-17T18:34:01.339Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:33:58.876Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "success": true,
+          "meta": {
+            "served_by": "v3-prod",
+            "served_by_region": "EEUR",
+            "served_by_colo": "ARN",
+            "served_by_primary": true,
+            "timings": {
+              "sql_duration_ms": 0.1751
+            },
+            "duration": 0.1751,
+            "changes": 0,
+            "last_row_id": 0,
+            "changed_db": false,
+            "size_after": 53248,
+            "rows_read": 2,
+            "rows_written": 0,
+            "total_attempts": 1
+          },
+          "results": [
+            {
+              "id": "a8ed3f19-9b20-438d-9911-f1584e065129",
+              "title": "Markup sample",
+              "object_key": "snippets/a8ed3f19-9b20-438d-9911-f1584e065129/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt",
+              "body_sha256": "12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564",
+              "body_bytes": 12,
+              "created_at": "2026-09-17T18:31:29.078Z"
+            },
+            {
+              "id": "e9190a29-4cf1-41d5-97b8-48744e79f017",
+              "title": "Greeting",
+              "object_key": "snippets/e9190a29-4cf1-41d5-97b8-48744e79f017/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt",
+              "body_sha256": "4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b",
+              "body_bytes": 12,
+              "created_at": "2026-09-17T18:28:52.031Z"
+            }
+          ]
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/b64d58d53df5ca30fb1d6f66c5c40e7c912b5ce5a4a4e8e4d3ec7fdf2df9ba39/environment-storage-evidence.json",
+          "sha256": "b64d58d53df5ca30fb1d6f66c5c40e7c912b5ce5a4a4e8e4d3ec7fdf2df9ba39",
+          "byteSize": 1228
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:showboat:8819dcf15ec701bca3d19afabc079cf4911225169c11d63cc8c78aa413220fde",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/8819dcf15ec701bca3d19afabc079cf4911225169c11d63cc8c78aa413220fde/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/showboat.md",
+          "caption": "Real temporary Cloudflare environment: query",
+          "sha256": "8819dcf15ec701bca3d19afabc079cf4911225169c11d63cc8c78aa413220fde",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:34:01.339Z",
+      "observedAt": "2026-09-17T18:34:01.984Z",
+      "inactiveForMs": 645
+    },
+    {
+      "requestId": "final-d1-operations-v2",
+      "action": "storage",
+      "fingerprint": "3c624c006d1ade5a2135bc67ceee139abb8cd6815e3111ef50856ce2d70bd524",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:34:02.672Z",
+      "lastActivityAt": "2026-09-17T18:34:05.407Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:34:02.674Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "success": true,
+          "meta": {
+            "served_by": "v3-prod",
+            "served_by_region": "EEUR",
+            "served_by_colo": "ARN",
+            "served_by_primary": true,
+            "timings": {
+              "sql_duration_ms": 0.2716
+            },
+            "duration": 0.2716,
+            "changes": 0,
+            "last_row_id": 0,
+            "changed_db": false,
+            "size_after": 53248,
+            "rows_read": 6,
+            "rows_written": 0,
+            "total_attempts": 1
+          },
+          "results": [
+            {
+              "id": "a8ed3f19-9b20-438d-9911-f1584e065129",
+              "object_key": "snippets/a8ed3f19-9b20-438d-9911-f1584e065129/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt",
+              "reserved_bytes": 12,
+              "state": "active",
+              "delete_title": null,
+              "created_at": "2026-09-17T18:31:29.078Z",
+              "updated_at": "2026-09-17T18:31:29.368Z"
+            },
+            {
+              "id": "57873b39-6c6d-4d5a-b2da-fea72d8b47b3",
+              "object_key": "snippets/57873b39-6c6d-4d5a-b2da-fea72d8b47b3/c88baa810a3509134520fb4c646b3acd4f1296d5ab007205c320ff0c14d056f3.txt",
+              "reserved_bytes": 0,
+              "state": "deleted",
+              "delete_title": null,
+              "created_at": "2026-09-17T18:29:09.272Z",
+              "updated_at": "2026-09-17T18:29:44.893Z"
+            },
+            {
+              "id": "e9190a29-4cf1-41d5-97b8-48744e79f017",
+              "object_key": "snippets/e9190a29-4cf1-41d5-97b8-48744e79f017/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt",
+              "reserved_bytes": 12,
+              "state": "active",
+              "delete_title": null,
+              "created_at": "2026-09-17T18:28:52.031Z",
+              "updated_at": "2026-09-17T18:28:52.790Z"
+            }
+          ]
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f0ff87d0ced53b0cd92aaab2064812ab72627a6d977175a5b63a0dcf164ba92f/environment-storage-evidence.json",
+          "sha256": "f0ff87d0ced53b0cd92aaab2064812ab72627a6d977175a5b63a0dcf164ba92f",
+          "byteSize": 1525
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:showboat:2275dcea0103f026a9dd4bdda5d6e8e5be454cef32b11bab5f46b14126135c66",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/2275dcea0103f026a9dd4bdda5d6e8e5be454cef32b11bab5f46b14126135c66/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/showboat.md",
+          "caption": "Real temporary Cloudflare environment: query",
+          "sha256": "2275dcea0103f026a9dd4bdda5d6e8e5be454cef32b11bab5f46b14126135c66",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:34:05.407Z",
+      "observedAt": "2026-09-17T18:34:05.700Z",
+      "inactiveForMs": 293
+    },
+    {
+      "requestId": "final-r2-list-v2",
+      "action": "storage",
+      "fingerprint": "41cefdb83d7cca7aa585023b7cd6a6e1f93a664f2811ee8766a195f630974db9",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:34:06.386Z",
+      "lastActivityAt": "2026-09-17T18:34:08.921Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:34:06.388Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "objects": [
+            {
+              "key": "snippets/a8ed3f19-9b20-438d-9911-f1584e065129/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt",
+              "size": 12,
+              "etag": "ac574127c09a7d6c4ef58434f70f7f4a"
+            },
+            {
+              "key": "snippets/e9190a29-4cf1-41d5-97b8-48744e79f017/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt",
+              "size": 12,
+              "etag": "129252b2c73e6e9d93cbcbf103a23516"
+            }
+          ],
+          "truncated": false,
+          "cursor": null
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/89fc05a5735d4eb5176c970b8fc02b848ca8ebaf3b7d21ef7e408dcae761de0a/environment-storage-evidence.json",
+          "sha256": "89fc05a5735d4eb5176c970b8fc02b848ca8ebaf3b7d21ef7e408dcae761de0a",
+          "byteSize": 534
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:showboat:da21237987edef7f314760a838a0a215e73aad98f036a5674ebd8b7efb80b317",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/da21237987edef7f314760a838a0a215e73aad98f036a5674ebd8b7efb80b317/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/showboat.md",
+          "caption": "Real temporary Cloudflare environment: objects",
+          "sha256": "da21237987edef7f314760a838a0a215e73aad98f036a5674ebd8b7efb80b317",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:34:08.921Z",
+      "observedAt": "2026-09-17T18:34:09.485Z",
+      "inactiveForMs": 564
+    },
+    {
+      "requestId": "final-api-list-v2",
+      "action": "storage",
+      "fingerprint": "ac7a4942f2e49c33896a6138b4fad89a2e100a51d5239a709b8532bb4033dd57",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:34:10.169Z",
+      "lastActivityAt": "2026-09-17T18:34:12.819Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:34:10.170Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "status": 200,
+          "body": "{\"snippets\":[{\"id\":\"a8ed3f19-9b20-438d-9911-f1584e065129\",\"title\":\"Markup sample\",\"createdAt\":\"2026-09-17T18:31:29.078Z\",\"deletePending\":false},{\"id\":\"e9190a29-4cf1-41d5-97b8-48744e79f017\",\"title\":\"Greeting\",\"createdAt\":\"2026-09-17T18:28:52.031Z\",\"deletePending\":false}]}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/253f4e48ae928a2388e78e77a3e8416fbf72979a5702b453175e7f0e06f1d36c/environment-request-evidence.json",
+          "sha256": "253f4e48ae928a2388e78e77a3e8416fbf72979a5702b453175e7f0e06f1d36c",
+          "byteSize": 498
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:showboat:a6c677e3ac408a73ccafc29d20612273ad9395e3987a97e11e42141d27c85b47",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/a6c677e3ac408a73ccafc29d20612273ad9395e3987a97e11e42141d27c85b47/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "a6c677e3ac408a73ccafc29d20612273ad9395e3987a97e11e42141d27c85b47",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:34:12.819Z",
+      "observedAt": "2026-09-17T18:34:13.283Z",
+      "inactiveForMs": 464
+    },
+    {
+      "requestId": "final-r2-markup-v2",
+      "action": "storage",
+      "fingerprint": "5bd4210f76eeba0d03a41565f7468913c5b152b6f565a1b19bcf84df0ba306ad",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:34:24.686Z",
+      "lastActivityAt": "2026-09-17T18:34:27.261Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:34:24.687Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "key": "snippets/a8ed3f19-9b20-438d-9911-f1584e065129/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt",
+          "size": 12,
+          "sha256": "12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564",
+          "contentBase64": "PGI+SGVsbG88L2I+"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/234f07155983ebd174a985d5ab11ddf1c4182435b0d1af0209bcb569a009bc29/environment-storage-evidence.json",
+          "sha256": "234f07155983ebd174a985d5ab11ddf1c4182435b0d1af0209bcb569a009bc29",
+          "byteSize": 502
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:showboat:741663765a0ecedae938715a2475933565bf8ff4ae3118163021e3c2ef2b0cda",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/741663765a0ecedae938715a2475933565bf8ff4ae3118163021e3c2ef2b0cda/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/showboat.md",
+          "caption": "Real temporary Cloudflare environment: object",
+          "sha256": "741663765a0ecedae938715a2475933565bf8ff4ae3118163021e3c2ef2b0cda",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:34:27.261Z",
+      "observedAt": "2026-09-17T18:34:27.810Z",
+      "inactiveForMs": 549
+    },
+    {
+      "requestId": "final-r2-greeting-v2",
+      "action": "storage",
+      "fingerprint": "3af03ae55de57b23a8ddcd2bb5830d61017370cd7ed83808406eea314719bf6b",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:34:28.670Z",
+      "lastActivityAt": "2026-09-17T18:34:31.443Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:34:28.673Z",
+      "result": {
+        "environment": "deos-tmp-873042d0a43055bc7dd07526",
+        "result": {
+          "key": "snippets/e9190a29-4cf1-41d5-97b8-48744e79f017/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt",
+          "size": 12,
+          "sha256": "4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b",
+          "contentBase64": "SGVsbG8sIHRlYW0h"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f1f3571947c45a9e8001f0fd1495152d18ce724f18914bc2266a7eedbca70082/environment-storage-evidence.json",
+          "sha256": "f1f3571947c45a9e8001f0fd1495152d18ce724f18914bc2266a7eedbca70082",
+          "byteSize": 502
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+          "id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:showboat:8097a2793978c319a6144861e9293ff633021d97896e1b36e9f93f7050d50c87",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/8097a2793978c319a6144861e9293ff633021d97896e1b36e9f93f7050d50c87/proof/01a0b097-22b7-79a0-ba91-ca5a94e5627c/da075a42b99bee0d828566d0c2f1f3dc0b9786cb/showboat.md",
+          "caption": "Real temporary Cloudflare environment: object",
+          "sha256": "8097a2793978c319a6144861e9293ff633021d97896e1b36e9f93f7050d50c87",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:34:31.443Z",
+      "observedAt": "2026-09-17T18:34:31.787Z",
+      "inactiveForMs": 344
+    },
+    {
+      "requestId": "format-proof-script-v2",
+      "action": "check",
+      "fingerprint": "69d64b6f8a30344f4e3c1c881b62ebd31723e6a5865716d8e0275d9bc27cee81",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:35:39.784Z",
+      "lastActivityAt": "2026-09-17T18:36:02.174Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:35:39.785Z",
+      "commandDeadline": "2026-09-17T18:45:39.785Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 243
+      },
+      "result": {
+        "command": "'npm' 'run' 'format:check'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "\n> snippet-shelf-canary@1.0.0 format:check\n> prettier --check \"src/**/*.{ts,js,css,html}\" \"tests/**/*.ts\" \"scripts/**/*.mjs\" \"package*.json\" \"tsconfig.json\" \"vitest.config.ts\"\n\nChecking formatting...\nAll matched files use Prettier code style!\n",
+        "stderr": "",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-17T18:36:02.174Z",
+      "observedAt": "2026-09-17T18:36:02.277Z",
+      "inactiveForMs": 103
+    },
+    {
+      "requestId": "remote-storage-proof-v2",
+      "action": "check",
+      "fingerprint": "4a3f708b7876fde3079b47bc385611557b0b2f2161060dae7571b3e7e1f478e5",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:36:03.186Z",
+      "lastActivityAt": "2026-09-17T18:36:15.936Z",
+      "deadline": "2026-09-18T18:18:09.975Z",
+      "startedAt": "2026-09-17T18:36:03.188Z",
+      "commandDeadline": "2026-09-17T18:46:03.188Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 9147
+      },
+      "result": {
+        "command": "'node' 'scripts/verify-remote-storage.mjs' '/deos/output/requests/baseline-d1-v2.json' '/deos/output/requests/baseline-r2-v2.json' '/deos/output/requests/baseline-api-v2.json' '/deos/output/requests/capacity-state-v2.json' '/deos/output/requests/capacity-overflow-absent-v2.json' '/deos/output/requests/capacity-fixture-cleanup-v2.json' '/deos/output/requests/final-d1-snippets-v2.json' '/deos/output/requests/final-d1-operations-v2.json' '/deos/output/requests/final-r2-list-v2.json' '/deos/output/requests/final-api-list-v2.json' '/deos/output/requests/final-r2-markup-v2.json' '/deos/output/requests/final-r2-greeting-v2.json'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "## baseline-d1-v2.json\n{\n  \"request\": {\n    \"operation\": \"query\",\n    \"sql\": \"SELECT id, title, object_key, created_at FROM snippets ORDER BY created_at DESC, id DESC\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"success\": true,\n    \"meta\": {\n      \"served_by\": \"v3-prod\",\n      \"served_by_region\": \"EEUR\",\n      \"served_by_colo\": \"ARN\",\n      \"served_by_primary\": true,\n      \"timings\": {\n        \"sql_duration_ms\": 0.4034\n      },\n      \"duration\": 0.4034,\n      \"changes\": 0,\n      \"last_row_id\": 1,\n      \"changed_db\": false,\n      \"size_after\": 53248,\n      \"rows_read\": 1,\n      \"rows_written\": 0,\n      \"total_attempts\": 1\n    },\n    \"results\": []\n  }\n}\n## baseline-r2-v2.json\n{\n  \"request\": {\n    \"operation\": \"objects\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"objects\": [],\n    \"truncated\": false,\n    \"cursor\": null\n  }\n}\n## baseline-api-v2.json\n{\n  \"request\": {\n    \"operation\": \"request\",\n    \"method\": \"GET\",\n    \"path\": \"/api/snippets\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"status\": 200,\n    \"body\": \"{\\\"snippets\\\":[]}\"\n  }\n}\n## capacity-state-v2.json\n{\n  \"request\": {\n    \"operation\": \"query\",\n    \"sql\": \"SELECT state, COUNT(*) AS operation_count, SUM(reserved_bytes) AS reserved_bytes FROM snippet_operations GROUP BY state ORDER BY state\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"success\": true,\n    \"meta\": {\n      \"served_by\": \"v3-prod\",\n      \"served_by_region\": \"EEUR\",\n      \"served_by_colo\": \"ARN\",\n      \"served_by_primary\": true,\n      \"timings\": {\n        \"sql_duration_ms\": 0.1954\n      },\n      \"duration\": 0.1954,\n      \"changes\": 0,\n      \"last_row_id\": 0,\n      \"changed_db\": false,\n      \"size_after\": 61440,\n      \"rows_read\": 38,\n      \"rows_written\": 0,\n      \"total_attempts\": 1\n    },\n    \"results\": [\n      {\n        \"state\": \"active\",\n        \"operation_count\": 2,\n        \"reserved_bytes\": 24\n      },\n      {\n        \"state\": \"creating\",\n        \"operation_count\": 16,\n        \"reserved_bytes\": 1048540\n      },\n      {\n        \"state\": \"deleted\",\n        \"operation_count\": 1,\n        \"reserved_bytes\": 0\n      }\n    ]\n  }\n}\n## capacity-overflow-absent-v2.json\n{\n  \"request\": {\n    \"operation\": \"query\",\n    \"sql\": \"SELECT COUNT(*) AS overflow_rows FROM snippets WHERE title = 'Overflow'\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"success\": true,\n    \"meta\": {\n      \"served_by\": \"v3-prod\",\n      \"served_by_region\": \"EEUR\",\n      \"served_by_colo\": \"ARN\",\n      \"served_by_primary\": true,\n      \"timings\": {\n        \"sql_duration_ms\": 0.2337\n      },\n      \"duration\": 0.2337,\n      \"changes\": 0,\n      \"last_row_id\": 0,\n      \"changed_db\": false,\n      \"size_after\": 61440,\n      \"rows_read\": 2,\n      \"rows_written\": 0,\n      \"total_attempts\": 1\n    },\n    \"results\": [\n      {\n        \"overflow_rows\": 0\n      }\n    ]\n  }\n}\n## capacity-fixture-cleanup-v2.json\n{\n  \"request\": {\n    \"operation\": \"migrate\",\n    \"id\": \"synthetic-capacity-cleanup-v2\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"id\": \"synthetic-capacity-cleanup-v2\",\n    \"digest\": \"70ef6f41dfeb49d46163afd305a354bc8b3a01a630443baf16d4e62ca90d97ee\",\n    \"reused\": false\n  }\n}\n## final-d1-snippets-v2.json\n{\n  \"request\": {\n    \"operation\": \"query\",\n    \"sql\": \"SELECT id, title, object_key, body_sha256, body_bytes, created_at FROM snippets ORDER BY created_at DESC, id DESC\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"success\": true,\n    \"meta\": {\n      \"served_by\": \"v3-prod\",\n      \"served_by_region\": \"EEUR\",\n      \"served_by_colo\": \"ARN\",\n      \"served_by_primary\": true,\n      \"timings\": {\n        \"sql_duration_ms\": 0.1751\n      },\n      \"duration\": 0.1751,\n      \"changes\": 0,\n      \"last_row_id\": 0,\n      \"changed_db\": false,\n      \"size_after\": 53248,\n      \"rows_read\": 2,\n      \"rows_written\": 0,\n      \"total_attempts\": 1\n    },\n    \"results\": [\n      {\n        \"id\": \"a8ed3f19-9b20-438d-9911-f1584e065129\",\n        \"title\": \"Markup sample\",\n        \"object_key\": \"snippets/a8ed3f19-9b20-438d-9911-f1584e065129/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt\",\n        \"body_sha256\": \"12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564\",\n        \"body_bytes\": 12,\n        \"created_at\": \"2026-09-17T18:31:29.078Z\"\n      },\n      {\n        \"id\": \"e9190a29-4cf1-41d5-97b8-48744e79f017\",\n        \"title\": \"Greeting\",\n        \"object_key\": \"snippets/e9190a29-4cf1-41d5-97b8-48744e79f017/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt\",\n        \"body_sha256\": \"4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b\",\n        \"body_bytes\": 12,\n        \"created_at\": \"2026-09-17T18:28:52.031Z\"\n      }\n    ]\n  }\n}\n## final-d1-operations-v2.json\n{\n  \"request\": {\n    \"operation\": \"query\",\n    \"sql\": \"SELECT id, object_key, reserved_bytes, state, delete_title, created_at, updated_at FROM snippet_operations ORDER BY created_at DESC, id DESC\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"success\": true,\n    \"meta\": {\n      \"served_by\": \"v3-prod\",\n      \"served_by_region\": \"EEUR\",\n      \"served_by_colo\": \"ARN\",\n      \"served_by_primary\": true,\n      \"timings\": {\n        \"sql_duration_ms\": 0.2716\n      },\n      \"duration\": 0.2716,\n      \"changes\": 0,\n      \"last_row_id\": 0,\n      \"changed_db\": false,\n      \"size_after\": 53248,\n      \"rows_read\": 6,\n      \"rows_written\": 0,\n      \"total_attempts\": 1\n    },\n    \"results\": [\n      {\n        \"id\": \"a8ed3f19-9b20-438d-9911-f1584e065129\",\n        \"object_key\": \"snippets/a8ed3f19-9b20-438d-9911-f1584e065129/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt\",\n        \"reserved_bytes\": 12,\n        \"state\": \"active\",\n        \"delete_title\": null,\n        \"created_at\": \"2026-09-17T18:31:29.078Z\",\n        \"updated_at\": \"2026-09-17T18:31:29.368Z\"\n      },\n      {\n        \"id\": \"57873b39-6c6d-4d5a-b2da-fea72d8b47b3\",\n        \"object_key\": \"snippets/57873b39-6c6d-4d5a-b2da-fea72d8b47b3/c88baa810a3509134520fb4c646b3acd4f1296d5ab007205c320ff0c14d056f3.txt\",\n        \"reserved_bytes\": 0,\n        \"state\": \"deleted\",\n        \"delete_title\": null,\n        \"created_at\": \"2026-09-17T18:29:09.272Z\",\n        \"updated_at\": \"2026-09-17T18:29:44.893Z\"\n      },\n      {\n        \"id\": \"e9190a29-4cf1-41d5-97b8-48744e79f017\",\n        \"object_key\": \"snippets/e9190a29-4cf1-41d5-97b8-48744e79f017/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt\",\n        \"reserved_bytes\": 12,\n        \"state\": \"active\",\n        \"delete_title\": null,\n        \"created_at\": \"2026-09-17T18:28:52.031Z\",\n        \"updated_at\": \"2026-09-17T18:28:52.790Z\"\n      }\n    ]\n  }\n}\n## final-r2-list-v2.json\n{\n  \"request\": {\n    \"operation\": \"objects\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"objects\": [\n      {\n        \"key\": \"snippets/a8ed3f19-9b20-438d-9911-f1584e065129/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt\",\n        \"size\": 12,\n        \"etag\": \"ac574127c09a7d6c4ef58434f70f7f4a\"\n      },\n      {\n        \"key\": \"snippets/e9190a29-4cf1-41d5-97b8-48744e79f017/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt\",\n        \"size\": 12,\n        \"etag\": \"129252b2c73e6e9d93cbcbf103a23516\"\n      }\n    ],\n    \"truncated\": false,\n    \"cursor\": null\n  }\n}\n## final-api-list-v2.json\n{\n  \"request\": {\n    \"operation\": \"request\",\n    \"method\": \"GET\",\n    \"path\": \"/api/snippets\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"status\": 200,\n    \"body\": \"{\\\"snippets\\\":[{\\\"id\\\":\\\"a8ed3f19-9b20-438d-9911-f1584e065129\\\",\\\"title\\\":\\\"Markup sample\\\",\\\"createdAt\\\":\\\"2026-09-17T18:31:29.078Z\\\",\\\"deletePending\\\":false},{\\\"id\\\":\\\"e9190a29-4cf1-41d5-97b8-48744e79f017\\\",\\\"title\\\":\\\"Greeting\\\",\\\"createdAt\\\":\\\"2026-09-17T18:28:52.031Z\\\",\\\"deletePending\\\":false}]}\"\n  }\n}\n## final-r2-markup-v2.json\n{\n  \"request\": {\n    \"operation\": \"object\",\n    \"key\": \"snippets/a8ed3f19-9b20-438d-9911-f1584e065129/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"key\": \"snippets/a8ed3f19-9b20-438d-9911-f1584e065129/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt\",\n    \"size\": 12,\n    \"sha256\": \"12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564\",\n    \"contentBase64\": \"PGI+SGVsbG88L2I+\",\n    \"contentUtf8\": \"<b>Hello</b>\"\n  }\n}\n## final-r2-greeting-v2.json\n{\n  \"request\": {\n    \"operation\": \"object\",\n    \"key\": \"snippets/e9190a29-4cf1-41d5-97b8-48744e79f017/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt\"\n  },\n  \"environment\": \"deos-tmp-873042d0a43055bc7dd07526\",\n  \"result\": {\n    \"key\": \"snippets/e9190a29-4cf1-41d5-97b8-48744e79f017/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt\",\n    \"size\": 12,\n    \"sha256\": \"4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b\",\n    \"contentBase64\": \"SGVsbG8sIHRlYW0h\",\n    \"contentUtf8\": \"Hello, team!\"\n  }\n}\n",
+        "stderr": "",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-17T18:36:15.936Z",
+      "observedAt": "2026-09-17T18:36:18.870Z",
+      "inactiveForMs": 2934
+    }
+  ],
+  "demoEvents": [
+    {
+      "operation": "demo",
+      "change": "sac-246",
+      "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+      "occurredAt": "2026-09-17T18:28:15.573Z",
+      "event": "demo_started",
+      "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589",
+      "plan": {
+        "action": "demo",
+        "requestId": "final-demo-v3",
+        "scenarios": [
+          {
+            "id": "empty-cloud-shelf",
+            "url": "/",
+            "target": "remote",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": ".empty-card"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "The newly migrated remote shelf opens empty on one desktop screen, with no login and the D1 + R2 cloud badge visible."
+              }
+            ]
+          },
+          {
+            "id": "save-read-refresh-delete",
+            "url": "/",
+            "target": "remote",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": ".empty-card"
+              },
+              {
+                "operation": "fill",
+                "selector": "#title",
+                "text": "Greeting"
+              },
+              {
+                "operation": "fill",
+                "selector": "#text",
+                "text": "Hello, team!"
+              },
+              {
+                "operation": "click",
+                "selector": "#save-button"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Greeting\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "#title",
+                "text": "Sign-off"
+              },
+              {
+                "operation": "fill",
+                "selector": "#text",
+                "text": "Kind regards"
+              },
+              {
+                "operation": "click",
+                "selector": "#save-button"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Sign-off\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Sign-off\"] .snippet-title"
+              },
+              {
+                "operation": "wait",
+                "selector": "#reader[data-reader-state=\"ready\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Two cloud-backed snippets are listed, and selecting Sign-off shows its own Kind regards body."
+              },
+              {
+                "operation": "navigate",
+                "url": "/"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Sign-off\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Sign-off\"] .snippet-title"
+              },
+              {
+                "operation": "wait",
+                "selector": "#reader[data-reader-state=\"ready\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "After a page reload, both saved titles return and Sign-off opens again from cloud storage."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Sign-off\"] .delete-button"
+              },
+              {
+                "operation": "wait",
+                "selector": "#status[data-status=\"success\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Greeting\"] .snippet-title"
+              },
+              {
+                "operation": "wait",
+                "selector": "#reader[data-reader-state=\"ready\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "After deleting Sign-off, Greeting remains listed and readable with Hello, team!."
+              }
+            ]
+          },
+          {
+            "id": "fresh-browser-continuity",
+            "url": "/",
+            "target": "remote",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Greeting\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "A fresh browser context rebuilds the unchanged cloud shelf with Greeting listed, Sign-off absent, and no reader selection carried over."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Greeting\"] .snippet-title"
+              },
+              {
+                "operation": "wait",
+                "selector": "#reader[data-reader-state=\"ready\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Selecting Greeting in the fresh context reads Hello, team! from the remote shelf."
+              }
+            ]
+          },
+          {
+            "id": "both-validation-errors",
+            "url": "/",
+            "target": "remote",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Greeting\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "#text",
+                "text": "Hello"
+              },
+              {
+                "operation": "click",
+                "selector": "#save-button"
+              },
+              {
+                "operation": "wait",
+                "selector": "#status[data-status=\"error\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Submitting text without a title shows the title-required error and leaves Greeting as the only saved snippet."
+              },
+              {
+                "operation": "fill",
+                "selector": "#title",
+                "text": "Empty note"
+              },
+              {
+                "operation": "fill",
+                "selector": "#text",
+                "text": "   "
+              },
+              {
+                "operation": "click",
+                "selector": "#save-button"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Submitting Empty note with spaces-only text shows the text-required error and leaves the cloud shelf unchanged."
+              }
+            ]
+          },
+          {
+            "id": "plain-text-markup",
+            "url": "/",
+            "target": "remote",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Greeting\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "#title",
+                "text": "Markup sample"
+              },
+              {
+                "operation": "fill",
+                "selector": "#text",
+                "text": "<b>Hello</b>"
+              },
+              {
+                "operation": "click",
+                "selector": "#save-button"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Markup sample\"]"
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Markup sample\"] .snippet-title"
+              },
+              {
+                "operation": "wait",
+                "selector": "#reader[data-reader-state=\"ready\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "Markup-looking content is displayed literally as <b>Hello</b> in the plain-text reader."
+              }
+            ]
+          },
+          {
+            "id": "real-failed-save",
+            "url": "/",
+            "target": "remote",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Markup sample\"]"
+              },
+              {
+                "operation": "fill",
+                "selector": "#title",
+                "text": "Overflow"
+              },
+              {
+                "operation": "fill",
+                "selector": "#text",
+                "text": "Cannot fit!!!"
+              },
+              {
+                "operation": "click",
+                "selector": "#save-button"
+              },
+              {
+                "operation": "wait",
+                "selector": "#save-recovery:not([hidden])"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "A real remote save beyond the approved capacity is rejected with a clear no-capacity message, the form preserved, and no success state."
+              }
+            ]
+          },
+          {
+            "id": "final-cloud-state",
+            "url": "/",
+            "target": "remote",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "steps": [
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Greeting\"]"
+              },
+              {
+                "operation": "wait",
+                "selector": "[data-title=\"Markup sample\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "A final new browser context shows only the two intended cloud snippets and an empty reader."
+              },
+              {
+                "operation": "click",
+                "selector": "[data-title=\"Markup sample\"] .snippet-title"
+              },
+              {
+                "operation": "wait",
+                "selector": "#reader[data-reader-state=\"ready\"]"
+              },
+              {
+                "operation": "screenshot",
+                "caption": "The final remote shelf opens Markup sample as literal plain text while Greeting remains listed."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "demo",
+      "change": "sac-246",
+      "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+      "occurredAt": "2026-09-17T18:28:30.108Z",
+      "event": "scenario_completed",
+      "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589",
+      "scenarioId": "empty-cloud-shelf"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-246",
+      "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+      "occurredAt": "2026-09-17T18:29:58.423Z",
+      "event": "scenario_completed",
+      "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589",
+      "scenarioId": "save-read-refresh-delete"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-246",
+      "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+      "occurredAt": "2026-09-17T18:30:22.741Z",
+      "event": "scenario_completed",
+      "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589",
+      "scenarioId": "fresh-browser-continuity"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-246",
+      "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+      "occurredAt": "2026-09-17T18:31:04.045Z",
+      "event": "scenario_completed",
+      "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589",
+      "scenarioId": "both-validation-errors"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-246",
+      "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+      "occurredAt": "2026-09-17T18:31:42.385Z",
+      "event": "scenario_completed",
+      "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589",
+      "scenarioId": "plain-text-markup"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-246",
+      "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+      "occurredAt": "2026-09-17T18:32:12.744Z",
+      "event": "scenario_completed",
+      "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589",
+      "scenarioId": "real-failed-save"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-246",
+      "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+      "occurredAt": "2026-09-17T18:32:37.898Z",
+      "event": "scenario_completed",
+      "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589",
+      "scenarioId": "final-cloud-state"
+    },
+    {
+      "operation": "demo",
+      "change": "sac-246",
+      "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "treeSha": "da075a42b99bee0d828566d0c2f1f3dc0b9786cb",
+      "occurredAt": "2026-09-17T18:32:37.899Z",
+      "event": "demo_completed",
+      "collectionId": "63ceab04-730b-45ea-96f7-fc65559db589",
+      "captures": [
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:c7154bab29f9f52a5c1ee21f446a87e65a3db9749860e76adef9569caeca0941:c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:afeeb6f73881ccd327f449bc9c526a6d298af937304fe32c0c64870cdbad6cf9:0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:08bb9606822029c6c0b7ac5336229032bc24b4baecdd713e2322b8aac57b7d26:0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:451e625cc09547eba0086427703529ef017ddc1cdced37169017690119a74a9e:ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:4ece03efb8d94a3561f9aeac1984c6c6c11956963c862cf21dcba17e03b7c197:e0bf2dd8a6c979dd00c6ccb2d72902eb30690d2668a65ea6733c49a30499dcea",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:15aaaae5e2ce2ced6143767dec70d15a4b98f685b7746995add7c7ede835bed1:ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:d214669053db64a51436fb3874b5102f1f1877ba7970eb84c6e130ae98ea25e7:21721392e4d9f8d758f5164ec7b553f20e25c83eef36723e9312b980127e71b9",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:9c09ad11aeab06d10d039f3aa3ea2cea6df5e1b5156754cca8306a5eaaf4c4e4:87d7190b16b84299c9860c8b5ff4e5202a8df4ac897b02608166f06e861d772f",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:7a09ea42b15e4eba353fb730206fdcda68a681ae12c6a81c574c9f87e28c10ae:c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:8b6600c65ffd93ba29ffdc8307593b1dcbf9b5ccbaf95ae15a257205f85a2da9:c11f4a8a8e8c99dba19a5f93a09e2016813ae800ff4344a87dd244df376fe8e1",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:efaba27db09f12db74837602016192c18df22503551cbdb04604a0f14e27f7c8:20c1e865b42cd10bd33384514d132ed6854070f52b64df45d76bc0093abdc095",
+        "01a0b097-22b7-79a0-ba91-ca5a94e5627c:da075a42b99bee0d828566d0c2f1f3dc0b9786cb:browser_image:679ccba4b221ec6a5d8a6e8bb8c064772afec755205fb54db9b06a83e67824bf:c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe"
+      ]
+    }
+  ]
+}

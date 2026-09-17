@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: implementation
-  version: 39
+  version: 41
 spec:
   implementationPolicy:
     uiPaths:
@@ -45,7 +45,7 @@ spec:
         docs.npmjs.com,
       ]
     packageHosts: [registry.npmjs.org, pypi.org, files.pythonhosted.org]
-    safeAdapters: [static-preview-v1]
+    safeAdapters: [static-preview-v1, temporary-environment-v1]
   start: claim_issue
   execution:
     attemptTimeout: 24h

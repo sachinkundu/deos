@@ -1,0 +1,50 @@
+✔ D1 route writes read back and an active run keeps its frozen repository (131.535083ms)
+✔ legacy backfill completes route metadata and active-run snapshots without changing the target (106.842458ms)
+✔ atomic allocation freezes the matching route and rejects an old route proof (106.405458ms)
+✔ deployment seed is created only for an empty route list (211.954959ms)
+✖ implementation selection before scheduled registration preserves frozen runs and rejects version reuse (129.822958ms)
+✔ route overview keeps saved routes visible when both live catalogs fail (1.177042ms)
+✔ route admin rejects another actor and extra RPC input before provider work (0.380667ms)
+✔ enabling a route checks its frozen install and saves despite active runs (10.175375ms)
+✔ implementation dispatch checks the bound account id independently of its email (0.853666ms)
+✔ creating a route pairs only provider-listed ids and records a disabled route (0.768ms)
+✔ production bundle includes the version 20 design review prompts (1.217417ms)
+✔ loads the reviewed workflow bundle and resolves prompts and schemas (27.473583ms)
+✔ canonical workflow digest is stable (14.744584ms)
+✔ simple definition bundles the approved planning prompt and exact three-way graph (4.405417ms)
+✔ simple definition rejects ambiguous decisions and unsupported capabilities (4.707709ms)
+✔ traceability planning definition freezes reviewers and keeps publication trusted (13.138541ms)
+✔ traceability recheck schema uses the Codex-supported nullable form (0.165042ms)
+✔ restores an immutable stored definition for an older active run (6.508583ms)
+✔ restores the deployed typed version 4 lifecycle shape (1.781875ms)
+✔ restores a frozen legacy definition containing the retired release action (0.955666ms)
+✔ loads and restores the active checked planning merge action (0.96725ms)
+✔ restores the frozen version 10 legacy blocked tail (0.628542ms)
+✔ restores an immutable version 3 definition without applying version 4 rules (0.629792ms)
+✔ rejects a tampered stored definition (6.478542ms)
+✔ rejects executable edge expressions and unknown fields (2.913791ms)
+✔ rejects a missing prompt before the definition can be enabled (3.240625ms)
+✔ rejects graph edges to missing nodes (2.785791ms)
+✔ rejects ambiguous or incomplete explicit lifecycle nodes (10.472458ms)
+✔ bounded candidate definitions keep model routes and send every human revision directly back to its gate (37.973125ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 28
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 673.745583
+
+✖ failing tests:
+
+test at tests/route-admin.test.ts:11:1
+✖ implementation selection before scheduled registration preserves frozen runs and rejects version reuse (129.822958ms)
+  Error: repository route is incomplete
+      at requireCompleteRoute (file:///Users/sachin/code/deos-sac-172/src/repository-routes.ts:165:11)
+      at view (file:///Users/sachin/code/deos-sac-172/src/repository-routes.ts:176:17)
+      at D1RepositoryRouteStore.readView (file:///Users/sachin/code/deos-sac-172/src/repository-routes.ts:234:34)
+      at async RouteAdminService.saveImplementation (file:///Users/sachin/code/deos-sac-172/src/route-admin.ts:370:18)
+      at async TestContext.<anonymous> (file:///Users/sachin/code/deos-sac-172/tests/route-admin.test.ts:25:19)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)

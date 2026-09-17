@@ -1,0 +1,19 @@
+{
+  "stack": "AggregateError: Implementation resource cleanup failed\n    at ImplementationBroker.cleanup (queue-consumer.js:57092:17)\n    at async SandboxAgentController.cleanup (queue-consumer.js:61450:11)\n    at async SandboxAgentController.collect (queue-consumer.js:60866:9)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64799:31)\n    at async queue-consumer.js:145:16",
+  "message": "Implementation resource cleanup failed",
+  "cause": {
+    "stack": "ImplementationError: Browser close is not yet confirmed\n    at ImplementationBrowserAllocator.cleanup (queue-consumer.js:25684:17)\n    at async ImplementationBroker.cleanup (queue-consumer.js:57056:15)\n    at async SandboxAgentController.cleanup (queue-consumer.js:61450:11)\n    at async SandboxAgentController.collect (queue-consumer.js:60866:9)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64799:31)\n    at async queue-consumer.js:145:16",
+    "message": "Browser close is not yet confirmed",
+    "code": "browser_cleanup_unconfirmed",
+    "name": "ImplementationError"
+  },
+  "errors": [
+    {
+      "stack": "ImplementationError: Browser close is not yet confirmed\n    at ImplementationBrowserAllocator.cleanup (queue-consumer.js:25684:17)\n    at async ImplementationBroker.cleanup (queue-consumer.js:57056:15)\n    at async SandboxAgentController.cleanup (queue-consumer.js:61450:11)\n    at async SandboxAgentController.collect (queue-consumer.js:60866:9)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64799:31)\n    at async queue-consumer.js:145:16",
+      "message": "Browser close is not yet confirmed",
+      "code": "browser_cleanup_unconfirmed",
+      "name": "ImplementationError"
+    }
+  ],
+  "name": "AggregateError"
+}

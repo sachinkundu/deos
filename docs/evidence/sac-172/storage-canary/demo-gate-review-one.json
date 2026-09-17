@@ -1,0 +1,58 @@
+{
+  "receipts": [
+    {
+      "attempt_id": "01a0b093-2127-7a9e-9051-60409f8fe0bf",
+      "logical_name": "transcript.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b093-2127-7a9e-9051-60409f8fe0bf/transcript.jsonl",
+      "sha256": "faf87b2a978e1634c0df9d29badf169b21ed6106a4ed5708dea01130f0083f34",
+      "byte_size": 2455,
+      "local": "/tmp/sac246-artifacts/bdeae6e4b2ef-transcript.jsonl"
+    },
+    {
+      "attempt_id": "01a0b093-2127-7a9e-9051-60409f8fe0bf",
+      "logical_name": "result.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b093-2127-7a9e-9051-60409f8fe0bf/result.json",
+      "sha256": "a30c438f7cb0500e9fb8252d44b50b043ab65ff247cb3f4d64bdc678d9c42f60",
+      "byte_size": 2507,
+      "local": "/tmp/sac246-artifacts/fa0a5f8da58e-result.json"
+    },
+    {
+      "attempt_id": "01a0b093-2127-7a9e-9051-60409f8fe0bf",
+      "logical_name": "patch.diff",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b093-2127-7a9e-9051-60409f8fe0bf/patch.diff",
+      "sha256": "e7a3a91f7bd746b7511d05a7b7e45637110adc43458cbd68d769bfe1ac83b1dc",
+      "byte_size": 41,
+      "local": "/tmp/sac246-artifacts/5ea3732e376f-patch.diff"
+    },
+    {
+      "attempt_id": "01a0b093-2127-7a9e-9051-60409f8fe0bf",
+      "logical_name": "validation.txt",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b093-2127-7a9e-9051-60409f8fe0bf/validation.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byte_size": 0,
+      "local": "/tmp/sac246-artifacts/031b13d7b9a0-validation.txt"
+    },
+    {
+      "attempt_id": "01a0b093-2127-7a9e-9051-60409f8fe0bf",
+      "logical_name": "raw-review-output.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b093-2127-7a9e-9051-60409f8fe0bf/raw-review-output.json",
+      "sha256": "2b6ee55cbe5e43a96b4dfb238d11dde3ce17e944ed2f76dd38a81887920b5047",
+      "byte_size": 12722,
+      "local": "/tmp/sac246-artifacts/178f1fab18a1-raw-review-output.json"
+    },
+    {
+      "attempt_id": "01a0b093-2127-7a9e-9051-60409f8fe0bf",
+      "logical_name": "claude-provider-proof.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b093-2127-7a9e-9051-60409f8fe0bf/claude-provider-proof.json",
+      "sha256": "1c7c65f0a56a035868474343f5f11aa645897ae9c4c60afcd4fbd7c524fced4b",
+      "byte_size": 14571,
+      "local": "/tmp/sac246-artifacts/f6ef2a776e92-claude-provider-proof.json"
+    }
+  ],
+  "result": {
+    "outcome": "completed",
+    "reviewOutcome": "needs_work",
+    "summary": "The shipped application is real and ran remotely: all six browser images are genuine captures of the changed app at the temporary Worker origin https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/, the code in candidate/src/worker.ts genuinely uses env.DB (D1) and env.BODIES (R2) with ASSETS.fetch fallback, and candidate/src/web/app.js renders titles and bodies through textContent only. Nothing looks like a fixture screenshot, a faked service state or a fabricated receipt, and the checks transcript shows a real build and a real node verification run against the deployed environment. However, the saved plan's seven scenarios are only partly evidenced, and three gaps touch approved requirements directly. (1) Scenario 1 has no evidence at all: no publish_environment receipt, no migration output, no empty D1/R2 readback and no empty-shelf screenshot, so the \"one D1 + one R2 binding, no login, one desktop screen from empty state\" claim (spec:102, spec:56) rests on captions only. (2) Scenario 3, the mandatory fresh-browser-context proof the human explicitly asked for on 2026-09-17 16:57 (\"use the preferred adjacent fresh-browser scenario against unchanged cloud data\"), is backed by an image whose content hash (ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281) is byte-identical to the scenario 2 post-delete image, and no GET /api/snippets transcript for that load was saved; nothing in the gallery distinguishes a new context from the already-open page, so spec:71's fresh-context scenario is not demonstrated. (3) Scenario 6 has no evidence and the final storage check lists only Greeting and Markup sample (no Alpha/Beta), so the \"Report failed actions\" requirement (spec:87) is shown by unit tests only, and tests are not application demonstrations. Scenario 4 shows only the blank-title rejection, not the whitespace-only-text rejection required by spec:16's second scenario, and no before/after D1+R2 comparison proving a rejected save wrote nothing. Scenario 7 storage proof is a prose summary printed by /deos/output/requests/verify-final-storage.mjs (a script not in the frozen sources) with no raw snippet ids, object keys or tombstone rows, no final-list screenshot, and no recorded removal of the temporary resources. Scenarios 2 and 5 pass on their own evidence. Fix the missing captures and readbacks; no requirement is weakened and no new requirement is added.",
+    "providerReceipts": []
+  }
+}

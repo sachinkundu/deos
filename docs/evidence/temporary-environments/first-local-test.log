@@ -1,0 +1,24 @@
+✔ temporary environment contract rejects account/resource/secret overrides and duplicate bindings (1.151167ms)
+✖ real SQLite intent survives lost creation/upload, ownership is scoped and cleanup confirms all provider absences (134.229375ms)
+✔ trusted management route enforces authentication and idempotent atomic D1 migrations (107.454542ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 342.926792
+
+✖ failing tests:
+
+test at tests/implementation-environment.test.ts:31:1
+✖ real SQLite intent survives lost creation/upload, ownership is scoped and cleanup confirms all provider absences (134.229375ms)
+  Error: CHECK constraint failed: state IN ('pending', 'starting', 'running', 'collecting', 'completed', 'blocked', 'failed', 'interrupted', 'absolute_timeout', 'canceled')
+      at TestContext.<anonymous> (file:///Users/sachin/code/deos-sac-172/tests/implementation-environment.test.ts:82:96)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    code: 'ERR_SQLITE_ERROR',
+    errcode: 275,
+    errstr: 'constraint failed'
+  }

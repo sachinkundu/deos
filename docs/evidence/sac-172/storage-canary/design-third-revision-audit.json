@@ -1,0 +1,20 @@
+{
+  "attemptId": "01a0b034-3b71-7147-8326-6286790fc2fe",
+  "transcriptSha256": "57ea1f6791abd028a31054e5a486d484c549eacadf54b3ff050706740a88c065",
+  "transcriptBytes": 134559,
+  "completedCommands": 16,
+  "nonzeroCommands": [
+    {
+      "id": "item_2",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"pwd && git status --short && rg --files -g 'AGENTS.md' -g '\"'!node_modules'\"' -g '\"'!vendor'\"' && sed -n '1,240p' openspec/changes/sac-246/.openspec.yaml && sed -n '1,260p' openspec/changes/sac-246/proposal.md && sed -n '1,360p' openspec/changes/sac-246/specs/text-snippet-shelf/spec.md && sed -n '1,460p' openspec/changes/sac-246/design.md\"",
+      "aggregated_output": "/deos/workspace/repository\n?? openspec/changes/sac-246/design.md\n",
+      "exit_code": 1,
+      "status": "failed"
+    }
+  ],
+  "providerErrors": [],
+  "outputErrorLines": [],
+  "reviewedHead": "ac60ae1a5d4756e4e94e6834d080048bab1a0cc3",
+  "status": "STORE-08 addressed in design; independent review and implementation proof pending"
+}

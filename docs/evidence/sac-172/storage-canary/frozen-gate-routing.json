@@ -1,0 +1,69 @@
+{
+  "digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f",
+  "nodes": {
+    "implementation_demo_gate": {
+      "id": "implementation_demo_gate",
+      "type": "agent",
+      "job": "implementation_demo_gate",
+      "edges": {
+        "pass": "implementation_branch_write",
+        "needs_work": "implementation_build",
+        "blocked": "implementation_question",
+        "failed": "implementation_failed",
+        "base_changed": "implementation_rebase"
+      }
+    },
+    "implementation_build": {
+      "id": "implementation_build",
+      "type": "agent",
+      "job": "implementation_build",
+      "edges": {
+        "completed": "implementation_proof_check",
+        "retry_fresh": "implementation_build",
+        "needs_human": "implementation_question",
+        "failed": "implementation_failed",
+        "blocked": "implementation_failed",
+        "manual_reconciliation_required": "implementation_manual_reconciliation",
+        "base_changed": "implementation_rebase"
+      }
+    },
+    "implementation_review": {
+      "id": "implementation_review",
+      "type": "human_gate",
+      "linearState": "Human Review",
+      "expectedEventKind": "state",
+      "decisions": {
+        "revision_requested": "In Progress",
+        "merge_authorized": "Merging",
+        "canceled": "Canceled"
+      },
+      "edges": {
+        "revision_requested": "implementation_build",
+        "merge_authorized": "implementation_merge_recheck",
+        "canceled": "canceled",
+        "base_changed": "implementation_rebase"
+      }
+    },
+    "implementation_proof_check": {
+      "id": "implementation_proof_check",
+      "type": "system_action",
+      "action": "implementation.check_proof",
+      "edges": {
+        "completed": "implementation_demo_gate",
+        "review_ready": "implementation_branch_write",
+        "failed": "implementation_failed",
+        "base_changed": "implementation_rebase"
+      }
+    },
+    "implementation_publish": {
+      "id": "implementation_publish",
+      "type": "system_action",
+      "action": "implementation.publish",
+      "edges": {
+        "completed": "implementation_review",
+        "failed": "implementation_publication_question",
+        "base_changed": "implementation_rebase"
+      }
+    }
+  }
+}

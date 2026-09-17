@@ -1,0 +1,126 @@
+{
+  "body": "Keep a small shelf of text snippets\n\nImplements the approved design. Live release has not begun.\n\nLinear: [SAC-246](https://linear.app/sachinkundu/issue/SAC-246/keep-a-small-shelf-of-text-snippets)\n\nApproved Proposal and Specs: [PR #43](https://github.com/sachinkundu/deos-sample-project/pull/43)\n\nApproved design: [PR #44](https://github.com/sachinkundu/deos-sample-project/pull/44)\n\nThe temporary Worker, D1 and R2 test environment is retired after publication. Screenshots and test evidence remain available here; no live review preview is retained.\n\nProof:\n\n1. The newly migrated remote shelf opens empty on one desktop screen, with no login and the D1 + R2 cloud badge visible.\n\n   ![The newly migrated remote shelf opens empty on one desktop screen, with no login and the D1 + R2 cloud badge visible.](https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201.png)\n\n2. Two cloud-backed snippets are listed, and selecting Sign-off shows its own Kind regards body.\n\n   ![Two cloud-backed snippets are listed, and selecting Sign-off shows its own Kind regards body.](https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9.png)\n\n3. After deleting Sign-off, Greeting remains listed and readable with Hello, team!.\n\n   ![After deleting Sign-off, Greeting remains listed and readable with Hello, team!.](https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281.png)\n\n4. A fresh browser context rebuilds the unchanged cloud shelf with Greeting listed, Sign-off absent, and no reader selection carried over.\n\n   ![A fresh browser context rebuilds the unchanged cloud shelf with Greeting listed, Sign-off absent, and no reader selection carried over.](https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/e0bf2dd8a6c979dd00c6ccb2d72902eb30690d2668a65ea6733c49a30499dcea.png)\n\n5. Selecting Greeting in the fresh context reads Hello, team! from the remote shelf.\n\n   ![Selecting Greeting in the fresh context reads Hello, team! from the remote shelf.](https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281.png)\n\n6. Submitting text without a title shows the title-required error and leaves Greeting as the only saved snippet.\n\n   ![Submitting text without a title shows the title-required error and leaves Greeting as the only saved snippet.](https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/21721392e4d9f8d758f5164ec7b553f20e25c83eef36723e9312b980127e71b9.png)\n\n7. Submitting Empty note with spaces-only text shows the text-required error and leaves the cloud shelf unchanged.\n\n   ![Submitting Empty note with spaces-only text shows the text-required error and leaves the cloud shelf unchanged.](https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/87d7190b16b84299c9860c8b5ff4e5202a8df4ac897b02608166f06e861d772f.png)\n\n8. Markup-looking content is displayed literally as \\<b\\>Hello\\</b\\> in the plain-text reader.\n\n   ![Markup-looking content is displayed literally as \\<b\\>Hello\\</b\\> in the plain-text reader.](https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe.png)\n\n9. A real remote save beyond the approved capacity is rejected with a clear no-capacity message, the form preserved, and no success state.\n\n   ![A real remote save beyond the approved capacity is rejected with a clear no-capacity message, the form preserved, and no success state.](https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/c11f4a8a8e8c99dba19a5f93a09e2016813ae800ff4344a87dd244df376fe8e1.png)\n\nThis is the [Showboat file](https://github.com/sachinkundu/deos-sample-project/blob/cce02a6093dc703264990b96746822a16c4cabec/showboat.md).",
+  "createdAt": "2026-09-17T18:45:08Z",
+  "files": [
+    {
+      "path": ".gitignore",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "migrations/0001_snippet_shelf.sql",
+      "additions": 69,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "openspec/changes/sac-246/tasks.md",
+      "additions": 49,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "package-lock.json",
+      "additions": 2604,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "package.json",
+      "additions": 23,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "scripts/build.mjs",
+      "additions": 29,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "scripts/verify-remote-storage.mjs",
+      "additions": 64,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "src/env.d.ts",
+      "additions": 10,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "src/web/app.js",
+      "additions": 505,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "src/web/index.html",
+      "additions": 157,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "src/web/styles.css",
+      "additions": 551,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "src/worker.ts",
+      "additions": 911,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/api.test.ts",
+      "additions": 156,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/browser-state.test.ts",
+      "additions": 354,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/delete-lifecycle.test.ts",
+      "additions": 131,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/helpers.ts",
+      "additions": 197,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/save-lifecycle.test.ts",
+      "additions": 154,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tsconfig.json",
+      "additions": 20,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "vitest.config.ts",
+      "additions": 9,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefOid": "108d02af273ace38d379ca1f94012a76dadefe31",
+  "isDraft": false,
+  "number": 45,
+  "state": "OPEN",
+  "statusCheckRollup": [],
+  "url": "https://github.com/sachinkundu/deos-sample-project/pull/45"
+}

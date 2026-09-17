@@ -123,6 +123,33 @@ successful scenarios when stdout is lost. Do not search protected runtime folder
 ImageMagick tools such as `montage` are not installed. Inspection does not need
 composite images; keep the original browser captures for the PR.
 
+When `temporary-environment-v1` is listed, use `publish_environment` for real
+remote Worker/D1/R2 tests. Give it a stable `requestId`, a repository-relative
+`main` path to a bundled JavaScript ES module, optional built `assets` directory,
+and optional `d1:["DB"]` / `r2:["BUCKET"]` names (at most one each). Bundle your
+own dependencies first; the trusted service never runs build scripts with provider
+credentials. The module exports `default.fetch(request,env,ctx)`. It receives its
+assigned bindings and `env.ASSETS.fetch(request)` for uploaded assets. It cannot
+choose resource IDs, account, Worker name, credentials or production routes.
+
+Use `storage` with a stable request ID for `migrate` (an `id` plus a `statements`
+array; identical retries are safe), `query` (one SELECT with optional `params`),
+`objects` (optional cursor), `object` (key), or `request` (method, relative path,
+optional JSON body). Inspect both D1 rows and R2 objects to demonstrate real
+storage. HTTP requests return status and body; assert the expected status yourself.
+Use app endpoints for fixture resets. Do not modify the reserved migration table.
+Call with `--wait` before dependent work. If publication fails, inspect the saved
+error then explicitly retry the same bundle using a new local operation ID;
+the service reconciles the same provider resources. Do not repeat a migration
+with changed SQL under the same migration ID. No account token is available.
+
+Publish before opening the browser and use `target:"remote"` in demos. Keep the
+app fixed during a demo collection. Each new author attempt gets fresh resources;
+restore schema/fixtures as needed. Cloud review and response finish before DEOS
+deletes the temporary environment after publishing the PR and durable GitHub
+screenshots. State in the PR that the live environment is retired. The screenshots
+and logs remain. This is test deployment, not a production release.
+
 When `static-preview-v1` is listed in the input capabilities, a finished static
 build can use `{"action":"publish_preview","assets":"dist"}`. The service
 publishes only static assets to an isolated nonproduction Pages project and

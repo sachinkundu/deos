@@ -1,6 +1,7 @@
 import { D1PlanningStore } from "./planning-store.ts";
 import { ImplementationDemoService } from './implementation-demo.ts';
 import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
+import { ImplementationEnvironment } from './implementation-environment.ts';
 import { publishImplementationProof, implementationProofMarkdown, type PublishedImplementationProof } from './implementation-pr-proof.ts';
 import { D1DesignStore } from "./design-store.ts";
 import {
@@ -89,13 +90,15 @@ export class ImplementationService {
           const github = implementationGitHub(this.env, run);
           if (action === "implementation.write_branch")
             await github.writeBranch(this.store, work, candidate);
-          else if (action === "implementation.publish")
+          else if (action === "implementation.publish") {
             await github.publish(
               this.store,
               work,
               await this.prBody(work, await publishImplementationProof(github, this.store, work, candidate)),
               work.candidate_sha!,
             );
+            await new ImplementationEnvironment(this.env).cleanupRun(work.run_id);
+          }
           else if (
             action === "implementation.merge_recheck" ||
             action === "implementation.merge"
@@ -472,12 +475,14 @@ export class ImplementationService {
     const pullLink = (number: number | null | undefined) => number
       ? `[PR #${number}](https://github.com/${input.repository}/pull/${number})` : 'Not recorded';
     const preview = await new ImplementationHostedPreview(this.env).latest(work);
+    const remote = await this.env.DB.prepare('SELECT name FROM implementation_environments WHERE run_id=? LIMIT 1').bind(work.run_id).first();
     return [
       `${input.issue.title}\n\nImplements the approved design. Live release has not begun.`,
       `Linear: [${work.linear_identifier}](${input.issue.url})`,
       `Approved Proposal and Specs: ${pullLink(plan?.pull_request_number)}`,
       `Approved design: ${pullLink(design?.pull_request_number)}`,
       ...(preview ? [`Preview: [Open the web app](${preview.deployment.url})${preview.subject.treeSha === work.tree_sha ? '' : ' (published from an earlier repository snapshot; later edits may include checklist or source changes)'}`] : []),
+      ...(remote ? ['The temporary Worker, D1 and R2 test environment is retired after publication. Screenshots and test evidence remain available here; no live review preview is retained.'] : []),
       'Proof:',
       ...implementationProofMarkdown(proof),
       `This is the [Showboat file](${proof.showboatUrl}).`,

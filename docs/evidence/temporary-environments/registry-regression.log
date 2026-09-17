@@ -1,0 +1,44 @@
+✔ three completed responses exit without manufacturing a passed review; replay keeps one receipt (10.937375ms)
+✔ running, uncleaned, rejected, or previous-round responses cannot release the loop (1.166958ms)
+✔ an already-started response remains acceptable when retried at the limit (0.424166ms)
+✔ a limit receipt never replaces independent exact-head review or finding accounting (3.292125ms)
+✔ single-cycle gate accepts a published response to every finding, not an unreviewed unrelated candidate (4.716333ms)
+✔ v20 retry upgrades only the limit edge and retains completed planning and human gates (17.710209ms)
+✔ native design limit counts three checked repairs in one still-live author attempt (1.241625ms)
+✔ D1 route writes read back and an active run keeps its frozen repository (118.244958ms)
+✔ legacy backfill completes route metadata and active-run snapshots without changing the target (106.5515ms)
+✔ atomic allocation freezes the matching route and rejects an old route proof (104.222167ms)
+✔ deployment seed is created only for an empty route list (216.891625ms)
+✔ implementation selection before scheduled registration preserves frozen runs and rejects version reuse (118.657542ms)
+✔ route overview keeps saved routes visible when both live catalogs fail (0.762084ms)
+✔ route admin rejects another actor and extra RPC input before provider work (0.228833ms)
+✔ enabling a route checks its frozen install and saves despite active runs (10.044917ms)
+✔ implementation dispatch checks the bound account id independently of its email (0.78925ms)
+✔ creating a route pairs only provider-listed ids and records a disabled route (0.7815ms)
+✔ production bundle includes the version 20 design review prompts (0.816708ms)
+✔ loads the reviewed workflow bundle and resolves prompts and schemas (27.017916ms)
+✔ canonical workflow digest is stable (14.523709ms)
+✔ simple definition bundles the approved planning prompt and exact three-way graph (4.090625ms)
+✔ simple definition rejects ambiguous decisions and unsupported capabilities (4.505958ms)
+✔ traceability planning definition freezes reviewers and keeps publication trusted (11.83125ms)
+✔ traceability recheck schema uses the Codex-supported nullable form (0.192875ms)
+✔ restores an immutable stored definition for an older active run (6.720333ms)
+✔ restores the deployed typed version 4 lifecycle shape (1.821875ms)
+✔ restores a frozen legacy definition containing the retired release action (1.287292ms)
+✔ loads and restores the active checked planning merge action (0.924791ms)
+✔ restores the frozen version 10 legacy blocked tail (0.568916ms)
+✔ restores an immutable version 3 definition without applying version 4 rules (0.663084ms)
+✔ rejects a tampered stored definition (6.227125ms)
+✔ rejects executable edge expressions and unknown fields (3.699291ms)
+✔ rejects a missing prompt before the definition can be enabled (2.806333ms)
+✔ rejects graph edges to missing nodes (3.038084ms)
+✔ rejects ambiguous or incomplete explicit lifecycle nodes (10.103167ms)
+✔ bounded candidate definitions keep model routes and send every human revision directly back to its gate (35.452542ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 679.586084

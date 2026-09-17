@@ -1,0 +1,73 @@
+{
+  "attemptId": "01a0afa3-fe81-70e0-8e55-bca7ee3fae73",
+  "artifactReceipts": [
+    {
+      "attempt_id": "01a0afa3-fe81-70e0-8e55-bca7ee3fae73",
+      "logical_name": "author-completion.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afa3-fe81-70e0-8e55-bca7ee3fae73/failure-v2/author-completion.json",
+      "sha256": "4f60f0b8fc5ddb7ce627b56a147c2163d362d3421df6f196f9d966025a6b5431",
+      "byte_size": 202
+    },
+    {
+      "attempt_id": "01a0afa3-fe81-70e0-8e55-bca7ee3fae73",
+      "logical_name": "patch.diff",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afa3-fe81-70e0-8e55-bca7ee3fae73/failure-v2/patch.diff",
+      "sha256": "01f1de84f0c642c863ead5297614bb6ccfd66846289c3c1fca3098220737019e",
+      "byte_size": 8642
+    },
+    {
+      "attempt_id": "01a0afa3-fe81-70e0-8e55-bca7ee3fae73",
+      "logical_name": "status.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afa3-fe81-70e0-8e55-bca7ee3fae73/failure-v2/status.json",
+      "sha256": "a4c001d917efde4adb54fd02980603d87eb3ec352e4e50385d575381695b31a0",
+      "byte_size": 264
+    },
+    {
+      "attempt_id": "01a0afa3-fe81-70e0-8e55-bca7ee3fae73",
+      "logical_name": "transcript.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afa3-fe81-70e0-8e55-bca7ee3fae73/failure-v2/transcript.jsonl",
+      "sha256": "69f1b5e8c1e71af225fecac6d1f2da8bff320cb77ae8a5ce5891c2b06b6fff1f",
+      "byte_size": 75674
+    },
+    {
+      "attempt_id": "01a0afa3-fe81-70e0-8e55-bca7ee3fae73",
+      "logical_name": "validation.txt",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afa3-fe81-70e0-8e55-bca7ee3fae73/failure-v2/validation.txt",
+      "sha256": "2c62f6972a362c711595e888058115b8fe60b50504e291d4558bbf4a6bc1c2bf",
+      "byte_size": 902
+    },
+    {
+      "attempt_id": "01a0afa3-fe81-70e0-8e55-bca7ee3fae73",
+      "logical_name": "failure-summary.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afa3-fe81-70e0-8e55-bca7ee3fae73/failure-v2/failure-summary.json",
+      "sha256": "49ba6ff633820ae9fdac7323dcef1b93bd3b3bbd08b473cbf2efcbba11d6b65a",
+      "byte_size": 391
+    }
+  ],
+  "completedCommands": 10,
+  "nonzeroCommands": [
+    {
+      "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author bash -c 'pwd && rg --files -g '\\\\''AGENTS.md'\\\\'' -g '\\\\''\"'!node_modules'\"'\\\\'' -g '\\\\''\"'!vendor'\"'\\\\'' && rg --files | sed -n '\\\\''1,240p'\\\\'''\"",
+      "exit_code": 1,
+      "output": "/deos/workspace/repository\n"
+    }
+  ],
+  "providerErrors": [
+    {
+      "type": "error",
+      "message": "You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at Sep 22nd, 2026 3:46 PM."
+    },
+    {
+      "type": "turn.failed",
+      "error": {
+        "message": "You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at Sep 22nd, 2026 3:46 PM."
+      }
+    }
+  ],
+  "desktopUsageReadback": {
+    "observedAt": "2026-09-17T14:40Z",
+    "usedPercent": 0,
+    "resetConsumed": false,
+    "cloudCredentialIdentityVerified": false
+  }
+}

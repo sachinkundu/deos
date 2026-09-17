@@ -661,6 +661,21 @@ export async function setupImplementation(job) {
           await appendFile(journal,JSON.stringify({operation:'check',...subject,result})+'\n');
             state.checks = recordCheck(state.checks, result, before);
           }
+        } else if (request.action === 'publish_environment') {
+          const requestPath=`${ROOT}/environment-request.json`;
+          await writeFile(requestPath,JSON.stringify(request),{mode:0o644});
+          await chmod(ROOT,0o711);
+          const capture=await command(['runuser','-u','deos-author','--','node',
+            '/deos/bin/implementation-environment-bundle.mjs',job.cwd,requestPath],job.cwd,{maxOutputBytes:8*1024*1024});
+          if(capture.exitCode!==0)throw Object.assign(new Error(`Environment bundle capture failed: ${capture.stderr}`),{result:capture});
+          result=await broker({action:'publish_environment',subject,bundle:JSON.parse(capture.stdout)});
+          state.preview=result;
+          await appendFile(journal,JSON.stringify({operation:'publish_environment',...subject,result})+'\n');
+        } else if (request.action === 'storage') {
+          const {action,requestId,...operation}=request;
+          result=await broker({action,subject,operation});
+          if(result.proof)state.proof.push(result.proof);
+          await appendFile(journal,JSON.stringify({operation:'storage',...subject,result})+'\n');
         } else if (request.action === 'publish_preview' ||
           (request.action === 'preview' && previewTarget(request,input.policy) === 'hosted')) {
           if (request.action === 'preview') localConfig(request,job.attemptId);
@@ -785,7 +800,7 @@ export async function setupImplementation(job) {
         await persistState();
         return result;
         };
-        if (['check', 'demo'].includes(request.action))
+        if (['check', 'demo', 'publish_environment', 'storage'].includes(request.action))
           return reply(await operations.submit(withPreviewTarget(request,state.preview?.target ?? (input.hostedPreview ? 'hosted' : 'local')), execute));
         return toolQueue.run(request.action, async () => reply(await execute(request)), toolError);
     };

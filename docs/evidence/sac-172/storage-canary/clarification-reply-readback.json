@@ -1,0 +1,42 @@
+{
+  "gates": [
+    {
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "visit_sequence": 41,
+      "node_id": "implementation_clarification_wait",
+      "expected_event_kind": "comment",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "issue_id": "e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+      "human_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+      "question_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:sac-246-temporary-worker-origin-1042",
+      "pr_number": null,
+      "head_sha": null,
+      "base_sha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "state": "open",
+      "decision_delivery_id": null,
+      "decision_outcome": null,
+      "opened_at": "2026-09-17T17:48:42.577Z",
+      "decided_at": null
+    }
+  ],
+  "events": [],
+  "questions": [
+    {
+      "question_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:sac-246-temporary-worker-origin-1042",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "block_key": "sac-246-temporary-worker-origin-1042",
+      "gate_visit": 41,
+      "linear_comment_id": "391b67e0-8ed4-4b4f-8c0b-c0d1891e990b",
+      "opened_delivery_id": "191ed8b3-0611-4036-99fd-9b67a924d2f9",
+      "opened_at": "2026-09-17T17:48:40.009Z",
+      "question_key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/040a27db828e5b7bdade3a42e7329fa125bd5b0920d7917921bb185b862b6fd5/question.json",
+      "question_sha": "040a27db828e5b7bdade3a42e7329fa125bd5b0920d7917921bb185b862b6fd5",
+      "status": "open",
+      "answer_delivery_id": null,
+      "answer_comment_id": null,
+      "answer_actor_id": null,
+      "reply_key": null,
+      "reply_sha": null
+    }
+  ]
+}

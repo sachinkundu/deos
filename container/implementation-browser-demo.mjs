@@ -37,7 +37,7 @@ export async function collectBrowserDemo(request, { browser, record }) {
     ids.add(scenario.id);
     if (!Array.isArray(scenario.steps) || !scenario.steps.length)
       throw new Error(`Demo scenario ${scenario.id} needs steps`);
-    if (scenario.target !== undefined && !["local", "hosted"].includes(scenario.target))
+    if (scenario.target !== undefined && !["local", "hosted", "remote"].includes(scenario.target))
       throw new Error(`Invalid browser target for ${scenario.id}`);
     if (scenario.url !== undefined && typeof scenario.url !== "string")
       throw new Error(`Invalid start URL for ${scenario.id}`);

@@ -194,7 +194,7 @@ test("simple definition rejects ambiguous decisions and unsupported capabilities
 test("traceability planning definition freezes reviewers and keeps publication trusted", async () => {
   const definition = await loadWorkflowDefinition(traceabilitySource, bundle());
   assert.equal(definition.name, "simple-traceability");
-  assert.equal(definition.version, 23);
+  assert.equal(definition.version, 26);
   assert.equal(definition.nodes.publish_design.edges.review_feedback_changed, "design_revision_author");
   assert.equal(definition.jobs.planning_author.agentRole, "author");
   assert.deepEqual(definition.jobs.planning_author.capabilities, undefined);
@@ -472,7 +472,7 @@ test('bounded candidate definitions keep model routes and send every human revis
   for (const id of ['simple-traceability', 'simple-traceability-claude']) {
     const current = await loadWorkflowDefinition(readFileSync(new URL(`../config/workflow.${id}.yaml`, import.meta.url), 'utf8'), bundle());
     const next = await loadWorkflowDefinition(readFileSync(new URL(`../config/workflow.${id}.bounded.yaml`, import.meta.url), 'utf8'), bundle());
-    assert.equal(next.version, 25);
+    assert.equal(next.version, 27);
     for (const [jobId, job] of Object.entries(current.jobs)) {
       assert.equal(next.jobs[jobId].model, job.model);
       assert.equal(next.jobs[jobId].modelProvider, job.modelProvider);

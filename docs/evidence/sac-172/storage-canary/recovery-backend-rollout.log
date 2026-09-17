@@ -1,0 +1,63 @@
+{"active_attempts": []}
+{"workflow_version_conflicts": [], "bundled_definitions": [{"file": "workflow.deos.yaml", "name": "openspec-delivery", "version": 12, "digest": "7cb898d36fd4a6f247c1dbbbeecc2136661c7e6825d96cf4497959167a87404b"}, {"file": "workflow.implementation.yaml", "name": "implementation", "version": 41, "digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f"}, {"file": "workflow.simple-traceability-claude.bounded.yaml", "name": "simple-traceability-claude", "version": 27, "digest": "ed7d09486fae1213acb7d472875b90941bc0ecdde58aa3316c8b3070e2d275ca"}, {"file": "workflow.simple-traceability-claude.yaml", "name": "simple-traceability-claude", "version": 26, "digest": "3afbfa583e32bef5e367e1446040464056a1bca8dc568b7b6084a6ddea69a9a6"}, {"file": "workflow.simple-traceability.bounded.yaml", "name": "simple-traceability", "version": 27, "digest": "72e2174f8c48c4b31a0426274a7c2adaaea6e208c25c6440141685e3a3d3137b"}, {"file": "workflow.simple-traceability.yaml", "name": "simple-traceability", "version": 26, "digest": "45be5b80e3a7053ecb2886638198a1a4b2ed4560f44e3416e2ba7609a3d2db9f"}, {"file": "workflow.simple.yaml", "name": "simple", "version": 6, "digest": "f8ff2f9ac30010f93cb2b2a38aee693df105a61c40fb9ee3f9ff245201646666"}]}
+{"pending_migrations": []}
+{"latest_frozen_definition": {"version": 41, "keys": ["apiVersion", "kind", "name", "version", "start", "execution", "jobs", "nodes", "implementationPolicy", "digest"], "implementationPolicy": {"uiPaths": ["portal/", "web/", "app/", "pages/", "components/", "src/components/", "src/App.", "public/"], "providerPaths": ["src/deos/ingress.py", "src/deos/worker.py", "src/entry.py", "src/linear-", "src/github-", "src/capability-"], "documentationHosts": ["developers.cloudflare.com", "docs.github.com", "linear.app", "developers.openai.com", "platform.openai.com", "docs.python.org", "nodejs.org", "www.typescriptlang.org", "react.dev", "vite.dev", "developer.mozilla.org", "web.dev", "vitest.dev", "docs.pytest.org", "docs.astral.sh", "docs.npmjs.com"], "packageHosts": ["registry.npmjs.org", "pypi.org", "files.pythonhosted.org"], "safeAdapters": ["static-preview-v1", "temporary-environment-v1"]}}}
+{"active_attempts": []}
+
+ ⛅️ wrangler 4.125.0 (update available 4.133.0)
+───────────────────────────────────────────────
+
+Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+Total Upload: 3230.52 KiB / gzip: 621.65 KiB
+Worker Startup Time: 54 ms
+Your Worker has access to the following bindings:
+Binding                                                                                     Resource                  
+env.Sandbox (Sandbox)                                                                       Durable Object            
+env.Standard2Sandbox (Standard2Sandbox)                                                     Durable Object            
+env.ImplementationSandbox (ImplementationSandbox)                                           Durable Object            
+env.ImplementationStandard2Sandbox (ImplementationStandard2Sandbox)                         Durable Object            
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                                   Workflow                  
+env.DB (deos-sample-project)                                                                D1 Database               
+env.ARTIFACTS (deos-sample-project-artifacts)                                               R2 Bucket                 
+env.REVIEW_PORTAL (deos-workflow-portal)                                                    Worker                    
+env.IMPLEMENTATION_BROWSER                                                                  Browser Run               
+env.PORTAL_ACCESS_TEAM_DOMAIN ("deos-voxdez.cloudflareaccess.com")                          Environment Variable      
+env.PORTAL_ACCESS_AUD ("c12828abda88ac73e394039f6e0b87a9bc5f2...")                          Environment Variable      
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                       Environment Variable      
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")                 Environment Variable      
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                              Environment Variable      
+env.LINEAR_PROJECT_NAME ("deos-sample-project")                                             Environment Variable      
+env.LINEAR_START_STATE_NAME ("Todo")                                                        Environment Variable      
+env.LINEAR_START_STATE_ID ("ee23b3ec-76fc-4186-8d9e-ddadd1254ee1")                          Environment Variable      
+env.LINEAR_WORK_STATE_ID ("700c1b00-b9dd-4cfb-9d59-bd60c1d8d471")                           Environment Variable      
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                             Environment Variable      
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                               Environment Variable      
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                            Environment Variable      
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                                 Environment Variable      
+env.GITHUB_API_URL ("https://api.github.com")                                               Environment Variable      
+env.OPENROUTER_API_URL ("https://openrouter.ai/api/v1")                                     Environment Variable      
+env.OPENROUTER_SUPPORTED_MODELS ("deepseek/deepseek-v4-pro")                                Environment Variable      
+env.TRIAL_REPOSITORY ("sachinkundu/deos-sample-project")                                    Environment Variable      
+env.TRIAL_DISPATCH_ENABLED ("false")                                                        Environment Variable      
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                              Environment Variable      
+env.SANDBOX_FAILURE_RETENTION_MINUTES ("0")                                                 Environment Variable      
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                        Environment Variable      
+env.IMPLEMENTATION_PREVIEW_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")                  Environment Variable      
+env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")              Environment Variable      
+env.PORTAL_BASE_URL ("https://deos.voxdez.com")                                             Environment Variable      
+env.ROUTE_ADMIN_ALLOWED_EMAIL ("sachinkundu@gmail.com")                                     Environment Variable      
+env.IMPLEMENTATION_ENVIRONMENT_TOKEN ("(hidden)")                                           Environment Variable      
+
+The following containers are available:
+- deos-queue-consumer-ts-sandbox (/Users/sachin/code/deos-sac-172/Dockerfile)
+- deos-queue-consumer-ts-standard2sandbox (/Users/sachin/code/deos-sac-172/Dockerfile)
+- deos-queue-consumer-ts-implementationsandbox (/Users/sachin/code/deos-sac-172/Dockerfile)
+- deos-queue-consumer-ts-implementationstandard2sandbox (/Users/sachin/code/deos-sac-172/Dockerfile)
+
+Uploaded deos-queue-consumer-ts (8.46 sec)
+Deployed deos-queue-consumer-ts triggers (5.67 sec)
+  https://deos-queue-consumer-ts.skundu.workers.dev
+  schedule: */15 * * * *
+  Consumer for deos-sample-project-events
+  workflow: deos-sandbox-codex-workflow
+Current Version ID: 9c39fb05-afa9-4688-a05c-b326cfee1967

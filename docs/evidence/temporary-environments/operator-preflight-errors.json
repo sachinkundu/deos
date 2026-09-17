@@ -1,0 +1,23 @@
+[
+  {
+    "stage": "RouteAdmin read-only overview",
+    "error": "HTTP Error 403: Forbidden",
+    "body": "error code: 1010",
+    "recovery": "Retried the read with the established diagnostic User-Agent; succeeded.",
+    "mutation": false
+  },
+  {
+    "stage": "RouteAdmin select implementation v41 before registry cycle",
+    "message": "D1_ERROR: FOREIGN KEY constraint failed: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_FOREIGNKEY)",
+    "stack": "Error: D1_ERROR: FOREIGN KEY constraint failed: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_FOREIGNKEY)\n    at async Object.fetch (file:///private/tmp/sac246-route-admin/.wrangler/tmp/dev-cuzvFZ/worker.js:19:50)\n    at async drainBody (file:///private/tmp/sac246-route-admin/.wrangler/tmp/dev-cuzvFZ/worker.js:30:12)",
+    "cause": "Error: FOREIGN KEY constraint failed: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_FOREIGNKEY)",
+    "outcome": "Policy stayed at v39; wait for supported scheduled registry then retry with fresh revision."
+  },
+  {
+    "stage": "Read-only helper startup",
+    "message": "D1 binding 'DB' references database '4e854f8a-018a-42c4-a325-c4b8806c06b2' which was not found. Verify the database exists in your account and that the database_id in your configuration is correct.",
+    "code": 10181,
+    "reason": "Supervisor port text replacement also changed matching digits in database ID.",
+    "recovery": "Restored exact binding ID; helper started and returned an empty attempt without error."
+  }
+]
