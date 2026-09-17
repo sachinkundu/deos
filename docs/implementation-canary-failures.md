@@ -1066,3 +1066,15 @@ hide the ID across refresh. Sent precise feedback through Linear and requested
 a cloud-authored design revision; D1 confirmed the consumed decision and new
 author attempt16:08UTC. No sample implementation code was edited locally.
 Details and pending verification: storage-canary/failures.md STORE-07.
+
+### SAC-246 STORE-12/13: failed implementation tests repaired by cloud author
+
+Three trusted test operations failed on emulator/harness setup, R2 body stream
+handling, a deletion fault-injection checkpoint and short lifecycle timeouts.
+Cloud agents repaired the application/tests; the supervisor only logged and
+verified. Test4 passed16/16 at17:37:28UTC, with typecheck and formatting passed.
+The workflow remained in implementation_build through failures and repairs.
+Full causes, original outputs, receipts and proof limits are recorded in
+[evidence/sac-172/storage-canary/failures.md](evidence/sac-172/storage-canary/failures.md).
+Remote demo, independent implementation review, publication and cleanup remain
+pending; these local checks do not establish complete canary success.

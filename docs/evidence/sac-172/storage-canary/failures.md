@@ -76,6 +76,40 @@ The response recorded a reasoned no_change for each; the supervisor inspected
 those reasons and the unchanged PR43 head before approving the planning gate.
 They are review findings, not runtime failures or additional repair rounds.
 
+### STORE-12 — Test harness incompatible with the selected emulator
+
+Trusted test operations sac246-test-1 and sac246-test-2 failed at17:28:53.207
+and17:31:37.523. The selected latest Miniflare API rejected the old constructor
+options, first requiring workers and then workers[0].config. Browser tests also
+failed to read a source file through a non-file import URL and attempted to load
+styles.css from an absent localhost server. These are two failed check operations
+with several harness diagnostics, not remote D1/R2 failures. The cloud author
+revised the harness and emulator dependency; the third test reached application
+behavior with12/16passing. Full original commands, stdout and stderr remain in
+build-test-failures-1735.json. No supervisor application edits.
+
+### STORE-13 — Body stream handling and lifecycle test failures
+
+sac246-test-3 failed17:34:44.711 with four failing tests: a read returned500
+instead of200; a cleanup-failure fixture expected the index removed too early;
+and two lifecycle cases exceeded the default5000ms timeout. Original read error:
+`Body has already been used. It can only be used once. Use tee() first if you need
+to read it twice.` The cloud author removed the premature R2 body stream access,
+placed the injected deletion failure after index removal, serialized test files,
+and allowed30seconds for lifecycle tests. Poisoned-stub errors followed emulator
+disposal after timed-out tests; preserve these as secondary diagnostics.
+
+Recovery: sac246-typecheck-5 passed17:36:16.801 and sac246-test-4 passed all16
+tests across four files at17:37:28.413. The preserved tests include incomplete
+deletion recovery with an absent index and paused-owner/delete fencing, providing
+local regression evidence for STORE-07/08. This is not yet real remote browser or
+D1/R2 proof. Formatting also passed17:38:17.118. Full receipts are retained in
+build-test-recovery-1740.json, including expected injected failures on stderr;
+those deliberate fixtures are not additional provider incidents. The test gate
+kept the build in progress throughout the three failed runs. Cloud agents made
+all application/test fixes; supervisor only inspected and logged them. User
+notified once about the failing gate and cloud recovery; no action required.
+
 ## Fixed by supervisor
 
 ### STORE-01 — Supervisor started the canary before the rollout finished

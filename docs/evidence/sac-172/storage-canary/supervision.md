@@ -477,3 +477,19 @@ Sampler71437 remains active through approximately18:07UTC. Counts remain
 prospectively captured; no visual portal claim has been made. Continue to let
 cloud implementation checks/review gates operate, recording failures and
 recovery without local application changes. STORE-11 user notice sent once.
+
+## 2026-09-17 17:40 UTC — Test gate catches failures and cloud repair passes
+
+STORE-12/13 record three failed test operations, harness incompatibility and
+application body-stream handling/test fixture/timing failures. Cloud author
+repaired them; test4 passed16/16 at17:37:28.413. Typecheck and formatting also
+passed. Original diagnostics and successful receipts remain in separate JSON
+artifacts. Expected injected storage faults are excluded from incident counts.
+No local implementation edits, stage bypass, retry, or deployment occurred.
+
+D1 still shows implementation_build,25/32tasks and no app environments. It did
+not advance during the failed checks. Further implementation review, real cloud
+demo evidence, PR publication and ownership cleanup still need proof. The user
+confirmed workflow and implementation gates are the canary's purpose; avoid
+additional product polish and assess whether each gate enforces its contract.
+The progress sampler remains active. New test-error notice sent once.
