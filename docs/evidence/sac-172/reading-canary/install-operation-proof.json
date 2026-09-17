@@ -1,0 +1,420 @@
+{
+  "observedAt": "2026-09-17T10:38:41.528Z",
+  "privateSource": "/tmp/sac245-reader/2026-09-17T10-38-41.528Z.json",
+  "checks": [
+    {
+      "line": 36,
+      "itemId": "item_19",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:35:52.049Z",
+          "inactiveForMs": 17882
+        }
+      ]
+    },
+    {
+      "line": 38,
+      "itemId": "item_20",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:36:02.362Z",
+          "inactiveForMs": 28195
+        }
+      ]
+    },
+    {
+      "line": 40,
+      "itemId": "item_21",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:36:08.853Z",
+          "inactiveForMs": 34686
+        }
+      ]
+    },
+    {
+      "line": 42,
+      "itemId": "item_22",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:36:18.048Z",
+          "inactiveForMs": 43881
+        }
+      ]
+    },
+    {
+      "line": 44,
+      "itemId": "item_23",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:36:29.564Z",
+          "inactiveForMs": 55397
+        }
+      ]
+    },
+    {
+      "line": 46,
+      "itemId": "item_24",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:36:34.054Z",
+          "inactiveForMs": 59887
+        }
+      ]
+    },
+    {
+      "line": 49,
+      "itemId": "item_26",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:36:40.248Z",
+          "inactiveForMs": 66081
+        }
+      ]
+    },
+    {
+      "line": 51,
+      "itemId": "item_27",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:36:48.648Z",
+          "inactiveForMs": 74481
+        }
+      ]
+    },
+    {
+      "line": 53,
+      "itemId": "item_28",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:36:57.553Z",
+          "inactiveForMs": 83386
+        }
+      ]
+    },
+    {
+      "line": 55,
+      "itemId": "item_29",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:37:03.360Z",
+          "inactiveForMs": 89193
+        }
+      ]
+    },
+    {
+      "line": 57,
+      "itemId": "item_30",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:37:09.350Z",
+          "inactiveForMs": 95183
+        }
+      ]
+    },
+    {
+      "line": 59,
+      "itemId": "item_31",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:37:19.963Z",
+          "inactiveForMs": 105796
+        }
+      ]
+    },
+    {
+      "line": 61,
+      "itemId": "item_32",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:37:26.753Z",
+          "inactiveForMs": 112586
+        }
+      ]
+    },
+    {
+      "line": 63,
+      "itemId": "item_33",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:37:34.161Z",
+          "inactiveForMs": 119994
+        }
+      ]
+    },
+    {
+      "line": 67,
+      "itemId": "item_35",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:37:54.251Z",
+          "inactiveForMs": 140084
+        }
+      ]
+    },
+    {
+      "line": 69,
+      "itemId": "item_36",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:38:05.859Z",
+          "inactiveForMs": 151692
+        }
+      ]
+    },
+    {
+      "line": 71,
+      "itemId": "item_37",
+      "exitCode": 75,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "running",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:35:34.167Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "observedAt": "2026-09-17T10:38:21.566Z",
+          "inactiveForMs": 167399
+        }
+      ]
+    },
+    {
+      "line": 72,
+      "itemId": "item_18",
+      "exitCode": 0,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "state": "queued",
+          "retrieve": {
+            "action": "operation",
+            "requestId": "install-1"
+          }
+        },
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "completed",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:38:22.453Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "progress": {
+            "event": "command_output",
+            "outputBytes": 299
+          },
+          "result": {
+            "command": "'npm' 'install' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'",
+            "exitCode": 0,
+            "signal": null,
+            "stdout": "\nadded 61 packages in 3m\n\n16 packages are looking for funding\n  run `npm fund` for details\n",
+            "stderr": "npm notice\nnpm notice New major version of npm available! 10.9.8 -> 12.0.2\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2\nnpm notice To update run: npm install -g npm@12.0.2\nnpm notice\n",
+            "cwd": "/deos/workspace/repository"
+          },
+          "finishedAt": "2026-09-17T10:38:22.453Z",
+          "observedAt": "2026-09-17T10:38:22.560Z",
+          "inactiveForMs": 107
+        }
+      ]
+    },
+    {
+      "line": 74,
+      "itemId": "item_38",
+      "exitCode": 0,
+      "receipts": [
+        {
+          "requestId": "install-1",
+          "action": "check",
+          "fingerprint": "bbca10bdbcfdd47fccb9c780bc48ba1916d10fc18c5344ab03d55ad99e2f84c6",
+          "state": "completed",
+          "createdAt": "2026-09-17T10:35:34.161Z",
+          "lastActivityAt": "2026-09-17T10:38:22.453Z",
+          "deadline": "2026-09-18T10:26:43.214Z",
+          "startedAt": "2026-09-17T10:35:34.167Z",
+          "commandDeadline": "2026-09-17T10:45:34.167Z",
+          "progress": {
+            "event": "command_output",
+            "outputBytes": 299
+          },
+          "result": {
+            "command": "'npm' 'install' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'",
+            "exitCode": 0,
+            "signal": null,
+            "stdout": "\nadded 61 packages in 3m\n\n16 packages are looking for funding\n  run `npm fund` for details\n",
+            "stderr": "npm notice\nnpm notice New major version of npm available! 10.9.8 -> 12.0.2\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2\nnpm notice To update run: npm install -g npm@12.0.2\nnpm notice\n",
+            "cwd": "/deos/workspace/repository"
+          },
+          "finishedAt": "2026-09-17T10:38:22.453Z",
+          "observedAt": "2026-09-17T10:38:32.466Z",
+          "inactiveForMs": 10013
+        }
+      ]
+    }
+  ]
+}

@@ -29,6 +29,7 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 ## Expected nonzero results
 
 - Design response item34: `git diff --no-index --check /dev/null openspec/changes/sac-245/design.md` exited1 with no output. The comparison has a new nonempty file; this is the expected difference exit status, not a whitespace error. Retained in [raw exit scan](design-response-audit.json), excluded from unexpected failure counts.
+- 10:35–10:38UTC: installation status calls returned documented exit75 while install-1 remained running. These are expected pending results, even though the native shell transcript labels nonzero exits failed. The single installation completed10:38:22.453 with61packages and exit0; a later status read returned the same completed result. No install duplication or premature dependent check was observed. [Operation receipts](install-operation-proof.json).
 
 ## External context
 
