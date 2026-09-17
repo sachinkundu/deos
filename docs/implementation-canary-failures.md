@@ -28,7 +28,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |
 | --- | --- | --- | --- | --- | --- |
 | [SAC-225](https://linear.app/sachinkundu/issue/SAC-225/build-a-simple-web-calculator) | Calculator, desktop and mobile | Retrospective; incomplete occurrence counts | Multiple; historical categories below, exact total unknown | Multiple; exact total unknown | Reached [PR33](https://github.com/sachinkundu/deos-sample-project/pull/33) with supervision; PR closed unmerged, issue and workflow Canceled on 2026-09-16; retirement recovery recorded as CAL-22 |
-| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile | Prospective from first trigger, 2026-09-16 14:06:26 UTC | 66 runtime/tool occurrences in 30 categories, including recovered errors and stopped author work; 4 app development check failures listed separately | 4 recovery interventions: resent approval, resumed design finalization, requested preview-path revision, answered browser-recovery question after runtime rollout | [PR36](https://github.com/sachinkundu/deos-sample-project/pull/36) opened at 18:11:37 UTC, about 4h05m after trigger; D1 and Linear at implementation Human Review. Six scenarios completed, 17 selected images load in external Brave. Final resumed attempt had no new observed failures. PR remains unmerged; this was a supervised run. |
+| [SAC-238](https://linear.app/sachinkundu/issue/SAC-238/build-a-desktop-packing-list-web-app) | Desktop packing list; no mobile app scope | Prospective from first trigger, 2026-09-16 14:06:26 UTC; next-day review-client report included | 67 runtime/tool/publication occurrences in 31 categories, including one user-reported mobile PR gallery failure; 4 app development check failures listed separately | 5 recovery interventions: resent approval, resumed design finalization, requested preview-path revision, answered browser-recovery question after runtime rollout, repaired published image links | [PR36](https://github.com/sachinkundu/deos-sample-project/pull/36) opened at 18:11:37 UTC, about 4h05m after trigger; remains at implementation Human Review. Desktop rendering passed, but the user reported missing images in GitHub mobile on September 17. Direct image links repaired; all 17 load in Brave and return anonymous HTTP200. Mobile user confirmation remains pending. PR unmerged; supervised run. |
 
 SAC-182 remains parked. It is larger than these small-app trials and is not a
 comparable trend sample. Its historical failures remain in the
@@ -675,6 +675,35 @@ superseded by the [current contract](implementation-canary-lessons.md).
   completed stages. No implementation approval or release was authorized.
 - [Original scenarios, failures and handoff](evidence/sac-172/packing-canary/response-browser-retired.json).
 
+#### PACK-31 — published proof images missing in GitHub mobile
+
+- On 2026-09-17 the user reported that images did not display in PR36 and
+  identified the GitHub mobile app as the viewer. Count one publication failure
+  affecting the gallery, not 17 independent capture failures. Desktop Brave
+  still loaded all 17 images; the image files were intact and public.
+- GitHub's live REST body_html returned each img src as `../blob/...`, unchanged
+  from the publisher. This depends on a repository page base URL. The direct
+  raw image returned HTTP200 image/png without authentication or a redirect.
+  The mobile renderer itself was not available for inspection; the observed
+  relative URL contract is the addressed portability defect.
+- Source 5ddb411 emits full commit-pinned raw URLs for public repositories and
+  preserves GitHub's authenticated image behavior for private repositories.
+  Generated capture provenance is removed from public captions, while original
+  records stay in diagnostics. New proof manifests use version3 so regenerated
+  Showboat documents receive that caption correction.
+- The maintenance script regenerated only the known published gallery with the
+  shared publisher functions. It retained every selected image, its proof commit
+  and the implementation head, checked for concurrent PR edits, and updated the
+  existing body. No app agent, scenario, code change, merge or workflow restart.
+  This is supervisor recovery intervention5, not unattended success.
+- Validation: public/private publisher regressions; full suite 588 passed,
+  1 skipped, zero failed; TypeScript passed. Read-back of PR36's API HTML has
+  17 absolute image URLs. All 16 distinct URLs return anonymous HTTP200 image/png
+  without redirects; all 17 image elements render at1440x900 in external Brave.
+  User confirmation in GitHub mobile remains pending.
+- Worker6af4b501-e84b-4254-924d-d92576dc290e deployed without a container rollout.
+  [Repair receipt and verification](evidence/sac-172/packing-canary/mobile-image-repair.json).
+
 ### App development failures recovered by the implementation agent
 
 These are recorded for completeness, separately from platform/tool failures and
@@ -715,12 +744,10 @@ that pass are not failures. All occurred in build attempt
   [Final outcome](evidence/sac-172/packing-canary/final-outcome.json).
   [Original milestones and capture results](evidence/sac-172/packing-canary/recovery-demo-completed.json).
 
-- Remaining presentation finding: published captions repeat a hosted URL and
-  internal deployment registration hash. Keep that provenance in diagnostics
-  and remove it from the human-facing caption in a general publisher correction.
-  This is a packaging finding, not an additional failed command or a reason to
-  rerun the app or its demonstrations. PR36 has not been hand-edited by the
-  supervisor.
+- The presentation finding about repeated hosted URLs and internal registration
+  hashes was corrected in the general publisher and PR36's gallery during
+  PACK-31 recovery. The original proof branch and diagnostic records remain.
+  No recapture or application edit was needed.
 
 - The final response transcript and diagnostics were fetched from their durable
   artifact keys and verified against SHA256. Audit found no additional failed
