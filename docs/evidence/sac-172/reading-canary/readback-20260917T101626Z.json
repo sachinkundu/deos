@@ -48,17 +48,17 @@
       "definition_version": 39,
       "definition_digest": "e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c",
       "workflow_instance_id": "wf-v1-m6ek5brhdw5sac2jrr3oqvwk23zwh6axxhpopobfvv4vawu2bujq",
-      "previous_node": "merge_design_pr",
-      "current_node": "implementation_prepare",
-      "gate_origin_node": null,
-      "status": "active",
+      "previous_node": "publish_design_response",
+      "current_node": "design_review",
+      "gate_origin_node": "publish_design_response",
+      "status": "awaiting_human",
       "accumulated_data_json": "{}",
       "created_at": "2026-09-17T09:15:44.488Z",
-      "updated_at": "2026-09-17T10:17:25.158Z",
+      "updated_at": "2026-09-17T10:11:45.833Z",
       "terminal_at": null,
       "terminal_cause": null,
-      "current_visit_sequence": 18,
-      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1:visit:17:transition",
+      "current_visit_sequence": 16,
+      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1:visit:15:transition",
       "selection_kind": "default",
       "selection_value": "project_policy",
       "selection_label_name": null,
@@ -301,34 +301,6 @@
       "route_digest": "30cc95d68f7b78faa83f7bd885dbdc786cd7b1a65d88b9b69ba6172035ac5940",
       "start_slow_ok": null,
       "sandbox_tier_policy_version": "legacy-basic-v1"
-    },
-    {
-      "delivery_id": "cda11176-b332-4751-8d22-01496e772ca1",
-      "payload_hash": "cbe81c048371635ca84d56ed64e48c5838a39d93a869d1b58d565e510f50b0ac",
-      "received_at": "2026-09-17T10:16:55.993999+00:00",
-      "classification": "relevant",
-      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f",
-      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
-      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
-      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
-      "route_revision": 27,
-      "route_digest": "30cc95d68f7b78faa83f7bd885dbdc786cd7b1a65d88b9b69ba6172035ac5940",
-      "start_slow_ok": null,
-      "sandbox_tier_policy_version": "legacy-basic-v1"
-    },
-    {
-      "delivery_id": "2730c0a2-0b10-4ea8-8890-8501a5323397",
-      "payload_hash": "c5b356f98f2733645a6b08671f37e2e1fca44c9cd1de596412cab76a2c477ea0",
-      "received_at": "2026-09-17T10:16:55.975000+00:00",
-      "classification": "relevant",
-      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f",
-      "label_selection_evidence_json": "{\"status\":\"unavailable\"}",
-      "label_selection_evidence_digest": "774a5957e1e1b76e5ba7d6a9b803e215b28d31ac0fae1df873a96758e7fb35ef",
-      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
-      "route_revision": 27,
-      "route_digest": "30cc95d68f7b78faa83f7bd885dbdc786cd7b1a65d88b9b69ba6172035ac5940",
-      "start_slow_ok": null,
-      "sandbox_tier_policy_version": "legacy-basic-v1"
     }
   ],
   "active_attempts_all": [],
@@ -424,7 +396,7 @@
       "work_type": "design",
       "work_product_kind": "design",
       "round": 1,
-      "state": "merge_authorized",
+      "state": "open",
       "repository": "sachinkundu/deos-sample-project",
       "pull_request_database_id": "4557137305",
       "pull_request_number": 41,
@@ -432,10 +404,10 @@
       "head_branch": "deos/design/669f520cb8460645ac0107f1",
       "base_branch": "main",
       "approved_head_sha": "38ec2030d93daebc41eda03d48f9a1db568f03d6",
-      "decision_delivery_id": "cda11176-b332-4751-8d22-01496e772ca1",
-      "decision_outcome": "merge_authorized",
+      "decision_delivery_id": null,
+      "decision_outcome": null,
       "created_at": "2026-09-17T10:11:24.328Z",
-      "decided_at": "2026-09-17T10:17:17.118Z"
+      "decided_at": null
     }
   ],
   "errors": [],
@@ -459,5 +431,5 @@
     ],
     "created_on": "2026-09-17T08:53:23.432263Z"
   },
-  "observed_at": "2026-09-17T10:17:29.663768+00:00"
+  "observed_at": "2026-09-17T10:16:26.988096+00:00"
 }

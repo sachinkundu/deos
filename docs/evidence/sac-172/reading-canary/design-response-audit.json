@@ -1,0 +1,93 @@
+{
+  "filesVerified": 48,
+  "failures": [
+    {
+      "source": {
+        "attempt_id": "01a0aed5-1bdd-781d-bb11-f1ea8e06ee3c",
+        "logical_name": "transcript.jsonl",
+        "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/attempts/01a0aed5-1bdd-781d-bb11-f1ea8e06ee3c/transcript.jsonl",
+        "sha256": "ba3aee7459e8ea2972a59d5561ba53435aa572dd9e520e5d57596823289d4ffe",
+        "byte_size": 76459,
+        "local": "/tmp/sac245-artifacts/f9cbfb6a66c7-transcript.jsonl"
+      },
+      "line": 11,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_4",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"rg --files -g 'AGENTS.md' -g '\"'!node_modules'\"' -g '\"'!dist'\"'\"",
+          "aggregated_output": "",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    },
+    {
+      "source": {
+        "attempt_id": "01a0aed5-1bdd-781d-bb11-f1ea8e06ee3c",
+        "logical_name": "transcript.jsonl",
+        "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/attempts/01a0aed5-1bdd-781d-bb11-f1ea8e06ee3c/transcript.jsonl",
+        "sha256": "ba3aee7459e8ea2972a59d5561ba53435aa572dd9e520e5d57596823289d4ffe",
+        "byte_size": 76459,
+        "local": "/tmp/sac245-artifacts/f9cbfb6a66c7-transcript.jsonl"
+      },
+      "line": 13,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_5",
+          "type": "command_execution",
+          "command": "/bin/bash -lc 'command -v opsx'",
+          "aggregated_output": "",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    },
+    {
+      "source": {
+        "attempt_id": "01a0aed5-1bdd-781d-bb11-f1ea8e06ee3c",
+        "logical_name": "transcript.jsonl",
+        "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/attempts/01a0aed5-1bdd-781d-bb11-f1ea8e06ee3c/transcript.jsonl",
+        "sha256": "ba3aee7459e8ea2972a59d5561ba53435aa572dd9e520e5d57596823289d4ffe",
+        "byte_size": 76459,
+        "local": "/tmp/sac245-artifacts/f9cbfb6a66c7-transcript.jsonl"
+      },
+      "line": 15,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_6",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"rg -n \\\"opsx:continue|/opsx:continue\\\" /root/.codex /deos/workspace/repository -g '*.md' -g '*.toml' -g '*.json' -g '*.yaml' -g '*.yml'\"",
+          "aggregated_output": "",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    },
+    {
+      "source": {
+        "attempt_id": "01a0aed5-1bdd-781d-bb11-f1ea8e06ee3c",
+        "logical_name": "transcript.jsonl",
+        "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/attempts/01a0aed5-1bdd-781d-bb11-f1ea8e06ee3c/transcript.jsonl",
+        "sha256": "ba3aee7459e8ea2972a59d5561ba53435aa572dd9e520e5d57596823289d4ffe",
+        "byte_size": 76459,
+        "local": "/tmp/sac245-artifacts/f9cbfb6a66c7-transcript.jsonl"
+      },
+      "line": 72,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_34",
+          "type": "command_execution",
+          "command": "/bin/bash -lc 'git diff --no-index --check /dev/null openspec/changes/sac-245/design.md'",
+          "aggregated_output": "",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    }
+  ]
+}

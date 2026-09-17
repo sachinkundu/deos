@@ -17,10 +17,15 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 - 09:15:36.240: Real Linear Todo transition; relevant delivery de0b70ea-1ca2-4f87-ad55-a621fdc7505d received at 09:15:37.048; run 1 created at 09:15:44.488. Saved D1 readback confirms provider-originated start.
 - Five-minute supervision heartbeat run-reading-queue-canary-to-pr created successfully for this task; normal progress stays quiet, completion and substantive problems notify.
 - 09:43:46–09:44:06: reviewed the full PR40 diff at `e0ba9f693b46485a544ee4643088c39e147e4ef8`; independent review and traceability passed, durable planning gate8 open. Approved through a Linear comment and Merging transition. Delivery `9e3ee3a4-b001-4615-baa5-116af28a5325` consumed at09:44:02.221; PR40 merged09:44:06 as `12bf39e828964fef34825f7f2776dfc932f74535`. Normal authorized gate, not recovery.
+- 10:16:54–10:17:22: reviewed full revised design PR41 at `38ec2030d93daebc41eda03d48f9a1db568f03d6`, including all four applied independent findings. Approved through Linear comment and Merging. Delivery `cda11176-b332-4751-8d22-01496e772ca1` consumed10:17:17.118; PR41 merged10:17:22 as `e5e1bdc74463d388ddbddd6d410d367f022ded64`. Run reached implementation_prepare. Normal authorized gate, no recovery.
 
 ## Operator errors
 
 - 09:36 UTC: local helper discovery with `rg --files /tmp` encountered `Permission denied (os error 13)` for an unrelated device semaphore. Discovery was narrowed to `/tmp/*.py`; no cloud request or run state was affected. One local inventory error, excluded from cloud workflow counts.
+
+## Expected nonzero results
+
+- Design response item34: `git diff --no-index --check /dev/null openspec/changes/sac-245/design.md` exited1 with no output. The comparison has a new nonempty file; this is the expected difference exit status, not a whitespace error. Retained in [raw exit scan](design-response-audit.json), excluded from unexpected failure counts.
 
 ## Planning quality findings
 
