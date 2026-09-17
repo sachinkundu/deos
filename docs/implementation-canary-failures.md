@@ -40,6 +40,8 @@ not a complete baseline, and cannot establish a percentage improvement.
 
 | ID | Time / stage | Original failure or mismatch | Cause / response / outcome | Evidence |
 | --- | --- | --- | --- | --- |
+| EXP-01 | 05:41–05:43, planning response, item_1 | `rg --files` returned exit1 after only printing cwd; chained inventory did not run | No AGENTS.md match in the disposable repo; author continued with a different inventory command. One recovered agent-tool occurrence; no supervisor repair | [Verified transcript excerpts](evidence/sac-172/expense-canary/planning-command-failures.json) |
+| EXP-02 | 05:41–05:43, planning response, item_3 | `find: paths must precede expression: git`, exit1 | Shell command lacked a separator before git. Author recovered in the same attempt. One agent command-construction occurrence; no workflow change needed | [Verified transcript excerpts](evidence/sac-172/expense-canary/planning-command-failures.json) |
 
 
 | Canary | Scope | Coverage | Workflow failures | Recovery interventions | Outcome |

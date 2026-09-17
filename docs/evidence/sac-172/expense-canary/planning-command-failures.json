@@ -1,0 +1,34 @@
+[
+  {
+    "attempt": "01a0ade1-ea74-7e60-b208-1f84c8992e74",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A32952e35-b116-41a0-a704-6f37b0946ec4%3Arun%3A1/attempts/01a0ade1-ea74-7e60-b208-1f84c8992e74/transcript.jsonl",
+    "sha256": "c29ece7e945f1859547aa8cdbc2be7b45cf81dc1a1199764ebd3233690198cd6",
+    "event": {
+      "type": "item.completed",
+      "item": {
+        "id": "item_1",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"pwd && rg --files -g 'AGENTS.md' -g '\"'!node_modules'\"' -g '\"'!vendor'\"' .. && git status --short --branch && rg --files openspec/changes/sac-243 /deos/output 2>/dev/null | sort\"",
+        "aggregated_output": "/deos/workspace/repository\n",
+        "exit_code": 1,
+        "status": "failed"
+      }
+    }
+  },
+  {
+    "attempt": "01a0ade1-ea74-7e60-b208-1f84c8992e74",
+    "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A32952e35-b116-41a0-a704-6f37b0946ec4%3Arun%3A1/attempts/01a0ade1-ea74-7e60-b208-1f84c8992e74/transcript.jsonl",
+    "sha256": "c29ece7e945f1859547aa8cdbc2be7b45cf81dc1a1199764ebd3233690198cd6",
+    "event": {
+      "type": "item.completed",
+      "item": {
+        "id": "item_3",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"sed -n '1,240p' README.md; find openspec -maxdepth 5 -type f -print -exec sh -c 'echo \\\"FILE \"'$1\"; nl -ba \"$1\"'\"' sh {} \\\\; git log -5 --oneline --decorate\"",
+        "aggregated_output": "# deos-sample-project\nDisposable sample repository for DEOS workflow canaries\nfind: paths must precede expression: `git'\n",
+        "exit_code": 1,
+        "status": "failed"
+      }
+    }
+  }
+]
