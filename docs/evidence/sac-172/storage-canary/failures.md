@@ -16,6 +16,12 @@ repeated discovery without that dependency and continued successfully. This is
 one recovered command failure, not a product defect. The full saved transcript
 contains ten completed commands, one with a nonzero exit.
 
+Repeated in planning_independent_response attempt01a0afe3-f0a7-7d12-83f7-8a3906182381:
+the first chained AGENTS.md search again exited1 on no match. The next command
+recovered discovery. That response completed12 commands with one nonzero exit;
+planning-response-audit.json retains the exact command and output. Two observed
+occurrences of this cause so far.
+
 ### STORE-05 — Optional readability library was unavailable
 
 The cloud author's dependency probe printed
@@ -24,6 +30,12 @@ because the probe caught and printed the exception. The author then wrote its
 own readability checker and passed the requested thresholds. Record this
 separately from command exit failures; exit0 does not mean no error occurred.
 The checker and exact scores remain in the full transcript and validation file.
+
+The independent-response author repeated this probe and printed
+`textstat-python unavailable: No module named 'textstat'`, with an enclosing0
+exit, then used its own Python readability check successfully. Two observed
+occurrences so far. This recurring optional-tool miss is retained separately
+from the two recovered discovery exits.
 
 Audit limits: only the first four commands of the first, interrupted attempt
 were captured before its filesystem disappeared. The second attempt's full
@@ -36,6 +48,10 @@ directional disagreements). Cloud authors resolved all13 and the recheck passed.
 Trusted final OpenSpec, whitespace and readability checks passed15:00:08.735UTC
 without a completion-repair round. See planning-self-review.json and
 planning-author-completion.json. These findings are not13 failed workflow events.
+Independent discovery later reported four secondary link-mapping disagreements.
+The response recorded a reasoned no_change for each; the supervisor inspected
+those reasons and the unchanged PR43 head before approving the planning gate.
+They are review findings, not runtime failures or additional repair rounds.
 
 ## Fixed by supervisor
 
