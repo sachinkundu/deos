@@ -613,3 +613,25 @@ Watch whether the reviewer accounts for planned stale-page failure evidence
 and accepts the service-owned post-publication cleanup boundary. No local
 app edit or unsolicited extra polish. Both owned resource sets remain for
 service cleanup after evidence publication. Sampler90910 remains active.
+
+## 2026-09-17 18:23 UTC — Independent gate rejects incomplete evidence
+
+Demo gate01a0b093 returned needs_work18:18:06; exact review in
+demo-gate-review-one.json. It accepts genuine remote app/screenshots, but asks
+for missing provisioning/empty-state, fresh-context provenance, both validation
+cases, failed action, and raw store proof. Automatic edge reached buildvisit46,
+response01a0b097 started18:18:10.231. This is implementation-gate feedback routing
+working as intended; no supervisor override or manual revision request.
+
+Author is addressing proof quality with real remote captures and raw D1/R2,
+including capacity-rejected save, while keeping existing code unless it fails.
+STORE-19 task transition misuse recovered by explicit pending then active;
+progress now31/32. Install running at18:22. All app/proof changes remain cloud-owned.
+
+Watch two reviewer-context limitations: byte-identical screenshot does not
+invalidate fresh browser context (trusted per-scenario reset exists), and resource
+cleanup must occur after durable PR publication, not before the demo gate. The
+accepted clarification already sets cleanup order. Let response/gate resolve
+these without unnecessary product changes; do not prematurely retire resources.
+Two earlier owned environments still exist and final cleanup must include all.
+Sampler90910 active. User notified once for STORE-18; no action needed.

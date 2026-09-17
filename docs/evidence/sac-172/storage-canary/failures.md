@@ -430,3 +430,41 @@ remote browser sequence passed after the CSS edit; the earlier16-test suite
 was not repeated for CSS only. Full transcript audit has no new failed trusted
 operation. Independent demonstration gate is now running; its verdict is still
 pending. Author task completion is not final implementation approval.
+
+### STORE-18 — Independent demonstration gate rejected incomplete selected proof
+
+Reviewer01a0b093 completed18:18:06 with needs_work. It accepted that the app,
+D1/R2 usage and six browser images were genuine, but selected reviewer evidence
+did not cover the approved plan adequately: provisioning/migration/empty state,
+fresh-context provenance, whitespace-only body validation, unchanged stores on
+rejection, and failed-action handling. The final Showboat summarized assertions
+without raw keys/rows, and its verification script was outside frozen sources.
+Exact result and hash-verified reviewer receipts are in demo-gate-review-one.json.
+This is an evidence-quality rejection, not a new runtime crash or fake evidence.
+
+The workflow automatically routed needs_work to implementation_build visit46,
+cloud attempt01a0b097-22b7-79a0-ba91-ca5a94e5627c started18:18:10.231. The cloud
+author plans stronger captures/raw store proof and a real capacity-rejected save,
+preserving app code unless that exercise finds a defect. Progress reopened from
+32 to31. No supervisor gate override, revision comment, or app edit was required.
+User notified once; response/review outcome remains pending.
+
+Evidence boundary: trusted diagnostics already show adjacent scenario reset
+and fresh-context execution; an identical screenshot hash is not proof that
+browser context was reused. That provenance was insufficiently exposed in the
+selected review package. Likewise, the reviewer requested resource-removal proof
+before publication, but accepted lifecycle requires GitHub proof first, then
+service-owned cleanup. Do not delete infrastructure early to satisfy that wording.
+Preserve these review-context mismatches in workflow analysis; do not weaken the
+real fresh-context or final cleanup requirements. Confirm the author response
+and next gate disposition account for them.
+
+### STORE-19 — Task tool rejected reopening a completed task as active
+
+Cloud response item9 attempted to mark completed task6.2 active. Tool returned
+`Task 6.2 is completed; reopen it with state pending before marking active`, with
+full original stack and command result in demo-gate-response-live-audit.json.
+The next author command explicitly reopened it and set it active. This is a
+recovered contract-use error; the guard prevented an invalid checklist transition.
+Two observed exit75 dependency-install status reads mean running, not failures.
+No supervisor application or task-file edit occurred.
