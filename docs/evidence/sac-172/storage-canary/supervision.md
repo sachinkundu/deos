@@ -590,3 +590,26 @@ Original sampler71437 finished normally after its one-hour bound. Started new
 bounded read-only sampler90910 at18:08:25 for at most another hour. Poll90910
 instead of starting a duplicate. User notified once for STORE-17. Native patch
 avoidance commentary has no failed tool event and is not counted as a failure.
+
+## 2026-09-17 18:16 UTC — Build complete; independent demonstration gate active
+
+Build01a0b081 completed with32/32tasks by18:12:28.637. Full949,601-byte
+transcript,859,910-byte diagnostic journal and195,459-byte patch downloaded
+from R2 and hash-verified. Final audit:34completed shell commands, one exit1
+for expected missing generated build/dist in the fresh sandbox, zero failed
+trusted operations and zero native provider errors. STORE-17 is the visual
+finding, fixed by cloud author and recaptured; no new errors observed.
+
+Saved checks cover16tests/typecheck; after CSS-only change, formatting/build
+and full real remote browser collection were repeated. Six inspected images
+from the final nine captures and one Showboat selected. Final correspondence
+operation18:10:42.730 verifies API/D1/R2 IDs, hashes, sizes and bodies. Detailed
+receipts and stated validation limits are in completed-build-audit.json.
+
+Run advanced through implementation_proof_check to implementation_demo_gate,
+visit45. Independent cloud reviewer01a0b093-2127-7a9e-9051-60409f8fe0bf running
+since18:13:47.701. Do not treat32/32 or author completion as the final gate pass.
+Watch whether the reviewer accounts for planned stale-page failure evidence
+and accepts the service-owned post-publication cleanup boundary. No local
+app edit or unsolicited extra polish. Both owned resource sets remain for
+service cleanup after evidence publication. Sampler90910 remains active.

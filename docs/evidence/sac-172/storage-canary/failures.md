@@ -423,3 +423,10 @@ User notified once; no action required.
 Agent commentary says the runtime skill blocks native patching and it used
 the allowed shell instead. There is no failed native-patch tool event in the
 captured transcript, so this is not counted as another executed tool failure.
+
+STORE-17 final author audit: cloud author says all corrected images were
+inspected and selected six from the final nine. Formatting/build and complete
+remote browser sequence passed after the CSS edit; the earlier16-test suite
+was not repeated for CSS only. Full transcript audit has no new failed trusted
+operation. Independent demonstration gate is now running; its verdict is still
+pending. Author task completion is not final implementation approval.
