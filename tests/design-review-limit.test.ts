@@ -154,7 +154,7 @@ const bundle = {
   schemas: Object.fromEntries(readdirSync('config/schemas').map(name => [`schemas/${name}`, readFileSync(`config/schemas/${name}`, 'utf8')])),
 };
 const yaml = readFileSync('config/workflow.simple-traceability.yaml', 'utf8');
-const legacyYaml = yaml.replace('version: 23', 'version: 21')
+const legacyYaml = yaml.replace(/version: \d+/, 'version: 21')
   .replace('completed: publish_initial, invalid_candidate:', 'completed: self_discovery, invalid_candidate:')
   .replace('completed: publish_design, invalid_design_candidate:', 'completed: design_self_review, invalid_design_candidate:')
   .replace('completed: publish_planning_revision,', 'completed: publish_update,')

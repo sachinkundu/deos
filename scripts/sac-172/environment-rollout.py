@@ -43,6 +43,17 @@ def stopped():
 
 if args.mode in ['preflight', 'deploy']:
     stopped()
+    # Shared prompt edits can change several workflow digests. Check every
+    # bundled variant, not just the new implementation version, before upload.
+    local = json.loads(subprocess.check_output(
+        ['node', '--experimental-strip-types', 'scripts/sac-172/workflow-registry-manifest.mjs'], cwd=root, text=True))
+    remote = {(row['definition_id'], row['version']): row['digest']
+              for row in query('SELECT definition_id,version,digest FROM workflow_definitions')}
+    conflicts = [row for row in local if (row['name'], row['version']) in remote
+                 and remote[(row['name'], row['version'])] != row['digest']]
+    print(json.dumps({'workflow_version_conflicts': conflicts, 'bundled_definitions': local}), flush=True)
+    if conflicts:
+        raise RuntimeError('Bundled workflow version conflicts with a frozen provider definition; assign new versions before deployment')
     applied = {row['name'] for row in query('SELECT name FROM d1_migrations')}
     pending = sorted(p.name for p in (root / 'migrations').glob('*.sql') if p.name not in applied)
     print(json.dumps({'pending_migrations': pending}), flush=True)

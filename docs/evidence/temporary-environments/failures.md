@@ -71,4 +71,23 @@ was needed. GitHub CI and staging deployment are checked separately.
     `/Users/sachin/Library/Preferences/.wrangler/logs/wrangler-2026-09-17_13-23-33_523.log`.
     This is a supervisor setup mistake, separate from cloud-agent failures.
 
+12. Scheduled registration at13:15 and13:30 failed with the original error
+    `workflow definition version already exists with another digest`. This is
+    why v41 never appeared; the initial timing-only explanation in event10 was
+    incomplete. The shared planning prompt changes affected both traceability
+    variants and their bounded variants while their version numbers stayed at
+    already-frozen values. Compared every local digest to remote D1. Assigned
+    new versions26/27 without touching stored definitions or active runs. Added
+    a rollout preflight that refuses any conflicting bundled version. Also made
+    RouteAdmin register the selected new implementation definition using the
+    existing immutable store before changing the policy, removing the scheduled
+    timing dependency. Original provider stacks and timestamps are preserved in
+    registry-errors.json. Supervisor workflow repair; no canary app was touched.
+13. The new RouteAdmin regression initially used an incomplete local repository
+    route and correctly failed `repository route is incomplete`. Added the
+    fixture's project name and installation ID. The corrected36-test targeted
+    suite and typecheck pass. Test verifies a pre-registration selection works,
+    frozen runs stay unchanged, and conflicting version reuse remains rejected.
+    Initial and final test logs are retained separately.
+
 No full cloud-agent canary attempt yet. SAC-246 is prepared in Backlog.
