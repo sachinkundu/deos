@@ -160,6 +160,30 @@ PACK-06's two connection resets were caused by supervisor deployments during
 active work. Workflow replay recovered them without a separate rescue. They
 remain failures in the total, and the deployment-at-a-stopped-gate lesson remains.
 
+### Deployed correction coverage — 2026-09-17
+
+Live read-back confirms Worker `6af4b501-e84b-4254-924d-d92576dc290e`
+at 100% traffic, plus all four healthy container pools on digest
+`6f552ca4529de6319b35d96895b3d31606d708bbbb7684a51f5e1ce16ed71337`.
+The Worker includes source5ddb411; containers include source32745bc. All completed
+canary corrections are deployed. Earlier incident notes saying "pending rollout"
+describe their observation time and are superseded by these deployment receipts.
+
+| Correction type | Categories | IDs |
+| --- | --- | --- |
+| Deployed code/configuration fixes or mitigations | 16 | PACK-02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 17, 18, 22, 23, 28, 31 |
+| Deployed agent instructions, hook guidance or runtime skill changes | 9 | PACK-01, 05, 14, 15, 20, 21, 24, 26, 27 |
+| Operational lesson or recovery with no new permanent cause fix | 6 | PACK-06, 16, 19, 25, 29, 30 |
+
+Thus 25 of 31 categories have deployed corrections: 21 of the 26 self-recovered
+categories and four of the five supervisor-intervention categories. This is
+deployment coverage, not a claim that all 25 causes can no longer recur. PACK-03
+adds signal replay mitigation and PACK-10 disables unrelated integrations;
+their original provider causes remain unproven. PACK-06 is a deployment-practice
+change, PACK-25 recovered through existing cleanup reconciliation, and PACK-16,
+19, 29 and 30 retain unresolved transport/lifecycle causes. New runs receive the
+current code; existing workflow instances retain their frozen version.
+
 ### Incidents
 
 #### PACK-01 — unsupported editing tool selection
