@@ -58,6 +58,8 @@ A human-requested revision updates the same PR without another automatic review.
   so an unresponsive development server does not consume the build deadline.
 - A tunnel may need time to become ready. Retry the same preview operation so
   the service can reconcile it. Do not allocate competing preview processes.
+  A public relay failure leaves a healthy local preview running. Repeat the
+  same settings to reuse it; do not restart the app or erase local test data.
 
 # Collect demonstrations
 
@@ -65,6 +67,14 @@ The browser runs in Cloudflare's browser service, separately from this sandbox.
 Save one scenario list and execute it with `action: demo`. Each scenario gets a
 fresh browser context. Prepare independent server-side fixtures as needed;
 resetting browser state does not reset databases or provider resources.
+If a browser operation loses its response, its action may already have run.
+Do not retry that click or submit on its own. Reset server fixtures when needed
+and rerun the saved scenario list from zero. If the service confirms the assigned
+browser has ended, that reset can replace it once with the same allowed origins.
+The code, saved work and earlier workflow stages stay in place. A second session
+loss or uncertain allocation needs a concrete help request with the original error.
+Session diagnostics include provider inventory and the available close reason;
+do not infer that a key or application bug caused a browser service closure.
 Await the entire collection before editing code, harness, preview, or steps.
 After an action fails, correct the cause and rerun from the starting state.
 Use screenshots of meaningful outcomes, inspect them, and describe what they show.

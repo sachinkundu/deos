@@ -101,3 +101,39 @@ test("real file notifications signal task changes and atomic replacements before
     assert.equal(errors,"");
   } finally {child.kill("SIGTERM");await closed;await new Promise<void>(done=>server.close(()=>done()));await rm(directory,{recursive:true,force:true});}
 });
+
+test('a lost progress signal retries without another task edit, while rejected credentials stop it', {timeout:20000}, async () => {
+  for(const mode of ['lost','timeout','denied']) {
+    const directory=await mkdtemp(join(tmpdir(),'deos-progress-retry-'));
+    await mkdir(join(directory,'openspec','changes','sample'),{recursive:true});
+    let calls=0;
+    const server=createServer((req,res)=>{req.resume();req.on('end',()=>{
+      calls++;
+      if(mode==='lost' && calls===1) {req.socket.destroy();return;}
+      if(mode==='timeout' && calls===1) return;
+      res.statusCode=mode==='denied'?403:200;res.end(mode==='denied'?'revoked':'{"accepted":true}');
+    });});
+    await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
+    const script=join(directory,'watcher.mjs'),job=join(directory,'job.json');
+    await writeFile(script,implementationProgressWatcher);
+    await writeFile(job,JSON.stringify({cwd:directory,openspecChange:'sample',deadline:new Date(Date.now()+9000).toISOString(),
+      capabilityUrl:`http://127.0.0.1:${(server.address() as {port:number}).port}`,capabilityToken:'test',attemptId:'test'}));
+    const child=spawn(process.execPath,[script,job,resolve('container/original-errors.mjs')],
+      {env:{...process.env,DEOS_ERROR_OUTPUT_ROOT:directory}});
+    let errors='';child.stderr.on('data',data=>{errors+=data;});
+    const closed=new Promise<void>(resolve=>child.once('close',()=>resolve()));
+    try {
+      const expected=mode==='denied'?1:2;
+      const deadline=Date.now()+6500;
+      while(calls<expected && Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,25));
+      assert.equal(calls,expected,errors);
+      if(mode==='denied')await closed;
+      else await new Promise(resolve=>setTimeout(resolve,1300));
+      assert.equal(calls,expected,'no retries after delivery or credential rejection');
+      assert.match(errors,mode==='lost'?/fetch failed/:mode==='timeout'?/TimeoutError/:/403: revoked/);
+    } finally {
+      child.kill('SIGTERM');await closed;
+      await new Promise<void>(resolve=>server.close(()=>resolve()));await rm(directory,{recursive:true,force:true});
+    }
+  }
+});

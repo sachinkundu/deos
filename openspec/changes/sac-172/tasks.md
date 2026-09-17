@@ -93,4 +93,10 @@
 - [x] 10.6 Add activation-only frozen-definition migration that preserves SAC-182's failed state, design, work and PR without dispatching an agent.
 - [x] 10.7 Complete repository and built-runtime checks, real preview-provider read-back and deployment activation checks; record exact results and limitations in `docs/evidence/sac-172/canary-lessons/README.md`.
 - [x] 10.8 Activate sample-project definition v39 and explicitly migrate SAC-182 to v40 while keeping it parked. Verify its saved implementation and PR are unchanged.
-- [ ] 10.9 Choose the next small web-app canary with the user, then exercise the full chain to its implementation PR. Claude decides the demonstrations and their count; record any supervisor intervention.
+- [x] 10.9 Choose the next small web-app canary with the user, then exercise the full chain to its implementation PR. Claude decides the demonstrations and their count; record any supervisor intervention. SAC-238 reached PR36; the failure log records supervision and the mobile image correction.
+
+## 11. Remaining packing-canary transport recovery
+
+- [x] 11.1 Diagnose PACK-06, 16, 19, 25, 29 and 30, distinguishing provider causes, recovery gaps and deployment practice. Preserve their original counts.
+- [x] 11.2 Retain healthy local previews across relay failure; retry missed progress signals; provide one confirmed-absent browser replacement at scenario reset with original diagnostics and fixed origins. Do not replay ambiguous actions or add judgment gates.
+- [ ] 11.3 Verify dropped responses and resource recovery locally and with the real Cloudflare browser, deploy at a stopped boundary, and read back Worker and container activation. Keep canaries parked.

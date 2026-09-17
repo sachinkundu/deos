@@ -88,6 +88,13 @@ reveals a reusable development lesson. Do not add workflow checks on agent judgm
 
 ## Production BettaView and portal
 
+- Before deploying backend code, secrets, or a container image, read D1 for
+  pending, starting, running and collecting attempts. Deploy at a stopped gate
+  with no active attempt; do not interrupt an author to ship a harness fix.
+  `--containers-rollout none` still resets Worker/Durable Object connections.
+  If an urgent deployment must interrupt work, obtain explicit direction first
+  and retain the resulting interruption in the failure log.
+
 - The live `bettaview.voxdez.com` app is maintained in this repository at
   `portal/bettaview/`. Start all live BettaView UI and API work there.
 - `/Users/sachin/code/bettaview` is the historical standalone experiment.

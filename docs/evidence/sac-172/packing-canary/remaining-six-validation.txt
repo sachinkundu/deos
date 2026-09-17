@@ -1,0 +1,61 @@
+Repository suite: 595 tests, 594 passed, 1 skipped, 0 failed.
+TypeScript, generated Worker bindings, and OpenSpec strict validation passed.
+Final focused browser/progress tests:
+✔ browser capacity waits without allocation; one browser is reused within only its own try (117.47125ms)
+✔ reconciliation refreshes only the active try's existing browser and throttles repeat observations (108.951ms)
+✔ an explicit reset replaces one confirmed-ended browser, retains history and cannot replay actions or revive cleanup (112.548541ms)
+✔ reset does not replace an unconfirmed session, change origins or restart a stopped attempt (433.264042ms)
+✔ one browser retains its fixed local and checked hosted origins; origin changes need a fresh try (107.351708ms)
+✔ switching preview targets requires navigation before any page interaction and resets HTTP status (0.757541ms)
+✔ completed browser cleanup retries an unconfirmed close without changing successful work or active browsers (107.10175ms)
+✔ provider maintenance avoids connected sessions, detects expiry and disconnects after an actual command (0.457958ms)
+✔ a real navigation status follows the browser across commands and failed documents remain available for review (0.405375ms)
+✔ assigned browser dispatches real keys and changes viewport while preserving document status (0.596291ms)
+✔ viewport persists across reconnects through a key action and screenshot (0.311125ms)
+✔ browser records actual measurements and trace controls; modifier cleanup preserves the original error (0.51825ms)
+✔ lost allocation response quarantines this try and never creates a replacement browser (108.881959ms)
+✔ checklist counts ignore code examples, accept checked case, and allow reopening tasks (1.240333ms)
+✔ progress read uses author permissions, rejects truncation and retains original transport errors (3.050584ms)
+✔ live counts are scoped to the current try and base, reject old observations, and never change workflow status (122.20125ms)
+✔ real file notifications signal task changes and atomic replacements before the heartbeat (4658.454375ms)
+✔ a lost progress signal retries without another task edit, while rejected credentials stop it (10219.375583ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15112.82075
+
+Built linux/amd64 runtime image tests (actual /deos/bin module):
+TAP version 13
+# Subtest: relay failure retains the serving local app and same configuration for recovery
+ok 1 - relay failure retains the serving local app and same configuration for recovery
+  ---
+  duration_ms: 69.676605
+  type: 'test'
+  ...
+# Subtest: local startup failure is not mistaken for a retained healthy preview
+ok 2 - local startup failure is not mistaken for a retained healthy preview
+  ---
+  duration_ms: 0.805966
+  type: 'test'
+  ...
+# Subtest: lost broker response retains the socket cause and never replays an ambiguous click
+ok 3 - lost broker response retains the socket cause and never replays an ambiguous click
+  ---
+  duration_ms: 28.900453
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 725.102148
+
+Diagnostic setup corrections: temporary Wrangler compatibility date changed from 2026-09-17 to pinned 2026-08-27; Docker daemon could not see a /tmp bind mount, so the saved test was copied into a disposable container. These are supervisor validation setup errors outside the canary run counts.

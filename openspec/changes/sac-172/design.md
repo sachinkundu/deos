@@ -40,7 +40,7 @@ flowchart TB
     Publish --> Human[Human Review]
     Author <--> Runtime[Isolated Sandbox and local app]
     Runtime <--> Broker[Attempt capability broker]
-    Broker --> Browser[One service browser per try]
+    Broker --> Browser[One live service browser per try]
     Broker --> Preview[Run-owned static Pages preview]
     Broker --> Storage[D1 and R2]
     Publish --> GitHub[One branch and PR with inline proof]
@@ -108,6 +108,17 @@ isolated static server. Local health checks use localhost. The service browser u
 the public preview transport. A pending quick tunnel is reconciled through its saved
 identity and health response, rather than repeatedly allocated. Browser capacity
 waits and cleanup likewise preserve ownership.
+
+If public relay readiness fails after local startup, retain the healthy app and
+its test data. An identical preview request reconciles the same tunnel without
+spawning another local process. Local startup failures still clean up.
+
+After a browser connection failure, retain provider inventory and available
+session history with the original error. A scenario reset may replace a session
+confirmed absent from inventory once per active try, using the same origins.
+Archive the old resource receipt before allocation. Keep ambiguous allocation
+quarantined and ask for help if the replacement also ends. Never silently replay
+an individual action whose response was lost or restart completed agent stages.
 
 ### Capture whole scenarios without interleaving
 
@@ -185,6 +196,9 @@ Review reflect actual stages. Author's task meter opens an accessible checklist.
 A full count does not mean review or publication is finished. Task changes signal
 the workflow; heartbeat polling recovers missed signals. Transcripts retain current
 commands, elapsed work, failures and explicit waits.
+The watcher resends transiently failed signals with capped backoff until accepted
+or its attempt deadline. Credential rejection stops the watcher. It never invents
+progress counts or changes a workflow decision.
 
 Only the allowed human's saved event permits revision or merge. The merge service
 checks that event against the PR head and branch identity. Agent output is never

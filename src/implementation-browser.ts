@@ -5,6 +5,7 @@ import {
 } from "./implementation-store.ts";
 import { ImplementationError } from "./implementation-contract.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { errorText } from './error-details.ts';
 import { keyTraceScript, browserMeasurementScript } from './implementation-browser-evidence.ts';
 
 export class BrowserCapacityWait extends ImplementationError {
@@ -19,6 +20,7 @@ export class BrowserCapacityWait extends ImplementationError {
 }
 export interface BrowserProvider {
   inventory(): Promise<string[]>;
+  history(id: string): Promise<unknown>;
   capacity(): Promise<{ available: boolean; retryAfterMs: number }>;
   create(host: string, additionalHosts?: string[]): Promise<{ id: string; disconnect(): Promise<void> }>;
   close(id: string): Promise<void>;
@@ -33,6 +35,9 @@ export class CloudflareBrowserProvider implements BrowserProvider {
   }
   async inventory() {
     return (await this.api.sessions(this.binding)).map((s) => s.sessionId);
+  }
+  async history(id: string) {
+    return (await this.api.history(this.binding)).find(session => session.sessionId === id) ?? null;
   }
   async capacity() {
     const limits = await this.api.limits(this.binding);
@@ -111,6 +116,7 @@ export class ImplementationBrowserAllocator {
     attemptId: string,
     origin: string,
     additionalOrigins: string[] = [],
+    reset = false,
   ): Promise<ImplementationResource> {
     const origins = [...new Set([origin, ...additionalOrigins])].sort();
     let row = await this.store.allocateResource(
@@ -128,7 +134,28 @@ export class ImplementationBrowserAllocator {
       const savedOrigins = JSON.parse(row.metadata_json).origins ?? [origin];
       if (JSON.stringify([...savedOrigins].sort()) !== JSON.stringify(origins))
         throw new ImplementationError('browser_origin', 'Browser allowed origins cannot change within a try');
-      return row;
+      if (!reset || (await this.provider.inventory()).includes(row.provider_resource_id!)) return row;
+      await this.store.assertResource(runId, attemptId, row.resource_id, row.provider_resource_id!);
+      const metadata = JSON.parse(row.metadata_json);
+      if (metadata.replacement)
+        throw new ImplementationError('browser_recovery_exhausted',
+          'The replacement browser has also ended. Saved work is intact; ask for help instead of repeating the demo.');
+      const absentAt = this.now().toISOString();
+      const receipt = await this.store.put(runId, 'browser-replacement.json', JSON.stringify({
+        previous: row, absentAt, reason: 'Provider inventory confirms the assigned session has ended',
+      }));
+      const replacement = { previousSessionId: row.provider_resource_id, absentAt, receipt };
+      const changed = await this.store.db.prepare(`UPDATE implementation_resources
+        SET status='allocating',provider_resource_id=NULL,create_window=NULL,quarantine_until=NULL,
+          allocation_op=?,metadata_json=?,updated_at=?
+        WHERE resource_id=? AND status='ready' AND provider_resource_id=? AND metadata_json=?
+          AND EXISTS (SELECT 1 FROM agent_attempts a JOIN implementation_tries t ON t.attempt_id=a.attempt_id
+            WHERE a.attempt_id=implementation_resources.attempt_id AND a.state='running' AND t.status='running')`)
+        .bind(`${row.resource_id}:replace:${row.provider_resource_id}`, JSON.stringify({origin, origins, replacement}),
+          absentAt, row.resource_id, row.provider_resource_id, row.metadata_json).run();
+      if (changed.meta.changes !== 1)
+        throw new ImplementationError('browser_recovery_changed', 'Browser ownership changed during reset; read the current attempt before retrying');
+      row = (await this.store.resource(attemptId, 'browser'))!;
     }
     if (row.status === "destroyed")
       throw new ImplementationError(
@@ -157,6 +184,8 @@ export class ImplementationBrowserAllocator {
       .run();
     if (lease.meta.changes !== 1) throw new BrowserCapacityWait(1000);
     let before: string[] = [];
+    const replacement = JSON.parse(row.metadata_json).replacement;
+    const recovery = replacement ? {replacement} : {};
     try {
       before = await this.provider.inventory();
       const update = await this.store.db
@@ -167,7 +196,7 @@ export class ImplementationBrowserAllocator {
         .bind(
           now.toISOString(),
           new Date(now.getTime() + 90_000).toISOString(),
-          JSON.stringify({ before, origin, origins }),
+          JSON.stringify({ before, origin, origins, ...recovery }),
           row.resource_id,
         )
         .run();
@@ -194,6 +223,7 @@ export class ImplementationBrowserAllocator {
               before,
               origin,
               origins,
+              ...recovery,
               candidates: after?.filter((id) => !before.includes(id)) ?? null,
             }),
             row.resource_id,
@@ -209,7 +239,7 @@ export class ImplementationBrowserAllocator {
           )
           .bind(
             browser.id,
-            JSON.stringify({ before, origin, origins }),
+            JSON.stringify({ before, origin, origins, ...recovery }),
             this.now().toISOString(),
             row.resource_id,
           )
@@ -232,6 +262,23 @@ export class ImplementationBrowserAllocator {
         .bind(this.account, row.allocation_op)
         .run();
     }
+  }
+  async commandFailure(row: ImplementationResource, cause: unknown): Promise<unknown> {
+    if (!(cause instanceof Error) || !/Target closed|Session closed|Unable to connect|Connection closed|WebSocket|socket/i.test(errorText(cause)))
+      return cause;
+    const sessionId = row.provider_resource_id!;
+    const observations = await Promise.allSettled([this.provider.inventory(), this.provider.history(sessionId)]);
+    const inventory = observations[0];
+    const ended = inventory.status === 'fulfilled' && !inventory.value.includes(sessionId);
+    const exhausted = Boolean(JSON.parse(row.metadata_json).replacement);
+    const error = new Error(`${cause.message}. ${ended
+      ? exhausted ? 'The replacement browser has ended; ask for help with the saved work.'
+        : 'The assigned browser has ended. Start the saved demo list from zero; its reset can allocate a fresh browser.'
+      : 'Session closure is unconfirmed. Do not replay an individual action; inspect the session or restart the saved scenario from zero.'}`, {cause});
+    return Object.assign(error, {browserSession:{sessionId, ended, observedAt:this.now().toISOString(),
+      inventory: inventory.status === 'fulfilled' ? inventory.value : null,
+      history: observations[1].status === 'fulfilled' ? observations[1].value : null},
+      diagnosticErrors: observations.filter(result=>result.status==='rejected').map(result=>result.reason)});
   }
   async reconcile(row: ImplementationResource) {
     if (
@@ -290,12 +337,13 @@ export class ImplementationBrowserAllocator {
       );
     await this.store.db
       .prepare(
-        "UPDATE implementation_resources SET status='destroyed',cleanup_receipt=?,updated_at=? WHERE resource_id=?",
+        "UPDATE implementation_resources SET status='destroyed',cleanup_receipt=?,updated_at=? WHERE resource_id=? AND provider_resource_id=? AND status='ready'",
       )
       .bind(
         JSON.stringify({ absent: row.provider_resource_id }),
         this.now().toISOString(),
         row.resource_id,
+        row.provider_resource_id,
       )
       .run();
   }

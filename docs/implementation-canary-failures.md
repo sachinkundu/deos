@@ -184,6 +184,35 @@ change, PACK-25 recovered through existing cleanup reconciliation, and PACK-16,
 19, 29 and 30 retain unresolved transport/lifecycle causes. New runs receive the
 current code; existing workflow instances retain their frozen version.
 
+### Follow-up on the six remaining categories — 2026-09-17
+
+These findings address the recovery gaps before another canary. They do not
+erase the original failures or turn the supervised run into an unattended one.
+
+| Category | Finding and correction |
+| --- | --- |
+| PACK-06 | Supervisor deployments caused the resets. Repository instructions now require reading D1 and using a stopped boundary even for backend-only or secret updates. Workflow replay already recovered the two incidents. |
+| PACK-16 | Public relay readiness failed after the local app was healthy. The runtime now retains that app and its data; an identical preview request reuses the process and reconciles the same relay. The transient DNS cause remains unknown. |
+| PACK-19 | The original nested cause is `UND_ERR_SOCKET: other side closed` between the sandbox and tool broker, not a proven browser crash. Lost-response errors now identify the operation and tell the agent to restart the saved scenario with fixture resets. The harness never repeats an ambiguous click. The network cause remains unknown. |
+| PACK-25 | Browser close was accepted before inventory confirmed absence. Existing scheduled reconciliation recovered it without rerunning implementation. Keep this as a recovered lifecycle incident; no new provider retry or quality gate is needed. |
+| PACK-29 | The watcher logged a timeout but retried only after another file edit. It now resends transient failures with capped backoff, stops on success, rejected credentials or its deadline, and preserves the original error. |
+| PACK-30 | The allocator returned the dead session indefinitely. An explicit scenario reset can now replace a provider-confirmed absent session once in the same active attempt. It retains the old receipt and origins, never replaces a live/uncertain session, and cannot loop through replacements. Browser failures retain provider inventory and available close history. The original closure cause remains unknown. |
+
+Validation: 594 repository tests passed, one skipped, zero failed; TypeScript and
+OpenSpec validation passed. Real HTTP regressions prove retained local service,
+dropped progress delivery recovery and no duplicated action on a dropped broker
+response. The [real Cloudflare browser lifecycle probe](evidence/sac-172/packing-canary/browser-recovery-proof.json)
+deliberately closes its first session, resets into a replacement, reaches HTTP200,
+and confirms cleanup. It uses local SQLite/R2 fixtures and starts no workflow.
+
+The diagnostic initially used a compatibility date newer than the installed
+workerd supported. Correcting its temporary config to the repository's existing
+2026-08-27 date allowed the probe to start. This was a supervisor verification
+setup error, outside SAC-238's historical run counts.
+
+Deployment of this follow-up is pending the stopped-boundary check and runtime
+rollout. The earlier deployment coverage table remains the last activated record.
+
 ### Incidents
 
 #### PACK-01 — unsupported editing tool selection

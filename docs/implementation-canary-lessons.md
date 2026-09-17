@@ -181,6 +181,39 @@ A successful small canary does not prove arbitrary integrations, backend
 deployment, or concurrent whole-run isolation. Test those separately when needed.
 Capacity fallback remains SAC-235, outside this correction set.
 
+## Remaining packing-canary recovery lessons
+
+PACK-06 was caused by supervisor deployments. Read current D1 attempts before
+deploying backend code, secrets or containers and use stopped gates. Disabling
+container rollout does not prevent Worker/Durable Object resets.
+
+PACK-16 mixes two lifecycles: the local app was healthy, but the public relay
+was not ready. Keep the local process and its test data alive. An identical
+preview request reconciles the same tunnel; changed settings do not silently
+replace the app. The provider's transient DNS cause remains unknown.
+
+PACK-19 lost the sandbox-to-broker HTTPS response (`UND_ERR_SOCKET`), not a
+proven browser socket. The click may have run. Preserve the original cause and
+restart the saved scenario list from zero with fixture resets instead of
+silently repeating one action. The transport cause remains unknown.
+
+PACK-25's delayed browser close was recovered by the existing reconciler. Keep
+that pending resource and original error until absence is confirmed; do not
+turn a completed implementation back into an author failure.
+
+PACK-29 exposed a missed progress wake-up: one failed send needed another file
+edit before it would retry. Retry transient delivery failures with backoff until
+success or the attempt deadline. Stop on revoked credentials. The workflow
+continues to read actual tasks; notifications never carry counts or approval.
+
+PACK-30 exposed a dead assigned session without local recovery. Record provider
+inventory and any available close reason when a browser connection fails. At
+an explicit scenario reset, confirmed absence permits one replacement in the
+same active attempt, with the same origins and an archived resource receipt.
+Do not replace a live or uncertain session, retry a click, revive cleaned work,
+or allocate indefinitely. A second session loss asks for help with saved work.
+This recovers browser loss; it does not prove its original cause is eliminated.
+
 ## Provider contracts consulted
 
 - [Linear webhook delivery and retries](https://linear.app/developers/webhooks)

@@ -291,8 +291,8 @@ export class ImplementationBroker {
         );
         const origin = hostedOrigin ?? preview!.preview_origin!;
         const existingBrowser = await this.store.resource(claims.attemptId, "browser");
-        const savedBinding = existingBrowser?.status === "ready"
-          ? JSON.parse(existingBrowser.metadata_json) : null;
+        const savedMetadata = existingBrowser ? JSON.parse(existingBrowser.metadata_json) : null;
+        const savedBinding = savedMetadata?.origin ? savedMetadata : null;
         // A hosted deployment is a complete browser target. It does not need a
         // local process or tunnel. Once allocated, retain the browser's original
         // domain binding even if a local preview is created later in this try.
@@ -313,6 +313,7 @@ export class ImplementationBroker {
           claims.attemptId,
           allocationOrigin,
           allowedOrigins.filter(value => value !== allocationOrigin),
+          request.operation === 'reset',
         );
         await this.store.assertResource(
           claims.runId,
@@ -369,7 +370,7 @@ export class ImplementationBroker {
             documentStatus: metadata.documentOrigin === origin || (!metadata.documentOrigin && !hostedOrigin)
               ? metadata.documentStatus : undefined,
           },
-        );
+        ).catch(async error => { throw await allocator.commandFailure(browser, error); });
         if (result.viewport) {
           await this.env.DB.prepare("UPDATE implementation_resources SET metadata_json=json_set(metadata_json,'$.viewport',json(?)) WHERE resource_id=? AND status='ready' AND provider_resource_id=?")
             .bind(JSON.stringify(result.viewport),browser.resource_id,browser.provider_resource_id).run();

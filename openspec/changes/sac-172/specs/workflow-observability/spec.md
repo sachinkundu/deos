@@ -20,6 +20,10 @@ The implementation phase SHALL contain Author followed by Claude Review and Prep
 
 Checklist edits SHALL signal the current workflow through the attempt's scoped capability. The workflow SHALL read the actual checklist before saving counts. A signal MUST NOT carry a completion result or choose a human gate. The heartbeat SHALL reconcile missed signals as a fallback.
 
+Transient signal delivery failures SHALL be retained and retried with capped
+backoff without requiring another task edit. Success or the attempt deadline
+SHALL stop retries. Rejected credentials SHALL stop the watcher.
+
 #### Scenario: The author checks off a task
 
 - **WHEN** the active author saves a changed task checklist, including an atomic file replacement.

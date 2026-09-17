@@ -25,6 +25,33 @@ import { collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementation
 const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
 const shellQuote = (text) => "'" + text.replaceAll("'", "'\\''") + "'";
+
+// Relay readiness and local startup are different lifecycles. Once the local
+// app is healthy, a failed public connection must not kill it or its test data.
+export class LocalPreviewSession {
+  config = null;
+  async ensure(config, { start, assertRunning, connect }) {
+    const identity = JSON.stringify(config);
+    if (this.config !== null) {
+      if (this.config !== identity) throw new Error("This try already has a preview with different settings");
+      await assertRunning();
+    } else {
+      await start();
+      this.config = identity;
+    }
+    return connect();
+  }
+}
+
+export async function implementationBrokerFetch(url, init, request, fetcher = fetch) {
+  try { return await fetcher(url, init); }
+  catch (cause) {
+    const recovery = request.action === 'browser'
+      ? 'The action may have reached the browser. Do not repeat it alone; restart the saved demo from zero with its fixture reset.'
+      : 'The operation may have reached the service. Reconcile its saved result before retrying.';
+    throw new Error(`Implementation ${request.action}${request.operation ? '/' + request.operation : ''} response was lost: ${cause.message}. ${recovery}`, {cause});
+  }
+}
 export async function command(argv, cwd, options = {}) {
   options.signal?.throwIfAborted();
   return new Promise((resolveResult, reject) => {
@@ -395,7 +422,7 @@ export async function setupImplementation(job) {
         },
         body: JSON.stringify(payload),
       };
-      const response = await fetch(url, init);
+      const response = await implementationBrokerFetch(url, init, payload);
       if (response.status === 429 || response.status === 409) {
         const wait = await response.json();
         if (!["browser_capacity", "browser_quarantined"].includes(wait.error))
@@ -418,12 +445,14 @@ export async function setupImplementation(job) {
   let preview = null;
   let previewLog = null;
   let previewError = null;
+  const previewSession = new LocalPreviewSession();
   const stopPreview = async () => {
     await stopProcessGroup(preview);
     await previewLog?.close();
     preview = null;
     previewLog = null;
     previewError = null;
+    previewSession.config = null;
   };
   const toolQueue = implementationRequestQueue();
   const pendingRequests = new Set();
@@ -599,9 +628,15 @@ export async function setupImplementation(job) {
           if (capture.exitCode !== 0) throw Object.assign(new Error(`Static preview capture failed: ${capture.stderr}`),{result:capture});
           result = await broker({action:'publish_preview',subject,files:JSON.parse(capture.stdout)});
         } else if (request.action === "preview") {
-          if (preview)
-            throw new Error("This try already has a preview process");
           const config = localConfig(request, job.attemptId);
+          result = await previewSession.ensure(config, {
+          assertRunning: async () => {
+            if (previewError) throw previewError;
+            if (!preview || preview.exitCode !== null || preview.signalCode !== null)
+              throw new Error(`Preview exited: ${await readFile(`${ROOT}/preview.log`, "utf8")}`);
+          },
+          connect: () => broker({ action: "preview", port: 8787 }),
+          start: async () => {
           for (const path of [config.main, config.assets?.directory].filter(
             Boolean,
           )) {
@@ -675,12 +710,13 @@ export async function setupImplementation(job) {
             throw new Error(
               `Preview did not become ready: ${await readFile(`${ROOT}/preview.log`, "utf8")}`,
             );
-          result = await broker({ action: "preview", port: 8787 });
           } catch (error) {
             try { await stopPreview(); }
             catch (cleanupError) { throw new AggregateError([error, cleanupError], "Preview startup and cleanup failed", { cause: error }); }
             throw error;
           }
+          },
+          });
         } else if (request.action === "demo") {
           beginBrowserDemo(state);
           await persistState();

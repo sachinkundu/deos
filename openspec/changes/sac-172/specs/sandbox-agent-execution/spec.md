@@ -108,3 +108,36 @@ The trusted runner SHALL keep the first error, stack, cause chain, failed act, p
 
 - **WHEN** the build starts again after a reply.
 - **THEN** the new attempt gets the saved work and reply, but it gets fresh browser and test tools.
+
+### Requirement: Recover transport resources without repeating implementation
+
+A healthy local preview SHALL remain alive when public relay readiness fails.
+An identical request SHALL reuse it and reconcile the existing relay. Failed
+local startup SHALL still clean up. The service MUST NOT silently change preview
+settings or erase test data during recovery.
+
+On a browser connection failure, DEOS SHALL retain the original error, provider
+inventory and any available close reason. An explicit scenario reset MAY replace
+a confirmed-ended browser once within the same active attempt. It SHALL preserve
+the old resource receipt and fixed origins. A live or ambiguous session MUST NOT
+be replaced. A lost creation response SHALL retain quarantine and the replacement
+limit. Another session loss SHALL request help with saved work.
+
+A lost tool response MUST NOT replay a click or submission. The author SHALL
+restart the saved scenario list with the required fixture resets. This recovery
+MUST NOT repeat prior workflow stages or add a review of agent judgment.
+
+#### Scenario: Public relay is late
+
+- **WHEN** local startup succeeded but the relay readiness request fails.
+- **THEN** the app remains available locally and a retry reconciles the same relay.
+
+#### Scenario: Assigned browser has ended
+
+- **WHEN** an active author restarts a scenario and provider inventory confirms its first assigned session is absent.
+- **THEN** the reset allocates one replacement with the same origins and retained history, without restarting implementation.
+
+#### Scenario: Replacement also fails
+
+- **WHEN** the replacement session ends or creation is ambiguous.
+- **THEN** DEOS retains the failure and saved work without allocating browsers indefinitely.

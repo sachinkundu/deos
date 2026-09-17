@@ -24,6 +24,7 @@ class Provider implements BrowserProvider {
   async inventory() {
     return [...this.live];
   }
+  async history(id: string) { return {sessionId:id, closeReasonText:'TestClosed'}; }
   async capacity() {
     return { available: this.available, retryAfterMs: 3000 };
   }
@@ -155,6 +156,58 @@ test("reconciliation refreshes only the active try's existing browser and thrott
     await f.allocator.keepAlive("run-1", "two");
     assert.deepEqual(f.provider.keptAlive, [one.provider_resource_id]);
   } finally { f.db.close(); }
+});
+
+test("an explicit reset replaces one confirmed-ended browser, retains history and cannot replay actions or revive cleanup", async () => {
+  const f = await fixture();
+  try {
+    const origin = 'https://one.trycloudflare.com';
+    const first = await f.allocator.acquire('run-1','one',origin);
+    assert.equal((await f.allocator.acquire('run-1','one',origin,[],true)).provider_resource_id, first.provider_resource_id);
+    f.provider.live = [];
+    assert.equal((await f.allocator.acquire('run-1','one',origin)).provider_resource_id, first.provider_resource_id,
+      'ordinary operations must not replace a browser and replay an action');
+    const cause = new Error('Protocol error: Target closed');
+    const failure = await f.allocator.commandFailure(first,cause) as Error & {browserSession:{ended:boolean}};
+    assert.equal(failure.cause,cause);assert.equal(failure.browserSession.ended,true);
+    assert.match(failure.message,/saved demo list from zero/);
+    await f.store.error('run-1','one','tool.browser',failure);
+    const replacement = await f.allocator.acquire('run-1','one',origin,[],true);
+    assert.notEqual(replacement.provider_resource_id,first.provider_resource_id);
+    assert.equal(f.provider.creates,2);
+    const metadata=JSON.parse(replacement.metadata_json);
+    assert.equal(metadata.replacement.previousSessionId,first.provider_resource_id);
+    assert.deepEqual(metadata.origins,[origin]);
+    assert.ok(await f.store.bucket.get(metadata.replacement.receipt.key));
+    await f.allocator.cleanup(first);
+    assert.equal((await f.store.resource('one','browser'))!.status,'ready','stale cleanup cannot destroy replacement ownership');
+    assert.deepEqual(f.provider.live,[replacement.provider_resource_id]);
+    assert.equal(f.db.sqlite.prepare('SELECT count(*) AS n FROM implementation_effect_errors').get()!.n,1);
+    f.provider.live=[];
+    await assert.rejects(f.allocator.acquire('run-1','one',origin,[],true),/replacement browser has also ended/);
+    assert.equal(f.provider.creates,2,'repeated resets cannot spin up browsers forever');
+  } finally {f.db.close();}
+});
+
+test("reset does not replace an unconfirmed session, change origins or restart a stopped attempt", async () => {
+  for (const mode of ['inventory','origin','stopped','ambiguous-create']) {
+    const f=await fixture();
+    try {
+      const origin='https://one.trycloudflare.com';
+      await f.allocator.acquire('run-1','one',origin);
+      f.provider.live=[];
+      if(mode==='inventory')f.provider.inventory=async()=>{throw new Error('inventory transport failed');};
+      if(mode==='stopped')f.db.sqlite.prepare("UPDATE agent_attempts SET state='completed' WHERE attempt_id='one'").run();
+      if(mode==='ambiguous-create')f.provider.ambiguous=true;
+      await assert.rejects(f.allocator.acquire('run-1','one',mode==='origin'?'https://foreign.example':origin,[],true));
+      assert.equal(f.provider.creates,mode==='ambiguous-create'?2:1);
+      if(mode==='ambiguous-create') {
+        await assert.rejects(f.allocator.acquire('run-1','one',origin,[],true),/reconciliation/);
+        assert.equal(f.provider.creates,2);
+        assert.ok(JSON.parse((await f.store.resource('one','browser'))!.metadata_json).replacement);
+      }
+    } finally {f.db.close();}
+  }
 });
 
 test('one browser retains its fixed local and checked hosted origins; origin changes need a fresh try', async()=>{
