@@ -18,6 +18,12 @@ Validated before rollout:
   pending. Version 40 was already frozen for an existing provider-test profile;
   this extension uses version 41.
 
-The adapter probe is not the cloud-agent canary. Agent use, screenshots, cloud
+Rollout completed on17September: migration0053 applied, Worker6587a7d1 at100%,
+all four container pools healthy on image48e32b0b. All PR139 CI jobs passed.
+[Activation readback](activation.log) and [rollout output](rollout.log) preserve
+the provider result. The sample project must select definition41 before launch.
+
+The adapter probe is not the cloud-agent canary. [SAC-246 supervision](../sac-172/storage-canary/supervision.md)
+tracks that next run. Agent use, screenshots, cloud
 review, PR publication, and automatic post-publication cleanup still need that
 run. Keep the [failure log](failures.md) current throughout rollout and canary.

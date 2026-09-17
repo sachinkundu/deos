@@ -3,6 +3,8 @@
 This is the shared failure and intervention record for successive small web-app
 canaries. The endpoint is an implementation PR with a working preview and useful,
 correct screenshots. Merging or releasing the sample app is not required.
+For the storage canary, the temporary preview is retired after evidence and PR
+publication; durable screenshots and storage receipts are the review artifact.
 
 ## How to compare runs
 
@@ -24,6 +26,13 @@ An in-flight zero is not an unattended success. A retrospective lower bound is
 not a complete baseline, and cannot establish a percentage improvement.
 
 ## Runs
+
+### SAC-246 prospective D1/R2 snippet-shelf canary
+
+- [Supervision contract](evidence/sac-172/storage-canary/supervision.md), [failure log](evidence/sac-172/storage-canary/failures.md) and [read-only D1 collector](evidence/sac-172/storage-canary/readback.py).
+- The user authorizes automatic prerequisite gates and routine answers. Cloudflare agents alone build the app and its tests and proof. Stop at an unmerged implementation PR, then confirm deletion of all temporary app resources while retaining GitHub evidence.
+- Baseline repairs are on main through PR138. The temporary environment extension is in draft PR139, with passing CI and a real provider lifecycle probe. That probe is not the full cloud-agent canary. Preflight operator and extension errors are recorded in the [extension failure log](evidence/temporary-environments/failures.md).
+- Run not yet started. No reliability conclusion or cloud-agent failure count yet.
 
 ### SAC-245 prospective reading-queue canary
 

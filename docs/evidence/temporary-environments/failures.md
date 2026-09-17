@@ -47,4 +47,28 @@ was needed. GitHub CI and staging deployment are checked separately.
    and confirmed Worker, database and bucket absence afterward. Evidence is in
    `provider-proof.md`. This is an adapter probe, not the full cloud-agent canary.
 
-No full cloud-agent canary attempt yet.
+8. All extension CI jobs passed. Backend rollout installed migration0053 and
+   activated version6587a7d1 at100%. A gradual container rollout initially showed
+   old images in the implementation pools; this was observed rollout progress,
+   not a failed canary. We waited until all four pools were healthy on48e32b0b.
+9. The temporary RouteAdmin client's first read returned provider403/error1010
+   with Python's default user agent. The existing diagnostic user agent made
+   the same read succeed. No mutation occurred; exact terminal error retained.
+10. Selecting the new implementation definition before its scheduled registry
+    update failed with `D1_ERROR: FOREIGN KEY constraint failed: SQLITE_CONSTRAINT
+    (extended: SQLITE_CONSTRAINT_FOREIGNKEY)`. The policy remained v39. Cause:
+    RouteAdmin loads the new bundled v41 before the scheduled handler has stored
+    it in workflow_definitions. Wait for the normal registry update, then retry
+    through RouteAdmin with a fresh revision. Do not insert D1 rows manually.
+    This is a preflight operator error and a remaining admin timing gap, not an
+    application failure.
+
+11. The copied read-only transcript helper initially failed provider validation:
+    `D1 binding 'DB' references database '4e854f8a-018a-42c4-a325-c4b8806c06b2'
+    which was not found` (10181). A broad local port replacement also changed
+    matching digits inside the database ID. Restored the exact known database
+    ID in the private helper. No database was changed. Original Wrangler log:
+    `/Users/sachin/Library/Preferences/.wrangler/logs/wrangler-2026-09-17_13-23-33_523.log`.
+    This is a supervisor setup mistake, separate from cloud-agent failures.
+
+No full cloud-agent canary attempt yet. SAC-246 is prepared in Backlog.

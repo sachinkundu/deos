@@ -92,7 +92,11 @@ nonproduction review branch, and immutable deployment URLs. The agent cannot
 choose the account, project, production branch, bindings, secrets or Worker code.
 The service retains build bytes and provider receipts, reads back the deployment,
 and makes a current review URL available after sandbox cleanup. This does not
-provide backend or production deployment; backend demos use isolated workerd.
+provide backend or production deployment. The separate `temporary-environment-v1`
+capability provides a run-owned Worker with optional real D1/R2 bindings. The
+trusted broker owns credentials and resource identities; agents receive their
+own app bindings. Local workerd remains available for local checks. Real storage
+proof must use the remote target. See [temporary environments](temporary-implementation-environments.md).
 
 Pass the frozen implementation capabilities to proposal, design, review and demo
 agents. A supported publisher discovered only during demo planning is too late:
@@ -270,7 +274,11 @@ unlisted files. File hashes, traversal rejection and read-only syntax still
 apply. Tool help names this supported search form. Resume the failed review
 from its saved app and proof; do not rerun successful demonstrations.
 
-## Reading-canary follow-up repairs (prepared, not deployed)
+## Reading-canary follow-up repairs
+
+These repairs were merged through PR138 and deployed with the temporary
+environment extension on17September. Their adoption and full behavior remain
+part of the SAC-246 canary; local checks alone do not establish that result.
 
 Use the task tool to report one existing task active, completed or reopened as
 work happens. It records actual file changes and timestamps; it does not decide

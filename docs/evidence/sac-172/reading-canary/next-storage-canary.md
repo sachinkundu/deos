@@ -1,7 +1,9 @@
 # Proposed next canary: a small text snippet shelf
 
-Status: prepared brief only. No Linear issue, run, provider resource or sample-app
-implementation has been created for this canary.
+Status updated17September: [SAC-246](https://linear.app/sachinkundu/issue/SAC-246/keep-a-small-shelf-of-text-snippets)
+is prepared. The temporary resource capability is implemented in DEOS PR139,
+deployed and checked against real provider resources. The full canary still
+needs to run; see [current supervision](../storage-canary/supervision.md).
 
 ## User outcome
 
@@ -68,6 +70,10 @@ was retired rather than advertise a working preview. If revisions need another
 test, provision a new isolated environment and refresh the evidence.
 
 ## Capability prerequisite before launch
+
+The following requirement was recorded before the extension. Its implementation
+and provider proof now live in [temporary environment validation](../../temporary-environments/README.md).
+The remaining validation is use by the cloud agents through the normal workflow.
 
 The existing `preview` tool creates local D1/R2 bindings in the isolated sandbox.
 The existing persistent publisher deploys static assets to Pages. Neither is a
