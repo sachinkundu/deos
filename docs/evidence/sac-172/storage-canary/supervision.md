@@ -137,8 +137,9 @@ DEOS shared storage or evidence. If cleanup fails, retain identities and error
 records and use ownership-checked reconciliation.
 
 Commit/push only sanitized intended evidence on the extension branch. Update
-PR139 with the real canary result and any limitations. Stay quiet on routine or
-unchanged states; notify on completion or substantive problems. Pause heartbeat
+PR139 with the real canary result and any limitations. Latest user direction: report only newly observed errors, with no routine
+progress or success/completion notifications. Record completion and the grouped
+analysis in evidence and pause silently when done. Pause heartbeat
 run-reading-queue-canary-to-pr at completion. Leave both implementation PRs
 unmerged for review unless the user gives further instructions.
 
@@ -190,3 +191,13 @@ nonzero exits or provider error events. Full private snapshot
 /tmp/sac246-reader/2026-09-17T15-16-58.540Z.json retained. No new gate, no new
 workflow errors, no implementation environment allocated. Continue without
 intervention; audit the full completed artifact before final failure counts.
+
+15:27UTC: the user requested reports only when an error occurs; the existing
+heartbeat prompt now preserves that preference. Design native reviewer emitted
+five quality findings at15:18:12.796. At15:25 the author was still waiting, with
+a fresh local heartbeat but D1 heartbeat unchanged since15:16. The checkpoint
+was then stored normally at15:27:12.757 and session complete15:27:13.897. Saved
+the exact findings and checkpoint summary in design-self-review-first.json.
+The roughly9-minute handoff delay is observed; its cause is not established and
+no provider error was found. No interruption, retry, deployment or plan edit
+was performed. Let the cloud author handle its review findings.

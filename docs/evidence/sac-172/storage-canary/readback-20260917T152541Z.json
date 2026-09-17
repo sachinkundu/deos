@@ -54,7 +54,7 @@
       "status": "active",
       "accumulated_data_json": "{}",
       "created_at": "2026-09-17T13:37:26.619Z",
-      "updated_at": "2026-09-17T15:27:14.499Z",
+      "updated_at": "2026-09-17T15:16:51.842Z",
       "terminal_at": null,
       "terminal_cause": null,
       "current_visit_sequence": 15,
@@ -321,7 +321,7 @@
       "result_class": null,
       "cleanup_state": "pending",
       "sandbox_id": "sbx-v1-n54af7hjos4orlwx3wwo5dmdztsn3i4yszmfj6mqtz444tq727wa",
-      "updated_at": "2026-09-17T15:27:14.499Z",
+      "updated_at": "2026-09-17T15:16:51.842Z",
       "cleanup_hold_until": null,
       "cleanup_hold_reason": null,
       "manifest_id": null
@@ -438,5 +438,5 @@
     ],
     "created_on": "2026-09-17T13:51:25.595023Z"
   },
-  "observed_at": "2026-09-17T15:27:24.594940+00:00"
+  "observed_at": "2026-09-17T15:25:41.069654+00:00"
 }
