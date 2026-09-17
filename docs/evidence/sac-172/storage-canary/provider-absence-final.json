@@ -1,0 +1,155 @@
+[
+  {
+    "name": "deos-tmp-366011a3f9d248f2edfd399c",
+    "kind": "d1",
+    "http_status": 404,
+    "provider_response": {
+      "messages": [],
+      "result": null,
+      "success": false,
+      "errors": [
+        {
+          "code": 7404,
+          "message": "The database 96cbd58f-c70b-465d-b054-b745911ae7f3 could not be found"
+        }
+      ]
+    },
+    "observed_at": "2026-09-17T18:53:10.004300+00:00"
+  },
+  {
+    "name": "deos-tmp-366011a3f9d248f2edfd399c",
+    "kind": "r2",
+    "http_status": 404,
+    "provider_response": {
+      "success": false,
+      "errors": [
+        {
+          "code": 10006,
+          "message": "The specified bucket does not exist."
+        }
+      ],
+      "messages": [],
+      "result": null
+    },
+    "observed_at": "2026-09-17T18:53:10.003967+00:00"
+  },
+  {
+    "name": "deos-tmp-366011a3f9d248f2edfd399c",
+    "kind": "worker",
+    "http_status": 404,
+    "provider_response": {
+      "result": null,
+      "success": false,
+      "errors": [
+        {
+          "code": 10007,
+          "message": "This Worker does not exist on your account."
+        }
+      ],
+      "messages": []
+    },
+    "observed_at": "2026-09-17T18:53:10.300503+00:00"
+  },
+  {
+    "name": "deos-tmp-fd06b452d4155750a21db179",
+    "kind": "d1",
+    "http_status": 404,
+    "provider_response": {
+      "messages": [],
+      "result": null,
+      "success": false,
+      "errors": [
+        {
+          "code": 7404,
+          "message": "The database 7dea7ba9-6982-4f94-ba4f-4b21475c2bff could not be found"
+        }
+      ]
+    },
+    "observed_at": "2026-09-17T18:53:10.003694+00:00"
+  },
+  {
+    "name": "deos-tmp-fd06b452d4155750a21db179",
+    "kind": "r2",
+    "http_status": 404,
+    "provider_response": {
+      "success": false,
+      "errors": [
+        {
+          "code": 10006,
+          "message": "The specified bucket does not exist."
+        }
+      ],
+      "messages": [],
+      "result": null
+    },
+    "observed_at": "2026-09-17T18:53:10.004167+00:00"
+  },
+  {
+    "name": "deos-tmp-fd06b452d4155750a21db179",
+    "kind": "worker",
+    "http_status": 404,
+    "provider_response": {
+      "result": null,
+      "success": false,
+      "errors": [
+        {
+          "code": 10007,
+          "message": "This Worker does not exist on your account."
+        }
+      ],
+      "messages": []
+    },
+    "observed_at": "2026-09-17T18:53:10.402485+00:00"
+  },
+  {
+    "name": "deos-tmp-873042d0a43055bc7dd07526",
+    "kind": "d1",
+    "http_status": 404,
+    "provider_response": {
+      "messages": [],
+      "result": null,
+      "success": false,
+      "errors": [
+        {
+          "code": 7404,
+          "message": "The database 2e0f38d6-9ec4-481d-9674-0b68a5fae591 could not be found"
+        }
+      ]
+    },
+    "observed_at": "2026-09-17T18:53:10.363871+00:00"
+  },
+  {
+    "name": "deos-tmp-873042d0a43055bc7dd07526",
+    "kind": "r2",
+    "http_status": 404,
+    "provider_response": {
+      "success": false,
+      "errors": [
+        {
+          "code": 10006,
+          "message": "The specified bucket does not exist."
+        }
+      ],
+      "messages": [],
+      "result": null
+    },
+    "observed_at": "2026-09-17T18:53:10.686781+00:00"
+  },
+  {
+    "name": "deos-tmp-873042d0a43055bc7dd07526",
+    "kind": "worker",
+    "http_status": 404,
+    "provider_response": {
+      "result": null,
+      "success": false,
+      "errors": [
+        {
+          "code": 10007,
+          "message": "This Worker does not exist on your account."
+        }
+      ],
+      "messages": []
+    },
+    "observed_at": "2026-09-17T18:53:10.877164+00:00"
+  }
+]

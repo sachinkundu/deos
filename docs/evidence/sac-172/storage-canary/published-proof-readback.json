@@ -1,0 +1,64 @@
+{
+  "observed_at": "2026-09-17T18:53:11.380338+00:00",
+  "image_occurrences": 9,
+  "unique_images": [
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201.png",
+      "http_status": 200,
+      "content_type": "image/png",
+      "bytes": 159294,
+      "sha256": "c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9.png",
+      "http_status": 200,
+      "content_type": "image/png",
+      "bytes": 158648,
+      "sha256": "0a820691fbaff9a69ccf5483a77b921e2fb60b6d0854086e5d9753e16f1b36d9"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281.png",
+      "http_status": 200,
+      "content_type": "image/png",
+      "bytes": 154509,
+      "sha256": "ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/e0bf2dd8a6c979dd00c6ccb2d72902eb30690d2668a65ea6733c49a30499dcea.png",
+      "http_status": 200,
+      "content_type": "image/png",
+      "bytes": 155174,
+      "sha256": "e0bf2dd8a6c979dd00c6ccb2d72902eb30690d2668a65ea6733c49a30499dcea"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/21721392e4d9f8d758f5164ec7b553f20e25c83eef36723e9312b980127e71b9.png",
+      "http_status": 200,
+      "content_type": "image/png",
+      "bytes": 144615,
+      "sha256": "21721392e4d9f8d758f5164ec7b553f20e25c83eef36723e9312b980127e71b9"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/87d7190b16b84299c9860c8b5ff4e5202a8df4ac897b02608166f06e861d772f.png",
+      "http_status": 200,
+      "content_type": "image/png",
+      "bytes": 143745,
+      "sha256": "87d7190b16b84299c9860c8b5ff4e5202a8df4ac897b02608166f06e861d772f"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe.png",
+      "http_status": 200,
+      "content_type": "image/png",
+      "bytes": 161357,
+      "sha256": "c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/cce02a6093dc703264990b96746822a16c4cabec/images/c11f4a8a8e8c99dba19a5f93a09e2016813ae800ff4344a87dd244df376fe8e1.png",
+      "http_status": 200,
+      "content_type": "image/png",
+      "bytes": 173094,
+      "sha256": "c11f4a8a8e8c99dba19a5f93a09e2016813ae800ff4344a87dd244df376fe8e1"
+    }
+  ],
+  "authentication": "none",
+  "external_browser": "PR45 and fresh-context PNG opened in connected Brave; PNG loaded as 1440x927 image. No screenshot API was exposed, so supervisor pixel review is not claimed."
+}

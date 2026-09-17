@@ -516,3 +516,67 @@ STORE-20 recovery confirmed: exactly one demo collection started and completed
 18:32:37.899, all seven scenarios, despite multiple --wait submissions for the
 same requestId. The compact request and existing operation deduplication worked.
 The author reports inspecting all images and is packaging raw storage evidence.
+
+
+### STORE-22 — Browser cleanup was not immediately confirmed; automatic retry recovered
+
+At18:43:51.444, completed build response01a0b097 raised `Implementation resource
+cleanup failed`, caused by `Browser close is not yet confirmed`
+(`browser_cleanup_unconfirmed`). At18:43:51.493 the outer cleanup path recorded
+`Sandbox destruction failed` with the same cause. These are one cleanup failure
+with two preserved wrappers, not two independent browser failures. Full original
+stacks and cause chains are in cleanup-error-f586d15f-216d-43c5-9363-45efde4d77fc.json
+and cleanup-error-a219bc6d-b5e8-46d4-a01f-ef20b8ee58fa.json.
+
+The service retained ready resource records instead of claiming success. Without
+an operator retry, deployment, D1 write or duplicate author run, browser absence
+was confirmed at18:46:01.222 and sandbox/local data destruction at18:46:02.332.
+final-gates-resources.json records these receipts. The immediate inventory still
+contained the browser after close; eventual provider visibility is consistent
+with the observation, but its underlying cause is not established. Existing
+reconciliation recovered the cleanup. User notified once while pending.
+
+### STORE-23 — Provider reported a code-update Durable Object reset
+
+At18:44:01.981 the provider reported `Durable Object reset because its code was
+updated.` Original remote/retryable error and stack are preserved in
+cleanup-error-f5b58f05-e5fa-4c03-910a-ff0b36a128b5.json. The latest DEOS deployment
+was still17:49:47.671, Worker7ecbe986-d40a-47e5-ad9c-05fb4b527490 at100%.
+No supervisor deployment happened around this reset; do not attribute it to one.
+The provider's message does not establish which code/version change caused it.
+
+The same workflow resumed from completed artifacts, wrote/published the branch,
+and opened the final implementation gate at18:45:45.596 without another cloud
+build. PR45 was created18:45:08, followed by all three run-owned environment
+teardowns18:45:28–18:45:45. Nine independent provider GETs later returned404 for
+the three Workers, three D1 databases and three R2 buckets. Evidence and shared
+DEOS infrastructure remain. Recovery is automatic; root cause remains unknown.
+
+### Final evidence corrections and gate disposition
+
+STORE-21 refinement: native stderr is not always lost. The second response's
+completed validation.txt contains the exact hook rejection, verified against its
+manifest hash. container/supervisor.mjs calls validation.finalize(path, false):
+private stderr becomes validation.txt only when no author validation file exists;
+otherwise the private capture is removed. The first resumed build supplied a
+validation report, and its hook error survived only through supervisor live
+capture. The remaining fix is independent, unconditional stderr preservation,
+not an assertion that every completed attempt loses stderr. No validation file
+was overwritten by cleanup, and no new failure is counted for this correction.
+
+STORE-18 final disposition: one independent needs_work review automatically
+triggered one author response, then publication. Frozen v41 deliberately routes
+that completed response through review_ready to the human gate without a second
+Claude review. This is a completed response, not an independent pass. The final
+human gate remains open against PR45 head108d02af273ace38d379ca1f94012a76dadefe31;
+there is no merge authorization. Source portal rendering preserves Needs work
+and labels the response complete; final live pixel rendering was not independently
+captured by the supervisor. See frozen-gate-routing.json and final-gates-resources.json.
+
+Response audit:52 completed shell commands,45 exit0, two exit1 (STORE-19/20),
+five exit75 waiting reads.23 unique trusted operations completed, none failed.
+One seven-scenario demonstration with58 steps completed exactly once. Nine
+selected screenshots (eight unique hashes) and raw Showboat are publicly available
+on GitHub with verified hashes.16 current tests and typecheck passed. Expected
+fault-injection stderr is distinct from the native hook rejection. Detailed
+verified receipts are in completed-demo-response-audit.json.

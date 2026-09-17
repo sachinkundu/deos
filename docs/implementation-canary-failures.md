@@ -1095,3 +1095,24 @@ Final transcript audit also found a recovered missing formatting request
 (STORE-15) and four local-preview relay failures with530/1016 (STORE-16).
 The relay cause remains unproven; the remote D1/R2 route does not require it.
 See the detailed storage-canary failure log for original outputs and counts.
+
+
+## SAC-246 storage canary final workflow assessment — 17 September 2026
+
+[Implementation PR45](https://github.com/sachinkundu/deos-sample-project/pull/45)
+is open, unmerged and unreleased at the final human gate. One independent demo
+needs_work result routed to one cloud author response, then publication under
+the frozen workflow; no second independent pass is claimed. The app is a trial
+fixture for workflow/gate testing, and every app change stayed with cloud agents.
+
+All three run-owned Worker/D1/R2 environments were deleted after GitHub proof
+publication, with nine independent provider absence checks. A delayed browser
+cleanup and provider-reported code-update reset recovered automatically; originals
+remain in STORE-22/23. The source of the reset is unproven. Native stderr retention
+is conditional on absence of an author validation file and remains a workflow gap.
+
+[Grouped analysis](evidence/sac-172/storage-canary/analysis.md) distinguishes
+automatic recoveries, supervisor fixes and work still needed. See the
+[complete failure log](evidence/sac-172/storage-canary/failures.md) for corrected
+counts, original error evidence and attribution. This is supervised completion,
+not proof of unattended reliability. Final merge/release gates were not exercised.

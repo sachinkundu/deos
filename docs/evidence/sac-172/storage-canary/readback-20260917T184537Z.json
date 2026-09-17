@@ -48,17 +48,17 @@
       "definition_version": 41,
       "definition_digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f",
       "workflow_instance_id": "wf-v1-vv6hj6lwdshnryctyi3e6ff4yh5isx7yyqy5u6fnbrz363rdo3fa",
-      "previous_node": "implementation_publish",
-      "current_node": "implementation_review",
-      "gate_origin_node": "implementation_publish",
-      "status": "awaiting_human",
+      "previous_node": "implementation_branch_write",
+      "current_node": "implementation_publish",
+      "gate_origin_node": null,
+      "status": "active",
       "accumulated_data_json": "{}",
       "created_at": "2026-09-17T13:37:26.619Z",
-      "updated_at": "2026-09-17T18:45:46.014Z",
+      "updated_at": "2026-09-17T18:44:54.654Z",
       "terminal_at": null,
       "terminal_cause": null,
-      "current_visit_sequence": 50,
-      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:49:transition",
+      "current_visit_sequence": 49,
+      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:48:transition",
       "selection_kind": "default",
       "selection_value": "project_policy",
       "selection_label_name": null,
@@ -802,9 +802,9 @@
       "started_at": "2026-09-17T18:18:10.231Z",
       "ended_at": "2026-09-17T18:43:49.613Z",
       "result_class": "completed",
-      "cleanup_state": "destroyed",
+      "cleanup_state": "failed",
       "sandbox_id": "impl-v1-epu2ql6mgwn6ecghmme423ocybqzbmxzvubl6s36octhcu7wppka",
-      "updated_at": "2026-09-17T18:46:02.570Z",
+      "updated_at": "2026-09-17T18:43:51.444Z",
       "cleanup_hold_until": null,
       "cleanup_hold_reason": null,
       "manifest_id": "manifest:01a0b097-22b7-79a0-ba91-ca5a94e5627c"
@@ -1108,17 +1108,17 @@
       "account_id": "c68856288112af7698f5be52ea94b96e",
       "config_json": "{\"d1\":[\"DB\"],\"r2\":[\"BODIES\"]}",
       "resources_json": "{\"d1\":{\"creating\":true,\"id\":\"2e0f38d6-9ec4-481d-9674-0b68a5fae591\"},\"r2\":{\"creating\":true,\"confirmed\":true},\"worker\":{\"creating\":true}}",
-      "state": "destroyed",
+      "state": "retiring",
       "bundle_key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/0e003a14ef7d8e9059d29f12d859edcbfb608147694e2c81c73a02eba66fce50/environment-bundle.json",
       "bundle_sha": "0e003a14ef7d8e9059d29f12d859edcbfb608147694e2c81c73a02eba66fce50",
       "receipt_key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/5f40296ecf6d4d84a5181a1c9dd898ac43ebe3316859f4efe972592450f8e31d/environment-receipt.json",
       "receipt_sha": "5f40296ecf6d4d84a5181a1c9dd898ac43ebe3316859f4efe972592450f8e31d",
       "origin": "https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev",
-      "lease_id": null,
-      "lease_until": null,
-      "cleanup_receipt": "{\"name\":\"deos-tmp-873042d0a43055bc7dd07526\",\"absent\":{\"d1\":true,\"r2\":true,\"worker\":true},\"checkedAt\":\"2026-09-17T18:45:45.127Z\"}",
+      "lease_id": "9e3ecfef-bc2e-4489-8b01-d29eb5318cc5",
+      "lease_until": "2026-09-17T19:00:35.704Z",
+      "cleanup_receipt": null,
       "created_at": "2026-09-17T18:24:02.493Z",
-      "updated_at": "2026-09-17T18:45:45.127Z"
+      "updated_at": "2026-09-17T18:45:36.756Z"
     }
   ],
   "definitions": [
@@ -1186,5 +1186,5 @@
     ],
     "created_on": "2026-09-17T17:49:47.671264Z"
   },
-  "observed_at": "2026-09-17T18:51:47.341540+00:00"
+  "observed_at": "2026-09-17T18:45:37.810072+00:00"
 }

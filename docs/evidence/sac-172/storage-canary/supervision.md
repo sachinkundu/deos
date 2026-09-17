@@ -681,3 +681,23 @@ Audit at18:36:55:39completed shell commands, known task/size failures and four
 exit75 waiting reads, zero new failed trusted operations. Full operation/demo
 receipts in demo-response-1837-audit.json. Three resource sets still tracked;
 all require final cleanup. Sampler90910 active; next gate result pending.
+
+
+## 2026-09-17 18:55 UTC — Canary stopped at final human review
+
+PR45 is open and unmerged: https://github.com/sachinkundu/deos-sample-project/pull/45.
+Head108d02af273ace38d379ca1f94012a76dadefe31, base412a3f46aacb3a970b2415509d91f2ba7ae3f77e.
+Run awaits implementation_review visit50. One reviewer needs_work plus one cloud
+author response is the intentional frozen route, not an independent pass. Do not
+merge, release, send another revision or restart this completed canary.
+
+STORE-22/23 preserve delayed browser cleanup and provider code-reset originals.
+Both recovered without supervisor mutation. All three run-owned Worker/D1/R2 sets
+are destroyed with nine independent provider404 readbacks; browser/localdata
+are destroyed too. GitHub evidence is public and hash-verified after teardown.
+Final response52commands/23completedoperations/seven scenarios are fully audited.
+Analysis is in analysis.md, grouped by automatic, supervisor and remaining work.
+Native stderr loss is conditional; validation fallback retained the latest hook
+error, while the prior author validation file suppressed its stderr capture.
+No local application edit. Leave final implementation and extension PRs unmerged.
+Pause heartbeat after evidence push/PR139 update. User requested no success notice.
