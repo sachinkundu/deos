@@ -468,3 +468,25 @@ The next author command explicitly reopened it and set it active. This is a
 recovered contract-use error; the guard prevented an invalid checklist transition.
 Two observed exit75 dependency-install status reads mean running, not failures.
 No supervisor application or task-file edit occurred.
+
+### STORE-20 — Oversized demonstration request rejected and reduced
+
+Cloud author response item26 built a seven-scenario,155-step request containing
+1,067,534bytes, including capacity-filling text. Runtime rejected it before demo
+execution: `Tool request exceeds 1048576 bytes`, with original dispatch stack
+preserved in demo-response-1830-audit.json. This is one request-size guard failure,
+not a browser failure or provider outage.
+
+The cloud author replaced bulky browser fills with an explicitly named synthetic
+capacity fixture in the run-owned D1 database, then submitted a compact seven-
+scenario,58-step request final-demo-v3. Real remote app behavior still determines
+the failed-save response; the seeded reservation state is test setup and must
+be labeled as such. It is not proof that real user saves filled R2 to capacity.
+One collection63ceab04-730b-45ea-96f7-fc65559db589 started18:28:15.573 and was
+executing normally at18:30:50. No supervisor app edits or limit relaxation.
+User notified once. Full collection and independent acceptance remain pending.
+
+Repeated --wait submissions reference the same immutable requestId. Diagnostics
+show only one collection started so far, providing prospective deduplication
+behavior; verify final collection count before claiming completed protection.
+Do not count concurrent waiting clients or exit75 reads as new failed operations.

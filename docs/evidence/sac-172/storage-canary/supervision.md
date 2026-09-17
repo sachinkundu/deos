@@ -635,3 +635,25 @@ accepted clarification already sets cleanup order. Let response/gate resolve
 these without unnecessary product changes; do not prematurely retire resources.
 Two earlier owned environments still exist and final cleanup must include all.
 Sampler90910 active. User notified once for STORE-18; no action needed.
+
+## 2026-09-17 18:31 UTC — Proof response running; request-size guard recovered
+
+Cloud response01a0b097 remains activevisit46,31/32tasks. Third owned environment
+deos-tmp-873042d0a43055bc7dd07526 published18:24:25, migration/empty D1+R2/API
+readbacks passed. Install completed18:23:42, dependent build18:23:52; no new
+runtime/provider failure. STORE-20 records one oversized demo request rejected
+before execution; agent replaced bulky input with a labeled synthetic D1
+reservation fixture and compact58-step/seven-scenario collection. Agent owns
+all app/test/evidence work; no supervisor edits or service deployment.
+
+Collection63ceab04 started18:28:15 and completed empty/main/fresh-context
+scenarios by18:30:22, then continued both validation cases. This includes a
+visibly distinct initial fresh-context screenshot. The expected failed save
+uses actual remote API capacity rejection against prepared reservation rows;
+keep fixture provenance explicit. Old rejected collection did not execute.
+Repeated --wait clients use the same requestId; one collection start observed.
+Final duplicate suppression and complete proof still need confirmation.
+
+All three run-owned environment sets must be retired after durable PR proof.
+Sampler90910 active. New STORE-20 notice sent once. Continue without interrupting
+active cloud work; preserve review feedback routing and next gate verdict.
