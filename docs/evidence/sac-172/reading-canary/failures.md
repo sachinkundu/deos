@@ -17,6 +17,8 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 | READ-09 | 10:41–10:44, static publish, item58 | `static_preview_pending`: deployed JS asset returned HTTP522 | Newly deployed hosted asset was not yet reachable during verification; underlying provider cause unknown | Repeating the same publish request confirmed the existing deployment b4729f5d and returned its verified receipt; no replacement deployment required. | [Original error and successful receipts](preview-recovery.json) |
 | READ-10 | 10:41–10:44, hosted navigation, items60–61 | Two `net::ERR_CONNECTION_RESET` results at the hosted review URL | Transient browser-to-preview transport failures; underlying cause unknown | A later navigation to the same hosted target loaded the app with an empty console. Two occurrences, one symptom category; no supervisor intervention. | [Original errors](preview-recovery.json), full private10:45:08 snapshot |
 
+| READ-11 | 10:40 task write; investigated 10:53–10:57 | Portal checklist jumped from 0/23 to 17/23 without intermediate counts | Cloud author item49 marks the first17 tasks in one tasks.md write after tests/build. Existing instruction to update checkboxes as work finishes was not followed. No 1–16 file states were emitted. | Recorded as a progress-reporting defect, not an implementation/provider failure. Watcher already reacts to file changes (750ms debounce); visible portal polls every5s. Corrective action: explicit per-task completion reporting/checkpoints in the author workflow; do not simulate increments. No live change during the active canary. | [Exact cloud command and saved observations](checklist-batch-reporting.json) |
+
 ## Normal actions
 
 - 09:14:29: D1 preflight confirmed no run and no active attempts; implementation v39 enabled, backend 8027527b at 100%.
@@ -27,9 +29,13 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 - 10:39–10:45UTC: first app test suite passed31tests; TypeScript and Vite build passed. Tests started after install success; build followed tests. Hosted preview published and loaded by the service browser after the recovered transport failures above.17/23tasks complete; real scenario collection and Claude review still pending.
 - 10:46–10:51UTC: one demo-final-1 collection is active. D1–D3 completed and D4 is progressing. Operation status remains responsive during the collection and reports current scenario/step/last activity; author polls the existing ID rather than starting another demo. No new failures. [Live status proof](demo-live-status-proof.json).
 
+- 10:53:38UTC: same demo collection remains active; D1–D4 completed and D5 reached its final screenshot. Author continues polling demo-final-1. No new runtime failure observed.
+
 ## Operator errors
 
 - 09:36 UTC: local helper discovery with `rg --files /tmp` encountered `Permission denied (os error 13)` for an unrelated device semaphore. Discovery was narrowed to `/tmp/*.py`; no cloud request or run state was affected. One local inventory error, excluded from cloud workflow counts.
+
+- 10:53 UTC investigation: two local source searches named nonexistent guessed paths and returned exit2 (`No such file or directory`). Continued with actual source paths. Local inventory assumptions only; no cloud request or canary state affected. Excluded from cloud failure counts.
 
 ## Expected nonzero results
 

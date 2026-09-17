@@ -1,0 +1,225 @@
+{
+  "finding": "READ-11",
+  "classification": "Delayed author checklist reporting; no demonstrated portal batching",
+  "sourceCapture": "/tmp/sac245-reader/2026-09-17T10-45-08.369Z.json",
+  "sourceReadAt": "2026-09-17T10:45:08.369Z",
+  "attemptId": "01a0aee7-838e-7960-861e-c77dce71a2e2",
+  "taskWriteEvidence": [
+    {
+      "transcriptLine": 104,
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_49",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'node - <<'\\\\''NODE'\\\\''\nconst fs = require('\\\\''fs'\\\\'')\nconst path = '\\\\''openspec/changes/sac-245/tasks.md'\\\\''\nlet text = fs.readFileSync(path, '\\\\''utf8'\\\\'')\ntext = text.replace(/- \\\\[ \\\\] ((?:1|2|3|4)\\\\.[1-5]\\\\b)/g, '\\\\''- [x] \"'$1'\"'\\\\'')\ntext = text.replace('\\\\''- [ ] 4.6 '\\\\'', '\\\\''- [x] 4.6 '\\\\'')\nfs.writeFileSync(path, text)\nNODE\ntee /deos/output/requests/preview-local-1.json >/dev/null <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"preview\\\",\\\"assets\\\":\\\"dist\\\"}\nJSON\ndeos-implementation /deos/output/requests/preview-local-1.json'\"",
+          "aggregated_output": "{\"message\":\"Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay did not become publicly ready\\\"}\",\"stack\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay did not become publicly ready\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\",\"detail\":\"Error: Implementation broker HTTP 400: {\\\"error\\\":\\\"implementation_tool_failed\\\",\\\"message\\\":\\\"Isolated preview relay did not become publicly ready\\\"}\\n    at broker (file:///deos/bin/implementation-runtime.mjs:441:15)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async execute (file:///deos/bin/implementation-runtime.mjs:651:20)\\n    at async file:///deos/bin/implementation-runtime.mjs:762:64\"}\n",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    }
+  ],
+  "savedProgressObservations": [
+    {
+      "snapshot": "readback-20260917T091429Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T091601Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T091627Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T092231Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T092926Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T093556Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T094326Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T094412Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T095025Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T095624Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T100259Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T100928Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T101626Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T101711Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T101729Z.json",
+      "progress": []
+    },
+    {
+      "snapshot": "readback-20260917T102326Z.json",
+      "progress": [
+        {
+          "attempt_id": "01a0aedf-2681-7fc0-8d7a-09ef8c99d582",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 0,
+          "total": 23,
+          "tasks_sha": "5549b0bb69e95b098e4863e5e879cd965e1471f6ffd157f29e172b46f0b19ea9",
+          "observed_at": "2026-09-17T10:21:38.646Z"
+        }
+      ]
+    },
+    {
+      "snapshot": "readback-20260917T103127Z.json",
+      "progress": [
+        {
+          "attempt_id": "01a0aee7-838e-7960-861e-c77dce71a2e2",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 0,
+          "total": 23,
+          "tasks_sha": "5549b0bb69e95b098e4863e5e879cd965e1471f6ffd157f29e172b46f0b19ea9",
+          "observed_at": "2026-09-17T10:28:05.528Z"
+        },
+        {
+          "attempt_id": "01a0aedf-2681-7fc0-8d7a-09ef8c99d582",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 0,
+          "total": 23,
+          "tasks_sha": "5549b0bb69e95b098e4863e5e879cd965e1471f6ffd157f29e172b46f0b19ea9",
+          "observed_at": "2026-09-17T10:21:38.646Z"
+        }
+      ]
+    },
+    {
+      "snapshot": "readback-20260917T103830Z.json",
+      "progress": [
+        {
+          "attempt_id": "01a0aee7-838e-7960-861e-c77dce71a2e2",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 0,
+          "total": 23,
+          "tasks_sha": "5549b0bb69e95b098e4863e5e879cd965e1471f6ffd157f29e172b46f0b19ea9",
+          "observed_at": "2026-09-17T10:33:33.578Z"
+        },
+        {
+          "attempt_id": "01a0aedf-2681-7fc0-8d7a-09ef8c99d582",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 0,
+          "total": 23,
+          "tasks_sha": "5549b0bb69e95b098e4863e5e879cd965e1471f6ffd157f29e172b46f0b19ea9",
+          "observed_at": "2026-09-17T10:21:38.646Z"
+        }
+      ]
+    },
+    {
+      "snapshot": "readback-20260917T104457Z.json",
+      "progress": [
+        {
+          "attempt_id": "01a0aee7-838e-7960-861e-c77dce71a2e2",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 17,
+          "total": 23,
+          "tasks_sha": "6f12821603ecae97bfe3443fdade972134e8275abc431c4f9830db13529d02f1",
+          "observed_at": "2026-09-17T10:40:25.820Z"
+        },
+        {
+          "attempt_id": "01a0aedf-2681-7fc0-8d7a-09ef8c99d582",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 0,
+          "total": 23,
+          "tasks_sha": "5549b0bb69e95b098e4863e5e879cd965e1471f6ffd157f29e172b46f0b19ea9",
+          "observed_at": "2026-09-17T10:21:38.646Z"
+        }
+      ]
+    },
+    {
+      "snapshot": "readback-20260917T105125Z.json",
+      "progress": [
+        {
+          "attempt_id": "01a0aee7-838e-7960-861e-c77dce71a2e2",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 17,
+          "total": 23,
+          "tasks_sha": "6f12821603ecae97bfe3443fdade972134e8275abc431c4f9830db13529d02f1",
+          "observed_at": "2026-09-17T10:45:54.011Z"
+        },
+        {
+          "attempt_id": "01a0aedf-2681-7fc0-8d7a-09ef8c99d582",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 0,
+          "total": 23,
+          "tasks_sha": "5549b0bb69e95b098e4863e5e879cd965e1471f6ffd157f29e172b46f0b19ea9",
+          "observed_at": "2026-09-17T10:21:38.646Z"
+        }
+      ]
+    },
+    {
+      "snapshot": "readback-20260917T105327Z.json",
+      "progress": [
+        {
+          "attempt_id": "01a0aee7-838e-7960-861e-c77dce71a2e2",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 17,
+          "total": 23,
+          "tasks_sha": "6f12821603ecae97bfe3443fdade972134e8275abc431c4f9830db13529d02f1",
+          "observed_at": "2026-09-17T10:51:22.984Z"
+        },
+        {
+          "attempt_id": "01a0aedf-2681-7fc0-8d7a-09ef8c99d582",
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "tested_base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "completed": 0,
+          "total": 23,
+          "tasks_sha": "5549b0bb69e95b098e4863e5e879cd965e1471f6ffd157f29e172b46f0b19ea9",
+          "observed_at": "2026-09-17T10:21:38.646Z"
+        }
+      ]
+    }
+  ],
+  "sourceContract": {
+    "watcher": "src/implementation-progress-watcher.ts: file watch, 750ms debounce, attempt-progress hint, retry on transient errors",
+    "portal": "portal/src/main.tsx: visible workflow projection polling every 5000ms; implementation freshness follows projection",
+    "authorInstruction": "container/skills/deos-implementation/SKILL.md: Update task checkboxes as their work finishes."
+  },
+  "limits": [
+    "Configured refresh cadence is source evidence, not a measured production end-to-end latency guarantee.",
+    "A single task-file write can only yield the resulting count. The portal cannot reconstruct counts 1 through 16.",
+    "No application code or runtime configuration changed for this investigation."
+  ],
+  "correctiveAction": "Require per-task completion reporting as part of the author workflow, with active-task progress between completions. Prompt-only instruction already exists and did not prevent this occurrence. Do not fabricate intermediate completions."
+}
