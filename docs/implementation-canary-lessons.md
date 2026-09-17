@@ -170,6 +170,22 @@ Backend-only deployment can reset live Durable Object calls even when container
 rollout is disabled. Prefer a human gate or stopped stage for deployment, and
 record any deployment-induced interruption in that canary's failure list.
 
+SAC-246 exposed a second rollout boundary: the expected image and healthy pool
+counts do not prove replacement is complete. A deployment with an unchanged
+image still started a new basic-pool application version; the provider stopped
+the planning runner during its later rollout step. Before admitting or resuming
+work after deployment, require the latest rollout to be completed, its target
+application version to match the current version,100% target instances and zero
+old-version instances. The environment-rollout.py ready command checks this.
+Read back these facts even after a backend-only repair. Provider contract:
+[Container rollouts](https://developers.cloudflare.com/containers/configuration/rollouts/).
+
+An explicit failure-hold cleanup must support all retryable terminal states:
+failed, interrupted and absolute_timeout. Preserve the original failure state,
+require its complete durable manifest and confirm its process is stopped before
+destroying the sandbox. A retry must not require a manual D1 state change merely
+to make an interrupted attempt look failed.
+
 Use a fresh small web app in the sample project. Exercise proposal/specs, design,
 implementation, real browser use, Claude's single review, and publication. Stop
 at the implementation PR for the human. Track any supervisor intervention and

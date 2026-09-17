@@ -33,6 +33,7 @@ not a complete baseline, and cannot establish a percentage improvement.
 - The user authorizes automatic prerequisite gates and routine answers. Cloudflare agents alone build the app and its tests and proof. Stop at an unmerged implementation PR, then confirm deletion of all temporary app resources while retaining GitHub evidence.
 - Baseline repairs are on main through PR138. The temporary environment extension is in draft PR139, with passing CI and a real provider lifecycle probe. That probe is not the full cloud-agent canary. Preflight operator and extension errors are recorded in the [extension failure log](evidence/temporary-environments/failures.md).
 - Genuine Linear Todo event13:37:18.201UTC created run1 at13:37:26.619 on frozen implementation v41. Cloud planning author started. No reliability conclusion or completed cloud-agent failure count yet.
+- At13:40 the supervisor's still-running container rollout killed the planning runner (STORE-01). Added completed-rollout launch checks and repaired interrupted-attempt cleanup (STORE-02). The same planning stage resumed on frozen v41 at13:52:33 after verified cleanup. Original provider error, missing-output manifest and recovery receipts are retained. No application code was written locally; this is a supervised run.
 
 ### SAC-245 prospective reading-queue canary
 

@@ -50,7 +50,12 @@ an explicit request, unchanged attempt identity/timestamp, a complete durable
 failure manifest and a nonrunning process. Active work remains rejected, and
 the original state/error remain intact. Focused SQLite and controller regressions
 cover all three states, missing manifests and live processes. No manual D1 edits.
-Backend-only rollout and real saved-stage recovery are pending below.
+Backend-only repair9c39fb05 activated at100% with no container update. The27
+focused tests and typecheck passed. Supported cleanup returned200/destroyed and
+D1 confirmed it. Same-run, same-v41 planning retry was established13:52:33.526 at
+visit4. All original error rows, provider logs and failure manifest remain.
+No earlier completed phase or application work was repeated; the unfinished
+planning phase must recreate its lost working files in the cloud.
 
 ## Still needs fixing or validation
 

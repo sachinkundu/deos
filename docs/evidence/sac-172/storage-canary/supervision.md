@@ -51,6 +51,32 @@ Full private snapshot /tmp/sac246-reader/2026-09-17T13-38-54.579Z.json retained.
 The temporary RouteAdmin helper has been stopped; the read-only reader remains
 active on8806 (exec session66526). Heartbeat supervision is active every5minutes.
 
+13:52UTC recovery: STORE-01 was caused by the supervisor launching during the
+basic pool's second rollout. Exact provider log confirms rollout termination
+at13:40:00.709. The original planning filesystem was lost; the earlier live
+snapshot and durable failure manifest/error stacks remain. STORE-02 fixed the
+cleanup endpoint's missing interrupted/absolute_timeout hold-release support.
+Backend-only repair9c39fb05-afa9-4688-a05c-b326cfee1967 is active at100%; no new
+container rollout was requested. The strengthened ready check confirms all four
+latest rollouts completed and100% of instances at their target version/image.
+The old interrupted sandbox was destroyed through the supported endpoint.
+Same-run/same-definition planning retry established13:52:33.526, visit4,
+replacement workflow wf-v1-q4rrh2j4pmk64wiaopqr2qvobio2i3jmcs3q4pd6ax2apnhsyiga.
+Do not resend this retry. Continue from fresh authoritative D1 and record the
+new attempt. Original errors are historical. This canary is supervised, not
+unattended. Before any future start or resume after deployment, run
+`rtk proxy python3 scripts/sac-172/environment-rollout.py ready --image-sha 48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2`.
+Use a new expected digest only after an intentional validated image change.
+The13:45 registry cycle successfully stored both bounded variants27; the earlier
+digest conflict is resolved. Current repair CI was still running at13:52.
+
+13:53:49UTC: replacement planning author01a0afa3-fe81-70e0-8e55-bca7ee3fae73
+is running (started13:52:35.571) and has read the real D1/R2 scope. Provider process
+a3983a01-dbdf-4636-aff3-a919ceb33768 remains alive with current heartbeat.
+Private full snapshot /tmp/sac246-reader/2026-09-17T13-53-49.379Z.json retained.
+No new D1 errors beyond the historical interrupted-attempt rows. Continue normal
+supervision; do not retry or approve anything until a new gate actually opens.
+
 Read authoritative state with:
 `rtk proxy python3 docs/evidence/sac-172/storage-canary/readback.py`.
 It saves timestamped snapshots and latest.json, including owned environment rows.

@@ -26,7 +26,7 @@ queries = {
     'run': ('SELECT * FROM orchestration_runs WHERE issue_id=?', [issue]),
     'deliveries': ('SELECT * FROM deliveries WHERE correlation_id LIKE ?', ['%' + issue + '%']),
     'active_attempts_all': ("SELECT run_id,attempt_id,node_id,state FROM agent_attempts WHERE state IN ('pending','starting','running','collecting')", []),
-    'attempts': ('SELECT attempt_id,node_id,state,started_at,ended_at,result_class,cleanup_state,sandbox_id FROM agent_attempts WHERE run_id=? ORDER BY created_at', [run]),
+    'attempts': ('SELECT attempt_id,node_id,state,started_at,ended_at,result_class,cleanup_state,sandbox_id,updated_at,cleanup_hold_until,cleanup_hold_reason,manifest_id FROM agent_attempts WHERE run_id=? ORDER BY created_at', [run]),
     'gates': ('SELECT * FROM human_gate_visits WHERE run_id=? ORDER BY visit_sequence', [run]),
     'errors': ('SELECT * FROM workflow_errors WHERE run_id=? ORDER BY occurred_at', [run]),
     'implementation': ('SELECT * FROM implementation_runs WHERE run_id=?', [run]),
