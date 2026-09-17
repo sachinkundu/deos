@@ -958,3 +958,9 @@ that pass are not failures. All occurred in build attempt
 The user retired SAC-238 after it served its test purpose. Preflight D1 showed implementation Human Review at visit41 with no active packing attempt. PR36 was closed unmerged, and Linear moved to Canceled at 05:36:45.564 UTC. The old packing monitor was already paused. Historical proof and failure counts are preserved. Expense canary SAC-243 continues independently. This is authorized retirement, not an application failure.
 
 D1 confirmed normal cancellation at visit42 by 05:37 UTC, with no remaining active packing attempt. No retry or workflow repair was needed. Saved read-back: [retirement](evidence/sac-172/packing-canary/retirement-20260917.json).
+
+### SAC-243 handoff correction rollout
+
+EXP-03: cloud design response completed from its retained context and reached gate16 at06:07:55.335UTC without supervisor artifact edits. Workflow-only fix243ed25 passed594tests (1skip), TypeScript, and the regression that failed against the actual durable job shape before correction. At06:13:01UTC, with no active attempt, backend f60fbeb7-2671-4a71-bd04-c71129d53ef3 activated at100%; containers were not rebuilt. Current response predates this deployment, so live restoration of a later design patch remains unproven. Revised PR38 head10ac345f9ea7a1da32999bc1ae4e8e0b8c8a68d1 reviewed and approved through Linear.
+
+06:14 UTC: design approval delivery04d418c4-f69f-45a7-ad71-a63992dd403f consumed normally at06:14:01.236. PR38 merged06:14:06, commitd863ba43593da153f35e35b9c3ebbbc578f63bf6. Implementation task generation attempt01a0ae00-792f-77a0-b7b3-11bd296cfe18 starting. No approval resend or stage restart needed.
