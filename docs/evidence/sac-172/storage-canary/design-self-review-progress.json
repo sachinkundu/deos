@@ -1,6 +1,18 @@
 {
   "attemptId": "01a0afea-5256-732d-b2d8-f71a1b183de4",
-  "observedAt": "2026-09-17T15:40:31.649Z",
+  "observedAt": "2026-09-17T15:46:58.121Z",
+  "state": {
+    "stage": "writing",
+    "candidateSequence": 3,
+    "completionRepairs": 0
+  },
+  "authorAudits": [
+    {
+      "completedCommands": 22,
+      "nonzeroCommands": [],
+      "providerErrors": []
+    }
+  ],
   "reviewResults": [
     {
       "agentId": "01a0aff0-7340-7f62-a1e6-6c073bf8c0f5",
@@ -199,6 +211,105 @@
                 "path": "openspec/changes/sac-246/design.md",
                 "startLine": 79,
                 "endLine": 79
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "agentId": "01a0b006-9fc2-75f0-af53-89e3eac19734",
+      "result": {
+        "version": 1,
+        "inputSha256": "f80219be5e0fee013c59dcad90602b01f4f89a6e6b0b26d6afa816a89be009ae",
+        "phase": "self",
+        "outcome": "concerns",
+        "summary": "The design has four concrete concerns involving identifier isolation, concurrent save/delete ordering, candidate cleanup ownership, and incomplete R2 storage bounds.",
+        "findings": [
+          {
+            "id": "unvalidated-id-breaks-r2-prefix-isolation",
+            "severity": "high",
+            "category": "security",
+            "message": "The Worker contract does not require the client-supplied ID to be validated as one canonical UUID, yet it interpolates that value into R2 keys and deletes every object under the resulting prefix. Because D1 accepts arbitrary text, an ID such as `a/b` can place its body below `snippets/a/`; deleting absent ID `a` can then remove another row's body.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 62,
+                "endLine": 66
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 78,
+                "endLine": 78
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 86,
+                "endLine": 87
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 98,
+                "endLine": 106
+              }
+            ]
+          },
+          {
+            "id": "save-delete-replay-is-not-fenced",
+            "severity": "high",
+            "category": "correctness",
+            "message": "POST and DELETE for the same ID have no reservation, generation, or tombstone ordering them. DELETE can erase an in-flight save's R2 object before that save inserts D1 and returns success; after a completed delete, an interrupted earlier save can also retry, see no row, and recreate the snippet. A successful save may therefore lack its body, and a successful deletion need not stay deleted.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 77,
+                "endLine": 80
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 85,
+                "endLine": 91
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 71,
+                "endLine": 85
+              }
+            ]
+          },
+          {
+            "id": "shared-save-candidate-cleanup-is-racy",
+            "severity": "high",
+            "category": "correctness",
+            "message": "Concurrent same-ID, same-body saves use the same R2 key before either request owns a D1 row. If one insertion fails and rechecks before its peer inserts, it may delete the shared candidate; the peer can then insert and return success based on its earlier R2 write, leaving an active D1 row with no body.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 78,
+                "endLine": 80
+              }
+            ]
+          },
+          {
+            "id": "r2-storage-cap-excludes-unindexed-objects",
+            "severity": "medium",
+            "category": "security",
+            "message": "The deployment-wide body cap counts only indexed D1 rows and is enforced after writing the R2 candidate. Cleanup failures are merely logged, so unindexed objects are not counted; repeated unauthenticated requests can therefore grow persistent R2 storage beyond the stated cap and can also cause unbounded transient candidate writes.",
+            "sourceRanges": [
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 64,
+                "endLine": 64
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 79,
+                "endLine": 80
+              },
+              {
+                "path": "openspec/changes/sac-246/design.md",
+                "startLine": 169,
+                "endLine": 170
               }
             ]
           }

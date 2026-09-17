@@ -215,3 +215,11 @@ submitted the next candidate. Exact first two review results are saved in
 design-self-review-progress.json.21 completed commands, no nonzero exits or
 provider error events in the captured author transcript. No open gate or new
 runtime error; continue normal supervision without notification.
+
+15:46:58UTC: candidate3 received four storage-protocol findings. The cloud
+author is revising reservation ordering, bounded operation leases/tombstones,
+save/delete coordination and canonical ID validation. Exact review results
+are in design-self-review-progress.json. These are design quality findings;
+no new workflow/provider error or open gate is present. Keep review scope
+small at the eventual design gate and inspect the full final design; do not
+locally write its storage protocol or interrupt the active author.
