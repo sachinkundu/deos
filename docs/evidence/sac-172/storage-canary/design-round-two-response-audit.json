@@ -1,0 +1,52 @@
+{
+  "attemptId": "01a0b028-742d-7dc7-8184-91cb81fbb16c",
+  "transcriptSha256": "cca4c797fe07f6f89175268f7f57908e255d8bb0af169c5865b0420b4aaf3144",
+  "transcriptBytes": 106372,
+  "completedCommands": 7,
+  "nonzeroCommands": [
+    {
+      "id": "item_1",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"git status --short && command -v openspec && openspec --help && rg --files -g 'AGENTS.md' -g '\"'!node_modules'\"' -g '\"'!vendor'\"' && sed -n '1,260p' openspec/changes/sac-246/design.md\"",
+      "aggregated_output": "Usage: openspec [options] [command]\n\nAI-native system for spec-driven development\n\nOptions:\n  -V, --version                      output the version number\n  --no-color                         Disable color output\n  -h, --help                         display help for command\n\nCommands:\n  init [options] [path]              Initialize OpenSpec in your project\n  update [options] [path]            Update OpenSpec instruction files\n  list [options]                     List items (changes by default). Use\n                                     --specs to list specs.\n  view [options]                     Display an interactive dashboard of specs\n                                     and changes\n  change                             Manage OpenSpec change proposals\n  archive [options] [change-name]    Archive a completed change and update main\n                                     specs\n  spec                               Manage and view OpenSpec specifications\n  config [options]                   View and modify global OpenSpec\n                                     configuration\n  schema                             Manage workflow schemas [experimental]\n  store                              Create and manage stores - standalone\n                                     OpenSpec repos you register on this machine\n  doctor [options]                   Report relationship health for the resolved\n                                     OpenSpec root\n  context [options]                  Print the working context for the resolved\n                                     OpenSpec root\n  workset [options]                  Compose, keep, and open personal working\n                                     views (purely local)\n  validate [options] [item-name]     Validate changes and specs\n  show [options] [item-name]         Show a change or spec\n  feedback [options] <message>       Submit feedback about OpenSpec\n  completion                         Manage shell completions for OpenSpec CLI\n  status [options]                   Display artifact completion status for a\n                                     change\n  instructions [options] [artifact]  Output enriched instructions for artifacts,\n                                     apply, or archive\n  templates [options]                Show resolved template paths for all\n                                     artifacts in a schema\n  schemas [options]                  List available workflow schemas with\n                                     descriptions\n  new                                Create new items\n  help [command]                     display help for command\n",
+      "exit_code": 1,
+      "status": "failed"
+    }
+  ],
+  "providerErrors": [],
+  "dispositions": [
+    {
+      "findingId": "context-contradicts-recovery-item-projection",
+      "status": "applied",
+      "reason": "Updated Context to distinguish the temporary public recovery projection from deleted tombstones, which never appear in the list."
+    },
+    {
+      "findingId": "delete-transition-guard-missing-row-branch",
+      "status": "applied",
+      "reason": "Defined a one-time reload and terminal DELETE_INDEX_MISSING response for an active operation whose index row is absent."
+    },
+    {
+      "findingId": "interrupted-delete-may-show-stale-recovery-item",
+      "status": "applied",
+      "reason": "Required authoritative list reconciliation after every delete without a valid 204 and prohibited locally fabricated deletePending state."
+    },
+    {
+      "findingId": "persistence-proof-depends-on-unreset-second-context",
+      "status": "applied",
+      "reason": "Reworked proof collection to use one fresh context and declared known cloud data per scenario without cross-scenario state carryover."
+    },
+    {
+      "findingId": "recovery-item-created-at-source-unspecified",
+      "status": "applied",
+      "reason": "Made snippet_operations.created_at the list projection and ordering source and added a matching partial visible-operations index."
+    },
+    {
+      "findingId": "save-stranded-in-creating-has-no-user-recovery",
+      "status": "applied",
+      "reason": "Added a browser-generated attempt token so an exact retry can resume the R2 put, defined all named save-409 messages, and added a deterministic retry test."
+    }
+  ],
+  "reviewedHead": "f8cd86e9f9eb36388cd0152642a2f364c169defe",
+  "decision": "revision_requested",
+  "linearCommentId": "23ebd129-cbab-4fb7-8e1d-7542c6f4c984"
+}

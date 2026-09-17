@@ -295,3 +295,21 @@ creates one fresh context per scenario and disallows resets inside a scenario.
 src/implementation-demo.ts explicitly states server data is prepared separately.
 Thus the fresh-context proof can use an immediately following scenario without
 resetting D1/R2. Inspect the response's resolution before gate approval.
+
+## 2026-09-17 16:29 UTC — Second design revision requested
+
+Response completed16:28:24.396 and cleanup destroyed its sandbox. Inspected
+full PR44 head f8cd86e9f9eb36388cd0152642a2f364c169defe plus all six applied
+dispositions. Found STORE-08: matching-token retries allow a delayed R2 put
+after successful delete; content addressing does not prevent this schedule.
+D1 gate27 round2 was open with no active attempts. Saved concrete feedback
+and requested In Progress through Linear at16:29:49.437. Preserve the existing
+delete-retry UI correction and restore single-writer safety without expanding
+this canary into a general recovery system. Also supplied verified harness
+behavior for direct consecutive-context persistence proof. No deployment or
+application edit was performed by the supervisor.
+
+D1 confirms decision delivery1188717d-42f1-4fb1-ac2f-2ea2d1d323d4 consumed
+16:30:03.919. New cloud design revision attempt
+01a0b034-3b71-7147-8326-6286790fc2fe started16:30:08.409, visit29.
+STORE-08 was reported once to the user; no action needed from them.

@@ -48,17 +48,17 @@
       "definition_version": 41,
       "definition_digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f",
       "workflow_instance_id": "wf-v1-vv6hj6lwdshnryctyi3e6ff4yh5isx7yyqy5u6fnbrz363rdo3fa",
-      "previous_node": "start_new_design_round",
-      "current_node": "design_revision_author",
+      "previous_node": "design_independent_response",
+      "current_node": "publish_design_response",
       "gate_origin_node": null,
       "status": "active",
       "accumulated_data_json": "{}",
       "created_at": "2026-09-17T13:37:26.619Z",
-      "updated_at": "2026-09-17T16:30:16.172Z",
+      "updated_at": "2026-09-17T16:28:25.202Z",
       "terminal_at": null,
       "terminal_cause": null,
-      "current_visit_sequence": 29,
-      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:28:transition",
+      "current_visit_sequence": 26,
+      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:25:transition",
       "selection_kind": "default",
       "selection_value": "project_policy",
       "selection_label_name": null,
@@ -371,58 +371,9 @@
       "route_digest": "346a508e57ba027dca1b9b966b2b30786f67adc4ff6a692540473053f46802f7",
       "start_slow_ok": null,
       "sandbox_tier_policy_version": "legacy-basic-v1"
-    },
-    {
-      "delivery_id": "12ab9a0d-dae8-4c27-ad7d-849a1de97311",
-      "payload_hash": "62cac0da75fdcbaafd911007ef2e5b73d6cda3565b2a55b673a26afa55f5f995",
-      "received_at": "2026-09-17T16:28:37.342000+00:00",
-      "classification": "relevant",
-      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
-      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
-      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
-      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
-      "route_revision": 29,
-      "route_digest": "346a508e57ba027dca1b9b966b2b30786f67adc4ff6a692540473053f46802f7",
-      "start_slow_ok": null,
-      "sandbox_tier_policy_version": "legacy-basic-v1"
-    },
-    {
-      "delivery_id": "1188717d-42f1-4fb1-ac2f-2ea2d1d323d4",
-      "payload_hash": "d3c1f9350ef3dc491c0ca0ee6c2926eaa0a295aee2886f239a0289c4441c6515",
-      "received_at": "2026-09-17T16:29:49.764999+00:00",
-      "classification": "relevant",
-      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
-      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
-      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
-      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
-      "route_revision": 29,
-      "route_digest": "346a508e57ba027dca1b9b966b2b30786f67adc4ff6a692540473053f46802f7",
-      "start_slow_ok": null,
-      "sandbox_tier_policy_version": "legacy-basic-v1"
-    },
-    {
-      "delivery_id": "96f17871-4ed7-4789-915e-627a0fcc75ca",
-      "payload_hash": "533edc9380e6237de7e4c9d0f4fe8e04893143fae8ce43809f70a498453f1b0a",
-      "received_at": "2026-09-17T16:29:49.955000+00:00",
-      "classification": "relevant",
-      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
-      "label_selection_evidence_json": "{\"status\":\"unavailable\"}",
-      "label_selection_evidence_digest": "774a5957e1e1b76e5ba7d6a9b803e215b28d31ac0fae1df873a96758e7fb35ef",
-      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
-      "route_revision": 29,
-      "route_digest": "346a508e57ba027dca1b9b966b2b30786f67adc4ff6a692540473053f46802f7",
-      "start_slow_ok": null,
-      "sandbox_tier_policy_version": "legacy-basic-v1"
     }
   ],
-  "active_attempts_all": [
-    {
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "attempt_id": "01a0b034-3b71-7147-8326-6286790fc2fe",
-      "node_id": "design_revision_author",
-      "state": "running"
-    }
-  ],
+  "active_attempts_all": [],
   "attempts": [
     {
       "attempt_id": "01a0af96-705a-77f2-85ab-cd28486c6450",
@@ -577,20 +528,6 @@
       "cleanup_hold_until": null,
       "cleanup_hold_reason": null,
       "manifest_id": "manifest:01a0b028-742d-7dc7-8184-91cb81fbb16c"
-    },
-    {
-      "attempt_id": "01a0b034-3b71-7147-8326-6286790fc2fe",
-      "node_id": "design_revision_author",
-      "state": "running",
-      "started_at": "2026-09-17T16:30:08.409Z",
-      "ended_at": null,
-      "result_class": null,
-      "cleanup_state": "pending",
-      "sandbox_id": "sbx-v1-i7xmfaq6zj6z2zfw546ifb2yyscd3gthqqzihyflfofepwiwcpeq",
-      "updated_at": "2026-09-17T16:30:16.172Z",
-      "cleanup_hold_until": null,
-      "cleanup_hold_reason": null,
-      "manifest_id": null
     }
   ],
   "gates": [
@@ -635,27 +572,6 @@
       "decision_outcome": "revision_requested",
       "created_at": "2026-09-17T16:01:01.340Z",
       "decided_at": "2026-09-17T16:07:57.752Z"
-    },
-    {
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "visit_sequence": 27,
-      "node_id": "design_review",
-      "gate_kind": "design",
-      "work_type": "design",
-      "work_product_kind": "design",
-      "round": 2,
-      "state": "revision_requested",
-      "repository": "sachinkundu/deos-sample-project",
-      "pull_request_database_id": "4560422064",
-      "pull_request_number": 44,
-      "pull_request_url": "https://github.com/sachinkundu/deos-sample-project/pull/44",
-      "head_branch": "deos/design/77e6cb4ea60e3f5b187a8612",
-      "base_branch": "main",
-      "approved_head_sha": "f8cd86e9f9eb36388cd0152642a2f364c169defe",
-      "decision_delivery_id": "1188717d-42f1-4fb1-ac2f-2ea2d1d323d4",
-      "decision_outcome": "revision_requested",
-      "created_at": "2026-09-17T16:28:35.065Z",
-      "decided_at": "2026-09-17T16:30:03.919Z"
     }
   ],
   "errors": [
@@ -757,5 +673,5 @@
     ],
     "created_on": "2026-09-17T13:51:25.595023Z"
   },
-  "observed_at": "2026-09-17T16:30:30.924672+00:00"
+  "observed_at": "2026-09-17T16:28:32.794709+00:00"
 }

@@ -200,3 +200,28 @@ agent continued with a separate file read and design edits. Third observed
 occurrence of this known discovery issue; no new runtime failure or user
 action. Full available live transcript audit is saved in
 design-round-two-response-live-audit.json; final durable audit remains pending.
+
+### STORE-08 — Retry redesign reintroduces late R2 writes after deletion
+
+Supervisor review of head f8cd86e9f9eb36388cd0152642a2f364c169defe found a
+concurrency regression in the round-two response. The response allows multiple
+requests with one browser token to put identical bytes. A and B can both pass
+the creating-state check; A puts and activates; DELETE removes the object and
+returns204; delayed B then puts the object back. A later rejected D1 activation
+does not undo the R2 write. It also falls outside the released reservation.
+A definite-failure reservation release has the analogous late-writer risk.
+This is a concrete design interleaving, not an observed provider data incident.
+
+Requested a cloud revision16:29:49UTC through Linear comment
+23ebd129-cbab-4fb7-8e1d-7542c6f4c984: restore the simpler single-writer rule,
+resolve stranded-save UX through explicit new-ID choice and honest messaging,
+and require a deterministic paused-writer/concurrent-delete check. Exact
+reconciliation of an already-present object remains allowed. Also clarified
+that the actual runner supports adjacent fresh-context scenarios against the
+same cloud data, so direct browser persistence proof need not be reseeded.
+Status: cloud revision requested; no local application or design edit.
+
+Final round-two response audit:106,372bytes,7completed commands,1nonzero
+exit (the already-recorded third STORE-04 no-match lookup), zero provider
+error events. Trusted completion passed. All six independent dispositions
+were applied; structural validation did not detect the new semantic race.
