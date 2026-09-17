@@ -413,3 +413,30 @@ A bounded read-only D1 sampler now records changed node/count observations
 every15seconds for at most1hour in sampled-progress.jsonl. Exec session71437
 is running; inspect/poll it on later heartbeats rather than launching duplicate
 samplers. The sampler changes no runtime and never sends user notifications.
+
+## 2026-09-17 17:12 UTC — Build running with incremental completion
+
+Demo planner completed17:06:50.524, outcome ready; seven ordered scenarios
+cover provisioning, save/read/refresh/delete, direct fresh-context continuity,
+bad input, plain-text markup, stale-page failure, and final storage/cleanup
+proof. Provider-backed plan saved without account details in demo-plan-proof.json.
+Nonblocking plan ambiguity to watch: already-deleted DELETE is idempotent204
+in the approved design, so scenario6 must not insist that it fail or call a
+valid204 false success. Cloud demo execution/review should reconcile this if
+it arises; do not add another design gate for it. Resource retirement still
+belongs after durable PR evidence publication.
+
+Build author01a0b055-e41e-7038-ba7f-32ba533b7141 started17:06:54.252 atvisit39.
+The15second read-only sampler captured0/32, then1/32 observed17:11:46.903,
+then2/32 observed17:12:15.668 while build remained running. The live trusted
+task operation for1.2 completed17:12:13.333; D1 reflected it about2.3seconds
+later. This is prospective evidence of incremental completion, not an end-only
+batch. Live transcript audit at17:12:56 has12completed shell commands, zero
+nonzero exits or provider errors. Sampler session71437 remains active.
+
+Browser observation: the existing staging tab was showing a hidden/stale
+16:22UTC design snapshot. Source confirms polling runs only while visible,
+so this alone is not a portal regression. A new external Brave tab359704860
+opened successfully after using connected browser ID1 (display-name lookup
+was rejected). No checklist screenshot or visual update claim is made yet.
+No runtime deployment or application edit was made.

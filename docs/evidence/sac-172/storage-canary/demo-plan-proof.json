@@ -1,0 +1,225 @@
+{
+  "attemptId": "01a0b053-24ac-7fcb-8277-1300bdbe8e25",
+  "artifactSha256": "5b2241b597038dba66b04d9c6260d1a435a9cf6f5f6a18a6549df33cd96e4b12",
+  "result": {
+    "version": 1,
+    "inputSha256": "cbdae8150af1faea35a5fcff96192adbff07f5822cc9fa7092b28cb8298dfe0d",
+    "outcome": "ready",
+    "summary": "Seven ordered scenarios demonstrate the sac-246 snippet shelf on the real temporary Worker environment declared in context/runtime-capabilities.json (temporary-environment-v1: one D1 binding, one R2 binding, built assets, target:remote browser). Scenario 1 provisions and migrates the environment and shows the empty one-screen app. Scenario 2 is the main flow (save Greeting and Sign-off, read each body, refresh, delete Sign-off, Greeting remains) with D1 and R2 readback captured at its end. Scenario 3 must run immediately after scenario 2 with cloud data untouched, satisfying the human's 16:57 instruction to use the direct fresh-context continuity proof rather than the design's seeded fallback. Scenario 4 shows both bad-input rejections with unchanged storage, scenario 5 shows markup preserved as plain text with matching R2 bytes, scenario 6 shows real failed-action messages produced by an out-of-band API delete against a stale browser page, and scenario 7 captures final D1/R2 correspondence and then removes the temporary resources. All browser scenarios use one browser session, a fresh context per scenario, and a fixed 1440x900 desktop viewport against the same temporary origin. Storage proof always precedes cleanup. Design step 5 fault-injection checks (paused writer, injected put/cleanup failures) remain implementation tests and are deliberately not used as demo evidence, since tests do not demonstrate the application. No provider write beyond the declared temporary environment is requested, and no merge, release, or production deployment is implied.",
+    "scenarios": [
+      {
+        "id": "sac-246-demo-1-provision-and-empty-shelf",
+        "title": "Provision the temporary Worker with D1 and R2 and open the empty desktop shelf",
+        "requirementIds": [
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:102",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:56",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:111"
+        ],
+        "environment": "publish_environment (temporary-environment-v1): bundled Worker module plus built static assets, exactly one D1 binding and one R2 binding, no production resources. Browser: single session, fresh context, fixed 1440x900 desktop viewport, target:remote against the registered temporary origin only.",
+        "steps": [
+          "Build the static page and bundled Worker, then call publish_environment requesting one D1 and one R2 binding; record the returned temporary app URL and binding identifiers.",
+          "Apply the repeatable two-table migration (snippets, snippet_operations plus indexes and triggers) through the environment's storage migration capability and record the real command output.",
+          "Run a D1 SELECT readback of the snippets and snippet_operations tables and record that both return zero rows.",
+          "Run an R2 list of the snippets/ prefix and record that it returns no objects.",
+          "Issue an HTTP GET /api/snippets against the deployed app and record the real 200 response body showing an empty list.",
+          "Open a fresh browser context at the temporary app URL with viewport 1440x900.",
+          "Screenshot checkpoint A: the loaded one-screen desktop app showing the title field, text field, save control, empty snippet list and empty reading area, with no login prompt anywhere on screen."
+        ],
+        "expected": "publish_environment returns a live temporary app URL; the migration succeeds; D1 SELECT and R2 list both show empty state; GET /api/snippets returns 200 with an empty list; the browser shows the complete one-screen shelf (form, list, reader) with no login and no error banner.",
+        "evidenceKinds": [
+          "provider_originated",
+          "showboat",
+          "browser_image"
+        ]
+      },
+      {
+        "id": "sac-246-demo-2-main-flow-save-read-refresh-delete",
+        "title": "Main flow: save two snippets, read the right text, refresh, delete one and keep the other",
+        "requirementIds": [
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:7",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:30",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:46",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:56",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:71"
+        ],
+        "environment": "Same temporary Worker from scenario 1, unchanged application bundle. Known starting cloud state: D1 snippets empty and R2 snippets/ prefix empty as verified in scenario 1. Browser: fresh context, same fixed 1440x900 viewport, target:remote.",
+        "steps": [
+          "Open a fresh browser context at the temporary app URL; confirm the list is empty.",
+          "Type title Greeting and text Hello, team! into the form.",
+          "Screenshot checkpoint A: form filled with Greeting / Hello, team! before submit.",
+          "Submit the save and wait for the confirmed result.",
+          "Screenshot checkpoint B: list shows Greeting with a success message and cleared form, no error text.",
+          "Save a second snippet with title Sign-off and text Kind regards.",
+          "Screenshot checkpoint C: list shows both Greeting and Sign-off as two separate titles.",
+          "Select Greeting in the list.",
+          "Screenshot checkpoint D: reading area shows exactly Hello, team! under the Greeting heading.",
+          "Select Sign-off in the list.",
+          "Screenshot checkpoint E: reading area shows exactly Kind regards and does not show Hello, team! as the selected text.",
+          "Reload the page in the same context (page refresh, no context reset).",
+          "Screenshot checkpoint F: after refresh both Greeting and Sign-off are listed again, rebuilt from the API.",
+          "Select Greeting after the refresh.",
+          "Screenshot checkpoint G: reading area again shows Hello, team! after the refresh.",
+          "Delete Sign-off through its delete control and wait until the request settles.",
+          "Screenshot checkpoint H: Sign-off is gone from the list, a delete confirmation message is shown, and Greeting is still listed.",
+          "Select Greeting again.",
+          "Screenshot checkpoint I: Greeting is still readable with Hello, team! after the deletion of the other snippet.",
+          "Without resetting cloud data, run a D1 SELECT over snippets showing one row for Greeting with its object_key, and a SELECT over snippet_operations showing Greeting active and the Sign-off identity as a deleted tombstone with zero reserved bytes.",
+          "Run an R2 list of the snippets/ prefix showing exactly one object under the Greeting id prefix and no object under the Sign-off id prefix, then read that object and record the body bytes Hello, team!.",
+          "Leave D1 and R2 state exactly as captured; do not delete, reseed, or reprovision before scenario 3."
+        ],
+        "expected": "Both saves succeed and appear as titles; each selected title shows only its own body; the refresh restores both titles and bodies from cloud storage; deleting Sign-off removes only that title while Greeting remains listed and readable; D1 shows one active Greeting row plus a Sign-off deleted tombstone; R2 holds exactly one object whose bytes match the text shown in the browser.",
+        "evidenceKinds": [
+          "browser_image",
+          "showboat",
+          "provider_originated"
+        ]
+      },
+      {
+        "id": "sac-246-demo-3-fresh-context-continuity",
+        "title": "Fresh browser context loads the same unchanged cloud data",
+        "requirementIds": [
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:71",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:56",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:102"
+        ],
+        "environment": "Same temporary Worker and same application bundle, run immediately after scenario 2 with D1 and R2 untouched (Greeting saved, Sign-off deleted). Browser: new fresh context from the same session, same fixed 1440x900 viewport, target:remote. Browser storage, cookies and page state reset; server data intentionally carried over.",
+        "steps": [
+          "Start a fresh browser context (no cookies, no storage carried from scenario 2) and open the same temporary app URL.",
+          "Screenshot checkpoint A: first paint of the shelf in the new context showing the list rebuilt from the API with Greeting present and no Sign-off entry anywhere in the list.",
+          "Select Greeting.",
+          "Screenshot checkpoint B: reading area shows Hello, team! in the new context, proving the body came from R2 through the Worker rather than browser storage.",
+          "Record the GET /api/snippets response observed for this load, showing the single Greeting item and no Sign-off id."
+        ],
+        "expected": "The fresh context, with no carried browser state, lists Greeting and can read Hello, team!, while the deleted Sign-off does not return. This is direct cross-scenario continuity against unchanged cloud data, not a reseeded fallback.",
+        "evidenceKinds": [
+          "browser_image",
+          "showboat"
+        ]
+      },
+      {
+        "id": "sac-246-demo-4-bad-input-rejection",
+        "title": "Blank title and whitespace-only text are rejected with clear messages and no storage change",
+        "requirementIds": [
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:16",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:87",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:56"
+        ],
+        "environment": "Same temporary Worker. Known starting cloud state: the scenario 2/3 state (Greeting active, Sign-off deleted), re-verified by D1 SELECT and R2 list before the browser steps. Browser: fresh context, same fixed 1440x900 viewport, target:remote.",
+        "steps": [
+          "Record a pre-step D1 SELECT row count over snippets and snippet_operations and an R2 list of snippets/ as the baseline.",
+          "Open a fresh browser context at the temporary app URL.",
+          "Leave the title empty and type Hello as the text, then submit.",
+          "Screenshot checkpoint A: a clear message naming the title field as needed, the list unchanged with only Greeting, and no success state shown.",
+          "Clear the form, type title Empty note and type only spaces as the text, then submit.",
+          "Screenshot checkpoint B: a clear message naming the text field as needed, the list still unchanged, and no success state shown.",
+          "Re-run the same D1 SELECT and R2 list after both rejected attempts."
+        ],
+        "expected": "Each rejected save shows a field-specific message and no success indication; the snippet list is unchanged; the post-step D1 rows and R2 object listing are byte-for-byte identical to the baseline, proving a rejected save adds nothing to D1 or R2.",
+        "evidenceKinds": [
+          "browser_image",
+          "showboat",
+          "provider_originated"
+        ]
+      },
+      {
+        "id": "sac-246-demo-5-plain-text-markup",
+        "title": "Saved markup is shown as plain text and matches the stored R2 bytes",
+        "requirementIds": [
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:30",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:56",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:7"
+        ],
+        "environment": "Same temporary Worker. Known starting cloud state: Greeting active from prior scenarios. Browser: fresh context, same fixed 1440x900 viewport, target:remote.",
+        "steps": [
+          "Open a fresh browser context at the temporary app URL.",
+          "Save a snippet with title Markup sample and text <b>Hello</b> through the form.",
+          "Screenshot checkpoint A: the list now shows Markup sample alongside Greeting.",
+          "Select Markup sample.",
+          "Screenshot checkpoint B: the reading area renders the literal characters <b>Hello</b> as visible text, with Hello not bold and no rendered element.",
+          "Run a D1 SELECT for the Markup sample row showing its title and object_key.",
+          "Read the R2 object at that exact object_key and record its body bytes."
+        ],
+        "expected": "The saved body is displayed verbatim as <b>Hello</b> with no bold rendering and no markup interpretation; the D1 row links the title to one object_key and the R2 object body equals the exact characters displayed in the browser.",
+        "evidenceKinds": [
+          "browser_image",
+          "showboat",
+          "provider_originated"
+        ]
+      },
+      {
+        "id": "sac-246-demo-6-failed-action-and-recovery",
+        "title": "Failed read and failed delete of an externally removed snippet report clear messages and recover",
+        "requirementIds": [
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:87",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:46",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:30"
+        ],
+        "environment": "Same temporary Worker. Server data prepared separately before the browser steps through the deployed app's own API: save snippet Alpha with text First body and snippet Beta with text Second body, retaining both API responses. Browser: fresh context, same fixed 1440x900 viewport, target:remote. Failure is produced only by real out-of-band API state change against the changed application, with no test harness, no injected platform fault and no browser destruction.",
+        "steps": [
+          "Using the environment's HTTP request capability, POST Alpha and Beta through /api/snippets and record both real responses and their ids.",
+          "Open a fresh browser context at the temporary app URL.",
+          "Screenshot checkpoint A: the list shows Alpha and Beta; select Alpha and confirm First body renders.",
+          "Leave the page open and untouched. Out-of-band, send DELETE /api/snippets/<beta-id> through the same deployed Worker API and record its 204 response, so the open page now holds a stale list entry.",
+          "In the still-open page, select Beta from the stale list.",
+          "Screenshot checkpoint B: a read-specific failure message stating the snippet no longer exists or could not be read, with no stale body text rendered in the reading area and no success state.",
+          "In the same stale page, invoke delete on the Beta entry.",
+          "Screenshot checkpoint C: after the browser reloads the authoritative list, the Beta entry is removed rather than marked successful in error, and the message shown is the action-specific failure or reconciliation message, never a false success.",
+          "Select Alpha again.",
+          "Screenshot checkpoint D: Alpha remains listed and still reads First body, proving the failed action did not disturb the other snippet.",
+          "Run a D1 SELECT and an R2 prefix list confirming Beta's snippet row and its R2 object are absent while Alpha's row and object remain."
+        ],
+        "expected": "Reading an externally removed snippet shows a clear read-specific failure message with no stale body and no success state; the delete of that already-absent item resolves through an authoritative list reload that removes the stale entry without claiming a fabricated success; Alpha stays listed and readable; D1 and R2 confirm Beta absent and Alpha intact.",
+        "evidenceKinds": [
+          "browser_image",
+          "showboat",
+          "provider_originated"
+        ]
+      },
+      {
+        "id": "sac-246-demo-7-storage-correspondence-then-cleanup",
+        "title": "Final D1 and R2 correspondence captured, then temporary resources removed",
+        "requirementIds": [
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:111",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:56",
+          "approved/openspec/changes/sac-246/specs/text-snippet-shelf/spec.md:102"
+        ],
+        "environment": "Same temporary Worker, unchanged bundle, final cloud state from scenarios 2 through 6. Browser: fresh context, same fixed 1440x900 viewport, target:remote. All proof is captured before any removal step.",
+        "steps": [
+          "Open a fresh browser context at the temporary app URL.",
+          "Screenshot checkpoint A: the final list state on one desktop screen, showing every remaining title.",
+          "Select each remaining title in turn and capture screenshot checkpoint B: each selected title with its exact body text visible.",
+          "Run a D1 SELECT over snippets returning id, title, object_key and created_at for every remaining row, and a SELECT over snippet_operations showing each remaining state including deleted tombstones with zero reserved bytes.",
+          "Run an R2 list of the snippets/ prefix and read one object per remaining snippet, recording the body bytes for each.",
+          "Assemble the correspondence check: each browser title maps to one D1 row, each D1 object_key maps to one R2 object, and each R2 body equals the text shown in the matching screenshot; each deleted title has no D1 snippet row and no R2 object.",
+          "Only after all browser images and both storage readbacks are captured and retained, delete the temporary environment and its D1 and R2 resources, recording the real removal output.",
+          "Confirm the retained ordered image collection and storage transcripts remain available for the pull request after removal, and leave the pull request unmerged and unreleased."
+        ],
+        "expected": "Browser titles and bodies, D1 index rows and R2 objects agree item by item, with deleted identities absent from both stores; the removal command succeeds afterwards; the captured proof remains available in the pull request after the temporary resources are gone, and nothing is merged or released.",
+        "evidenceKinds": [
+          "browser_image",
+          "showboat",
+          "provider_originated"
+        ]
+      }
+    ],
+    "corrections": [
+      {
+        "scenarioId": "sac-246-demo-3-fresh-context-continuity",
+        "reason": "The approved design's migration step 4 allowed a seeded fallback (re-saving Greeting and saving-then-deleting Sign-off through the API before the fresh context) when the runner resets storage. The later human answers of 2026-09-17 16:29 and 16:57 state that the actual runner resets only browser state and can keep D1/R2 between adjacent scenarios, and direct the preferred adjacent fresh-browser scenario against unchanged cloud data. This plan therefore removes the seeded fallback and requires scenario 3 to run immediately after scenario 2 with cloud state untouched. No second context inside a single scenario is requested."
+      },
+      {
+        "scenarioId": "sac-246-demo-2-main-flow-save-read-refresh-delete",
+        "reason": "The spec's delete scenario names deleting Greeting while the spec's fresh-context scenario and the approved design's main flow require Greeting saved and Sign-off deleted. To keep the two adjacent scenarios consistent and still prove the requirement that other snippets survive a delete, this plan deletes Sign-off and verifies Greeting remains listed and readable. The observable behavior under test (one deleted, the other kept and readable) is identical."
+      },
+      {
+        "scenarioId": "sac-246-demo-6-failed-action-and-recovery",
+        "reason": "The design's migration step 5 asks for deterministic paused-writer, injected-put-failure and forced-cleanup-failure checks. Those require test-harness gates and injected faults, which are implementation tests rather than demonstrations of the changed application and are excluded from the demo gallery. The failure proof here instead uses a real out-of-band DELETE through the deployed Worker API against a stale open page, which exercises the shipped read-failure and delete-reconciliation paths with real cloud data. No browser destruction or reallocation is requested, consistent with the declared recovery policy."
+      },
+      {
+        "scenarioId": "sac-246-demo-1-provision-and-empty-shelf",
+        "reason": "No CI workflow, account setup, production deployment or static-preview publication is requested. The approved design requires a hosted nonproduction environment with real D1 and R2, and temporary-environment-v1 in context/runtime-capabilities.json supplies exactly that, so the hosted requirement is preserved rather than substituted with a local workerd preview. Capacity-ceiling demos (SHELF_LIMIT_REACHED, ACTIVITY_LIMIT_REACHED) are omitted as impractical to reach through the browser and outside the listed requirements."
+      }
+    ],
+    "question": null
+  }
+}
