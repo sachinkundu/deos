@@ -964,3 +964,19 @@ D1 confirmed normal cancellation at visit42 by 05:37 UTC, with no remaining acti
 EXP-03: cloud design response completed from its retained context and reached gate16 at06:07:55.335UTC without supervisor artifact edits. Workflow-only fix243ed25 passed594tests (1skip), TypeScript, and the regression that failed against the actual durable job shape before correction. At06:13:01UTC, with no active attempt, backend f60fbeb7-2671-4a71-bd04-c71129d53ef3 activated at100%; containers were not rebuilt. Current response predates this deployment, so live restoration of a later design patch remains unproven. Revised PR38 head10ac345f9ea7a1da32999bc1ae4e8e0b8c8a68d1 reviewed and approved through Linear.
 
 06:14 UTC: design approval delivery04d418c4-f69f-45a7-ad71-a63992dd403f consumed normally at06:14:01.236. PR38 merged06:14:06, commitd863ba43593da153f35e35b9c3ebbbc578f63bf6. Implementation task generation attempt01a0ae00-792f-77a0-b7b3-11bd296cfe18 starting. No approval resend or stage restart needed.
+
+### SAC-243 initial implementation checks, 06:37 UTC
+
+Evidence: [original commands and check output](evidence/sac-172/expense-canary/initial-build-failures.json). Cloud author remains active; no supervisor app edits or recovery action.
+
+- EXP-04: at06:35:41 `npm ls --depth=0` exited1 with `ELSPROBLEMS`, invalid jsdom and extraneous dependencies. Dependency installation was incomplete at inspection; exact scheduling cause not yet established. Subsequent Vitest execution ran; outcome pending final transcript audit.
+- EXP-05: author attempted to tail protected `/deos/output/implementation-diagnostics.jsonl` and received `Permission denied` (item41). The trusted check response already retains test output. One agent-tool access failure; no permission change made.
+- APP-01: first `npm test` at06:36:20 found the storage conflict result had `ok: true` instead of `ok: false`. Object spread after the explicit false flag overwrote it. Cloud author owns repair.
+- APP-02: same test run could not load the app suite: `TypeError: The URL must be of scheme file` at tests/app.test.js:6. Test fixture URL construction conflicts with the test environment. Cloud author owns repair. These two app development failures are separate from workflow/tool counts.
+
+### SAC-243 build progression, 06:43 UTC
+
+[Additional original check and tool output](evidence/sac-172/expense-canary/build-failures-0643.json). Both app causes were repaired by Sol, with57tests passing at06:40:36 and a successful static build. APP-01 occurred in3test executions (06:36:20,06:37:11,06:37:47); APP-02 occurred in6executions (those3plus06:38:35,06:39:14,06:40:04). Count9app failure occurrences across2causes, not separate outer command wrappers. No supervisor app edits.
+
+- EXP-06: local preview relay failed to become publicly ready (item55), then same-relay reconciliation returned HTTP530, code1016 (item56). Two occurrences. Local app returned HTTP200 meanwhile. DNS/provider root cause remains unknown; no deployment or runtime reset performed.
+- EXP-07: browser navigation, viewport and state requests (items59,60,61) each returned `preview_missing: Start the safe preview before opening a browser` after the pending relay. Three occurrences. Agent is still active and owns the choice to reconcile or use the already-supported hosted preview. No supervisor intervention yet.
