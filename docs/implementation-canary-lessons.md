@@ -71,9 +71,11 @@ served-app demonstrations. Keep that evidence rather than recapturing for a new
 repository tree hash alone.
 
 Bound shell network probes. Hosted browser and trusted publisher access do not
-imply the sandbox shell has the same egress. If a check client is interrupted,
-stop its subprocess group and retain the cancellation and partial output so it
-cannot silently block later commands and finalization until the long deadline.
+imply the sandbox shell has the same egress. Checks and demos have stable operation IDs. Client disconnection leaves work
+observable by ID; it does not imply cancellation. Explicit cancellation stops a
+running check process group or removes queued work and retains original output.
+Never cancel or replay an ambiguous running browser action. Completed results
+remain retrievable without another collection.
 Checked shell work must not hold the browser queue: a Showboat script can call
 the assigned browser and await its result. Serialize shell checks separately,
 keep whole demo collections and individual browser calls on the same browser
@@ -227,3 +229,33 @@ that the application caused a service eviction.
 - [Pages create deployment API](https://developers.cloudflare.com/api/resources/pages/subresources/projects/subresources/deployments/methods/create/)
 - Installed Wrangler 4.125.0 Pages upload implementation supplies the asset-key,
   upload-token, asset-upload and manifest contract used by the trusted publisher.
+
+## Expense-canary execution receipts
+
+The expense canary exposed a missing distinction between a shell yielding and
+its operation completing. Status must bypass both work queues. Check and demo
+requests now require stable requestId values; repeating identical input returns
+the existing operation. Changed input with the same ID is rejected. Intentional
+new work uses a new ID. Queued, running, completed, failed, canceled and interrupted
+states retain timestamps, deadlines, exit results and original diagnostics.
+Demo progress identifies its scenario and step; check progress identifies output
+activity. A quiet command is not automatically classified as dead.
+
+Use deos-implementation --wait for sequential shell dependencies. The client
+returns the actual failing command exit status, while a nonblocking unfinished
+submission exits75. dependsOn prevents a command starting unless named operations
+completed successfully. Install dependencies through this same interface.
+A fresh runtime marks previously active receipts interrupted, never silently
+replays them. Current operation files are private to the trusted service;
+read-only tool results expose safe execution data and image paths to the author.
+The existing diagnostic journal also captures receipts for artifact collection.
+
+Progress notification uses a fixed3second HTTP timeout in the Node watcher,
+with1–30second exponential retry. This is independent of the supervisor's
+30second heartbeat and the workflow's configured5minute heartbeat expiry.
+Heartbeat expiry is checked by the Worker controller. Liveness and task progress
+are separate signals; tolerate transient delivery errors when recovery succeeds.
+
+A Pages asset redirect is followed only within the immutable deployment origin,
+for at most3redirects and a shared20second deadline. Final size and SHA256 must
+still match. Authenticated provider API redirects remain forbidden.

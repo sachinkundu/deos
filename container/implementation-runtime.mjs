@@ -21,6 +21,7 @@ import { trustGeneratedHooks } from "./native-review-setup.mjs";
 import { originalErrorText } from "./original-errors.mjs";
 import { killProcessGroup, stopProcessGroup } from "./implementation-process.mjs";
 import { collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementationRequestQueue } from "./implementation-browser-demo.mjs";
+import { ImplementationOperations } from "./implementation-operations.mjs";
 
 const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
@@ -77,6 +78,7 @@ export async function command(argv, cwd, options = {}) {
       killProcessGroup(child, "SIGKILL");
     }, options.timeout ?? 600_000);
     const read = (into) => (data) => {
+      options.onActivity?.(data.length);
       size += data.length;
       if (size > (options.maxOutputBytes ?? 10 * 1024 * 1024)) {
         failure = new Error(
@@ -455,6 +457,9 @@ export async function setupImplementation(job) {
     previewSession.config = null;
   };
   const toolQueue = implementationRequestQueue();
+  const operations = new ImplementationOperations(`${ROOT}/operations`, toolQueue, job.deadline,
+    record => appendFile(journal, JSON.stringify({ operation: 'execution', ...record }) + '\n'));
+  await operations.initialize();
   const pendingRequests = new Set();
   let providerChain = Promise.resolve();
   let stateWrites = Promise.resolve();
@@ -469,6 +474,8 @@ export async function setupImplementation(job) {
       await writeFile(imagePath, Buffer.from(result.imageBase64, "base64"), { mode: 0o644 });
       delete result.imageBase64;
       result.imagePath = imagePath;
+      state.imagePaths ??= {};
+      state.imagePaths[result.proof.id] = imagePath;
     }
     return result;
   };
@@ -536,7 +543,22 @@ export async function setupImplementation(job) {
           chunks.push(chunk);
         }
         const request = JSON.parse(Buffer.concat(chunks).toString());
-        return toolQueue.run(request.action, async () => {
+        const reply = result => {
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(result));
+        };
+        // Read-only observation must never wait behind the work being observed.
+        if (request.action === 'operation') return reply(operations.status(request.requestId));
+        if (request.action === 'cancel') return reply(await operations.cancel(request.requestId));
+        if (request.action === 'status') return reply({
+          checks: state.checks.map(({ command, cwd, exitCode, treeSha, testedBaseSha }) => ({ command, cwd, exitCode, treeSha, testedBaseSha })),
+          operations: operations.list(),
+          proofKinds: [...new Set(state.proof.map(p => p.kind))],
+          proof: state.proof.map(({ id, kind, caption, audience }) => ({ id, kind, caption, audience,
+            imagePath: state.imagePaths?.[id] ?? null,
+            selected: state.reviewProofIds ? state.reviewProofIds.includes(id) : null })),
+        });
+        const execute = async (request, execution = {}) => {
         const before = await snapshot(job.cwd);
         const subject = {
           change: job.openspecChange,
@@ -545,15 +567,7 @@ export async function setupImplementation(job) {
           treeSha: before.treeSha,
         };
         let result;
-        if (request.action === "status") {
-          const checks = state.checks;
-          result = { ...subject,
-            checks: checks.map(({ command, cwd, exitCode }) => ({ command, cwd, exitCode })),
-            proofKinds: [...new Set(state.proof.map(p => p.kind))],
-            proof: state.proof.map(({ id, kind, caption, audience }) => ({ id, kind, caption, audience,
-              selected: state.reviewProofIds ? state.reviewProofIds.includes(id) : null })),
-          };
-        } else if (request.action === "select_proof") {
+        if (request.action === "select_proof") {
           selectReviewProof(state, request.ids);
           result = { selected: selectedReviewProof(state).map(({ id, kind, caption }) => ({ id, kind, caption })) };
         } else if (request.action === "check") {
@@ -596,8 +610,10 @@ export async function setupImplementation(job) {
             await writeFile(script, argv.map(shellQuote).join(" ") + "\n", {
               mode: 0o600,
             });
-            result = await responseCommand(res, ["showboat", "exec", doc, "bash"], cwd, {
+            result = await command(["showboat", "exec", doc, "bash"], cwd, {
               stdin: await readFile(script),
+              signal: execution.signal,
+              timeout: execution.timeout, onActivity: execution.output,
             });
             result.command = request.argv.map(shellQuote).join(" ");
             result.cwd = cwd;
@@ -613,7 +629,7 @@ export async function setupImplementation(job) {
               }),
             );
           } else {
-            result = await responseCommand(res, argv, cwd);
+            result = await command(argv, cwd, { signal: execution.signal, timeout: execution.timeout, onActivity: execution.output });
             result.command = request.argv.map(shellQuote).join(" ");
             result.cwd = cwd;
           await appendFile(journal,JSON.stringify({operation:'check',...subject,result})+'\n');
@@ -722,8 +738,12 @@ export async function setupImplementation(job) {
           await persistState();
           result = await collectBrowserDemo(request, {
             browser: step => browserResult(step, subject),
-            record: event => appendFile(journal, JSON.stringify({ operation: "demo", ...subject,
-              occurredAt: new Date().toISOString(), ...event }) + "\n"),
+            record: async event => {
+              await appendFile(journal, JSON.stringify({ operation: "demo", ...subject,
+                occurredAt: new Date().toISOString(), ...event }) + "\n");
+              await execution.activity?.({ event: event.event, collectionId: event.collectionId,
+                scenarioId: event.scenarioId, stepIndex: event.stepIndex, step: event.step });
+            },
           });
           finishBrowserDemo(state, result);
         } else if (["browser", "document", "search", "safe_test"].includes(request.action)) {
@@ -732,9 +752,11 @@ export async function setupImplementation(job) {
             state.proof.push(result.proof);
         } else throw new Error("Unsupported implementation tool action");
         await persistState();
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify(result));
-        }, toolError);
+        return result;
+        };
+        if (['check', 'demo'].includes(request.action))
+          return reply(await operations.submit(request, execute));
+        return toolQueue.run(request.action, async () => reply(await execute(request)), toolError);
     };
     const pending = dispatch().catch(toolError).finally(() => pendingRequests.delete(pending));
     pendingRequests.add(pending);
@@ -747,6 +769,7 @@ export async function setupImplementation(job) {
     async finish() {
       // Include requests whose bodies were still arriving before queue routing.
       while (pendingRequests.size) await Promise.all([...pendingRequests]);
+      await operations.drain();
       await toolQueue.drain();
       await providerChain;
       await stateWrites;

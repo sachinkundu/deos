@@ -6,6 +6,8 @@ import {
 } from "../src/implementation-store.ts";
 import { implementationPolicy } from "../src/implementation-contract.ts";
 import { D1OrchestrationStore } from "../src/orchestration-store.ts";
+import { sha256Hex } from '../src/implementation-hash.ts';
+import type { ImplementationCandidate } from '../src/implementation-contract.ts';
 import {
   ImplementationTestDatabase,
   ImplementationTestBucket,
@@ -13,6 +15,25 @@ import {
   seedAttempt,
 } from "./helpers/implementation-fixture.ts";
 const now = "2026-09-14T01:00:00Z";
+
+test('successful checkpoint clears current failure code but retains original error evidence',async()=>{
+  const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();
+  try {
+    seedRun(db);seedAttempt(db,'recovered');
+    const store=new ImplementationStore(db as unknown as D1Database,bucket as unknown as R2Bucket);
+    const work=await store.allocate(input(),{userId:'human',revision:1},'SAC-172',1);
+    await store.beginTry(work,{attempt_id:'recovered',sandbox_id:'impl-recovered',visit_sequence:1},'build');
+    await store.error('run-1','recovered','preview',new Error('original relay failure'));
+    await store.checkpoint(work,{attemptId:'recovered',testedBaseSha:work.tested_base_sha,
+      treeSha:'c'.repeat(40),patchSha:await sha256Hex('patch'),kind:'build',outcome:'completed'} as ImplementationCandidate,'patch');
+    const row=db.sqlite.prepare("SELECT status,public_error_code,primary_error_manifest FROM implementation_tries WHERE attempt_id='recovered'").get()!;
+    assert.equal(row.status,'completed');assert.equal(row.public_error_code,null);assert.ok(row.primary_error_manifest);
+    assert.equal(db.sqlite.prepare('SELECT COUNT(*) n FROM implementation_effect_errors').get()!.n,1);
+    await store.error('run-1','recovered','cleanup',new Error('late cleanup diagnostic'));
+    assert.equal(db.sqlite.prepare("SELECT public_error_code FROM implementation_tries WHERE attempt_id='recovered'").get()!.public_error_code,null);
+    assert.equal(db.sqlite.prepare('SELECT COUNT(*) n FROM implementation_effect_errors').get()!.n,2);
+  } finally {db.close();}
+});
 export const input = (id = "run-1"): ImplementationInput => ({
   version: 1,
   runId: id,

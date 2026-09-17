@@ -1019,3 +1019,18 @@ Claude returned pass. It verified all6hosted asset hashes match candidate files 
 PR39 is open, ready for review, unmerged at d619fc9c5b810e6aa5482cbe23cb64b076d990c8. Linear Human Review since07:45:45.350. D1 implementation_review with no active attempts or workflow_errors. Browser inspection in external Brave confirmed live preview and PR images; all15public PNG URLs returned200 with matching content hashes.57app tests, static build and strict OpenSpec checks passed in the cloud. Preview warning says built before latest changes because task checkboxes changed; Claude's6asset hash comparison establishes matching app content. Do not claim production release.
 
 Remaining reliability work: status blocked by demos, duplicate request reconciliation and result retrieval; local preview DNS cause; recovered progress-notification timeouts. D1 implementation try also retains public_error_code=implementation_failed despite completed status; this is a diagnostic inconsistency, not another observed execution failure. These remain noted, not fixed by this canary. Monitoring paused and temporary read-only reader stopped. This is supervised endpoint success, not proof of unattended reliability.
+
+
+### SAC-243 post-canary repairs and retirement, 2026-09-17
+
+PR39 closed unmerged and SAC-243 canceled at user request; D1 confirms canceled with no active attempts. Retirement receipt: evidence/sac-172/expense-canary/retirement.json.
+
+EXP-09/11: added stable check/demo operation IDs, independent status reads, persisted receipts and completed result retrieval including image paths. Repeating the same ID reconciles existing work; changed input is rejected. Closing a client does not cancel work. Explicit cancellation is supported for queued work and running commands; running browser demos remain inspectable rather than being ambiguously replayed. Runtime restart marks unfinished receipts interrupted.
+
+EXP-04/12: CLI now exposes pending exit75, waits by polling the same operation, returns command failure exit codes, and supports successful dependency receipts before starting dependent commands. Existing editing inventory and enforcement remain; CLI help repeats the actual supported tools. Native model tool schemas were not altered.
+
+Hosted proof verification follows at most three same-origin public asset redirects and still requires exact content hashes. Completed implementation checkpoints clear the current public failure code while retaining original diagnostic manifests and immutable effect errors.
+
+Progress notification timeout remains3seconds with transient retries1–30seconds; separate supervisor heartbeat is30seconds with configured5minute expiry. Recovered network failures are expected, not evidence of broken recovery. Last activity and deadlines aid diagnosis but do not prove semantic progress or automatically restart quiet operations.
+
+Validation: full suite601tests,600pass,1skip; typecheck and whitespace checks pass. Local HTTP disconnect/dedup/status/restart tests and real child-process failure/dependency/cancellation tests pass. These are regression checks, not a new provider-originated canary. Deployment activation is recorded separately after rollout.

@@ -97,9 +97,20 @@ export async function checkHostedAssets(origin: string, assets: HostedPreviewReq
   const checked: HostedPreviewReceipt['assets'] = [];
   for (const asset of assets) {
     const path = asset.path === 'index.html' ? '' : asset.path;
-    const url = `${origin}/${path}`;
-    const response = await fetcher(url, { redirect: 'manual', signal: AbortSignal.timeout(20_000),
-      headers: { 'Accept-Encoding': 'identity', 'Cache-Control': 'no-cache' } });
+    let url = `${origin}/${path}`;
+    let response: Response;
+    const signal = AbortSignal.timeout(20_000);
+    for (let redirects = 0; ; redirects++) {
+      response = await fetcher(url, { redirect: 'manual', signal,
+        headers: { 'Accept-Encoding': 'identity', 'Cache-Control': 'no-cache' } });
+      if (![301,302,303,307,308].includes(response.status)) break;
+      const location = response.headers.get('Location');
+      const next = location ? new URL(location, url) : null;
+      await response.body?.cancel();
+      if (!next || next.origin !== origin || next.username || next.password || redirects >= 3)
+        throw new ImplementationError('hosted_preview_http', `Hosted asset ${url} returned HTTP ${response.status}; unsafe or excessive redirect`);
+      url = next.href;
+    }
     if (response.status !== 200) throw new ImplementationError('hosted_preview_http', `Hosted asset ${url} returned HTTP ${response.status}`);
     const reader = response.body?.getReader();
     if (!reader) invalid(`Hosted asset has no body: ${url}`);

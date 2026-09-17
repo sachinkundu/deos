@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ImplementationHostedPreview, validateHostedPreviewRequest, checkedPagesDeployment, hostedPreviewOrigin } from '../src/implementation-hosted-preview.ts';
+import { ImplementationHostedPreview, validateHostedPreviewRequest, checkedPagesDeployment, hostedPreviewOrigin, checkHostedAssets } from '../src/implementation-hosted-preview.ts';
 import { ImplementationStore } from '../src/implementation-store.ts';
 import { implementationPolicy } from '../src/implementation-contract.ts';
 import { sha256Hex } from '../src/implementation-hash.ts';
@@ -121,4 +121,22 @@ test('demo planning gets the checked hosted receipt and actual browser capabilit
     assert.match(runtime.browser.navigation,/target: hosted/);
     assert.equal(runtime.browser.sessionsPerAttempt,1);
   } finally {f.db.close();}
+});
+
+test('Pages clean-URL redirects stay on the immutable origin and still require exact bytes',async()=>{
+  const origin='https://a1b2c3d4.calculator.pages.dev', html='<h1>Probe</h1>';
+  const assets=[{path:'probe.html',bytes:Buffer.byteLength(html),sha256:await sha256Hex(html)}];
+  const seen:string[]=[];
+  const fetcher=(async(input:RequestInfo|URL,init?:RequestInit)=>{
+    seen.push(String(input));assert.equal(init?.redirect,'manual');
+    assert.equal((init?.headers as Record<string,string>).Authorization,undefined);
+    return String(input).endsWith('.html')?new Response(null,{status:308,headers:{Location:'/probe'}}):new Response(html);
+  }) as typeof fetch;
+  const result=await checkHostedAssets(origin,assets,fetcher);
+  assert.deepEqual(seen,[origin+'/probe.html',origin+'/probe']);assert.equal(result[0].url,origin+'/probe');
+  let calls=0;
+  await assert.rejects(checkHostedAssets(origin,assets,(async()=>{calls++;return new Response(null,{status:308,headers:{Location:'/loop'}});}) as typeof fetch),/excessive redirect/);
+  assert.equal(calls,4);
+  await assert.rejects(checkHostedAssets(origin,assets,(async(input:RequestInfo|URL)=>String(input).endsWith('.html')
+    ?new Response(null,{status:308,headers:{Location:'/probe'}}):new Response('<h1>Wrong</h1>')) as typeof fetch),/does not match|exceeds/);
 });

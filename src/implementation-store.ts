@@ -376,10 +376,11 @@ export class ImplementationStore {
         ),
       this.db
         .prepare(
-          "UPDATE implementation_tries SET output_patch_sha=?,status=CASE WHEN status IN ('manual_reconciliation_required','retry_required') THEN status ELSE ? END,updated_at=? WHERE attempt_id=? AND run_id=?",
+          "UPDATE implementation_tries SET output_patch_sha=?,public_error_code=CASE WHEN ?='completed' AND status NOT IN ('manual_reconciliation_required','retry_required') THEN NULL ELSE public_error_code END,status=CASE WHEN status IN ('manual_reconciliation_required','retry_required') THEN status ELSE ? END,updated_at=? WHERE attempt_id=? AND run_id=?",
         )
         .bind(
           patchObject.sha256,
+          candidate.outcome,
           candidate.outcome,
           now,
           candidate.attemptId,
@@ -560,7 +561,7 @@ export class ImplementationStore {
     if (attemptId)
       await this.db
         .prepare(
-          `UPDATE implementation_tries SET primary_error_manifest=COALESCE(primary_error_manifest,?),public_error_code=COALESCE(public_error_code,?),updated_at=? WHERE attempt_id=?`,
+          `UPDATE implementation_tries SET primary_error_manifest=COALESCE(primary_error_manifest,?),public_error_code=CASE WHEN status='completed' THEN NULL ELSE COALESCE(public_error_code,?) END,updated_at=? WHERE attempt_id=?`,
         )
         .bind(
           object.key,

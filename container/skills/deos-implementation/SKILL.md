@@ -46,6 +46,25 @@ A human-requested revision updates the same PR without another automatic review.
   the same suite directly while its checked copy is still running adds contention
   and does not diagnose the wait. Use the test runner's concurrency controls when
   the assigned sandbox needs them.
+- Run installs, builds and tests through `action: check`, with a stable `requestId`
+  such as `install-1` or `test-1`. Submit returns a receipt with `queued`, `running`,
+  `completed`, `failed`, `canceled` or `interrupted`. Exit75 means still active;
+  it is not success or a reason to resubmit. Use `deos-implementation --wait
+  REQUEST_FILE` for a dependent shell sequence: it exits with the command's
+  failure code and returns the saved result in `result`. Never infer completion
+  from a shell yield or missing stdout. Poll `{"action":"operation",
+  "requestId":"install-1"}` to retrieve the same work, including exit status,
+  stdout/stderr, timestamps and last output activity. Set `dependsOn:["install-1"]`
+  on tests/builds to prevent execution unless installation completed successfully.
+  Reuse an ID only to retrieve identical work. After an edit or intentional rerun,
+  use a new ID. Failed results are retained; they are not silently retried.
+- `action: status` never waits for a demo or check. It includes operation
+  summaries, last activity, deadlines and saved proof image paths. `running`
+  without recent output means no progress was observed; it does not establish a
+  dead process. Inspect the recorded phase and deadline. Do not launch a second
+  copy to diagnose silence. Use `action: cancel` with the requestId for a queued
+  operation or running check. A running demo cannot be canceled mid-action;
+  a client disconnect leaves the existing operation available for retrieval.
 - Build into a dedicated directory such as `dist`. Start `action: preview` with
   `assets: "dist"` and/or a Worker entry file. Do not serve the whole repository:
   unnecessary file watchers previously exhausted the runtime.
@@ -64,7 +83,10 @@ A human-requested revision updates the same PR without another automatic review.
 # Collect demonstrations
 
 The browser runs in Cloudflare's browser service, separately from this sandbox.
-Save one scenario list and execute it with `action: demo`. Each scenario gets a
+Save one scenario list and execute it with `action: demo` and a stable `requestId`.
+Use `--wait` or retrieve its operation receipt. Repeating the same request returns
+that operation, never another collection. Use a new ID only for an intentional
+new collection after a failure or relevant change. Each scenario gets a
 fresh browser context. Prepare independent server-side fixtures as needed;
 resetting browser state does not reset databases or provider resources.
 If a browser operation loses its response, its action may already have run.
@@ -79,6 +101,9 @@ Await the entire collection before editing code, harness, preview, or steps.
 After an action fails, correct the cause and rerun from the starting state.
 Use screenshots of meaningful outcomes, inspect them, and describe what they show.
 Open the original `imagePath` returned by the browser with native `view_image`.
+Completed operation results retain `result.captures[].imagePath`; status also
+lists the selected collection's image paths. Retrieve these instead of repeating
+successful scenarios when stdout is lost. Do not search protected runtime folders.
 ImageMagick tools such as `montage` are not installed. Inspection does not need
 composite images; keep the original browser captures for the PR.
 

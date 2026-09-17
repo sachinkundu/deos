@@ -1,15 +1,20 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
-import { implementationRequest } from '/deos/bin/implementation-client.mjs';
-const path=process.argv[2];
+import { implementationRequest, implementationExitCode, waitImplementationOperation } from '/deos/bin/implementation-client.mjs';
+const waiting = process.argv[2] === '--wait';
+const path=process.argv[waiting ? 3 : 2];
 if(!path || path==='--help') {
-  process.stdout.write(JSON.stringify({usage:'deos-implementation REQUEST_FILE',examples:[
-    {action:'check',argv:['npm','run','build']},
+  process.stdout.write(JSON.stringify({usage:'deos-implementation [--wait] REQUEST_FILE',tools:{editing:['shell: Python','shell: Node','shell: cat','shell: tee'],inspection:['native view_image for returned proof paths'],unavailable:['native apply_patch','shell apply_patch','child agents','provider mutation tools']},examples:[
+    {action:'check',requestId:'build-1',argv:['npm','run','build']},
     {action:'status'},
+    {action:'operation',requestId:'build-1'},
+    {action:'cancel',requestId:'build-1'},
+    {action:'check',requestId:'install-1',argv:['npm','ci']},
+    {action:'check',requestId:'test-1',dependsOn:['install-1'],argv:['npm','test']},
     {action:'publish_preview',assets:'dist'},
-    {action:'check',argv:['node','scripts/demo.mjs'],behavior:true,audience:'review'},
+    {action:'check',requestId:'behavior-1',argv:['node','scripts/demo.mjs'],behavior:true,audience:'review'},
     {action:'preview',main:'src/index.ts',assets:'dist',d1:['DB'],r2:['BUCKET']},
-    {action:'demo',scenarios:[{id:'saved-note',url:'/',target:'local',viewport:{width:1280,height:900},steps:[
+    {action:'demo',requestId:'demo-1',scenarios:[{id:'saved-note',url:'/',target:'local',viewport:{width:1280,height:900},steps:[
       {operation:'fill',selector:'input[name=title]',text:'Canary note'},
       {operation:'click',selector:'button[type=submit]'},
       {operation:'wait',selector:'[data-state=saved]'},
@@ -32,9 +37,15 @@ if(!path || path==='--help') {
     {action:'safe_test',operation:'linear.move',resourceId:'FROM_FIXTURE',operationId:'another-request-id',issueId:'FIXTURE_ISSUE',stateId:'FIXTURE_WORK_STATE'},
     {action:'safe_test',operation:'events',resourceId:'FROM_FIXTURE'},
     {action:'safe_test',operation:'proof',resourceId:'FROM_FIXTURE',githubOperationId:'unique-request-id',linearOperationId:'another-request-id'}
-  ],notes:['Read /deos/run/runtime-guide.md for supported development and recovery paths. The demo count follows Claude and the implementation, not a fixed quota.','publish_preview requires static-preview-v1. It uploads a dedicated static build to the run-owned nonproduction project. Retry the same request if deployment is pending. Use target:hosted in demo scenarios after publication.','Only Showboat commands explicitly marked audience:review appear in the PR document. Keep internal test runs diagnostic.','Save each JSON request in /deos/output/requests/, outside the repository; keep scratch files out of the implementation patch.','Status lists recorded command results and evidence for review; it is not a completion gate.','Preview fields are optional except at least one of main or assets.','Collect the final screenshot list with one action:demo request. It resets to a fresh browser context before every scenario and waits for every action, in order. Scenario steps support click, fill, press, wait (visible selector), navigate, and screenshot. The viewport and target stay fixed within a scenario. A fresh browser context clears browser state, not server data; prepare independent safe test data if needed.','Invoke demo directly, never from inside action:check. Await completion before editing app code, harness, preview, or the scenario file. A failed action stops the collection and returns its original error. Fix the cause and rerun the complete list from zero.','Starting a demo replaces previous browser images in the PR selection. Only that completed collection is selected; exploratory screenshots and partial failed collections remain available as diagnostics. The workflow does not judge screenshot content.','Browser state returns page content and console messages. Inspect each demo capture using its returned imagePath. Captions must describe that capture; correct the plan and rerun if they do not.','For documentation citations use the final canonical URL returned by the document call.']},null,2)+'\n');
+  ],notes:['check/demo require requestId. Repeating the same ID retrieves existing work; different input with that ID is rejected. New work or a deliberate rerun needs a new ID. Status and operation never wait behind demos. Default submit exits75 while queued/running. --wait waits for the saved result and exits with the command failure status; use it before dependent shell commands. dependsOn refuses to execute unless its named operations completed successfully. Closing the client does not cancel work. Use cancel to cancel a queued demo or a queued/running check; running demos must reach their recorded result. Results and screenshot imagePath values remain retrievable without recapturing.','Read /deos/run/runtime-guide.md for supported development and recovery paths. The demo count follows Claude and the implementation, not a fixed quota.','publish_preview requires static-preview-v1. It uploads a dedicated static build to the run-owned nonproduction project. Retry the same request if deployment is pending. Use target:hosted in demo scenarios after publication.','Only Showboat commands explicitly marked audience:review appear in the PR document. Keep internal test runs diagnostic.','Save each JSON request in /deos/output/requests/, outside the repository; keep scratch files out of the implementation patch.','Status lists recorded command results and evidence for review; it is not a completion gate.','Preview fields are optional except at least one of main or assets.','Collect the final screenshot list with one action:demo request. It resets to a fresh browser context before every scenario and waits for every action, in order. Scenario steps support click, fill, press, wait (visible selector), navigate, and screenshot. The viewport and target stay fixed within a scenario. A fresh browser context clears browser state, not server data; prepare independent safe test data if needed.','Invoke demo directly, never from inside action:check. Await completion before editing app code, harness, preview, or the scenario file. A failed action stops the collection and returns its original error. Fix the cause and rerun the complete list from zero.','Starting a demo replaces previous browser images in the PR selection. Only that completed collection is selected; exploratory screenshots and partial failed collections remain available as diagnostics. The workflow does not judge screenshot content.','Browser state returns page content and console messages. Inspect each demo capture using its returned imagePath. Captions must describe that capture; correct the plan and rerun if they do not.','For documentation citations use the final canonical URL returned by the document call.']},null,2)+'\n');
   process.exit(0);
 }
 const body=await readFile(path,'utf8');
-const response=await implementationRequest(body);
-process.stdout.write(response.text+'\n');if(response.statusCode<200 || response.statusCode>=300)process.exitCode=1;
+let response=await implementationRequest(body);
+if (waiting) {
+  const initial=JSON.parse(response.text);
+  if (['queued','running'].includes(initial.state)) process.stderr.write(JSON.stringify({requestId:initial.requestId,state:initial.state,retrieve:{action:'operation',requestId:initial.requestId}})+'\n');
+  response=await waitImplementationOperation(response);
+}
+process.stdout.write(response.text+'\n');
+process.exitCode=implementationExitCode(response.statusCode,JSON.parse(response.text));
