@@ -77,6 +77,24 @@ Private full snapshot /tmp/sac246-reader/2026-09-17T13-53-49.379Z.json retained.
 No new D1 errors beyond the historical interrupted-attempt rows. Continue normal
 supervision; do not retry or approve anything until a new gate actually opens.
 
+14:45UTC quota recovery: attempt01a0afa3-fe81-70e0-8e55-bca7ee3fae73 failed
+13:56:56UTC with a provider usage-limit message, discovered14:39. The full
+transcript, planning patch and validation are retained in R2 with verified D1
+hashes; planning-usage-limit.json records the original error and receipts.
+No completed self-review/result existed. Desktop usage now reports0% used,
+but the cloud credential account was not independently compared. No reset or
+credit purchase was authorized or performed. Completed pool rollouts were
+rechecked and there were no active attempts. Supported cleanup destroyed the
+stopped sandbox; one same-run/same-v41 planning retry was established at
+14:45:32.153, visit6, workflow
+wf-v1-vv6hj6lwdshnryctyi3e6ff4yh5isx7yyqy5u6fnbrz363rdo3fa.
+Do not resend it. The retry recreates unfinished planning in the cloud; failed
+planning patches are preserved but not selected by current continuation logic.
+If the next attempt reports the same usage limit, stop retries and report the
+cloud quota/account mismatch. Never consume a reset or purchase credits without
+explicit user authorization. Existing desktop quota alone is not evidence that
+the cloud limit recovered. Repair CI for PR139 passed on both recovery commits.
+
 Read authoritative state with:
 `rtk proxy python3 docs/evidence/sac-172/storage-canary/readback.py`.
 It saves timestamped snapshots and latest.json, including owned environment rows.
@@ -123,3 +141,9 @@ PR139 with the real canary result and any limitations. Stay quiet on routine or
 unchanged states; notify on completion or substantive problems. Pause heartbeat
 run-reading-queue-canary-to-pr at completion. Leave both implementation PRs
 unmerged for review unless the user gives further instructions.
+
+14:46:15UTC: new planning author01a0afd4-7bad-7dfb-b784-382731adc553 is
+running with live process3109827b-24f2-4785-9604-3fcf296f07c0. It has completed
+real cloud-authored discovery commands without a repeated quota error so far.
+This proves execution resumed, not that the complete stage will finish. Continue
+the existing supervision and collect the full result before advancing any gate.

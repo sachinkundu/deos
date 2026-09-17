@@ -21,7 +21,7 @@ with urlopen(request, timeout=30) as response:
     result = json.load(response)
 if not result['success']:
     raise RuntimeError(result)
-wanted = {'transcript.jsonl', 'implementation-diagnostics.jsonl', 'original-errors.jsonl', 'validation.txt', 'trace-validation.txt', 'review-validation.txt', 'failure-summary.json', 'result.json', 'status.json', 'author-completion.json'}
+wanted = {'transcript.jsonl', 'implementation-diagnostics.jsonl', 'original-errors.jsonl', 'validation.txt', 'trace-validation.txt', 'review-validation.txt', 'failure-summary.json', 'result.json', 'status.json', 'author-completion.json', 'patch.diff', 'recovery-patch.diff'}
 rows = [r for r in result['result'][0]['results'] if r['logical_name'] in wanted]
 env = os.environ.copy()
 env['CLOUDFLARE_API_TOKEN'] = token

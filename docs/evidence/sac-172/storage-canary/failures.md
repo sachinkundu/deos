@@ -1,15 +1,34 @@
 # SAC-246 failure log
 
 Prospective log, 17 September 2026. Run1 started13:37:26UTC from a genuine Linear
-Todo event, on frozen implementation v41. The first planning agent is starting.
+Todo event, on frozen implementation v41. Planning has needed two recoveries.
 Preflight/extension failures are in
 [the extension log](../../temporary-environments/failures.md).
 
 ## Automatically fixed
 
-No automatically recovered cloud-agent failures observed in the available
-planning transcript. Only the first four completed commands were captured;
-the later interrupted filesystem was lost, so this is not a complete audit.
+### STORE-04 — File discovery stopped on a no-match search
+
+The second planning attempt's first command returned exit1 after printing its
+working directory. Its chained `rg --files -g AGENTS.md` found no file and
+prevented the remaining discovery command from running. The cloud author
+repeated discovery without that dependency and continued successfully. This is
+one recovered command failure, not a product defect. The full saved transcript
+contains ten completed commands, one with a nonzero exit.
+
+### STORE-05 — Optional readability library was unavailable
+
+The cloud author's dependency probe printed
+`ModuleNotFoundError No module named 'textstat'`. The enclosing command returned0
+because the probe caught and printed the exception. The author then wrote its
+own readability checker and passed the requested thresholds. Record this
+separately from command exit failures; exit0 does not mean no error occurred.
+The checker and exact scores remain in the full transcript and validation file.
+
+Audit limits: only the first four commands of the first, interrupted attempt
+were captured before its filesystem disappeared. The second attempt's full
+transcript and patch were recovered from R2 and verified against D1 hashes.
+This is not a complete audit of the lost portion of attempt1.
 
 ## Fixed by supervisor
 
@@ -58,6 +77,34 @@ No earlier completed phase or application work was repeated; the unfinished
 planning phase must recreate its lost working files in the cloud.
 
 ## Still needs fixing or validation
+
+### STORE-03 — Provider usage limit stopped planning
+
+Planning attempt01a0afa3-fe81-70e0-8e55-bca7ee3fae73 exited1 at13:56:51.181UTC
+and failed13:56:56.090 with `codex_exit_nonzero`. The original provider message,
+present in both `error` and `turn.failed` events for the same incident, is:
+
+> You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at Sep 22nd, 2026 3:46 PM.
+
+The full transcript, 8,642-byte planning patch and validation file are durable
+in the complete failure-v2 manifest. Local downloads matched their D1 SHA256
+receipts; see planning-usage-limit.json. OpenSpec, readability and diff checks
+had passed, but author completion and self-review had not run. No gate or
+application PR opened, and no application infrastructure had been allocated.
+
+The supervisor found the failure at14:39UTC. At14:40 the signed-in desktop
+account's read-only usage check reported0% used; cloud credential identity was
+not independently compared, so this alone does not prove cloud quota recovery.
+No credit was purchased and no reset was consumed. After verifying preserved
+work, no active attempts and completed rollouts in every pool, the supervisor
+cleaned the stopped sandbox through the supported endpoint and requested one
+same-run, same-v41 planning retry. Its cloud execution will verify availability.
+If the same limit recurs, stop retries until a quota/account change is confirmed.
+
+The failed planning patch is retained as evidence; current planning continuation
+selects completed attempts only. This retry recreates the unfinished planning
+stage in the cloud rather than restoring that failed patch. Reusing failed
+planning output safely remains a workflow improvement, not a completed fix.
 
 The complete cloud-agent path, incremental task updates, real browser persistence,
 PR evidence publication and automatic resource teardown need this run's proof.

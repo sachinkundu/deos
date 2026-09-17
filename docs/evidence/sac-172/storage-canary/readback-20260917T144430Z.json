@@ -47,18 +47,18 @@
       "definition_id": "implementation",
       "definition_version": 41,
       "definition_digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f",
-      "workflow_instance_id": "wf-v1-vv6hj6lwdshnryctyi3e6ff4yh5isx7yyqy5u6fnbrz363rdo3fa",
-      "previous_node": "agent_failed",
-      "current_node": "planning_author",
+      "workflow_instance_id": "wf-v1-q4rrh2j4pmk64wiaopqr2qvobio2i3jmcs3q4pd6ax2apnhsyiga",
+      "previous_node": "planning_author",
+      "current_node": "agent_failed",
       "gate_origin_node": null,
-      "status": "active",
+      "status": "failed",
       "accumulated_data_json": "{}",
       "created_at": "2026-09-17T13:37:26.619Z",
-      "updated_at": "2026-09-17T14:47:07.263Z",
-      "terminal_at": null,
-      "terminal_cause": null,
-      "current_visit_sequence": 6,
-      "last_transition_id": "transition:stage-retry:01a0afa3-fe81-70e0-8e55-bca7ee3fae73",
+      "updated_at": "2026-09-17T13:56:56.420Z",
+      "terminal_at": "2026-09-17T13:56:56.420Z",
+      "terminal_cause": "agent_execution_failed",
+      "current_visit_sequence": 5,
+      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:4:transition",
       "selection_kind": "default",
       "selection_value": "project_policy",
       "selection_label_name": null,
@@ -135,14 +135,7 @@
       "sandbox_tier_policy_version": "legacy-basic-v1"
     }
   ],
-  "active_attempts_all": [
-    {
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
-      "node_id": "planning_author",
-      "state": "running"
-    }
-  ],
+  "active_attempts_all": [],
   "attempts": [
     {
       "attempt_id": "01a0af96-705a-77f2-85ab-cd28486c6450",
@@ -165,26 +158,12 @@
       "started_at": "2026-09-17T13:52:35.571Z",
       "ended_at": "2026-09-17T13:56:56.090Z",
       "result_class": "codex_exit_nonzero",
-      "cleanup_state": "destroyed",
-      "sandbox_id": "sbx-v1-td33jrcb2tyc3lsb3piufjzz2gion2l7uahtia77fsf5prssig7q",
-      "updated_at": "2026-09-17T14:45:08.198Z",
-      "cleanup_hold_until": null,
-      "cleanup_hold_reason": null,
-      "manifest_id": "manifest:01a0afa3-fe81-70e0-8e55-bca7ee3fae73:failure-v2"
-    },
-    {
-      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
-      "node_id": "planning_author",
-      "state": "running",
-      "started_at": "2026-09-17T14:45:33.344Z",
-      "ended_at": null,
-      "result_class": null,
       "cleanup_state": "pending",
-      "sandbox_id": "sbx-v1-j35s3hjdrjzrpq6c5l3cy6e565wgbshsv2g7egt36k4bbt3ibfaq",
-      "updated_at": "2026-09-17T14:47:07.263Z",
-      "cleanup_hold_until": null,
-      "cleanup_hold_reason": null,
-      "manifest_id": null
+      "sandbox_id": "sbx-v1-td33jrcb2tyc3lsb3piufjzz2gion2l7uahtia77fsf5prssig7q",
+      "updated_at": "2026-09-17T13:56:56.173Z",
+      "cleanup_hold_until": "2026-09-18T13:56:56.173Z",
+      "cleanup_hold_reason": "native_review_proof_repair",
+      "manifest_id": "manifest:01a0afa3-fe81-70e0-8e55-bca7ee3fae73:failure-v2"
     }
   ],
   "gates": [],
@@ -276,5 +255,5 @@
     ],
     "created_on": "2026-09-17T13:51:25.595023Z"
   },
-  "observed_at": "2026-09-17T14:47:18.100472+00:00"
+  "observed_at": "2026-09-17T14:44:30.947409+00:00"
 }
