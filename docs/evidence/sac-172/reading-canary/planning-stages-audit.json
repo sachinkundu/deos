@@ -1,0 +1,30 @@
+{
+  "filesVerified": 24,
+  "failures": [
+    {
+      "source": {
+        "attempt_id": "01a0aeba-bb7e-7649-a92c-febf9884a16d",
+        "logical_name": "transcript.jsonl",
+        "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3A775b1ebe-3de0-4889-9198-58ff8adb3c0f%3Arun%3A1/attempts/01a0aeba-bb7e-7649-a92c-febf9884a16d/transcript.jsonl",
+        "sha256": "16932a03402ee4e0d095a2728b21da5d7d9aabee69f264604201c9434c6d01cd",
+        "byte_size": 23314,
+        "local": "/tmp/sac245-artifacts/cfb3f84c1fa9-transcript.jsonl"
+      },
+      "line": 5,
+      "flags": [
+        "explicit_failure"
+      ],
+      "event": {
+        "type": "item.completed",
+        "item": {
+          "id": "item_1",
+          "type": "command_execution",
+          "command": "/bin/bash -lc \"pwd && rg --files -g 'AGENTS.md' -g '\"'!node_modules'\"' -g '\"'!vendor'\"' && git status --short && rg --files openspec/changes/sac-245 /deos/output 2>/dev/null | sort\"",
+          "aggregated_output": "/deos/workspace/repository\n",
+          "exit_code": 1,
+          "status": "failed"
+        }
+      }
+    }
+  ]
+}

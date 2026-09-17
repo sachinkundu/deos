@@ -48,17 +48,17 @@
       "definition_version": 39,
       "definition_digest": "e4c09e10838c6470db75b9a0dcad83e2c8ecc8ef27e1b1c6d4216ee0de51ba0c",
       "workflow_instance_id": "wf-v1-m6ek5brhdw5sac2jrr3oqvwk23zwh6axxhpopobfvv4vawu2bujq",
-      "previous_node": "merge_planning_pr",
-      "current_node": "verify_planning_merge",
-      "gate_origin_node": null,
-      "status": "active",
+      "previous_node": "publish_author_response",
+      "current_node": "planning_review",
+      "gate_origin_node": "publish_author_response",
+      "status": "awaiting_human",
       "accumulated_data_json": "{}",
       "created_at": "2026-09-17T09:15:44.488Z",
-      "updated_at": "2026-09-17T09:44:07.975Z",
+      "updated_at": "2026-09-17T09:40:48.525Z",
       "terminal_at": null,
       "terminal_cause": null,
-      "current_visit_sequence": 10,
-      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1:visit:9:transition",
+      "current_visit_sequence": 8,
+      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1:visit:7:transition",
       "selection_kind": "default",
       "selection_value": "project_policy",
       "selection_label_name": null,
@@ -203,34 +203,6 @@
       "route_digest": "30cc95d68f7b78faa83f7bd885dbdc786cd7b1a65d88b9b69ba6172035ac5940",
       "start_slow_ok": null,
       "sandbox_tier_policy_version": "legacy-basic-v1"
-    },
-    {
-      "delivery_id": "9e3ee3a4-b001-4615-baa5-116af28a5325",
-      "payload_hash": "ee3da06dd9cf306d602fb6f75aba6dc29b501584c05686e865147351965998ac",
-      "received_at": "2026-09-17T09:43:47.214000+00:00",
-      "classification": "relevant",
-      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f",
-      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
-      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
-      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
-      "route_revision": 27,
-      "route_digest": "30cc95d68f7b78faa83f7bd885dbdc786cd7b1a65d88b9b69ba6172035ac5940",
-      "start_slow_ok": null,
-      "sandbox_tier_policy_version": "legacy-basic-v1"
-    },
-    {
-      "delivery_id": "d8bf38b3-a21c-4f32-81f3-949f08b2f212",
-      "payload_hash": "1b231128d3679527f81260714accb54629ca97569f23213fce000594c5061066",
-      "received_at": "2026-09-17T09:43:47.387000+00:00",
-      "classification": "relevant",
-      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f",
-      "label_selection_evidence_json": "{\"status\":\"unavailable\"}",
-      "label_selection_evidence_digest": "774a5957e1e1b76e5ba7d6a9b803e215b28d31ac0fae1df873a96758e7fb35ef",
-      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
-      "route_revision": 27,
-      "route_digest": "30cc95d68f7b78faa83f7bd885dbdc786cd7b1a65d88b9b69ba6172035ac5940",
-      "start_slow_ok": null,
-      "sandbox_tier_policy_version": "legacy-basic-v1"
     }
   ],
   "active_attempts_all": [],
@@ -275,7 +247,7 @@
       "work_type": "proposal_and_specs",
       "work_product_kind": "planning",
       "round": 1,
-      "state": "merge_authorized",
+      "state": "open",
       "repository": "sachinkundu/deos-sample-project",
       "pull_request_database_id": "4556896163",
       "pull_request_number": 40,
@@ -283,10 +255,10 @@
       "head_branch": "deos/planning/82dd8e71644ed8e99dddaff3",
       "base_branch": "main",
       "approved_head_sha": "e0ba9f693b46485a544ee4643088c39e147e4ef8",
-      "decision_delivery_id": "9e3ee3a4-b001-4615-baa5-116af28a5325",
-      "decision_outcome": "merge_authorized",
+      "decision_delivery_id": null,
+      "decision_outcome": null,
       "created_at": "2026-09-17T09:40:23.961Z",
-      "decided_at": "2026-09-17T09:44:02.221Z"
+      "decided_at": null
     }
   ],
   "errors": [],
@@ -310,5 +282,5 @@
     ],
     "created_on": "2026-09-17T08:53:23.432263Z"
   },
-  "observed_at": "2026-09-17T09:44:12.171934+00:00"
+  "observed_at": "2026-09-17T09:43:26.236220+00:00"
 }

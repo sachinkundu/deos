@@ -6,12 +6,14 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 
 | ID | UTC time / stage | Original failure or mismatch | Cause | Recovery and outcome | Evidence |
 | --- | --- | --- | --- | --- | --- |
+| READ-01 | 09:37–09:40, planning independent response, item_1 | `pwd && rg --files -g AGENTS.md ... && git status ...` exited 1 after printing only `/deos/workspace/repository` | No matching AGENTS.md in the sample checkout; shell `&&` prevented subsequent inventory commands | Author continued and completed the stage normally. No workflow change or supervisor retry needed. This repeats the expense canary's missing-file inventory behavior. | [Verified transcript excerpt](planning-stages-audit.json) |
 
 ## Normal actions
 
 - 09:14:29: D1 preflight confirmed no run and no active attempts; implementation v39 enabled, backend 8027527b at 100%.
 - 09:15:36.240: Real Linear Todo transition; relevant delivery de0b70ea-1ca2-4f87-ad55-a621fdc7505d received at 09:15:37.048; run 1 created at 09:15:44.488. Saved D1 readback confirms provider-originated start.
 - Five-minute supervision heartbeat run-reading-queue-canary-to-pr created successfully for this task; normal progress stays quiet, completion and substantive problems notify.
+- 09:43:46–09:44:06: reviewed the full PR40 diff at `e0ba9f693b46485a544ee4643088c39e147e4ef8`; independent review and traceability passed, durable planning gate8 open. Approved through a Linear comment and Merging transition. Delivery `9e3ee3a4-b001-4615-baa5-116af28a5325` consumed at09:44:02.221; PR40 merged09:44:06 as `12bf39e828964fef34825f7f2776dfc932f74535`. Normal authorized gate, not recovery.
 
 ## Operator errors
 
