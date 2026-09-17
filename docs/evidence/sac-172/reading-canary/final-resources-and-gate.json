@@ -1,0 +1,150 @@
+{
+  "result": [
+    {
+      "results": [
+        {
+          "attempt_id": "01a0aedf-2681-7fc0-8d7a-09ef8c99d582",
+          "kind": "local_data",
+          "status": "destroyed",
+          "cleanup_receipt": "{\"sandboxDestroyed\":\"impl-v1-p53yt4ofdralcsjjbamukdk3awxrxfjnth44qgvk2apwim3qh7ma\"}",
+          "updated_at": "2026-09-17T10:22:56.445Z"
+        },
+        {
+          "attempt_id": "01a0aee7-838e-7960-861e-c77dce71a2e2",
+          "kind": "local_data",
+          "status": "destroyed",
+          "cleanup_receipt": "{\"sandboxDestroyed\":\"impl-v1-2lchd6unm6kkrnls4upt6yeg75qixm2tazj5yx4pvvmu2qekvgva\"}",
+          "updated_at": "2026-09-17T11:04:31.282Z"
+        },
+        {
+          "attempt_id": "01a0aee7-838e-7960-861e-c77dce71a2e2",
+          "kind": "preview",
+          "status": "destroyed",
+          "cleanup_receipt": "{\"absent\":\"https://reforms-intervals-cathedral-aurora.trycloudflare.com\",\"relaySandboxDestroyed\":\"sbx-v1-srbongxpj64jxlu5psufgbyuuowmlojwdvtvvdoskmnjksztbzda\"}",
+          "updated_at": "2026-09-17T10:42:10.943Z"
+        },
+        {
+          "attempt_id": "01a0aee7-838e-7960-861e-c77dce71a2e2",
+          "kind": "browser",
+          "status": "destroyed",
+          "cleanup_receipt": "{\"absent\":\"0cb4f3d6-3e23-4808-ad4b-d1c668234897\"}",
+          "updated_at": "2026-09-17T11:04:27.441Z"
+        },
+        {
+          "attempt_id": "01a0af1c-7810-7e6a-a369-97c33af972e4",
+          "kind": "local_data",
+          "status": "ready",
+          "cleanup_receipt": null,
+          "updated_at": "2026-09-17T11:24:46.200Z"
+        },
+        {
+          "attempt_id": "01a0af1c-7810-7e6a-a369-97c33af972e4",
+          "kind": "preview",
+          "status": "destroyed",
+          "cleanup_receipt": "{\"absent\":null,\"relaySandboxDestroyed\":\"sbx-v1-hwyhwiv4l7cwgdyk3vf356nmsgy4w7mr3jxapo2tzqpzdiv6xbia\"}",
+          "updated_at": "2026-09-17T11:30:08.422Z"
+        },
+        {
+          "attempt_id": "01a0af1c-7810-7e6a-a369-97c33af972e4",
+          "kind": "browser",
+          "status": "destroyed",
+          "cleanup_receipt": "{\"absent\":\"92d6fa2a-f6e4-4f37-a631-86ffdbd267eb\"}",
+          "updated_at": "2026-09-17T11:46:11.900Z"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 1.7934
+        },
+        "duration": 1.7934,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 115167232,
+        "rows_read": 83,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "attempt_id": "01a0af0a-5455-75df-b4fd-67be4ba83875",
+          "evidence_opened": 10,
+          "last_opened": "2026-09-17T11:07:05.995Z"
+        },
+        {
+          "attempt_id": "01a0af18-1e0a-72ca-9e22-82fcc05ab00c",
+          "evidence_opened": 10,
+          "last_opened": "2026-09-17T11:21:47.301Z"
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 2.856
+        },
+        "duration": 2.856,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 115167232,
+        "rows_read": 190,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    },
+    {
+      "results": [
+        {
+          "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:775b1ebe-3de0-4889-9198-58ff8adb3c0f:run:1",
+          "visit_sequence": 30,
+          "node_id": "implementation_review",
+          "expected_event_kind": "state",
+          "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+          "issue_id": "775b1ebe-3de0-4889-9198-58ff8adb3c0f",
+          "human_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+          "question_id": null,
+          "pr_number": 42,
+          "head_sha": "671e0e1cd80d38c880dd10849238c62c13cb9bfa",
+          "base_sha": "e5e1bdc74463d388ddbddd6d410d367f022ded64",
+          "state": "open",
+          "decision_delivery_id": null,
+          "decision_outcome": null,
+          "opened_at": "2026-09-17T11:38:52.648Z",
+          "decided_at": null
+        }
+      ],
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "WEUR",
+        "served_by_colo": "AMS",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.2645
+        },
+        "duration": 0.2645,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 115167232,
+        "rows_read": 2,
+        "rows_written": 0,
+        "total_attempts": 1
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}

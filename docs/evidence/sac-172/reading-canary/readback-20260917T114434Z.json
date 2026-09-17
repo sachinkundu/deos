@@ -464,7 +464,7 @@
       "started_at": "2026-09-17T11:24:34.571Z",
       "ended_at": "2026-09-17T11:37:59.452Z",
       "result_class": "completed",
-      "cleanup_state": "destroyed",
+      "cleanup_state": "failed",
       "sandbox_id": "impl-v1-puohbki263kobrq7k5mj7fayr7gqcvwdaji2yu4fr57fnqigpwmq"
     }
   ],
@@ -705,5 +705,5 @@
     ],
     "created_on": "2026-09-17T11:14:03.743273Z"
   },
-  "observed_at": "2026-09-17T11:46:23.777879+00:00"
+  "observed_at": "2026-09-17T11:44:34.264814+00:00"
 }

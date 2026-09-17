@@ -26,6 +26,9 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 | READ-15 | 11:26–11:31 window, review response items21 and25 | `Isolated preview relay reconciliation HTTP 530: error code: 1016`, twice | Public relay could not be reconciled; underlying provider cause not established | Local app remained healthy and hosted demos continued. Item21's later curl returned0 and item25's status echo returned0, masking the failed preview at shell level; original error output retained and counted. Two occurrences; no supervisor intervention. | [Both errors and masking commands](review-response-preview-errors.json) |
 | READ-16 | 11:26–11:31 window, review response item24 | `preview_missing`: `Start the safe preview before opening a browser` | Author requested local browser navigation after public preview registration had failed | Switched to existing hosted target; revised final demo has completed its first two scenarios. No supervisor intervention. | [Exact error and running hosted demo](review-response-preview-errors.json) |
 
+| READ-17 | 11:38:02, successful response cleanup | `Browser close is not yet confirmed` propagated as Implementation resource cleanup failed and Sandbox destruction failed | Provider close acceptance preceded confirmed session absence | Existing scheduled reconciliation confirmed browser absent11:46:11.900 and attempt cleanup destroyed by11:46:23. No extra supervisor action, app retry or deployment. Two D1 error rows, one causal cleanup incident. | [Original cause chains](cleanup-final-errors.json); [resource readback](final-resources-and-gate.json) |
+| READ-18 | Final resource audit | Response local_data row remains ready with null cleanup receipt after owner attempt cleanup is destroyed | Cleanup resource bookkeeping was not reconciled with sandbox destruction; exact code path not investigated in this run | Recorded for workflow follow-up. Browser and preview resources are destroyed; no evidence that the local data runtime remains live. No manual D1 edit. PR completion is unaffected. | [Resource and gate readback](final-resources-and-gate.json) |
+
 ## Normal actions
 
 - 09:14:29: D1 preflight confirmed no run and no active attempts; implementation v39 enabled, backend 8027527b at 100%.
@@ -56,6 +59,8 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 
 - 11:14UTC: local diff check found a trailing blank line in the copied typecheck log (exit2). Trimmed that log-only formatting; runtime source and tests were unaffected.
 
+- Final browser verification: two optional DOM-based crop inspections timed out before evaluation; native browser screenshots succeeded for those same images. One unquoted question mark in a local gh path was rejected by zsh before a network call; quoting the path retrieved Showboat successfully. Local operator errors only, no cloud-canary impact.
+
 ## Expected nonzero results
 
 - Design response item34: `git diff --no-index --check /dev/null openspec/changes/sac-245/design.md` exited1 with no output. The comparison has a new nonempty file; this is the expected difference exit status, not a whitespace error. Retained in [raw exit scan](design-response-audit.json), excluded from unexpected failure counts.
@@ -78,3 +83,11 @@ No failures observed at preflight. This is an in-flight observation, not a relia
 
 - 11:24:29UTC: repaired Claude review completed with needs_work and no new reader failure. It found three gaps in the selected nine-image gallery: no full status-cycle/before-after count sequence, no selected empty filter state, and no saved author shown after the invalid edit. It also noted missing in-page measurements; trusted preview records support origin and viewport. These are normal proof-selection findings, not app defects or fake evidence. [Full review](claude-review-result.json).
 - 11:26UTC: cloud author response is running with the saved app. It explicitly identifies proof-only work and intends three focused scenarios, preserving implementation. Fresh-sandbox dependency installation is active under one checked operation. No supervisor app changes or additional intervention.
+
+## Final outcome
+
+- PR42 is open and ready for human review at671e0e1cd80d38c880dd10849238c62c13cb9bfa, unmerged/unreleased. Implementation gate30 is open since11:38:52.648 with no approval decision.
+- Final five-scenario collection completed11:35:25.664:16captures,13selected images plus one Showboat record. Cloud31tests/build pass. Source bytes for all17PR files match the reviewed candidate.
+- Connected external Brave verified the live preview and eight published behavior screenshots, including all three requested proof corrections. All13image URLs returnedHTTP200 without auth and matched their namedSHA256,1440x900. No replacement proof was authored locally.
+- Supervisor intervention: one workflow-only reader repair/deployment and one same-stage Claude retry (READ-12). Prerequisite approvals were normal authorized gates. Remaining canary errors recovered through cloud-agent action or existing reconciliation; checklist batching (READ-11) and resource bookkeeping (READ-18) remain logged follow-ups.
+- Review packaging caveat: the generated preview label says built before latest changes because task-checkbox bookkeeping changed the tree. Final app source is unchanged and the cloud rebuild has the same asset names/bytes. No stale app implementation was found. Cloud author image-inspection claims were kept distinct from the final independent browser checks.
