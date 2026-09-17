@@ -260,3 +260,21 @@ D1 at16:08:17UTC confirms revision decision delivery
 v41 run is active at design_revision_author visit22, attempt
 01a0b01f-ffa9-7429-9728-26761f261760 started16:08:02.341. No new workflow
 errors appeared in this observation. Design PR44 remains unmerged.
+
+## 2026-09-17 16:14 UTC — Revision audited, independent review active
+
+Cloud revision author01a0b01f-ffa9-7429-9728-26761f261760 completed. The
+hash-verified199,780-byte transcript contains12completed commands, zero
+nonzero exits and zero provider errors. Trusted completion passed. PR44 head
+bfcf9e084136134b2dfab551ee378c2c925670ef now keeps a public recovery title/ID
+in the deleting operation, projects it even when the index row is absent,
+separates in-flight from persisted pending state, and enables Retry delete
+after failure and refresh. The design requires a deterministic failure/retry
+test after index removal. STORE-07 is addressed in design; implementation
+verification remains pending. No local sample-app changes were made.
+
+D1 at16:14:29 confirms independent design review attempt
+01a0b024-e450-7fa5-8db1-a981f5a0f7d5 active at visit24. No new error appeared.
+Do not approve until its result and any response are inspected and a fresh
+D1 gate is open. Evidence: design-revision-audit.json. No user notification
+was sent because this is ordinary recovery progress.

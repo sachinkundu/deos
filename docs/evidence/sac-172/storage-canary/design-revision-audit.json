@@ -1,0 +1,11 @@
+{
+  "attemptId": "01a0b01f-ffa9-7429-9728-26761f261760",
+  "transcriptSha256": "20f3452a2dbd7df38d941d7beac7d5fd021b57de4d9b89fc258bdb564f4dba24",
+  "transcriptBytes": 199780,
+  "completedCommands": 12,
+  "nonzeroCommands": [],
+  "providerErrors": [],
+  "reviewedHead": "bfcf9e084136134b2dfab551ee378c2c925670ef",
+  "supervisorFinding": "STORE-07 addressed in design: persistent delete_title and operation-based list projection retain recovery ID; in-flight and pending separated; explicit Retry delete survives refresh; deterministic failure after index removal required.",
+  "status": "awaiting independent review and author response before gate"
+}

@@ -186,3 +186,10 @@ Supervisor tooling note: one read-only source search failed before execution
 with `zsh:1: no matches found: workflows/implementation*`. A repository-wide
 search found the actual config/workflow.implementation.yaml transition mapping.
 No workflow state or artifacts were affected by that search mistake.
+
+STORE-07 design recovery at16:14UTC: the cloud revision supplies persistent
+recovery metadata, an enabled Retry delete after refresh, and a deterministic
+failure/retry test requirement. Supervisor reviewed the full current design.
+The design fix is verified at head bfcf9e084136134b2dfab551ee378c2c925670ef;
+its implementation and test behavior remain to be verified by the canary.
+Independent review is running; no gate was bypassed.
