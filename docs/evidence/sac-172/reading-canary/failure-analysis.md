@@ -6,6 +6,45 @@ The previous operation-management repairs worked in this run. New review-tool tr
 
 This is a historical analysis through the implementation gate at 11:38:52 UTC, with cleanup evidence through 11:46:23. It does not advance the PR or infer any later human decision. No runtime or application change was made during this analysis.
 
+## What was automatically fixed or recovered
+
+The cloud agents and existing workflow recovered the following without a supervisor repair. A recovered occurrence does not mean its underlying cause was permanently fixed, so some areas also appear under remaining work.
+
+| Problem | Automatic action | Result and remaining limit |
+| --- | --- | --- |
+| Missing design headings — READ-02 | The cloud author added the three required headings and reran validation. | The design artifact was fixed in the same attempt. No local edit or restart. |
+| Planning and design review findings | The cloud author revised the planning/design artifacts and responded to the independent review. | Normal review revisions completed before the authorized gates. These are quality improvements, separate from execution-failure counts. |
+| Incomplete implementation screenshots | After Claude identified three gaps, the cloud author captured and selected a revised gallery. | The final images show the status cycle/counts, empty selected filter, and saved author after an invalid edit. Application code stayed unchanged; 13 images were published. No second Claude pass was performed. |
+| Local preview failures — READ-08, 13–16 | The author continued through the supported hosted preview after local readiness, relay and navigation failures. | Work completed without supervisor intervention. This was a workaround; the relay cause and unnecessary local route remain unresolved. Protected-file permissions were not changed. |
+| Hosted asset and navigation failures — READ-09–10 | The author read back the same deployment and retried navigation to the same target. | The asset and browser became reachable without a replacement deployment. The underlying transport causes remain unknown. |
+| Two progress-notification timeouts — READ-06 | Existing retry/ongoing progress collection remained active. | Later durable progress and heartbeats were observed; no run restart. Which delivery path recovered each update is not established. |
+| Delayed browser cleanup — READ-17 | Existing reconciliation later confirmed session absence and sandbox destruction. | Cleanup recovered about eight minutes after the first error. The separate stale local-data row was not fixed. |
+| Discovery misses and early status lookup — READ-01, 03–05, 07 | The author used available instructions/tools and continued. The environment check was eventually submitted. | Five discovery misses did not stop the run. The early status lookup led to a duplicate small check, so this was recovery with wasted work rather than a permanent correction. |
+
+## What I fixed
+
+**One workflow defect: the frozen-source review reader rejected directory searches (READ-12).** Claude searched `candidate/src`; the reader only supported individual files. That failure stopped the review and could not recover without a workflow repair.
+
+I changed the reader to expand a directory only over the already-approved frozen file inventory, retained path and content-hash protections, and updated the tool help. I added regression coverage: 16 targeted tests and typecheck passed, and replaying the exact failed command against the saved inputs succeeded.
+
+I deployed at a stopped gate with no active attempts, verified the Worker at 100% traffic and the expected healthy container rollout, then retried the same review stage. It completed using the original candidate and proof. This was **one repair episode, one deployment and one saved-stage retry**. The failed attempt lasted 3m42s; another 11m21s elapsed before the replacement attempt started, covering diagnosis, validation, rollout and retry.
+
+I also preserved the original errors, audited the transcripts, and checked the final preview and image links. Those were supervision and verification, not additional code fixes. I made **no application-code, application-test or demonstration edits**. The prerequisite approvals were normal authorized actions, not recovery interventions. [Repair evidence](review-directory-failure.json).
+
+## What still needs fixing
+
+| Priority | Unresolved problem | Required correction |
+| --- | --- | --- |
+| High | Checklist jumps from 0 to 17 — READ-11 | Record each real task completion when it happens, with active-task information between completions. The author bulk-wrote the checkboxes; faster portal polling cannot create the missing intermediate states. Measure delivery to the portal in the next canary. |
+| High | Unnecessary local-preview setup and repeated relay failures — READ-08, 13–16 | Make direct hosted preview the clear default for static apps and expose the existing hosted target on response startup. Investigate the relay separately; its DNS/provider cause is still unknown. |
+| High | Failed commands appear successful — READ-15 | Preserve the failed operation's status when later diagnostic commands succeed. Two relay failures were hidden by curl/echo success. Keep original output and provide supported sanitized diagnostics rather than protected-file access. |
+| Medium | Cleanup resource row remains ready after sandbox destruction — READ-18 | Reconcile resource metadata in scheduled cleanup as well as normal cleanup. The scheduled path lacks the normal post-destruction resource update, a plausible explanation that still needs a targeted reproduction. |
+| Medium | First submitted gallery omitted required behavior | Help the author map each claimed behavior to selected before/after images. Align the planner, skill and reviewer on where browser measurements belong. The current gallery was corrected; prevention is still missing. |
+| Medium | Progress delivery can time out — READ-06 | Capture delivery latency and recovery evidence before tuning the timeout. Recovery worked here; there is no demonstrated reason to restart active work. |
+| Lower | Premature status queries, optional discovery noise and misleading preview freshness | Distinguish submission acknowledgement from completion; reuse operation IDs; handle optional absence explicitly; distinguish unchanged served assets from task-only tree edits in the preview label. |
+
+These are proposed follow-ups, not deployed fixes. Detailed causes, evidence and acceptance criteria follow below. No impact from the user's temporary staging portal outage was established.
+
 ## Counts and comparison
 
 | Measure | SAC-243 expense tracker | SAC-245 reading queue |
