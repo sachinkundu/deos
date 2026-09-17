@@ -1078,3 +1078,20 @@ Full causes, original outputs, receipts and proof limits are recorded in
 [evidence/sac-172/storage-canary/failures.md](evidence/sac-172/storage-canary/failures.md).
 Remote demo, independent implementation review, publication and cleanup remain
 pending; these local checks do not establish complete canary success.
+
+### SAC-246 STORE-14: missing broker Worker-to-Worker routing
+
+The real remote publication gate caught Cloudflare1042 on three attempts.
+Worker/D1/R2 allocation was real and owned, but the broker could not call the
+Worker health endpoint without global_fetch_strictly_public. External health
+was200. Cloud author preserved its work and entered clarification; no proof
+was fabricated. Supervisor added the runner flag, passed dry-run/typecheck,
+and deployed only after all attempts stopped. Activation is100percent and
+container rollouts remain completed on the expected image. Resumed cloud
+publication must verify the repaired path. Original error and deployment
+receipts are in storage-canary evidence; application code was not edited locally.
+
+Final transcript audit also found a recovered missing formatting request
+(STORE-15) and four local-preview relay failures with530/1016 (STORE-16).
+The relay cause remains unproven; the remote D1/R2 route does not require it.
+See the detailed storage-canary failure log for original outputs and counts.

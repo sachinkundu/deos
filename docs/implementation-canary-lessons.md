@@ -325,3 +325,15 @@ diagnostic output and are not supported steps in an ordered screenshot demo.
 See the [prepared repair report](evidence/sac-172/reading-canary/prepared-repairs.md)
 for validation and limitations, and the [D1/R2 canary brief](evidence/sac-172/reading-canary/next-storage-canary.md)
 for the backend capability required before that next run.
+
+## Remote environment control must use public Worker routing
+
+The deployed broker needs global_fetch_strictly_public for authenticated fetch
+calls to temporary Workers on the same workers.dev zone. Without it, health,
+storage control and teardown requests can fail with Cloudflare1042 even when
+the temporary Worker responds200 to an external caller. The Node adapter probe
+does not exercise this Worker-to-Worker path. Validate the deployed broker path
+before claiming remote provisioning works; do not mark an environment ready
+from a laptop health check. Keep ownership, control authentication and served
+bundle-digest validation intact. Deploy this configuration only with no active
+agent attempts, then resume saved work through supported recovery.

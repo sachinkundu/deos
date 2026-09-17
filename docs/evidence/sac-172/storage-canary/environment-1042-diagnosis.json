@@ -1,0 +1,21 @@
+{
+  "observedAt": "2026-09-17T17:47:59.947563+00:00",
+  "callerCompatibilityFlags": [
+    "nodejs_compat"
+  ],
+  "callerCompatibilityDate": "2026-08-16",
+  "environment": "deos-tmp-366011a3f9d248f2edfd399c",
+  "directHealth": {
+    "status": 200,
+    "body": "{\"digest\":\"ecf89468ceabf6e4b518d15a1956dc42f71d90cfa001d74914f97423c402ba74\",\"retiring\":false,\"d1\":true,\"r2\":true}"
+  },
+  "activeAttempts": [
+    {
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "attempt_id": "01a0b055-e41e-7038-ba7f-32ba533b7141",
+      "node_id": "implementation_build",
+      "state": "running"
+    }
+  ],
+  "reference": "https://developers.cloudflare.com/workers/observability/errors/"
+}

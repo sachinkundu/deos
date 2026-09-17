@@ -319,3 +319,63 @@ ran formatting, then sac246-typecheck-2 passed17:28:12.618 with exit0 and empty
 stderr. Automatically fixed by the author; no supervisor implementation edits.
 The next test operation was running at17:28:30. Final build manifest and
 independent gates still need to validate the complete candidate.
+
+### STORE-14 — Runner lacked public routing for temporary Worker control
+
+Three publish operations (sac246-remote-1/2/3) failed17:46:17,17:46:43 and
+17:47:38 with `Temporary Worker health: HTTP 404 error code: 1042`.
+A subsequent migration failed `Remote environment is not ready`; this is a
+consequence of the blocked publication. D1 confirms one owned allocation,
+Worker deos-tmp-366011a3f9d248f2edfd399c, D1 and R2, but no ready receipt.
+Retries reconciled that same allocation. Original errors/stacks are preserved
+in environment-publish-failures.json and the completed manifest.
+
+Supervisor confirmed the deployed broker only had nodejs_compat. Cloudflare's
+primary errors documentation identifies1042 as same-zone Worker fetch without
+global_fetch_strictly_public. A separate authenticated external health read
+returned200 with the exact saved bundle digest and both bindings. This isolates
+the failure to the broker's routing configuration, not missing API permissions
+or unhealthy application code. See environment-1042-diagnosis.json and
+https://developers.cloudflare.com/workers/observability/errors/.
+
+Cloud author correctly stopped with needs_human,26/32tasks, at17:48:37 rather
+than substituting static/emulated proof. Full1,191,408-byte transcript and
+195,415-byte app patch were hash-verified from R2. Sandbox destroyed; D1 reached
+implementation_clarification_wait visit41. This exercises the implementation
+clarification gate and preserved-work recovery path. The question incorrectly
+said no remote origin existed; the allocation existed but was not ready.
+
+Supervisor added only the broker compatibility flag and documented the lesson.
+Wrangler dry-run and TypeScript checks passed. Fresh D1 had zero active attempts
+before deployment; backend7ecbe986-d40a-47e5-ad9c-05fb4b527490 deployed with
+containers-rollout none. No app code was edited. Activation and resumed cloud
+publication must verify the repair. The original allocation remains tracked
+and must be deleted with all run-owned resources after durable PR proof.
+
+### STORE-15 — Missing formatting request file, automatically recovered
+
+Full final transcript audit found item54 failed ENOENT opening
+/deos/output/requests/format-write-3.json. Cloud author corrected its request
+preparation and final formatting passed. One command failure, no provider
+incident and no supervisor app edit. Original full stack in
+build-clarification-audit.json. This was missed by the earlier tail-only read.
+
+### STORE-16 — Local isolated preview relay unavailable
+
+Before remote publication, four preview calls failed: initial public readiness
+failure followed by three `Isolated preview relay reconciliation HTTP 530:
+error code: 1016` responses. Local workerd root check later passed, but public
+relay/DNS cause remains unproven. This repeats the prior canary's local relay
+symptom; it is separate from1042 and not claimed fixed by the new flag.
+The approved canary uses publish_environment with real D1/R2, so local relay
+success must not become an unnecessary prerequisite. Retain this as unfixed
+workflow behavior. Original errors/stacks in build-clarification-audit.json.
+
+Final build audit:86completed shell commands,34nonzero exits, including16
+exit75 in-progress reads and repeated observations of failed operations.
+Do not treat those34 as34independent failures. Nine distinct failed trusted
+operations: install1,typecheck1,test1/2/3,remote1/2/3,migrate1; additionally one
+missing request file and four local preview calls. Zero native provider error
+events does not erase these recorded tool/provider failures. Supervisor-only
+read searches also named two nonexistent paths (test and src/implementation.ts),
+returned exit2 and were corrected; no remote effect or cloud incident count.

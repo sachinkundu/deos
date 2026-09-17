@@ -493,3 +493,23 @@ demo evidence, PR publication and ownership cleanup still need proof. The user
 confirmed workflow and implementation gates are the canary's purpose; avoid
 additional product polish and assess whether each gate enforces its contract.
 The progress sampler remains active. New test-error notice sent once.
+
+## 2026-09-17 17:51 UTC — Runner routing repair at implementation question gate
+
+STORE-14: real temporary Worker/D1/R2 allocated, but three publication checks
+failed1042 because broker lacks global_fetch_strictly_public. External control
+health200 confirms exact bundle and bindings; do not promote readiness manually.
+Cloud build stopped needs_human17:48:37 and saved complete transcript/patch.
+D1 question gate implementation_clarification_wait visit41 has no active agents.
+Linear question391b67e0-8ed4-4b4f-8c0b-c0d1891e990b asks for runtime repair.
+A comment reply is the authorized resume event; no state change is needed.
+
+Supervisor changed broker config only, dry-run/typecheck passed, and deployed
+7ecbe986-d40a-47e5-ad9c-05fb4b527490 with no container rollout after fresh D1
+quiescence. Verify activation/ready before replying. Resume saved application
+work; no local app edits. Old allocating environment remains owned by run and
+must be included in final cleanupRun after proof publication. Local relay1016
+also occurred four times and remains a separate limitation; direct remote
+publish_environment is the approved route. STORE-15 missing request file was
+cloud-recovered. Full final transcript audit is build-clarification-audit.json.
+User was notified of1042 and safe stopped-gate repair once; no action needed.
