@@ -1,0 +1,18 @@
+{
+  "filesVerified": 16,
+  "detectedNonzeroCommandsAndErrors": [],
+  "validationSummaries": [
+    {
+      "file": "/tmp/sac245-artifacts/6d5db250c787-trace-validation.txt",
+      "text": "materialized 10 links and 0 findings to /tmp/deos-trace-review-m1vqxX/bettaview-traceability.json\n\nvalidated both independent directional passes\naccepted one-sided semantic claims as review information\nvalidated exact source hashes\n"
+    },
+    {
+      "file": "/tmp/sac245-artifacts/b1634acc122c-trace-validation.txt",
+      "text": "validated closed finding inventory and current exact source hashes\n"
+    },
+    {
+      "file": "/tmp/sac245-artifacts/dd985cb87a97-trace-validation.txt",
+      "text": "validated closed finding inventory and current exact source hashes\n"
+    }
+  ]
+}
