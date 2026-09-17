@@ -457,3 +457,8 @@ produce visible count jumps even though individual signals are delivered.
 Record this author behavior separately from transport latency; implementation
 checks/review gates must still validate the claimed work. No intervention is
 needed just to force cosmetic1-by-1 updates. Sampler71437 remains active.
+
+At17:21:51 live readback confirms install2 completed17:21:30.114 with exit0.
+STORE-10 is automatically fixed. Task receipts also show individual counts
+16,17,18 emitted17:21:19.812,17:21:22.727,17:21:25.423. The burst comes from
+authored batch marking, while the signal path continues delivering each count.

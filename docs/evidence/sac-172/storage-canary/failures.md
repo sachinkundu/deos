@@ -265,3 +265,8 @@ Recovery is owned by the cloud agent. No local application edit or runtime
 deployment was made. Exact command and nested stderr retained in
 build-live-audit-1720.json; final durable manifest audit pending. User notified
 once that the dependency install is being corrected; no action required.
+
+STORE-10 recovery confirmed: sac246-install-2 completed17:21:30.114, exit0,
+84packages installed and empty stderr. Saved full operation receipt in
+dependency-install-recovery.json. The cloud agent fixed its own dependency
+selection; no supervisor code change was needed. Build remains in progress.
