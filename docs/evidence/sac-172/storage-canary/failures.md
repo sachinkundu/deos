@@ -398,3 +398,28 @@ Fresh-sandbox observation: a find command returned1 because generated build/dist
 were absent. Source/tasks were restored; cloud author installed and rebuilt, then
 published the identical bundle. Treat as expected missing generated outputs,
 not lost implementation or a new infrastructure incident.
+
+### STORE-17 — Visual review caught CSS overriding hidden reader content
+
+The cloud author inspected the first completed remote-browser collection
+8bb84eb7-03af-4267-9a28-54dc3b209a3d (five scenarios, completed18:04:14) and
+reported that the hidden loading placeholder remained visible over loaded
+text because the stylesheet overrode hidden. Browser steps and API behavior
+had passed; this is a visual application defect found by image inspection,
+not a failed browser-tool operation. Agent report and original collection
+receipts are in browser-first-capture-audit.json.
+
+Cloud author alone added a [hidden] display rule. Formatting/build passed,
+same owned environment republished18:06:21 with bundle72f8e3c7… and Worker
+version0a8aa297-8d8b-4dce-bec8-8c0572e9dd70. It cleared synthetic fixtures,
+verified empty API/R2, and deliberately recaptured the full ordered sequence
+under a new operation ID. Collection66dd9f02-140c-48b8-89a6-9cd23908d260
+completed18:08:28.483. This is required fresh evidence after an app change,
+not an accidental duplicate submission. Captures and receipts are preserved
+in browser-css-recapture-proof.json. Final image review/independent gates
+still need to confirm the corrected presentation; no supervisor app edit.
+User notified once; no action required.
+
+Agent commentary says the runtime skill blocks native patching and it used
+the allowed shell instead. There is no failed native-patch tool event in the
+captured transcript, so this is not counted as another executed tool failure.

@@ -567,3 +567,26 @@ one; final cleanup must delete both. No new deployment or app edit this cycle.
 Sampler71437 remains running until about18:07; check it before launching another.
 One supervisor audit snippet had a Python syntax typo before execution, corrected
 immediately; no remote effect and excluded from cloud error counts.
+
+## 2026-09-17 18:09 UTC — Real API/browser proof and cloud visual correction
+
+Direct remote API fixtures passed save/list/read/delete/invalid input with
+matching D1 and R2 readbacks, then were removed before browser scenarios.
+First ordered browser collection completed five scenarios18:04:14, including
+fresh-context continuity without reseeding. Cloud visual inspection caught
+STORE-17, hidden loading text overlapping the reader. Author fixed CSS,
+rebuilt/republished, reset synthetic data, and completed the full corrected
+collection18:08:28.483. All changes remained with the cloud author. No local
+application edits, workflow deployment, or manual gate advancement.
+
+Current candidate tree7c6f82ce26df133bae118452cbb84c6bf16e5403, bundle72f8e3c7…,
+Worker0a8aa297-8d8b-4dce-bec8-8c0572e9dd70 on the same new temporary environment.
+Two run-owned allocations remain; preserve both until service cleanup after
+GitHub evidence. The five browser scenarios do not yet prove stale-page failure
+or final storage/cleanup plan points; allow author completion and independent
+demo review to assess coverage before intervention. Final visual review pending.
+
+Original sampler71437 finished normally after its one-hour bound. Started new
+bounded read-only sampler90910 at18:08:25 for at most another hour. Poll90910
+instead of starting a duplicate. User notified once for STORE-17. Native patch
+avoidance commentary has no failed tool event and is not counted as a failure.
