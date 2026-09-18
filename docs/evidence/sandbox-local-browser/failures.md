@@ -189,3 +189,23 @@ capacity refusal created through real browser saves. Raw final readback lists
 100R2objects, truncated:false, and the matching D1state. No synthetic reservations
 were used for this repeated capacity scenario. Final-cloud-demo-receipt.json and
 final-cloud-storage-proof.json retain the receipts. Review/publication still pending.
+
+## LOCAL-08: native patch tool blocked
+
+Completed author artifacts expose a second final-status preparation error at
+08:31:36.178552UTC: the agent tried native apply_patch to write status-final.json.
+The PreToolUse hook blocked it and directed the author to shell file writes.
+The author then used tee, followed by the separately logged LOCAL-07 CLI mistake,
+and corrected that too. Hook enforcement worked; no prohibited write occurred.
+Original native stderr is preserved in native-hook-error.txt. This repeats the
+prior storage canary's unsupported native tool use, not a new app failure.
+No supervisor intervention. Both errors belong to final status preparation, but
+are distinct failed actions/causes. This additional error was reported once.
+
+Durable artifact audit verified SHA256 for all5completed author artifacts.
+Chromium closed08:32:30.875 after all captures. The completion manifest has
+transcript, result, patch, validation and implementation-diagnostics, but no
+original-errors.jsonl. The progress watcher timeout survives in the supervisor's
+live capture and repeat-errors-0800.json, not a dedicated runtime artifact.
+This reinforces the existing diagnostic-retention follow-up; do not claim all
+original errors would survive unsupervised collection.
