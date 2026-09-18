@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { setupImplementation } from "./implementation-runtime.mjs";
 import { implementationProcessFailure } from "./implementation-process-failure.mjs";
+import { createProviderRetry, PROVIDER_RESUME_PROMPT } from "./provider-retry.mjs";
+import { setTimeout as sleep } from "node:timers/promises";
 import { checkAuthorSources } from "./grounded-review.mjs";
 import { provisionGrounding, verifyGroundingContext, verifyNativeGrounding } from "./grounded-agent.mjs";
 import { setupNativeReview } from "./native-review-setup.mjs";
@@ -203,7 +205,7 @@ const main = async () => {
         recordCaughtError(caughtError, "container/supervisor.mjs:202");}
     }, 10_000).unref();
   }, Math.max(0, deadline - Date.now()));
-  const run = async (childPrompt, resumeSessionId = null) => {
+  const runOnce = async (childPrompt, resumeSessionId = null) => {
     if (Date.now() >= deadline) return { code: 124, signal: null };
     if (resumeSessionId !== null) await rm(RESULT_PATH, { force: true });
     const result = await runChild({
@@ -222,6 +224,38 @@ const main = async () => {
     activePid = null;
     await heartbeat();
     return result;
+  };
+  const retryProvider = createProviderRetry({ deadline, sleep, record: async ({ error, ...receipt }) => {
+    recordCaughtError(error, "model provider retry");
+    const entry = { ...receipt, attemptId: job.attemptId, model: job.model,
+      message: error.message, detail: originalErrorText(error) };
+    try {
+      await appendFile(`${OUTPUT_ROOT}/provider-retries.jsonl`, `${JSON.stringify(entry)}\n`, { mode: 0o600 });
+    } catch (storageError) {
+      throw new AggregateError([error, storageError], "Could not preserve provider retry decision", { cause: error });
+    }
+  }});
+  const run = async (childPrompt, resumeSessionId = null) => {
+    // Reviewer runners own separate provider sessions and recovery journals.
+    // Do not replay a whole reviewer invocation through a Codex resume path.
+    if (reviewer) return runOnce(childPrompt, resumeSessionId);
+    return retryProvider({ sessionId: () => tracker.finish(), run: async (retrySessionId) => {
+      const beforeTranscript = (await transcript.read()).length;
+      const beforeStderr = (await validation.read()).length;
+      let nextPrompt = childPrompt;
+      if (retrySessionId) {
+        const path = `${RUN_ROOT}/provider-retry-prompt.txt`;
+        await writeFile(path, PROVIDER_RESUME_PROMPT, { mode: 0o600 });
+        nextPrompt = await readFile(path, "utf8");
+      }
+      const result = await runOnce(nextPrompt, retrySessionId ?? resumeSessionId);
+      if (retrySessionId && tracker.finish() !== retrySessionId) {
+        throw new Error("provider retry resumed a different session");
+      }
+      const error = implementationProcessFailure(result,
+        (await transcript.read()).slice(beforeTranscript), (await validation.read()).slice(beforeStderr));
+      return { result, error };
+    }});
   };
   const authorCheck = async () => {
     const needsDispositions = designAuthor && job.requiredOutputs?.includes('design-dispositions.json');

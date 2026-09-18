@@ -53,6 +53,7 @@ COPY src/implementation-browser-evidence.ts /deos/bin/
 COPY container/deos-implementation /usr/local/bin/deos-implementation
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
 COPY container/supervisor-io.mjs /deos/bin/supervisor-io.mjs
+COPY container/provider-retry.mjs /deos/bin/provider-retry.mjs
 COPY container/attempt-completion.mjs /deos/bin/attempt-completion.mjs
 COPY container/author-completion.mjs /deos/bin/author-completion.mjs
 COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs

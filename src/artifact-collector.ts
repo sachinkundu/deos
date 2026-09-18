@@ -348,7 +348,13 @@ export class ArtifactCollector {
       let totalBytes = 0;
       let result: Readonly<Record<string, unknown>> | null = null;
       let providerReceipts: readonly ProviderReceiptReference[] = [];
-      for (const logicalName of input.requiredFiles) {
+      // A recovered provider failure is still part of the run's evidence.
+      // Keep its journal in the verified manifest, not an unindexed side copy.
+      const requiredFiles = [...input.requiredFiles];
+      if (await this.reader.exists(`${input.outputRoot}/provider-retries.jsonl`)) {
+        requiredFiles.push("provider-retries.jsonl", "original-errors.jsonl");
+      }
+      for (const logicalName of new Set(requiredFiles)) {
         if (logicalName.includes("/") || logicalName.includes("..")) {
           throw new Error("artifact logical names must be plain filenames");
         }
@@ -492,7 +498,9 @@ export class ArtifactCollector {
     // owns separate immutable keys; legacy partial failure manifests stay intact.
     const manifestId = `manifest:${input.attemptId}:failure-v2`;
     const prefix = `runs/${encodeURIComponent(input.runId)}/attempts/${input.attemptId}/failure-v2`;
-    const expectedFiles = [...new Set([...input.expectedFiles, "status.json", "original-errors.jsonl"])]
+    const retryFiles = await this.reader.exists(`${input.outputRoot}/provider-retries.jsonl`)
+      ? ["provider-retries.jsonl"] : [];
+    const expectedFiles = [...new Set([...input.expectedFiles, ...retryFiles, "status.json", "original-errors.jsonl"])]
       .filter((name) => name.length > 0)
       .sort();
     if (expectedFiles.some((name) => name.includes("/") || name.includes(".."))) {
