@@ -112,3 +112,17 @@ Linear event was consumed and implementation_build visit51 started, with frozen
 definition41 and approved inputs unchanged. The five-minute supervisor heartbeat
 is active. No new implementation-attempt failure has been observed at this point;
 the full transcript and final cleanup audit remain pending.
+
+## Implementation repeat: first observed failures
+
+All entries below belong to attempt01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5, visit51.
+The source snapshot and original messages/stacks are in repeat-errors-0800.json;
+full private captures remain in /tmp/sac246-local-browser-reader.
+
+| ID | Error and evidence | Cause and recovery ownership | Current outcome |
+| --- | --- | --- | --- |
+| LOCAL-01 |07:52:24.196, implementation progress signal: `DOMException [TimeoutError]: The operation was aborted due to timeout`, at implementation-progress-watcher.mjs:31 | The notification exceeded its timeout; underlying network cause unknown. Existing progress retry/collection owns recovery. This repeats READ-06 and prior storage progress timeouts. | The author remained running and commands progressed; successful delivery path is not yet established. No supervisor restart. |
+| LOCAL-02 | The task helper rejected `Task 6.1 is completed; reopen it with state pending before marking active` | Cloud author sent active for a previously completed task. The guard worked. The containing shell went on to dependency installation and exited0; trusted diagnostics retained the error. This repeats the prior run's task-transition misuse. | Not a fatal attempt error; author continues. Do not claim a completed repair until a valid task transition is observed. |
+| LOCAL-03 | check-current-1 finished08:00:08,15/16tests passed; tests/api.test.ts:135 expected201 but received500. Original activation cause: `AssertionError ... (message?.id === id)` | Local test-adapter message assertion; exact root cause remains unproven. Cloud author owns investigation. Deliberately injected list/put failures in passing tests are excluded. The wait and receipt poll show the same failed operation, counted once. | Isolated rerun test-api-read-rerun-1 passed08:01:27 without weakening the assertion. Full suite rerun is active. This is recovery progress, not proof the underlying intermittent cause is fixed. No supervisor app edit. |
+
+These errors have been reported to the user once. Do not repeat unchanged notices.

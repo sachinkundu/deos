@@ -105,3 +105,12 @@ Process4adb6fdb-fa98-411e-aeb0-d49a2ff3fbc5 started07:52:11.656.
 Frozen definition, approved design/base, checked input and branch unchanged,
 verified in canary-start.json. Do NOT repeat PRcomment, Linear transition or
 engine restart. Continue supervising this implementation attempt and its gates.
+
+08:02UTC supervision: same build attempt remains running. New LOCAL-01 progress
+notification timeout, LOCAL-02 completed-task transition rejection and LOCAL-03
+check-current-1 failure are logged and were reported once. Detailed source is
+repeat-errors-0800.json. The failed test's local adapter asserted message?.id===id,
+causing setup save500 vs201. Cloud author inspected the harness; isolated
+test-api-read-rerun-1 passed08:01:27. Full test-current-rerun-2 is active. No local
+app edits, workflow deployments, restarts or new gate actions. Let the cloud agent
+finish recovery; do not infer an intermittent cause is fixed from one rerun.

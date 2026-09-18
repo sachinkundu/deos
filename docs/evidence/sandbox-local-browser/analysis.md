@@ -6,7 +6,11 @@ start receipt. The approved proposal, design and demo plan remain unchanged.
 
 ## Automatically recovered
 
-No claim yet: the implementation repeat has started but has not completed. Normal image upload and
+The first combined check failed on a local test-adapter message assertion. The
+cloud author reran the affected test unchanged and it passed; full-suite recovery
+is still being checked. A progress notification timeout and invalid task transition
+were also observed. They have not stopped the attempt. These are provisional
+observations; see LOCAL-01..03 in failures.md. Normal image upload and
 gradual rollout are expected asynchronous operations, not recoveries. Provider
 retries of the superseded oversized image did not fix its packaging defect.
 
