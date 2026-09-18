@@ -34,9 +34,11 @@ This is deliberate supervisor activation, not cloud-agent self-recovery.
 
 ## Still requires verification
 
-Actual cloud-agent loopback captures, owned remote app HTTPS, fresh D1/R2 behavior,
-new independent review and any routed author response, durable PR images, and
-resource cleanup remain pending. The revision reached implementation_build visit51
+Cloud-agent loopback and owned remote HTTPS captures now exist, and remote D1/R2
+readback matches browser-created data. The loopback capture shows an explicitly
+uninitialized local-store error state; it proves rendering, not local storage.
+The new independent review and any routed author response, durable PR publication,
+and resource cleanup remain pending. The revision reached implementation_build visit51
 on18September07:51:51 with the original approved hashes; see canary-start.json. Preserve honest distinctions between local Linux
 regression, cloud runtime activation and the full implementation canary.
 

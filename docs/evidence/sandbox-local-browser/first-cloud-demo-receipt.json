@@ -1,0 +1,281 @@
+{
+  "operation": "execution",
+  "requestId": "demo-current-final-1",
+  "action": "demo",
+  "fingerprint": "569eb018e3e57aecd920ab58d4697f5aaba5a11445542c66455f66b6d36bf067",
+  "state": "completed",
+  "createdAt": "2026-09-18T08:10:27.191Z",
+  "lastActivityAt": "2026-09-18T08:12:00.378Z",
+  "deadline": "2026-09-19T07:51:57.119Z",
+  "startedAt": "2026-09-18T08:10:27.200Z",
+  "progress": {
+    "event": "demo_completed",
+    "collectionId": "a0c2c690-b6b8-407d-b304-1e0a1d3c5f71"
+  },
+  "result": {
+    "collectionId": "a0c2c690-b6b8-407d-b304-1e0a1d3c5f71",
+    "captures": [
+      {
+        "scenarioId": "local-loopback-smoke",
+        "stepIndex": 1,
+        "url": "http://127.0.0.1:8787/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "transport": "sandbox-local-chromium",
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:browser_image:0998f52b6958cc79784567eba36e0ca1fec46e359439e2bd42d84b7b47ff4146:880aabac8032cb2e16e5c1365db0604e5b73f75755d8ab0bdbdfcb079f4c2a8d",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/880aabac8032cb2e16e5c1365db0604e5b73f75755d8ab0bdbdfcb079f4c2a8d/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/0998f52b6958cc79784567eba36e0ca1fec46e359439e2bd42d84b7b47ff4146/browser.png",
+          "caption": "Sandbox-local Chromium renders the complete one-screen shelf at the loopback origin and visibly reports that its unseeded local storage cannot load; this is local rendering and error-state smoke, not cloud-storage proof.\nCaptured from http://127.0.0.1:8787/; Chromium inside the implementation sandbox",
+          "sha256": "880aabac8032cb2e16e5c1365db0604e5b73f75755d8ab0bdbdfcb079f4c2a8d",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-880aabac8032cb2e16e5c1365db0604e5b73f75755d8ab0bdbdfcb079f4c2a8d.png"
+      },
+      {
+        "scenarioId": "remote-empty-shelf",
+        "stepIndex": 2,
+        "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "transport": "sandbox-local-chromium",
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:browser_image:54c0ab736ce8db693915fdd33534139820fe316f737efa2e5567aa61fcc02ed4:91100a618be897580cbe51df7534b35e108c41609e889f6f43b9d7767d656a25",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/91100a618be897580cbe51df7534b35e108c41609e889f6f43b9d7767d656a25/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/54c0ab736ce8db693915fdd33534139820fe316f737efa2e5567aa61fcc02ed4/browser.png",
+          "caption": "The freshly migrated remote shelf opens empty with the title field, plain-text editor, saved-title list, reader, and D1 + R2 cloud badge on one screen.\nCaptured from https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/; Chromium inside the implementation sandbox",
+          "sha256": "91100a618be897580cbe51df7534b35e108c41609e889f6f43b9d7767d656a25",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-91100a618be897580cbe51df7534b35e108c41609e889f6f43b9d7767d656a25.png"
+      },
+      {
+        "scenarioId": "remote-save-read-refresh-delete",
+        "stepIndex": 11,
+        "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "transport": "sandbox-local-chromium",
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:browser_image:e0bd42bfd6654343a123278011c78a82710434f46085214f8d0016cca10f6424:447f004b69596844203fe85a40ccbdedfc12516845def26faf8a8a08bc9de885",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/447f004b69596844203fe85a40ccbdedfc12516845def26faf8a8a08bc9de885/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/e0bd42bfd6654343a123278011c78a82710434f46085214f8d0016cca10f6424/browser.png",
+          "caption": "Two snippets are saved on the remote shelf, and selecting Sign-off shows its own Kind regards. body in the reader.\nCaptured from https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/; Chromium inside the implementation sandbox",
+          "sha256": "447f004b69596844203fe85a40ccbdedfc12516845def26faf8a8a08bc9de885",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-447f004b69596844203fe85a40ccbdedfc12516845def26faf8a8a08bc9de885.png"
+      },
+      {
+        "scenarioId": "remote-save-read-refresh-delete",
+        "stepIndex": 17,
+        "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "transport": "sandbox-local-chromium",
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:browser_image:ee613f53e5ad9a291d7ab3361ecc3f3d167c165f3961f2f4773b819dcc1deb50:99a98a0a967fc1aff0d5c2b734b1ca6cc538094f00af526165e91011fb15332b",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/99a98a0a967fc1aff0d5c2b734b1ca6cc538094f00af526165e91011fb15332b/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/ee613f53e5ad9a291d7ab3361ecc3f3d167c165f3961f2f4773b819dcc1deb50/browser.png",
+          "caption": "After a page reload, both remote titles return and Greeting reads Hello, team! from cloud storage.\nCaptured from https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/; Chromium inside the implementation sandbox",
+          "sha256": "99a98a0a967fc1aff0d5c2b734b1ca6cc538094f00af526165e91011fb15332b",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-99a98a0a967fc1aff0d5c2b734b1ca6cc538094f00af526165e91011fb15332b.png"
+      },
+      {
+        "scenarioId": "remote-save-read-refresh-delete",
+        "stepIndex": 20,
+        "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "transport": "sandbox-local-chromium",
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:browser_image:e97d9377b32a679383d91729f91280770c2657fed4453bed65f3473ccf2f8196:7c79ae6ef2ab9f32935af9bc0298d4f4bc7034b2ca012ac79feb55f454957034",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/7c79ae6ef2ab9f32935af9bc0298d4f4bc7034b2ca012ac79feb55f454957034/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/e97d9377b32a679383d91729f91280770c2657fed4453bed65f3473ccf2f8196/browser.png",
+          "caption": "Deleting Sign-off removes only that title; the success message is visible while Greeting remains listed and readable.\nCaptured from https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/; Chromium inside the implementation sandbox",
+          "sha256": "7c79ae6ef2ab9f32935af9bc0298d4f4bc7034b2ca012ac79feb55f454957034",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-7c79ae6ef2ab9f32935af9bc0298d4f4bc7034b2ca012ac79feb55f454957034.png"
+      },
+      {
+        "scenarioId": "remote-fresh-context-continuity",
+        "stepIndex": 1,
+        "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "transport": "sandbox-local-chromium",
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:browser_image:43e032eeccd17b7d3bd17abbc4f24b7c4721a2ae90aeac36643528d1ce1d2ad6:3c0f079b6fbc0e040749cf8b6a07751d154a2258e6ad29238461c20186e498bb",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/3c0f079b6fbc0e040749cf8b6a07751d154a2258e6ad29238461c20186e498bb/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/43e032eeccd17b7d3bd17abbc4f24b7c4721a2ae90aeac36643528d1ce1d2ad6/browser.png",
+          "caption": "A fresh browser context rebuilds the unchanged remote shelf with Greeting present, Sign-off absent, and no reader selection carried over.\nCaptured from https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/; Chromium inside the implementation sandbox",
+          "sha256": "3c0f079b6fbc0e040749cf8b6a07751d154a2258e6ad29238461c20186e498bb",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-3c0f079b6fbc0e040749cf8b6a07751d154a2258e6ad29238461c20186e498bb.png"
+      },
+      {
+        "scenarioId": "remote-fresh-context-continuity",
+        "stepIndex": 4,
+        "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "transport": "sandbox-local-chromium",
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:browser_image:d9b60b6e52ed803ecb9239b4b76ffaab1453484c35597b240bf775d874fef6b0:e7d7cf575fd71446899c68e7ffefb49a18453964970e9b4dcd0ccb9e15d99279",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/e7d7cf575fd71446899c68e7ffefb49a18453964970e9b4dcd0ccb9e15d99279/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/d9b60b6e52ed803ecb9239b4b76ffaab1453484c35597b240bf775d874fef6b0/browser.png",
+          "caption": "Selecting Greeting in the fresh context reads Hello, team! from the remote D1/R2-backed shelf.\nCaptured from https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/; Chromium inside the implementation sandbox",
+          "sha256": "e7d7cf575fd71446899c68e7ffefb49a18453964970e9b4dcd0ccb9e15d99279",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-e7d7cf575fd71446899c68e7ffefb49a18453964970e9b4dcd0ccb9e15d99279.png"
+      },
+      {
+        "scenarioId": "remote-validation-errors",
+        "stepIndex": 4,
+        "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "transport": "sandbox-local-chromium",
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:browser_image:59a526a119678465bde94755c73a276776ddb420a24acce58d1f86f96b636c68:6de2bc03ba32bbc2c54a9a84b354d558e4c89da703893fbcf8c0e24d0544d040",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/6de2bc03ba32bbc2c54a9a84b354d558e4c89da703893fbcf8c0e24d0544d040/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/59a526a119678465bde94755c73a276776ddb420a24acce58d1f86f96b636c68/browser.png",
+          "caption": "Submitting text without a title shows the title-required error while Greeting remains the only saved remote snippet.\nCaptured from https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/; Chromium inside the implementation sandbox",
+          "sha256": "6de2bc03ba32bbc2c54a9a84b354d558e4c89da703893fbcf8c0e24d0544d040",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-6de2bc03ba32bbc2c54a9a84b354d558e4c89da703893fbcf8c0e24d0544d040.png"
+      },
+      {
+        "scenarioId": "remote-validation-errors",
+        "stepIndex": 8,
+        "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "transport": "sandbox-local-chromium",
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:browser_image:df1c92e2d819bfeca345801815d44acec0e37e8505a2af89464e68e592f90499:f2af55205eb668d82989a9cdb84a8f77d0fb2a6b5ee329ee9feb367e8145d964",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f2af55205eb668d82989a9cdb84a8f77d0fb2a6b5ee329ee9feb367e8145d964/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/df1c92e2d819bfeca345801815d44acec0e37e8505a2af89464e68e592f90499/browser.png",
+          "caption": "Submitting Empty note with spaces-only text shows the text-required error and leaves the remote shelf unchanged.\nCaptured from https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/; Chromium inside the implementation sandbox",
+          "sha256": "f2af55205eb668d82989a9cdb84a8f77d0fb2a6b5ee329ee9feb367e8145d964",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-f2af55205eb668d82989a9cdb84a8f77d0fb2a6b5ee329ee9feb367e8145d964.png"
+      },
+      {
+        "scenarioId": "remote-literal-markup",
+        "stepIndex": 6,
+        "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+        "documentStatus": 200,
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "traceEnabled": false,
+        "console": [],
+        "transport": "sandbox-local-chromium",
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:browser_image:2796059d34921fd0600bd39bf7f493f33733d54370dbc666559d7bec06eedc0b:120fa2d48fa73bdb26d7e6514b8f6cdbd629e6e6b43567875a8ed12abdc965e9",
+          "kind": "browser_image",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/120fa2d48fa73bdb26d7e6514b8f6cdbd629e6e6b43567875a8ed12abdc965e9/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/2796059d34921fd0600bd39bf7f493f33733d54370dbc666559d7bec06eedc0b/browser.png",
+          "caption": "Markup-looking content is shown literally as <b>Hello</b> in the plain-text reader on the remote shelf.\nCaptured from https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/; Chromium inside the implementation sandbox",
+          "sha256": "120fa2d48fa73bdb26d7e6514b8f6cdbd629e6e6b43567875a8ed12abdc965e9",
+          "sanitized": true
+        },
+        "imagePath": "/deos/implementation/browser-120fa2d48fa73bdb26d7e6514b8f6cdbd629e6e6b43567875a8ed12abdc965e9.png"
+      }
+    ]
+  },
+  "finishedAt": "2026-09-18T08:12:00.378Z"
+}

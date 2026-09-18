@@ -1,0 +1,26 @@
+[
+  {
+    "scenario": "local-loopback-smoke",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/local-loopback-smoke.png",
+    "sha256": "880aabac8032cb2e16e5c1365db0604e5b73f75755d8ab0bdbdfcb079f4c2a8d",
+    "url": "http://127.0.0.1:8787/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "remote-empty-shelf",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/remote-empty-shelf.png",
+    "sha256": "91100a618be897580cbe51df7534b35e108c41609e889f6f43b9d7767d656a25",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "remote-fresh-context-continuity",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/remote-fresh-context-continuity.png",
+    "sha256": "e7d7cf575fd71446899c68e7ffefb49a18453964970e9b4dcd0ccb9e15d99279",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  }
+]

@@ -67,7 +67,13 @@ visit51 at07:51:51UTC on18September. Attempt01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5
 is running in a basic sandbox. The approved design/base, input and frozen workflow
 are unchanged. See activation-complete.json and canary-start.json.
 
-Actual cloud-browser proof, independent review, refreshed PR45 and cleanup are
-still pending. The existing five-minute supervisor heartbeat is active. The
+The first real cloud collection completed six scenarios and ten captures through
+sandbox-local Chromium. Supervisor R2readback verified three image hashes and
+visually inspected the loopback and fresh-context remote originals. Loopback
+shows the deliberately uninitialized local store error; remote proof shows saved
+D1/R2 data after a browser-context reset. See first-cloud-demo-receipt.json,
+first-cloud-storage-proof.json and cloud-captures/readback.json.
+
+The fresh independent review, refreshed PR45 and cleanup are still pending. The existing five-minute supervisor heartbeat is active. The
 [interim comparison](analysis.md) separates supervisor fixes from automatic
 recovery and unresolved prior questions.
