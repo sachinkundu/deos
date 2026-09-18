@@ -144,3 +144,14 @@ zero bytes and no corresponding object. The cloud author selected11proofitems
 (10images+Showboat) and is now checking older review feedback for completeness.
 Do not interrupt; fresh review and final publication/cleanup still pending.
 No application or workflow code was edited by supervisor this heartbeat.
+
+08:25UTC: same build attempt, no new D1workflow error. LOCAL-06 oversized demo
+request1,057,596bytes rejected pre-execution at1MiBlimit. Cloud author reduced
+body size and is running demo-current-final-3, collection97e4d234-cd51-44c1-9082-
+84e74386559b. Six earlier scenarios completed; capacity scenario uses98one-byte
+saves to exercise100object ceiling and is progressing (step235 at08:24:23).
+No need to intervene in healthy running actions. Original error saved in
+oversized-demo-request.json and reported once. The first completed collection's
+images remain diagnostic/proof history; verify final selected gallery when done.
+Fresh independent demo gate still has not run. No supervisor code edits or
+runtime deployment. Keep monitoring automatically.

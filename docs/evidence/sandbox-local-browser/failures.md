@@ -153,3 +153,21 @@ LOCAL-05 recovered automatically: the author removed prefix and submitted
 baseline-current-r2-v2. The saved receipt confirms successful empty object listing
 with no app/workflow edit. See r2-list-recovery.json. The misleading validation
 message remains a nonblocking workflow follow-up.
+
+## LOCAL-06: oversized demo request
+
+The expanded demo-current-final-2 request was1,057,596bytes and exceeded the
+trusted dispatcher maximum1,048,576bytes. It failed before browser execution:
+`Tool request exceeds1048576bytes`, stack implementation-runtime.mjs:574.
+Original native command/error evidence: oversized-demo-request.json. Count once;
+this is not a browser crash or an app failure. It repeats the prior storage
+canary's oversized-request class.
+
+The cloud author preserved the failure, replaced large repeated bodies with98
+one-byte browser saves to exercise the approved100object reservation ceiling,
+and submitted new request demo-current-final-3. That complete scenario list is
+running under collection97e4d234-cd51-44c1-9082-84e74386559b. At08:24:23 it had
+completed the earlier six scenarios and was at capacity step235. This is an
+automatic correction with recovery still in progress, not yet a completed demo.
+No supervisor application change, cancellation, replayed single action or deploy.
+The new error was reported once; do not repeat unchanged notifications.
