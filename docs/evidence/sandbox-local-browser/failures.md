@@ -171,3 +171,21 @@ completed the earlier six scenarios and was at capacity step235. This is an
 automatic correction with recovery still in progress, not yet a completed demo.
 No supervisor application change, cancellation, replayed single action or deploy.
 The new error was reported once; do not repeat unchanged notifications.
+
+## LOCAL-07: unsupported status CLI flag
+
+During the final status audit, the cloud author used `deos-implementation --request
+/deos/output/requests/status-final.json`. The CLI expects a positional file and
+reported `ENOENT: no such file or directory, open '--request'`, with its original
+stack at /usr/local/bin/deos-implementation:52. The author immediately used the
+correct positional form and received exit0. No supervisor repair or code change.
+Original error and successful status response: status-cli-recovery.json.
+This is a tool invocation mistake, not an application/browser failure. Reported
+once. A clearer unknown-flag error is a possible workflow follow-up.
+
+LOCAL-06 recovery is now complete: replacement collection97e4d234-cd51-44c1-9082-
+84e74386559b finished08:27:33.082 with7scenarios and11captures, including100object
+capacity refusal created through real browser saves. Raw final readback lists
+100R2objects, truncated:false, and the matching D1state. No synthetic reservations
+were used for this repeated capacity scenario. Final-cloud-demo-receipt.json and
+final-cloud-storage-proof.json retain the receipts. Review/publication still pending.

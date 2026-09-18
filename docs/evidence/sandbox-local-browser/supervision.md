@@ -155,3 +155,13 @@ oversized-demo-request.json and reported once. The first completed collection's
 images remain diagnostic/proof history; verify final selected gallery when done.
 Fresh independent demo gate still has not run. No supervisor code edits or
 runtime deployment. Keep monitoring automatically.
+
+08:33UTC: replacement demo-current-final-3 completed08:27:33 with7scenarios and
+11captures; selected final gallery has11images+Showboat. Capacity scenario used
+real browser-created100object limit, and final raw R2list has100objects and
+truncated:false. Saved final-cloud-demo-receipt.json/final-cloud-storage-proof.json.
+LOCAL-07 unsupported --request flag in final status command caused ENOENT; agent
+corrected immediately to positional file and status succeeded. Error and recovery
+saved in status-cli-recovery.json and reported once. LOCAL-06 automatic recovery
+completed; no supervisor app changes. Agent final audit/handoff in progress;
+verify the fresh independent review is actually entered.
