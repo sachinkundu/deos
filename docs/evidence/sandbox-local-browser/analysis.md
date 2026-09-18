@@ -58,7 +58,7 @@ feedback. This is supervised recovery, not an unattended success.
 
 Final publication selected only the3new error-path images, omitting the11earlier
 main-flow images from the PR gallery. The supervisor retained and hash-verified
-those earlier images and is attaching a commit-pinned evidence supplement toPR45.
+those earlier images and attached a [commit-pinned evidence supplement](https://github.com/sachinkundu/deos-sample-project/pull/45#issuecomment-5727967312) toPR45.
 This repairs reviewer access without editing the sample app. The automated
 publication-selection behavior still needs repair.
 

@@ -12,7 +12,7 @@ disabled inside the enclosing Cloudflare sandbox. The trusted driver checks each
 navigation and each redirect hop; file URLs, other origins and local control
 ports are blocked. The sandbox outbound handler separately checks durable Worker
 or hosted-preview ownership. TLS uses the Cloudflare interceptor's pinned CA key rather than a global certificate bypass; the real cloud HTTPS
-path remains part of the canary verification.
+path passed the canary verification.
 
 Screenshots come from the root-controlled browser driver, not author-provided files.
 The broker stores them with the approved design, tested base, candidate tree,
@@ -62,18 +62,27 @@ The smaller image is now active at100% in all four pools, each with four healthy
 instances and no errors. The existing workflow engine was restarted at its saved
 gate so the new review handoff code is active.
 
-SAC-246 consumed the authorized revision event and entered implementation_build
-visit51 at07:51:51UTC on18September. Attempt01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5
-is running in a basic sandbox. The approved design/base, input and frozen workflow
-are unchanged. See activation-complete.json and canary-start.json.
+SAC-246 completed the implementation-only repeat and returned to Human Review at
+09:11UTC on18September. PR45 remains unmerged/unreleased at the original head.
+Proposal, design, approved base and frozen workflow stayed unchanged.
 
-The first real cloud collection completed six scenarios and ten captures through
-sandbox-local Chromium. Supervisor R2readback verified three image hashes and
-visually inspected the loopback and fresh-context remote originals. Loopback
-shows the deliberately uninitialized local store error; remote proof shows saved
-D1/R2 data after a browser-context reset. See first-cloud-demo-receipt.json,
-first-cloud-storage-proof.json and cloud-captures/readback.json.
+The final main-flow collection completed7scenarios/11images, including loopback
+rendering, owned HTTPS, fresh-context D1/R2persistence and real100object capacity
+rejection. Fresh independent review accepted that proof and requested missing
+failed-read/delete demonstrations. The response supplied3unique selected images
+from the real deployed app using a clearly labeled synthetic inconsistent-storage
+fixture. One model-capacity failure required a supervisor same-stage retry; no
+second independent pass is claimed under the frozen single-response policy.
 
-The fresh independent review, refreshed PR45 and cleanup are still pending. The existing five-minute supervisor heartbeat is active. The
-[interim comparison](analysis.md) separates supervisor fixes from automatic
-recovery and unresolved prior questions.
+The workflow published the3new images but omitted the earlier gallery. The
+supervisor restored reviewer access through a [commit-pinned evidence supplement](https://github.com/sachinkundu/deos-sample-project/pull/45#issuecomment-5727967312).
+All14image URLs were read without authentication and matched their recorded hashes.
+Both temporary Worker/D1/R2sets were automatically removed, independently confirmed
+absent through Cloudflare's API. Both local browsers closed and all sandboxes were
+destroyed. See final-provider-readback.json, supplement-public-readback.json and
+completed-response-audit.json. The local read-only reader was stopped.
+
+The [final comparison](analysis.md) separates automatic recovery, supervisor
+intervention and unresolved workflow issues. This was a completed supervised
+canary, not an unattended reliability pass. The separately prepared retry-policy
+PR141 is not deployed. See pr-links.json for review and evidence links.
