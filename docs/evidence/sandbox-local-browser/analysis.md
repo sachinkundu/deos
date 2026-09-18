@@ -7,10 +7,12 @@ start receipt. The approved proposal, design and demo plan remain unchanged.
 ## Automatically recovered
 
 The first combined check failed on a local test-adapter message assertion. The
-cloud author reran the affected test unchanged and it passed; full-suite recovery
-is still being checked. A progress notification timeout and invalid task transition
+cloud author reran the affected test and full16test suite unchanged; both passed.
+The build passed too. The underlying intermittent adapter cause is unresolved. A progress notification timeout and invalid task transition
 were also observed. They have not stopped the attempt. These are provisional
-observations; see LOCAL-01..03 in failures.md. Normal image upload and
+observations; see LOCAL-01..05 in failures.md. The first remote publish health
+check returned1042 and then recovered on the author retry using the same owned
+environment. An invalid R2list prefix was removed and the request succeeded. Normal image upload and
 gradual rollout are expected asynchronous operations, not recoveries. Provider
 retries of the superseded oversized image did not fix its packaging defect.
 

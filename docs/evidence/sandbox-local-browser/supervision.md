@@ -114,3 +114,15 @@ causing setup save500 vs201. Cloud author inspected the harness; isolated
 test-api-read-rerun-1 passed08:01:27. Full test-current-rerun-2 is active. No local
 app edits, workflow deployments, restarts or new gate actions. Let the cloud agent
 finish recovery; do not infer an intermittent cause is fixed from one rerun.
+
+08:10UTC: same attempt still running. Full16test rerun and build passed without
+source changes (LOCAL-03 recovered; root cause unknown). Chromium153.0.8010.12
+started over local-pipe08:06:24 and opened the actual loopback app. LOCAL-04 first
+remote publish health1042 failed, but cloud retry publish-remote-current-2 made
+the same environment ready08:08:09.605. LOCAL-05 unsupported objects prefix was
+removed and R2listing succeeded. Both errors reported once and logged with original
+receipts. New environment deos-tmp-707e60c64357d9e1197de094; D1database
+2b32065e-aa45-472f-b0b2-ace06f52d561, R2same environment name. Do not delete while
+active. Agent is preparing demos. No new durable workflow errors, no supervisor
+app edits, no deployment or retries by supervisor. Browser screenshots, remote
+TLS, independent review, proof publication and cleanup still await verification.

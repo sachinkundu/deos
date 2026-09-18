@@ -126,3 +126,30 @@ full private captures remain in /tmp/sac246-local-browser-reader.
 | LOCAL-03 | check-current-1 finished08:00:08,15/16tests passed; tests/api.test.ts:135 expected201 but received500. Original activation cause: `AssertionError ... (message?.id === id)` | Local test-adapter message assertion; exact root cause remains unproven. Cloud author owns investigation. Deliberately injected list/put failures in passing tests are excluded. The wait and receipt poll show the same failed operation, counted once. | Isolated rerun test-api-read-rerun-1 passed08:01:27 without weakening the assertion. Full suite rerun is active. This is recovery progress, not proof the underlying intermittent cause is fixed. No supervisor app edit. |
 
 These errors have been reported to the user once. Do not repeat unchanged notices.
+
+##08:09UTC recovery and storage errors
+
+LOCAL-03: the unchanged full suite test-current-rerun-2 passed all16tests at
+08:04:09.392, then build-current-1 passed08:04:54.186. Cloud author recovered by
+rerunning; no supervisor application change. The adapter assertion's root cause
+remains unknown, so this is a recovered intermittent failure, not a proven fix.
+
+| ID | Error and evidence | Cause and recovery ownership | Current outcome |
+| --- | --- | --- | --- |
+| LOCAL-04 | publish-remote-current-1 at08:07:23.828: `Temporary Worker health: HTTP404 error code:1042` (broker400 environment_control) | Same visible1042family as prior storage canary, but the public-routing flag is now deployed. The exact cause of this occurrence is unknown; transient readiness is a hypothesis. Cloud author issued publish-remote-current-2 after the failed receipt. | Same owned environment deos-tmp-707e60c64357d9e1197de094 became ready08:08:09.605; migration, D1query and appAPI200 succeeded. Automatic agent recovery, no supervisor deployment or duplicate environment. |
+| LOCAL-05 | baseline-current-r2 at08:08:45.902: `Invalid object-list cursor` (broker400 environment_invalid) | Author sent objects with unsupported prefix:snippets/. The broker permits only operation and optional cursor, so its generic cursor error obscures the unsupported-field cause. | Agent recovery pending at this snapshot; no app edit is needed. Improving the validation message remains a workflow follow-up, not grounds to interrupt active work. |
+
+Original operation errors, stacks and successful receipts are saved in
+recovery-and-storage-errors-0808.json. The containing shell continued to a
+successful APIread after the R2error; trusted receipts retain the failure.
+LOCAL-04 and05 were reported once. Do not repeat unchanged notifications.
+
+Browser startup evidence now records Chromium153.0.8010.12 over local-pipe at
+08:06:24.184. The cloud author navigated to the actual loopback app and received
+its rendered page. This proves local browser navigation, not yet completed image
+proof, remote browser TLS, independent review or cleanup.
+
+LOCAL-05 recovered automatically: the author removed prefix and submitted
+baseline-current-r2-v2. The saved receipt confirms successful empty object listing
+with no app/workflow edit. See r2-list-recovery.json. The misleading validation
+message remains a nonblocking workflow follow-up.
