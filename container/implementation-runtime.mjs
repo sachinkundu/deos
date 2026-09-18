@@ -21,6 +21,7 @@ import { trustGeneratedHooks } from "./native-review-setup.mjs";
 import { originalErrorText } from "./original-errors.mjs";
 import { killProcessGroup, stopProcessGroup } from "./implementation-process.mjs";
 import { collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementationRequestQueue } from "./implementation-browser-demo.mjs";
+import { LocalImplementationBrowser } from './implementation-local-browser.mjs';
 import { ImplementationOperations } from "./implementation-operations.mjs";
 import { previewTarget, checkedCommandArgv, proofSelectionSummary, progressSignalObservation, withPreviewTarget } from './implementation-guidance.mjs';
 
@@ -413,6 +414,11 @@ export async function setupImplementation(job) {
     await readFile("/deos/run/implementation-input.json", "utf8"),
   );
   const state = { checks: input.prior?.checks ?? [], proof: input.prior?.proof ?? [] };
+  const localBrowser = new LocalImplementationBrowser({
+    launch: async options => (await import('playwright')).chromium.launch(options),
+    scripts: await import('/deos/bin/implementation-browser-evidence.ts'),
+    record: event => appendFile(journal,JSON.stringify({...event,attemptId:job.attemptId,occurredAt:new Date().toISOString()})+'\n'),
+  });
   const broker = async (payload) => {
     for (;;) {
       const url = `${job.capabilityUrl}/implementation`;
@@ -469,7 +475,26 @@ export async function setupImplementation(job) {
     return stateWrites;
   };
   const browserResult = async (request, subject) => {
-    const result = await broker({ ...withPreviewTarget(request,state.preview?.target ?? (input.hostedPreview ? 'hosted' : 'local')), subject });
+    request = withPreviewTarget(request,state.preview?.target ?? (input.hostedPreview ? 'hosted' : 'local'));
+    let result;
+    if (request.action === 'browser') {
+      if (request.target === 'local') {
+        if (!preview || preview.exitCode !== null || preview.signalCode !== null || previewError)
+          throw new Error('Start the local preview before opening its browser',{cause:previewError});
+      }
+      const target = await broker({action:'local_browser_target',target:request.target,subject});
+      result = await localBrowser.command(target.origin,request);
+      if (result.imageBase64) {
+        const saved = await broker({action:'local_browser_capture',target:request.target,subject,
+          caption:request.caption,captureId:request.captureId,capture:result});
+        result.proof = saved.proof;
+      } else if (result.measurements) {
+        const document = `# Live browser measurements\n\nCaptured from ${result.url} with sandbox-local Chromium.\n\n\`\`\`bash\nLive browser layout inspection\n\`\`\`\n\n\`\`\`output\n${JSON.stringify(result.measurements,null,2)}\n\`\`\`\n`;
+        const saved = await broker({action:'showboat',subject,document,
+          command:{command:'Live browser layout inspection',exitCode:0,stdout:JSON.stringify(result.measurements),stderr:''}});
+        result.proof = saved.proof;
+      }
+    } else result = await broker({...request,subject});
     if (result.imageBase64) {
       const imagePath = `${ROOT}/browser-${result.proof.sha256}.png`;
       await writeFile(imagePath, Buffer.from(result.imageBase64, "base64"), { mode: 0o644 });
@@ -695,7 +720,7 @@ export async function setupImplementation(job) {
             if (!preview || preview.exitCode !== null || preview.signalCode !== null)
               throw new Error(`Preview exited: ${await readFile(`${ROOT}/preview.log`, "utf8")}`);
           },
-          connect: () => broker({ action: "preview", port: 8787 }),
+          connect: async () => ({origin:'http://127.0.0.1:8787',transport:'sandbox-local-chromium'}),
           start: async () => {
           for (const path of [config.main, config.assets?.directory].filter(
             Boolean,
@@ -834,6 +859,7 @@ export async function setupImplementation(job) {
       catch (error) { if (error.code !== "EEXIST") throw error; }
       const candidate = {
         version: 1,
+        browserRuntime: 'sandbox-local-chromium-v1',
         attemptId: job.attemptId,
         kind: job.implementationKind,
         outcome: result.outcome,
@@ -862,9 +888,13 @@ export async function setupImplementation(job) {
       return candidate;
     },
     async close() {
-      await stopPreview();
+      const failures = [];
+      try { await localBrowser.close(); } catch (error) { failures.push(error); }
+      try { await stopPreview(); } catch (error) { failures.push(error); }
       server.closeAllConnections();
-      await new Promise((resolveClose) => server.close(resolveClose));
+      try { await new Promise((resolveClose,reject) => server.close(error => error ? reject(error) : resolveClose())); }
+      catch (error) { failures.push(error); }
+      if (failures.length) throw new AggregateError(failures,'Implementation runtime cleanup failed',{cause:failures[0]});
     },
   };
   return runtime;

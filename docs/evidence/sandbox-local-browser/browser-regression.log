@@ -1,0 +1,24 @@
+{"operation":"reset","width":1280,"height":900}
+{"event":"local_browser_started","version":"153.0.8010.12","transport":"local-pipe","pid":1}
+{"operation":"fill","selector":"#name","text":"Saved by local Chromium"}
+{"operation":"click","selector":"button"}
+{"operation":"navigate"}
+{"operation":"state"}
+{"operation":"fill","selector":"#name","text":""}
+{"operation":"state"}
+{"operation":"viewport","width":390,"height":844}
+{"operation":"screenshot"}
+{"operation":"reset","width":1280,"height":900}
+{"operation":"state"}
+{"operation":"measure"}
+{"operation":"navigate","url":"http://127.0.0.1:8790/private"}
+{"operation":"navigate","url":"file:///etc/passwd"}
+{"operation":"navigate","url":"/escape"}
+{"operation":"reset","width":1280,"height":900}
+{"operation":"navigate","url":"/two-hop"}
+{"operation":"reset","width":1280,"height":900,"url":"/subresource"}
+{"operation":"navigate","url":"/bad"}
+{"operation":"screenshot"}
+{"event":"local_browser_closed","transport":"local-pipe"}
+{"operation":"state"}
+{"status":"passed","events":[{"event":"local_browser_started","version":"153.0.8010.12","transport":"local-pipe","pid":1},{"event":"local_browser_closed","transport":"local-pipe"}]}

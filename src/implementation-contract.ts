@@ -143,6 +143,7 @@ export type ImplementationRecovery = Pick<ImplementationCandidate,
 
 export interface ImplementationCandidate extends ProofSubject {
   version: 1;
+  browserRuntime?: string;
   attemptId: string;
   kind: "tasks" | "build";
   outcome: "completed" | "needs_human";

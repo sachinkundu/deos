@@ -14,8 +14,15 @@ RUN UV_PYTHON_INSTALL_DIR=/opt/deos-python UV_PYTHON_BIN_DIR=/usr/local/bin \
     && python3 -c 'from datetime import UTC; import sys; assert sys.version_info[:3] == (3, 11, 16)'
 
 RUN useradd --create-home --shell /bin/bash deos-author
-
 RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0 @anthropic-ai/claude-code@2.1.268 wrangler@4.125.0
+
+RUN useradd --create-home --shell /usr/sbin/nologin deos-browser \
+    && chmod 700 /home/deos-browser
+
+# Browser control stays inside the implementation sandbox over a local pipe.
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/deos-browser
+RUN npm install --prefix /deos --omit=dev playwright@1.63.0 \
+    && /deos/node_modules/.bin/playwright install --with-deps chromium
 
 RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/bettaview \
     && chmod 700 /deos/auth \
@@ -35,8 +42,10 @@ COPY container/grounded-*.mjs /deos/bin/
 COPY vendor/agent-skills/ /deos/agent-skills/
 COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
 COPY container/implementation-*.mjs /deos/bin/
+COPY --chmod=755 container/implementation-chromium /deos/bin/implementation-chromium
 COPY container/skills/deos-implementation/SKILL.md /deos/bin/implementation-skill.md
 COPY src/implementation-demo-contract.ts src/implementation-contract.ts src/implementation-hash.ts /deos/bin/
+COPY src/implementation-browser-evidence.ts /deos/bin/
 COPY container/deos-implementation /usr/local/bin/deos-implementation
 COPY container/supervisor.mjs /deos/bin/supervisor.mjs
 COPY container/supervisor-io.mjs /deos/bin/supervisor-io.mjs

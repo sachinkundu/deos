@@ -84,21 +84,22 @@ A human-requested revision updates the same PR without another automatic review.
   entrypoint, D1/R2 bindings, or explicit `target: "local"` uses the local runtime.
   The returned `status.preview.target` distinguishes these paths. Do not serve the whole repository:
   unnecessary file watchers previously exhausted the runtime.
-- Check the app from the shell at `http://127.0.0.1:8787`. Use the assigned browser
-  to inspect the public preview URL. Shell fetch to a Quick Tunnel or hosted
-  Pages URL may be blocked by egress even when browser access works. Use browser
-  results and publisher read-back for hosted reachability; retain a shell failure
-  in diagnostics without treating it alone as an app failure.
+- Check the app from the shell or assigned browser at `http://127.0.0.1:8787`.
+  Chromium runs inside this sandbox. Local preview needs no public URL or tunnel.
+  For real D1/R2 proof, publish the temporary environment and use `target: remote`;
+  Chromium opens the deployed app through its owned Worker URL. `target: hosted`
+  opens a checked static deployment. Other outbound destinations retain the saved
+  policy. Use browser results and publisher read-back for hosted reachability.
   Bound network probes explicitly, such as `curl --connect-timeout 5 --max-time 20`,
   so an unresponsive development server does not consume the build deadline.
-- A tunnel may need time to become ready. Retry the same preview operation so
-  the service can reconcile it. Do not allocate competing preview processes.
-  A public relay failure leaves a healthy local preview running. Repeat the
-  same settings to reuse it; do not restart the app or erase local test data.
+- Repeat the same preview settings to reuse the running local app. Do not
+  allocate competing processes or erase local test data to reconnect a browser.
 
 # Collect demonstrations
 
-The browser runs in Cloudflare's browser service, separately from this sandbox.
+The browser is headless Chromium inside this sandbox, controlled over a local pipe.
+No Cloudflare Browser Rendering session or preview tunnel is allocated. Browser
+screenshots still pass through trusted capture and durable evidence publication.
 Save one scenario list and execute it with `action: demo` and a stable `requestId`.
 Use `--wait` or retrieve its operation receipt. Repeating the same request returns
 that operation, never another collection. Use a new ID only for an intentional
@@ -107,12 +108,10 @@ fresh browser context. Prepare independent server-side fixtures as needed;
 resetting browser state does not reset databases or provider resources.
 If a browser operation loses its response, its action may already have run.
 Do not retry that click or submit on its own. Reset server fixtures when needed
-and rerun the saved scenario list from zero. If the service confirms the assigned
-browser has ended, that reset can replace it once with the same allowed origins.
-The code, saved work and earlier workflow stages stay in place. A second session
-loss or uncertain allocation needs a concrete help request with the original error.
-Session diagnostics include provider inventory and the available close reason;
-do not infer that a key or application bug caused a browser service closure.
+and rerun the saved scenario list from zero. If the local browser process has
+ended, report the original error and preserve the work for a fresh attempt.
+Reset replaces a live browser context; it does not silently replay work after
+a process crash. Diagnostics identify the local transport and browser version.
 Await the entire collection before editing code, harness, preview, or steps.
 After an action fails, correct the cause and rerun from the starting state.
 Use screenshots of meaningful outcomes, inspect them, and describe what they show.
