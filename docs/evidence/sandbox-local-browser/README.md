@@ -11,8 +11,8 @@ profile. It cannot read root supervisor credentials. Chromium's own sandbox is
 disabled inside the enclosing Cloudflare sandbox. The trusted driver checks each
 navigation and each redirect hop; file URLs, other origins and local control
 ports are blocked. The sandbox outbound handler separately checks durable Worker
-or hosted-preview ownership. TLS trusts the Cloudflare interceptor's pinned CA key
-instead of accepting every server certificate.
+or hosted-preview ownership. TLS uses the Cloudflare interceptor's pinned CA key rather than a global certificate bypass; the real cloud HTTPS
+path remains part of the canary verification.
 
 Screenshots come from the root-controlled browser driver, not author-provided files.
 The broker stores them with the approved design, tested base, candidate tree,
@@ -58,5 +58,16 @@ PR140 contains this runtime change. The first cloud rollout exposed an image-siz
 failure on the basic pools: the image exceeded their 4 GB unpacking allowance.
 The image now installs only Chromium headless shell and removes package caches
 in the layers that create them. See failures.md and rollout-disk-error.json.
-Full activation, the implementation-only canary and cleanup are still pending.
-Local tests are not evidence that those steps have completed.
+The smaller image is now active at100% in all four pools, each with four healthy
+instances and no errors. The existing workflow engine was restarted at its saved
+gate so the new review handoff code is active.
+
+SAC-246 consumed the authorized revision event and entered implementation_build
+visit51 at07:51:51UTC on18September. Attempt01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5
+is running in a basic sandbox. The approved design/base, input and frozen workflow
+are unchanged. See activation-complete.json and canary-start.json.
+
+Actual cloud-browser proof, independent review, refreshed PR45 and cleanup are
+still pending. The existing five-minute supervisor heartbeat is active. The
+[interim comparison](analysis.md) separates supervisor fixes from automatic
+recovery and unresolved prior questions.

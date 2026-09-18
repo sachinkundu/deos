@@ -1,0 +1,54 @@
+# SAC-246 implementation repeat: interim analysis
+
+The repeat is intended to test the replacement browser and implementation gates.
+Do not count earlier SAC-246 attempts as new failures. Use new attempt IDs and the
+start receipt. The approved proposal, design and demo plan remain unchanged.
+
+## Automatically recovered
+
+No claim yet: the implementation repeat has started but has not completed. Normal image upload and
+gradual rollout are expected asynchronous operations, not recoveries. Provider
+retries of the superseded oversized image did not fix its packaging defect.
+
+## Fixed by the supervisor
+
+The supervisor changed workflow/runtime code only. The local browser regression
+found an unsafe redirect behavior and the driver now checks each hop before a
+request is sent. The supervisor also added browser-runtime review identity so the
+previous external-browser review cannot replace a fresh independent gate.
+
+The first cloud deployment exposed image disk pressure in the basic pools. The
+supervisor removed the unused headed browser and package caches; the resulting
+image passed the real Chromium regression at1GiB memory. Full activation is recorded in activation-complete.json. Test-authoring mistakes are listed separately in failures.md.
+
+The existing cloud workflow engine retained yesterday's code. Its1197step history
+was archived and only the engine restarted. D1 and the new provider history prove
+that it resumed implementation review visit50, without earlier agent stages.
+This is deliberate supervisor activation, not cloud-agent self-recovery.
+
+## Still requires verification
+
+Actual cloud-agent loopback captures, owned remote app HTTPS, fresh D1/R2 behavior,
+new independent review and any routed author response, durable PR images, and
+resource cleanup remain pending. The revision reached implementation_build visit51
+on18September07:51:51 with the original approved hashes; see canary-start.json. Preserve honest distinctions between local Linux
+regression, cloud runtime activation and the full implementation canary.
+
+The prior run's unrelated stderr preservation, reviewer provenance, delayed gate
+wake, provider resets and portal rendering questions are still open unless this
+repeat provides new evidence. Replacing the browser removes the relay from the
+new local path; it does not repair the old relay service.
+
+## Comparison with prior runs
+
+The first SAC-246 run reached PR45 with supervisor assistance. Its final demo used
+the remote Worker because local relay530/1016 remained unresolved. This repeat
+must demonstrate the local path directly and verify real remote storage too.
+
+Image disk pressure is a newly exposed deployment cause from adding Chromium.
+Frozen engine activation repeats a known operator boundary from earlier canaries.
+Neither is evidence that the trial application's implementation regressed. Compare
+run error counts only after full new transcripts and cleanup have been audited.
+
+Prior baseline: ../sac-172/storage-canary/analysis.md and failures.md. New detailed
+register: failures.md. This is an interim report, not a completed canary result.

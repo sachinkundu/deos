@@ -66,3 +66,42 @@ success notifications; save the final grouped analysis and links in these files.
 Runtime source commit1a8807c. Worker versiona21b912f-fa3b-46d0-89fe-0561dae63943.
 Expected container image digest2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b.
 Upload completed; require all pool rollout readbacks before the Linear transition.
+
+Activation update: first image2cc009... failed unpacking in the basic pools with
+ImagePullRequestedDiskSizeToSmall (4 GB disk). See rollout-disk-error.json. Commit
+a2acace changes packaging to headless-shell only and clears npm/apt caches; local
+root filesystem is2,166,628,352 bytes and real Chromium regression passes. Lean
+deploy log /tmp/local-browser-lean-deploy.log is authoritative for the replacement
+version/digest; the earlier digest must NOT be accepted as final activation.
+
+Additional preflight: current SAC-246 engine is pinned to17September version
+f45cec59-181e-4c4a-80f5-2256444f2294. All1197provider steps are privately archived
+at /tmp/local-browser-engine.json, hash in engine-before.json. Before the canary
+transition, restart only this provider engine at its saved D1gate50 so it uses
+the new runtime handoff code. Read back its version and unchanged D1gate/definition/
+inputs. Do not trigger proposal/design or manually change D1. Engine restart is
+an authorized supervisor activation step, not an automatic recovery.
+
+ENGINE RESTART DONE: provider restart succeeded at07:37UTC; new Workflow version
+3990ce46-ab11-46f7-9fab-4b1fde94f1e1 (created07:18:59, the browser-runtime source
+deployment) now waits at the same implementation_review visit50. D1readback
+confirms definition41 and no active attempts. See engine-after.json,
+engine-version.json and engine-restart.log. Do NOT restart it again.
+
+LEAN UPLOAD DONE: final Worker b60ee177-9cee-4f93-8b71-20a2b95771b0.
+Expected container digest is now
+ca916761bbebebe45e69f560505a367c3a92bc31364b35da8f505eb5d71d2958.
+All four image repositories uploaded successfully; require completed, healthy,
+100percent rollouts for this digest before posting PR45 request/Linear transition.
+
+CANARY STARTED: all4pools completed at expectedca9167digest, healthy4each, no
+errors or starting instances. Receipt activation-complete.json. PR45 instruction
+posted at https://github.com/sachinkundu/deos-sample-project/pull/45#issuecomment-5726959055.
+Linear In Progress at07:51:30.774; provider deliveryd267682c-b639-41ad-9eab-7f4b3464b8b1
+consumed and transition to implementation_build visit51 at07:51:51.477.
+Attempt01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5 is RUNNING on basic sandbox
+impl-v1-p4mcggrwbhq7zjr4d5iieesvag2bdgeexxa2zjhdpvwqvpj2zuwq.
+Process4adb6fdb-fa98-411e-aeb0-d49a2ff3fbc5 started07:52:11.656.
+Frozen definition, approved design/base, checked input and branch unchanged,
+verified in canary-start.json. Do NOT repeat PRcomment, Linear transition or
+engine restart. Continue supervising this implementation attempt and its gates.

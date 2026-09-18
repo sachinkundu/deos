@@ -48,17 +48,17 @@
       "definition_version": 41,
       "definition_digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f",
       "workflow_instance_id": "wf-v1-vv6hj6lwdshnryctyi3e6ff4yh5isx7yyqy5u6fnbrz363rdo3fa",
-      "previous_node": "implementation_review",
-      "current_node": "implementation_build",
-      "gate_origin_node": null,
-      "status": "active",
+      "previous_node": "implementation_publish",
+      "current_node": "implementation_review",
+      "gate_origin_node": "implementation_publish",
+      "status": "awaiting_human",
       "accumulated_data_json": "{}",
       "created_at": "2026-09-17T13:37:26.619Z",
-      "updated_at": "2026-09-18T07:52:16.605Z",
+      "updated_at": "2026-09-17T18:45:46.014Z",
       "terminal_at": null,
       "terminal_cause": null,
-      "current_visit_sequence": 51,
-      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:50:transition",
+      "current_visit_sequence": 50,
+      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:49:transition",
       "selection_kind": "default",
       "selection_value": "project_policy",
       "selection_label_name": null,
@@ -525,30 +525,9 @@
       "route_digest": "346a508e57ba027dca1b9b966b2b30786f67adc4ff6a692540473053f46802f7",
       "start_slow_ok": null,
       "sandbox_tier_policy_version": "legacy-basic-v1"
-    },
-    {
-      "delivery_id": "d267682c-b639-41ad-9eab-7f4b3464b8b1",
-      "payload_hash": "6881dd4b0546e88707cd0331a99a1a281a406f172140e3c8dacef93f92fea126",
-      "received_at": "2026-09-18T07:51:31.923000+00:00",
-      "classification": "relevant",
-      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
-      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
-      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
-      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
-      "route_revision": 29,
-      "route_digest": "346a508e57ba027dca1b9b966b2b30786f67adc4ff6a692540473053f46802f7",
-      "start_slow_ok": null,
-      "sandbox_tier_policy_version": "legacy-basic-v1"
     }
   ],
-  "active_attempts_all": [
-    {
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
-      "node_id": "implementation_build",
-      "state": "running"
-    }
-  ],
+  "active_attempts_all": [],
   "attempts": [
     {
       "attempt_id": "01a0af96-705a-77f2-85ab-cd28486c6450",
@@ -829,20 +808,6 @@
       "cleanup_hold_until": null,
       "cleanup_hold_reason": null,
       "manifest_id": "manifest:01a0b097-22b7-79a0-ba91-ca5a94e5627c"
-    },
-    {
-      "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
-      "node_id": "implementation_build",
-      "state": "running",
-      "started_at": "2026-09-18T07:51:58.298Z",
-      "ended_at": null,
-      "result_class": null,
-      "cleanup_state": "pending",
-      "sandbox_id": "impl-v1-p4mcggrwbhq7zjr4d5iieesvag2bdgeexxa2zjhdpvwqvpj2zuwq",
-      "updated_at": "2026-09-18T07:52:11.709Z",
-      "cleanup_hold_until": null,
-      "cleanup_hold_reason": null,
-      "manifest_id": null
     }
   ],
   "implementation_gates": [
@@ -876,11 +841,11 @@
       "pr_number": 45,
       "head_sha": "108d02af273ace38d379ca1f94012a76dadefe31",
       "base_sha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
-      "state": "revision_requested",
-      "decision_delivery_id": "d267682c-b639-41ad-9eab-7f4b3464b8b1",
-      "decision_outcome": "revision_requested",
+      "state": "open",
+      "decision_delivery_id": null,
+      "decision_outcome": null,
       "opened_at": "2026-09-17T18:45:45.596Z",
-      "decided_at": "2026-09-18T07:51:51.477Z"
+      "decided_at": null
     }
   ],
   "gates": [
@@ -1133,14 +1098,6 @@
       "status": "completed",
       "public_error_code": null,
       "updated_at": "2026-09-17T18:43:51.404Z"
-    },
-    {
-      "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
-      "try_sequence": 5,
-      "kind": "build",
-      "status": "running",
-      "public_error_code": null,
-      "updated_at": "2026-09-18T07:52:11.117Z"
     }
   ],
   "environments": [
@@ -1214,15 +1171,6 @@
   ],
   "progress": [
     {
-      "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "tested_base_sha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
-      "completed": 32,
-      "total": 32,
-      "tasks_sha": "c6ebc9632411cf450ceedf37234d88c678537a0836bd0cc0dcee45c1e897782d",
-      "observed_at": "2026-09-18T07:52:16.605Z"
-    },
-    {
       "attempt_id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c",
       "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
       "tested_base_sha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
@@ -1276,5 +1224,5 @@
     ],
     "created_on": "2026-09-18T07:32:11.462Z"
   },
-  "observed_at": "2026-09-18T07:52:21.759544+00:00"
+  "observed_at": "2026-09-18T07:49:50.771061+00:00"
 }
