@@ -204,3 +204,17 @@ for failed attempt01a0b3ab or reuse prior workflowinstance. If capacity recurs,
 report it and back off rather than repeated immediate retries or model fallback.
 Add new attemptID to /tmp/local-browser-collect-artifacts.py once available.
 Keep owned test resources until durable PR45 proof saved and normal cleanup runs.
+
+09:04UTC owner policy update: external services are expected to fail. Use bounded
+safe retries with backoff before escalating; preserve originals and recovery state;
+notify only after exhaustion or when owner action is needed. Recovered transient
+service errors remain in the failure log without user notifications. Existing
+heartbeat prompt was updated to match. Never blindly replay ambiguous writes or
+browser actions. The same-session Codex retry fix is prepared in separate draft
+PR141 https://github.com/sachinkundu/deos/pull/141, branch codex/provider-retry-policy,
+worktree /Users/sachin/code/deos-provider-retries, commitfe1779e.630tests passed,
+1existing skip, typecheck and real-supervisor Linux fault-injection passed. NOT
+DEPLOYED. Broader external-service coverage is explicitly incomplete and tracked
+in docs/external-service-retry-policy.md in that worktree. Do not deploy over the
+current active retry01a0b3b2-fdfc-762b-9cf2-eea18365d827. No new canary transition
+was sent as part of this policy change. Continue current canary supervision.
