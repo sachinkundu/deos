@@ -47,18 +47,18 @@
       "definition_id": "implementation",
       "definition_version": 41,
       "definition_digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f",
-      "workflow_instance_id": "wf-v1-oj4wx5st64h4hkn4wyjn25sl6du4twlkhlfwtgk5tdh4pt46yheq",
-      "previous_node": "implementation_failed",
+      "workflow_instance_id": "wf-v1-vv6hj6lwdshnryctyi3e6ff4yh5isx7yyqy5u6fnbrz363rdo3fa",
+      "previous_node": "implementation_demo_gate",
       "current_node": "implementation_build",
       "gate_origin_node": null,
       "status": "active",
       "accumulated_data_json": "{}",
       "created_at": "2026-09-17T13:37:26.619Z",
-      "updated_at": "2026-09-18T08:47:52.647Z",
+      "updated_at": "2026-09-18T08:39:59.728Z",
       "terminal_at": null,
       "terminal_cause": null,
-      "current_visit_sequence": 56,
-      "last_transition_id": "transition:stage-retry:01a0b3ab-7236-70ce-b078-3ef77d633c9a",
+      "current_visit_sequence": 54,
+      "last_transition_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:53:transition",
       "selection_kind": "default",
       "selection_value": "project_policy",
       "selection_label_name": null,
@@ -544,7 +544,7 @@
   "active_attempts_all": [
     {
       "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "attempt_id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
+      "attempt_id": "01a0b3ab-7236-70ce-b078-3ef77d633c9a",
       "node_id": "implementation_build",
       "state": "running"
     }
@@ -861,27 +861,13 @@
     {
       "attempt_id": "01a0b3ab-7236-70ce-b078-3ef77d633c9a",
       "node_id": "implementation_build",
-      "state": "failed",
-      "started_at": "2026-09-18T08:39:12.933Z",
-      "ended_at": "2026-09-18T08:43:14.176Z",
-      "result_class": "codex_exit_nonzero",
-      "cleanup_state": "destroyed",
-      "sandbox_id": "impl-v1-yav4onhajugcpibsbr5jvvfpcazf7znai7xweyamy2om7mqamjza",
-      "updated_at": "2026-09-18T08:43:15.178Z",
-      "cleanup_hold_until": null,
-      "cleanup_hold_reason": null,
-      "manifest_id": "manifest:01a0b3ab-7236-70ce-b078-3ef77d633c9a:failure-v2"
-    },
-    {
-      "attempt_id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
-      "node_id": "implementation_build",
       "state": "running",
-      "started_at": "2026-09-18T08:47:27.460Z",
+      "started_at": "2026-09-18T08:39:12.933Z",
       "ended_at": null,
       "result_class": null,
       "cleanup_state": "pending",
-      "sandbox_id": "impl-v1-fby62zhgtir5oth5vbmozijg3x4x2pjpyvovq2qjhfnmmboe7snq",
-      "updated_at": "2026-09-18T08:47:52.155Z",
+      "sandbox_id": "impl-v1-yav4onhajugcpibsbr5jvvfpcazf7znai7xweyamy2om7mqamjza",
+      "updated_at": "2026-09-18T08:39:58.505Z",
       "cleanup_hold_until": null,
       "cleanup_hold_reason": null,
       "manifest_id": null
@@ -1110,50 +1096,6 @@
       "message": "Durable Object reset because its code was updated.",
       "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/f5b58f05-e5fa-4c03-910a-ff0b36a128b5.json",
       "occurred_at": "2026-09-17T18:44:01.981Z"
-    },
-    {
-      "error_id": "945856d5-9404-467b-ab47-c92db170510a",
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "node_id": "implementation_build",
-      "visit_sequence": 54,
-      "step_name": "agent:implementation_build:visit:54",
-      "location": "implementation.failure.process",
-      "message": "Implementation process stopped: supervisor_failed",
-      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/945856d5-9404-467b-ab47-c92db170510a.json",
-      "occurred_at": "2026-09-18T08:43:04.795Z"
-    },
-    {
-      "error_id": "6263d9f5-b8ce-46e8-980d-8b28b0812854",
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "node_id": "implementation_build",
-      "visit_sequence": 54,
-      "step_name": "agent:implementation_build:visit:54",
-      "location": "sandbox original error",
-      "message": "Selected model is at capacity. Please try a different model.",
-      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/6263d9f5-b8ce-46e8-980d-8b28b0812854.json",
-      "occurred_at": "2026-09-18T08:43:08.782Z"
-    },
-    {
-      "error_id": "20503cfc-0e24-4ce1-9396-358039ecc509",
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "node_id": "implementation_failed",
-      "visit_sequence": 55,
-      "step_name": "workflow runtime",
-      "location": "src/deos-workflow.ts:81",
-      "message": "implementation_failed",
-      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/20503cfc-0e24-4ce1-9396-358039ecc509.json",
-      "occurred_at": "2026-09-18T08:43:16.690Z"
-    },
-    {
-      "error_id": "cac2eeb9-e909-4380-ba25-7010ac0e886c",
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "node_id": "implementation_failed",
-      "visit_sequence": 55,
-      "step_name": "workflow runtime",
-      "location": "uncaught",
-      "message": "implementation_failed",
-      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/cac2eeb9-e909-4380-ba25-7010ac0e886c.json",
-      "occurred_at": "2026-09-18T08:43:16.690Z"
     }
   ],
   "implementation": [
@@ -1226,23 +1168,15 @@
       "kind": "build",
       "status": "completed",
       "public_error_code": null,
-      "updated_at": "2026-09-18T08:46:06.974Z"
+      "updated_at": "2026-09-18T08:32:41.452Z"
     },
     {
       "attempt_id": "01a0b3ab-7236-70ce-b078-3ef77d633c9a",
       "try_sequence": 6,
       "kind": "build",
-      "status": "failed",
-      "public_error_code": null,
-      "updated_at": "2026-09-18T08:43:15.274Z"
-    },
-    {
-      "attempt_id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
-      "try_sequence": 7,
-      "kind": "build",
       "status": "running",
       "public_error_code": null,
-      "updated_at": "2026-09-18T08:47:38.584Z"
+      "updated_at": "2026-09-18T08:39:27.786Z"
     }
   ],
   "environments": [
@@ -1310,7 +1244,7 @@
       "account_id": "c68856288112af7698f5be52ea94b96e",
       "config_json": "{\"d1\":[\"DB\"],\"r2\":[\"BODIES\"]}",
       "resources_json": "{\"d1\":{\"creating\":true,\"id\":\"2b32065e-aa45-472f-b0b2-ace06f52d561\"},\"r2\":{\"creating\":true,\"confirmed\":true},\"worker\":{\"creating\":true}}",
-      "state": "destroyed",
+      "state": "ready",
       "bundle_key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f54f307980a4fee2ef3ee5a2e1a1df4eed126403ba76fb40c2237da3eac50223/environment-bundle.json",
       "bundle_sha": "f54f307980a4fee2ef3ee5a2e1a1df4eed126403ba76fb40c2237da3eac50223",
       "receipt_key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/cc9d559c2d7e07f3bdf50163d70494ce05c0c0e6ad66256b5213ea27789aa89a/environment-receipt.json",
@@ -1318,9 +1252,9 @@
       "origin": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev",
       "lease_id": null,
       "lease_until": null,
-      "cleanup_receipt": "{\"name\":\"deos-tmp-707e60c64357d9e1197de094\",\"absent\":{\"d1\":true,\"r2\":true,\"worker\":true},\"checkedAt\":\"2026-09-18T08:46:12.642Z\"}",
+      "cleanup_receipt": null,
       "created_at": "2026-09-18T08:07:01.535Z",
-      "updated_at": "2026-09-18T08:46:12.642Z"
+      "updated_at": "2026-09-18T08:08:09.539Z"
     }
   ],
   "definitions": [
@@ -1335,22 +1269,13 @@
   ],
   "progress": [
     {
-      "attempt_id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
-      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
-      "tested_base_sha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
-      "completed": 31,
-      "total": 32,
-      "tasks_sha": "d381dce56dcf72853397136c941249d19e86cd5230ea4602b13ef18900bfac31",
-      "observed_at": "2026-09-18T08:47:52.647Z"
-    },
-    {
       "attempt_id": "01a0b3ab-7236-70ce-b078-3ef77d633c9a",
       "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
       "tested_base_sha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
-      "completed": 31,
+      "completed": 32,
       "total": 32,
-      "tasks_sha": "d381dce56dcf72853397136c941249d19e86cd5230ea4602b13ef18900bfac31",
-      "observed_at": "2026-09-18T08:42:52.735Z"
+      "tasks_sha": "c6ebc9632411cf450ceedf37234d88c678537a0836bd0cc0dcee45c1e897782d",
+      "observed_at": "2026-09-18T08:39:59.728Z"
     },
     {
       "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
@@ -1378,6 +1303,15 @@
       "total": 32,
       "tasks_sha": "c6ebc9632411cf450ceedf37234d88c678537a0836bd0cc0dcee45c1e897782d",
       "observed_at": "2026-09-17T18:12:28.637Z"
+    },
+    {
+      "attempt_id": "01a0b055-e41e-7038-ba7f-32ba533b7141",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "tested_base_sha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+      "completed": 26,
+      "total": 32,
+      "tasks_sha": "f28c4c8d54b56045515b8977be9b34702bf3077f38101c33c24429fdab90c27f",
+      "observed_at": "2026-09-17T17:44:08.957Z"
     }
   ],
   "deployment": {
@@ -1397,5 +1331,5 @@
     ],
     "created_on": "2026-09-18T07:32:11.462Z"
   },
-  "observed_at": "2026-09-18T08:47:55.644733+00:00"
+  "observed_at": "2026-09-18T08:41:24.301819+00:00"
 }

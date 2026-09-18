@@ -185,3 +185,22 @@ by live supervision, an existing diagnostic gap. Reviewer attempt01a0b3a5...
 remains running; native stderr has MODULE_TYPELESS_PACKAGE_JSON warning only
 (nonfatal warning, excluded from failure counts). Reader may show no reviewer
 transcript because its model output is separately collected at completion.
+
+08:47UTC: fresh reviewer completed needs_work at08:39:07. It inspected all11images
+and raw storage proof, accepted them, and found missing real failed read/delete
+demos (LOCAL-09, repeats an old evidence gap). Automatic response attempt
+01a0b3ab-7236-70ce-b078-3ef77d633c9a started but FAILED with provider model capacity
+at08:42:50 (LOCAL-10). Original-errors and failure recovery files hash-verified;
+see response-* artifacts. Also task6.6 invalid completed→active recurred and an
+adjacent native exec transport reported UnknownProcessId66805; causal relationship
+with capacity unknown. The task correction was prepared but completion unproven.
+
+No active global attempts; failed sandbox destroyed at08:43:15. One supported
+supervisor same-stage retry established08:47:20, same model, tier and definition.
+New Workflowinstance wf-v1-oj4wx5st64h4hkn4wyjn25sl6du4twlkhlfwtgk5tdh4pt46yheq,
+implementation_build visit56. See response-retry-request/receipt.json. This is
+supervisor recovery, NOT autonomous. No app edits/deployment. Do not replay retry
+for failed attempt01a0b3ab or reuse prior workflowinstance. If capacity recurs,
+report it and back off rather than repeated immediate retries or model fallback.
+Add new attemptID to /tmp/local-browser-collect-artifacts.py once available.
+Keep owned test resources until durable PR45 proof saved and normal cleanup runs.

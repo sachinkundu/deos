@@ -14,7 +14,7 @@ observations; see LOCAL-01..06 in failures.md. The first remote publish health
 check returned1042 and then recovered on the author retry using the same owned
 environment. An invalid R2list prefix was removed and the request succeeded. An expanded demo
 request exceeded1MiB before dispatch; the agent reduced its bodies and the
-replacement collection is in progress. Normal image upload and
+replacement collection completed with7scenarios and11captures. Normal image upload and
 gradual rollout are expected asynchronous operations, not recoveries. Provider
 retries of the superseded oversized image did not fix its packaging defect.
 
@@ -39,7 +39,10 @@ This is deliberate supervisor activation, not cloud-agent self-recovery.
 Cloud-agent loopback and owned remote HTTPS captures now exist, and remote D1/R2
 readback matches browser-created data. The loopback capture shows an explicitly
 uninitialized local-store error state; it proves rendering, not local storage.
-The new independent review and any routed author response, durable PR publication,
+The fresh independent review completed and accepted the local/remote images and
+raw storage evidence, but found missing failed read/delete demonstrations. It
+automatically routed an author response, which stopped on provider model capacity.
+One supervised same-stage retry was established08:47:20. Durable PR publication
 and resource cleanup remain pending. The revision reached implementation_build visit51
 on18September07:51:51 with the original approved hashes; see canary-start.json. Preserve honest distinctions between local Linux
 regression, cloud runtime activation and the full implementation canary.
@@ -62,3 +65,20 @@ run error counts only after full new transcripts and cleanup have been audited.
 
 Prior baseline: ../sac-172/storage-canary/analysis.md and failures.md. New detailed
 register: failures.md. This is an interim report, not a completed canary result.
+
+## Latest response failure and controlled retry
+
+The reviewer found an evidence gap already raised in the earlier canary; this is
+recurring incomplete demo coverage, not a new implementation defect. The response
+agent repeated the completed→active task mistake, then a command transport
+reported UnknownProcessId66805. The provider subsequently returned model capacity
+and terminated the turn. Original errors and recovery files were durably retained
+on this failed attempt, unlike the completed-author progress-timeout gap.
+
+The supervisor invoked one supported same-definition implementation_build retry
+at08:47:20 after verifying no active attempt and completed sandbox cleanup. It
+keeps model gpt-5.6-sol, definition41, proposal/design and accepted feedback. No
+application edits or deployment. This is supervisor recovery, not automatic.
+Capacity existed as a prior-run provider failure class; the particular cause and
+relationship to the adjacent command error remain unknown. See LOCAL-09/10 and
+response-retry-receipt.json. The whole canary is still incomplete.

@@ -209,3 +209,35 @@ original-errors.jsonl. The progress watcher timeout survives in the supervisor's
 live capture and repeat-errors-0800.json, not a dedicated runtime artifact.
 This reinforces the existing diagnostic-retention follow-up; do not claim all
 original errors would survive unsupervised collection.
+
+## LOCAL-09: failed-action demo coverage gap
+
+Fresh independent review completed08:39:07 with needs_work. All11images and raw
+storage proof were inspected and accepted as real; the missing approved evidence
+is a failed read/delete against the deployed app. This repeats an unresolved
+finding from the earlier review, not a browser crash or an identified app-code
+bug. Full reviewer result: fresh-review-result.json. The normal workflow routed
+author response attempt01a0b3ab-7236-70ce-b078-3ef77d633c9a at08:39:12.
+
+The author response also repeated LOCAL-02: task6.6 completed→active was rejected.
+It prepared pending→active recovery, but the command transport then failed with
+UnknownProcessId66805. The recovery is not proven completed. Original tool error:
+response-implementation-diagnostics.jsonl. Count as a new occurrence of an
+existing class, not a new cause.
+
+## LOCAL-10: provider capacity stopped the author response
+
+At08:42:50 the provider returned `Selected model is at capacity. Please try a
+different model.` The author process exited1; D1 marked codex_exit_nonzero and
+implementation_failed at08:43:16. No automatic stage recovery occurred.
+response-original-errors.jsonl preserves the original message, cause chain and
+stderr, including the adjacent UnknownProcessId66805 command transport failure.
+These are distinct observed errors; the evidence does not establish whether
+one caused the other. Response-failure-readback.json confirms zero globally
+active attempts and destroyed failed sandbox; failure manifest was hash-verified.
+The transient capacity root cause is external and unknown. No model fallback,
+usage reset, credential change or application code edit was made.
+
+A single supervisor same-stage retry is being attempted through the supported
+operator route with the same model and frozen definition. This is supervised
+recovery, not an automatic recovery. Original proposal/design remain unchanged.
