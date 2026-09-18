@@ -1,0 +1,26 @@
+[
+  {
+    "scenario": "response-6",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/response-6.png",
+    "sha256": "d1e8e07f6c940de47607ea6b8415ca4c11dabe55d037bdeae7bfe10985499af0",
+    "url": "https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "response-9",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/response-9.png",
+    "sha256": "2b98e7750a54a71ea9f9684c4342e6b8077fb45e847f375b07660aae14837db6",
+    "url": "https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "response-12",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/response-12.png",
+    "sha256": "5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4",
+    "url": "https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  }
+]

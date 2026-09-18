@@ -218,3 +218,20 @@ DEPLOYED. Broader external-service coverage is explicitly incomplete and tracked
 in docs/external-service-retry-policy.md in that worktree. Do not deploy over the
 current active retry01a0b3b2-fdfc-762b-9cf2-eea18365d827. No new canary transition
 was sent as part of this policy change. Continue current canary supervision.
+
+09:12UTC heartbeat: retry01a0b3b2... stillactive, original capacityfailure has not
+recurred. Agent passed16tests/build, provisioned new environment
+29e1a604cd5e918d7382569b (D1fec52572-2a45-48db-bbef-306a155a9c68), collected the
+failed-read/delete proof using explicitly synthetic D1 inconsistency after two
+failed fixture scenarios. LOCAL-11..14 and repeated08logged with originalerrors;
+no owner alert because agent recovered. Completed collection6378856f-9194-4940-
+b247-9e6db526f7dd has4captures/3unique selectedimages; all3downloaded, hashchecked,
+visually inspected in cloud-captures/response-{6,9,12}.png. Raw D1/R2proof saved.
+Agent final audit stillrunning. Do not reenter reviewer/author or deploy.
+
+Original repeat environment707e60...was auto destroyed08:46:12 on terminalfailure;
+readback09:08has cleanupreceipt. NEWenvironment29e1a...requires finalcleanup.
+At publication verify earlier11main-flowimages remain durable/accessible alongside
+these3new failure-path images. Fresh reviewer was needs_work; frozen policy gives
+one author response then human gate, not a second independent pass. Judge the
+final repaired evidence accurately. No new policyfix deployment (PR141draft).

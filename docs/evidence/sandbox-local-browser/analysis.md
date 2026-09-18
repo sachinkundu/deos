@@ -82,3 +82,13 @@ application edits or deployment. This is supervisor recovery, not automatic.
 Capacity existed as a prior-run provider failure class; the particular cause and
 relationship to the adjacent command error remain unknown. See LOCAL-09/10 and
 response-retry-receipt.json. The whole canary is still incomplete.
+
+09:12UTC follow-up: the supervised retry is making progress without another model
+capacity failure. The cloud author corrected two unsuccessful demo fixtures and
+an invalid multi-SELECT inspection query, then produced the missing failure-path
+images. Native patch misuse also recurred. Details are LOCAL-11..14 and the
+additional08occurrence. These are automatically corrected author/tool issues;
+the original capacity retry itself remains supervisor-owned. Screenshots prove
+real deployed error handling against deliberately inconsistent test storage,
+not a spontaneous provider failure. Final gallery publication and the new
+29e1a604cd5e918d7382569b environment cleanup are not yet verified.

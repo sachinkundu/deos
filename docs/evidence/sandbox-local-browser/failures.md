@@ -241,3 +241,55 @@ usage reset, credential change or application code edit was made.
 A single supervisor same-stage retry is being attempted through the supported
 operator route with the same model and frozen definition. This is supervised
 recovery, not an automatic recovery. Original proposal/design remain unchanged.
+
+## Response retry: automatically corrected demo and tool errors
+
+The supported retry01a0b3b2-fdfc-762b-9cf2-eea18365d827 progressed through all16
+checks and a new environment without another observed model-capacity error.
+
+- LOCAL-11: collection9716b4ea-b893-4a56-9795-e5b774a85dfe timed out09:00:16
+  waiting for a read-error banner. The agent tried an out-of-band API delete
+  during an atomic demo; the storage operation queued behind the demo, so the
+  expected stale-page condition was not created in time. This is a fixture/runtime
+  sequencing mismatch, not evidence that Chromium failed. Runtime documentation
+  should make serialization explicit; an interleaved fixture capability remains
+  a possible follow-up.
+- LOCAL-12: collection38b7a780-af0c-460d-87d0-07f6a9b8030e timed out09:01:39
+  waiting for an info banner. A synthetic missing-body fixture produced a real
+  read error, but deleting it legitimately succeeded. The fixture did not induce
+  the intended delete failure. The agent excluded these images and rebuilt the
+  full scenario with a clearly labeled mismatched-index fixture in owned test D1.
+- LOCAL-13: query-failure-proof-feedback contained two SELECT statements. The
+  inspection broker rejected it with400environment_invalid, preserving
+  `Inspection accepts one SELECT statement and scalar parameters`. The author
+  split it into separate queries; both passed and raw D1/R2 proof was captured.
+- LOCAL-14: an attempted skill read under /root/.codex/skills/.system exited1
+  with no captured native output. The runtime guide and other context reads
+  succeeded and the author continued. Do not invent a missing-file/permission
+  error text; the command failure alone is what the transcript preserves.
+- LOCAL-08 recurred at08:49:28: native apply_patch for two request files was
+  blocked by the hook. Original stderr is in response-native-stderr.txt; the
+  agent continued through supported request-file tools. No supervisor fix.
+
+Full original demo/broker errors: response-demo-errors.json. Native failed
+commands: response-failed-commands.json. CLIexit75 with statequeued is the
+intentional asynchronous response, not an additional failure. Duplicate failed
+polls and demo/event copies are not separate failures.
+
+Replacement collection6378856f-9194-4940-b247-9e6db526f7dd completed09:02:57.
+Three selected images show the deployed app's read failure, failed delete, and
+healthy Alpha still readable. These are real Chromium/app/D1/R2 interactions
+with a SYNTHETIC inconsistent-storage fixture, not provider-originated failure
+proof. Supervisor downloaded, SHA256verified and visually inspected all three.
+The failing reader is cleared but still displays its loading placeholder; log
+this UI limitation without expanding this workflow trial into product polish.
+Raw storage proof confirms Alpha's10byte object/body intact and the deliberately
+broken fixture has no body object. Earlier main-flow proof must remain accessible
+in final PR45 publication; verify this after completion.
+
+The first repeat environment707e60c64357d9e1197de094 was automatically destroyed
+at08:46:12 after terminal failure, according to its D1cleanupreceipt. The current
+response environment29e1a604cd5e918d7382569b is ready; its D1is
+fec52572-2a45-48db-bbef-306a155a9c68. Final cleanup is still pending. No runtime
+or sample-app edit by the supervisor. Recovered errors were not escalated under
+the owner's new notification policy.
