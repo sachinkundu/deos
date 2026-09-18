@@ -45,7 +45,7 @@ part of this canary.
 
 ## Validation and status
 
-- Backend and typecheck results are saved alongside this file.
+- Backend: 622 tests, 621 passed, one existing skip, zero failed. Typecheck passed.
 - A real Linux Chromium regression tests interaction, controlled-input clearing,
   reload persistence, mobile capture, context reset, measurements, redirect chains,
   cross-origin images/frames, failed-document proof rejection and process cleanup.
@@ -54,5 +54,9 @@ part of this canary.
 - Review regression tests force a new gate after the browser runtime changes.
 - [Failure log](failures.md) separates supervisor fixes from cloud-agent recovery.
 
-Deployment, cloud canary completion and provider cleanup are pending. Local tests
-are not evidence that those steps have completed.
+PR140 contains this runtime change. The first cloud rollout exposed an image-size
+failure on the basic pools: the image exceeded their 4 GB unpacking allowance.
+The image now installs only Chromium headless shell and removes package caches
+in the layers that create them. See failures.md and rollout-disk-error.json.
+Full activation, the implementation-only canary and cleanup are still pending.
+Local tests are not evidence that those steps have completed.

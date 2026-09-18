@@ -1,0 +1,169 @@
+{
+  "deployments": {
+    "deos-queue-consumer-ts": {
+      "versions": [
+        {
+          "version_id": "a21b912f-fa3b-46d0-89fe-0561dae63943",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-18T07:09:19.659228Z"
+    },
+    "deos-sample-project": {
+      "versions": [
+        {
+          "version_id": "cf41c86e-e6e3-4324-b7b0-202460aec79d",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-16T13:42:48.320203Z"
+    },
+    "deos-workflow-portal-staging": {
+      "versions": [
+        {
+          "version_id": "d43b245e-d34c-4d7b-a3f3-350259d2e371",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-09-17T12:50:45.66935Z"
+    }
+  },
+  "containers": [
+    {
+      "name": "deos-queue-consumer-ts-implementationstandard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b",
+      "version": 30,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-implementationsandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+      "version": 30,
+      "rollout": "progressing",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 3,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 1
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 1,
+        "updated_instances": 0,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 1,
+          "current_version_instances": 3,
+          "target_version_percentage": 25
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-standard2sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b",
+      "version": 38,
+      "rollout": "completed",
+      "health": {
+        "errors": [],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 4,
+          "stopped": 0,
+          "failed": 0,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 2,
+        "updated_instances": 4,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 4,
+          "current_version_instances": 0,
+          "target_version_percentage": 100
+        }
+      }
+    },
+    {
+      "name": "deos-queue-consumer-ts-sandbox",
+      "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+      "version": 94,
+      "rollout": "progressing",
+      "health": {
+        "errors": [
+          {
+            "instance_id": "d038a10b-ba17-45fd-8cc2-77ea8bc13e8e",
+            "event": {
+              "id": "f333f0e8-2ca8-4a90-a523-a11c57bfed41",
+              "time": "2026-09-18T07:27:40.786Z",
+              "type": "UserError",
+              "name": "ImagePullError",
+              "message": "the runtime failed unpacking the image because the requested disk size was smaller than the unpacked size of the image. Try setting a larger disk size.",
+              "details": {
+                "duration": "1m33.446s",
+                "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b",
+                "requested_disk_size": 4000000000,
+                "type": "ImagePullRequestedDiskSizeToSmall"
+              },
+              "statusChange": {
+                "health": "failed"
+              }
+            }
+          }
+        ],
+        "instances": {
+          "active": 0,
+          "assigned": 0,
+          "healthy": 3,
+          "stopped": 0,
+          "failed": 1,
+          "scheduling": 0,
+          "starting": 0
+        }
+      },
+      "progress": {
+        "total_steps": 2,
+        "current_step": 1,
+        "updated_instances": 0,
+        "total_instances": 4,
+        "version_distribution": {
+          "target_version_instances": 1,
+          "current_version_instances": 3,
+          "target_version_percentage": 25
+        }
+      }
+    }
+  ]
+}

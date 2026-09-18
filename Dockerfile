@@ -14,7 +14,8 @@ RUN UV_PYTHON_INSTALL_DIR=/opt/deos-python UV_PYTHON_BIN_DIR=/usr/local/bin \
     && python3 -c 'from datetime import UTC; import sys; assert sys.version_info[:3] == (3, 11, 16)'
 
 RUN useradd --create-home --shell /bin/bash deos-author
-RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0 @anthropic-ai/claude-code@2.1.268 wrangler@4.125.0
+RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0 @anthropic-ai/claude-code@2.1.268 wrangler@4.125.0 \
+    && npm cache clean --force
 
 RUN useradd --create-home --shell /usr/sbin/nologin deos-browser \
     && chmod 700 /home/deos-browser
@@ -22,7 +23,10 @@ RUN useradd --create-home --shell /usr/sbin/nologin deos-browser \
 # Browser control stays inside the implementation sandbox over a local pipe.
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/deos-browser
 RUN npm install --prefix /deos --omit=dev playwright@1.63.0 \
-    && /deos/node_modules/.bin/playwright install --with-deps chromium
+    && /deos/node_modules/.bin/playwright install --with-deps --only-shell chromium \
+    && npm cache clean --force \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/bettaview \
     && chmod 700 /deos/auth \
