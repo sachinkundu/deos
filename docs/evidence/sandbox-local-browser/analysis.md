@@ -1,94 +1,114 @@
-# SAC-246 implementation repeat: interim analysis
+# SAC-246 sandbox-local browser repeat: final analysis
 
-The repeat is intended to test the replacement browser and implementation gates.
-Do not count earlier SAC-246 attempts as new failures. Use new attempt IDs and the
-start receipt. The approved proposal, design and demo plan remain unchanged.
+The implementation-only repeat reached Human Review at09:11:11UTC on18September.
+[Sample PR45](https://github.com/sachinkundu/deos-sample-project/pull/45) remains
+open, unmerged and unreleased. Its head108d02af273ace38d379ca1f94012a76dadefe31 is
+unchanged: this repeat repaired demonstration evidence, not sample application
+code. Approved proposalPR43, designPR44 and saved demo plan were preserved.
 
-## Automatically recovered
+## Automatically recovered or completed
 
-The first combined check failed on a local test-adapter message assertion. The
-cloud author reran the affected test and full16test suite unchanged; both passed.
-The build passed too. The underlying intermittent adapter cause is unresolved. A progress notification timeout and invalid task transition
-were also observed. They have not stopped the attempt. These are provisional
-observations; see LOCAL-01..06 in failures.md. The first remote publish health
-check returned1042 and then recovered on the author retry using the same owned
-environment. An invalid R2list prefix was removed and the request succeeded. An expanded demo
-request exceeded1MiB before dispatch; the agent reduced its bodies and the
-replacement collection completed with7scenarios and11captures. Normal image upload and
-gradual rollout are expected asynchronous operations, not recoveries. Provider
-retries of the superseded oversized image did not fix its packaging defect.
+The cloud author reran a transient local test-adapter failure without a source
+change; all16tests and the build passed. A1042temporary Worker health check
+recovered on a repeat publication to the same owned resources. The agent removed
+an unsupported R2listing field, reduced an oversized demo request, corrected a
+status CLI invocation, and continued after blocked native patch calls and invalid
+task transitions. The final response corrected two unsuitable failure fixtures
+and split a rejected multi-SELECT inspection into two supported reads.
 
-## Fixed by the supervisor
+Chromium inside the actual Cloudflare sandbox rendered the loopback app and
+navigated to the owned HTTPS Worker with real D1/R2. The main-flow collection
+completed7scenarios/11images, including real100object capacity rejection and
+fresh-context persistence. Its loopback image honestly shows an uninitialized
+local-storage error; it proves rendering, not successful local storage.
 
-The supervisor changed workflow/runtime code only. The local browser regression
-found an unsafe redirect behavior and the driver now checks each hop before a
-request is sent. The supervisor also added browser-runtime review identity so the
-previous external-browser review cannot replace a fresh independent gate.
+The browser-runtime identity guard forced a new independent review. That reviewer
+inspected all11images and raw storage proof, accepted those as real, and returned
+needs_work for missing failed-read/delete demonstrations. Normal routing started
+an author response. After the supervised capacity retry described below, that
+author supplied3unique selected images of real deployed error handling using a
+clearly labeled synthetic inconsistent-index fixture. They are not evidence of
+a spontaneous provider outage. The fixed policy gives one author response and
+then Human Review; no second independent pass is claimed.
 
-The first cloud deployment exposed image disk pressure in the basic pools. The
-supervisor removed the unused headed browser and package caches; the resulting
-image passed the real Chromium regression at1GiB memory. Full activation is recorded in activation-complete.json. Test-authoring mistakes are listed separately in failures.md.
+Both owned temporary Worker/D1/R2 sets were automatically destroyed: the first
+on terminal failure, the second after publication. Independent Cloudflare API
+readback returned resource-specific404absence for all6resources. Browser closures
+and all sandbox cleanup states are recorded. Public PR45 images return200without
+authentication and match their recorded SHA256hashes.
 
-The existing cloud workflow engine retained yesterday's code. Its1197step history
-was archived and only the engine restarted. D1 and the new provider history prove
-that it resumed implementation review visit50, without earlier agent stages.
-This is deliberate supervisor activation, not cloud-agent self-recovery.
+## Fixed or recovered by the supervisor
 
-## Still requires verification
+Before the repeat, the supervisor implemented the local-browser runtime and
+fixed unsafe redirect interception exposed by the Linux regression. Adding
+Chromium initially exceeded the basic pool disk limit; using only headless shell
+and removing package caches reduced the root filesystem from3.30GB to2.17GB.
+The deployed Worker and all4container pools were verified before the canary.
+The browser-runtime review identity guard prevented reuse of the earlier review.
 
-Cloud-agent loopback and owned remote HTTPS captures now exist, and remote D1/R2
-readback matches browser-created data. The loopback capture shows an explicitly
-uninitialized local-store error state; it proves rendering, not local storage.
-The fresh independent review completed and accepted the local/remote images and
-raw storage evidence, but found missing failed read/delete demonstrations. It
-automatically routed an author response, which stopped on provider model capacity.
-One supervised same-stage retry was established08:47:20. Durable PR publication
-and resource cleanup remain pending. The revision reached implementation_build visit51
-on18September07:51:51 with the original approved hashes; see canary-start.json. Preserve honest distinctions between local Linux
-regression, cloud runtime activation and the full implementation canary.
+The existing Workflow engine still held yesterday's code. Its1197step history
+was archived, then the engine alone was restarted at the saved implementation
+review gate. Proposal/design and prior agent stages did not rerun.
 
-The prior run's unrelated stderr preservation, reviewer provenance, delayed gate
-wake, provider resets and portal rendering questions are still open unless this
-repeat provides new evidence. Replacing the browser removes the relay from the
-new local path; it does not repair the old relay service.
+The first author response stopped on `Selected model is at capacity`. Its failure
+snapshot and originals were preserved, but there was no automatic stage retry.
+After verifying cleanup and zero active attempts, the supervisor used one
+supported same-definition/same-model retry. It resumed saved implementation and
+feedback. This is supervised recovery, not an unattended success.
 
-## Comparison with prior runs
+Final publication selected only the3new error-path images, omitting the11earlier
+main-flow images from the PR gallery. The supervisor retained and hash-verified
+those earlier images and is attaching a commit-pinned evidence supplement toPR45.
+This repairs reviewer access without editing the sample app. The automated
+publication-selection behavior still needs repair.
 
-The first SAC-246 run reached PR45 with supervisor assistance. Its final demo used
-the remote Worker because local relay530/1016 remained unresolved. This repeat
-must demonstrate the local path directly and verify real remote storage too.
+No sample implementation code was edited by the supervisor. The separate retry
+policy fix is draft[DEOS PR141](https://github.com/sachinkundu/deos/pull/141); it is
+not part of this deployed canary. It passed630tests,1existing skip, typecheck and
+a local real-supervisor fault-injection test, not live provider recovery proof.
 
-Image disk pressure is a newly exposed deployment cause from adding Chromium.
-Frozen engine activation repeats a known operator boundary from earlier canaries.
-Neither is evidence that the trial application's implementation regressed. Compare
-run error counts only after full new transcripts and cleanup have been audited.
+## Still needs fixing
 
-Prior baseline: ../sac-172/storage-canary/analysis.md and failures.md. New detailed
-register: failures.md. This is an interim report, not a completed canary result.
+- External-service retries are incomplete. PR141 prepares same-session Codex
+  retries; Claude continuation, retry-after handling and other provider boundaries
+  still need the audit in docs/external-service-retry-policy.md on that branch.
+- Earlier accepted proof can disappear from the final PR gallery when an author
+  response selects only the added evidence. Supplementary publication was manual.
+- An atomic demo cannot interleave queued storage operations. The agent wasted
+  one collection trying that. Document it clearly or provide a safe fixture step.
+- Repeated native tool, CLI, task-transition and request-shape mistakes show that
+  instructions alone do not fully prevent known misuse. Improve contracts/errors.
+- The intermittent local Miniflare/workerd assertion and repeated1042readiness
+  symptom recovered; their precise causes remain unknown.
+- Completed-author progress timeout retention remains incompletely verified.
+  The normal manifest lacks original-errors.jsonl; completion diagnostics may be
+  copied separately, but this timeout was preserved by live supervision. Do not
+  claim all originals survive unattended completion.
+- The failing reader clears old content but retains its loading placeholder.
+  This UI limitation was logged without expanding a workflow trial into polish.
+- The old external preview relay530/1016was bypassed by replacing the browser
+  architecture. The relay service itself was not repaired.
 
-## Latest response failure and controlled retry
+## Comparison with earlier runs
 
-The reviewer found an evidence gap already raised in the earlier canary; this is
-recurring incomplete demo coverage, not a new implementation defect. The response
-agent repeated the completed→active task mistake, then a command transport
-reported UnknownProcessId66805. The provider subsequently returned model capacity
-and terminated the turn. Original errors and recovery files were durably retained
-on this failed attempt, unlike the completed-author progress-timeout gap.
+There are new failures, but many are repeated classes. New to this change were
+Chromium image disk pressure and the atomic-demo fixture sequencing mismatch.
+Known classes recurred: progress delivery timeout,1042readiness, task reopening,
+oversized requests, blocked native tools, provider capacity/availability, and
+incomplete evidence coverage. The final gallery omission is a newly observed
+publication limitation in this repeat; do not infer it never happened before.
+The adjacent UnknownProcessId error is preserved, but its relationship to model
+capacity is unknown.
 
-The supervisor invoked one supported same-definition implementation_build retry
-at08:47:20 after verifying no active attempt and completed sandbox cleanup. It
-keeps model gpt-5.6-sol, definition41, proposal/design and accepted feedback. No
-application edits or deployment. This is supervisor recovery, not automatic.
-Capacity existed as a prior-run provider failure class; the particular cause and
-relationship to the adjacent command error remain unknown. See LOCAL-09/10 and
-response-retry-receipt.json. The whole canary is still incomplete.
+The improvement is concrete: loopback screenshots no longer use the failing
+public relay, owned remote HTTPS works in the same browser, real D1/R2 evidence
+survives infrastructure removal, and the changed browser triggered fresh review.
+Reliability is not yet unattended: engine activation, one capacity retry and
+final evidence supplementation required supervision. Logged LOCAL-01..15 are
+failure-register entries, not a count of unique provider outages or failed runs;
+repeated occurrences and expected negative tests are distinguished in failures.md.
 
-09:12UTC follow-up: the supervised retry is making progress without another model
-capacity failure. The cloud author corrected two unsuccessful demo fixtures and
-an invalid multi-SELECT inspection query, then produced the missing failure-path
-images. Native patch misuse also recurred. Details are LOCAL-11..14 and the
-additional08occurrence. These are automatically corrected author/tool issues;
-the original capacity retry itself remains supervisor-owned. Screenshots prove
-real deployed error handling against deliberately inconsistent test storage,
-not a spontaneous provider failure. Final gallery publication and the new
-29e1a604cd5e918d7382569b environment cleanup are not yet verified.
+Evidence: activation-complete.json, canary-start.json, fresh-review-result.json,
+response-retry-receipt.json, completed-response-audit.json, final-provider-readback.json,
+final-cloud-demo-receipt.json, response-final-demo-receipt.json and cloud-captures/.
+Prior baseline: ../sac-172/storage-canary/analysis.md and failures.md.

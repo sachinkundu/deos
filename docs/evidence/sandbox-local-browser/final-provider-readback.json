@@ -1,0 +1,133 @@
+{
+  "observedAt": "2026-09-18T09:18:03.993649+00:00",
+  "resources": [
+    {
+      "environment": "deos-tmp-707e60c64357d9e1197de094",
+      "kind": "worker",
+      "status": 404,
+      "body": {
+        "result": null,
+        "success": false,
+        "errors": [
+          {
+            "code": 10007,
+            "message": "This Worker does not exist on your account."
+          }
+        ],
+        "messages": []
+      }
+    },
+    {
+      "environment": "deos-tmp-707e60c64357d9e1197de094",
+      "kind": "d1",
+      "status": 404,
+      "body": {
+        "messages": [],
+        "result": null,
+        "success": false,
+        "errors": [
+          {
+            "code": 7404,
+            "message": "The database 2b32065e-aa45-472f-b0b2-ace06f52d561 could not be found"
+          }
+        ]
+      }
+    },
+    {
+      "environment": "deos-tmp-707e60c64357d9e1197de094",
+      "kind": "r2",
+      "status": 404,
+      "body": {
+        "success": false,
+        "errors": [
+          {
+            "code": 10006,
+            "message": "The specified bucket does not exist."
+          }
+        ],
+        "messages": [],
+        "result": null
+      }
+    },
+    {
+      "environment": "deos-tmp-29e1a604cd5e918d7382569b",
+      "kind": "worker",
+      "status": 404,
+      "body": {
+        "result": null,
+        "success": false,
+        "errors": [
+          {
+            "code": 10007,
+            "message": "This Worker does not exist on your account."
+          }
+        ],
+        "messages": []
+      }
+    },
+    {
+      "environment": "deos-tmp-29e1a604cd5e918d7382569b",
+      "kind": "d1",
+      "status": 404,
+      "body": {
+        "messages": [],
+        "result": null,
+        "success": false,
+        "errors": [
+          {
+            "code": 7404,
+            "message": "The database fec52572-2a45-48db-bbef-306a155a9c68 could not be found"
+          }
+        ]
+      }
+    },
+    {
+      "environment": "deos-tmp-29e1a604cd5e918d7382569b",
+      "kind": "r2",
+      "status": 404,
+      "body": {
+        "success": false,
+        "errors": [
+          {
+            "code": 10006,
+            "message": "The specified bucket does not exist."
+          }
+        ],
+        "messages": [],
+        "result": null
+      }
+    }
+  ],
+  "publicImages": [
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/03c43430fa6a0663398af8c7db08728e2851913b/images/5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4.png",
+      "status": 200,
+      "mediaType": "image/png",
+      "sha256": "5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4",
+      "bytes": 157701,
+      "authenticated": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/03c43430fa6a0663398af8c7db08728e2851913b/images/d1e8e07f6c940de47607ea6b8415ca4c11dabe55d037bdeae7bfe10985499af0.png",
+      "status": 200,
+      "mediaType": "image/png",
+      "sha256": "d1e8e07f6c940de47607ea6b8415ca4c11dabe55d037bdeae7bfe10985499af0",
+      "bytes": 153709,
+      "authenticated": false
+    },
+    {
+      "url": "https://raw.githubusercontent.com/sachinkundu/deos-sample-project/03c43430fa6a0663398af8c7db08728e2851913b/images/2b98e7750a54a71ea9f9684c4342e6b8077fb45e847f375b07660aae14837db6.png",
+      "status": 200,
+      "mediaType": "image/png",
+      "sha256": "2b98e7750a54a71ea9f9684c4342e6b8077fb45e847f375b07660aae14837db6",
+      "bytes": 152983,
+      "authenticated": false
+    }
+  ],
+  "pr": {
+    "url": "https://github.com/sachinkundu/deos-sample-project/pull/45",
+    "state": "OPEN",
+    "headRefOid": "108d02af273ace38d379ca1f94012a76dadefe31",
+    "updatedAt": "2026-09-18T09:11:00Z"
+  }
+}

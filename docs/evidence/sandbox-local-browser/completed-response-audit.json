@@ -1,0 +1,89 @@
+{
+  "attempt": {
+    "attempt_id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
+    "node_id": "implementation_build",
+    "state": "completed",
+    "started_at": "2026-09-18T08:47:27.460Z",
+    "ended_at": "2026-09-18T09:10:44.962Z",
+    "result_class": "completed",
+    "cleanup_state": "destroyed",
+    "sandbox_id": "impl-v1-fby62zhgtir5oth5vbmozijg3x4x2pjpyvovq2qjhfnmmboe7snq",
+    "updated_at": "2026-09-18T09:10:45.591Z",
+    "cleanup_hold_until": null,
+    "cleanup_hold_reason": null,
+    "manifest_id": "manifest:01a0b3b2-fdfc-762b-9cf2-eea18365d827"
+  },
+  "artifacts": [
+    {
+      "attempt_id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
+      "logical_name": "transcript.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b3b2-fdfc-762b-9cf2-eea18365d827/transcript.jsonl",
+      "sha256": "24f9868e9ec00abd53717b794a2815709efb247f212f5d28c431397265fd47fd",
+      "byte_size": 1759669
+    },
+    {
+      "attempt_id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
+      "logical_name": "result.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b3b2-fdfc-762b-9cf2-eea18365d827/result.json",
+      "sha256": "e7b891781a1ac84f97f55a84b40f9c2f0d6884bead3187f1f6deb477fe099988",
+      "byte_size": 1925
+    },
+    {
+      "attempt_id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
+      "logical_name": "patch.diff",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b3b2-fdfc-762b-9cf2-eea18365d827/patch.diff",
+      "sha256": "eda27c647e503eccda370656c712ff985dc86b303666be083fb63d5b87a14d19",
+      "byte_size": 197437
+    },
+    {
+      "attempt_id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
+      "logical_name": "validation.txt",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b3b2-fdfc-762b-9cf2-eea18365d827/validation.txt",
+      "sha256": "2bc64cbc87990ce17874929158358b170be509ae21ac6ff8d5929c7d8819cd35",
+      "byte_size": 640
+    },
+    {
+      "attempt_id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
+      "logical_name": "implementation-diagnostics.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b3b2-fdfc-762b-9cf2-eea18365d827/implementation-diagnostics.jsonl",
+      "sha256": "472b213bcf3382e3eab6f65101b329c9fe9536ffb8023dab201879a80dc62eee",
+      "byte_size": 2880502
+    }
+  ],
+  "browserLifecycle": [
+    {
+      "event": "local_browser_started",
+      "version": "153.0.8010.12",
+      "transport": "local-pipe",
+      "pid": 72,
+      "attemptId": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
+      "occurredAt": "2026-09-18T08:55:14.672Z"
+    },
+    {
+      "event": "local_browser_closed",
+      "transport": "local-pipe",
+      "attemptId": "01a0b3b2-fdfc-762b-9cf2-eea18365d827",
+      "occurredAt": "2026-09-18T09:10:37.160Z"
+    }
+  ],
+  "humanGate": {
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+    "visit_sequence": 60,
+    "node_id": "implementation_review",
+    "expected_event_kind": "state",
+    "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+    "issue_id": "e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+    "human_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+    "question_id": null,
+    "pr_number": 45,
+    "head_sha": "108d02af273ace38d379ca1f94012a76dadefe31",
+    "base_sha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "state": "open",
+    "decision_delivery_id": null,
+    "decision_outcome": null,
+    "opened_at": "2026-09-18T09:11:11.978Z",
+    "decided_at": null
+  },
+  "activeAttempts": [],
+  "samplePrHead": "108d02af273ace38d379ca1f94012a76dadefe31"
+}

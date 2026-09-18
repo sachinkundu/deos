@@ -293,3 +293,18 @@ response environment29e1a604cd5e918d7382569b is ready; its D1is
 fec52572-2a45-48db-bbef-306a155a9c68. Final cleanup is still pending. No runtime
 or sample-app edit by the supervisor. Recovered errors were not escalated under
 the owner's new notification policy.
+
+## LOCAL-15: final PR gallery omitted earlier accepted main-flow evidence
+
+PR45 publication at09:11selected only3new error-path images and the replacement
+Showboat record. Its body did not retain the11main-flowimages accepted by the
+fresh reviewer. No source work was lost; originals remained in protected R2.
+Supervisor repair: retrieve all11with matching SHA256, publish them as immutable
+DEOS evidence files, and attach a PR45comment with captions and raw storage proof.
+This is a workflow/evidence publication repair, not a sample-app edit. Automatic
+proof-selection carry-forward remains an unresolved workflow follow-up.
+
+Final audit: author response completed09:10:44.962; local browser closed09:10:37.160;
+sandbox destroyed09:10:45.591. Human gatevisit60opened09:11:11.978. Last environment
+cleanup09:11:11.545. Independent APIabsence and public imagehashchecks are in
+final-provider-readback.json. No new terminal provider error on the retry.
