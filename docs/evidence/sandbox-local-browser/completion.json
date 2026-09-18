@@ -1,0 +1,20 @@
+{
+  "observedAt": "2026-09-18T09:24:09.931223+00:00",
+  "outcome": "implementation_repeat_complete_at_human_review",
+  "samplePr": "https://github.com/sachinkundu/deos-sample-project/pull/45",
+  "sampleHead": "108d02af273ace38d379ca1f94012a76dadefe31",
+  "sampleMerged": false,
+  "sampleReleased": false,
+  "runtimePr": "https://github.com/sachinkundu/deos/pull/140",
+  "runtimePrReady": true,
+  "supplementComment": "https://github.com/sachinkundu/deos-sample-project/pull/45#issuecomment-5727967312",
+  "temporaryWorkerD1R2SetsDeleted": 2,
+  "publicImagesVerified": 14,
+  "automationId": "run-reading-queue-canary-to-pr",
+  "automationStatus": "PAUSED",
+  "privateReaderStopped": true,
+  "privateReaderCredentialRemoved": true,
+  "retryPolicyPr": "https://github.com/sachinkundu/deos/pull/141",
+  "retryPolicyDeployed": false,
+  "unattendedSuccess": false
+}
