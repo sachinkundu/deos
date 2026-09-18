@@ -4,6 +4,7 @@ import { sandboxProviderIdentity } from "./orchestration-identity.ts";
 import { forwardImplementationPreview } from "./implementation-preview.ts";
 import { ImplementationStore } from "./implementation-store.ts";
 import { recordCaughtError } from "./error-context.ts";
+import { ownedBrowserDestination } from './implementation-local-browser.ts';
 
 import type { SandboxArtifactReader } from "./artifact-collector.ts";
 import type { SandboxFactory, SandboxView } from "./sandbox-controller.ts";
@@ -53,7 +54,8 @@ for (const sandboxClass of [ImplementationSandbox, ImplementationStandard2Sandbo
     const model=(url.hostname==='chatgpt.com'&&url.pathname.startsWith('/backend-api/codex/')) ||
       (url.hostname==='auth.openai.com'&&url.pathname==='/oauth/token');
     const broker=url.origin===capability.origin&&url.pathname.startsWith(`${capability.pathname}/`);
-    if(url.protocol!=='https:'||url.username||url.password||!(packageRead||model||broker))return new Response('Destination is outside the saved implementation policy',{status:403});
+    const browser=!(packageRead||model||broker) && await ownedBrowserDestination(env,runId,attemptId,url);
+    if(url.protocol!=='https:'||url.username||url.password||!(packageRead||model||broker||browser))return new Response('Destination is outside the saved implementation policy',{status:403});
     return fetch(request,{redirect:'manual'});
   }};
 }

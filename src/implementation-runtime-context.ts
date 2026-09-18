@@ -7,6 +7,8 @@ export function implementationRuntimeContext(policy: ImplementationPolicy) {
     scope: 'Capabilities of the later implementation stage; planning and review do not deploy.',
     planningGuidance: 'Use these capabilities and relevant later human feedback when choosing or reviewing a preview path. Do not introduce a CI workflow, account setup or infrastructure demonstration when the declared publisher meets the approved application outcome. Explain a missing capability before committing to an unsupported deployment path.',
     execution: 'Local workerd inside an isolated Cloudflare Sandbox',
+    browserRuntime: 'sandbox-local-chromium-v1',
+    browserExecution: 'Headless Chromium inside the implementation sandbox, controlled through a local pipe. Local previews use loopback without a tunnel or external browser service. Hosted and temporary Worker targets use their checked app URLs; ordinary outbound policy still applies. The trusted runtime captures screenshots and publishes durable evidence.',
     documentationHosts: policy.documentationHosts,
     safeAdapters: policy.safeAdapters,
     temporaryEnvironment: policy.safeAdapters.includes('temporary-environment-v1')

@@ -1,0 +1,38 @@
+{
+  "observedAt": "2026-09-18T08:33:08.512361+00:00",
+  "run": {
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+    "current_node": "implementation_demo_gate",
+    "current_visit_sequence": 53,
+    "definition_version": 41,
+    "definition_digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f"
+  },
+  "attempt": {
+    "attempt_id": "01a0b3a5-9b6f-72aa-83e7-c0909f02bf1c",
+    "node_id": "implementation_demo_gate",
+    "state": "running",
+    "started_at": "2026-09-18T08:32:50.281Z",
+    "ended_at": null,
+    "result_class": null,
+    "cleanup_state": "pending",
+    "sandbox_id": "sbx-v1-gvkvsxj37vjkpir7d7b2rtzh7vfj76c4yuwmypbv54cjbnkrseva",
+    "updated_at": "2026-09-18T08:33:01.791Z",
+    "cleanup_hold_until": null,
+    "cleanup_hold_reason": null,
+    "manifest_id": null
+  },
+  "author": {
+    "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
+    "node_id": "implementation_build",
+    "state": "completed",
+    "started_at": "2026-09-18T07:51:58.298Z",
+    "ended_at": "2026-09-18T08:32:41.556Z",
+    "result_class": "completed",
+    "cleanup_state": "destroyed",
+    "sandbox_id": "impl-v1-p4mcggrwbhq7zjr4d5iieesvag2bdgeexxa2zjhdpvwqvpj2zuwq",
+    "updated_at": "2026-09-18T08:32:43.099Z",
+    "cleanup_hold_until": null,
+    "cleanup_hold_reason": null,
+    "manifest_id": "manifest:01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5"
+  }
+}

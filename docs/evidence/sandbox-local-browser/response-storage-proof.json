@@ -1,0 +1,318 @@
+[
+  {
+    "operation": "execution",
+    "requestId": "objects-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "77d83080c8c3885dec3797a79b416a1ae39faf57d98a3bd13e7c4299f72ed6a4",
+    "state": "queued",
+    "createdAt": "2026-09-18T09:03:30.778Z",
+    "lastActivityAt": "2026-09-18T09:03:30.778Z",
+    "deadline": "2026-09-19T08:47:27.228Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "objects-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "77d83080c8c3885dec3797a79b416a1ae39faf57d98a3bd13e7c4299f72ed6a4",
+    "state": "running",
+    "createdAt": "2026-09-18T09:03:30.778Z",
+    "lastActivityAt": "2026-09-18T09:03:30.855Z",
+    "deadline": "2026-09-19T08:47:27.228Z",
+    "startedAt": "2026-09-18T09:03:30.855Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "objects-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "77d83080c8c3885dec3797a79b416a1ae39faf57d98a3bd13e7c4299f72ed6a4",
+    "state": "completed",
+    "createdAt": "2026-09-18T09:03:30.778Z",
+    "lastActivityAt": "2026-09-18T09:03:33.544Z",
+    "deadline": "2026-09-19T08:47:27.228Z",
+    "startedAt": "2026-09-18T09:03:30.855Z",
+    "result": {
+      "environment": "deos-tmp-29e1a604cd5e918d7382569b",
+      "result": {
+        "objects": [
+          {
+            "key": "snippets/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/c3ecd0c0cda2d22a8bd294675346f603cc2334076c77974f44757669834904ae.txt",
+            "size": 10,
+            "etag": "b1710d7a9a14ce821e2bfe83421c71ef"
+          }
+        ],
+        "truncated": false,
+        "cursor": null
+      },
+      "evidence": {
+        "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/7cf8ead6dd77863225fcfff2b71c2116920649a1679fcda051fa1a076f065788/environment-storage-evidence.json",
+        "sha256": "7cf8ead6dd77863225fcfff2b71c2116920649a1679fcda051fa1a076f065788",
+        "byteSize": 357
+      },
+      "proof": {
+        "change": "sac-246",
+        "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+        "id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:showboat:e324a44d5251ba245d44fba4839d4e5d309d1131f8eacb1b35379329699ec4cb",
+        "kind": "showboat",
+        "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/e324a44d5251ba245d44fba4839d4e5d309d1131f8eacb1b35379329699ec4cb/proof/01a0b3b2-fdfc-762b-9cf2-eea18365d827/ef7c636a1374ecc78c80e17aae08a49a83d40846/showboat.md",
+        "caption": "Real temporary Cloudflare environment: objects",
+        "sha256": "e324a44d5251ba245d44fba4839d4e5d309d1131f8eacb1b35379329699ec4cb",
+        "sanitized": true,
+        "audience": "diagnostic"
+      }
+    },
+    "finishedAt": "2026-09-18T09:03:33.544Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "query-snippets-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "5a40b9faada77a9b7e92beea44f59a8b9bc71a3ef19cff856ede0d33118fde11",
+    "state": "queued",
+    "createdAt": "2026-09-18T09:03:46.157Z",
+    "lastActivityAt": "2026-09-18T09:03:46.157Z",
+    "deadline": "2026-09-19T08:47:27.228Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "query-snippets-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "5a40b9faada77a9b7e92beea44f59a8b9bc71a3ef19cff856ede0d33118fde11",
+    "state": "running",
+    "createdAt": "2026-09-18T09:03:46.157Z",
+    "lastActivityAt": "2026-09-18T09:03:46.158Z",
+    "deadline": "2026-09-19T08:47:27.228Z",
+    "startedAt": "2026-09-18T09:03:46.158Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "query-snippets-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "5a40b9faada77a9b7e92beea44f59a8b9bc71a3ef19cff856ede0d33118fde11",
+    "state": "completed",
+    "createdAt": "2026-09-18T09:03:46.157Z",
+    "lastActivityAt": "2026-09-18T09:03:47.747Z",
+    "deadline": "2026-09-19T08:47:27.228Z",
+    "startedAt": "2026-09-18T09:03:46.158Z",
+    "result": {
+      "environment": "deos-tmp-29e1a604cd5e918d7382569b",
+      "result": {
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "EEUR",
+          "served_by_colo": "FRA",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.7813
+          },
+          "duration": 0.7813,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 53248,
+          "rows_read": 6,
+          "rows_written": 0,
+          "total_attempts": 1
+        },
+        "results": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "title": "Alpha",
+            "object_key": "snippets/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/c3ecd0c0cda2d22a8bd294675346f603cc2334076c77974f44757669834904ae.txt",
+            "state": "active",
+            "reserved_bytes": 10
+          },
+          {
+            "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+            "title": "Broken delete",
+            "object_key": "snippets/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/index-key.txt",
+            "state": "active",
+            "reserved_bytes": 13
+          }
+        ]
+      },
+      "evidence": {
+        "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/950257ed35b937419927a91ff234b0f5e68aa02333faadfc727f24398999a224/environment-storage-evidence.json",
+        "sha256": "950257ed35b937419927a91ff234b0f5e68aa02333faadfc727f24398999a224",
+        "byteSize": 992
+      },
+      "proof": {
+        "change": "sac-246",
+        "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+        "id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:showboat:6c3a1a1bc88286e93804327a959934162c233f77f234b8a1b814ec75fea3a490",
+        "kind": "showboat",
+        "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/6c3a1a1bc88286e93804327a959934162c233f77f234b8a1b814ec75fea3a490/proof/01a0b3b2-fdfc-762b-9cf2-eea18365d827/ef7c636a1374ecc78c80e17aae08a49a83d40846/showboat.md",
+        "caption": "Real temporary Cloudflare environment: query",
+        "sha256": "6c3a1a1bc88286e93804327a959934162c233f77f234b8a1b814ec75fea3a490",
+        "sanitized": true,
+        "audience": "diagnostic"
+      }
+    },
+    "finishedAt": "2026-09-18T09:03:47.747Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "query-operations-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "4a344410e60348d9cb4096b7b7ba29bfa8f62c8bbb6fb9902e4bd9680d33938f",
+    "state": "queued",
+    "createdAt": "2026-09-18T09:03:48.358Z",
+    "lastActivityAt": "2026-09-18T09:03:48.358Z",
+    "deadline": "2026-09-19T08:47:27.228Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "query-operations-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "4a344410e60348d9cb4096b7b7ba29bfa8f62c8bbb6fb9902e4bd9680d33938f",
+    "state": "running",
+    "createdAt": "2026-09-18T09:03:48.358Z",
+    "lastActivityAt": "2026-09-18T09:03:48.359Z",
+    "deadline": "2026-09-19T08:47:27.228Z",
+    "startedAt": "2026-09-18T09:03:48.359Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "query-operations-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "4a344410e60348d9cb4096b7b7ba29bfa8f62c8bbb6fb9902e4bd9680d33938f",
+    "state": "completed",
+    "createdAt": "2026-09-18T09:03:48.358Z",
+    "lastActivityAt": "2026-09-18T09:03:49.855Z",
+    "deadline": "2026-09-19T08:47:27.228Z",
+    "startedAt": "2026-09-18T09:03:48.359Z",
+    "result": {
+      "environment": "deos-tmp-29e1a604cd5e918d7382569b",
+      "result": {
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "EEUR",
+          "served_by_colo": "FRA",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.6318
+          },
+          "duration": 0.6318,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 53248,
+          "rows_read": 10,
+          "rows_written": 0,
+          "total_attempts": 1
+        },
+        "results": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "state": "active",
+            "reserved_bytes": 10
+          },
+          {
+            "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "state": "deleted",
+            "reserved_bytes": 0
+          },
+          {
+            "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+            "state": "deleted",
+            "reserved_bytes": 0
+          },
+          {
+            "id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+            "state": "deleted",
+            "reserved_bytes": 0
+          },
+          {
+            "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+            "state": "active",
+            "reserved_bytes": 13
+          }
+        ]
+      },
+      "evidence": {
+        "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/ef4be1d1b55da57e8916393a4038b7a1c91345e6e8e41b5ae543323adb6a8fdc/environment-storage-evidence.json",
+        "sha256": "ef4be1d1b55da57e8916393a4038b7a1c91345e6e8e41b5ae543323adb6a8fdc",
+        "byteSize": 942
+      },
+      "proof": {
+        "change": "sac-246",
+        "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+        "id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:showboat:6c6205966e3150bcfd0b85f5c8849e3a3425828514d07f1a5f6196701b8933ce",
+        "kind": "showboat",
+        "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/6c6205966e3150bcfd0b85f5c8849e3a3425828514d07f1a5f6196701b8933ce/proof/01a0b3b2-fdfc-762b-9cf2-eea18365d827/ef7c636a1374ecc78c80e17aae08a49a83d40846/showboat.md",
+        "caption": "Real temporary Cloudflare environment: query",
+        "sha256": "6c6205966e3150bcfd0b85f5c8849e3a3425828514d07f1a5f6196701b8933ce",
+        "sanitized": true,
+        "audience": "diagnostic"
+      }
+    },
+    "finishedAt": "2026-09-18T09:03:49.855Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "object-alpha-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "6e5a62db02950c0241b3ce3d5ffbfb32ab985be38b2664ef67fdc9ad189e1c05",
+    "state": "queued",
+    "createdAt": "2026-09-18T09:03:50.658Z",
+    "lastActivityAt": "2026-09-18T09:03:50.658Z",
+    "deadline": "2026-09-19T08:47:27.228Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "object-alpha-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "6e5a62db02950c0241b3ce3d5ffbfb32ab985be38b2664ef67fdc9ad189e1c05",
+    "state": "running",
+    "createdAt": "2026-09-18T09:03:50.658Z",
+    "lastActivityAt": "2026-09-18T09:03:50.659Z",
+    "deadline": "2026-09-19T08:47:27.228Z",
+    "startedAt": "2026-09-18T09:03:50.659Z"
+  },
+  {
+    "operation": "execution",
+    "requestId": "object-alpha-failure-proof-feedback",
+    "action": "storage",
+    "fingerprint": "6e5a62db02950c0241b3ce3d5ffbfb32ab985be38b2664ef67fdc9ad189e1c05",
+    "state": "completed",
+    "createdAt": "2026-09-18T09:03:50.658Z",
+    "lastActivityAt": "2026-09-18T09:03:52.271Z",
+    "deadline": "2026-09-19T08:47:27.228Z",
+    "startedAt": "2026-09-18T09:03:50.659Z",
+    "result": {
+      "environment": "deos-tmp-29e1a604cd5e918d7382569b",
+      "result": {
+        "key": "snippets/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/c3ecd0c0cda2d22a8bd294675346f603cc2334076c77974f44757669834904ae.txt",
+        "size": 10,
+        "sha256": "c3ecd0c0cda2d22a8bd294675346f603cc2334076c77974f44757669834904ae",
+        "contentBase64": "Rmlyc3QgYm9keQ=="
+      },
+      "evidence": {
+        "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f4e9f353354c7f792a1680dd64a735b3a48a8e75135648a5ff581a4c77715edb/environment-storage-evidence.json",
+        "sha256": "f4e9f353354c7f792a1680dd64a735b3a48a8e75135648a5ff581a4c77715edb",
+        "byteSize": 502
+      },
+      "proof": {
+        "change": "sac-246",
+        "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+        "id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:showboat:a430f533c2a445fa2ab14afb5fc589c0dcf1202d324baf13f0a147e6fc5364bd",
+        "kind": "showboat",
+        "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/a430f533c2a445fa2ab14afb5fc589c0dcf1202d324baf13f0a147e6fc5364bd/proof/01a0b3b2-fdfc-762b-9cf2-eea18365d827/ef7c636a1374ecc78c80e17aae08a49a83d40846/showboat.md",
+        "caption": "Real temporary Cloudflare environment: object",
+        "sha256": "a430f533c2a445fa2ab14afb5fc589c0dcf1202d324baf13f0a147e6fc5364bd",
+        "sanitized": true,
+        "audience": "diagnostic"
+      }
+    },
+    "finishedAt": "2026-09-18T09:03:52.271Z"
+  }
+]

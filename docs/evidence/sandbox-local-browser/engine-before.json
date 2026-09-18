@@ -1,0 +1,16 @@
+{
+  "versionId": "f45cec59-181e-4c4a-80f5-2256444f2294",
+  "status": "waiting",
+  "stepCount": 1197,
+  "archivedSteps": 1197,
+  "privateArchive": "/tmp/local-browser-engine.json",
+  "archiveSha256": "14fa89ca05ada31125abe83b9262d732e6fde611f636a924694277fa54a03774",
+  "finalStep": {
+    "name": "linear-event:implementation_review:visit:50-1",
+    "start": "2026-09-17T18:45:46.102Z",
+    "finished": false,
+    "type": "waitForEvent",
+    "event_type": "linear-event",
+    "error": null
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "created_on": "2026-09-18T07:18:59.748Z",
+  "modified_on": "2026-09-18T07:18:59.748Z",
+  "id": "3990ce46-ab11-46f7-9fab-4b1fde94f1e1",
+  "workflow_id": "89b8658f-c86e-4481-8b83-558d2ac24e22",
+  "class_name": "DeosWorkflow",
+  "has_dag": false,
+  "language": "javascript",
+  "limits": {
+    "steps": 10000
+  },
+  "default_retention": {
+    "success_retention": 2592000000,
+    "error_retention": 2592000000
+  }
+}

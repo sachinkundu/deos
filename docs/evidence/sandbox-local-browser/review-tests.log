@@ -1,0 +1,16 @@
+✔ Claude chooses demo coverage and may revise its own plan (0.724375ms)
+✔ the workflow accepts reviewer judgments without auditing citations or re-deriving its outcome (0.387666ms)
+✔ evidence reader returns actual image bytes, records access and rejects cross-context IDs or corrupt objects (113.797625ms)
+✔ pass and needs-work verdicts are accepted without evidence-open receipts (202.920375ms)
+✔ one completed repair goes directly to human review with original findings; a completed human revision goes straight back to human review (103.07925ms)
+✔ a changed browser runtime requires a fresh independent gate before reusing the single-response handoff (102.224333ms)
+✔ accepting a refreshed demo plan keeps the checked clarification available to the next author (100.7835ms)
+✔ demo planning receives real runtime limits and only a matching immutable correction audit (101.992542ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 890.441959

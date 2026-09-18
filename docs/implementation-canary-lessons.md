@@ -59,7 +59,9 @@ The implementation prompt and command help point to it. Shell hooks and checked
 commands supply the Cloudflare CA without disabling TLS verification.
 
 Request files and scratch scripts belong outside the repository. Local app health
-uses localhost. Cloudflare's service browser uses the public preview transport.
+uses localhost. The sandbox-local Chromium runtime also opens local apps on
+loopback; deployed app targets use their owned Worker or hosted preview origin.
+The older service-browser runtime used the public preview transport.
 Serving only the dedicated build output avoids unnecessary watchers. A pending
 tunnel is reconciled by its saved identity rather than repeatedly recreated.
 Native search and the document broker provide access to current primary docs.
@@ -337,3 +339,18 @@ before claiming remote provisioning works; do not mark an environment ready
 from a laptop health check. Keep ownership, control authentication and served
 bundle-digest validation intact. Deploy this configuration only with no active
 agent attempts, then resume saved work through supported recovery.
+
+## Sandbox-local Chromium rollout
+
+The replacement browser runs inside the agent sandbox and uses a local pipe.
+Local preview needs no tunnel. Real D1/R2 demonstrations still open the deployed
+app through the owned-target policy. A trusted browserRuntime identity forces a
+fresh independent demo gate when the previous review used a different runtime.
+It does not alter the approved planning or the same-runtime author-response policy.
+
+Validate image capacity in every pool. The first browser image activated in the
+larger pools but failed to unpack within the basic pools' 4 GB disk allowance.
+Install only the headless shell that the driver uses, and remove npm/apt download
+caches in their producing image layers. Local Docker success and activation in
+one tier are not proof that all tiers can launch. Keep the canary at its gate
+until every required pool reports the expected digest and completed rollout.

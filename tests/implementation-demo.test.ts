@@ -151,6 +151,27 @@ test('one completed repair goes directly to human review with original findings;
     assert.equal((await service.execute({run_id:'run-1',current_node:'implementation_proof_check'} as OrchestrationRunRecord,'implementation.check_proof')).outcome,'review_ready');
   }finally{f.db.close();}
 });
+test('a changed browser runtime requires a fresh independent gate before reusing the single-response handoff',async()=>{
+  const f=await fixture();try {
+    await acceptGate(f,'needs_work');
+    seedAttempt(f.db,'repair');
+    f.db.sqlite.prepare("UPDATE agent_attempts SET visit_sequence=5,state='completed' WHERE attempt_id='repair'").run();
+    const saved=await f.store.put('run-1','candidate.json',JSON.stringify({browserRuntime:'sandbox-local-chromium-v1'}));
+    f.db.sqlite.prepare("UPDATE implementation_runs SET source_attempt_id='repair',candidate_key=?,candidate_sha=? WHERE run_id='run-1'")
+      .run(saved.key,saved.sha256);
+    f.db.sqlite.exec(`INSERT INTO implementation_gates(run_id,visit_sequence,node_id,expected_event_kind,allowed_linear_user_id,issue_id,human_state_id,opened_at,decision_outcome)
+      VALUES ('run-1',4,'implementation_review','state','human','issue-1','review','now','revision_requested')`);
+    const work=await f.store.requireRun('run-1');
+    assert.equal(await f.service.handoff(work),null,'The old external-browser review cannot validate the new local browser proof');
+    const sources=[{path:'context/runtime-capabilities.json',content:JSON.stringify({browserRuntime:'sandbox-local-chromium-v1'})}];
+    f.db.sqlite.prepare("UPDATE agent_attempts SET job_spec_json=? WHERE attempt_id='review'")
+      .run(JSON.stringify({materializedContext:JSON.stringify({demo:{sources}})}));
+    assert.equal((await f.service.handoff(work))?.repaired,true,'The same-runtime response policy is unchanged');
+    assert.equal(work.approved_design_sha,subject.approvedDesignSha);
+    assert.equal(work.tested_base_sha,subject.testedBaseSha);
+  }finally{f.db.close();}
+});
+
 test('accepting a refreshed demo plan keeps the checked clarification available to the next author',async()=>{
   const f=await fixture();
   try {

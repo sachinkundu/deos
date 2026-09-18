@@ -1,0 +1,3133 @@
+
+ ⛅️ wrangler 4.125.0
+────────────────────
+Total Upload: 3244.05 KiB / gzip: 623.45 KiB
+Worker Startup Time: 32 ms
+Your Worker has access to the following bindings:
+Binding                                                                                     Resource                  
+env.Sandbox (Sandbox)                                                                       Durable Object            
+env.Standard2Sandbox (Standard2Sandbox)                                                     Durable Object            
+env.ImplementationSandbox (ImplementationSandbox)                                           Durable Object            
+env.ImplementationStandard2Sandbox (ImplementationStandard2Sandbox)                         Durable Object            
+env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                                   Workflow                  
+env.DB (deos-sample-project)                                                                D1 Database               
+env.ARTIFACTS (deos-sample-project-artifacts)                                               R2 Bucket                 
+env.REVIEW_PORTAL (deos-workflow-portal)                                                    Worker                    
+env.IMPLEMENTATION_BROWSER                                                                  Browser Run               
+env.PORTAL_ACCESS_TEAM_DOMAIN ("deos-voxdez.cloudflareaccess.com")                          Environment Variable      
+env.PORTAL_ACCESS_AUD ("c12828abda88ac73e394039f6e0b87a9bc5f2...")                          Environment Variable      
+env.LINEAR_API_URL ("https://api.linear.app/graphql")                                       Environment Variable      
+env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")                 Environment Variable      
+env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                              Environment Variable      
+env.LINEAR_PROJECT_NAME ("deos-sample-project")                                             Environment Variable      
+env.LINEAR_START_STATE_NAME ("Todo")                                                        Environment Variable      
+env.LINEAR_START_STATE_ID ("ee23b3ec-76fc-4186-8d9e-ddadd1254ee1")                          Environment Variable      
+env.LINEAR_WORK_STATE_ID ("700c1b00-b9dd-4cfb-9d59-bd60c1d8d471")                           Environment Variable      
+env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                             Environment Variable      
+env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                               Environment Variable      
+env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                            Environment Variable      
+env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                                 Environment Variable      
+env.GITHUB_API_URL ("https://api.github.com")                                               Environment Variable      
+env.OPENROUTER_API_URL ("https://openrouter.ai/api/v1")                                     Environment Variable      
+env.OPENROUTER_SUPPORTED_MODELS ("deepseek/deepseek-v4-pro")                                Environment Variable      
+env.TRIAL_REPOSITORY ("sachinkundu/deos-sample-project")                                    Environment Variable      
+env.TRIAL_DISPATCH_ENABLED ("false")                                                        Environment Variable      
+env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                              Environment Variable      
+env.SANDBOX_FAILURE_RETENTION_MINUTES ("0")                                                 Environment Variable      
+env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                        Environment Variable      
+env.IMPLEMENTATION_PREVIEW_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")                  Environment Variable      
+env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")              Environment Variable      
+env.PORTAL_BASE_URL ("https://deos.voxdez.com")                                             Environment Variable      
+env.ROUTE_ADMIN_ALLOWED_EMAIL ("sachinkundu@gmail.com")                                     Environment Variable      
+
+The following containers are available:
+- deos-queue-consumer-ts-sandbox (/Users/sachin/code/deos-local-browser/Dockerfile)
+- deos-queue-consumer-ts-standard2sandbox (/Users/sachin/code/deos-local-browser/Dockerfile)
+- deos-queue-consumer-ts-implementationsandbox (/Users/sachin/code/deos-local-browser/Dockerfile)
+- deos-queue-consumer-ts-implementationstandard2sandbox (/Users/sachin/code/deos-local-browser/Dockerfile)
+
+Uploaded deos-queue-consumer-ts (9.65 sec)
+Building image deos-queue-consumer-ts-sandbox:a21b912f
+#0 building with "colima" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.60kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 356B done
+#4 DONE 0.0s
+
+#5 [stage-0  1/42] FROM docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#5 resolve docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75 done
+#5 DONE 0.0s
+
+#6 FROM ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45
+#6 resolve ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 36.40kB 0.0s done
+#7 DONE 0.0s
+
+#8 [stage-0 29/42] COPY container/attempt-completion.mjs /deos/bin/attempt-completion.mjs
+#8 CACHED
+
+#9 [stage-0 34/42] COPY container/design-review-schema.mjs /deos/bin/design-review-schema.mjs
+#9 CACHED
+
+#10 [stage-0 30/42] COPY container/author-completion.mjs /deos/bin/author-completion.mjs
+#10 CACHED
+
+#11 [stage-0 31/42] COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs
+#11 CACHED
+
+#12 [stage-0 35/42] COPY container/patch-capture.mjs /deos/bin/patch-capture.mjs
+#12 CACHED
+
+#13 [stage-0 32/42] COPY container/trace-review-runner.mjs /deos/bin/trace-review-runner.mjs
+#13 CACHED
+
+#14 [stage-0  3/42] RUN UV_PYTHON_INSTALL_DIR=/opt/deos-python UV_PYTHON_BIN_DIR=/usr/local/bin       uv python install 3.11.16 --default     && python3 -m venv /opt/deos-tools     && /opt/deos-tools/bin/pip install --no-cache-dir showboat==0.6.1     && ln -s /opt/deos-tools/bin/showboat /usr/local/bin/showboat     && python3 -c 'from datetime import UTC; import sys; assert sys.version_info[:3] == (3, 11, 16)'
+#14 CACHED
+
+#15 [stage-0  5/42] RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0 @anthropic-ai/claude-code@2.1.268 wrangler@4.125.0
+#15 CACHED
+
+#16 [stage-0 18/42] COPY container/grounded-*.mjs /deos/bin/
+#16 CACHED
+
+#17 [stage-0 13/42] COPY container/native-review-packet.mjs /deos/bin/native-review-packet.mjs
+#17 CACHED
+
+#18 [stage-0 38/42] COPY config/schemas/trace-recheck-result-v1.json /deos/config/schemas/trace-recheck-result-v1.json
+#18 CACHED
+
+#19 [stage-0 40/42] COPY container/deos-github /usr/local/bin/deos-github
+#19 CACHED
+
+#20 [stage-0 37/42] COPY vendor/bettaview/ /deos/bettaview/
+#20 CACHED
+
+#21 [stage-0 19/42] COPY vendor/agent-skills/ /deos/agent-skills/
+#21 CACHED
+
+#22 [stage-0  7/42] RUN npm install --prefix /deos --omit=dev playwright@1.63.0     && /deos/node_modules/.bin/playwright install --with-deps chromium
+#22 CACHED
+
+#23 [stage-0  9/42] COPY container/claude-*.mjs /deos/bin/
+#23 CACHED
+
+#24 [stage-0 26/42] COPY container/deos-implementation /usr/local/bin/deos-implementation
+#24 CACHED
+
+#25 [stage-0 12/42] COPY container/original-errors.mjs /deos/bin/original-errors.mjs
+#25 CACHED
+
+#26 [stage-0 20/42] COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
+#26 CACHED
+
+#27 [stage-0 16/42] COPY container/native-self-review.mjs /deos/bin/native-self-review.mjs
+#27 CACHED
+
+#28 [stage-0 17/42] COPY container/bounded-*.mjs /deos/bin/
+#28 CACHED
+
+#29 [stage-0 28/42] COPY container/supervisor-io.mjs /deos/bin/supervisor-io.mjs
+#29 CACHED
+
+#30 [stage-0 25/42] COPY src/implementation-browser-evidence.ts /deos/bin/
+#30 CACHED
+
+#31 [stage-0 36/42] COPY shared/planning-language.mjs /deos/shared/planning-language.mjs
+#31 CACHED
+
+#32 [stage-0  6/42] RUN useradd --create-home --shell /usr/sbin/nologin deos-browser     && chmod 700 /home/deos-browser
+#32 CACHED
+
+#33 [stage-0 33/42] COPY container/design-review-runner.mjs /deos/bin/design-review-runner.mjs
+#33 CACHED
+
+#34 [stage-0 15/42] COPY container/native-review-adapter.mjs /deos/bin/native-review-adapter.mjs
+#34 CACHED
+
+#35 [stage-0 41/42] COPY container/deos-linear /usr/local/bin/deos-linear
+#35 CACHED
+
+#36 [stage-0 39/42] COPY config/prompts/openspec-traceability-recheck.md /deos/config/prompts/openspec-traceability-recheck.md
+#36 CACHED
+
+#37 [stage-0 23/42] COPY container/skills/deos-implementation/SKILL.md /deos/bin/implementation-skill.md
+#37 CACHED
+
+#38 [stage-0 11/42] COPY src/claude-diagnostics.ts src/error-details.ts /deos/bin/
+#38 CACHED
+
+#39 [stage-0 10/42] COPY src/claude-review.ts /deos/bin/claude-review.ts
+#39 CACHED
+
+#40 [stage-0 24/42] COPY src/implementation-demo-contract.ts src/implementation-contract.ts src/implementation-hash.ts /deos/bin/
+#40 CACHED
+
+#41 [stage-0 14/42] COPY container/native-review-read.mjs /deos/bin/native-review-read.mjs
+#41 CACHED
+
+#42 [stage-0  8/42] RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/bettaview     && chmod 700 /deos/auth     && chmod 755 /deos/bin /deos/shared /deos/staging /deos/jobs
+#42 CACHED
+
+#43 [stage-0 22/42] COPY --chmod=755 container/implementation-chromium /deos/bin/implementation-chromium
+#43 CACHED
+
+#44 [stage-0 27/42] COPY container/supervisor.mjs /deos/bin/supervisor.mjs
+#44 CACHED
+
+#45 [stage-0  4/42] RUN useradd --create-home --shell /bin/bash deos-author
+#45 CACHED
+
+#46 [stage-0 21/42] COPY container/implementation-*.mjs /deos/bin/
+#46 CACHED
+
+#47 [stage-0  2/42] COPY --from=ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45 /uv /usr/local/bin/uv
+#47 CACHED
+
+#48 [stage-0 42/42] RUN ln -s /usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path/rg /usr/local/bin/rg     && runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin rg --version     && chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin/trace-review-runner.mjs       /deos/bin/design-review-runner.mjs       /usr/local/bin/deos-github /usr/local/bin/deos-linear /usr/local/bin/deos-implementation     && for file in /deos/bin/*.mjs; do node --check "$file" || exit 1; done     && claude --version     && codex --version     && openspec --version
+#48 CACHED
+
+#49 exporting to image
+#49 exporting layers done
+#49 exporting manifest sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b done
+#49 exporting config sha256:503a3beee3193e43a8bd8d86db8749c1cc9ea7821a334daf3ec864d36d0cdd93 done
+#49 naming to docker.io/library/deos-queue-consumer-ts-sandbox:a21b912f done
+#49 DONE 0.0s
+Login Succeeded
+
+WARNING! Your credentials are stored unencrypted in '/Users/sachin/.docker/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
+
+no such manifest: registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b
+Image does not exist remotely, pushing: registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox:a21b912f
+The push refers to repository [registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox]
+975eaabc6742: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Waiting
+fa85debb9563: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+43bc55a634a4: Waiting
+d588af6d21f3: Waiting
+4f4fb700ef54: Waiting
+0357d47c2dbb: Waiting
+6e5e035ac24f: Waiting
+ddc0581b3e5a: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Waiting
+fa85debb9563: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+43bc55a634a4: Waiting
+d588af6d21f3: Waiting
+4f4fb700ef54: Waiting
+0357d47c2dbb: Waiting
+6e5e035ac24f: Waiting
+ddc0581b3e5a: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+975eaabc6742: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+43bc55a634a4: Waiting
+d588af6d21f3: Waiting
+4f4fb700ef54: Waiting
+0357d47c2dbb: Waiting
+6e5e035ac24f: Waiting
+ddc0581b3e5a: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+975eaabc6742: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Waiting
+fa85debb9563: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+975eaabc6742: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Waiting
+fa85debb9563: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+43bc55a634a4: Waiting
+d588af6d21f3: Waiting
+4f4fb700ef54: Waiting
+0357d47c2dbb: Waiting
+6e5e035ac24f: Waiting
+ddc0581b3e5a: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+43bc55a634a4: Waiting
+d588af6d21f3: Waiting
+4f4fb700ef54: Waiting
+0357d47c2dbb: Waiting
+6e5e035ac24f: Waiting
+ddc0581b3e5a: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+975eaabc6742: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Waiting
+fa85debb9563: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+43bc55a634a4: Waiting
+d588af6d21f3: Waiting
+4f4fb700ef54: Waiting
+0357d47c2dbb: Waiting
+6e5e035ac24f: Waiting
+ddc0581b3e5a: Layer already exists
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+975eaabc6742: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Layer already exists
+fa85debb9563: Layer already exists
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+43bc55a634a4: Waiting
+d588af6d21f3: Waiting
+4f4fb700ef54: Waiting
+0357d47c2dbb: Waiting
+6e5e035ac24f: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+975eaabc6742: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+43bc55a634a4: Layer already exists
+d588af6d21f3: Waiting
+4f4fb700ef54: Waiting
+0357d47c2dbb: Waiting
+6e5e035ac24f: Layer already exists
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+975eaabc6742: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+d588af6d21f3: Waiting
+4f4fb700ef54: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+975eaabc6742: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+d35efc45caf0: Layer already exists
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+d588af6d21f3: Waiting
+4f4fb700ef54: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+975eaabc6742: Layer already exists
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Waiting
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+64fd49aed2a9: Layer already exists
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+d588af6d21f3: Waiting
+4f4fb700ef54: Layer already exists
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b2221350f0e5: Layer already exists
+b64ddbd11ebf: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+1fd637621278: Layer already exists
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+b64ddbd11ebf: Layer already exists
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+1a36d034a06c: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+1a36d034a06c: Layer already exists
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+3cb5a8b13f9c: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+f1565ae92954: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+ac681ba6e747: Waiting
+3cb5a8b13f9c: Layer already exists
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+314925a215b8: Waiting
+d4745c7ecfb8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+b4c813ead46f: Waiting
+429052a3f4a8: Waiting
+4ae38ac09d90: Layer already exists
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+98c36778597e: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+962bc2eb8c52: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+314925a215b8: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+6773eb4c512a: Waiting
+b4c813ead46f: Layer already exists
+429052a3f4a8: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+918f2ba17e75: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+8519dacd4dff: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+314925a215b8: Layer already exists
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+429052a3f4a8: Waiting
+1377f2cf7ac1: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+429052a3f4a8: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+565457a32c38: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+4622adec95a1: Waiting
+8f77fd42691f: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+429052a3f4a8: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+4622adec95a1: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+429052a3f4a8: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+cb39809c17b5: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+4622adec95a1: Waiting
+dfa11dec87f1: Waiting
+8f453f6cb7a9: Waiting
+c3f964b63a55: Waiting
+3222acc00cee: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+429052a3f4a8: Waiting
+92476b9964bc: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+73fee66ff345: Waiting
+ac681ba6e747: Waiting
+7f0e0a5c2102: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+73fee66ff345: Waiting
+7f0e0a5c2102: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+4622adec95a1: Waiting
+dfa11dec87f1: Waiting
+c3f964b63a55: Waiting
+3222acc00cee: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+99261ba8d29f: Waiting
+31092a3fd61e: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+429052a3f4a8: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+31092a3fd61e: Waiting
+6a0274bc4bf8: Waiting
+3096a2ec62ad: Waiting
+429052a3f4a8: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+7f0e0a5c2102: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+4622adec95a1: Waiting
+c3f964b63a55: Waiting
+3222acc00cee: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+7f0e0a5c2102: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+7254f9feb5e2: Waiting
+4622adec95a1: Waiting
+c3f964b63a55: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+31092a3fd61e: Waiting
+3096a2ec62ad: Waiting
+429052a3f4a8: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+c3f964b63a55: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+31092a3fd61e: Waiting
+3096a2ec62ad: Waiting
+429052a3f4a8: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+7f0e0a5c2102: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+4622adec95a1: Waiting
+4622adec95a1: Waiting
+c3f964b63a55: Waiting
+d588af6d21f3: Waiting
+0357d47c2dbb: Waiting
+31092a3fd61e: Waiting
+3096a2ec62ad: Waiting
+429052a3f4a8: Waiting
+a3e088357259: Waiting
+7ec2ce92b397: Waiting
+644f7a0f4b57: Waiting
+fba2b5c45e82: Waiting
+7f0e0a5c2102: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+31092a3fd61e: Waiting
+3096a2ec62ad: Waiting
+7ec2ce92b397: Waiting
+644f7a0f4b57: Waiting
+7f0e0a5c2102: Waiting
+efe6456da7ed: Waiting
+273b868b2ccf: Waiting
+4622adec95a1: Waiting
+c3f964b63a55: Waiting
+0357d47c2dbb: Waiting
+c3f964b63a55: Waiting
+0357d47c2dbb: Waiting
+31092a3fd61e: Waiting
+7ec2ce92b397: Waiting
+644f7a0f4b57: Waiting
+3cbe47ff4c56: Pushed
+7f0e0a5c2102: Waiting
+efe6456da7ed: Waiting
+7f0e0a5c2102: Waiting
+efe6456da7ed: Waiting
+c3f964b63a55: Waiting
+0357d47c2dbb: Waiting
+31092a3fd61e: Waiting
+644f7a0f4b57: Waiting
+98c36778597e: Pushed
+efe6456da7ed: Waiting
+d4745c7ecfb8: Pushed
+efe6456da7ed: Waiting
+962bc2eb8c52: Pushed
+f1565ae92954: Pushed
+565457a32c38: Pushed
+8519dacd4dff: Pushed
+ac681ba6e747: Pushed
+dfa11dec87f1: Pushed
+8f453f6cb7a9: Pushed
+573934ddc5d9: Pushed
+99261ba8d29f: Pushed
+6a0274bc4bf8: Pushed
+73fee66ff345: Pushed
+7254f9feb5e2: Pushed
+8f77fd42691f: Pushed
+3222acc00cee: Pushed
+6773eb4c512a: Pushed
+92476b9964bc: Pushed
+918f2ba17e75: Pushed
+d588af6d21f3: Pushed
+429052a3f4a8: Pushed
+a3e088357259: Pushed
+ee0beacb8bf5: Pushed
+cb39809c17b5: Pushed
+3096a2ec62ad: Pushed
+7ec2ce92b397: Pushed
+4622adec95a1: Pushed
+1377f2cf7ac1: Pushed
+7f0e0a5c2102: Pushed
+273b868b2ccf: Pushed
+c3f964b63a55: Pushed
+fba2b5c45e82: Pushed
+efe6456da7ed: Pushed
+31092a3fd61e: Pushed
+0357d47c2dbb: Pushed
+644f7a0f4b57: Pushed
+a21b912f: digest: sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b size: 11256
+╭ Deploy a container application deploy changes to your application
+│
+│ Container application changes
+│
+├ EDIT deos-queue-consumer-ts-sandbox
+│
+│         "configuration": {
+│           "command": [],
+│           "entrypoint": [],
+│ -         "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+│ +         "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-sandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b",
+│           "instance_type": "basic",
+│           "network": {
+│             "assign_ipv4": "none",
+│
+│
+│  SUCCESS  Modified application deos-queue-consumer-ts-sandbox (Application ID: a0344373-884d-4c06-b4c2-4e58295de498)
+│
+╰ Applied changes 
+
+Building image deos-queue-consumer-ts-standard2sandbox:a21b912f
+#0 building with "colima" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.60kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45
+#3 DONE 1.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context:
+#4 transferring context: 356B done
+#4 DONE 0.2s
+
+#5 [stage-0  1/42] FROM docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#5 resolve docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75 done
+#5 DONE 0.0s
+
+#6 FROM ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45
+#6 resolve ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 36.40kB 0.0s done
+#7 DONE 0.0s
+
+#8 [stage-0  3/42] RUN UV_PYTHON_INSTALL_DIR=/opt/deos-python UV_PYTHON_BIN_DIR=/usr/local/bin       uv python install 3.11.16 --default     && python3 -m venv /opt/deos-tools     && /opt/deos-tools/bin/pip install --no-cache-dir showboat==0.6.1     && ln -s /opt/deos-tools/bin/showboat /usr/local/bin/showboat     && python3 -c 'from datetime import UTC; import sys; assert sys.version_info[:3] == (3, 11, 16)'
+#8 CACHED
+
+#9 [stage-0 10/42] COPY src/claude-review.ts /deos/bin/claude-review.ts
+#9 CACHED
+
+#10 [stage-0 23/42] COPY container/skills/deos-implementation/SKILL.md /deos/bin/implementation-skill.md
+#10 CACHED
+
+#11 [stage-0 34/42] COPY container/design-review-schema.mjs /deos/bin/design-review-schema.mjs
+#11 CACHED
+
+#12 [stage-0 21/42] COPY container/implementation-*.mjs /deos/bin/
+#12 CACHED
+
+#13 [stage-0 25/42] COPY src/implementation-browser-evidence.ts /deos/bin/
+#13 CACHED
+
+#14 [stage-0 32/42] COPY container/trace-review-runner.mjs /deos/bin/trace-review-runner.mjs
+#14 CACHED
+
+#15 [stage-0  5/42] RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0 @anthropic-ai/claude-code@2.1.268 wrangler@4.125.0
+#15 CACHED
+
+#16 [stage-0 33/42] COPY container/design-review-runner.mjs /deos/bin/design-review-runner.mjs
+#16 CACHED
+
+#17 [stage-0 15/42] COPY container/native-review-adapter.mjs /deos/bin/native-review-adapter.mjs
+#17 CACHED
+
+#18 [stage-0  6/42] RUN useradd --create-home --shell /usr/sbin/nologin deos-browser     && chmod 700 /home/deos-browser
+#18 CACHED
+
+#19 [stage-0 30/42] COPY container/author-completion.mjs /deos/bin/author-completion.mjs
+#19 CACHED
+
+#20 [stage-0  8/42] RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/bettaview     && chmod 700 /deos/auth     && chmod 755 /deos/bin /deos/shared /deos/staging /deos/jobs
+#20 CACHED
+
+#21 [stage-0 12/42] COPY container/original-errors.mjs /deos/bin/original-errors.mjs
+#21 CACHED
+
+#22 [stage-0  4/42] RUN useradd --create-home --shell /bin/bash deos-author
+#22 CACHED
+
+#23 [stage-0 41/42] COPY container/deos-linear /usr/local/bin/deos-linear
+#23 CACHED
+
+#24 [stage-0  2/42] COPY --from=ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45 /uv /usr/local/bin/uv
+#24 CACHED
+
+#25 [stage-0 14/42] COPY container/native-review-read.mjs /deos/bin/native-review-read.mjs
+#25 CACHED
+
+#26 [stage-0 37/42] COPY vendor/bettaview/ /deos/bettaview/
+#26 CACHED
+
+#27 [stage-0 22/42] COPY --chmod=755 container/implementation-chromium /deos/bin/implementation-chromium
+#27 CACHED
+
+#28 [stage-0 29/42] COPY container/attempt-completion.mjs /deos/bin/attempt-completion.mjs
+#28 CACHED
+
+#29 [stage-0 36/42] COPY shared/planning-language.mjs /deos/shared/planning-language.mjs
+#29 CACHED
+
+#30 [stage-0 26/42] COPY container/deos-implementation /usr/local/bin/deos-implementation
+#30 CACHED
+
+#31 [stage-0 19/42] COPY vendor/agent-skills/ /deos/agent-skills/
+#31 CACHED
+
+#32 [stage-0 24/42] COPY src/implementation-demo-contract.ts src/implementation-contract.ts src/implementation-hash.ts /deos/bin/
+#32 CACHED
+
+#33 [stage-0 35/42] COPY container/patch-capture.mjs /deos/bin/patch-capture.mjs
+#33 CACHED
+
+#34 [stage-0  9/42] COPY container/claude-*.mjs /deos/bin/
+#34 CACHED
+
+#35 [stage-0 11/42] COPY src/claude-diagnostics.ts src/error-details.ts /deos/bin/
+#35 CACHED
+
+#36 [stage-0 18/42] COPY container/grounded-*.mjs /deos/bin/
+#36 CACHED
+
+#37 [stage-0 20/42] COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
+#37 CACHED
+
+#38 [stage-0 16/42] COPY container/native-self-review.mjs /deos/bin/native-self-review.mjs
+#38 CACHED
+
+#39 [stage-0 38/42] COPY config/schemas/trace-recheck-result-v1.json /deos/config/schemas/trace-recheck-result-v1.json
+#39 CACHED
+
+#40 [stage-0  7/42] RUN npm install --prefix /deos --omit=dev playwright@1.63.0     && /deos/node_modules/.bin/playwright install --with-deps chromium
+#40 CACHED
+
+#41 [stage-0 13/42] COPY container/native-review-packet.mjs /deos/bin/native-review-packet.mjs
+#41 CACHED
+
+#42 [stage-0 28/42] COPY container/supervisor-io.mjs /deos/bin/supervisor-io.mjs
+#42 CACHED
+
+#43 [stage-0 31/42] COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs
+#43 CACHED
+
+#44 [stage-0 39/42] COPY config/prompts/openspec-traceability-recheck.md /deos/config/prompts/openspec-traceability-recheck.md
+#44 CACHED
+
+#45 [stage-0 40/42] COPY container/deos-github /usr/local/bin/deos-github
+#45 CACHED
+
+#46 [stage-0 17/42] COPY container/bounded-*.mjs /deos/bin/
+#46 CACHED
+
+#47 [stage-0 27/42] COPY container/supervisor.mjs /deos/bin/supervisor.mjs
+#47 CACHED
+
+#48 [stage-0 42/42] RUN ln -s /usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path/rg /usr/local/bin/rg     && runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin rg --version     && chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin/trace-review-runner.mjs       /deos/bin/design-review-runner.mjs       /usr/local/bin/deos-github /usr/local/bin/deos-linear /usr/local/bin/deos-implementation     && for file in /deos/bin/*.mjs; do node --check "$file" || exit 1; done     && claude --version     && codex --version     && openspec --version
+#48 CACHED
+
+#49 exporting to image
+#49 exporting layers 0.0s done
+#49 exporting manifest sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b done
+#49 exporting config sha256:503a3beee3193e43a8bd8d86db8749c1cc9ea7821a334daf3ec864d36d0cdd93 done
+#49 naming to docker.io/library/deos-queue-consumer-ts-standard2sandbox:a21b912f done
+#49 DONE 0.0s
+
+WARNING! Your credentials are stored unencrypted in '/Users/sachin/.docker/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
+
+Login Succeeded
+no such manifest: registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b
+Image does not exist remotely, pushing: registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox:a21b912f
+The push refers to repository [registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox]
+b4c813ead46f: Waiting
+4f4fb700ef54: Waiting
+314925a215b8: Waiting
+1377f2cf7ac1: Waiting
+4622adec95a1: Waiting
+43bc55a634a4: Waiting
+429052a3f4a8: Waiting
+dfa11dec87f1: Waiting
+cb39809c17b5: Waiting
+a3e088357259: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+98c36778597e: Waiting
+d35efc45caf0: Waiting
+b64ddbd11ebf: Waiting
+ddc0581b3e5a: Waiting
+efe6456da7ed: Waiting
+f1565ae92954: Waiting
+c3f964b63a55: Waiting
+1fd637621278: Waiting
+0357d47c2dbb: Waiting
+1a36d034a06c: Waiting
+7f0e0a5c2102: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+fa85debb9563: Waiting
+565457a32c38: Waiting
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+3cb5a8b13f9c: Waiting
+6773eb4c512a: Waiting
+918f2ba17e75: Waiting
+d588af6d21f3: Waiting
+d4745c7ecfb8: Waiting
+644f7a0f4b57: Waiting
+3096a2ec62ad: Waiting
+92476b9964bc: Waiting
+273b868b2ccf: Waiting
+962bc2eb8c52: Waiting
+b2221350f0e5: Waiting
+4ae38ac09d90: Waiting
+99261ba8d29f: Waiting
+8519dacd4dff: Waiting
+ac681ba6e747: Waiting
+7254f9feb5e2: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+6e5e035ac24f: Waiting
+31092a3fd61e: Waiting
+fba2b5c45e82: Waiting
+8f77fd42691f: Waiting
+975eaabc6742: Waiting
+c8b0a6b8b93c: Waiting
+64fd49aed2a9: Waiting
+c3f964b63a55: Waiting
+1fd637621278: Waiting
+0357d47c2dbb: Waiting
+1a36d034a06c: Waiting
+7f0e0a5c2102: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+fa85debb9563: Waiting
+565457a32c38: Waiting
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+3cb5a8b13f9c: Waiting
+6773eb4c512a: Waiting
+918f2ba17e75: Waiting
+d588af6d21f3: Waiting
+d4745c7ecfb8: Waiting
+644f7a0f4b57: Waiting
+3096a2ec62ad: Waiting
+92476b9964bc: Waiting
+273b868b2ccf: Waiting
+962bc2eb8c52: Waiting
+b2221350f0e5: Waiting
+4ae38ac09d90: Waiting
+99261ba8d29f: Waiting
+8519dacd4dff: Waiting
+ac681ba6e747: Waiting
+7254f9feb5e2: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+6e5e035ac24f: Waiting
+31092a3fd61e: Waiting
+fba2b5c45e82: Waiting
+8f77fd42691f: Waiting
+975eaabc6742: Waiting
+c8b0a6b8b93c: Waiting
+64fd49aed2a9: Waiting
+b4c813ead46f: Waiting
+4f4fb700ef54: Waiting
+314925a215b8: Waiting
+1377f2cf7ac1: Waiting
+4622adec95a1: Waiting
+43bc55a634a4: Waiting
+429052a3f4a8: Waiting
+dfa11dec87f1: Waiting
+cb39809c17b5: Waiting
+a3e088357259: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+98c36778597e: Waiting
+d35efc45caf0: Waiting
+b64ddbd11ebf: Waiting
+ddc0581b3e5a: Waiting
+efe6456da7ed: Waiting
+f1565ae92954: Waiting
+6e5e035ac24f: Waiting
+31092a3fd61e: Waiting
+fba2b5c45e82: Waiting
+8f77fd42691f: Waiting
+975eaabc6742: Waiting
+c8b0a6b8b93c: Waiting
+64fd49aed2a9: Waiting
+b4c813ead46f: Waiting
+4f4fb700ef54: Waiting
+314925a215b8: Waiting
+1377f2cf7ac1: Waiting
+4622adec95a1: Waiting
+43bc55a634a4: Waiting
+429052a3f4a8: Waiting
+dfa11dec87f1: Waiting
+cb39809c17b5: Waiting
+a3e088357259: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+98c36778597e: Waiting
+d35efc45caf0: Waiting
+b64ddbd11ebf: Waiting
+ddc0581b3e5a: Waiting
+efe6456da7ed: Waiting
+f1565ae92954: Waiting
+c3f964b63a55: Waiting
+1fd637621278: Waiting
+0357d47c2dbb: Waiting
+1a36d034a06c: Waiting
+7f0e0a5c2102: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+fa85debb9563: Waiting
+565457a32c38: Waiting
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+3cb5a8b13f9c: Waiting
+6773eb4c512a: Waiting
+918f2ba17e75: Waiting
+d588af6d21f3: Waiting
+d4745c7ecfb8: Waiting
+644f7a0f4b57: Waiting
+3096a2ec62ad: Waiting
+92476b9964bc: Waiting
+273b868b2ccf: Waiting
+962bc2eb8c52: Waiting
+b2221350f0e5: Waiting
+4ae38ac09d90: Waiting
+99261ba8d29f: Waiting
+8519dacd4dff: Waiting
+ac681ba6e747: Waiting
+7254f9feb5e2: Waiting
+7ec2ce92b397: Waiting
+ee0beacb8bf5: Waiting
+3222acc00cee: Waiting
+fa85debb9563: Layer already exists
+565457a32c38: Waiting
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+3cb5a8b13f9c: Waiting
+6773eb4c512a: Layer already exists
+918f2ba17e75: Waiting
+d588af6d21f3: Waiting
+d4745c7ecfb8: Waiting
+644f7a0f4b57: Waiting
+3096a2ec62ad: Waiting
+92476b9964bc: Waiting
+273b868b2ccf: Waiting
+962bc2eb8c52: Layer already exists
+b2221350f0e5: Waiting
+4ae38ac09d90: Waiting
+99261ba8d29f: Waiting
+8519dacd4dff: Waiting
+ac681ba6e747: Waiting
+7254f9feb5e2: Waiting
+7ec2ce92b397: Layer already exists
+ee0beacb8bf5: Waiting
+6e5e035ac24f: Waiting
+31092a3fd61e: Waiting
+fba2b5c45e82: Waiting
+8f77fd42691f: Waiting
+975eaabc6742: Waiting
+c8b0a6b8b93c: Waiting
+64fd49aed2a9: Waiting
+b4c813ead46f: Waiting
+4f4fb700ef54: Waiting
+314925a215b8: Waiting
+1377f2cf7ac1: Waiting
+4622adec95a1: Waiting
+43bc55a634a4: Layer already exists
+429052a3f4a8: Layer already exists
+dfa11dec87f1: Waiting
+cb39809c17b5: Waiting
+a3e088357259: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+98c36778597e: Waiting
+d35efc45caf0: Layer already exists
+b64ddbd11ebf: Waiting
+ddc0581b3e5a: Waiting
+efe6456da7ed: Waiting
+f1565ae92954: Waiting
+c3f964b63a55: Layer already exists
+1fd637621278: Waiting
+0357d47c2dbb: Waiting
+1a36d034a06c: Waiting
+7f0e0a5c2102: Waiting
+573934ddc5d9: Waiting
+0357d47c2dbb: Waiting
+1a36d034a06c: Waiting
+7f0e0a5c2102: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+565457a32c38: Layer already exists
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+3cb5a8b13f9c: Waiting
+918f2ba17e75: Waiting
+d588af6d21f3: Waiting
+d4745c7ecfb8: Waiting
+644f7a0f4b57: Waiting
+3096a2ec62ad: Waiting
+92476b9964bc: Waiting
+273b868b2ccf: Waiting
+b2221350f0e5: Waiting
+4ae38ac09d90: Layer already exists
+99261ba8d29f: Waiting
+8519dacd4dff: Waiting
+ac681ba6e747: Waiting
+7254f9feb5e2: Waiting
+ee0beacb8bf5: Waiting
+6e5e035ac24f: Waiting
+31092a3fd61e: Waiting
+fba2b5c45e82: Waiting
+8f77fd42691f: Waiting
+975eaabc6742: Waiting
+c8b0a6b8b93c: Layer already exists
+64fd49aed2a9: Waiting
+b4c813ead46f: Waiting
+4f4fb700ef54: Waiting
+314925a215b8: Waiting
+1377f2cf7ac1: Waiting
+4622adec95a1: Waiting
+dfa11dec87f1: Waiting
+cb39809c17b5: Waiting
+a3e088357259: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+98c36778597e: Layer already exists
+b64ddbd11ebf: Waiting
+ddc0581b3e5a: Waiting
+efe6456da7ed: Waiting
+f1565ae92954: Waiting
+1fd637621278: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+3cb5a8b13f9c: Waiting
+918f2ba17e75: Waiting
+d588af6d21f3: Waiting
+d4745c7ecfb8: Waiting
+644f7a0f4b57: Waiting
+3096a2ec62ad: Waiting
+92476b9964bc: Waiting
+273b868b2ccf: Waiting
+b2221350f0e5: Waiting
+99261ba8d29f: Waiting
+8519dacd4dff: Waiting
+ac681ba6e747: Waiting
+7254f9feb5e2: Waiting
+ee0beacb8bf5: Waiting
+6e5e035ac24f: Waiting
+31092a3fd61e: Waiting
+fba2b5c45e82: Waiting
+8f77fd42691f: Waiting
+975eaabc6742: Waiting
+64fd49aed2a9: Waiting
+b4c813ead46f: Waiting
+4f4fb700ef54: Waiting
+314925a215b8: Waiting
+1377f2cf7ac1: Waiting
+4622adec95a1: Waiting
+dfa11dec87f1: Waiting
+cb39809c17b5: Waiting
+a3e088357259: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+b64ddbd11ebf: Waiting
+ddc0581b3e5a: Waiting
+efe6456da7ed: Waiting
+f1565ae92954: Waiting
+1fd637621278: Waiting
+0357d47c2dbb: Waiting
+1a36d034a06c: Waiting
+7f0e0a5c2102: Waiting
+a3e088357259: Waiting
+73fee66ff345: Waiting
+3cbe47ff4c56: Waiting
+b64ddbd11ebf: Waiting
+ddc0581b3e5a: Waiting
+efe6456da7ed: Waiting
+f1565ae92954: Waiting
+1fd637621278: Waiting
+0357d47c2dbb: Waiting
+1a36d034a06c: Waiting
+7f0e0a5c2102: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+3cb5a8b13f9c: Waiting
+918f2ba17e75: Layer already exists
+d588af6d21f3: Waiting
+d4745c7ecfb8: Waiting
+644f7a0f4b57: Waiting
+3096a2ec62ad: Waiting
+92476b9964bc: Waiting
+273b868b2ccf: Waiting
+b2221350f0e5: Waiting
+99261ba8d29f: Layer already exists
+8519dacd4dff: Waiting
+ac681ba6e747: Waiting
+7254f9feb5e2: Waiting
+ee0beacb8bf5: Waiting
+6e5e035ac24f: Waiting
+31092a3fd61e: Waiting
+fba2b5c45e82: Waiting
+8f77fd42691f: Waiting
+975eaabc6742: Waiting
+64fd49aed2a9: Waiting
+b4c813ead46f: Waiting
+4f4fb700ef54: Layer already exists
+314925a215b8: Waiting
+1377f2cf7ac1: Waiting
+4622adec95a1: Waiting
+dfa11dec87f1: Waiting
+cb39809c17b5: Waiting
+b64ddbd11ebf: Layer already exists
+ddc0581b3e5a: Waiting
+efe6456da7ed: Waiting
+f1565ae92954: Waiting
+1fd637621278: Waiting
+0357d47c2dbb: Layer already exists
+1a36d034a06c: Layer already exists
+7f0e0a5c2102: Waiting
+573934ddc5d9: Waiting
+3222acc00cee: Waiting
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+3cb5a8b13f9c: Layer already exists
+d588af6d21f3: Layer already exists
+d4745c7ecfb8: Layer already exists
+644f7a0f4b57: Waiting
+3096a2ec62ad: Waiting
+92476b9964bc: Layer already exists
+273b868b2ccf: Layer already exists
+b2221350f0e5: Layer already exists
+8519dacd4dff: Waiting
+ac681ba6e747: Waiting
+7254f9feb5e2: Waiting
+ee0beacb8bf5: Layer already exists
+6e5e035ac24f: Waiting
+31092a3fd61e: Layer already exists
+fba2b5c45e82: Waiting
+8f77fd42691f: Layer already exists
+975eaabc6742: Layer already exists
+64fd49aed2a9: Layer already exists
+b4c813ead46f: Waiting
+314925a215b8: Layer already exists
+1377f2cf7ac1: Layer already exists
+4622adec95a1: Waiting
+dfa11dec87f1: Waiting
+cb39809c17b5: Waiting
+a3e088357259: Waiting
+73fee66ff345: Layer already exists
+3cbe47ff4c56: Waiting
+8519dacd4dff: Layer already exists
+ac681ba6e747: Layer already exists
+7254f9feb5e2: Waiting
+6e5e035ac24f: Layer already exists
+fba2b5c45e82: Waiting
+b4c813ead46f: Layer already exists
+4622adec95a1: Waiting
+dfa11dec87f1: Layer already exists
+cb39809c17b5: Layer already exists
+a3e088357259: Waiting
+3cbe47ff4c56: Waiting
+ddc0581b3e5a: Layer already exists
+efe6456da7ed: Waiting
+f1565ae92954: Waiting
+1fd637621278: Layer already exists
+7f0e0a5c2102: Layer already exists
+573934ddc5d9: Waiting
+3222acc00cee: Layer already exists
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+644f7a0f4b57: Waiting
+3096a2ec62ad: Layer already exists
+a3e088357259: Layer already exists
+3cbe47ff4c56: Layer already exists
+efe6456da7ed: Waiting
+f1565ae92954: Layer already exists
+573934ddc5d9: Waiting
+6a0274bc4bf8: Layer already exists
+8f453f6cb7a9: Layer already exists
+644f7a0f4b57: Layer already exists
+7254f9feb5e2: Layer already exists
+fba2b5c45e82: Layer already exists
+4622adec95a1: Waiting
+4622adec95a1: Layer already exists
+efe6456da7ed: Layer already exists
+573934ddc5d9: Layer already exists
+a21b912f: digest: sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b size: 11256
+╭ Deploy a container application deploy changes to your application
+│
+│ Container application changes
+│
+├ EDIT deos-queue-consumer-ts-standard2sandbox
+│
+│         "configuration": {
+│           "command": [],
+│           "entrypoint": [],
+│ -         "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+│ +         "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-standard2sandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b",
+│           "instance_type": "standard-2",
+│           "network": {
+│             "assign_ipv4": "none",
+│
+│
+│  SUCCESS  Modified application deos-queue-consumer-ts-standard2sandbox (Application ID: a03d8a75-5574-4d37-806d-8b07ed1a79c6)
+│
+╰ Applied changes 
+
+Building image deos-queue-consumer-ts-implementationsandbox:a21b912f
+#0 building with "colima" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.60kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 356B done
+#4 DONE 0.0s
+
+#5 [stage-0  1/42] FROM docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#5 resolve docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75 done
+#5 DONE 0.0s
+
+#6 FROM ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45
+#6 resolve ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45 done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 36.40kB 0.0s done
+#7 DONE 0.0s
+
+#8 [stage-0 14/42] COPY container/native-review-read.mjs /deos/bin/native-review-read.mjs
+#8 CACHED
+
+#9 [stage-0 38/42] COPY config/schemas/trace-recheck-result-v1.json /deos/config/schemas/trace-recheck-result-v1.json
+#9 CACHED
+
+#10 [stage-0 36/42] COPY shared/planning-language.mjs /deos/shared/planning-language.mjs
+#10 CACHED
+
+#11 [stage-0 26/42] COPY container/deos-implementation /usr/local/bin/deos-implementation
+#11 CACHED
+
+#12 [stage-0 41/42] COPY container/deos-linear /usr/local/bin/deos-linear
+#12 CACHED
+
+#13 [stage-0 27/42] COPY container/supervisor.mjs /deos/bin/supervisor.mjs
+#13 CACHED
+
+#14 [stage-0 39/42] COPY config/prompts/openspec-traceability-recheck.md /deos/config/prompts/openspec-traceability-recheck.md
+#14 CACHED
+
+#15 [stage-0 19/42] COPY vendor/agent-skills/ /deos/agent-skills/
+#15 CACHED
+
+#16 [stage-0 23/42] COPY container/skills/deos-implementation/SKILL.md /deos/bin/implementation-skill.md
+#16 CACHED
+
+#17 [stage-0 31/42] COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs
+#17 CACHED
+
+#18 [stage-0 28/42] COPY container/supervisor-io.mjs /deos/bin/supervisor-io.mjs
+#18 CACHED
+
+#19 [stage-0  3/42] RUN UV_PYTHON_INSTALL_DIR=/opt/deos-python UV_PYTHON_BIN_DIR=/usr/local/bin       uv python install 3.11.16 --default     && python3 -m venv /opt/deos-tools     && /opt/deos-tools/bin/pip install --no-cache-dir showboat==0.6.1     && ln -s /opt/deos-tools/bin/showboat /usr/local/bin/showboat     && python3 -c 'from datetime import UTC; import sys; assert sys.version_info[:3] == (3, 11, 16)'
+#19 CACHED
+
+#20 [stage-0 20/42] COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
+#20 CACHED
+
+#21 [stage-0 37/42] COPY vendor/bettaview/ /deos/bettaview/
+#21 CACHED
+
+#22 [stage-0 22/42] COPY --chmod=755 container/implementation-chromium /deos/bin/implementation-chromium
+#22 CACHED
+
+#23 [stage-0 25/42] COPY src/implementation-browser-evidence.ts /deos/bin/
+#23 CACHED
+
+#24 [stage-0 18/42] COPY container/grounded-*.mjs /deos/bin/
+#24 CACHED
+
+#25 [stage-0 11/42] COPY src/claude-diagnostics.ts src/error-details.ts /deos/bin/
+#25 CACHED
+
+#26 [stage-0 13/42] COPY container/native-review-packet.mjs /deos/bin/native-review-packet.mjs
+#26 CACHED
+
+#27 [stage-0  9/42] COPY container/claude-*.mjs /deos/bin/
+#27 CACHED
+
+#28 [stage-0 33/42] COPY container/design-review-runner.mjs /deos/bin/design-review-runner.mjs
+#28 CACHED
+
+#29 [stage-0 17/42] COPY container/bounded-*.mjs /deos/bin/
+#29 CACHED
+
+#30 [stage-0 21/42] COPY container/implementation-*.mjs /deos/bin/
+#30 CACHED
+
+#31 [stage-0  2/42] COPY --from=ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45 /uv /usr/local/bin/uv
+#31 CACHED
+
+#32 [stage-0  6/42] RUN useradd --create-home --shell /usr/sbin/nologin deos-browser     && chmod 700 /home/deos-browser
+#32 CACHED
+
+#33 [stage-0 12/42] COPY container/original-errors.mjs /deos/bin/original-errors.mjs
+#33 CACHED
+
+#34 [stage-0  8/42] RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/bettaview     && chmod 700 /deos/auth     && chmod 755 /deos/bin /deos/shared /deos/staging /deos/jobs
+#34 CACHED
+
+#35 [stage-0 15/42] COPY container/native-review-adapter.mjs /deos/bin/native-review-adapter.mjs
+#35 CACHED
+
+#36 [stage-0 34/42] COPY container/design-review-schema.mjs /deos/bin/design-review-schema.mjs
+#36 CACHED
+
+#37 [stage-0  4/42] RUN useradd --create-home --shell /bin/bash deos-author
+#37 CACHED
+
+#38 [stage-0 35/42] COPY container/patch-capture.mjs /deos/bin/patch-capture.mjs
+#38 CACHED
+
+#39 [stage-0 32/42] COPY container/trace-review-runner.mjs /deos/bin/trace-review-runner.mjs
+#39 CACHED
+
+#40 [stage-0  5/42] RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0 @anthropic-ai/claude-code@2.1.268 wrangler@4.125.0
+#40 CACHED
+
+#41 [stage-0 30/42] COPY container/author-completion.mjs /deos/bin/author-completion.mjs
+#41 CACHED
+
+#42 [stage-0 40/42] COPY container/deos-github /usr/local/bin/deos-github
+#42 CACHED
+
+#43 [stage-0 24/42] COPY src/implementation-demo-contract.ts src/implementation-contract.ts src/implementation-hash.ts /deos/bin/
+#43 CACHED
+
+#44 [stage-0 10/42] COPY src/claude-review.ts /deos/bin/claude-review.ts
+#44 CACHED
+
+#45 [stage-0 29/42] COPY container/attempt-completion.mjs /deos/bin/attempt-completion.mjs
+#45 CACHED
+
+#46 [stage-0  7/42] RUN npm install --prefix /deos --omit=dev playwright@1.63.0     && /deos/node_modules/.bin/playwright install --with-deps chromium
+#46 CACHED
+
+#47 [stage-0 16/42] COPY container/native-self-review.mjs /deos/bin/native-self-review.mjs
+#47 CACHED
+
+#48 [stage-0 42/42] RUN ln -s /usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path/rg /usr/local/bin/rg     && runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin rg --version     && chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin/trace-review-runner.mjs       /deos/bin/design-review-runner.mjs       /usr/local/bin/deos-github /usr/local/bin/deos-linear /usr/local/bin/deos-implementation     && for file in /deos/bin/*.mjs; do node --check "$file" || exit 1; done     && claude --version     && codex --version     && openspec --version
+#48 CACHED
+
+#49 exporting to image
+#49 exporting layers done
+#49 exporting manifest sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b done
+#49 exporting config sha256:503a3beee3193e43a8bd8d86db8749c1cc9ea7821a334daf3ec864d36d0cdd93 done
+#49 naming to docker.io/library/deos-queue-consumer-ts-implementationsandbox:a21b912f done
+#49 DONE 0.0s
+
+WARNING! Your credentials are stored unencrypted in '/Users/sachin/.docker/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
+
+Login Succeeded
+no such manifest: registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b
+Image does not exist remotely, pushing: registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox:a21b912f
+The push refers to repository [registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox]
+b4c813ead46f: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+565457a32c38: Waiting
+429052a3f4a8: Waiting
+ac681ba6e747: Waiting
+ddc0581b3e5a: Waiting
+6773eb4c512a: Waiting
+3096a2ec62ad: Waiting
+4f4fb700ef54: Waiting
+3cb5a8b13f9c: Waiting
+b2221350f0e5: Waiting
+6a0274bc4bf8: Waiting
+7ec2ce92b397: Waiting
+0357d47c2dbb: Waiting
+ee0beacb8bf5: Waiting
+8f453f6cb7a9: Waiting
+962bc2eb8c52: Waiting
+975eaabc6742: Waiting
+99261ba8d29f: Waiting
+7f0e0a5c2102: Waiting
+a3e088357259: Waiting
+8f77fd42691f: Waiting
+fa85debb9563: Waiting
+64fd49aed2a9: Waiting
+314925a215b8: Waiting
+b64ddbd11ebf: Waiting
+8519dacd4dff: Waiting
+644f7a0f4b57: Waiting
+cb39809c17b5: Waiting
+92476b9964bc: Waiting
+d4745c7ecfb8: Waiting
+273b868b2ccf: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+918f2ba17e75: Waiting
+3222acc00cee: Waiting
+7254f9feb5e2: Waiting
+98c36778597e: Waiting
+43bc55a634a4: Waiting
+c3f964b63a55: Waiting
+fba2b5c45e82: Waiting
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Waiting
+1fd637621278: Waiting
+573934ddc5d9: Waiting
+31092a3fd61e: Waiting
+1a36d034a06c: Waiting
+6e5e035ac24f: Waiting
+dfa11dec87f1: Waiting
+f1565ae92954: Waiting
+d35efc45caf0: Waiting
+565457a32c38: Waiting
+429052a3f4a8: Waiting
+ac681ba6e747: Waiting
+ddc0581b3e5a: Waiting
+6773eb4c512a: Waiting
+3096a2ec62ad: Waiting
+4f4fb700ef54: Waiting
+3cb5a8b13f9c: Waiting
+b2221350f0e5: Waiting
+6a0274bc4bf8: Waiting
+7ec2ce92b397: Waiting
+0357d47c2dbb: Waiting
+ee0beacb8bf5: Waiting
+8f453f6cb7a9: Waiting
+962bc2eb8c52: Waiting
+975eaabc6742: Waiting
+99261ba8d29f: Waiting
+7f0e0a5c2102: Waiting
+a3e088357259: Waiting
+8f77fd42691f: Waiting
+fa85debb9563: Waiting
+64fd49aed2a9: Waiting
+314925a215b8: Waiting
+b64ddbd11ebf: Waiting
+8519dacd4dff: Waiting
+644f7a0f4b57: Waiting
+cb39809c17b5: Waiting
+92476b9964bc: Waiting
+d4745c7ecfb8: Waiting
+273b868b2ccf: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+918f2ba17e75: Waiting
+3222acc00cee: Waiting
+7254f9feb5e2: Waiting
+98c36778597e: Waiting
+43bc55a634a4: Waiting
+c3f964b63a55: Waiting
+fba2b5c45e82: Waiting
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Waiting
+1fd637621278: Waiting
+573934ddc5d9: Waiting
+31092a3fd61e: Waiting
+1a36d034a06c: Waiting
+6e5e035ac24f: Waiting
+dfa11dec87f1: Waiting
+f1565ae92954: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+99261ba8d29f: Waiting
+7f0e0a5c2102: Waiting
+a3e088357259: Waiting
+8f77fd42691f: Waiting
+fa85debb9563: Waiting
+64fd49aed2a9: Waiting
+314925a215b8: Waiting
+b64ddbd11ebf: Waiting
+8519dacd4dff: Waiting
+644f7a0f4b57: Waiting
+cb39809c17b5: Waiting
+92476b9964bc: Waiting
+d4745c7ecfb8: Waiting
+273b868b2ccf: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+918f2ba17e75: Waiting
+3222acc00cee: Waiting
+7254f9feb5e2: Waiting
+98c36778597e: Waiting
+43bc55a634a4: Waiting
+c3f964b63a55: Waiting
+fba2b5c45e82: Waiting
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Waiting
+1fd637621278: Waiting
+573934ddc5d9: Waiting
+31092a3fd61e: Waiting
+1a36d034a06c: Waiting
+6e5e035ac24f: Waiting
+dfa11dec87f1: Waiting
+f1565ae92954: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+565457a32c38: Waiting
+429052a3f4a8: Waiting
+ac681ba6e747: Waiting
+ddc0581b3e5a: Waiting
+6773eb4c512a: Waiting
+3096a2ec62ad: Waiting
+4f4fb700ef54: Waiting
+3cb5a8b13f9c: Waiting
+b2221350f0e5: Waiting
+6a0274bc4bf8: Waiting
+7ec2ce92b397: Waiting
+0357d47c2dbb: Waiting
+ee0beacb8bf5: Waiting
+8f453f6cb7a9: Waiting
+962bc2eb8c52: Waiting
+975eaabc6742: Waiting
+fa85debb9563: Waiting
+64fd49aed2a9: Layer already exists
+314925a215b8: Waiting
+b64ddbd11ebf: Waiting
+8519dacd4dff: Waiting
+644f7a0f4b57: Waiting
+cb39809c17b5: Waiting
+92476b9964bc: Waiting
+d4745c7ecfb8: Waiting
+273b868b2ccf: Layer already exists
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+918f2ba17e75: Waiting
+3222acc00cee: Waiting
+7254f9feb5e2: Waiting
+98c36778597e: Layer already exists
+43bc55a634a4: Layer already exists
+c3f964b63a55: Waiting
+fba2b5c45e82: Layer already exists
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Waiting
+1fd637621278: Waiting
+573934ddc5d9: Layer already exists
+31092a3fd61e: Layer already exists
+1a36d034a06c: Layer already exists
+6e5e035ac24f: Waiting
+dfa11dec87f1: Waiting
+f1565ae92954: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Waiting
+4ae38ac09d90: Waiting
+1377f2cf7ac1: Waiting
+565457a32c38: Waiting
+429052a3f4a8: Waiting
+ac681ba6e747: Waiting
+ddc0581b3e5a: Waiting
+6773eb4c512a: Waiting
+3096a2ec62ad: Waiting
+4f4fb700ef54: Waiting
+3cb5a8b13f9c: Waiting
+b2221350f0e5: Layer already exists
+6a0274bc4bf8: Waiting
+7ec2ce92b397: Waiting
+0357d47c2dbb: Waiting
+ee0beacb8bf5: Waiting
+8f453f6cb7a9: Waiting
+962bc2eb8c52: Waiting
+975eaabc6742: Waiting
+99261ba8d29f: Waiting
+7f0e0a5c2102: Waiting
+a3e088357259: Waiting
+8f77fd42691f: Waiting
+918f2ba17e75: Waiting
+3222acc00cee: Waiting
+7254f9feb5e2: Waiting
+c3f964b63a55: Waiting
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+c8b0a6b8b93c: Layer already exists
+1fd637621278: Waiting
+6e5e035ac24f: Layer already exists
+dfa11dec87f1: Waiting
+f1565ae92954: Waiting
+d35efc45caf0: Waiting
+b4c813ead46f: Layer already exists
+4ae38ac09d90: Layer already exists
+1377f2cf7ac1: Waiting
+565457a32c38: Layer already exists
+429052a3f4a8: Layer already exists
+ac681ba6e747: Layer already exists
+ddc0581b3e5a: Layer already exists
+6773eb4c512a: Layer already exists
+3096a2ec62ad: Waiting
+4f4fb700ef54: Waiting
+3cb5a8b13f9c: Layer already exists
+6a0274bc4bf8: Waiting
+7ec2ce92b397: Layer already exists
+0357d47c2dbb: Waiting
+ee0beacb8bf5: Layer already exists
+8f453f6cb7a9: Waiting
+962bc2eb8c52: Layer already exists
+975eaabc6742: Waiting
+99261ba8d29f: Layer already exists
+7f0e0a5c2102: Waiting
+a3e088357259: Layer already exists
+8f77fd42691f: Waiting
+fa85debb9563: Waiting
+314925a215b8: Waiting
+b64ddbd11ebf: Waiting
+8519dacd4dff: Layer already exists
+644f7a0f4b57: Layer already exists
+cb39809c17b5: Layer already exists
+92476b9964bc: Waiting
+d4745c7ecfb8: Layer already exists
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+1377f2cf7ac1: Waiting
+3096a2ec62ad: Waiting
+4f4fb700ef54: Layer already exists
+6a0274bc4bf8: Waiting
+0357d47c2dbb: Layer already exists
+8f453f6cb7a9: Waiting
+975eaabc6742: Waiting
+7f0e0a5c2102: Waiting
+8f77fd42691f: Waiting
+fa85debb9563: Waiting
+314925a215b8: Waiting
+b64ddbd11ebf: Waiting
+92476b9964bc: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+918f2ba17e75: Waiting
+3222acc00cee: Layer already exists
+7254f9feb5e2: Waiting
+c3f964b63a55: Layer already exists
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+1fd637621278: Layer already exists
+dfa11dec87f1: Waiting
+f1565ae92954: Waiting
+d35efc45caf0: Layer already exists
+8f453f6cb7a9: Waiting
+975eaabc6742: Waiting
+7f0e0a5c2102: Waiting
+8f77fd42691f: Waiting
+fa85debb9563: Waiting
+314925a215b8: Waiting
+b64ddbd11ebf: Waiting
+92476b9964bc: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+918f2ba17e75: Waiting
+7254f9feb5e2: Waiting
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+dfa11dec87f1: Layer already exists
+f1565ae92954: Waiting
+1377f2cf7ac1: Waiting
+3096a2ec62ad: Waiting
+6a0274bc4bf8: Waiting
+92476b9964bc: Layer already exists
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+918f2ba17e75: Waiting
+7254f9feb5e2: Waiting
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+f1565ae92954: Waiting
+1377f2cf7ac1: Waiting
+3096a2ec62ad: Waiting
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+975eaabc6742: Waiting
+7f0e0a5c2102: Waiting
+8f77fd42691f: Waiting
+fa85debb9563: Layer already exists
+314925a215b8: Waiting
+b64ddbd11ebf: Waiting
+3096a2ec62ad: Waiting
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+975eaabc6742: Waiting
+7f0e0a5c2102: Waiting
+8f77fd42691f: Waiting
+314925a215b8: Waiting
+b64ddbd11ebf: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+918f2ba17e75: Layer already exists
+7254f9feb5e2: Waiting
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+f1565ae92954: Waiting
+1377f2cf7ac1: Waiting
+3096a2ec62ad: Waiting
+6a0274bc4bf8: Waiting
+8f453f6cb7a9: Waiting
+975eaabc6742: Layer already exists
+7f0e0a5c2102: Waiting
+8f77fd42691f: Layer already exists
+314925a215b8: Layer already exists
+b64ddbd11ebf: Layer already exists
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+7254f9feb5e2: Layer already exists
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+f1565ae92954: Waiting
+1377f2cf7ac1: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+f1565ae92954: Waiting
+1377f2cf7ac1: Waiting
+3096a2ec62ad: Waiting
+6a0274bc4bf8: Layer already exists
+8f453f6cb7a9: Waiting
+7f0e0a5c2102: Waiting
+3096a2ec62ad: Layer already exists
+8f453f6cb7a9: Layer already exists
+7f0e0a5c2102: Layer already exists
+73fee66ff345: Layer already exists
+d588af6d21f3: Waiting
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Layer already exists
+f1565ae92954: Waiting
+1377f2cf7ac1: Waiting
+efe6456da7ed: Waiting
+4622adec95a1: Waiting
+f1565ae92954: Waiting
+1377f2cf7ac1: Layer already exists
+d588af6d21f3: Layer already exists
+efe6456da7ed: Layer already exists
+4622adec95a1: Layer already exists
+f1565ae92954: Layer already exists
+a21b912f: digest: sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b size: 11256
+╭ Deploy a container application deploy changes to your application
+│
+│ Container application changes
+│
+├ EDIT deos-queue-consumer-ts-implementationsandbox
+│
+│         "configuration": {
+│           "command": [],
+│           "entrypoint": [],
+│ -         "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+│ +         "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationsandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b",
+│           "instance_type": "basic",
+│           "network": {
+│             "assign_ipv4": "none",
+│
+│
+│  SUCCESS  Modified application deos-queue-consumer-ts-implementationsandbox (Application ID: a03d2322-d47e-405d-86d1-9366e458cf5e)
+│
+╰ Applied changes 
+
+Building image deos-queue-consumer-ts-implementationstandard2sandbox:a21b912f
+#0 building with "colima" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.60kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 356B done
+#4 DONE 0.0s
+
+#5 [stage-0  1/42] FROM docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75
+#5 resolve docker.io/cloudflare/sandbox:0.13.0-next.738.2@sha256:f4b2137219568aa44539ab93c0e774db6bcab323c134c5088447916e58f15e75 done
+#5 DONE 0.0s
+
+#6 FROM ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45
+#6 resolve ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45 done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 36.40kB 0.0s done
+#7 DONE 0.0s
+
+#8 [stage-0 23/42] COPY container/skills/deos-implementation/SKILL.md /deos/bin/implementation-skill.md
+#8 CACHED
+
+#9 [stage-0 27/42] COPY container/supervisor.mjs /deos/bin/supervisor.mjs
+#9 CACHED
+
+#10 [stage-0 41/42] COPY container/deos-linear /usr/local/bin/deos-linear
+#10 CACHED
+
+#11 [stage-0 15/42] COPY container/native-review-adapter.mjs /deos/bin/native-review-adapter.mjs
+#11 CACHED
+
+#12 [stage-0  3/42] RUN UV_PYTHON_INSTALL_DIR=/opt/deos-python UV_PYTHON_BIN_DIR=/usr/local/bin       uv python install 3.11.16 --default     && python3 -m venv /opt/deos-tools     && /opt/deos-tools/bin/pip install --no-cache-dir showboat==0.6.1     && ln -s /opt/deos-tools/bin/showboat /usr/local/bin/showboat     && python3 -c 'from datetime import UTC; import sys; assert sys.version_info[:3] == (3, 11, 16)'
+#12 CACHED
+
+#13 [stage-0 16/42] COPY container/native-self-review.mjs /deos/bin/native-self-review.mjs
+#13 CACHED
+
+#14 [stage-0  4/42] RUN useradd --create-home --shell /bin/bash deos-author
+#14 CACHED
+
+#15 [stage-0 21/42] COPY container/implementation-*.mjs /deos/bin/
+#15 CACHED
+
+#16 [stage-0 39/42] COPY config/prompts/openspec-traceability-recheck.md /deos/config/prompts/openspec-traceability-recheck.md
+#16 CACHED
+
+#17 [stage-0 29/42] COPY container/attempt-completion.mjs /deos/bin/attempt-completion.mjs
+#17 CACHED
+
+#18 [stage-0 12/42] COPY container/original-errors.mjs /deos/bin/original-errors.mjs
+#18 CACHED
+
+#19 [stage-0 26/42] COPY container/deos-implementation /usr/local/bin/deos-implementation
+#19 CACHED
+
+#20 [stage-0  8/42] RUN mkdir -p /deos/bin /deos/shared /deos/staging /deos/jobs /deos/auth /deos/bettaview     && chmod 700 /deos/auth     && chmod 755 /deos/bin /deos/shared /deos/staging /deos/jobs
+#20 CACHED
+
+#21 [stage-0 22/42] COPY --chmod=755 container/implementation-chromium /deos/bin/implementation-chromium
+#21 CACHED
+
+#22 [stage-0 28/42] COPY container/supervisor-io.mjs /deos/bin/supervisor-io.mjs
+#22 CACHED
+
+#23 [stage-0 40/42] COPY container/deos-github /usr/local/bin/deos-github
+#23 CACHED
+
+#24 [stage-0  9/42] COPY container/claude-*.mjs /deos/bin/
+#24 CACHED
+
+#25 [stage-0 31/42] COPY container/trace-review-proof.mjs /deos/bin/trace-review-proof.mjs
+#25 CACHED
+
+#26 [stage-0 25/42] COPY src/implementation-browser-evidence.ts /deos/bin/
+#26 CACHED
+
+#27 [stage-0 24/42] COPY src/implementation-demo-contract.ts src/implementation-contract.ts src/implementation-hash.ts /deos/bin/
+#27 CACHED
+
+#28 [stage-0 33/42] COPY container/design-review-runner.mjs /deos/bin/design-review-runner.mjs
+#28 CACHED
+
+#29 [stage-0 37/42] COPY vendor/bettaview/ /deos/bettaview/
+#29 CACHED
+
+#30 [stage-0 34/42] COPY container/design-review-schema.mjs /deos/bin/design-review-schema.mjs
+#30 CACHED
+
+#31 [stage-0 36/42] COPY shared/planning-language.mjs /deos/shared/planning-language.mjs
+#31 CACHED
+
+#32 [stage-0 17/42] COPY container/bounded-*.mjs /deos/bin/
+#32 CACHED
+
+#33 [stage-0  2/42] COPY --from=ghcr.io/astral-sh/uv:0.12.14@sha256:1946145b8706ad9e5c0e79a513f9e324b58d5e38126bb2c8b7dbfca61febeb45 /uv /usr/local/bin/uv
+#33 CACHED
+
+#34 [stage-0  6/42] RUN useradd --create-home --shell /usr/sbin/nologin deos-browser     && chmod 700 /home/deos-browser
+#34 CACHED
+
+#35 [stage-0 11/42] COPY src/claude-diagnostics.ts src/error-details.ts /deos/bin/
+#35 CACHED
+
+#36 [stage-0 14/42] COPY container/native-review-read.mjs /deos/bin/native-review-read.mjs
+#36 CACHED
+
+#37 [stage-0 38/42] COPY config/schemas/trace-recheck-result-v1.json /deos/config/schemas/trace-recheck-result-v1.json
+#37 CACHED
+
+#38 [stage-0 18/42] COPY container/grounded-*.mjs /deos/bin/
+#38 CACHED
+
+#39 [stage-0 35/42] COPY container/patch-capture.mjs /deos/bin/patch-capture.mjs
+#39 CACHED
+
+#40 [stage-0 19/42] COPY vendor/agent-skills/ /deos/agent-skills/
+#40 CACHED
+
+#41 [stage-0 32/42] COPY container/trace-review-runner.mjs /deos/bin/trace-review-runner.mjs
+#41 CACHED
+
+#42 [stage-0 20/42] COPY container/native-review-setup.mjs /deos/bin/native-review-setup.mjs
+#42 CACHED
+
+#43 [stage-0  5/42] RUN npm install --global --omit=dev @openai/codex@0.147.0 @fission-ai/openspec@1.8.0 @anthropic-ai/claude-code@2.1.268 wrangler@4.125.0
+#43 CACHED
+
+#44 [stage-0 30/42] COPY container/author-completion.mjs /deos/bin/author-completion.mjs
+#44 CACHED
+
+#45 [stage-0 10/42] COPY src/claude-review.ts /deos/bin/claude-review.ts
+#45 CACHED
+
+#46 [stage-0  7/42] RUN npm install --prefix /deos --omit=dev playwright@1.63.0     && /deos/node_modules/.bin/playwright install --with-deps chromium
+#46 CACHED
+
+#47 [stage-0 13/42] COPY container/native-review-packet.mjs /deos/bin/native-review-packet.mjs
+#47 CACHED
+
+#48 [stage-0 42/42] RUN ln -s /usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path/rg /usr/local/bin/rg     && runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin rg --version     && chmod 755 /deos/bin/supervisor.mjs /deos/bin/author-completion.mjs /deos/bin/trace-review-runner.mjs       /deos/bin/design-review-runner.mjs       /usr/local/bin/deos-github /usr/local/bin/deos-linear /usr/local/bin/deos-implementation     && for file in /deos/bin/*.mjs; do node --check "$file" || exit 1; done     && claude --version     && codex --version     && openspec --version
+#48 CACHED
+
+#49 exporting to image
+#49 exporting layers done
+#49 exporting manifest sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b done
+#49 exporting config sha256:503a3beee3193e43a8bd8d86db8749c1cc9ea7821a334daf3ec864d36d0cdd93 done
+#49 naming to docker.io/library/deos-queue-consumer-ts-implementationstandard2sandbox:a21b912f done
+#49 DONE 0.0s
+
+WARNING! Your credentials are stored unencrypted in '/Users/sachin/.docker/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
+
+Login Succeeded
+no such manifest: registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b
+Image does not exist remotely, pushing: registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox:a21b912f
+The push refers to repository [registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox]
+3096a2ec62ad: Waiting
+fba2b5c45e82: Waiting
+918f2ba17e75: Waiting
+429052a3f4a8: Waiting
+c3f964b63a55: Waiting
+962bc2eb8c52: Waiting
+1a36d034a06c: Waiting
+b4c813ead46f: Waiting
+3cb5a8b13f9c: Waiting
+3cbe47ff4c56: Waiting
+92476b9964bc: Waiting
+7f0e0a5c2102: Waiting
+64fd49aed2a9: Waiting
+1377f2cf7ac1: Waiting
+565457a32c38: Waiting
+6773eb4c512a: Waiting
+273b868b2ccf: Waiting
+975eaabc6742: Waiting
+4ae38ac09d90: Waiting
+c8b0a6b8b93c: Waiting
+6e5e035ac24f: Waiting
+1fd637621278: Waiting
+d4745c7ecfb8: Waiting
+ddc0581b3e5a: Waiting
+fa85debb9563: Waiting
+43bc55a634a4: Waiting
+99261ba8d29f: Waiting
+dfa11dec87f1: Waiting
+efe6456da7ed: Waiting
+3222acc00cee: Waiting
+8f77fd42691f: Waiting
+644f7a0f4b57: Waiting
+f1565ae92954: Waiting
+31092a3fd61e: Waiting
+8f453f6cb7a9: Waiting
+ee0beacb8bf5: Waiting
+6a0274bc4bf8: Waiting
+573934ddc5d9: Waiting
+0357d47c2dbb: Waiting
+98c36778597e: Waiting
+4f4fb700ef54: Waiting
+b64ddbd11ebf: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+7ec2ce92b397: Waiting
+b2221350f0e5: Waiting
+314925a215b8: Waiting
+d35efc45caf0: Waiting
+4622adec95a1: Waiting
+8519dacd4dff: Waiting
+cb39809c17b5: Waiting
+7254f9feb5e2: Waiting
+a3e088357259: Waiting
+ac681ba6e747: Waiting
+64fd49aed2a9: Waiting
+1377f2cf7ac1: Waiting
+565457a32c38: Waiting
+6773eb4c512a: Waiting
+273b868b2ccf: Waiting
+975eaabc6742: Waiting
+4ae38ac09d90: Waiting
+c8b0a6b8b93c: Waiting
+6e5e035ac24f: Waiting
+1fd637621278: Waiting
+d4745c7ecfb8: Waiting
+ddc0581b3e5a: Waiting
+fa85debb9563: Waiting
+43bc55a634a4: Waiting
+99261ba8d29f: Waiting
+dfa11dec87f1: Waiting
+efe6456da7ed: Waiting
+3222acc00cee: Waiting
+8f77fd42691f: Waiting
+644f7a0f4b57: Waiting
+f1565ae92954: Waiting
+31092a3fd61e: Waiting
+8f453f6cb7a9: Waiting
+ee0beacb8bf5: Waiting
+6a0274bc4bf8: Waiting
+573934ddc5d9: Waiting
+0357d47c2dbb: Waiting
+98c36778597e: Waiting
+4f4fb700ef54: Waiting
+b64ddbd11ebf: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+7ec2ce92b397: Waiting
+b2221350f0e5: Waiting
+314925a215b8: Waiting
+d35efc45caf0: Waiting
+4622adec95a1: Waiting
+8519dacd4dff: Waiting
+cb39809c17b5: Waiting
+7254f9feb5e2: Waiting
+a3e088357259: Waiting
+ac681ba6e747: Waiting
+3096a2ec62ad: Waiting
+fba2b5c45e82: Waiting
+918f2ba17e75: Waiting
+429052a3f4a8: Waiting
+c3f964b63a55: Waiting
+962bc2eb8c52: Waiting
+1a36d034a06c: Waiting
+b4c813ead46f: Waiting
+3cb5a8b13f9c: Waiting
+3cbe47ff4c56: Waiting
+92476b9964bc: Waiting
+7f0e0a5c2102: Waiting
+fa85debb9563: Waiting
+43bc55a634a4: Waiting
+99261ba8d29f: Waiting
+dfa11dec87f1: Waiting
+efe6456da7ed: Waiting
+3222acc00cee: Waiting
+8f77fd42691f: Waiting
+644f7a0f4b57: Waiting
+f1565ae92954: Waiting
+31092a3fd61e: Waiting
+8f453f6cb7a9: Waiting
+ee0beacb8bf5: Waiting
+6a0274bc4bf8: Waiting
+573934ddc5d9: Waiting
+0357d47c2dbb: Waiting
+98c36778597e: Waiting
+4f4fb700ef54: Waiting
+b64ddbd11ebf: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+7ec2ce92b397: Waiting
+b2221350f0e5: Waiting
+314925a215b8: Waiting
+d35efc45caf0: Waiting
+4622adec95a1: Waiting
+8519dacd4dff: Waiting
+cb39809c17b5: Waiting
+7254f9feb5e2: Waiting
+a3e088357259: Waiting
+ac681ba6e747: Waiting
+3096a2ec62ad: Waiting
+fba2b5c45e82: Waiting
+918f2ba17e75: Waiting
+429052a3f4a8: Waiting
+c3f964b63a55: Waiting
+962bc2eb8c52: Waiting
+1a36d034a06c: Waiting
+b4c813ead46f: Waiting
+3cb5a8b13f9c: Waiting
+3cbe47ff4c56: Waiting
+92476b9964bc: Waiting
+7f0e0a5c2102: Waiting
+64fd49aed2a9: Waiting
+1377f2cf7ac1: Waiting
+565457a32c38: Waiting
+6773eb4c512a: Waiting
+273b868b2ccf: Waiting
+975eaabc6742: Waiting
+4ae38ac09d90: Waiting
+c8b0a6b8b93c: Waiting
+6e5e035ac24f: Waiting
+1fd637621278: Waiting
+d4745c7ecfb8: Waiting
+ddc0581b3e5a: Waiting
+7f0e0a5c2102: Waiting
+64fd49aed2a9: Layer already exists
+1377f2cf7ac1: Layer already exists
+565457a32c38: Waiting
+6773eb4c512a: Waiting
+273b868b2ccf: Waiting
+975eaabc6742: Waiting
+4ae38ac09d90: Waiting
+c8b0a6b8b93c: Layer already exists
+6e5e035ac24f: Layer already exists
+1fd637621278: Waiting
+d4745c7ecfb8: Waiting
+ddc0581b3e5a: Layer already exists
+fa85debb9563: Waiting
+43bc55a634a4: Waiting
+99261ba8d29f: Layer already exists
+dfa11dec87f1: Waiting
+efe6456da7ed: Waiting
+3222acc00cee: Waiting
+8f77fd42691f: Waiting
+644f7a0f4b57: Layer already exists
+f1565ae92954: Waiting
+31092a3fd61e: Layer already exists
+8f453f6cb7a9: Waiting
+ee0beacb8bf5: Waiting
+6a0274bc4bf8: Waiting
+573934ddc5d9: Waiting
+0357d47c2dbb: Waiting
+98c36778597e: Layer already exists
+4f4fb700ef54: Waiting
+b64ddbd11ebf: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+7ec2ce92b397: Layer already exists
+b2221350f0e5: Layer already exists
+314925a215b8: Waiting
+d35efc45caf0: Layer already exists
+4622adec95a1: Waiting
+8519dacd4dff: Waiting
+cb39809c17b5: Waiting
+7254f9feb5e2: Waiting
+a3e088357259: Waiting
+ac681ba6e747: Waiting
+3096a2ec62ad: Waiting
+fba2b5c45e82: Waiting
+918f2ba17e75: Waiting
+429052a3f4a8: Waiting
+c3f964b63a55: Waiting
+962bc2eb8c52: Waiting
+1a36d034a06c: Layer already exists
+b4c813ead46f: Layer already exists
+3cb5a8b13f9c: Layer already exists
+3cbe47ff4c56: Waiting
+92476b9964bc: Waiting
+7254f9feb5e2: Layer already exists
+a3e088357259: Waiting
+ac681ba6e747: Layer already exists
+3096a2ec62ad: Layer already exists
+fba2b5c45e82: Layer already exists
+918f2ba17e75: Waiting
+429052a3f4a8: Waiting
+c3f964b63a55: Waiting
+962bc2eb8c52: Waiting
+3cbe47ff4c56: Waiting
+92476b9964bc: Layer already exists
+7f0e0a5c2102: Layer already exists
+565457a32c38: Waiting
+6773eb4c512a: Waiting
+273b868b2ccf: Waiting
+975eaabc6742: Waiting
+4ae38ac09d90: Layer already exists
+1fd637621278: Layer already exists
+d4745c7ecfb8: Waiting
+fa85debb9563: Layer already exists
+43bc55a634a4: Layer already exists
+dfa11dec87f1: Waiting
+efe6456da7ed: Waiting
+3222acc00cee: Waiting
+8f77fd42691f: Waiting
+f1565ae92954: Layer already exists
+8f453f6cb7a9: Waiting
+ee0beacb8bf5: Waiting
+6a0274bc4bf8: Waiting
+573934ddc5d9: Layer already exists
+0357d47c2dbb: Layer already exists
+4f4fb700ef54: Waiting
+b64ddbd11ebf: Layer already exists
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+314925a215b8: Waiting
+4622adec95a1: Waiting
+8519dacd4dff: Waiting
+cb39809c17b5: Waiting
+8519dacd4dff: Waiting
+cb39809c17b5: Waiting
+a3e088357259: Waiting
+918f2ba17e75: Waiting
+429052a3f4a8: Waiting
+c3f964b63a55: Waiting
+962bc2eb8c52: Waiting
+3cbe47ff4c56: Waiting
+565457a32c38: Waiting
+6773eb4c512a: Waiting
+273b868b2ccf: Waiting
+975eaabc6742: Waiting
+d4745c7ecfb8: Waiting
+dfa11dec87f1: Waiting
+efe6456da7ed: Waiting
+3222acc00cee: Waiting
+8f77fd42691f: Waiting
+8f453f6cb7a9: Waiting
+ee0beacb8bf5: Waiting
+6a0274bc4bf8: Waiting
+4f4fb700ef54: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+314925a215b8: Waiting
+4622adec95a1: Waiting
+3cbe47ff4c56: Waiting
+565457a32c38: Waiting
+6773eb4c512a: Waiting
+273b868b2ccf: Waiting
+975eaabc6742: Waiting
+d4745c7ecfb8: Waiting
+dfa11dec87f1: Waiting
+efe6456da7ed: Waiting
+3222acc00cee: Waiting
+8f77fd42691f: Waiting
+8f453f6cb7a9: Waiting
+ee0beacb8bf5: Waiting
+6a0274bc4bf8: Waiting
+4f4fb700ef54: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+314925a215b8: Waiting
+4622adec95a1: Waiting
+8519dacd4dff: Waiting
+cb39809c17b5: Waiting
+a3e088357259: Waiting
+918f2ba17e75: Waiting
+429052a3f4a8: Waiting
+c3f964b63a55: Waiting
+962bc2eb8c52: Waiting
+dfa11dec87f1: Waiting
+efe6456da7ed: Waiting
+3222acc00cee: Waiting
+8f77fd42691f: Waiting
+8f453f6cb7a9: Waiting
+ee0beacb8bf5: Waiting
+6a0274bc4bf8: Waiting
+4f4fb700ef54: Waiting
+73fee66ff345: Waiting
+d588af6d21f3: Waiting
+314925a215b8: Waiting
+4622adec95a1: Waiting
+8519dacd4dff: Waiting
+cb39809c17b5: Waiting
+a3e088357259: Waiting
+918f2ba17e75: Waiting
+429052a3f4a8: Waiting
+c3f964b63a55: Waiting
+962bc2eb8c52: Waiting
+3cbe47ff4c56: Waiting
+565457a32c38: Waiting
+6773eb4c512a: Waiting
+273b868b2ccf: Waiting
+975eaabc6742: Waiting
+d4745c7ecfb8: Waiting
+a3e088357259: Waiting
+918f2ba17e75: Waiting
+429052a3f4a8: Waiting
+c3f964b63a55: Layer already exists
+962bc2eb8c52: Waiting
+3cbe47ff4c56: Layer already exists
+565457a32c38: Waiting
+6773eb4c512a: Layer already exists
+273b868b2ccf: Waiting
+975eaabc6742: Waiting
+d4745c7ecfb8: Waiting
+dfa11dec87f1: Waiting
+efe6456da7ed: Layer already exists
+3222acc00cee: Waiting
+8f77fd42691f: Layer already exists
+8f453f6cb7a9: Layer already exists
+ee0beacb8bf5: Waiting
+6a0274bc4bf8: Layer already exists
+4f4fb700ef54: Waiting
+73fee66ff345: Layer already exists
+d588af6d21f3: Layer already exists
+314925a215b8: Layer already exists
+4622adec95a1: Layer already exists
+8519dacd4dff: Layer already exists
+cb39809c17b5: Layer already exists
+dfa11dec87f1: Waiting
+3222acc00cee: Layer already exists
+ee0beacb8bf5: Waiting
+4f4fb700ef54: Layer already exists
+a3e088357259: Layer already exists
+918f2ba17e75: Waiting
+429052a3f4a8: Layer already exists
+962bc2eb8c52: Waiting
+565457a32c38: Layer already exists
+273b868b2ccf: Waiting
+975eaabc6742: Layer already exists
+d4745c7ecfb8: Waiting
+273b868b2ccf: Waiting
+d4745c7ecfb8: Waiting
+dfa11dec87f1: Waiting
+ee0beacb8bf5: Waiting
+918f2ba17e75: Waiting
+962bc2eb8c52: Waiting
+273b868b2ccf: Layer already exists
+d4745c7ecfb8: Layer already exists
+dfa11dec87f1: Layer already exists
+ee0beacb8bf5: Layer already exists
+918f2ba17e75: Layer already exists
+962bc2eb8c52: Layer already exists
+a21b912f: digest: sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b size: 11256
+╭ Deploy a container application deploy changes to your application
+│
+│ Container application changes
+│
+├ EDIT deos-queue-consumer-ts-implementationstandard2sandbox
+│
+│         "configuration": {
+│           "command": [],
+│           "entrypoint": [],
+│ -         "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:48e32b0bf878bb7545d73d1d51754134b17f7772fe4a598f82ac45cd5a540bb2",
+│ +         "image": "registry.cloudflare.com/c68856288112af7698f5be52ea94b96e/deos-queue-consumer-ts-implementationstandard2sandbox@sha256:2cc00971202b0b53cc926467277cdb3dcc95ffb27cdd00372e411a6fef09673b",
+│           "instance_type": "standard-2",
+│           "network": {
+│             "assign_ipv4": "none",
+│
+│
+│  SUCCESS  Modified application deos-queue-consumer-ts-implementationstandard2sandbox (Application ID: a030fe98-cbb0-423c-90aa-9e4d9cb896a2)
+│
+╰ Applied changes 
+
+Deployed deos-queue-consumer-ts triggers (5.50 sec)
+  https://deos-queue-consumer-ts.skundu.workers.dev
+  schedule: */15 * * * *
+  Consumer for deos-sample-project-events
+  workflow: deos-sandbox-codex-workflow
+Current Version ID: a21b912f-fa3b-46d0-89fe-0561dae63943

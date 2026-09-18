@@ -1,0 +1,63 @@
+{
+  "manifestFiles": [
+    {
+      "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
+      "logical_name": "transcript.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/transcript.jsonl",
+      "sha256": "b83cc1d573718f17436ee43000361739759d636e16b8e7232062d66fdf75a91f",
+      "byte_size": 1547559,
+      "local": "/tmp/sac246-local-browser-artifacts/5b36abb45816-transcript.jsonl"
+    },
+    {
+      "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
+      "logical_name": "result.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/result.json",
+      "sha256": "5304d322b6b35cb022474d189ea34c279748454ce48f24aa2fe685847211600d",
+      "byte_size": 2298,
+      "local": "/tmp/sac246-local-browser-artifacts/eb86d36adbbd-result.json"
+    },
+    {
+      "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
+      "logical_name": "patch.diff",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/patch.diff",
+      "sha256": "eda27c647e503eccda370656c712ff985dc86b303666be083fb63d5b87a14d19",
+      "byte_size": 197437,
+      "local": "/tmp/sac246-local-browser-artifacts/4eb26e320e30-patch.diff"
+    },
+    {
+      "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
+      "logical_name": "validation.txt",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/validation.txt",
+      "sha256": "045cfaba04ef2027268ee783af7888d2ea837efa91a0a23b76e3996c5f721b1e",
+      "byte_size": 523,
+      "local": "/tmp/sac246-local-browser-artifacts/d959e72b6410-validation.txt"
+    },
+    {
+      "attempt_id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
+      "logical_name": "implementation-diagnostics.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/implementation-diagnostics.jsonl",
+      "sha256": "86d1d0a894bf964c8ce56abef519aa6ef35be85b97c1209c175ca5b6699689ce",
+      "byte_size": 13481345,
+      "local": "/tmp/sac246-local-browser-artifacts/d215bec47932-implementation-diagnostics.jsonl"
+    }
+  ],
+  "browserLifecycle": [
+    {
+      "event": "local_browser_started",
+      "version": "153.0.8010.12",
+      "transport": "local-pipe",
+      "pid": 72,
+      "attemptId": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
+      "occurredAt": "2026-09-18T08:06:24.184Z"
+    },
+    {
+      "event": "local_browser_closed",
+      "transport": "local-pipe",
+      "attemptId": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5",
+      "occurredAt": "2026-09-18T08:32:30.875Z"
+    }
+  ],
+  "nativeHookError": "native-hook-error.txt",
+  "originalProgressErrorPreservedByLiveReader": true,
+  "originalErrorsArtifactInManifest": false
+}

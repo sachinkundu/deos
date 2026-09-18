@@ -24,6 +24,8 @@ import { ImplementationHostedPreview, hostedPreviewOrigin, type HostedPreviewEnv
 import { ImplementationStaticPreview, staticPreviewOrigin, type StaticPreviewEnv } from "./implementation-static-preview.ts";
 import { sha256Hex } from "./implementation-hash.ts";
 import { ImplementationEnvironment, type EnvironmentEnv } from "./implementation-environment.ts";
+import { localBrowserTarget, checkedLocalCapture } from "./implementation-local-browser.ts";
+import { implementationAllowedHosts } from "./implementation-network.ts";
 
 export class ImplementationBroker {
   readonly store: ImplementationStore;
@@ -81,6 +83,26 @@ export class ImplementationBroker {
         // Compatibility for an older supervisor finishing during rollout.
         // The workflow acknowledges completion; it does not review the work.
         return Response.json({ ready: true, subject });
+      }
+      // These actions are called only by the root runtime. Its author-facing
+      // dispatcher never forwards capture bytes or these internal action names.
+      if (request.action === 'local_browser_target' || request.action === 'local_browser_capture') {
+        const target = await localBrowserTarget(this.env,work,input,claims.attemptId,subject,request.target);
+        if (request.action === 'local_browser_target') {
+          if (target.target !== 'local') {
+            const sandbox = getSandbox(attempt.sandbox_tier === 'standard-2'
+              ? this.env.ImplementationStandard2Sandbox : this.env.ImplementationSandbox,
+              attempt.sandbox_id,{normalizeId:true,keepAlive:true});
+            // The outbound handler still checks the exact owned origin on each request.
+            await sandbox.setAllowedHosts(implementationAllowedHosts(input.policy,this.env.CAPABILITY_BASE_URL,[new URL(target.origin).hostname]));
+          }
+          return Response.json(target);
+        }
+        const capture = checkedLocalCapture(request.capture,target.origin);
+        const proof = await this.proof(claims,subject,'browser_image',capture.image,'image/png',
+          this.sanitize(`${String(request.caption ?? 'Changed state in the isolated preview')}\nCaptured from ${capture.url}; Chromium inside the implementation sandbox`),undefined,
+          await sha256Hex(JSON.stringify([target.origin,target.identity,request.captureId ?? null,request.caption ?? null])));
+        return Response.json({proof});
       }
       if (request.action === 'publish_environment' || request.action === 'storage') {
         if(!input.policy.safeAdapters.includes('temporary-environment-v1'))
