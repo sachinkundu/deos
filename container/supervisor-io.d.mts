@@ -2,6 +2,7 @@ import type { WriteStream } from "node:fs";
 export function atomicJson(path: string, value: unknown): Promise<void>;
 interface Capture {
   stream: WriteStream;
+  read(): Promise<string>;
   finalize(destination: string, replace?: boolean): Promise<void>;
 }
 export function captureSupervisorStreams(tempRoot?: string): Promise<{ transcript: Capture; validation: Capture }>;
