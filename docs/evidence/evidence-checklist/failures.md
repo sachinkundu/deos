@@ -127,3 +127,23 @@ normal network access is restored; credentials were not printed or changed.
 `gh` remains the preferred release tool. The connector was a fallback with
 working reads, not a planned change to the release process. Release work remains
 blocked pending a session that allows the required network and write operations.
+
+## Access restored and release resumed
+
+The session permissions were changed by the host to unrestricted filesystem and
+enabled network access. A fresh `gh auth status` now succeeds using the existing
+keyring credentials, and `gh api repos/sachinkundu/deos` succeeds. No token change
+was needed by this agent. This confirms that the earlier authentication result
+was specific to the restricted command environment.
+
+The complete backend test suite now passes: 635 passed, one existing skip, zero
+failures. All 103 portal tests also pass. The live D1 rollout preflight reports
+zero active attempts, no workflow-version conflicts and no pending migrations.
+The new bundled implementation definition is version 42. Existing frozen runs
+remain on their recorded definitions.
+
+Production preflight found that the staging GitHub environment lacks
+`PORTAL_REVIEWER_ACCESS_ASSERTION`, which the production workflow requires for
+its real reviewer browser check. The existing Brave session can open staging.
+The release must retain that browser gate; it must not substitute a service-token
+identity or treat a missing reviewer credential as a passed check.
