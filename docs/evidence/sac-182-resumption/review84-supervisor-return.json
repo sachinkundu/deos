@@ -1,0 +1,95 @@
+{
+  "gate": [
+    {
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "visit_sequence": 84,
+      "node_id": "implementation_review",
+      "expected_event_kind": "state",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "issue_id": "e75aad25-c32f-4c23-8184-b4b38388a631",
+      "human_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+      "question_id": null,
+      "pr_number": 137,
+      "head_sha": "e04d76cbe32f72c9390c95b6ef33623ddfa2db26",
+      "base_sha": "dc612405c5b58a857142bbe3d063c1bf97e8253a",
+      "state": "revision_requested",
+      "decision_delivery_id": "caefd3a9-670f-4553-b80f-4cc0df63d962",
+      "decision_outcome": "revision_requested",
+      "opened_at": "2026-09-20T14:18:44.930Z",
+      "decided_at": "2026-09-20T14:22:31.358Z"
+    }
+  ],
+  "run": [
+    {
+      "status": "active",
+      "current_node": "implementation_build",
+      "current_visit_sequence": 85
+    }
+  ],
+  "attempt": [
+    {
+      "attempt_id": "01a0bf32-9134-7b06-be97-2b3648fb0430",
+      "node_id": "implementation_build",
+      "state": "starting",
+      "visit_sequence": 85
+    }
+  ],
+  "githubReview": [
+    {
+      "id": 5260805547,
+      "state": "CHANGES_REQUESTED",
+      "commit_id": "e04d76cbe32f72c9390c95b6ef33623ddfa2db26",
+      "html_url": "https://github.com/sachinkundu/deos/pull/137#pullrequestreview-5260805547",
+      "submitted_at": "2026-09-20T14:21:24Z"
+    }
+  ],
+  "delivery": {
+    "event": [
+      {
+        "delivery_id": "caefd3a9-670f-4553-b80f-4cc0df63d962",
+        "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+        "correlation_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631",
+        "event_kind": "Issue.update",
+        "actor_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+        "actor_type": "user",
+        "provider_time": "2026-09-20T14:22:17.052Z",
+        "from_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+        "from_state_name": null,
+        "to_state_id": "700c1b00-b9dd-4cfb-9d59-bd60c1d8d471",
+        "to_state_name": "In Progress",
+        "payload_digest": "de8781a7c0098eec37241e7a1a6ec9b5c7d3bb85f79943e77aa660ca6aa58eb4",
+        "state": "processed",
+        "sent_at": null,
+        "claimed_at": "2026-09-20T14:22:31.045Z",
+        "processed_at": "2026-09-20T14:22:31.609Z",
+        "created_at": "2026-09-20T14:22:24.289Z",
+        "comment_id": null
+      }
+    ]
+  },
+  "ingress": {
+    "delivery": [
+      {
+        "delivery_id": "caefd3a9-670f-4553-b80f-4cc0df63d962",
+        "payload_hash": "de8781a7c0098eec37241e7a1a6ec9b5c7d3bb85f79943e77aa660ca6aa58eb4",
+        "received_at": "2026-09-20T14:22:17.828000+00:00",
+        "classification": "relevant",
+        "correlation_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631",
+        "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
+        "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+        "route_project_id": "2a653831-c1ec-4db7-972a-d0d08ac0a3d8",
+        "route_revision": 11,
+        "route_digest": "474093a96c7a42f2a094b8eba79ca2e2c7edf44722c38cf5c4c9d9548459bea7",
+        "start_slow_ok": null,
+        "sandbox_tier_policy_version": "legacy-basic-v1"
+      }
+    ]
+  },
+  "feedbackPresentInNextJob": true,
+  "publication": {
+    "head": "e04d76cbe32f72c9390c95b6ef33623ddfa2db26",
+    "patch": "fae9ce85980de02b283cfb522bdf548f0997fa86e2883e0c20bc732e82558e4e",
+    "proofCommit": "96d79543e2f260d7eab67c65062ab2b7a053c391",
+    "ready": false
+  }
+}
