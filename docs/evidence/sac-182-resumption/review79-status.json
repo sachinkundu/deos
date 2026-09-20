@@ -1,0 +1,18 @@
+{
+  "invocation": [
+    {
+      "attempt_id": "01a0bede-df1a-7e25-ad9c-83ccda4bafe1",
+      "state": "running",
+      "safe_cause": null,
+      "created_at": "2026-09-20T12:51:26.384Z",
+      "updated_at": "2026-09-20T12:51:29.414Z"
+    }
+  ],
+  "turns": [
+    {
+      "ordinal": 0,
+      "receipt_key": null,
+      "created_at": "2026-09-20T12:51:29.668Z"
+    }
+  ]
+}

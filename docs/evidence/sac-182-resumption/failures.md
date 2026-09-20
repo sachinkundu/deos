@@ -8,6 +8,8 @@ Scope: retire SAC-246 and resume SAC-182 through its existing approved planning/
 
 - AUTH-01: Implementation startup failed at visit65, before model work, with OpenAI `refresh_token_reused` and `token_expired`. Cloud auth last refreshed September9 and expired September19; the same-account local copy refreshed September20 and expires September30. With no active attempts or credential leases, a temporary exact-body authenticated maintenance version conditionally refreshed only the encrypted R2 credential. It verified decrypt/readback without exposing credentials or changing the encryption key. Original backend version/resources restored at100%; authenticated maintenance route returns404. One supported same-stage build retry established at11:16:21 UTC. This is supervisor recovery, not automatic recovery; the same stale-cloud-copy failure occurred in SAC-151 and is tracked by SAC-165.
 
+- OPS-04 (supervisor read-only query correction): A status query requested nonexistent claude_review_invocations.started_at. Cloudflare returned HTTP400/code7500: `no such column: started_at at offset 35: SQLITE_ERROR`. Read the migration and corrected the query to created_at; no remote state changed.
+
 ## Automatically recovered
 
 - AUTO-01: On restart, current main had advanced. The existing base-change path updated the tested base to d7a7c94 and re-entered demo planning at visit64. It preserved the approved design, original patch base and saved patch. New context includes sandbox-local Chromium and the scoped temporary environment capability. No feature conflicts have been manually resolved.
@@ -15,6 +17,8 @@ Scope: retire SAC-246 and resume SAC-182 through its existing approved planning/
 - AUTO-02: The cloud author completed the restored build at visit71 (12:07:57 UTC), reconciled against main915a6e8 and saved cumulative patch8e1d13d249949686f64a2544012e192fa45049e9854492cb773d079dede47185. Temporary environment and demo evidence are durable. Independent demo review has not passed, so this is build recovery, not feature acceptance.
 
 - AUTO-03: After the reader repair advanced main, the demo-gate retry automatically entered rebasevisit76 and buildvisit77. Running attempt01a0bed0-61ad-7bf0-9b7e-cb61e814576d references the latest full cumulative patch8e1d13d... with its correct915a6e8 base, while testing againstdc612405. No saved implementation was discarded and no feature edits were made by the supervisor. Revalidation is pending.
+
+- AUTO-04 (nonterminal read rejection, final review pending): At demo reviewvisit79, `cat context/checks.json` exceeded the262144-byte tool output limit. PR146 returned an explicit recoverable read error (exit2), retained original stacks in D1/R2, and left the Claude invocation running with no failure cause. Original diagnostic and invocation readback are saved as review79-read-limit-original.json and review79-status.json. The final review receipt is still pending, so this proves nonterminal handling, not completed review recovery. No supervisor retry was sent.
 
 ## Still requires fixing
 
