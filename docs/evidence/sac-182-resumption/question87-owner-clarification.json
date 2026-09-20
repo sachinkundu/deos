@@ -1,0 +1,64 @@
+{
+  "observedAt": "2026-09-20T15:12:29.540192+00:00",
+  "ownerComment": {
+    "id": "193e6e14-a828-4724-a714-b855da23e996",
+    "body": "can you explain more? you mean the temporary infra pulled to check demo for this version does not have credentials that deployed bettaview does? \n\nI am not sure what i am asked to approve ",
+    "createdAt": "2026-09-20T15:09:18.562Z",
+    "user": {
+      "id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "name": "Sachin Kundu"
+    },
+    "parent": null
+  },
+  "run": [
+    {
+      "status": "active",
+      "current_node": "implementation_build",
+      "current_visit_sequence": 89,
+      "workflow_instance_id": "wf-v1-vqzpfkxblyxv7doghzlwfesrcucbrrg2zorypo4jgc7zjorpqreq"
+    }
+  ],
+  "active": [
+    {
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "attempt_id": "01a0bf5d-c49e-7a06-b0bd-3b9db288f47a",
+      "node_id": "implementation_build",
+      "state": "running",
+      "sandbox_id": "impl-v1-ios4lyuz45c3tntwpzwhtnjd3ny6dannv4dhqopcmrvo5f3de4ma",
+      "sandbox_tier": "standard-2",
+      "updated_at": "2026-09-20T15:10:15.325Z"
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:sac-182-real-app-proof-capability-v1",
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "block_key": "sac-182-real-app-proof-capability-v1",
+      "gate_visit": 87,
+      "linear_comment_id": "92c719cf-de06-445e-a2e8-754281451632",
+      "opened_delivery_id": "af60cf6e-d451-4a98-86ec-6aa23f47e047",
+      "opened_at": "2026-09-20T14:33:08.909Z",
+      "question_key": "implementation/workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1/d95ee10e634fbe4d668c873cd7f27eeb101de7b40cea7a5c156ebb4c6ce516e0/question.json",
+      "question_sha": "d95ee10e634fbe4d668c873cd7f27eeb101de7b40cea7a5c156ebb4c6ce516e0",
+      "status": "answered",
+      "answer_delivery_id": "1c896f89-575a-4418-b223-598c297888d7",
+      "answer_comment_id": "193e6e14-a828-4724-a714-b855da23e996",
+      "answer_actor_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "reply_key": "implementation/workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1/c36a91c00982687219609b4d5c4bc5e05019f55f175cce15553b093e9bc1c440/accepted-reply.json",
+      "reply_sha": "c36a91c00982687219609b4d5c4bc5e05019f55f175cce15553b093e9bc1c440"
+    }
+  ],
+  "work": [
+    {
+      "approved_design_sha": "f2b994131d879967940e69ced07932dfffb8bc9a",
+      "tested_base_sha": "dc612405c5b58a857142bbe3d063c1bf97e8253a",
+      "patch_base_sha": "dc612405c5b58a857142bbe3d063c1bf97e8253a",
+      "patch_sha": "fae9ce85980de02b283cfb522bdf548f0997fa86e2883e0c20bc732e82558e4e",
+      "input_sha": "fe93da409a02331d906279b8eaca28a8aee14e486271424ec31591e4586508b1",
+      "status": "clarification",
+      "pr_url": "https://github.com/sachinkundu/deos/pull/137",
+      "pr_head_sha": "e04d76cbe32f72c9390c95b6ef33623ddfa2db26"
+    }
+  ],
+  "interpretation": "Owner asks for explanation, not approval or a claim that runtime capabilities exist. Automatic author resume is established; supervisor sent no retry or reply. Runtime capability gap remains unresolved."
+}
