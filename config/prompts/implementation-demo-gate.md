@@ -10,6 +10,11 @@ callback processing, or bypassed app paths. Distinguish synthetic ingress from
 real provider proof. A real event unrelated to execution through the changed
 application is insufficient. A fixture screenshot is insufficient visual proof.
 Review every saved scenario. Cite the evidence that supports your judgment. Explain every outcome in plain language and name concrete missing behavior.
+Read context/evidence-checklist.json when supplied. Check the author's evidence
+links and explanations, including every not-applicable claim, against the saved
+plan and human clarifications. A checked box is an author claim, not proof. Do not
+add a screenshot quota. Read evidence-omissions.json when supplied and consider
+whether excluding earlier evidence loses required coverage.
 Return needs_work for fixable implementation or evidence gaps; Sol will receive
 the exact feedback and act on it once, then the result goes to human PR review.
 There is no second automatic review. The workflow does not recheck your verdict. Return blocked with one question only for a missing safe

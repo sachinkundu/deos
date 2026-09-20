@@ -207,12 +207,33 @@ test results and agent discussion in transcripts. The workflow does not judge
 your checks, Claude's findings, or image quality. Final approval stays human.
 
 After the final collection, use `action: status` to list saved proof IDs and
-captions, then submit `{"action":"select_proof","ids":["..."]}` with every image
-and Showboat record you want in the PR, in presentation order. This replaces the
-previous selection, so include all intended proof, not only the newest capture.
+captions, then submit `{"action":"select_proof","ids":["..."]}` with the images
+and Showboat records to add in presentation order. Earlier selected evidence is
+carried forward. Completed demo collections add images; failed collections never
+erase earlier ones. Use `omit: [{"id":"...","reason":"..."}]` to remove an obsolete
+item from presentation explicitly. Its original record remains saved, and the
+omission reason is retained for review.
 `proofScenarios` in status groups captures by scenario and shows their selection.
 Review this map before handoff: keep the before/after states needed to show each
 claimed transition and recovery. The map is descriptive, not a coverage gate.
 Omit obsolete or failed exploratory records from that selection; their original
 bytes and errors remain in diagnostics. Repeat selection if you collect new
 proof. Selecting evidence is your editorial decision, not a workflow quality test.
+
+Status includes `evidenceChecklist`, with one stable item for each saved demo
+scenario. It survives author responses and retries. Update items using a saved
+request file, for example:
+
+```json
+{"action":"evidence_checklist","items":[{"id":"SCENARIO_ID_FROM_STATUS","state":"complete","evidenceIds":["PROOF_ID_FROM_STATUS"],"reason":"The saved item remains readable after refresh."}]}
+```
+
+Use `pending` while unfinished, `complete` with evidence links and an explanation,
+or `not_applicable` with the explicit scope reason for the reviewer to assess.
+Update an existing item rather than removing it. All changes retain history.
+After selecting the final proof, read status and fix each `evidenceProblems`
+entry before handoff. Publication checks that every saved scenario is accounted
+for and all referenced images or review Showboat records will be published.
+It does not judge image quality, set a screenshot count, or certify that an
+author's completion or not-applicable claim is correct. Claude and the human
+reviewer make those judgments. Use needs_human for a genuine unresolved blocker.

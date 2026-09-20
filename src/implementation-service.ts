@@ -91,10 +91,12 @@ export class ImplementationService {
           if (action === "implementation.write_branch")
             await github.writeBranch(this.store, work, candidate);
           else if (action === "implementation.publish") {
+            const demo = candidate.evidenceChecklist
+              ? await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).buildInput(run.run_id) : null;
             await github.publish(
               this.store,
               work,
-              await this.prBody(work, await publishImplementationProof(github, this.store, work, candidate)),
+              await this.prBody(work, await publishImplementationProof(github, this.store, work, candidate, demo?.plan)),
               work.candidate_sha!,
             );
             await new ImplementationEnvironment(this.env).cleanupRun(work.run_id);
@@ -293,10 +295,18 @@ export class ImplementationService {
         ? await this.store.read(question.reply_key, question.reply_sha)
         : null;
     const recovered = await this.store.failedCandidate(work, job.id);
-    const prior = recovered?.candidate ?? (
+    const saved = (
       work.candidate_key && work.candidate_sha
         ? await this.store.candidate(work)
         : null);
+    // Older recovery-only snapshots contain source but no evidence. Keep the
+    // last saved evidence in that case; a newer snapshot carries its full archive.
+    const prior = recovered ? {...saved, ...recovered.candidate,
+      proof: recovered.candidate.proof ?? saved?.proof ?? [],
+      proofArchive: recovered.candidate.proofArchive ?? recovered.candidate.proof ?? saved?.proofArchive ?? saved?.proof ?? [],
+      proofOmissions: recovered.candidate.proofOmissions ?? saved?.proofOmissions ?? [],
+      evidenceChecklist: recovered.candidate.evidenceChecklist ?? saved?.evidenceChecklist ?? null,
+    } : saved;
     const issue = await new LinearCapabilityAdapter(
       this.env.LINEAR_API_URL,
       this.env.LINEAR_APP_ACCESS_TOKEN,
@@ -485,6 +495,7 @@ export class ImplementationService {
       ...(remote ? ['The temporary Worker, D1 and R2 test environment is retired after publication. Screenshots and test evidence remain available here; no live review preview is retained.'] : []),
       'Proof:',
       ...implementationProofMarkdown(proof),
+      ...(proof.checklistUrl ? [`[Evidence checklist](${proof.checklistUrl})`] : []),
       `This is the [Showboat file](${proof.showboatUrl}).`,
     ].join("\n\n");
   }

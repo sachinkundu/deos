@@ -24,6 +24,7 @@ import { collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementation
 import { LocalImplementationBrowser } from './implementation-local-browser.mjs';
 import { ImplementationOperations } from "./implementation-operations.mjs";
 import { previewTarget, checkedCommandArgv, proofSelectionSummary, progressSignalObservation, withPreviewTarget } from './implementation-guidance.mjs';
+import { createEvidenceChecklist, updateEvidenceChecklist, evidenceChecklistProblems } from './implementation-evidence-checklist.mjs';
 
 const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
@@ -125,18 +126,26 @@ export async function responseCommand(response, argv, cwd, options = {}) {
     response.off("close", disconnect);
   }
 }
-export function selectReviewProof(state, ids) {
+export function selectReviewProof(state, ids, omissions = [], context = {}) {
   if (!Array.isArray(ids) || ids.some(id => typeof id !== "string") ||
       new Set(ids).size !== ids.length || ids.some(id => !state.proof.some(proof => proof.id === id)))
     throw new Error("Choose distinct proof IDs from the status response");
-  state.reviewProofIds = [...ids];
+  if (!Array.isArray(omissions) || new Set(omissions.map(item => item?.id)).size !== omissions.length ||
+      omissions.some(item => !state.proof.some(proof => proof.id === item?.id) ||
+        ids.includes(item.id) || typeof item.reason !== 'string' || !item.reason.trim()))
+    throw new Error('Omitting proof needs a known ID and an explicit reason; do not also select that ID');
+  const omitted = new Set(omissions.map(item => item.id));
+  state.reviewProofIds = [...new Set([...ids, ...(state.reviewProofIds ?? [])])]
+    .filter(id => !omitted.has(id));
+  state.proofOmissions = [...(state.proofOmissions ?? []), ...omissions.map(item => ({...context, ...item}))];
 }
 export function selectedReviewProof(state) {
   if (!state.reviewProofIds) return state.proof;
   const proofs = new Map(state.proof.map(proof => [proof.id, proof]));
   return state.reviewProofIds.flatMap(id => {
     const proof = proofs.get(id);
-    return proof ? [{ ...proof, audience: "review" }] : [];
+    if (!proof) throw new Error(`Selected evidence ${id} is missing from the saved archive`);
+    return [{ ...proof, audience: "review" }];
   });
 }
 async function checked(argv, cwd, env) {
@@ -413,7 +422,12 @@ export async function setupImplementation(job) {
   const input = JSON.parse(
     await readFile("/deos/run/implementation-input.json", "utf8"),
   );
-  const state = { checks: input.prior?.checks ?? [], proof: input.prior?.proof ?? [] };
+  const state = {
+    checks: input.prior?.checks ?? [], proof: input.prior?.proofArchive ?? input.prior?.proof ?? [],
+    ...(input.prior ? { reviewProofIds: (input.prior.proof ?? []).map(proof => proof.id) } : {}),
+    proofOmissions: input.prior?.proofOmissions ?? [],
+    evidenceChecklist: createEvidenceChecklist(input.demo?.plan ?? null, input.prior?.evidenceChecklist),
+  };
   const localBrowser = new LocalImplementationBrowser({
     launch: async options => (await import('playwright')).chromium.launch(options),
     scripts: await import('/deos/bin/implementation-browser-evidence.ts'),
@@ -471,7 +485,11 @@ export async function setupImplementation(job) {
   let providerChain = Promise.resolve();
   let stateWrites = Promise.resolve();
   const persistState = () => {
-    stateWrites = stateWrites.then(() => writeFile(`${ROOT}/state.json`, JSON.stringify(state), { mode: 0o600 }));
+    const bytes = JSON.stringify(state);
+    stateWrites = stateWrites.then(async () => {
+      await writeFile(`${ROOT}/state.json.tmp`, bytes, { mode: 0o600 });
+      await rename(`${ROOT}/state.json.tmp`, `${ROOT}/state.json`);
+    });
     return stateWrites;
   };
   const browserResult = async (request, subject) => {
@@ -591,6 +609,8 @@ export async function setupImplementation(job) {
           recentToolErrors:state.toolErrors ?? [],
           preview:state.preview ?? input.hostedPreview ?? null,
           proofScenarios:proofSelectionSummary(state),
+          evidenceChecklist:state.evidenceChecklist,
+          evidenceProblems:state.evidenceChecklist ? evidenceChecklistProblems(state.evidenceChecklist, input.demo.plan, selectedReviewProof(state)) : [],
           checks: state.checks.map(({ command, cwd, exitCode, treeSha, testedBaseSha }) => ({ command, cwd, exitCode, treeSha, testedBaseSha })),
           operations: operations.list(),
           proofKinds: [...new Set(state.proof.map(p => p.kind))],
@@ -618,9 +638,15 @@ export async function setupImplementation(job) {
           state.task = result;
           await appendFile(journal,JSON.stringify({operation:'task',...result})+'\n');
         } else if (request.action === "select_proof") {
-          selectReviewProof(state, request.ids);
+          selectReviewProof(state, request.ids, request.omit, {attemptId:job.attemptId,occurredAt:new Date().toISOString()});
           result = { selected: selectedReviewProof(state).map(({ id, kind, caption }) => ({ id, kind, caption })),
             scenarios:proofSelectionSummary(state) };
+        } else if (request.action === 'evidence_checklist') {
+          state.evidenceChecklist = updateEvidenceChecklist(state.evidenceChecklist, request.items, state.proof,
+            {attemptId:job.attemptId,treeSha:subject.treeSha,occurredAt:new Date().toISOString()});
+          result = {checklist:state.evidenceChecklist,
+            problems:evidenceChecklistProblems(state.evidenceChecklist,input.demo.plan,selectedReviewProof(state))};
+          await appendFile(journal,JSON.stringify({operation:'evidence_checklist',...result})+'\n');
         } else if (request.action === "check") {
           if (
             !Array.isArray(request.argv) ||
@@ -874,6 +900,9 @@ export async function setupImplementation(job) {
         patchSha: sha(patch),
         checks: state.checks,
         proof: selectedReviewProof(state),
+        proofArchive: state.proof,
+        proofOmissions: state.proofOmissions,
+        evidenceChecklist: state.evidenceChecklist,
         sources,
         assumptions: result.assumptions,
         question: result.question,

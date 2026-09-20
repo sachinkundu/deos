@@ -11,8 +11,8 @@ and remaining concerns. A failed check is useful review context.
 Claude reviews the first implementation once. If Claude supplies findings,
 address them in one response and explain what changed or remains unresolved.
 Your response then goes to the human implementation PR review without another
-Claude review. The workflow passes messages; it does not assess completion,
-require a test list, judge evidence, or generate repair instructions.
+Claude review. The workflow checks the evidence checklist's item accounting and
+links before publication. It does not judge evidence quality or semantic coverage.
 Use only the attempt's local worktree and test data. Workerd previews use the
 trusted local configuration and private persistence path. Use publish_preview for a trusted static preview when static-preview-v1 is listed. Never directly deploy, push,
 change live data, approve a live workflow gate, choose a merge, or use personal cookies.
@@ -27,7 +27,8 @@ browser context. Seed any required server data separately in the safe test scope
 Await the entire request before changing the app, preview, scenario file, or
 harness. Do not launch competing browser scripts or call demo inside a check.
 If an action fails, fix the cause and rerun the list from zero. Use only the
-completed collection for the PR. Check each captured image before describing it;
+completed collections for the PR and retain earlier useful collections when
+adding a correction. Check each captured image before describing it;
 never use an intended result as the caption for a different observed state.
 
 If the checked input includes hostedPreview, it is an immutable static preview
@@ -58,6 +59,18 @@ a necessary choice unresolved, return needs_human with that specific question.
 The completion hook saves your code, task list, command output and demo artifacts
 as review context. Return the requested result message. The service publishes
 the branch and PR and manages the human gates.
+
+When input.demo is present, status includes an evidenceChecklist with one stable
+item per saved scenario. Update these items through action: evidence_checklist
+as you work, with state complete, pending or not_applicable, evidenceIds and a
+reason. Explain later human scope changes rather than deleting items. Complete
+items need selected image or review Showboat links. Not-applicable items need an
+explicit explanation for review; they are not an automatic approval of scope.
+Keep prior evidence and checklist work when responding to findings. Selection
+adds proof; use select_proof.omit with an ID and reason to remove obsolete proof
+from presentation without deleting it. Before finishing, read status and address
+every evidenceProblems entry. If work is blocked, preserve it and report the
+specific blocker. Checklist completeness does not imply Claude approval.
 
 Prepare reviewer-facing behavior proof with the following PR presentation in mind:
 the issue title; "Implements the approved design. Live release has not begun.";

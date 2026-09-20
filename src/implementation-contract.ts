@@ -1,4 +1,5 @@
 import { sha256Hex } from "./implementation-hash.ts";
+import type { EvidenceChecklist } from '../container/implementation-evidence-checklist.mjs';
 
 export const IMPLEMENTATION_WORKFLOW = "implementation";
 export type ProofKind =
@@ -139,7 +140,8 @@ export interface TreeFile {
 }
 export type ImplementationRecovery = Pick<ImplementationCandidate,
   "version" | "attemptId" | "kind" | "change" | "approvedDesignSha" | "testedBaseSha" | "treeSha" | "files" | "patchSha"
-> & { purpose: "recovery-only"; runId: string };
+> & Partial<Pick<ImplementationCandidate, 'proof' | 'proofArchive' | 'proofOmissions' | 'evidenceChecklist'>>
+  & { purpose: "recovery-only"; runId: string };
 
 export interface ImplementationCandidate extends ProofSubject {
   version: 1;
@@ -159,6 +161,9 @@ export interface ImplementationCandidate extends ProofSubject {
     stderr: string;
   }[];
   proof: ImplementationProof[];
+  proofArchive?: ImplementationProof[];
+  proofOmissions?: {id: string; reason: string; attemptId: string; occurredAt: string}[];
+  evidenceChecklist?: EvidenceChecklist | null;
   sources: DocumentationSource[];
   assumptions: string[];
   question: { blockKey: string; question: string; reason: string } | null;

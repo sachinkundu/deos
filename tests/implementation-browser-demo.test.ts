@@ -42,7 +42,7 @@ test('a complete frozen scenario list holds the queue against other demos and ra
   assert.equal(events.filter(e=>e.event==='scenario_completed').length,3);
 });
 
-test('an action failure stops the collection, preserves its cause and partial captures, and exports none',async()=>{
+test('a failed correction preserves earlier proof and its cause; only completed corrections add images',async()=>{
   const state = {proof:[{id:'old',kind:'browser_image'},{id:'command',kind:'showboat'}]};
   const events: any[] = [], calls: string[] = [];
   const original = new Error('No element found for selector: .decimal');
@@ -66,11 +66,11 @@ test('an action failure stops the collection, preserves its cause and partial ca
   assert.match(failure.message,/decimal stopped at step 2: No element/);
   assert.match(events.at(-1).error,/No element found.*\.decimal/);
   assert.equal(events.at(-1).captures[0].proof.id,'partial');
-  assert.deepEqual(state.proof,[{id:'command',kind:'showboat'}]);
+  assert.deepEqual(state.proof,[{id:'old',kind:'browser_image'},{id:'command',kind:'showboat'}]);
   const retried = await queue.run(()=>collectBrowserDemo({action:'demo',scenarios:[scenario('corrected','1')]},
     {record:async()=>{},browser:async(step: any)=>step.operation==='screenshot'?{proof:{id:'new',kind:'browser_image'}}:{}}), (error: Error)=>{throw error;});
   finishBrowserDemo(state,retried);
-  assert.deepEqual(state.proof.map(p=>p.id),['command','new']);
+  assert.deepEqual(state.proof.map(p=>p.id),['old','command','new']);
 });
 
 test('a scenario cannot change the harness, target, viewport or reset midway',async()=>{

@@ -81,7 +81,10 @@ test('scenario selection map shows omitted captures without deciding coverage or
   assert.deepEqual(summary[0].captures.map((c:{selected:boolean})=>c.selected),[false,true]);
   assert.equal(summary[1].captures[0].selected,false);
   assert.equal(state.proof.length,3);
-  selectReviewProof(state,[]);assert.equal(proofSelectionSummary(state)[0].captures[1].selected,false);
+  selectReviewProof(state,[]);assert.equal(proofSelectionSummary(state)[0].captures[1].selected,true);
+  selectReviewProof(state,[],[{id:'after',reason:'The author chose to replace this capture.'}]);
+  assert.equal(proofSelectionSummary(state)[0].captures[1].selected,false);
+  assert.equal(state.proof.length,3);
 });
 
 test('progress diagnostics distinguishes absent telemetry from unreadable or malformed telemetry',async()=>{

@@ -22,11 +22,24 @@ const save = async (name, content) => {
 const { patch, ...subject } = await snapshot(request.cwd);
 if (subject.testedBaseSha !== request.testedBaseSha) throw new Error('Failure snapshot base differs from frozen attempt');
 await save('recovery-patch.diff', patch);
+let evidence = {};
+if (request.runtimeStatePath) {
+  try {
+    const metadata = await lstat(request.runtimeStatePath);
+    if (!metadata.isFile() || metadata.uid !== process.getuid() || (metadata.mode & 0o077) !== 0)
+      throw new Error('Refusing untrusted implementation evidence state');
+    const state = JSON.parse(await readFile(request.runtimeStatePath, 'utf8'));
+    const { selectedReviewProof } = await import(request.runtimeModule);
+    evidence = {proof: selectedReviewProof(state), proofArchive: state.proof,
+      proofOmissions: state.proofOmissions ?? [], evidenceChecklist: state.evidenceChecklist ?? null};
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+}
 await save('implementation-recovery.json', JSON.stringify({
   version: 1, purpose: 'recovery-only', runId: request.runId,
   attemptId: request.attemptId, kind: request.kind, change: request.change,
   approvedDesignSha: request.approvedDesignSha, ...subject,
   patchSha: createHash('sha256').update(patch).digest('hex'),
+  ...evidence,
 }));
 // A killed supervisor may not have finalized its private capture streams.
 // Each attempt owns a fresh sandbox. Refuse ambiguous or author-owned sources.
@@ -75,6 +88,7 @@ export async function captureImplementationFailure(
   const request = {
     runtimeModule: "/deos/bin/implementation-runtime.mjs", cwd: "/deos/workspace/repository",
     runRoot: "/deos/run", outputRoot: "/deos/output", tempRoot: "/tmp",
+    runtimeStatePath: "/deos/implementation/state.json",
     runId: attempt.run_id, attemptId: attempt.attempt_id, kind,
     change: job.openspecChange, approvedDesignSha: context.approvedDesignSha,
     testedBaseSha: context.testedBaseSha,
