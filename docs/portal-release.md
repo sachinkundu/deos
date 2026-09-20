@@ -20,6 +20,11 @@ staging. GitHub runs this same command on relevant pushes to `main`.
 For production, start **Release portal production** from `main` in GitHub
 Actions and enter the full SHA reviewed on staging. The serialized workflow
 fast-forwards `release`, checks out that head, then builds and deploys it.
+Your staging approval is the release gate. The production workflow does not
+redeploy staging or require a reviewer browser session, screenshot artifact,
+or reviewer Access token. The production environment approval remains in place.
+The checked-out commit must match the approved SHA before promotion, and the
+live production version and 100-percent traffic are verified after deployment.
 The selected commit must contain this implementation. Production cannot deploy
 until `release` has been initialized at a verified source baseline.
 
