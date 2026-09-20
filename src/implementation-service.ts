@@ -301,7 +301,7 @@ export class ImplementationService {
         : null);
     // Older recovery-only snapshots contain source but no evidence. Keep the
     // last saved evidence in that case; a newer snapshot carries its full archive.
-    const prior = recovered ? {...saved, ...recovered.candidate,
+    const prior = recovered ? {...saved, ...(recovered.restoreSavedPatch ? {} : recovered.candidate),
       proof: recovered.candidate.proof ?? saved?.proof ?? [],
       proofArchive: recovered.candidate.proofArchive ?? recovered.candidate.proof ?? saved?.proofArchive ?? saved?.proof ?? [],
       proofOmissions: recovered.candidate.proofOmissions ?? saved?.proofOmissions ?? [],
@@ -328,17 +328,18 @@ export class ImplementationService {
         testedBaseSha: work.tested_base_sha,
         requirements: JSON.parse(work.requirements_json),
         prior,
-        priorFailure: recovered?.failure ?? null,
+        priorFailure: recovered ? {...recovered.failure,
+          ...(recovered.restoreSavedPatch ? {recoveryNote: 'The failed attempt captured an unchanged base. Restore the saved cumulative implementation patch; retain this attempt only as failure/evidence context.'} : {})} : null,
         question: question
           ? await this.store.read(question.question_key, question.question_sha)
           : null,
         reply,
         clarifications: await this.store.clarifications(run.run_id),
-        patchBaseSha: recovered?.candidate.testedBaseSha ?? work.patch_base_sha,
+        patchBaseSha: recovered && !recovered.restoreSavedPatch ? recovered.candidate.testedBaseSha : work.patch_base_sha,
       }),
       repository: input.repository,
       openspecChange: input.change,
-      continuationPatch: recovered?.patch ?? (
+      continuationPatch: (recovered && !recovered.restoreSavedPatch ? recovered.patch : null) ?? (
         work.patch_key && work.patch_sha
           ? {
               attemptId: work.source_attempt_id!,

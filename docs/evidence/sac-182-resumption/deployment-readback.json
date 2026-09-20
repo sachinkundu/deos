@@ -1,0 +1,186 @@
+{
+  "result": {
+    "deployments": [
+      {
+        "id": "07d1204e-eaa1-4530-9ef6-abdde6698109",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "sachin.kundu@pm.me",
+        "annotations": {
+          "workers/message": "Automatic deployment on upload.",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "52962b2e-f407-4d4e-bbb9-20a9a57caab0",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-20T11:03:29.238293Z"
+      },
+      {
+        "id": "68eba038-81fe-4945-8169-60b75295fb1b",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "sachin.kundu@pm.me",
+        "annotations": {
+          "workers/message": "Automatic deployment on upload.",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "d1edba1f-9857-4f71-b7e8-5bfdcff891d9",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-20T09:08:26.531609Z"
+      },
+      {
+        "id": "c9de913c-b16f-4794-a7cd-a0c3adb40018",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "sachin.kundu@pm.me",
+        "annotations": {
+          "workers/message": "Fit sandbox-local Chromium image within basic p...",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "b60ee177-9cee-4f93-8b71-20a2b95771b0",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-18T07:32:11.462Z"
+      },
+      {
+        "id": "c07a55da-a3b9-4af6-94a9-454e21147d1e",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "sachin.kundu@pm.me",
+        "annotations": {
+          "workers/message": "Sandbox-local Chromium with owned app targets a...",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "a21b912f-fa3b-46d0-89fe-0561dae63943",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-18T07:09:19.659228Z"
+      },
+      {
+        "id": "4b066e4e-a025-4842-b473-1439fa05b9f1",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "sachin.kundu@pm.me",
+        "annotations": {
+          "workers/message": "Automatic deployment on upload.",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "7ecbe986-d40a-47e5-ad9c-05fb4b527490",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-17T17:49:47.671264Z"
+      },
+      {
+        "id": "7d130d76-990b-4b5e-b00e-cc95d812c313",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "sachin.kundu@pm.me",
+        "annotations": {
+          "workers/message": "Automatic deployment on upload.",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "9c39fb05-afa9-4688-a05c-b326cfee1967",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-17T13:51:25.595023Z"
+      },
+      {
+        "id": "72836247-b6be-472a-a37e-98514a8706ff",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "sachin.kundu@pm.me",
+        "annotations": {
+          "workers/message": "Automatic deployment on upload.",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "5a65c8a2-da87-4cc5-8539-5e7b2a37cc96",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-17T13:35:18.015228Z"
+      },
+      {
+        "id": "4fc0d29f-027e-4e82-8af6-0bcc7e85794a",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "sachin.kundu@pm.me",
+        "annotations": {
+          "workers/message": "Automatic deployment on upload.",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "6587a7d1-71f1-4faf-bd3e-6f6381cf9d3a",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-17T13:14:16.986635Z"
+      },
+      {
+        "id": "a5d4dd4f-41ad-466c-b70d-7c15d799bd72",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "sachin.kundu@pm.me",
+        "annotations": {
+          "workers/message": "Automatic deployment on upload.",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "e0c1144d-cd88-4387-b9ab-b226c5ec95a5",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-17T11:14:03.743273Z"
+      },
+      {
+        "id": "2f541823-10fe-4f64-b75b-b1fece4fe28d",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "sachin.kundu@pm.me",
+        "annotations": {
+          "workers/message": "SAC-243 proof path access follow-up",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "8027527b-c89b-4cbd-8c57-dc98793964e6",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-17T08:53:23.432263Z"
+      }
+    ]
+  },
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result_info": {
+    "page": 1,
+    "per_page": 10,
+    "count": 10,
+    "total_count": 321,
+    "total_pages": 33
+  }
+}

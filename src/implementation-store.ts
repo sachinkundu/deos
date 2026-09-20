@@ -423,9 +423,16 @@ export class ImplementationStore {
         candidate.patchSha !== row.patch_sha || !Array.isArray(candidate.files))
       throw new ImplementationError('recovery_identity','Saved implementation output differs from its failed attempt');
     for (const file of candidate.files) validateImplementationPath(file.path,run.change_id,kind);
-    await this.readBytes(row.patch_key,row.patch_sha);
+    const patchBytes = await this.readBytes(row.patch_key,row.patch_sha);
+    // A startup/conflict failure can snapshot only the untouched checkout.
+    // It is diagnostic evidence, not authority to erase a saved implementation.
+    const patchText = new TextDecoder().decode(patchBytes);
+    const restoreSavedPatch = candidate.files.length === 0 &&
+      (patchText === "" || patchText === "# No repository changes in this attempt.\n") &&
+      !!run.patch_key && !!run.patch_sha && run.patch_sha !== row.patch_sha;
     return {
       candidate,
+      restoreSavedPatch,
       failure: {attemptId:row.attempt_id,resultClass:row.result_class,detail:row.result_detail},
       patch: {attemptId:row.attempt_id,manifestId:row.manifest_id,r2Key:row.patch_key,sha256:row.patch_sha},
     };

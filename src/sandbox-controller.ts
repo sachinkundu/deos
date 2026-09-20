@@ -843,6 +843,9 @@ export class SandboxAgentController {
         typeof durableJob.planningBranch === "string" ? durableJob.planningBranch : null,
       );
       const renderedPrompt = [this.prompt(run, attempt, job, durableJob.materializedContext),
+        ...(implementationJob ? [
+          'If /deos/output/continuation-conflict.json exists, the saved cumulative patch could not apply to current main. Read that diagnostic and /deos/output/continuation.patch, then reconcile the saved implementation with this checkout. The complete patch is preserved; do not rebuild from nothing or fetch credentials. These files are recovery inputs, not application proof.',
+        ] : []),
         ...(job.grounding && job.agentRole === "author" ? [
           "Use native web search to check current outside facts and cite the sources you use. Read the pinned skills in the supplied manifest; they do not add rights. Before completion, write /deos/output/author-sources.json with searchDisposition (sources_used, none_used, or not_searched) and sources. Each source needs id, HTTPS url, title, and claimLocator in exact path:line form. That line of the candidate must cite the URL. If no source was used, sources is empty. This sidecar is required even when not_searched.",
         ] : []),
@@ -2180,6 +2183,10 @@ export class SandboxAgentController {
             // Keep the new base intact and hand the complete checked patch and
             // original conflict output to the next author. Nothing was applied.
             await sandbox.writeFile("/deos/run/continuation-conflict.json", JSON.stringify(diagnostic), { encoding: "utf8" });
+            // /deos/run is a private control directory. Expose only these
+            // verified recovery inputs to the unprivileged implementation author.
+            await sandbox.writeFile("/deos/output/continuation.patch", patch, { encoding: "utf8" });
+            await sandbox.writeFile("/deos/output/continuation-conflict.json", JSON.stringify(diagnostic), { encoding: "utf8" });
             retainPatch = true;
             return;
           }
