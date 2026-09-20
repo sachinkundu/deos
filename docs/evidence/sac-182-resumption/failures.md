@@ -6,11 +6,17 @@ Scope: retire SAC-246 and resume SAC-182 through its existing approved planning/
 
 - OPS-01: Initial read-only D1 query used nonexistent `implementation_environments.environment_id`. Cloudflare returned HTTP 400, code 7500, `no such column: environment_id at offset 7: SQLITE_ERROR`. Corrected the inventory query to read the table's actual records. No state mutation occurred.
 
+- AUTH-01: Implementation startup failed at visit65, before model work, with OpenAI `refresh_token_reused` and `token_expired`. Cloud auth last refreshed September9 and expired September19; the same-account local copy refreshed September20 and expires September30. With no active attempts or credential leases, a temporary exact-body authenticated maintenance version conditionally refreshed only the encrypted R2 credential. It verified decrypt/readback without exposing credentials or changing the encryption key. Original backend version/resources restored at100%; authenticated maintenance route returns404. One supported same-stage build retry established at11:16:21 UTC. This is supervisor recovery, not automatic recovery; the same stale-cloud-copy failure occurred in SAC-151 and is tracked by SAC-165.
+
 ## Automatically recovered
 
 - AUTO-01: On restart, current main had advanced. The existing base-change path updated the tested base to d7a7c94 and re-entered demo planning at visit64. It preserved the approved design, original patch base and saved patch. New context includes sandbox-local Chromium and the scoped temporary environment capability. No feature conflicts have been manually resolved.
 
 ## Still requires fixing
+
+- AUTH-02: Shared credential refresh ownership/persistence remains unresolved (SAC-165). Reseeding repaired this run but does not prevent desktop/cloud copies becoming stale again. Stop if the new credential is rejected; do not retry unchanged invalid auth.
+- DIAG-01: `trustGeneratedHooks` requests the model list after auth failure, then reports missing `/root/.codex/models_cache.json`. The original401 is preserved in supervisor stderr, but the terminal summary masks the actionable cause. Needs startup error classification and propagation; no container code changed in this recovery.
+
 
 - Prior SAC-182 PR137 feedback: real changed-service proof is missing; prior provider demo substituted a continuation stub; settings screenshot showed authentication failure; PR body contains a long task list instead of concise proof.
 - Verify the resumed v43 run completes a real demo and resolves current-main conflicts; restart alone is not proof.
@@ -23,3 +29,5 @@ Scope: retire SAC-246 and resume SAC-182 through its existing approved planning/
 - TEST-01 (local test harness): The new preservation test initially compared a SQLite null-prototype row with a plain object. Normalized only the test comparison; production behavior was unaffected.
 
 - Deployment verification: PR144 passed all CI checks, merged, and backend version 52962b2e-f407-4d4e-bbb9-20a9a57caab0 activated at 100%. The audited v43 grant and same-stage retry were accepted. Live-run validation remains in progress.
+
+- OPS-02: Verification initially inspected the script download endpoint, which returned the latest uploaded maintenance bundle despite original-version traffic restoration. That assertion stopped before retry request creation. Verified the original immutable version/resources and100% traffic instead, plus authenticated live maintenance-route404. The dependent retry command then failed locally because its request file did not yet exist; no external mutation occurred. Retry was sent only after verified restoration.
