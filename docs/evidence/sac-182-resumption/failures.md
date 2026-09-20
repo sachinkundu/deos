@@ -78,3 +78,9 @@ Scope: retire SAC-246 and resume SAC-182 through its existing approved planning/
 ## Clarification follow-up — 15:12 UTC
 
 - RUNTIME-01 remains unresolved. The owner's request for a clearer explanation automatically answered question87 and resumed author visit89; this is not approval for broad production credentials and does not add runtime capabilities. Supervisor verified the original comment and preserved it with the new attempt identity. No new external failure or supervisor retry. The cloud author's handling of the clarification is pending.
+
+## Revised clarification publication — 15:19 UTC
+
+- AUTO-08: Author visit89 interpreted the owner correctly, returned a clearer needs_human explanation, preserved implementation and cleaned up normally. It did not treat the question as production-access approval or claim evidence completion.
+- CLARIFY-01 (new, unresolved): A changed question with the same block key is silently replaced by the original question in D1 and Linear. postQuestion retains the old artifact with ON CONFLICT DO NOTHING; upsertNote reconciles by deterministic comment identity alone and returns without updating text. Gate91 reopened, but the owner cannot see the explanation they requested. Hash-verified original response and live old comment are in question91-revised-response-not-published.json. Needs revision-aware immutable question records and idempotent publication, preserving prior answers and reconciling ambiguous writes. No local feature code or substitute proof was supplied.
+- RUNTIME-01 remains unchanged. Saved work is intact; all12 actual-app demo scenarios remain pending. Revised explanation explicitly says no production credentials are requested.
