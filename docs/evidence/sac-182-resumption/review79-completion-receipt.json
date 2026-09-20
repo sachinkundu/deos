@@ -1,0 +1,16 @@
+{
+  "review": [
+    {
+      "state": "finished",
+      "safe_cause": null,
+      "cleanup_state": "destroyed"
+    }
+  ],
+  "receipt": [
+    {
+      "ordinal": 0,
+      "receipt_key": "protected/claude-reviews/5a640c68fec1b8b95ee3844a6c5b1884a4bdc0f5cb3122dfdff9b068ce789a78/0.json",
+      "receipt_sha256": "9c68cd3b0e2d0503f3719706cb3254a484926b9b4ffd5c986f39312e5ae99cc6"
+    }
+  ]
+}

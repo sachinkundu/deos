@@ -20,6 +20,9 @@ Scope: retire SAC-246 and resume SAC-182 through its existing approved planning/
 
 - AUTO-04 (nonterminal read rejection, final review pending): At demo reviewvisit79, `cat context/checks.json` exceeded the262144-byte tool output limit. PR146 returned an explicit recoverable read error (exit2), retained original stacks in D1/R2, and left the Claude invocation running with no failure cause. Original diagnostic and invocation readback are saved as review79-read-limit-original.json and review79-status.json. The final review receipt is still pending, so this proves nonterminal handling, not completed review recovery. No supervisor retry was sent.
 
+- AUTO-04 completion: The same reviewer finished at12:57:48 with a durable trusted receipt and needs_work findings after the read-limit rejection. Its invocation did not fail and was cleaned up normally. This confirms live tool-error recovery.
+- AUTO-05 (review gate operating correctly): The independent cloud reviewer rejected all12 demo scenarios and the workflow sent the complete findings to the cloud author atvisit80 automatically. No supervisor prompt, retry or PR supplement was needed. The cloud author is still working; the demo deficiencies themselves are not yet fixed.
+
 ## Still requires fixing
 
 - DIAG-02: An author returned `needs_human` because tasks.md was absent, but runtime.finish unconditionally read tasks.md and turned the clarification into supervisor_failed. The full question and root cause survived in result.json/validation.txt. Needs container completion-path repair; avoid deploying container changes over active work.
@@ -28,6 +31,8 @@ Scope: retire SAC-246 and resume SAC-182 through its existing approved planning/
 - AUTH-02: Shared credential refresh ownership/persistence remains unresolved (SAC-165). Reseeding repaired this run but does not prevent desktop/cloud copies becoming stale again. Stop if the new credential is rejected; do not retry unchanged invalid auth.
 - DIAG-01: `trustGeneratedHooks` requests the model list after auth failure, then reports missing `/root/.codex/models_cache.json`. The original401 is preserved in supervisor stderr, but the terminal summary masks the actionable cause. Needs startup error classification and propagation; no container code changed in this recovery.
 
+
+- DEMO-01 (repeated acceptance failure, cloud correction in progress): Reviewvisit79 found canned URL-selected screenshots, provider operations outside the app, in-memory D1 and partly mocked Showboat calls, absent verified signed Linear ingress/gate traversal, tests used as demo evidence, and captures from an older tree. Full source: review79-demo-review.json, SHA6c42789d36eeaf8330a5a4b273ff0266e8953c9fff5389171ef90f7a9cab5c25. This repeats the earlier substitute-demo weakness; the new review gate caught it before publication. All12 scenarios require new or corrected app-driven evidence. Cloud authorvisit80 received the full findings automatically.
 
 - Prior SAC-182 PR137 feedback: real changed-service proof is missing; prior provider demo substituted a continuation stub; settings screenshot showed authentication failure; PR body contains a long task list instead of concise proof.
 - Verify the resumed v43 run completes a real demo and resolves current-main conflicts; restart alone is not proof.
