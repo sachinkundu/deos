@@ -92,3 +92,38 @@ repeating a permission question would not change the tool policy.
 The main-to-integration whitespace check found formatting in archived raw
 evidence only. The original check output was saved and the evidence retained.
 See release-checkpoint.md for exact commits, validation and remaining steps.
+
+## Session access diagnosis, 20 September
+
+The user asked why `gh` had been replaced with the GitHub connector. A fresh
+read-only `gh api repos/sachinkundu/deos --jq '.full_name'` failed with:
+
+```text
+error connecting to api.github.com
+check your internet connection or https://githubstatus.com
+```
+
+The command runs `/opt/homebrew/bin/gh`. Its environment reports
+`CODEX_SANDBOX=seatbelt` and `CODEX_SANDBOX_NETWORK_DISABLED=1`. Independent DNS
+lookups for `api.github.com`, `github.com` and `api.cloudflare.com` all failed
+with `gaierror(8, 'nodename nor servname provided, or not known')`. No proxy
+environment variables are set. This confirms that the current shell cannot
+resolve those providers while its sandbox network access is disabled; it does
+not establish a GitHub service outage.
+
+The saved user configuration has `approval_policy = "on-request"` and
+`sandbox_mode = "workspace-write"`, with no explicit workspace network opt-in.
+There is no repository `.codex/config.toml`, parent code-directory config,
+`/etc/codex/config.toml` or `/etc/codex/requirements.toml` at the checked paths.
+The active session nevertheless declares approval policy `never`, matching the
+connector's rejection. The origin and timing of that session override remain
+unknown. No permission setting was changed during diagnosis.
+
+`gh auth status` also reported `The token in default is invalid.` Because its
+provider connection is unavailable in this shell, this result is not sufficient
+to establish token expiry or a remote authentication rejection. Recheck it after
+normal network access is restored; credentials were not printed or changed.
+
+`gh` remains the preferred release tool. The connector was a fallback with
+working reads, not a planned change to the release process. Release work remains
+blocked pending a session that allows the required network and write operations.
