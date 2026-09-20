@@ -808,9 +808,10 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.match(prompt, /requirements-publish-v1/);
 });
 
-for (const implementation of [false, true]) test(implementation
-  ? "implementation retry refreshes recovery context while preserving the frozen model and source identity"
+for (const input of [null, 'implementation_context', 'implementation_demo_context']) test(input
+  ? `${input} retry refreshes recovery context while preserving the frozen model and source identity`
   : "stage retry preserves the failed attempt's frozen input with a new attempt identity", async () => {
+  const implementation = input !== null;
   const state = setup({ materializedContext: JSON.stringify({ source: "fresh-provider-read" }),
     ...(implementation ? {checkoutCommit:"a".repeat(40)} : {}) });
   const sourceJobSpec = JSON.stringify({
@@ -880,7 +881,7 @@ for (const implementation of [false, true]) test(implementation
     "work",
     "work",
     implementation ? { ...definition, jobs: { ...definition.jobs,
-      work: { ...definition.jobs.work, inputs: ['implementation_context'] } } } : definition,
+      work: { ...definition.jobs.work, inputs: [input!] } } } : definition,
   );
 
   assert.equal(observation.state, "running");

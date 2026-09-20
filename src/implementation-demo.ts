@@ -84,8 +84,8 @@ export class ImplementationDemoService {
       if (audit) {
         if (await sha256Hex(audit.plan_json) !== audit.plan_digest)
           throw new ImplementationError('demo_context_integrity', 'Demo correction audit digest differs');
-        const saved = JSON.parse(audit.plan_json) as {input: {runId: string; requestedBy: string; correction?: DemoCorrectionRequest}; targetDigest: string; approvedInputSha: string};
-        if (saved.input.runId !== run.run_id || saved.targetDigest !== run.definition_digest || saved.approvedInputSha !== work.input_sha)
+        const saved = JSON.parse(audit.plan_json) as {input: {runId: string; requestedBy: string; correction?: DemoCorrectionRequest}; targetDigest: string; approvedInputSha: string; upgradedInput?: {sha256:string}};
+        if (saved.input.runId !== run.run_id || saved.targetDigest !== run.definition_digest || (saved.upgradedInput?.sha256 ?? saved.approvedInputSha) !== work.input_sha)
           throw new ImplementationError('demo_context_integrity', 'Demo correction audit subject differs');
         if (saved.input.correction?.planSha256 === priorRow.payload_sha)
           correction = {...saved.input.correction, upgradeDigest: audit.plan_digest, requestedBy: saved.input.requestedBy};

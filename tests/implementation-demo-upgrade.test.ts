@@ -112,6 +112,56 @@ test('a failed demo stage can adopt fixes without dispatching or losing saved im
   }finally{f.db.close();}
 });
 
+test('explicit temporary-environment upgrade preserves approved files and provider adapters with immutable input audit',async()=>{
+  const legacy=structuredClone(document);legacy.metadata.version=40;
+  legacy.spec.implementationPolicy.safeAdapters=['github-linear-review-v1@'+'a'.repeat(64)];
+  const frozen=await loadWorkflowDefinition(JSON.stringify(legacy),bundle);
+  const f=await fixture(frozen);try {
+    f.db.sqlite.exec("UPDATE agent_attempts SET node_id='implementation_demo_plan'");
+    const before=await f.store.requireRun('run-1');
+    const original=await f.store.read(before.input_key,before.input_sha);
+    const opts={mode:'activate_only',enableTemporaryEnvironment:true};
+    const preflight=await (await f.controller.handle(f.request(opts))).json() as {planDigest:string;plan:{upgradedInput:{key:string;sha256:string}}};
+    assert.deepEqual(await f.store.requireRun('run-1'),before);
+    assert.equal(await f.bucket.get(preflight.plan.upgradedInput.key),null);
+    const execute={...opts,execute:true,planDigest:preflight.planDigest};
+    assert.equal((await f.controller.handle(f.request(execute))).status,200);
+    const after=await f.store.requireRun('run-1');
+    const upgraded=await f.store.read<any>(after.input_key,after.input_sha);
+    assert.deepEqual(upgraded,{...original as object,policy:{...frozen.implementationPolicy,
+      safeAdapters:[...frozen.implementationPolicy!.safeAdapters,'temporary-environment-v1']}});
+    assert.deepEqual(await f.store.read(before.input_key,before.input_sha),original);
+    assert.deepEqual({...after,input_key:before.input_key,input_sha:before.input_sha},{...before});
+    assert.equal(after.input_sha,preflight.plan.upgradedInput.sha256);
+    assert.equal(f.creates(),0);
+    assert.equal((await f.controller.handle(f.request(execute))).status,200);
+    assert.equal(f.db.sqlite.prepare('SELECT count(*) n FROM implementation_demo_upgrades').get()!.n,1);
+    const target=f.db.sqlite.prepare("SELECT canonical_json FROM workflow_definitions WHERE version=?").get(tail.version+1)!;
+    const definition=JSON.parse(String(target.canonical_json));
+    assert.deepEqual(definition.implementationPolicy,upgraded.policy);
+    assert.throws(()=>validateDemoUpgrade(frozen,definition),/incompatible/);
+    validateDemoUpgrade(frozen,definition,true);
+  } finally {f.db.close();}
+});
+
+test('capability upgrade rejects active work, input races and non-activation requests without changing checked input',async()=>{
+  for (const mutation of ["UPDATE agent_attempts SET state='running'", "UPDATE agent_attempts SET cleanup_state='pending'",
+    "UPDATE implementation_runs SET input_sha='changed'", "UPDATE orchestration_runs SET current_visit_sequence=3"]) {
+    const f=await fixture();try {
+      const opts={mode:'activate_only',enableTemporaryEnvironment:true};
+      const preflight=await (await f.controller.handle(f.request(opts))).json() as {planDigest:string};
+      f.db.sqlite.exec(mutation);
+      const before=await f.store.requireRun('run-1');
+      await assert.rejects(f.controller.handle(f.request({...opts,execute:true,planDigest:preflight.planDigest})),/upgrade|hash|missing/);
+      assert.deepEqual(await f.store.requireRun('run-1'),before);
+      assert.equal(f.creates(),0);
+    } finally {f.db.close();}
+  }
+  const f=await fixture();try {
+    await assert.rejects(f.controller.handle(f.request({enableTemporaryEnvironment:true})),/invalid_demo_upgrade_request/);
+  } finally {f.db.close();}
+});
+
 
 test('an existing demo workflow needs a current plan correction before an audited restart',async()=>{
   const f=await fixture(tail);try {

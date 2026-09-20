@@ -641,7 +641,10 @@ export class SandboxAgentController {
       }
       // Implementation retries keep the run's immutable design/policy and model,
       // but materialize the saved failed patch and its diagnostic for repair.
-      if (job.inputs.includes('implementation_context')) frozenRetrySpec = null;
+      // Demo retries also need the current checked source inventory and runtime
+      // capabilities. Reusing an old inventory with a newer prompt can request
+      // files that did not exist when the failed attempt was materialized.
+      if (job.inputs.includes('implementation_context') || job.inputs.includes('implementation_demo_context')) frozenRetrySpec = null;
     }
     const materialized = frozenRetrySpec === null
       ? await this.dependencies.materializeContext(run, job)

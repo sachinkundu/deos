@@ -1,12 +1,17 @@
 import { loadWorkflowDefinition, type LoadedWorkflowDefinition } from './workflow-definition.ts';
 
+export const temporaryEnvironmentPolicy = (source: LoadedWorkflowDefinition) => ({
+  ...source.implementationPolicy!,
+  safeAdapters: [...new Set([...source.implementationPolicy!.safeAdapters, 'temporary-environment-v1'])],
+});
+
 const stable = (value: unknown): string => JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
   ? Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b))) : item);
 
-export function validateDemoUpgrade(source: LoadedWorkflowDefinition, target: LoadedWorkflowDefinition): void {
+export function validateDemoUpgrade(source: LoadedWorkflowDefinition, target: LoadedWorkflowDefinition, enableTemporaryEnvironment = false): void {
   if (source.name !== 'implementation' || target.name !== source.name || !source.implementationPolicy ||
       !target.jobs.implementation_demo_plan || !target.jobs.implementation_demo_gate ||
-      target.version <= source.version || stable(source.implementationPolicy) !== stable(target.implementationPolicy) ||
+      target.version <= source.version || stable(enableTemporaryEnvironment ? temporaryEnvironmentPolicy(source) : source.implementationPolicy) !== stable(target.implementationPolicy) ||
       stable(source.execution) !== stable(target.execution) || source.start !== target.start)
     throw new Error('implementation_demo_upgrade_incompatible');
   for (const [id, job] of Object.entries(source.jobs)) {
@@ -32,8 +37,10 @@ export function validateDemoUpgrade(source: LoadedWorkflowDefinition, target: Lo
     throw new Error('implementation_demo_upgrade_changed_gate');
 }
 
-export async function implementationDemoUpgradeDefinition(source: LoadedWorkflowDefinition, tail: LoadedWorkflowDefinition, version: number) {
+export async function implementationDemoUpgradeDefinition(source: LoadedWorkflowDefinition, tail: LoadedWorkflowDefinition, version: number, enableTemporaryEnvironment = false) {
   if (version <= Math.max(source.version, tail.version)) throw new Error('implementation_demo_upgrade_version');
+  if (enableTemporaryEnvironment && !tail.implementationPolicy?.safeAdapters.includes('temporary-environment-v1'))
+    throw new Error('implementation_temporary_environment_unavailable');
   const jobs = {...source.jobs}, nodes = {...source.nodes};
   for (const [id, job] of Object.entries(tail.jobs)) if (id.startsWith('implementation_'))
     jobs[id] = source.jobs[id] ? {...source.jobs[id], prompt:job.prompt} : job;
@@ -51,7 +58,7 @@ export async function implementationDemoUpgradeDefinition(source: LoadedWorkflow
   }));
   const target=await loadWorkflowDefinition(JSON.stringify({apiVersion:source.apiVersion,kind:source.kind,
     metadata:{name:source.name,version},spec:{start:source.start,execution:source.execution,
-      implementationPolicy:source.implementationPolicy,jobs:jobSources,nodes:nodeSources}}),{prompts,schemas});
-  validateDemoUpgrade(source,target);
+      implementationPolicy:enableTemporaryEnvironment ? temporaryEnvironmentPolicy(source) : source.implementationPolicy,jobs:jobSources,nodes:nodeSources}}),{prompts,schemas});
+  validateDemoUpgrade(source,target,enableTemporaryEnvironment);
   return target;
 }
