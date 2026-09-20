@@ -75,3 +75,20 @@ This is an offline real-artifact replay. The author checklist answers are replay
 fixtures; GitHub writes use a local sink. It does not prove that a Cloudflare
 agent follows the new instructions, nor that live GitHub publication succeeds.
 See demo-replay-proof.md and demo-replay/report.json.
+
+## Requested release, 20 September
+
+Merged the provider retry work into the checklist branch locally without a
+conflict. The combined source passed 43 focused regressions and TypeScript
+checking. Published PRs 139, 140 and 141 each have passing GitHub CI but remain
+open; the checklist and integration source have not run in GitHub CI.
+
+GitHub branch creation was rejected again with the original diagnostic:
+`MCP tool call requires approval, but approval policy is never`.
+No remote mutation or deployment followed. This is a session policy block,
+not a Cloudflare-agent failure. The user's release authorization is recorded;
+repeating a permission question would not change the tool policy.
+
+The main-to-integration whitespace check found formatting in archived raw
+evidence only. The original check output was saved and the evidence retained.
+See release-checkpoint.md for exact commits, validation and remaining steps.

@@ -1,0 +1,59 @@
+[rtk] /!\ No hook installed — run `rtk init -g` for automatic token savings
+{"event":"deos.original_error","location":"src/artifact-collector.ts:451","error":{"stack":"Error: missing file\n    at Reader.read (file:///Users/sachin/code/deos/evidence-checklist-workspace/tests/artifact-collector.test.ts:33:54)\n    at ArtifactCollector.collect (file:///Users/sachin/code/deos/evidence-checklist-workspace/src/artifact-collector.ts:361:40)\n    at async waitForActual (node:assert:615:5)\n    at async strict.rejects (node:assert:738:25)\n    at async TestContext.<anonymous> (file:///Users/sachin/code/deos/evidence-checklist-workspace/tests/artifact-collector.test.ts:109:5)\n    at async Test.run (node:internal/test_runner/test:1404:7)\n    at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)","message":"missing file","name":"Error"},"occurredAt":"2026-09-20T07:56:54.955Z"}
+✔ partial normal collection cannot collide with failure evidence receipts (141.541667ms)
+✔ collector validates and writes immutable checksum-verified artifacts (1.141125ms)
+{"event":"deos.original_error","location":"sandbox original error","error":{"message":"Selected model is at capacity."},"occurredAt":"2026-09-20T07:56:54.960Z"}
+✔ recovered and exhausted provider retries retain their journals in verified manifests (1.569584ms)
+✔ successful collection retains notification diagnostics without changing the result (1.194833ms)
+✔ optional diagnostic read and write failures cannot invalidate the primary manifest (2.179875ms)
+✔ collector parses mechanically captured successful provider receipts (0.576833ms)
+{"event":"deos.original_error","location":"src/artifact-collector.ts:451","error":{"stack":"Error: missing file\n    at Reader.read (file:///Users/sachin/code/deos/evidence-checklist-workspace/tests/artifact-collector.test.ts:33:54)\n    at ArtifactCollector.collect (file:///Users/sachin/code/deos/evidence-checklist-workspace/src/artifact-collector.ts:361:40)\n    at async waitForActual (node:assert:615:5)\n    at async strict.rejects (node:assert:738:25)\n    at async TestContext.<anonymous> (file:///Users/sachin/code/deos/evidence-checklist-workspace/tests/artifact-collector.test.ts:236:5)\n    at async Test.run (node:internal/test_runner/test:1404:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)","message":"missing file","name":"Error"},"occurredAt":"2026-09-20T07:56:54.966Z"}
+✔ same-digest objects reconcile after an ambiguous create response (0.942959ms)
+{"event":"deos.original_error","location":"src/artifact-collector.ts:451","error":{"stack":"Error: result.outcome is not an allowed value\n    at validateSchema (file:///Users/sachin/code/deos/evidence-checklist-workspace/src/artifact-collector.ts:265:11)\n    at validateSchema (file:///Users/sachin/code/deos/evidence-checklist-workspace/src/artifact-collector.ts:248:42)\n    at ArtifactCollector.collect (file:///Users/sachin/code/deos/evidence-checklist-workspace/src/artifact-collector.ts:372:11)\n    at async waitForActual (node:assert:615:5)\n    at async strict.rejects (node:assert:738:25)\n    at async TestContext.<anonymous> (file:///Users/sachin/code/deos/evidence-checklist-workspace/tests/artifact-collector.test.ts:236:5)\n    at async Test.run (node:internal/test_runner/test:1404:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)","message":"result.outcome is not an allowed value","name":"Error"},"occurredAt":"2026-09-20T07:56:54.967Z"}
+✔ missing files and invalid results fail the manifest (1.142875ms)
+{"event":"deos.original_error","location":"src/artifact-collector.ts:451","error":{"stack":"Error: artifact transcript.jsonl has an ambiguous create-only write\n    at ArtifactCollector.collect (file:///Users/sachin/code/deos/evidence-checklist-workspace/src/artifact-collector.ts:410:17)\n    at async waitForActual (node:assert:615:5)\n    at async strict.rejects (node:assert:738:25)\n    at async TestContext.<anonymous> (file:///Users/sachin/code/deos/evidence-checklist-workspace/tests/artifact-collector.test.ts:246:3)\n    at async Test.run (node:internal/test_runner/test:1404:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)","message":"artifact transcript.jsonl has an ambiguous create-only write","name":"Error"},"occurredAt":"2026-09-20T07:56:54.968Z"}
+✔ a conflicting pre-existing object makes the write ambiguous (0.641708ms)
+✔ failure collection preserves every available safe output and records absent files (0.892708ms)
+✔ failure collection preserves original output verbatim in protected storage (0.673291ms)
+✔ failure collection preserves the trusted author completion category (0.920708ms)
+✔ a complete frozen scenario list holds the queue against other demos and raw browser calls (1.771ms)
+✔ a failed correction preserves earlier proof and its cause; only completed corrections add images (0.937083ms)
+✔ a scenario cannot change the harness, target, viewport or reset midway (0.407625ms)
+✔ the eleven-image main flow survives a three-image response, restart and final selection (1.44825ms)
+✔ agents can share an image across scenarios or explain an inapplicable item; there is no quota (0.260416ms)
+✔ pending items, lost links, omitted items and stale plans fail the structural check (0.515083ms)
+✔ publication rejects a missing checklist item before touching GitHub or artifacts (0.33475ms)
+{"event":"deos.original_error","location":"implementation.failure.process","error":{"stack":"Error: Implementation process stopped: supervisor_failed\n    at captureImplementationFailure (file:///Users/sachin/code/deos/evidence-checklist-workspace/src/implementation-failure-capture.ts:84:21)\n    at async waitForActual (node:assert:615:5)\n    at async strict.rejects (node:assert:738:25)\n    at async TestContext.<anonymous> (file:///Users/sachin/code/deos/evidence-checklist-workspace/tests/implementation-failure-capture.test.ts:71:3)\n    at async Test.run (node:internal/test_runner/test:1404:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)","message":"Implementation process stopped: supervisor_failed","cause":{"attemptId":"failed","category":"supervisor_failed","processId":"process","lastHeartbeat":{"attemptId":"failed","observedAt":"2026-09-15T06:31:48Z","processPid":76},"status":{"state":"error","exit":{"code":137,"signal":9,"timedOut":false}},"output":{"exitCode":137,"signal":9,"stdout":"partial output","stderr":"original process diagnostic","timedOut":false,"truncated":false}},"name":"Error"},"occurredAt":"2026-09-20T07:56:55.646Z"}
+✔ a killed supervisor's working tree and private captures survive without a result or candidate (816.681834ms)
+✔ failure capture retains exit details and refuses cleanup when the snapshot command fails (1.832ms)
+✔ GitHub proof preserves binary images, replay and the PR template for public repositories (141.124542ms)
+✔ GitHub proof preserves binary images, replay and the PR template for private repositories (118.228916ms)
+✔ author selection controls PR order and keeps obsolete captures in the saved evidence (0.982917ms)
+✔ unknown IDs are rejected by the tool without replacing the author's valid selection (0.298167ms)
+✔ legacy jobs keep their gallery and an explicit empty selection is allowed (0.077208ms)
+✔ a correction selection cannot silently drop earlier selected images (0.22875ms)
+✔ one real task transition at a time preserves content, fences and idempotent retries (40.279667ms)
+✔ static preview defaults to hosted while backend and explicit local requests keep local D1/R2 (0.950291ms)
+✔ a failed checked shell command or pipeline cannot be hidden by a later successful echo (28.72775ms)
+✔ scenario selection map shows omitted captures without deciding coverage or losing original proof (0.460959ms)
+✔ progress diagnostics distinguishes absent telemetry from unreadable or malformed telemetry (1.907458ms)
+✔ capacity recovery resumes the exact session and preserves work across turns (3.85225ms)
+✔ exhaustion keeps every original failure and bounds total invocations (0.599208ms)
+✔ retry budget is shared across completion-repair turns (0.239208ms)
+✔ no retry is started when delay would cross the deadline (0.132125ms)
+✔ provider failure before session creation retries without inventing an identity (0.132291ms)
+✔ permanent and tool failures are not retried as model outages (0.253791ms)
+✔ a retry journal failure cannot silently rerun the provider (0.903584ms)
+✔ private capture can be read between provider turns without closing or losing queued output (25.700541ms)
+✔ overlapping heartbeat and lifecycle writes retain complete JSON without temporary-file collisions (32.67525ms)
+✔ heartbeat storage errors keep the original cause and permit the next observation (0.375667ms)
+✔ failure collection preserves the private parent transcript before normal finalization (16.39975ms)
+ℹ tests 43
+ℹ suites 0
+ℹ pass 43
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 968.609834
+

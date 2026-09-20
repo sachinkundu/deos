@@ -1,0 +1,1169 @@
+docs/evidence/sac-172/storage-canary/published-showboat.md:365: new blank line at EOF.
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:14: trailing whitespace.
++Binding                                                                                     Resource                  
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:15: trailing whitespace.
++env.Sandbox (Sandbox)                                                                       Durable Object            
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:16: trailing whitespace.
++env.Standard2Sandbox (Standard2Sandbox)                                                     Durable Object            
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:17: trailing whitespace.
++env.ImplementationSandbox (ImplementationSandbox)                                           Durable Object            
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:18: trailing whitespace.
++env.ImplementationStandard2Sandbox (ImplementationStandard2Sandbox)                         Durable Object            
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:19: trailing whitespace.
++env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                                   Workflow                  
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:20: trailing whitespace.
++env.DB (deos-sample-project)                                                                D1 Database               
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:21: trailing whitespace.
++env.ARTIFACTS (deos-sample-project-artifacts)                                               R2 Bucket                 
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:22: trailing whitespace.
++env.REVIEW_PORTAL (deos-workflow-portal)                                                    Worker                    
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:23: trailing whitespace.
++env.IMPLEMENTATION_BROWSER                                                                  Browser Run               
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:24: trailing whitespace.
++env.PORTAL_ACCESS_TEAM_DOMAIN ("deos-voxdez.cloudflareaccess.com")                          Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:25: trailing whitespace.
++env.PORTAL_ACCESS_AUD ("c12828abda88ac73e394039f6e0b87a9bc5f2...")                          Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:26: trailing whitespace.
++env.LINEAR_API_URL ("https://api.linear.app/graphql")                                       Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:27: trailing whitespace.
++env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")                 Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:28: trailing whitespace.
++env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                              Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:29: trailing whitespace.
++env.LINEAR_PROJECT_NAME ("deos-sample-project")                                             Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:30: trailing whitespace.
++env.LINEAR_START_STATE_NAME ("Todo")                                                        Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:31: trailing whitespace.
++env.LINEAR_START_STATE_ID ("ee23b3ec-76fc-4186-8d9e-ddadd1254ee1")                          Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:32: trailing whitespace.
++env.LINEAR_WORK_STATE_ID ("700c1b00-b9dd-4cfb-9d59-bd60c1d8d471")                           Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:33: trailing whitespace.
++env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                             Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:34: trailing whitespace.
++env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                               Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:35: trailing whitespace.
++env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                            Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:36: trailing whitespace.
++env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                                 Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:37: trailing whitespace.
++env.GITHUB_API_URL ("https://api.github.com")                                               Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:38: trailing whitespace.
++env.OPENROUTER_API_URL ("https://openrouter.ai/api/v1")                                     Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:39: trailing whitespace.
++env.OPENROUTER_SUPPORTED_MODELS ("deepseek/deepseek-v4-pro")                                Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:40: trailing whitespace.
++env.TRIAL_REPOSITORY ("sachinkundu/deos-sample-project")                                    Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:41: trailing whitespace.
++env.TRIAL_DISPATCH_ENABLED ("false")                                                        Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:42: trailing whitespace.
++env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                              Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:43: trailing whitespace.
++env.SANDBOX_FAILURE_RETENTION_MINUTES ("0")                                                 Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:44: trailing whitespace.
++env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                        Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:45: trailing whitespace.
++env.IMPLEMENTATION_PREVIEW_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")                  Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:46: trailing whitespace.
++env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")              Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:47: trailing whitespace.
++env.PORTAL_BASE_URL ("https://deos.voxdez.com")                                             Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:48: trailing whitespace.
++env.ROUTE_ADMIN_ALLOWED_EMAIL ("sachinkundu@gmail.com")                                     Environment Variable      
+docs/evidence/sac-172/storage-canary/recovery-backend-rollout.log:49: trailing whitespace.
++env.IMPLEMENTATION_ENVIRONMENT_TOKEN ("(hidden)")                                           Environment Variable      
+docs/evidence/sandbox-local-browser/ci-checks.log:1: trailing whitespace.
++python (3.11)	pass	14s	https://github.com/sachinkundu/deos/actions/runs/35319932667/job/105519953588	
+docs/evidence/sandbox-local-browser/ci-checks.log:2: trailing whitespace.
++python (3.11)	pass	12s	https://github.com/sachinkundu/deos/actions/runs/35319933234/job/105519955753	
+docs/evidence/sandbox-local-browser/ci-checks.log:3: trailing whitespace.
++python (3.14)	pass	13s	https://github.com/sachinkundu/deos/actions/runs/35319932667/job/105519953676	
+docs/evidence/sandbox-local-browser/ci-checks.log:4: trailing whitespace.
++python (3.14)	pass	14s	https://github.com/sachinkundu/deos/actions/runs/35319933234/job/105519955742	
+docs/evidence/sandbox-local-browser/ci-checks.log:5: trailing whitespace.
++typescript	pass	3m58s	https://github.com/sachinkundu/deos/actions/runs/35319932667/job/105519953320	
+docs/evidence/sandbox-local-browser/ci-checks.log:6: trailing whitespace.
++typescript	pass	4m5s	https://github.com/sachinkundu/deos/actions/runs/35319933234/job/105519955490	
+docs/evidence/sandbox-local-browser/deployment.log:7: trailing whitespace.
++Binding                                                                                     Resource                  
+docs/evidence/sandbox-local-browser/deployment.log:8: trailing whitespace.
++env.Sandbox (Sandbox)                                                                       Durable Object            
+docs/evidence/sandbox-local-browser/deployment.log:9: trailing whitespace.
++env.Standard2Sandbox (Standard2Sandbox)                                                     Durable Object            
+docs/evidence/sandbox-local-browser/deployment.log:10: trailing whitespace.
++env.ImplementationSandbox (ImplementationSandbox)                                           Durable Object            
+docs/evidence/sandbox-local-browser/deployment.log:11: trailing whitespace.
++env.ImplementationStandard2Sandbox (ImplementationStandard2Sandbox)                         Durable Object            
+docs/evidence/sandbox-local-browser/deployment.log:12: trailing whitespace.
++env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                                   Workflow                  
+docs/evidence/sandbox-local-browser/deployment.log:13: trailing whitespace.
++env.DB (deos-sample-project)                                                                D1 Database               
+docs/evidence/sandbox-local-browser/deployment.log:14: trailing whitespace.
++env.ARTIFACTS (deos-sample-project-artifacts)                                               R2 Bucket                 
+docs/evidence/sandbox-local-browser/deployment.log:15: trailing whitespace.
++env.REVIEW_PORTAL (deos-workflow-portal)                                                    Worker                    
+docs/evidence/sandbox-local-browser/deployment.log:16: trailing whitespace.
++env.IMPLEMENTATION_BROWSER                                                                  Browser Run               
+docs/evidence/sandbox-local-browser/deployment.log:17: trailing whitespace.
++env.PORTAL_ACCESS_TEAM_DOMAIN ("deos-voxdez.cloudflareaccess.com")                          Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:18: trailing whitespace.
++env.PORTAL_ACCESS_AUD ("c12828abda88ac73e394039f6e0b87a9bc5f2...")                          Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:19: trailing whitespace.
++env.LINEAR_API_URL ("https://api.linear.app/graphql")                                       Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:20: trailing whitespace.
++env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")                 Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:21: trailing whitespace.
++env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                              Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:22: trailing whitespace.
++env.LINEAR_PROJECT_NAME ("deos-sample-project")                                             Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:23: trailing whitespace.
++env.LINEAR_START_STATE_NAME ("Todo")                                                        Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:24: trailing whitespace.
++env.LINEAR_START_STATE_ID ("ee23b3ec-76fc-4186-8d9e-ddadd1254ee1")                          Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:25: trailing whitespace.
++env.LINEAR_WORK_STATE_ID ("700c1b00-b9dd-4cfb-9d59-bd60c1d8d471")                           Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:26: trailing whitespace.
++env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                             Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:27: trailing whitespace.
++env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                               Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:28: trailing whitespace.
++env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                            Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:29: trailing whitespace.
++env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                                 Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:30: trailing whitespace.
++env.GITHUB_API_URL ("https://api.github.com")                                               Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:31: trailing whitespace.
++env.OPENROUTER_API_URL ("https://openrouter.ai/api/v1")                                     Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:32: trailing whitespace.
++env.OPENROUTER_SUPPORTED_MODELS ("deepseek/deepseek-v4-pro")                                Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:33: trailing whitespace.
++env.TRIAL_REPOSITORY ("sachinkundu/deos-sample-project")                                    Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:34: trailing whitespace.
++env.TRIAL_DISPATCH_ENABLED ("false")                                                        Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:35: trailing whitespace.
++env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                              Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:36: trailing whitespace.
++env.SANDBOX_FAILURE_RETENTION_MINUTES ("0")                                                 Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:37: trailing whitespace.
++env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                        Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:38: trailing whitespace.
++env.IMPLEMENTATION_PREVIEW_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")                  Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:39: trailing whitespace.
++env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")              Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:40: trailing whitespace.
++env.PORTAL_BASE_URL ("https://deos.voxdez.com")                                             Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:41: trailing whitespace.
++env.ROUTE_ADMIN_ALLOWED_EMAIL ("sachinkundu@gmail.com")                                     Environment Variable      
+docs/evidence/sandbox-local-browser/deployment.log:1373: trailing whitespace.
++╰ Applied changes 
+docs/evidence/sandbox-local-browser/deployment.log:1983: trailing whitespace.
++╰ Applied changes 
+docs/evidence/sandbox-local-browser/deployment.log:2559: trailing whitespace.
++╰ Applied changes 
+docs/evidence/sandbox-local-browser/deployment.log:3126: trailing whitespace.
++╰ Applied changes 
+docs/evidence/sandbox-local-browser/image-build.log:154: trailing whitespace.
++#48 0.198 
+docs/evidence/sandbox-local-browser/image-build.log:158: trailing whitespace.
++#48 0.198 
+docs/evidence/sandbox-local-browser/lean-deployment.log:7: trailing whitespace.
++Binding                                                                                     Resource                  
+docs/evidence/sandbox-local-browser/lean-deployment.log:8: trailing whitespace.
++env.Sandbox (Sandbox)                                                                       Durable Object            
+docs/evidence/sandbox-local-browser/lean-deployment.log:9: trailing whitespace.
++env.Standard2Sandbox (Standard2Sandbox)                                                     Durable Object            
+docs/evidence/sandbox-local-browser/lean-deployment.log:10: trailing whitespace.
++env.ImplementationSandbox (ImplementationSandbox)                                           Durable Object            
+docs/evidence/sandbox-local-browser/lean-deployment.log:11: trailing whitespace.
++env.ImplementationStandard2Sandbox (ImplementationStandard2Sandbox)                         Durable Object            
+docs/evidence/sandbox-local-browser/lean-deployment.log:12: trailing whitespace.
++env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                                   Workflow                  
+docs/evidence/sandbox-local-browser/lean-deployment.log:13: trailing whitespace.
++env.DB (deos-sample-project)                                                                D1 Database               
+docs/evidence/sandbox-local-browser/lean-deployment.log:14: trailing whitespace.
++env.ARTIFACTS (deos-sample-project-artifacts)                                               R2 Bucket                 
+docs/evidence/sandbox-local-browser/lean-deployment.log:15: trailing whitespace.
++env.REVIEW_PORTAL (deos-workflow-portal)                                                    Worker                    
+docs/evidence/sandbox-local-browser/lean-deployment.log:16: trailing whitespace.
++env.IMPLEMENTATION_BROWSER                                                                  Browser Run               
+docs/evidence/sandbox-local-browser/lean-deployment.log:17: trailing whitespace.
++env.PORTAL_ACCESS_TEAM_DOMAIN ("deos-voxdez.cloudflareaccess.com")                          Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:18: trailing whitespace.
++env.PORTAL_ACCESS_AUD ("c12828abda88ac73e394039f6e0b87a9bc5f2...")                          Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:19: trailing whitespace.
++env.LINEAR_API_URL ("https://api.linear.app/graphql")                                       Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:20: trailing whitespace.
++env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")                 Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:21: trailing whitespace.
++env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                              Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:22: trailing whitespace.
++env.LINEAR_PROJECT_NAME ("deos-sample-project")                                             Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:23: trailing whitespace.
++env.LINEAR_START_STATE_NAME ("Todo")                                                        Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:24: trailing whitespace.
++env.LINEAR_START_STATE_ID ("ee23b3ec-76fc-4186-8d9e-ddadd1254ee1")                          Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:25: trailing whitespace.
++env.LINEAR_WORK_STATE_ID ("700c1b00-b9dd-4cfb-9d59-bd60c1d8d471")                           Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:26: trailing whitespace.
++env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                             Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:27: trailing whitespace.
++env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                               Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:28: trailing whitespace.
++env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                            Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:29: trailing whitespace.
++env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                                 Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:30: trailing whitespace.
++env.GITHUB_API_URL ("https://api.github.com")                                               Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:31: trailing whitespace.
++env.OPENROUTER_API_URL ("https://openrouter.ai/api/v1")                                     Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:32: trailing whitespace.
++env.OPENROUTER_SUPPORTED_MODELS ("deepseek/deepseek-v4-pro")                                Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:33: trailing whitespace.
++env.TRIAL_REPOSITORY ("sachinkundu/deos-sample-project")                                    Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:34: trailing whitespace.
++env.TRIAL_DISPATCH_ENABLED ("false")                                                        Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:35: trailing whitespace.
++env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                              Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:36: trailing whitespace.
++env.SANDBOX_FAILURE_RETENTION_MINUTES ("0")                                                 Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:37: trailing whitespace.
++env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                        Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:38: trailing whitespace.
++env.IMPLEMENTATION_PREVIEW_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")                  Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:39: trailing whitespace.
++env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")              Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:40: trailing whitespace.
++env.PORTAL_BASE_URL ("https://deos.voxdez.com")                                             Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:41: trailing whitespace.
++env.ROUTE_ADMIN_ALLOWED_EMAIL ("sachinkundu@gmail.com")                                     Environment Variable      
+docs/evidence/sandbox-local-browser/lean-deployment.log:1029: trailing whitespace.
++╰ Applied changes 
+docs/evidence/sandbox-local-browser/lean-deployment.log:1642: trailing whitespace.
++╰ Applied changes 
+docs/evidence/sandbox-local-browser/lean-deployment.log:2178: trailing whitespace.
++╰ Applied changes 
+docs/evidence/sandbox-local-browser/lean-deployment.log:2700: trailing whitespace.
++╰ Applied changes 
+docs/evidence/sandbox-local-browser/lean-image-build.log:39: trailing whitespace.
++#11 30.97 
+docs/evidence/sandbox-local-browser/lean-image-build.log:41: trailing whitespace.
++#11 30.97 
+docs/evidence/sandbox-local-browser/lean-image-build.log:56: trailing whitespace.
++#13 2.817 
+docs/evidence/sandbox-local-browser/lean-image-build.log:218: trailing whitespace.
++#13 16.84 Selecting previously unselected package fonts-ipafont-gothic.
+docs/evidence/sandbox-local-browser/lean-image-build.log:219: trailing whitespace.
++#13 16.84 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 10956 files and directories currently installed.)
+docs/evidence/sandbox-local-browser/lean-image-build.log:220: trailing whitespace.
++#13 16.86 Preparing to unpack .../00-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:221: trailing whitespace.
++#13 16.96 Unpacking fonts-ipafont-gothic (00303-21ubuntu1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:222: trailing whitespace.
++#13 17.31 Selecting previously unselected package libdbus-1-3:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:223: trailing whitespace.
++#13 17.31 Preparing to unpack .../01-libdbus-1-3_1.12.20-2ubuntu4.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:224: trailing whitespace.
++#13 17.31 Unpacking libdbus-1-3:amd64 (1.12.20-2ubuntu4.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:225: trailing whitespace.
++#13 17.42 Selecting previously unselected package libelf1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:226: trailing whitespace.
++#13 17.43 Preparing to unpack .../02-libelf1_0.186-1ubuntu0.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:227: trailing whitespace.
++#13 17.43 Unpacking libelf1:amd64 (0.186-1ubuntu0.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:228: trailing whitespace.
++#13 17.53 Selecting previously unselected package libfribidi0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:229: trailing whitespace.
++#13 17.53 Preparing to unpack .../03-libfribidi0_1.0.8-2ubuntu3.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:230: trailing whitespace.
++#13 17.53 Unpacking libfribidi0:amd64 (1.0.8-2ubuntu3.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:231: trailing whitespace.
++#13 17.65 Selecting previously unselected package libglib2.0-0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:232: trailing whitespace.
++#13 17.65 Preparing to unpack .../04-libglib2.0-0_2.72.4-0ubuntu2.9_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:233: trailing whitespace.
++#13 17.65 Unpacking libglib2.0-0:amd64 (2.72.4-0ubuntu2.9) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:234: trailing whitespace.
++#13 17.78 Selecting previously unselected package xkb-data.
+docs/evidence/sandbox-local-browser/lean-image-build.log:235: trailing whitespace.
++#13 17.78 Preparing to unpack .../05-xkb-data_2.33-1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:236: trailing whitespace.
++#13 17.78 Unpacking xkb-data (2.33-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:237: trailing whitespace.
++#13 17.93 Selecting previously unselected package libdrm-common.
+docs/evidence/sandbox-local-browser/lean-image-build.log:238: trailing whitespace.
++#13 17.93 Preparing to unpack .../06-libdrm-common_2.4.113-2~ubuntu0.22.04.1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:239: trailing whitespace.
++#13 17.93 Unpacking libdrm-common (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:240: trailing whitespace.
++#13 18.04 Selecting previously unselected package libdrm2:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:241: trailing whitespace.
++#13 18.04 Preparing to unpack .../07-libdrm2_2.4.113-2~ubuntu0.22.04.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:242: trailing whitespace.
++#13 18.05 Unpacking libdrm2:amd64 (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:243: trailing whitespace.
++#13 18.15 Selecting previously unselected package libedit2:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:244: trailing whitespace.
++#13 18.16 Preparing to unpack .../08-libedit2_3.1-20210910-1build1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:245: trailing whitespace.
++#13 18.16 Unpacking libedit2:amd64 (3.1-20210910-1build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:246: trailing whitespace.
++#13 18.26 Selecting previously unselected package libxmuu1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:247: trailing whitespace.
++#13 18.26 Preparing to unpack .../09-libxmuu1_2%3a1.1.3-3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:248: trailing whitespace.
++#13 18.27 Unpacking libxmuu1:amd64 (2:1.1.3-3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:249: trailing whitespace.
++#13 18.37 Selecting previously unselected package xauth.
+docs/evidence/sandbox-local-browser/lean-image-build.log:250: trailing whitespace.
++#13 18.37 Preparing to unpack .../10-xauth_1%3a1.1-1build2_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:251: trailing whitespace.
++#13 18.38 Unpacking xauth (1:1.1-1build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:252: trailing whitespace.
++#13 18.49 Selecting previously unselected package fontconfig.
+docs/evidence/sandbox-local-browser/lean-image-build.log:253: trailing whitespace.
++#13 18.49 Preparing to unpack .../11-fontconfig_2.13.1-4.2ubuntu5_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:254: trailing whitespace.
++#13 18.49 Unpacking fontconfig (2.13.1-4.2ubuntu5) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:255: trailing whitespace.
++#13 18.60 Selecting previously unselected package fonts-freefont-ttf.
+docs/evidence/sandbox-local-browser/lean-image-build.log:256: trailing whitespace.
++#13 18.60 Preparing to unpack .../12-fonts-freefont-ttf_20120503-10build1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:257: trailing whitespace.
++#13 18.61 Unpacking fonts-freefont-ttf (20120503-10build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:258: trailing whitespace.
++#13 18.89 Selecting previously unselected package fonts-liberation.
+docs/evidence/sandbox-local-browser/lean-image-build.log:259: trailing whitespace.
++#13 18.89 Preparing to unpack .../13-fonts-liberation_1%3a1.07.4-11_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:260: trailing whitespace.
++#13 18.89 Unpacking fonts-liberation (1:1.07.4-11) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:261: trailing whitespace.
++#13 19.06 Selecting previously unselected package fonts-noto-color-emoji.
+docs/evidence/sandbox-local-browser/lean-image-build.log:262: trailing whitespace.
++#13 19.06 Preparing to unpack .../14-fonts-noto-color-emoji_2.047-0ubuntu0.22.04.1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:263: trailing whitespace.
++#13 19.06 Unpacking fonts-noto-color-emoji (2.047-0ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:264: trailing whitespace.
++#13 19.21 Selecting previously unselected package fonts-tlwg-loma-otf.
+docs/evidence/sandbox-local-browser/lean-image-build.log:265: trailing whitespace.
++#13 19.21 Preparing to unpack .../15-fonts-tlwg-loma-otf_1%3a0.7.3-1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:266: trailing whitespace.
++#13 19.21 Unpacking fonts-tlwg-loma-otf (1:0.7.3-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:267: trailing whitespace.
++#13 19.33 Selecting previously unselected package fonts-unifont.
+docs/evidence/sandbox-local-browser/lean-image-build.log:268: trailing whitespace.
++#13 19.33 Preparing to unpack .../16-fonts-unifont_1%3a14.0.01-1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:269: trailing whitespace.
++#13 19.33 Unpacking fonts-unifont (1:14.0.01-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:270: trailing whitespace.
++#13 19.54 Selecting previously unselected package fonts-wqy-zenhei.
+docs/evidence/sandbox-local-browser/lean-image-build.log:271: trailing whitespace.
++#13 19.54 Preparing to unpack .../17-fonts-wqy-zenhei_0.9.45-8_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:272: trailing whitespace.
++#13 19.71 Unpacking fonts-wqy-zenhei (0.9.45-8) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:273: trailing whitespace.
++#13 20.35 Selecting previously unselected package libasound2-data.
+docs/evidence/sandbox-local-browser/lean-image-build.log:274: trailing whitespace.
++#13 20.35 Preparing to unpack .../18-libasound2-data_1.2.6.1-1ubuntu1.2_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:275: trailing whitespace.
++#13 20.35 Unpacking libasound2-data (1.2.6.1-1ubuntu1.2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:276: trailing whitespace.
++#13 20.47 Selecting previously unselected package libasound2:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:277: trailing whitespace.
++#13 20.47 Preparing to unpack .../19-libasound2_1.2.6.1-1ubuntu1.2_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:278: trailing whitespace.
++#13 20.47 Unpacking libasound2:amd64 (1.2.6.1-1ubuntu1.2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:279: trailing whitespace.
++#13 20.59 Selecting previously unselected package libatk1.0-data.
+docs/evidence/sandbox-local-browser/lean-image-build.log:280: trailing whitespace.
++#13 20.59 Preparing to unpack .../20-libatk1.0-data_2.36.0-3build1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:281: trailing whitespace.
++#13 20.59 Unpacking libatk1.0-data (2.36.0-3build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:282: trailing whitespace.
++#13 20.71 Selecting previously unselected package libatk1.0-0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:283: trailing whitespace.
++#13 20.71 Preparing to unpack .../21-libatk1.0-0_2.36.0-3build1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:284: trailing whitespace.
++#13 20.71 Unpacking libatk1.0-0:amd64 (2.36.0-3build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:285: trailing whitespace.
++#13 20.83 Selecting previously unselected package libxi6:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:286: trailing whitespace.
++#13 20.83 Preparing to unpack .../22-libxi6_2%3a1.8-1build1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:287: trailing whitespace.
++#13 20.84 Unpacking libxi6:amd64 (2:1.8-1build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:288: trailing whitespace.
++#13 20.95 Selecting previously unselected package libatspi2.0-0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:289: trailing whitespace.
++#13 20.95 Preparing to unpack .../23-libatspi2.0-0_2.44.0-3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:290: trailing whitespace.
++#13 20.95 Unpacking libatspi2.0-0:amd64 (2.44.0-3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:291: trailing whitespace.
++#13 21.09 Selecting previously unselected package libatk-bridge2.0-0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:292: trailing whitespace.
++#13 21.09 Preparing to unpack .../24-libatk-bridge2.0-0_2.38.0-3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:293: trailing whitespace.
++#13 21.09 Unpacking libatk-bridge2.0-0:amd64 (2.38.0-3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:294: trailing whitespace.
++#13 21.22 Selecting previously unselected package libavahi-common-data:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:295: trailing whitespace.
++#13 21.22 Preparing to unpack .../25-libavahi-common-data_0.8-5ubuntu5.5_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:296: trailing whitespace.
++#13 21.22 Unpacking libavahi-common-data:amd64 (0.8-5ubuntu5.5) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:297: trailing whitespace.
++#13 21.34 Selecting previously unselected package libavahi-common3:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:298: trailing whitespace.
++#13 21.34 Preparing to unpack .../26-libavahi-common3_0.8-5ubuntu5.5_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:299: trailing whitespace.
++#13 21.35 Unpacking libavahi-common3:amd64 (0.8-5ubuntu5.5) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:300: trailing whitespace.
++#13 21.47 Selecting previously unselected package libavahi-client3:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:301: trailing whitespace.
++#13 21.47 Preparing to unpack .../27-libavahi-client3_0.8-5ubuntu5.5_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:302: trailing whitespace.
++#13 21.47 Unpacking libavahi-client3:amd64 (0.8-5ubuntu5.5) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:303: trailing whitespace.
++#13 21.59 Selecting previously unselected package libpixman-1-0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:304: trailing whitespace.
++#13 21.59 Preparing to unpack .../28-libpixman-1-0_0.40.0-1ubuntu0.22.04.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:305: trailing whitespace.
++#13 21.59 Unpacking libpixman-1-0:amd64 (0.40.0-1ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:306: trailing whitespace.
++#13 21.70 Selecting previously unselected package libxcb-render0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:307: trailing whitespace.
++#13 21.70 Preparing to unpack .../29-libxcb-render0_1.14-3ubuntu3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:308: trailing whitespace.
++#13 21.71 Unpacking libxcb-render0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:309: trailing whitespace.
++#13 21.82 Selecting previously unselected package libxcb-shm0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:310: trailing whitespace.
++#13 21.82 Preparing to unpack .../30-libxcb-shm0_1.14-3ubuntu3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:311: trailing whitespace.
++#13 21.82 Unpacking libxcb-shm0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:312: trailing whitespace.
++#13 21.94 Selecting previously unselected package libcairo2:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:313: trailing whitespace.
++#13 21.94 Preparing to unpack .../31-libcairo2_1.16.0-5ubuntu2.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:314: trailing whitespace.
++#13 21.94 Unpacking libcairo2:amd64 (1.16.0-5ubuntu2.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:315: trailing whitespace.
++#13 22.06 Selecting previously unselected package libcups2:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:316: trailing whitespace.
++#13 22.06 Preparing to unpack .../32-libcups2_2.4.1op1-1ubuntu4.21_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:317: trailing whitespace.
++#13 22.06 Unpacking libcups2:amd64 (2.4.1op1-1ubuntu4.21) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:318: trailing whitespace.
++#13 22.17 Selecting previously unselected package libdatrie1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:319: trailing whitespace.
++#13 22.18 Preparing to unpack .../33-libdatrie1_0.2.13-2_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:320: trailing whitespace.
++#13 22.18 Unpacking libdatrie1:amd64 (0.2.13-2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:321: trailing whitespace.
++#13 22.28 Selecting previously unselected package libdrm-amdgpu1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:322: trailing whitespace.
++#13 22.29 Preparing to unpack .../34-libdrm-amdgpu1_2.4.113-2~ubuntu0.22.04.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:323: trailing whitespace.
++#13 22.29 Unpacking libdrm-amdgpu1:amd64 (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:324: trailing whitespace.
++#13 22.40 Selecting previously unselected package libpciaccess0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:325: trailing whitespace.
++#13 22.40 Preparing to unpack .../35-libpciaccess0_0.16-3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:326: trailing whitespace.
++#13 22.40 Unpacking libpciaccess0:amd64 (0.16-3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:327: trailing whitespace.
++#13 22.51 Selecting previously unselected package libdrm-intel1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:328: trailing whitespace.
++#13 22.51 Preparing to unpack .../36-libdrm-intel1_2.4.113-2~ubuntu0.22.04.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:329: trailing whitespace.
++#13 22.51 Unpacking libdrm-intel1:amd64 (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:330: trailing whitespace.
++#13 22.62 Selecting previously unselected package libdrm-nouveau2:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:331: trailing whitespace.
++#13 22.62 Preparing to unpack .../37-libdrm-nouveau2_2.4.113-2~ubuntu0.22.04.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:332: trailing whitespace.
++#13 22.62 Unpacking libdrm-nouveau2:amd64 (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:333: trailing whitespace.
++#13 22.73 Selecting previously unselected package libdrm-radeon1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:334: trailing whitespace.
++#13 22.73 Preparing to unpack .../38-libdrm-radeon1_2.4.113-2~ubuntu0.22.04.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:335: trailing whitespace.
++#13 22.73 Unpacking libdrm-radeon1:amd64 (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:336: trailing whitespace.
++#13 22.84 Selecting previously unselected package libfontenc1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:337: trailing whitespace.
++#13 22.84 Preparing to unpack .../39-libfontenc1_1%3a1.1.4-1build3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:338: trailing whitespace.
++#13 22.84 Unpacking libfontenc1:amd64 (1:1.1.4-1build3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:339: trailing whitespace.
++#13 22.95 Selecting previously unselected package libwayland-server0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:340: trailing whitespace.
++#13 22.95 Preparing to unpack .../40-libwayland-server0_1.20.0-1ubuntu0.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:341: trailing whitespace.
++#13 22.95 Unpacking libwayland-server0:amd64 (1.20.0-1ubuntu0.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:342: trailing whitespace.
++#13 23.06 Selecting previously unselected package libxcb-randr0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:343: trailing whitespace.
++#13 23.06 Preparing to unpack .../41-libxcb-randr0_1.14-3ubuntu3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:344: trailing whitespace.
++#13 23.06 Unpacking libxcb-randr0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:345: trailing whitespace.
++#13 23.18 Selecting previously unselected package libgbm1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:346: trailing whitespace.
++#13 23.18 Preparing to unpack .../42-libgbm1_23.2.1-1ubuntu3.1~22.04.4_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:347: trailing whitespace.
++#13 23.19 Unpacking libgbm1:amd64 (23.2.1-1ubuntu3.1~22.04.4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:348: trailing whitespace.
++#13 23.30 Selecting previously unselected package libglapi-mesa:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:349: trailing whitespace.
++#13 23.30 Preparing to unpack .../43-libglapi-mesa_23.2.1-1ubuntu3.1~22.04.4_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:350: trailing whitespace.
++#13 23.31 Unpacking libglapi-mesa:amd64 (23.2.1-1ubuntu3.1~22.04.4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:351: trailing whitespace.
++#13 23.43 Selecting previously unselected package libllvm15:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:352: trailing whitespace.
++#13 23.43 Preparing to unpack .../44-libllvm15_1%3a15.0.7-0ubuntu0.22.04.3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:353: trailing whitespace.
++#13 23.43 Unpacking libllvm15:amd64 (1:15.0.7-0ubuntu0.22.04.3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:354: trailing whitespace.
++#13 23.90 Selecting previously unselected package libsensors-config.
+docs/evidence/sandbox-local-browser/lean-image-build.log:355: trailing whitespace.
++#13 23.90 Preparing to unpack .../45-libsensors-config_1%3a3.6.0-7ubuntu1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:356: trailing whitespace.
++#13 23.90 Unpacking libsensors-config (1:3.6.0-7ubuntu1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:357: trailing whitespace.
++#13 24.03 Selecting previously unselected package libsensors5:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:358: trailing whitespace.
++#13 24.03 Preparing to unpack .../46-libsensors5_1%3a3.6.0-7ubuntu1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:359: trailing whitespace.
++#13 24.50 Unpacking libsensors5:amd64 (1:3.6.0-7ubuntu1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:360: trailing whitespace.
++#13 24.62 Selecting previously unselected package libxcb-dri3-0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:361: trailing whitespace.
++#13 24.63 Preparing to unpack .../47-libxcb-dri3-0_1.14-3ubuntu3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:362: trailing whitespace.
++#13 24.63 Unpacking libxcb-dri3-0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:363: trailing whitespace.
++#13 24.75 Selecting previously unselected package libgl1-mesa-dri:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:364: trailing whitespace.
++#13 24.75 Preparing to unpack .../48-libgl1-mesa-dri_23.2.1-1ubuntu3.1~22.04.4_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:365: trailing whitespace.
++#13 24.84 Unpacking libgl1-mesa-dri:amd64 (23.2.1-1ubuntu3.1~22.04.4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:366: trailing whitespace.
++#13 25.15 Selecting previously unselected package libx11-xcb1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:367: trailing whitespace.
++#13 25.15 Preparing to unpack .../49-libx11-xcb1_2%3a1.7.5-1ubuntu0.3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:368: trailing whitespace.
++#13 25.15 Unpacking libx11-xcb1:amd64 (2:1.7.5-1ubuntu0.3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:369: trailing whitespace.
++#13 25.28 Selecting previously unselected package libxcb-dri2-0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:370: trailing whitespace.
++#13 25.28 Preparing to unpack .../50-libxcb-dri2-0_1.14-3ubuntu3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:371: trailing whitespace.
++#13 25.29 Unpacking libxcb-dri2-0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:372: trailing whitespace.
++#13 25.42 Selecting previously unselected package libxcb-glx0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:373: trailing whitespace.
++#13 25.42 Preparing to unpack .../51-libxcb-glx0_1.14-3ubuntu3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:374: trailing whitespace.
++#13 25.42 Unpacking libxcb-glx0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:375: trailing whitespace.
++#13 25.54 Selecting previously unselected package libxcb-present0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:376: trailing whitespace.
++#13 25.54 Preparing to unpack .../52-libxcb-present0_1.14-3ubuntu3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:377: trailing whitespace.
++#13 25.54 Unpacking libxcb-present0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:378: trailing whitespace.
++#13 25.66 Selecting previously unselected package libxcb-sync1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:379: trailing whitespace.
++#13 25.66 Preparing to unpack .../53-libxcb-sync1_1.14-3ubuntu3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:380: trailing whitespace.
++#13 25.66 Unpacking libxcb-sync1:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:381: trailing whitespace.
++#13 25.79 Selecting previously unselected package libxcb-xfixes0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:382: trailing whitespace.
++#13 25.80 Preparing to unpack .../54-libxcb-xfixes0_1.14-3ubuntu3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:383: trailing whitespace.
++#13 25.80 Unpacking libxcb-xfixes0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:384: trailing whitespace.
++#13 25.92 Selecting previously unselected package libxfixes3:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:385: trailing whitespace.
++#13 25.92 Preparing to unpack .../55-libxfixes3_1%3a6.0.0-1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:386: trailing whitespace.
++#13 25.92 Unpacking libxfixes3:amd64 (1:6.0.0-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:387: trailing whitespace.
++#13 26.04 Selecting previously unselected package libxshmfence1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:388: trailing whitespace.
++#13 26.04 Preparing to unpack .../56-libxshmfence1_1.3-1build4_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:389: trailing whitespace.
++#13 26.04 Unpacking libxshmfence1:amd64 (1.3-1build4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:390: trailing whitespace.
++#13 26.16 Selecting previously unselected package libxxf86vm1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:391: trailing whitespace.
++#13 26.16 Preparing to unpack .../57-libxxf86vm1_1%3a1.1.4-1build3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:392: trailing whitespace.
++#13 26.16 Unpacking libxxf86vm1:amd64 (1:1.1.4-1build3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:393: trailing whitespace.
++#13 26.28 Selecting previously unselected package libglx-mesa0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:394: trailing whitespace.
++#13 26.28 Preparing to unpack .../58-libglx-mesa0_23.2.1-1ubuntu3.1~22.04.4_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:395: trailing whitespace.
++#13 26.28 Unpacking libglx-mesa0:amd64 (23.2.1-1ubuntu3.1~22.04.4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:396: trailing whitespace.
++#13 26.39 Selecting previously unselected package libgraphite2-3:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:397: trailing whitespace.
++#13 26.39 Preparing to unpack .../59-libgraphite2-3_1.3.14-1ubuntu0.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:398: trailing whitespace.
++#13 26.39 Unpacking libgraphite2-3:amd64 (1.3.14-1ubuntu0.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:399: trailing whitespace.
++#13 26.50 Selecting previously unselected package libharfbuzz0b:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:400: trailing whitespace.
++#13 26.50 Preparing to unpack .../60-libharfbuzz0b_2.7.4-1ubuntu3.2_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:401: trailing whitespace.
++#13 26.50 Unpacking libharfbuzz0b:amd64 (2.7.4-1ubuntu3.2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:402: trailing whitespace.
++#13 26.62 Selecting previously unselected package libice6:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:403: trailing whitespace.
++#13 26.62 Preparing to unpack .../61-libice6_2%3a1.0.10-1build2_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:404: trailing whitespace.
++#13 26.62 Unpacking libice6:amd64 (2:1.0.10-1build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:405: trailing whitespace.
++#13 26.73 Selecting previously unselected package libnspr4:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:406: trailing whitespace.
++#13 26.73 Preparing to unpack .../62-libnspr4_2%3a4.35-0ubuntu0.22.04.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:407: trailing whitespace.
++#13 26.73 Unpacking libnspr4:amd64 (2:4.35-0ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:408: trailing whitespace.
++#13 26.84 Selecting previously unselected package libnss3:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:409: trailing whitespace.
++#13 26.85 Preparing to unpack .../63-libnss3_2%3a3.98-0ubuntu0.22.04.4_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:410: trailing whitespace.
++#13 26.85 Unpacking libnss3:amd64 (2:3.98-0ubuntu0.22.04.4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:411: trailing whitespace.
++#13 27.05 Selecting previously unselected package libthai-data.
+docs/evidence/sandbox-local-browser/lean-image-build.log:412: trailing whitespace.
++#13 27.05 Preparing to unpack .../64-libthai-data_0.1.29-1build1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:413: trailing whitespace.
++#13 27.05 Unpacking libthai-data (0.1.29-1build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:414: trailing whitespace.
++#13 27.16 Selecting previously unselected package libthai0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:415: trailing whitespace.
++#13 27.16 Preparing to unpack .../65-libthai0_0.1.29-1build1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:416: trailing whitespace.
++#13 27.16 Unpacking libthai0:amd64 (0.1.29-1build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:417: trailing whitespace.
++#13 27.27 Selecting previously unselected package libpango-1.0-0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:418: trailing whitespace.
++#13 27.27 Preparing to unpack .../66-libpango-1.0-0_1.50.6+ds-2ubuntu1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:419: trailing whitespace.
++#13 27.28 Unpacking libpango-1.0-0:amd64 (1.50.6+ds-2ubuntu1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:420: trailing whitespace.
++#13 27.39 Selecting previously unselected package libsm6:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:421: trailing whitespace.
++#13 27.39 Preparing to unpack .../67-libsm6_2%3a1.2.3-1build2_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:422: trailing whitespace.
++#13 27.39 Unpacking libsm6:amd64 (2:1.2.3-1build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:423: trailing whitespace.
++#13 27.50 Selecting previously unselected package libunwind8:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:424: trailing whitespace.
++#13 27.50 Preparing to unpack .../68-libunwind8_1.3.2-2build2.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:425: trailing whitespace.
++#13 27.50 Unpacking libunwind8:amd64 (1.3.2-2build2.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:426: trailing whitespace.
++#13 27.61 Selecting previously unselected package libwayland-client0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:427: trailing whitespace.
++#13 27.61 Preparing to unpack .../69-libwayland-client0_1.20.0-1ubuntu0.1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:428: trailing whitespace.
++#13 27.61 Unpacking libwayland-client0:amd64 (1.20.0-1ubuntu0.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:429: trailing whitespace.
++#13 27.72 Selecting previously unselected package libxt6:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:430: trailing whitespace.
++#13 27.73 Preparing to unpack .../70-libxt6_1%3a1.2.1-1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:431: trailing whitespace.
++#13 27.73 Unpacking libxt6:amd64 (1:1.2.1-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:432: trailing whitespace.
++#13 27.84 Selecting previously unselected package libxmu6:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:433: trailing whitespace.
++#13 27.85 Preparing to unpack .../71-libxmu6_2%3a1.1.3-3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:434: trailing whitespace.
++#13 27.85 Unpacking libxmu6:amd64 (2:1.1.3-3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:435: trailing whitespace.
++#13 27.96 Selecting previously unselected package libxpm4:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:436: trailing whitespace.
++#13 27.96 Preparing to unpack .../72-libxpm4_1%3a3.5.12-1ubuntu0.22.04.3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:437: trailing whitespace.
++#13 27.96 Unpacking libxpm4:amd64 (1:3.5.12-1ubuntu0.22.04.3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:438: trailing whitespace.
++#13 28.08 Selecting previously unselected package libxaw7:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:439: trailing whitespace.
++#13 28.08 Preparing to unpack .../73-libxaw7_2%3a1.0.14-1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:440: trailing whitespace.
++#13 28.08 Unpacking libxaw7:amd64 (2:1.0.14-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:441: trailing whitespace.
++#13 28.19 Selecting previously unselected package libxcomposite1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:442: trailing whitespace.
++#13 28.19 Preparing to unpack .../74-libxcomposite1_1%3a0.4.5-1build2_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:443: trailing whitespace.
++#13 28.19 Unpacking libxcomposite1:amd64 (1:0.4.5-1build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:444: trailing whitespace.
++#13 28.30 Selecting previously unselected package libxdamage1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:445: trailing whitespace.
++#13 28.30 Preparing to unpack .../75-libxdamage1_1%3a1.1.5-2build2_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:446: trailing whitespace.
++#13 28.30 Unpacking libxdamage1:amd64 (1:1.1.5-2build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:447: trailing whitespace.
++#13 28.41 Selecting previously unselected package libxfont2:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:448: trailing whitespace.
++#13 28.41 Preparing to unpack .../76-libxfont2_1%3a2.0.5-1ubuntu0.2_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:449: trailing whitespace.
++#13 28.41 Unpacking libxfont2:amd64 (1:2.0.5-1ubuntu0.2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:450: trailing whitespace.
++#13 28.52 Selecting previously unselected package libxkbcommon0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:451: trailing whitespace.
++#13 28.52 Preparing to unpack .../77-libxkbcommon0_1.4.0-1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:452: trailing whitespace.
++#13 28.53 Unpacking libxkbcommon0:amd64 (1.4.0-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:453: trailing whitespace.
++#13 28.65 Selecting previously unselected package libxkbfile1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:454: trailing whitespace.
++#13 28.65 Preparing to unpack .../78-libxkbfile1_1%3a1.1.0-1build3_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:455: trailing whitespace.
++#13 28.65 Unpacking libxkbfile1:amd64 (1:1.1.0-1build3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:456: trailing whitespace.
++#13 28.76 Selecting previously unselected package libxrandr2:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:457: trailing whitespace.
++#13 28.76 Preparing to unpack .../79-libxrandr2_2%3a1.5.2-1build1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:458: trailing whitespace.
++#13 28.76 Unpacking libxrandr2:amd64 (2:1.5.2-1build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:459: trailing whitespace.
++#13 28.87 Selecting previously unselected package x11-xkb-utils.
+docs/evidence/sandbox-local-browser/lean-image-build.log:460: trailing whitespace.
++#13 28.87 Preparing to unpack .../80-x11-xkb-utils_7.7+5build4_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:461: trailing whitespace.
++#13 28.87 Unpacking x11-xkb-utils (7.7+5build4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:462: trailing whitespace.
++#13 28.98 Selecting previously unselected package xfonts-encodings.
+docs/evidence/sandbox-local-browser/lean-image-build.log:463: trailing whitespace.
++#13 28.98 Preparing to unpack .../81-xfonts-encodings_1%3a1.0.5-0ubuntu2_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:464: trailing whitespace.
++#13 28.98 Unpacking xfonts-encodings (1:1.0.5-0ubuntu2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:465: trailing whitespace.
++#13 29.09 Selecting previously unselected package xfonts-utils.
+docs/evidence/sandbox-local-browser/lean-image-build.log:466: trailing whitespace.
++#13 29.09 Preparing to unpack .../82-xfonts-utils_1%3a7.7+6build2_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:467: trailing whitespace.
++#13 29.09 Unpacking xfonts-utils (1:7.7+6build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:468: trailing whitespace.
++#13 29.20 Selecting previously unselected package xfonts-cyrillic.
+docs/evidence/sandbox-local-browser/lean-image-build.log:469: trailing whitespace.
++#13 29.20 Preparing to unpack .../83-xfonts-cyrillic_1%3a1.0.5_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:470: trailing whitespace.
++#13 29.21 Unpacking xfonts-cyrillic (1:1.0.5) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:471: trailing whitespace.
++#13 29.35 Selecting previously unselected package xfonts-scalable.
+docs/evidence/sandbox-local-browser/lean-image-build.log:472: trailing whitespace.
++#13 29.35 Preparing to unpack .../84-xfonts-scalable_1%3a1.0.3-1.2ubuntu1_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:473: trailing whitespace.
++#13 29.35 Unpacking xfonts-scalable (1:1.0.3-1.2ubuntu1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:474: trailing whitespace.
++#13 29.46 Selecting previously unselected package xserver-common.
+docs/evidence/sandbox-local-browser/lean-image-build.log:475: trailing whitespace.
++#13 29.46 Preparing to unpack .../85-xserver-common_2%3a21.1.4-2ubuntu1.7~22.04.16_all.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:476: trailing whitespace.
++#13 29.46 Unpacking xserver-common (2:21.1.4-2ubuntu1.7~22.04.16) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:477: trailing whitespace.
++#13 29.57 Selecting previously unselected package libglvnd0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:478: trailing whitespace.
++#13 29.57 Preparing to unpack .../86-libglvnd0_1.4.0-1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:479: trailing whitespace.
++#13 29.57 Unpacking libglvnd0:amd64 (1.4.0-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:480: trailing whitespace.
++#13 29.69 Selecting previously unselected package libglx0:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:481: trailing whitespace.
++#13 29.69 Preparing to unpack .../87-libglx0_1.4.0-1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:482: trailing whitespace.
++#13 29.69 Unpacking libglx0:amd64 (1.4.0-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:483: trailing whitespace.
++#13 29.80 Selecting previously unselected package libgl1:amd64.
+docs/evidence/sandbox-local-browser/lean-image-build.log:484: trailing whitespace.
++#13 29.80 Preparing to unpack .../88-libgl1_1.4.0-1_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:485: trailing whitespace.
++#13 29.80 Unpacking libgl1:amd64 (1.4.0-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:486: trailing whitespace.
++#13 29.91 Selecting previously unselected package xvfb.
+docs/evidence/sandbox-local-browser/lean-image-build.log:487: trailing whitespace.
++#13 29.91 Preparing to unpack .../89-xvfb_2%3a21.1.4-2ubuntu1.7~22.04.16_amd64.deb ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:488: trailing whitespace.
++#13 29.91 Unpacking xvfb (2:21.1.4-2ubuntu1.7~22.04.16) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:489: trailing whitespace.
++#13 30.00 Setting up libgraphite2-3:amd64 (1.3.14-1ubuntu0.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:490: trailing whitespace.
++#13 30.01 Setting up libxcb-dri3-0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:491: trailing whitespace.
++#13 30.01 Setting up libpixman-1-0:amd64 (0.40.0-1ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:492: trailing whitespace.
++#13 30.01 Setting up libwayland-server0:amd64 (1.20.0-1ubuntu0.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:493: trailing whitespace.
++#13 30.02 Setting up libx11-xcb1:amd64 (2:1.7.5-1ubuntu0.3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:494: trailing whitespace.
++#13 30.02 Setting up libice6:amd64 (2:1.0.10-1build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:495: trailing whitespace.
++#13 30.02 Setting up libpciaccess0:amd64 (0.16-3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:496: trailing whitespace.
++#13 30.03 Setting up fontconfig (2.13.1-4.2ubuntu5) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:497: trailing whitespace.
++#13 30.06 Regenerating fonts cache... done.
+docs/evidence/sandbox-local-browser/lean-image-build.log:498: trailing whitespace.
++#13 32.23 Setting up libxdamage1:amd64 (1:1.1.5-2build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:499: trailing whitespace.
++#13 32.24 Setting up libxcb-xfixes0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:500: trailing whitespace.
++#13 32.26 Setting up libxpm4:amd64 (1:3.5.12-1ubuntu0.22.04.3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:501: trailing whitespace.
++#13 32.28 Setting up libxi6:amd64 (2:1.8-1build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:502: trailing whitespace.
++#13 32.28 Setting up libdatrie1:amd64 (0.2.13-2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:503: trailing whitespace.
++#13 32.29 Setting up fonts-noto-color-emoji (2.047-0ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:504: trailing whitespace.
++#13 32.30 Setting up libxcb-render0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:505: trailing whitespace.
++#13 32.30 Setting up libglib2.0-0:amd64 (2.72.4-0ubuntu2.9) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:506: trailing whitespace.
++#13 32.37 No schema files found: doing nothing.
+docs/evidence/sandbox-local-browser/lean-image-build.log:507: trailing whitespace.
++#13 32.40 Setting up libglvnd0:amd64 (1.4.0-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:508: trailing whitespace.
++#13 32.40 Setting up libxcb-glx0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:509: trailing whitespace.
++#13 32.40 Setting up libedit2:amd64 (3.1-20210910-1build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:510: trailing whitespace.
++#13 32.40 Setting up libsensors-config (1:3.6.0-7ubuntu1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:511: trailing whitespace.
++#13 32.41 Setting up fonts-wqy-zenhei (0.9.45-8) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:512: trailing whitespace.
++#13 32.55 Setting up fonts-freefont-ttf (20120503-10build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:513: trailing whitespace.
++#13 32.55 Setting up xkb-data (2.33-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:514: trailing whitespace.
++#13 32.55 Setting up libxcb-shm0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:515: trailing whitespace.
++#13 32.56 Setting up libunwind8:amd64 (1.3.2-2build2.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:516: trailing whitespace.
++#13 32.56 Setting up libcairo2:amd64 (1.16.0-5ubuntu2.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:517: trailing whitespace.
++#13 32.56 Setting up libxxf86vm1:amd64 (1:1.1.4-1build3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:518: trailing whitespace.
++#13 32.57 Setting up libxcb-present0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:519: trailing whitespace.
++#13 32.57 Setting up libasound2-data (1.2.6.1-1ubuntu1.2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:520: trailing whitespace.
++#13 32.57 Setting up libfontenc1:amd64 (1:1.1.4-1build3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:521: trailing whitespace.
++#13 32.57 Setting up fonts-tlwg-loma-otf (1:0.7.3-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:522: trailing whitespace.
++#13 32.58 Setting up libnspr4:amd64 (2:4.35-0ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:523: trailing whitespace.
++#13 32.58 Setting up libxfixes3:amd64 (1:6.0.0-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:524: trailing whitespace.
++#13 32.58 Setting up libxcb-sync1:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:525: trailing whitespace.
++#13 32.59 Setting up libavahi-common-data:amd64 (0.8-5ubuntu5.5) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:526: trailing whitespace.
++#13 32.59 Setting up libdbus-1-3:amd64 (1.12.20-2ubuntu4.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:527: trailing whitespace.
++#13 32.59 Setting up xfonts-encodings (1:1.0.5-0ubuntu2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:528: trailing whitespace.
++#13 32.60 Setting up libfribidi0:amd64 (1.0.8-2ubuntu3.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:529: trailing whitespace.
++#13 32.60 Setting up libxrandr2:amd64 (2:1.5.2-1build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:530: trailing whitespace.
++#13 32.60 Setting up libsensors5:amd64 (1:3.6.0-7ubuntu1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:531: trailing whitespace.
++#13 32.61 Setting up libglapi-mesa:amd64 (23.2.1-1ubuntu3.1~22.04.4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:532: trailing whitespace.
++#13 32.61 Setting up libxcb-dri2-0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:533: trailing whitespace.
++#13 32.61 Setting up libatk1.0-data (2.36.0-3build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:534: trailing whitespace.
++#13 32.62 Setting up fonts-ipafont-gothic (00303-21ubuntu1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:535: trailing whitespace.
++#13 32.66 update-alternatives: using /usr/share/fonts/opentype/ipafont-gothic/ipag.ttf to provide /usr/share/fonts/truetype/fonts-japanese-gothic.ttf (fonts-japanese-gothic.ttf) in auto mode
+docs/evidence/sandbox-local-browser/lean-image-build.log:536: trailing whitespace.
++#13 32.67 Setting up libxshmfence1:amd64 (1.3-1build4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:537: trailing whitespace.
++#13 32.67 Setting up libxcb-randr0:amd64 (1.14-3ubuntu3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:538: trailing whitespace.
++#13 32.67 Setting up libllvm15:amd64 (1:15.0.7-0ubuntu0.22.04.3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:539: trailing whitespace.
++#13 32.68 Setting up libasound2:amd64 (1.2.6.1-1ubuntu1.2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:540: trailing whitespace.
++#13 32.68 Setting up fonts-liberation (1:1.07.4-11) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:541: trailing whitespace.
++#13 32.68 Setting up libharfbuzz0b:amd64 (2.7.4-1ubuntu3.2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:542: trailing whitespace.
++#13 32.69 Setting up libthai-data (0.1.29-1build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:543: trailing whitespace.
++#13 32.69 Setting up libatk1.0-0:amd64 (2.36.0-3build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:544: trailing whitespace.
++#13 32.69 Setting up libxkbfile1:amd64 (1:1.1.0-1build3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:545: trailing whitespace.
++#13 32.70 Setting up libdrm-common (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:546: trailing whitespace.
++#13 32.70 Setting up libelf1:amd64 (0.186-1ubuntu0.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:547: trailing whitespace.
++#13 32.70 Setting up libxcomposite1:amd64 (1:0.4.5-1build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:548: trailing whitespace.
++#13 32.71 Setting up libsm6:amd64 (2:1.2.3-1build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:549: trailing whitespace.
++#13 32.71 Setting up libxfont2:amd64 (1:2.0.5-1ubuntu0.2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:550: trailing whitespace.
++#13 32.71 Setting up libxmuu1:amd64 (2:1.1.3-3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:551: trailing whitespace.
++#13 32.72 Setting up fonts-unifont (1:14.0.01-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:552: trailing whitespace.
++#13 32.72 Setting up libxkbcommon0:amd64 (1.4.0-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:553: trailing whitespace.
++#13 32.72 Setting up libwayland-client0:amd64 (1.20.0-1ubuntu0.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:554: trailing whitespace.
++#13 32.72 Setting up libavahi-common3:amd64 (0.8-5ubuntu5.5) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:555: trailing whitespace.
++#13 32.73 Setting up libnss3:amd64 (2:3.98-0ubuntu0.22.04.4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:556: trailing whitespace.
++#13 32.73 Setting up libatspi2.0-0:amd64 (2.44.0-3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:557: trailing whitespace.
++#13 32.73 Setting up xfonts-utils (1:7.7+6build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:558: trailing whitespace.
++#13 32.78 Setting up libatk-bridge2.0-0:amd64 (2.38.0-3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:559: trailing whitespace.
++#13 32.78 Setting up libthai0:amd64 (0.1.29-1build1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:560: trailing whitespace.
++#13 32.78 Setting up libxt6:amd64 (1:1.2.1-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:561: trailing whitespace.
++#13 32.79 Setting up libdrm2:amd64 (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:562: trailing whitespace.
++#13 32.79 Setting up xauth (1:1.1-1build2) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:563: trailing whitespace.
++#13 32.79 Setting up xfonts-cyrillic (1:1.0.5) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:564: trailing whitespace.
++#13 33.16 Setting up libavahi-client3:amd64 (0.8-5ubuntu5.5) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:565: trailing whitespace.
++#13 33.17 Setting up xfonts-scalable (1:1.0.3-1.2ubuntu1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:566: trailing whitespace.
++#13 33.49 Setting up libdrm-amdgpu1:amd64 (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:567: trailing whitespace.
++#13 33.49 Setting up libxmu6:amd64 (2:1.1.3-3) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:568: trailing whitespace.
++#13 33.49 Setting up libdrm-nouveau2:amd64 (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:569: trailing whitespace.
++#13 33.50 Setting up libgbm1:amd64 (23.2.1-1ubuntu3.1~22.04.4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:570: trailing whitespace.
++#13 33.50 Setting up libdrm-radeon1:amd64 (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:571: trailing whitespace.
++#13 33.50 Setting up libpango-1.0-0:amd64 (1.50.6+ds-2ubuntu1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:572: trailing whitespace.
++#13 33.51 Setting up libdrm-intel1:amd64 (2.4.113-2~ubuntu0.22.04.1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:573: trailing whitespace.
++#13 33.51 Setting up libgl1-mesa-dri:amd64 (23.2.1-1ubuntu3.1~22.04.4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:574: trailing whitespace.
++#13 33.59 Setting up libxaw7:amd64 (2:1.0.14-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:575: trailing whitespace.
++#13 33.60 Setting up libcups2:amd64 (2.4.1op1-1ubuntu4.21) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:576: trailing whitespace.
++#13 33.60 Setting up libglx-mesa0:amd64 (23.2.1-1ubuntu3.1~22.04.4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:577: trailing whitespace.
++#13 33.60 Setting up libglx0:amd64 (1.4.0-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:578: trailing whitespace.
++#13 33.61 Setting up x11-xkb-utils (7.7+5build4) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:579: trailing whitespace.
++#13 33.61 Setting up libgl1:amd64 (1.4.0-1) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:580: trailing whitespace.
++#13 33.61 Setting up xserver-common (2:21.1.4-2ubuntu1.7~22.04.16) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:581: trailing whitespace.
++#13 33.61 Setting up xvfb (2:21.1.4-2ubuntu1.7~22.04.16) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:582: trailing whitespace.
++#13 33.62 Processing triggers for libc-bin (2.35-0ubuntu3.14) ...
+docs/evidence/sandbox-local-browser/lean-image-build.log:716: trailing whitespace.
++#48 0.188 
+docs/evidence/sandbox-local-browser/lean-image-build.log:720: trailing whitespace.
++#48 0.188 
+docs/evidence/sandbox-local-browser/typecheck.log:4: new blank line at EOF.
+docs/evidence/temporary-environments/registry-rollout.log:12: trailing whitespace.
++Binding                                                                                     Resource                  
+docs/evidence/temporary-environments/registry-rollout.log:13: trailing whitespace.
++env.Sandbox (Sandbox)                                                                       Durable Object            
+docs/evidence/temporary-environments/registry-rollout.log:14: trailing whitespace.
++env.Standard2Sandbox (Standard2Sandbox)                                                     Durable Object            
+docs/evidence/temporary-environments/registry-rollout.log:15: trailing whitespace.
++env.ImplementationSandbox (ImplementationSandbox)                                           Durable Object            
+docs/evidence/temporary-environments/registry-rollout.log:16: trailing whitespace.
++env.ImplementationStandard2Sandbox (ImplementationStandard2Sandbox)                         Durable Object            
+docs/evidence/temporary-environments/registry-rollout.log:17: trailing whitespace.
++env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                                   Workflow                  
+docs/evidence/temporary-environments/registry-rollout.log:18: trailing whitespace.
++env.DB (deos-sample-project)                                                                D1 Database               
+docs/evidence/temporary-environments/registry-rollout.log:19: trailing whitespace.
++env.ARTIFACTS (deos-sample-project-artifacts)                                               R2 Bucket                 
+docs/evidence/temporary-environments/registry-rollout.log:20: trailing whitespace.
++env.REVIEW_PORTAL (deos-workflow-portal)                                                    Worker                    
+docs/evidence/temporary-environments/registry-rollout.log:21: trailing whitespace.
++env.IMPLEMENTATION_BROWSER                                                                  Browser Run               
+docs/evidence/temporary-environments/registry-rollout.log:22: trailing whitespace.
++env.PORTAL_ACCESS_TEAM_DOMAIN ("deos-voxdez.cloudflareaccess.com")                          Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:23: trailing whitespace.
++env.PORTAL_ACCESS_AUD ("c12828abda88ac73e394039f6e0b87a9bc5f2...")                          Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:24: trailing whitespace.
++env.LINEAR_API_URL ("https://api.linear.app/graphql")                                       Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:25: trailing whitespace.
++env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")                 Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:26: trailing whitespace.
++env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                              Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:27: trailing whitespace.
++env.LINEAR_PROJECT_NAME ("deos-sample-project")                                             Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:28: trailing whitespace.
++env.LINEAR_START_STATE_NAME ("Todo")                                                        Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:29: trailing whitespace.
++env.LINEAR_START_STATE_ID ("ee23b3ec-76fc-4186-8d9e-ddadd1254ee1")                          Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:30: trailing whitespace.
++env.LINEAR_WORK_STATE_ID ("700c1b00-b9dd-4cfb-9d59-bd60c1d8d471")                           Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:31: trailing whitespace.
++env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                             Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:32: trailing whitespace.
++env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                               Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:33: trailing whitespace.
++env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                            Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:34: trailing whitespace.
++env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                                 Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:35: trailing whitespace.
++env.GITHUB_API_URL ("https://api.github.com")                                               Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:36: trailing whitespace.
++env.OPENROUTER_API_URL ("https://openrouter.ai/api/v1")                                     Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:37: trailing whitespace.
++env.OPENROUTER_SUPPORTED_MODELS ("deepseek/deepseek-v4-pro")                                Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:38: trailing whitespace.
++env.TRIAL_REPOSITORY ("sachinkundu/deos-sample-project")                                    Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:39: trailing whitespace.
++env.TRIAL_DISPATCH_ENABLED ("false")                                                        Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:40: trailing whitespace.
++env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                              Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:41: trailing whitespace.
++env.SANDBOX_FAILURE_RETENTION_MINUTES ("0")                                                 Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:42: trailing whitespace.
++env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                        Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:43: trailing whitespace.
++env.IMPLEMENTATION_PREVIEW_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")                  Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:44: trailing whitespace.
++env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")              Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:45: trailing whitespace.
++env.PORTAL_BASE_URL ("https://deos.voxdez.com")                                             Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:46: trailing whitespace.
++env.ROUTE_ADMIN_ALLOWED_EMAIL ("sachinkundu@gmail.com")                                     Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:47: trailing whitespace.
++env.IMPLEMENTATION_ENVIRONMENT_TOKEN ("(hidden)")                                           Environment Variable      
+docs/evidence/temporary-environments/registry-rollout.log:231: trailing whitespace.
++╰ Applied changes 
+docs/evidence/temporary-environments/registry-rollout.log:393: trailing whitespace.
++╰ No changes to be made 
+docs/evidence/temporary-environments/registry-rollout.log:555: trailing whitespace.
++╰ No changes to be made 
+docs/evidence/temporary-environments/registry-rollout.log:717: trailing whitespace.
++╰ No changes to be made 
+docs/evidence/temporary-environments/rollout.log:7: trailing whitespace.
++Resource location: remote 
+docs/evidence/temporary-environments/rollout.log:35: trailing whitespace.
++Binding                                                                                     Resource                  
+docs/evidence/temporary-environments/rollout.log:36: trailing whitespace.
++env.Sandbox (Sandbox)                                                                       Durable Object            
+docs/evidence/temporary-environments/rollout.log:37: trailing whitespace.
++env.Standard2Sandbox (Standard2Sandbox)                                                     Durable Object            
+docs/evidence/temporary-environments/rollout.log:38: trailing whitespace.
++env.ImplementationSandbox (ImplementationSandbox)                                           Durable Object            
+docs/evidence/temporary-environments/rollout.log:39: trailing whitespace.
++env.ImplementationStandard2Sandbox (ImplementationStandard2Sandbox)                         Durable Object            
+docs/evidence/temporary-environments/rollout.log:40: trailing whitespace.
++env.ORCHESTRATION_WORKFLOW (DeosWorkflow)                                                   Workflow                  
+docs/evidence/temporary-environments/rollout.log:41: trailing whitespace.
++env.DB (deos-sample-project)                                                                D1 Database               
+docs/evidence/temporary-environments/rollout.log:42: trailing whitespace.
++env.ARTIFACTS (deos-sample-project-artifacts)                                               R2 Bucket                 
+docs/evidence/temporary-environments/rollout.log:43: trailing whitespace.
++env.REVIEW_PORTAL (deos-workflow-portal)                                                    Worker                    
+docs/evidence/temporary-environments/rollout.log:44: trailing whitespace.
++env.IMPLEMENTATION_BROWSER                                                                  Browser Run               
+docs/evidence/temporary-environments/rollout.log:45: trailing whitespace.
++env.PORTAL_ACCESS_TEAM_DOMAIN ("deos-voxdez.cloudflareaccess.com")                          Environment Variable      
+docs/evidence/temporary-environments/rollout.log:46: trailing whitespace.
++env.PORTAL_ACCESS_AUD ("c12828abda88ac73e394039f6e0b87a9bc5f2...")                          Environment Variable      
+docs/evidence/temporary-environments/rollout.log:47: trailing whitespace.
++env.LINEAR_API_URL ("https://api.linear.app/graphql")                                       Environment Variable      
+docs/evidence/temporary-environments/rollout.log:48: trailing whitespace.
++env.LINEAR_HUMAN_APPROVAL_STATE_ID ("71738607-03fd-49f2-b4be-b2aac29ccd13")                 Environment Variable      
+docs/evidence/temporary-environments/rollout.log:49: trailing whitespace.
++env.LINEAR_PROJECT_ID ("99426d9b-cda7-4db4-9136-692a95a0b090")                              Environment Variable      
+docs/evidence/temporary-environments/rollout.log:50: trailing whitespace.
++env.LINEAR_PROJECT_NAME ("deos-sample-project")                                             Environment Variable      
+docs/evidence/temporary-environments/rollout.log:51: trailing whitespace.
++env.LINEAR_START_STATE_NAME ("Todo")                                                        Environment Variable      
+docs/evidence/temporary-environments/rollout.log:52: trailing whitespace.
++env.LINEAR_START_STATE_ID ("ee23b3ec-76fc-4186-8d9e-ddadd1254ee1")                          Environment Variable      
+docs/evidence/temporary-environments/rollout.log:53: trailing whitespace.
++env.LINEAR_WORK_STATE_ID ("700c1b00-b9dd-4cfb-9d59-bd60c1d8d471")                           Environment Variable      
+docs/evidence/temporary-environments/rollout.log:54: trailing whitespace.
++env.LINEAR_APPROVAL_STATE_NAMES ("In Progress")                                             Environment Variable      
+docs/evidence/temporary-environments/rollout.log:55: trailing whitespace.
++env.LINEAR_REJECTION_STATE_NAMES ("Canceled")                                               Environment Variable      
+docs/evidence/temporary-environments/rollout.log:56: trailing whitespace.
++env.LINEAR_APP_ACTOR_ID ("f010429f-7734-4f3f-9b4b-13a4abb9b4ab")                            Environment Variable      
+docs/evidence/temporary-environments/rollout.log:57: trailing whitespace.
++env.LINEAR_TEAM_ID ("ac53207d-68c0-42f1-a245-c1baf047f234")                                 Environment Variable      
+docs/evidence/temporary-environments/rollout.log:58: trailing whitespace.
++env.GITHUB_API_URL ("https://api.github.com")                                               Environment Variable      
+docs/evidence/temporary-environments/rollout.log:59: trailing whitespace.
++env.OPENROUTER_API_URL ("https://openrouter.ai/api/v1")                                     Environment Variable      
+docs/evidence/temporary-environments/rollout.log:60: trailing whitespace.
++env.OPENROUTER_SUPPORTED_MODELS ("deepseek/deepseek-v4-pro")                                Environment Variable      
+docs/evidence/temporary-environments/rollout.log:61: trailing whitespace.
++env.TRIAL_REPOSITORY ("sachinkundu/deos-sample-project")                                    Environment Variable      
+docs/evidence/temporary-environments/rollout.log:62: trailing whitespace.
++env.TRIAL_DISPATCH_ENABLED ("false")                                                        Environment Variable      
+docs/evidence/temporary-environments/rollout.log:63: trailing whitespace.
++env.CODEX_AUTH_PROFILE_ID ("controlled-trial")                                              Environment Variable      
+docs/evidence/temporary-environments/rollout.log:64: trailing whitespace.
++env.SANDBOX_FAILURE_RETENTION_MINUTES ("0")                                                 Environment Variable      
+docs/evidence/temporary-environments/rollout.log:65: trailing whitespace.
++env.CAPABILITY_BASE_URL ("https://deos-queue-consumer-ts.skundu...")                        Environment Variable      
+docs/evidence/temporary-environments/rollout.log:66: trailing whitespace.
++env.IMPLEMENTATION_PREVIEW_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")                  Environment Variable      
+docs/evidence/temporary-environments/rollout.log:67: trailing whitespace.
++env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID ("c68856288112af7698f5be52ea94b96e")              Environment Variable      
+docs/evidence/temporary-environments/rollout.log:68: trailing whitespace.
++env.PORTAL_BASE_URL ("https://deos.voxdez.com")                                             Environment Variable      
+docs/evidence/temporary-environments/rollout.log:69: trailing whitespace.
++env.ROUTE_ADMIN_ALLOWED_EMAIL ("sachinkundu@gmail.com")                                     Environment Variable      
+docs/evidence/temporary-environments/rollout.log:70: trailing whitespace.
++env.IMPLEMENTATION_ENVIRONMENT_TOKEN ("(hidden)")                                           Environment Variable      
+docs/evidence/temporary-environments/rollout.log:1189: trailing whitespace.
++╰ Applied changes 
+docs/evidence/temporary-environments/rollout.log:1900: trailing whitespace.
++╰ Applied changes 
+docs/evidence/temporary-environments/rollout.log:2509: trailing whitespace.
++╰ Applied changes 
+docs/evidence/temporary-environments/rollout.log:2978: trailing whitespace.
++╰ Applied changes 
