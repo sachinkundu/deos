@@ -25,6 +25,23 @@ test('Demo readers open the exact frozen approved, candidate and context invento
   try {
     assert.equal((await read('ls')).stdout,sources.map(source=>source.path).join('\n')+'\n');
     for(const source of sources)assert.equal((await read(`cat ${source.path}`)).stdout,source.content);
+    assert.equal((await read('wc -l candidate/src/app.ts')).stdout, '1\n');
+    assert.equal((await read('wc -l candidate/src/app.ts candidate/src/nested/storage.ts')).stdout,
+      '1 candidate/src/app.ts\n1 candidate/src/nested/storage.ts\n2 total\n');
+    await assert.rejects(read('wc -l candidate/src/app.ts ../.env'), (error: any) =>
+      error.code === 1 && error.stdout === '' && error.stderr.includes('outside the checked input'));
+    for (const command of ['wc -c candidate/src/app.ts', 'head -n nope candidate/src/app.ts',
+      'rg "[" candidate/src/app.ts', 'rg --hidden Frozen candidate/src']) {
+      await assert.rejects(read(command), (error: any) => {
+        assert.equal(error.code, 2);
+        assert.equal(JSON.parse(error.stdout).code, 'review_read_rejected');
+        assert.match(error.stderr, /ReviewReadRejected/);
+        return true;
+      });
+      // A corrected request still reads the same checked content.
+      assert.equal((await read('cat candidate/src/app.ts')).stdout, sources[1].content);
+    }
+    assert.match(await readFile(join(dir, 'original-errors.jsonl'), 'utf8'), /Invalid regular expression/);
     const expected = sources.filter(source => source.path.startsWith('candidate/src/'))
       .map(source => `${source.path}:1:${source.content}`).join('');
     // Reproduce SAC-245's failed directory search and test exact prefix boundaries.
@@ -128,7 +145,7 @@ test("Claude file reader executes quoted searches over frozen sources without sh
     assert.equal((await read('rg "no matches" docs/current-architecture.md')).stdout, "\n");
     for (const command of ['cat "../.env"', 'cat "/etc/passwd"', 'rg -n --pre env skill',
       'rg "skill|tools" docs/current-architecture.md | cat .env']) {
-      await assert.rejects(read(command), (error: any) => error.code === 1 &&
+      await assert.rejects(read(command), (error: any) => error.code === (command.includes('--pre') ? 2 : 1) &&
         /outside the checked input|unsupported review search flag|unsupported review command/.test(error.stderr));
     }
   } finally { await rm(dir, { recursive: true, force: true }); }

@@ -82,3 +82,44 @@ test('demo MCP returns actual image content and is unavailable to ordinary revie
     assert.deepEqual(calls,[{url:'/claude/demo-evidence',body:{evidenceId:'image-id'}}]);
   } finally {await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));await rm(dir,{recursive:true,force:true});}
 });
+
+
+test("Claude broker returns a recoverable tool error then a valid read without poisoning the review", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "claude-broker-recovery-"));
+  let calls = 0;
+  const server = createServer((_, response) => {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(++calls === 1 ? { isError: true, text: "Read rejected: invalid review line range" } :
+      { text: "checked source" }));
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const script = (await readFile("container/claude-tool-broker.mjs", "utf8"))
+      .replaceAll('"/deos/bin/claude-diagnostics.ts"', JSON.stringify(resolve("src/claude-diagnostics.ts")))
+      .replaceAll('"/deos/bin/error-details.ts"', JSON.stringify(resolve("src/error-details.ts")))
+      .replaceAll('"/deos/claude/broker-failure.json"', JSON.stringify(join(dir, "failure.json")));
+    await writeFile(join(dir, "broker.mjs"), script);
+    const address = server.address(); assert.ok(address && typeof address === "object");
+    const child = spawn(process.execPath, ["--experimental-strip-types", join(dir, "broker.mjs")], {
+      env: { DEOS_BROKER_URL: `http://127.0.0.1:${address.port}`, DEOS_BROKER_TOKEN: "fixture",
+        DEOS_ATTEMPT_ID: "attempt" } as unknown as NodeJS.ProcessEnv,
+    });
+    let stdout = "", stderr = "";
+    child.stdout.on("data", data => { stdout += data; });
+    child.stderr.on("data", data => { stderr += data; });
+    const closed = new Promise<number | null>((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
+    child.stdin.end(["head -n nope app.ts", "head -n 10 app.ts"].map((command, id) => JSON.stringify({
+      jsonrpc: "2.0", id, method: "tools/call", params: { name: "read_repository", arguments: { command } },
+    })).join("\n") + "\n");
+    assert.equal(await closed, 0);
+    assert.equal(stderr, "");
+    const [rejected, corrected] = stdout.trim().split("\n").map(line => JSON.parse(line));
+    assert.equal(rejected.result.isError, true);
+    assert.deepEqual(corrected.result, { content: [{ type: "text", text: "checked source" }] });
+    await assert.rejects(readFile(join(dir, "failure.json")), { code: "ENOENT" });
+    assert.equal(calls, 2);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    await rm(dir, { recursive: true, force: true });
+  }
+});

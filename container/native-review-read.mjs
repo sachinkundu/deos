@@ -2,6 +2,10 @@ import { pathToFileURL } from "node:url";
 import { readFile, lstat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 
+// Only request-shape errors are recoverable. Source, scope and integrity
+// failures remain ordinary errors and stop the review.
+export class ReviewReadRejected extends Error {}
+
 // Parse arguments without invoking a shell. Quoted/escaped characters are data;
 // unquoted operators and expansions are rejected rather than executed.
 export const readCommand = (command) => {
@@ -84,27 +88,40 @@ export const readSnapshot = async ({ op, args }, state, sourceRoot = "/deos/work
   }
   if (["head", "tail"].includes(op)) {
     const count = args[0] === "-n" ? Number(args.splice(0, 2)[1]) : 10;
-    if (!Number.isInteger(count) || count < 1 || count > 10000 || args.length !== 1) throw new Error("invalid review line range");
+    if (!Number.isInteger(count) || count < 1 || count > 10000 || args.length !== 1) throw new ReviewReadRejected("invalid review line range");
     const lines = (await read(args[0])).split("\n");
     return (op === "head" ? lines.slice(0, count) : lines.slice(-count)).join("\n");
   }
   if (op === "sed" && args.length === 3 && args[0] === "-n") {
     const range = args[1].match(/^(\d+)(?:,(\d+))?p$/);
-    if (!range) throw new Error("invalid review line range");
+    if (!range) throw new ReviewReadRejected("invalid review line range");
     return (await read(args[2])).split("\n").slice(Number(range[1]) - 1, Number(range[2] ?? range[1])).join("\n");
   }
-  if (op === "wc" && args.length === 2 && args[0] === "-l") return String((await read(args[1])).split("\n").length - 1) + "\n";
+  if (op === "wc" && args.length >= 2 && args[0] === "-l" && !args.slice(1).some(arg => arg.startsWith("-"))) {
+    const files = args.slice(1);
+    const counts = await Promise.all(files.map(async file => (await read(file)).split("\n").length - 1));
+    if (files.length === 1) return `${counts[0]}\n`;
+    return counts.map((count, index) => `${count} ${files[index]}\n`).join("") +
+      `${counts.reduce((total, count) => total + count, 0)} total\n`;
+  }
   if (op === "rg") {
     const flags = [];
     while (args[0]?.startsWith("-")) {
       const flag = args.shift();
-      if (!["-n", "-i", "-F", "--"].includes(flag)) throw new Error("unsupported review search flag");
+      if (!["-n", "-i", "-F", "--"].includes(flag)) throw new ReviewReadRejected("unsupported review search flag");
       flags.push(flag);
       if (flag === "--") break;
     }
     const pattern = args.shift();
-    if (typeof pattern !== "string" || pattern.length > 256) throw new Error("invalid review search pattern");
-    const matcher = flags.includes("-F") ? null : new RegExp(pattern, flags.includes("-i") ? "i" : "");
+    if (typeof pattern !== "string" || pattern.length > 256) throw new ReviewReadRejected("invalid review search pattern");
+    let matcher = null;
+    if (!flags.includes("-F")) {
+      try { matcher = new RegExp(pattern, flags.includes("-i") ? "i" : ""); }
+      catch (error) {
+        if (!(error instanceof SyntaxError)) throw error;
+        throw new ReviewReadRejected("invalid review search pattern", { cause: error });
+      }
+    }
     const found = [];
     // Expand only frozen inventory prefixes, never walk a sandbox directory.
     const files = args.length ? args.flatMap(input => {
@@ -126,7 +143,7 @@ export const readSnapshot = async ({ op, args }, state, sourceRoot = "/deos/work
     }
     return found.join("\n") + "\n";
   }
-  throw new Error("unsupported read-only review arguments");
+  throw new ReviewReadRejected("unsupported read-only review arguments");
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

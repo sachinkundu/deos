@@ -3,7 +3,7 @@ import { readFile, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import { recordCaughtError } from "./original-errors.mjs";
-import { readCommand, readSnapshot } from "./native-review-read.mjs";
+import { readCommand, readSnapshot, ReviewReadRejected } from "./native-review-read.mjs";
 export const claudeReadCommand = command => {
   const parsed = readCommand(command);
   // These root aliases list the same frozen inventory as bare ls, never the filesystem.
@@ -42,9 +42,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
   }
   const text = await readSnapshot(claudeReadCommand(command), state, sourceRoot);
-  if (Buffer.byteLength(text) > 262144) throw new Error("read exceeds limit");
+  if (Buffer.byteLength(text) > 262144) throw new ReviewReadRejected("read exceeds limit");
   process.stdout.write(text);
 } catch (error) {
   recordCaughtError(error, "container/claude-review-read.mjs");
-  process.exitCode = 1;
+  if (error instanceof ReviewReadRejected) {
+    process.stdout.write(JSON.stringify({ code: "review_read_rejected", message: error.message }));
+    process.exitCode = 2;
+  } else process.exitCode = 1;
 }
