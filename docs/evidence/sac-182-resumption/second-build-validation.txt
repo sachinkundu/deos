@@ -1,0 +1,11 @@
+BLOCKED BEFORE IMPLEMENTATION
+
+Worktree: clean at d7a7c94cf27a84fa538e6b747b9c68a0a0595463 (current main).
+Required saved candidate: PR 137 commit 222d6298e4546a84cece21b2c5dd23c8d1a286d1, tree 845fc86da7787d86e5ec58769e9fd6a7903d084a.
+Local git object lookup: candidate commit/tree unavailable; locally saved prior.treeSha 53c228b9bed8c2c870e56ac8bdb339de16546de4 is byte-identical to current main.
+Trusted origin read failed: fatal: could not read Username for https://deos-queue-consumer-ts.skundu.workers.dev.
+Direct GitHub origin/raw reads failed with HTTP 520 Origin is disallowed.
+Public PR inspection confirmed the branch, commit, changed paths, and outstanding owner feedback, but the web reader cannot materialize the cumulative patch into the worktree.
+OpenSpec apply state is blocked because openspec/changes/sac-182/tasks.md is absent; its saved completed text exists only in implementation-input metadata.
+No tests, builds, preview, provider writes, or browser demos were run against current main because they would not validate the missing implementation candidate.
+Evidence checklist: all 12 scenarios remain pending with the blocker recorded; rejected prior browser/Showboat proof omitted; prior provider-originated receipt retained.

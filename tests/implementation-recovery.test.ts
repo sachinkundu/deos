@@ -87,3 +87,26 @@ test("an incomplete supervisor snapshot can seed a fresh author but never become
     await assert.rejects(f.store.failedCandidate(f.work, "implementation_tasks"), /does not match its run/);
   } finally { f.db.close(); }
 });
+
+test("an unchanged failed checkout cannot replace a saved cumulative implementation", async () => {
+  const f = await fixture();
+  try {
+    const patch = "# No repository changes in this attempt.\n";
+    const patchSha = await sha256Hex(patch);
+    const candidate = {...f.candidate, files: [], patchSha};
+    const bytes = JSON.stringify(candidate);
+    f.bucket.objects.set("implementation-candidate.json",new TextEncoder().encode(bytes));
+    f.bucket.objects.set("patch.diff",new TextEncoder().encode(patch));
+    f.db.sqlite.prepare("UPDATE artifacts SET sha256=?,byte_size=? WHERE logical_name='implementation-candidate.json'")
+      .run(await sha256Hex(bytes),Buffer.byteLength(bytes));
+    f.db.sqlite.prepare("UPDATE artifacts SET sha256=?,byte_size=? WHERE logical_name='patch.diff'")
+      .run(patchSha,Buffer.byteLength(patch));
+    const saved = {...f.work,patch_key:"saved-cumulative-patch",patch_sha:"a".repeat(64)};
+    const recovery = await f.store.failedCandidate(saved,"implementation_tasks");
+    assert.equal(recovery?.restoreSavedPatch,true);
+    assert.equal(recovery?.failure.detail,"missing claim");
+    assert.equal(recovery?.candidate.attemptId,"failed-task");
+    assert.equal((await f.store.failedCandidate(f.work,"implementation_tasks"))?.restoreSavedPatch,false);
+    assert.equal((await f.store.failedCandidate({...saved,patch_sha:patchSha},"implementation_tasks"))?.restoreSavedPatch,false);
+  } finally { f.db.close(); }
+});

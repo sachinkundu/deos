@@ -14,6 +14,9 @@ Scope: retire SAC-246 and resume SAC-182 through its existing approved planning/
 
 ## Still requires fixing
 
+- DIAG-02: An author returned `needs_human` because tasks.md was absent, but runtime.finish unconditionally read tasks.md and turned the clarification into supervisor_failed. The full question and root cause survived in result.json/validation.txt. Needs container completion-path repair; avoid deploying container changes over active work.
+
+
 - AUTH-02: Shared credential refresh ownership/persistence remains unresolved (SAC-165). Reseeding repaired this run but does not prevent desktop/cloud copies becoming stale again. Stop if the new credential is rejected; do not retry unchanged invalid auth.
 - DIAG-01: `trustGeneratedHooks` requests the model list after auth failure, then reports missing `/root/.codex/models_cache.json`. The original401 is preserved in supervisor stderr, but the terminal summary masks the actionable cause. Needs startup error classification and propagation; no container code changed in this recovery.
 
@@ -31,3 +34,6 @@ Scope: retire SAC-246 and resume SAC-182 through its existing approved planning/
 - Deployment verification: PR144 passed all CI checks, merged, and backend version 52962b2e-f407-4d4e-bbb9-20a9a57caab0 activated at 100%. The audited v43 grant and same-stage retry were accepted. Live-run validation remains in progress.
 
 - OPS-02: Verification initially inspected the script download endpoint, which returned the latest uploaded maintenance bundle despite original-version traffic restoration. That assertion stopped before retry request creation. Verified the original immutable version/resources and100% traffic instead, plus authenticated live maintenance-route404. The dependent retry command then failed locally because its request file did not yet exist; no external mutation occurred. Retry was sent only after verified restoration.
+
+- RECOVERY-01 (supervisor workflow repair): Auth-startup failure captured a clean current-main snapshot. The next retry preferred this newer empty snapshot over the older full implementation, so the agent correctly stopped before rebuilding lost context. The original cumulative patch remains immutable in R2 and PR137. Empty failed snapshots now retain failure/evidence context while selecting the existing saved implementation and its patch base for restoration.
+- RECOVERY-02 (supervisor workflow repair): Rebase conflicts retained the checked patch only under the root-owned /deos/run directory. The author shell runs as deos-author. The controller now also exposes the verified patch and original conflict report under author-readable /deos/output and tells the agent to reconcile them. No feature conflicts were resolved by the supervisor.

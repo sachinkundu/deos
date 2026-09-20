@@ -1845,6 +1845,8 @@ test("implementation rebase preserves the checked patch and original conflict wi
   const restore = Reflect.get(controller,"restoreContinuationPatch") as (sandbox:SandboxView,value:unknown,preserve:boolean)=>Promise<void>;
   await restore.call(controller,factory.sandbox,reference,true);
   assert.equal(factory.sandbox.files.get("/deos/run/continuation.patch"),patchContent);
+  assert.equal(factory.sandbox.files.get("/deos/output/continuation.patch"),patchContent);
+  assert.equal(factory.sandbox.files.get("/deos/output/continuation-conflict.json"),factory.sandbox.files.get("/deos/run/continuation-conflict.json"));
   const diagnostic=JSON.parse(factory.sandbox.files.get("/deos/run/continuation-conflict.json")!);
   assert.match(diagnostic.output.stderr,/app.txt: patch does not apply/);
   assert.equal(diagnostic.patchSha256,digest);
