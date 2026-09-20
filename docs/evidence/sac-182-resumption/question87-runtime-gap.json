@@ -1,0 +1,50 @@
+{
+  "work": [
+    {
+      "candidate_sha": "722d5f7e5d453c2b2cc79306d41b6aa15c4a86b1268f19f358d699130dd5779d",
+      "patch_sha": "fae9ce85980de02b283cfb522bdf548f0997fa86e2883e0c20bc732e82558e4e",
+      "patch_base_sha": "dc612405c5b58a857142bbe3d063c1bf97e8253a",
+      "tested_base_sha": "dc612405c5b58a857142bbe3d063c1bf97e8253a",
+      "tree_sha": "d12dfda66271787c3a529ed41f2599cab00d4fdc",
+      "source_attempt_id": "01a0bf32-9134-7b06-be97-2b3648fb0430",
+      "status": "clarification"
+    }
+  ],
+  "gate": [
+    {
+      "run_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1",
+      "visit_sequence": 87,
+      "node_id": "implementation_clarification_wait",
+      "expected_event_kind": "comment",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "issue_id": "e75aad25-c32f-4c23-8184-b4b38388a631",
+      "human_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+      "question_id": "workflow:2a653831-c1ec-4db7-972a-d0d08ac0a3d8:e75aad25-c32f-4c23-8184-b4b38388a631:run:1:sac-182-real-app-proof-capability-v1",
+      "pr_number": 137,
+      "head_sha": "e04d76cbe32f72c9390c95b6ef33623ddfa2db26",
+      "base_sha": "dc612405c5b58a857142bbe3d063c1bf97e8253a",
+      "state": "open",
+      "decision_delivery_id": null,
+      "decision_outcome": null,
+      "opened_at": "2026-09-20T14:33:09.829Z",
+      "decided_at": null
+    }
+  ],
+  "question": {
+    "id": "92c719cf-de06-445e-a2e8-754281451632",
+    "body": "Can the supervisor provide and rerun this attempt with an approved temporary proof capability that gives the real BettaView and ReviewContinuation Workers their required secrets, session/service/Workflow bindings, scoped GitHub/Linear transports, signed Linear webhook delivery to the temporary ingress, and safe fixture operations for head advance plus an unlinked pull request?\n\nThe current temporary publisher exposes only D1/R2/assets, while the safe adapter is a separate one-PR/one-issue interface. A human reply alone cannot add these capabilities, and a stub or direct adapter write would violate the review.\n\nReply here to continue implementation.",
+    "createdAt": "2026-09-20T14:33:09.348Z",
+    "user": {
+      "id": "f010429f-7734-4f3f-9b4b-13a4abb9b4ab"
+    },
+    "issue": {
+      "id": "e75aad25-c32f-4c23-8184-b4b38388a631"
+    }
+  },
+  "verifiedSupport": {
+    "environmentConfig": "src/implementation-environment.ts:24 accepts only d1/r2; upload:172 provisions control secret plus D1/R2",
+    "appBindings": "src/implementation-environment-worker.ts:48 passes D1/R2/ASSETS only",
+    "providerOperations": "src/implementation-provider-test.ts call permits one fixture and scoped read/review/reply/move/proof/events; no temporary-app transport or head advance/unlinked fixture operation",
+    "featureRequirement": "Cloud-authored src/review-continuation-entrypoint.ts uses WorkerEntrypoint, REVIEW_CONTINUATION_SECRET, ORCHESTRATION_WORKFLOW, GitHub/Linear clients. BettaView config requires GitHubSession and service bindings."
+  }
+}
