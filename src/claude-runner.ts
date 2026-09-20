@@ -13,6 +13,10 @@ import type { CapabilityClaims } from "./capability-auth.ts";
 const response = (body: Record<string, unknown>, status = 200): Response =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
+class ClaudeReadRejected extends Error {}
+const readRejections = new Set(["invalid review line range", "unsupported review search flag",
+  "invalid review search pattern", "unsupported read-only review arguments", "read exceeds limit"]);
+
 export class ClaudeRunner {
   private readonly dependencies: {
     db: D1Database; store: ClaudeReviewStore; sandboxes: SandboxFactory;
@@ -74,6 +78,11 @@ export class ClaudeRunner {
         if (secret) diagnostic = diagnostic.split(JSON.stringify(secret).slice(1, -1)).join("[REDACTED]");
       }
       recordCaughtError(JSON.parse(diagnostic), `src/claude-runner.ts:handle:${operation}`);
+      if (error instanceof ClaudeReadRejected) {
+        // The original request and reader stack are durable before the model
+        // receives an explicit tool error. It can correct the read in this turn.
+        return response({ isError: true, text: `Read rejected: ${error.message}. Use the documented read syntax and smaller line ranges.` });
+      }
       const safe = error instanceof ClaudeReviewError ? error : new ClaudeReviewError("review_failure");
       await this.dependencies.store.fail(claims.attemptId, safe.causeCode, safe.retryNotBefore);
       await this.dependencies.db.prepare("UPDATE agent_attempts SET result_detail = ? WHERE attempt_id = ? AND state = 'running'")
@@ -252,6 +261,18 @@ export class ClaudeRunner {
     await sandbox.writeFile(requestPath, JSON.stringify({ state, command: body.command }));
     const process = await sandbox.exec(["node", "/deos/bin/claude-review-read.mjs", "--request-file", requestPath], { timeout: 15_000 });
     const output = await process.output({ encoding: "utf8", maxBytes: 262144, timeout: 20_000 });
+    if (output.exitCode === 2 && !output.truncated && !output.timedOut) {
+      let rejected: unknown;
+      try { rejected = JSON.parse(output.stdout); }
+      catch (cause) {
+        throw Object.assign(new Error("Invalid Claude reader rejection", { cause }), { command: body.command, ...output });
+      }
+      if (typeof rejected === "object" && rejected !== null && "code" in rejected &&
+          rejected.code === "review_read_rejected" && "message" in rejected &&
+          typeof rejected.message === "string" && readRejections.has(rejected.message)) {
+        throw Object.assign(new ClaudeReadRejected(rejected.message), { command: body.command, ...output });
+      }
+    }
     if (output.exitCode !== 0 || output.truncated || output.timedOut) {
       throw Object.assign(new Error("Claude read tool did not complete successfully"), {
         command: body.command, exitCode: output.exitCode, truncated: output.truncated,
