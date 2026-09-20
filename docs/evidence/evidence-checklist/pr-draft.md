@@ -21,6 +21,13 @@ skip, 12 local-port permission failures and two Node 26 native assertions.
 [Executable local proof](local-regression.md) and [failure log](failures.md).
 CI on Node 22 and a Cloudflare implementation-only canary remain pending.
 
+An offline replay now also passes against the actual SAC-246 saved demo. The
+changed runtime/publisher retained all fourteen original images, verified their
+hashes and sixteen checklist links, and rejected two incomplete submissions
+before publication. See [replay proof](demo-replay-proof.md) and the
+[local gallery](demo-replay/index.html). Checklist responses are replay fixtures
+and GitHub writes use a local sink; this is not a new cloud-agent run.
+
 The [earlier canary evidence](https://github.com/sachinkundu/deos-sample-project/pull/45#issuecomment-5727967312)
 documents the incident, not validation of this fix. The next canary must show the
 Cloudflare author retaining and publishing the complete evidence without a

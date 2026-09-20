@@ -57,3 +57,21 @@ implementation-only canary. The Cloudflare author must fill the checklist and
 publish both evidence sets without a supervisor supplement. Existing frozen
 workflow prompts do not upgrade automatically. No live deployment or canary was
 performed during preparation of this fix.
+
+## Existing-demo replay, 20 September
+
+Ran `scripts/replay-evidence-checklist.mjs` against the original SAC-246 plan,
+eleven main-flow captures, three distinct response captures, and archived D1/R2
+and cleanup receipts. No new implementation or application execution was needed.
+
+The real runtime and publication functions retained all fourteen images with
+matching SHA-256 hashes. Seven checklist items and sixteen published evidence
+links were verified. Two deliberate negative cases (unfinished failure scenario
+and lost earlier evidence link) were rejected before any output write. Repeated
+publication reused the same output without additional writes. No unexpected
+error occurred in this replay.
+
+This is an offline real-artifact replay. The author checklist answers are replay
+fixtures; GitHub writes use a local sink. It does not prove that a Cloudflare
+agent follows the new instructions, nor that live GitHub publication succeeds.
+See demo-replay-proof.md and demo-replay/report.json.
