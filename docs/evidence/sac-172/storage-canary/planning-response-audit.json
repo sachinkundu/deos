@@ -1,0 +1,25 @@
+{
+  "attemptId": "01a0afe3-f0a7-7d12-83f7-8a3906182381",
+  "completedCommandCount": 12,
+  "nonzeroExits": [
+    {
+      "id": "item_1",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"pwd && rg --files -g 'AGENTS.md' -g '\"'!node_modules'\"' -g '\"'!vendor'\"' && git status --short --branch && rg --files openspec/changes/sac-246 /deos/output 2>/dev/null\"",
+      "aggregated_output": "/deos/workspace/repository\n",
+      "exit_code": 1,
+      "status": "failed"
+    }
+  ],
+  "missingOptionalLibrary": [
+    {
+      "id": "item_7",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"command -v textstat || true; python - <<'PY'\ntry:\n import textstat\n print('textstat-python', textstat.__version__ if hasattr(textstat, '__version__') else 'installed')\nexcept Exception as exc:\n print('textstat-python unavailable:', exc)\nPY\nnpm root -g 2>/dev/null\"",
+      "aggregated_output": "textstat-python unavailable: No module named 'textstat'\n/usr/local/lib/node_modules\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  ],
+  "providerErrors": []
+}

@@ -1,0 +1,8 @@
+{
+  "stack": "Error: Durable Object reset because its code was updated.\n    at TimePriorityQueue.remove (index.js:24881:23)\n    at doWrapper (index.js:24104:39)\n    at async ContextImpl.do (index.js:24140:14)\n    at async ContextImpl.wrapper (index.js:22840:16)\n    at async runFunction (index.js:16047:35)\n    at async runWrappedFunctionWithObservability (index.js:16048:20)\n    at async runObservableFunction (index.js:15957:16)\n    at async runFn (index.js:7140:14)\n    at async index.js:15973:16",
+  "message": "Durable Object reset because its code was updated.",
+  "remote": true,
+  "retryable": true,
+  "durableObjectId": "1eefe63d444388f671645f9171048bbd510950e203f36b635c160683d4e3e228",
+  "name": "Error"
+}

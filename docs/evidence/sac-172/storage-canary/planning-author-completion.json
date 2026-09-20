@@ -1,0 +1,155 @@
+{
+  "attemptId": "01a0afd4-7bad-7dfb-b784-382731adc553",
+  "artifactReceipts": [
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "transcript.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/native-1/transcript.jsonl",
+      "sha256": "8b3247b48e3adbed22a82aa4f0fd4231dd344da64db7e2961b4d2ce76a4aa9d2",
+      "byte_size": 167273
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "result.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/native-1/result.json",
+      "sha256": "7eacced90e793088f177758c048e8b8b1693543d691f7d85c1dc858d30b53aef",
+      "byte_size": 343
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "patch.diff",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/native-1/patch.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byte_size": 0
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "validation.txt",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/native-1/validation.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byte_size": 0
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "trace-validation.txt",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/native-1/trace-validation.txt",
+      "sha256": "b21d9ad8e6da58e6317cba52cf6412631b9afaf1ebd8900e3c328084225668e3",
+      "byte_size": 231
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "transcript.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/native-2/transcript.jsonl",
+      "sha256": "be3eccb7bc82315e78f93cd491c7fc07d6570bb55eddacbe6db3c9b15b5489fd",
+      "byte_size": 214578
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "result.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/native-2/result.json",
+      "sha256": "7d90f41e64e74d1d0ab53810e734b49bf6f660b8c73ba30d14061d2b1c06c86d",
+      "byte_size": 238
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "patch.diff",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/native-2/patch.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byte_size": 0
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "validation.txt",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/native-2/validation.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byte_size": 0
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "trace-validation.txt",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/native-2/trace-validation.txt",
+      "sha256": "0cf04570cd5998764cb5712849bca98371d7ad232dcd9fc2b43870dcfcd14da1",
+      "byte_size": 67
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "transcript.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/transcript.jsonl",
+      "sha256": "c692151f205c300cd9883282d7abb165e37a22d2321d8ade93c71de7c7f47c03",
+      "byte_size": 505254
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "result.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/result.json",
+      "sha256": "4be2a991bd342cb7dc89330eb4bacc1438be90265f73c6ca201288dcbfcd64ca",
+      "byte_size": 577
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "patch.diff",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/patch.diff",
+      "sha256": "c20475a457da70a95d9f5e0340ca392fb93392a8d16af0e32365a850f67df0f4",
+      "byte_size": 8323
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "validation.txt",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/validation.txt",
+      "sha256": "79d536a30deec679f4ba33e3926ef98f0d69197d377855f754f8e52b4936747e",
+      "byte_size": 2565
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "logical_name": "author-completion.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0afd4-7bad-7dfb-b784-382731adc553/author-completion.json",
+      "sha256": "8efdfedb1789d903973066cb36700cb0412698b6581ef363965cfdd627ee5e96",
+      "byte_size": 929
+    }
+  ],
+  "completedCommandCount": 22,
+  "nonzeroCommandExits": [],
+  "providerErrors": [],
+  "trustedCompletion": {
+    "version": 1,
+    "attemptId": "01a0afd4-7bad-7dfb-b784-382731adc553",
+    "change": "sac-246",
+    "sessionId": "01a0afd4-a619-7cb3-a9f6-f269914c82af",
+    "maximumRepairs": 2,
+    "repairCount": 0,
+    "outcome": "passed",
+    "rounds": [
+      {
+        "round": 0,
+        "kind": "initial",
+        "checkedAt": "2026-09-17T15:00:08.735Z",
+        "ok": true,
+        "allowedPaths": "passed",
+        "strictOpenSpec": "passed",
+        "whitespace": "passed",
+        "readability": "passed",
+        "changedPaths": [
+          "openspec/changes/sac-246/.openspec.yaml",
+          "openspec/changes/sac-246/proposal.md",
+          "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md"
+        ],
+        "filePaths": [
+          "openspec/changes/sac-246/.openspec.yaml",
+          "openspec/changes/sac-246/proposal.md",
+          "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md"
+        ],
+        "readabilityByFile": {
+          "openspec/changes/sac-246/proposal.md": {
+            "fleschReadingEase": 84.79,
+            "fleschKincaidGrade": 4.81
+          },
+          "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md": {
+            "fleschReadingEase": 87.05,
+            "fleschKincaidGrade": 4.15
+          }
+        },
+        "failures": []
+      }
+    ]
+  }
+}

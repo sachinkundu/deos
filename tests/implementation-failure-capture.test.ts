@@ -27,6 +27,7 @@ test("a killed supervisor's working tree and private captures survive without a 
       await finished(capture.stream);
     }
     const request = { runtimeModule: resolve("container/implementation-runtime.mjs"), cwd, runRoot, outputRoot, tempRoot,
+      runtimeStatePath:join(runRoot,'runtime-state.json'),
       runId: "run-1", attemptId: "failed-build", kind: "build", change: "sample", approvedDesignSha: base, testedBaseSha: base };
     const script = join(runRoot, "capture.mjs"), requestFile = join(runRoot, "request.json");
     await writeFile(script, implementationFailureProgram); await writeFile(requestFile, JSON.stringify(request));
@@ -39,8 +40,15 @@ test("a killed supervisor's working tree and private captures survive without a 
     assert.match(patch, /recovered work/); assert.match(patch, /GIT binary patch/);
     assert.equal(await readFile(join(outputRoot, "transcript.jsonl"), "utf8"), "partial transcript\n");
     assert.equal(await readFile(join(outputRoot, "validation.txt"), "utf8"), "partial validation\n");
+    const proof = [{id:'main-flow',kind:'browser_image'}, {id:'correction',kind:'browser_image'}];
+    const checklist = {version:1,planSha256:'plan',items:[{id:'saved-note',state:'complete',evidenceIds:['main-flow']}],history:[]};
+    await writeFile(request.runtimeStatePath,JSON.stringify({proof,reviewProofIds:['main-flow'],evidenceChecklist:checklist}),{mode:0o600});
     await writeFile(join(outputRoot, "transcript.jsonl"), "already finalized\n");
     execFileSync(process.execPath, [script, requestFile]);
+    const resumed = JSON.parse(await readFile(join(outputRoot,'implementation-recovery.json'),'utf8'));
+    assert.deepEqual(resumed.proof,[{...proof[0],audience:'review'}]);
+    assert.deepEqual(resumed.proofArchive,proof);
+    assert.deepEqual(resumed.evidenceChecklist,checklist);
     assert.equal(await readFile(join(outputRoot, "transcript.jsonl"), "utf8"), "already finalized\n");
     await symlink("/etc/passwd", join(cwd, "escape"));
     assert.throws(() => execFileSync(process.execPath, [script, requestFile], { stdio: "pipe" }), /Unsupported candidate mode/);

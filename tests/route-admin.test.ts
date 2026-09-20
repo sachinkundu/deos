@@ -6,6 +6,31 @@ import type { LinearCapabilityAdapter } from "../src/linear-capability.ts";
 import type { D1RepositoryRouteStore, RepositoryRouteView } from "../src/repository-routes.ts";
 import { RouteAdminError, RouteAdminService } from "../src/route-admin.ts";
 import type { LoadedWorkflowDefinition } from "../src/workflow-definition.ts";
+import { ImplementationTestDatabase, seedRun } from './helpers/implementation-fixture.ts';
+
+test('implementation selection before scheduled registration preserves frozen runs and rejects version reuse', async () => {
+  const db = new ImplementationTestDatabase();
+  try {
+    seedRun(db);
+    db.sqlite.prepare(`INSERT INTO project_workflow_policies
+      (project_id,definition_id,definition_version,definition_digest,trial_repository,start_state_name,human_gate_state_id,dispatch_enabled,updated_at,linear_project_name,github_installation_id)
+      VALUES ('project','implementation',25,?,'owner/repository','Todo','review',1,?,'Sample','123')`).run('d'.repeat(64),NOW);
+    let definition = {name:'implementation',version:41,digest:'e'.repeat(64),implementationPolicy:{}} as LoadedWorkflowDefinition;
+    const service = new RouteAdminService({...env,DB:db as unknown as D1Database},()=>new Date(NOW),{
+      linear: {implementationUser:async()=>({id:'human',active:true,isMe:false})} as unknown as LinearCapabilityAdapter,
+      loadDefinitions:async()=>({implementation:definition}),
+    });
+    const revision = Number(db.sqlite.prepare("SELECT route_revision FROM project_workflow_policies WHERE project_id='project'").get()!.route_revision);
+    assert.equal(db.sqlite.prepare("SELECT * FROM workflow_definitions WHERE version=41").get(),undefined);
+    const saved = await service.saveImplementation('operator@example.com',{projectId:'project',userId:'human',expectedRevision:revision});
+    assert.equal(saved.definitionVersion,41);
+    assert.equal(saved.dispatchEnabled,false);
+    assert.equal(db.sqlite.prepare("SELECT definition_version FROM orchestration_runs WHERE run_id='run-1'").get()!.definition_version,25);
+    definition = {...definition,digest:'f'.repeat(64)};
+    await assert.rejects(service.saveImplementation('operator@example.com',{projectId:'project',userId:'human',expectedRevision:saved.routeRevision}),/another digest/);
+    assert.equal(db.sqlite.prepare("SELECT definition_digest FROM project_workflow_policies WHERE project_id='project'").get()!.definition_digest,'e'.repeat(64));
+  } finally {db.close();}
+});
 
 const NOW = "2026-08-31T09:00:00.000Z";
 const route: RepositoryRouteView = {

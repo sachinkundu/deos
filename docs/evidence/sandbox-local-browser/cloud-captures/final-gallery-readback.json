@@ -1,0 +1,90 @@
+[
+  {
+    "scenario": "final-local-loopback-smoke-1",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-local-loopback-smoke-1.png",
+    "sha256": "880aabac8032cb2e16e5c1365db0604e5b73f75755d8ab0bdbdfcb079f4c2a8d",
+    "url": "http://127.0.0.1:8787/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "final-remote-empty-shelf-2",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-remote-empty-shelf-2.png",
+    "sha256": "91100a618be897580cbe51df7534b35e108c41609e889f6f43b9d7767d656a25",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "final-remote-save-read-refresh-delete-11",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-remote-save-read-refresh-delete-11.png",
+    "sha256": "447f004b69596844203fe85a40ccbdedfc12516845def26faf8a8a08bc9de885",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "final-remote-save-read-refresh-delete-17",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-remote-save-read-refresh-delete-17.png",
+    "sha256": "99a98a0a967fc1aff0d5c2b734b1ca6cc538094f00af526165e91011fb15332b",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "final-remote-save-read-refresh-delete-20",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-remote-save-read-refresh-delete-20.png",
+    "sha256": "7c79ae6ef2ab9f32935af9bc0298d4f4bc7034b2ca012ac79feb55f454957034",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "final-remote-fresh-context-continuity-1",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-remote-fresh-context-continuity-1.png",
+    "sha256": "3c0f079b6fbc0e040749cf8b6a07751d154a2258e6ad29238461c20186e498bb",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "final-remote-fresh-context-continuity-4",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-remote-fresh-context-continuity-4.png",
+    "sha256": "e7d7cf575fd71446899c68e7ffefb49a18453964970e9b4dcd0ccb9e15d99279",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "final-remote-validation-errors-4",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-remote-validation-errors-4.png",
+    "sha256": "6de2bc03ba32bbc2c54a9a84b354d558e4c89da703893fbcf8c0e24d0544d040",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "final-remote-validation-errors-8",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-remote-validation-errors-8.png",
+    "sha256": "f2af55205eb668d82989a9cdb84a8f77d0fb2a6b5ee329ee9feb367e8145d964",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "final-remote-literal-markup-6",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-remote-literal-markup-6.png",
+    "sha256": "120fa2d48fa73bdb26d7e6514b8f6cdbd629e6e6b43567875a8ed12abdc965e9",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  },
+  {
+    "scenario": "final-remote-capacity-failure-398",
+    "path": "/Users/sachin/code/deos-local-browser/docs/evidence/sandbox-local-browser/cloud-captures/final-remote-capacity-failure-398.png",
+    "sha256": "8ae0f1748f020dbcf11fd68ce394520d57e1353f018565365841f919fdc126f3",
+    "url": "https://deos-tmp-707e60c64357d9e1197de094.skundu.workers.dev/",
+    "status": 200,
+    "transport": "sandbox-local-chromium"
+  }
+]

@@ -1,0 +1,350 @@
+{
+  "receipts": [
+    {
+      "attempt_id": "01a0b081-92a0-79d2-9df4-8acfb32e703b",
+      "logical_name": "transcript.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b081-92a0-79d2-9df4-8acfb32e703b/transcript.jsonl",
+      "sha256": "6debd3651c3ecb12d977a199943e61a19b33c0480507ea2757b710d37c73cce3",
+      "byte_size": 949601,
+      "local": "/tmp/sac246-artifacts/c2156574302a-transcript.jsonl"
+    },
+    {
+      "attempt_id": "01a0b081-92a0-79d2-9df4-8acfb32e703b",
+      "logical_name": "result.json",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b081-92a0-79d2-9df4-8acfb32e703b/result.json",
+      "sha256": "14e346ad76b15ee174f6c30c94381f8f05d2e6ba50f6e15a04fb10bf6d98ca2f",
+      "byte_size": 2153,
+      "local": "/tmp/sac246-artifacts/8e866b98856e-result.json"
+    },
+    {
+      "attempt_id": "01a0b081-92a0-79d2-9df4-8acfb32e703b",
+      "logical_name": "patch.diff",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b081-92a0-79d2-9df4-8acfb32e703b/patch.diff",
+      "sha256": "b629c9bfd245625403553363e64c802b0b9b01acc9ba5c249c8fd9ce6ca2a844",
+      "byte_size": 195459,
+      "local": "/tmp/sac246-artifacts/8fca3aaafe73-patch.diff"
+    },
+    {
+      "attempt_id": "01a0b081-92a0-79d2-9df4-8acfb32e703b",
+      "logical_name": "validation.txt",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b081-92a0-79d2-9df4-8acfb32e703b/validation.txt",
+      "sha256": "11b061b6f8b24e60b570932e38fb3c469bc9167d248dcaa09fdb3c915a926acf",
+      "byte_size": 1445,
+      "local": "/tmp/sac246-artifacts/02bd3dd8c71d-validation.txt"
+    },
+    {
+      "attempt_id": "01a0b081-92a0-79d2-9df4-8acfb32e703b",
+      "logical_name": "implementation-diagnostics.jsonl",
+      "r2_key": "runs/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/attempts/01a0b081-92a0-79d2-9df4-8acfb32e703b/implementation-diagnostics.jsonl",
+      "sha256": "f5822e47bcf9df05dbfa57d59fc163c64d0af452c9dacd042e8316f5624e36ed",
+      "byte_size": 859910,
+      "local": "/tmp/sac246-artifacts/36cda995f8f3-implementation-diagnostics.jsonl"
+    }
+  ],
+  "completedCommandCount": 34,
+  "nonzeroCommands": [
+    {
+      "id": "item_11",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'python - <<'\\\\''PY'\\\\''\nimport json\nfrom pathlib import Path\np=Path('\\\\''/deos/output/requests/task-6.2-active.json'\\\\'')\np.write_text(json.dumps({'\\\\''action'\\\\'':'\\\\''task'\\\\'','\\\\''taskId'\\\\'':'\\\\''6.2'\\\\'','\\\\''state'\\\\'':'\\\\''active'\\\\''}, indent=2)+'\\\\''\\\\n'\\\\'')\nPY\ndeos-implementation /deos/output/requests/task-6.2-active.json\nfind build dist -maxdepth 2 -type f -print -exec wc -c {} \\\\;'\"",
+      "aggregated_output": "{\"changed\":false,\"taskId\":\"6.2\",\"state\":\"active\",\"text\":\"6.2 Publish the fixed build to the supported temporary Worker environment with exactly one D1 binding, one R2 binding, and built assets, apply the migration, and verify the API does not expose or route to production resources.\",\"completed\":26,\"total\":32,\"tasksSha\":\"f28c4c8d54b56045515b8977be9b34702bf3077f38101c33c24429fdab90c27f\",\"observedAt\":\"2026-09-17T17:56:28.295Z\"}\nfind: 'build': No such file or directory\nfind: 'dist': No such file or directory\n",
+      "exit_code": 1,
+      "status": "failed"
+    }
+  ],
+  "providerErrors": [],
+  "failedOperations": [],
+  "finalOperations": [
+    {
+      "requestId": "browser-proof-css-fix-1",
+      "action": "demo",
+      "fingerprint": "bb5c000652967f48d033f5b78c1caeb3fbc8b6699cd0e1139a5181e9091c7339",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:06:40.197Z",
+      "lastActivityAt": "2026-09-17T18:08:28.483Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:06:40.204Z",
+      "progress": {
+        "event": "demo_completed",
+        "collectionId": "66dd9f02-140c-48b8-89a6-9cd23908d260"
+      },
+      "result": {
+        "collectionId": "66dd9f02-140c-48b8-89a6-9cd23908d260",
+        "captures": [
+          {
+            "scenarioId": "empty-shelf",
+            "stepIndex": 1,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:d5e0de4e64c465e859ff4decf73eda70963b5f896d49ea759f6aaffddc333163:c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/d5e0de4e64c465e859ff4decf73eda70963b5f896d49ea759f6aaffddc333163/browser.png",
+              "caption": "The deployed one-screen shelf opens empty, with create, title list, and reader panels visible without a login.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 10,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:f688b063b18f126ad467d1ea50c256a0b82993e5f7a6e894419d6abb26c03baa:f88e58696cdbf25f1b71aa5b67550ebe2435558d6f8c687ae552ab25cdc6a44f",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f88e58696cdbf25f1b71aa5b67550ebe2435558d6f8c687ae552ab25cdc6a44f/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/f688b063b18f126ad467d1ea50c256a0b82993e5f7a6e894419d6abb26c03baa/browser.png",
+              "caption": "Two cloud-backed snippets are listed, and the selected Sign-off shows its own Kind regards. body.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "f88e58696cdbf25f1b71aa5b67550ebe2435558d6f8c687ae552ab25cdc6a44f",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-f88e58696cdbf25f1b71aa5b67550ebe2435558d6f8c687ae552ab25cdc6a44f.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 13,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:b3a9c8cf768d1534134a7dac70962a71f2d6db71733546a29d374074c47536e9:323aaab5c380d0e5a8b3bf70c1c69ec620efc23ab523503fcffad2b8e157d3ad",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/323aaab5c380d0e5a8b3bf70c1c69ec620efc23ab523503fcffad2b8e157d3ad/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/b3a9c8cf768d1534134a7dac70962a71f2d6db71733546a29d374074c47536e9/browser.png",
+              "caption": "Selecting Greeting switches the same-screen reader to Hello, team! while both titles remain listed.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "323aaab5c380d0e5a8b3bf70c1c69ec620efc23ab523503fcffad2b8e157d3ad",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-323aaab5c380d0e5a8b3bf70c1c69ec620efc23ab523503fcffad2b8e157d3ad.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 18,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:b37c45588bb66f6fdac13080385caf51aaceb1455c24f2d538df4719e9673e9a:38a406e40320274790b52fe15de77d86f1f8d046bbf35c846b1410846c64b1dd",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/38a406e40320274790b52fe15de77d86f1f8d046bbf35c846b1410846c64b1dd/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/b37c45588bb66f6fdac13080385caf51aaceb1455c24f2d538df4719e9673e9a/browser.png",
+              "caption": "After a page reload, both titles return from cloud storage and Sign-off still opens with Kind regards.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "38a406e40320274790b52fe15de77d86f1f8d046bbf35c846b1410846c64b1dd",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-38a406e40320274790b52fe15de77d86f1f8d046bbf35c846b1410846c64b1dd.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 23,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:7da3a19a6e38cf8d972956a2cb2eea04872998b311de5d6dfffc87cfea4fdc95:ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/7da3a19a6e38cf8d972956a2cb2eea04872998b311de5d6dfffc87cfea4fdc95/browser.png",
+              "caption": "After deleting Sign-off, Greeting remains listed and readable with Hello, team!.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281.png"
+          },
+          {
+            "scenarioId": "fresh-context-continuity",
+            "stepIndex": 3,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:fb27864a6ffd52f5202369c94a6a6ab15f1dbc862890e94a9ee4ce92e068afaa:ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/fb27864a6ffd52f5202369c94a6a6ab15f1dbc862890e94a9ee4ce92e068afaa/browser.png",
+              "caption": "A fresh browser context rebuilds the unchanged shelf from cloud data: Greeting is readable and deleted Sign-off is absent.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281.png"
+          },
+          {
+            "scenarioId": "bad-input",
+            "stepIndex": 4,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:e443e5c12223ba796d2c800b60065b4a24c8f580753137f4e59138dae15758fe:7b2596b4ff4162e61b6d601b35f8e091cb24381bcd5367a4b05edc11a412d205",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/7b2596b4ff4162e61b6d601b35f8e091cb24381bcd5367a4b05edc11a412d205/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/e443e5c12223ba796d2c800b60065b4a24c8f580753137f4e59138dae15758fe/browser.png",
+              "caption": "Submitting text without a title shows a clear title-required error and leaves the saved shelf unchanged.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "7b2596b4ff4162e61b6d601b35f8e091cb24381bcd5367a4b05edc11a412d205",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-7b2596b4ff4162e61b6d601b35f8e091cb24381bcd5367a4b05edc11a412d205.png"
+          },
+          {
+            "scenarioId": "bad-input",
+            "stepIndex": 9,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:d11d08724d18d88eda3c21624f25be16eb7297caff106e1d1b7b27fb5c03128d:3198eba23a5104a23127de79094aaad9149ab3f6473253d046167cb7a5682665",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/3198eba23a5104a23127de79094aaad9149ab3f6473253d046167cb7a5682665/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/d11d08724d18d88eda3c21624f25be16eb7297caff106e1d1b7b27fb5c03128d/browser.png",
+              "caption": "Submitting whitespace-only text shows a clear text-required error and adds no snippet.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "3198eba23a5104a23127de79094aaad9149ab3f6473253d046167cb7a5682665",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-3198eba23a5104a23127de79094aaad9149ab3f6473253d046167cb7a5682665.png"
+          },
+          {
+            "scenarioId": "plain-text-markup",
+            "stepIndex": 7,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:b8896e1973b828912010a5f5297296b7f4e16bf6e5ee3ff0ddbd04c6cb81dcf0:c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/b8896e1973b828912010a5f5297296b7f4e16bf6e5ee3ff0ddbd04c6cb81dcf0/browser.png",
+              "caption": "Markup-looking content is displayed literally as <b>Hello</b> in the plain-text reader.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe.png"
+          }
+        ]
+      },
+      "finishedAt": "2026-09-17T18:08:28.483Z",
+      "observedAt": "2026-09-17T18:08:28.984Z",
+      "inactiveForMs": 501
+    },
+    {
+      "requestId": "review-storage-correspondence-1",
+      "action": "check",
+      "fingerprint": "936d1bbb1524467f7f69eb65c1007242c8463946a2261cb76857dcfabbb28554",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:10:39.598Z",
+      "lastActivityAt": "2026-09-17T18:10:42.730Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:10:39.679Z",
+      "commandDeadline": "2026-09-17T18:20:39.679Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 429
+      },
+      "result": {
+        "command": "'node' '/deos/output/requests/verify-final-storage.mjs'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "Real temporary D1/R2 correspondence\n- Deployed API lists 2 active snippets: Greeting and Markup sample; deleted Sign-off is absent.\n- D1 has 2 active index rows, each with one immutable R2 object key.\n- R2 lists 2 objects, exactly matching the active D1 keys; no extra object remains for Sign-off.\n- Greeting: 12 UTF-8 bytes read from R2 as \"Hello, team!\".\n- Markup sample: 12 UTF-8 bytes read from R2 as literal \"<b>Hello</b>\".\n",
+        "stderr": "",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-17T18:10:42.730Z",
+      "observedAt": "2026-09-17T18:10:42.790Z",
+      "inactiveForMs": 60
+    }
+  ],
+  "result": {
+    "outcome": "completed",
+    "summary": "Implemented SAC-246 and completed all 32 OpenSpec tasks. The one-screen Worker app uses D1 for snippet metadata/lifecycle state and R2 for exact text bodies. Saved checks passed: formatting, TypeScript, strict OpenSpec validation, production build, and all 16 tests. After a CSS hidden-state issue was found during visual inspection, it was fixed, rebuilt, republished, and the complete remote demo was rerun successfully. Selected proof includes six inspected screenshots covering save/read, refresh persistence, deletion, fresh-context continuity, validation, and literal markup, plus one Showboat record verifying matching API, D1, and R2 data. Implementation follows Cloudflare\u2019s [D1 prepared statements](https://developers.cloudflare.com/d1/worker-api/prepared-statements/), [R2 Workers API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/), and [static asset binding](https://developers.cloudflare.com/workers/static-assets/binding/) documentation. Live release has not begun; the PR remains unmerged. The DEOS publication lifecycle will retain the selected proof before retiring the temporary environment.",
+    "assumptions": [
+      "The accepted human clarification supersedes the earlier Cloudflare 1042 blocker and authorizes using the repaired temporary environment.",
+      "The local relay 1016 failure is not a prerequisite, as clarified; all final behavior proof used the remote temporary Worker.",
+      "DEOS will retire the run-owned Worker, D1 database, and R2 bucket after publishing durable PR proof; no direct cleanup capability is exposed to the author."
+    ],
+    "providerReceipts": [
+      "publish_environment remote-css-fix-1: temporary Worker deos-tmp-fd06b452d4155750a21db179 with DB, BODIES, and built assets",
+      "migration-resume-1: migration 0001_snippet_shelf applied successfully",
+      "browser-proof-css-fix-1: collection 66dd9f02-140c-48b8-89a6-9cd23908d260 completed without console errors",
+      "review-storage-correspondence-1: two active API/D1 records matched two R2 keys, hashes, sizes, and exact bodies",
+      "select-final-proof-1: six browser images and one review Showboat record selected"
+    ],
+    "question": null
+  },
+  "validation": "SAC-246 implementation validation\n\nSaved implementation checks (unchanged Worker/API logic):\n- npm run format:check: PASS\n- npm run typecheck: PASS\n- npm test: PASS (16 tests)\n- npm run build: PASS\n- openspec validate sac-246 --strict --no-interactive: PASS\n\nFinal CSS visibility correction:\n- npm run format:check: PASS\n- npm run build: PASS\n- Final remote browser collection: PASS (5 fresh-context scenarios, 9 captures, HTTP 200, no console errors)\n\nReal temporary Cloudflare behavior:\n- publish_environment: PASS; one DB binding, one BODIES binding, built assets, temporary environment only\n- migration 0001_snippet_shelf: PASS\n- direct deployed API save/list/read/delete/validation checks: PASS\n- final API/D1/R2 correspondence check: PASS\n- selected proof: 6 reviewed browser images and 1 review Showboat record\n\nLimitations and lifecycle:\n- The full automated suite was not rerun after the final change because that edit only restored standards-based [hidden] CSS behavior; formatting, build, and the complete remote browser collection were rerun.\n- The accepted clarification explicitly removed the failed local relay as a prerequisite; all final behavior proof used the repaired remote temporary Worker.\n- The DEOS completion/publishing lifecycle retains selected proof in the implementation PR before retiring the run-owned temporary Worker, D1 database, and R2 bucket. No live release, merge, or production data change was performed.\n"
+}

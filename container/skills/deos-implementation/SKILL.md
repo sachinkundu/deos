@@ -84,21 +84,22 @@ A human-requested revision updates the same PR without another automatic review.
   entrypoint, D1/R2 bindings, or explicit `target: "local"` uses the local runtime.
   The returned `status.preview.target` distinguishes these paths. Do not serve the whole repository:
   unnecessary file watchers previously exhausted the runtime.
-- Check the app from the shell at `http://127.0.0.1:8787`. Use the assigned browser
-  to inspect the public preview URL. Shell fetch to a Quick Tunnel or hosted
-  Pages URL may be blocked by egress even when browser access works. Use browser
-  results and publisher read-back for hosted reachability; retain a shell failure
-  in diagnostics without treating it alone as an app failure.
+- Check the app from the shell or assigned browser at `http://127.0.0.1:8787`.
+  Chromium runs inside this sandbox. Local preview needs no public URL or tunnel.
+  For real D1/R2 proof, publish the temporary environment and use `target: remote`;
+  Chromium opens the deployed app through its owned Worker URL. `target: hosted`
+  opens a checked static deployment. Other outbound destinations retain the saved
+  policy. Use browser results and publisher read-back for hosted reachability.
   Bound network probes explicitly, such as `curl --connect-timeout 5 --max-time 20`,
   so an unresponsive development server does not consume the build deadline.
-- A tunnel may need time to become ready. Retry the same preview operation so
-  the service can reconcile it. Do not allocate competing preview processes.
-  A public relay failure leaves a healthy local preview running. Repeat the
-  same settings to reuse it; do not restart the app or erase local test data.
+- Repeat the same preview settings to reuse the running local app. Do not
+  allocate competing processes or erase local test data to reconnect a browser.
 
 # Collect demonstrations
 
-The browser runs in Cloudflare's browser service, separately from this sandbox.
+The browser is headless Chromium inside this sandbox, controlled over a local pipe.
+No Cloudflare Browser Rendering session or preview tunnel is allocated. Browser
+screenshots still pass through trusted capture and durable evidence publication.
 Save one scenario list and execute it with `action: demo` and a stable `requestId`.
 Use `--wait` or retrieve its operation receipt. Repeating the same request returns
 that operation, never another collection. Use a new ID only for an intentional
@@ -107,12 +108,10 @@ fresh browser context. Prepare independent server-side fixtures as needed;
 resetting browser state does not reset databases or provider resources.
 If a browser operation loses its response, its action may already have run.
 Do not retry that click or submit on its own. Reset server fixtures when needed
-and rerun the saved scenario list from zero. If the service confirms the assigned
-browser has ended, that reset can replace it once with the same allowed origins.
-The code, saved work and earlier workflow stages stay in place. A second session
-loss or uncertain allocation needs a concrete help request with the original error.
-Session diagnostics include provider inventory and the available close reason;
-do not infer that a key or application bug caused a browser service closure.
+and rerun the saved scenario list from zero. If the local browser process has
+ended, report the original error and preserve the work for a fresh attempt.
+Reset replaces a live browser context; it does not silently replay work after
+a process crash. Diagnostics identify the local transport and browser version.
 Await the entire collection before editing code, harness, preview, or steps.
 After an action fails, correct the cause and rerun from the starting state.
 Use screenshots of meaningful outcomes, inspect them, and describe what they show.
@@ -122,6 +121,33 @@ lists the selected collection's image paths. Retrieve these instead of repeating
 successful scenarios when stdout is lost. Do not search protected runtime folders.
 ImageMagick tools such as `montage` are not installed. Inspection does not need
 composite images; keep the original browser captures for the PR.
+
+When `temporary-environment-v1` is listed, use `publish_environment` for real
+remote Worker/D1/R2 tests. Give it a stable `requestId`, a repository-relative
+`main` path to a bundled JavaScript ES module, optional built `assets` directory,
+and optional `d1:["DB"]` / `r2:["BUCKET"]` names (at most one each). Bundle your
+own dependencies first; the trusted service never runs build scripts with provider
+credentials. The module exports `default.fetch(request,env,ctx)`. It receives its
+assigned bindings and `env.ASSETS.fetch(request)` for uploaded assets. It cannot
+choose resource IDs, account, Worker name, credentials or production routes.
+
+Use `storage` with a stable request ID for `migrate` (an `id` plus a `statements`
+array; identical retries are safe), `query` (one SELECT with optional `params`),
+`objects` (optional cursor), `object` (key), or `request` (method, relative path,
+optional JSON body). Inspect both D1 rows and R2 objects to demonstrate real
+storage. HTTP requests return status and body; assert the expected status yourself.
+Use app endpoints for fixture resets. Do not modify the reserved migration table.
+Call with `--wait` before dependent work. If publication fails, inspect the saved
+error then explicitly retry the same bundle using a new local operation ID;
+the service reconciles the same provider resources. Do not repeat a migration
+with changed SQL under the same migration ID. No account token is available.
+
+Publish before opening the browser and use `target:"remote"` in demos. Keep the
+app fixed during a demo collection. Each new author attempt gets fresh resources;
+restore schema/fixtures as needed. Cloud review and response finish before DEOS
+deletes the temporary environment after publishing the PR and durable GitHub
+screenshots. State in the PR that the live environment is retired. The screenshots
+and logs remain. This is test deployment, not a production release.
 
 When `static-preview-v1` is listed in the input capabilities, a finished static
 build can use `{"action":"publish_preview","assets":"dist"}`. The service
@@ -181,12 +207,33 @@ test results and agent discussion in transcripts. The workflow does not judge
 your checks, Claude's findings, or image quality. Final approval stays human.
 
 After the final collection, use `action: status` to list saved proof IDs and
-captions, then submit `{"action":"select_proof","ids":["..."]}` with every image
-and Showboat record you want in the PR, in presentation order. This replaces the
-previous selection, so include all intended proof, not only the newest capture.
+captions, then submit `{"action":"select_proof","ids":["..."]}` with the images
+and Showboat records to add in presentation order. Earlier selected evidence is
+carried forward. Completed demo collections add images; failed collections never
+erase earlier ones. Use `omit: [{"id":"...","reason":"..."}]` to remove an obsolete
+item from presentation explicitly. Its original record remains saved, and the
+omission reason is retained for review.
 `proofScenarios` in status groups captures by scenario and shows their selection.
 Review this map before handoff: keep the before/after states needed to show each
 claimed transition and recovery. The map is descriptive, not a coverage gate.
 Omit obsolete or failed exploratory records from that selection; their original
 bytes and errors remain in diagnostics. Repeat selection if you collect new
 proof. Selecting evidence is your editorial decision, not a workflow quality test.
+
+Status includes `evidenceChecklist`, with one stable item for each saved demo
+scenario. It survives author responses and retries. Update items using a saved
+request file, for example:
+
+```json
+{"action":"evidence_checklist","items":[{"id":"SCENARIO_ID_FROM_STATUS","state":"complete","evidenceIds":["PROOF_ID_FROM_STATUS"],"reason":"The saved item remains readable after refresh."}]}
+```
+
+Use `pending` while unfinished, `complete` with evidence links and an explanation,
+or `not_applicable` with the explicit scope reason for the reviewer to assess.
+Update an existing item rather than removing it. All changes retain history.
+After selecting the final proof, read status and fix each `evidenceProblems`
+entry before handoff. Publication checks that every saved scenario is accounted
+for and all referenced images or review Showboat records will be published.
+It does not judge image quality, set a screenshot count, or certify that an
+author's completion or not-applicable claim is correct. Claude and the human
+reviewer make those judgments. Use needs_human for a genuine unresolved blocker.

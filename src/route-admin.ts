@@ -15,6 +15,7 @@ import {
   type RepositoryRouteView,
 } from "./repository-routes.ts";
 import { DEFAULT_WORKFLOW_DEFINITION_ID } from "./workflow-default.ts";
+import { D1OrchestrationStore } from "./orchestration-store.ts";
 import type { LoadedWorkflowDefinition } from "./workflow-definition.ts";
 
 export type RouteAdminErrorCode =
@@ -352,6 +353,9 @@ export class RouteAdminService {
     const definition=(await this.loadDefinitions()).implementation;
     if(!definition?.implementationPolicy)throw new Error('Implementation definition is unavailable');
     const now=this.now().toISOString();
+    // A newly deployed bundle can be selected before the scheduled registry
+    // runs. Register it with the same immutable digest check before its FK is used.
+    await new D1OrchestrationStore(this.env.DB).registerDefinition({definition,projectId,now});
     const candidate={...route,definition_id:definition.name,definition_version:definition.version,definition_digest:definition.digest,
       allowed_access_email:this.env.ROUTE_ADMIN_ALLOWED_EMAIL.toLowerCase(),allowed_linear_user_id:user.id,
       human_binding_revision:(route.human_binding_revision??0)+1,human_binding_checked_at:now,

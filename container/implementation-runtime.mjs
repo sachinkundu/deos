@@ -21,8 +21,10 @@ import { trustGeneratedHooks } from "./native-review-setup.mjs";
 import { originalErrorText } from "./original-errors.mjs";
 import { killProcessGroup, stopProcessGroup } from "./implementation-process.mjs";
 import { collectBrowserDemo, beginBrowserDemo, finishBrowserDemo, implementationRequestQueue } from "./implementation-browser-demo.mjs";
+import { LocalImplementationBrowser } from './implementation-local-browser.mjs';
 import { ImplementationOperations } from "./implementation-operations.mjs";
 import { previewTarget, checkedCommandArgv, proofSelectionSummary, progressSignalObservation, withPreviewTarget } from './implementation-guidance.mjs';
+import { createEvidenceChecklist, updateEvidenceChecklist, evidenceChecklistProblems } from './implementation-evidence-checklist.mjs';
 
 const ROOT = "/deos/implementation";
 const sha = (data) => createHash("sha256").update(data).digest("hex");
@@ -124,18 +126,26 @@ export async function responseCommand(response, argv, cwd, options = {}) {
     response.off("close", disconnect);
   }
 }
-export function selectReviewProof(state, ids) {
+export function selectReviewProof(state, ids, omissions = [], context = {}) {
   if (!Array.isArray(ids) || ids.some(id => typeof id !== "string") ||
       new Set(ids).size !== ids.length || ids.some(id => !state.proof.some(proof => proof.id === id)))
     throw new Error("Choose distinct proof IDs from the status response");
-  state.reviewProofIds = [...ids];
+  if (!Array.isArray(omissions) || new Set(omissions.map(item => item?.id)).size !== omissions.length ||
+      omissions.some(item => !state.proof.some(proof => proof.id === item?.id) ||
+        ids.includes(item.id) || typeof item.reason !== 'string' || !item.reason.trim()))
+    throw new Error('Omitting proof needs a known ID and an explicit reason; do not also select that ID');
+  const omitted = new Set(omissions.map(item => item.id));
+  state.reviewProofIds = [...new Set([...ids, ...(state.reviewProofIds ?? [])])]
+    .filter(id => !omitted.has(id));
+  state.proofOmissions = [...(state.proofOmissions ?? []), ...omissions.map(item => ({...context, ...item}))];
 }
 export function selectedReviewProof(state) {
   if (!state.reviewProofIds) return state.proof;
   const proofs = new Map(state.proof.map(proof => [proof.id, proof]));
   return state.reviewProofIds.flatMap(id => {
     const proof = proofs.get(id);
-    return proof ? [{ ...proof, audience: "review" }] : [];
+    if (!proof) throw new Error(`Selected evidence ${id} is missing from the saved archive`);
+    return [{ ...proof, audience: "review" }];
   });
 }
 async function checked(argv, cwd, env) {
@@ -412,7 +422,17 @@ export async function setupImplementation(job) {
   const input = JSON.parse(
     await readFile("/deos/run/implementation-input.json", "utf8"),
   );
-  const state = { checks: input.prior?.checks ?? [], proof: input.prior?.proof ?? [] };
+  const state = {
+    checks: input.prior?.checks ?? [], proof: input.prior?.proofArchive ?? input.prior?.proof ?? [],
+    ...(input.prior ? { reviewProofIds: (input.prior.proof ?? []).map(proof => proof.id) } : {}),
+    proofOmissions: input.prior?.proofOmissions ?? [],
+    evidenceChecklist: createEvidenceChecklist(input.demo?.plan ?? null, input.prior?.evidenceChecklist),
+  };
+  const localBrowser = new LocalImplementationBrowser({
+    launch: async options => (await import('playwright')).chromium.launch(options),
+    scripts: await import('/deos/bin/implementation-browser-evidence.ts'),
+    record: event => appendFile(journal,JSON.stringify({...event,attemptId:job.attemptId,occurredAt:new Date().toISOString()})+'\n'),
+  });
   const broker = async (payload) => {
     for (;;) {
       const url = `${job.capabilityUrl}/implementation`;
@@ -465,11 +485,34 @@ export async function setupImplementation(job) {
   let providerChain = Promise.resolve();
   let stateWrites = Promise.resolve();
   const persistState = () => {
-    stateWrites = stateWrites.then(() => writeFile(`${ROOT}/state.json`, JSON.stringify(state), { mode: 0o600 }));
+    const bytes = JSON.stringify(state);
+    stateWrites = stateWrites.then(async () => {
+      await writeFile(`${ROOT}/state.json.tmp`, bytes, { mode: 0o600 });
+      await rename(`${ROOT}/state.json.tmp`, `${ROOT}/state.json`);
+    });
     return stateWrites;
   };
   const browserResult = async (request, subject) => {
-    const result = await broker({ ...withPreviewTarget(request,state.preview?.target ?? (input.hostedPreview ? 'hosted' : 'local')), subject });
+    request = withPreviewTarget(request,state.preview?.target ?? (input.hostedPreview ? 'hosted' : 'local'));
+    let result;
+    if (request.action === 'browser') {
+      if (request.target === 'local') {
+        if (!preview || preview.exitCode !== null || preview.signalCode !== null || previewError)
+          throw new Error('Start the local preview before opening its browser',{cause:previewError});
+      }
+      const target = await broker({action:'local_browser_target',target:request.target,subject});
+      result = await localBrowser.command(target.origin,request);
+      if (result.imageBase64) {
+        const saved = await broker({action:'local_browser_capture',target:request.target,subject,
+          caption:request.caption,captureId:request.captureId,capture:result});
+        result.proof = saved.proof;
+      } else if (result.measurements) {
+        const document = `# Live browser measurements\n\nCaptured from ${result.url} with sandbox-local Chromium.\n\n\`\`\`bash\nLive browser layout inspection\n\`\`\`\n\n\`\`\`output\n${JSON.stringify(result.measurements,null,2)}\n\`\`\`\n`;
+        const saved = await broker({action:'showboat',subject,document,
+          command:{command:'Live browser layout inspection',exitCode:0,stdout:JSON.stringify(result.measurements),stderr:''}});
+        result.proof = saved.proof;
+      }
+    } else result = await broker({...request,subject});
     if (result.imageBase64) {
       const imagePath = `${ROOT}/browser-${result.proof.sha256}.png`;
       await writeFile(imagePath, Buffer.from(result.imageBase64, "base64"), { mode: 0o644 });
@@ -566,6 +609,8 @@ export async function setupImplementation(job) {
           recentToolErrors:state.toolErrors ?? [],
           preview:state.preview ?? input.hostedPreview ?? null,
           proofScenarios:proofSelectionSummary(state),
+          evidenceChecklist:state.evidenceChecklist,
+          evidenceProblems:state.evidenceChecklist ? evidenceChecklistProblems(state.evidenceChecklist, input.demo.plan, selectedReviewProof(state)) : [],
           checks: state.checks.map(({ command, cwd, exitCode, treeSha, testedBaseSha }) => ({ command, cwd, exitCode, treeSha, testedBaseSha })),
           operations: operations.list(),
           proofKinds: [...new Set(state.proof.map(p => p.kind))],
@@ -593,9 +638,15 @@ export async function setupImplementation(job) {
           state.task = result;
           await appendFile(journal,JSON.stringify({operation:'task',...result})+'\n');
         } else if (request.action === "select_proof") {
-          selectReviewProof(state, request.ids);
+          selectReviewProof(state, request.ids, request.omit, {attemptId:job.attemptId,occurredAt:new Date().toISOString()});
           result = { selected: selectedReviewProof(state).map(({ id, kind, caption }) => ({ id, kind, caption })),
             scenarios:proofSelectionSummary(state) };
+        } else if (request.action === 'evidence_checklist') {
+          state.evidenceChecklist = updateEvidenceChecklist(state.evidenceChecklist, request.items, state.proof,
+            {attemptId:job.attemptId,treeSha:subject.treeSha,occurredAt:new Date().toISOString()});
+          result = {checklist:state.evidenceChecklist,
+            problems:evidenceChecklistProblems(state.evidenceChecklist,input.demo.plan,selectedReviewProof(state))};
+          await appendFile(journal,JSON.stringify({operation:'evidence_checklist',...result})+'\n');
         } else if (request.action === "check") {
           if (
             !Array.isArray(request.argv) ||
@@ -661,6 +712,21 @@ export async function setupImplementation(job) {
           await appendFile(journal,JSON.stringify({operation:'check',...subject,result})+'\n');
             state.checks = recordCheck(state.checks, result, before);
           }
+        } else if (request.action === 'publish_environment') {
+          const requestPath=`${ROOT}/environment-request.json`;
+          await writeFile(requestPath,JSON.stringify(request),{mode:0o644});
+          await chmod(ROOT,0o711);
+          const capture=await command(['runuser','-u','deos-author','--','node',
+            '/deos/bin/implementation-environment-bundle.mjs',job.cwd,requestPath],job.cwd,{maxOutputBytes:8*1024*1024});
+          if(capture.exitCode!==0)throw Object.assign(new Error(`Environment bundle capture failed: ${capture.stderr}`),{result:capture});
+          result=await broker({action:'publish_environment',subject,bundle:JSON.parse(capture.stdout)});
+          state.preview=result;
+          await appendFile(journal,JSON.stringify({operation:'publish_environment',...subject,result})+'\n');
+        } else if (request.action === 'storage') {
+          const {action,requestId,...operation}=request;
+          result=await broker({action,subject,operation});
+          if(result.proof)state.proof.push(result.proof);
+          await appendFile(journal,JSON.stringify({operation:'storage',...subject,result})+'\n');
         } else if (request.action === 'publish_preview' ||
           (request.action === 'preview' && previewTarget(request,input.policy) === 'hosted')) {
           if (request.action === 'preview') localConfig(request,job.attemptId);
@@ -680,7 +746,7 @@ export async function setupImplementation(job) {
             if (!preview || preview.exitCode !== null || preview.signalCode !== null)
               throw new Error(`Preview exited: ${await readFile(`${ROOT}/preview.log`, "utf8")}`);
           },
-          connect: () => broker({ action: "preview", port: 8787 }),
+          connect: async () => ({origin:'http://127.0.0.1:8787',transport:'sandbox-local-chromium'}),
           start: async () => {
           for (const path of [config.main, config.assets?.directory].filter(
             Boolean,
@@ -785,7 +851,7 @@ export async function setupImplementation(job) {
         await persistState();
         return result;
         };
-        if (['check', 'demo'].includes(request.action))
+        if (['check', 'demo', 'publish_environment', 'storage'].includes(request.action))
           return reply(await operations.submit(withPreviewTarget(request,state.preview?.target ?? (input.hostedPreview ? 'hosted' : 'local')), execute));
         return toolQueue.run(request.action, async () => reply(await execute(request)), toolError);
     };
@@ -819,6 +885,7 @@ export async function setupImplementation(job) {
       catch (error) { if (error.code !== "EEXIST") throw error; }
       const candidate = {
         version: 1,
+        browserRuntime: 'sandbox-local-chromium-v1',
         attemptId: job.attemptId,
         kind: job.implementationKind,
         outcome: result.outcome,
@@ -833,6 +900,9 @@ export async function setupImplementation(job) {
         patchSha: sha(patch),
         checks: state.checks,
         proof: selectedReviewProof(state),
+        proofArchive: state.proof,
+        proofOmissions: state.proofOmissions,
+        evidenceChecklist: state.evidenceChecklist,
         sources,
         assumptions: result.assumptions,
         question: result.question,
@@ -847,9 +917,13 @@ export async function setupImplementation(job) {
       return candidate;
     },
     async close() {
-      await stopPreview();
+      const failures = [];
+      try { await localBrowser.close(); } catch (error) { failures.push(error); }
+      try { await stopPreview(); } catch (error) { failures.push(error); }
       server.closeAllConnections();
-      await new Promise((resolveClose) => server.close(resolveClose));
+      try { await new Promise((resolveClose,reject) => server.close(error => error ? reject(error) : resolveClose())); }
+      catch (error) { failures.push(error); }
+      if (failures.length) throw new AggregateError(failures,'Implementation runtime cleanup failed',{cause:failures[0]});
     },
   };
   return runtime;

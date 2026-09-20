@@ -48,10 +48,12 @@ class SqliteD1Statement {
 }
 
 export class ImplementationTestDatabase {
-  readonly sqlite = new DatabaseSync(":memory:");
+  readonly sqlite: DatabaseSync;
 
-  constructor() {
+  constructor(path = ':memory:') {
+    this.sqlite = new DatabaseSync(path);
     this.sqlite.exec("PRAGMA foreign_keys = ON");
+    if(this.sqlite.prepare("SELECT name FROM sqlite_master WHERE name='workflow_definitions'").get())return;
     for (const filename of readdirSync("migrations")
       .filter((name) => name.endsWith(".sql"))
       .sort()) {

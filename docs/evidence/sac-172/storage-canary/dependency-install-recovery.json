@@ -1,0 +1,31 @@
+{
+  "observedAt": "2026-09-17T17:21:51.965Z",
+  "operations": [
+    {
+      "requestId": "sac246-install-2",
+      "action": "check",
+      "fingerprint": "46351469074a19a5df77679ec2b667356713235ee46207117deb82e1dffc5fe8",
+      "state": "completed",
+      "createdAt": "2026-09-17T17:19:51.710Z",
+      "lastActivityAt": "2026-09-17T17:21:30.114Z",
+      "deadline": "2026-09-18T17:06:54.110Z",
+      "startedAt": "2026-09-17T17:19:51.711Z",
+      "commandDeadline": "2026-09-17T17:29:51.711Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 91
+      },
+      "result": {
+        "command": "'npm' 'install' '--cafile=/etc/cloudflare/certs/cloudflare-containers-ca.crt'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "\nadded 84 packages in 2m\n\n23 packages are looking for funding\n  run `npm fund` for details\n",
+        "stderr": "",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-17T17:21:30.114Z",
+      "observedAt": "2026-09-17T17:21:30.727Z",
+      "inactiveForMs": 613
+    }
+  ]
+}

@@ -1,0 +1,279 @@
+{
+  "source": "/tmp/sac246-local-browser-reader/2026-09-18T08-16-21.553Z.json",
+  "operations": [
+    {
+      "operation": "execution",
+      "requestId": "final-current-d1",
+      "action": "storage",
+      "fingerprint": "40e273775c4436bd386b176060c0ed328219cb31c2efcbb603a46f844994a7f6",
+      "state": "completed",
+      "createdAt": "2026-09-18T08:12:46.098Z",
+      "lastActivityAt": "2026-09-18T08:12:48.888Z",
+      "deadline": "2026-09-19T07:51:57.119Z",
+      "startedAt": "2026-09-18T08:12:46.175Z",
+      "result": {
+        "environment": "deos-tmp-707e60c64357d9e1197de094",
+        "result": {
+          "success": true,
+          "meta": {
+            "served_by": "v3-prod",
+            "served_by_region": "EEUR",
+            "served_by_colo": "ARN",
+            "served_by_primary": true,
+            "timings": {
+              "sql_duration_ms": 0.2955
+            },
+            "duration": 0.2955,
+            "changes": 0,
+            "last_row_id": 0,
+            "changed_db": false,
+            "size_after": 53248,
+            "rows_read": 8,
+            "rows_written": 0,
+            "total_attempts": 1
+          },
+          "results": [
+            {
+              "id": "16c67d87-faf9-40ab-99b2-bcdb21a3ce90",
+              "state": "active",
+              "reserved_bytes": 12,
+              "delete_title": null,
+              "title": "Greeting",
+              "object_key": "snippets/16c67d87-faf9-40ab-99b2-bcdb21a3ce90/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt",
+              "body_sha256": "4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b",
+              "body_bytes": 12
+            },
+            {
+              "id": "6ac0150f-732c-49af-9828-af1c7c0825cb",
+              "state": "deleted",
+              "reserved_bytes": 0,
+              "delete_title": null,
+              "title": null,
+              "object_key": null,
+              "body_sha256": null,
+              "body_bytes": null
+            },
+            {
+              "id": "530a2987-ced8-4ff6-95da-f3f701098e35",
+              "state": "active",
+              "reserved_bytes": 12,
+              "delete_title": null,
+              "title": "Markup sample",
+              "object_key": "snippets/530a2987-ced8-4ff6-95da-f3f701098e35/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt",
+              "body_sha256": "12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564",
+              "body_bytes": 12
+            }
+          ]
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/88125b899858d2b27cbd038b061a367f84c4b2c783427ff9cb6be777b28dabde/environment-storage-evidence.json",
+          "sha256": "88125b899858d2b27cbd038b061a367f84c4b2c783427ff9cb6be777b28dabde",
+          "byteSize": 1530
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:showboat:e106a7f83722e01ba837a727720d05c9cb47bc7a471e780157e11e20508d30d6",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/e106a7f83722e01ba837a727720d05c9cb47bc7a471e780157e11e20508d30d6/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/showboat.md",
+          "caption": "Real temporary Cloudflare environment: query",
+          "sha256": "e106a7f83722e01ba837a727720d05c9cb47bc7a471e780157e11e20508d30d6",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-18T08:12:48.888Z"
+    },
+    {
+      "operation": "execution",
+      "requestId": "final-current-r2",
+      "action": "storage",
+      "fingerprint": "ecc436de2762a26e5e6168dd5af9a999bef2589dd626afb0af110fdf8ace946c",
+      "state": "completed",
+      "createdAt": "2026-09-18T08:12:49.885Z",
+      "lastActivityAt": "2026-09-18T08:12:52.751Z",
+      "deadline": "2026-09-19T07:51:57.119Z",
+      "startedAt": "2026-09-18T08:12:49.888Z",
+      "result": {
+        "environment": "deos-tmp-707e60c64357d9e1197de094",
+        "result": {
+          "objects": [
+            {
+              "key": "snippets/16c67d87-faf9-40ab-99b2-bcdb21a3ce90/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt",
+              "size": 12,
+              "etag": "129252b2c73e6e9d93cbcbf103a23516"
+            },
+            {
+              "key": "snippets/530a2987-ced8-4ff6-95da-f3f701098e35/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt",
+              "size": 12,
+              "etag": "ac574127c09a7d6c4ef58434f70f7f4a"
+            }
+          ],
+          "truncated": false,
+          "cursor": null
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/313ecf143d15d2d176cfe5f3b39b1f2c5c04292f6b562757224370e1eecee096/environment-storage-evidence.json",
+          "sha256": "313ecf143d15d2d176cfe5f3b39b1f2c5c04292f6b562757224370e1eecee096",
+          "byteSize": 534
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:showboat:116699ce0ded45f7fccbe3b9cb7670096e1ed9580d1c2639effc6c77e5d9a38c",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/116699ce0ded45f7fccbe3b9cb7670096e1ed9580d1c2639effc6c77e5d9a38c/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/showboat.md",
+          "caption": "Real temporary Cloudflare environment: objects",
+          "sha256": "116699ce0ded45f7fccbe3b9cb7670096e1ed9580d1c2639effc6c77e5d9a38c",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-18T08:12:52.751Z"
+    },
+    {
+      "operation": "execution",
+      "requestId": "final-current-api",
+      "action": "storage",
+      "fingerprint": "ea084befcbd87a495c55eb96afdfce91752c1ea7f859e1f36867efac725c812d",
+      "state": "completed",
+      "createdAt": "2026-09-18T08:12:53.789Z",
+      "lastActivityAt": "2026-09-18T08:12:56.826Z",
+      "deadline": "2026-09-19T07:51:57.119Z",
+      "startedAt": "2026-09-18T08:12:53.790Z",
+      "result": {
+        "environment": "deos-tmp-707e60c64357d9e1197de094",
+        "result": {
+          "status": 200,
+          "body": "{\"snippets\":[{\"id\":\"530a2987-ced8-4ff6-95da-f3f701098e35\",\"title\":\"Markup sample\",\"createdAt\":\"2026-09-18T08:11:55.844Z\",\"deletePending\":false},{\"id\":\"16c67d87-faf9-40ab-99b2-bcdb21a3ce90\",\"title\":\"Greeting\",\"createdAt\":\"2026-09-18T08:10:59.161Z\",\"deletePending\":false}]}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c98b8669b5de0ea50c4a51512e61c553239d59b500123041c9ed3c92c4401adc/environment-request-evidence.json",
+          "sha256": "c98b8669b5de0ea50c4a51512e61c553239d59b500123041c9ed3c92c4401adc",
+          "byteSize": 498
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:showboat:a42c758adc33197a54f3855f077b269d9123e43325f91386ea54e9bafc527510",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/a42c758adc33197a54f3855f077b269d9123e43325f91386ea54e9bafc527510/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "a42c758adc33197a54f3855f077b269d9123e43325f91386ea54e9bafc527510",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-18T08:12:56.826Z"
+    },
+    {
+      "operation": "execution",
+      "requestId": "final-current-r2-greeting",
+      "action": "storage",
+      "fingerprint": "0a869971cfe0b1fa982e4270c9cd824fd059fb0959ad0c7a21477ae06cc4eca2",
+      "state": "completed",
+      "createdAt": "2026-09-18T08:13:16.190Z",
+      "lastActivityAt": "2026-09-18T08:13:19.625Z",
+      "deadline": "2026-09-19T07:51:57.119Z",
+      "startedAt": "2026-09-18T08:13:16.192Z",
+      "result": {
+        "environment": "deos-tmp-707e60c64357d9e1197de094",
+        "result": {
+          "key": "snippets/16c67d87-faf9-40ab-99b2-bcdb21a3ce90/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt",
+          "size": 12,
+          "sha256": "4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b",
+          "contentBase64": "SGVsbG8sIHRlYW0h"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/600c90c2901473fb67af4fa731044703fa400bb095e8e966d853db5cbd72a789/environment-storage-evidence.json",
+          "sha256": "600c90c2901473fb67af4fa731044703fa400bb095e8e966d853db5cbd72a789",
+          "byteSize": 502
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:showboat:7ad76c29c4ceaeb0a1cc7a8a333807fd2e33e12c87971b7eaf868871a63c87f2",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/7ad76c29c4ceaeb0a1cc7a8a333807fd2e33e12c87971b7eaf868871a63c87f2/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/showboat.md",
+          "caption": "Real temporary Cloudflare environment: object",
+          "sha256": "7ad76c29c4ceaeb0a1cc7a8a333807fd2e33e12c87971b7eaf868871a63c87f2",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-18T08:13:19.625Z"
+    },
+    {
+      "operation": "execution",
+      "requestId": "final-current-r2-markup",
+      "action": "storage",
+      "fingerprint": "0f60d4a30a5d268813aa5877d48080f178f796e7812abace7acb1807386fe280",
+      "state": "completed",
+      "createdAt": "2026-09-18T08:13:20.876Z",
+      "lastActivityAt": "2026-09-18T08:13:23.623Z",
+      "deadline": "2026-09-19T07:51:57.119Z",
+      "startedAt": "2026-09-18T08:13:20.878Z",
+      "result": {
+        "environment": "deos-tmp-707e60c64357d9e1197de094",
+        "result": {
+          "key": "snippets/530a2987-ced8-4ff6-95da-f3f701098e35/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt",
+          "size": 12,
+          "sha256": "12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564",
+          "contentBase64": "PGI+SGVsbG88L2I+"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f0f921b7237d46f5502903d06a59add20c8b26c7179a49149c1f014c42c8e6b5/environment-storage-evidence.json",
+          "sha256": "f0f921b7237d46f5502903d06a59add20c8b26c7179a49149c1f014c42c8e6b5",
+          "byteSize": 502
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+          "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:showboat:d322fc291b7626bc491fd6084bcb59047310e0af8cbda42fc2f60201c63cc501",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/d322fc291b7626bc491fd6084bcb59047310e0af8cbda42fc2f60201c63cc501/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/showboat.md",
+          "caption": "Real temporary Cloudflare environment: object",
+          "sha256": "d322fc291b7626bc491fd6084bcb59047310e0af8cbda42fc2f60201c63cc501",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-18T08:13:23.623Z"
+    },
+    {
+      "operation": "execution",
+      "requestId": "remote-storage-showboat-current-1",
+      "action": "check",
+      "fingerprint": "64c135dfb53505eafe76d9a6ae02925a816fc92d117a8f5e31db221bf90981fa",
+      "state": "completed",
+      "createdAt": "2026-09-18T08:13:39.800Z",
+      "lastActivityAt": "2026-09-18T08:13:49.365Z",
+      "deadline": "2026-09-19T07:51:57.119Z",
+      "startedAt": "2026-09-18T08:13:39.876Z",
+      "commandDeadline": "2026-09-18T08:23:39.876Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 5728
+      },
+      "result": {
+        "command": "'node' 'scripts/verify-remote-storage.mjs' '/deos/output/requests/baseline-current-d1.json' '/deos/output/requests/baseline-current-r2-v2.json' '/deos/output/requests/baseline-current-api.json' '/deos/output/requests/final-current-d1.json' '/deos/output/requests/final-current-r2.json' '/deos/output/requests/final-current-api.json' '/deos/output/requests/final-current-r2-greeting.json' '/deos/output/requests/final-current-r2-markup.json'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "## baseline-current-d1.json\n{\n  \"request\": {\n    \"operation\": \"query\",\n    \"sql\": \"SELECT 'snippets' AS store, COUNT(*) AS count FROM snippets UNION ALL SELECT 'snippet_operations' AS store, COUNT(*) AS count FROM snippet_operations ORDER BY store\"\n  },\n  \"environment\": \"deos-tmp-707e60c64357d9e1197de094\",\n  \"result\": {\n    \"success\": true,\n    \"meta\": {\n      \"served_by\": \"v3-prod\",\n      \"served_by_region\": \"EEUR\",\n      \"served_by_colo\": \"ARN\",\n      \"served_by_primary\": true,\n      \"timings\": {\n        \"sql_duration_ms\": 0.2308\n      },\n      \"duration\": 0.2308,\n      \"changes\": 0,\n      \"last_row_id\": 0,\n      \"changed_db\": false,\n      \"size_after\": 53248,\n      \"rows_read\": 2,\n      \"rows_written\": 0,\n      \"total_attempts\": 1\n    },\n    \"results\": [\n      {\n        \"store\": \"snippet_operations\",\n        \"count\": 0\n      },\n      {\n        \"store\": \"snippets\",\n        \"count\": 0\n      }\n    ]\n  }\n}\n## baseline-current-r2-v2.json\n{\n  \"request\": {\n    \"operation\": \"objects\"\n  },\n  \"environment\": \"deos-tmp-707e60c64357d9e1197de094\",\n  \"result\": {\n    \"objects\": [],\n    \"truncated\": false,\n    \"cursor\": null\n  }\n}\n## baseline-current-api.json\n{\n  \"request\": {\n    \"operation\": \"request\",\n    \"method\": \"GET\",\n    \"path\": \"/api/snippets\"\n  },\n  \"environment\": \"deos-tmp-707e60c64357d9e1197de094\",\n  \"result\": {\n    \"status\": 200,\n    \"body\": \"{\\\"snippets\\\":[]}\"\n  }\n}\n## final-current-d1.json\n{\n  \"request\": {\n    \"operation\": \"query\",\n    \"sql\": \"SELECT o.id, o.state, o.reserved_bytes, o.delete_title, s.title, s.object_key, s.body_sha256, s.body_bytes FROM snippet_operations AS o LEFT JOIN snippets AS s ON s.id = o.id ORDER BY o.created_at ASC, o.id ASC\"\n  },\n  \"environment\": \"deos-tmp-707e60c64357d9e1197de094\",\n  \"result\": {\n    \"success\": true,\n    \"meta\": {\n      \"served_by\": \"v3-prod\",\n      \"served_by_region\": \"EEUR\",\n      \"served_by_colo\": \"ARN\",\n      \"served_by_primary\": true,\n      \"timings\": {\n        \"sql_duration_ms\": 0.2955\n      },\n      \"duration\": 0.2955,\n      \"changes\": 0,\n      \"last_row_id\": 0,\n      \"changed_db\": false,\n      \"size_after\": 53248,\n      \"rows_read\": 8,\n      \"rows_written\": 0,\n      \"total_attempts\": 1\n    },\n    \"results\": [\n      {\n        \"id\": \"16c67d87-faf9-40ab-99b2-bcdb21a3ce90\",\n        \"state\": \"active\",\n        \"reserved_bytes\": 12,\n        \"delete_title\": null,\n        \"title\": \"Greeting\",\n        \"object_key\": \"snippets/16c67d87-faf9-40ab-99b2-bcdb21a3ce90/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt\",\n        \"body_sha256\": \"4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b\",\n        \"body_bytes\": 12\n      },\n      {\n        \"id\": \"6ac0150f-732c-49af-9828-af1c7c0825cb\",\n        \"state\": \"deleted\",\n        \"reserved_bytes\": 0,\n        \"delete_title\": null,\n        \"title\": null,\n        \"object_key\": null,\n        \"body_sha256\": null,\n        \"body_bytes\": null\n      },\n      {\n        \"id\": \"530a2987-ced8-4ff6-95da-f3f701098e35\",\n        \"state\": \"active\",\n        \"reserved_bytes\": 12,\n        \"delete_title\": null,\n        \"title\": \"Markup sample\",\n        \"object_key\": \"snippets/530a2987-ced8-4ff6-95da-f3f701098e35/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt\",\n        \"body_sha256\": \"12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564\",\n        \"body_bytes\": 12\n      }\n    ]\n  }\n}\n## final-current-r2.json\n{\n  \"request\": {\n    \"operation\": \"objects\"\n  },\n  \"environment\": \"deos-tmp-707e60c64357d9e1197de094\",\n  \"result\": {\n    \"objects\": [\n      {\n        \"key\": \"snippets/16c67d87-faf9-40ab-99b2-bcdb21a3ce90/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt\",\n        \"size\": 12,\n        \"etag\": \"129252b2c73e6e9d93cbcbf103a23516\"\n      },\n      {\n        \"key\": \"snippets/530a2987-ced8-4ff6-95da-f3f701098e35/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt\",\n        \"size\": 12,\n        \"etag\": \"ac574127c09a7d6c4ef58434f70f7f4a\"\n      }\n    ],\n    \"truncated\": false,\n    \"cursor\": null\n  }\n}\n## final-current-api.json\n{\n  \"request\": {\n    \"operation\": \"request\",\n    \"method\": \"GET\",\n    \"path\": \"/api/snippets\"\n  },\n  \"environment\": \"deos-tmp-707e60c64357d9e1197de094\",\n  \"result\": {\n    \"status\": 200,\n    \"body\": \"{\\\"snippets\\\":[{\\\"id\\\":\\\"530a2987-ced8-4ff6-95da-f3f701098e35\\\",\\\"title\\\":\\\"Markup sample\\\",\\\"createdAt\\\":\\\"2026-09-18T08:11:55.844Z\\\",\\\"deletePending\\\":false},{\\\"id\\\":\\\"16c67d87-faf9-40ab-99b2-bcdb21a3ce90\\\",\\\"title\\\":\\\"Greeting\\\",\\\"createdAt\\\":\\\"2026-09-18T08:10:59.161Z\\\",\\\"deletePending\\\":false}]}\"\n  }\n}\n## final-current-r2-greeting.json\n{\n  \"request\": {\n    \"operation\": \"object\",\n    \"key\": \"snippets/16c67d87-faf9-40ab-99b2-bcdb21a3ce90/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt\"\n  },\n  \"environment\": \"deos-tmp-707e60c64357d9e1197de094\",\n  \"result\": {\n    \"key\": \"snippets/16c67d87-faf9-40ab-99b2-bcdb21a3ce90/4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b.txt\",\n    \"size\": 12,\n    \"sha256\": \"4ede3b747d1cdd666e839357d1d6fd60910bb2a3a0eb9b8130f22e61cc02f61b\",\n    \"contentBase64\": \"SGVsbG8sIHRlYW0h\",\n    \"contentUtf8\": \"Hello, team!\"\n  }\n}\n## final-current-r2-markup.json\n{\n  \"request\": {\n    \"operation\": \"object\",\n    \"key\": \"snippets/530a2987-ced8-4ff6-95da-f3f701098e35/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt\"\n  },\n  \"environment\": \"deos-tmp-707e60c64357d9e1197de094\",\n  \"result\": {\n    \"key\": \"snippets/530a2987-ced8-4ff6-95da-f3f701098e35/12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564.txt\",\n    \"size\": 12,\n    \"sha256\": \"12008c684781ad0d1a19a285220d8d098626ac770cc0d42ea7220c8361263564\",\n    \"contentBase64\": \"PGI+SGVsbG88L2I+\",\n    \"contentUtf8\": \"<b>Hello</b>\"\n  }\n}\n",
+        "stderr": "",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-18T08:13:49.365Z"
+    }
+  ]
+}

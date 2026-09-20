@@ -59,7 +59,9 @@ The implementation prompt and command help point to it. Shell hooks and checked
 commands supply the Cloudflare CA without disabling TLS verification.
 
 Request files and scratch scripts belong outside the repository. Local app health
-uses localhost. Cloudflare's service browser uses the public preview transport.
+uses localhost. The sandbox-local Chromium runtime also opens local apps on
+loopback; deployed app targets use their owned Worker or hosted preview origin.
+The older service-browser runtime used the public preview transport.
 Serving only the dedicated build output avoids unnecessary watchers. A pending
 tunnel is reconciled by its saved identity rather than repeatedly recreated.
 Native search and the document broker provide access to current primary docs.
@@ -92,7 +94,11 @@ nonproduction review branch, and immutable deployment URLs. The agent cannot
 choose the account, project, production branch, bindings, secrets or Worker code.
 The service retains build bytes and provider receipts, reads back the deployment,
 and makes a current review URL available after sandbox cleanup. This does not
-provide backend or production deployment; backend demos use isolated workerd.
+provide backend or production deployment. The separate `temporary-environment-v1`
+capability provides a run-owned Worker with optional real D1/R2 bindings. The
+trusted broker owns credentials and resource identities; agents receive their
+own app bindings. Local workerd remains available for local checks. Real storage
+proof must use the remote target. See [temporary environments](temporary-implementation-environments.md).
 
 Pass the frozen implementation capabilities to proposal, design, review and demo
 agents. A supported publisher discovered only during demo planning is too late:
@@ -165,6 +171,22 @@ accepted review and keep the original failure. Do not restart the design process
 Backend-only deployment can reset live Durable Object calls even when container
 rollout is disabled. Prefer a human gate or stopped stage for deployment, and
 record any deployment-induced interruption in that canary's failure list.
+
+SAC-246 exposed a second rollout boundary: the expected image and healthy pool
+counts do not prove replacement is complete. A deployment with an unchanged
+image still started a new basic-pool application version; the provider stopped
+the planning runner during its later rollout step. Before admitting or resuming
+work after deployment, require the latest rollout to be completed, its target
+application version to match the current version,100% target instances and zero
+old-version instances. The environment-rollout.py ready command checks this.
+Read back these facts even after a backend-only repair. Provider contract:
+[Container rollouts](https://developers.cloudflare.com/containers/configuration/rollouts/).
+
+An explicit failure-hold cleanup must support all retryable terminal states:
+failed, interrupted and absolute_timeout. Preserve the original failure state,
+require its complete durable manifest and confirm its process is stopped before
+destroying the sandbox. A retry must not require a manual D1 state change merely
+to make an interrupted attempt look failed.
 
 Use a fresh small web app in the sample project. Exercise proposal/specs, design,
 implementation, real browser use, Claude's single review, and publication. Stop
@@ -270,7 +292,11 @@ unlisted files. File hashes, traversal rejection and read-only syntax still
 apply. Tool help names this supported search form. Resume the failed review
 from its saved app and proof; do not rerun successful demonstrations.
 
-## Reading-canary follow-up repairs (prepared, not deployed)
+## Reading-canary follow-up repairs
+
+These repairs were merged through PR138 and deployed with the temporary
+environment extension on17September. Their adoption and full behavior remain
+part of the SAC-246 canary; local checks alone do not establish that result.
 
 Use the task tool to report one existing task active, completed or reopened as
 work happens. It records actual file changes and timestamps; it does not decide
@@ -301,3 +327,30 @@ diagnostic output and are not supported steps in an ordered screenshot demo.
 See the [prepared repair report](evidence/sac-172/reading-canary/prepared-repairs.md)
 for validation and limitations, and the [D1/R2 canary brief](evidence/sac-172/reading-canary/next-storage-canary.md)
 for the backend capability required before that next run.
+
+## Remote environment control must use public Worker routing
+
+The deployed broker needs global_fetch_strictly_public for authenticated fetch
+calls to temporary Workers on the same workers.dev zone. Without it, health,
+storage control and teardown requests can fail with Cloudflare1042 even when
+the temporary Worker responds200 to an external caller. The Node adapter probe
+does not exercise this Worker-to-Worker path. Validate the deployed broker path
+before claiming remote provisioning works; do not mark an environment ready
+from a laptop health check. Keep ownership, control authentication and served
+bundle-digest validation intact. Deploy this configuration only with no active
+agent attempts, then resume saved work through supported recovery.
+
+## Sandbox-local Chromium rollout
+
+The replacement browser runs inside the agent sandbox and uses a local pipe.
+Local preview needs no tunnel. Real D1/R2 demonstrations still open the deployed
+app through the owned-target policy. A trusted browserRuntime identity forces a
+fresh independent demo gate when the previous review used a different runtime.
+It does not alter the approved planning or the same-runtime author-response policy.
+
+Validate image capacity in every pool. The first browser image activated in the
+larger pools but failed to unpack within the basic pools' 4 GB disk allowance.
+Install only the headless shell that the driver uses, and remove npm/apt download
+caches in their producing image layers. Local Docker success and activation in
+one tier are not proof that all tiers can launch. Keep the canary at its gate
+until every required pool reports the expected digest and completed rollout.

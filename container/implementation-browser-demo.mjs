@@ -37,7 +37,7 @@ export async function collectBrowserDemo(request, { browser, record }) {
     ids.add(scenario.id);
     if (!Array.isArray(scenario.steps) || !scenario.steps.length)
       throw new Error(`Demo scenario ${scenario.id} needs steps`);
-    if (scenario.target !== undefined && !["local", "hosted"].includes(scenario.target))
+    if (scenario.target !== undefined && !["local", "hosted", "remote"].includes(scenario.target))
       throw new Error(`Invalid browser target for ${scenario.id}`);
     if (scenario.url !== undefined && typeof scenario.url !== "string")
       throw new Error(`Invalid start URL for ${scenario.id}`);
@@ -97,16 +97,17 @@ export async function collectBrowserDemo(request, { browser, record }) {
   }
 }
 
-// Explicit demo collection replaces the old automatically accumulated gallery.
-// Historical and partial captures remain in R2 and the diagnostic journal.
+// Corrections add completed collections. A new or failed collection must not
+// remove earlier work. Partial captures stay in the diagnostic journal.
 export function beginBrowserDemo(state) {
   state.demoCollection = true;
-  state.proof = state.proof.filter(proof => proof.kind !== "browser_image");
-  state.proofLocations = {};
 }
 
 export function finishBrowserDemo(state, result) {
   state.proof.push(...result.captures.map(capture => capture.proof));
-  state.proofLocations = Object.fromEntries(result.captures.map(c => [c.proof.id,
-    {collectionId:result.collectionId,scenarioId:c.scenarioId,stepIndex:c.stepIndex}]));
+  state.proofLocations = { ...state.proofLocations, ...Object.fromEntries(result.captures.map(c => [c.proof.id,
+    {collectionId:result.collectionId,scenarioId:c.scenarioId,stepIndex:c.stepIndex}])) };
+  if (state.reviewProofIds) state.reviewProofIds = [...new Set([
+    ...state.reviewProofIds, ...result.captures.map(capture => capture.proof.id),
+  ])];
 }

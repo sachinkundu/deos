@@ -1,0 +1,27 @@
+{
+  "readAt": "2026-09-18T08:01:49.680Z",
+  "events": [
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_32",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'cat > /deos/output/requests/test-api-read-rerun-1.json <<'\\\\''JSON'\\\\''\n{\\\"action\\\":\\\"check\\\",\\\"requestId\\\":\\\"test-api-read-rerun-1\\\",\\\"dependsOn\\\":[\\\"install-current-1\\\"],\\\"argv\\\":[\\\"npx\\\",\\\"vitest\\\",\\\"run\\\",\\\"tests/api.test.ts\\\",\\\"-t\\\",\\\"reads the body from the D1-selected R2 key and reports missing bodies\\\",\\\"--coverage.enabled=false\\\"]}\nJSON\ndeos-implementation --wait /deos/output/requests/test-api-read-rerun-1.json'\"",
+        "aggregated_output": "{\"requestId\":\"test-api-read-rerun-1\",\"state\":\"queued\",\"retrieve\":{\"action\":\"operation\",\"requestId\":\"test-api-read-rerun-1\"}}\n{\"requestId\":\"test-api-read-rerun-1\",\"action\":\"check\",\"fingerprint\":\"f2028d114378691e31a88a3c77c76b5e915ba6a229a64183053ebcd347a3ffc2\",\"state\":\"completed\",\"createdAt\":\"2026-09-18T08:00:55.083Z\",\"lastActivityAt\":\"2026-09-18T08:01:27.587Z\",\"deadline\":\"2026-09-19T07:51:57.119Z\",\"startedAt\":\"2026-09-18T08:00:55.085Z\",\"commandDeadline\":\"2026-09-18T08:10:55.085Z\",\"progress\":{\"event\":\"command_output\",\"outputBytes\":692},\"result\":{\"command\":\"'npx' 'vitest' 'run' 'tests/api.test.ts' '-t' 'reads the body from the D1-selected R2 key and reports missing bodies' '--coverage.enabled=false'\",\"exitCode\":0,\"signal\":null,\"stdout\":\"\\n RUN  v3.2.7 /deos/workspace/repository\\n\\n \u2713 tests/api.test.ts (4 tests | 3 skipped) 9291ms\\n   \u2713 Worker API contract > reads the body from the D1-selected R2 key and reports missing bodies  9286ms\\n\\n Test Files  1 passed (1)\\n      Tests  1 passed | 3 skipped (4)\\n   Start at  08:01:05\\n   Duration  19.90s (transform 2.32s, setup 0ms, collect 6.69s, tests 9.29s, environment 0ms, prepare 1.79s)\\n\\n\",\"stderr\":\"stderr | tests/api.test.ts > Worker API contract > reads the body from the D1-selected R2 key and reports missing bodies\\nIndexed R2 body is missing {\\n  id: \\u001b[32m'11111111-1111-4111-8111-111111111111'\\u001b[39m,\\n  objectKey: \\u001b[32m'snippets/11111111-1111-4111-8111-111111111111/alternate.txt'\\u001b[39m\\n}\\n\\n\",\"cwd\":\"/deos/workspace/repository\"},\"finishedAt\":\"2026-09-18T08:01:27.587Z\",\"observedAt\":\"2026-09-18T08:01:27.906Z\",\"inactiveForMs\":319}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_34",
+        "type": "command_execution",
+        "command": "/bin/bash -lc \"runuser -u deos-author -- env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/home/deos-author NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt bash -c 'sleep 10\ndeos-implementation /deos/output/requests/operation-test-api-read-rerun-1.json'\"",
+        "aggregated_output": "{\"requestId\":\"test-api-read-rerun-1\",\"action\":\"check\",\"fingerprint\":\"f2028d114378691e31a88a3c77c76b5e915ba6a229a64183053ebcd347a3ffc2\",\"state\":\"completed\",\"createdAt\":\"2026-09-18T08:00:55.083Z\",\"lastActivityAt\":\"2026-09-18T08:01:27.587Z\",\"deadline\":\"2026-09-19T07:51:57.119Z\",\"startedAt\":\"2026-09-18T08:00:55.085Z\",\"commandDeadline\":\"2026-09-18T08:10:55.085Z\",\"progress\":{\"event\":\"command_output\",\"outputBytes\":692},\"result\":{\"command\":\"'npx' 'vitest' 'run' 'tests/api.test.ts' '-t' 'reads the body from the D1-selected R2 key and reports missing bodies' '--coverage.enabled=false'\",\"exitCode\":0,\"signal\":null,\"stdout\":\"\\n RUN  v3.2.7 /deos/workspace/repository\\n\\n \u2713 tests/api.test.ts (4 tests | 3 skipped) 9291ms\\n   \u2713 Worker API contract > reads the body from the D1-selected R2 key and reports missing bodies  9286ms\\n\\n Test Files  1 passed (1)\\n      Tests  1 passed | 3 skipped (4)\\n   Start at  08:01:05\\n   Duration  19.90s (transform 2.32s, setup 0ms, collect 6.69s, tests 9.29s, environment 0ms, prepare 1.79s)\\n\\n\",\"stderr\":\"stderr | tests/api.test.ts > Worker API contract > reads the body from the D1-selected R2 key and reports missing bodies\\nIndexed R2 body is missing {\\n  id: \\u001b[32m'11111111-1111-4111-8111-111111111111'\\u001b[39m,\\n  objectKey: \\u001b[32m'snippets/11111111-1111-4111-8111-111111111111/alternate.txt'\\u001b[39m\\n}\\n\\n\",\"cwd\":\"/deos/workspace/repository\"},\"finishedAt\":\"2026-09-18T08:01:27.587Z\",\"observedAt\":\"2026-09-18T08:01:31.899Z\",\"inactiveForMs\":4312}\n",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "checks": [
+    "real click and fill",
+    "empty controlled input",
+    "reload persistence",
+    "mobile screenshot",
+    "fresh reset clears storage",
+    "live measurements",
+    "origin and file rejection",
+    "single and multi-hop redirect block",
+    "cross-origin images and frames blocked",
+    "503 capture rejection",
+    "no replay after close",
+    "separate browser OS user"
+  ],
+  "events": [
+    {
+      "event": "local_browser_started",
+      "version": "153.0.8010.12",
+      "transport": "local-pipe",
+      "pid": 1
+    },
+    {
+      "event": "local_browser_closed",
+      "transport": "local-pipe"
+    }
+  ],
+  "processes": [
+    "deos-br+      18       1 /mnt/lima-rosetta/rosetta /opt/deos-browser/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --disable-dev-shm-usage --user-data-dir=/tmp/playwright_chromiumdev_profile-IqYgWu --remote-debugging-pipe --no-startup-window",
+    "deos-br+      23      18 /mnt/lima-rosetta/rosetta /opt/deos-browser/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell --type=zygote --no-zygote-sandbox --no-sandbox --headless",
+    "deos-br+      24      18 /mnt/lima-rosetta/rosetta /opt/deos-browser/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell --type=zygote --no-sandbox --headless",
+    "deos-br+      37      23 /mnt/lima-rosetta/rosetta /opt/deos-browser/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell --type=zygote --no-zygote-sandbox --no-sandbox --headless",
+    "deos-br+      51      18 /mnt/lima-rosetta/rosetta /opt/deos-browser/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader-webgl --use-gl=angle --mute-audio --headless=old --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,2216174848085561714,943426993485145267,262144 --enable-features=CDPScreenshotNewSurface --disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BlockOriginHeaderModificationOnRedirect,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn --variations-seed-version --pseudonymization-salt-handle=7,i,15450437746959083362,7363957561500766696,4 --trace-process-track-uuid=3190708989122997041",
+    "deos-br+      64      24 /mnt/lima-rosetta/rosetta /opt/deos-browser/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell --type=zygote --no-sandbox --headless"
+  ]
+}

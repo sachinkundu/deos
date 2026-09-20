@@ -1,0 +1,25 @@
+## Evidence checklist
+
+- [x] Provision the temporary Worker with D1 and R2 and open the empty desktop shelf: Replay fixture links the original images and recorded provider results. This is a bookkeeping check, not a new semantic approval. Later clarification moved cleanup to the workflow.
+  - [Evidence](images/91100a618be897580cbe51df7534b35e108c41609e889f6f43b9d7767d656a25.png)
+  - [Evidence](showboat.md#evidence-d7f77b11a9aa5ceaf9859b9e29d05a55a30e84235999b4ce40325fd349fd111e)
+- [x] Main flow: save two snippets, read the right text, refresh, delete one and keep the other: Replay fixture links the original images and recorded provider results. This is a bookkeeping check, not a new semantic approval. Later clarification moved cleanup to the workflow.
+  - [Evidence](images/447f004b69596844203fe85a40ccbdedfc12516845def26faf8a8a08bc9de885.png)
+  - [Evidence](images/99a98a0a967fc1aff0d5c2b734b1ca6cc538094f00af526165e91011fb15332b.png)
+  - [Evidence](images/7c79ae6ef2ab9f32935af9bc0298d4f4bc7034b2ca012ac79feb55f454957034.png)
+  - [Evidence](showboat.md#evidence-d7f77b11a9aa5ceaf9859b9e29d05a55a30e84235999b4ce40325fd349fd111e)
+- [x] Fresh browser context loads the same unchanged cloud data: Replay fixture links the original images and recorded provider results. This is a bookkeeping check, not a new semantic approval. Later clarification moved cleanup to the workflow.
+  - [Evidence](images/3c0f079b6fbc0e040749cf8b6a07751d154a2258e6ad29238461c20186e498bb.png)
+  - [Evidence](images/e7d7cf575fd71446899c68e7ffefb49a18453964970e9b4dcd0ccb9e15d99279.png)
+- [x] Blank title and whitespace-only text are rejected with clear messages and no storage change: Replay fixture links the original images and recorded provider results. This is a bookkeeping check, not a new semantic approval. Later clarification moved cleanup to the workflow.
+  - [Evidence](images/6de2bc03ba32bbc2c54a9a84b354d558e4c89da703893fbcf8c0e24d0544d040.png)
+  - [Evidence](images/f2af55205eb668d82989a9cdb84a8f77d0fb2a6b5ee329ee9feb367e8145d964.png)
+- [x] Saved markup is shown as plain text and matches the stored R2 bytes: Replay fixture links the original images and recorded provider results. This is a bookkeeping check, not a new semantic approval. Later clarification moved cleanup to the workflow.
+  - [Evidence](images/120fa2d48fa73bdb26d7e6514b8f6cdbd629e6e6b43567875a8ed12abdc965e9.png)
+- [x] Failed read and failed delete of an externally removed snippet report clear messages and recover: Original corrective collection shows failed read/delete handling with a labeled synthetic inconsistent-storage fixture. Replayed evidence only.
+  - [Evidence](images/5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4.png)
+  - [Evidence](images/d1e8e07f6c940de47607ea6b8415ca4c11dabe55d037bdeae7bfe10985499af0.png)
+  - [Evidence](images/2b98e7750a54a71ea9f9684c4342e6b8077fb45e847f375b07660aae14837db6.png)
+- [x] Final D1 and R2 correspondence captured, then temporary resources removed: Replay fixture links the original images and recorded provider results. This is a bookkeeping check, not a new semantic approval. Later clarification moved cleanup to the workflow.
+  - [Evidence](images/8ae0f1748f020dbcf11fd68ce394520d57e1353f018565365841f919fdc126f3.png)
+  - [Evidence](showboat.md#evidence-d7f77b11a9aa5ceaf9859b9e29d05a55a30e84235999b4ce40325fd349fd111e)

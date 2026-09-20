@@ -1,0 +1,42 @@
+{
+  "source": "/tmp/sac246-local-browser-reader/2026-09-18T08-09-55.277Z.json",
+  "readAt": "2026-09-18T08:09:55.277Z",
+  "receipt": {
+    "operation": "execution",
+    "requestId": "baseline-current-r2-v2",
+    "action": "storage",
+    "fingerprint": "4d61595f556a729be1a98185fc440350ae049d8917c967605b46caff246668a5",
+    "state": "completed",
+    "createdAt": "2026-09-18T08:08:54.481Z",
+    "lastActivityAt": "2026-09-18T08:08:58.136Z",
+    "deadline": "2026-09-19T07:51:57.119Z",
+    "startedAt": "2026-09-18T08:08:54.483Z",
+    "result": {
+      "environment": "deos-tmp-707e60c64357d9e1197de094",
+      "result": {
+        "objects": [],
+        "truncated": false,
+        "cursor": null
+      },
+      "evidence": {
+        "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/4f37c05be4026222e9c3ccd362fd85211efea1dbd78cdc9b38d1c1655e96c7e8/environment-storage-evidence.json",
+        "sha256": "4f37c05be4026222e9c3ccd362fd85211efea1dbd78cdc9b38d1c1655e96c7e8",
+        "byteSize": 181
+      },
+      "proof": {
+        "change": "sac-246",
+        "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "treeSha": "0167dfa435e88c1e424e019705fe05cf46fd5bac",
+        "id": "01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5:0167dfa435e88c1e424e019705fe05cf46fd5bac:showboat:7552a9bebd6375721a53b5ca7c772a15ac316bcd6319046dac5febf217bf2d53",
+        "kind": "showboat",
+        "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/7552a9bebd6375721a53b5ca7c772a15ac316bcd6319046dac5febf217bf2d53/proof/01a0b380-2dbf-70a5-8ecb-6fca8d3a5fe5/0167dfa435e88c1e424e019705fe05cf46fd5bac/showboat.md",
+        "caption": "Real temporary Cloudflare environment: objects",
+        "sha256": "7552a9bebd6375721a53b5ca7c772a15ac316bcd6319046dac5febf217bf2d53",
+        "sanitized": true,
+        "audience": "diagnostic"
+      }
+    },
+    "finishedAt": "2026-09-18T08:08:58.136Z"
+  }
+}

@@ -18,6 +18,11 @@ const trustedCapture = async (name, tempRoot) => {
   const path = join(root, name);
   return {
     stream: createWriteStream(path, { flags: "wx", mode: 0o600 }),
+    async read() {
+      // Drain queued writes before reading a still-open private capture.
+      await new Promise((resolve, reject) => this.stream.write("", error => error ? reject(error) : resolve()));
+      return readFile(path, "utf8");
+    },
     async finalize(destination, replace = true) {
       await finished(this.stream);
       let shouldWrite = replace;

@@ -5,6 +5,10 @@ export interface ImplementationNetworkSandbox {
   setAllowedHosts(hosts: string[]): Promise<void>;
 }
 
+export function implementationAllowedHosts(policy: ImplementationPolicy, capabilityBaseUrl: string, browserHosts: string[] = []) {
+  return [...new Set([...policy.packageHosts,'chatgpt.com','auth.openai.com',new URL(capabilityBaseUrl).hostname,...browserHosts])];
+}
+
 export async function configureImplementationNetwork(
   sandbox: ImplementationNetworkSandbox,
   policy: ImplementationPolicy,
@@ -14,10 +18,5 @@ export async function configureImplementationNetwork(
   // ContainerProxy checks allowedHosts before invoking the saved policy handler.
   // Install the handler first so opening the host filter never permits unchecked traffic.
   await sandbox.setOutboundHandler("implementation", identity);
-  await sandbox.setAllowedHosts([...new Set([
-    ...policy.packageHosts,
-    "chatgpt.com",
-    "auth.openai.com",
-    new URL(capabilityBaseUrl).hostname,
-  ])]);
+  await sandbox.setAllowedHosts(implementationAllowedHosts(policy,capabilityBaseUrl));
 }

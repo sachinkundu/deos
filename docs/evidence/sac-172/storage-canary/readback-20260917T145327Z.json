@@ -1,0 +1,280 @@
+{
+  "policy": [
+    {
+      "project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+      "definition_id": "implementation",
+      "definition_version": 41,
+      "definition_digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f",
+      "trial_repository": "sachinkundu/deos-sample-project",
+      "start_state_name": "Todo",
+      "human_gate_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+      "dispatch_enabled": 1,
+      "updated_at": "2026-09-17T13:37:26.619Z",
+      "repository_revision": 2,
+      "repository_updated_by": "sachinkundu@gmail.com",
+      "repository_updated_at": "2026-08-25T05:25:30.698Z",
+      "workflow_revision": 22,
+      "workflow_updated_by": "sachinkundu@gmail.com",
+      "workflow_updated_at": "2026-09-17T13:37:01.152Z",
+      "independent_review_provider": "openrouter",
+      "independent_review_model": "deepseek/deepseek-v4-pro",
+      "independent_review_revision": 2,
+      "independent_review_updated_by": "sachinkundu@gmail.com",
+      "independent_review_updated_at": "2026-08-27T08:50:05.059Z",
+      "linear_project_name": "deos-sample-project",
+      "github_installation_id": "154095438",
+      "route_revision": 29,
+      "route_digest": "346a508e57ba027dca1b9b966b2b30786f67adc4ff6a692540473053f46802f7",
+      "route_updated_by": "sachinkundu@gmail.com",
+      "route_updated_at": "2026-09-17T13:37:01.152Z",
+      "github_access_state": "passed",
+      "github_access_checked_at": "2026-09-17T13:37:26.619Z",
+      "github_access_permissions_digest": "b6ccfdd9af0228a09493fa1bfb36a7ee0b06101790486f229e7891358098d437",
+      "github_settings_url": "https://github.com/settings/installations/154095438",
+      "allowed_access_email": "sachinkundu@gmail.com",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 7,
+      "human_binding_checked_at": "2026-09-17T13:36:12.074Z"
+    }
+  ],
+  "run": [
+    {
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+      "run_sequence": 1,
+      "project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+      "issue_id": "e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+      "definition_id": "implementation",
+      "definition_version": 41,
+      "definition_digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f",
+      "workflow_instance_id": "wf-v1-vv6hj6lwdshnryctyi3e6ff4yh5isx7yyqy5u6fnbrz363rdo3fa",
+      "previous_node": "agent_failed",
+      "current_node": "planning_author",
+      "gate_origin_node": null,
+      "status": "active",
+      "accumulated_data_json": "{}",
+      "created_at": "2026-09-17T13:37:26.619Z",
+      "updated_at": "2026-09-17T14:53:16.993Z",
+      "terminal_at": null,
+      "terminal_cause": null,
+      "current_visit_sequence": 6,
+      "last_transition_id": "transition:stage-retry:01a0afa3-fe81-70e0-8e55-bca7ee3fae73",
+      "selection_kind": "default",
+      "selection_value": "project_policy",
+      "selection_label_name": null,
+      "selection_reason": null,
+      "selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
+      "selection_delivery_id": "191ed8b3-0611-4036-99fd-9b67a924d2f9",
+      "selection_observed_at": "2026-09-17T13:37:18.201Z",
+      "selection_provider_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+      "author_model_provider": "codex",
+      "author_model": "gpt-5.6-sol",
+      "author_reasoning": "high",
+      "independent_review_provider": "claude",
+      "independent_review_model": "claude-opus-5",
+      "independent_review_reasoning": "high",
+      "route_project_name": "deos-sample-project",
+      "route_repository": "sachinkundu/deos-sample-project",
+      "route_github_installation_id": "154095438",
+      "route_revision": 29,
+      "route_digest": "346a508e57ba027dca1b9b966b2b30786f67adc4ff6a692540473053f46802f7",
+      "route_start_state_name": "Todo",
+      "route_human_gate_state_id": "71738607-03fd-49f2-b4be-b2aac29ccd13",
+      "route_repository_revision": 2,
+      "route_workflow_revision": 22,
+      "route_review_revision": 2,
+      "independent_review_account_binding": "922b8a5e0d14cb8098f83d4bb8b2e3d8a29a6b8af84e7b2c92d019e778dd14cd",
+      "sandbox_tier": "basic",
+      "sandbox_tier_source": "legacy_basic",
+      "sandbox_tier_policy_version": "legacy-basic-v1",
+      "allowed_linear_user_id": "8efc07d8-0d85-430f-84e7-f51bc6833a0b",
+      "human_binding_revision": 7
+    }
+  ],
+  "deliveries": [
+    {
+      "delivery_id": "1d5ab195-7747-4dcc-aa86-f3696222e8c0",
+      "payload_hash": "44bb92ed9335f355b5e7a9c353e40ab311f99be137f55986691adfaef84f40f8",
+      "received_at": "2026-09-17T13:15:44.356999+00:00",
+      "classification": "irrelevant",
+      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
+      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+      "route_project_id": null,
+      "route_revision": null,
+      "route_digest": null,
+      "start_slow_ok": null,
+      "sandbox_tier_policy_version": "legacy-basic-v1"
+    },
+    {
+      "delivery_id": "191ed8b3-0611-4036-99fd-9b67a924d2f9",
+      "payload_hash": "eec13a7bc40dd9abcc3b4009a4d1d350cc126d526d33d7d253a724d45c5d3a51",
+      "received_at": "2026-09-17T13:37:19.396999+00:00",
+      "classification": "relevant",
+      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
+      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+      "route_revision": 29,
+      "route_digest": "346a508e57ba027dca1b9b966b2b30786f67adc4ff6a692540473053f46802f7",
+      "start_slow_ok": null,
+      "sandbox_tier_policy_version": "legacy-basic-v1"
+    },
+    {
+      "delivery_id": "c70fa48f-99ab-41a4-b41b-04e05b594bae",
+      "payload_hash": "e225a6eba220f1cfdcf15be7e6bc25d4cf139931e219f307db618d501d4eaf23",
+      "received_at": "2026-09-17T13:37:44.407000+00:00",
+      "classification": "relevant",
+      "correlation_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241",
+      "label_selection_evidence_json": "{\"status\":\"available\",\"labels\":[]}",
+      "label_selection_evidence_digest": "824b8df4ec8660b9b753719a1d51a0fc24e663fcd05395c2d05f4ccba399a190",
+      "route_project_id": "99426d9b-cda7-4db4-9136-692a95a0b090",
+      "route_revision": 29,
+      "route_digest": "346a508e57ba027dca1b9b966b2b30786f67adc4ff6a692540473053f46802f7",
+      "start_slow_ok": null,
+      "sandbox_tier_policy_version": "legacy-basic-v1"
+    }
+  ],
+  "active_attempts_all": [
+    {
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "node_id": "planning_author",
+      "state": "running"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt_id": "01a0af96-705a-77f2-85ab-cd28486c6450",
+      "node_id": "planning_author",
+      "state": "interrupted",
+      "started_at": "2026-09-17T13:37:47.529Z",
+      "ended_at": "2026-09-17T13:40:17.910Z",
+      "result_class": "process_not_recoverable",
+      "cleanup_state": "destroyed",
+      "sandbox_id": "sbx-v1-dhok6jpnxxaomvhvjd4ytgsrqglde2k7uiugb3j5k2xxgxu3fkaq",
+      "updated_at": "2026-09-17T13:51:56.473Z",
+      "cleanup_hold_until": null,
+      "cleanup_hold_reason": null,
+      "manifest_id": "manifest:01a0af96-705a-77f2-85ab-cd28486c6450:failure-v2"
+    },
+    {
+      "attempt_id": "01a0afa3-fe81-70e0-8e55-bca7ee3fae73",
+      "node_id": "planning_author",
+      "state": "failed",
+      "started_at": "2026-09-17T13:52:35.571Z",
+      "ended_at": "2026-09-17T13:56:56.090Z",
+      "result_class": "codex_exit_nonzero",
+      "cleanup_state": "destroyed",
+      "sandbox_id": "sbx-v1-td33jrcb2tyc3lsb3piufjzz2gion2l7uahtia77fsf5prssig7q",
+      "updated_at": "2026-09-17T14:45:08.198Z",
+      "cleanup_hold_until": null,
+      "cleanup_hold_reason": null,
+      "manifest_id": "manifest:01a0afa3-fe81-70e0-8e55-bca7ee3fae73:failure-v2"
+    },
+    {
+      "attempt_id": "01a0afd4-7bad-7dfb-b784-382731adc553",
+      "node_id": "planning_author",
+      "state": "running",
+      "started_at": "2026-09-17T14:45:33.344Z",
+      "ended_at": null,
+      "result_class": null,
+      "cleanup_state": "pending",
+      "sandbox_id": "sbx-v1-j35s3hjdrjzrpq6c5l3cy6e565wgbshsv2g7egt36k4bbt3ibfaq",
+      "updated_at": "2026-09-17T14:53:16.993Z",
+      "cleanup_hold_until": null,
+      "cleanup_hold_reason": null,
+      "manifest_id": null
+    }
+  ],
+  "gates": [],
+  "errors": [
+    {
+      "error_id": "62636673-5f0b-4d2c-9bda-6bc365cfb3c5",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "node_id": "planning_author",
+      "visit_sequence": 2,
+      "step_name": "agent:planning_author:visit:2",
+      "location": "src/sandbox-controller.ts:1456",
+      "message": "File not found: /root/.codex/auth.json",
+      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/62636673-5f0b-4d2c-9bda-6bc365cfb3c5.json",
+      "occurred_at": "2026-09-17T13:40:11.114Z"
+    },
+    {
+      "error_id": "937d570d-7d74-4ffa-9f0e-f8d5ff859155",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "node_id": "agent_failed",
+      "visit_sequence": 3,
+      "step_name": "workflow runtime",
+      "location": "src/deos-workflow.ts:81",
+      "message": "agent_execution_failed",
+      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/937d570d-7d74-4ffa-9f0e-f8d5ff859155.json",
+      "occurred_at": "2026-09-17T13:40:20.658Z"
+    },
+    {
+      "error_id": "241bbac8-8312-4c51-a643-6d03084bd967",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "node_id": "agent_failed",
+      "visit_sequence": 3,
+      "step_name": "workflow runtime",
+      "location": "uncaught",
+      "message": "agent_execution_failed",
+      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/241bbac8-8312-4c51-a643-6d03084bd967.json",
+      "occurred_at": "2026-09-17T13:40:20.658Z"
+    },
+    {
+      "error_id": "d48a2368-e3ae-4ba9-acfd-63d121b61b2e",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "node_id": "agent_failed",
+      "visit_sequence": 5,
+      "step_name": "workflow runtime",
+      "location": "src/deos-workflow.ts:81",
+      "message": "agent_execution_failed",
+      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/d48a2368-e3ae-4ba9-acfd-63d121b61b2e.json",
+      "occurred_at": "2026-09-17T13:56:56.674Z"
+    },
+    {
+      "error_id": "b1671e92-2859-4e4e-836f-b2567e47d693",
+      "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+      "node_id": "agent_failed",
+      "visit_sequence": 5,
+      "step_name": "workflow runtime",
+      "location": "uncaught",
+      "message": "agent_execution_failed",
+      "detail_r2_key": "original-errors/workflow%3A99426d9b-cda7-4db4-9136-692a95a0b090%3Ae08fdf64-e2dc-42d5-b7e6-ab0a11607241%3Arun%3A1/b1671e92-2859-4e4e-836f-b2567e47d693.json",
+      "occurred_at": "2026-09-17T13:56:56.674Z"
+    }
+  ],
+  "implementation": [],
+  "tries": [],
+  "environments": [],
+  "definitions": [
+    {
+      "version": 41,
+      "digest": "79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f"
+    },
+    {
+      "version": 40,
+      "digest": "6c0d38dd3480e945df0018ebb68c98305dc3b98848f58976dde003246cfe44dc"
+    }
+  ],
+  "progress": [],
+  "deployment": {
+    "id": "7d130d76-990b-4b5e-b00e-cc95d812c313",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "sachin.kundu@pm.me",
+    "annotations": {
+      "workers/message": "Automatic deployment on upload.",
+      "workers/triggered_by": "upload"
+    },
+    "versions": [
+      {
+        "version_id": "9c39fb05-afa9-4688-a05c-b326cfee1967",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-09-17T13:51:25.595023Z"
+  },
+  "observed_at": "2026-09-17T14:53:27.918672+00:00"
+}

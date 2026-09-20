@@ -1,0 +1,502 @@
+{
+  "attemptId": "01a0afd4-7bad-7dfb-b784-382731adc553",
+  "observedAt": "2026-09-17T15:00:00.417Z",
+  "privateSnapshotSha256": "181f960ef44b1e7b7879a93a632e995a4655ffa8893e54fb12e6467750f04882",
+  "reviews": [
+    {
+      "agentId": "01a0afd9-a414-7080-81fd-445f89c4e280",
+      "result": {
+        "proposalStatements": [
+          {
+            "proposalLine": 7,
+            "requirementLinkIds": [
+              "text-snippet-shelf-requirement-7",
+              "text-snippet-shelf-requirement-30",
+              "text-snippet-shelf-requirement-46",
+              "text-snippet-shelf-requirement-97"
+            ],
+            "coverage": "sufficient",
+            "rationale": "The requirements define saving named plain-text snippets, listing and reading them, deleting them, and providing all operations on one desktop screen."
+          },
+          {
+            "proposalLine": 8,
+            "requirementLinkIds": [
+              "text-snippet-shelf-requirement-7",
+              "text-snippet-shelf-requirement-30",
+              "text-snippet-shelf-requirement-46"
+            ],
+            "coverage": "sufficient",
+            "rationale": "These requirements cover saving a title and text, showing saved titles, selecting the correct body to read, deleting a snippet, and preserving all other snippets."
+          },
+          {
+            "proposalLine": 9,
+            "requirementLinkIds": [
+              "text-snippet-shelf-requirement-16",
+              "text-snippet-shelf-requirement-82"
+            ],
+            "coverage": "sufficient",
+            "rationale": "The specifications reject blank or whitespace-only titles and text with field-specific messages, and require clear messages for failed load, save, read, and delete actions."
+          },
+          {
+            "proposalLine": 10,
+            "requirementLinkIds": [
+              "text-snippet-shelf-requirement-56",
+              "text-snippet-shelf-requirement-66",
+              "text-snippet-shelf-requirement-97"
+            ],
+            "coverage": "partial",
+            "rationale": "The requirements assign the index to D1 and bodies to R2, require a Worker with those bindings, and preserve data across refreshes and fresh browser contexts, but they do not explicitly require that these operations be exposed through a Worker API."
+          },
+          {
+            "proposalLine": 11,
+            "requirementLinkIds": [
+              "text-snippet-shelf-requirement-97",
+              "text-snippet-shelf-requirement-106"
+            ],
+            "coverage": "sufficient",
+            "rationale": "The requirements mandate review in the supported temporary Worker environment, real browser screenshots, matching D1 and R2 evidence, removal of temporary resources, and retention of the proof in the pull request."
+          }
+        ]
+      }
+    },
+    {
+      "agentId": "01a0afda-84c1-7880-8596-dd200b845c05",
+      "result": {
+        "passingJudgment": {
+          "coverage": "sufficient",
+          "scope": "in_scope",
+          "minimality": "minimal",
+          "rationale": "The requirement's normative behavior is directly justified by the cited proposal lines and adds no material obligation beyond them."
+        },
+        "capabilities": [
+          {
+            "path": "text-snippet-shelf",
+            "capabilityLine": 17,
+            "judgment": {
+              "coverage": "partial",
+              "scope": "in_scope",
+              "minimality": "over_specified",
+              "rationale": "The proposal supports the complete snippet shelf and cloud-storage capability, but two requirements add behavioral constraints not fully established by the proposal."
+            },
+            "links": [
+              {
+                "id": "text-snippet-shelf-requirement-7",
+                "proposalLines": [
+                  8,
+                  10
+                ],
+                "specStartLine": 7,
+                "judgment": {
+                  "coverage": "partial",
+                  "scope": "in_scope",
+                  "minimality": "over_specified",
+                  "rationale": "Lines 8 and 10 justify saving titled plain text, listing the saved title, and persisting data through D1 and R2, but they do not require every snippet to have its own stable ID."
+                }
+              },
+              {
+                "id": "text-snippet-shelf-requirement-16",
+                "proposalLines": [
+                  9
+                ],
+                "specStartLine": 16,
+                "judgment": {
+                  "coverage": "sufficient",
+                  "scope": "in_scope",
+                  "minimality": "minimal",
+                  "rationale": "Line 9 directly requires rejection of blank titles and text with a clear validation message; not writing rejected input is inherent in rejecting the save."
+                }
+              },
+              {
+                "id": "text-snippet-shelf-requirement-30",
+                "proposalLines": [
+                  8
+                ],
+                "specStartLine": 30,
+                "judgment": {
+                  "coverage": "sufficient",
+                  "scope": "in_scope",
+                  "minimality": "minimal",
+                  "rationale": "Line 8 directly supports listing saved titles, selecting one to read on the one-screen app, and treating its content as plain text."
+                }
+              },
+              {
+                "id": "text-snippet-shelf-requirement-46",
+                "proposalLines": [
+                  8,
+                  10
+                ],
+                "specStartLine": 46,
+                "judgment": {
+                  "coverage": "sufficient",
+                  "scope": "in_scope",
+                  "minimality": "minimal",
+                  "rationale": "Line 8 requires deletion without affecting other snippets, while line 10 establishes D1 and R2 as the persistent stores from which a successful deletion must remove the snippet."
+                }
+              },
+              {
+                "id": "text-snippet-shelf-requirement-56",
+                "proposalLines": [
+                  10
+                ],
+                "specStartLine": 56,
+                "judgment": {
+                  "coverage": "sufficient",
+                  "scope": "in_scope",
+                  "minimality": "minimal",
+                  "rationale": "Line 10 directly assigns the snippet list to D1, each text body to R2, and requires saved data to be loaded again; the index-to-object association is necessary to read the selected body."
+                }
+              },
+              {
+                "id": "text-snippet-shelf-requirement-66",
+                "proposalLines": [
+                  8,
+                  10
+                ],
+                "specStartLine": 66,
+                "judgment": {
+                  "coverage": "sufficient",
+                  "scope": "in_scope",
+                  "minimality": "minimal",
+                  "rationale": "Line 10 directly requires saved state to survive refreshes and new browsers, and line 8 establishes deletion as part of that persisted snippet state."
+                }
+              },
+              {
+                "id": "text-snippet-shelf-requirement-82",
+                "proposalLines": [
+                  8,
+                  9
+                ],
+                "specStartLine": 82,
+                "judgment": {
+                  "coverage": "partial",
+                  "scope": "in_scope",
+                  "minimality": "over_specified",
+                  "rationale": "Line 9 supports clear messages for failed actions and implicitly excludes false success, while line 8 supports preserving other snippets during deletion; neither line establishes that every failed read or delete must leave every other loaded snippet usable."
+                }
+              },
+              {
+                "id": "text-snippet-shelf-requirement-97",
+                "proposalLines": [
+                  7,
+                  10,
+                  11,
+                  25
+                ],
+                "specStartLine": 97,
+                "judgment": {
+                  "coverage": "sufficient",
+                  "scope": "in_scope",
+                  "minimality": "minimal",
+                  "rationale": "Lines 7, 10, and 11 establish the one-screen desktop app, D1/R2 Worker storage, and supported temporary Worker review environment; line 25 explicitly excludes login, sharing, search, rich text, file uploads, phone layouts, and a live release."
+                }
+              },
+              {
+                "id": "text-snippet-shelf-requirement-106",
+                "proposalLines": [
+                  8,
+                  9,
+                  10,
+                  11
+                ],
+                "specStartLine": 106,
+                "judgment": {
+                  "coverage": "sufficient",
+                  "scope": "in_scope",
+                  "minimality": "minimal",
+                  "rationale": "Line 11 requires real browser evidence, direct proof from both stores, resource removal, and retained pull-request proof; lines 8 through 10 identify the main flow, error behavior, persistence, and D1/R2 facts that the proof must demonstrate."
+                }
+              }
+            ]
+          }
+        ],
+        "findings": [
+          {
+            "id": "stable-id-not-declared",
+            "type": "over_specified",
+            "message": "The save requirement mandates a stable ID for every snippet, but the proposal specifies saved titles, text, listing, and D1/R2 storage without selecting stable IDs as a required data model.",
+            "capability": "text-snippet-shelf",
+            "proposalLines": [
+              8,
+              10
+            ],
+            "specStartLine": 7
+          },
+          {
+            "id": "failure-isolation-not-declared",
+            "type": "over_specified",
+            "message": "The failed-action requirement additionally guarantees that other loaded snippets remain usable after a failed read or delete; the proposal requires a clear failure message but does not define this failure-isolation behavior.",
+            "capability": "text-snippet-shelf",
+            "proposalLines": [
+              8,
+              9
+            ],
+            "specStartLine": 82
+          }
+        ]
+      }
+    },
+    {
+      "agentId": "01a0afdf-e73d-7062-874a-54953cf62d38",
+      "result": {
+        "mode": "recheck",
+        "baselineFindingSetDigest": "9d86b6d1e13637d6fd0029381b00a9982f979f9ddd7658f6b1d771827ff2b8c8",
+        "resolutions": [
+          {
+            "findingId": "directional-proposal-only-7-text-snippet-shelf-requirement-30",
+            "status": "fixed",
+            "rationale": "Proposal line 7 is now narrowly a one-screen layout statement, while proposal line 8 carries the list-and-read behavior. The requirement explicitly places reading on the same screen, so the former ambiguous operational claim from line 7 is no longer warranted.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 7,
+                "endLine": 8
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 30,
+                "endLine": 44
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "directional-proposal-only-7-text-snippet-shelf-requirement-46",
+            "status": "fixed",
+            "rationale": "Proposal line 7 now states only the one-screen constraint. Delete behavior and preservation of other snippets are explicitly stated on proposal line 8, removing the prior ambiguous attribution of the delete requirement to line 7.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 7,
+                "endLine": 8
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 46,
+                "endLine": 54
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "directional-proposal-only-7-text-snippet-shelf-requirement-7",
+            "status": "fixed",
+            "rationale": "Proposal line 7 is now limited to screen layout, and proposal line 8 explicitly declares saving a title and plain text. The save requirement therefore traces to the functional statement rather than relying on the former broad wording at line 7.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 7,
+                "endLine": 8
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 7,
+                "endLine": 14
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "directional-requirement-only-10-text-snippet-shelf-requirement-106",
+            "status": "fixed",
+            "rationale": "Proposal line 10 now explicitly requires matching D1 and R2 results in the review proof. The proof requirement correspondingly requires matching D1 readback, R2 inspection, and browser data, establishing the relationship in both directions.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 10,
+                "endLine": 10
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 111,
+                "endLine": 118
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "directional-requirement-only-10-text-snippet-shelf-requirement-46",
+            "status": "fixed",
+            "rationale": "Proposal line 10 explicitly includes delete requests through the Worker API and assigns saved data to D1 and R2. The delete requirement explicitly uses that API and removes the corresponding D1 row and R2 object.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 10,
+                "endLine": 10
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 46,
+                "endLine": 54
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "directional-requirement-only-10-text-snippet-shelf-requirement-7",
+            "status": "fixed",
+            "rationale": "Proposal line 10 now explicitly says that save requests go through the Worker API, and the save requirement contains the same API constraint. The prior one-directional relationship is now direct and reciprocal.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 10,
+                "endLine": 10
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 7,
+                "endLine": 14
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "directional-requirement-only-8-text-snippet-shelf-requirement-106",
+            "status": "fixed",
+            "rationale": "Proposal line 8 now explicitly requires the save/read/delete flow and preservation of the remaining snippet to appear in review proof. The proof requirement lists those same observable outcomes.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 8,
+                "endLine": 8
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 111,
+                "endLine": 118
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "directional-requirement-only-8-text-snippet-shelf-requirement-66",
+            "status": "fixed",
+            "rationale": "Proposal line 8 now explicitly requires the deletion result to persist after refresh and in a new browser. The session-persistence requirement directly specifies that saved snippets remain and deleted snippets stay deleted in both contexts.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 8,
+                "endLine": 8
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 71,
+                "endLine": 85
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "directional-requirement-only-8-text-snippet-shelf-requirement-82",
+            "status": "fixed",
+            "rationale": "The failed-action requirement no longer guarantees that unrelated loaded snippets remain usable after a failed read or delete. Error reporting now traces directly to proposal line 9, while proposal line 8 remains limited to the successful main flow and persisted deletion result.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 8,
+                "endLine": 9
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 87,
+                "endLine": 100
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "directional-requirement-only-9-text-snippet-shelf-requirement-106",
+            "status": "fixed",
+            "rationale": "Proposal line 9 now explicitly requires a bad-input or failed-action message in review proof. The proof requirement directly requires such a message and includes a clear error in the full-canary scenario.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 9,
+                "endLine": 9
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 111,
+                "endLine": 118
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "failure-isolation-not-declared",
+            "status": "fixed",
+            "rationale": "The specification no longer states that other loaded snippets must remain usable after a failed read or delete. It now requires only an action-specific message and suppression of false success, matching proposal line 9 without adding failure-isolation behavior.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 8,
+                "endLine": 9
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 87,
+                "endLine": 100
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "proposal-coverage-10",
+            "status": "fixed",
+            "rationale": "The specification now explicitly requires save, list, read, and delete requests to pass through the Worker API and includes a scenario for that behavior. Its storage, persistence, temporary-environment, and proof requirements also cover the remaining claims on proposal line 10.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 10,
+                "endLine": 10
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 56,
+                "endLine": 69
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 71,
+                "endLine": 85
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 102,
+                "endLine": 109
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 111,
+                "endLine": 118
+              }
+            ],
+            "causalSourceDigest": null
+          },
+          {
+            "findingId": "stable-id-not-declared",
+            "status": "fixed",
+            "rationale": "The save requirement no longer mandates a stable ID. It requires only a title, plain text, Worker API save, and appearance in the list; the storage requirement uses the R2 object key needed to associate indexed metadata with a body without imposing the removed stable-ID rule.",
+            "currentEvidence": [
+              {
+                "path": "openspec/changes/sac-246/proposal.md",
+                "startLine": 8,
+                "endLine": 10
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 7,
+                "endLine": 14
+              },
+              {
+                "path": "openspec/changes/sac-246/specs/text-snippet-shelf/spec.md",
+                "startLine": 56,
+                "endLine": 69
+              }
+            ],
+            "causalSourceDigest": null
+          }
+        ]
+      }
+    }
+  ]
+}

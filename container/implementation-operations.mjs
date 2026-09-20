@@ -108,7 +108,7 @@ export class ImplementationOperations {
   async cancel(id) {
     const entry = this.entries.get(id);
     if (!entry) throw new Error(`Unknown operation: ${id}`);
-    if (entry.record.state === 'running' && entry.record.action === 'demo')
+    if (entry.record.state === 'running' && ['demo','publish_environment','storage'].includes(entry.record.action))
       throw new Error('A running demo may have an in-flight browser action. Inspect progress; it cannot be canceled or replayed by closing a client.');
     if (entry.record.state === 'queued') {
       entry.record.state = 'canceled';

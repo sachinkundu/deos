@@ -1,0 +1,7 @@
+{
+  "stack": "Error: Durable Object's isolate exceeded its memory limit and was reset.\n    at async SandboxAgentController.reconcile (queue-consumer.js:60561:18)\n    at async CloudflareWorkflowServices.executeAgent (queue-consumer.js:64799:31)\n    at async queue-consumer.js:145:16",
+  "message": "Durable Object's isolate exceeded its memory limit and was reset.",
+  "overloaded": true,
+  "durableObjectReset": true,
+  "name": "Error"
+}

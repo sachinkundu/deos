@@ -22,6 +22,7 @@ test("unknown IDs are rejected by the tool without replacing the author's valid 
   selectReviewProof(state,[image.id]);
   assert.throws(()=>selectReviewProof(state,["another-run-image"]), /proof IDs/);
   assert.deepEqual(selectedReviewProof(state).map((p:{id:string})=>p.id),[image.id]);
+  assert.throws(()=>selectedReviewProof({proof:[],reviewProofIds:[image.id]}),/missing from the saved archive/);
 });
 
 test("legacy jobs keep their gallery and an explicit empty selection is allowed", () => {
@@ -31,4 +32,19 @@ test("legacy jobs keep their gallery and an explicit empty selection is allowed"
   selectReviewProof(state,[]);
   assert.deepEqual(selectedReviewProof(state),[]);
   assert.equal(state.proof,proof);
+});
+
+test('a correction selection cannot silently drop earlier selected images', () => {
+  const proof = Array.from({length:14}, (_, index) => ({id:`image-${index}`,kind:'browser_image'}));
+  const state = {proof,reviewProofIds:proof.slice(0,11).map(item=>item.id),proofOmissions:[]};
+  selectReviewProof(state, proof.slice(11).map(item=>item.id));
+  assert.equal(selectedReviewProof(state).length,14);
+  selectReviewProof(state, []);
+  assert.equal(selectedReviewProof(state).length,14);
+  assert.throws(()=>selectReviewProof(state,[],[{id:'image-0',reason:''}]),/explicit reason/);
+  assert.equal(selectedReviewProof(state).length,14);
+  selectReviewProof(state,[],[{id:'image-0',reason:'Superseded by a corrected capture'}],{attemptId:'response',occurredAt:'now'});
+  assert.equal(selectedReviewProof(state).length,13);
+  assert.equal(state.proof.length,14);
+  assert.deepEqual(state.proofOmissions,[{id:'image-0',reason:'Superseded by a corrected capture',attemptId:'response',occurredAt:'now'}]);
 });

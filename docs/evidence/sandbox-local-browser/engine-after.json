@@ -1,0 +1,53 @@
+{
+  "params": {
+    "runId": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+    "sourceDeliveryId": "191ed8b3-0611-4036-99fd-9b67a924d2f9"
+  },
+  "trigger": {
+    "source": "binding"
+  },
+  "versionId": "3990ce46-ab11-46f7-9fab-4b1fde94f1e1",
+  "queued": "2026-09-18T07:37:36.758Z",
+  "start": "2026-09-18T07:37:37.819Z",
+  "end": null,
+  "success": null,
+  "error": null,
+  "output": null,
+  "rollback": null,
+  "status": "running",
+  "step_count": 2,
+  "steps": [
+    {
+      "name": "authority:workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1-1",
+      "start": "2026-09-18T07:37:38.115Z",
+      "end": "2026-09-18T07:37:38.186Z",
+      "attempts": [
+        {
+          "start": "2026-09-18T07:37:38.115Z",
+          "end": "2026-09-18T07:37:38.186Z",
+          "success": true,
+          "error": null
+        }
+      ],
+      "config": {
+        "retries": {
+          "limit": 5,
+          "delay": 10000,
+          "backoff": "exponential"
+        },
+        "timeout": "10 minutes"
+      },
+      "output": "{\"run_id\":\"workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1\",\"correlation_id\":\"workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241\",\"run_sequence\":1,\"project_id\":\"99426d9b-cda7-4db4-9136-692a95a0b090\",\"issue_id\":\"e08fdf64-e2dc-42d5-b7e6-ab0a11607241\",\"definition_id\":\"implementation\",\"definition_version\":41,\"definition_digest\":\"79533f9d41a29bc8b422b5594fc6bcde5de4546c9718f73dd56557810ac6d53f\",\"workflow_instance_id\":\"wf-v1-vv6hj6lwdshnryctyi3e6ff4yh5isx7yyqy5u6fnbrz363rdo3fa\",\"previous_node\":\"implementation_publish\",\"current_node\":\"implementation_review\",\"gate_origin_node\":\"implementation_publish\",\"status\":\"awaiting_human\",\"accumulated_data_json\":\"{}\",\"created_at\":\"2026-09-17T13:37:26.619Z\",\"updated_at\":\"2026-09-17T18:45:46.014Z\",\"terminal_at\":null,\"terminal_cause\":null,\"current_visit_sequence\":50,\"last_transition_id\":\"workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:visit:49:transition\",\"selection_kin[truncated output]",
+      "success": true,
+      "type": "step"
+    },
+    {
+      "name": "linear-event:implementation_review:visit:50-1",
+      "start": "2026-09-18T07:37:38.221Z",
+      "finished": false,
+      "type": "waitForEvent",
+      "event_type": "linear-event",
+      "error": null
+    }
+  ]
+}

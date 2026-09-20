@@ -1,0 +1,47 @@
+[
+  {
+    "source": {
+      "level": "error",
+      "message": "Sandbox error",
+      "component": "sandbox-do",
+      "sandboxId": "393c629bf9d2b382f4cf27e7db043a2655889ef7b9f43a3cc6ef77c02c05dbda",
+      "traceId": "tr_49a8d2e0f59a46d1",
+      "timestamp": "2026-09-17T13:40:00.709Z",
+      "error": {
+        "message": "Runtime signalled the container to exit due to a new version rollout: 0",
+        "stack": "Error: Runtime signalled the container to exit due to a new version rollout: 0",
+        "name": "Error"
+      }
+    },
+    "dataset": "cloudflare-workers",
+    "timestamp": 1789652400709,
+    "$workers": {
+      "truncated": false,
+      "scriptName": "deos-queue-consumer-ts",
+      "scriptVersion": {
+        "id": "5a65c8a2-da87-4cc5-8539-5e7b2a37cc96"
+      },
+      "durableObjectId": "393c629bf9d2b382f4cf27e7db043a2655889ef7b9f43a3cc6ef77c02c05dbda",
+      "eventType": "jsrpc",
+      "entrypoint": "Sandbox",
+      "executionModel": "durableObject",
+      "requestId": "27c61abe29983a9655a0cb5340f728ba",
+      "traceId": "86b56e143675a21c02127826cb6f95af",
+      "spanId": "60ffc3e8450cc327"
+    },
+    "$metadata": {
+      "id": "01M2QSGYJ5000000000000000E",
+      "requestId": "27c61abe29983a9655a0cb5340f728ba",
+      "traceId": "tr_49a8d2e0f59a46d1",
+      "spanId": "60ffc3e8450cc327",
+      "trigger": "Sandbox.jsrpc",
+      "service": "deos-queue-consumer-ts",
+      "level": "error",
+      "error": "Sandbox error",
+      "message": "Sandbox error",
+      "account": "c68856288112af7698f5be52ea94b96e",
+      "type": "cf-worker",
+      "origin": "jsrpc"
+    }
+  }
+]

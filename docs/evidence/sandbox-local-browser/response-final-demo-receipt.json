@@ -1,0 +1,173 @@
+[
+  {
+    "operation": "demo",
+    "change": "sac-246",
+    "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+    "occurredAt": "2026-09-18T09:02:49.465Z",
+    "event": "step_completed",
+    "collectionId": "6378856f-9194-4940-b247-9e6db526f7dd",
+    "scenarioId": "failed-read-delete-synthetic-ingress",
+    "stepIndex": 3,
+    "result": {
+      "url": "https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/",
+      "documentStatus": 200,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "traceEnabled": false,
+      "console": [],
+      "transport": "sandbox-local-chromium",
+      "proof": {
+        "change": "sac-246",
+        "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+        "id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:browser_image:d45e352d188cf147b79d1b9d529aa517340fbb050900ed957b4393800c65e970:5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4",
+        "kind": "browser_image",
+        "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4/proof/01a0b3b2-fdfc-762b-9cf2-eea18365d827/ef7c636a1374ecc78c80e17aae08a49a83d40846/d45e352d188cf147b79d1b9d529aa517340fbb050900ed957b4393800c65e970/browser.png",
+        "caption": "The real deployed shelf starts with healthy Alpha and the explicitly synthetic Broken delete failure fixture.\nCaptured from https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/; Chromium inside the implementation sandbox",
+        "sha256": "5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4",
+        "sanitized": true
+      },
+      "imagePath": "/deos/implementation/browser-5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4.png"
+    }
+  },
+  {
+    "operation": "demo",
+    "change": "sac-246",
+    "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+    "occurredAt": "2026-09-18T09:02:52.123Z",
+    "event": "step_completed",
+    "collectionId": "6378856f-9194-4940-b247-9e6db526f7dd",
+    "scenarioId": "failed-read-delete-synthetic-ingress",
+    "stepIndex": 6,
+    "result": {
+      "url": "https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/",
+      "documentStatus": 200,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "traceEnabled": false,
+      "console": [],
+      "transport": "sandbox-local-chromium",
+      "proof": {
+        "change": "sac-246",
+        "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+        "id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:browser_image:2ef56d4f1d59f9d75e5572d8cfe65daf14d6ba15615f9dfb83d29bab0b4916ac:d1e8e07f6c940de47607ea6b8415ca4c11dabe55d037bdeae7bfe10985499af0",
+        "kind": "browser_image",
+        "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/d1e8e07f6c940de47607ea6b8415ca4c11dabe55d037bdeae7bfe10985499af0/proof/01a0b3b2-fdfc-762b-9cf2-eea18365d827/ef7c636a1374ecc78c80e17aae08a49a83d40846/2ef56d4f1d59f9d75e5572d8cfe65daf14d6ba15615f9dfb83d29bab0b4916ac/browser.png",
+        "caption": "The deployed app reports that Broken delete could not be read and clears the reader instead of showing stale text.\nCaptured from https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/; Chromium inside the implementation sandbox",
+        "sha256": "d1e8e07f6c940de47607ea6b8415ca4c11dabe55d037bdeae7bfe10985499af0",
+        "sanitized": true
+      },
+      "imagePath": "/deos/implementation/browser-d1e8e07f6c940de47607ea6b8415ca4c11dabe55d037bdeae7bfe10985499af0.png"
+    }
+  },
+  {
+    "operation": "demo",
+    "change": "sac-246",
+    "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+    "occurredAt": "2026-09-18T09:02:54.884Z",
+    "event": "step_completed",
+    "collectionId": "6378856f-9194-4940-b247-9e6db526f7dd",
+    "scenarioId": "failed-read-delete-synthetic-ingress",
+    "stepIndex": 9,
+    "result": {
+      "url": "https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/",
+      "documentStatus": 200,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "traceEnabled": false,
+      "console": [],
+      "transport": "sandbox-local-chromium",
+      "proof": {
+        "change": "sac-246",
+        "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+        "id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:browser_image:7b0c46c231a5692210f2aa7c5f7e8ce57b401411a7769bb4ba367c205fc43f6b:2b98e7750a54a71ea9f9684c4342e6b8077fb45e847f375b07660aae14837db6",
+        "kind": "browser_image",
+        "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/2b98e7750a54a71ea9f9684c4342e6b8077fb45e847f375b07660aae14837db6/proof/01a0b3b2-fdfc-762b-9cf2-eea18365d827/ef7c636a1374ecc78c80e17aae08a49a83d40846/7b0c46c231a5692210f2aa7c5f7e8ce57b401411a7769bb4ba367c205fc43f6b/browser.png",
+        "caption": "The failed delete is reported without false success; Broken delete remains available for retry after authoritative D1 reload.\nCaptured from https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/; Chromium inside the implementation sandbox",
+        "sha256": "2b98e7750a54a71ea9f9684c4342e6b8077fb45e847f375b07660aae14837db6",
+        "sanitized": true
+      },
+      "imagePath": "/deos/implementation/browser-2b98e7750a54a71ea9f9684c4342e6b8077fb45e847f375b07660aae14837db6.png"
+    }
+  },
+  {
+    "operation": "demo",
+    "change": "sac-246",
+    "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+    "occurredAt": "2026-09-18T09:02:57.575Z",
+    "event": "step_completed",
+    "collectionId": "6378856f-9194-4940-b247-9e6db526f7dd",
+    "scenarioId": "failed-read-delete-synthetic-ingress",
+    "stepIndex": 12,
+    "result": {
+      "url": "https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/",
+      "documentStatus": 200,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "traceEnabled": false,
+      "console": [],
+      "transport": "sandbox-local-chromium",
+      "proof": {
+        "change": "sac-246",
+        "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+        "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+        "id": "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:browser_image:cc5605bbc2cc339a858ff30698075067948eaf2c91e3ac06588316b612a17eea:5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4",
+        "kind": "browser_image",
+        "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4/proof/01a0b3b2-fdfc-762b-9cf2-eea18365d827/ef7c636a1374ecc78c80e17aae08a49a83d40846/cc5605bbc2cc339a858ff30698075067948eaf2c91e3ac06588316b612a17eea/browser.png",
+        "caption": "Alpha remains readable as First body after the failed read and failed delete.\nCaptured from https://deos-tmp-29e1a604cd5e918d7382569b.skundu.workers.dev/; Chromium inside the implementation sandbox",
+        "sha256": "5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4",
+        "sanitized": true
+      },
+      "imagePath": "/deos/implementation/browser-5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4.png"
+    }
+  },
+  {
+    "operation": "demo",
+    "change": "sac-246",
+    "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+    "occurredAt": "2026-09-18T09:02:57.576Z",
+    "event": "scenario_completed",
+    "collectionId": "6378856f-9194-4940-b247-9e6db526f7dd",
+    "scenarioId": "failed-read-delete-synthetic-ingress"
+  },
+  {
+    "operation": "demo",
+    "change": "sac-246",
+    "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+    "treeSha": "ef7c636a1374ecc78c80e17aae08a49a83d40846",
+    "occurredAt": "2026-09-18T09:02:57.577Z",
+    "event": "demo_completed",
+    "collectionId": "6378856f-9194-4940-b247-9e6db526f7dd",
+    "captures": [
+      "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:browser_image:d45e352d188cf147b79d1b9d529aa517340fbb050900ed957b4393800c65e970:5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4",
+      "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:browser_image:2ef56d4f1d59f9d75e5572d8cfe65daf14d6ba15615f9dfb83d29bab0b4916ac:d1e8e07f6c940de47607ea6b8415ca4c11dabe55d037bdeae7bfe10985499af0",
+      "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:browser_image:7b0c46c231a5692210f2aa7c5f7e8ce57b401411a7769bb4ba367c205fc43f6b:2b98e7750a54a71ea9f9684c4342e6b8077fb45e847f375b07660aae14837db6",
+      "01a0b3b2-fdfc-762b-9cf2-eea18365d827:ef7c636a1374ecc78c80e17aae08a49a83d40846:browser_image:cc5605bbc2cc339a858ff30698075067948eaf2c91e3ac06588316b612a17eea:5f9926a2eacdbfbfdf854ec1c9ce3949b011a6c501b2b30fac94cc34fb3ed1d4"
+    ]
+  }
+]

@@ -23,6 +23,9 @@ import { reconcileImplementationPreview } from "./implementation-preview-reconci
 import { ImplementationHostedPreview, hostedPreviewOrigin, type HostedPreviewEnv } from "./implementation-hosted-preview.ts";
 import { ImplementationStaticPreview, staticPreviewOrigin, type StaticPreviewEnv } from "./implementation-static-preview.ts";
 import { sha256Hex } from "./implementation-hash.ts";
+import { ImplementationEnvironment, type EnvironmentEnv } from "./implementation-environment.ts";
+import { localBrowserTarget, checkedLocalCapture } from "./implementation-local-browser.ts";
+import { implementationAllowedHosts } from "./implementation-network.ts";
 
 export class ImplementationBroker {
   readonly store: ImplementationStore;
@@ -80,6 +83,36 @@ export class ImplementationBroker {
         // Compatibility for an older supervisor finishing during rollout.
         // The workflow acknowledges completion; it does not review the work.
         return Response.json({ ready: true, subject });
+      }
+      // These actions are called only by the root runtime. Its author-facing
+      // dispatcher never forwards capture bytes or these internal action names.
+      if (request.action === 'local_browser_target' || request.action === 'local_browser_capture') {
+        const target = await localBrowserTarget(this.env,work,input,claims.attemptId,subject,request.target);
+        if (request.action === 'local_browser_target') {
+          if (target.target !== 'local') {
+            const sandbox = getSandbox(attempt.sandbox_tier === 'standard-2'
+              ? this.env.ImplementationStandard2Sandbox : this.env.ImplementationSandbox,
+              attempt.sandbox_id,{normalizeId:true,keepAlive:true});
+            // The outbound handler still checks the exact owned origin on each request.
+            await sandbox.setAllowedHosts(implementationAllowedHosts(input.policy,this.env.CAPABILITY_BASE_URL,[new URL(target.origin).hostname]));
+          }
+          return Response.json(target);
+        }
+        const capture = checkedLocalCapture(request.capture,target.origin);
+        const proof = await this.proof(claims,subject,'browser_image',capture.image,'image/png',
+          this.sanitize(`${String(request.caption ?? 'Changed state in the isolated preview')}\nCaptured from ${capture.url}; Chromium inside the implementation sandbox`),undefined,
+          await sha256Hex(JSON.stringify([target.origin,target.identity,request.captureId ?? null,request.caption ?? null])));
+        return Response.json({proof});
+      }
+      if (request.action === 'publish_environment' || request.action === 'storage') {
+        if(!input.policy.safeAdapters.includes('temporary-environment-v1'))
+          throw new ImplementationError('environment_denied','This run has no temporary Cloudflare environment capability');
+        const environments=new ImplementationEnvironment(this.env);
+        if(request.action==='publish_environment')return Response.json(await environments.publish(work,claims.attemptId,subject,request.bundle));
+        const result=await environments.inspect(claims.runId,claims.attemptId,request.operation);
+        const proof=await this.proof(claims,subject,'showboat',JSON.stringify(result,null,2),'text/plain',
+          `Real temporary Cloudflare environment: ${String((request.operation as Record<string,unknown>)?.operation)}`);
+        return Response.json({...result,proof:{...proof,audience:'diagnostic'}});
       }
       if (request.action === 'publish_preview') {
         if (!input.policy.safeAdapters.includes('static-preview-v1'))
@@ -274,10 +307,15 @@ export class ImplementationBroker {
         });
       }
       if (request.action === "browser") {
-        if (request.target !== undefined && request.target !== 'local' && request.target !== 'hosted')
-          throw new ImplementationError('browser_target', 'Browser target must be local or hosted');
+        if (request.target !== undefined && !['local','hosted','remote'].includes(String(request.target)))
+          throw new ImplementationError('browser_target', 'Browser target must be local, hosted or remote');
         const hosted = await new ImplementationHostedPreview(this.env).latest(work);
-        const hostedOrigin = request.target === 'hosted' ? hostedPreviewOrigin(hosted, subject) : null;
+        const remoteRow = input.policy.safeAdapters.includes('temporary-environment-v1')
+          ? await new ImplementationEnvironment(this.env).row(claims.attemptId) : null;
+        const remoteOrigin = remoteRow?.state === 'ready'
+          ? await new ImplementationEnvironment(this.env).origin(claims.runId,claims.attemptId) : null;
+        if(request.target==='remote'&&!remoteOrigin)throw new ImplementationError('environment_missing','Publish this attempt\'s remote environment first');
+        const hostedOrigin = request.target === 'remote' ? remoteOrigin : request.target === 'hosted' ? hostedPreviewOrigin(hosted, subject) : null;
         const preview = await this.store.resource(claims.attemptId, "preview");
         if (!hostedOrigin && !preview?.preview_origin)
           throw new ImplementationError(
@@ -300,7 +338,7 @@ export class ImplementationBroker {
           (preview?.status === "ready" ? preview.preview_origin : null) ?? origin;
         const allowedOrigins: string[] = savedBinding
           ? savedBinding.origins ?? [savedBinding.origin]
-          : [...new Set([allocationOrigin, ...(hosted ? [hosted.origin] : []),
+          : [...new Set([allocationOrigin, ...(hosted ? [hosted.origin] : []), ...(remoteOrigin ? [remoteOrigin] : []),
             ...(input.policy.safeAdapters.includes('static-preview-v1') ? [await staticPreviewOrigin(work.run_id)] : [])])];
         if (!allowedOrigins.includes(origin))
           throw new ImplementationError('browser_origin', 'Requested target is outside this browser session; resume in a fresh try to change its allowed origins');
@@ -390,9 +428,9 @@ export class ImplementationBroker {
             "browser_image",
             result.image,
             "image/png",
-            this.sanitize(`${String(request.caption ?? 'Changed state in the isolated preview')}\nCaptured from ${result.url}${hostedOrigin ? `; checked maintainer deployment ${hosted!.registrationId}` : ''}`),
+            this.sanitize(`${String(request.caption ?? 'Changed state in the isolated preview')}\nCaptured from ${result.url}${request.target === 'hosted' ? `; checked maintainer deployment ${hosted!.registrationId}` : ''}`),
             undefined,
-            await sha256Hex(JSON.stringify([origin, hostedOrigin ? hosted!.registrationId : 'local',
+            await sha256Hex(JSON.stringify([origin, request.target === 'remote' ? remoteRow!.receipt_sha : hostedOrigin ? hosted!.registrationId : 'local',
               request.captureId ?? null, request.caption ?? null])),
           );
           return Response.json({
@@ -473,6 +511,7 @@ export class ImplementationBroker {
       this.env.OPENROUTER_API_KEY,
       (this.env as HostedPreviewEnv).IMPLEMENTATION_PAGES_READ_TOKEN,
       (this.env as StaticPreviewEnv).IMPLEMENTATION_PREVIEW_TOKEN,
+      (this.env as EnvironmentEnv).IMPLEMENTATION_ENVIRONMENT_TOKEN,
     ];
     for (const secret of secrets)
       if (secret && secret.length > 8)

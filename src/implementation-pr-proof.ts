@@ -2,11 +2,13 @@ import { ImplementationError, type ImplementationCandidate } from './implementat
 import type { ImplementationGitHub } from './implementation-github.ts';
 import type { ImplementationRun, ImplementationStore } from './implementation-store.ts';
 import { sha256Hex } from './implementation-hash.ts';
+import { requireEvidenceChecklist, evidenceChecklistMarkdown, type ChecklistPlan } from '../container/implementation-evidence-checklist.mjs';
 
 export interface PublishedImplementationProof {
   images: { caption: string; url: string }[];
   showboatUrl: string;
   commit: string;
+  checklistUrl?: string;
 }
 
 const markdownText = (value: string) => value.replace(/[\\[\]<>]/g, '\\$&');
@@ -30,14 +32,21 @@ export async function publishImplementationProof(
   store: ImplementationStore,
   work: ImplementationRun,
   candidate: ImplementationCandidate,
+  plan: ChecklistPlan | null = null,
 ): Promise<PublishedImplementationProof> {
+  // Legacy candidates remain readable; new runtimes emit the checklist from the
+  // saved plan. Validate before any GitHub write, including proof asset uploads.
+  if (candidate.evidenceChecklist)
+    requireEvidenceChecklist(candidate.evidenceChecklist, plan, candidate.proof);
   const images = candidate.proof.filter(proof => proof.kind === 'browser_image');
   // Old command captures include validation logs. Only deliberately selected
   // behavior demonstrations belong in the reviewer document.
   const records = candidate.proof.filter(proof => proof.kind === 'showboat' && proof.audience === 'review');
   const publicRepository = (await github.json<{private: boolean}>('')).private === false;
-  const manifest = JSON.stringify({version: 3, runId: work.run_id,
-    proof: [...images, ...records].map(({id, kind, sha256, caption}) => ({id, kind, sha256, caption}))});
+  const manifest = JSON.stringify({version: 4, runId: work.run_id,
+    proof: [...images, ...records].map(({id, kind, sha256, caption, change, approvedDesignSha, testedBaseSha, treeSha}) =>
+      ({id, kind, sha256, caption, change, approvedDesignSha, testedBaseSha, treeSha})),
+    ...(candidate.evidenceChecklist ? {checklist:candidate.evidenceChecklist, omissions:candidate.proofOmissions ?? []} : {})});
   const digest = await sha256Hex(manifest);
   const branch = `deos/proof/${work.linear_identifier}/run-${work.issue_run_sequence}/${digest}`;
   let commit = await github.ref(branch, true);
@@ -66,7 +75,16 @@ export async function publishImplementationProof(
     }
     for (const proof of records) {
       const content = new TextDecoder().decode(await store.readBytes(proof.path, proof.sha256));
-      showboat.push(content);
+      showboat.push(`<a id="evidence-${await sha256Hex(proof.id)}"></a>\n\n${content}`);
+    }
+    if (candidate.evidenceChecklist) {
+      const links = new Map(await Promise.all([
+        ...images.map(async proof => [proof.id, `images/${proof.sha256}.png`] as const),
+        ...records.map(async proof => [proof.id, `showboat.md#evidence-${await sha256Hex(proof.id)}`] as const),
+      ]));
+      await upload('evidence-checklist.json', new TextEncoder().encode(JSON.stringify(candidate.evidenceChecklist, null, 2)));
+      await upload('evidence-checklist.md', new TextEncoder().encode(
+        evidenceChecklistMarkdown(candidate.evidenceChecklist, id => links.get(id)!)));
     }
     await upload('showboat.md', new TextEncoder().encode(showboat.join('\n\n') + '\n'));
     await upload('manifest.json', new TextEncoder().encode(manifest));
@@ -98,6 +116,7 @@ export async function publishImplementationProof(
     images: images.map(proof => ({caption: proofCaption(proof.caption),
       url: implementationProofImageUrl(github.repository, commit, proof.sha256, publicRepository)})),
     showboatUrl: `https://github.com/${github.repository}/blob/${commit}/showboat.md`,
+    ...(candidate.evidenceChecklist ? {checklistUrl:`https://github.com/${github.repository}/blob/${commit}/evidence-checklist.md`} : {}),
   };
 }
 

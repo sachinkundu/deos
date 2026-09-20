@@ -1,0 +1,212 @@
+[
+  {
+    "event": "production_read_only_preflight",
+    "activeAttempts": [
+      {
+        "results": [],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "WEUR",
+          "served_by_colo": "AMS",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.3046
+          },
+          "duration": 0.3046,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 115167232,
+          "rows_read": 4,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "event": "published",
+    "receipt": {
+      "target": "remote",
+      "origin": "https://deos-tmp-df52b5b5a43bc4a5d3048391.skundu.workers.dev",
+      "environment": "deos-tmp-df52b5b5a43bc4a5d3048391",
+      "subject": {
+        "change": "environment-provider-probe",
+        "approvedDesignSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "testedBaseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "treeSha": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "config": {
+        "d1": [
+          "DB"
+        ],
+        "r2": [
+          "BUCKET"
+        ]
+      },
+      "databaseId": "99dc3547-3f50-49b2-a837-7da00f45f2d9",
+      "bucket": "deos-tmp-df52b5b5a43bc4a5d3048391",
+      "bundleSha": "328d32e371fc2f6ba7e60bc5d5728a985c38b06bc1d07f94699d78fd2adde39d",
+      "version": "9acce4ca-efc4-4b51-b1f1-370f9816688e",
+      "checkedAt": "2026-09-17T13:04:25.937Z",
+      "temporary": true
+    }
+  },
+  {
+    "environment": "deos-tmp-df52b5b5a43bc4a5d3048391",
+    "result": {
+      "id": "001",
+      "digest": "a02c258660f1e174d53ba474e0224b334e0f5e45c7b4bc99bd9a43ba03b758cf",
+      "reused": false
+    },
+    "evidence": {
+      "key": "implementation/provider-probe-d58ff4de-8de6-41c3-9854-195fd47c9139/fcb134080c791c53d84174c1018557fe98e7c704ed74d08d493293134761d168/environment-storage-evidence.json",
+      "sha256": "fcb134080c791c53d84174c1018557fe98e7c704ed74d08d493293134761d168",
+      "byteSize": 317
+    }
+  },
+  {
+    "environment": "deos-tmp-df52b5b5a43bc4a5d3048391",
+    "result": {
+      "status": 200,
+      "body": "{\"saved\":true}"
+    },
+    "evidence": {
+      "key": "implementation/provider-probe-d58ff4de-8de6-41c3-9854-195fd47c9139/be00478331bf5c03b889630b9fa079a445b03344ead4d97603348bbcb5c4bb90/environment-request-evidence.json",
+      "sha256": "be00478331bf5c03b889630b9fa079a445b03344ead4d97603348bbcb5c4bb90",
+      "byteSize": 202
+    }
+  },
+  {
+    "environment": "deos-tmp-df52b5b5a43bc4a5d3048391",
+    "result": {
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "EEUR",
+        "served_by_colo": "ARN",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.2816
+        },
+        "duration": 0.2816,
+        "changes": 0,
+        "last_row_id": 1,
+        "changed_db": false,
+        "size_after": 28672,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      },
+      "results": [
+        {
+          "id": "one",
+          "value": "fixture"
+        }
+      ]
+    },
+    "evidence": {
+      "key": "implementation/provider-probe-d58ff4de-8de6-41c3-9854-195fd47c9139/58e682eb21988929f47a04a186314f61a065b7662d698fa1271e14b4f40bb073/environment-storage-evidence.json",
+      "sha256": "58e682eb21988929f47a04a186314f61a065b7662d698fa1271e14b4f40bb073",
+      "byteSize": 496
+    }
+  },
+  {
+    "environment": "deos-tmp-df52b5b5a43bc4a5d3048391",
+    "result": {
+      "key": "one",
+      "size": 15,
+      "sha256": "25ea60b6f35b79b55354e8901f10e3947574c40e872184fa69a86cb15f35a055",
+      "contentBase64": "cmVhbC1yMi1maXh0dXJl"
+    },
+    "evidence": {
+      "key": "implementation/provider-probe-d58ff4de-8de6-41c3-9854-195fd47c9139/87e6854cccd1b69ca9ad30caa63fb26f0017eefbb3fb4bf5ebef7c63402d622e/environment-storage-evidence.json",
+      "sha256": "87e6854cccd1b69ca9ad30caa63fb26f0017eefbb3fb4bf5ebef7c63402d622e",
+      "byteSize": 284
+    }
+  },
+  {
+    "environment": "deos-tmp-df52b5b5a43bc4a5d3048391",
+    "result": {
+      "status": 200,
+      "body": "{\"row\":{\"id\":\"one\",\"value\":\"fixture\"},\"text\":\"real-r2-fixture\"}"
+    },
+    "evidence": {
+      "key": "implementation/provider-probe-d58ff4de-8de6-41c3-9854-195fd47c9139/73659d4359530affdb84878df5dcd5dd0bab034ad821dd9c430f0498d586b639/environment-request-evidence.json",
+      "sha256": "73659d4359530affdb84878df5dcd5dd0bab034ad821dd9c430f0498d586b639",
+      "byteSize": 262
+    }
+  },
+  {
+    "environment": "deos-tmp-df52b5b5a43bc4a5d3048391",
+    "result": {
+      "status": 200,
+      "body": "{\"deleted\":true}"
+    },
+    "evidence": {
+      "key": "implementation/provider-probe-d58ff4de-8de6-41c3-9854-195fd47c9139/eb2dc34a62c3b51ba3a5f810bbdb44d0c4f154b85b9e8657e6ec2d854e026476/environment-request-evidence.json",
+      "sha256": "eb2dc34a62c3b51ba3a5f810bbdb44d0c4f154b85b9e8657e6ec2d854e026476",
+      "byteSize": 206
+    }
+  },
+  {
+    "environment": "deos-tmp-df52b5b5a43bc4a5d3048391",
+    "result": {
+      "success": true,
+      "meta": {
+        "served_by": "v3-prod",
+        "served_by_region": "EEUR",
+        "served_by_colo": "ARN",
+        "served_by_primary": true,
+        "timings": {
+          "sql_duration_ms": 0.147
+        },
+        "duration": 0.147,
+        "changes": 0,
+        "last_row_id": 1,
+        "changed_db": false,
+        "size_after": 28672,
+        "rows_read": 1,
+        "rows_written": 0,
+        "total_attempts": 1
+      },
+      "results": []
+    },
+    "evidence": {
+      "key": "implementation/provider-probe-d58ff4de-8de6-41c3-9854-195fd47c9139/e16f05396f8829768694899430f19e62f1241e3f2fbc30109b3e09a539164f54/environment-storage-evidence.json",
+      "sha256": "e16f05396f8829768694899430f19e62f1241e3f2fbc30109b3e09a539164f54",
+      "byteSize": 464
+    }
+  },
+  {
+    "environment": "deos-tmp-df52b5b5a43bc4a5d3048391",
+    "result": {
+      "key": "one",
+      "absent": true
+    },
+    "evidence": {
+      "key": "implementation/provider-probe-d58ff4de-8de6-41c3-9854-195fd47c9139/0d7c94914c60d2380cdc68846e3bffb8bf92478ff6b0c3077a90cb4c5f3adbf6/environment-storage-evidence.json",
+      "sha256": "0d7c94914c60d2380cdc68846e3bffb8bf92478ff6b0c3077a90cb4c5f3adbf6",
+      "byteSize": 173
+    }
+  },
+  {
+    "event": "assertions_passed",
+    "checks": [
+      "remote D1 insert/read/delete",
+      "remote R2 put/get/delete",
+      "app reaches both bindings"
+    ]
+  },
+  {
+    "event": "cleanup",
+    "rows": [
+      {
+        "name": "deos-tmp-df52b5b5a43bc4a5d3048391",
+        "state": "destroyed",
+        "cleanup_receipt": "{\"name\":\"deos-tmp-df52b5b5a43bc4a5d3048391\",\"absent\":{\"d1\":true,\"r2\":true,\"worker\":true},\"checkedAt\":\"2026-09-17T13:04:36.258Z\"}"
+      }
+    ]
+  }
+]

@@ -1,0 +1,879 @@
+{
+  "observedAt": "2026-09-17T18:08:47.492Z",
+  "attemptId": "01a0b081-92a0-79d2-9df4-8acfb32e703b",
+  "operations": [
+    {
+      "requestId": "api-save-alpha-1",
+      "action": "storage",
+      "fingerprint": "7c6371cf5b19308f64bb977248f0ac7bb49e794514ec901acd661224f09188ab",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:00:14.501Z",
+      "lastActivityAt": "2026-09-17T18:00:18.386Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:00:14.505Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "status": 201,
+          "body": "{\"snippet\":{\"id\":\"11111111-1111-4111-8111-111111111111\",\"title\":\"API Alpha\",\"createdAt\":\"2026-09-17T18:00:17.105Z\",\"deletePending\":false}}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c002da73736f508154811c348820cc2e1f03517cd09ddfbd923337dff81e0ec4/environment-request-evidence.json",
+          "sha256": "c002da73736f508154811c348820cc2e1f03517cd09ddfbd923337dff81e0ec4",
+          "byteSize": 449
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:705ee7c39a02c16cf04edabaa9b5365e6e4fdf52d287f3b5f028f301a1d0c8e7",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/705ee7c39a02c16cf04edabaa9b5365e6e4fdf52d287f3b5f028f301a1d0c8e7/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "705ee7c39a02c16cf04edabaa9b5365e6e4fdf52d287f3b5f028f301a1d0c8e7",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:00:18.386Z",
+      "observedAt": "2026-09-17T18:00:19.007Z",
+      "inactiveForMs": 621
+    },
+    {
+      "requestId": "api-save-beta-1",
+      "action": "storage",
+      "fingerprint": "f5f3f4940c2da716459908b9b3b2e8c41731b391ae502753f7408b2897036187",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:00:19.504Z",
+      "lastActivityAt": "2026-09-17T18:00:22.525Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:00:19.585Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "status": 201,
+          "body": "{\"snippet\":{\"id\":\"22222222-2222-4222-8222-222222222222\",\"title\":\"API Beta\",\"createdAt\":\"2026-09-17T18:00:21.348Z\",\"deletePending\":false}}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/22e27f56b947d38cda7f6c3a2f49d14fc77800ff22597922fb04713de66a53e5/environment-request-evidence.json",
+          "sha256": "22e27f56b947d38cda7f6c3a2f49d14fc77800ff22597922fb04713de66a53e5",
+          "byteSize": 448
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:560adb81f4fd8bc7a4491c44b6950536918fcb8e8bb997732b6ca706983560dc",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/560adb81f4fd8bc7a4491c44b6950536918fcb8e8bb997732b6ca706983560dc/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "560adb81f4fd8bc7a4491c44b6950536918fcb8e8bb997732b6ca706983560dc",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:00:22.525Z",
+      "observedAt": "2026-09-17T18:00:22.622Z",
+      "inactiveForMs": 97
+    },
+    {
+      "requestId": "api-list-two-1",
+      "action": "storage",
+      "fingerprint": "c466a9dd46c78d159857ac2fddcabfe777c0b4df91b6ed118827a5df65b26afe",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:00:23.302Z",
+      "lastActivityAt": "2026-09-17T18:00:27.001Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:00:23.305Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "status": 200,
+          "body": "{\"snippets\":[{\"id\":\"22222222-2222-4222-8222-222222222222\",\"title\":\"API Beta\",\"createdAt\":\"2026-09-17T18:00:21.348Z\",\"deletePending\":false},{\"id\":\"11111111-1111-4111-8111-111111111111\",\"title\":\"API Alpha\",\"createdAt\":\"2026-09-17T18:00:17.105Z\",\"deletePending\":false}]}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/d8bdb70bae453d5292d025308e84e1199d62b4f48f47e721cf815a59dca0f382/environment-request-evidence.json",
+          "sha256": "d8bdb70bae453d5292d025308e84e1199d62b4f48f47e721cf815a59dca0f382",
+          "byteSize": 494
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:e21aa5290e6a4200ae7a025b67d6ab8ee4f37e9f1267e48717c72fe7aeae29d4",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/e21aa5290e6a4200ae7a025b67d6ab8ee4f37e9f1267e48717c72fe7aeae29d4/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "e21aa5290e6a4200ae7a025b67d6ab8ee4f37e9f1267e48717c72fe7aeae29d4",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:00:27.001Z",
+      "observedAt": "2026-09-17T18:00:27.514Z",
+      "inactiveForMs": 513
+    },
+    {
+      "requestId": "api-read-beta-1",
+      "action": "storage",
+      "fingerprint": "c59ecd744411efc45478ebe8390acbd7b1f855887a5e6f0fe405a988a3e5d976",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:00:28.406Z",
+      "lastActivityAt": "2026-09-17T18:00:31.586Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:00:28.487Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "status": 200,
+          "body": "{\"id\":\"22222222-2222-4222-8222-222222222222\",\"title\":\"API Beta\",\"text\":\"Second API body\",\"createdAt\":\"2026-09-17T18:00:21.348Z\"}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/44eab27d4963e7262cd5ed619e386cd781f6f3f5dfa67aef1b216425c613eadf/environment-request-evidence.json",
+          "sha256": "44eab27d4963e7262cd5ed619e386cd781f6f3f5dfa67aef1b216425c613eadf",
+          "byteSize": 378
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:d05447ae2239bfbe99fd2eff33e2bc23ff483b586b7184a02c672942905e2295",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/d05447ae2239bfbe99fd2eff33e2bc23ff483b586b7184a02c672942905e2295/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "d05447ae2239bfbe99fd2eff33e2bc23ff483b586b7184a02c672942905e2295",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:00:31.586Z",
+      "observedAt": "2026-09-17T18:00:31.698Z",
+      "inactiveForMs": 112
+    },
+    {
+      "requestId": "api-invalid-blank-1",
+      "action": "storage",
+      "fingerprint": "1696dfc6c53a484c483db148a8acc3c252b7afa63070766c5805dd77a65f1e03",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:00:32.601Z",
+      "lastActivityAt": "2026-09-17T18:00:35.415Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:00:32.602Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "status": 400,
+          "body": "{\"error\":{\"code\":\"TITLE_REQUIRED\",\"message\":\"A title is needed.\",\"field\":\"title\"}}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/cf1c473586257529a677d3dff9c23a4fa2e4b23a24bc4a811b607be9ed5a1b4f/environment-request-evidence.json",
+          "sha256": "cf1c473586257529a677d3dff9c23a4fa2e4b23a24bc4a811b607be9ed5a1b4f",
+          "byteSize": 384
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:c4d00e412894b95d3a123c27bb8e0d0c5a0fee45aa66abda9ff8654cd5becf2c",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c4d00e412894b95d3a123c27bb8e0d0c5a0fee45aa66abda9ff8654cd5becf2c/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "c4d00e412894b95d3a123c27bb8e0d0c5a0fee45aa66abda9ff8654cd5becf2c",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:00:35.415Z",
+      "observedAt": "2026-09-17T18:00:35.794Z",
+      "inactiveForMs": 379
+    },
+    {
+      "requestId": "api-delete-alpha-1",
+      "action": "storage",
+      "fingerprint": "7f7e110c43067fd424a852b6e7b3455000f4c9204c5a161ebf41191b59ee089a",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:00:36.494Z",
+      "lastActivityAt": "2026-09-17T18:00:40.285Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:00:36.499Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "status": 204,
+          "body": ""
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/401e2b252756af449437c97ba2cabb3307fbc0285c8a0f3282765a76be8a1daf/environment-request-evidence.json",
+          "sha256": "401e2b252756af449437c97ba2cabb3307fbc0285c8a0f3282765a76be8a1daf",
+          "byteSize": 237
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:b9264ca7031245005854c975dd852c12a8549a49b5130e62af5c19854fd18557",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/b9264ca7031245005854c975dd852c12a8549a49b5130e62af5c19854fd18557/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "b9264ca7031245005854c975dd852c12a8549a49b5130e62af5c19854fd18557",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:00:40.285Z",
+      "observedAt": "2026-09-17T18:00:40.621Z",
+      "inactiveForMs": 336
+    },
+    {
+      "requestId": "api-list-after-delete-1",
+      "action": "storage",
+      "fingerprint": "57b9a9f1754a5cfd765f3c547e3499d726e3040933ddf27a81ad8e7388587807",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:00:41.185Z",
+      "lastActivityAt": "2026-09-17T18:00:44.133Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:00:41.187Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "status": 200,
+          "body": "{\"snippets\":[{\"id\":\"22222222-2222-4222-8222-222222222222\",\"title\":\"API Beta\",\"createdAt\":\"2026-09-17T18:00:21.348Z\",\"deletePending\":false}]}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/eee580c67a4b9b17c7d7ffc378c4057f6f8059b6e63c9fda83b6d886a5bdbd81/environment-request-evidence.json",
+          "sha256": "eee580c67a4b9b17c7d7ffc378c4057f6f8059b6e63c9fda83b6d886a5bdbd81",
+          "byteSize": 353
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:38a03db38bf05928cb77e1daf3e042bca11e315e2bd3e8e1115062f9c45c0a71",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/38a03db38bf05928cb77e1daf3e042bca11e315e2bd3e8e1115062f9c45c0a71/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "38a03db38bf05928cb77e1daf3e042bca11e315e2bd3e8e1115062f9c45c0a71",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:00:44.133Z",
+      "observedAt": "2026-09-17T18:00:44.310Z",
+      "inactiveForMs": 177
+    },
+    {
+      "requestId": "api-d1-readback-1",
+      "action": "storage",
+      "fingerprint": "2b4e20e199b5e6e2cc12d56023e26676f4384d2643f516c5b73a6dd881da32dd",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:00:45.004Z",
+      "lastActivityAt": "2026-09-17T18:00:47.831Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:00:45.082Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "success": true,
+          "meta": {
+            "served_by": "v3-prod",
+            "served_by_region": "EEUR",
+            "served_by_colo": "VIE",
+            "served_by_primary": true,
+            "timings": {
+              "sql_duration_ms": 0.2532
+            },
+            "duration": 0.2532,
+            "changes": 0,
+            "last_row_id": 2,
+            "changed_db": false,
+            "size_after": 53248,
+            "rows_read": 3,
+            "rows_written": 0,
+            "total_attempts": 1
+          },
+          "results": [
+            {
+              "id": "11111111-1111-4111-8111-111111111111",
+              "state": "deleted",
+              "reserved_bytes": 0,
+              "title": null,
+              "object_key": null
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "state": "active",
+              "reserved_bytes": 15,
+              "title": "API Beta",
+              "object_key": "snippets/22222222-2222-4222-8222-222222222222/a51ccb8a0bb41e8bd0340c1b087444d82cd63d44e2814050b31a7915a9ce5c92.txt"
+            }
+          ]
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/aba36f006ac834265989f64a328696b57b26e8a40fbe80cc6b87b0d15b00cf39/environment-storage-evidence.json",
+          "sha256": "aba36f006ac834265989f64a328696b57b26e8a40fbe80cc6b87b0d15b00cf39",
+          "byteSize": 929
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:2f99332ea9703ff075e65f9ecda887c178fca289e176652275daf30b1bdc5635",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/2f99332ea9703ff075e65f9ecda887c178fca289e176652275daf30b1bdc5635/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: query",
+          "sha256": "2f99332ea9703ff075e65f9ecda887c178fca289e176652275daf30b1bdc5635",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:00:47.831Z",
+      "observedAt": "2026-09-17T18:00:48.197Z",
+      "inactiveForMs": 366
+    },
+    {
+      "requestId": "api-r2-list-1",
+      "action": "storage",
+      "fingerprint": "9d67708d73f019b573823b27f5a479e2c87e0eb4d7bb2d67c87f841d50a8e77f",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:00:48.698Z",
+      "lastActivityAt": "2026-09-17T18:00:51.237Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:00:48.701Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "objects": [
+            {
+              "key": "snippets/22222222-2222-4222-8222-222222222222/a51ccb8a0bb41e8bd0340c1b087444d82cd63d44e2814050b31a7915a9ce5c92.txt",
+              "size": 15,
+              "etag": "7c9dffac7eab6328907649bc150ad806"
+            }
+          ],
+          "truncated": false,
+          "cursor": null
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/64ee9fbc33022da77126145f44b7c23e66e0b917bb53617346965fe6263ad49e/environment-storage-evidence.json",
+          "sha256": "64ee9fbc33022da77126145f44b7c23e66e0b917bb53617346965fe6263ad49e",
+          "byteSize": 357
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:47f283510cd729189c1e2cf080f9852807566144fccc8fab61b8c411292f5790",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/47f283510cd729189c1e2cf080f9852807566144fccc8fab61b8c411292f5790/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: objects",
+          "sha256": "47f283510cd729189c1e2cf080f9852807566144fccc8fab61b8c411292f5790",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:00:51.237Z",
+      "observedAt": "2026-09-17T18:00:51.802Z",
+      "inactiveForMs": 565
+    },
+    {
+      "requestId": "api-r2-object-1",
+      "action": "storage",
+      "fingerprint": "3924931beb6fc108e802556ce1ea2f561170594555ef5e1df6bca356a4c2d8fc",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:01:03.999Z",
+      "lastActivityAt": "2026-09-17T18:01:06.826Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:01:04.081Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "key": "snippets/22222222-2222-4222-8222-222222222222/a51ccb8a0bb41e8bd0340c1b087444d82cd63d44e2814050b31a7915a9ce5c92.txt",
+          "size": 15,
+          "sha256": "a51ccb8a0bb41e8bd0340c1b087444d82cd63d44e2814050b31a7915a9ce5c92",
+          "contentBase64": "U2Vjb25kIEFQSSBib2R5"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/4b01293b8672888c39eaf9ed60d3d0bac5321803e32379a73bb83bf205fd1a99/environment-storage-evidence.json",
+          "sha256": "4b01293b8672888c39eaf9ed60d3d0bac5321803e32379a73bb83bf205fd1a99",
+          "byteSize": 506
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:6760386490a92160319ac81e26a0db4d2e09f076f3d3a4a6ec107ec1e551c157",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/6760386490a92160319ac81e26a0db4d2e09f076f3d3a4a6ec107ec1e551c157/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: object",
+          "sha256": "6760386490a92160319ac81e26a0db4d2e09f076f3d3a4a6ec107ec1e551c157",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:01:06.826Z",
+      "observedAt": "2026-09-17T18:01:07.204Z",
+      "inactiveForMs": 378
+    },
+    {
+      "requestId": "api-cleanup-beta-1",
+      "action": "storage",
+      "fingerprint": "084513928733260d56b50ba78c51e1250d5da81e2fbe8e6c5b2e5956db485676",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:01:08.404Z",
+      "lastActivityAt": "2026-09-17T18:01:12.162Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:01:08.488Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "status": 204,
+          "body": ""
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/1bcf397ef38cbcf4a763a780202f03405ae7ee33800b6384c7d0ea0d4d72d1b1/environment-request-evidence.json",
+          "sha256": "1bcf397ef38cbcf4a763a780202f03405ae7ee33800b6384c7d0ea0d4d72d1b1",
+          "byteSize": 237
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:4ae9b96c8ed267525e3077d790faed14273ab3c8db7d61eea95333c7bad5a08d",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/4ae9b96c8ed267525e3077d790faed14273ab3c8db7d61eea95333c7bad5a08d/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "4ae9b96c8ed267525e3077d790faed14273ab3c8db7d61eea95333c7bad5a08d",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:01:12.162Z",
+      "observedAt": "2026-09-17T18:01:12.637Z",
+      "inactiveForMs": 475
+    },
+    {
+      "requestId": "api-cleanup-list-1",
+      "action": "storage",
+      "fingerprint": "481098576613f011479aaab1b914c0c2abb3e812a0400d797dbc34920dacdc97",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:01:13.303Z",
+      "lastActivityAt": "2026-09-17T18:01:15.994Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:01:13.382Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "status": 200,
+          "body": "{\"snippets\":[]}"
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/7971c9bcf3ad330bce170f935d1b476685a940c7549fee0cde03fd100589c44c/environment-request-evidence.json",
+          "sha256": "7971c9bcf3ad330bce170f935d1b476685a940c7549fee0cde03fd100589c44c",
+          "byteSize": 214
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:eeaec50fade5cd43d65d5e0124ccf3eec2448770970c0d4d709d262710086fa7",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/eeaec50fade5cd43d65d5e0124ccf3eec2448770970c0d4d709d262710086fa7/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: request",
+          "sha256": "eeaec50fade5cd43d65d5e0124ccf3eec2448770970c0d4d709d262710086fa7",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:01:15.994Z",
+      "observedAt": "2026-09-17T18:01:16.502Z",
+      "inactiveForMs": 508
+    },
+    {
+      "requestId": "api-cleanup-r2-1",
+      "action": "storage",
+      "fingerprint": "651c9168a8d82c228f3ed3e3caddcffef0f6e08d508c95c66d367074bbedc4c9",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:01:16.996Z",
+      "lastActivityAt": "2026-09-17T18:01:19.704Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:01:16.999Z",
+      "result": {
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "result": {
+          "objects": [],
+          "truncated": false,
+          "cursor": null
+        },
+        "evidence": {
+          "key": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/d083dea2876a3c04d117fbcdaa9b83b5201d5c4b44bae897a0c985b1b0e55098/environment-storage-evidence.json",
+          "sha256": "d083dea2876a3c04d117fbcdaa9b83b5201d5c4b44bae897a0c985b1b0e55098",
+          "byteSize": 181
+        },
+        "proof": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "088247f6684380b58ef13c3adb8183cf9fe002c7",
+          "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:088247f6684380b58ef13c3adb8183cf9fe002c7:showboat:61e7cbb597bff7b412acb7df65ad488ad82504a1450bf7dbaa0d570f0c4954ab",
+          "kind": "showboat",
+          "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/61e7cbb597bff7b412acb7df65ad488ad82504a1450bf7dbaa0d570f0c4954ab/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/088247f6684380b58ef13c3adb8183cf9fe002c7/showboat.md",
+          "caption": "Real temporary Cloudflare environment: objects",
+          "sha256": "61e7cbb597bff7b412acb7df65ad488ad82504a1450bf7dbaa0d570f0c4954ab",
+          "sanitized": true,
+          "audience": "diagnostic"
+        }
+      },
+      "finishedAt": "2026-09-17T18:01:19.704Z",
+      "observedAt": "2026-09-17T18:01:20.111Z",
+      "inactiveForMs": 407
+    },
+    {
+      "requestId": "format-css-fix-1",
+      "action": "check",
+      "fingerprint": "2722b9c9e039c9aef6bbb358da7a2188e2a9e027087988bf370aad10d61995ff",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:05:10.793Z",
+      "lastActivityAt": "2026-09-17T18:05:33.593Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:05:10.794Z",
+      "commandDeadline": "2026-09-17T18:15:10.794Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 243
+      },
+      "result": {
+        "command": "'npm' 'run' 'format:check'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "\n> snippet-shelf-canary@1.0.0 format:check\n> prettier --check \"src/**/*.{ts,js,css,html}\" \"tests/**/*.ts\" \"scripts/**/*.mjs\" \"package*.json\" \"tsconfig.json\" \"vitest.config.ts\"\n\nChecking formatting...\nAll matched files use Prettier code style!\n",
+        "stderr": "",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-17T18:05:33.593Z",
+      "observedAt": "2026-09-17T18:05:34.291Z",
+      "inactiveForMs": 698
+    },
+    {
+      "requestId": "build-css-fix-1",
+      "action": "check",
+      "fingerprint": "9b9774cc7af0305a69617f4b5bbd1b3e5cfd67ab5a222dc1602b12edaf7c2c5c",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:05:34.800Z",
+      "lastActivityAt": "2026-09-17T18:05:38.187Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:05:34.802Z",
+      "commandDeadline": "2026-09-17T18:15:34.802Z",
+      "progress": {
+        "event": "command_output",
+        "outputBytes": 108
+      },
+      "result": {
+        "command": "'npm' 'run' 'build'",
+        "exitCode": 0,
+        "signal": null,
+        "stdout": "\n> snippet-shelf-canary@1.0.0 build\n> node scripts/build.mjs\n\nBuilt build/worker.mjs and dist static assets\n",
+        "stderr": "",
+        "cwd": "/deos/workspace/repository"
+      },
+      "finishedAt": "2026-09-17T18:05:38.187Z",
+      "observedAt": "2026-09-17T18:05:39.004Z",
+      "inactiveForMs": 817
+    },
+    {
+      "requestId": "remote-css-fix-1",
+      "action": "publish_environment",
+      "fingerprint": "62e393c967b7eba9eb69f2468772a4ec43d10a006ab39debd402133a1de85efd",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:06:08.606Z",
+      "lastActivityAt": "2026-09-17T18:06:21.583Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:06:08.680Z",
+      "result": {
+        "target": "remote",
+        "origin": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev",
+        "environment": "deos-tmp-fd06b452d4155750a21db179",
+        "subject": {
+          "change": "sac-246",
+          "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+          "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403"
+        },
+        "config": {
+          "d1": [
+            "DB"
+          ],
+          "r2": [
+            "BODIES"
+          ]
+        },
+        "databaseId": "7dea7ba9-6982-4f94-ba4f-4b21475c2bff",
+        "bucket": "deos-tmp-fd06b452d4155750a21db179",
+        "bundleSha": "72f8e3c7ec4c80b6966a1e60743412b019f2d2f5c671ec38788ef36f78caa311",
+        "version": "0a8aa297-8d8b-4dce-bec8-8c0572e9dd70",
+        "checkedAt": "2026-09-17T18:06:21.320Z",
+        "temporary": true
+      },
+      "finishedAt": "2026-09-17T18:06:21.583Z",
+      "observedAt": "2026-09-17T18:06:21.985Z",
+      "inactiveForMs": 402
+    },
+    {
+      "requestId": "browser-proof-css-fix-1",
+      "action": "demo",
+      "fingerprint": "bb5c000652967f48d033f5b78c1caeb3fbc8b6699cd0e1139a5181e9091c7339",
+      "state": "completed",
+      "createdAt": "2026-09-17T18:06:40.197Z",
+      "lastActivityAt": "2026-09-17T18:08:28.483Z",
+      "deadline": "2026-09-18T17:54:36.832Z",
+      "startedAt": "2026-09-17T18:06:40.204Z",
+      "progress": {
+        "event": "demo_completed",
+        "collectionId": "66dd9f02-140c-48b8-89a6-9cd23908d260"
+      },
+      "result": {
+        "collectionId": "66dd9f02-140c-48b8-89a6-9cd23908d260",
+        "captures": [
+          {
+            "scenarioId": "empty-shelf",
+            "stepIndex": 1,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:d5e0de4e64c465e859ff4decf73eda70963b5f896d49ea759f6aaffddc333163:c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/d5e0de4e64c465e859ff4decf73eda70963b5f896d49ea759f6aaffddc333163/browser.png",
+              "caption": "The deployed one-screen shelf opens empty, with create, title list, and reader panels visible without a login.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-c302bcf125670ef3a4266b32492e2dc04065aeea198071e880545e80e9d00201.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 10,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:f688b063b18f126ad467d1ea50c256a0b82993e5f7a6e894419d6abb26c03baa:f88e58696cdbf25f1b71aa5b67550ebe2435558d6f8c687ae552ab25cdc6a44f",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/f88e58696cdbf25f1b71aa5b67550ebe2435558d6f8c687ae552ab25cdc6a44f/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/f688b063b18f126ad467d1ea50c256a0b82993e5f7a6e894419d6abb26c03baa/browser.png",
+              "caption": "Two cloud-backed snippets are listed, and the selected Sign-off shows its own Kind regards. body.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "f88e58696cdbf25f1b71aa5b67550ebe2435558d6f8c687ae552ab25cdc6a44f",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-f88e58696cdbf25f1b71aa5b67550ebe2435558d6f8c687ae552ab25cdc6a44f.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 13,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:b3a9c8cf768d1534134a7dac70962a71f2d6db71733546a29d374074c47536e9:323aaab5c380d0e5a8b3bf70c1c69ec620efc23ab523503fcffad2b8e157d3ad",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/323aaab5c380d0e5a8b3bf70c1c69ec620efc23ab523503fcffad2b8e157d3ad/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/b3a9c8cf768d1534134a7dac70962a71f2d6db71733546a29d374074c47536e9/browser.png",
+              "caption": "Selecting Greeting switches the same-screen reader to Hello, team! while both titles remain listed.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "323aaab5c380d0e5a8b3bf70c1c69ec620efc23ab523503fcffad2b8e157d3ad",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-323aaab5c380d0e5a8b3bf70c1c69ec620efc23ab523503fcffad2b8e157d3ad.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 18,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:b37c45588bb66f6fdac13080385caf51aaceb1455c24f2d538df4719e9673e9a:38a406e40320274790b52fe15de77d86f1f8d046bbf35c846b1410846c64b1dd",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/38a406e40320274790b52fe15de77d86f1f8d046bbf35c846b1410846c64b1dd/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/b37c45588bb66f6fdac13080385caf51aaceb1455c24f2d538df4719e9673e9a/browser.png",
+              "caption": "After a page reload, both titles return from cloud storage and Sign-off still opens with Kind regards.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "38a406e40320274790b52fe15de77d86f1f8d046bbf35c846b1410846c64b1dd",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-38a406e40320274790b52fe15de77d86f1f8d046bbf35c846b1410846c64b1dd.png"
+          },
+          {
+            "scenarioId": "save-read-refresh-delete",
+            "stepIndex": 23,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:7da3a19a6e38cf8d972956a2cb2eea04872998b311de5d6dfffc87cfea4fdc95:ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/7da3a19a6e38cf8d972956a2cb2eea04872998b311de5d6dfffc87cfea4fdc95/browser.png",
+              "caption": "After deleting Sign-off, Greeting remains listed and readable with Hello, team!.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281.png"
+          },
+          {
+            "scenarioId": "fresh-context-continuity",
+            "stepIndex": 3,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:fb27864a6ffd52f5202369c94a6a6ab15f1dbc862890e94a9ee4ce92e068afaa:ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/fb27864a6ffd52f5202369c94a6a6ab15f1dbc862890e94a9ee4ce92e068afaa/browser.png",
+              "caption": "A fresh browser context rebuilds the unchanged shelf from cloud data: Greeting is readable and deleted Sign-off is absent.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-ce40231ac0d97915449988764d9d832125b3220e833b381296768f083e4dd281.png"
+          },
+          {
+            "scenarioId": "bad-input",
+            "stepIndex": 4,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:e443e5c12223ba796d2c800b60065b4a24c8f580753137f4e59138dae15758fe:7b2596b4ff4162e61b6d601b35f8e091cb24381bcd5367a4b05edc11a412d205",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/7b2596b4ff4162e61b6d601b35f8e091cb24381bcd5367a4b05edc11a412d205/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/e443e5c12223ba796d2c800b60065b4a24c8f580753137f4e59138dae15758fe/browser.png",
+              "caption": "Submitting text without a title shows a clear title-required error and leaves the saved shelf unchanged.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "7b2596b4ff4162e61b6d601b35f8e091cb24381bcd5367a4b05edc11a412d205",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-7b2596b4ff4162e61b6d601b35f8e091cb24381bcd5367a4b05edc11a412d205.png"
+          },
+          {
+            "scenarioId": "bad-input",
+            "stepIndex": 9,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:d11d08724d18d88eda3c21624f25be16eb7297caff106e1d1b7b27fb5c03128d:3198eba23a5104a23127de79094aaad9149ab3f6473253d046167cb7a5682665",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/3198eba23a5104a23127de79094aaad9149ab3f6473253d046167cb7a5682665/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/d11d08724d18d88eda3c21624f25be16eb7297caff106e1d1b7b27fb5c03128d/browser.png",
+              "caption": "Submitting whitespace-only text shows a clear text-required error and adds no snippet.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "3198eba23a5104a23127de79094aaad9149ab3f6473253d046167cb7a5682665",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-3198eba23a5104a23127de79094aaad9149ab3f6473253d046167cb7a5682665.png"
+          },
+          {
+            "scenarioId": "plain-text-markup",
+            "stepIndex": 7,
+            "url": "https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+            "documentStatus": 200,
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "traceEnabled": false,
+            "console": [],
+            "proof": {
+              "change": "sac-246",
+              "approvedDesignSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "testedBaseSha": "412a3f46aacb3a970b2415509d91f2ba7ae3f77e",
+              "treeSha": "7c6f82ce26df133bae118452cbb84c6bf16e5403",
+              "id": "01a0b081-92a0-79d2-9df4-8acfb32e703b:7c6f82ce26df133bae118452cbb84c6bf16e5403:browser_image:b8896e1973b828912010a5f5297296b7f4e16bf6e5ee3ff0ddbd04c6cb81dcf0:c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe",
+              "kind": "browser_image",
+              "path": "implementation/workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1/c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe/proof/01a0b081-92a0-79d2-9df4-8acfb32e703b/7c6f82ce26df133bae118452cbb84c6bf16e5403/b8896e1973b828912010a5f5297296b7f4e16bf6e5ee3ff0ddbd04c6cb81dcf0/browser.png",
+              "caption": "Markup-looking content is displayed literally as <b>Hello</b> in the plain-text reader.\nCaptured from https://deos-tmp-fd06b452d4155750a21db179.skundu.workers.dev/",
+              "sha256": "c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe",
+              "sanitized": true
+            },
+            "imagePath": "/deos/implementation/browser-c48187e034386527a03c936ed95b54b2394902d08e6da53e3af0bb06f17ccfbe.png"
+          }
+        ]
+      },
+      "finishedAt": "2026-09-17T18:08:28.483Z",
+      "observedAt": "2026-09-17T18:08:28.984Z",
+      "inactiveForMs": 501
+    }
+  ]
+}

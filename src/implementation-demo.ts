@@ -66,14 +66,15 @@ export class ImplementationDemoService {
     await addSource('context/runtime-capabilities.json', JSON.stringify({
       ...implementationRuntimeContext(input.policy),
       browser: { sessionsPerAttempt: 1, resetWithinAttempt: true, reallocateWithinAttempt: false,
-        demoCollection: 'One action: demo request holds the browser for the ordered scenario list. Each scenario starts with a fresh context; browser storage, cookies and page state reset, while server data must be prepared separately. Fixed viewport and target per scenario. A failed action stops collection; fix the cause and rerun from zero. Only the completed collection is selected for PR images.',
+        execution: 'Chromium inside the implementation sandbox; local pipe control, no external browser service or local preview tunnel.',
+        demoCollection: 'One action: demo request holds the browser for the ordered scenario list. Each scenario starts with a fresh context; browser storage, cookies and page state reset, while server data must be prepared separately. Fixed viewport and target per scenario. A failed action stops collection; fix the cause and rerun from zero. Completed collections accumulate; a correction or failed collection never removes prior evidence.',
         keyboard: true, keyboardModifiers: ['Alt','Control','Meta','Shift'],
         keyTrace: 'operation: trace with enabled: true records real key events in a visible overlay. Turn it off with enabled: false for plain application proof.',
         measurements: 'Exploratory operation: measure records live origin, CSS viewport, document width, geometry and text as diagnostic Showboat proof. It is not a supported ordered demo step. Do not require these measurements in the PR gallery; selected behavior demonstrations and trusted preview receipts remain available to review.',
-        selection: 'Keep before/after captures for each claimed transition. Author status and select_proof expose captures grouped by scenario, including omitted images. Selecting useful proof is an agent judgment, not a workflow coverage gate.',
+        selection: 'Keep before/after captures for each claimed transition. Author status and select_proof expose captures grouped by scenario, including omitted images. Selection adds to carried evidence; omitting an item needs a reason. The author fills an evidence checklist for the saved scenarios. Publication checks item accounting and links, not image quality or semantic sufficiency.',
         viewport: { min: 200, max: 3840, persistsAcrossCommands: true },
         navigation: hostedPreview ? 'The local preview and the checked immutable hosted preview, using target: hosted. The saved deployment receipt identifies its code revision for review.' : 'Only the registered preview origin for this attempt' },
-      recovery: 'Runtime failure ends the attempt. A fresh attempt restores saved work and evidence. Sol decides which checks or demos need to run again. Do not require destroying and reallocating a service browser within an application demo.',
+      recovery: 'Runtime or browser process failure ends the attempt. A fresh attempt restores saved work and evidence. Sol decides which checks or demos need to run again. Reset creates a fresh context in the same local browser, not a new service allocation.',
     }, null, 2));
     let correction: DemoCorrection | null = null;
     if (kind === 'plan' && priorRow) {
@@ -107,6 +108,10 @@ export class ImplementationDemoService {
       }
       await addSource('context/checks.json', JSON.stringify(candidate.checks, null, 2));
       await addSource('context/tasks.md', candidate.tasks);
+      if (candidate.evidenceChecklist)
+        await addSource('context/evidence-checklist.json', JSON.stringify(candidate.evidenceChecklist, null, 2));
+      if (candidate.proofOmissions?.length)
+        await addSource('context/evidence-omissions.json', JSON.stringify(candidate.proofOmissions, null, 2));
       for (const proof of candidate.proof) {
         const row = await this.db.prepare('SELECT * FROM implementation_proof WHERE run_id=? AND attempt_id=? AND proof_id=? AND sanitized=1')
           .bind(run.run_id, candidate.attemptId, proof.id).first<{ r2_key: string; sha256: string; media_type: string; kind: DemoEvidence['kind']; caption: string }>();

@@ -129,7 +129,7 @@ export class D1CleanupAuditStore implements CleanupAuditStore {
            result_detail = CASE WHEN state='collecting' THEN NULL ELSE result_detail END,
            ended_at = COALESCE(ended_at, ?), updated_at = ?
        WHERE attempt_id = ? AND sandbox_id = ?
-         AND ((state='collecting' AND ?=0) OR (state='failed' AND ?=1 AND EXISTS
+         AND ((state='collecting' AND ?=0) OR (state IN ('failed','interrupted','absolute_timeout') AND ?=1 AND EXISTS
            (SELECT 1 FROM artifact_manifests m WHERE m.manifest_id=agent_attempts.manifest_id AND m.state='complete')))
          AND cleanup_state <> 'destroyed' AND updated_at = ?`,
     ).bind(now, now, attemptId, sandboxId, Number(releaseFailureHold), Number(releaseFailureHold), expectedUpdatedAt).run();
@@ -324,7 +324,9 @@ export class CleanupAuditor {
     }
     if (
       candidate.updated_at !== input.expectedUpdatedAt ||
-      candidate.state !== (input.releaseFailureHold === true ? 'failed' : 'collecting') ||
+      !(input.releaseFailureHold === true
+        ? ['failed', 'interrupted', 'absolute_timeout'].includes(candidate.state ?? '')
+        : candidate.state === 'collecting') ||
       (input.releaseFailureHold !== true && candidate.cleanup_hold_until !== null && candidate.cleanup_hold_until > this.now().toISOString())
     ) return Response.json({ error: "cleanup_target_changed" }, { status: 409 });
 

@@ -1,0 +1,45 @@
+{
+  "attemptId": "01a0b015-373f-7899-b77f-1ac22dd6529e",
+  "transcriptSha256": "32d9f1fbb094510f72503f465a6b3cab9750d69fc49319de4531954afdbdc292",
+  "transcriptBytes": 78888,
+  "completedCommands": 9,
+  "nonzeroCommands": [],
+  "providerErrors": [],
+  "dispositions": [
+    {
+      "findingId": "capacity-error-code-mapping-undefined",
+      "status": "applied",
+      "reason": "The trigger now prioritizes and raises exact activity- or shelf-limit codes that map directly to the two documented 409 responses."
+    },
+    {
+      "findingId": "duplicate-state-precedence-undefined",
+      "status": "applied",
+      "reason": "The duplicate snippet state was removed; operation state now gates list and read behavior, and delete-pending UI behavior is explicit."
+    },
+    {
+      "findingId": "fresh-context-delete-evidence-not-planned",
+      "status": "applied",
+      "reason": "The evidence plan now requires a second fresh browser context showing the kept snippet and the continued absence of the deleted snippet."
+    },
+    {
+      "findingId": "multi-statement-atomicity-unspecified",
+      "status": "applied",
+      "reason": "Lifecycle changes now use guarded single statements or a transactional D1 batch, with affected-row checks and explicit lost-precondition handling."
+    },
+    {
+      "findingId": "non-get-routing-undefined",
+      "status": "applied",
+      "reason": "Known API method mismatches return 405, unknown API paths return JSON 404, and non-GET/HEAD non-API requests never reach assets."
+    },
+    {
+      "findingId": "unknown-id-delete-leaves-no-fence",
+      "status": "applied",
+      "reason": "Deleting an unknown ID or failed save now returns 404, so only a pre-existing operation can produce deletion success and its durable fence."
+    }
+  ],
+  "reviewedHead": "beca148afbbd4fbdfbaa99dbbe2acad23bf37ae5",
+  "supervisorFinding": "DELETE retry is disabled for persisted deletePending rows; a removed index row can also make an unfinished cleanup ID undiscoverable after refresh.",
+  "decision": "revision_requested",
+  "linearCommentId": "c548bb3e-afcb-406a-b663-f796ed67eab2",
+  "linearTransitionAt": "2026-09-17T16:07:33.034Z"
+}

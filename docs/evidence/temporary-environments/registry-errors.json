@@ -1,0 +1,432 @@
+{
+  "run": {
+    "id": "mucb01lruufve41oi86bmovf",
+    "query": {
+      "id": "linear-workflow-telemetry-e66dd2d2-4bbb-4b65-9d82-f2fbb2f22f57",
+      "description": "",
+      "name": "",
+      "generated": false,
+      "parameters": {
+        "datasets": [],
+        "filters": [],
+        "filterCombination": "and",
+        "needle": {
+          "value": "definition",
+          "isRegex": false,
+          "matchCase": true
+        }
+      },
+      "workspaceId": "c68856288112af7698f5be52ea94b96e",
+      "environmentId": "cloudflare",
+      "userId": "a29d521a9e1b0920b658bdfb72d973f7",
+      "created": "2026-09-17T13:31:08.803Z",
+      "updated": "2026-09-17T13:31:08.803Z"
+    },
+    "accountId": "c68856288112af7698f5be52ea94b96e",
+    "timeframe": {
+      "from": 1789650840000,
+      "to": 1789651868481
+    },
+    "userId": "a29d521a9e1b0920b658bdfb72d973f7",
+    "status": "COMPLETED",
+    "granularity": 18000,
+    "dry": false,
+    "statistics": {
+      "elapsed": 0.272383346,
+      "rows_read": 1953746,
+      "bytes_read": 3453071741,
+      "abr_level": 1
+    }
+  },
+  "events": {
+    "events": [
+      {
+        "source": {
+          "message": "workflow definition version already exists with another digest",
+          "exception": {
+            "name": "Error",
+            "stack": "    at D1OrchestrationStore.registerDefinitionAndPolicy (queue-consumer.js:1053:17)\n    at async registerBundledWorkflowDefinitions (queue-consumer.js:70328:3)\n    at async Object.scheduled (queue-consumer.js:74027:5)",
+            "timestamp": 1789651848902
+          }
+        },
+        "dataset": "cloudflare-workers",
+        "timestamp": 1789651848902,
+        "$workers": {
+          "truncated": false,
+          "scriptName": "deos-queue-consumer-ts",
+          "scriptVersion": {
+            "id": "6587a7d1-71f1-4faf-bd3e-6f6381cf9d3a"
+          },
+          "eventType": "scheduled",
+          "executionModel": "stateless",
+          "requestId": "d6f7c3a613f4b2cf883e878e42d99162",
+          "event": {
+            "cron": "*/15 * * * *",
+            "scheduledTime": 1789651847
+          },
+          "traceId": "3e346429b81535cf27d7ac0ad71377e9",
+          "spanId": "ace8a81326a06c9f"
+        },
+        "$metadata": {
+          "id": "01M2QS03P6000000000000000P",
+          "requestId": "d6f7c3a613f4b2cf883e878e42d99162",
+          "traceId": "3e346429b81535cf27d7ac0ad71377e9",
+          "spanId": "ace8a81326a06c9f",
+          "trigger": "*/15 * * * *",
+          "service": "deos-queue-consumer-ts",
+          "level": "error",
+          "error": "workflow definition version already exists with another digest",
+          "message": "workflow definition version already exists with another digest",
+          "account": "c68856288112af7698f5be52ea94b96e",
+          "type": "cf-worker",
+          "origin": "scheduled"
+        }
+      },
+      {
+        "source": {
+          "message": "workflow definition version already exists with another digest",
+          "exception": {
+            "name": "Error",
+            "stack": "    at D1OrchestrationStore.registerDefinitionAndPolicy (queue-consumer.js:1053:17)\n    at async registerBundledWorkflowDefinitions (queue-consumer.js:70328:3)\n    at async Object.scheduled (queue-consumer.js:74027:5)",
+            "timestamp": 1789650949264
+          }
+        },
+        "dataset": "cloudflare-workers",
+        "timestamp": 1789650949264,
+        "$workers": {
+          "truncated": false,
+          "scriptName": "deos-queue-consumer-ts",
+          "scriptVersion": {
+            "id": "6587a7d1-71f1-4faf-bd3e-6f6381cf9d3a"
+          },
+          "eventType": "scheduled",
+          "executionModel": "stateless",
+          "requestId": "a12b7e74ece66b2c3ffd305d19825c5b",
+          "event": {
+            "cron": "*/15 * * * *",
+            "scheduledTime": 1789650947
+          },
+          "traceId": "a1f40262ab6bde9a1d3b02ad122c19f0",
+          "spanId": "64989b3d6a208984"
+        },
+        "$metadata": {
+          "id": "01M2QR4N4G000000000000000P",
+          "requestId": "a12b7e74ece66b2c3ffd305d19825c5b",
+          "traceId": "a1f40262ab6bde9a1d3b02ad122c19f0",
+          "spanId": "64989b3d6a208984",
+          "trigger": "*/15 * * * *",
+          "service": "deos-queue-consumer-ts",
+          "level": "error",
+          "error": "workflow definition version already exists with another digest",
+          "message": "workflow definition version already exists with another digest",
+          "account": "c68856288112af7698f5be52ea94b96e",
+          "type": "cf-worker",
+          "origin": "scheduled"
+        }
+      }
+    ],
+    "fields": [
+      {
+        "type": "string",
+        "key": "message"
+      },
+      {
+        "type": "string",
+        "key": "exception.name"
+      },
+      {
+        "type": "string",
+        "key": "exception.stack"
+      },
+      {
+        "type": "string",
+        "key": "$workers.scriptName"
+      },
+      {
+        "type": "string",
+        "key": "$workers.scriptVersion.id"
+      },
+      {
+        "type": "string",
+        "key": "$workers.eventType"
+      },
+      {
+        "type": "string",
+        "key": "$workers.executionModel"
+      },
+      {
+        "type": "string",
+        "key": "$workers.requestId"
+      },
+      {
+        "type": "string",
+        "key": "$workers.event.cron"
+      },
+      {
+        "type": "string",
+        "key": "$workers.traceId"
+      },
+      {
+        "type": "string",
+        "key": "$workers.spanId"
+      },
+      {
+        "type": "boolean",
+        "key": "$workers.truncated"
+      },
+      {
+        "type": "number",
+        "key": "exception.timestamp"
+      },
+      {
+        "type": "number",
+        "key": "$workers.event.scheduledTime"
+      }
+    ],
+    "count": 2,
+    "series": [
+      {
+        "time": "2026-09-17 13:14:24",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:14:42",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:15:00",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:15:18",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:15:36",
+        "data": [
+          {
+            "aggregates": {
+              "_count": 1,
+              "_countErrors": 1,
+              "_interval": 1
+            },
+            "count": 1,
+            "errors": 1,
+            "interval": 1,
+            "sampleInterval": 1
+          }
+        ]
+      },
+      {
+        "time": "2026-09-17 13:15:54",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:16:12",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:16:30",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:16:48",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:17:06",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:17:24",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:17:42",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:18:00",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:18:18",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:18:36",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:18:54",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:19:12",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:19:30",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:19:48",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:20:06",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:20:24",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:20:42",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:21:00",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:21:18",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:21:36",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:21:54",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:22:12",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:22:30",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:22:48",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:23:06",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:23:24",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:23:42",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:24:00",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:24:18",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:24:36",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:24:54",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:25:12",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:25:30",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:25:48",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:26:06",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:26:24",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:26:42",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:27:00",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:27:18",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:27:36",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:27:54",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:28:12",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:28:30",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:28:48",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:29:06",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:29:24",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:29:42",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:30:00",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:30:18",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:30:36",
+        "data": []
+      },
+      {
+        "time": "2026-09-17 13:30:54",
+        "data": []
+      }
+    ]
+  },
+  "statistics": {
+    "elapsed": 0.272383346,
+    "rows_read": 1953746,
+    "bytes_read": 3453071741,
+    "abr_level": 1
+  }
+}

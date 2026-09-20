@@ -1,0 +1,42 @@
+[
+  {
+    "resource_id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:browser",
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+    "attempt_id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c",
+    "kind": "browser",
+    "slot_id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:browser",
+    "allocation_op": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:browser:allocate",
+    "provider": "cloudflare",
+    "provider_resource_id": "b59da214-2502-4bbe-a505-def3326d73b6",
+    "namespace": null,
+    "local_persist_path": null,
+    "preview_origin": null,
+    "status": "ready",
+    "create_window": "2026-09-17T18:28:17.437Z",
+    "quarantine_until": "2026-09-17T18:29:47.437Z",
+    "cleanup_receipt": null,
+    "metadata_json": "{\"before\":[],\"origin\":\"https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev\",\"origins\":[\"https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev\",\"https://review.deos-preview-e5aa0c336a0399d6.pages.dev\"],\"viewport\":{\"width\":1440,\"height\":900},\"traceEnabled\":false,\"documentStatus\":200.0,\"documentOrigin\":\"https://deos-tmp-873042d0a43055bc7dd07526.skundu.workers.dev\"}",
+    "created_at": "2026-09-17T18:28:16.321Z",
+    "updated_at": "2026-09-17T18:38:10.714Z"
+  },
+  {
+    "resource_id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:local_data",
+    "run_id": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1",
+    "attempt_id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c",
+    "kind": "local_data",
+    "slot_id": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:local_data",
+    "allocation_op": "01a0b097-22b7-79a0-ba91-ca5a94e5627c:local_data:allocate",
+    "provider": "workerd",
+    "provider_resource_id": null,
+    "namespace": "workflow:99426d9b-cda7-4db4-9136-692a95a0b090:e08fdf64-e2dc-42d5-b7e6-ab0a11607241:run:1:01a0b097-22b7-79a0-ba91-ca5a94e5627c",
+    "local_persist_path": "/deos/test-data/01a0b097-22b7-79a0-ba91-ca5a94e5627c",
+    "preview_origin": null,
+    "status": "ready",
+    "create_window": null,
+    "quarantine_until": null,
+    "cleanup_receipt": null,
+    "metadata_json": "{}",
+    "created_at": "2026-09-17T18:18:22.598Z",
+    "updated_at": "2026-09-17T18:18:22.728Z"
+  }
+]

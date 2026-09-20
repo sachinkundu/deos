@@ -3,6 +3,8 @@
 This is the shared failure and intervention record for successive small web-app
 canaries. The endpoint is an implementation PR with a working preview and useful,
 correct screenshots. Merging or releasing the sample app is not required.
+For the storage canary, the temporary preview is retired after evidence and PR
+publication; durable screenshots and storage receipts are the review artifact.
 
 ## How to compare runs
 
@@ -24,6 +26,15 @@ An in-flight zero is not an unattended success. A retrospective lower bound is
 not a complete baseline, and cannot establish a percentage improvement.
 
 ## Runs
+
+### SAC-246 prospective D1/R2 snippet-shelf canary
+
+- [Supervision contract](evidence/sac-172/storage-canary/supervision.md), [failure log](evidence/sac-172/storage-canary/failures.md) and [read-only D1 collector](evidence/sac-172/storage-canary/readback.py).
+- The user authorizes automatic prerequisite gates and routine answers. Cloudflare agents alone build the app and its tests and proof. Stop at an unmerged implementation PR, then confirm deletion of all temporary app resources while retaining GitHub evidence.
+- Baseline repairs are on main through PR138. The temporary environment extension is in draft PR139, with passing CI and a real provider lifecycle probe. That probe is not the full cloud-agent canary. Preflight operator and extension errors are recorded in the [extension failure log](evidence/temporary-environments/failures.md).
+- Genuine Linear Todo event13:37:18.201UTC created run1 at13:37:26.619 on frozen implementation v41. Cloud planning author started. No reliability conclusion or completed cloud-agent failure count yet.
+- At13:40 the supervisor's still-running container rollout killed the planning runner (STORE-01). Added completed-rollout launch checks and repaired interrupted-attempt cleanup (STORE-02). The same planning stage resumed on frozen v41 at13:52:33 after verified cleanup. Original provider error, missing-output manifest and recovery receipts are retained. No application code was written locally; this is a supervised run.
+- The second planning attempt hit a provider usage limit at13:56 (STORE-03). Full planning patch, transcript and passing validation were retained and hash-verified. Desktop quota reported0% used at14:40; cloud credential identity was not compared. After stopped-sandbox cleanup and completed-rollout checks, one controlled same-stage retry was established14:45:32. No reset or credits were consumed. Stop retries if the cloud quota error recurs. The full transcript also exposes one recovered discovery exit and a missing optional readability library, recorded as STORE-04/05.
 
 ### SAC-245 prospective reading-queue canary
 
@@ -1046,3 +1057,62 @@ Progress notification timeout remains3seconds with transient retries1–30second
 Validation: full suite601tests,600pass,1skip; typecheck and whitespace checks pass. Local HTTP disconnect/dedup/status/restart tests and real child-process failure/dependency/cancellation tests pass. These are regression checks, not a new provider-originated canary. Deployment activation is recorded separately after rollout.
 
 Repairs activated: Worker `8027527b-c89b-4cbd-8c57-dc98793964e6` at100percent, all four container pools on `b14f001b65b1c6f82033d3f89fc8f01ba3fb30bccb05f470dfe37f70ac78e83f`, four healthy instances each, completed rollouts with no health errors. Final source9262871 includes hosted-only proof path traversal. No active attempts were interrupted. [Activation receipt](evidence/sac-172/expense-canary/operation-repairs-activation.json); [validation and proposed next canary](evidence/sac-172/expense-canary/operation-repairs.md).
+
+### SAC-246 STORE-07: deletion retry unavailable in design
+
+The supervisor found that PR44 disabled all actions for incomplete deletion,
+contradicting its API retry recovery. Removing the saved index row could also
+hide the ID across refresh. Sent precise feedback through Linear and requested
+a cloud-authored design revision; D1 confirmed the consumed decision and new
+author attempt16:08UTC. No sample implementation code was edited locally.
+Details and pending verification: storage-canary/failures.md STORE-07.
+
+### SAC-246 STORE-12/13: failed implementation tests repaired by cloud author
+
+Three trusted test operations failed on emulator/harness setup, R2 body stream
+handling, a deletion fault-injection checkpoint and short lifecycle timeouts.
+Cloud agents repaired the application/tests; the supervisor only logged and
+verified. Test4 passed16/16 at17:37:28UTC, with typecheck and formatting passed.
+The workflow remained in implementation_build through failures and repairs.
+Full causes, original outputs, receipts and proof limits are recorded in
+[evidence/sac-172/storage-canary/failures.md](evidence/sac-172/storage-canary/failures.md).
+Remote demo, independent implementation review, publication and cleanup remain
+pending; these local checks do not establish complete canary success.
+
+### SAC-246 STORE-14: missing broker Worker-to-Worker routing
+
+The real remote publication gate caught Cloudflare1042 on three attempts.
+Worker/D1/R2 allocation was real and owned, but the broker could not call the
+Worker health endpoint without global_fetch_strictly_public. External health
+was200. Cloud author preserved its work and entered clarification; no proof
+was fabricated. Supervisor added the runner flag, passed dry-run/typecheck,
+and deployed only after all attempts stopped. Activation is100percent and
+container rollouts remain completed on the expected image. Resumed cloud
+publication must verify the repaired path. Original error and deployment
+receipts are in storage-canary evidence; application code was not edited locally.
+
+Final transcript audit also found a recovered missing formatting request
+(STORE-15) and four local-preview relay failures with530/1016 (STORE-16).
+The relay cause remains unproven; the remote D1/R2 route does not require it.
+See the detailed storage-canary failure log for original outputs and counts.
+
+
+## SAC-246 storage canary final workflow assessment — 17 September 2026
+
+[Implementation PR45](https://github.com/sachinkundu/deos-sample-project/pull/45)
+is open, unmerged and unreleased at the final human gate. One independent demo
+needs_work result routed to one cloud author response, then publication under
+the frozen workflow; no second independent pass is claimed. The app is a trial
+fixture for workflow/gate testing, and every app change stayed with cloud agents.
+
+All three run-owned Worker/D1/R2 environments were deleted after GitHub proof
+publication, with nine independent provider absence checks. A delayed browser
+cleanup and provider-reported code-update reset recovered automatically; originals
+remain in STORE-22/23. The source of the reset is unproven. Native stderr retention
+is conditional on absence of an author validation file and remains a workflow gap.
+
+[Grouped analysis](evidence/sac-172/storage-canary/analysis.md) distinguishes
+automatic recoveries, supervisor fixes and work still needed. See the
+[complete failure log](evidence/sac-172/storage-canary/failures.md) for corrected
+counts, original error evidence and attribution. This is supervised completion,
+not proof of unattended reliability. Final merge/release gates were not exercised.
