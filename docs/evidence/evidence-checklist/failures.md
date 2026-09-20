@@ -147,3 +147,19 @@ Production preflight found that the staging GitHub environment lacks
 its real reviewer browser check. The existing Brave session can open staging.
 The release must retain that browser gate; it must not substitute a service-token
 identity or treat a missing reviewer credential as a passed check.
+
+## Owner-directed release gate change
+
+The owner explicitly removed the automated reviewer browser check: once staging
+works and the owner approves its main commit, promote that commit to release and
+deploy it through GitHub. The release workflow now follows that policy. It no
+longer copies a reviewer session into GitHub or requires a same-run screenshot
+artifact. This is a requested workflow change, not an automatic error recovery.
+Fixed deployment targets, clean checkout, exact approved SHA, fast-forward-only
+promotion, production environment approval, tests, build and live version/traffic
+verification remain enforced. The pending request to transfer a reviewer cookie
+is obsolete; no reviewer credential was transferred.
+
+Validation: all 22 release tests and Python lint passed. The system Python lacked
+pytest; an isolated Python 3.11 environment supplied it without changing the
+system interpreter. No portal application or backend source changed.
