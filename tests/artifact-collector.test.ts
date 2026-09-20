@@ -130,6 +130,22 @@ test("collector validates and writes immutable checksum-verified artifacts", asy
   assert.equal(objects.values.size, 3);
 });
 
+test("recovered and exhausted provider retries retain their journals in verified manifests", async () => {
+  for (const failed of [false, true]) {
+    const { collector, reader, objects } = setup();
+    const journal = '{"outcome":"waiting","reason":"model_capacity","retry":1}\n';
+    reader.files.set("/deos/output/provider-retries.jsonl", new TextEncoder().encode(journal));
+    reader.files.set("/deos/output/original-errors.jsonl", new TextEncoder().encode('{"message":"Selected model is at capacity."}\n'));
+    const result = failed ? await collector.collectFailure({runId: input.runId, attemptId: input.attemptId,
+      outputRoot: input.outputRoot, expectedFiles: input.requiredFiles, fallbackErrorCategory: "codex_exit_nonzero"})
+      : await collector.collect(input);
+    await collector.verifyDurable(result);
+    const manifest = JSON.parse(new TextDecoder().decode(objects.values.get(result.manifestKey)!.content));
+    assert.ok(manifest.entries.some((e: {logicalName: string}) => e.logicalName === "provider-retries.jsonl"));
+    assert.ok(manifest.entries.some((e: {logicalName: string}) => e.logicalName === "original-errors.jsonl"));
+  }
+});
+
 test("successful collection retains notification diagnostics without changing the result", async () => {
   const { collector, reader, objects } = setup();
   const diagnostic = '{"message":"wake failed","detail":"Error: transport reset; cause: closed socket"}\n';

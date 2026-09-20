@@ -6,6 +6,21 @@ import { join } from "node:path";
 import { atomicJson, captureSupervisorStreams, preserveInterruptedTranscript, recordHeartbeat } from "../container/supervisor-io.mjs";
 import { finished } from "node:stream/promises";
 
+test("private capture can be read between provider turns without closing or losing queued output", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervisor-retry-"));
+  try {
+    const { transcript, validation } = await captureSupervisorStreams(root);
+    transcript.stream.write("first turn\n");
+    assert.equal(await transcript.read(), "first turn\n");
+    transcript.stream.write("resumed turn\n");
+    assert.equal(await transcript.read(), "first turn\nresumed turn\n");
+    transcript.stream.end(); validation.stream.end();
+    await transcript.finalize(join(root, "transcript.jsonl"));
+    await validation.finalize(join(root, "validation.txt"));
+    assert.equal(await readFile(join(root, "transcript.jsonl"), "utf8"), "first turn\nresumed turn\n");
+  } finally { await rm(root, {recursive: true, force: true}); }
+});
+
 test("overlapping heartbeat and lifecycle writes retain complete JSON without temporary-file collisions", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervisor-io-"));
   try {
