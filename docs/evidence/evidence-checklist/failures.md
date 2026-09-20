@@ -26,6 +26,10 @@ The regression reproduces eleven main-flow images plus three corrective images.
 
 - Shell GitHub requests failed with `error connecting to api.github.com`.
   The connected GitHub service could read the exact PR and branch state.
+- PR publication was blocked before any remote change: the connected GitHub
+  write tool returned `MCP tool call requires approval, but approval policy is
+  never`. No PR or remote branch was created. CI could not be started through a
+  new PR. The implementation is saved as a local commit and a reviewable patch.
 - The edit tool rejected an isolated checkout outside the project. Work moved
   inside the allowed project directory; no broader permissions were requested.
 - The isolated clone had no Git author identity. The first commit attempt failed
