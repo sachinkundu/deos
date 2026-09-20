@@ -8,12 +8,12 @@ Scope: retire SAC-246 and resume SAC-182 through its existing approved planning/
 
 ## Automatically recovered
 
-None observed in the resumed run yet.
+- AUTO-01: On restart, current main had advanced. The existing base-change path updated the tested base to d7a7c94 and re-entered demo planning at visit64. It preserved the approved design, original patch base and saved patch. New context includes sandbox-local Chromium and the scoped temporary environment capability. No feature conflicts have been manually resolved.
 
 ## Still requires fixing
 
 - Prior SAC-182 PR137 feedback: real changed-service proof is missing; prior provider demo substituted a continuation stub; settings screenshot showed authentication failure; PR body contains a long task list instead of concise proof.
-- Previous run is parked after failed runtime/demo-plan attempts. Verify saved patch, approvals, current definition and cleanup before resuming.
+- Verify the resumed v43 run completes a real demo and resolves current-main conflicts; restart alone is not proof.
 
 ## Follow-up findings
 
@@ -21,3 +21,5 @@ None observed in the resumed run yet.
 - RESUME-01 (supervisor workflow fix): SAC-182 retry `01a0be6e-0116-7c63-880c-f17eb534dd17` failed because the retry allocator reused September 15's demo context with a newer prompt. `cat context/runtime-capabilities.json` was rejected because that old inventory lacked the path. Source patch, approvals and diagnostics remain durable. Demo retries now rematerialize trusted context like implementation retries while keeping the pinned model and retry lineage.
 - RESUME-02 (supervisor workflow extension): SAC-182's frozen policy contained only its scoped GitHub/Linear adapter, so it could not use the newly built temporary environment broker. Added explicit operator-only `enableTemporaryEnvironment: true` on a reviewed activation-only upgrade. It retains existing adapters, stores the new checked input as an immutable artifact, audits both identities, checks stopped state and cleanup, and preserves all app work and approved sources. The agent still receives no general Cloudflare credentials or production permission.
 - TEST-01 (local test harness): The new preservation test initially compared a SQLite null-prototype row with a plain object. Normalized only the test comparison; production behavior was unaffected.
+
+- Deployment verification: PR144 passed all CI checks, merged, and backend version 52962b2e-f407-4d4e-bbb9-20a9a57caab0 activated at 100%. The audited v43 grant and same-stage retry were accepted. Live-run validation remains in progress.
