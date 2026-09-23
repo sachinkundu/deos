@@ -75,36 +75,36 @@ staging and live. It MUST NOT receive a staging or live data binding. Test write
 MUST NOT change a staging or live release. Provider keys MUST stay in trusted
 services and MUST NOT be given to the agent or page.
 
-Each Linear test task SHALL be in the current DEOS team and have the configured
-exact test label. Before the first provider write, a trusted read SHALL save the
-task ID, team, label, run, and lease. New Linear writes MUST stop if the task no
-longer has that team or label. A provider event MAY enter the test flow only
-when its signed event-time facts match the saved task, test label, run, and
-active lease.
+Each app task SHALL use this test site before any later staging or live release
+step. The task SHALL be in the current DEOS team, but it SHALL NOT need a special
+test label. Before the first provider write, a trusted read SHALL save the task
+ID, team, run, and lease. New Linear writes MUST stop if the task leaves that
+team. A provider event MAY enter the test flow only when its signed event-time
+facts match the saved task, run, and active lease.
 
 GitHub writes SHALL be limited to the saved repository, branch, and pull request
 owned by the leased run. All test records SHALL carry the run and lease IDs.
 The system MUST reject a write to any other task, branch, pull request, app
 store, or run.
 
-#### Scenario: Labeled task is admitted
+#### Scenario: Current team task is admitted
 
-- **WHEN** a trusted Linear read finds the exact test label on the run task in the current DEOS team.
+- **WHEN** a trusted Linear read finds the run task in the current DEOS team.
 - **THEN** the system binds that task to the lease and allows only the scoped test flow.
 
 #### Scenario: Task has no test label
 
-- **WHEN** a run names a Linear task that lacks the exact test label.
-- **THEN** the system rejects test use and makes no Linear or GitHub write.
+- **WHEN** an app task in the current DEOS team has no special test label.
+- **THEN** the task may use the test site under the same lease and scope rules.
 
-#### Scenario: Label is removed
+#### Scenario: Task leaves the current team
 
-- **WHEN** the test label is removed before a later Linear write.
+- **WHEN** the task leaves the current DEOS team before a later Linear write.
 - **THEN** the system stops that write, keeps the fault, and starts no live flow.
 
 #### Scenario: Provider event has the wrong scope
 
-- **WHEN** a signed event names another task, run, or lease, or lacks saved event-time label proof.
+- **WHEN** a signed event names another task, run, or lease, or lacks saved event-time team proof.
 - **THEN** the test flow records it as ignored and does not change the leased run.
 
 #### Scenario: App asks for live data
@@ -121,10 +121,11 @@ store, or run.
 
 The frontend for the shared test environment SHALL be
 `test-deos.voxdez.com`. It SHALL show a clear test name and the current lease
-state. While an agent owns the lease, the page SHALL show the agent role, task
-name and key, workflow stage, saved staging base, and lease start time in plain
-words. Opaque IDs MAY appear as extra facts, but they MUST NOT be the only name
-for the owner.
+state. The issue being worked SHALL be the human-readable identity of the agent
+that owns the site. While the lease is held, the page SHALL lead with the issue
+name and key. It SHALL also show the workflow stage, saved staging base, and
+lease start time in plain words. The agent role and opaque IDs MAY appear as
+extra facts, but they MUST NOT replace the issue as the owner name.
 
 The page SHALL also show when the site is free, being prepared, or being
 cleaned. It MUST NOT show provider keys, raw errors, or private app data.
@@ -132,7 +133,7 @@ cleaned. It MUST NOT show provider keys, raw errors, or private app data.
 #### Scenario: Agent holds the lease
 
 - **WHEN** a person opens the test portal during active agent work.
-- **THEN** the page names the agent and task in plain words and shows the active stage, base, and lease time.
+- **THEN** the page names the issue as the current agent work and shows its active stage, base, and lease time.
 
 #### Scenario: Cleanup is active
 
@@ -147,15 +148,18 @@ cleaned. It MUST NOT show provider keys, raw errors, or private app data.
 ### Requirement: Clean the site before reuse
 
 Before a lease ends, the system SHALL stop new app and provider writes. It SHALL
-save the run's safe proof and confirm that each pull request proof link can be
-read. It SHALL then remove the lease's app data, provider test fixtures, deploy
-state, and secrets. It SHALL read back that the test data and run access are
-absent before it marks the site free.
+attach the run's safe proof to the pull request body. The body SHALL include or
+embed the safe images, command proof, data read-back, and provider receipts. The
+system SHALL read the body and each attached item back. A link to a local or
+repository file by itself SHALL NOT count as attached proof. The system SHALL
+then remove the lease's app data, provider test fixtures, deploy state, and
+secrets. It SHALL read back that the test data and run access are absent before
+it marks the site free.
 
-Proof saved for review SHALL stay available after cleanup. It SHALL use durable,
-safe files and provider receipts that do not depend on the test site. Cleanup
-MUST NOT remove that proof. It MUST NOT remove data owned by another run or any
-staging or live data.
+Proof attached for review SHALL stay available in the pull request body after
+cleanup. Its attached items MUST NOT depend on the test site. Cleanup MUST NOT
+remove that proof. It MUST NOT remove data owned by another run or any staging
+or live data.
 
 If proof save, data removal, or read-back fails, the system SHALL keep the
 original error and lease facts. It SHALL show cleanup as blocked and MUST NOT
@@ -164,13 +168,13 @@ removal, and absence checks all pass.
 
 #### Scenario: Run ends cleanly
 
-- **WHEN** the owner ends its test and all proof links can be read.
+- **WHEN** the owner ends its test and the pull request body and attached proof can be read.
 - **THEN** the system removes the run's test data and access, proves absence, and then frees the site.
 
 #### Scenario: Proof is viewed after cleanup
 
 - **WHEN** a reviewer opens the linked pull request after the test site is free.
-- **THEN** its saved images, command proof, and safe provider receipts remain available.
+- **THEN** its body still shows the attached images, command proof, data read-back, and safe provider receipts.
 
 #### Scenario: Cleanup result is unclear
 
@@ -185,19 +189,19 @@ removal, and absence checks all pass.
 ### Requirement: Prove the real flow with stalled SAC-182 work
 
 The first full proof SHALL continue the stalled SAC-182 work in this shared
-environment. Its test task SHALL meet the label and lease rules. The proof SHALL
-show lease grant, the pinned staging base, the named agent on the portal, real
-app use, a real GitHub result, a provider-made Linear event received by the test
+environment. Its task SHALL meet the team and lease rules. The proof SHALL show
+lease grant, the pinned staging base, the issue identity on the portal, real app
+use, a real GitHub result, a provider-made Linear event received by the test
 Worker, the saved result, cleanup, and the next free state.
 
 A signed request made by a local tool straight to the Worker MAY be kept as
 synthetic ingress proof. It MUST NOT count as the provider-made Linear proof.
-The pull request SHALL keep safe screen images of the provider setup and the
-triggering task state, plus command and data read-back proof.
+The pull request body SHALL keep attached safe screen images of the provider
+setup and the triggering task state, plus command and data read-back proof.
 
 #### Scenario: SAC-182 runs through the shared site
 
-- **WHEN** the stalled SAC-182 work resumes with the test label and gets the lease.
+- **WHEN** the stalled SAC-182 work resumes in the current team and gets the lease.
 - **THEN** it uses the pinned real app and scoped provider links, and its pull request keeps the full proof after cleanup.
 
 #### Scenario: Only synthetic ingress is shown
@@ -207,5 +211,5 @@ triggering task state, plus command and data read-back proof.
 
 #### Scenario: Real Linear event is received
 
-- **WHEN** Linear emits the labeled task event and the test Worker accepts it.
+- **WHEN** Linear emits the task event and the test Worker accepts it.
 - **THEN** durable records link the provider delivery, lease, run, task, app result, and later cleanup proof.
