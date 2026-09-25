@@ -22,6 +22,7 @@ CREATE TABLE staging_release_pointer (
   site_id INTEGER PRIMARY KEY CHECK(site_id=1),
   state TEXT NOT NULL CHECK(state IN ('uninitialized','stable','updating','blocked')),
   manifest_id TEXT,
+  manifest_revision INTEGER,
   traffic_revision TEXT,
   work_id TEXT,
   owner TEXT,
@@ -237,6 +238,30 @@ CREATE TABLE test_operations (
   receipt_json TEXT CHECK(receipt_json IS NULL OR json_valid(receipt_json)),
   started_at TEXT NOT NULL,
   ended_at TEXT
+);
+
+-- GitHub rejects If-Match on PR body PATCH, so only one DEOS writer may own
+-- a body update. An interrupted owner remains held for explicit reconciliation.
+CREATE TABLE test_pr_body_writes (
+  repository TEXT NOT NULL,
+  pull_request_number INTEGER NOT NULL,
+  work_id TEXT NOT NULL PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  lease_id TEXT NOT NULL REFERENCES test_leases(lease_id),
+  state TEXT NOT NULL CHECK(state IN ('planned','writing','verified','blocked')),
+  old_body_sha256 TEXT,
+  expected_body_sha256 TEXT,
+  marker TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  verified_at TEXT
+);
+CREATE TABLE test_pr_body_locks (
+  repository TEXT NOT NULL,
+  pull_request_number INTEGER NOT NULL,
+  work_id TEXT,
+  state TEXT NOT NULL CHECK(state IN ('idle','held')),
+  revision INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(repository,pull_request_number)
 );
 
 CREATE TABLE test_attestations (

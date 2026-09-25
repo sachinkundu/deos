@@ -1,7 +1,7 @@
 ## 1. Provider contracts and deterministic boundaries
 
 - [x] 1.1 Verify Linear's Issue update and webhook contracts with a short-lived DEOS issue, including event-time fields, actor, timestamp unit, description changes, and exact marker removal after a human edit.
-- [ ] 1.2 Verify GitHub pull-request body update and read-back behavior with a test pull request, including whether strong ETag preconditions work.
+- [x] 1.2 Verify GitHub pull-request body update and read-back behavior with a test pull request, including whether strong ETag preconditions work.
 - [x] 1.3 Add deterministic tests for the app/provider path decision, exact candidate identity, and release guard before enabling either path.
 
 ## 2. Durable site authority

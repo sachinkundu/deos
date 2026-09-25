@@ -1,4 +1,5 @@
 import {sha256Hex} from './implementation-hash.ts';
+import {stagingManifestDigest} from './shared-test-decision-store.ts';
 
 export type SharedTestState = 'free' | 'preparing' | 'active' | 'quiescing' | 'cleaning' | 'blocked';
 
@@ -65,6 +66,15 @@ interface QueueRow {
   queue_number: number;
 }
 
+interface ManifestServiceRow {
+  service_name: string;
+  source_commit: string;
+  deploy_version: string;
+  build_input_sha256: string;
+  app_paths_json: string;
+  provider_paths_json: string;
+}
+
 export function stableStagingBase(first: StagingTrafficRead, second: StagingTrafficRead): StableStagingBase {
   if (!first.revision || first.revision !== second.revision || !first.services.length ||
       first.services.length !== second.services.length)
@@ -124,6 +134,32 @@ export class SharedTestLeaseStore {
     return row;
   }
 
+  private async assertSavedBase(value: SharedTestGrant): Promise<void> {
+    const manifest = await this.db.prepare(`SELECT revision,traffic_revision,service_count,digest_sha256
+      FROM staging_release_manifests WHERE manifest_id=?`)
+      .bind(value.baseManifestId).first<{revision:number;traffic_revision:string;
+        service_count:number;digest_sha256:string}>();
+    const services = (await this.db.prepare(`SELECT * FROM staging_release_services
+      WHERE manifest_id=? ORDER BY service_name`).bind(value.baseManifestId)
+      .all<ManifestServiceRow>()).results;
+    if (!manifest || manifest.traffic_revision !== value.baseTrafficRevision ||
+        manifest.service_count !== value.base.services.length || services.length !== manifest.service_count ||
+        await stagingManifestDigest(services) !== manifest.digest_sha256)
+      throw new Error('shared_test_base_manifest_invalid');
+    const saved = services.map(row => ({serviceName:row.service_name,sourceCommit:row.source_commit,
+      deployVersion:row.deploy_version,buildInputSha256:row.build_input_sha256,trafficPercent:100}));
+    if (JSON.stringify(saved) !== JSON.stringify([...value.base.services].sort((a,b) =>
+      a.serviceName.localeCompare(b.serviceName))))
+      throw new Error('shared_test_base_drift');
+  }
+
+  async grantChecked(value: Omit<SharedTestGrant,'base'>,
+    readTraffic: () => Promise<StagingTrafficRead>, at = new Date()) {
+    const base = stableStagingBase(await readTraffic(),await readTraffic());
+    if (base.revision !== value.baseTrafficRevision) throw new Error('shared_test_base_drift');
+    return this.grant({...value,base},at);
+  }
+
   async grant(value: SharedTestGrant, at = new Date()): Promise<{state: 'granted'|'waiting'; leaseId?: string; fence?: number}> {
     const expectedId = await sharedTestRequestId(value);
     if (value.requestId !== expectedId || value.base.revision !== value.baseTrafficRevision ||
@@ -132,6 +168,7 @@ export class SharedTestLeaseStore {
         !value.repository || !value.branch ||
         (value.pullRequestNumber !== null && (!Number.isSafeInteger(value.pullRequestNumber) || value.pullRequestNumber < 1)))
       throw new Error('invalid_shared_test_grant');
+    await this.assertSavedBase(value);
     const now = at.toISOString();
     const deadline = new Date(at.getTime()+120_000).toISOString();
     const leaseId = expectedId;
@@ -225,5 +262,37 @@ export class SharedTestLeaseStore {
     if (result[1].meta.changes !== 1 || result[2].meta.changes !== 1)
       throw new Error('shared_test_fence_write_incomplete');
     return {leaseId:env.owner_lease_id,fence:env.fence+1};
+  }
+
+  async expireTerminalHead(at = new Date()): Promise<{requestId:string;state:'canceled'|'superseded'}|null> {
+    const head = await this.db.prepare(`SELECT r.request_id,r.run_id,r.node_visit,r.attempt_id,
+      a.cleanup_state,a.state AS attempt_state,o.status AS run_status,o.current_node,
+      o.current_visit_sequence,o.issue_id
+      FROM test_lease_requests r LEFT JOIN agent_attempts a ON a.attempt_id=r.attempt_id
+      LEFT JOIN orchestration_runs o ON o.run_id=r.run_id
+      WHERE r.state IN ('waiting','validating') ORDER BY r.queue_number LIMIT 1`)
+      .first<{request_id:string;run_id:string;node_visit:number;attempt_id:string;
+        cleanup_state:string|null;attempt_state:string|null;run_status:string|null;
+        current_node:string|null;current_visit_sequence:number|null;issue_id:string|null}>();
+    if (!head) return null;
+    const terminal = ['succeeded','failed','canceled'].includes(head.run_status ?? '') ||
+      head.current_node !== 'shared_test_demo' || head.current_visit_sequence !== head.node_visit;
+    if (!terminal || head.cleanup_state !== 'destroyed' ||
+        !head.attempt_state || ['pending','starting','running','collecting'].includes(head.attempt_state))
+      return null;
+    const state = head.run_status === 'canceled' ? 'canceled' : 'superseded';
+    const proof = JSON.stringify({runStatus:head.run_status,node:head.current_node,
+      visit:head.current_visit_sequence,attemptState:head.attempt_state,
+      sandboxCleanup:head.cleanup_state,taskId:head.issue_id});
+    const result = await this.db.prepare(`UPDATE test_lease_requests SET state=?,terminal_proof_json=?,
+      updated_at=? WHERE request_id=? AND state IN ('waiting','validating')
+      AND EXISTS (SELECT 1 FROM agent_attempts a WHERE a.attempt_id=?
+        AND a.cleanup_state='destroyed' AND a.state NOT IN ('pending','starting','running','collecting'))
+      AND EXISTS (SELECT 1 FROM orchestration_runs o WHERE o.run_id=?
+        AND (o.status IN ('succeeded','failed','canceled') OR o.current_node<>'shared_test_demo'
+          OR o.current_visit_sequence<>?))`)
+      .bind(state,proof,at.toISOString(),head.request_id,head.attempt_id,head.run_id,
+        head.node_visit).run();
+    return result.meta.changes === 1 ? {requestId:head.request_id,state} : null;
   }
 }

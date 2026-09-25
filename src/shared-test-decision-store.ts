@@ -62,16 +62,16 @@ export class SharedTestDecisionStore {
 
   async record(input: {runId:string;candidateCommit:string;patchSha256:string;changedPaths:readonly string[]},
     at = new Date()): Promise<TestPathDecision> {
-    const pointer = await this.db.prepare(`SELECT manifest_id,revision FROM staging_release_pointer
-      WHERE site_id=1 AND state='stable'`).first<{manifest_id:string;revision:number}>();
+    const pointer = await this.db.prepare(`SELECT manifest_id,manifest_revision FROM staging_release_pointer
+      WHERE site_id=1 AND state='stable'`).first<{manifest_id:string;manifest_revision:number}>();
     if (!pointer?.manifest_id) throw new Error('stable_staging_pointer_missing');
-    const manifest = await this.manifest(pointer.manifest_id,pointer.revision);
+    const manifest = await this.manifest(pointer.manifest_id,pointer.manifest_revision);
     const decision = await decideTestPath({...input,manifest});
     await this.db.prepare(`INSERT OR IGNORE INTO test_task_decisions
       (run_id,candidate_commit,patch_sha256,manifest_id,manifest_revision,changed_paths_sha256,
        choice,matched_paths_json,created_at)
       SELECT ?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM staging_release_pointer
-        WHERE site_id=1 AND state='stable' AND manifest_id=? AND revision=?)`)
+        WHERE site_id=1 AND state='stable' AND manifest_id=? AND manifest_revision=?)`)
       .bind(decision.runId,decision.candidateCommit,decision.patchSha256,decision.manifestId,
         decision.manifestRevision,decision.changedPathsSha256,decision.choice,
         JSON.stringify(decision.matchedPaths),at.toISOString(),decision.manifestId,

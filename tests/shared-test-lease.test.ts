@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
+import {ImplementationTestDatabase,seedAttempt,seedRun} from './helpers/implementation-fixture.ts';
 import {SharedTestLeaseStore, sharedTestRequestId, stableStagingBase} from '../src/shared-test-lease.ts';
+import {stagingManifestDigest} from '../src/shared-test-decision-store.ts';
 
 const service = {serviceName:'portal',sourceCommit:'a'.repeat(40),deployVersion:'version-1',
   buildInputSha256:'b'.repeat(64),trafficPercent:100};
@@ -11,10 +12,22 @@ const first = {runId:'run-1',nodeVisit:3,attemptId:'attempt-1',taskId:'issue-1',
   candidateCommit:'c'.repeat(40),patchSha256:'d'.repeat(64)};
 const second = {...first,runId:'run-2',attemptId:'attempt-2',taskId:'issue-2'};
 
-function fixture() {
+async function fixture() {
   const db = new ImplementationTestDatabase();
+  const saved={service_name:service.serviceName,source_commit:service.sourceCommit,
+    deploy_version:service.deployVersion,build_input_sha256:service.buildInputSha256,
+    app_paths_json:'["portal/"]',provider_paths_json:'["src/linear-"]'};
+  const digest=await stagingManifestDigest([saved]);
+  db.sqlite.prepare(`INSERT INTO staging_release_manifests
+    (manifest_id,revision,traffic_revision,service_count,digest_sha256,recorded_at)
+    VALUES ('manifest-1',1,'traffic-1',1,?,'now')`).run(digest);
+  db.sqlite.prepare(`INSERT INTO staging_release_services
+    (manifest_id,service_name,source_commit,deploy_version,build_input_sha256,
+     app_paths_json,provider_paths_json,read_at) VALUES ('manifest-1',?,?,?,?,?,?, 'now')`)
+    .run(saved.service_name,saved.source_commit,saved.deploy_version,saved.build_input_sha256,
+      saved.app_paths_json,saved.provider_paths_json);
   db.sqlite.prepare(`UPDATE staging_release_pointer SET state='stable',manifest_id='manifest-1',
-    traffic_revision='traffic-1',revision=1 WHERE site_id=1`).run();
+    manifest_revision=1,traffic_revision='traffic-1',revision=1 WHERE site_id=1`).run();
   const store = new SharedTestLeaseStore(db as unknown as D1Database);
   const grant = async (request: typeof first) => store.grant({...request,
     requestId:await sharedTestRequestId(request), taskKey:request.taskId,taskTitle:'Test issue',
@@ -32,7 +45,7 @@ test('staging reads require two identical complete 100 percent snapshots', () =>
 });
 
 test('one oldest request grants and remains owner after heartbeat loss', async () => {
-  const {db,store,grant} = fixture();
+  const {db,store,grant} = await fixture();
   try {
     const q1=await store.request(first);
     const again=await store.request(first);
@@ -57,12 +70,32 @@ test('one oldest request grants and remains owner after heartbeat loss', async (
 });
 
 test('a canceled or changed queue request cannot take the site', async () => {
-  const {db,store,grant}=fixture();
+  const {db,store,grant}=await fixture();
   try {
     await store.request(first);
     await assert.rejects(store.request({...first,candidateCommit:'e'.repeat(40)}),/identity_conflict/);
     db.sqlite.prepare("UPDATE test_lease_requests SET state='canceled' WHERE run_id='run-1'").run();
     assert.equal((await grant(first)).state,'waiting');
+    assert.equal((await store.environment()).state,'free');
+  } finally {db.close();}
+});
+
+test('a terminal queue head leaves the queue only after Sandbox destruction',async()=>{
+  const {db,store}=await fixture();
+  try {
+    seedRun(db,first.runId,first.taskId);
+    seedAttempt(db,first.attemptId,first.runId);
+    await store.request(first);
+    await store.request(second);
+    db.sqlite.prepare(`UPDATE agent_attempts SET state='failed',cleanup_state='pending'
+      WHERE attempt_id=?`).run(first.attemptId);
+    assert.equal(await store.expireTerminalHead(),null);
+    db.sqlite.prepare(`UPDATE agent_attempts SET cleanup_state='destroyed'
+      WHERE attempt_id=?`).run(first.attemptId);
+    assert.deepEqual(await store.expireTerminalHead(),
+      {requestId:await sharedTestRequestId(first),state:'superseded'});
+    assert.equal(db.sqlite.prepare(`SELECT state FROM test_lease_requests
+      WHERE request_id=?`).get(await sharedTestRequestId(first))?.state,'superseded');
     assert.equal((await store.environment()).state,'free');
   } finally {db.close();}
 });

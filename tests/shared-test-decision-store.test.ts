@@ -20,7 +20,7 @@ async function fixture() {
     .run(service.service_name,service.source_commit,service.deploy_version,
       service.build_input_sha256,service.app_paths_json,service.provider_paths_json);
   db.sqlite.prepare(`UPDATE staging_release_pointer SET state='stable',manifest_id='manifest-1',
-    traffic_revision='traffic-1',revision=1 WHERE site_id=1`).run();
+    manifest_revision=1,traffic_revision='traffic-1',revision=1 WHERE site_id=1`).run();
   return {db,store:new SharedTestDecisionStore(db as unknown as D1Database)};
 }
 
