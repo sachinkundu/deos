@@ -45,7 +45,7 @@ test("safe version endpoint exposes only deployment metadata and never reads sto
   assert.equal(response.headers.get("Cache-Control"), "no-store");
   assert.deepEqual(await response.json(), {
     site: "Staging", canonicalHost: "deos-staging.voxdez.com", sourceBranch: "main",
-    sourceSha: "a".repeat(40), versionId: "provider-version",
+    sourceSha: "a".repeat(40), buildInputSha256: null, versionId: "provider-version",
   });
   const post = await routePortalRequest(new Request(request.url, { method: "POST" }), env,
     async () => ({ email: "test@example.com" }));

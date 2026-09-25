@@ -63,7 +63,7 @@ export class SharedTestCloseStore {
         AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch WHERE lease_id=? AND state<>'done')
         AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=? AND state<>'disabled')
         AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=?
-          AND kind='linear_marker_remove' AND state<>'done')
+          AND kind='linear_marker_remove' AND state NOT IN ('done','absent'))
         AND EXISTS (SELECT 1 FROM test_proof_items WHERE lease_id=?
           AND body_marker IS NOT NULL AND read_at IS NOT NULL AND projected_at IS NOT NULL)`)
         .bind(at.toISOString(),runId,leaseId,fence,leaseId,leaseId,leaseId,leaseId),

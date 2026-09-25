@@ -28,7 +28,7 @@ jobs:
         run: python -m pip install --upgrade pytest ruff
 
       - name: Lint Python
-        run: ruff check src tests scripts/portal_release.py scripts/deploy_portal_staging.py scripts/release_portal.py scripts/inspect_portal_rollout.py
+        run: ruff check src tests scripts/portal_release.py scripts/deploy_portal_staging.py scripts/release_portal.py scripts/inspect_portal_rollout.py scripts/deploy_bettaview_staging.py scripts/bootstrap_shared_test_staging.py scripts/shared_test_staging_pointer.py scripts/shared_test_release_guard.py
 
       - name: Run tests
         env:
@@ -79,6 +79,12 @@ jobs:
           npm run portal:build:full-workflow
           npm run portal:build
 
+      - name: Build and test BettaView staging
+        run: |
+          npm ci --prefix portal/bettaview
+          npm run bettaview:build
+          npm --prefix portal/bettaview test
+
       - name: Check generated Worker bindings
         run: |
           npm run types:check
@@ -90,3 +96,4 @@ jobs:
           npx wrangler deploy --dry-run --config wrangler.jsonc
           npx wrangler deploy --dry-run --config portal/wrangler.jsonc
           npx wrangler deploy --dry-run --config portal/wrangler.jsonc --env staging
+          npx wrangler deploy --dry-run --config portal/bettaview/wrangler.jsonc --env staging

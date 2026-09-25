@@ -1,0 +1,39 @@
+name: Deploy BettaView staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'portal/bettaview/**'
+      - 'scripts/deploy_bettaview_staging.py'
+      - 'scripts/portal_release.py'
+      - '.github/workflows/bettaview-staging.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bettaview-staging
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: avrea-ubuntu-latest-2-vcpu
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Deploy and verify BettaView staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_STAGING_CLOUDFLARE_API_TOKEN }}
+        run: python scripts/deploy_bettaview_staging.py

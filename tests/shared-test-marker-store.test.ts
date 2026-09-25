@@ -46,7 +46,11 @@ test('trusted marker insert is planned before the provider call and removal keep
     const inserted=await store.insert(input);
     assert.equal(sawPlan,true);
     assert.equal(inserted.reconciled,false);
+    db.sqlite.prepare(`UPDATE test_operations SET state='uncertain'
+      WHERE work_id='test-marker:expectation-1:insert'`).run();
     assert.equal((await store.insert(input)).reconciled,true);
+    assert.equal(db.sqlite.prepare(`SELECT state FROM test_operations
+      WHERE work_id='test-marker:expectation-1:insert'`).get()?.state,'done');
     description=description.replace('Task description','Task description\nHuman edit');
     db.sqlite.prepare(`UPDATE test_environment SET state='quiescing',fence=2 WHERE site_id=1`).run();
     db.sqlite.prepare(`UPDATE test_leases SET state='quiescing' WHERE lease_id='lease-1'`).run();
@@ -55,6 +59,11 @@ test('trusted marker insert is planned before the provider call and removal keep
       VALUES ('lease-1',2,'run-1','quiesce',2,'now')`).run();
     await store.disableAndRemove({...input,cleanupFence:2});
     assert.equal(description,'Task description\nHuman edit\n');
+    db.sqlite.prepare(`UPDATE test_operations SET state='uncertain'
+      WHERE work_id='test-marker:expectation-1:remove'`).run();
+    await store.disableAndRemove({...input,cleanupFence:2});
+    assert.equal(db.sqlite.prepare(`SELECT state FROM test_operations
+      WHERE work_id='test-marker:expectation-1:remove'`).get()?.state,'absent');
     assert.equal(db.sqlite.prepare(`SELECT state FROM test_expected_events
       WHERE expectation_id='expectation-1'`).get()?.state,'disabled');
   } finally {db.close();}

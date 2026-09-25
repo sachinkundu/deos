@@ -3,6 +3,7 @@ import test from 'node:test';
 import {ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
 import {SharedTestDecisionStore,stagingManifestDigest} from '../src/shared-test-decision-store.ts';
 import {SharedTestReleaseLinkStore} from '../src/shared-test-release-link.ts';
+import {SharedTestReleaseGuard} from '../src/shared-test-release-guard.ts';
 
 const commit='a'.repeat(40),base='b'.repeat(40),release='c'.repeat(40),
   tree='d'.repeat(40),patch='e'.repeat(64);
@@ -45,5 +46,12 @@ test('release SHA is linked only to a verified merge of the exact tested tree',a
       {allowed:false,choice:'test_not_required',candidateCommit:commit});
     assert.deepEqual(await links.check('0'.repeat(40),['docs/notes.md']),
       {allowed:false,choice:null,candidateCommit:null});
+    const observing=new SharedTestReleaseGuard(db as unknown as D1Database,'observe');
+    const enforcing=new SharedTestReleaseGuard(db as unknown as D1Database,'enforce');
+    const missing=await observing.check('0'.repeat(40),['portal/src/main.tsx']);
+    assert.equal(missing.allowed,true);
+    assert.equal(missing.proofAllowed,false);
+    assert.equal((await enforcing.check('0'.repeat(40),['portal/src/main.tsx'])).allowed,false);
+    assert.equal((await enforcing.check(release,['docs/notes.md'])).allowed,true);
   } finally {db.close();}
 });
