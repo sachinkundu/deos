@@ -101,15 +101,22 @@ async def _check_exact_provider_event() -> None:
                    "updatedFrom": {"description": before}}
         router = SharedTestEventRouter(db, send, key)
         received = datetime.fromtimestamp(time_ms / 1000, UTC)
-        assert await router.route(payload, "delivery-1", time_ms, received)
-        assert await router.route(payload, "delivery-1", time_ms, received)
+        payload_hash = sha("exact raw delivery")
+        assert await router.route(payload, "delivery-1", time_ms, received, payload_hash)
+        assert await router.route(payload, "delivery-1", time_ms, received, payload_hash)
+        try:
+            await router.route(payload, "delivery-1", time_ms, received, sha("changed delivery"))
+        except ValueError as error:
+            assert "payload changed" in str(error)
+        else:
+            raise AssertionError("changed duplicate payload was accepted")
         await router.dispatch("delivery-1")
         assert len(sent) == 1
         assert sent[0]["kind"] == "shared_test_delivery"
         assert db.sqlite.execute("SELECT state FROM test_expected_events").fetchone()[0] == "claimed"
         assert db.sqlite.execute("SELECT COUNT(*) FROM test_provider_deliveries").fetchone()[0] == 1
         assert not await router.route({**payload, "actor": {"id": "human", "type": "user"}},
-                                      "delivery-2", time_ms, received)
+                                      "delivery-2", time_ms, received, sha("human delivery"))
     finally:
         db.sqlite.close()
 

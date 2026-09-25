@@ -74,7 +74,7 @@ class Default(WorkerEntrypoint):
             delivery_id = headers["linear-delivery"]
             if delivery_id and await router.route(
                 cast(dict[str, Any], payload), delivery_id,
-                int(headers["linear-timestamp"]), now,
+                int(headers["linear-timestamp"]), now, hashlib.sha256(body).hexdigest(),
             ):
                 self.ctx.waitUntil(router.dispatch(delivery_id))
                 return Response("accepted test delivery", status=200)

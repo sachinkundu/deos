@@ -36,10 +36,10 @@ function fixture() {
       'app-actor-1',1,?,?,?,?,1,9999999999999,'claimed','delivery-1',?)`)
     .run('c'.repeat(64),'d'.repeat(64),'e'.repeat(64),'f'.repeat(64),now);
   db.sqlite.prepare(`INSERT INTO test_provider_deliveries
-    (delivery_id,provider_time_ms,task_id,team_id,lease_id,run_id,classification,
+    (delivery_id,payload_sha256,provider_time_ms,task_id,team_id,lease_id,run_id,classification,
      route,expectation_id,received_at)
-    VALUES ('delivery-1',1790310701176,'issue-1','team-1','lease-1','run-1',
-      'accepted','test','expectation-1',?)`).run(now);
+    VALUES ('delivery-1',?,1790310701176,'issue-1','team-1','lease-1','run-1',
+      'accepted','test','expectation-1',?)`).run('a'.repeat(64),now);
   db.sqlite.prepare(`INSERT INTO test_delivery_dispatch
     (delivery_id,run_id,lease_id,expectation_id,state,queue_work_id,
      created_at,updated_at) VALUES ('delivery-1','run-1','lease-1',

@@ -50,8 +50,14 @@ export class SharedTestMarkerStore {
           prior.marker_sha256!==await sha256Hex(marker) ||
           !['live','claimed'].includes(prior.state))
         throw new Error('test_marker_plan_conflict');
-      if (markerIsStandalone(before,marker))
+      if (markerIsStandalone(before,marker)) {
+        await this.db.prepare(`UPDATE test_operations SET state='done',receipt_json=?,ended_at=?
+          WHERE work_id=? AND run_id=? AND lease_id=? AND state IN ('planned','running','uncertain')`)
+          .bind(JSON.stringify({descriptionSha256:await sha256Hex(before),issueId:input.taskId,
+            reconciled:true}),at.toISOString(),`test-marker:${input.expectationId}:insert`,
+            input.runId,input.leaseId).run();
         return {marker,workId:`test-marker:${input.expectationId}:insert`,reconciled:true};
+      }
       if (await sha256Hex(before)!==prior.before_sha256)
         throw new Error('test_marker_before_changed');
     }
@@ -125,7 +131,19 @@ export class SharedTestMarkerStore {
     const issue=await this.issue(input.taskId,input.teamId);
     const marker=await testIssueMarker(input,this.key);
     const workId=`test-marker:${input.expectationId}:remove`;
-    if (!issue.description.includes(marker)) return {workId,absent:true};
+    if (!issue.description.includes(marker)) {
+      await this.db.prepare(`INSERT OR IGNORE INTO test_operations
+        (work_id,run_id,lease_id,fence,kind,target,expected_description_sha256,
+         state,started_at) VALUES (?,?,?,?,'linear_marker_remove',?,?,'absent',?)`)
+        .bind(workId,input.runId,input.leaseId,input.cleanupFence,input.taskId,
+          await sha256Hex(issue.description),at.toISOString()).run();
+      await this.db.prepare(`UPDATE test_operations SET state='absent',receipt_json=?,ended_at=?
+        WHERE work_id=? AND run_id=? AND lease_id=? AND kind='linear_marker_remove'
+          AND state IN ('planned','running','uncertain','absent')`)
+        .bind(JSON.stringify({descriptionSha256:await sha256Hex(issue.description),markerAbsent:true,
+          reconciled:true}),at.toISOString(),workId,input.runId,input.leaseId).run();
+      return {workId,absent:true};
+    }
     const after=removeTestMarker(issue.description,marker);
     const afterHash=await sha256Hex(after);
     await this.db.prepare(`INSERT OR IGNORE INTO test_operations

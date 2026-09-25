@@ -127,6 +127,23 @@ CREATE TABLE test_task_decisions (
   PRIMARY KEY(run_id,candidate_commit,patch_sha256,manifest_revision)
 );
 
+-- GitHub's merge commit has a different SHA from the tested PR head. Bind it
+-- only after read-back proves exact parents and the same tree bytes.
+CREATE TABLE test_release_commit_links (
+  release_commit_sha TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  candidate_commit_sha TEXT NOT NULL,
+  tested_base_sha TEXT NOT NULL,
+  tree_sha TEXT NOT NULL,
+  patch_sha256 TEXT NOT NULL,
+  manifest_id TEXT NOT NULL,
+  manifest_revision INTEGER NOT NULL,
+  choice TEXT NOT NULL CHECK(choice IN ('test_required','test_not_required')),
+  pull_request_number INTEGER NOT NULL,
+  recorded_at TEXT NOT NULL,
+  UNIQUE(run_id,candidate_commit_sha,manifest_revision)
+);
+
 CREATE TABLE test_access_identities (
   identity_id TEXT PRIMARY KEY,
   run_id TEXT NOT NULL,
@@ -198,6 +215,7 @@ CREATE INDEX test_expected_events_live ON test_expected_events(task_id,state,val
 
 CREATE TABLE test_provider_deliveries (
   delivery_id TEXT PRIMARY KEY,
+  payload_sha256 TEXT NOT NULL,
   provider_time_ms INTEGER NOT NULL,
   task_id TEXT NOT NULL,
   team_id TEXT,

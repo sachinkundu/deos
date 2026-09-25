@@ -39,12 +39,16 @@ class SharedTestEventRouter:
 
     async def route(
         self, payload: Mapping[str, Any], delivery_id: str, header_timestamp_ms: int,
-        received_at: datetime,
+        received_at: datetime, payload_sha256: str,
     ) -> bool:
+        if len(payload_sha256) != 64 or any(c not in "0123456789abcdef" for c in payload_sha256):
+            raise ValueError("invalid test delivery payload hash")
         prior = await self.db.prepare(
-            "SELECT route FROM test_provider_deliveries WHERE delivery_id=?"
+            "SELECT route,payload_sha256 FROM test_provider_deliveries WHERE delivery_id=?"
         ).bind(delivery_id).first()
         if prior is not None:
+            if _value(prior, "payload_sha256") != payload_sha256:
+                raise ValueError("test delivery payload changed")
             route = _value(prior, "route")
             if route == "test":
                 return True
@@ -82,12 +86,12 @@ class SharedTestEventRouter:
                    expected.lease_id, expected.fence),
             self.db.prepare(
                 """INSERT OR IGNORE INTO test_provider_deliveries
-                  (delivery_id,provider_time_ms,task_id,team_id,lease_id,run_id,
+                  (delivery_id,payload_sha256,provider_time_ms,task_id,team_id,lease_id,run_id,
                    classification,route,expectation_id,marker_audit_sha256,received_at)
-                  SELECT ?,?,?,?,?,?,'accepted','test',?,?,? WHERE EXISTS
+                  SELECT ?,?,?,?,?,?,?,'accepted','test',?,?,? WHERE EXISTS
                     (SELECT 1 FROM test_expected_events WHERE expectation_id=?
                       AND state='claimed' AND claimed_delivery_id=?)"""
-            ).bind(delivery_id, header_timestamp_ms, expected.task_id, expected.team_id,
+            ).bind(delivery_id, payload_sha256, header_timestamp_ms, expected.task_id, expected.team_id,
                    expected.lease_id, expected.run_id, expected.expectation_id,
                    marker_hash, timestamp, expected.expectation_id, delivery_id),
             self.db.prepare(
@@ -102,9 +106,11 @@ class SharedTestEventRouter:
                    delivery_id, expected.expectation_id),
         ])
         saved = await self.db.prepare(
-            "SELECT route,expectation_id FROM test_provider_deliveries WHERE delivery_id=?"
+            "SELECT route,expectation_id,payload_sha256 FROM test_provider_deliveries WHERE delivery_id=?"
         ).bind(delivery_id).first()
-        if _value(saved, "route") != "test" or _value(saved, "expectation_id") != expected.expectation_id:
+        if (_value(saved, "route") != "test" or
+                _value(saved, "expectation_id") != expected.expectation_id or
+                _value(saved, "payload_sha256") != payload_sha256):
             raise ValueError("test delivery route claim was not saved")
         return True
 

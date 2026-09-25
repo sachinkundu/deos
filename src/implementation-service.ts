@@ -2,6 +2,7 @@ import { D1PlanningStore } from "./planning-store.ts";
 import { ImplementationDemoService } from './implementation-demo.ts';
 import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
 import { ImplementationEnvironment } from './implementation-environment.ts';
+import {SharedTestReleaseLinkStore} from './shared-test-release-link.ts';
 import { publishImplementationProof, implementationProofMarkdown, type PublishedImplementationProof } from './implementation-pr-proof.ts';
 import { D1DesignStore } from "./design-store.ts";
 import {
@@ -849,6 +850,21 @@ export class ImplementationService {
         "merge_readback",
         "Implementation merge is unconfirmed",
       );
+    if (this.definition.nodes.shared_test_demo) {
+      if (!work.patch_sha || !work.tree_sha || !work.pr_number)
+        throw new ImplementationError('test_release_subject_missing',
+          'The tested implementation subject is incomplete');
+      const merged=await github.commit(saved.merge_commit_sha);
+      const linked=await new SharedTestReleaseLinkStore(this.env.DB).record({
+        runId:work.run_id,candidateCommit:work.pr_head_sha!,
+        releaseCommit:saved.merge_commit_sha,testedBase:work.tested_base_sha,
+        treeSha:work.tree_sha,patchSha256:work.patch_sha,
+        pullRequestNumber:work.pr_number,mergeParents:merged.parents.map(parent=>parent.sha),
+        mergeTreeSha:merged.tree.sha,
+      });
+      if (!linked) throw new ImplementationError('test_release_decision_missing',
+        'The merge has no saved shared test decision');
+    }
     await this.env.DB.prepare(
       "UPDATE implementation_runs SET merge_sha=?,status='code_merged',updated_at=? WHERE run_id=?",
     )
