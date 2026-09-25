@@ -1,11 +1,15 @@
 """Fixed portal deployment commands. No caller-supplied targets or resources."""
 
+import hashlib
 import json
 import os
 import re
 import subprocess
 import urllib.request
 from pathlib import Path
+
+from shared_test_release_guard import guard as shared_test_release_guard
+from shared_test_staging_pointer import StagingPointerClient, release_ids, run_with_heartbeat
 
 ROOT = Path(__file__).resolve().parents[1]
 ACCOUNT = "c68856288112af7698f5be52ea94b96e"
@@ -110,6 +114,7 @@ def promote():
     )
     run("git", "merge-base", "--is-ancestor", sha, "origin/main")
     run("git", "merge-base", "--is-ancestor", "origin/release", sha)
+    shared_test_release_guard(sha, "production", base=run("git", "rev-parse", "origin/release", capture=True))
     # A concurrent non-fast-forward movement is rejected by the normal push.
     run("git", "push", "origin", f"{sha}:refs/heads/release")
     run("git", "fetch", "origin", "+refs/heads/release:refs/remotes/origin/release")
@@ -171,7 +176,20 @@ def host_version(target):
         return json.load(response)
 
 
-def validate_readback(target, sha, deployment, version):
+def artifact_digest(sha, files):
+    digest = hashlib.sha256()
+    digest.update(sha.encode())
+    for path in sorted(files):
+        relative = str(path.relative_to(ROOT)).encode()
+        content = path.read_bytes()
+        digest.update(len(relative).to_bytes(4, "big"))
+        digest.update(relative)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
+
+
+def validate_readback(target, sha, deployment, version, build_input_sha256):
     _, host, site, branch = TARGETS[target]
     versions = deployment.get("versions", [])
     if len(versions) != 1 or versions[0].get("percentage") != 100:
@@ -181,6 +199,7 @@ def validate_readback(target, sha, deployment, version):
         "canonicalHost": host,
         "sourceBranch": branch,
         "sourceSha": sha,
+        "buildInputSha256": build_input_sha256,
         "versionId": versions[0]["version_id"],
     }
     if version != expected:
@@ -201,6 +220,9 @@ def deploy(target):
     if target == "production" and sha != os.environ.get("REVIEWED_SHA"):
         raise ValueError("Production checkout differs from the reviewed SHA")
     check_ref(target, sha)
+    if target == "staging":
+        shared_test_release_guard(sha, "staging",
+                                  base_loader=lambda: host_version("staging")["sourceSha"])
     config_path = ROOT / "portal/wrangler.jsonc"
     preflight(json.loads(config_path.read_text()), target)
     check_route_access()
@@ -213,16 +235,32 @@ def deploy(target):
         "--external:cloudflare:*", "--external:node:*",
         "--outfile=" + str(ROOT / "portal-worker/worker.js"))
     worker_bundle = ROOT / "portal-worker/worker.js"
+    build_input_sha256 = artifact_digest(
+        sha, [worker_bundle, *(path for path in (ROOT / "portal/dist").rglob("*") if path.is_file())]
+    )
     if clean_checkout() != sha:
         raise ValueError("Build changed source checkout")
     check_ref(target, sha)
     preflight(json.loads(config_path.read_text()), target)
+    pointer = None
+    if target == "staging":
+        pointer = StagingPointerClient()
+        current = pointer.pointer()
+        if current["state"] not in ("stable", "uninitialized"):
+            raise ValueError("Staging release pointer is busy or blocked")
+        if current["state"] == "stable":
+            work_id, manifest_id = release_ids("portal", sha, build_input_sha256)
+            pointer.begin(work_id, manifest_id, "portal-staging-deploy")
     args = ["npx", "--no-install", "wrangler", "deploy", str(worker_bundle), "--no-bundle", "--config", "portal/wrangler.jsonc"]
     if target == "staging":
         args += ["--env", "staging"]
     args += ["--var", f"PORTAL_SOURCE_SHA:{sha}"]
+    args += ["--var", f"PORTAL_BUILD_INPUT_SHA256:{build_input_sha256}"]
     try:
-        run(*args)
+        if pointer is not None and current["state"] == "stable":
+            run_with_heartbeat(args, ROOT, pointer, work_id)
+        else:
+            run(*args)
     except subprocess.CalledProcessError:
         # The provider may have applied a deploy before the CLI lost contact.
         # Read back once, but never convert a failed CLI command to success.
@@ -236,5 +274,7 @@ def deploy(target):
         raise
     deployment = provider_deployment(target)
     version = host_version(target)
-    validate_readback(target, sha, deployment, version)
+    validate_readback(target, sha, deployment, version, build_input_sha256)
+    if pointer is not None and current["state"] == "stable":
+        pointer.finish(work_id, manifest_id)
     print(json.dumps({"deploymentId": deployment["id"], **version}, indent=2))

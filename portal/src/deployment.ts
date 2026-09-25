@@ -3,6 +3,7 @@ export interface PortalDeploymentEnv {
   PORTAL_CANONICAL_HOST?: string;
   PORTAL_SOURCE_BRANCH?: string;
   PORTAL_SOURCE_SHA?: string;
+  PORTAL_BUILD_INPUT_SHA256?: string;
   CF_VERSION_METADATA?: { id: string };
 }
 
@@ -13,6 +14,7 @@ export function deploymentMetadata(env: PortalDeploymentEnv) {
     canonicalHost: env.PORTAL_CANONICAL_HOST ?? "localhost",
     sourceBranch: env.PORTAL_SOURCE_BRANCH ?? "local",
     sourceSha: env.PORTAL_SOURCE_SHA ?? "unbuilt",
+    buildInputSha256: env.PORTAL_BUILD_INPUT_SHA256 ?? null,
     versionId: env.CF_VERSION_METADATA?.id ?? null,
   };
 }
