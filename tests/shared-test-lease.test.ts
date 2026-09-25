@@ -139,6 +139,37 @@ test('timed visits keep one queue place and an unstarted attempt can be safely c
   } finally {db.close();}
 });
 
+test('a changed candidate leaves the queue only after its attempt is destroyed',async()=>{
+  const {db,store}=await fixture();
+  try {
+    seedRun(db,first.runId,first.taskId);
+    seedAttempt(db,first.attemptId,first.runId);
+    const implementation=new ImplementationStore(db as unknown as D1Database,
+      new ImplementationTestBucket() as unknown as R2Bucket);
+    await implementation.allocate({version:1,runId:first.runId,repository:'owner/repo',
+      change:'sample',branch:'deos/agent/SAC-172/run-1',approvedDesignSha:'a'.repeat(40),
+      testedBaseSha:'b'.repeat(40),policy:implementationPolicy,approvedFiles:[],
+      issue:{},receipts:{},requirements:{kinds:[],reasons:[],blockedProviders:[]}},
+      {userId:'human',revision:1},'SAC-172',1);
+    db.sqlite.prepare(`UPDATE implementation_runs SET pr_head_sha=?,patch_sha=?
+      WHERE run_id=?`).run(first.candidateCommit,first.patchSha256,first.runId);
+    db.sqlite.prepare(`UPDATE orchestration_runs SET current_node='shared_test_demo',
+      status='active' WHERE run_id=?`).run(first.runId);
+    await store.request(first);
+    assert.equal(await store.expireTerminalHead(),null);
+    db.sqlite.prepare(`UPDATE implementation_runs SET pr_head_sha=? WHERE run_id=?`)
+      .run('e'.repeat(40),first.runId);
+    db.sqlite.prepare(`UPDATE agent_attempts SET state='failed',cleanup_state='pending'
+      WHERE attempt_id=?`).run(first.attemptId);
+    assert.equal(await store.expireTerminalHead(),null);
+    db.sqlite.prepare(`UPDATE agent_attempts SET cleanup_state='destroyed'
+      WHERE attempt_id=?`).run(first.attemptId);
+    assert.deepEqual(await store.expireTerminalHead(),
+      {requestId:await sharedTestRequestId(first),state:'superseded'});
+    assert.equal((await store.environment()).state,'free');
+  } finally {db.close();}
+});
+
 test('replacement attempt keeps its queue number only after the old Sandbox is destroyed',async()=>{
   const {db,store}=await fixture();
   try {

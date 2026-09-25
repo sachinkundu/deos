@@ -302,37 +302,48 @@ export class SharedTestLeaseStore {
   async expireTerminalHead(at = new Date()): Promise<{requestId:string;state:'canceled'|'superseded'}|null> {
     const head = await this.db.prepare(`SELECT r.request_id,r.run_id,r.node_visit,r.attempt_id,
       a.cleanup_state,a.state AS attempt_state,o.status AS run_status,o.current_node,
-      o.current_visit_sequence,o.issue_id
+      o.current_visit_sequence,o.issue_id,w.pr_head_sha,w.patch_sha,
+      r.candidate_commit,r.patch_sha256
       FROM test_lease_requests r LEFT JOIN agent_attempts a ON a.attempt_id=r.attempt_id
       LEFT JOIN orchestration_runs o ON o.run_id=r.run_id
+      LEFT JOIN implementation_runs w ON w.run_id=r.run_id
       WHERE r.state IN ('waiting','validating') ORDER BY r.queue_number LIMIT 1`)
       .first<{request_id:string;run_id:string;node_visit:number;attempt_id:string;
         cleanup_state:string|null;attempt_state:string|null;run_status:string|null;
-        current_node:string|null;current_visit_sequence:number|null;issue_id:string|null}>();
+        current_node:string|null;current_visit_sequence:number|null;issue_id:string|null;
+        pr_head_sha:string|null;patch_sha:string|null;candidate_commit:string;
+        patch_sha256:string}>();
     if (!head) return null;
     // A timed shared-test wait revisits the same node. Its first queue number
     // remains live across those visits. A missing attempt row means no Sandbox
     // was ever started for this reserved demo attempt.
     const terminal = ['succeeded','failed','canceled'].includes(head.run_status ?? '') ||
       head.current_node !== 'shared_test_demo';
+    const superseded = head.pr_head_sha !== null && head.patch_sha !== null &&
+      (head.pr_head_sha !== head.candidate_commit || head.patch_sha !== head.patch_sha256);
     const attemptGone = !head.attempt_state ||
       (head.cleanup_state === 'destroyed' &&
         !['pending','starting','running','collecting'].includes(head.attempt_state));
-    if (!terminal || !attemptGone)
+    if ((!terminal && !superseded) || !attemptGone)
       return null;
     const state = head.run_status === 'canceled' ? 'canceled' : 'superseded';
     const proof = JSON.stringify({runStatus:head.run_status,node:head.current_node,
       visit:head.current_visit_sequence,attemptState:head.attempt_state,
-      sandboxCleanup:head.cleanup_state,taskId:head.issue_id});
+      sandboxCleanup:head.cleanup_state,taskId:head.issue_id,
+      candidateCommit:head.candidate_commit,currentCommit:head.pr_head_sha,
+      patchSha256:head.patch_sha256,currentPatchSha256:head.patch_sha});
     const result = await this.db.prepare(`UPDATE test_lease_requests SET state=?,terminal_proof_json=?,
       updated_at=? WHERE request_id=? AND state IN ('waiting','validating')
       AND (NOT EXISTS (SELECT 1 FROM agent_attempts a WHERE a.attempt_id=?) OR
         EXISTS (SELECT 1 FROM agent_attempts a WHERE a.attempt_id=?
           AND a.cleanup_state='destroyed' AND a.state NOT IN ('pending','starting','running','collecting')))
       AND EXISTS (SELECT 1 FROM orchestration_runs o WHERE o.run_id=?
-        AND (o.status IN ('succeeded','failed','canceled') OR o.current_node<>'shared_test_demo'))`)
+        AND (o.status IN ('succeeded','failed','canceled') OR o.current_node<>'shared_test_demo'
+          OR EXISTS (SELECT 1 FROM implementation_runs w WHERE w.run_id=o.run_id
+            AND w.pr_head_sha IS NOT NULL AND w.patch_sha IS NOT NULL
+            AND (w.pr_head_sha<>? OR w.patch_sha<>?))))`)
       .bind(state,proof,at.toISOString(),head.request_id,head.attempt_id,
-        head.attempt_id,head.run_id).run();
+        head.attempt_id,head.run_id,head.candidate_commit,head.patch_sha256).run();
     return result.meta.changes === 1 ? {requestId:head.request_id,state} : null;
   }
 }
