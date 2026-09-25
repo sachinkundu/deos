@@ -45,7 +45,7 @@ export class SharedTestReportStore {
       FROM test_proof_items WHERE run_id=? AND lease_id=? AND classification='public_safe'
         AND sanitizer_result='passed' AND public_url IS NOT NULL
       ORDER BY kind,proof_id`).bind(runId,leaseId).all<ReportProof>()).results;
-    const reportUrl=`https://test-deos.voxdez.com/reports/${encodeURIComponent(leaseId)}`;
+    const reportUrl=`https://deos-test.voxdez.com/reports/${encodeURIComponent(leaseId)}`;
     const key=`shared-test/reports/${encodeURIComponent(leaseId)}/close.json`;
     const report={version:1,task:{key:lease.task_key,title:lease.task_title},
       runId,leaseId,repository:lease.repository,pullRequestNumber:lease.pull_request_number,

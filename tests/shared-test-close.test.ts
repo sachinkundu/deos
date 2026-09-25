@@ -96,7 +96,7 @@ test('close needs attached proof and owned absence before one atomic free transi
     const report=new SharedTestReportStore(db as unknown as D1Database,
       bucket as unknown as R2Bucket,writer);
     const url=await report.publish('run-1','lease-1');
-    assert.equal(url,'https://test-deos.voxdez.com/reports/lease-1');
+    assert.equal(url,'https://deos-test.voxdez.com/reports/lease-1');
     assert.match(body,/Human notes/);
     assert.match(body,/Final close report/);
     assert.equal(db.sqlite.prepare('SELECT report_state FROM test_lease_closures').get()?.report_state,'complete');

@@ -10,7 +10,7 @@ test('status shows the issue first while owned and says free only without an own
   const env={DB:db as unknown as D1Database,ARTIFACTS:bucket as unknown as R2Bucket,
     ACCESS_TEAM_DOMAIN:'test',ACCESS_AUD:'aud',ALLOWED_EMAIL:'allowed@example.com'};
   try {
-    let response=await routeTestPortal(new Request('https://test-deos.voxdez.com/'),env,
+    let response=await routeTestPortal(new Request('https://deos-test.voxdez.com/'),env,
       authenticate as typeof import('../portal/src/auth.ts').verifyAccess);
     assert.match(await response.text(),/The site is ready/);
     db.sqlite.prepare(`INSERT INTO test_lease_requests
@@ -28,7 +28,7 @@ test('status shows the issue first while owned and says free only without an own
       .run('a'.repeat(40),'b'.repeat(64));
     db.sqlite.prepare(`UPDATE test_environment SET state='active',owner_run_id='run-1',
       owner_lease_id='lease-1',fence=1 WHERE site_id=1`).run();
-    response=await routeTestPortal(new Request('https://test-deos.voxdez.com/'),env,
+    response=await routeTestPortal(new Request('https://deos-test.voxdez.com/'),env,
       authenticate as typeof import('../portal/src/auth.ts').verifyAccess);
     const html=await response.text();
     assert.match(html,/<h1>SAC-182 · Test BettaView review<\/h1>/);

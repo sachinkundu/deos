@@ -37,7 +37,7 @@
 - [ ] 5.4 Add revision-bound, Access-protected, audited item-level retry or repair; never waive proof or absence and never force the site free.
 - [ ] 5.5 Atomically close only after proof and absence checks, complete the exact test attestation, and save a durable close receipt.
 - [ ] 5.6 Create and read back the final report after close, then replace the pull-request body's pending marker with its lasting URL without reclaiming the free site.
-- [ ] 5.7 Add the Access-protected `test-deos.voxdez.com` status page, separate from app origins, with the issue key and title leading the active view and safe preparing, cleaning, blocked, and free states.
+- [ ] 5.7 Add the Access-protected `deos-test.voxdez.com` status page, separate from app origins, with the issue key and title leading the active view and safe preparing, cleaning, blocked, and free states.
 
 ## 6. Workflow and release integration
 
