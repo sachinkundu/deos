@@ -36,7 +36,7 @@ test('saved path decision and release read share the immutable manifest',async()
     assert.deepEqual(await store.releaseCheck(exact),{allowed:false,choice:'test_required'});
     assert.deepEqual(await store.releaseCheck({...exact,changedPaths:['docs/notes.md']}),{allowed:false,choice:'test_required'});
     assert.deepEqual(await store.releaseCheck({...exact,manifestRevision:2}),{allowed:false,choice:null});
-    await assert.rejects(store.record({...subject,changedPaths:['docs/notes.md']}),/decision_conflict/);
+    await assert.rejects(store.record({...subject,changedPaths:['docs/notes.md']}),/decision_changed/);
   }finally{db.close();}
 });
 
@@ -49,6 +49,7 @@ test('non-app decision is exact and cannot be overwritten after staging changes'
       {allowed:true,choice:'test_not_required'});
     db.sqlite.prepare("UPDATE staging_release_pointer SET state='updating',revision=2 WHERE site_id=1").run();
     await assert.rejects(store.record({...subject,runId:'run-3'}),/stable_staging_pointer_missing/);
+    assert.equal((await store.record(subject)).manifestId,'manifest-1');
     assert.deepEqual(await store.releaseCheck({...subject,manifestId:'manifest-1',manifestRevision:1}),
       {allowed:true,choice:'test_not_required'});
   }finally{db.close();}

@@ -62,6 +62,12 @@ export class SharedTestDecisionStore {
 
   async record(input: {runId:string;candidateCommit:string;patchSha256:string;changedPaths:readonly string[]},
     at = new Date()): Promise<TestPathDecision> {
+    const prior=await this.db.prepare(`SELECT manifest_id FROM test_task_decisions
+      WHERE run_id=? AND candidate_commit=? AND patch_sha256=?
+      ORDER BY created_at,manifest_revision LIMIT 1`)
+      .bind(input.runId,input.candidateCommit,input.patchSha256)
+      .first<{manifest_id:string}>();
+    if (prior) return this.saved(input);
     const pointer = await this.db.prepare(`SELECT manifest_id,manifest_revision FROM staging_release_pointer
       WHERE site_id=1 AND state='stable'`).first<{manifest_id:string;manifest_revision:number}>();
     if (!pointer?.manifest_id) throw new Error('stable_staging_pointer_missing');
@@ -76,16 +82,7 @@ export class SharedTestDecisionStore {
         decision.manifestRevision,decision.changedPathsSha256,decision.choice,
         JSON.stringify(decision.matchedPaths),at.toISOString(),decision.manifestId,
         decision.manifestRevision).run();
-    const saved = await this.db.prepare(`SELECT * FROM test_task_decisions
-      WHERE run_id=? AND candidate_commit=? AND patch_sha256=? AND manifest_revision=?`)
-      .bind(decision.runId,decision.candidateCommit,decision.patchSha256,
-        decision.manifestRevision).first<DecisionRow>();
-    if (!saved || saved.manifest_id !== decision.manifestId ||
-        saved.changed_paths_sha256 !== decision.changedPathsSha256 ||
-        saved.choice !== decision.choice ||
-        saved.matched_paths_json !== JSON.stringify(decision.matchedPaths))
-      throw new Error('test_path_decision_conflict');
-    return decision;
+    return this.saved(input);
   }
 
   async saved(input:{runId:string;candidateCommit:string;patchSha256:string;

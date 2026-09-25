@@ -126,6 +126,8 @@ CREATE TABLE test_task_decisions (
   created_at TEXT NOT NULL,
   PRIMARY KEY(run_id,candidate_commit,patch_sha256,manifest_revision)
 );
+CREATE UNIQUE INDEX test_task_one_candidate_decision
+  ON test_task_decisions(run_id,candidate_commit,patch_sha256);
 
 -- GitHub's merge commit has a different SHA from the tested PR head. Bind it
 -- only after read-back proves exact parents and the same tree bytes.
