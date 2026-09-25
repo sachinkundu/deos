@@ -323,7 +323,11 @@ CREATE TABLE test_lease_closures (
   absence_sha256 TEXT NOT NULL,
   committed_at TEXT NOT NULL,
   receipt_json TEXT NOT NULL CHECK(json_valid(receipt_json)),
-  report_state TEXT NOT NULL CHECK(report_state IN ('pending','complete'))
+  report_state TEXT NOT NULL CHECK(report_state IN ('pending','complete')),
+  report_object_key TEXT,
+  report_sha256 TEXT,
+  report_url TEXT,
+  body_read_at TEXT
 );
 
 CREATE TABLE test_manual_reconciliations (

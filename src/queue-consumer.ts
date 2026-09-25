@@ -1,5 +1,6 @@
 import { reconcileImplementations } from "./implementation-reconciliation.ts";
 import {processSharedTestBatch} from './shared-test-queue.ts';
+import {SharedTestLeaseStore} from './shared-test-lease.ts';
 import { reconcileWorkflowEvents } from './workflow-event-reconciliation.ts';
 import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
 import { IndependentReviewReconciliationController } from './independent-review-reconciliation.ts';
@@ -214,7 +215,13 @@ export default {
       env as unknown as QueueConsumerEnv,
     );
   },
-  async scheduled(_controller, env) {
+  async scheduled(controller, env) {
+    if (controller.cron === '* * * * *') {
+      const lease=new SharedTestLeaseStore(env.DB);
+      await lease.expireTerminalHead();
+      await lease.fenceExpired();
+      return;
+    }
     await registerBundledWorkflowDefinitions(env as unknown as QueueConsumerEnv);
     await reconcileWorkflowEvents(env);
     await claudeRunner(env).audit();

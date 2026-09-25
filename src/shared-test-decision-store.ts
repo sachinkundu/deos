@@ -100,9 +100,12 @@ export class SharedTestDecisionStore {
     if (row.choice !== actual.choice || row.changed_paths_sha256 !== actual.changedPathsSha256 ||
         row.matched_paths_json !== JSON.stringify(actual.matchedPaths))
       return {allowed:false,choice:row.choice};
-    const attestation = await this.db.prepare(`SELECT run_id,candidate_commit,patch_sha256,manifest_id,manifest_revision,state
-      FROM test_attestations WHERE run_id=? AND candidate_commit=? AND patch_sha256=?
-        AND manifest_id=? AND manifest_revision=? AND state='complete'`)
+    const attestation = await this.db.prepare(`SELECT a.run_id,a.candidate_commit,a.patch_sha256,
+      a.manifest_id,a.manifest_revision,a.state
+      FROM test_attestations a JOIN test_lease_closures c ON c.attestation_id=a.attestation_id
+      WHERE a.run_id=? AND a.candidate_commit=? AND a.patch_sha256=?
+        AND a.manifest_id=? AND a.manifest_revision=? AND a.state='complete'
+        AND c.report_state='complete'`)
       .bind(input.runId,input.candidateCommit,input.patchSha256,input.manifestId,
         input.manifestRevision).first<{run_id:string;candidate_commit:string;patch_sha256:string;
           manifest_id:string;manifest_revision:number;state:'complete'}>();
