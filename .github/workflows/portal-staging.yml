@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: portal-staging
+  group: shared-staging-deploy
   cancel-in-progress: false
   queue: max
 

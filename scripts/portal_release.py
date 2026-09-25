@@ -6,10 +6,11 @@ import os
 import re
 import subprocess
 import urllib.request
+import uuid
 from pathlib import Path
 
 from shared_test_release_guard import guard as shared_test_release_guard
-from shared_test_staging_pointer import StagingPointerClient, release_ids, run_with_heartbeat
+from shared_test_staging_pointer import StagingPointerClient, run_with_heartbeat
 
 ROOT = Path(__file__).resolve().parents[1]
 ACCOUNT = "c68856288112af7698f5be52ea94b96e"
@@ -242,25 +243,24 @@ def deploy(target):
         raise ValueError("Build changed source checkout")
     check_ref(target, sha)
     preflight(json.loads(config_path.read_text()), target)
-    pointer = None
+    pointer = StagingPointerClient()
+    plan = None
+    owner = "portal-staging-deploy:" + str(uuid.uuid4())
     if target == "staging":
-        pointer = StagingPointerClient()
-        current = pointer.pointer()
-        if current["state"] not in ("stable", "uninitialized"):
-            raise ValueError("Staging release pointer is busy or blocked")
-        if current["state"] == "stable":
-            work_id, manifest_id = release_ids("portal", sha, build_input_sha256)
-            pointer.begin(work_id, manifest_id, "portal-staging-deploy")
+        pointer.assert_no_active_attempts()
+        plan = pointer.prepare_deploy("portal", sha, build_input_sha256, owner)
     args = ["npx", "--no-install", "wrangler", "deploy", str(worker_bundle), "--no-bundle", "--config", "portal/wrangler.jsonc"]
     if target == "staging":
         args += ["--env", "staging"]
     args += ["--var", f"PORTAL_SOURCE_SHA:{sha}"]
     args += ["--var", f"PORTAL_BUILD_INPUT_SHA256:{build_input_sha256}"]
     try:
-        if pointer is not None and current["state"] == "stable":
-            run_with_heartbeat(args, ROOT, pointer, work_id)
-        else:
-            run(*args)
+        if plan is None or plan["action"] == "deploy":
+            pointer.assert_no_active_attempts()
+            if plan is not None and plan["tracked"]:
+                run_with_heartbeat(args, ROOT, pointer, plan["work_id"], owner)
+            else:
+                run(*args)
     except subprocess.CalledProcessError:
         # The provider may have applied a deploy before the CLI lost contact.
         # Read back once, but never convert a failed CLI command to success.
@@ -275,6 +275,8 @@ def deploy(target):
     deployment = provider_deployment(target)
     version = host_version(target)
     validate_readback(target, sha, deployment, version, build_input_sha256)
-    if pointer is not None and current["state"] == "stable":
-        pointer.finish(work_id, manifest_id)
-    print(json.dumps({"deploymentId": deployment["id"], **version}, indent=2))
+    if plan is not None and plan["action"] == "deploy" and plan["tracked"]:
+        pointer.finish(plan["work_id"], plan["manifest_id"], owner)
+    print(json.dumps({"deploymentId": deployment["id"],
+                      "pointerAction": plan["action"] if plan is not None else None,
+                      **version}, indent=2))

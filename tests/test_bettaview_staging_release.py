@@ -48,3 +48,35 @@ def test_host_must_match_exact_full_traffic_version():
     with pytest.raises(ValueError):
         release.validate_readback(sha, digest,
                                   {"versions": [{"version_id": "v1", "percentage": 90}]}, host)
+
+
+def test_active_attempt_stops_bettaview_before_wrangler(monkeypatch):
+    for name in ("CLOUDFLARE_API_TOKEN", "PORTAL_ACCESS_CLIENT_ID",
+                 "PORTAL_ACCESS_CLIENT_SECRET"):
+        monkeypatch.setenv(name, "test")
+    monkeypatch.setattr(release, "clean_checkout", lambda: "a" * 40)
+    monkeypatch.setattr(release, "check_ref", lambda *args: None)
+    monkeypatch.setattr(release, "shared_test_release_guard", lambda *args, **kwargs: None)
+    monkeypatch.setattr(release, "check_route_access", lambda: None)
+    monkeypatch.setattr(release, "artifact_digest", lambda *args: "b" * 64)
+    calls = []
+    monkeypatch.setattr(release, "run", lambda *args, **kwargs: calls.append(args))
+
+    class BusyPointer:
+        def prepare_deploy(self, target, sha, build_digest, owner):
+            return {"action": "deploy", "tracked": False}
+
+        def assert_no_active_attempts(self):
+            raise ValueError("Staging deploy requires a stopped agent gate")
+
+    monkeypatch.setattr(release, "StagingPointerClient", BusyPointer)
+    with pytest.raises(ValueError, match="stopped agent gate"):
+        release.deploy()
+    assert not any("wrangler" in args for args in calls)
+
+
+def test_staging_workflows_share_one_deploy_mutex():
+    root = Path(__file__).resolve().parents[1]
+    for filename in ("bettaview-staging.yml", "portal-staging.yml"):
+        workflow = (root / ".github/workflows" / filename).read_text()
+        assert "group: shared-staging-deploy" in workflow
