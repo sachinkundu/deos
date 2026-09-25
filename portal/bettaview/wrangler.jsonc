@@ -17,7 +17,12 @@
     "ALLOWED_EMAIL": "sachinkundu@gmail.com",
     "GITHUB_CLIENT_ID": "Iv23likxukpheraNrZlx"
   },
+  "secrets": { "required": ["GITHUB_CLIENT_SECRET", "REVIEW_CONTINUATION_SECRET"] },
   "services": [{
+    "binding": "DEOS_REVIEW_CONTINUATION",
+    "service": "deos-queue-consumer-ts",
+    "entrypoint": "ReviewContinuation"
+  }, {
     "binding": "DEOS_PORTAL",
     "service": "deos-workflow-portal"
   }],

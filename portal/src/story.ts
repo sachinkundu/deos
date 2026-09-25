@@ -37,6 +37,7 @@ const sha256Hex = async (bytes: ArrayBuffer): Promise<string> => {
 
 interface GovernedPullRequestRow {
   run_id: string;
+  issue_id: string;
   run_status: string;
   current_node: string;
   definition_version: number;
@@ -99,7 +100,7 @@ export class ReviewStoryReadStore {
   async projection(repository: string, pullRequestNumber: number): Promise<Record<string, unknown> | null> {
     if (!REPOSITORY.test(repository) || !Number.isSafeInteger(pullRequestNumber) || pullRequestNumber < 1) return null;
     const governed = await this.db.prepare(
-      `SELECT run.run_id, run.status AS run_status, run.current_node,
+      `SELECT run.run_id, run.issue_id, run.status AS run_status, run.current_node,
               run.definition_version, run.workflow_instance_id,
               run.created_at AS run_created_at, run.updated_at AS run_updated_at,
               issue.issue_key, issue.title AS issue_title, issue.linear_url,
@@ -116,6 +117,23 @@ export class ReviewStoryReadStore {
     if (governed === null) return null;
 
     const runId = governed.run_id;
+    const gate = await this.db.prepare(`SELECT gate.visit_sequence,gate.state,gate.approved_head_sha,
+      run.frozen_access_account,run.frozen_github_user_id,run.frozen_linear_user_id,run.bettaview_account_policy_version,
+      policy.bettaview_continuation_enabled,policy.in_progress_state_id,policy.merging_state_id
+      FROM orchestration_runs run JOIN project_workflow_policies policy ON policy.project_id=run.project_id
+      LEFT JOIN human_gate_visits gate ON gate.run_id=run.run_id AND gate.node_id=run.current_node
+      WHERE run.run_id=? ORDER BY gate.visit_sequence DESC LIMIT 1`).bind(runId).first<Record<string, unknown>>();
+    const reviewContinuation = !gate || gate.bettaview_continuation_enabled !== 1
+      ? { readiness: "feature_disabled" }
+      : !gate.frozen_access_account || !gate.frozen_github_user_id || !gate.frozen_linear_user_id || !gate.bettaview_account_policy_version
+        ? { readiness: "unlinked", reason: "This run has no frozen checked BettaView account, so no Linear task can move from this review." }
+        : gate.state !== "open"
+          ? { readiness: "closed", reason: "The linked human gate is no longer open, so no Linear task can move." }
+          : gate.approved_head_sha !== governed.head_sha
+            ? { readiness: "stale_head", reason: "The linked gate expects a different pull request head. Reload the current head before publishing." }
+            : { readiness: "ready", runId, issueId: governed.issue_id, repository: governed.repository,
+                pullRequestNumber: governed.pull_request_number, gateVisitSequence: gate.visit_sequence,
+                accountPolicyVersion: gate.bettaview_account_policy_version, goalState: "In Progress or Merging" };
     const [phaseRows, reviewRows, candidateRows, bindingRows, attemptRows, artifactRows,
       transitionRows, providerRows, waitRows, cleanupRows] = await Promise.all([
       this.db.prepare(
@@ -317,6 +335,7 @@ export class ReviewStoryReadStore {
       headBindings: bindingRows.results,
       events,
       acceptedTrace,
+      reviewContinuation,
     };
   }
 
