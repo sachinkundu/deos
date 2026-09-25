@@ -129,6 +129,26 @@ def test_lost_deploy_reply_uses_live_target_before_redeploy():
         client.sqlite.close()
 
 
+def test_failed_provider_read_is_logged_and_same_work_can_retry(capsys):
+    client = LocalPointer([])
+    try:
+        work_id, manifest_id = release_ids("portal", "c" * 40, "d" * 64, 0)
+        client.begin(work_id, manifest_id, "old-owner")
+        client.sqlite.execute("UPDATE staging_release_pointer SET heartbeat_due_at='2000-01-01'")
+
+        def unavailable(*args):
+            raise OSError("original host read failed")
+
+        client.target_running = unavailable
+        plan = client.prepare_deploy("portal", "c" * 40, "d" * 64, "new-owner")
+        assert plan == {"action": "deploy", "tracked": True,
+                        "work_id": work_id, "manifest_id": manifest_id}
+        assert "original host read failed" in capsys.readouterr().err
+        assert client.pointer()["state"] == "updating"
+    finally:
+        client.sqlite.close()
+
+
 def test_recorded_same_build_is_noop_and_next_release_gets_new_id():
     current = traffic()
     client = LocalPointer([current, current, current, current])

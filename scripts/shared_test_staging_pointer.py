@@ -5,6 +5,7 @@ import json
 import os
 import re
 import subprocess
+import traceback
 import urllib.request
 from datetime import UTC, datetime, timedelta
 
@@ -136,8 +137,18 @@ class StagingPointerClient:
         if current["state"] == "updating":
             work_id, manifest_id = self.matching_work(current, target, sha, build_digest)
             self.begin(work_id, manifest_id, owner)
-            if self.has_planned_manifest(manifest_id) or self.target_running(
-                    target, sha, build_digest):
+            if self.has_planned_manifest(manifest_id):
+                self.finish(work_id, manifest_id, owner)
+                return {"action": "recovered", "tracked": False}
+            try:
+                running = self.target_running(target, sha, build_digest)
+            except (OSError, ValueError) as error:
+                # The saved plan allows a retry after an uncertain provider reply.
+                # Keep the failed read in the durable workflow log, then require
+                # the normal full readback before the pointer can become stable.
+                traceback.print_exception(error)
+                running = False
+            if running:
                 self.finish(work_id, manifest_id, owner)
                 return {"action": "recovered", "tracked": False}
             return {"action": "deploy", "tracked": True,
