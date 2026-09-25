@@ -25,7 +25,7 @@ export function mergeProofSection(body:string,marker:string,section:string):stri
   if (first!==last || endFirst!==endLast || (first<0)!==(endFirst<0) ||
       (first>=0 && endFirst<first+start.length)) throw new Error('pr_body_marker_conflict');
   const replacement=`${start}\n${section.trim()}\n${end}`;
-  return first<0 ? `${body.trimEnd()}\n\n${replacement}\n` :
+  return first<0 ? `${body}${body ? '\n\n' : ''}${replacement}\n` :
     body.slice(0,first)+replacement+body.slice(endFirst+end.length);
 }
 

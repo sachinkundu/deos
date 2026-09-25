@@ -19,6 +19,7 @@ from deos.ingress import (
     route_event_proof,
 )
 from deos.ports import ApplicationEvent, Delivery, DeliveryClassification
+from deos.shared_test_route import SharedTestEventRouter
 from deos.telemetry import Observation, build_observation, workflow_identity
 from worker_telemetry import emit_observation
 
@@ -63,6 +64,20 @@ class Default(WorkerEntrypoint):
         now = datetime.now(UTC)
         try:
             acl.verify(body, headers, now)
+            payload: object = json.loads(cast(bytes, body))
+            if not isinstance(payload, dict):
+                raise InvalidWebhook("payload must be an object")
+            router = SharedTestEventRouter(
+                self.env.DB, self._send_test,
+                (getattr(self.env, "TEST_MARKER_KEY_V1", "") or "").encode(),
+            )
+            delivery_id = headers["linear-delivery"]
+            if delivery_id and await router.route(
+                cast(dict[str, Any], payload), delivery_id,
+                int(headers["linear-timestamp"]), now,
+            ):
+                self.ctx.waitUntil(router.dispatch(delivery_id))
+                return Response("accepted test delivery", status=200)
             if headers["linear-delivery"]:
                 saved = (
                     await self.env.DB.prepare(
@@ -78,7 +93,23 @@ class Default(WorkerEntrypoint):
                         dispatch(self.env.DB, self._send, headers["linear-delivery"])
                     )
                     return Response("duplicate", status=200)
-            payload: object = json.loads(cast(bytes, body))
+            # A saved team test task may have no project. The exact test route
+            # above has first claim; other projectless Issue events are ignored.
+            data = cast(dict[str, Any], payload).get("data")
+            if (
+                cast(dict[str, Any], payload).get("type") == "Issue"
+                and isinstance(data, dict)
+                and isinstance(data.get("id"), str)
+                and isinstance(data.get("teamId"), str)
+                and not isinstance(data.get("project"), dict)
+            ):
+                if delivery_id:
+                    await self.env.DB.prepare(
+                        """INSERT OR IGNORE INTO deliveries
+                          (delivery_id,payload_hash,received_at,classification)
+                          VALUES (?,?,?,'irrelevant')"""
+                    ).bind(delivery_id, hashlib.sha256(body).hexdigest(), now.isoformat()).run()
+                return Response("ignored", status=200)
             comment_issue: dict[str, Any] | None = None
             if isinstance(payload, dict) and cast(dict[str, Any], payload).get("type") == "Comment":
                 comment_data: object = cast(dict[str, Any], payload).get("data")
@@ -202,8 +233,16 @@ class Default(WorkerEntrypoint):
     async def _send(self, message: object) -> None:
         await self.env.QUEUE.send(_javascript_value(message), contentType="json")
 
+    async def _send_test(self, message: object) -> None:
+        await self.env.TEST_QUEUE.send(_javascript_value(message), contentType="json")
+
     async def scheduled(self, controller: Any, env: Any, ctx: Any) -> None:
         await replay(self.env.DB, self._send)
+        router = SharedTestEventRouter(
+            self.env.DB, self._send_test,
+            (getattr(self.env, "TEST_MARKER_KEY_V1", "") or "").encode(),
+        )
+        await router.replay()
 
 
 def _javascript_value(value: object):

@@ -1,4 +1,5 @@
 import { reconcileImplementations } from "./implementation-reconciliation.ts";
+import {processSharedTestBatch} from './shared-test-queue.ts';
 import { reconcileWorkflowEvents } from './workflow-event-reconciliation.ts';
 import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
 import { IndependentReviewReconciliationController } from './independent-review-reconciliation.ts';
@@ -206,6 +207,8 @@ export default {
       () => capabilityRouter(env).handle(request));
   },
   queue(batch, env) {
+    if (batch.queue === 'deos-shared-test-events')
+      return processSharedTestBatch(batch as MessageBatch<unknown>,env.DB);
     return processQueueBatch(
       batch as MessageBatch<QueueBody>,
       env as unknown as QueueConsumerEnv,

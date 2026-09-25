@@ -33,6 +33,10 @@
       {
         "binding": "QUEUE",
         "queue": "deos-sample-project-events"
+      },
+      {
+        "binding": "TEST_QUEUE",
+        "queue": "deos-shared-test-events"
       }
     ]
   },

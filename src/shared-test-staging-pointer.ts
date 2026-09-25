@@ -68,8 +68,17 @@ export class SharedTestStagingPointer {
       throw new Error('staging_release_service_set_changed');
     const pointer=await this.pointer();
     if (pointer.state==='stable' && pointer.manifest_id===plannedManifestId &&
-        pointer.traffic_revision===base.revision && pointer.manifest_revision)
+        pointer.traffic_revision===base.revision && pointer.manifest_revision) {
+      const saved=(await this.db.prepare(`SELECT service_name,source_commit,deploy_version,
+        build_input_sha256 FROM staging_release_services WHERE manifest_id=? ORDER BY service_name`)
+        .bind(plannedManifestId).all<{service_name:string;source_commit:string;
+          deploy_version:string;build_input_sha256:string}>()).results;
+      if (JSON.stringify(saved.map(s=>[s.service_name,s.source_commit,s.deploy_version,
+        s.build_input_sha256]))!==JSON.stringify(base.services.map(s=>[s.serviceName,
+        s.sourceCommit,s.deployVersion,s.buildInputSha256])))
+        throw new Error('staging_release_readback_drift');
       return {manifestId:plannedManifestId,revision:pointer.manifest_revision,base};
+    }
     if (pointer.state!=='updating' || pointer.work_id!==workId ||
         pointer.planned_manifest_id!==plannedManifestId)
       throw new Error('staging_release_plan_mismatch');
