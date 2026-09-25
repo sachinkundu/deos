@@ -5,7 +5,7 @@ import type {TestPathDecision} from './shared-test-path-rule.ts';
 import {SharedTestLeaseStore,type SharedTestRequest,type StagingTrafficRead} from './shared-test-lease.ts';
 import type {LinearTestIssue} from './linear-capability.ts';
 
-interface AdmissionGitHub {
+export interface AdmissionGitHub {
   repository:string;
   current(work:ImplementationRun):Promise<void>;
   ref(branch:string):Promise<string|null>;

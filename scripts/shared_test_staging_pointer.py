@@ -41,10 +41,13 @@ class StagingPointerClient:
         self.token = token or os.environ["CLOUDFLARE_API_TOKEN"]
         self.opener = opener or urllib.request.build_opener(NoRedirect())
 
-    def _json(self, url, *, body=None, bearer=True):
+    def _json(self, url, *, body=None, bearer=True, access=False):
         headers = {"Accept": "application/json", "User-Agent": "DEOS-Staging-Pointer/1.0"}
         if bearer:
             headers["Authorization"] = "Bearer " + self.token
+        if access:
+            headers["CF-Access-Client-Id"] = os.environ["PORTAL_ACCESS_CLIENT_ID"]
+            headers["CF-Access-Client-Secret"] = os.environ["PORTAL_ACCESS_CLIENT_SECRET"]
         if body is not None:
             headers["Content-Type"] = "application/json"
         request = urllib.request.Request(url, headers=headers,
@@ -84,7 +87,7 @@ class StagingPointerClient:
         return deployed, versions[0]["version_id"]
 
     def _host(self, service):
-        return self._json(f"https://{service['host']}/api/version", bearer=False)
+        return self._json(f"https://{service['host']}/api/version", bearer=False, access=True)
 
     def traffic(self):
         rows = []

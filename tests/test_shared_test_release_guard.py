@@ -91,3 +91,25 @@ def test_observe_logs_missing_link_and_enforce_denies(monkeypatch, capsys):
             guard.guard(RELEASE, "staging", client)
     finally:
         client.sqlite.close()
+
+
+def test_range_checks_an_earlier_app_commit_even_when_head_is_docs(monkeypatch):
+    client = LocalClient()
+    client.seed()
+    first, second = "1" * 40, "2" * 40
+    commands = {
+        ("rev-list", "--first-parent", "--reverse", f"{BASE}..{second}"): f"{first}\n{second}",
+        ("rev-list", "--parents", "-n", "1", first): f"{first} {BASE}",
+        ("rev-list", "--parents", "-n", "1", second): f"{second} {first}",
+        ("diff", "--name-only", "--no-renames", BASE, first): PATH,
+        ("diff", "--name-only", "--no-renames", first, second): "docs/readme.md",
+    }
+    monkeypatch.setattr(guard, "git", lambda *args: commands.get(args, ""))
+    try:
+        result = guard.check_range(BASE, second, client)
+        assert result["proofAllowed"] is False
+        assert result["reason"] == "release_link_missing"
+        assert result["checkedCommits"][0]["releaseCommit"] == first
+        assert result["checkedCommits"][1]["reason"] == "outside_test_roots"
+    finally:
+        client.sqlite.close()

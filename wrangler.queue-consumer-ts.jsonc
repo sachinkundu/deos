@@ -14,6 +14,14 @@
     {
       "binding": "REVIEW_PORTAL",
       "service": "deos-workflow-portal"
+    },
+    {
+      "binding": "STAGING_PORTAL",
+      "service": "deos-workflow-portal-staging"
+    },
+    {
+      "binding": "STAGING_BETTAVIEW",
+      "service": "deos-bettaview-portal-staging"
     }
   ],
   "account_id": "c68856288112af7698f5be52ea94b96e",

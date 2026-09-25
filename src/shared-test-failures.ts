@@ -78,7 +78,22 @@ export class SharedTestFailureStore {
         ]);
       }
     } catch (databaseError) {
-      throw new AggregateError(objectFailure ? [databaseError,objectFailure] : [databaseError],
+      let fallbackFailure:unknown;
+      if (objectSaved) {
+        const fallbackKey=`shared-test/failures/${encodeURIComponent(context.runId)}/${faultId}.index-failure.json`;
+        const fallback=JSON.stringify({faultId,originalObjectKey:key,originalObjectSha256:hash,
+          context,databaseError:describeError(databaseError),occurredAt:new Date().toISOString()});
+        try {
+          const written=await this.bucket.put(fallbackKey,fallback,
+            {onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});
+          if (!written) throw new Error('shared_test_index_failure_object_exists');
+          const read=await this.bucket.get(fallbackKey);
+          if (!read || await sha256Hex(await read.text())!==await sha256Hex(fallback))
+            throw new Error('shared_test_index_failure_readback_failed');
+        } catch (secondary) {fallbackFailure=secondary;}
+      }
+      throw new AggregateError([databaseError,...(objectFailure?[objectFailure]:[]),
+        ...(fallbackFailure?[fallbackFailure]:[])],
         `shared_test_failure_index_failed:${faultId}:${objectSaved?key:'object_unavailable'}`,{cause:error});
     }
     return faultId;

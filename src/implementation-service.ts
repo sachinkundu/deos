@@ -5,6 +5,7 @@ import { ImplementationEnvironment } from './implementation-environment.ts';
 import {SharedTestReleaseLinkStore} from './shared-test-release-link.ts';
 import {SharedTestDecisionStore} from './shared-test-decision-store.ts';
 import {SharedTestLeaseStore} from './shared-test-lease.ts';
+import {SharedTestFailureStore} from './shared-test-failures.ts';
 import { publishImplementationProof, implementationProofMarkdown, type PublishedImplementationProof } from './implementation-pr-proof.ts';
 import { D1DesignStore } from "./design-store.ts";
 import {
@@ -112,11 +113,22 @@ export class ImplementationService {
               WHERE run_id=? AND task_id=? AND candidate_commit=? AND patch_sha256=?
                 AND state IN ('waiting','validating','granted') ORDER BY queue_number LIMIT 1`)
               .bind(work.run_id,run.issue_id,work.pr_head_sha,work.patch_sha)
-              .first<{node_visit:number;attempt_id:string}>();
+              .first<{request_id:string;node_visit:number;attempt_id:string;state:string}>();
             if (!request) {
               request=await new SharedTestLeaseStore(this.env.DB).request({runId:work.run_id,
                 nodeVisit:run.current_visit_sequence,attemptId:crypto.randomUUID(),
                 taskId:run.issue_id,candidateCommit:work.pr_head_sha,patchSha256:work.patch_sha});
+            }
+            if (request.state==='granted') {
+              const owned=await this.env.DB.prepare(`SELECT lease_id,fence,state FROM test_leases
+                WHERE request_id=? AND run_id=? AND attempt_id=?`)
+                .bind(request.request_id,work.run_id,request.attempt_id)
+                .first<{lease_id:string;fence:number;state:string}>();
+              if (!owned) throw new ImplementationError('test_lease_missing',
+                'The granted test request has no exact lease');
+              if (owned.state==='preparing' || owned.state==='active')
+                await new SharedTestLeaseStore(this.env.DB).heartbeat(work.run_id,
+                  request.attempt_id,owned.lease_id,owned.fence);
             }
             return {kind:'system_action',outcome:'waiting',providerReceiptsComplete:true};
           }
@@ -180,6 +192,17 @@ export class ImplementationService {
         };
       }
       try {
+        if (action.startsWith('implementation.shared_test_') ||
+            action==='implementation.draft_publish') {
+          const owned=await this.env.DB.prepare(`SELECT owner_lease_id,fence FROM test_environment
+            WHERE site_id=1 AND owner_run_id=?`).bind(run.run_id)
+            .first<{owner_lease_id:string;fence:number}>();
+          await new SharedTestFailureStore(this.env.DB,this.env.ARTIFACTS).record({
+            runId:run.run_id,leaseId:owned?.owner_lease_id,
+            fence:owned?.fence,phase:owned?'active':'admission',
+            operation:action,safeCode:error instanceof ImplementationError?error.code:'shared_test_failed',
+          },error);
+        }
         await this.store.error(run.run_id, null, action, error);
       } catch (secondary) {
         recordCaughtError(secondary, "implementation.diagnostics");

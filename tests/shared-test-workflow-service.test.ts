@@ -43,5 +43,23 @@ test('a required workflow candidate keeps one waiting request across timed visit
     assert.equal(rows.length,1);
     assert.deepEqual({...rows[0]},{node_visit:7,task_id:'issue-1',
       candidate_commit:'a'.repeat(40),state:'waiting'});
+    const queue=db.sqlite.prepare('SELECT * FROM test_lease_requests').get() as
+      Record<string,string|number>;
+    const granted=await new (await import('../src/shared-test-lease.ts')).SharedTestLeaseStore(
+      db as unknown as D1Database).grant({requestId:String(queue.request_id),runId:'run-1',
+      nodeVisit:7,attemptId:String(queue.attempt_id),taskId:'issue-1',
+      candidateCommit:'a'.repeat(40),patchSha256:'d'.repeat(64),taskKey:'SAC-172',
+      taskTitle:'Test',teamId:'team-1',stage:'shared_test_demo',repository:'owner/repo',
+      branch:'deos/agent/SAC-172/run-1',pullRequestNumber:150,baseManifestId:'manifest-1',
+      baseTrafficRevision:'traffic-1',pointerRevision:0,base:{revision:'traffic-1',services:[{
+        serviceName:'portal',sourceCommit:'b'.repeat(40),deployVersion:'version-1',
+        buildInputSha256:'c'.repeat(64),trafficPercent:100,
+      }]}},new Date(Date.now()-90_000),false);
+    assert.equal(granted.state,'granted');
+    assert.equal((await service.execute({...run,current_visit_sequence:9},
+      'implementation.shared_test_demo')).outcome,'waiting');
+    const due=db.sqlite.prepare('SELECT heartbeat_due_at FROM test_environment WHERE site_id=1')
+      .get() as {heartbeat_due_at:string};
+    assert.ok(Date.parse(due.heartbeat_due_at)>Date.now()+60_000);
   } finally {db.close();}
 });

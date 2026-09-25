@@ -138,3 +138,22 @@ test('timed visits keep one queue place and an unstarted attempt can be safely c
       {requestId:await sharedTestRequestId(first),state:'superseded'});
   } finally {db.close();}
 });
+
+test('replacement attempt keeps its queue number only after the old Sandbox is destroyed',async()=>{
+  const {db,store}=await fixture();
+  try {
+    seedRun(db,first.runId,first.taskId);
+    seedAttempt(db,first.attemptId,first.runId);
+    db.sqlite.prepare(`UPDATE orchestration_runs SET current_node='shared_test_demo',
+      status='active' WHERE run_id=?`).run(first.runId);
+    const queued=await store.request(first);
+    const replacement={...first,attemptId:'attempt-retry'};
+    await assert.rejects(store.replaceAttempt(replacement,first.attemptId),/not_final/);
+    db.sqlite.prepare(`UPDATE agent_attempts SET state='failed',cleanup_state='destroyed'
+      WHERE attempt_id=?`).run(first.attemptId);
+    const updated=await store.replaceAttempt(replacement,first.attemptId);
+    assert.equal(updated.queue_number,queued.queue_number);
+    assert.equal(updated.attempt_id,replacement.attemptId);
+    await assert.rejects(store.request(first),/identity_conflict/);
+  } finally {db.close();}
+});

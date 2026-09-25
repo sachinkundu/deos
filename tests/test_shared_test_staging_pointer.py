@@ -1,5 +1,6 @@
 """The deployment pointer stays closed until a complete two-read manifest is saved."""
 
+import io
 import sqlite3
 import sys
 from pathlib import Path
@@ -63,3 +64,19 @@ def test_changed_traffic_leaves_pointer_updating_and_blocks_grant():
         assert client.pointer()["state"] == "updating"
     finally:
         client.sqlite.close()
+
+
+def test_private_staging_version_read_uses_access_service_identity(monkeypatch):
+    monkeypatch.setenv("PORTAL_ACCESS_CLIENT_ID", "test-client")
+    monkeypatch.setenv("PORTAL_ACCESS_CLIENT_SECRET", "test-secret")
+
+    class Opener:
+        def open(self, request, timeout):
+            assert timeout == 30
+            assert request.get_header("Cf-access-client-id") == "test-client"
+            assert request.get_header("Cf-access-client-secret") == "test-secret"
+            assert request.get_header("Authorization") is None
+            return io.BytesIO(b'{"sourceSha":"' + b"a" * 40 + b'"}')
+
+    client = StagingPointerClient(token="cloudflare-token", opener=Opener())
+    assert client._host({"host": "deos-staging.voxdez.com"})["sourceSha"] == "a" * 40

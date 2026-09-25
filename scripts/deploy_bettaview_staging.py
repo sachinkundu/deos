@@ -62,7 +62,9 @@ def deployment():
 def host_version():
     request = urllib.request.Request(
         f"https://{HOST}/api/version",
-        headers={"Accept": "application/json", "User-Agent": "DEOS-BettaView-Staging/1.0"},
+        headers={"Accept": "application/json", "User-Agent": "DEOS-BettaView-Staging/1.0",
+                 "CF-Access-Client-Id": os.environ["PORTAL_ACCESS_CLIENT_ID"],
+                 "CF-Access-Client-Secret": os.environ["PORTAL_ACCESS_CLIENT_SECRET"]},
     )
     with urllib.request.build_opener(NoRedirect()).open(request, timeout=30) as response:
         return json.load(response)
@@ -83,11 +85,13 @@ def validate_readback(sha, build_digest, deployed, host):
 
 
 def deploy():
-    if not os.environ.get("CLOUDFLARE_API_TOKEN"):
-        raise ValueError("Missing CLOUDFLARE_API_TOKEN")
+    for name in ("CLOUDFLARE_API_TOKEN", "PORTAL_ACCESS_CLIENT_ID", "PORTAL_ACCESS_CLIENT_SECRET"):
+        if not os.environ.get(name):
+            raise ValueError(f"Missing {name}")
     sha = clean_checkout()
     check_ref("staging", sha)
-    shared_test_release_guard(sha, "bettaview-staging")
+    shared_test_release_guard(sha, "bettaview-staging",
+                              base_loader=lambda: host_version()["sourceSha"])
     preflight(json.loads((ROOT / "portal/bettaview/wrangler.jsonc").read_text()))
     check_route_access()
     run("npm", "ci", "--prefix", "portal/bettaview")

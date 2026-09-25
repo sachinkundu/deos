@@ -29,14 +29,19 @@ export class CloudflareStagingTrafficReader {
   readonly token:string;
   readonly targets:readonly StagingWorkerTarget[];
   readonly request:typeof fetch;
+  readonly versionRequest:(target:StagingWorkerTarget)=>Promise<Response>;
   constructor(accountId:string,token:string,targets:readonly StagingWorkerTarget[],
-    request:typeof fetch=(input,init)=>fetch(input,init)) {
+    request:typeof fetch=(input,init)=>fetch(input,init),
+    versionRequest?: (target:StagingWorkerTarget)=>Promise<Response>) {
     if (!/^[a-f0-9]{32}$/.test(accountId) || !token || !targets.length ||
         new Set(targets.map(target=>target.serviceName)).size!==targets.length ||
         targets.some(target=>!target.serviceName || !/^[a-z0-9-]+$/.test(target.workerName) ||
           !/^[a-z0-9.-]+$/.test(target.host)))
       throw new Error('invalid_staging_traffic_reader');
     this.accountId=accountId;this.token=token;this.targets=targets;this.request=request;
+    this.versionRequest=versionRequest ?? (target=>this.request(`https://${target.host}/api/version`,
+      {headers:{Accept:'application/json','User-Agent':'deos-shared-test'},
+        redirect:'manual',signal:AbortSignal.timeout(20_000)}));
   }
 
   private async deployments(target:StagingWorkerTarget):Promise<Deployment> {
@@ -57,9 +62,7 @@ export class CloudflareStagingTrafficReader {
   }
 
   private async hostVersion(target:StagingWorkerTarget):Promise<HostVersion> {
-    const response=await this.request(`https://${target.host}/api/version`,
-      {headers:{Accept:'application/json','User-Agent':'deos-shared-test'},
-        redirect:'manual',signal:AbortSignal.timeout(20_000)});
+    const response=await this.versionRequest(target);
     if (!response.ok) throw new Error(`staging_host_version_http_${response.status}`);
     return await response.json() as HostVersion;
   }

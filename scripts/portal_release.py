@@ -114,7 +114,7 @@ def promote():
     )
     run("git", "merge-base", "--is-ancestor", sha, "origin/main")
     run("git", "merge-base", "--is-ancestor", "origin/release", sha)
-    shared_test_release_guard(sha, "production")
+    shared_test_release_guard(sha, "production", base=run("git", "rev-parse", "origin/release", capture=True))
     # A concurrent non-fast-forward movement is rejected by the normal push.
     run("git", "push", "origin", f"{sha}:refs/heads/release")
     run("git", "fetch", "origin", "+refs/heads/release:refs/remotes/origin/release")
@@ -221,7 +221,8 @@ def deploy(target):
         raise ValueError("Production checkout differs from the reviewed SHA")
     check_ref(target, sha)
     if target == "staging":
-        shared_test_release_guard(sha, "staging")
+        shared_test_release_guard(sha, "staging",
+                                  base_loader=lambda: host_version("staging")["sourceSha"])
     config_path = ROOT / "portal/wrangler.jsonc"
     preflight(json.loads(config_path.read_text()), target)
     check_route_access()

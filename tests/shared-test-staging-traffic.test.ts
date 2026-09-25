@@ -49,3 +49,19 @@ test('a host on another version cannot become a lease base',async()=>{
           buildInputSha256:build})) as typeof fetch);
   await assert.rejects(reader.read(),/deployment_mismatch/);
 });
+
+test('a private service binding can provide the running version behind Access',async()=>{
+  let privateReads=0;
+  const reader=new CloudflareStagingTrafficReader(account,'token',[target],
+    (async()=>Response.json({success:true,result:{deployments:[
+      {id:deployment,created_on:'2026-09-25T01:00:00Z',versions:[{version_id:version,percentage:100}]},
+    ]}})) as typeof fetch,
+    async current=>{
+      assert.equal(current.workerName,target.workerName);
+      privateReads++;
+      return Response.json({canonicalHost:target.host,sourceSha:source,
+        versionId:version,buildInputSha256:build});
+    });
+  assert.equal((await reader.read()).services[0].deployVersion,version);
+  assert.equal(privateReads,1);
+});

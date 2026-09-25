@@ -134,6 +134,27 @@ export class SharedTestLeaseStore {
     return row;
   }
 
+  async replaceAttempt(value: SharedTestRequest, previousAttemptId: string,
+    at = new Date()): Promise<QueueRow> {
+    const requestId = await sharedTestRequestId(value);
+    if (!previousAttemptId || previousAttemptId === value.attemptId)
+      throw new Error('shared_test_replacement_attempt_invalid');
+    const result = await this.db.prepare(`UPDATE test_lease_requests SET attempt_id=?,
+      updated_at=? WHERE request_id=? AND run_id=? AND node_visit=? AND task_id=?
+      AND candidate_commit=? AND patch_sha256=? AND attempt_id=? AND state='waiting'
+      AND EXISTS (SELECT 1 FROM agent_attempts a WHERE a.attempt_id=?
+        AND a.run_id=? AND a.cleanup_state='destroyed'
+        AND a.state NOT IN ('pending','starting','running','collecting'))
+      AND EXISTS (SELECT 1 FROM orchestration_runs o WHERE o.run_id=?
+        AND o.issue_id=? AND o.current_node='shared_test_demo' AND o.status='active')`)
+      .bind(value.attemptId,at.toISOString(),requestId,value.runId,value.nodeVisit,
+        value.taskId,value.candidateCommit,value.patchSha256,previousAttemptId,
+        previousAttemptId,value.runId,value.runId,value.taskId).run();
+    if (result.meta.changes !== 1)
+      throw new Error('shared_test_replacement_attempt_not_final_or_fenced');
+    return this.request(value,at);
+  }
+
   private async assertSavedBase(value: SharedTestGrant): Promise<void> {
     const manifest = await this.db.prepare(`SELECT revision,traffic_revision,service_count,digest_sha256
       FROM staging_release_manifests WHERE manifest_id=?`)

@@ -86,12 +86,52 @@ def check_commit(commit, client):
     return {"proofAllowed": True, "reason": choice, "releaseCommit": commit}
 
 
-def guard(commit, stage, client=None):
+def check_range(base, head, client):
+    """Check every new first-parent commit; a later merge cannot hide an earlier app change."""
+    if not all(len(sha) == 40 and all(ch in "0123456789abcdef" for ch in sha)
+               for sha in (base, head)):
+        raise ValueError("Release range needs full commit SHAs")
+    git("merge-base", "--is-ancestor", base, head)
+    commits = git("rev-list", "--first-parent", "--reverse", f"{base}..{head}").splitlines()
+    services = client.query("SELECT app_paths_json,provider_paths_json FROM staging_release_services")["results"]
+    if not services:
+        return {"proofAllowed": False, "reason": "release_manifest_missing",
+                "releaseCommit": head, "checkedCommits": []}
+    roots = sorted({root for row in services
+                    for field in ("app_paths_json", "provider_paths_json")
+                    for root in json.loads(row[field])})
+    # A change to the path policy itself requires an exact reviewed release link.
+    roots.append("config/workflow.implementation.yaml")
+    checked = []
+    for commit in commits:
+        parents = git("rev-list", "--parents", "-n", "1", commit).split()
+        if len(parents) < 2 or parents[0] != commit or parents[1] == commit:
+            raise ValueError("Release history has an invalid first parent")
+        paths = sorted(set(git("diff", "--name-only", "--no-renames",
+                               parents[1], commit).splitlines()))
+        if any(path.startswith(root) for path in paths for root in roots):
+            proof = check_commit(commit, client)
+        else:
+            proof = {"proofAllowed": True, "reason": "outside_test_roots",
+                     "releaseCommit": commit}
+        checked.append(proof)
+    denied = next((item for item in checked if not item["proofAllowed"]), None)
+    return {"proofAllowed": denied is None,
+            "reason": denied["reason"] if denied else "range_checked",
+            "releaseCommit": head, "checkedCommits": checked}
+
+
+def guard(commit, stage, client=None, base=None, base_loader=None):
     mode = os.environ.get("SHARED_TEST_RELEASE_GUARD", "observe")
     if mode not in ("observe", "enforce"):
         raise ValueError("Invalid shared test release guard mode")
     try:
-        result = check_commit(commit, client or StagingPointerClient())
+        if base_loader is not None:
+            if base is not None:
+                raise ValueError("Release guard received two base sources")
+            base = base_loader()
+        reader = client or StagingPointerClient()
+        result = check_range(base, commit, reader) if base else check_commit(commit, reader)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         if mode == "enforce":
             raise

@@ -37,3 +37,26 @@ test('an object storage failure keeps full first cause in D1',async()=>{
     assert.match(row.later_faults_json,/R2 unavailable/);
   } finally {db.close();}
 });
+
+test('a D1 index failure leaves a read-back recovery object with the original fault',async()=>{
+  const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();
+  try {
+    const faultingDb={
+      prepare(query:string) {
+        if (query.includes('INSERT INTO test_failures')) throw new Error('D1 index unavailable');
+        return db.prepare(query);
+      },
+      batch:db.batch.bind(db),
+    } as unknown as D1Database;
+    const store=new SharedTestFailureStore(faultingDb,bucket as unknown as R2Bucket);
+    await assert.rejects(store.record({runId:'run-3',phase:'cleaning',
+      operation:'resource.delete',safeCode:'delete_failed'},new Error('original provider error')),
+      /shared_test_failure_index_failed/);
+    const recovery=[...bucket.objects.keys()].find(key=>key.endsWith('.index-failure.json'));
+    assert.ok(recovery);
+    const body=JSON.parse(await (await bucket.get(recovery))!.text());
+    assert.equal(body.databaseError.message,'D1 index unavailable');
+    const original=JSON.parse(await (await bucket.get(body.originalObjectKey))!.text());
+    assert.equal(original.error.message,'original provider error');
+  } finally {db.close();}
+});

@@ -19,7 +19,7 @@ SHA = "a" * 40
 
 @pytest.fixture(autouse=True)
 def no_remote_guard(monkeypatch):
-    monkeypatch.setattr(release, "shared_test_release_guard", lambda *args: None)
+    monkeypatch.setattr(release, "shared_test_release_guard", lambda *args, **kwargs: None)
 
 
 @pytest.mark.parametrize("target", ["staging", "production"])

@@ -1,5 +1,6 @@
 import {verifyAccess} from '../src/auth.ts';
 import {sha256Hex} from '../../src/implementation-hash.ts';
+import {recordCaughtError} from '../../src/error-context.ts';
 
 interface TestPortalEnv {
   DB:D1Database;
@@ -100,7 +101,8 @@ export async function routeTestPortal(request:Request,env:TestPortalEnv,
       const row=await testEnvironmentStatus(env.DB);
       return new Response(request.method==='HEAD'?null:statusHtml(row),
         {headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
-    } catch {
+    } catch (error) {
+      recordCaughtError(error,'portal/test-environment/worker.ts:status');
       return new Response('Test site status is unavailable',{status:503,headers});
     }
   }
