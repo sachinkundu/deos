@@ -88,6 +88,22 @@ export class SharedTestDecisionStore {
     return decision;
   }
 
+  async saved(input:{runId:string;candidateCommit:string;patchSha256:string;
+    changedPaths:readonly string[]}):Promise<TestPathDecision> {
+    const row=await this.db.prepare(`SELECT * FROM test_task_decisions
+      WHERE run_id=? AND candidate_commit=? AND patch_sha256=?
+      ORDER BY created_at,manifest_revision LIMIT 1`)
+      .bind(input.runId,input.candidateCommit,input.patchSha256).first<DecisionRow>();
+    if (!row) throw new Error('test_path_decision_missing');
+    const manifest=await this.manifest(row.manifest_id,row.manifest_revision);
+    const actual=await decideTestPath({...input,manifest});
+    if (row.changed_paths_sha256!==actual.changedPathsSha256 ||
+        row.choice!==actual.choice ||
+        row.matched_paths_json!==JSON.stringify(actual.matchedPaths))
+      throw new Error('test_path_decision_changed');
+    return actual;
+  }
+
   async releaseCheck(input: {runId:string;candidateCommit:string;patchSha256:string;
     manifestId:string;manifestRevision:number;changedPaths:readonly string[]}): Promise<{allowed:boolean;choice:string|null}> {
     const row = await this.db.prepare(`SELECT * FROM test_task_decisions

@@ -154,13 +154,13 @@ export class SharedTestLeaseStore {
   }
 
   async grantChecked(value: Omit<SharedTestGrant,'base'>,
-    readTraffic: () => Promise<StagingTrafficRead>, at = new Date()) {
+    readTraffic: () => Promise<StagingTrafficRead>, at = new Date(), requireCurrent=true) {
     const base = stableStagingBase(await readTraffic(),await readTraffic());
     if (base.revision !== value.baseTrafficRevision) throw new Error('shared_test_base_drift');
-    return this.grant({...value,base},at);
+    return this.grant({...value,base},at,requireCurrent);
   }
 
-  async grant(value: SharedTestGrant, at = new Date()): Promise<{state: 'granted'|'waiting'; leaseId?: string; fence?: number}> {
+  async grant(value: SharedTestGrant, at = new Date(), requireCurrent=true): Promise<{state: 'granted'|'waiting'; leaseId?: string; fence?: number}> {
     const expectedId = await sharedTestRequestId(value);
     if (value.requestId !== expectedId || value.base.revision !== value.baseTrafficRevision ||
         value.base.services.length === 0 || !Number.isSafeInteger(value.pointerRevision) ||
@@ -172,6 +172,14 @@ export class SharedTestLeaseStore {
     const now = at.toISOString();
     const deadline = new Date(at.getTime()+120_000).toISOString();
     const leaseId = expectedId;
+    if (requireCurrent && value.pullRequestNumber===null)
+      throw new Error('shared_test_grant_pr_missing');
+    const currentSql=requireCurrent ? ` AND EXISTS (SELECT 1 FROM orchestration_runs o
+      JOIN implementation_runs w ON w.run_id=o.run_id WHERE o.run_id=? AND o.issue_id=?
+        AND o.current_node='shared_test_demo' AND o.status='active'
+        AND w.pr_head_sha=? AND w.patch_sha=? AND w.pr_number=?)` : '';
+    const currentParams=requireCurrent ? [value.runId,value.taskId,value.candidateCommit,
+      value.patchSha256,value.pullRequestNumber] : [];
     const results = await this.db.batch([
       this.db.prepare(`UPDATE test_environment SET state='preparing',saved_phase='preparing',
           owner_run_id=?,owner_lease_id=?,fence=fence+1,heartbeat_due_at=?,revision=revision+1,updated_at=?
@@ -181,10 +189,10 @@ export class SharedTestLeaseStore {
             AND r.candidate_commit=? AND r.patch_sha256=?
             AND r.queue_number=(SELECT MIN(queue_number) FROM test_lease_requests WHERE state IN ('waiting','validating')))
           AND EXISTS (SELECT 1 FROM staging_release_pointer p WHERE p.site_id=1 AND p.state='stable'
-            AND p.manifest_id=? AND p.traffic_revision=? AND p.revision=?)`)
+            AND p.manifest_id=? AND p.traffic_revision=? AND p.revision=?)${currentSql}`)
         .bind(value.runId,leaseId,deadline,now,value.requestId,value.runId,value.nodeVisit,
           value.attemptId,value.taskId,value.candidateCommit,value.patchSha256,
-          value.baseManifestId,value.baseTrafficRevision,value.pointerRevision),
+          value.baseManifestId,value.baseTrafficRevision,value.pointerRevision,...currentParams),
       this.db.prepare(`INSERT OR IGNORE INTO test_leases
         (lease_id,request_id,run_id,attempt_id,task_id,task_key,task_title,team_id,stage,state,fence,
          base_manifest_id,base_traffic_revision,base_json,repository,branch,pull_request_number,
@@ -281,10 +289,15 @@ export class SharedTestLeaseStore {
         cleanup_state:string|null;attempt_state:string|null;run_status:string|null;
         current_node:string|null;current_visit_sequence:number|null;issue_id:string|null}>();
     if (!head) return null;
+    // A timed shared-test wait revisits the same node. Its first queue number
+    // remains live across those visits. A missing attempt row means no Sandbox
+    // was ever started for this reserved demo attempt.
     const terminal = ['succeeded','failed','canceled'].includes(head.run_status ?? '') ||
-      head.current_node !== 'shared_test_demo' || head.current_visit_sequence !== head.node_visit;
-    if (!terminal || head.cleanup_state !== 'destroyed' ||
-        !head.attempt_state || ['pending','starting','running','collecting'].includes(head.attempt_state))
+      head.current_node !== 'shared_test_demo';
+    const attemptGone = !head.attempt_state ||
+      (head.cleanup_state === 'destroyed' &&
+        !['pending','starting','running','collecting'].includes(head.attempt_state));
+    if (!terminal || !attemptGone)
       return null;
     const state = head.run_status === 'canceled' ? 'canceled' : 'superseded';
     const proof = JSON.stringify({runStatus:head.run_status,node:head.current_node,
@@ -292,13 +305,13 @@ export class SharedTestLeaseStore {
       sandboxCleanup:head.cleanup_state,taskId:head.issue_id});
     const result = await this.db.prepare(`UPDATE test_lease_requests SET state=?,terminal_proof_json=?,
       updated_at=? WHERE request_id=? AND state IN ('waiting','validating')
-      AND EXISTS (SELECT 1 FROM agent_attempts a WHERE a.attempt_id=?
-        AND a.cleanup_state='destroyed' AND a.state NOT IN ('pending','starting','running','collecting'))
+      AND (NOT EXISTS (SELECT 1 FROM agent_attempts a WHERE a.attempt_id=?) OR
+        EXISTS (SELECT 1 FROM agent_attempts a WHERE a.attempt_id=?
+          AND a.cleanup_state='destroyed' AND a.state NOT IN ('pending','starting','running','collecting')))
       AND EXISTS (SELECT 1 FROM orchestration_runs o WHERE o.run_id=?
-        AND (o.status IN ('succeeded','failed','canceled') OR o.current_node<>'shared_test_demo'
-          OR o.current_visit_sequence<>?))`)
-      .bind(state,proof,at.toISOString(),head.request_id,head.attempt_id,head.run_id,
-        head.node_visit).run();
+        AND (o.status IN ('succeeded','failed','canceled') OR o.current_node<>'shared_test_demo'))`)
+      .bind(state,proof,at.toISOString(),head.request_id,head.attempt_id,
+        head.attempt_id,head.run_id).run();
     return result.meta.changes === 1 ? {requestId:head.request_id,state} : null;
   }
 }

@@ -30,6 +30,8 @@ test('saved path decision and release read share the immutable manifest',async()
     const subject={runId:'run-1',candidateCommit:commit,patchSha256:patch};
     const decision=await store.record({...subject,changedPaths:['portal/src/main.tsx']});
     assert.equal(decision.choice,'test_required');
+    assert.deepEqual(await store.saved({...subject,changedPaths:['portal/src/main.tsx']}),decision);
+    await assert.rejects(store.saved({...subject,changedPaths:['docs/notes.md']}),/decision_changed/);
     const exact={...subject,manifestId:'manifest-1',manifestRevision:1,changedPaths:['portal/src/main.tsx']};
     assert.deepEqual(await store.releaseCheck(exact),{allowed:false,choice:'test_required'});
     assert.deepEqual(await store.releaseCheck({...exact,changedPaths:['docs/notes.md']}),{allowed:false,choice:'test_required'});

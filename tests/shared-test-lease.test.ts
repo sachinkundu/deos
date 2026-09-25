@@ -3,6 +3,9 @@ import test from 'node:test';
 import {ImplementationTestDatabase,seedAttempt,seedRun} from './helpers/implementation-fixture.ts';
 import {SharedTestLeaseStore, sharedTestRequestId, stableStagingBase} from '../src/shared-test-lease.ts';
 import {stagingManifestDigest} from '../src/shared-test-decision-store.ts';
+import {ImplementationStore} from '../src/implementation-store.ts';
+import {ImplementationTestBucket} from './helpers/implementation-fixture.ts';
+import {implementationPolicy} from '../src/implementation-contract.ts';
 
 const service = {serviceName:'portal',sourceCommit:'a'.repeat(40),deployVersion:'version-1',
   buildInputSha256:'b'.repeat(64),trafficPercent:100};
@@ -29,11 +32,11 @@ async function fixture() {
   db.sqlite.prepare(`UPDATE staging_release_pointer SET state='stable',manifest_id='manifest-1',
     manifest_revision=1,traffic_revision='traffic-1',revision=1 WHERE site_id=1`).run();
   const store = new SharedTestLeaseStore(db as unknown as D1Database);
-  const grant = async (request: typeof first) => store.grant({...request,
+  const grant = async (request: typeof first,requireCurrent=false) => store.grant({...request,
     requestId:await sharedTestRequestId(request), taskKey:request.taskId,taskTitle:'Test issue',
     teamId:'team-1',stage:'shared_test_demo',repository:'owner/repo',branch:'codex/test',
     pullRequestNumber:7,baseManifestId:'manifest-1',baseTrafficRevision:'traffic-1',
-    base,pointerRevision:1},new Date('2026-09-25T10:00:00Z'));
+    base,pointerRevision:1},new Date('2026-09-25T10:00:00Z'),requireCurrent);
   return {db,store,grant};
 }
 
@@ -80,6 +83,27 @@ test('a canceled or changed queue request cannot take the site', async () => {
   } finally {db.close();}
 });
 
+test('strict grant requires the active node and exact saved draft candidate',async()=>{
+  const {db,store,grant}=await fixture();
+  try {
+    seedRun(db,first.runId,first.taskId);
+    const implementation=new ImplementationStore(db as unknown as D1Database,
+      new ImplementationTestBucket() as unknown as R2Bucket);
+    await implementation.allocate({version:1,runId:first.runId,repository:'owner/repo',
+      change:'sample',branch:'deos/agent/SAC-172/run-1',approvedDesignSha:'a'.repeat(40),
+      testedBaseSha:'b'.repeat(40),policy:implementationPolicy,approvedFiles:[],
+      issue:{},receipts:{},requirements:{kinds:[],reasons:[],blockedProviders:[]}},
+      {userId:'human',revision:1},'SAC-172',1);
+    db.sqlite.prepare(`UPDATE implementation_runs SET pr_head_sha=?,patch_sha=?,pr_number=7
+      WHERE run_id=?`).run(first.candidateCommit,first.patchSha256,first.runId);
+    await store.request(first);
+    assert.equal((await grant(first,true)).state,'waiting');
+    db.sqlite.prepare(`UPDATE orchestration_runs SET current_node='shared_test_demo',
+      status='active' WHERE run_id=?`).run(first.runId);
+    assert.equal((await grant(first,true)).state,'granted');
+  } finally {db.close();}
+});
+
 test('a terminal queue head leaves the queue only after Sandbox destruction',async()=>{
   const {db,store}=await fixture();
   try {
@@ -97,5 +121,20 @@ test('a terminal queue head leaves the queue only after Sandbox destruction',asy
     assert.equal(db.sqlite.prepare(`SELECT state FROM test_lease_requests
       WHERE request_id=?`).get(await sharedTestRequestId(first))?.state,'superseded');
     assert.equal((await store.environment()).state,'free');
+  } finally {db.close();}
+});
+
+test('timed visits keep one queue place and an unstarted attempt can be safely canceled',async()=>{
+  const {db,store}=await fixture();
+  try {
+    seedRun(db,first.runId,first.taskId);
+    await store.request(first);
+    db.sqlite.prepare(`UPDATE orchestration_runs SET current_node='shared_test_demo',
+      current_visit_sequence=9,status='active' WHERE run_id=?`).run(first.runId);
+    assert.equal(await store.expireTerminalHead(),null);
+    db.sqlite.prepare(`UPDATE orchestration_runs SET current_node='implementation_build'
+      WHERE run_id=?`).run(first.runId);
+    assert.deepEqual(await store.expireTerminalHead(),
+      {requestId:await sharedTestRequestId(first),state:'superseded'});
   } finally {db.close();}
 });

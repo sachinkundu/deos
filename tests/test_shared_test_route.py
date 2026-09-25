@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import hashlib
 import asyncio
+import hashlib
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-from deos.shared_test_event import TestExpectation as EventExpectation, marker_for
+from deos.shared_test_event import TestExpectation as EventExpectation
+from deos.shared_test_event import marker_for
 from deos.shared_test_route import SharedTestEventRouter
 
 

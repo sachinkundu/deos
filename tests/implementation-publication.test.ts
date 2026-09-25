@@ -215,3 +215,55 @@ test("lost branch and PR replies reconcile the fixed identities; later proof upd
     f.db.close();
   }
 });
+
+test('a tested candidate stays draft until proof is published and read back',async()=>{
+  const f=await fixture();
+  f.db.sqlite.prepare('UPDATE implementation_runs SET pr_head_sha=? WHERE run_id=?')
+    .run(head,'run-1');
+  let pull:ImplementationPull|null=null;
+  let readyCalls=0;
+  const github=new ImplementationGitHub('https://api.github.com','owner/repo',
+    {token:async()=> 'test'},(async(input,init)=>{
+      const url=new URL(String(input));
+      const path=url.pathname.replace('/repos/owner/repo','');
+      if(path==='/git/ref/heads/main')return Response.json({object:{sha:base}});
+      if(path.startsWith('/git/ref/heads/'))return Response.json({object:{sha:head}});
+      if(path.startsWith('/compare/'))return Response.json({status:'ahead'});
+      if(path===`/git/commits/${head}`)return Response.json({sha:head,
+        tree:{sha:tree},parents:[{sha:base}]});
+      if(path==='/pulls' && init?.method==='POST') {
+        const body=JSON.parse(init.body as string);
+        assert.equal(body.draft,true);
+        pull={id:42,node_id:'PR_node_42',number:42,
+          html_url:'https://github.com/owner/repo/pull/42',body:body.body,
+          state:'open',draft:true,merged:false,merge_commit_sha:null,
+          head:{sha:head,ref:f.work.branch},base:{ref:'main',repo:{full_name:'owner/repo'}}};
+        return Response.json(pull);
+      }
+      if(path==='/pulls')return Response.json(pull?[pull]:[]);
+      if(path==='/pulls/42' && init?.method==='PATCH') {
+        pull!.body=JSON.parse(init.body as string).body;
+        return Response.json(pull);
+      }
+      if(path==='/pulls/42')return Response.json(pull);
+      if(path==='/graphql') {
+        readyCalls++;
+        assert.equal(pull!.draft,true);
+        pull!.draft=false;
+        return Response.json({data:{markPullRequestReadyForReview:{pullRequest:{isDraft:false}}}});
+      }
+      throw new Error(`Unexpected provider request ${url}`);
+    }) as typeof fetch);
+  try {
+    const draftBody='Review is pending.\n\n<!-- deos-test-proof-v1:start -->\nclose pending\n<!-- deos-test-proof-v1:end -->';
+    await github.publishDraft(f.store,await f.store.requireRun('run-1'),draftBody);
+    assert.equal(pull!.draft,true);
+    await github.publish(f.store,await f.store.requireRun('run-1'),
+      'final implementation proof','1'.repeat(64),true);
+    assert.equal(pull!.draft,false);
+    assert.equal(readyCalls,1);
+    assert.match(pull!.body!,/deos-test-proof-v1:start/);
+    assert.match(pull!.body!,/deos-implementation-proof-v1:start/);
+    assert.equal((await f.store.requireRun('run-1')).status,'review');
+  } finally {f.db.close();}
+});

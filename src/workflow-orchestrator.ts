@@ -240,6 +240,19 @@ export class WorkflowOrchestrator {
             instruction.action,
           ),
         );
+        if (instruction.nodeId === 'shared_test_demo' && outcome.outcome === 'waiting') {
+          try {
+            await step.waitForEvent(
+              `shared-test-tick:visit:${run.current_visit_sequence}`,
+              {type:'shared-test-tick',timeout:'30s'},
+            );
+          } catch (caughtError) {
+            if (!isWorkflowEventTimeout(caughtError)) {
+              recordCaughtError(caughtError,'src/workflow-orchestrator.ts:shared_test_demo');
+              throw caughtError;
+            }
+          }
+        }
         const decision = this.evaluateExecutionOutcome(instruction.nodeId, outcome);
         await step.do(
           `transition:${instruction.nodeId}:${decision.outcome}:visit:${run.current_visit_sequence}`,

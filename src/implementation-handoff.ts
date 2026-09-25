@@ -27,7 +27,8 @@ export async function implementationHandoffDefinition(source: LoadedWorkflowDefi
     if (jobs[id]) throw new Error("implementation_handoff_job_collision");
     jobs[id] = job;
   }
-  for (const [id, node] of Object.entries(tail.nodes)) if (id.startsWith("implementation_") || id === "code_merged") {
+  for (const [id, node] of Object.entries(tail.nodes)) if (id.startsWith("implementation_") ||
+    id.startsWith("shared_test_") || id === "code_merged") {
     if (nodes[id]) throw new Error("implementation_handoff_node_collision");
     nodes[id] = node;
   }

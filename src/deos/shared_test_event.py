@@ -5,9 +5,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Mapping
+from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +73,7 @@ def match_test_issue_update(
     if not isinstance(created_at, str):
         return False
     try:
-        event_time = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        event_time = datetime.fromisoformat(created_at)
     except ValueError:
         return False
     if event_time.tzinfo is None or abs(int(event_time.timestamp() * 1000) - header_timestamp_ms) > 60_000:
@@ -101,12 +102,10 @@ def match_test_issue_update(
     if before is None or after is None or before == after:
         return False
     marker = marker_for(expectation, key)
-    if (
+    return not (
         _sha(marker) != expectation.marker_sha256
         or _sha(before) != expectation.before_sha256
         or _sha(after) != expectation.after_sha256
         or marker in before
         or after.split("\n").count(marker) != 1
-    ):
-        return False
-    return True
+    )

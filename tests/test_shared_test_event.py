@@ -5,7 +5,8 @@ from __future__ import annotations
 import hashlib
 from dataclasses import replace
 
-from deos.shared_test_event import TestExpectation as EventExpectation, marker_for, match_test_issue_update
+from deos.shared_test_event import TestExpectation as EventExpectation
+from deos.shared_test_event import marker_for, match_test_issue_update
 
 
 def sha(value: str) -> str:

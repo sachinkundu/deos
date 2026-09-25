@@ -1,4 +1,5 @@
 import { responseError } from "./error-details.ts";
+import {mergeProofSection} from './shared-test-pr-body.ts';
 import { GitHubAppTokenProvider } from "./github-capability.ts";
 import {
   BaseChangedError,
@@ -15,6 +16,8 @@ import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 
 export interface ImplementationPull {
   id: number;
+  node_id?: string;
+  draft?: boolean;
   number: number;
   html_url: string;
   body: string | null;
@@ -402,11 +405,78 @@ export class ImplementationGitHub {
         ),
     ]);
   }
+  async publishDraft(store:ImplementationStore,run:ImplementationRun,body:string) {
+    await this.current(run);
+    if (!run.pr_head_sha || (await this.ref(run.branch))!==run.pr_head_sha ||
+        !(await this.matches(run.pr_head_sha,run.tested_base_sha,run.tree_sha!)))
+      throw new ImplementationError('test_draft_subject','The test branch differs from the saved candidate');
+    const owner=this.repository.split('/')[0];
+    const find=()=>this.json<ImplementationPull[]>(
+      `/pulls?state=all&head=${encodeURIComponent(`${owner}:${run.branch}`)}&base=main&per_page=100`);
+    let matches=await find();
+    if (matches.length>1) throw new ImplementationError('pr_identity_conflict','Multiple PRs use the test branch');
+    let pull=matches[0];
+    if (!pull) {
+      try {
+        pull=await this.json<ImplementationPull>('/pulls',{method:'POST',body:JSON.stringify({
+          title:`${run.linear_identifier}: implementation`,head:run.branch,base:'main',body,draft:true,
+        })});
+      } catch(error) {
+        matches=await find();
+        if (matches.length!==1) throw error;
+        pull=matches[0];
+      }
+    }
+    if (run.pr_number!==null && pull.number!==run.pr_number)
+      throw new ImplementationError('pr_identity_conflict','Test PR identity changed');
+    if (pull.state!=='open' || pull.draft!==true || pull.head.sha!==run.pr_head_sha ||
+        pull.head.ref!==run.branch || pull.base.ref!=='main' ||
+        pull.base.repo.full_name!==this.repository)
+      throw new ImplementationError('test_draft_readback','Test draft PR scope changed');
+    const read=await this.json<ImplementationPull>(`/pulls/${pull.number}`);
+    if (read.draft!==true || read.head.sha!==run.pr_head_sha || read.number!==pull.number)
+      throw new ImplementationError('test_draft_readback','Test draft PR readback changed');
+    await store.db.prepare(`UPDATE implementation_runs SET pr_number=?,pr_url=?,
+      status='test_pending',updated_at=? WHERE run_id=? AND pr_head_sha=?
+        AND (pr_number IS NULL OR pr_number=?)`)
+      .bind(read.number,read.html_url,new Date().toISOString(),run.run_id,
+        run.pr_head_sha,read.number).run();
+    const saved=await store.requireRun(run.run_id);
+    if (saved.pr_number!==read.number || saved.pr_url!==read.html_url)
+      throw new ImplementationError('test_draft_save_failed','Test draft PR scope was not saved');
+    return read;
+  }
+
+  private async readyForReview(pull:ImplementationPull):Promise<ImplementationPull> {
+    if (pull.draft!==true) return pull;
+    if (!pull.node_id) throw new ImplementationError('test_draft_node_missing','GitHub omitted the draft PR node ID');
+    this.tokenValue??=await this.tokens.token();
+    const url=new URL(this.apiUrl);
+    url.pathname=url.hostname==='api.github.com'?'/graphql':url.pathname.replace(/\/v3\/?$/,'/graphql');
+    const response=await this.request(url.toString(),{method:'POST',redirect:'manual',headers:{
+      Accept:'application/json',Authorization:`Bearer ${this.tokenValue}`,
+      'Content-Type':'application/json','User-Agent':'deos-implementation',
+    },body:JSON.stringify({query:`mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){pullRequest{isDraft}}}`,
+      variables:{id:pull.node_id}})});
+    if (!response.ok) {
+      const read=await this.json<ImplementationPull>(`/pulls/${pull.number}`);
+      if (read.draft!==false) throw await responseError('GitHub mark pull request ready',response);
+      return read;
+    }
+    const payload=await response.json() as {errors?:unknown[];data?:{
+      markPullRequestReadyForReview?:{pullRequest?:{isDraft?:boolean}}}};
+    if (payload.errors?.length || payload.data?.markPullRequestReadyForReview?.pullRequest?.isDraft!==false)
+      throw new ImplementationError('test_draft_ready_failed',`GitHub did not confirm ready for review: ${JSON.stringify(payload.errors??[])}`);
+    const read=await this.json<ImplementationPull>(`/pulls/${pull.number}`);
+    if (read.draft!==false) throw new ImplementationError('test_draft_ready_readback','PR remains a draft');
+    return read;
+  }
   async publish(
     store: ImplementationStore,
     run: ImplementationRun,
     body: string,
     proofSha: string,
+    readyFromTest=false,
   ) {
     await this.current(run);
     if (
@@ -421,29 +491,6 @@ export class ImplementationGitHub {
     const { implementationDigest } = await import(
       "./implementation-contract.ts"
     );
-    const digest = await implementationDigest({
-      base: run.tested_base_sha,
-      tree: run.tree_sha,
-      body,
-      proofSha,
-    });
-    await store.db
-      .prepare(
-        `INSERT OR IGNORE INTO implementation_publications
-      (run_id,publication_sequence,publication_digest,tested_base_sha,tree_sha,proof_manifest_sha,body,status,created_at)
-      SELECT ?,COALESCE(MAX(publication_sequence),0)+1,?,?,?,?,?,'pending',? FROM implementation_publications WHERE run_id=?`,
-      )
-      .bind(
-        run.run_id,
-        digest,
-        run.tested_base_sha,
-        run.tree_sha,
-        proofSha,
-        body,
-        new Date().toISOString(),
-        run.run_id,
-      )
-      .run();
     const owner = this.repository.split("/")[0];
     const find = () =>
       this.json<ImplementationPull[]>(
@@ -456,6 +503,19 @@ export class ImplementationGitHub {
         "Multiple PRs exist for the reserved run branch",
       );
     let pull = matches[0];
+    if (readyFromTest && !pull)
+      throw new ImplementationError('test_draft_pr_missing','A tested run must already have its draft PR');
+    if (readyFromTest && pull)
+      body=mergeProofSection(pull.body??'','deos-implementation-proof-v1',body);
+    const digest = await implementationDigest({
+      base: run.tested_base_sha,tree: run.tree_sha,body,proofSha,
+    });
+    await store.db.prepare(`INSERT OR IGNORE INTO implementation_publications
+      (run_id,publication_sequence,publication_digest,tested_base_sha,tree_sha,proof_manifest_sha,body,status,created_at)
+      SELECT ?,COALESCE(MAX(publication_sequence),0)+1,?,?,?,?,?,'pending',?
+      FROM implementation_publications WHERE run_id=?`)
+      .bind(run.run_id,digest,run.tested_base_sha,run.tree_sha,proofSha,body,
+        new Date().toISOString(),run.run_id).run();
     if (!pull) {
       try {
         pull = await this.json<ImplementationPull>("/pulls", {
@@ -522,6 +582,7 @@ export class ImplementationGitHub {
         "Implementation PR head, base or body differs from publication",
       );
     await this.current(run);
+    if (readyFromTest) pull=await this.readyForReview(pull);
     await store.db.batch([
       store.db
         .prepare(

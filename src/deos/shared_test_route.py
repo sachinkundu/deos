@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
-from typing import Any, Awaitable, Callable, Mapping
+from typing import Any
 
 from .shared_test_event import TestExpectation, marker_for, match_test_issue_update
 
@@ -50,9 +51,7 @@ class SharedTestEventRouter:
             if _value(prior, "payload_sha256") != payload_sha256:
                 raise ValueError("test delivery payload changed")
             route = _value(prior, "route")
-            if route == "test":
-                return True
-            return False
+            return route == "test"
         data = payload.get("data")
         if not isinstance(data, dict) or not isinstance(data.get("id"), str):
             return False
