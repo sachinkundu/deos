@@ -2,8 +2,6 @@ import { recordCaughtError } from "./error-context.ts";
 import { workflowInstanceIdentity } from "./orchestration-identity.ts";
 import type { WorkflowBinding, WorkflowInstanceHandle } from "./queue-consumer-core.ts";
 
-const recoverableNodes = new Set(["design_self_review"]);
-
 export interface WorkflowRuntimeRecoveryRecord {
   recovery_id: string;
   run_id: string;
@@ -68,7 +66,8 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
     if (existing !== null) {
       if (
         existing.run_id !== input.runId || existing.retry_node !== input.retryNode ||
-        existing.from_visit_sequence !== input.visitSequence
+        existing.from_visit_sequence !== input.visitSequence ||
+        existing.source_workflow_instance_id !== input.sourceWorkflowInstanceId
       ) throw new Error("workflow_runtime_recovery_identity_mismatch");
       return existing;
     }
@@ -89,13 +88,36 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
                 ?, COALESCE(run.selection_delivery_id, intent.source_delivery_id), ?, ?
          FROM orchestration_runs AS run
          JOIN dispatch_intents AS intent ON intent.run_id = run.run_id
+         JOIN workflow_definitions AS definition
+           ON definition.definition_id = run.definition_id
+          AND definition.version = run.definition_version
+          AND definition.digest = run.definition_digest
          WHERE run.run_id = ? AND run.workflow_instance_id = ?
            AND run.current_node = ? AND run.current_visit_sequence = ? AND run.status = 'active'
            AND COALESCE(run.selection_delivery_id, intent.source_delivery_id) IS NOT NULL
+           AND EXISTS (
+             SELECT 1 FROM json_each(definition.canonical_json, '$.nodes') AS node
+             WHERE node.key = run.current_node
+               AND json_extract(node.value, '$.type') = 'agent'
+           )
            AND NOT EXISTS (
              SELECT 1 FROM agent_attempts AS attempt
              WHERE attempt.run_id = run.run_id
                AND attempt.visit_sequence = run.current_visit_sequence
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM provider_operations AS operation
+             WHERE operation.run_id = run.run_id
+               AND (
+                 operation.state IN ('pending', 'failed', 'manual_reconciliation_required')
+                 OR operation.updated_at >= COALESCE((
+                   SELECT MAX(transition.occurred_at)
+                   FROM workflow_transitions_v2 AS transition
+                   WHERE transition.run_id = run.run_id
+                     AND transition.to_node = run.current_node
+                     AND transition.to_visit_sequence = run.current_visit_sequence
+                 ), run.created_at)
+               )
            )`,
       ).bind(
         recoveryId,
@@ -163,7 +185,8 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
     const results = await this.database.batch(statements);
     if (results.some((result) => changes(result) !== 1)) {
       const raced = await this.find(input.sourceWorkflowInstanceId);
-      if (raced !== null && raced.run_id === input.runId && raced.retry_node === input.retryNode) {
+      if (raced !== null && raced.run_id === input.runId &&
+        raced.retry_node === input.retryNode && raced.from_visit_sequence === input.visitSequence) {
         return raced;
       }
       throw new Error("workflow_runtime_recovery_not_eligible");
@@ -277,7 +300,8 @@ export class WorkflowRuntimeRecoveryController {
       value.version !== 1 || typeof value.runId !== "string" || value.runId.length === 0 ||
       typeof value.sourceWorkflowInstanceId !== "string" ||
       !/^wf-v1-[a-z2-7]+$/.test(value.sourceWorkflowInstanceId) ||
-      typeof value.retryNode !== "string" || !recoverableNodes.has(value.retryNode) ||
+      typeof value.retryNode !== "string" || value.retryNode.length === 0 ||
+      value.retryNode.length > 128 || value.retryNode.trim() !== value.retryNode ||
       !Number.isInteger(value.visitSequence) || (value.visitSequence as number) < 1 ||
       typeof value.requestedBy !== "string" || !/^[a-zA-Z0-9._@-]{1,100}$/.test(value.requestedBy)
     ) return json(400, { error: "invalid_workflow_runtime_recovery" });
