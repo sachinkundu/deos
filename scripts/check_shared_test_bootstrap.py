@@ -20,6 +20,14 @@ def main() -> None:
     rows = {name: client.query(sql)["results"] for name, sql in checks.items()}
     if any(len(value) != 1 for value in rows.values()):
         raise ValueError("Remote shared test bootstrap rows are incomplete")
+    if rows["activeAttempts"][0]["count"] != 0:
+        raise ValueError("Active agent attempts block staging bootstrap")
+    site = rows["site"][0]
+    if (site["state"] != "free" or site["owner_run_id"] is not None or
+            site["owner_lease_id"] is not None):
+        raise ValueError("Shared test site is not free for staging bootstrap")
+    if rows["pointer"][0]["state"] not in ("uninitialized", "updating"):
+        raise ValueError("Staging pointer is not ready for bootstrap")
     print(json.dumps({name: value[0] for name, value in rows.items()}, sort_keys=True))
 
 
