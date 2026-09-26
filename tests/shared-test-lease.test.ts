@@ -91,6 +91,44 @@ test('a missed heartbeat deadline stops writes before the scheduled fence runs',
   } finally {db.close();}
 });
 
+test('a renewed heartbeat cannot revoke live expectations or app sessions',async()=>{
+  const {db,store,grant}=await fixture();
+  try {
+    await store.request(first);
+    const owned=await grant(first);
+    const leaseId=owned.leaseId!,fence=owned.fence!;
+    db.sqlite.prepare(`INSERT INTO test_expected_events
+      (expectation_id,run_id,lease_id,fence,task_id,team_id,kind,action,actor_id,
+       key_version,challenge_sha256,before_sha256,after_sha256,marker_sha256,
+       valid_from_ms,valid_until_ms,state,created_at)
+      VALUES ('expectation-1',?,?,?,'issue-1','team-1','Issue','update','actor-1',
+        1,'challenge','before','after','marker',1,2,'live','now')`)
+      .run(first.runId,leaseId,fence);
+    db.sqlite.prepare(`INSERT INTO test_access_identities
+      (identity_id,run_id,lease_id,resource_id,origin,audience,policy_id,
+       principal_sha256,created_at)
+      VALUES ('identity-1',?,?,'resource-1','https://test.example','aud','policy','hash','now')`)
+      .run(first.runId,leaseId);
+    db.sqlite.prepare(`INSERT INTO test_app_sessions
+      (session_sha256,run_id,attempt_id,lease_id,fence,origin,cookie_class,
+       access_identity_id,principal_sha256,expires_at)
+      VALUES ('session-1',?,?,?,?,'https://test.example','app','identity-1','hash','later')`)
+      .run(first.runId,first.attemptId,leaseId,fence);
+    const originalBatch=db.batch.bind(db);
+    db.batch=async statements=>{
+      db.sqlite.prepare(`UPDATE test_environment SET heartbeat_due_at=? WHERE site_id=1`)
+        .run('2026-09-25T10:04:00Z');
+      return originalBatch(statements);
+    };
+    assert.equal(await store.fenceExpired(new Date('2026-09-25T10:02:01Z')),null);
+    assert.equal((await store.environment()).state,'preparing');
+    assert.equal(db.sqlite.prepare(`SELECT state FROM test_expected_events
+      WHERE expectation_id='expectation-1'`).get()?.state,'live');
+    assert.equal(db.sqlite.prepare(`SELECT revoked_at FROM test_app_sessions
+      WHERE session_sha256='session-1'`).get()?.revoked_at,null);
+  } finally {db.close();}
+});
+
 test('a canceled or changed queue request cannot take the site', async () => {
   const {db,store,grant}=await fixture();
   try {

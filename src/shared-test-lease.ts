@@ -290,11 +290,17 @@ export class SharedTestLeaseStore {
         WHERE e.site_id=1 AND e.state='quiescing' AND e.owner_lease_id=? AND e.fence=?`)
         .bind(env.owner_lease_id,env.owner_run_id,now,env.owner_lease_id,env.fence+1),
       this.db.prepare(`UPDATE test_expected_events SET state='disabled'
-        WHERE lease_id=? AND run_id=? AND state IN ('planned','live','claimed')`)
-        .bind(env.owner_lease_id,env.owner_run_id),
+        WHERE lease_id=? AND run_id=? AND state IN ('planned','live','claimed')
+        AND EXISTS (SELECT 1 FROM test_environment e WHERE e.site_id=1
+          AND e.state='quiescing' AND e.owner_lease_id=? AND e.owner_run_id=? AND e.fence=?)`)
+        .bind(env.owner_lease_id,env.owner_run_id,env.owner_lease_id,
+          env.owner_run_id,env.fence+1),
       this.db.prepare(`UPDATE test_app_sessions SET revoked_at=?
-        WHERE lease_id=? AND run_id=? AND revoked_at IS NULL`)
-        .bind(now,env.owner_lease_id,env.owner_run_id),
+        WHERE lease_id=? AND run_id=? AND revoked_at IS NULL
+        AND EXISTS (SELECT 1 FROM test_environment e WHERE e.site_id=1
+          AND e.state='quiescing' AND e.owner_lease_id=? AND e.owner_run_id=? AND e.fence=?)`)
+        .bind(now,env.owner_lease_id,env.owner_run_id,env.owner_lease_id,
+          env.owner_run_id,env.fence+1),
     ]);
     if (result[0].meta.changes !== 1) return null;
     if (result[1].meta.changes !== 1 || result[2].meta.changes !== 1)
