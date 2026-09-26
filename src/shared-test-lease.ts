@@ -251,18 +251,21 @@ export class SharedTestLeaseStore {
   async heartbeat(runId: string, attemptId: string, leaseId: string, fence: number, at = new Date()): Promise<void> {
     const update = await this.db.prepare(`UPDATE test_environment SET heartbeat_due_at=?,revision=revision+1,updated_at=?
       WHERE site_id=1 AND state IN ('preparing','active') AND owner_run_id=? AND owner_lease_id=? AND fence=?
+        AND heartbeat_due_at>?
         AND EXISTS (SELECT 1 FROM test_leases WHERE lease_id=? AND run_id=? AND attempt_id=? AND state IN ('preparing','active'))`)
       .bind(new Date(at.getTime()+120_000).toISOString(),at.toISOString(),runId,leaseId,fence,
-        leaseId,runId,attemptId).run();
+        at.toISOString(),leaseId,runId,attemptId).run();
     if (update.meta.changes !== 1) throw new Error('shared_test_heartbeat_fenced');
   }
 
-  async assertWrite(runId: string, attemptId: string, leaseId: string, fence: number): Promise<void> {
+  async assertWrite(runId: string, attemptId: string, leaseId: string, fence: number,
+    at = new Date()): Promise<void> {
     const row = await this.db.prepare(`SELECT 1 AS allowed FROM test_environment e JOIN test_leases l
       ON l.lease_id=e.owner_lease_id WHERE e.site_id=1 AND e.state='active' AND l.state='active'
       AND e.owner_run_id=? AND e.owner_lease_id=? AND e.fence=?
+      AND e.heartbeat_due_at>?
       AND l.run_id=? AND l.attempt_id=? AND l.fence=?`)
-      .bind(runId,leaseId,fence,runId,attemptId,fence).first<{allowed:number}>();
+      .bind(runId,leaseId,fence,at.toISOString(),runId,attemptId,fence).first<{allowed:number}>();
     if (row?.allowed !== 1) throw new Error('shared_test_write_fenced');
   }
 

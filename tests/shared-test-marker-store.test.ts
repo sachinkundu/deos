@@ -18,7 +18,8 @@ function fixture() {
       'shared_test_demo','active',1,'manifest-1','traffic-1','{}','owner/repo',
       'codex/test',150,?,?,'now')`).run('a'.repeat(40),'b'.repeat(64));
   db.sqlite.prepare(`UPDATE test_environment SET state='active',owner_run_id='run-1',
-    owner_lease_id='lease-1',fence=1 WHERE site_id=1`).run();
+    owner_lease_id='lease-1',fence=1,heartbeat_due_at='9999-01-01T00:00:00.000Z'
+    WHERE site_id=1`).run();
   db.sqlite.prepare(`INSERT INTO test_lease_fence_epochs
     (lease_id,fence,run_id,reason,transition_revision,created_at)
     VALUES ('lease-1',1,'run-1','grant',1,'now')`).run();

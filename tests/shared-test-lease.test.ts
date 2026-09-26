@@ -72,6 +72,25 @@ test('one oldest request grants and remains owner after heartbeat loss', async (
   } finally { db.close(); }
 });
 
+test('a missed heartbeat deadline stops writes before the scheduled fence runs',async()=>{
+  const {db,store,grant}=await fixture();
+  try {
+    await store.request(first);
+    const owned=await grant(first);
+    const leaseId=owned.leaseId!,fence=owned.fence!;
+    await db.prepare(`UPDATE test_environment SET state='active' WHERE site_id=1`).run();
+    await db.prepare(`UPDATE test_leases SET state='active' WHERE lease_id=?`).bind(leaseId).run();
+    await store.assertWrite(first.runId,first.attemptId,leaseId,fence,
+      new Date('2026-09-25T10:01:59Z'));
+    await assert.rejects(store.assertWrite(first.runId,first.attemptId,leaseId,fence,
+      new Date('2026-09-25T10:02:00Z')),/write_fenced/);
+    await assert.rejects(store.heartbeat(first.runId,first.attemptId,leaseId,fence,
+      new Date('2026-09-25T10:02:00Z')),/heartbeat_fenced/);
+    assert.equal((await store.environment()).state,'active');
+    assert.equal((await store.fenceExpired(new Date('2026-09-25T10:02:01Z')))?.fence,fence+1);
+  } finally {db.close();}
+});
+
 test('a canceled or changed queue request cannot take the site', async () => {
   const {db,store,grant}=await fixture();
   try {
