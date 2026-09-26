@@ -39,8 +39,9 @@ export class SharedTestResourceStore {
     const active=await this.db.prepare(`SELECT 1 AS allowed FROM test_environment e
       JOIN test_leases l ON l.lease_id=e.owner_lease_id WHERE e.site_id=1
         AND e.state IN ('preparing','active') AND e.owner_run_id=?
-        AND e.owner_lease_id=? AND e.fence=? AND l.run_id=? AND l.fence=?`)
-      .bind(value.runId,value.leaseId,value.fence,value.runId,value.fence)
+        AND e.owner_lease_id=? AND e.fence=? AND e.heartbeat_due_at>?
+        AND l.run_id=? AND l.fence=?`)
+      .bind(value.runId,value.leaseId,value.fence,at.toISOString(),value.runId,value.fence)
       .first<{allowed:number}>();
     if (active?.allowed!==1) throw new Error('test_resource_plan_fenced_or_conflict');
     await this.db.prepare(`INSERT OR IGNORE INTO test_resources
@@ -49,10 +50,11 @@ export class SharedTestResourceStore {
       SELECT ?,?,?,?,?,'planned',?,?,?,? WHERE EXISTS (SELECT 1 FROM test_environment e
         JOIN test_leases l ON l.lease_id=e.owner_lease_id
         WHERE e.site_id=1 AND e.state IN ('preparing','active') AND e.owner_run_id=?
-          AND e.owner_lease_id=? AND e.fence=? AND l.run_id=? AND l.fence=?)`)
+          AND e.owner_lease_id=? AND e.fence=? AND e.heartbeat_due_at>?
+          AND l.run_id=? AND l.fence=?)`)
       .bind(value.resourceId,value.runId,value.leaseId,value.fence,value.kind,
         value.providerKey,value.workId,at.toISOString(),at.toISOString(),
-        value.runId,value.leaseId,value.fence,value.runId,value.fence).run();
+        value.runId,value.leaseId,value.fence,at.toISOString(),value.runId,value.fence).run();
     const row=await this.db.prepare('SELECT * FROM test_resources WHERE resource_id=?')
       .bind(value.resourceId).first<ResourceRow>();
     if (!row || !samePlan(row,value)) throw new Error('test_resource_plan_fenced_or_conflict');
@@ -67,9 +69,10 @@ export class SharedTestResourceStore {
     const result=await this.db.prepare(`UPDATE test_resources SET plan_state='creating',updated_at=?
       WHERE resource_id=? AND plan_state='planned' AND create_fence=?
       AND EXISTS (SELECT 1 FROM test_environment WHERE site_id=1 AND owner_run_id=?
-        AND owner_lease_id=? AND fence=? AND state IN ('preparing','active'))`)
+        AND owner_lease_id=? AND fence=? AND state IN ('preparing','active')
+        AND heartbeat_due_at>?)`)
       .bind(at.toISOString(),value.resourceId,value.fence,value.runId,value.leaseId,
-        value.fence).run();
+        value.fence,at.toISOString()).run();
     if (result.meta.changes!==1) throw new Error('test_resource_create_fenced');
     return {...existing,plan_state:'creating'};
   }

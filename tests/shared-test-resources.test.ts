@@ -18,7 +18,8 @@ function fixture() {
       'shared_test_demo','preparing',1,'manifest-1','traffic-1','{}','owner/repo',
       'codex/test',150,?,?,'now')`).run('a'.repeat(40),'b'.repeat(64));
   db.sqlite.prepare(`UPDATE test_environment SET state='preparing',owner_run_id='run-1',
-    owner_lease_id='lease-1',fence=1 WHERE site_id=1`).run();
+    owner_lease_id='lease-1',fence=1,heartbeat_due_at='9999-01-01T00:00:00.000Z'
+    WHERE site_id=1`).run();
   db.sqlite.prepare(`INSERT INTO test_lease_fence_epochs
     (lease_id,fence,run_id,reason,transition_revision,created_at)
     VALUES ('lease-1',1,'run-1','grant',1,'now')`).run();
@@ -50,5 +51,18 @@ test('resource plan precedes an uncertain remote create and cleanup uses fence h
       fence:2,removeWorkId:'remove-worker-1',providerAbsent:true});
     assert.equal(db.sqlite.prepare("SELECT plan_state FROM test_resources WHERE resource_id='resource-1'").get()?.plan_state,
       'absent');
+  } finally {db.close();}
+});
+
+test('an expired owner cannot plan or start another remote create',async()=>{
+  const {db,store,plan}=fixture();
+  try {
+    await store.plan(plan);
+    db.sqlite.prepare(`UPDATE test_environment SET heartbeat_due_at='2000-01-01T00:00:00.000Z'
+      WHERE site_id=1`).run();
+    await assert.rejects(store.plan(plan),/fenced_or_conflict/);
+    await assert.rejects(store.beginCreate(plan),/fenced_or_conflict/);
+    assert.equal(db.sqlite.prepare(`SELECT plan_state FROM test_resources
+      WHERE resource_id=?`).get(plan.resourceId)?.plan_state,'planned');
   } finally {db.close();}
 });
