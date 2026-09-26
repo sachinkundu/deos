@@ -5,6 +5,7 @@ import json
 import os
 import re
 import subprocess
+import traceback
 import urllib.request
 from datetime import UTC, datetime, timedelta
 
@@ -71,6 +72,89 @@ class StagingPointerClient:
             raise ValueError("Staging pointer is missing")
         return rows[0]
 
+    def assert_no_active_attempts(self):
+        rows = self.query("""SELECT attempt_id,run_id,node_id,state FROM agent_attempts
+            WHERE state IN ('pending','starting','running','collecting')
+            ORDER BY created_at LIMIT 5""")["results"]
+        if rows:
+            raise ValueError("Staging deploy requires a stopped agent gate: " + json.dumps(rows))
+
+    def matching_work(self, pointer, target, sha, build_digest):
+        work_id = pointer.get("work_id") or ""
+        parts = work_id.split(":")
+        if (pointer.get("state") != "updating" or len(parts) != 4 or
+                parts[0] != "staging" or parts[1] != target or
+                not parts[2].isdigit()):
+            raise ValueError("Staging release pointer is busy or blocked")
+        expected = release_ids(target, sha, build_digest, int(parts[2]))
+        if (work_id, pointer.get("planned_manifest_id")) != expected:
+            raise ValueError("Staging release pointer belongs to different build inputs")
+        return expected
+
+    def has_planned_manifest(self, manifest_id):
+        rows = self.query("SELECT manifest_id FROM staging_release_manifests WHERE manifest_id=?",
+                          (manifest_id,))["results"]
+        return len(rows) == 1
+
+    def target_running(self, target, sha, build_digest):
+        first, second = self.traffic(), self.traffic()
+        if first != second:
+            raise ValueError("Staging traffic changed between recovery readbacks")
+        matches = [row for row in first["services"] if row["serviceName"] == target]
+        if len(matches) != 1:
+            raise ValueError("Staging target is missing from full traffic readback")
+        return (matches[0]["sourceCommit"] == sha and
+                matches[0]["buildInputSha256"] == build_digest)
+
+    def stable_target_recorded(self, pointer, target, sha, build_digest):
+        if pointer["state"] != "stable":
+            return False
+        rows = self.query("""SELECT source_commit,build_input_sha256 FROM staging_release_services
+            WHERE manifest_id=? AND service_name=?""",
+                          (pointer["manifest_id"], target))["results"]
+        if len(rows) != 1:
+            raise ValueError("Stable staging manifest lacks the target service")
+        if (rows[0]["source_commit"] != sha or
+                rows[0]["build_input_sha256"] != build_digest):
+            return False
+        first, second = self.traffic(), self.traffic()
+        if first != second or first["revision"] != pointer["traffic_revision"]:
+            raise ValueError("Recorded staging target has traffic drift")
+        return True
+
+    def prepare_deploy(self, target, sha, build_digest, owner):
+        current = self.pointer()
+        if current["state"] == "uninitialized":
+            return {"action": "deploy", "tracked": False}
+        if current["state"] == "stable":
+            if self.stable_target_recorded(current, target, sha, build_digest):
+                return {"action": "noop", "tracked": False}
+            work_id, manifest_id = release_ids(target, sha, build_digest,
+                                               current["revision"])
+            self.begin(work_id, manifest_id, owner)
+            return {"action": "deploy", "tracked": True,
+                    "work_id": work_id, "manifest_id": manifest_id}
+        if current["state"] == "updating":
+            work_id, manifest_id = self.matching_work(current, target, sha, build_digest)
+            self.begin(work_id, manifest_id, owner)
+            if self.has_planned_manifest(manifest_id):
+                self.finish(work_id, manifest_id, owner)
+                return {"action": "recovered", "tracked": False}
+            try:
+                running = self.target_running(target, sha, build_digest)
+            except (OSError, ValueError) as error:
+                # The saved plan allows a retry after an uncertain provider reply.
+                # Keep the failed read in the durable workflow log, then require
+                # the normal full readback before the pointer can become stable.
+                traceback.print_exception(error)
+                running = False
+            if running:
+                self.finish(work_id, manifest_id, owner)
+                return {"action": "recovered", "tracked": False}
+            return {"action": "deploy", "tracked": True,
+                    "work_id": work_id, "manifest_id": manifest_id}
+        raise ValueError("Staging release pointer is blocked")
+
     def _deployment(self, service):
         payload = self._json(
             f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/workers/scripts/{service['worker']}/deployments"
@@ -116,7 +200,21 @@ class StagingPointerClient:
             raise ValueError("Invalid staging release plan")
         previous = self.pointer()
         if previous["state"] == "updating" and previous["work_id"] == work_id and previous["planned_manifest_id"] == planned_manifest_id:
-            return previous
+            now = _now()
+            if previous["owner"] == owner and previous["heartbeat_due_at"] > now:
+                return previous
+            if previous["heartbeat_due_at"] > now:
+                raise ValueError("Staging release work still has a live owner")
+            due = (datetime.now(UTC) + timedelta(minutes=2)).isoformat()
+            result = self.query("""UPDATE staging_release_pointer SET owner=?,
+                heartbeat_due_at=?,revision=revision+1,updated_at=?
+                WHERE site_id=1 AND state='updating' AND work_id=?
+                AND planned_manifest_id=? AND revision=? AND heartbeat_due_at<=?""",
+                                (owner, due, now, work_id, planned_manifest_id,
+                                 previous["revision"], now))
+            if result["meta"].get("changes") != 1:
+                raise ValueError("Staging release work changed before recovery")
+            return self.pointer()
         if previous["state"] not in ("stable", "uninitialized"):
             raise ValueError("Staging release pointer is busy or blocked")
         now = _now()
@@ -129,39 +227,52 @@ class StagingPointerClient:
             raise ValueError("Staging release pointer changed before the deploy")
         return self.pointer()
 
-    def heartbeat(self, work_id):
+    def heartbeat(self, work_id, owner):
         now = _now()
         due = (datetime.now(UTC) + timedelta(minutes=2)).isoformat()
         result = self.query("""UPDATE staging_release_pointer SET heartbeat_due_at=?,
             updated_at=?,revision=revision+1 WHERE site_id=1 AND state='updating'
-            AND work_id=? AND heartbeat_due_at>?""", (due, now, work_id, now))
+            AND work_id=? AND owner=? AND heartbeat_due_at>?""",
+                            (due, now, work_id, owner, now))
         if result["meta"].get("changes") != 1:
             raise ValueError("Staging pointer heartbeat was fenced")
 
-    def finish(self, work_id, planned_manifest_id):
-        self.heartbeat(work_id)
+    def finish(self, work_id, planned_manifest_id, owner):
+        self.heartbeat(work_id, owner)
         first = self.traffic()
-        self.heartbeat(work_id)
+        self.heartbeat(work_id, owner)
         second = self.traffic()
-        self.heartbeat(work_id)
+        self.heartbeat(work_id, owner)
         if first != second:
             raise ValueError("Staging traffic changed between readbacks")
         pointer = self.pointer()
         if (pointer["state"] != "updating" or pointer["work_id"] != work_id or
-                pointer["planned_manifest_id"] != planned_manifest_id):
+                pointer["planned_manifest_id"] != planned_manifest_id or
+                pointer["owner"] != owner):
             raise ValueError("Staging release plan changed before commit")
-        revision = pointer["revision"] + 1
         services = [{key: row[key] for key in ("serviceName", "sourceCommit", "deployVersion",
                                                 "buildInputSha256", "appPaths", "providerPaths")}
                     for row in first["services"]]
         digest = _digest(services)
         now = _now()
-        self.query("""INSERT OR IGNORE INTO staging_release_manifests
-            (manifest_id,revision,traffic_revision,service_count,digest_sha256,recorded_at)
-            SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM staging_release_pointer
-              WHERE site_id=1 AND state='updating' AND work_id=? AND revision=?)""",
-                   (planned_manifest_id, revision, first["revision"], len(services), digest,
-                    now, work_id, pointer["revision"]))
+        prior = self.query("SELECT * FROM staging_release_manifests WHERE manifest_id=?",
+                           (planned_manifest_id,))["results"]
+        if prior:
+            if (len(prior) != 1 or prior[0]["traffic_revision"] != first["revision"] or
+                    prior[0]["service_count"] != len(services) or
+                    prior[0]["digest_sha256"] != digest):
+                raise ValueError("Planned staging manifest differs from current traffic")
+            revision = prior[0]["revision"]
+        else:
+            revision = pointer["revision"] + 1
+            result = self.query("""INSERT OR IGNORE INTO staging_release_manifests
+                (manifest_id,revision,traffic_revision,service_count,digest_sha256,recorded_at)
+                SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM staging_release_pointer
+                  WHERE site_id=1 AND state='updating' AND work_id=? AND revision=?)""",
+                               (planned_manifest_id, revision, first["revision"], len(services),
+                                digest, now, work_id, pointer["revision"]))
+            if result["meta"].get("changes") != 1:
+                raise ValueError("Staging manifest insert lost its release plan")
         for row in services:
             self.query("""INSERT OR IGNORE INTO staging_release_services
                 (manifest_id,service_name,source_commit,deploy_version,build_input_sha256,
@@ -191,11 +302,12 @@ class StagingPointerClient:
         result = self.query("""UPDATE staging_release_pointer SET state='stable',manifest_id=?,
             manifest_revision=?,traffic_revision=?,work_id=NULL,owner=NULL,
             planned_manifest_id=NULL,heartbeat_due_at=NULL,revision=revision+1,updated_at=?
-            WHERE site_id=1 AND state='updating' AND work_id=? AND planned_manifest_id=?
+            WHERE site_id=1 AND state='updating' AND work_id=? AND owner=?
+              AND planned_manifest_id=?
               AND revision=? AND EXISTS (SELECT 1 FROM staging_release_manifests
                 WHERE manifest_id=? AND revision=? AND digest_sha256=?)""",
                             (planned_manifest_id, revision, first["revision"], now, work_id,
-                             planned_manifest_id, pointer["revision"], planned_manifest_id,
+                             owner, planned_manifest_id, pointer["revision"], planned_manifest_id,
                              revision, digest))
         if result["meta"].get("changes") != 1:
             raise ValueError("Staging release pointer commit failed")
@@ -207,12 +319,14 @@ class StagingPointerClient:
         return saved_pointer
 
 
-def release_ids(target, sha, build_digest):
-    work_id = "staging:" + _digest([target, sha, build_digest])
+def release_ids(target, sha, build_digest, base_revision=0):
+    if not isinstance(base_revision, int) or base_revision < 0 or ":" in target:
+        raise ValueError("Invalid staging release identity")
+    work_id = f"staging:{target}:{base_revision}:{_digest([target, sha, build_digest])}"
     return work_id, "manifest:" + _digest([work_id])
 
 
-def run_with_heartbeat(command, cwd, pointer, work_id):
+def run_with_heartbeat(command, cwd, pointer, work_id, owner):
     process = subprocess.Popen(command, cwd=cwd)
     try:
         while True:
@@ -222,7 +336,7 @@ def run_with_heartbeat(command, cwd, pointer, work_id):
                     raise subprocess.CalledProcessError(code, command)
                 return
             except subprocess.TimeoutExpired:
-                pointer.heartbeat(work_id)
+                pointer.heartbeat(work_id, owner)
     except BaseException:
         if process.poll() is None:
             process.terminate()

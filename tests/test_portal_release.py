@@ -94,9 +94,30 @@ def setup_deploy(monkeypatch):
     monkeypatch.setattr(release, "check_route_access", lambda: None)
     monkeypatch.setattr(release, "artifact_digest", lambda *args: "b" * 64)
     class UninitializedPointer:
-        def pointer(self):
-            return {"state": "uninitialized"}
+        def prepare_deploy(self, target, sha, build_digest, owner):
+            return {"action": "deploy", "tracked": False}
+
+        def assert_no_active_attempts(self):
+            pass
     monkeypatch.setattr(release, "StagingPointerClient", UninitializedPointer)
+
+
+def test_active_attempt_stops_staging_before_wrangler(monkeypatch):
+    setup_deploy(monkeypatch)
+    calls = []
+
+    class BusyPointer:
+        def prepare_deploy(self, target, sha, build_digest, owner):
+            return {"action": "deploy", "tracked": False}
+
+        def assert_no_active_attempts(self):
+            raise ValueError("Staging deploy requires a stopped agent gate")
+
+    monkeypatch.setattr(release, "StagingPointerClient", BusyPointer)
+    monkeypatch.setattr(release, "run", lambda *args, **kwargs: calls.append(args))
+    with pytest.raises(ValueError, match="stopped agent gate"):
+        release.deploy("staging")
+    assert not any("wrangler" in args for args in calls)
 
 
 def test_missing_route_permission_stops_before_build_or_upload(monkeypatch):

@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: bettaview-staging
+  group: shared-staging-deploy
   cancel-in-progress: false
   queue: max
 

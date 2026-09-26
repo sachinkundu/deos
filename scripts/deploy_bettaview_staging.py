@@ -3,6 +3,7 @@
 import json
 import os
 import urllib.request
+import uuid
 
 from portal_release import (
     ACCOUNT,
@@ -15,7 +16,7 @@ from portal_release import (
     run,
 )
 from shared_test_release_guard import guard as shared_test_release_guard
-from shared_test_staging_pointer import StagingPointerClient, release_ids, run_with_heartbeat
+from shared_test_staging_pointer import StagingPointerClient, run_with_heartbeat
 
 WORKER = "deos-bettaview-portal-staging"
 HOST = "bettaview-staging.voxdez.com"
@@ -104,25 +105,25 @@ def deploy():
         raise ValueError("BettaView build changed the source checkout")
     check_ref("staging", sha)
     pointer = StagingPointerClient()
-    current = pointer.pointer()
-    if current["state"] not in ("stable", "uninitialized"):
-        raise ValueError("Staging release pointer is busy or blocked")
-    if current["state"] == "stable":
-        work_id, manifest_id = release_ids("bettaview", sha, digest)
-        pointer.begin(work_id, manifest_id, "bettaview-staging-deploy")
+    pointer.assert_no_active_attempts()
+    owner = "bettaview-staging-deploy:" + str(uuid.uuid4())
+    plan = pointer.prepare_deploy("bettaview", sha, digest, owner)
     args = ("npx", "--no-install", "wrangler", "deploy", "--config",
             "portal/bettaview/wrangler.jsonc", "--env", "staging",
             "--var", f"BETTAVIEW_SOURCE_SHA:{sha}",
             "--var", f"BETTAVIEW_BUILD_INPUT_SHA256:{digest}")
-    if current["state"] == "stable":
-        run_with_heartbeat(args, ROOT, pointer, work_id)
-    else:
-        run(*args)
+    if plan["action"] == "deploy":
+        pointer.assert_no_active_attempts()
+        if plan["tracked"]:
+            run_with_heartbeat(args, ROOT, pointer, plan["work_id"], owner)
+        else:
+            run(*args)
     deployed, host = deployment(), host_version()
     validate_readback(sha, digest, deployed, host)
-    if current["state"] == "stable":
-        pointer.finish(work_id, manifest_id)
-    print(json.dumps({"deploymentId": deployed["id"], **host}, indent=2))
+    if plan["action"] == "deploy" and plan["tracked"]:
+        pointer.finish(plan["work_id"], plan["manifest_id"], owner)
+    print(json.dumps({"deploymentId": deployed["id"], "pointerAction": plan["action"],
+                      **host}, indent=2))
 
 
 if __name__ == "__main__":
