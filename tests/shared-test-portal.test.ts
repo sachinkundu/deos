@@ -12,6 +12,12 @@ test('status shows the issue first while owned and says free only without an own
   try {
     let response=await routeTestPortal(new Request('https://deos-test.voxdez.com/'),env,
       authenticate as typeof import('../portal/src/auth.ts').verifyAccess);
+    assert.match(await response.text(),/The staging base is being prepared/);
+    db.sqlite.prepare(`UPDATE staging_release_pointer SET state='stable',
+      manifest_id='manifest-1',manifest_revision=1,traffic_revision='traffic-1'
+      WHERE site_id=1`).run();
+    response=await routeTestPortal(new Request('https://deos-test.voxdez.com/'),env,
+      authenticate as typeof import('../portal/src/auth.ts').verifyAccess);
     assert.match(await response.text(),/The site is ready/);
     db.sqlite.prepare(`INSERT INTO test_lease_requests
       (request_id,run_id,node_visit,attempt_id,task_id,candidate_commit,patch_sha256,

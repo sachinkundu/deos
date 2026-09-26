@@ -25,6 +25,7 @@ function escape(value:string):string {
 
 interface StatusRow {
   state:string;
+  staging_state:string;
   owner_run_id:string|null;
   owner_lease_id:string|null;
   fence:number;
@@ -47,9 +48,12 @@ function stateLabel(state:string):string {
 export async function testEnvironmentStatus(db:D1Database):Promise<StatusRow> {
   const row=await db.prepare(`SELECT e.state,e.owner_run_id,e.owner_lease_id,e.fence,
     e.revision,e.hold_reason,e.first_fault_id,l.task_key,l.task_title,l.stage,
-    l.base_manifest_id,l.created_at FROM test_environment e LEFT JOIN test_leases l
-    ON l.lease_id=e.owner_lease_id WHERE e.site_id=1`).first<StatusRow>();
+    l.base_manifest_id,l.created_at,p.state AS staging_state
+    FROM test_environment e LEFT JOIN test_leases l ON l.lease_id=e.owner_lease_id
+    LEFT JOIN staging_release_pointer p ON p.site_id=e.site_id
+    WHERE e.site_id=1`).first<StatusRow>();
   if (!row) throw new Error('test_environment_status_missing');
+  if (!row.staging_state) throw new Error('test_environment_staging_pointer_missing');
   if (row.state==='free' && (row.owner_run_id || row.owner_lease_id))
     throw new Error('test_environment_free_owner_conflict');
   if (row.state!=='free' && (!row.owner_run_id || !row.owner_lease_id ||
@@ -60,13 +64,15 @@ export async function testEnvironmentStatus(db:D1Database):Promise<StatusRow> {
 
 function statusHtml(row:StatusRow):string {
   const owned=row.state!=='free';
+  const baseReady=row.staging_state==='stable';
   const title=owned ? `${row.task_key} · ${row.task_title}` : 'Shared test site';
   const details=owned ? `<dl>
     <div><dt>Task</dt><dd>${escape(row.task_key!)} · ${escape(row.task_title!)}</dd></div>
     <div><dt>Stage</dt><dd>${escape(row.stage??'Shared test')}</dd></div>
     <div><dt>Staging base</dt><dd>${escape(row.base_manifest_id??'Unavailable')}</dd></div>
     <div><dt>Lease started</dt><dd>${escape(row.created_at??'Unavailable')}</dd></div>
-  </dl>` : '<p>The site is ready for the next checked task.</p>';
+  </dl>` : baseReady ? '<p>The site is ready for the next checked task.</p>' :
+    '<p>The staging base is being prepared. No test lease can start yet.</p>';
   const hold=row.state==='blocked' ?
     `<p role="alert">Cleanup is blocked. An allowed operator can inspect the saved repair item.</p>` : '';
   return `<!doctype html><html lang="en"><meta charset="utf-8">
@@ -78,7 +84,7 @@ function statusHtml(row:StatusRow):string {
   .state{display:inline-block;padding:8px 12px;background:#e7f4ee;border-radius:100px;
   font-weight:650;margin:0 0 22px}dl{margin:0}dl div{padding:14px 0;border-top:1px solid #dce4e0}
   dt{color:#586b62;font-size:.88rem}dd{margin:4px 0 0;overflow-wrap:anywhere}</style>
-  <main><p class="state">${escape(stateLabel(row.state))}</p>
+  <main><p class="state">${escape(!owned && !baseReady ? 'Preparing the test site' : stateLabel(row.state))}</p>
   <h1>${escape(title)}</h1>${details}${hold}</main></html>`;
 }
 
