@@ -45,9 +45,15 @@ export class SharedTestCloseStore {
         WHERE e.site_id=1 AND e.state='quiescing' AND e.owner_lease_id=? AND e.fence=?`)
         .bind(leaseId,runId,now,leaseId,fence+1),
       this.db.prepare(`UPDATE test_expected_events SET state='disabled' WHERE lease_id=?
-        AND run_id=? AND state IN ('planned','live','claimed')`).bind(leaseId,runId),
+        AND run_id=? AND state IN ('planned','live','claimed')
+        AND EXISTS (SELECT 1 FROM test_environment e WHERE e.site_id=1
+          AND e.state='quiescing' AND e.owner_lease_id=? AND e.owner_run_id=?
+          AND e.fence=?)`).bind(leaseId,runId,leaseId,runId,fence+1),
       this.db.prepare(`UPDATE test_app_sessions SET revoked_at=? WHERE lease_id=?
-        AND run_id=? AND revoked_at IS NULL`).bind(now,leaseId,runId),
+        AND run_id=? AND revoked_at IS NULL
+        AND EXISTS (SELECT 1 FROM test_environment e WHERE e.site_id=1
+          AND e.state='quiescing' AND e.owner_lease_id=? AND e.owner_run_id=?
+          AND e.fence=?)`).bind(now,leaseId,runId,leaseId,runId,fence+1),
     ]);
     if (results[0].meta.changes!==1 || results[1].meta.changes!==1 ||
         results[2].meta.changes!==1)

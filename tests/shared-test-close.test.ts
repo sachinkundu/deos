@@ -58,6 +58,23 @@ function fixture() {
   return {db,store:new SharedTestCloseStore(db as unknown as D1Database)};
 }
 
+test('a competing owner revision cannot disable the live expectation',async()=>{
+  const {db,store}=fixture();
+  try {
+    const originalBatch=db.batch.bind(db);
+    db.batch=async statements=>{
+      db.sqlite.prepare(`UPDATE test_environment SET revision=revision+1
+        WHERE site_id=1`).run();
+      return originalBatch(statements);
+    };
+    await assert.rejects(store.quiesce('run-1','lease-1',1),/write_incomplete/);
+    assert.equal(db.sqlite.prepare(`SELECT state FROM test_environment
+      WHERE site_id=1`).get()?.state,'active');
+    assert.equal(db.sqlite.prepare(`SELECT state FROM test_expected_events
+      WHERE expectation_id='expectation-1'`).get()?.state,'claimed');
+  } finally {db.close();}
+});
+
 test('close needs attached proof and owned absence before one atomic free transition',async()=>{
   const {db,store}=fixture();
   try {
