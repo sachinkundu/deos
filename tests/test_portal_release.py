@@ -17,6 +17,11 @@ CONFIG = json.loads((release.ROOT / "portal/wrangler.jsonc").read_text())
 SHA = "a" * 40
 
 
+@pytest.fixture(autouse=True)
+def no_remote_guard(monkeypatch):
+    monkeypatch.setattr(release, "shared_test_release_guard", lambda *args, **kwargs: None)
+
+
 @pytest.mark.parametrize("target", ["staging", "production"])
 def test_fixed_config_and_shared_resources(target):
     release.preflight(CONFIG, target)
@@ -49,12 +54,13 @@ def test_readback_requires_same_sha_site_host_and_single_active_version():
         "canonicalHost": "deos-staging.voxdez.com",
         "sourceBranch": "main",
         "sourceSha": SHA,
+        "buildInputSha256": "b" * 64,
         "versionId": "v1",
     }
-    release.validate_readback("staging", SHA, deployment, version)
+    release.validate_readback("staging", SHA, deployment, version, "b" * 64)
     for key in version:
         with pytest.raises(ValueError):
-            release.validate_readback("staging", SHA, deployment, {**version, key: "wrong"})
+            release.validate_readback("staging", SHA, deployment, {**version, key: "wrong"}, "b" * 64)
     with pytest.raises(ValueError):
         release.validate_readback(
             "staging",
@@ -66,7 +72,18 @@ def test_readback_requires_same_sha_site_host_and_single_active_version():
                 ]
             },
             version,
+            "b" * 64,
         )
+
+
+def test_build_input_digest_changes_with_bytes_and_source(tmp_path, monkeypatch):
+    monkeypatch.setattr(release, "ROOT", tmp_path)
+    first = tmp_path / "portal-worker.js"
+    first.write_bytes(b"bundle-one")
+    original = release.artifact_digest(SHA, [first])
+    first.write_bytes(b"bundle-two")
+    assert release.artifact_digest(SHA, [first]) != original
+    assert release.artifact_digest("b" * 40, [first]) != original
 
 
 def setup_deploy(monkeypatch):
@@ -75,6 +92,32 @@ def setup_deploy(monkeypatch):
     monkeypatch.setattr(release, "clean_checkout", lambda: SHA)
     monkeypatch.setattr(release, "check_ref", lambda *args: None)
     monkeypatch.setattr(release, "check_route_access", lambda: None)
+    monkeypatch.setattr(release, "artifact_digest", lambda *args: "b" * 64)
+    class UninitializedPointer:
+        def prepare_deploy(self, target, sha, build_digest, owner):
+            return {"action": "deploy", "tracked": False}
+
+        def assert_no_active_attempts(self):
+            pass
+    monkeypatch.setattr(release, "StagingPointerClient", UninitializedPointer)
+
+
+def test_active_attempt_stops_staging_before_wrangler(monkeypatch):
+    setup_deploy(monkeypatch)
+    calls = []
+
+    class BusyPointer:
+        def prepare_deploy(self, target, sha, build_digest, owner):
+            return {"action": "deploy", "tracked": False}
+
+        def assert_no_active_attempts(self):
+            raise ValueError("Staging deploy requires a stopped agent gate")
+
+    monkeypatch.setattr(release, "StagingPointerClient", BusyPointer)
+    monkeypatch.setattr(release, "run", lambda *args, **kwargs: calls.append(args))
+    with pytest.raises(ValueError, match="stopped agent gate"):
+        release.deploy("staging")
+    assert not any("wrangler" in args for args in calls)
 
 
 def test_missing_route_permission_stops_before_build_or_upload(monkeypatch):
@@ -123,7 +166,10 @@ def test_failed_wrangler_reads_back_once_without_retry(monkeypatch):
         release.deploy("staging")
     deploys = [args for args in calls if "wrangler" in args and "--dry-run" not in args]
     assert len(deploys) == 1
-    assert deploys[0][-4:] == ("--env", "staging", "--var", f"PORTAL_SOURCE_SHA:{SHA}")
+    assert deploys[0][-6:] == (
+        "--env", "staging", "--var", f"PORTAL_SOURCE_SHA:{SHA}",
+        "--var", "PORTAL_BUILD_INPUT_SHA256:" + "b" * 64,
+    )
     assert observed == ["staging"]
 
 
@@ -254,7 +300,10 @@ def test_production_builds_and_deploys_the_promoted_checkout(tmp_path, monkeypat
     assert str(tmp_path / "portal-worker/worker.js") in deploy
     assert "--no-bundle" in deploy
     assert "--env" not in deploy
-    assert deploy[-2:] == ("--var", f"PORTAL_SOURCE_SHA:{SHA}")
+    assert deploy[-4:] == (
+        "--var", f"PORTAL_SOURCE_SHA:{SHA}",
+        "--var", "PORTAL_BUILD_INPUT_SHA256:" + "b" * 64,
+    )
 
 
 def test_production_rejects_unapproved_checkout_before_build(monkeypatch):

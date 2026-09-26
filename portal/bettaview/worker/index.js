@@ -161,6 +161,16 @@ async function proxyDeosArtifact(request, env, accessToken, pathname) {
 }
 
 export async function routeBettaViewRequest(request, env, authenticate = verifyAccess) {
+  const url = new URL(request.url);
+  if (url.pathname === "/api/version") {
+    if (request.method !== "GET") return json(405, { error: "method_not_allowed" });
+    return json(200, {
+      canonicalHost: env.BETTAVIEW_CANONICAL_HOST ?? null,
+      sourceSha: env.BETTAVIEW_SOURCE_SHA ?? null,
+      buildInputSha256: env.BETTAVIEW_BUILD_INPUT_SHA256 ?? null,
+      versionId: env.CF_VERSION_METADATA?.id ?? null,
+    });
+  }
   const accessToken = accessTokenFromRequest(request);
   try {
     await authenticate(accessToken, {
@@ -175,7 +185,6 @@ export async function routeBettaViewRequest(request, env, authenticate = verifyA
     return json(forbidden ? 403 : 401, { error: forbidden ? "forbidden" : "unauthorized", reason });
   }
 
-  const url = new URL(request.url);
   if (url.pathname === "/auth/github") return githubStart(request, env);
   if (url.pathname === "/auth/github/callback") return githubCallback(request, env);
   if (url.pathname === "/auth/logout") return githubLogout(request, env);

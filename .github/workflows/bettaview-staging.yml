@@ -1,14 +1,13 @@
-name: Deploy portal staging
+name: Deploy BettaView staging
 
 on:
   push:
     branches: [main]
     paths:
-      - 'portal/**'
-      - 'src/**'
-      - 'scripts/*portal*.py'
-      - 'package*.json'
-      - '.github/workflows/portal-staging.yml'
+      - 'portal/bettaview/**'
+      - 'scripts/deploy_bettaview_staging.py'
+      - 'scripts/portal_release.py'
+      - '.github/workflows/bettaview-staging.yml'
   workflow_dispatch:
 
 permissions:
@@ -34,10 +33,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: npm ci
-      - name: Deploy and verify staging
+      - name: Deploy and verify BettaView staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_STAGING_CLOUDFLARE_API_TOKEN }}
           PORTAL_ACCESS_CLIENT_ID: ${{ vars.PORTAL_ACCESS_CLIENT_ID }}
           PORTAL_ACCESS_CLIENT_SECRET: ${{ secrets.PORTAL_ACCESS_CLIENT_SECRET }}
-        run: python scripts/deploy_portal_staging.py
+        run: python scripts/deploy_bettaview_staging.py
