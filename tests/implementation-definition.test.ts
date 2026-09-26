@@ -55,6 +55,13 @@ test("merged design leads to distinct task and build jobs, separate human decisi
     "state",
   );
   assert.equal(flow.nodes.implementation_merge.edges.completed, "code_merged");
+  assert.equal(flow.version,43);
+  assert.equal(flow.nodes.implementation_build.edges.completed,'implementation_test_branch_write');
+  assert.equal(flow.nodes.implementation_test_branch_write.edges.completed,'shared_test_decide');
+  assert.equal(flow.nodes.shared_test_decide.edges.test_required,'implementation_draft_publish');
+  assert.equal(flow.nodes.shared_test_decide.edges.test_not_required,'implementation_proof_check');
+  assert.equal(flow.nodes.shared_test_demo.edges.completed,'implementation_proof_check');
+  assert.equal(flow.nodes.shared_test_demo.edges.waiting,'shared_test_demo');
   for (const node of ['implementation_branch_write','implementation_publish'])
     assert.equal(flow.nodes[node].edges.failed,'implementation_publication_question');
   assert.equal(flow.nodes.implementation_publication_question.edges.completed,'implementation_publication_wait');

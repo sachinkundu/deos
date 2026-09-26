@@ -1,4 +1,7 @@
 import { reconcileImplementations } from "./implementation-reconciliation.ts";
+import {processSharedTestBatch} from './shared-test-queue.ts';
+import {SharedTestLeaseStore} from './shared-test-lease.ts';
+import {SharedTestCoordinator,sharedTestStagingTraffic} from './shared-test-coordinator.ts';
 import { reconcileWorkflowEvents } from './workflow-event-reconciliation.ts';
 import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
 import { IndependentReviewReconciliationController } from './independent-review-reconciliation.ts';
@@ -206,12 +209,24 @@ export default {
       () => capabilityRouter(env).handle(request));
   },
   queue(batch, env) {
+    if (batch.queue === 'deos-shared-test-events')
+      return processSharedTestBatch(batch as MessageBatch<unknown>,env.DB);
     return processQueueBatch(
       batch as MessageBatch<QueueBody>,
       env as unknown as QueueConsumerEnv,
     );
   },
-  async scheduled(_controller, env) {
+  async scheduled(controller, env) {
+    if (controller.cron === '* * * * *') {
+      const lease=new SharedTestLeaseStore(env.DB);
+      const expiredHead=await lease.expireTerminalHead();
+      const fencedOwner=await lease.fenceExpired();
+      // A dead waiter or expired owner never hands the site to the next run
+      // in the same scan. Cleanup and a later independent scan must prove it free.
+      if (!expiredHead && !fencedOwner && String(env.SHARED_TEST_GRANTS_ENABLED)==='true')
+        await new SharedTestCoordinator(env,sharedTestStagingTraffic(env)).grantHead();
+      return;
+    }
     await registerBundledWorkflowDefinitions(env as unknown as QueueConsumerEnv);
     await reconcileWorkflowEvents(env);
     await claudeRunner(env).audit();

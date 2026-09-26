@@ -6,7 +6,7 @@ such as SAC-182 can stall without strong proof.
 
 ## What Changes
 
-- Add one shared test site for current agent work at `test-deos.voxdez.com`.
+- Add one shared test site for current agent work at `deos-test.voxdez.com`.
 - Give the site to one run at a time. Other runs wait until cleanup makes it
   safe to use again.
 - Start each lease from the version that is live on staging when the lease is
@@ -51,6 +51,6 @@ None.
 ## Impact
 
 This change affects test environment control, app deploys, test data, provider
-access, cleanup, and the portal at `test-deos.voxdez.com`. It also adds saved
+access, cleanup, and the portal at `deos-test.voxdez.com`. It also adds saved
 lease and base facts so a failed run can be checked and cleaned up without
 putting live or staging work at risk.

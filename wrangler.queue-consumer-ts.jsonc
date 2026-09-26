@@ -14,6 +14,14 @@
     {
       "binding": "REVIEW_PORTAL",
       "service": "deos-workflow-portal"
+    },
+    {
+      "binding": "STAGING_PORTAL",
+      "service": "deos-workflow-portal-staging"
+    },
+    {
+      "binding": "STAGING_BETTAVIEW",
+      "service": "deos-bettaview-portal-staging"
     }
   ],
   "account_id": "c68856288112af7698f5be52ea94b96e",
@@ -44,6 +52,7 @@
     "OPENROUTER_SUPPORTED_MODELS": "deepseek/deepseek-v4-pro",
     "TRIAL_REPOSITORY": "sachinkundu/deos-sample-project",
     "TRIAL_DISPATCH_ENABLED": "false",
+    "SHARED_TEST_GRANTS_ENABLED": "false",
     "CODEX_AUTH_PROFILE_ID": "controlled-trial",
     "SANDBOX_FAILURE_RETENTION_MINUTES": "0",
     "CAPABILITY_BASE_URL": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities",
@@ -76,6 +85,12 @@
     "consumers": [
       {
         "queue": "deos-sample-project-events",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 3
+      },
+      {
+        "queue": "deos-shared-test-events",
         "max_batch_size": 10,
         "max_batch_timeout": 5,
         "max_retries": 3
@@ -164,6 +179,7 @@
   ],
   "triggers": {
     "crons": [
+      "* * * * *",
       "*/15 * * * *"
     ]
   },

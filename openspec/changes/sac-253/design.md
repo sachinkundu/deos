@@ -51,7 +51,7 @@ flowchart LR
     C --> B[Trusted browser service]
     B --> E[Test edge gate]
     E --> T
-    O[Allowed person] --> P[test-deos.voxdez.com status]
+    O[Allowed person] --> P[deos-test.voxdez.com status]
     P --> C
     O --> M[Access repair page]
     M --> C
@@ -74,9 +74,9 @@ uses HMAC-SHA256 and `Linear-Signature`. It treats `Linear-Timestamp` as
 milliseconds. It uses `Linear-Delivery` as the one delivery key. It returns HTTP
 200 for an accepted, ignored, or repeat event.
 
-The root of `test-deos.voxdez.com` is the status page. Access guards the page and
+The root of `deos-test.voxdez.com` is the status page. Access guards the page and
 all test app routes. Candidate code runs on a separate lease host under
-`*.apps.test-deos.voxdez.com`, never on the portal origin. Portal cookies use a
+`*.apps.deos-test.voxdez.com`, never on the portal origin. Portal cookies use a
 `__Host-` name, have no `Domain` attribute, and never go to an app host. App
 sessions use a different host-only cookie and cannot call portal or repair
 routes. A person uses an allowed email. The cloud browser uses a short-lived
@@ -424,7 +424,7 @@ milliseconds. No raw secret, auth header, or full private reply is saved.
 6. Run setup, missed-heartbeat recovery, dead-waiter expiry, proof, bounded
    repair, and cleanup without an agent. Check each version, session, browser
    identity, proof item, close receipt, final report, and absence read.
-7. Turn on the safe portal at `test-deos.voxdez.com`. Keep provider writes off
+7. Turn on the safe portal at `deos-test.voxdez.com`. Keep provider writes off
    until the lease, version, origin, session, sanitizer, and event checks pass.
 8. Turn on one lease. Admit new SAC-182 work through the required demo node.
    Save the real provider event, app use, GitHub result, screen shots, D1 reads,

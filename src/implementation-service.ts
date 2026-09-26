@@ -2,6 +2,10 @@ import { D1PlanningStore } from "./planning-store.ts";
 import { ImplementationDemoService } from './implementation-demo.ts';
 import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
 import { ImplementationEnvironment } from './implementation-environment.ts';
+import {SharedTestReleaseLinkStore} from './shared-test-release-link.ts';
+import {SharedTestDecisionStore} from './shared-test-decision-store.ts';
+import {SharedTestLeaseStore} from './shared-test-lease.ts';
+import {SharedTestFailureStore} from './shared-test-failures.ts';
 import { publishImplementationProof, implementationProofMarkdown, type PublishedImplementationProof } from './implementation-pr-proof.ts';
 import { D1DesignStore } from "./design-store.ts";
 import {
@@ -82,6 +86,52 @@ export class ImplementationService {
           await this.merge(run, work, action === "implementation.merge");
         else {
           const candidate = await this.store.candidate(work);
+          if (action === 'implementation.shared_test_decide') {
+            if (!work.pr_head_sha || !work.patch_sha)
+              throw new ImplementationError('test_subject_missing','The test candidate has no fixed branch commit or patch');
+            const decision=await new SharedTestDecisionStore(this.env.DB).record({
+              runId:work.run_id,candidateCommit:work.pr_head_sha,patchSha256:work.patch_sha,
+              changedPaths:candidate.files.map(file=>file.path),
+            });
+            return {kind:'system_action',outcome:decision.choice==='test_required'?'test_required':'test_not_required',
+              providerReceiptsComplete:true};
+          }
+          if (action === 'implementation.shared_test_demo') {
+            if (!work.pr_head_sha || !work.patch_sha || !work.pr_number)
+              throw new ImplementationError('test_subject_missing','The shared test needs an exact draft PR and patch');
+            const decisionStore=new SharedTestDecisionStore(this.env.DB);
+            const decision=await decisionStore.saved({runId:work.run_id,candidateCommit:work.pr_head_sha,
+              patchSha256:work.patch_sha,changedPaths:candidate.files.map(file=>file.path)});
+            if (decision.choice!=='test_required')
+              throw new ImplementationError('test_path_changed','A no-match candidate entered the shared test');
+            const check=await decisionStore.releaseCheck({runId:work.run_id,
+              candidateCommit:work.pr_head_sha,patchSha256:work.patch_sha,
+              manifestId:decision.manifestId,manifestRevision:decision.manifestRevision,
+              changedPaths:candidate.files.map(file=>file.path)});
+            if (check.allowed) return completed();
+            let request=await this.env.DB.prepare(`SELECT * FROM test_lease_requests
+              WHERE run_id=? AND task_id=? AND candidate_commit=? AND patch_sha256=?
+                AND state IN ('waiting','validating','granted') ORDER BY queue_number LIMIT 1`)
+              .bind(work.run_id,run.issue_id,work.pr_head_sha,work.patch_sha)
+              .first<{request_id:string;node_visit:number;attempt_id:string;state:string}>();
+            if (!request) {
+              request=await new SharedTestLeaseStore(this.env.DB).request({runId:work.run_id,
+                nodeVisit:run.current_visit_sequence,attemptId:crypto.randomUUID(),
+                taskId:run.issue_id,candidateCommit:work.pr_head_sha,patchSha256:work.patch_sha});
+            }
+            if (request.state==='granted') {
+              const owned=await this.env.DB.prepare(`SELECT lease_id,fence,state FROM test_leases
+                WHERE request_id=? AND run_id=? AND attempt_id=?`)
+                .bind(request.request_id,work.run_id,request.attempt_id)
+                .first<{lease_id:string;fence:number;state:string}>();
+              if (!owned) throw new ImplementationError('test_lease_missing',
+                'The granted test request has no exact lease');
+              if (owned.state==='preparing' || owned.state==='active')
+                await new SharedTestLeaseStore(this.env.DB).heartbeat(work.run_id,
+                  request.attempt_id,owned.lease_id,owned.fence);
+            }
+            return {kind:'system_action',outcome:'waiting',providerReceiptsComplete:true};
+          }
           if (action === "implementation.check_proof") {
             if (this.singleDemoRepair() && await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).handoff(work))
               return {kind:'system_action',outcome:'review_ready',providerReceiptsComplete:true};
@@ -90,7 +140,24 @@ export class ImplementationService {
           const github = implementationGitHub(this.env, run);
           if (action === "implementation.write_branch")
             await github.writeBranch(this.store, work, candidate);
+          else if (action === 'implementation.draft_publish')
+            await github.publishDraft(this.store,work,
+              `${work.linear_identifier}: shared test pending.\n\nThe candidate is fixed to ${work.pr_head_sha}. Proof will be attached before review.`);
           else if (action === "implementation.publish") {
+            if (this.definition.nodes.shared_test_demo) {
+              if (!work.pr_head_sha || !work.patch_sha)
+                throw new ImplementationError('test_subject_missing','The final PR has no exact test subject');
+              const decisionStore=new SharedTestDecisionStore(this.env.DB);
+              const decision=await decisionStore.saved({runId:work.run_id,
+                candidateCommit:work.pr_head_sha,patchSha256:work.patch_sha,
+                changedPaths:candidate.files.map(file=>file.path)});
+              const proof=await decisionStore.releaseCheck({runId:work.run_id,
+                candidateCommit:work.pr_head_sha,patchSha256:work.patch_sha,
+                manifestId:decision.manifestId,manifestRevision:decision.manifestRevision,
+                changedPaths:candidate.files.map(file=>file.path)});
+              if (!proof.allowed) throw new ImplementationError('shared_test_incomplete',
+                'The exact shared test has not closed with a final report');
+            }
             const demo = candidate.evidenceChecklist
               ? await new ImplementationDemoService(this.env.DB, this.env.ARTIFACTS).buildInput(run.run_id) : null;
             await github.publish(
@@ -98,6 +165,7 @@ export class ImplementationService {
               work,
               await this.prBody(work, await publishImplementationProof(github, this.store, work, candidate, demo?.plan)),
               work.candidate_sha!,
+              Boolean(this.definition.nodes.shared_test_demo),
             );
             await new ImplementationEnvironment(this.env).cleanupRun(work.run_id);
           }
@@ -124,6 +192,17 @@ export class ImplementationService {
         };
       }
       try {
+        if (action.startsWith('implementation.shared_test_') ||
+            action==='implementation.draft_publish') {
+          const owned=await this.env.DB.prepare(`SELECT owner_lease_id,fence FROM test_environment
+            WHERE site_id=1 AND owner_run_id=?`).bind(run.run_id)
+            .first<{owner_lease_id:string;fence:number}>();
+          await new SharedTestFailureStore(this.env.DB,this.env.ARTIFACTS).record({
+            runId:run.run_id,leaseId:owned?.owner_lease_id,
+            fence:owned?.fence,phase:owned?'active':'admission',
+            operation:action,safeCode:error instanceof ImplementationError?error.code:'shared_test_failed',
+          },error);
+        }
         await this.store.error(run.run_id, null, action, error);
       } catch (secondary) {
         recordCaughtError(secondary, "implementation.diagnostics");
@@ -849,6 +928,21 @@ export class ImplementationService {
         "merge_readback",
         "Implementation merge is unconfirmed",
       );
+    if (this.definition.nodes.shared_test_demo) {
+      if (!work.patch_sha || !work.tree_sha || !work.pr_number)
+        throw new ImplementationError('test_release_subject_missing',
+          'The tested implementation subject is incomplete');
+      const merged=await github.commit(saved.merge_commit_sha);
+      const linked=await new SharedTestReleaseLinkStore(this.env.DB).record({
+        runId:work.run_id,candidateCommit:work.pr_head_sha!,
+        releaseCommit:saved.merge_commit_sha,testedBase:work.tested_base_sha,
+        treeSha:work.tree_sha,patchSha256:work.patch_sha,
+        pullRequestNumber:work.pr_number,mergeParents:merged.parents.map(parent=>parent.sha),
+        mergeTreeSha:merged.tree.sha,
+      });
+      if (!linked) throw new ImplementationError('test_release_decision_missing',
+        'The merge has no saved shared test decision');
+    }
     await this.env.DB.prepare(
       "UPDATE implementation_runs SET merge_sha=?,status='code_merged',updated_at=? WHERE run_id=?",
     )

@@ -120,7 +120,7 @@ store, or run.
 ### Requirement: Show who holds the site
 
 The frontend for the shared test environment SHALL be
-`test-deos.voxdez.com`. It SHALL show a clear test name and the current lease
+`deos-test.voxdez.com`. It SHALL show a clear test name and the current lease
 state. The issue being worked SHALL be the human-readable identity of the agent
 that owns the site. While the lease is held, the page SHALL lead with the issue
 name and key. It SHALL also show the workflow stage, saved staging base, and
