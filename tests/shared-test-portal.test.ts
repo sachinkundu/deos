@@ -43,3 +43,19 @@ test('status shows the issue first while owned and says free only without an own
     assert.doesNotMatch(html,/The site is ready/);
   } finally {db.close();}
 });
+
+test('status auth reports verifier outages separately from denied identity',async()=>{
+  const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();
+  const env={DB:db as unknown as D1Database,ARTIFACTS:bucket as unknown as R2Bucket,
+    ACCESS_TEAM_DOMAIN:'test',ACCESS_AUD:'aud',ALLOWED_EMAIL:'allowed@example.com'};
+  try {
+    const request=new Request('https://deos-test.voxdez.com/');
+    const denied=await routeTestPortal(request,env,
+      (async()=>{throw new Error('forbidden');}) as typeof import('../portal/src/auth.ts').verifyAccess);
+    assert.equal(denied.status,401);
+    const outage=await routeTestPortal(request,env,
+      (async()=>{throw new Error('JWKS fetch failed');}) as typeof import('../portal/src/auth.ts').verifyAccess);
+    assert.equal(outage.status,503);
+    assert.deepEqual(await outage.json(),{error:'authentication_unavailable'});
+  } finally {db.close();}
+});

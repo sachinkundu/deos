@@ -23,6 +23,19 @@ function escape(value:string):string {
     .replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 }
 
+const accessDenialCodes=new Set([
+  'ERR_JWT_CLAIM_VALIDATION_FAILED','ERR_JWT_EXPIRED','ERR_JWT_INVALID',
+  'ERR_JWS_INVALID','ERR_JWS_SIGNATURE_VERIFICATION_FAILED',
+  'ERR_JOSE_ALG_NOT_ALLOWED','ERR_JWKS_NO_MATCHING_KEY',
+]);
+
+function accessDenied(error:unknown):boolean {
+  if (!(error instanceof Error)) return false;
+  if (error.message==='unauthorized' || error.message==='forbidden') return true;
+  const code=(error as Error & {code?:string}).code;
+  return code!==undefined && accessDenialCodes.has(code);
+}
+
 interface StatusRow {
   state:string;
   staging_state:string;
@@ -95,8 +108,11 @@ export async function routeTestPortal(request:Request,env:TestPortalEnv,
     identity=await authenticate(request.headers.get('CF-Access-Jwt-Assertion'),{
       teamDomain:env.ACCESS_TEAM_DOMAIN,audience:env.ACCESS_AUD,
       allowedEmail:env.ALLOWED_EMAIL});
-  } catch {
-    return Response.json({error:'unauthorized'},{status:401,headers});
+  } catch (error) {
+    if (accessDenied(error))
+      return Response.json({error:'unauthorized'},{status:401,headers});
+    recordCaughtError(error,'portal/test-environment/worker.ts:auth');
+    return Response.json({error:'authentication_unavailable'},{status:503,headers});
   }
   if (!identity.email) return Response.json({error:'unauthorized'},{status:401,headers});
   if (request.method!=='GET' && request.method!=='HEAD')
