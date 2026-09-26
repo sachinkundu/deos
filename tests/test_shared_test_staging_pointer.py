@@ -10,6 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import bootstrap_shared_test_staging
+import check_shared_test_bootstrap
 from shared_test_staging_pointer import StagingPointerClient, release_ids
 
 
@@ -75,6 +76,26 @@ def test_bootstrap_requires_a_stopped_run_gate_and_free_site(monkeypatch):
         bootstrap_shared_test_staging.bootstrap()
         assert client.pointer()["state"] == "stable"
         assert client.pointer()["manifest_id"] is not None
+    finally:
+        client.sqlite.close()
+
+
+def test_bootstrap_preflight_names_the_blocking_attempt(monkeypatch, capsys):
+    client = LocalPointer([])
+    monkeypatch.setattr(check_shared_test_bootstrap, "StagingPointerClient", lambda: client)
+    try:
+        client.sqlite.execute("CREATE TABLE IF NOT EXISTS d1_migrations (name TEXT)")
+        client.sqlite.execute("INSERT INTO d1_migrations VALUES ('0055_shared_test_environment.sql')")
+        client.sqlite.execute("""INSERT INTO agent_attempts VALUES
+            ('attempt-1','run-1','shared_test_demo','running','now')""")
+        with pytest.raises(ValueError, match="Active agent attempts") as caught:
+            check_shared_test_bootstrap.main()
+        assert 'attempt-1' in str(caught.value)
+        assert 'run-1' in str(caught.value)
+        assert 'shared_test_demo' in str(caught.value)
+        client.sqlite.execute("DELETE FROM agent_attempts")
+        check_shared_test_bootstrap.main()
+        assert '"activeAttempts": []' in capsys.readouterr().out
     finally:
         client.sqlite.close()
 
