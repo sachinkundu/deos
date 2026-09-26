@@ -69,3 +69,27 @@ test('trusted marker insert is planned before the provider call and removal keep
       WHERE expectation_id='expectation-1'`).get()?.state,'disabled');
   } finally {db.close();}
 });
+
+test('marker insertion stops if heartbeat expires during the provider read',async()=>{
+  const {db,input}=fixture();
+  let wrote=false;
+  const linear={
+    readTestIssue:async()=>{
+      db.sqlite.prepare(`UPDATE test_environment SET heartbeat_due_at=? WHERE site_id=1`)
+        .run('2026-09-25T00:00:00Z');
+      return {id:'issue-1',identifier:'SAC-1',title:'Test',teamId:'team-1',
+        description:'Task description\n'};
+    },
+    testActorId:async()=> 'app-actor-1',
+    updateTestIssueDescription:async()=>{
+      wrote=true;
+      throw new Error('provider write must stay fenced');
+    },
+  };
+  try {
+    const store=new SharedTestMarkerStore(db as unknown as D1Database,linear,'test-secret');
+    await assert.rejects(store.insert(input),/test_marker_plan_conflict/);
+    assert.equal(wrote,false);
+    assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS total FROM test_expected_events').get()?.total,0);
+  } finally {db.close();}
+});

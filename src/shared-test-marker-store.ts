@@ -74,12 +74,14 @@ export class SharedTestMarkerStore {
         WHERE EXISTS (SELECT 1 FROM test_environment e JOIN test_leases l
           ON l.lease_id=e.owner_lease_id WHERE e.site_id=1 AND e.state='active'
             AND e.owner_run_id=? AND e.owner_lease_id=? AND e.fence=?
+            AND e.heartbeat_due_at>?
             AND l.attempt_id=? AND l.task_id=? AND l.team_id=?)`)
         .bind(input.expectationId,input.runId,input.leaseId,input.fence,input.taskId,
           input.teamId,actorId,await sha256Hex(JSON.stringify(input)),
           hashes.beforeSha256,hashes.afterSha256,hashes.markerSha256,
           at.getTime()-30_000,at.getTime()+300_000,now,input.runId,
-          input.leaseId,input.fence,input.attemptId,input.taskId,input.teamId),
+          input.leaseId,input.fence,new Date().toISOString(),
+          input.attemptId,input.taskId,input.teamId),
       this.db.prepare(`INSERT OR IGNORE INTO test_operations
         (work_id,run_id,lease_id,fence,kind,target,expected_description_sha256,
          state,started_at)
@@ -102,6 +104,8 @@ export class SharedTestMarkerStore {
       throw new Error('test_marker_before_changed');
     await this.db.prepare(`UPDATE test_operations SET state='running'
       WHERE work_id=? AND state='planned'`).bind(workId).run();
+    await new SharedTestLeaseStore(this.db).assertWrite(input.runId,input.attemptId,
+      input.leaseId,input.fence);
     const result=await this.linear.updateTestIssueDescription(input.taskId,after);
     if (result.teamId!==input.teamId || result.description!==after)
       throw new Error('test_marker_linear_readback_changed');
