@@ -138,6 +138,12 @@ work uses the same path rule. It needs no special label.
 | 7 | Make lease-named test services and stores from fixed build input. | Each running service reports its source commit, build input, staging base version, and its own deployed version twice. Save those readbacks before changing the lease from `preparing` to `active`. App and provider writes need `active`. |
 | 8 | Save a resource plan before each call that may create a remote item. | The plan has one work ID, safe provider name, lease, run, and fence. A retry finds the same item. |
 
+The portal test service gets its own lease-named D1 database and R2 bucket.
+Its activation check requires both records to have confirmed remote identities.
+The BettaView session Durable Object belongs to its separate lease-named Worker.
+A lost store-create response leaves the saved plan uncertain; recovery looks up
+that exact name and never allocates a substitute name.
+
 While the lease is `preparing` or `active`, the owning Workflow sends a
 coordinator heartbeat every 30 seconds. The saved deadline is two minutes after
 the last accepted heartbeat. A Worker scheduled event runs each minute. It

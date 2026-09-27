@@ -64,7 +64,7 @@ export async function processSharedTestDelivery(db:D1Database,raw:unknown,at=new
     FROM test_delivery_dispatch d JOIN test_provider_deliveries p
       ON p.delivery_id=d.delivery_id AND p.route='test'
     JOIN test_expected_events x ON x.expectation_id=d.expectation_id
-      AND x.claimed_delivery_id=d.delivery_id AND x.state='claimed'
+      AND x.claimed_delivery_id=d.delivery_id AND x.state IN ('claimed','disabled')
     JOIN test_leases l ON l.lease_id=d.lease_id AND l.run_id=d.run_id
       AND l.task_id=p.task_id AND l.team_id=p.team_id
     JOIN staging_release_manifests m ON m.manifest_id=l.base_manifest_id

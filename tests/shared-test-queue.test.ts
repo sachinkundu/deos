@@ -69,3 +69,18 @@ test('a forged Queue scope cannot claim the saved delivery',async()=>{
     assert.equal(db.sqlite.prepare('SELECT state FROM test_delivery_dispatch').get()?.state,'pending');
   } finally {db.close();}
 });
+
+test('a delivery accepted before quiescing can settle after its expectation is disabled',async()=>{
+  const {db,body}=fixture();
+  try {
+    db.sqlite.prepare(`UPDATE test_environment SET state='quiescing',owner_run_id='run-1',
+      owner_lease_id='lease-1',fence=2 WHERE site_id=1`).run();
+    db.sqlite.prepare(`UPDATE test_leases SET state='quiescing' WHERE lease_id='lease-1'`).run();
+    db.sqlite.prepare(`UPDATE test_expected_events SET state='disabled'
+      WHERE expectation_id='expectation-1'`).run();
+    await processSharedTestDelivery(db as unknown as D1Database,body,
+      new Date('2026-09-25T04:31:42Z'));
+    assert.equal(db.sqlite.prepare('SELECT state FROM test_delivery_dispatch').get()?.state,'done');
+    assert.equal(db.sqlite.prepare('SELECT state FROM test_attestations').get()?.state,'observed');
+  } finally {db.close();}
+});

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
 import {SharedTestActivation} from '../src/shared-test-activation.ts';
-import {sharedTestServicePlans} from '../src/shared-test-service-plan.ts';
+import {sharedTestServicePlans,sharedTestStorePlans} from '../src/shared-test-service-plan.ts';
 import {SharedTestLeaseStore,type StableStagingBase} from '../src/shared-test-lease.ts';
 
 const leaseId='a'.repeat(64),runId='run-1',attemptId='attempt-1',fence=1;
@@ -16,6 +16,7 @@ const base:StableStagingBase={revision:'staging-revision',services:[
     buildInputSha256:'e'.repeat(64),trafficPercent:100},
 ]};
 const plans=sharedTestServicePlans(leaseId,base);
+const stores=sharedTestStorePlans(leaseId,base);
 
 test('isolated Worker names are fixed to the full lease and service base',()=>{
   assert.deepEqual(plans.map(plan=>plan.serviceName),['bettaview','portal']);
@@ -26,6 +27,8 @@ test('isolated Worker names are fixed to the full lease and service base',()=>{
     plans[0].workerName);
   assert.throws(()=>sharedTestServicePlans(leaseId,{...base,services:[...base.services,base.services[0]]}),
     /invalid_shared_test_service_base/);
+  assert.deepEqual(stores.map(store=>store.kind),['d1_database','r2_bucket']);
+  assert.ok(stores.every(store=>store.providerName.includes(leaseId.slice(0,32))));
 });
 
 function fixture() {
@@ -51,6 +54,12 @@ function fixture() {
      remote_id,work_id,created_at,updated_at)
     VALUES (?,?,?,?,'test_worker','created',?,?,?,'now','now')`)
     .run(plan.resourceId,runId,leaseId,fence,plan.canonicalHost,plan.workerName,plan.workId);
+  for (const store of stores) db.sqlite.prepare(`INSERT INTO test_resources
+    (resource_id,run_id,lease_id,create_fence,kind,plan_state,provider_key,
+     remote_id,work_id,created_at,updated_at)
+    VALUES (?,?,?, ?,?,'created',?,?,?,'now','now')`)
+    .run(store.resourceId,runId,leaseId,fence,store.kind,store.providerName,
+      store.kind==='d1_database'?'database-uuid':store.providerName,store.workId);
   return db;
 }
 
@@ -121,6 +130,18 @@ test('missing isolated Worker record blocks activation before remote reads',asyn
   const db=fixture();
   try {
     db.sqlite.prepare(`DELETE FROM test_resources WHERE resource_id=?`).run(plans[0].resourceId);
+    const gate=new SharedTestActivation(db as unknown as D1Database,async()=>{
+      throw new Error('should not read');
+    });
+    await assert.rejects(gate.activate({runId,attemptId,leaseId,fence},at),
+      /test_activation_resources_incomplete/);
+  } finally {db.close();}
+});
+
+test('missing isolated data store blocks activation before remote reads',async()=>{
+  const db=fixture();
+  try {
+    db.sqlite.prepare(`DELETE FROM test_resources WHERE resource_id=?`).run(stores[0].resourceId);
     const gate=new SharedTestActivation(db as unknown as D1Database,async()=>{
       throw new Error('should not read');
     });

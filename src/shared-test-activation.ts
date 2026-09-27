@@ -1,5 +1,5 @@
 import type {StableStagingBase} from './shared-test-lease.ts';
-import {sharedTestServicePlans,type SharedTestServicePlan} from './shared-test-service-plan.ts';
+import {sharedTestServicePlans,sharedTestStorePlans,type SharedTestServicePlan} from './shared-test-service-plan.ts';
 
 interface LeaseRow {
   lease_id:string;
@@ -80,11 +80,18 @@ export class SharedTestActivation {
       throw new Error('test_activation_lease_fenced');
     const base=JSON.parse(lease.base_json) as StableStagingBase;
     const plans=sharedTestServicePlans(input.leaseId,base);
+    const stores=sharedTestStorePlans(input.leaseId,base);
     const resources=(await this.db.prepare(`SELECT resource_id,run_id,lease_id,create_fence,
       kind,plan_state,provider_key,remote_id,work_id FROM test_resources
-      WHERE lease_id=? AND kind='test_worker' ORDER BY resource_id`)
+      WHERE lease_id=? AND kind IN ('test_worker','d1_database','r2_bucket') ORDER BY resource_id`)
       .bind(input.leaseId).all<ResourceRow>()).results;
-    if (resources.length!==plans.length || plans.some(plan=>{
+    if (resources.length!==plans.length+stores.length || stores.some(store=>{
+      const row=resources.find(resource=>resource.resource_id===store.resourceId);
+      return !row || row.run_id!==input.runId || row.lease_id!==input.leaseId ||
+        row.create_fence!==input.fence || row.kind!==store.kind ||
+        row.plan_state!=='created' || row.provider_key!==store.providerName ||
+        !row.remote_id || row.work_id!==store.workId;
+    }) || plans.some(plan=>{
       const row=resources.find(resource=>resource.resource_id===plan.resourceId);
       return !row || row.run_id!==input.runId || row.lease_id!==input.leaseId ||
         row.create_fence!==input.fence || row.plan_state!=='created' ||
@@ -106,7 +113,8 @@ export class SharedTestActivation {
       first[index].versionId,input.fence,
     ]);
     const resourceGuard=`(SELECT COUNT(*) FROM test_resources WHERE lease_id=?
-      AND run_id=? AND kind='test_worker' AND plan_state='created' AND create_fence=?)=?`;
+      AND run_id=? AND kind IN ('test_worker','d1_database','r2_bucket')
+      AND plan_state='created' AND create_fence=?)=?`;
     const results=await this.db.batch([
       ...plans.map((plan,index)=>this.db.prepare(`INSERT OR IGNORE INTO test_service_readbacks
         (lease_id,service_name,resource_id,worker_name,canonical_host,source_commit,
@@ -122,7 +130,7 @@ export class SharedTestActivation {
         AND run_id=? AND attempt_id=? AND state='preparing' AND fence=?
         AND ${resourceGuard} AND ${equalReadbacks}`)
         .bind(now,input.leaseId,input.runId,input.attemptId,input.fence,
-          input.leaseId,input.runId,input.fence,plans.length,...readbackParams),
+          input.leaseId,input.runId,input.fence,plans.length+stores.length,...readbackParams),
       this.db.prepare(`UPDATE test_environment SET state='active',saved_phase='active',
         revision=revision+1,updated_at=? WHERE site_id=1 AND state='preparing'
         AND owner_run_id=? AND owner_lease_id=? AND fence=? AND heartbeat_due_at>?

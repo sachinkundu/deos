@@ -9,6 +9,13 @@ export interface SharedTestServicePlan {
   base:StagingServiceRead;
 }
 
+export interface SharedTestStorePlan {
+  resourceId:string;
+  workId:string;
+  kind:'d1_database'|'r2_bucket';
+  providerName:string;
+}
+
 const leasePattern=/^[a-f0-9]{64}$/;
 const servicePattern=/^[a-z][a-z0-9-]{0,19}$/;
 
@@ -30,4 +37,19 @@ export function sharedTestServicePlans(leaseId:string,base:StableStagingBase):Sh
       canonicalHost:`${service.serviceName}-${leaseId.slice(0,32)}.apps.deos-test.voxdez.com`,
       base:service,
     }));
+}
+
+/** Portal's D1 and R2 bindings are private to one lease. BettaView's session
+ * Durable Object is namespaced by its separately named Worker script. */
+export function sharedTestStorePlans(leaseId:string,base:StableStagingBase):SharedTestStorePlan[] {
+  const services=sharedTestServicePlans(leaseId,base);
+  if (!services.some(service=>service.serviceName==='portal'))
+    throw new Error('shared_test_portal_base_missing');
+  const suffix=leaseId.slice(0,32);
+  return [
+    {resourceId:`test-d1:${leaseId}:portal`,workId:`test-d1-create:${leaseId}:portal`,
+      kind:'d1_database',providerName:`deos-test-portal-db-${suffix}`},
+    {resourceId:`test-r2:${leaseId}:portal`,workId:`test-r2-create:${leaseId}:portal`,
+      kind:'r2_bucket',providerName:`deos-test-portal-artifacts-${suffix}`},
+  ];
 }
