@@ -10,6 +10,8 @@ import {SharedTestBrowserCleanup} from '../src/shared-test-browser-cleanup.ts';
 import type {TestBrowserProvider} from '../src/shared-test-browser-provider.ts';
 import {sharedTestServicePlans} from '../src/shared-test-service-plan.ts';
 import {SharedTestRawProofStore} from '../src/shared-test-raw-proof.ts';
+import {SharedTestImageSanitizer} from '../src/shared-test-image-sanitizer.ts';
+import {routePublicProof} from '../portal/test-proof/worker.ts';
 
 const leaseId='a'.repeat(64),runId='run-1',attemptId='attempt-1';
 const base={revision:'traffic-1',services:[{serviceName:'portal',
@@ -105,6 +107,33 @@ test('owned browser starts after trusted launch and rejects a later fence',async
     assert.equal(proof.sanitizer_result,'pending');
     assert.equal(proof.public_url,null);
     assert.ok(bucket.objects.has(String(proof.object_key)));
+    const proofUrl=`https://deos-shared-test-proof.skundu.workers.dev/proof/${proofId}`;
+    const publicEnv={DB:db as unknown as D1Database,
+      ARTIFACTS:bucket as unknown as R2Bucket};
+    assert.equal((await routePublicProof(new Request(proofUrl),publicEnv)).status,404);
+    const safeImage=new Uint8Array(image);safeImage[100]=1;
+    const publicSha=createHash('sha256').update(safeImage).digest('hex');
+    const recipe={version:1 as const,sourceSha256:String(proof.source_sha256),
+      width:600,height:400,crop:{x:0,y:0,width:600,height:400},masks:[],
+      allowedText:['SAC-182'],requiredText:['SAC-182']};
+    const projector=new SharedTestImageSanitizer(db as unknown as D1Database,
+      bucket as unknown as R2Bucket,{run:async()=>({image:safeImage,
+        manifest:{version:1,sanitizerVersion:'fixed-mask-ocr-v1',
+          sourceSha256:String(proof.source_sha256),publicSha256:publicSha,
+          width:600,height:400,recognizedText:['SAC-182'],passed:true}})});
+    const publicUrl=await projector.project(proofId,recipe);
+    assert.equal(publicUrl,proofUrl);
+    const projected=db.sqlite.prepare(`SELECT classification,read_at,projected_at
+      FROM test_proof_items WHERE proof_id=?`).get(proofId);
+    assert.equal(projected?.classification,'public_safe');
+    assert.equal(projected?.read_at,null);
+    assert.ok(projected?.projected_at);
+    const page=await routePublicProof(new Request(publicUrl),publicEnv);
+    assert.equal(page.status,200);
+    assert.deepEqual(new Uint8Array(await page.arrayBuffer()),safeImage);
+    const publicKey=`shared-test/public/${leaseId}/${proofId}.png`;
+    bucket.objects.set(publicKey,new Uint8Array(image));
+    assert.equal((await routePublicProof(new Request(publicUrl),publicEnv)).status,503);
     db.sqlite.prepare(`UPDATE test_environment SET state='quiescing',fence=2
       WHERE site_id=1`).run();
     await assert.rejects(browser.command(scope,{operation:'state'}),/shared_test_write_fenced/);

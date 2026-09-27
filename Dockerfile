@@ -22,8 +22,10 @@ RUN useradd --create-home --shell /usr/sbin/nologin deos-browser \
 
 # Browser control stays inside the implementation sandbox over a local pipe.
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/deos-browser
-RUN npm install --prefix /deos --omit=dev playwright@1.63.0 \
+RUN npm install --prefix /deos --omit=dev playwright@1.63.0 sharp@0.35.2 \
     && /deos/node_modules/.bin/playwright install --with-deps --only-shell chromium \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr \
     && npm cache clean --force \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -68,6 +70,7 @@ COPY config/prompts/openspec-traceability-recheck.md /deos/config/prompts/opensp
 COPY container/deos-github /usr/local/bin/deos-github
 COPY container/deos-linear /usr/local/bin/deos-linear
 COPY container/deos-test /usr/local/bin/deos-test
+COPY scripts/sanitize-shared-test-proof.mjs /deos/bin/sanitize-shared-test-proof.mjs
 
 # Codex bundles ripgrep, but its private PATH is lost in the author account's
 # clean environment. Expose the binary from the pinned linux-x64 package.
