@@ -34,7 +34,8 @@ export class SharedTestStructuredProofDriver {
         AND (SELECT COUNT(DISTINCT kind) FROM test_proof_items
           WHERE run_id=l.run_id AND lease_id=l.lease_id AND phase='first'
             AND kind IN ('d1_read','provider_receipt','github_receipt')
-            AND classification='public_safe' AND sanitizer_result='passed')<3`)
+            AND classification='public_safe' AND sanitizer_result='passed'
+            AND public_sha256 IS NOT NULL AND public_url IS NOT NULL)<3`)
       .first<ReadyLease>();
     if(!lease)return 'idle';
     const run=await new D1OrchestrationStore(this.env.DB).findRun(lease.run_id);
