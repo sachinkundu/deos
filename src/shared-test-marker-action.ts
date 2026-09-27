@@ -87,12 +87,26 @@ export class SharedTestMarkerAction {
     repository:string;issueId:string},secret:string,now=new Date()):Promise<string> {
     await new SharedTestLeaseStore(this.db).assertWrite(input.runId,
       input.attemptId,input.leaseId,input.fence,now);
+    // The Sandbox controller mints its capability while the attempt is
+    // starting. Provider actions remain unavailable until it is running.
+    const starting=await this.db.prepare(`SELECT 1 AS allowed FROM agent_attempts a
+      JOIN orchestration_runs o ON o.run_id=a.run_id
+      JOIN test_leases l ON l.run_id=a.run_id AND l.attempt_id=a.attempt_id
+      WHERE a.attempt_id=? AND a.run_id=? AND a.node_id='shared_test_demo'
+        AND a.state IN ('starting','running') AND a.cleanup_state='pending'
+        AND a.absolute_deadline>? AND o.current_node='shared_test_demo'
+        AND o.status='active' AND o.issue_id=?
+        AND l.lease_id=? AND l.fence=? AND l.state='active'
+        AND l.repository=? AND l.task_id=?`)
+      .bind(input.attemptId,input.runId,now.toISOString(),input.issueId,
+        input.leaseId,input.fence,input.repository,input.issueId)
+      .first<{allowed:number}>();
+    if (starting?.allowed!==1) throw new Error('shared_test_marker_agent_inactive');
     const claims:CapabilityClaims={version:1,issuer:'deos',
       audience:'sandbox-capabilities',runId:input.runId,attemptId:input.attemptId,
       leaseId:input.leaseId,fence:input.fence,repository:input.repository,
       issueId:input.issueId,actions:['test_issue_marker_patch'],changeId:null,
       planningBranch:null,expiresAt:Math.floor(now.getTime()/1000)+15*60};
-    await this.scope(claims);
     return mintCapabilityToken(claims,secret);
   }
 }

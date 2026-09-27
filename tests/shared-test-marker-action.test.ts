@@ -14,7 +14,7 @@ test('test marker action derives issue scope from the lease and stops at a new f
       (attempt_id,sandbox_id,run_id,node_id,job_spec_json,job_spec_digest,state,
        absolute_deadline,created_at,updated_at)
       VALUES ('attempt-1','sandbox-1','run-1','shared_test_demo','{}','digest',
-        'running','9999-01-01T00:00:00.000Z','now','now')`).run();
+        'starting','9999-01-01T00:00:00.000Z','now','now')`).run();
     db.sqlite.prepare(`INSERT INTO test_lease_requests
       (request_id,run_id,node_visit,attempt_id,task_id,candidate_commit,patch_sha256,
        state,created_at,updated_at) VALUES
@@ -49,6 +49,10 @@ test('test marker action derives issue scope from the lease and stops at a new f
     const claims=await verifyCapabilityToken(token,secret);
     assert.equal(claims.leaseId,'lease-1');
     assert.deepEqual(claims.actions,['test_issue_marker_patch']);
+    await assert.rejects(action.handle(claims,{version:1,action:'find',
+      expectationId:'expectation-1'}),/shared_test_marker_agent_inactive/);
+    db.sqlite.prepare(`UPDATE agent_attempts SET state='running'
+      WHERE attempt_id='attempt-1'`).run();
     const invalid=await action.handle(claims,{version:1,action:'insert',
       expectationId:'expectation-1',taskId:'other-issue'});
     assert.equal(invalid.status,400);

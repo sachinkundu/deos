@@ -9,15 +9,15 @@
 - [x] 2.1 Add migrations for the single environment row, stable staging manifest, lease queue, lease and fence history, scoped resources, operations, provider event inbox, proof, cleanup, closure, repair, and first-failure records.
 - [x] 2.2 Implement the app/provider path decision using one saved service-manifest revision and exact patch hash and candidate commit.
 - [x] 2.3 Implement idempotent lease requests, fair queue validation, and atomic single-owner grant against a stable staging base.
-- [ ] 2.4 Implement heartbeat, write-fence checks, dead-waiter expiry, and scheduled recovery without treating age or timeout as proof of a free site.
+- [x] 2.4 Implement heartbeat, write-fence checks, dead-waiter expiry, and scheduled recovery without treating age or timeout as proof of a free site.
 - [x] 2.5 Implement first-error retention across D1 and create-only object storage, preserving the original message, stack, causes, operation, and lease facts.
 
 ## 3. Staging base and isolated test services
 
 - [x] 3.1 Refresh one stable release pointer in the trusted coordinator from two matching staging version reads and full service manifests. Block observed drift or interrupted updates. Assume each returned version serves 100% of traffic.
-- [ ] 3.2 Prepare lease-named test services and stores from fixed staging build inputs, excluding live and staging data bindings and provider secrets.
-- [ ] 3.3 Read each running test service version back and block agent and provider writes until every service matches the saved base.
-- [ ] 3.4 Save plans before remote creates, reconcile uncertain replies by fixed names and work IDs, and retain per-resource ownership and create-fence facts.
+- [x] 3.2 Prepare lease-named test services and stores from fixed staging build inputs, excluding live and staging data bindings and provider secrets.
+- [x] 3.3 Read each running test service version back and block agent and provider writes until every service matches the saved base.
+- [x] 3.4 Save plans before remote creates, reconcile uncertain replies by fixed names and work IDs, and retain per-resource ownership and create-fence facts.
 
 ## 4. Scoped agent, browser, and provider use
 
