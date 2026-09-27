@@ -30,7 +30,8 @@ export function insertTestMarker(description:string,marker:string):string {
     throw new Error('invalid_test_marker');
   if (description.includes(marker)) {
     const lines=description.split('\n').filter(line=>line===marker);
-    if (lines.length!==1) throw new Error('test_marker_ambiguous');
+    if (lines.length!==1 || description.split(marker).length!==2)
+      throw new Error('test_marker_ambiguous');
     return description;
   }
   if (description.includes('<!-- deos-test-v1:')) throw new Error('foreign_test_marker_present');
@@ -40,7 +41,8 @@ export function insertTestMarker(description:string,marker:string):string {
 export function removeTestMarker(description:string,marker:string):string {
   const lines=description.split('\n');
   const matches=lines.flatMap((line,index)=>line===marker?[index]:[]);
-  if (matches.length!==1) throw new Error('test_marker_missing_or_ambiguous');
+  if (matches.length!==1 || description.split(marker).length!==2)
+    throw new Error('test_marker_missing_or_ambiguous');
   const index=matches[0];
   lines.splice(index,1);
   return lines.join('\n');
@@ -53,5 +55,6 @@ export async function testMarkerHashes(before:string,after:string,marker:string)
 }
 
 export function markerIsStandalone(description:string,marker:string):boolean {
-  return description.split('\n').filter(line=>line===marker).length===1;
+  return description.split('\n').filter(line=>line===marker).length===1 &&
+    description.split(marker).length===2;
 }

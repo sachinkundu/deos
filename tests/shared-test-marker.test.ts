@@ -28,4 +28,8 @@ test('foreign and ambiguous marks stop instead of widening an issue patch',async
     /foreign_test_marker/);
   assert.throws(()=>removeTestMarker(`${marker}\n${marker}`,marker),/ambiguous/);
   assert.throws(()=>removeTestMarker(`prefix ${marker}`,marker),/missing_or_ambiguous/);
+  const embeddedCopy=`Task\n${marker}\nHuman note: ${marker}\n`;
+  assert.equal(markerIsStandalone(embeddedCopy,marker),false);
+  assert.throws(()=>insertTestMarker(embeddedCopy,marker),/ambiguous/);
+  assert.throws(()=>removeTestMarker(embeddedCopy,marker),/ambiguous/);
 });
