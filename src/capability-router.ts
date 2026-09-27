@@ -53,6 +53,7 @@ interface OpenRouterCapabilityRequest {
 
 export interface CapabilityRouterDependencies {
   implementation?: Pick<import("./implementation-broker.ts").ImplementationBroker, "handle">;
+  sharedTestMarker?: Pick<import('./shared-test-marker-action.ts').SharedTestMarkerAction,'handle'>;
   completion?: Pick<import("./attempt-completion.ts").AttemptCompletionNotifier, "notify">;
   claude?: Pick<import("./claude-runner.ts").ClaudeRunner, "handle">;
   store: CapabilityStore;
@@ -373,6 +374,13 @@ export class CapabilityRouter {
     if (path.endsWith("/implementation")) {
       if (!this.dependencies.implementation) return json(503, { error: "implementation_unavailable" });
       return this.dependencies.implementation.handle(claims, untrusted);
+    }
+    if (path==='/capabilities/shared-test-marker') {
+      if (!claims.actions.includes('test_issue_marker_patch'))
+        return json(403,{error:'shared_test_marker_denied'});
+      if (!this.dependencies.sharedTestMarker)
+        return json(503,{error:'shared_test_marker_unavailable'});
+      return this.dependencies.sharedTestMarker.handle(claims,untrusted);
     }
     if (completion) {
       if (progress && !claims.actions.includes("implementation.tools")) return json(403, { error: "progress_denied" });

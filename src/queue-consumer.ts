@@ -1,6 +1,7 @@
 import { reconcileImplementations } from "./implementation-reconciliation.ts";
 import {processSharedTestBatch} from './shared-test-queue.ts';
 import {scanSharedTest} from './shared-test-scanner.ts';
+import {SharedTestMarkerAction} from './shared-test-marker-action.ts';
 import { reconcileWorkflowEvents } from './workflow-event-reconciliation.ts';
 import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
 import { IndependentReviewReconciliationController } from './independent-review-reconciliation.ts';
@@ -55,6 +56,11 @@ export { SharedTestAppGate } from './shared-test-app-gate-entrypoint.ts';
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
   implementation: new ImplementationBroker(env),
+  ...((env as Env & {TEST_MARKER_KEY_V1?:string}).TEST_MARKER_KEY_V1 ? {
+    sharedTestMarker:new SharedTestMarkerAction(env.DB,
+      new LinearCapabilityAdapter(env.LINEAR_API_URL,env.LINEAR_APP_ACCESS_TOKEN),
+      (env as Env & {TEST_MARKER_KEY_V1:string}).TEST_MARKER_KEY_V1),
+  } : {}),
   completion: new AttemptCompletionNotifier(env.DB,
     env.ORCHESTRATION_WORKFLOW as unknown as QueueConsumerEnv["ORCHESTRATION_WORKFLOW"]),
   claude: claudeRunner(env),

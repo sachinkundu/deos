@@ -7,6 +7,8 @@ export interface CapabilityClaims {
   runId: string;
   repository: string;
   issueId: string;
+  leaseId?: string;
+  fence?: number;
   actions: readonly CapabilityAction[];
   changeId: string | null;
   planningBranch: string | null;
@@ -18,6 +20,7 @@ export interface CapabilityClaims {
 
 export type CapabilityAction =
   | "implementation.tools"
+  | "test_issue_marker_patch"
   | "github.clone_repository"
   | "github.publish_work_product"
   | "github.publish_planning_work_product"
@@ -27,6 +30,7 @@ export type CapabilityAction =
 
 const CAPABILITY_ACTIONS = new Set<CapabilityAction>([
   "implementation.tools",
+  "test_issue_marker_patch",
   "github.clone_repository",
   "github.publish_work_product",
   "github.publish_planning_work_product",
@@ -110,12 +114,17 @@ export const verifyCapabilityToken = async (
     claims.expiresAt <= Math.floor(nowMs / 1000)
   ) throw new Error("capability token claims are invalid or expired");
   const planning = claims.actions.includes("github.publish_planning_work_product");
+  const sharedTestMarker = claims.actions.includes("test_issue_marker_patch");
   const openRouterReview = claims.actions.includes("model.openrouter_review");
   const claudeReview = claims.actions.includes("model.claude_review");
   const modelReview = openRouterReview || claudeReview;
   const workActions = claims.actions.filter((action) => action !== "github.clone_repository");
   if (
     planning !== (claims.changeId !== null && claims.planningBranch !== null) ||
+    (sharedTestMarker !== (typeof claims.leaseId === 'string' &&
+      claims.leaseId.length > 0 && Number.isSafeInteger(claims.fence) &&
+      (claims.fence ?? 0) > 0)) ||
+    (sharedTestMarker && workActions.length !== 1) ||
     (planning && workActions.length !== 1) ||
     (claims.changeId !== null && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(claims.changeId)) ||
     (claims.planningBranch !== null && !/^deos\/planning\/[a-f0-9]{24}$/.test(claims.planningBranch)) ||
