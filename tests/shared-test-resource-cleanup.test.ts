@@ -79,7 +79,27 @@ test('cleanup removes Worker before stores, reads each absent twice, and is repe
       WHERE lease_id=? AND read_state='absent'`).get(leaseId)?.n,3);
     const count=calls.length;
     await cleanup.resume(input);
-    assert.equal(calls.length,count);
+    assert.equal(calls.length,count+2*(stores.length+1));
+  } finally {db.close();}
+});
+
+test('cleanup keeps ownership if an already absent resource reappears',async()=>{
+  const db=fixture();
+  try {
+    const cleanup=new SharedTestResourceCleanup(db as unknown as D1Database,{
+      lookup:async()=>null,remove:async()=>{},
+    },{lookup:async()=>null,create:async()=>'',remove:async()=>{}});
+    const input={runId,leaseId,createFence:1,cleanupFence:2};
+    await cleanup.resume(input);
+    const late=new SharedTestResourceCleanup(db as unknown as D1Database,{
+      lookup:async()=>({workerName:service.workerName,
+        sourceCommit:service.base.sourceCommit,
+        baseVersionId:service.base.deployVersion,
+        buildInputSha256:service.base.buildInputSha256}),
+      remove:async()=>{throw new Error('must not remove after recorded absence');},
+    },{lookup:async()=>null,create:async()=>'',remove:async()=>{}});
+    await assert.rejects(late.resume(input),/worker_reappeared/);
+    assert.equal(db.sqlite.prepare('SELECT state FROM test_environment').get()?.state,'cleaning');
   } finally {db.close();}
 });
 

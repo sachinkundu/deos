@@ -110,7 +110,13 @@ export class SharedTestResourceCleanup {
         continue;
       }
       SharedTestResourceCleanup.owned(row,plan);
-      if (row.plan_state==='absent') continue;
+      if (row.plan_state==='absent') {
+        for (let read=0;read<2;read++) {
+          if (await this.workers.lookup(plan))
+            throw new Error(`shared_test_cleanup_worker_reappeared:${service.resourceId}`);
+        }
+        continue;
+      }
       const found=await this.workers.lookup(plan);
       if (found && (found.workerName!==service.workerName ||
           found.sourceCommit!==service.base.sourceCommit ||
@@ -149,7 +155,13 @@ export class SharedTestResourceCleanup {
         continue;
       }
       SharedTestResourceCleanup.owned(row,plan);
-      if (row.plan_state==='absent') continue;
+      if (row.plan_state==='absent') {
+        for (let read=0;read<2;read++) {
+          if (await this.stores.lookup(plan))
+            throw new Error(`shared_test_cleanup_store_reappeared:${store.resourceId}`);
+        }
+        continue;
+      }
       const found=await this.stores.lookup(plan);
       if (found && row.plan_state==='planned')
         throw new Error(`shared_test_cleanup_unplanned_store:${store.resourceId}`);
