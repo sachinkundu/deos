@@ -11,10 +11,10 @@ export interface SharedTestBuildInput {
   files:readonly SharedTestBuildFile[];
 }
 
-const paths:Record<string,{worker:string;assets:string}>={
-  portal:{worker:'portal-worker/worker.js',assets:'portal/dist/'},
+const paths:Record<string,{worker:string;assets:string;migrations:string|null}>={
+  portal:{worker:'portal-worker/worker.js',assets:'portal/dist/',migrations:'migrations/'},
   bettaview:{worker:'portal/bettaview/worker/index.js',
-    assets:'portal/bettaview/dist/'},
+    assets:'portal/bettaview/dist/',migrations:null},
 };
 
 function bytes(value:string):Uint8Array {
@@ -51,19 +51,23 @@ function pythonPathOrder(a:string,b:string):number {
 /** Same source-and-file digest as scripts/portal_release.py:artifact_digest. */
 export async function verifiedSharedTestBuild(input:SharedTestBuildInput,
   base:StagingServiceRead):Promise<{worker:Uint8Array;
-    assets:ReadonlyMap<string,Uint8Array>;sha256:string}> {
+    assets:ReadonlyMap<string,Uint8Array>;
+    migrations:ReadonlyMap<string,Uint8Array>;sha256:string}> {
   const scope=paths[input.serviceName];
   if (!scope || input.serviceName!==base.serviceName ||
       input.sourceCommit!==base.sourceCommit ||
       !/^[a-f0-9]{40}$/.test(input.sourceCommit) ||
       !/^[a-f0-9]{64}$/.test(base.buildInputSha256) ||
-      !Array.isArray(input.files) || input.files.length<2 || input.files.length>2000)
+      !Array.isArray(input.files) || input.files.length<(scope.migrations?3:2) ||
+      input.files.length>2000)
     throw new Error('invalid_test_build_subject');
   const files=new Map<string,Uint8Array>();
   let total=0;
   for (const file of input.files) {
     if (!file || typeof file.path!=='string' ||
-        !(file.path===scope.worker || file.path.startsWith(scope.assets)) ||
+        !(file.path===scope.worker || file.path.startsWith(scope.assets) ||
+          (scope.migrations && file.path.startsWith(scope.migrations) &&
+            file.path.endsWith('.sql'))) ||
         file.path.endsWith('/') || file.path.includes('\\') ||
         file.path.split('/').includes('..') || files.has(file.path))
       throw new Error('invalid_test_build_path');
@@ -73,7 +77,8 @@ export async function verifiedSharedTestBuild(input:SharedTestBuildInput,
     files.set(file.path,content);
   }
   const worker=files.get(scope.worker);
-  if (!worker?.byteLength || ![...files.keys()].some(path=>path.startsWith(scope.assets)))
+  if (!worker?.byteLength || ![...files.keys()].some(path=>path.startsWith(scope.assets)) ||
+      (scope.migrations && !files.has('migrations/0001_initial.sql')))
     throw new Error('test_build_input_incomplete');
   const encoder=new TextEncoder();
   const chunks:Uint8Array[]=[encoder.encode(input.sourceCommit)];
@@ -89,5 +94,6 @@ export async function verifiedSharedTestBuild(input:SharedTestBuildInput,
   if (sha256!==base.buildInputSha256)
     throw new Error('test_build_input_digest_mismatch');
   return {worker,assets:new Map([...files.entries()].filter(([path])=>path.startsWith(scope.assets))),
-    sha256};
+    migrations:new Map([...files.entries()].filter(([path])=>
+      scope.migrations && path.startsWith(scope.migrations))),sha256};
 }

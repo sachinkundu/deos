@@ -241,7 +241,9 @@ def deploy(target):
         "--external:cloudflare:*", "--external:node:*",
         "--outfile=" + str(ROOT / "portal-worker/worker.js"))
     worker_bundle = ROOT / "portal-worker/worker.js"
-    build_files = [worker_bundle, *(path for path in (ROOT / "portal/dist").rglob("*") if path.is_file())]
+    build_files = [worker_bundle,
+                   *(path for path in (ROOT / "portal/dist").rglob("*") if path.is_file()),
+                   *sorted((ROOT / "migrations").glob("*.sql"))]
     build_input_sha256 = artifact_digest(sha, build_files)
     if clean_checkout() != sha:
         raise ValueError("Build changed source checkout")

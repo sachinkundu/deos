@@ -140,6 +140,9 @@ work uses the same path rule. It needs no special label.
 | 8 | Save a resource plan before each call that may create a remote item. | The plan has one work ID, safe provider name, lease, run, and fence. A retry finds the same item. |
 
 The portal test service gets its own lease-named D1 database and R2 bucket.
+The staging portal build bundle also pins the SQL migration files. The trusted
+coordinator applies that schema to the empty lease database before the test
+Worker serves app traffic; it never copies staging rows into the lease.
 Its activation check requires both records to have confirmed remote identities.
 The BettaView session Durable Object belongs to its separate lease-named Worker.
 A lost store-create response leaves the saved plan uncertain; recovery looks up

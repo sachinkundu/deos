@@ -15,4 +15,8 @@ test('version readback is available without a session and contains only deployme
     buildInputSha256:env.BETTAVIEW_BUILD_INPUT_SHA256,versionId:'provider-version'});
   assert.equal((await routeBettaViewRequest(new Request(
     'https://bettaview-staging.voxdez.com/api/version',{method:'POST'}),env,denied)).status,405);
+  const lease=await routeBettaViewRequest(
+    new Request('https://test.apps.deos-test.voxdez.com/api/version'),
+    {...env,TEST_BASE_VERSION_ID:'11111111-1111-4111-8111-111111111111'},denied);
+  assert.equal((await lease.json()).baseVersionId,'11111111-1111-4111-8111-111111111111');
 });

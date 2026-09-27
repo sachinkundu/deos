@@ -5,6 +5,7 @@ import {verifiedSharedTestBuild} from '../src/shared-test-build-input.ts';
 
 const sourceCommit='a'.repeat(40);
 const files=[
+  {path:'migrations/0001_initial.sql',content:Buffer.from('CREATE TABLE example (id TEXT);')},
   {path:'portal/dist/index.html',content:Buffer.from('<h1>test</h1>')},
   {path:'portal-worker/worker.js',content:Buffer.from('export default {fetch(){return new Response("ok")}}')},
 ];
@@ -33,8 +34,10 @@ test('accepts only the exact pinned release bytes, independent of input order',a
     files:[...files].reverse().map(file=>({path:file.path,
       contentBase64:file.content.toString('base64')}))},base);
   assert.equal(result.sha256,base.buildInputSha256);
-  assert.equal(Buffer.from(result.worker).toString(),files[1].content.toString());
+  assert.equal(Buffer.from(result.worker).toString(),files[2].content.toString());
   assert.equal(Buffer.from(result.assets.get('portal/dist/index.html')!).toString(),
+    files[1].content.toString());
+  assert.equal(Buffer.from(result.migrations.get('migrations/0001_initial.sql')!).toString(),
     files[0].content.toString());
 });
 
@@ -43,9 +46,9 @@ test('rejects modified or out-of-scope bytes before provisioning',async()=>{
     path:file.path,contentBase64:file.content.toString('base64')}))};
   await assert.rejects(verifiedSharedTestBuild({...input,files:[
     {...input.files[0],contentBase64:Buffer.from('changed').toString('base64')},
-    input.files[1]]},base),/test_build_input_digest_mismatch/);
+    input.files[1],input.files[2]]},base),/test_build_input_digest_mismatch/);
   await assert.rejects(verifiedSharedTestBuild({...input,files:[
-    {...input.files[0],path:'portal/dist/../secret'},input.files[1]]},base),
+    {...input.files[0],path:'portal/dist/../secret'},input.files[1],input.files[2]]},base),
   /invalid_test_build_path/);
   await assert.rejects(verifiedSharedTestBuild({...input,sourceCommit:'b'.repeat(40)},base),
     /invalid_test_build_subject/);

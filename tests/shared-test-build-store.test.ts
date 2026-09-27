@@ -6,9 +6,11 @@ import {SharedTestBuildStore,sharedTestBuildKey} from '../src/shared-test-build-
 const sourceCommit='c'.repeat(40);
 const worker=Buffer.from('export default {}');
 const asset=Buffer.from('<html>test</html>');
+const migration=Buffer.from('CREATE TABLE example (id TEXT);');
 const hash=createHash('sha256').update(sourceCommit);
 for (const [path,content] of [
-  ['portal/dist/index.html',asset],['portal-worker/worker.js',worker],
+  ['migrations/0001_initial.sql',migration],['portal/dist/index.html',asset],
+  ['portal-worker/worker.js',worker],
 ] as const) {
   const name=Buffer.from(path),length=Buffer.alloc(4),size=Buffer.alloc(8);
   length.writeUInt32BE(name.byteLength);
@@ -18,6 +20,7 @@ for (const [path,content] of [
 const base={serviceName:'portal',sourceCommit,deployVersion:'version-1',
   buildInputSha256:hash.digest('hex'),trafficPercent:100};
 const payload=JSON.stringify({serviceName:'portal',sourceCommit,files:[
+  {path:'migrations/0001_initial.sql',contentBase64:migration.toString('base64')},
   {path:'portal-worker/worker.js',contentBase64:worker.toString('base64')},
   {path:'portal/dist/index.html',contentBase64:asset.toString('base64')},
 ]});
@@ -37,6 +40,7 @@ test('missing or changed build artifact keeps provisioning closed',async()=>{
   await assert.rejects(new SharedTestBuildStore(missing).read(base),
     /test_build_artifact_missing/);
   const tampered=JSON.stringify({...JSON.parse(payload),files:[
+    {path:'migrations/0001_initial.sql',contentBase64:migration.toString('base64')},
     {path:'portal-worker/worker.js',contentBase64:Buffer.from('changed').toString('base64')},
     {path:'portal/dist/index.html',contentBase64:asset.toString('base64')},
   ]});

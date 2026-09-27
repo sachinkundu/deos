@@ -16,20 +16,24 @@ def test_bundle_matches_staging_digest_and_rejects_modified_bytes(tmp_path, monk
     monkeypatch.setattr(shared_test_build_bundle, "ROOT", tmp_path)
     worker = tmp_path / "portal-worker/worker.js"
     asset = tmp_path / "portal/dist/index.html"
+    migration = tmp_path / "migrations/0001_initial.sql"
     worker.parent.mkdir(parents=True)
     asset.parent.mkdir(parents=True)
+    migration.parent.mkdir(parents=True)
     worker.write_text("export default {}")
     asset.write_text("<h1>test</h1>")
+    migration.write_text("CREATE TABLE example (id TEXT);")
     sha = "a" * 40
-    digest = portal_release.artifact_digest(sha, [worker, asset])
-    saved = json.loads(shared_test_build_bundle.bundle("portal", sha, [asset, worker], digest))
+    files = [worker, asset, migration]
+    digest = portal_release.artifact_digest(sha, files)
+    saved = json.loads(shared_test_build_bundle.bundle("portal", sha, files, digest))
     assert saved["serviceName"] == "portal"
     assert [item["path"] for item in saved["files"]] == [
-        "portal/dist/index.html", "portal-worker/worker.js"
+        "migrations/0001_initial.sql", "portal/dist/index.html", "portal-worker/worker.js"
     ]
     asset.write_text("changed")
     with pytest.raises(ValueError, match="differ from staging digest"):
-        shared_test_build_bundle.bundle("portal", sha, [worker, asset], digest)
+        shared_test_build_bundle.bundle("portal", sha, files, digest)
 
 
 def test_publish_reads_back_the_exact_r2_object(tmp_path, monkeypatch):
@@ -37,12 +41,16 @@ def test_publish_reads_back_the_exact_r2_object(tmp_path, monkeypatch):
     monkeypatch.setattr(shared_test_build_bundle, "ROOT", tmp_path)
     worker = tmp_path / "portal-worker/worker.js"
     asset = tmp_path / "portal/dist/index.html"
+    migration = tmp_path / "migrations/0001_initial.sql"
     worker.parent.mkdir(parents=True)
     asset.parent.mkdir(parents=True)
+    migration.parent.mkdir(parents=True)
     worker.write_text("export default {}")
     asset.write_text("ok")
+    migration.write_text("CREATE TABLE example (id TEXT);")
     sha = "b" * 40
-    digest = portal_release.artifact_digest(sha, [worker, asset])
+    files = [worker, asset, migration]
+    digest = portal_release.artifact_digest(sha, files)
     uploaded = None
 
     def fake_run(*args):
@@ -55,6 +63,6 @@ def test_publish_reads_back_the_exact_r2_object(tmp_path, monkeypatch):
             raise AssertionError(args)
 
     monkeypatch.setattr(shared_test_build_bundle, "run", fake_run)
-    key = shared_test_build_bundle.publish("portal", sha, [worker, asset], digest)
+    key = shared_test_build_bundle.publish("portal", sha, files, digest)
     assert key == f"shared-test/builds/portal/{sha}/{digest}.json"
     assert uploaded is not None

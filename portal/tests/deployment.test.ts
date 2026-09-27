@@ -51,3 +51,16 @@ test("safe version endpoint exposes only deployment metadata and never reads sto
     async () => ({ email: "test@example.com" }));
   assert.equal(post.status, 405);
 });
+
+test("lease Worker version names the pinned staging base", () => {
+  assert.deepEqual(deploymentMetadata({PORTAL_CANONICAL_HOST:'portal-test.apps.deos-test.voxdez.com',
+    PORTAL_SITE:'Test',
+    PORTAL_SOURCE_SHA:'a'.repeat(40),PORTAL_BUILD_INPUT_SHA256:'b'.repeat(64),
+    TEST_BASE_VERSION_ID:'11111111-1111-4111-8111-111111111111',
+    CF_VERSION_METADATA:{id:'22222222-2222-4222-8222-222222222222'}}),{
+    site:'Test',canonicalHost:'portal-test.apps.deos-test.voxdez.com',
+    sourceBranch:'local',sourceSha:'a'.repeat(40),buildInputSha256:'b'.repeat(64),
+    baseVersionId:'11111111-1111-4111-8111-111111111111',
+    versionId:'22222222-2222-4222-8222-222222222222',
+  });
+});

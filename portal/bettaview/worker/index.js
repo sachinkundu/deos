@@ -169,6 +169,7 @@ export async function routeBettaViewRequest(request, env, authenticate = verifyA
       sourceSha: env.BETTAVIEW_SOURCE_SHA ?? null,
       buildInputSha256: env.BETTAVIEW_BUILD_INPUT_SHA256 ?? null,
       versionId: env.CF_VERSION_METADATA?.id ?? null,
+      ...(env.TEST_BASE_VERSION_ID ? {baseVersionId:env.TEST_BASE_VERSION_ID} : {}),
     });
   }
   const accessToken = accessTokenFromRequest(request);
