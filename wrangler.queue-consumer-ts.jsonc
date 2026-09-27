@@ -53,6 +53,7 @@
     "TRIAL_REPOSITORY": "sachinkundu/deos-sample-project",
     "TRIAL_DISPATCH_ENABLED": "false",
     "SHARED_TEST_GRANTS_ENABLED": "false",
+    "SHARED_TEST_ZONE_ID": "8a120356c46d1557fbf7fec6cbed7a19",
     "CODEX_AUTH_PROFILE_ID": "controlled-trial",
     "SANDBOX_FAILURE_RETENTION_MINUTES": "0",
     "CAPABILITY_BASE_URL": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities",

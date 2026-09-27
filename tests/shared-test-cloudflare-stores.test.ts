@@ -34,6 +34,8 @@ test('Cloudflare store calls use exact names and keep the credential out of erro
 test('Cloudflare deletes only a saved database ID or exact bucket name',async()=>{
   const paths:string[]=[];
   const fetcher=async(input:RequestInfo|URL,init?:RequestInit)=>{
+    if(String(input).includes('/objects?per_page='))
+      return Response.json({success:true,result:[]});
     assert.equal(init?.method,'DELETE');
     paths.push(String(input));
     return Response.json({success:true,result:{}});
@@ -49,4 +51,28 @@ test('Cloudflare deletes only a saved database ID or exact bucket name',async()=
     `https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${id}`,
     `https://api.cloudflare.com/client/v4/accounts/${account}/r2/buckets/${r2.providerKey}`,
   ]);
+});
+
+test('R2 cleanup deletes only listed objects and reads empty twice before bucket deletion',async()=>{
+  const calls:string[]=[];
+  let present=true;
+  const fetcher:typeof fetch=async(input,init)=>{
+    const url=String(input),method=init?.method??'GET';
+    calls.push(`${method} ${new URL(url).pathname}`);
+    if(method==='GET'&&url.includes('/objects?per_page='))
+      return Response.json({success:true,result:present?[{key:'nested/check.txt'}]:[]});
+    if(method==='DELETE'&&url.endsWith('/objects/nested/check.txt')) {
+      present=false;return Response.json({success:true,result:{key:'nested/check.txt'}});
+    }
+    if(method==='DELETE'&&url.endsWith(`/r2/buckets/${r2.providerKey}`)) {
+      assert.equal(present,false);
+      assert.ok(calls.filter(value=>value.startsWith('GET')).length>=3);
+      return Response.json({success:true,result:{}});
+    }
+    throw new Error(`unexpected ${method} ${url}`);
+  };
+  await new SharedTestCloudflareStores(account,'narrow-secret',fetcher)
+    .remove(r2,r2.providerKey);
+  assert.ok(calls.includes(`DELETE /client/v4/accounts/${account}/r2/buckets/`+
+    `${r2.providerKey}/objects/nested/check.txt`));
 });

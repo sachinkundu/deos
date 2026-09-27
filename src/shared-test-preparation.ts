@@ -31,7 +31,7 @@ export class SharedTestPreparation {
     this.schema=new SharedTestSchemaProvisioner(db,schemaProvider);
   }
 
-  async prepare(input:SharedTestPrepareInput,at=new Date()):Promise<ReadonlyMap<string,VerifiedBuild>> {
+  async prepare(input:SharedTestPrepareInput):Promise<ReadonlyMap<string,VerifiedBuild>> {
     const services=sharedTestServicePlans(input.leaseId,input.base);
     const stores=sharedTestStorePlans(input.leaseId,input.base);
     const verified=new Map<string,VerifiedBuild>();
@@ -45,12 +45,12 @@ export class SharedTestPreparation {
         leaseId:input.leaseId,fence:input.fence,kind:store.kind,
         providerKey:store.providerName,workId:store.workId})),
     ];
-    for (const plan of plans) await this.resources.plan(plan,at);
-    await this.stores.provision(input,at);
+    for (const plan of plans) await this.resources.plan(plan);
+    await this.stores.provision(input);
     const portal=verified.get('portal');
     if (!portal) throw new Error('shared_test_portal_build_missing');
     await this.schema.apply(input,portal);
-    await this.workers.provision(input,verified,at);
+    await this.workers.provision(input,verified);
     return verified;
   }
 }

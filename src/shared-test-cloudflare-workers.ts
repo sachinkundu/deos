@@ -93,6 +93,20 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     return `/workers/scripts/${plan.service.workerName}`;
   }
 
+  private async assertFence(plan:TestWorkerPlan):Promise<void> {
+    const row=await this.db.prepare(`SELECT 1 AS allowed FROM test_resources r
+      JOIN test_environment e ON e.owner_lease_id=r.lease_id
+        AND e.owner_run_id=r.run_id WHERE r.resource_id=? AND r.run_id=?
+        AND r.lease_id=? AND r.create_fence=? AND r.work_id=?
+        AND r.provider_key=? AND r.plan_state IN ('creating','uncertain','created')
+        AND e.site_id=1 AND e.state='preparing' AND e.fence=?
+        AND e.heartbeat_due_at>?`)
+      .bind(plan.resourceId,plan.runId,plan.leaseId,plan.fence,
+        plan.workId,plan.providerKey,plan.fence,new Date().toISOString())
+      .first<{allowed:number}>();
+    if(row?.allowed!==1)throw new Error('shared_test_worker_write_fenced');
+  }
+
   private async domains():Promise<Array<{id:string;hostname:string;service:string;zone_id:string}>> {
     const value=await this.api('/workers/domains');
     if(!Array.isArray(value))throw new Error('shared_test_worker_domains_invalid');
@@ -128,6 +142,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     if(matches.length>1 || matches.some(value=>value.service!==plan.service.workerName ||
       value.zone_id!==this.zoneId))throw new Error('shared_test_worker_domain_conflict');
     if(matches.length===0) {
+      await this.assertFence(plan);
       await this.api('/workers/domains',{method:'PUT',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({hostname:plan.service.canonicalHost,
           service:plan.service.workerName,zone_id:this.zoneId})});
@@ -157,6 +172,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
 
   private async uploadAssets(plan:TestWorkerPlan,build:VerifiedBuild):Promise<string> {
     const {manifest,byHash}=await assets(build,plan.service.serviceName);
+    await this.assertFence(plan);
     const session=await this.api(`${this.root(plan)}/assets-upload-session`,{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({manifest}),
     }) as {jwt?:unknown;buckets?:unknown};
@@ -171,6 +187,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
         const asset=byHash.get(hash)!;
         form.set(hash,new Blob([base64(asset.bytes)],{type:asset.type}),hash);
       }
+      await this.assertFence(plan);
       const result=await this.api('/workers/assets/upload?base64=true',
         {method:'POST',body:form},false,session.jwt) as {jwt?:unknown};
       if(typeof result.jwt==='string')completion=result.jwt;
@@ -232,6 +249,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
       form.set(name,new Blob([new Uint8Array(bytes)],
         {type:'application/javascript+module'}),name);
     }
+    await this.assertFence(plan);
     await this.api(this.root(plan),{method:'PUT',body:form});
     await this.complete(plan);
   }

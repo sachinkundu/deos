@@ -8,7 +8,7 @@ interface StorePlan extends SharedTestResourcePlan {
 
 export interface TestStoreProvider {
   lookup(plan:StorePlan):Promise<string|null>;
-  create(plan:StorePlan):Promise<string>;
+  create(plan:StorePlan,assertFence?:()=>Promise<void>):Promise<string>;
 }
 
 export interface TestStoreCleanupProvider extends TestStoreProvider {
@@ -24,15 +24,15 @@ export class SharedTestStoreProvisioner {
   }
 
   async provision(input:{runId:string;leaseId:string;fence:number;
-    base:StableStagingBase},at=new Date()):Promise<StorePlan[]> {
+    base:StableStagingBase}):Promise<StorePlan[]> {
     const plans:StorePlan[]=sharedTestStorePlans(input.leaseId,input.base).map(plan=>({
       resourceId:plan.resourceId,runId:input.runId,leaseId:input.leaseId,
       fence:input.fence,kind:plan.kind,providerKey:plan.providerName,
       workId:plan.workId,
     }));
-    for (const plan of plans) await this.resources.plan(plan,at);
+    for (const plan of plans) await this.resources.plan(plan);
     for (const plan of plans) {
-      const row=await this.resources.plan(plan,at);
+      const row=await this.resources.plan(plan);
       const found=await this.provider.lookup(plan);
       if (row.plan_state==='created') {
         if (!found || found!==row.remote_id)
@@ -41,16 +41,18 @@ export class SharedTestStoreProvisioner {
       }
       if (row.plan_state==='creating' || row.plan_state==='uncertain') {
         if (!found) throw new Error(`shared_test_store_reconcile_pending:${plan.resourceId}`);
-        await this.resources.created(plan,found,at);
+        await this.resources.created(plan,found);
         continue;
       }
       if (row.plan_state!=='planned' || found)
         throw new Error(`shared_test_store_name_conflict:${plan.resourceId}`);
-      await this.resources.beginCreate(plan,at);
+      await this.resources.beginCreate(plan);
       let remoteId:string;
-      try {remoteId=await this.provider.create(plan);}
+      try {remoteId=await this.provider.create(plan,async()=>{
+        await this.resources.plan(plan);
+      });}
       catch (error) {
-        try {await this.resources.uncertain(plan,plan.providerKey,at);}
+        try {await this.resources.uncertain(plan,plan.providerKey);}
         catch (secondary) {
           throw new AggregateError([error,secondary],
             `Test store create and uncertainty save failed: ${plan.resourceId}`,{cause:error});
@@ -58,7 +60,7 @@ export class SharedTestStoreProvisioner {
         throw error;
       }
       if (!remoteId) throw new Error(`shared_test_store_create_id_missing:${plan.resourceId}`);
-      await this.resources.created(plan,remoteId,at);
+      await this.resources.created(plan,remoteId);
     }
     return plans;
   }

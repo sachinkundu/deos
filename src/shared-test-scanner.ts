@@ -3,8 +3,9 @@ import {SharedTestFailureStore} from './shared-test-failures.ts';
 import {SharedTestLeaseStore} from './shared-test-lease.ts';
 import {SharedTestStagingPointer} from './shared-test-staging-pointer.ts';
 import {SharedTestRecovery} from './shared-test-recovery.ts';
+import {SharedTestLeaseDriver,type SharedTestDriverEnv} from './shared-test-lease-driver.ts';
 
-type ScanEnv=Pick<Env,'DB'|'ARTIFACTS'|'SHARED_TEST_GRANTS_ENABLED'|
+type ScanEnv=SharedTestDriverEnv & Pick<Env,'SHARED_TEST_GRANTS_ENABLED'|
   'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {TEST_MARKER_KEY_V1?:string};
 
 /** One scheduled scan. An expired owner always waits for cleanup and a later scan. */
@@ -22,6 +23,8 @@ export async function scanSharedTest(env:ScanEnv,
     const fencedOwner=await lease.fenceExpired();
     operation='shared_test.recover';
     await new SharedTestRecovery(env).resume();
+    operation='shared_test.prepare_activate';
+    await new SharedTestLeaseDriver(env).resume();
     // A dead waiter or expired owner never hands the site to the next run
     // in the same scan. Cleanup and a later independent scan must prove it free.
     if (!expiredHead && !fencedOwner && String(env.SHARED_TEST_GRANTS_ENABLED)==='true') {

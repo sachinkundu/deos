@@ -61,6 +61,7 @@ test('lease Worker upload binds only its stores and gate, then attaches its fixe
   };
   const db={prepare:(sql:string)=>({bind:(...args:unknown[])=>({first:async()=>{
     assert.match(sql,/test_resources/);
+    if(sql.includes('AS allowed'))return {allowed:1};
     const kind=args[3];
     return {remote_id:kind==='d1_database'?
       '00000000-0000-4000-8000-000000000001':
@@ -97,4 +98,28 @@ test('a lease Worker host already assigned elsewhere is refused before upload',a
   const provider=new SharedTestCloudflareWorkers({} as D1Database,
     'd'.repeat(32),'e'.repeat(32),'test-token',fetcher);
   await assert.rejects(provider.create(plan,build),/domain_conflict/);
+});
+
+test('an expired lease is refused before the first asset write',async()=>{
+  let writes=0;
+  const fetcher:typeof fetch=async(input,init)=>{
+    const path=new URL(String(input)).pathname;
+    if(init?.method==='POST'||init?.method==='PUT')writes++;
+    if(path.endsWith('/settings'))return new Response('missing',{status:404});
+    if(path.endsWith('/workers/domains'))return Response.json({success:true,result:[]});
+    throw new Error(`unexpected ${path}`);
+  };
+  const db={prepare:(sql:string)=>({bind:(...args:unknown[])=>({first:async()=>{
+    if(sql.includes('AS allowed'))return null;
+    const d1=args[3]==='d1_database';
+    return {plan_state:'created',provider_key:d1?
+      `deos-test-portal-db-${leaseId.slice(0,32)}`:
+      `deos-test-portal-artifacts-${leaseId.slice(0,32)}`,
+    remote_id:d1?'00000000-0000-4000-8000-000000000001':
+      `deos-test-portal-artifacts-${leaseId.slice(0,32)}`};
+  }})})} as unknown as D1Database;
+  const provider=new SharedTestCloudflareWorkers(db,
+    'd'.repeat(32),'e'.repeat(32),'test-token',fetcher);
+  await assert.rejects(provider.create(plan,build),/write_fenced/);
+  assert.equal(writes,0);
 });
