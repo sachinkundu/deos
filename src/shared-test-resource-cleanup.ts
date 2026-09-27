@@ -67,9 +67,14 @@ export class SharedTestResourceCleanup {
   }
 
   private async row(resourceId:string,runId:string,leaseId:string,
-    fence:number):Promise<Resource> {
-    const row=await this.resources.cleanupScope({resourceId,runId,leaseId,fence});
-    return row;
+    fence:number):Promise<Resource|null> {
+    const exists=await this.db.prepare(`SELECT run_id,lease_id FROM test_resources
+      WHERE resource_id=?`).bind(resourceId)
+      .first<{run_id:string;lease_id:string}>();
+    if (!exists) return null;
+    if (exists.run_id!==runId || exists.lease_id!==leaseId)
+      throw new Error(`shared_test_cleanup_resource_identity_changed:${resourceId}`);
+    return this.resources.cleanupScope({resourceId,runId,leaseId,fence});
   }
 
   private static owned(row:Resource,expected:{resourceId:string;runId:string;
@@ -95,6 +100,15 @@ export class SharedTestResourceCleanup {
         workId:service.workId,service};
       const row=await this.row(plan.resourceId,input.runId,input.leaseId,
         input.cleanupFence);
+      if (!row) {
+        // Preparation may have failed before this item was planned. It cannot be
+        // deleted without a ledger row, and a remote collision must block close.
+        for (let read=0;read<2;read++) {
+          if (await this.workers.lookup(plan))
+            throw new Error(`shared_test_cleanup_unplanned_worker:${service.resourceId}`);
+        }
+        continue;
+      }
       SharedTestResourceCleanup.owned(row,plan);
       if (row.plan_state==='absent') continue;
       const found=await this.workers.lookup(plan);
@@ -127,6 +141,13 @@ export class SharedTestResourceCleanup {
         providerKey:store.providerName,workId:store.workId};
       const row=await this.row(plan.resourceId,input.runId,input.leaseId,
         input.cleanupFence);
+      if (!row) {
+        for (let read=0;read<2;read++) {
+          if (await this.stores.lookup(plan))
+            throw new Error(`shared_test_cleanup_unplanned_store:${store.resourceId}`);
+        }
+        continue;
+      }
       SharedTestResourceCleanup.owned(row,plan);
       if (row.plan_state==='absent') continue;
       const found=await this.stores.lookup(plan);

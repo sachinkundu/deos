@@ -120,3 +120,44 @@ test('cleanup cannot delete before proof or after another cleanup fence takes ov
     assert.equal(removes,0);
   } finally {db.close();}
 });
+
+test('cleanup can finish after preparation stopped before any resource plan',async()=>{
+  const db=fixture();
+  try {
+    db.sqlite.prepare('DELETE FROM test_resources WHERE lease_id=?').run(leaseId);
+    let workerReads=0,storeReads=0,removes=0;
+    const cleanup=new SharedTestResourceCleanup(db as unknown as D1Database,{
+      lookup:async()=>{workerReads++;return null;},
+      remove:async()=>{removes++;},
+    },{
+      lookup:async()=>{storeReads++;return null;},
+      create:async()=>{throw new Error('unexpected create');},
+      remove:async()=>{removes++;},
+    });
+    await cleanup.resume({runId,leaseId,createFence:1,cleanupFence:2});
+    assert.equal(workerReads,2);
+    assert.equal(storeReads,stores.length*2);
+    assert.equal(removes,0);
+    assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS n FROM test_cleanup_checks').get()?.n,0);
+  } finally {db.close();}
+});
+
+test('cleanup holds the site if an unplanned remote resource exists',async()=>{
+  const db=fixture();
+  try {
+    db.sqlite.prepare('DELETE FROM test_resources WHERE resource_id=?')
+      .run(service.resourceId);
+    let removes=0;
+    const cleanup=new SharedTestResourceCleanup(db as unknown as D1Database,{
+      lookup:async()=>({workerName:service.workerName,
+        sourceCommit:service.base.sourceCommit,
+        baseVersionId:service.base.deployVersion,
+        buildInputSha256:service.base.buildInputSha256}),
+      remove:async()=>{removes++;},
+    },{lookup:async()=>null,create:async()=>'',remove:async()=>{removes++;}});
+    await assert.rejects(cleanup.resume({runId,leaseId,createFence:1,
+      cleanupFence:2}),/unplanned_worker/);
+    assert.equal(removes,0);
+    assert.equal(db.sqlite.prepare('SELECT state FROM test_environment').get()?.state,'cleaning');
+  } finally {db.close();}
+});
