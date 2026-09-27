@@ -279,6 +279,30 @@ test("progress hints require implementation authority and cannot supply counts o
   assert.equal((await invoke({version:1})).status,403);
 });
 
+test('shared test marker route requires its lease-scoped authority and live attempt',async()=>{
+  const store=new Store(),calls:unknown[]=[];
+  const router=new CapabilityRouter({store,github:{} as never,linear:{} as never,
+    signingSecret:SECRET,now:()=>NOW,
+    sharedTestMarker:{async handle(grant,value){calls.push({grant,value});
+      return Response.json({accepted:true});}},
+  });
+  const scoped={...claims,actions:['test_issue_marker_patch'] as const,
+    leaseId:'lease-1',fence:1};
+  const token=await mintCapabilityToken(scoped,SECRET);
+  const other=await mintCapabilityToken(claims,SECRET);
+  const invoke=(grant:string)=>router.handle(new Request(
+    'https://worker.example/capabilities/shared-test-marker',{method:'POST',
+      headers:{Authorization:`Bearer ${grant}`,'Deos-Attempt':claims.attemptId},
+      body:JSON.stringify({version:1,action:'find',expectationId:'expectation-1'}),
+    }));
+  assert.equal((await invoke(other)).status,403);
+  assert.equal((await invoke(token)).status,200);
+  assert.equal(calls.length,1);
+  store.contextValue!.attemptState='completed';
+  assert.equal((await invoke(token)).status,403);
+  assert.equal(calls.length,1);
+});
+
 test("signed capability token is scoped and expires", async () => {
   const token = await mintCapabilityToken(claims, SECRET);
   assert.deepEqual(await verifyCapabilityToken(token, SECRET, NOW.getTime()), claims);
