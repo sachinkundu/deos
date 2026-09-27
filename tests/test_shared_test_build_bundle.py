@@ -9,6 +9,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import portal_release
 import shared_test_build_bundle
+from publish_shared_test_candidate import verify
 
 
 def test_bundle_matches_staging_digest_and_rejects_modified_bytes(tmp_path, monkeypatch):
@@ -87,3 +88,23 @@ def test_bettaview_bundle_includes_imported_worker_modules(tmp_path, monkeypatch
         "portal/bettaview/worker/index.js", "portal/bettaview/worker/access.js",
         "portal/bettaview/dist/index.html",
     }
+
+
+def test_candidate_upload_checks_bytes_before_using_credential(tmp_path):
+    worker = tmp_path / "portal-worker/worker.js"
+    asset = tmp_path / "portal/dist/index.html"
+    migration = tmp_path / "migrations/0001_initial.sql"
+    for path, content in ((worker, "export default {}"), (asset, "ok"),
+                          (migration, "CREATE TABLE example (id TEXT);")):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    commit = "d" * 40
+    files = [worker, asset, migration]
+    digest = shared_test_build_bundle.artifact_digest(commit, files, tmp_path)
+    raw = shared_test_build_bundle.bundle("portal", commit, files, digest, tmp_path)
+    receipt = {"serviceName": "portal", "candidateCommit": commit,
+               "buildInputSha256": digest, "bytes": len(raw)}
+    assert verify(raw, receipt) == ("portal", commit, digest)
+    changed = raw.replace(b"b2s=", b"YmFk")
+    with pytest.raises(ValueError, match="digest differs"):
+        verify(changed, receipt)

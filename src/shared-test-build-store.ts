@@ -28,4 +28,24 @@ export class SharedTestBuildStore {
     catch (error) {throw new Error(`test_build_artifact_json_invalid:${key}`,{cause:error});}
     return verifiedSharedTestBuild(input,base);
   }
+
+  /** Only one immutable bundle may represent a candidate service build. */
+  async candidate(serviceName:string,candidateCommit:string):Promise<{
+    digest:string;build:Awaited<ReturnType<typeof verifiedSharedTestBuild>>}|null> {
+    if(!['portal','bettaview'].includes(serviceName) ||
+        !/^[a-f0-9]{40}$/.test(candidateCommit))
+      throw new Error('invalid_test_candidate_build_subject');
+    const prefix=`shared-test/builds/${serviceName}/${candidateCommit}/`;
+    const listed=await this.bucket.list({prefix,limit:3});
+    if(listed.truncated || listed.objects.length>1)
+      throw new Error('test_candidate_build_ambiguous');
+    if(!listed.objects.length)return null;
+    const key=listed.objects[0].key;
+    const match=new RegExp(`^${prefix}([a-f0-9]{64})\\.json$`).exec(key);
+    if(!match)throw new Error('test_candidate_build_key_invalid');
+    const digest=match[1];
+    const build=await this.read({serviceName,sourceCommit:candidateCommit,
+      buildInputSha256:digest,deployVersion:'candidate',trafficPercent:100});
+    return {digest,build};
+  }
 }

@@ -23,6 +23,8 @@ test('preparation stays idle without a lease',async()=>{
 test('an expired or credential-less lease never calls the provider',async()=>{
   const owner={state:'preparing',owner_run_id:'run-1',owner_lease_id:'b'.repeat(64),
     attempt_id:'attempt-1',fence:1,base_json:'{}',
+    candidate_commit:'c'.repeat(40),patch_sha256:'d'.repeat(64),
+    base_manifest_id:'manifest-1',base_traffic_revision:'traffic-1',
     heartbeat_due_at:'9999-01-01T00:00:00Z'};
   const item=driver(owner);
   await assert.rejects(item.value.resume(),/credentials_missing/);

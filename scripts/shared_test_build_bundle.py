@@ -7,10 +7,25 @@ import re
 import tempfile
 from pathlib import Path
 
-from portal_release import BUCKET, ROOT, artifact_digest, run
+from portal_release import BUCKET, ROOT, run
 
 
-def bundle(service_name, source_commit, files, build_digest):
+def artifact_digest(source_commit, files, root=None):
+    """Hash exactly the bytes and relative paths consumed by the Worker."""
+    root = root or ROOT
+    digest = hashlib.sha256(source_commit.encode("ascii"))
+    for path in sorted(files):
+        relative = path.relative_to(root).as_posix().encode("utf-8")
+        content = path.read_bytes()
+        digest.update(len(relative).to_bytes(4, "big"))
+        digest.update(relative)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
+
+
+def bundle(service_name, source_commit, files, build_digest, root=None):
+    root = root or ROOT
     if service_name not in ("portal", "bettaview") or not re.fullmatch(
         r"[a-f0-9]{40}", source_commit
     ) or not re.fullmatch(r"[a-f0-9]{64}", build_digest):
@@ -22,7 +37,7 @@ def bundle(service_name, source_commit, files, build_digest):
     }
     worker, assets, migrations, modules = paths[service_name]
     selected = sorted(set(files))
-    names = [path.relative_to(ROOT).as_posix() for path in selected]
+    names = [path.relative_to(root).as_posix() for path in selected]
     if (len(selected) != len(files) or worker not in names or not any(
         name.startswith(assets) for name in names
     ) or (migrations and "migrations/0001_initial.sql" not in names) or any(
@@ -33,7 +48,7 @@ def bundle(service_name, source_commit, files, build_digest):
         ) for name in names
     )):
         raise ValueError("Invalid shared test build file set")
-    if artifact_digest(source_commit, selected) != build_digest:
+    if artifact_digest(source_commit, selected, root) != build_digest:
         raise ValueError("Shared test build bytes differ from staging digest")
     result = {"serviceName": service_name, "sourceCommit": source_commit,
               "files": [{"path": name, "contentBase64": base64.b64encode(path.read_bytes()).decode("ascii")}
@@ -44,8 +59,11 @@ def bundle(service_name, source_commit, files, build_digest):
     return raw
 
 
-def publish(service_name, source_commit, files, build_digest):
-    raw = bundle(service_name, source_commit, files, build_digest)
+def publish_raw(service_name, source_commit, build_digest, raw):
+    if service_name not in ("portal", "bettaview") or not re.fullmatch(
+        r"[a-f0-9]{40}", source_commit
+    ) or not re.fullmatch(r"[a-f0-9]{64}", build_digest):
+        raise ValueError("Invalid shared test build identity")
     key = f"shared-test/builds/{service_name}/{source_commit}/{build_digest}.json"
     with tempfile.TemporaryDirectory(prefix="deos-shared-test-build-") as directory:
         upload = Path(directory) / "upload.json"
@@ -59,3 +77,8 @@ def publish(service_name, source_commit, files, build_digest):
         if hashlib.sha256(download.read_bytes()).digest() != hashlib.sha256(raw).digest():
             raise ValueError("Shared test build R2 readback differs from upload")
     return key
+
+
+def publish(service_name, source_commit, files, build_digest):
+    raw = bundle(service_name, source_commit, files, build_digest)
+    return publish_raw(service_name, source_commit, build_digest, raw)

@@ -49,3 +49,15 @@ test('missing or changed build artifact keeps provisioning closed',async()=>{
   await assert.rejects(new SharedTestBuildStore(changed).read(base),
     /test_build_input_digest_mismatch/);
 });
+
+test('candidate discovery accepts one exact immutable bundle only',async()=>{
+  const key=sharedTestBuildKey(base);
+  const bucket={list:async()=>({objects:[{key}],truncated:false}),
+    get:async()=>({size:Buffer.byteLength(payload),text:async()=>payload})} as unknown as R2Bucket;
+  const found=await new SharedTestBuildStore(bucket).candidate('portal',sourceCommit);
+  assert.equal(found?.digest,base.buildInputSha256);
+  assert.equal(Buffer.from(found!.build.worker).toString(),worker.toString());
+  const ambiguous={list:async()=>({objects:[{key},{key}],truncated:false})} as unknown as R2Bucket;
+  await assert.rejects(new SharedTestBuildStore(ambiguous).candidate('portal',sourceCommit),
+    /test_candidate_build_ambiguous/);
+});

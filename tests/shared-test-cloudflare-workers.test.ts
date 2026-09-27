@@ -123,3 +123,50 @@ test('an expired lease is refused before the first asset write',async()=>{
   await assert.rejects(provider.create(plan,build),/write_fenced/);
   assert.equal(writes,0);
 });
+
+test('candidate update uses the active fence and retains base identity',async()=>{
+  const candidate='f'.repeat(40),digest='1'.repeat(64);
+  let metadata:Record<string,any>|null=null;
+  let domainsWritten=0;
+  const fetcher:typeof fetch=async(input,init)=>{
+    const path=new URL(String(input)).pathname.replace(/^\/client\/v4\/accounts\/[a-f0-9]{32}/,'');
+    let result:unknown={};
+    if(path.endsWith('/settings'))result={tags:[`deos-test-lease:${leaseId}`,
+      `deos-test-source:${service.base.sourceCommit}`,
+      `deos-test-base:${service.base.deployVersion}`,
+      `deos-test-build:${service.base.buildInputSha256}`]};
+    else if(path==='/workers/domains') {
+      if(init?.method==='PUT')domainsWritten++;
+      result=[{id:'domain-1',hostname:service.canonicalHost,
+        service:service.workerName,zone_id:'e'.repeat(32)}];
+    } else if(path.endsWith('/assets-upload-session')) {
+      const body=JSON.parse(String(init?.body));
+      result={jwt:'upload-jwt',buckets:[[body.manifest['/index.html'].hash]]};
+    } else if(path==='/workers/assets/upload')result={jwt:'complete-jwt'};
+    else if(path===`/workers/scripts/${service.workerName}`&&init?.method==='PUT')
+      metadata=JSON.parse(String((init.body as FormData).get('metadata')));
+    else throw new Error(`unexpected ${path}`);
+    return Response.json({success:true,result});
+  };
+  const db={prepare:(sql:string)=>({bind:(...args:unknown[])=>({first:async()=>{
+    if(sql.includes('AS allowed')) {
+      assert.ok(args.includes('active'));
+      return {allowed:1};
+    }
+    const d1=args[3]==='d1_database';
+    return {plan_state:'created',provider_key:d1?
+      `deos-test-portal-db-${leaseId.slice(0,32)}`:
+      `deos-test-portal-artifacts-${leaseId.slice(0,32)}`,
+    remote_id:d1?'00000000-0000-4000-8000-000000000001':
+      `deos-test-portal-artifacts-${leaseId.slice(0,32)}`};
+  }})})} as unknown as D1Database;
+  await new SharedTestCloudflareWorkers(db,'d'.repeat(32),'e'.repeat(32),
+    'test-token',fetcher).deployCandidate(plan,{...build,sha256:digest},candidate);
+  assert.equal(domainsWritten,0);
+  assert.ok(metadata);
+  const saved=metadata as Record<string,any>;
+  assert.ok((saved.tags as string[]).includes(`deos-test-candidate:${candidate}`));
+  assert.ok((saved.tags as string[]).includes(`deos-test-source:${service.base.sourceCommit}`));
+  assert.ok((saved.bindings as Array<{name:string;text:string}>).some(value=>
+    value.name==='PORTAL_SOURCE_SHA'&&value.text===candidate));
+});

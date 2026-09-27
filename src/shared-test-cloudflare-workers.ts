@@ -93,16 +93,16 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     return `/workers/scripts/${plan.service.workerName}`;
   }
 
-  private async assertFence(plan:TestWorkerPlan):Promise<void> {
+  private async assertFence(plan:TestWorkerPlan,phase:'preparing'|'active'='preparing'):Promise<void> {
     const row=await this.db.prepare(`SELECT 1 AS allowed FROM test_resources r
       JOIN test_environment e ON e.owner_lease_id=r.lease_id
         AND e.owner_run_id=r.run_id WHERE r.resource_id=? AND r.run_id=?
         AND r.lease_id=? AND r.create_fence=? AND r.work_id=?
         AND r.provider_key=? AND r.plan_state IN ('creating','uncertain','created')
-        AND e.site_id=1 AND e.state='preparing' AND e.fence=?
+        AND e.site_id=1 AND e.state=? AND e.fence=?
         AND e.heartbeat_due_at>?`)
       .bind(plan.resourceId,plan.runId,plan.leaseId,plan.fence,
-        plan.workId,plan.providerKey,plan.fence,new Date().toISOString())
+        plan.workId,plan.providerKey,phase,plan.fence,new Date().toISOString())
       .first<{allowed:number}>();
     if(row?.allowed!==1)throw new Error('shared_test_worker_write_fenced');
   }
@@ -170,9 +170,10 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     return row.remote_id;
   }
 
-  private async uploadAssets(plan:TestWorkerPlan,build:VerifiedBuild):Promise<string> {
+  private async uploadAssets(plan:TestWorkerPlan,build:VerifiedBuild,
+    phase:'preparing'|'active'):Promise<string> {
     const {manifest,byHash}=await assets(build,plan.service.serviceName);
-    await this.assertFence(plan);
+    await this.assertFence(plan,phase);
     const session=await this.api(`${this.root(plan)}/assets-upload-session`,{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({manifest}),
     }) as {jwt?:unknown;buckets?:unknown};
@@ -187,7 +188,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
         const asset=byHash.get(hash)!;
         form.set(hash,new Blob([base64(asset.bytes)],{type:asset.type}),hash);
       }
-      await this.assertFence(plan);
+      await this.assertFence(plan,phase);
       const result=await this.api('/workers/assets/upload?base64=true',
         {method:'POST',body:form},false,session.jwt) as {jwt?:unknown};
       if(typeof result.jwt==='string')completion=result.jwt;
@@ -202,6 +203,23 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     if(build.sha256!==plan.service.base.buildInputSha256)
       throw new Error('shared_test_worker_build_mismatch');
     if(await this.lookup(plan))throw new Error('shared_test_worker_already_exists');
+    await this.upload(plan,build,plan.service.base.sourceCommit,'preparing');
+    await this.complete(plan);
+  }
+
+  /** Replace only this lease Worker after the base has been activated. */
+  async deployCandidate(plan:TestWorkerPlan,build:VerifiedBuild,
+    candidateCommit:string):Promise<void> {
+    this.root(plan);
+    if(!/^[a-f0-9]{40}$/.test(candidateCommit) ||
+      !/^[a-f0-9]{64}$/.test(build.sha256) ||
+      !(await this.lookup(plan)))
+      throw new Error('shared_test_candidate_worker_missing');
+    await this.upload(plan,build,candidateCommit,'active');
+  }
+
+  private async upload(plan:TestWorkerPlan,build:VerifiedBuild,sourceCommit:string,
+    phase:'preparing'|'active'):Promise<void> {
     const d1=await this.store(plan,'d1_database');
     const r2=await this.store(plan,'r2_bucket');
     const portal=plan.service.serviceName==='portal';
@@ -211,7 +229,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
         text:plan.service.canonicalHost},
       {type:'plain_text',name:portal?'PORTAL_SITE':'BETTAVIEW_SITE',text:'Test'},
       {type:'plain_text',name:portal?'PORTAL_SOURCE_SHA':'BETTAVIEW_SOURCE_SHA',
-        text:plan.service.base.sourceCommit},
+        text:sourceCommit},
       {type:'plain_text',name:portal?'PORTAL_BUILD_INPUT_SHA256':'BETTAVIEW_BUILD_INPUT_SHA256',
         text:build.sha256},
       {type:'plain_text',name:'TEST_BASE_VERSION_ID',text:plan.service.base.deployVersion},
@@ -227,7 +245,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     else bindings.push(
       {type:'service',name:'DEOS_PORTAL',service:`deos-test-portal-${plan.leaseId.slice(0,32)}`},
       {type:'durable_object_namespace',name:'GITHUB_SESSIONS',class_name:'GitHubSession'});
-    const jwt=await this.uploadAssets(plan,build);
+    const jwt=await this.uploadAssets(plan,build,phase);
     const form=new FormData();
     form.set('metadata',JSON.stringify({main_module:'edge.js',
       compatibility_date:portal?'2026-08-26':'2026-08-29',
@@ -237,7 +255,9 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
       tags:[`deos-test-lease:${plan.leaseId}`,
         `deos-test-source:${plan.service.base.sourceCommit}`,
         `deos-test-base:${plan.service.base.deployVersion}`,
-        `deos-test-build:${plan.service.base.buildInputSha256}`]}));
+        `deos-test-build:${plan.service.base.buildInputSha256}`,
+        ...(phase==='active'?[`deos-test-candidate:${sourceCommit}`,
+          `deos-test-candidate-build:${build.sha256}`]:[])]}));
     form.set('edge.js',new Blob([sharedTestEdgeWrapper(plan.service.serviceName)],
       {type:'application/javascript+module'}),'edge.js');
     form.set(portal?'app/worker.js':'app/index.js',
@@ -249,9 +269,8 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
       form.set(name,new Blob([new Uint8Array(bytes)],
         {type:'application/javascript+module'}),name);
     }
-    await this.assertFence(plan);
+    await this.assertFence(plan,phase);
     await this.api(this.root(plan),{method:'PUT',body:form});
-    await this.complete(plan);
   }
 
   async remove(plan:TestWorkerPlan):Promise<void> {

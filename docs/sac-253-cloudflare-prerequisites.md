@@ -27,4 +27,15 @@ name and Client ID, status-page visit, and lease-app admission result. Keep the
 Client Secret out of that record. Leave `SHARED_TEST_GRANTS_ENABLED=false` until
 the rest of the implementation and proof gates are ready.
 
+## Make the candidate build job available
+
+GitHub starts `repository_dispatch` workflows from the default branch. Merge
+`.github/workflows/shared-test-candidate-build.yml` to `main` before the first
+live lease. The existing GitHub App has Contents write permission for the
+dispatch. The build job checks out the saved candidate commit without storing
+GitHub credentials. A separate staging job receives the existing
+`PORTAL_STAGING_CLOUDFLARE_API_TOKEN` secret, verifies the bundle, and uploads
+it to private R2. Confirm that the staging environment lets this upload job
+run without another approval step.
+
 Cloudflare documents the [eager redirect cookie](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/), [wildcard hostname matching](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/), and [service token setup](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/).

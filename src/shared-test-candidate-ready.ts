@@ -1,4 +1,4 @@
-import {sharedTestServicePlans} from './shared-test-service-plan.ts';
+import {sharedTestServicePlans,type SharedTestServicePlan} from './shared-test-service-plan.ts';
 import type {StableStagingBase} from './shared-test-lease.ts';
 
 interface Lease {
@@ -28,7 +28,8 @@ function roots(raw:string):string[] {
 }
 
 /** The demo cannot begin until changed services run the exact candidate. */
-export async function sharedTestCandidateReady(db:D1Database,lease:Lease):Promise<boolean> {
+export async function sharedTestAffectedServices(db:D1Database,
+  lease:Lease):Promise<SharedTestServicePlan[]> {
   const decision=await db.prepare(`SELECT d.choice,d.matched_paths_json,d.manifest_id,
     d.manifest_revision FROM test_task_decisions d WHERE d.run_id=?
       AND d.candidate_commit=? AND d.patch_sha256=? ORDER BY d.created_at LIMIT 1`)
@@ -72,6 +73,12 @@ export async function sharedTestCandidateReady(db:D1Database,lease:Lease):Promis
   }
   const affected=services.filter(service=>affectedNames.has(service.service_name));
   if(!affected.length)throw new Error('shared_test_candidate_service_unmatched');
+  return plans.filter(plan=>affectedNames.has(plan.serviceName));
+}
+
+/** A saved deployment receipt alone is insufficient: require both version reads. */
+export async function sharedTestCandidateReady(db:D1Database,lease:Lease):Promise<boolean> {
+  const affected=await sharedTestAffectedServices(db,lease);
   const rows=(await db.prepare(`SELECT service_name,resource_id,candidate_commit,
     build_input_sha256,running_version_id,fence,first_read_at,second_read_at
     FROM test_candidate_service_readbacks WHERE lease_id=?`)
@@ -79,9 +86,8 @@ export async function sharedTestCandidateReady(db:D1Database,lease:Lease):Promis
       candidate_commit:string;build_input_sha256:string;running_version_id:string;
       fence:number;first_read_at:string;second_read_at:string}>()).results;
   const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-  return affected.every(service=>{
-    const plan=plans.find(value=>value.serviceName===service.service_name)!;
-    const row=rows.find(value=>value.service_name===service.service_name);
+  return affected.every(plan=>{
+    const row=rows.find(value=>value.service_name===plan.serviceName);
     return !!row && row.resource_id===plan.resourceId &&
       row.candidate_commit===lease.candidate_commit && row.fence===lease.fence &&
       /^[a-f0-9]{64}$/.test(row.build_input_sha256) &&

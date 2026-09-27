@@ -3,6 +3,7 @@ import {SharedTestAccessIdentityStore} from './shared-test-access-identity.ts';
 import {SharedTestCloudflareSchema} from './shared-test-cloudflare-schema.ts';
 import {SharedTestCloudflareStores} from './shared-test-cloudflare-stores.ts';
 import {SharedTestCloudflareWorkers} from './shared-test-cloudflare-workers.ts';
+import {sharedTestCandidateDeployment} from './shared-test-candidate-deployment.ts';
 import {SharedTestPreparation} from './shared-test-preparation.ts';
 import type {StableStagingBase} from './shared-test-lease.ts';
 
@@ -14,6 +15,10 @@ interface Owner {
   heartbeat_due_at:string|null;
   attempt_id:string|null;
   base_json:string|null;
+  candidate_commit:string|null;
+  patch_sha256:string|null;
+  base_manifest_id:string|null;
+  base_traffic_revision:string|null;
 }
 
 export type SharedTestDriverEnv=Pick<Env,'DB'|'ARTIFACTS'|
@@ -36,13 +41,16 @@ export class SharedTestLeaseDriver {
 
   async resume(at=new Date()):Promise<'idle'|'active'> {
     const owner=await this.env.DB.prepare(`SELECT e.state,e.owner_run_id,
-      e.owner_lease_id,e.fence,e.heartbeat_due_at,l.attempt_id,l.base_json
+      e.owner_lease_id,e.fence,e.heartbeat_due_at,l.attempt_id,l.base_json,
+      l.candidate_commit,l.patch_sha256,l.base_manifest_id,l.base_traffic_revision
       FROM test_environment e LEFT JOIN test_leases l
       ON l.lease_id=e.owner_lease_id WHERE e.site_id=1`).first<Owner>();
     if(!owner)throw new Error('shared_test_environment_missing');
     if(!['preparing','active'].includes(owner.state))return 'idle';
     if(!owner.owner_run_id || !owner.owner_lease_id || !owner.attempt_id ||
-      !owner.base_json || !owner.heartbeat_due_at ||
+      !owner.base_json || !owner.candidate_commit || !owner.patch_sha256 ||
+      !owner.base_manifest_id || !owner.base_traffic_revision ||
+      !owner.heartbeat_due_at ||
       owner.heartbeat_due_at<=at.toISOString())
       throw new Error('shared_test_preparation_owner_expired');
     const {IMPLEMENTATION_ENVIRONMENT_TOKEN:token,
@@ -61,6 +69,15 @@ export class SharedTestLeaseDriver {
     const identityConfig={audience,policyId,clientId};
     if(owner.state==='active') {
       await identities.provision(input,identityConfig,at);
+      await sharedTestCandidateDeployment(this.env,this.fetcher).resume({
+          lease_id:owner.owner_lease_id,run_id:owner.owner_run_id,
+          attempt_id:owner.attempt_id,fence:owner.fence,
+          candidate_commit:owner.candidate_commit,
+          patch_sha256:owner.patch_sha256,
+          base_manifest_id:owner.base_manifest_id,
+          base_traffic_revision:owner.base_traffic_revision,
+          base_json:owner.base_json,
+        });
       return 'active';
     }
     if(!token || !zoneId || !clientSecret)

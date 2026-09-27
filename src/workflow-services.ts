@@ -3,6 +3,7 @@ import { BaseChangedError } from "./implementation-contract.ts";
 import { ImplementationService } from "./implementation-service.ts";
 import {sharedTestDemoInput} from './shared-test-demo-input.ts';
 import {sharedTestCandidateReady} from './shared-test-candidate-ready.ts';
+import {sharedTestCandidateDeployment} from './shared-test-candidate-deployment.ts';
 import {SharedTestMarkerAction} from './shared-test-marker-action.ts';
 import {SharedTestFailureStore} from './shared-test-failures.ts';
 import { ImplementationBroker } from "./implementation-broker.ts";
@@ -1448,7 +1449,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         .first<{attempt_id:string;lease_id:string;fence:number;run_id:string;
           candidate_commit:string;patch_sha256:string;base_manifest_id:string;
           base_traffic_revision:string;base_json:string}>();
-      if(owner && await sharedTestCandidateReady(this.env.DB,owner)) {
+      if(owner && await sharedTestCandidateReady(this.env.DB,owner) &&
+          await sharedTestCandidateDeployment(this.env).verifyReady(owner)) {
         const definition=this.implementation.definition;
         if(!definition.jobs.shared_test_agent)
           throw new Error('shared_test_demo_job_missing');

@@ -5,6 +5,7 @@ import type {OrchestrationRunRecord} from './orchestration-store.ts';
 import type {StableStagingBase} from './shared-test-lease.ts';
 import {sharedTestServicePlans} from './shared-test-service-plan.ts';
 import {sharedTestCandidateReady} from './shared-test-candidate-ready.ts';
+import {sharedTestCandidateDeployment} from './shared-test-candidate-deployment.ts';
 
 interface ActiveLease {
   lease_id:string;
@@ -47,6 +48,8 @@ export async function sharedTestDemoInput(env:Env,run:OrchestrationRunRecord,
       lease.patch_sha256!==work.patch_sha)
     throw new Error('shared_test_demo_lease_scope_changed');
   if(!await sharedTestCandidateReady(env.DB,lease))
+    throw new Error('shared_test_candidate_not_running');
+  if(!await sharedTestCandidateDeployment(env).verifyReady(lease))
     throw new Error('shared_test_candidate_not_running');
   const github=implementationGitHub(env,run);
   await github.current(work);
