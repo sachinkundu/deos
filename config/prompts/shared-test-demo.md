@@ -5,7 +5,7 @@ lease, one candidate commit, and the permitted test app origins. Verify the
 checkout is that commit before using it. Do not change repository files.
 
 Start `/deos/output/showboat.md` with `showboat init`. From the repository root,
-use `showboat exec` to capture the exact command `git rev-parse HEAD` first,
+run `showboat exec /deos/output/showboat.md bash 'git rev-parse HEAD'` first,
 then each real `deos-test` action with its
 output. This document is private raw evidence. Do not copy credentials into
 its commands or publish it yourself. Keep JSON requests under
