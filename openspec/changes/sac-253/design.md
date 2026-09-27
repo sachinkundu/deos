@@ -50,6 +50,9 @@ no Cloudflare, Access, Linear, or GitHub account credential.
 | Browser-based app test | Configure separate Access protection for the lease app origins under `*.apps.deos-test.voxdez.com`, with a scoped service identity held by the trusted browser service. | Application and policy IDs, allowed origin, service identity scope, and a real browser admission check. |
 | Provider test and cleanup | Put the marker-signing key and any required provider or cleanup credentials in trusted services with the narrow scopes in this design. | Presence and scope checks without exposing secret values to the agent, plus a successful owned-item removal and absence read-back. |
 
+The current Cloudflare dashboard steps and the status-login redirect fix are in
+[`docs/sac-253-cloudflare-prerequisites.md`](../../../docs/sac-253-cloudflare-prerequisites.md).
+
 Staging base initialization is automated. The trusted coordinator reads
 `/api/version` from both staging Workers through service bindings and saves the
 full manifest through its D1 binding. Two matching version reads are required.
