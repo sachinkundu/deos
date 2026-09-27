@@ -27,6 +27,18 @@ async function fixture() {
     (lease_id,fence,run_id,reason,transition_revision,created_at) VALUES
     ('lease-1',1,'run-1','grant',1,'now'),
     ('lease-1',2,'run-1','heartbeat_expired',2,'now')`).run();
+  db.sqlite.prepare(`INSERT INTO test_access_identities
+    (identity_id,run_id,lease_id,resource_id,origin,audience,policy_id,
+     principal_sha256,created_at) VALUES
+    ('identity-1','run-1','lease-1','identity-resource',
+     'https://portal.apps.deos-test.voxdez.com','audience','policy',?,'now')`)
+    .run('c'.repeat(64));
+  db.sqlite.prepare(`INSERT INTO test_app_sessions
+    (session_sha256,run_id,attempt_id,lease_id,fence,origin,cookie_class,
+     access_identity_id,principal_sha256,expires_at) VALUES
+    (?, 'run-1','attempt-1','lease-1',1,
+     'https://portal.apps.deos-test.voxdez.com','browser','identity-1',?,
+     '9999-01-01T00:00:00.000Z')`).run('d'.repeat(64),'c'.repeat(64));
   db.sqlite.prepare(`INSERT INTO test_expected_events
     (expectation_id,run_id,lease_id,fence,task_id,team_id,kind,action,actor_id,
      key_version,challenge_sha256,before_sha256,after_sha256,marker_sha256,
@@ -61,6 +73,11 @@ test('scheduled recovery removes only the saved marker and does not need the dea
     assert.equal(f.db.sqlite.prepare(`SELECT state FROM test_operations
       WHERE work_id='test-marker:expectation-1:remove'`).get()?.state,'done');
     assert.equal(f.db.sqlite.prepare('SELECT state FROM test_environment').get()?.state,'quiescing');
+    const identity=f.db.sqlite.prepare(`SELECT revoked_at,absent_at FROM test_access_identities
+      WHERE identity_id='identity-1'`).get() as {revoked_at:string|null;absent_at:string|null};
+    assert.ok(identity.revoked_at);
+    assert.ok(identity.absent_at);
+    assert.ok(f.db.sqlite.prepare(`SELECT revoked_at FROM test_app_sessions`).get()?.revoked_at);
   } finally {f.db.close();}
 });
 

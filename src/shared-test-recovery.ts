@@ -48,6 +48,26 @@ export class SharedTestRecovery {
       ON l.lease_id=e.owner_lease_id WHERE e.site_id=1`).first<Owner>();
     if (!owner || !['quiescing','cleaning'].includes(owner.state) ||
         !owner.owner_run_id || !owner.owner_lease_id) return;
+    // The Access service token is shared infrastructure. This row is the
+    // lease-specific right to use it, so revoke it before provider cleanup.
+    const now=new Date().toISOString();
+    await this.env.DB.prepare(`UPDATE test_access_identities SET revoked_at=?
+      WHERE run_id=? AND lease_id=? AND revoked_at IS NULL`).bind(now,
+        owner.owner_run_id,owner.owner_lease_id).run();
+    await this.env.DB.prepare(`UPDATE test_app_sessions SET revoked_at=?
+      WHERE run_id=? AND lease_id=? AND revoked_at IS NULL`).bind(now,
+        owner.owner_run_id,owner.owner_lease_id).run();
+    await this.env.DB.prepare(`UPDATE test_access_identities SET absent_at=?
+      WHERE run_id=? AND lease_id=? AND revoked_at IS NOT NULL AND absent_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM test_app_sessions s
+          WHERE s.access_identity_id=test_access_identities.identity_id
+            AND s.revoked_at IS NULL)`).bind(now,
+        owner.owner_run_id,owner.owner_lease_id).run();
+    const liveIdentity=await this.env.DB.prepare(`SELECT identity_id FROM test_access_identities
+      WHERE run_id=? AND lease_id=? AND (revoked_at IS NULL OR absent_at IS NULL)
+      LIMIT 1`).bind(owner.owner_run_id,owner.owner_lease_id)
+      .first<{identity_id:string}>();
+    if(liveIdentity)throw new Error('shared_test_access_identity_remains');
     const markers=(await this.env.DB.prepare(`SELECT x.expectation_id,x.run_id,x.lease_id,
       x.fence,x.task_id,x.team_id FROM test_expected_events x
       WHERE x.run_id=? AND x.lease_id=? AND NOT EXISTS (

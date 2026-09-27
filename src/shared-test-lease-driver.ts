@@ -1,4 +1,5 @@
 import {SharedTestActivation} from './shared-test-activation.ts';
+import {SharedTestAccessIdentityStore} from './shared-test-access-identity.ts';
 import {SharedTestCloudflareSchema} from './shared-test-cloudflare-schema.ts';
 import {SharedTestCloudflareStores} from './shared-test-cloudflare-stores.ts';
 import {SharedTestCloudflareWorkers} from './shared-test-cloudflare-workers.ts';
@@ -21,6 +22,8 @@ export type SharedTestDriverEnv=Pick<Env,'DB'|'ARTIFACTS'|
   SHARED_TEST_ZONE_ID?:string;
   TEST_APP_SERVICE_CLIENT_ID?:string;
   TEST_APP_SERVICE_CLIENT_SECRET?:string;
+  TEST_APP_ACCESS_AUD?:string;
+  TEST_APP_ACCESS_POLICY_ID?:string;
 };
 
 /** Continue one saved preparation; any missing credential leaves the lease owned. */
@@ -37,7 +40,7 @@ export class SharedTestLeaseDriver {
       FROM test_environment e LEFT JOIN test_leases l
       ON l.lease_id=e.owner_lease_id WHERE e.site_id=1`).first<Owner>();
     if(!owner)throw new Error('shared_test_environment_missing');
-    if(owner.state!=='preparing')return 'idle';
+    if(!['preparing','active'].includes(owner.state))return 'idle';
     if(!owner.owner_run_id || !owner.owner_lease_id || !owner.attempt_id ||
       !owner.base_json || !owner.heartbeat_due_at ||
       owner.heartbeat_due_at<=at.toISOString())
@@ -45,13 +48,23 @@ export class SharedTestLeaseDriver {
     const {IMPLEMENTATION_ENVIRONMENT_TOKEN:token,
       SHARED_TEST_ZONE_ID:zoneId,
       TEST_APP_SERVICE_CLIENT_ID:clientId,
-      TEST_APP_SERVICE_CLIENT_SECRET:clientSecret}=this.env;
-    if(!token || !zoneId || !clientId || !clientSecret)
-      throw new Error('shared_test_preparation_credentials_missing');
+      TEST_APP_SERVICE_CLIENT_SECRET:clientSecret,
+      TEST_APP_ACCESS_AUD:audience,
+      TEST_APP_ACCESS_POLICY_ID:policyId}=this.env;
+    if(!clientId || !audience || !policyId)
+      throw new Error('shared_test_access_identity_unconfigured');
     const accountId=this.env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID;
     const base=JSON.parse(owner.base_json) as StableStagingBase;
     const input={runId:owner.owner_run_id,leaseId:owner.owner_lease_id,
-      fence:owner.fence,base};
+      fence:owner.fence,attemptId:owner.attempt_id,base};
+    const identities=new SharedTestAccessIdentityStore(this.env.DB);
+    const identityConfig={audience,policyId,clientId};
+    if(owner.state==='active') {
+      await identities.provision(input,identityConfig,at);
+      return 'active';
+    }
+    if(!token || !zoneId || !clientSecret)
+      throw new Error('shared_test_preparation_credentials_missing');
     const stores=new SharedTestCloudflareStores(accountId,token,this.fetcher);
     const workers=new SharedTestCloudflareWorkers(this.env.DB,accountId,
       zoneId,token,this.fetcher);
@@ -65,6 +78,7 @@ export class SharedTestLeaseDriver {
           'CF-Access-Client-Secret':clientSecret},
         redirect:'manual',signal:AbortSignal.timeout(20_000),
       })).activate({...input,attemptId:owner.attempt_id});
+    await identities.provision(input,identityConfig,at);
     return 'active';
   }
 }
