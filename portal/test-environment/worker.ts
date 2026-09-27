@@ -5,6 +5,7 @@ import {recordCaughtError} from '../../src/error-context.ts';
 interface TestPortalEnv {
   DB:D1Database;
   ARTIFACTS:R2Bucket;
+  COORDINATOR:Fetcher;
   ACCESS_TEAM_DOMAIN:string;
   ACCESS_AUD:string;
   ALLOWED_EMAIL:string;
@@ -12,7 +13,7 @@ interface TestPortalEnv {
 
 const headers={
   'Cache-Control':'no-store',
-  'Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'",
+  'Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
   'Referrer-Policy':'no-referrer',
   'X-Content-Type-Options':'nosniff',
   'X-Frame-Options':'DENY',
@@ -86,8 +87,11 @@ function statusHtml(row:StatusRow):string {
     <div><dt>Lease started</dt><dd>${escape(row.created_at??'Unavailable')}</dd></div>
   </dl>` : baseReady ? '<p>The site is ready for the next checked task.</p>' :
     '<p>The staging base is being prepared. No test lease can start yet.</p>';
+  const repairId=row.hold_reason?.match(/^repair:([a-f0-9-]{36})$/i)?.[1];
   const hold=row.state==='blocked' ?
-    `<p role="alert">Cleanup is blocked. An allowed operator can inspect the saved repair item.</p>` : '';
+    `<p role="alert">Cleanup is blocked. ${repairId ?
+      `<a href="/admin/test-environment/repairs/${escape(repairId)}">Review the saved retry</a>` :
+      'An allowed operator can inspect the saved repair item.'}</p>` : '';
   return `<!doctype html><html lang="en"><meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>${escape(title)} | DEOS test</title>
@@ -115,9 +119,77 @@ export async function routeTestPortal(request:Request,env:TestPortalEnv,
     return Response.json({error:'authentication_unavailable'},{status:503,headers});
   }
   if (!identity.email) return Response.json({error:'unauthorized'},{status:401,headers});
+  const url=new URL(request.url);
+  const repairMatch=url.pathname.match(
+    /^\/admin\/test-environment\/repairs\/([a-f0-9-]{36})$/i);
+  if(repairMatch) {
+    if(request.method!=='GET' && request.method!=='HEAD' && request.method!=='POST')
+      return Response.json({error:'method_not_allowed'},{status:405,headers});
+    const repairId=repairMatch[1];
+    const internal=`https://deos-queue-consumer-ts.skundu.workers.dev/internal/`+
+      `test-repairs/${repairId}`;
+    const accessJwt=request.headers.get('CF-Access-Jwt-Assertion');
+    if(!accessJwt)return Response.json({error:'unauthorized'},{status:401,headers});
+    try {
+      if(request.method==='POST') {
+        if(request.headers.get('Origin')!==url.origin)
+          return Response.json({error:'repair_origin_invalid'},
+            {status:403,headers});
+        const form=await request.formData();
+        const revision=Number(form.get('expectedRevision'));
+        const csrfToken=form.get('csrfToken');
+        if(form.get('choice')!=='retry' || !Number.isSafeInteger(revision) ||
+            typeof csrfToken!=='string' || csrfToken.length>128)
+          return Response.json({error:'repair_request_invalid'},
+            {status:400,headers});
+        const response=await env.COORDINATOR.fetch(internal,{method:'POST',
+          headers:{'CF-Access-Jwt-Assertion':accessJwt,
+            'Content-Type':'application/json','Origin':url.origin},
+          body:JSON.stringify({version:1,choice:'retry',expectedRevision:revision,
+            csrfToken})});
+        if(!response.ok)
+          return Response.json({error:'repair_retry_rejected'},
+            {status:response.status,headers});
+        return new Response(null,{status:303,headers:{...headers,Location:'/'}});
+      }
+      const response=await env.COORDINATOR.fetch(internal,{
+        headers:{'CF-Access-Jwt-Assertion':accessJwt}});
+      if(!response.ok)
+        return Response.json({error:'repair_unavailable'},
+          {status:response.status,headers});
+      const item=await response.json() as {repair_id:string;resource_id:string;
+        saved_phase:string;expected_revision:number;task_key:string;
+        task_title:string;safe_code:string;csrfToken:string};
+      if(item.repair_id!==repairId || !Number.isSafeInteger(item.expected_revision) ||
+          !/^[A-Za-z0-9_-]{43}$/.test(item.csrfToken))
+        throw new Error('test_repair_coordinator_response_invalid');
+      const html=`<!doctype html><html lang="en"><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>${escape(item.task_key)} repair | DEOS test</title>
+        <style>body{font:16px system-ui,sans-serif;max-width:680px;
+        margin:7vh auto;padding:24px;color:#14221e}dt{font-weight:600}
+        dd{margin:4px 0 18px;overflow-wrap:anywhere}button{padding:10px 18px}</style>
+        <main><a href="/">Test status</a><h1>${escape(item.task_key)} ·
+        ${escape(item.task_title)}</h1><p>Retry this saved cleanup item.</p>
+        <dl><dt>Item</dt><dd>${escape(item.resource_id)}</dd>
+        <dt>Saved phase</dt><dd>${escape(item.saved_phase)}</dd>
+        <dt>Reason</dt><dd>${escape(item.safe_code)}</dd></dl>
+        <form method="post" action="${escape(url.pathname)}">
+        <input type="hidden" name="choice" value="retry">
+        <input type="hidden" name="expectedRevision"
+          value="${item.expected_revision}">
+        <input type="hidden" name="csrfToken"
+          value="${escape(item.csrfToken)}">
+        <button type="submit">Retry this item</button></form></main></html>`;
+      return new Response(request.method==='HEAD'?null:html,
+        {headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
+    }catch(error) {
+      recordCaughtError(error,'portal/test-environment/worker.ts:repair');
+      return Response.json({error:'repair_unavailable'},{status:503,headers});
+    }
+  }
   if (request.method!=='GET' && request.method!=='HEAD')
     return Response.json({error:'method_not_allowed'},{status:405,headers});
-  const url=new URL(request.url);
   if (url.pathname==='/') {
     try {
       const row=await testEnvironmentStatus(env.DB);

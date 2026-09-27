@@ -11,6 +11,7 @@ import {SharedTestFirstProofDriver} from './shared-test-first-proof-driver.ts';
 import {SharedTestStructuredProofDriver} from './shared-test-structured-proof-driver.ts';
 import {SharedTestShowboatRawDriver} from './shared-test-showboat-raw.ts';
 import {SharedTestShowboatProjection} from './shared-test-showboat-projection.ts';
+import {SharedTestRepairStore} from './shared-test-repair.ts';
 
 type ScanEnv=SharedTestDriverEnv & Pick<Env,'SHARED_TEST_GRANTS_ENABLED'|
   'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {TEST_MARKER_KEY_V1?:string};
@@ -64,12 +65,20 @@ export async function scanSharedTest(env:ScanEnv,
           WHERE report_state='pending' ORDER BY committed_at,lease_id LIMIT 1`)
           .first<{run_id:string;lease_id:string}>():null;
       const runId=pending?.run_id??owner.owner_run_id??head?.run_id;
-      if (runId) await new SharedTestFailureStore(env.DB,env.ARTIFACTS).record({
-        runId,leaseId:pending?.lease_id??owner.owner_lease_id??undefined,
-        fence:pending ? undefined : owner.owner_lease_id ? owner.fence : undefined,
-        phase:pending ? 'report' : owner.state,operation,
-        safeCode:'shared_test_scan_failed',
-      },error);
+      if (runId) {
+        const faultId=await new SharedTestFailureStore(env.DB,env.ARTIFACTS).record({
+          runId,leaseId:pending?.lease_id??owner.owner_lease_id??undefined,
+          fence:pending ? undefined : owner.owner_lease_id ? owner.fence : undefined,
+          phase:pending ? 'report' : owner.state,operation,
+          safeCode:'shared_test_scan_failed',
+        },error);
+        const resourceId=operation==='shared_test.recover' &&
+          owner.state==='cleaning' && error instanceof Error ?
+          error.message.match(/^shared_test_cleanup_(?:resource_identity_changed|worker_identity_changed|remote_id_changed|store_identity_changed):(.+)$/)?.[1]:null;
+        if(resourceId && owner.owner_lease_id)
+          await new SharedTestRepairStore(env.DB).block({runId,
+            leaseId:owner.owner_lease_id,resourceId,faultId});
+      }
     } catch (diagnosticError) {
       throw new AggregateError([error,diagnosticError],
         `Shared test scan and diagnostic storage failed: ${operation}`,{cause:error});

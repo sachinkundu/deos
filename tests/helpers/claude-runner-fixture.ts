@@ -29,9 +29,9 @@ export const runClaudeFailure = async (mode: "401" | "403" | "malformed" | "exit
         cause: { detail: "Provider explanation retained exactly" } } };
     const stderr = `Provider stderr before failure: ${capability}\n${"Long diagnostic detail. ".repeat(20_000)}EOF stderr\n`;
     const fake = `#!${process.execPath}
-import { writeFileSync } from "node:fs";
+import { writeFileSync, writeSync } from "node:fs";
 process.stdin.once("data", () => {
-  process.stderr.write(${JSON.stringify(stderr)});
+  writeSync(2, ${JSON.stringify(stderr)});
   const mode = ${JSON.stringify(mode)};
   if (mode === "exit") { process.exitCode = 17; process.stdin.destroy(); return; }
   if (mode === "malformed") { process.stdout.write("{broken provider JSON\\n"); return; }

@@ -1,6 +1,7 @@
 import { reconcileImplementations } from "./implementation-reconciliation.ts";
 import {processSharedTestBatch} from './shared-test-queue.ts';
 import {scanSharedTest} from './shared-test-scanner.ts';
+import {SharedTestRepairController} from './shared-test-repair-controller.ts';
 import {SharedTestMarkerAction} from './shared-test-marker-action.ts';
 import {SharedTestBrowserAction} from './shared-test-browser-action.ts';
 import {SharedTestLeaseStore} from './shared-test-lease.ts';
@@ -162,6 +163,8 @@ const workflowRuntimeRecoveryController = (env: Env): WorkflowRuntimeRecoveryCon
 export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
+    if (path.startsWith('/internal/test-repairs/'))
+      return new SharedTestRepairController(env).handle(request);
     if (path === "/cleanup-audit") return cleanupAuditor(env).handle(request);
     if (path === "/cleanup-attempts") return cleanupAuditor(env).handleDestroy(request);
     if (path === "/stage-retries") return (await stageRetryController(env)).handle(request);

@@ -8,6 +8,7 @@ const authenticate=async()=>({email:'allowed@example.com'});
 test('status shows the issue first while owned and says free only without an owner',async()=>{
   const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();
   const env={DB:db as unknown as D1Database,ARTIFACTS:bucket as unknown as R2Bucket,
+    COORDINATOR:{} as Fetcher,
     ACCESS_TEAM_DOMAIN:'test',ACCESS_AUD:'aud',ALLOWED_EMAIL:'allowed@example.com'};
   try {
     let response=await routeTestPortal(new Request('https://deos-test.voxdez.com/'),env,
@@ -47,6 +48,7 @@ test('status shows the issue first while owned and says free only without an own
 test('status auth reports verifier outages separately from denied identity',async()=>{
   const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();
   const env={DB:db as unknown as D1Database,ARTIFACTS:bucket as unknown as R2Bucket,
+    COORDINATOR:{} as Fetcher,
     ACCESS_TEAM_DOMAIN:'test',ACCESS_AUD:'aud',ALLOWED_EMAIL:'allowed@example.com'};
   try {
     const request=new Request('https://deos-test.voxdez.com/');

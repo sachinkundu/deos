@@ -15,6 +15,10 @@
     "ACCESS_AUD": "c12828abda88ac73e394039f6e0b87a9bc5f2d78922463c37a72ccca55bedec7",
     "ALLOWED_EMAIL": "sachinkundu@gmail.com"
   },
+  "services": [{
+    "binding": "COORDINATOR",
+    "service": "deos-queue-consumer-ts"
+  }],
   "d1_databases": [{
     "binding": "DB",
     "database_name": "deos-sample-project",
