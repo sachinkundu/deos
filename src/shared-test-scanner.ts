@@ -5,6 +5,7 @@ import {SharedTestStagingPointer} from './shared-test-staging-pointer.ts';
 import {SharedTestRecovery} from './shared-test-recovery.ts';
 import {SharedTestLeaseDriver,type SharedTestDriverEnv} from './shared-test-lease-driver.ts';
 import {SharedTestCandidateBuildDispatch} from './shared-test-candidate-build-dispatch.ts';
+import {maintainSharedTestBrowser} from './shared-test-browser-maintenance.ts';
 import {SharedTestReportDriver} from './shared-test-report-driver.ts';
 
 type ScanEnv=SharedTestDriverEnv & Pick<Env,'SHARED_TEST_GRANTS_ENABLED'|
@@ -29,6 +30,8 @@ export async function scanSharedTest(env:ScanEnv,
     await new SharedTestLeaseDriver(env).resume();
     operation='shared_test.candidate_build';
     await new SharedTestCandidateBuildDispatch(env as Env).resume();
+    operation='shared_test.browser_keepalive';
+    await maintainSharedTestBrowser(env as Env);
     // A dead waiter or expired owner never hands the site to the next run
     // in the same scan. Cleanup and a later independent scan must prove it free.
     if (!expiredHead && !fencedOwner && String(env.SHARED_TEST_GRANTS_ENABLED)==='true') {

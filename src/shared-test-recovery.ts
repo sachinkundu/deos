@@ -5,12 +5,16 @@ import {SharedTestCloseStore,requiredProofKinds} from './shared-test-close.ts';
 import {SharedTestResourceCleanup} from './shared-test-resource-cleanup.ts';
 import {SharedTestCloudflareStores} from './shared-test-cloudflare-stores.ts';
 import {SharedTestCloudflareWorkers} from './shared-test-cloudflare-workers.ts';
+import {SharedTestBrowserCleanup} from './shared-test-browser-cleanup.ts';
+import {SharedTestBrowserStore} from './shared-test-browser-store.ts';
+import {CloudflareTestBrowserProvider} from './shared-test-browser-provider.ts';
 
 type RecoveryEnv=Pick<Env,'DB'|'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {
   TEST_MARKER_KEY_V1?:string;
   IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID?:string;
   IMPLEMENTATION_ENVIRONMENT_TOKEN?:string;
   SHARED_TEST_ZONE_ID?:string;
+  IMPLEMENTATION_BROWSER?:Env['IMPLEMENTATION_BROWSER'];
 };
 
 interface Owner {
@@ -68,6 +72,18 @@ export class SharedTestRecovery {
       LIMIT 1`).bind(owner.owner_run_id,owner.owner_lease_id)
       .first<{identity_id:string}>();
     if(liveIdentity)throw new Error('shared_test_access_identity_remains');
+    const browsers=await this.env.DB.prepare(`SELECT 1 AS exists_one
+      FROM test_browser_sessions WHERE lease_id=? AND run_id=?
+        AND state<>'absent' LIMIT 1`)
+      .bind(owner.owner_lease_id,owner.owner_run_id)
+      .first<{exists_one:number}>();
+    if(browsers) {
+      if(!this.env.IMPLEMENTATION_BROWSER)
+        throw new Error('shared_test_browser_cleanup_unconfigured');
+      await new SharedTestBrowserCleanup(new SharedTestBrowserStore(this.env.DB),
+        new CloudflareTestBrowserProvider(this.env.IMPLEMENTATION_BROWSER))
+        .resume(owner.owner_lease_id,owner.owner_run_id);
+    }
     const markers=(await this.env.DB.prepare(`SELECT x.expectation_id,x.run_id,x.lease_id,
       x.fence,x.task_id,x.team_id FROM test_expected_events x
       WHERE x.run_id=? AND x.lease_id=? AND NOT EXISTS (

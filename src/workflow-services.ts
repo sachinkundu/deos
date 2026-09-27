@@ -1,4 +1,4 @@
-import { configureImplementationNetwork } from "./implementation-network.ts";
+import { configureImplementationNetwork,configureSharedTestNetwork } from "./implementation-network.ts";
 import { BaseChangedError } from "./implementation-contract.ts";
 import { ImplementationService } from "./implementation-service.ts";
 import {sharedTestDemoInput} from './shared-test-demo-input.ts';
@@ -226,6 +226,12 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
         },
         acceptDemoReview: input => new ImplementationDemoService(env.DB, env.ARTIFACTS).accept(input),
         implementationNetwork: async (run,attempt,sandbox) => {
+          if(attempt.node_id==='shared_test_demo') {
+            const network=sandbox as unknown as import('./implementation-network.ts').ImplementationNetworkSandbox;
+            await configureSharedTestNetwork(network,env.CAPABILITY_BASE_URL,{
+              runId:run.run_id,attemptId:attempt.attempt_id});
+            return;
+          }
           const saved = await this.implementation.store.requireRun(run.run_id);
           const input = await this.implementation.store.read<import('./implementation-store.ts').ImplementationInput>(saved.input_key, saved.input_sha);
           await configureImplementationNetwork(

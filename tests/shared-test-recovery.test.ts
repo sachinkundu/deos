@@ -90,3 +90,22 @@ test('missing cleanup key leaves the owned site quiescing',async()=>{
     assert.equal(f.db.sqlite.prepare('SELECT state FROM test_environment').get()?.state,'quiescing');
   } finally {f.db.close();}
 });
+
+test('recovery revokes browser admission before waiting on browser cleanup',async()=>{
+  const f=await fixture();
+  try {
+    f.db.sqlite.prepare(`INSERT INTO test_browser_sessions
+      (lease_id,service_name,run_id,attempt_id,fence,origin,state,
+       operation_id,created_at,updated_at) VALUES
+      ('lease-1','portal','run-1','attempt-1',1,
+       'https://portal.apps.deos-test.voxdez.com','creating',
+       'test-browser:lease-1:portal','now','now')`).run();
+    await assert.rejects(new SharedTestRecovery(f.env,f.linear).resume(),
+      /shared_test_browser_cleanup_unconfigured/);
+    assert.ok(f.db.sqlite.prepare(`SELECT revoked_at FROM test_access_identities
+      WHERE identity_id='identity-1'`).get()?.revoked_at);
+    assert.ok(f.db.sqlite.prepare(`SELECT revoked_at FROM test_app_sessions`).get()?.revoked_at);
+    assert.equal(f.db.sqlite.prepare(`SELECT state FROM test_environment`).get()?.state,
+      'quiescing');
+  }finally{f.db.close();}
+});

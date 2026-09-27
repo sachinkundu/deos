@@ -5,7 +5,7 @@ import {sharedTestEdgeWrapper} from '../src/shared-test-edge-wrapper.ts';
 async function edge() {
   const source=sharedTestEdgeWrapper('portal').replace(
     /^import candidate from .*;\n/,
-    `const candidate={fetch:async request=>Response.json({gate:request.headers.get('X-Deos-Test-Gate'),access:request.headers.get('CF-Access-Jwt-Assertion'),cookie:request.headers.get('Cookie')})};\n`);
+    `const candidate={fetch:async request=>Response.json({gate:request.headers.get('X-Deos-Test-Gate'),access:request.headers.get('CF-Access-Jwt-Assertion'),clientId:request.headers.get('CF-Access-Client-Id'),clientSecret:request.headers.get('CF-Access-Client-Secret'),cookie:request.headers.get('Cookie')})};\n`);
   return (await import(`data:text/javascript,${encodeURIComponent(source)}`)).default;
 }
 
@@ -29,8 +29,22 @@ test('edge checks host and session before forwarding and strips credentials',asy
     'CF-Access-Jwt-Assertion':'access',
     'Cookie':'__Host-deos_test=fresh; app=other',
     'X-Deos-Test-Gate':'forged'}}),env);
-  assert.deepEqual(await response.json(),{gate:'verified',access:null,cookie:'app=other'});
+  assert.deepEqual(await response.json(),{gate:'verified',access:null,
+    clientId:null,clientSecret:null,cookie:'app=other'});
   assert.deepEqual(calls,['redeem','authorize']);
+});
+
+test('public version metadata cannot expose service credentials to candidate code',async()=>{
+  const worker=await edge();
+  const response=await worker.fetch(new Request(
+    'https://portal-test.apps.deos-test.voxdez.com/api/version',{headers:{
+      'CF-Access-Jwt-Assertion':'assertion',
+      'CF-Access-Client-Id':'client-id',
+      'CF-Access-Client-Secret':'client-secret',
+    }}),{TEST_CANONICAL_HOST:'portal-test.apps.deos-test.voxdez.com'});
+  assert.equal(response.status,200);
+  assert.deepEqual(await response.json(),{gate:null,access:null,
+    clientId:null,clientSecret:null,cookie:null});
 });
 
 test('edge rejects a forged gate header without the session',async()=>{

@@ -48,7 +48,8 @@ test('test marker action derives issue scope from the lease and stops at a new f
     const token=await action.grant(input,secret);
     const claims=await verifyCapabilityToken(token,secret);
     assert.equal(claims.leaseId,'lease-1');
-    assert.deepEqual(claims.actions,['github.clone_repository','test_issue_marker_patch']);
+    assert.deepEqual(claims.actions,['github.clone_repository',
+      'test_issue_marker_patch','test_app_browser']);
     await assert.rejects(action.handle(claims,{version:1,action:'find',
       expectationId:'expectation-1'}),/shared_test_marker_agent_inactive/);
     db.sqlite.prepare(`UPDATE agent_attempts SET state='running'

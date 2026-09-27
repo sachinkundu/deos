@@ -20,3 +20,12 @@ export async function configureImplementationNetwork(
   await sandbox.setOutboundHandler("implementation", identity);
   await sandbox.setAllowedHosts(implementationAllowedHosts(policy,capabilityBaseUrl));
 }
+
+export async function configureSharedTestNetwork(
+  sandbox:ImplementationNetworkSandbox,capabilityBaseUrl:string,
+  identity:{runId:string;attemptId:string},
+):Promise<void> {
+  await sandbox.setOutboundHandler('implementation',identity);
+  await sandbox.setAllowedHosts(['chatgpt.com','auth.openai.com',
+    new URL(capabilityBaseUrl).hostname]);
+}

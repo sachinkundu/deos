@@ -2,6 +2,7 @@ import { reconcileImplementations } from "./implementation-reconciliation.ts";
 import {processSharedTestBatch} from './shared-test-queue.ts';
 import {scanSharedTest} from './shared-test-scanner.ts';
 import {SharedTestMarkerAction} from './shared-test-marker-action.ts';
+import {SharedTestBrowserAction} from './shared-test-browser-action.ts';
 import {SharedTestLeaseStore} from './shared-test-lease.ts';
 import { reconcileWorkflowEvents } from './workflow-event-reconciliation.ts';
 import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
@@ -57,6 +58,7 @@ export { SharedTestAppGate } from './shared-test-app-gate-entrypoint.ts';
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
   implementation: new ImplementationBroker(env),
+  sharedTestBrowser:new SharedTestBrowserAction(env),
   sharedTestLeaseWrite:(runId,attemptId,leaseId,fence)=>
     new SharedTestLeaseStore(env.DB).assertWrite(runId,attemptId,leaseId,fence),
   ...((env as Env & {TEST_MARKER_KEY_V1?:string}).TEST_MARKER_KEY_V1 ? {

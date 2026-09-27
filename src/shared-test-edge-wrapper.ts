@@ -24,8 +24,13 @@ export default {
     const url=new URL(request.url);
     if(url.protocol!=='https:'||url.hostname!==env.TEST_CANONICAL_HOST)
       return new Response('wrong test host',{status:421,headers:responseHeaders});
-    if(url.pathname==='/api/version'&&request.method==='GET')
-      return candidate.fetch(request,env,ctx);
+    if(url.pathname==='/api/version'&&request.method==='GET') {
+      const headers=new Headers(request.headers);
+      headers.delete('CF-Access-Jwt-Assertion');
+      headers.delete('CF-Access-Client-Id');
+      headers.delete('CF-Access-Client-Secret');
+      return candidate.fetch(new Request(request,{headers}),env,ctx);
+    }
     if(!env.TEST_APP_GATE)throw new Error('test_app_gate_binding_missing');
     const accessJwt=request.headers.get('CF-Access-Jwt-Assertion');
     if(!accessJwt)return new Response('access required',{status:401,headers:responseHeaders});

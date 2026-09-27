@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import test from 'node:test';
 import {ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
 import {SharedTestAppSessionStore} from '../src/shared-test-app-session.ts';
+import {SharedTestAppLauncher} from '../src/shared-test-app-launcher.ts';
+import {sharedTestServicePlans} from '../src/shared-test-service-plan.ts';
 
-const leaseId='a'.repeat(64),origin='https://portal-test.apps.deos-test.voxdez.com';
+const leaseId='a'.repeat(64),origin=`https://portal-${leaseId.slice(0,32)}.apps.deos-test.voxdez.com`;
+const clientId='client-1';
 const subject={runId:'run-1',attemptId:'attempt-1',leaseId,fence:1,origin,
-  accessIdentityId:'identity-1',principalSha256:'b'.repeat(64)};
+  accessIdentityId:'identity-1',principalSha256:createHash('sha256')
+    .update(`service:${clientId}`).digest('hex')};
 
 function fixture() {
   const db=new ImplementationTestDatabase();
@@ -80,4 +85,38 @@ test('expired code cannot leave a used code or session after the guarded batch',
     assert.equal(db.sqlite.prepare(`SELECT used_at FROM test_app_launch_codes`).get()?.used_at,null);
     assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS n FROM test_app_sessions').get()?.n,0);
   } finally {db.close();}
+});
+
+test('trusted launcher redeems code without giving it to the agent or page',async()=>{
+  const db=fixture();
+  try {
+    const plan=sharedTestServicePlans(leaseId,{revision:'traffic-1',services:[{
+      serviceName:'portal',sourceCommit:'c'.repeat(40),deployVersion:'base-1',
+      buildInputSha256:'d'.repeat(64),trafficPercent:100,
+    }]})[0];
+    let calls=0;
+    const fetcher:typeof fetch=async (url,init)=>{
+      calls++;
+      assert.equal(String(url),`${origin}/__deos/launch`);
+      assert.equal((init!.headers as Record<string,string>)['CF-Access-Client-Secret'],
+        'secret-1');
+      const request=JSON.parse(String(init!.body));
+      const result=await new SharedTestAppSessionStore(db as unknown as D1Database)
+        .redeemCode(request.code,origin,subject.principalSha256);
+      return new Response(null,{status:204,headers:{'Set-Cookie':result.cookie}});
+    };
+    const launched=await new SharedTestAppLauncher(db as unknown as D1Database,
+      clientId,'secret-1',fetcher).launch({...subject,plan});
+    assert.equal(launched.origin,origin);
+    assert.equal(launched.cookie.domain,new URL(origin).hostname);
+    assert.equal(launched.cookie.httpOnly,true);
+    assert.equal('code' in launched,false);
+    assert.equal(calls,1);
+    assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS n FROM test_app_sessions').get()?.n,1);
+    db.sqlite.prepare(`UPDATE test_environment SET state='quiescing',fence=2
+      WHERE site_id=1`).run();
+    await assert.rejects(new SharedTestAppLauncher(db as unknown as D1Database,
+      clientId,'secret-1',fetcher).launch({...subject,plan}),/shared_test_write_fenced/);
+    assert.equal(calls,1);
+  }finally{db.close();}
 });

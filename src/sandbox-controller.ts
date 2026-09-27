@@ -964,7 +964,8 @@ export class SandboxAgentController {
           throw new Error('invalid native finalization output path');
         await sandbox.writeFile(`/deos/output/${name}`, content, { encoding: 'utf8' });
       }
-      if (job.agentRole === "reviewer" || designJob) {
+      if (job.agentRole === "reviewer" || designJob ||
+          job.inputs.includes('shared_test_context')) {
         await sandbox.deleteFile("/usr/local/bin/deos-linear");
         await sandbox.deleteFile("/usr/local/bin/deos-github");
       } else if (planningJob) {

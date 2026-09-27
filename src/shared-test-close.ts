@@ -136,12 +136,14 @@ export class SharedTestCloseStore {
             (SELECT 1 FROM test_cleanup_checks c WHERE c.lease_id=r.lease_id
               AND c.resource_id=r.resource_id AND c.remove_state='done'
               AND c.read_state='absent')))
+        AND NOT EXISTS (SELECT 1 FROM test_browser_sessions
+          WHERE lease_id=? AND (state<>'absent' OR absent_at IS NULL))
         AND NOT EXISTS (SELECT 1 FROM test_app_sessions
           WHERE lease_id=? AND revoked_at IS NULL)
         AND NOT EXISTS (SELECT 1 FROM test_access_identities
           WHERE lease_id=? AND absent_at IS NULL)`)
       .bind(runId,leaseId,fence,env.revision,runId,leaseId,runId,leaseId,
-        leaseId,leaseId,leaseId,leaseId,leaseId).first<{ready:number}>();
+        leaseId,leaseId,leaseId,leaseId,leaseId,leaseId).first<{ready:number}>();
     if (ready?.ready!==1) throw new Error('shared_test_close_absence_missing');
     const results=await this.db.batch([
       this.db.prepare(`UPDATE test_environment SET state='free',saved_phase=NULL,

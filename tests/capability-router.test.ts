@@ -330,6 +330,29 @@ test('shared test repository checkout is fenced before reaching GitHub',async()=
   assert.equal(gitProxy.calls.length,1);
 });
 
+test('shared test browser route uses only its lease-scoped capability',async()=>{
+  const store=new Store(),calls:unknown[]=[];
+  const router=new CapabilityRouter({store,github:{} as never,linear:{} as never,
+    signingSecret:SECRET,now:()=>NOW,
+    sharedTestLeaseWrite:async()=>{},
+    sharedTestBrowser:{async handle(grant,value){calls.push({grant,value});
+      return Response.json({ready:true});}},
+  });
+  const scoped={...claims,actions:['github.clone_repository',
+    'test_issue_marker_patch','test_app_browser'] as const,
+    leaseId:'lease-1',fence:1};
+  const token=await mintCapabilityToken(scoped,SECRET);
+  const other=await mintCapabilityToken(claims,SECRET);
+  const invoke=(grant:string)=>router.handle(new Request(
+    'https://worker.example/capabilities/shared-test-browser',{method:'POST',
+      headers:{Authorization:`Bearer ${grant}`,'Deos-Attempt':claims.attemptId},
+      body:JSON.stringify({version:1,service:'portal',operation:'open'}),
+    }));
+  assert.equal((await invoke(other)).status,403);
+  assert.equal((await invoke(token)).status,200);
+  assert.equal(calls.length,1);
+});
+
 test("signed capability token is scoped and expires", async () => {
   const token = await mintCapabilityToken(claims, SECRET);
   assert.deepEqual(await verifyCapabilityToken(token, SECRET, NOW.getTime()), claims);

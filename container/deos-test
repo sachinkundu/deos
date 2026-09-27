@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+import {readFile} from 'node:fs/promises';
+
+const [kind,path,extra]=process.argv.slice(2);
+if(!['browser','marker'].includes(kind) || !path?.startsWith('/deos/output/') || extra)
+  throw new Error('Usage: deos-test browser|marker /deos/output/request.json');
+const raw=await readFile(path,'utf8');
+if(raw.length>20_000)throw new Error('Test capability request is too large');
+const value=JSON.parse(raw);
+if(!value || typeof value!=='object' || Array.isArray(value))
+  throw new Error('Test capability request must be an object');
+const base=process.env.DEOS_CAPABILITY_URL;
+const token=process.env.DEOS_CAPABILITY_TOKEN;
+const attempt=process.env.DEOS_ATTEMPT_ID;
+if(!base || !token || !attempt)throw new Error('Test capability is unavailable');
+const response=await fetch(`${base}/shared-test-${kind}`,{
+  method:'POST',headers:{Authorization:`Bearer ${token}`,
+    'Content-Type':'application/json','Deos-Attempt':attempt},body:raw,
+});
+const body=await response.text();
+process.stdout.write(body);
+process.exitCode=response.ok?0:1;
