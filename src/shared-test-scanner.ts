@@ -9,6 +9,8 @@ import {maintainSharedTestBrowser} from './shared-test-browser-maintenance.ts';
 import {SharedTestReportDriver} from './shared-test-report-driver.ts';
 import {SharedTestFirstProofDriver} from './shared-test-first-proof-driver.ts';
 import {SharedTestStructuredProofDriver} from './shared-test-structured-proof-driver.ts';
+import {SharedTestShowboatRawDriver} from './shared-test-showboat-raw.ts';
+import {SharedTestShowboatProjection} from './shared-test-showboat-projection.ts';
 
 type ScanEnv=SharedTestDriverEnv & Pick<Env,'SHARED_TEST_GRANTS_ENABLED'|
   'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {TEST_MARKER_KEY_V1?:string};
@@ -28,6 +30,10 @@ export async function scanSharedTest(env:ScanEnv,
     const fencedOwner=await lease.fenceExpired();
     operation='shared_test.recover';
     await new SharedTestRecovery(env).resume();
+    operation='shared_test.preserve_showboat';
+    await new SharedTestShowboatRawDriver(env.DB,env.ARTIFACTS).resume();
+    operation='shared_test.project_showboat';
+    await new SharedTestShowboatProjection(env.DB,env.ARTIFACTS).resume();
     operation='shared_test.publish_structured_proof';
     await new SharedTestStructuredProofDriver(env as Env).resume();
     operation='shared_test.publish_first_proof';

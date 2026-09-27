@@ -313,7 +313,7 @@ spec:
       inputs: [shared_test_context]
       context: []
       resultSchema: schemas/agent-result-v1.json
-      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json, showboat.md]
       agentRole: author
       modelProvider: codex
       model: gpt-5.6-sol
