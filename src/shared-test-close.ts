@@ -1,6 +1,6 @@
 import {sha256Hex} from './implementation-hash.ts';
 
-const requiredProofKinds=['app_screen','linear_screen','showboat','d1_read',
+export const requiredProofKinds=['app_screen','linear_screen','showboat','d1_read',
   'provider_receipt','github_receipt'] as const;
 
 interface OwnerRow {
@@ -62,6 +62,7 @@ export class SharedTestCloseStore {
   }
 
   async cleaning(runId:string,leaseId:string,fence:number,at=new Date()):Promise<void> {
+    const proofKinds=requiredProofKinds.map(()=>'?').join(',');
     const result=await this.db.batch([
       this.db.prepare(`UPDATE test_environment SET state='cleaning',saved_phase='cleaning',
         revision=revision+1,updated_at=? WHERE site_id=1 AND state='quiescing'
@@ -70,9 +71,13 @@ export class SharedTestCloseStore {
         AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=? AND state<>'disabled')
         AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=?
           AND kind='linear_marker_remove' AND state NOT IN ('done','absent'))
-        AND EXISTS (SELECT 1 FROM test_proof_items WHERE lease_id=?
-          AND body_marker IS NOT NULL AND read_at IS NOT NULL AND projected_at IS NOT NULL)`)
-        .bind(at.toISOString(),runId,leaseId,fence,leaseId,leaseId,leaseId,leaseId),
+        AND (SELECT COUNT(DISTINCT kind) FROM test_proof_items WHERE lease_id=?
+          AND kind IN (${proofKinds}) AND classification='public_safe'
+          AND sanitizer_result='passed' AND public_sha256 IS NOT NULL
+          AND public_url IS NOT NULL AND body_marker IS NOT NULL
+          AND read_at IS NOT NULL AND projected_at IS NOT NULL)=?`)
+        .bind(at.toISOString(),runId,leaseId,fence,leaseId,leaseId,leaseId,
+          leaseId,...requiredProofKinds,requiredProofKinds.length),
       this.db.prepare(`UPDATE test_leases SET state='cleaning' WHERE lease_id=? AND run_id=?
         AND state='quiescing' AND EXISTS (SELECT 1 FROM test_environment
           WHERE site_id=1 AND state='cleaning' AND owner_lease_id=? AND fence=?)`)

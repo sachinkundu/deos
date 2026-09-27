@@ -1,0 +1,151 @@
+import {SharedTestResourceStore} from './shared-test-resources.ts';
+import {sharedTestServicePlans,sharedTestStorePlans} from './shared-test-service-plan.ts';
+import type {StableStagingBase} from './shared-test-lease.ts';
+import type {TestStoreCleanupProvider} from './shared-test-store-provisioner.ts';
+import type {TestWorkerIdentity,TestWorkerPlan} from './shared-test-worker-provisioner.ts';
+import {requiredProofKinds} from './shared-test-close.ts';
+
+export interface TestWorkerCleanupProvider {
+  lookup(plan:TestWorkerPlan):Promise<TestWorkerIdentity|null>;
+  remove(plan:TestWorkerPlan):Promise<void>;
+}
+
+interface Owner {
+  state:string;
+  lease_state:string;
+  owner_run_id:string|null;
+  owner_lease_id:string|null;
+  fence:number;
+  base_json:string;
+}
+
+interface Resource {
+  resource_id:string;
+  run_id:string;
+  lease_id:string;
+  create_fence:number;
+  kind:string;
+  provider_key:string;
+  remote_id:string|null;
+  work_id:string;
+  plan_state:string;
+}
+
+/** Remove only fixed-name lease resources after the first proof is attached. */
+export class SharedTestResourceCleanup {
+  readonly db:D1Database;
+  readonly workers:TestWorkerCleanupProvider;
+  readonly stores:TestStoreCleanupProvider;
+  readonly resources:SharedTestResourceStore;
+  constructor(db:D1Database,workers:TestWorkerCleanupProvider,
+    stores:TestStoreCleanupProvider) {
+    this.db=db;this.workers=workers;this.stores=stores;
+    this.resources=new SharedTestResourceStore(db);
+  }
+
+  private async owner(runId:string,leaseId:string,fence:number):Promise<Owner> {
+    const row=await this.db.prepare(`SELECT e.state,l.state AS lease_state,
+      e.owner_run_id,e.owner_lease_id,e.fence,l.base_json
+      FROM test_environment e JOIN test_leases l
+      ON l.lease_id=e.owner_lease_id WHERE e.site_id=1`)
+      .first<Owner>();
+    if (!row || row.state!=='cleaning' || row.lease_state!=='cleaning' ||
+        row.owner_run_id!==runId ||
+        row.owner_lease_id!==leaseId || row.fence!==fence)
+      throw new Error('shared_test_cleanup_fenced');
+    const placeholders=requiredProofKinds.map(()=>'?').join(',');
+    const proof=await this.db.prepare(`SELECT COUNT(DISTINCT kind) AS ready
+      FROM test_proof_items WHERE lease_id=? AND kind IN (${placeholders})
+        AND classification='public_safe' AND sanitizer_result='passed'
+        AND public_sha256 IS NOT NULL AND public_url IS NOT NULL
+        AND body_marker IS NOT NULL AND read_at IS NOT NULL
+        AND projected_at IS NOT NULL`).bind(leaseId,...requiredProofKinds)
+      .first<{ready:number}>();
+    if (proof?.ready!==requiredProofKinds.length)
+      throw new Error('shared_test_cleanup_proof_missing');
+    return row;
+  }
+
+  private async row(resourceId:string,runId:string,leaseId:string,
+    fence:number):Promise<Resource> {
+    const row=await this.resources.cleanupScope({resourceId,runId,leaseId,fence});
+    return row;
+  }
+
+  private static owned(row:Resource,expected:{resourceId:string;runId:string;
+    leaseId:string;fence:number;kind:string;providerKey:string;workId:string}):void {
+    if (row.resource_id!==expected.resourceId || row.run_id!==expected.runId ||
+        row.lease_id!==expected.leaseId || row.create_fence!==expected.fence ||
+        row.kind!==expected.kind || row.provider_key!==expected.providerKey ||
+        row.work_id!==expected.workId)
+      throw new Error(`shared_test_cleanup_resource_identity_changed:${expected.resourceId}`);
+  }
+
+  async resume(input:{runId:string;leaseId:string;createFence:number;
+    cleanupFence:number}):Promise<void> {
+    const owner=await this.owner(input.runId,input.leaseId,input.cleanupFence);
+    const base=JSON.parse(owner.base_json) as StableStagingBase;
+    const services=sharedTestServicePlans(input.leaseId,base);
+    const stores=sharedTestStorePlans(input.leaseId,base);
+    for (const service of services) {
+      await this.owner(input.runId,input.leaseId,input.cleanupFence);
+      const plan:TestWorkerPlan={resourceId:service.resourceId,
+        runId:input.runId,leaseId:input.leaseId,fence:input.createFence,
+        kind:'test_worker',providerKey:service.canonicalHost,
+        workId:service.workId,service};
+      const row=await this.row(plan.resourceId,input.runId,input.leaseId,
+        input.cleanupFence);
+      SharedTestResourceCleanup.owned(row,plan);
+      if (row.plan_state==='absent') continue;
+      const found=await this.workers.lookup(plan);
+      if (found && (found.workerName!==service.workerName ||
+          found.sourceCommit!==service.base.sourceCommit ||
+          found.baseVersionId!==service.base.deployVersion ||
+          found.buildInputSha256!==service.base.buildInputSha256))
+        throw new Error(`shared_test_cleanup_worker_identity_changed:${service.resourceId}`);
+      if (found && row.plan_state==='planned')
+        throw new Error(`shared_test_cleanup_unplanned_worker:${service.resourceId}`);
+      if (row.remote_id && row.remote_id!==service.workerName)
+        throw new Error(`shared_test_cleanup_remote_id_changed:${service.resourceId}`);
+      if (found) {
+        await this.owner(input.runId,input.leaseId,input.cleanupFence);
+        await this.workers.remove(plan);
+      }
+      for (let read=0;read<2;read++) {
+        if (await this.workers.lookup(plan))
+          throw new Error(`shared_test_cleanup_worker_still_present:${service.resourceId}`);
+      }
+      await this.resources.absent({resourceId:service.resourceId,runId:input.runId,
+        leaseId:input.leaseId,fence:input.cleanupFence,
+        removeWorkId:`test-worker-remove:${input.leaseId}:${service.serviceName}`,
+        providerAbsent:true});
+    }
+    for (const store of stores) {
+      await this.owner(input.runId,input.leaseId,input.cleanupFence);
+      const plan={resourceId:store.resourceId,runId:input.runId,
+        leaseId:input.leaseId,fence:input.createFence,kind:store.kind,
+        providerKey:store.providerName,workId:store.workId};
+      const row=await this.row(plan.resourceId,input.runId,input.leaseId,
+        input.cleanupFence);
+      SharedTestResourceCleanup.owned(row,plan);
+      if (row.plan_state==='absent') continue;
+      const found=await this.stores.lookup(plan);
+      if (found && row.plan_state==='planned')
+        throw new Error(`shared_test_cleanup_unplanned_store:${store.resourceId}`);
+      if (row.remote_id && found && row.remote_id!==found)
+        throw new Error(`shared_test_cleanup_store_identity_changed:${store.resourceId}`);
+      if (found) {
+        await this.owner(input.runId,input.leaseId,input.cleanupFence);
+        await this.stores.remove(plan,found);
+      }
+      for (let read=0;read<2;read++) {
+        if (await this.stores.lookup(plan))
+          throw new Error(`shared_test_cleanup_store_still_present:${store.resourceId}`);
+      }
+      await this.resources.absent({resourceId:store.resourceId,runId:input.runId,
+        leaseId:input.leaseId,fence:input.cleanupFence,
+        removeWorkId:`test-store-remove:${input.leaseId}:${store.kind}`,
+        providerAbsent:true});
+    }
+  }
+}
