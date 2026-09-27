@@ -35,7 +35,7 @@
 - [ ] 5.1 Store raw captures privately and generate public proof only from allowlisted, versioned sanitization with metadata removal, fixed masks, and OCR validation.
 - [ ] 5.2 Attach safe images, command proof, data read-back, and provider receipts to the pull-request body; preserve other body text and read back the body and every attached item before deletion.
 - [ ] 5.3 Fence writes first, settle accepted work, remove only resources owned by the run and lease, and prove each app item, provider fixture, deploy, session, identity, and secret absent.
-- [ ] 5.4 Add revision-bound, Access-protected, audited item-level retry or repair; never waive proof or absence and never force the site free.
+- [x] 5.4 Add revision-bound, Access-protected, audited item-level retry or repair; never waive proof or absence and never force the site free.
 - [x] 5.5 Atomically close only after proof and absence checks, complete the exact test attestation, and save a durable close receipt.
 - [x] 5.6 Create and read back the final report after close, then replace the pull-request body's pending marker with its lasting URL without reclaiming the free site.
 - [ ] 5.7 Add the Access-protected `deos-test.voxdez.com` status page, separate from app origins, with the issue key and title leading the active view and safe preparing, cleaning, blocked, and free states.
@@ -45,7 +45,7 @@
 - [x] 6.1 Register a new immutable implementation workflow version with `shared_test_demo` after build and before evidence review and native verification; leave frozen runs unchanged.
 - [x] 6.2 Make every matching app/provider candidate wait for a complete lease-bound test, and save an exact `test_not_required` decision only for a nonmatching candidate.
 - [ ] 6.3 Add the exact-commit staging and live release guard in observe-only mode, with enforcement enabled only after the full SAC-182 proof.
-- [ ] 6.4 Cover grant races, stale attempts, staging drift, wrong versions, old sessions, wrong scopes, event duplicates, uncertain remote replies, proof failures, interrupted cleanup, and first-error preservation with deterministic tests.
+- [x] 6.4 Cover grant races, stale attempts, staging drift, wrong versions, old sessions, wrong scopes, event duplicates, uncertain remote replies, proof failures, interrupted cleanup, and first-error preservation with deterministic tests.
 
 ## 7. Remote proof and review
 
