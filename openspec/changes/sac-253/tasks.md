@@ -25,7 +25,7 @@
 - [x] 4.1 Admit only a trusted current-team Linear task and save its issue, run, attempt, lease, candidate, repository, branch, and pull-request scope.
 - [x] 4.2 Add a fresh lease-bound demo Sandbox and narrow agent capability; check the current D1 fence on each action and reject staging or live release actions.
 - [ ] 4.3 Add a separate lease app origin, service identity, one-use launch code, short host-only app session, and per-request fence check without exposing keys to the agent or page.
-- [ ] 4.4 Restrict GitHub writes to the saved repository, branch, and pull request; re-read team membership before each Linear write.
+- [x] 4.4 Restrict GitHub writes to the saved repository, branch, and pull request; re-read team membership before each Linear write.
 - [x] 4.5 Add the trusted `test_issue_marker_patch` action with a versioned keyed marker, saved before/after hashes, idempotent insert/find/remove, and preservation of human edits.
 - [x] 4.6 Route one signed Linear webhook delivery using all saved event-time facts, atomically claim a live expectation, and retry a durable test Queue dispatch without rerouting duplicates.
 - [x] 4.7 Claim test Queue work with expiring tokens and stable work IDs; save the observed result against the exact task, run, lease, commit, pull request, and base.

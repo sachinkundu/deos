@@ -5,7 +5,8 @@ import {sharedTestProofUrl} from './shared-test-proof-url.ts';
 type StructuredKind='d1_read'|'provider_receipt'|'github_receipt';
 interface Lease {
   run_id:string;lease_id:string;task_id:string;task_key:string;
-  task_title:string;repository:string;branch:string;pull_request_number:number;
+  task_title:string;team_id:string;repository:string;branch:string;
+  pull_request_number:number;
   candidate_commit:string;patch_sha256:string;fence:number;state:string;
   base_manifest_id:string;base_traffic_revision:string;base_json:string;
 }
@@ -31,7 +32,7 @@ export class SharedTestStructuredProofStore {
 
   private async lease(runId:string,leaseId:string):Promise<Lease> {
     const row=await this.db.prepare(`SELECT l.run_id,l.lease_id,l.task_id,
-      l.task_key,l.task_title,l.repository,l.branch,l.pull_request_number,
+      l.task_key,l.task_title,l.team_id,l.repository,l.branch,l.pull_request_number,
       l.candidate_commit,l.patch_sha256,l.fence,l.state,l.base_manifest_id,
       l.base_traffic_revision,l.base_json FROM test_leases l
       JOIN test_environment e ON e.owner_lease_id=l.lease_id
@@ -126,7 +127,7 @@ export class SharedTestStructuredProofStore {
       throw new Error('test_d1_proof_candidate_fence_invalid');
     if(!await sharedTestCandidateReady(this.db,{...lease,fence:sourceFence}))
       throw new Error('test_d1_proof_candidate_readback_missing');
-    const delivery=await this.delivery(runId,leaseId);
+    const delivery=await this.delivery(lease);
     const raw={lease,services:selected,delivery};
     const safe={version:1,source:'DEOS D1 readback',task:lease.task_key,
       title:lease.task_title,candidateCommit:lease.candidate_commit,
@@ -138,15 +139,24 @@ export class SharedTestStructuredProofStore {
     return this.save('d1_read',lease,raw,safe,at);
   }
 
-  private async delivery(runId:string,leaseId:string):Promise<Delivery> {
+  private async delivery(lease:Lease):Promise<Delivery> {
     const rows=(await this.db.prepare(`SELECT p.delivery_id,p.payload_sha256,
       p.provider_time_ms,p.classification,p.route,p.received_at,p.result_json,
       d.state AS dispatch_state FROM test_provider_deliveries p
       JOIN test_delivery_dispatch d ON d.delivery_id=p.delivery_id
+      JOIN test_expected_events x ON x.expectation_id=p.expectation_id
+        AND x.run_id=p.run_id AND x.lease_id=p.lease_id
+        AND x.task_id=p.task_id AND x.team_id=p.team_id
+        AND x.claimed_delivery_id=p.delivery_id
       WHERE p.run_id=? AND p.lease_id=? AND p.route='test'
-        AND d.run_id=? AND d.lease_id=? AND d.state='done'
+        AND p.task_id=? AND p.team_id=?
+        AND p.provider_time_ms BETWEEN x.valid_from_ms AND x.valid_until_ms
+        AND x.kind='Issue' AND x.action='update'
+        AND d.run_id=? AND d.lease_id=?
+        AND d.expectation_id=x.expectation_id AND d.state='done'
       ORDER BY p.received_at,p.delivery_id`)
-      .bind(runId,leaseId,runId,leaseId).all<Delivery>()).results;
+      .bind(lease.run_id,lease.lease_id,lease.task_id,lease.team_id,
+        lease.run_id,lease.lease_id).all<Delivery>()).results;
     if(rows.length!==1)throw new Error('test_provider_proof_delivery_missing_or_duplicate');
     if(rows[0].classification!=='accepted' ||
         !Number.isSafeInteger(rows[0].provider_time_ms) ||
@@ -158,7 +168,7 @@ export class SharedTestStructuredProofStore {
   async saveProviderReceipt(runId:string,leaseId:string,
     at=new Date()):Promise<string> {
     const lease=await this.lease(runId,leaseId);
-    const delivery=await this.delivery(runId,leaseId);
+    const delivery=await this.delivery(lease);
     const safe={version:1,source:'Linear signed webhook',task:lease.task_key,
       classification:delivery.classification,route:delivery.route,
       dispatch:delivery.dispatch_state,
@@ -169,20 +179,20 @@ export class SharedTestStructuredProofStore {
 
   async saveGitHubReceipt(runId:string,leaseId:string,
     pull:{number:number;state:string;draft?:boolean;head:{sha:string;ref:string};
-      base:{repo:{full_name:string}}},at=new Date()):Promise<string> {
+      base:{ref:string;repo:{full_name:string}}},at=new Date()):Promise<string> {
     const lease=await this.lease(runId,leaseId);
     if(pull.number!==lease.pull_request_number || pull.state!=='open' ||
         !pull.draft || pull.head.sha!==lease.candidate_commit ||
         pull.head.ref!==lease.branch ||
-        pull.base.repo.full_name!==lease.repository)
+        pull.base.repo.full_name!==lease.repository || pull.base.ref!=='main')
       throw new Error('test_github_proof_pull_changed');
     const safe={version:1,source:'GitHub PR readback',
       repository:lease.repository,pullRequest:pull.number,
       candidateCommit:pull.head.sha,branch:pull.head.ref,
-      state:pull.state,draft:pull.draft};
+      baseBranch:pull.base.ref,state:pull.state,draft:pull.draft};
     const checkedPull={number:pull.number,state:pull.state,draft:pull.draft,
       head:{sha:pull.head.sha,ref:pull.head.ref},
-      base:{repo:{full_name:pull.base.repo.full_name}}};
+      base:{ref:pull.base.ref,repo:{full_name:pull.base.repo.full_name}}};
     return this.save('github_receipt',lease,{lease,pull:checkedPull},safe,at);
   }
 }

@@ -14,7 +14,7 @@ const base={revision:'traffic-1',services:[{serviceName:'portal',
   buildInputSha256:'c'.repeat(64),trafficPercent:100}]};
 const checkedPull={number:150,state:'open',draft:true,
   head:{sha:candidate,ref:'codex/test'},
-  base:{repo:{full_name:'owner/repo'}}};
+  base:{ref:'main',repo:{full_name:'owner/repo'}}};
 
 function fixture() {
   const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();
@@ -65,9 +65,9 @@ function fixture() {
     .run('1'.repeat(64),'2'.repeat(64),'3'.repeat(64),'4'.repeat(64),now);
   db.sqlite.prepare(`INSERT INTO test_provider_deliveries
     (delivery_id,payload_sha256,provider_time_ms,task_id,team_id,lease_id,
-     run_id,classification,route,received_at,result_json)
+     run_id,classification,route,expectation_id,received_at,result_json)
     VALUES ('delivery-secret',?,1790310701176,'issue-1','team-1','ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
-      'run-1','accepted','test',?,?)`)
+      'run-1','accepted','test','expectation-1',?,?)`)
     .run('d'.repeat(64),now,JSON.stringify({private:'marker-secret'}));
   db.sqlite.prepare(`INSERT INTO test_delivery_dispatch
     (delivery_id,run_id,lease_id,expectation_id,state,queue_work_id,
@@ -112,10 +112,17 @@ test('changed GitHub head and incomplete Linear dispatch cannot create receipts'
     await assert.rejects(f.store.saveGitHubReceipt('run-1','ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',{
       ...checkedPull,head:{...checkedPull.head,sha:'e'.repeat(40)}}),
     /test_github_proof_pull_changed/);
+    await assert.rejects(f.store.saveGitHubReceipt('run-1','ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',{
+      ...checkedPull,base:{...checkedPull.base,ref:'other'}}),
+    /test_github_proof_pull_changed/);
     f.db.sqlite.prepare(`UPDATE test_delivery_dispatch SET state='pending'`).run();
     await assert.rejects(f.store.saveProviderReceipt('run-1','ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'),
       /test_provider_proof_delivery_missing_or_duplicate/);
     await assert.rejects(f.store.saveD1Read('run-1','ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'),
+      /test_provider_proof_delivery_missing_or_duplicate/);
+    f.db.sqlite.prepare(`UPDATE test_delivery_dispatch SET state='done'`).run();
+    f.db.sqlite.prepare(`UPDATE test_expected_events SET team_id='other-team'`).run();
+    await assert.rejects(f.store.saveProviderReceipt('run-1','ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'),
       /test_provider_proof_delivery_missing_or_duplicate/);
     assert.equal(f.db.sqlite.prepare(`SELECT COUNT(*) AS n FROM test_proof_items`).get()?.n,0);
   }finally{f.db.close();}

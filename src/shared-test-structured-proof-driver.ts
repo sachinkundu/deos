@@ -47,7 +47,7 @@ export class SharedTestStructuredProofDriver {
     if(pull.number!==lease.pull_request_number || pull.state!=='open' ||
         pull.draft!==true || pull.head.sha!==lease.candidate_commit ||
         pull.head.ref!==lease.branch ||
-        pull.base.repo.full_name!==lease.repository)
+        pull.base.repo.full_name!==lease.repository || pull.base.ref!=='main')
       throw new Error('test_structured_proof_pull_changed');
     const store=new SharedTestStructuredProofStore(this.env.DB,this.env.ARTIFACTS);
     await store.saveD1Read(lease.run_id,lease.lease_id);

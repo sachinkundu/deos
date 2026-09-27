@@ -54,7 +54,8 @@ export class SharedTestFirstProofDriver {
       if(pull.number!==number || pull.state!=='open' || pull.draft!==true ||
           pull.head.sha!==pending.candidate_commit ||
           pull.head.ref!==pending.branch ||
-          pull.base.repo.full_name!==pending.repository)
+          pull.base.repo.full_name!==pending.repository ||
+          pull.base.ref!=='main')
         throw new Error('test_first_proof_pull_changed');
       return pull;
     };
