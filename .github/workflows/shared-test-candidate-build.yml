@@ -1,0 +1,89 @@
+name: Build shared test candidate
+
+on:
+  repository_dispatch:
+    types: [shared-test-candidate-build]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-test-candidate-${{ github.event.client_payload.candidateCommit }}
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  build:
+    runs-on: avrea-ubuntu-latest-2-vcpu
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [portal, bettaview]
+    steps:
+      - name: Check out trusted build tools
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: tools
+          persist-credentials: false
+      - name: Check out exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.client_payload.candidateCommit }}
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Save frozen request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const payload = context.payload.client_payload;
+            fs.writeFileSync('candidate-request.json', JSON.stringify({
+              candidateCommit: payload.candidateCommit,
+              service: '${{ matrix.service }}',
+            }));
+      - name: Build from saved commit without provider credentials
+        run: python tools/scripts/build_shared_test_candidate.py --candidate-root candidate --request-file candidate-request.json --output bundle.json --receipt receipt.json
+      - name: Keep checked bundle for isolated uploader
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-test-candidate-${{ github.run_id }}-${{ matrix.service }}
+          path: |
+            bundle.json
+            receipt.json
+          if-no-files-found: error
+          retention-days: 3
+
+  upload:
+    needs: build
+    runs-on: avrea-ubuntu-latest-2-vcpu
+    environment: staging
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [portal, bettaview]
+    steps:
+      - name: Check out trusted upload tools
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: tools
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install trusted Wrangler
+        run: npm ci --prefix tools
+      - uses: actions/download-artifact@v4
+        with:
+          name: shared-test-candidate-${{ github.run_id }}-${{ matrix.service }}
+      - name: Verify and upload immutable bundle
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_STAGING_CLOUDFLARE_API_TOKEN }}
+        run: python tools/scripts/publish_shared_test_candidate.py --bundle bundle.json --receipt receipt.json
