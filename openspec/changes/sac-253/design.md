@@ -36,6 +36,24 @@ the test site before the site is wiped.
 - Provider keys in the agent, page, or browser.
 - Fake webhook input as proof of a real provider event.
 
+## Human-controlled prerequisites
+
+The design handoff must name account changes that an agent cannot make. An
+operator performs these steps and supplies non-secret read-back evidence before
+the dependent implementation or live test is enabled. The Sandbox agent receives
+no Cloudflare, Access, Linear, or GitHub account credential.
+
+| Before | Operator-owned setup | Read-back needed |
+| --- | --- | --- |
+| Status-page verification | Attach `deos-test.voxdez.com` to the status Worker and include it in the owner-only Access application. | The exact Worker domain mapping and an authenticated status-page visit. |
+| First lease grant | Deploy both staging app Workers and establish the stable release manifest. Resolve the staging version and traffic proof method, including which trusted service may read or write the shared D1 pointer. | Both running service versions, the saved full manifest, and the agreed traffic gate. A resolving hostname or a Worker upload alone is insufficient. |
+| Browser-based app test | Configure separate Access protection for the lease app origins under `*.apps.deos-test.voxdez.com`, with a scoped service identity held by the trusted browser service. | Application and policy IDs, allowed origin, service identity scope, and a real browser admission check. |
+| Provider test and cleanup | Put the marker-signing key and any required provider or cleanup credentials in trusted services with the narrow scopes in this design. | Presence and scope checks without exposing secret values to the agent, plus a successful owned-item removal and absence read-back. |
+
+If an operator cannot provide one of these prerequisites, keep the related
+grant or write gate disabled and revise this design before relying on it. Do
+not ask an agent to gain account-wide permissions to bridge the gap.
+
 ## Component diagram
 
 ```mermaid
