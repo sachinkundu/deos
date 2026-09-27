@@ -38,12 +38,14 @@ test('one-use launch creates a host-only session that checks the live fence',asy
   try {
     const store=new SharedTestAppSessionStore(db as unknown as D1Database);
     const {code}=await store.issue(subject);
-    const {cookie}=await store.redeem(subject,code);
+    const {cookie}=await store.redeemCode(code,origin,subject.principalSha256);
     assert.match(cookie,/^__Host-deos_test=[A-Za-z0-9_-]{43}; Path=\/; Secure; HttpOnly;/);
     const session=cookie.match(/^__Host-deos_test=([^;]+)/)![1];
     assert.equal(await store.authorize({session,origin,
       principalSha256:subject.principalSha256}),true);
     await assert.rejects(store.redeem(subject,code));
+    await assert.rejects(store.redeemCode(code,origin,'e'.repeat(64)),
+      /launch_code_missing/);
     assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS n FROM test_app_sessions').get()?.n,1);
     assert.equal(await store.authorize({session,origin,
       principalSha256:'e'.repeat(64)}),false);

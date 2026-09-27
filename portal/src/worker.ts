@@ -150,16 +150,25 @@ export const routePortalRequest = async (
     if (request.method !== "GET") return json(405, { error: "method_not_allowed" });
     return json(200, deploymentMetadata(env));
   }
+  if (env.PORTAL_SITE === "Test" &&
+      (env.ROUTE_ADMIN !== undefined || env.RETRY_ADMIN !== undefined ||
+       env.RECENT_ISSUES !== undefined))
+    throw new Error("test_portal_provider_binding_forbidden");
   let identity: { email: string };
-  try {
-    identity = await authenticate(request.headers.get("CF-Access-Jwt-Assertion"), {
-      teamDomain: env.ACCESS_TEAM_DOMAIN,
-      audience: env.ACCESS_AUD,
-      allowedEmail: env.ALLOWED_EMAIL,
-    });
-  } catch (error) {
-    const message = errorText(error);
-    return json(message === "forbidden" ? 403 : 401, { error: message === "authentication unavailable" ? "authentication_unavailable" : "unauthorized" });
+  if (env.PORTAL_SITE === "Test" &&
+      request.headers.get("X-Deos-Test-Gate") === "verified") {
+    identity = { email: "shared-test-browser@internal" };
+  } else {
+    try {
+      identity = await authenticate(request.headers.get("CF-Access-Jwt-Assertion"), {
+        teamDomain: env.ACCESS_TEAM_DOMAIN,
+        audience: env.ACCESS_AUD,
+        allowedEmail: env.ALLOWED_EMAIL,
+      });
+    } catch (error) {
+      const message = errorText(error);
+      return json(message === "forbidden" ? 403 : 401, { error: message === "authentication unavailable" ? "authentication_unavailable" : "unauthorized" });
+    }
   }
   const implementationTasksRoute=url.pathname.match(/^\/api\/implementation\/([^/]+)\/tasks$/);
   const implementationRoute=implementationTasksRoute ?? url.pathname.match(/^\/api\/implementation\/([^/]+)(?:\/(proof|error)\/(.+))?$/);

@@ -1,0 +1,100 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {SharedTestCloudflareWorkers} from '../src/shared-test-cloudflare-workers.ts';
+import {sharedTestServicePlans} from '../src/shared-test-service-plan.ts';
+import type {StableStagingBase} from '../src/shared-test-lease.ts';
+import type {TestWorkerPlan} from '../src/shared-test-worker-provisioner.ts';
+
+const leaseId='a'.repeat(64);
+const base:StableStagingBase={revision:'version-1',services:[{serviceName:'portal',
+  sourceCommit:'b'.repeat(40),deployVersion:'version-1',
+  buildInputSha256:'c'.repeat(64),trafficPercent:100}]};
+const service=sharedTestServicePlans(leaseId,base)[0];
+const plan:TestWorkerPlan={resourceId:service.resourceId,runId:'run-1',leaseId,
+  fence:1,kind:'test_worker',providerKey:service.canonicalHost,
+  workId:service.workId,service};
+const build={worker:new TextEncoder().encode('export default {fetch(){return new Response("ok")}}'),
+  assets:new Map([['portal/dist/index.html',new TextEncoder().encode('<html>test</html>')]]),
+  modules:new Map<string,Uint8Array>(),migrations:new Map<string,Uint8Array>(),
+  sha256:service.base.buildInputSha256};
+
+test('lease Worker upload binds only its stores and gate, then attaches its fixed host',async()=>{
+  let script=false,domain=false;
+  const calls:string[]=[];
+  let metadata:Record<string,any>|undefined;
+  const fetcher:typeof fetch=async (input,init)=>{
+    const url=new URL(String(input));
+    const path=url.pathname.replace(/^\/client\/v4\/accounts\/[a-f0-9]{32}/,'');
+    calls.push(`${init?.method??'GET'} ${path}`);
+    let result:unknown={};
+    if(path.endsWith('/settings')) {
+      if(!script)return new Response('missing',{status:404});
+      result={tags:[`deos-test-lease:${leaseId}`,
+        `deos-test-source:${service.base.sourceCommit}`,
+        `deos-test-base:${service.base.deployVersion}`,
+        `deos-test-build:${service.base.buildInputSha256}`]};
+    } else if(path==='/workers/domains' && init?.method==='PUT') {
+      const body=JSON.parse(String(init.body));
+      assert.equal(body.hostname,service.canonicalHost);
+      assert.equal(body.service,service.workerName);
+      domain=true;
+    } else if(path==='/workers/domains') {
+      result=domain?[{id:'domain-1',hostname:service.canonicalHost,
+        service:service.workerName,zone_id:'e'.repeat(32)}]:[];
+    } else if(path.endsWith('/assets-upload-session')) {
+      const body=JSON.parse(String(init?.body));
+      assert.deepEqual(Object.keys(body.manifest),['/index.html']);
+      result={jwt:'upload-jwt',buckets:[[body.manifest['/index.html'].hash]]};
+    } else if(path==='/workers/assets/upload') {
+      assert.equal(init?.headers && (init.headers as Record<string,string>).Authorization,
+        'Bearer upload-jwt');
+      assert.ok(init?.body instanceof FormData);
+      result={jwt:'complete-jwt'};
+    } else if(path===`/workers/scripts/${service.workerName}` && init?.method==='PUT') {
+      const form=init.body as FormData;
+      metadata=JSON.parse(String(form.get('metadata')));
+      assert.ok(form.get('edge.js'));
+      assert.ok(form.get('app/worker.js'));
+      script=true;
+    } else throw new Error(`unexpected request ${init?.method??'GET'} ${path}`);
+    return Response.json({success:true,result});
+  };
+  const db={prepare:(sql:string)=>({bind:(...args:unknown[])=>({first:async()=>{
+    assert.match(sql,/test_resources/);
+    const kind=args[3];
+    return {remote_id:kind==='d1_database'?
+      '00000000-0000-4000-8000-000000000001':
+      `deos-test-portal-artifacts-${leaseId.slice(0,32)}`,
+      provider_key:kind==='d1_database'?
+        `deos-test-portal-db-${leaseId.slice(0,32)}`:
+        `deos-test-portal-artifacts-${leaseId.slice(0,32)}`,plan_state:'created'};
+  }})})} as unknown as D1Database;
+  const provider=new SharedTestCloudflareWorkers(db,'d'.repeat(32),'e'.repeat(32),
+    'test-token',fetcher);
+  await provider.create(plan,build);
+  assert.equal((await provider.lookup(plan))?.workerName,service.workerName);
+  assert.equal(metadata?.assets.jwt,'complete-jwt');
+  assert.equal(metadata?.main_module,'edge.js');
+  const bindings=metadata?.bindings as Array<{name:string;service?:string;id?:string}>;
+  assert.ok(bindings.some(value=>value.name==='DB'&&
+    value.id==='00000000-0000-4000-8000-000000000001'));
+  assert.ok(bindings.some(value=>value.name==='TEST_APP_GATE'&&
+    value.service==='deos-queue-consumer-ts'));
+  assert.ok(!bindings.some(value=>['ROUTE_ADMIN','RETRY_ADMIN','RECENT_ISSUES'].includes(value.name)));
+  assert.ok(calls.indexOf(`PUT /workers/scripts/${service.workerName}`)<
+    calls.indexOf('PUT /workers/domains'));
+});
+
+test('a lease Worker host already assigned elsewhere is refused before upload',async()=>{
+  const fetcher:typeof fetch=async input=>{
+    const path=new URL(String(input)).pathname;
+    if(path.endsWith('/settings'))return new Response('missing',{status:404});
+    if(path.endsWith('/workers/domains'))return Response.json({success:true,
+      result:[{id:'domain-1',hostname:service.canonicalHost,
+        service:'someone-else',zone_id:'e'.repeat(32)}]});
+    throw new Error(`unexpected ${path}`);
+  };
+  const provider=new SharedTestCloudflareWorkers({} as D1Database,
+    'd'.repeat(32),'e'.repeat(32),'test-token',fetcher);
+  await assert.rejects(provider.create(plan,build),/domain_conflict/);
+});

@@ -107,6 +107,25 @@ export class SharedTestAppSessionStore {
       expiresAt};
   }
 
+  async redeemCode(code:string,origin:string,principalSha256:string,
+    at=new Date()):Promise<{cookie:string;expiresAt:string}> {
+    if (!/^[A-Za-z0-9_-]{43}$/.test(code) || !validOrigin(origin) ||
+        !/^[a-f0-9]{64}$/.test(principalSha256))
+      throw new Error('test_app_redeem_subject_invalid');
+    const digest=await sha256Hex(code);
+    const row=await this.db.prepare(`SELECT run_id,attempt_id,lease_id,fence,origin,
+      access_identity_id,principal_sha256 FROM test_app_launch_codes
+      WHERE code_sha256=? AND origin=? AND principal_sha256=?`)
+      .bind(digest,origin,principalSha256).first<{
+        run_id:string;attempt_id:string;lease_id:string;fence:number;
+        origin:string;access_identity_id:string;principal_sha256:string}>();
+    if (!row) throw new Error('test_app_launch_code_missing');
+    return this.redeem({runId:row.run_id,attemptId:row.attempt_id,
+      leaseId:row.lease_id,fence:row.fence,origin:row.origin,
+      accessIdentityId:row.access_identity_id,
+      principalSha256:row.principal_sha256},code,at);
+  }
+
   async authorize(input:{session:string;origin:string;principalSha256:string},
     at=new Date()):Promise<boolean> {
     if (!/^[A-Za-z0-9_-]{43}$/.test(input.session) ||

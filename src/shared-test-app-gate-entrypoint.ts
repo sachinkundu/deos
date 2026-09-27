@@ -1,5 +1,5 @@
 import {WorkerEntrypoint} from 'cloudflare:workers';
-import {SharedTestAppSessionStore,type TestAppSubject} from './shared-test-app-session.ts';
+import {SharedTestAppSessionStore} from './shared-test-app-session.ts';
 import {verifyTestAccess} from './shared-test-access.ts';
 
 type GateEnv=Env & {TEST_APP_ACCESS_AUD?:string;
@@ -14,13 +14,13 @@ export class SharedTestAppGate extends WorkerEntrypoint<GateEnv> {
       serviceClientId:this.env.TEST_APP_SERVICE_CLIENT_ID??''};
   }
 
-  async redeem(subject:TestAppSubject,code:string,accessJwt:string):Promise<{
+  async redeem(code:string,origin:string,accessJwt:string):Promise<{
     cookie:string;expiresAt:string}> {
     const principal=await verifyTestAccess(accessJwt,this.config());
-    if (principal.kind!=='service' ||
-        principal.principalSha256!==subject.principalSha256)
+    if (principal.kind!=='service')
       throw new Error('test_app_launch_identity_changed');
-    return new SharedTestAppSessionStore(this.env.DB).redeem(subject,code);
+    return new SharedTestAppSessionStore(this.env.DB).redeemCode(code,origin,
+      principal.principalSha256);
   }
 
   async authorize(input:{session:string;origin:string;accessJwt:string}):Promise<boolean> {

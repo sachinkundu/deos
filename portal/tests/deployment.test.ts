@@ -64,3 +64,22 @@ test("lease Worker version names the pinned staging base", () => {
     versionId:'22222222-2222-4222-8222-222222222222',
   });
 });
+
+test("lease portal accepts only the trusted edge header and rejects provider bindings", async () => {
+  const env={PORTAL_SITE:"Test",ACCESS_TEAM_DOMAIN:"test",ACCESS_AUD:"test",
+    ALLOWED_EMAIL:"test@example.com",DB:{} as D1Database,
+    ARTIFACTS:{} as R2Bucket,ASSETS:{fetch:async()=>new Response("test page")},
+  } as unknown as Parameters<typeof routePortalRequest>[1];
+  const url="https://portal-test.apps.deos-test.voxdez.com/";
+  const denied=await routePortalRequest(new Request(url),env,
+    async()=>{throw new Error("unauthorized");});
+  assert.equal(denied.status,401);
+  const allowed=await routePortalRequest(new Request(url,{headers:{
+    "X-Deos-Test-Gate":"verified"}}),env,
+  async()=>{throw new Error("must not verify a second time");});
+  assert.equal(allowed.status,200);
+  assert.equal(await allowed.text(),"test page");
+  await assert.rejects(routePortalRequest(new Request(url,{headers:{
+    "X-Deos-Test-Gate":"verified"}}),{...env,ROUTE_ADMIN:{} as Service},
+  async()=>{throw new Error("must not call");}),/provider_binding_forbidden/);
+});
