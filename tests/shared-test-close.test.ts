@@ -129,7 +129,8 @@ test('close needs attached proof and owned absence before one atomic free transi
           if (failWrite) {failWrite=false;throw new Error('GitHub body update unavailable');}
           body=JSON.parse(String(init.body)).body;
         }
-        return {number:150,body,head:{sha:'a'.repeat(40),ref:'codex/test'},
+        return {number:150,state:'open',draft:true,body,
+          head:{sha:'a'.repeat(40),ref:'codex/test'},
           base:{repo:{full_name:'owner/repo'}}} as T;
       },
     }));

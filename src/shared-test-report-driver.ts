@@ -41,7 +41,8 @@ export class SharedTestReportDriver {
       if (repository!==pending.repository || number!==pending.pull_request_number)
         throw new Error('shared_test_report_pull_scope_changed');
       const pull=await github.json<ImplementationPull>(`/pulls/${number}`);
-      if (pull.number!==number || pull.head.sha!==pending.candidate_commit ||
+      if (pull.number!==number || pull.state!=='open' || pull.draft!==true ||
+          pull.head.sha!==pending.candidate_commit ||
           pull.head.ref!==pending.branch ||
           pull.base.repo.full_name!==pending.repository)
         throw new Error('shared_test_report_pull_changed');
