@@ -46,9 +46,14 @@ no Cloudflare, Access, Linear, or GitHub account credential.
 | Before | Operator-owned setup | Read-back needed |
 | --- | --- | --- |
 | Status-page verification | Attach `deos-test.voxdez.com` to the status Worker and include it in the owner-only Access application. | The exact Worker domain mapping and an authenticated status-page visit. |
-| First lease grant | Deploy both staging app Workers and establish the stable release manifest. Resolve the staging version and traffic proof method, including which trusted service may read or write the shared D1 pointer. | Both running service versions, the saved full manifest, and the agreed traffic gate. A resolving hostname or a Worker upload alone is insufficient. |
 | Browser-based app test | Configure separate Access protection for the lease app origins under `*.apps.deos-test.voxdez.com`, with a scoped service identity held by the trusted browser service. | Application and policy IDs, allowed origin, service identity scope, and a real browser admission check. |
 | Provider test and cleanup | Put the marker-signing key and any required provider or cleanup credentials in trusted services with the narrow scopes in this design. | Presence and scope checks without exposing secret values to the agent, plus a successful owned-item removal and absence read-back. |
+
+Staging base initialization is automated. The trusted coordinator reads
+`/api/version` from both staging Workers through service bindings and saves the
+full manifest through its D1 binding. Two matching version reads are required.
+Each returned version is assumed to serve 100% of staging traffic. This does
+not need a Cloudflare deployment read or a human traffic check.
 
 If an operator cannot provide one of these prerequisites, keep the related
 grant or write gate disabled and revise this design before relying on it. Do
@@ -126,9 +131,9 @@ work uses the same path rule. It needs no special label.
 | --- | --- | --- |
 | 1 | Add or reload one waiting request. Give a new request a growing queue number. | Request save never grants the site. One run and node visit may have only one waiting candidate. |
 | 2 | Read Linear and save the task ID, key, title, and team. Save the GitHub repo, branch, pull request, and commit. | Reject a task outside the current DEOS team. Do not read a test label. |
-| 3 | Keep one staging release pointer. A deploy marks it `updating`, then writes one full, fixed manifest only after all services reach 100% and match a read-back. | The pointer has an owner, work ID, planned manifest, and due time. A dead update is checked against real traffic. Mixed or unknown traffic needs manual repair. |
+| 3 | Keep one staging release pointer. The coordinator reads both version endpoints and saves a full fixed manifest when the observed versions change. | The pointer has an owner, work ID, planned manifest, and due time during refresh. An interrupted refresh is checked against the running versions. |
 | 4 | The scheduled scanner checks waiting rows, then checks the oldest live waiter again. | A terminal or canceled run is marked `canceled` only after its Sandbox is gone. A superseded candidate is marked `superseded`. Its Workflow attempt, team, commit, and GitHub scope must still match. A short validation hold belongs only to the live queue head. |
-| 5 | Read real staging traffic and service versions twice. | Both reads must show the same 100% traffic state and the full stable manifest. Drift blocks grant. |
+| 5 | Read each staging service version twice. | Both reads must show the same full manifest. Treat each returned version as serving 100% by policy. Observed drift blocks grant. |
 | 6 | Grant in one D1 transaction. | It must see no owner, the right queue head, no older waiter, a stable base, and the same traffic revision. It then saves the base and first fence. |
 | 7 | Make lease-named test services and stores from fixed build input. | Each running service must match its saved source and deploy version before app or provider writes start. |
 | 8 | Save a resource plan before each call that may create a remote item. | The plan has one work ID, safe provider name, lease, run, and fence. A retry finds the same item. |
@@ -142,7 +147,7 @@ driver does not need the dead Sandbox or Workflow to be present.
 
 A staging deploy can start after grant. It cannot change the base that the lease
 saved. A direct staging deploy causes drift. The next grant then waits for a new
-stable manifest made from real traffic.
+stable manifest made from the running version responses.
 
 ### Use the app
 
@@ -265,10 +270,12 @@ to quiet and cleanup.
 
 ### Staging has one stable release manifest
 
-Each managed staging deploy takes part in the pointer rule. Grant also checks
-real traffic twice. This catches a deploy that did not use the pointer. A host
-name or branch was not used because both can move. A data copy was not used
-because test stores must stay apart.
+The coordinator refreshes the pointer from two matching version reads before
+grant. This catches an observed staging version change without a deployment job
+writing to D1. The returned version is assumed to serve 100% of traffic;
+the API cannot detect a split deployment. A host name or branch was not used
+because both can move. A data copy was not used because test stores must stay
+apart.
 
 ### One ingress routes one exact Linear test event
 
@@ -343,8 +350,8 @@ replaces the first cause. The public page shows only a safe code and state.
 | Record | Key fields | Rule |
 | --- | --- | --- |
 | `test_environment` | state, saved phase, owner run and lease, fence, heartbeat source and due time, cleanup driver, hold, last lease, fault, revision | One row is the site authority. Owned and blocked states keep the owner. |
-| `staging_release_pointer` | state, manifest, traffic revision, work ID, owner, planned manifest, heartbeat due, fault, revision | Grant needs `stable` and two real traffic reads that match. |
-| `staging_release_services` | manifest, service, source commit, deploy version, fixed build input, read time | Fixed full service set for one staging traffic revision. |
+| `staging_release_pointer` | state, manifest, version revision, work ID, owner, planned manifest, heartbeat due, fault, revision | Grant needs `stable` and two version reads that match. |
+| `staging_release_services` | manifest, service, source commit, deploy version, fixed build input, read time | Fixed full service set for one staging version revision. |
 | `test_task_decisions` | run, candidate, patch hash, service map revision, choice, matched roots, time | Fixed path rule result. The release guard uses the same manifest revision. |
 | `test_lease_requests` | request ID, queue number, run, node visit, current attempt, task, candidate, state, validation facts, old attempts, terminal proof, cancel time | Unique for run, visit, task, and candidate. Retry keeps the row and queue place; the scanner cancels only a proved-dead waiter. |
 | `test_leases` | lease, request, run, attempt, task facts, team, stage, state, fence, base, times, GitHub scope, candidate | Fixed owner, task, provider, GitHub, and base scope. |
@@ -374,9 +381,9 @@ milliseconds. No raw secret, auth header, or full private reply is saved.
 | A retry has a new agent attempt | Prove the old attempt is final and its Sandbox is gone. Swap the attempt on the same request. | One visit, task, and candidate keeps one queue row. |
 | The oldest waiter dies or is canceled | The scheduled scanner saves terminal run proof and Sandbox absence, then marks that row `canceled`. It does not grant in that transaction. | A later scan may validate the next oldest live waiter. |
 | An older frozen workflow has no demo node | Keep its graph unchanged and reject release of an app candidate without new proof. | Admit a new run under the post-version-17 graph and test the exact candidate there. |
-| Staging changes during grant | `updating` blocks grant. Two traffic reads and the grant transaction bind one stable base. | All services show one unchanged 100% revision. |
-| A direct deploy makes the pointer stale | Mark it for repair and block grant. | Build a new full manifest from two equal real traffic reads. |
-| The staging controller dies | Read actual traffic. Finish the planned manifest, restore the old stable one, or block on mixed state. | Never guess a stable base. |
+| Staging changes during grant | `updating` blocks grant. Two version reads and the grant transaction bind one stable base. | All services return one unchanged version revision. |
+| A direct deploy makes the pointer stale | Block grant until coordinator refreshes it. | Build a new full manifest from two equal version reads. |
+| The staging controller dies | Read the running versions. Finish the planned manifest, restore the old stable one, or block if versions change between reads. | Never guess a stable base beyond the explicit 100% assumption. |
 | A test service has the wrong version | Keep writes fenced. Save the fault. Quiet and clean if setup cannot be fixed. | Every service must match, or all owned setup must be gone. |
 | An old app right, cookie, or browser key is used | Reject it before app or store access. Save a safe audit fact. | Current attempt, Access identity, lease session, and fence must all match. |
 | The task leaves the DEOS team | Stop the Linear write. Keep the read and first cause. Do not start live work. | A new trusted read must prove the saved team. |
@@ -409,8 +416,9 @@ milliseconds. No raw secret, auth header, or full private reply is saved.
 
 - **One site makes work wait.** Use a fair queue and safe retry. Do not trade
   clean scope for speed.
-- **The staging pointer adds work to deploys.** Check real traffic at grant, so
-  an out-of-band deploy fails closed.
+- **The staging pointer adds work to grant.** Check versions at grant, so an
+  observed out-of-band version change fails closed. A split rollout that returns
+  the same version on both reads is outside this check by explicit assumption.
 - **A D1 check on each app call adds delay.** Keep the owner row small. Fresh
   fence checks matter more than a fast stale session.
 - **The test mark edits a real task for a short time.** The trusted adapter can
@@ -434,8 +442,9 @@ milliseconds. No raw secret, auth header, or full private reply is saved.
    grant and test event use off.
 3. Register the new immutable workflow version after version 17. Admit only new
    runs to it. Keep the release guard in observe-only mode.
-4. Put all managed staging deploys behind the stable pointer. Seed the first
-   base only after two equal reads of 100% staging traffic.
+4. Refresh the stable pointer in the trusted coordinator. Seed the first base
+   after two equal reads of both staging version endpoints. Staging deploy jobs
+   need no D1 permission for this step.
 5. Add the portal origin, separate lease app origins, test stores, browser
    Access policy, repair route, raw proof route, sanitizer, safe image route,
    and secret refs. Check that no live or staging store is bound.

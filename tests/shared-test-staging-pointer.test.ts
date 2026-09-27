@@ -39,3 +39,49 @@ test('mixed traffic leaves the pointer updating and blocks a second writer',asyn
     await assert.rejects(store.begin('work-2','manifest-2','release-controller'),/staging_release_busy/);
   } finally {db.close();}
 });
+
+test('the coordinator initializes and refreshes the full pointer using only version reads',async()=>{
+  const db=new ImplementationTestDatabase();
+  try {
+    const store=new SharedTestStagingPointer(db as unknown as D1Database);
+    const base={revision:'versions-1',services:[
+      {serviceName:'bettaview',sourceCommit:'c'.repeat(40),deployVersion:'version-1',
+        buildInputSha256:'d'.repeat(64),trafficPercent:100},
+      {serviceName:'portal',sourceCommit:'a'.repeat(40),deployVersion:'version-2',
+        buildInputSha256:'b'.repeat(64),trafficPercent:100},
+    ]};
+    let reads=0;
+    const first=await store.sync(async()=>{reads++;return base;});
+    assert.equal(first.state,'stable');
+    assert.equal(first.traffic_revision,base.revision);
+    assert.equal(reads,4);
+    const same=await store.sync(async()=>{reads++;return base;});
+    assert.equal(same.manifest_id,first.manifest_id);
+    assert.equal(reads,6);
+    const changed={...base,revision:'versions-2',services:[base.services[0],
+      {...base.services[1],deployVersion:'version-3'}]};
+    const next=await store.sync(async()=>changed);
+    assert.equal(next.state,'stable');
+    assert.equal(next.traffic_revision,'versions-2');
+    assert.notEqual(next.manifest_id,first.manifest_id);
+  } finally {db.close();}
+});
+
+test('a version change during pointer sync does not publish a manifest',async()=>{
+  const db=new ImplementationTestDatabase();
+  try {
+    const store=new SharedTestStagingPointer(db as unknown as D1Database);
+    const base={revision:'versions-1',services:[
+      {serviceName:'bettaview',sourceCommit:'c'.repeat(40),deployVersion:'version-1',
+        buildInputSha256:'d'.repeat(64),trafficPercent:100},
+      {serviceName:'portal',sourceCommit:'a'.repeat(40),deployVersion:'version-2',
+        buildInputSha256:'b'.repeat(64),trafficPercent:100},
+    ]};
+    let reads=0;
+    await assert.rejects(store.sync(async()=>++reads<=2?base:{...base,revision:'versions-2'}),
+      /staging_version_changed_during_sync/);
+    assert.equal((await store.pointer()).state,'updating');
+    assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS n FROM staging_release_manifests').get()?.n,0);
+    assert.equal((await store.sync(async()=>base)).state,'stable');
+  } finally {db.close();}
+});

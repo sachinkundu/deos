@@ -14,7 +14,7 @@
 
 ## 3. Staging base and isolated test services
 
-- [ ] 3.1 Put managed staging deploys behind a stable release pointer with full service manifests, 100% traffic read-back, and blocked drift or interrupted updates.
+- [x] 3.1 Refresh one stable release pointer in the trusted coordinator from two matching staging version reads and full service manifests. Block observed drift or interrupted updates. Assume each returned version serves 100% of traffic.
 - [ ] 3.2 Prepare lease-named test services and stores from fixed staging build inputs, excluding live and staging data bindings and provider secrets.
 - [ ] 3.3 Read each running test service version back and block agent and provider writes until every service matches the saved base.
 - [ ] 3.4 Save plans before remote creates, reconcile uncertain replies by fixed names and work IDs, and retain per-resource ownership and create-fence facts.

@@ -1,13 +1,17 @@
 import {SharedTestCoordinator,sharedTestStagingTraffic} from './shared-test-coordinator.ts';
 import {SharedTestFailureStore} from './shared-test-failures.ts';
 import {SharedTestLeaseStore} from './shared-test-lease.ts';
+import {SharedTestStagingPointer} from './shared-test-staging-pointer.ts';
 
 type ScanEnv=Pick<Env,'DB'|'ARTIFACTS'|'SHARED_TEST_GRANTS_ENABLED'>;
 
 /** One scheduled scan. An expired owner always waits for cleanup and a later scan. */
 export async function scanSharedTest(env:ScanEnv,
-  grantHead:()=>Promise<unknown>=()=>new SharedTestCoordinator(
-    env as Env,sharedTestStagingTraffic(env as Env)).grantHead()):Promise<void> {
+  grantHead:()=>Promise<unknown>=async()=>{
+    const traffic=sharedTestStagingTraffic(env as Env);
+    await new SharedTestStagingPointer(env.DB).sync(traffic);
+    return new SharedTestCoordinator(env as Env,traffic).grantHead();
+  }):Promise<void> {
   const lease=new SharedTestLeaseStore(env.DB);
   let operation='shared_test.expire_head';
   try {

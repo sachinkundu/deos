@@ -1,11 +1,19 @@
 import {stableStagingBase,type StagingTrafficRead,type StableStagingBase} from './shared-test-lease.ts';
 import {stagingManifestDigest} from './shared-test-decision-store.ts';
+import {sha256Hex} from './implementation-hash.ts';
 
 export interface StagingServiceScope {
   serviceName:string;
   appPaths:readonly string[];
   providerPaths:readonly string[];
 }
+
+export const SHARED_TEST_STAGING_SCOPES:readonly StagingServiceScope[]=[
+  {serviceName:'bettaview',appPaths:['portal/bettaview/'],providerPaths:[]},
+  {serviceName:'portal',
+    appPaths:['portal/','web/','app/','pages/','components/','src/components/','src/App.','public/'],
+    providerPaths:['src/deos/','src/entry.py','src/linear-','src/github-','src/capability-']},
+];
 
 interface PointerRow {
   state:'uninitialized'|'stable'|'updating'|'blocked';
@@ -36,6 +44,27 @@ export class SharedTestStagingPointer {
     return row;
   }
 
+  /** Refresh the manifest from live version endpoints using this Worker's D1 binding. */
+  async sync(readVersions:()=>Promise<StagingTrafficRead>,at=new Date()):Promise<PointerRow> {
+    const base=stableStagingBase(await readVersions(),await readVersions());
+    const before=await this.pointer();
+    if (before.state==='stable' && before.traffic_revision===base.revision) return before;
+    if (before.state==='blocked') throw new Error('staging_release_busy');
+    if (before.state==='updating') {
+      if (!before.work_id || !before.planned_manifest_id)
+        throw new Error('staging_release_busy');
+      await this.finish(before.work_id,before.planned_manifest_id,
+        SHARED_TEST_STAGING_SCOPES,readVersions,at);
+      return this.pointer();
+    }
+    const workId=`version-sync:${before.revision}:${base.revision}`;
+    const manifestId=`manifest:${await sha256Hex(JSON.stringify([workId]))}`;
+    await this.begin(workId,manifestId,'shared-test-coordinator',at);
+    await this.finish(workId,manifestId,SHARED_TEST_STAGING_SCOPES,
+      readVersions,at,base.revision);
+    return this.pointer();
+  }
+
   async begin(workId:string,plannedManifestId:string,owner:string,at=new Date()):Promise<PointerRow> {
     if (!workId || !plannedManifestId || !owner) throw new Error('invalid_staging_release_plan');
     const before=await this.pointer();
@@ -60,9 +89,11 @@ export class SharedTestStagingPointer {
   }
 
   async finish(workId:string,plannedManifestId:string,scopes:readonly StagingServiceScope[],
-    readTraffic:()=>Promise<StagingTrafficRead>,at=new Date()):Promise<{manifestId:string;revision:number;base:StableStagingBase}> {
+    readTraffic:()=>Promise<StagingTrafficRead>,at=new Date(),expectedRevision?:string):Promise<{manifestId:string;revision:number;base:StableStagingBase}> {
     const scopeRows=canonicalScopes(scopes);
     const base=stableStagingBase(await readTraffic(),await readTraffic());
+    if (expectedRevision && base.revision!==expectedRevision)
+      throw new Error('staging_version_changed_during_sync');
     if (JSON.stringify(scopeRows.map(s=>s.serviceName))!==
         JSON.stringify(base.services.map(s=>s.serviceName)))
       throw new Error('staging_release_service_set_changed');

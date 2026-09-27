@@ -1,67 +1,74 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {CloudflareStagingTrafficReader} from '../src/shared-test-staging-traffic.ts';
+import {StagingVersionReader} from '../src/shared-test-staging-traffic.ts';
+import {stableStagingBase} from '../src/shared-test-lease.ts';
+import {sharedTestStagingTraffic} from '../src/shared-test-coordinator.ts';
 
-const account='a'.repeat(32),source='b'.repeat(40),build='c'.repeat(64);
-const deployment='11111111-1111-4111-8111-111111111111';
+const source='b'.repeat(40),build='c'.repeat(64);
 const version='22222222-2222-4222-8222-222222222222';
-const target={serviceName:'portal',workerName:'deos-workflow-portal-staging',
-  host:'deos-staging.voxdez.com'};
+const target={serviceName:'portal',host:'deos-staging.voxdez.com'};
+const hostVersion={canonicalHost:target.host,sourceSha:source,versionId:version,
+  buildInputSha256:build};
 
-test('staging base comes from 100 percent deployment and matching host readback',async()=>{
-  const requests:string[]=[];
-  const reader=new CloudflareStagingTrafficReader(account,'token',[target],
-    (async(input,init)=>{
-      const url=String(input);requests.push(url);
-      assert.equal(init?.redirect,'manual');
-      if(url.includes('/deployments')) return Response.json({success:true,result:{deployments:[
-        {id:deployment,created_on:'2026-09-25T01:00:00Z',versions:[{version_id:version,percentage:100}]},
-      ]}});
-      if(url===`https://${target.host}/api/version`) return Response.json({
-        canonicalHost:target.host,sourceSha:source,versionId:version,buildInputSha256:build});
-      throw new Error(`unexpected request ${url}`);
-    }) as typeof fetch);
+test('two equal version responses form a stable base without Cloudflare credentials',async()=>{
+  let reads=0;
+  const reader=new StagingVersionReader([target],async current=>{
+    assert.deepEqual(current,target);
+    reads++;
+    return Response.json(hostVersion);
+  });
   const first=await reader.read(),second=await reader.read();
-  assert.deepEqual(first,second);
-  assert.equal(first.services[0].sourceCommit,source);
-  assert.equal(first.services[0].deployVersion,version);
-  assert.equal(first.services[0].buildInputSha256,build);
-  assert.equal(first.services[0].trafficPercent,100);
-  assert.equal(requests.length,4);
+  const base=stableStagingBase(first,second);
+  assert.equal(base.services[0].sourceCommit,source);
+  assert.equal(base.services[0].deployVersion,version);
+  assert.equal(base.services[0].buildInputSha256,build);
+  assert.equal(base.services[0].trafficPercent,100);
+  assert.equal(reads,2);
 });
 
-test('mixed staging traffic cannot become a lease base',async()=>{
-  const reader=new CloudflareStagingTrafficReader(account,'token',[target],
-    (async()=>Response.json({success:true,result:{deployments:[
-      {id:deployment,created_on:'2026-09-25T01:00:00Z',versions:[
-        {version_id:version,percentage:50},{version_id:deployment,percentage:50}]},
-    ]}})) as typeof fetch);
-  await assert.rejects(reader.read(),/traffic_incomplete/);
+test('version change between reads blocks a stable base',async()=>{
+  let reads=0;
+  const reader=new StagingVersionReader([target],async()=>Response.json({
+    ...hostVersion,versionId:reads++===0 ? version : '33333333-3333-4333-8333-333333333333',
+  }));
+  await assert.rejects(async()=>stableStagingBase(await reader.read(),await reader.read()),
+    /staging_traffic_unstable/);
 });
 
-test('a host on another version cannot become a lease base',async()=>{
-  const reader=new CloudflareStagingTrafficReader(account,'token',[target],
-    (async(input)=>String(input).includes('/deployments')
-      ? Response.json({success:true,result:{deployments:[
-          {id:deployment,created_on:'2026-09-25T01:00:00Z',versions:[{version_id:version,percentage:100}]},
-        ]}})
-      : Response.json({canonicalHost:target.host,sourceSha:source,versionId:deployment,
-          buildInputSha256:build})) as typeof fetch);
-  await assert.rejects(reader.read(),/deployment_mismatch/);
+test('invalid or mismatched version responses cannot become a lease base',async()=>{
+  for (const value of [
+    {...hostVersion,canonicalHost:'other.voxdez.com'},
+    {...hostVersion,versionId:'not-a-version'},
+    {...hostVersion,sourceSha:'bad'},
+    {...hostVersion,buildInputSha256:'bad'},
+  ]) {
+    const reader=new StagingVersionReader([target],async()=>Response.json(value));
+    await assert.rejects(reader.read(),/staging_host_version_invalid/);
+  }
+  const failed=new StagingVersionReader([target],async()=>new Response('unavailable',{status:503}));
+  await assert.rejects(failed.read(),/staging_host_version_http_503/);
 });
 
-test('a private service binding can provide the running version behind Access',async()=>{
-  let privateReads=0;
-  const reader=new CloudflareStagingTrafficReader(account,'token',[target],
-    (async()=>Response.json({success:true,result:{deployments:[
-      {id:deployment,created_on:'2026-09-25T01:00:00Z',versions:[{version_id:version,percentage:100}]},
-    ]}})) as typeof fetch,
-    async current=>{
-      assert.equal(current.workerName,target.workerName);
-      privateReads++;
-      return Response.json({canonicalHost:target.host,sourceSha:source,
-        versionId:version,buildInputSha256:build});
-    });
+test('a private service binding can provide the version behind Access',async()=>{
+  const reader=new StagingVersionReader([target],async current=>{
+    assert.equal(current.host,target.host);
+    return Response.json(hostVersion);
+  });
   assert.equal((await reader.read()).services[0].deployVersion,version);
-  assert.equal(privateReads,1);
+});
+
+test('the coordinator reads both private bindings without an account token',async()=>{
+  const seen:string[]=[];
+  const binding=(canonicalHost:string)=>({fetch:async(request:Request)=>{
+    seen.push(request.url);
+    return Response.json({...hostVersion,canonicalHost});
+  }});
+  const env={STAGING_BETTAVIEW:binding('bettaview-staging.voxdez.com'),
+    STAGING_PORTAL:binding(target.host)} as unknown as Env;
+  const snapshot=await sharedTestStagingTraffic(env)();
+  assert.deepEqual(snapshot.services.map(service=>service.serviceName),['bettaview','portal']);
+  assert.deepEqual(seen,[
+    'https://bettaview-staging.voxdez.com/api/version',
+    'https://deos-staging.voxdez.com/api/version',
+  ]);
 });

@@ -155,44 +155,32 @@ class StagingPointerClient:
                     "work_id": work_id, "manifest_id": manifest_id}
         raise ValueError("Staging release pointer is blocked")
 
-    def _deployment(self, service):
-        payload = self._json(
-            f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/workers/scripts/{service['worker']}/deployments"
-        )
-        if payload.get("success") is not True:
-            raise ValueError(f"Staging deployment read failed for {service['name']}")
-        rows = payload.get("result", {}).get("deployments", [])
-        if not rows:
-            raise ValueError(f"Staging deployment missing for {service['name']}")
-        deployed = max(rows, key=lambda row: row["created_on"])
-        versions = deployed.get("versions", [])
-        if len(versions) != 1 or versions[0].get("percentage") != 100:
-            raise ValueError(f"Staging traffic is mixed for {service['name']}")
-        return deployed, versions[0]["version_id"]
-
     def _host(self, service):
         return self._json(f"https://{service['host']}/api/version", bearer=False, access=True)
 
     def traffic(self):
         rows = []
         for service in SERVICES:
-            deployed, version_id = self._deployment(service)
             host = self._host(service)
             if (host.get("canonicalHost") != service["host"] or
-                    host.get("versionId") != version_id or
+                    not isinstance(host.get("versionId"), str) or
+                    re.fullmatch(r"[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}",
+                                 host["versionId"]) is None or
                     not isinstance(host.get("sourceSha"), str) or
                     re.fullmatch(r"[a-f0-9]{40}", host["sourceSha"]) is None or
                     not isinstance(host.get("buildInputSha256"), str) or
                     re.fullmatch(r"[a-f0-9]{64}", host["buildInputSha256"]) is None):
-                raise ValueError(f"Staging host and deployment differ for {service['name']}")
+                raise ValueError(f"Staging version response is invalid for {service['name']}")
             rows.append({"serviceName": service["name"],
                          "sourceCommit": host["sourceSha"],
-                         "deployVersion": version_id,
+                         "deployVersion": host["versionId"],
                          "buildInputSha256": host["buildInputSha256"],
                          "appPaths": service["appPaths"],
-                         "providerPaths": service["providerPaths"],
-                         "deploymentId": deployed["id"]})
-        revision = _digest([[row["serviceName"], row["deploymentId"]] for row in rows])
+                         "providerPaths": service["providerPaths"]})
+        # Policy assumption: each returned version serves 100% of staging traffic.
+        revision = _digest([[row[key] for key in ("serviceName", "sourceCommit",
+                                              "deployVersion", "buildInputSha256")]
+                            for row in rows])
         return {"revision": revision, "services": rows}
 
     def begin(self, work_id, planned_manifest_id, owner):

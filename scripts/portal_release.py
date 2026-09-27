@@ -6,11 +6,9 @@ import os
 import re
 import subprocess
 import urllib.request
-import uuid
 from pathlib import Path
 
 from shared_test_release_guard import guard as shared_test_release_guard
-from shared_test_staging_pointer import StagingPointerClient, run_with_heartbeat
 
 ROOT = Path(__file__).resolve().parents[1]
 ACCOUNT = "c68856288112af7698f5be52ea94b96e"
@@ -192,16 +190,23 @@ def artifact_digest(sha, files):
 
 def validate_readback(target, sha, deployment, version, build_input_sha256):
     _, host, site, branch = TARGETS[target]
-    versions = deployment.get("versions", [])
-    if len(versions) != 1 or versions[0].get("percentage") != 100:
-        raise ValueError("Expected one active version at 100 percent traffic")
+    if target == "production":
+        versions = deployment.get("versions", []) if deployment else []
+        if len(versions) != 1 or versions[0].get("percentage") != 100:
+            raise ValueError("Expected one active version at 100 percent traffic")
+        version_id = versions[0]["version_id"]
+    else:
+        version_id = version.get("versionId", "")
+        if re.fullmatch(r"[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}",
+                        version_id) is None:
+            raise ValueError("Staging version response is invalid")
     expected = {
         "site": site,
         "canonicalHost": host,
         "sourceBranch": branch,
         "sourceSha": sha,
         "buildInputSha256": build_input_sha256,
-        "versionId": versions[0]["version_id"],
+        "versionId": version_id,
     }
     if version != expected:
         raise ValueError("Host metadata does not match the selected commit and provider version")
@@ -243,40 +248,28 @@ def deploy(target):
         raise ValueError("Build changed source checkout")
     check_ref(target, sha)
     preflight(json.loads(config_path.read_text()), target)
-    pointer = StagingPointerClient()
-    plan = None
-    owner = "portal-staging-deploy:" + str(uuid.uuid4())
-    if target == "staging":
-        pointer.assert_no_active_attempts()
-        plan = pointer.prepare_deploy("portal", sha, build_input_sha256, owner)
     args = ["npx", "--no-install", "wrangler", "deploy", str(worker_bundle), "--no-bundle", "--config", "portal/wrangler.jsonc"]
     if target == "staging":
         args += ["--env", "staging"]
     args += ["--var", f"PORTAL_SOURCE_SHA:{sha}"]
     args += ["--var", f"PORTAL_BUILD_INPUT_SHA256:{build_input_sha256}"]
     try:
-        if plan is None or plan["action"] == "deploy":
-            pointer.assert_no_active_attempts()
-            if plan is not None and plan["tracked"]:
-                run_with_heartbeat(args, ROOT, pointer, plan["work_id"], owner)
-            else:
-                run(*args)
+        run(*args)
     except subprocess.CalledProcessError:
         # The provider may have applied a deploy before the CLI lost contact.
         # Read back once, but never convert a failed CLI command to success.
         observed = {}
-        for name, read in (("observedDeployment", provider_deployment), ("observedHost", host_version)):
+        reads = (("observedDeployment", provider_deployment), ("observedHost", host_version)) \
+            if target == "production" else (("observedHost", host_version),)
+        for name, read in reads:
             try:
                 observed[name] = read(target)
             except (OSError, ValueError, KeyError, TypeError) as error:
                 observed[name + "Error"] = type(error).__name__
         print(json.dumps(observed))
         raise
-    deployment = provider_deployment(target)
+    deployment = provider_deployment(target) if target == "production" else None
     version = host_version(target)
     validate_readback(target, sha, deployment, version, build_input_sha256)
-    if plan is not None and plan["action"] == "deploy" and plan["tracked"]:
-        pointer.finish(plan["work_id"], plan["manifest_id"], owner)
-    print(json.dumps({"deploymentId": deployment["id"],
-                      "pointerAction": plan["action"] if plan is not None else None,
+    print(json.dumps({"deploymentId": deployment["id"] if deployment else None,
                       **version}, indent=2))

@@ -8,7 +8,7 @@ import {implementationGitHub} from './implementation-github.ts';
 import type {AdmissionGitHub} from './shared-test-admission.ts';
 import type {OrchestrationRunRecord} from './orchestration-store.ts';
 import type {LinearTestIssue} from './linear-capability.ts';
-import {CloudflareStagingTrafficReader} from './shared-test-staging-traffic.ts';
+import {StagingVersionReader} from './shared-test-staging-traffic.ts';
 
 interface WaitingRequest {
   request_id:string;
@@ -22,17 +22,13 @@ interface WaitingRequest {
 }
 
 export function sharedTestStagingTraffic(env:Env):()=>Promise<StagingTrafficRead> {
-  const token=(env as Env & {IMPLEMENTATION_ENVIRONMENT_TOKEN?:string})
-    .IMPLEMENTATION_ENVIRONMENT_TOKEN;
-  if (!token) throw new Error('shared_test_staging_read_token_missing');
   const targets=[
-    {serviceName:'bettaview',workerName:'deos-bettaview-portal-staging',
+    {serviceName:'bettaview',
       host:'bettaview-staging.voxdez.com',binding:env.STAGING_BETTAVIEW},
-    {serviceName:'portal',workerName:'deos-workflow-portal-staging',
+    {serviceName:'portal',
       host:'deos-staging.voxdez.com',binding:env.STAGING_PORTAL},
   ];
-  const reader=new CloudflareStagingTrafficReader(env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID,
-    token,targets,globalThis.fetch.bind(globalThis),target=>{
+  const reader=new StagingVersionReader(targets,target=>{
       const binding=targets.find(item=>item.serviceName===target.serviceName)?.binding;
       if (!binding) throw new Error('shared_test_staging_binding_missing');
       return binding.fetch(new Request(`https://${target.host}/api/version`,
