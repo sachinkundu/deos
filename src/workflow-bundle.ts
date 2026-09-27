@@ -1,6 +1,7 @@
 import implementationSource from "../config/workflow.implementation.yaml";
 import implementationTasks from "../config/prompts/implementation-tasks.md";
 import implementationBuild from "../config/prompts/implementation-build.md";
+import sharedTestDemoPrompt from '../config/prompts/shared-test-demo.md';
 import demoPlanPrompt from "../config/prompts/implementation-demo-plan.md";
 import demoGatePrompt from "../config/prompts/implementation-demo-gate.md";
 import demoAgentSchema from "../config/schemas/implementation-demo-agent-result-v1.json";
@@ -44,6 +45,7 @@ const prompts: Readonly<Record<string, string>> = Object.freeze({
   "prompts/implementation.md": implementationPrompt,
   "prompts/implementation-tasks.md": implementationTasks,
   "prompts/implementation-build.md": implementationBuild,
+  "prompts/shared-test-demo.md": sharedTestDemoPrompt,
   "prompts/implementation-demo-plan.md": demoPlanPrompt,
   "prompts/implementation-demo-gate.md": demoGatePrompt,
   "prompts/code-review.md": codeReviewPrompt,

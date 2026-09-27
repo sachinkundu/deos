@@ -281,8 +281,10 @@ test("progress hints require implementation authority and cannot supply counts o
 
 test('shared test marker route requires its lease-scoped authority and live attempt',async()=>{
   const store=new Store(),calls:unknown[]=[];
+  let live=true;
   const router=new CapabilityRouter({store,github:{} as never,linear:{} as never,
     signingSecret:SECRET,now:()=>NOW,
+    sharedTestLeaseWrite:async()=>{if(!live)throw new Error('fenced');},
     sharedTestMarker:{async handle(grant,value){calls.push({grant,value});
       return Response.json({accepted:true});}},
   });
@@ -298,9 +300,34 @@ test('shared test marker route requires its lease-scoped authority and live atte
   assert.equal((await invoke(other)).status,403);
   assert.equal((await invoke(token)).status,200);
   assert.equal(calls.length,1);
+  live=false;
+  assert.equal((await invoke(token)).status,403);
+  assert.equal(calls.length,1);
+  live=true;
   store.contextValue!.attemptState='completed';
   assert.equal((await invoke(token)).status,403);
   assert.equal(calls.length,1);
+});
+
+test('shared test repository checkout is fenced before reaching GitHub',async()=>{
+  const store=new Store(),gitProxy=new GitProxy();
+  let live=false;
+  const router=new CapabilityRouter({store,github:{} as never,linear:{} as never,
+    githubGit:gitProxy,signingSecret:SECRET,now:()=>NOW,
+    sharedTestLeaseWrite:async()=>{if(!live)throw new Error('fenced');},
+  });
+  const scoped={...claims,actions:['github.clone_repository','test_issue_marker_patch'] as const,
+    leaseId:'lease-1',fence:1};
+  const token=await mintCapabilityToken(scoped,SECRET);
+  const invoke=()=>router.handle(new Request(
+    'https://worker.example/capabilities/git/info/refs?service=git-upload-pack',{
+      headers:{Authorization:`Bearer ${token}`,'Deos-Attempt':claims.attemptId},
+    }));
+  assert.equal((await invoke()).status,403);
+  assert.equal(gitProxy.calls.length,0);
+  live=true;
+  assert.equal((await invoke()).status,200);
+  assert.equal(gitProxy.calls.length,1);
 });
 
 test("signed capability token is scoped and expires", async () => {

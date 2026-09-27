@@ -19,6 +19,7 @@ owner-only Allow policy. Turning off eager redirect does not remove that policy.
 2. In **Zero Trust → Access controls → Applications**, create a self-hosted application named **DEOS shared test apps**. Set its public hostname to `*.apps.deos-test.voxdez.com` and leave the path empty. This wildcard covers one lease-specific subdomain level; it does not cover the status host.
 3. Add a **Service Auth** policy that includes only the new service token. Add a separate owner-only **Allow** policy for an operator's browser visit. Do not add this wildcard to the existing Workflow Portal or version-check application.
 4. In the trusted `deos-queue-consumer-ts` Worker, set the new application's AUD tag as `TEST_APP_ACCESS_AUD`, the Service Auth policy ID as `TEST_APP_ACCESS_POLICY_ID`, the token's Client ID as `TEST_APP_SERVICE_CLIENT_ID`, and its Client Secret as `TEST_APP_SERVICE_CLIENT_SECRET`. The trusted browser service also needs the token to reach a lease app. The secret must never enter the test app, agent Sandbox, page, D1, or PR.
+   Set a fresh `TEST_MARKER_KEY_V1` secret in that trusted Worker for the versioned Linear test mark. Keep it out of the test app, agent Sandbox, page, D1, and PR as well.
 5. After the first lease app is deployed, test its `/api/version` route with the dedicated service identity and test a browser visit. The trusted app edge will also check its own lease-bound session on every app request.
 
 Record the application ID, policy ID, AUD tag, allowed hostname, service token

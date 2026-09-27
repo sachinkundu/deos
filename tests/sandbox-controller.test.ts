@@ -808,6 +808,16 @@ test("controller stages fixed paths and starts the argv supervisor without provi
   assert.match(prompt, /requirements-publish-v1/);
 });
 
+test("a reserved demo attempt cannot be replaced by a second attempt", async () => {
+  const state=setup();
+  const reserved='00000000-0000-7000-8000-000000000099';
+  const started=await state.controller.execute(run,'work','work',definition,reserved);
+  assert.equal(started.attemptId,reserved);
+  assert.equal(state.attempts.latest?.attempt_id,reserved);
+  await assert.rejects(state.controller.execute(run,'work','work',definition,
+    '00000000-0000-7000-8000-000000000088'),/shared_test_demo_attempt_changed/);
+});
+
 for (const input of [null, 'implementation_context', 'implementation_demo_context']) test(input
   ? `${input} retry refreshes recovery context while preserving the frozen model and source identity`
   : "stage retry preserves the failed attempt's frozen input with a new attempt identity", async () => {

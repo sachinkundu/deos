@@ -2,7 +2,7 @@ apiVersion: deos.dev/v1alpha1
 kind: DeliveryWorkflow
 metadata:
   name: implementation
-  version: 43
+  version: 44
 spec:
   implementationPolicy:
     uiPaths:
@@ -308,6 +308,18 @@ spec:
       permissionProfile: repository_write
       providerAccess: []
       operation: { kind: openspec, instruction: /opsx:apply }
+    shared_test_agent:
+      promptFile: prompts/shared-test-demo.md
+      inputs: [shared_test_context]
+      context: []
+      resultSchema: schemas/agent-result-v1.json
+      requiredOutputs: [transcript.jsonl, result.json, patch.diff, validation.txt, provider-references.json]
+      agentRole: author
+      modelProvider: codex
+      model: gpt-5.6-sol
+      reasoning: high
+      permissionProfile: review_read_only
+      providerAccess: []
   nodes:
     claim_issue:
       type: system_action

@@ -105,7 +105,7 @@ export class SharedTestMarkerAction {
     const claims:CapabilityClaims={version:1,issuer:'deos',
       audience:'sandbox-capabilities',runId:input.runId,attemptId:input.attemptId,
       leaseId:input.leaseId,fence:input.fence,repository:input.repository,
-      issueId:input.issueId,actions:['test_issue_marker_patch'],changeId:null,
+      issueId:input.issueId,actions:['github.clone_repository','test_issue_marker_patch'],changeId:null,
       planningBranch:null,expiresAt:Math.floor(now.getTime()/1000)+15*60};
     return mintCapabilityToken(claims,secret);
   }

@@ -54,6 +54,8 @@ interface OpenRouterCapabilityRequest {
 export interface CapabilityRouterDependencies {
   implementation?: Pick<import("./implementation-broker.ts").ImplementationBroker, "handle">;
   sharedTestMarker?: Pick<import('./shared-test-marker-action.ts').SharedTestMarkerAction,'handle'>;
+  sharedTestLeaseWrite?: (runId:string,attemptId:string,leaseId:string,
+    fence:number)=>Promise<void>;
   completion?: Pick<import("./attempt-completion.ts").AttemptCompletionNotifier, "notify">;
   claude?: Pick<import("./claude-runner.ts").ClaudeRunner, "handle">;
   store: CapabilityStore;
@@ -341,6 +343,17 @@ export class CapabilityRouter {
       context.repository !== claims.repository ||
       context.issueId !== claims.issueId
     ) return json(403, { error: "capability_not_active" });
+    if (claims.leaseId && claims.fence) {
+      if (!this.dependencies.sharedTestLeaseWrite)
+        return json(503,{error:'shared_test_lease_check_unavailable'});
+      try {
+        await this.dependencies.sharedTestLeaseWrite(claims.runId,claims.attemptId,
+          claims.leaseId,claims.fence);
+      } catch (error) {
+        recordCaughtError(error,'src/capability-router.ts:shared_test_lease');
+        return json(403,{error:'shared_test_write_fenced'});
+      }
+    }
 
     if (gitKind !== null) {
       if (

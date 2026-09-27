@@ -18,16 +18,17 @@
 - [x] 3.2 Prepare lease-named test services and stores from fixed staging build inputs, excluding live and staging data bindings and provider secrets.
 - [x] 3.3 Read each running test service version back and block agent and provider writes until every service matches the saved base.
 - [x] 3.4 Save plans before remote creates, reconcile uncertain replies by fixed names and work IDs, and retain per-resource ownership and create-fence facts.
+- [ ] 3.5 Build the exact candidate commit in a fresh trusted checkout, deploy it only to affected lease services, and read back the candidate version twice before the demo starts.
 
 ## 4. Scoped agent, browser, and provider use
 
 - [x] 4.1 Admit only a trusted current-team Linear task and save its issue, run, attempt, lease, candidate, repository, branch, and pull-request scope.
-- [ ] 4.2 Add a fresh lease-bound demo Sandbox and narrow agent capability; check the current D1 fence on each action and reject staging or live release actions.
+- [x] 4.2 Add a fresh lease-bound demo Sandbox and narrow agent capability; check the current D1 fence on each action and reject staging or live release actions.
 - [ ] 4.3 Add a separate lease app origin, service identity, one-use launch code, short host-only app session, and per-request fence check without exposing keys to the agent or page.
 - [ ] 4.4 Restrict GitHub writes to the saved repository, branch, and pull request; re-read team membership before each Linear write.
-- [ ] 4.5 Add the trusted `test_issue_marker_patch` action with a versioned keyed marker, saved before/after hashes, idempotent insert/find/remove, and preservation of human edits.
-- [ ] 4.6 Route one signed Linear webhook delivery using all saved event-time facts, atomically claim a live expectation, and retry a durable test Queue dispatch without rerouting duplicates.
-- [ ] 4.7 Claim test Queue work with expiring tokens and stable work IDs; save the observed result against the exact task, run, lease, commit, pull request, and base.
+- [x] 4.5 Add the trusted `test_issue_marker_patch` action with a versioned keyed marker, saved before/after hashes, idempotent insert/find/remove, and preservation of human edits.
+- [x] 4.6 Route one signed Linear webhook delivery using all saved event-time facts, atomically claim a live expectation, and retry a durable test Queue dispatch without rerouting duplicates.
+- [x] 4.7 Claim test Queue work with expiring tokens and stable work IDs; save the observed result against the exact task, run, lease, commit, pull request, and base.
 
 ## 5. Proof, cleanup, and portal
 
