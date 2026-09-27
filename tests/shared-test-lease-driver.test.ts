@@ -7,7 +7,10 @@ function driver(owner:Record<string,unknown>) {
   const db={prepare:()=>({first:async()=>owner})} as unknown as D1Database;
   const fetcher:typeof fetch=async()=>{fetches++;throw new Error('provider must not be called');};
   return {value:new SharedTestLeaseDriver({DB:db,ARTIFACTS:{} as R2Bucket,
-    IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID:'c68856288112af7698f5be52ea94b96e'},fetcher),
+    IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID:'c68856288112af7698f5be52ea94b96e',
+    TEST_APP_ACCESS_AUD:'a'.repeat(64),
+    TEST_APP_ACCESS_POLICY_ID:'12345678-1234-1234-1234-123456789abc',
+    TEST_APP_SERVICE_CLIENT_ID:'client-1'},fetcher),
     fetches:()=>fetches};
 }
 
