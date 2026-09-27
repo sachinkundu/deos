@@ -135,7 +135,7 @@ work uses the same path rule. It needs no special label.
 | 4 | The scheduled scanner checks waiting rows, then checks the oldest live waiter again. | A terminal or canceled run is marked `canceled` only after its Sandbox is gone. A superseded candidate is marked `superseded`. Its Workflow attempt, team, commit, and GitHub scope must still match. A short validation hold belongs only to the live queue head. |
 | 5 | Read each staging service version twice. | Both reads must show the same full manifest. Treat each returned version as serving 100% by policy. Observed drift blocks grant. |
 | 6 | Grant in one D1 transaction. | It must see no owner, the right queue head, no older waiter, a stable base, and the same traffic revision. It then saves the base and first fence. |
-| 7 | Make lease-named test services and stores from fixed build input. | Each running service must match its saved source and deploy version before app or provider writes start. |
+| 7 | Make lease-named test services and stores from fixed build input. | Each running service reports its source commit, build input, staging base version, and its own deployed version twice. Save those readbacks before changing the lease from `preparing` to `active`. App and provider writes need `active`. |
 | 8 | Save a resource plan before each call that may create a remote item. | The plan has one work ID, safe provider name, lease, run, and fence. A retry finds the same item. |
 
 While the lease is `preparing` or `active`, the owning Workflow sends a
