@@ -128,7 +128,7 @@ export class SharedTestImageSanitizer {
     if(!saved || await sha256(new Uint8Array(await saved.arrayBuffer()))!==publicSha)
       throw new Error('test_image_proof_readback_failed');
     const updated=await this.db.prepare(`UPDATE test_proof_items SET
-      classification='public_safe',view_rule='access_protected',
+      classification='public_safe',view_rule='public',
       sanitizer_version=?,sanitizer_result='passed',public_sha256=?,
       public_url=?,projected_at=? WHERE proof_id=? AND run_id=? AND lease_id=?
         AND classification='private' AND sanitizer_result='pending'
