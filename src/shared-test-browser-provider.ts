@@ -16,6 +16,7 @@ export interface TestBrowserProvider {
     domain:string;httpOnly:true;secure:true;sameSite:'Lax';path:'/'},
     clientId:string,clientSecret:string):Promise<void>;
   command(id:string,origin:string,input:TestBrowserOperation):ReturnType<typeof browserCommand>;
+  capture(id:string,origin:string):Promise<{image:Uint8Array;url:string}>;
   close(id:string):Promise<void>;
   keepAlive(id:string):Promise<void>;
 }
@@ -35,6 +36,13 @@ export class CloudflareTestBrowserProvider implements TestBrowserProvider {
   keepAlive(id:string) {return this.browser.keepAlive(id);}
   command(id:string,origin:string,input:TestBrowserOperation) {
     return browserCommand(this.binding,id,origin,input);
+  }
+  async capture(id:string,origin:string):Promise<{image:Uint8Array;url:string}> {
+    const result=await browserCommand(this.binding,id,origin,{operation:'screenshot'});
+    if(!('image' in result) || !(result.image instanceof Uint8Array) ||
+        !result.url || new URL(result.url).origin!==origin)
+      throw new Error('test_browser_capture_invalid');
+    return {image:result.image,url:result.url};
   }
 
   async prepare(id:string,origin:string,cookie:{name:string;value:string;

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import test from 'node:test';
-import {ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
+import {ImplementationTestBucket,ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
 import {SharedTestAppLauncher} from '../src/shared-test-app-launcher.ts';
 import {SharedTestAppSessionStore} from '../src/shared-test-app-session.ts';
 import {SharedTestBrowser} from '../src/shared-test-browser.ts';
@@ -9,6 +9,7 @@ import {SharedTestBrowserStore} from '../src/shared-test-browser-store.ts';
 import {SharedTestBrowserCleanup} from '../src/shared-test-browser-cleanup.ts';
 import type {TestBrowserProvider} from '../src/shared-test-browser-provider.ts';
 import {sharedTestServicePlans} from '../src/shared-test-service-plan.ts';
+import {SharedTestRawProofStore} from '../src/shared-test-raw-proof.ts';
 
 const leaseId='a'.repeat(64),runId='run-1',attemptId='attempt-1';
 const base={revision:'traffic-1',services:[{serviceName:'portal',
@@ -60,6 +61,9 @@ function launcher(db:ImplementationTestDatabase) {
 test('owned browser starts after trusted launch and rejects a later fence',async()=>{
   const db=fixture();
   try {
+    const bucket=new ImplementationTestBucket();
+    const image=new Uint8Array(128);
+    image.set([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]);
     const sessions:string[]=[];
     let prepared=false,prepares=0,creates=0;
     const provider={
@@ -74,6 +78,7 @@ test('owned browser starts after trusted launch and rejects a later fence',async
         assert.equal(cookie.httpOnly,true);prepared=true;prepares++;
       },
       command:async()=>({url:origin,title:'Test',content:'<html>ready</html>'}),
+      capture:async()=>({url:`${origin}/review`,image}),
       close:async(id:string)=>{sessions.splice(sessions.indexOf(id),1);},
     } as unknown as TestBrowserProvider;
     const browser=new SharedTestBrowser(new SharedTestBrowserStore(db as unknown as D1Database),
@@ -91,6 +96,15 @@ test('owned browser starts after trusted launch and rejects a later fence',async
     assert.ok(Date.parse(String(db.sqlite.prepare(`SELECT prepared_until
       FROM test_browser_sessions WHERE lease_id=?`).get(leaseId)?.prepared_until))
       >Date.now()+12*60_000);
+    const proofId=await new SharedTestRawProofStore(db as unknown as D1Database,
+      bucket as unknown as R2Bucket).saveAppScreen(scope,await browser.capture(scope));
+    const proof=db.sqlite.prepare(`SELECT classification,sanitizer_result,
+      public_url,source_sha256,object_key FROM test_proof_items WHERE proof_id=?`)
+      .get(proofId) as Record<string,unknown>;
+    assert.equal(proof.classification,'private');
+    assert.equal(proof.sanitizer_result,'pending');
+    assert.equal(proof.public_url,null);
+    assert.ok(bucket.objects.has(String(proof.object_key)));
     db.sqlite.prepare(`UPDATE test_environment SET state='quiescing',fence=2
       WHERE site_id=1`).run();
     await assert.rejects(browser.command(scope,{operation:'state'}),/shared_test_write_fenced/);

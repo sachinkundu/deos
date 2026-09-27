@@ -139,4 +139,25 @@ export class SharedTestBrowser {
       ...(result.documentStatus!==undefined?
         {documentStatus:result.documentStatus}:{})};
   }
+
+  async capture(scope:TestBrowserScope):Promise<{image:Uint8Array;url:string}> {
+    if(!await this.verifyCandidate(scope))
+      throw new Error('test_browser_candidate_not_running');
+    await new SharedTestLeaseStore(this.store.db).assertWrite(scope.runId,
+      scope.attemptId,scope.leaseId,scope.fence);
+    const row=await this.store.row(scope.leaseId,scope.plan.serviceName);
+    if(!row || row.state!=='ready' || !row.session_id ||
+        row.run_id!==scope.runId || row.attempt_id!==scope.attemptId ||
+        row.fence!==scope.fence || row.origin!==`https://${scope.plan.canonicalHost}`)
+      throw new Error('test_browser_session_fenced');
+    if(!row.prepared_until || Date.parse(row.prepared_until)-Date.now()<120_000)
+      await this.refresh(scope,row);
+    const result=await this.provider.capture(row.session_id,row.origin);
+    if(result.image.byteLength<100 || result.image.byteLength>8_000_000 ||
+        new URL(result.url).origin!==row.origin)
+      throw new Error('test_browser_capture_invalid');
+    await new SharedTestLeaseStore(this.store.db).assertWrite(scope.runId,
+      scope.attemptId,scope.leaseId,scope.fence);
+    return result;
+  }
 }

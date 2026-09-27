@@ -7,6 +7,7 @@ import {sharedTestCandidateDeployment} from './shared-test-candidate-deployment.
 import {SharedTestFailureStore} from './shared-test-failures.ts';
 import {SharedTestLeaseStore,type StableStagingBase} from './shared-test-lease.ts';
 import {sharedTestServicePlans} from './shared-test-service-plan.ts';
+import {SharedTestRawProofStore} from './shared-test-raw-proof.ts';
 
 interface Lease {
   lease_id:string;run_id:string;attempt_id:string;task_id:string;
@@ -31,7 +32,7 @@ export class SharedTestBrowserAction {
     const request=value as Record<string,unknown>;
     if(request.version!==1 || !['portal','bettaview'].includes(String(request.service)) ||
         typeof request.operation!=='string' ||
-        !['open','navigate','state','click','fill','press','wait','viewport']
+        !['open','navigate','state','click','fill','press','wait','viewport','capture']
           .includes(request.operation) ||
         Object.keys(request).some(key=>!['version','service','operation','url',
           'selector','text','key','width','height','modifiers'].includes(key)) ||
@@ -83,6 +84,12 @@ export class SharedTestBrowserAction {
       if(request.operation==='open') {
         await browser.open(scope);
         return Response.json({ready:true,origin:`https://${plan.canonicalHost}`});
+      }
+      if(request.operation==='capture') {
+        const proofId=await new SharedTestRawProofStore(this.env.DB,this.env.ARTIFACTS)
+          .saveAppScreen(scope,await browser.capture(scope));
+        return Response.json({proofId,classification:'private',
+          sanitizerResult:'pending'});
       }
       const input:TestBrowserOperation={operation:request.operation as TestBrowserOperation['operation'],
         ...(typeof request.url==='string'?{url:request.url}:{}),
