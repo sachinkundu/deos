@@ -14,10 +14,12 @@ curl -sS -w "\nHTTP %{http_code}\n" https://deos-shared-test-proof.skundu.worker
 HTTP 404
 ```
 
+The Worker was updated to serve passed text receipts as well as passed images; this readback refers to the updated version.
+
 ```bash
-. /Users/sachin/code/deos/.env; CLOUDFLARE_API_TOKEN="$CLOUDFLARE_TOKEN" npx wrangler deployments list --name deos-shared-test-proof --config portal/test-proof/wrangler.jsonc --json | jq -c ".[0].versions"
+. /Users/sachin/code/deos/.env; CLOUDFLARE_API_TOKEN="$CLOUDFLARE_TOKEN" npx wrangler deployments list --name deos-shared-test-proof --config portal/test-proof/wrangler.jsonc --json | jq -c "sort_by(.created_on) | last | .versions"
 ```
 
 ```output
-[{"version_id":"3a75e8f7-226c-418d-95da-3ebf56e14b57","percentage":100}]
+[{"version_id":"3591e830-8326-48e7-9a08-f2a2e5b5c3db","percentage":100}]
 ```
