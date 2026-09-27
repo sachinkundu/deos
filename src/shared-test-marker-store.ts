@@ -155,12 +155,25 @@ export class SharedTestMarkerStore {
        state,started_at) VALUES (?,?,?,?,'linear_marker_remove',?,?,'planned',?)`)
       .bind(workId,input.runId,input.leaseId,input.cleanupFence,input.taskId,
         afterHash,at.toISOString()).run();
-    const operation=await this.db.prepare(`SELECT expected_description_sha256 FROM test_operations
+    const operation=await this.db.prepare(`SELECT expected_description_sha256,state FROM test_operations
       WHERE work_id=? AND run_id=? AND lease_id=?`)
       .bind(workId,input.runId,input.leaseId)
-      .first<{expected_description_sha256:string}>();
-    if (operation?.expected_description_sha256!==afterHash)
-      throw new Error('test_marker_remove_human_edit_conflict');
+      .first<{expected_description_sha256:string;state:string}>();
+    if (!operation) throw new Error('test_marker_remove_plan_missing');
+    if (operation.expected_description_sha256!==afterHash) {
+      if (!['planned','running','uncertain'].includes(operation.state))
+        throw new Error('test_marker_remove_human_edit_conflict');
+      // The provider may have failed before removal while a person edited the
+      // issue. Replan only this marker's removal from the latest description.
+      const revised=await this.db.prepare(`UPDATE test_operations SET
+        expected_description_sha256=?,state='planned' WHERE work_id=?
+          AND run_id=? AND lease_id=? AND kind='linear_marker_remove'
+          AND expected_description_sha256=? AND state IN ('planned','running','uncertain')`)
+        .bind(afterHash,workId,input.runId,input.leaseId,
+          operation.expected_description_sha256).run();
+      if (revised.meta.changes!==1)
+        throw new Error('test_marker_remove_human_edit_conflict');
+    }
     const result=await this.linear.updateTestIssueDescription(input.taskId,after);
     if (result.teamId!==input.teamId || result.description!==after)
       throw new Error('test_marker_remove_readback_changed');

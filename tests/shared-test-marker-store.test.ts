@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
 import {SharedTestMarkerStore} from '../src/shared-test-marker-store.ts';
+import {testIssueMarker} from '../src/shared-test-marker.ts';
 
 function fixture() {
   const db=new ImplementationTestDatabase();
@@ -91,5 +92,46 @@ test('marker insertion stops if heartbeat expires during the provider read',asyn
     await assert.rejects(store.insert(input),/test_marker_plan_conflict/);
     assert.equal(wrote,false);
     assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS total FROM test_expected_events').get()?.total,0);
+  } finally {db.close();}
+});
+
+test('marker removal retries from the latest text after a provider failure and human edit',async()=>{
+  const {db,input}=fixture();
+  try {
+    const marker=await testIssueMarker(input,'test-secret');
+    let description=`Original text\n${marker}\n`;
+    let fail=true;
+    const linear={
+      readTestIssue:async()=>({id:'issue-1',identifier:'SAC-1',title:'Test',
+        teamId:'team-1',description}),
+      testActorId:async()=> 'app-actor-1',
+      updateTestIssueDescription:async(_id:string,next:string)=>{
+        if (fail) {fail=false;throw new Error('Linear temporarily unavailable');}
+        description=next;
+        return {id:'issue-1',identifier:'SAC-1',title:'Test',teamId:'team-1',description};
+      },
+    };
+    db.sqlite.prepare(`UPDATE test_environment SET state='quiescing',fence=2
+      WHERE site_id=1`).run();
+    db.sqlite.prepare(`UPDATE test_leases SET state='quiescing'
+      WHERE lease_id='lease-1'`).run();
+    db.sqlite.prepare(`INSERT INTO test_lease_fence_epochs
+      (lease_id,fence,run_id,reason,transition_revision,created_at)
+      VALUES ('lease-1',2,'run-1','quiesce',2,'now')`).run();
+    db.sqlite.prepare(`INSERT INTO test_expected_events
+      (expectation_id,run_id,lease_id,fence,task_id,team_id,kind,action,
+       actor_id,key_version,challenge_sha256,before_sha256,after_sha256,
+       marker_sha256,valid_from_ms,valid_until_ms,state,created_at)
+      VALUES ('expectation-1','run-1','lease-1',1,'issue-1','team-1','Issue',
+        'update','app-actor-1',1,?,?,?,?,1,9999999999999,'disabled','now')`)
+      .run(...Array(4).fill('f'.repeat(64)));
+    const store=new SharedTestMarkerStore(db as unknown as D1Database,linear,'test-secret');
+    await assert.rejects(store.disableAndRemove({...input,cleanupFence:2}),
+      /Linear temporarily unavailable/);
+    description=description.replace('Original text','Original text\nHuman follow-up');
+    await store.disableAndRemove({...input,cleanupFence:2});
+    assert.equal(description,'Original text\nHuman follow-up\n');
+    assert.equal(db.sqlite.prepare(`SELECT state FROM test_operations
+      WHERE work_id='test-marker:expectation-1:remove'`).get()?.state,'done');
   } finally {db.close();}
 });
