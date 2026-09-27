@@ -167,3 +167,38 @@ test('unknown browser create outcome is retained and never retried as new',async
       .row(leaseId,'portal'))?.state,'absent');
   }finally{db.close();}
 });
+
+test('Linear screenshot storage is tied to the saved issue and remains private until sanitized',async()=>{
+  const db=fixture(),bucket=new ImplementationTestBucket();
+  try {
+    const image=new Uint8Array(128);
+    image.set([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]);
+    const store=new SharedTestRawProofStore(db as unknown as D1Database,
+      bucket as unknown as R2Bucket);
+    await assert.rejects(store.saveLinearScreen(runId,leaseId,{image,
+      url:'https://linear.app/sachinkundu/issue/SAC-2/wrong'}),
+    /test_linear_screen_capture_invalid/);
+    const proofId=await store.saveLinearScreen(runId,leaseId,{image,
+      url:'https://linear.app/sachinkundu/issue/SAC-1/test'});
+    const row=db.sqlite.prepare(`SELECT classification,source_sha256,public_url
+      FROM test_proof_items WHERE proof_id=?`).get(proofId);
+    assert.equal(row?.classification,'private');
+    assert.equal(row?.public_url,null);
+    const safeImage=new Uint8Array(image);safeImage[100]=1;
+    const safeHash=createHash('sha256').update(safeImage).digest('hex');
+    await new SharedTestImageSanitizer(db as unknown as D1Database,
+      bucket as unknown as R2Bucket,{run:async()=>({image:safeImage,
+        manifest:{version:1,sanitizerVersion:'fixed-mask-ocr-v1',
+          sourceSha256:String(row?.source_sha256),publicSha256:safeHash,
+          width:600,height:400,recognizedText:['SAC-1'],passed:true}})})
+      .project(proofId,{version:1,sourceSha256:String(row?.source_sha256),
+        width:600,height:400,crop:{x:0,y:0,width:600,height:400},masks:[],
+        allowedText:['SAC-1'],requiredText:['SAC-1']});
+    const response=await routePublicProof(new Request(
+      `https://deos-shared-test-proof.skundu.workers.dev/proof/${proofId}`),{
+      DB:db as unknown as D1Database,
+      ARTIFACTS:bucket as unknown as R2Bucket});
+    assert.equal(response.status,200);
+    assert.deepEqual(new Uint8Array(await response.arrayBuffer()),safeImage);
+  }finally{db.close();}
+});

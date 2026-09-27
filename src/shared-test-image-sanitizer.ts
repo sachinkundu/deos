@@ -91,7 +91,8 @@ export class SharedTestImageSanitizer {
     const row=await this.db.prepare(`SELECT proof_id,run_id,lease_id,kind,
       classification,sanitizer_result,source_sha256,object_key,public_sha256
       FROM test_proof_items WHERE proof_id=?`).bind(proofId).first<RawProof>();
-    if(!row || row.kind!=='app_screen' || row.classification!=='private' ||
+    if(!row || !['app_screen','linear_screen'].includes(row.kind) ||
+        row.classification!=='private' ||
         row.sanitizer_result!=='pending' || row.public_sha256 ||
         recipe.sourceSha256!==row.source_sha256)
       throw new Error('test_image_proof_scope_invalid');
