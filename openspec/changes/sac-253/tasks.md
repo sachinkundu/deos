@@ -10,7 +10,7 @@
 - [x] 2.2 Implement the app/provider path decision using one saved service-manifest revision and exact patch hash and candidate commit.
 - [x] 2.3 Implement idempotent lease requests, fair queue validation, and atomic single-owner grant against a stable staging base.
 - [ ] 2.4 Implement heartbeat, write-fence checks, dead-waiter expiry, and scheduled recovery without treating age or timeout as proof of a free site.
-- [ ] 2.5 Implement first-error retention across D1 and create-only object storage, preserving the original message, stack, causes, operation, and lease facts.
+- [x] 2.5 Implement first-error retention across D1 and create-only object storage, preserving the original message, stack, causes, operation, and lease facts.
 
 ## 3. Staging base and isolated test services
 

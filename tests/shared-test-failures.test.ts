@@ -24,6 +24,40 @@ test('first cause, stack and operation survive in D1 and create-only object stor
   } finally {db.close();}
 });
 
+test('a later fault cannot replace the leased site first fault',async()=>{
+  const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();
+  try {
+    db.sqlite.prepare(`INSERT INTO test_lease_requests
+      (request_id,run_id,node_visit,attempt_id,task_id,candidate_commit,patch_sha256,
+       state,created_at,updated_at) VALUES
+      ('request-1','run-1',1,'attempt-1','issue-1',?,?,'granted','now','now')`)
+      .run('a'.repeat(40),'b'.repeat(64));
+    db.sqlite.prepare(`INSERT INTO test_leases
+      (lease_id,request_id,run_id,attempt_id,task_id,task_key,task_title,team_id,
+       stage,state,fence,base_manifest_id,base_traffic_revision,base_json,repository,
+       branch,pull_request_number,candidate_commit,patch_sha256,created_at)
+      VALUES ('lease-1','request-1','run-1','attempt-1','issue-1','SAC-182',
+        'Test','team-1','shared_test_demo','active',1,'manifest-1',
+        'traffic-1','{}','owner/repo','codex/test',150,?,?,'now')`)
+      .run('a'.repeat(40),'b'.repeat(64));
+    db.sqlite.prepare(`UPDATE test_environment SET state='active',owner_run_id='run-1',
+      owner_lease_id='lease-1',fence=1 WHERE site_id=1`).run();
+    const store=new SharedTestFailureStore(db as unknown as D1Database,
+      bucket as unknown as R2Bucket);
+    const context={runId:'run-1',leaseId:'lease-1',fence:1,phase:'active',
+      operation:'test_service.deploy',safeCode:'remote_failure'};
+    const first=await store.record(context,new Error('first failure'));
+    await store.record({...context,operation:'test_service.readback'},
+      new Error('later failure'));
+    const lease=db.sqlite.prepare(`SELECT first_fault_id FROM test_leases
+      WHERE lease_id='lease-1'`).get() as {first_fault_id:string};
+    const site=db.sqlite.prepare(`SELECT first_fault_id FROM test_environment
+      WHERE site_id=1`).get() as {first_fault_id:string};
+    assert.equal(lease.first_fault_id,first);
+    assert.equal(site.first_fault_id,first);
+  } finally {db.close();}
+});
+
 test('an object storage failure keeps full first cause in D1',async()=>{
   const db=new ImplementationTestDatabase();
   try {
