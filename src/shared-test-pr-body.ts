@@ -56,14 +56,19 @@ export class SharedTestPrBodyWriter {
         .bind(repository,pullRequestNumber,leaseId,runId,repository,pullRequestNumber),
       this.db.prepare(`UPDATE test_pr_body_locks SET state='held',work_id=?,revision=revision+1
         WHERE repository=? AND pull_request_number=? AND
-          (state='idle' OR (state='held' AND work_id=?))`)
-        .bind(workId,repository,pullRequestNumber,workId),
+          (state='idle' OR (state='held' AND work_id=?))
+          AND EXISTS (SELECT 1 FROM test_leases WHERE lease_id=? AND run_id=?
+            AND repository=? AND pull_request_number=?)`)
+        .bind(workId,repository,pullRequestNumber,workId,leaseId,runId,
+          repository,pullRequestNumber),
       this.db.prepare(`INSERT OR IGNORE INTO test_pr_body_writes
         (repository,pull_request_number,work_id,run_id,lease_id,state,marker,started_at)
         SELECT ?,?,?,?,?,'planned',?,? WHERE EXISTS (SELECT 1 FROM test_pr_body_locks
-          WHERE repository=? AND pull_request_number=? AND state='held' AND work_id=?)`)
+          WHERE repository=? AND pull_request_number=? AND state='held' AND work_id=?)
+          AND EXISTS (SELECT 1 FROM test_leases WHERE lease_id=? AND run_id=?
+            AND repository=? AND pull_request_number=?)`)
         .bind(repository,pullRequestNumber,workId,runId,leaseId,marker,at.toISOString(),
-          repository,pullRequestNumber,workId),
+          repository,pullRequestNumber,workId,leaseId,runId,repository,pullRequestNumber),
     ]);
     const row=await this.db.prepare('SELECT * FROM test_pr_body_writes WHERE work_id=?')
       .bind(workId).first<BodyWrite>();

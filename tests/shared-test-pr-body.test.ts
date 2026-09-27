@@ -71,3 +71,23 @@ test('a human edit before PATCH blocks the writer with its lock retained',async(
       'held');
   } finally {db.close();}
 });
+
+test('an idle lock cannot grant a lease write access to another pull request',async()=>{
+  const {db,scope}=fixture();
+  try {
+    db.sqlite.prepare(`INSERT INTO test_pr_body_locks
+      (repository,pull_request_number,state) VALUES ('other/repo',151,'idle')`).run();
+    let providerCalls=0;
+    const writer=new SharedTestPrBodyWriter(db as unknown as D1Database,{
+      read:async()=>{providerCalls++;return 'Body';},
+      write:async()=>{providerCalls++;},
+    });
+    await assert.rejects(writer.writeSection({...scope,repository:'other/repo',
+      pullRequestNumber:151}),/busy_or_scope_conflict/);
+    assert.equal(providerCalls,0);
+    assert.equal(db.sqlite.prepare(`SELECT state FROM test_pr_body_locks
+      WHERE repository='other/repo' AND pull_request_number=151`).get()?.state,'idle');
+    assert.equal(db.sqlite.prepare(`SELECT COUNT(*) AS count FROM test_pr_body_writes`)
+      .get()?.count,0);
+  } finally {db.close();}
+});
