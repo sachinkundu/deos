@@ -7,6 +7,7 @@ import {SharedTestLeaseDriver,type SharedTestDriverEnv} from './shared-test-leas
 import {SharedTestCandidateBuildDispatch} from './shared-test-candidate-build-dispatch.ts';
 import {maintainSharedTestBrowser} from './shared-test-browser-maintenance.ts';
 import {SharedTestReportDriver} from './shared-test-report-driver.ts';
+import {SharedTestFirstProofDriver} from './shared-test-first-proof-driver.ts';
 
 type ScanEnv=SharedTestDriverEnv & Pick<Env,'SHARED_TEST_GRANTS_ENABLED'|
   'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {TEST_MARKER_KEY_V1?:string};
@@ -26,6 +27,8 @@ export async function scanSharedTest(env:ScanEnv,
     const fencedOwner=await lease.fenceExpired();
     operation='shared_test.recover';
     await new SharedTestRecovery(env).resume();
+    operation='shared_test.publish_first_proof';
+    await new SharedTestFirstProofDriver(env as Env).resume();
     operation='shared_test.prepare_activate';
     await new SharedTestLeaseDriver(env).resume();
     operation='shared_test.candidate_build';

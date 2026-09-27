@@ -15,24 +15,38 @@ export async function routePublicProof(request:Request,env:ProofEnv):Promise<Res
   const match=url.pathname.match(/^\/proof\/([a-f0-9-]{36})$/i);
   if(!match)return Response.json({error:'not_found'},{status:404,headers});
   const proofId=match[1];
-  const row=await env.DB.prepare(`SELECT proof_id,lease_id,public_sha256
+  const row=await env.DB.prepare(`SELECT proof_id,lease_id,kind,content_type,
+    public_sha256
     FROM test_proof_items WHERE proof_id=? AND kind IN
-      ('app_screen','linear_screen') AND classification='public_safe'
+      ('app_screen','linear_screen','showboat','d1_read',
+       'provider_receipt','github_receipt') AND classification='public_safe'
       AND sanitizer_result='passed' AND public_sha256 IS NOT NULL
       AND public_url=?`)
     .bind(proofId,sharedTestProofUrl(proofId))
-    .first<{proof_id:string;lease_id:string;public_sha256:string}>();
+    .first<{proof_id:string;lease_id:string;kind:string;
+      content_type:string;public_sha256:string}>();
   if(!row)return Response.json({error:'proof_not_found'},{status:404,headers});
-  const key=`shared-test/public/${encodeURIComponent(row.lease_id)}/${row.proof_id}.png`;
+  const media:Record<string,string>={
+    app_screen:'image/png',linear_screen:'image/png',
+    showboat:'text/plain',d1_read:'application/json',
+    provider_receipt:'application/json',github_receipt:'application/json',
+  };
+  if(media[row.kind]!==row.content_type)
+    return Response.json({error:'proof_unavailable'},{status:503,headers});
+  const extension=row.content_type==='image/png'?'png':
+    row.content_type==='text/plain'?'txt':'json';
+  const key=`shared-test/public/${encodeURIComponent(row.lease_id)}/${row.proof_id}.${extension}`;
   const object=await env.ARTIFACTS.get(key);
   if(!object)return Response.json({error:'proof_unavailable'},{status:503,headers});
   const bytes=new Uint8Array(await object.arrayBuffer());
+  if(bytes.byteLength>8_000_000)
+    return Response.json({error:'proof_unavailable'},{status:503,headers});
   const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))]
     .map(byte=>byte.toString(16).padStart(2,'0')).join('');
   if(hash!==row.public_sha256)
     return Response.json({error:'proof_unavailable'},{status:503,headers});
   return new Response(request.method==='HEAD'?null:bytes,{headers:{...headers,
-    'Content-Type':'image/png'}});
+    'Content-Type':row.content_type}});
 }
 
 export default {
