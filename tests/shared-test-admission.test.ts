@@ -63,6 +63,16 @@ test('admission checks current team, draft PR, run and two staging reads before 
     await assert.rejects(wrong.grant(run,work,decision,{...request,
       requestId:await sharedTestRequestId(request)}),/team_or_issue_changed/);
     assert.equal(reads,0);
+    const wrongPull=new SharedTestAdmission(db as unknown as D1Database,
+      {readTestIssue:async()=>({id:'issue-1',identifier:'SAC-172',title:'Test',
+        teamId:'team-1',description:''})},
+      {...github,json:async<T>()=>({...pull,head:{...pull.head,sha:'0'.repeat(40)}}) as T},
+      async()=>{reads++;return read;},'team-1');
+    await assert.rejects(wrongPull.grant(run,work,decision,{...request,
+      requestId:await sharedTestRequestId(request)}),/github_scope_changed/);
+    assert.equal(reads,0);
+    assert.equal((await new SharedTestLeaseStore(db as unknown as D1Database)
+      .environment()).state,'free');
     const correct=new SharedTestAdmission(db as unknown as D1Database,
       {readTestIssue:async()=>({id:'issue-1',identifier:'SAC-172',title:'Test',
         teamId:'team-1',description:''})},github,async()=>{reads++;return read;},'team-1');

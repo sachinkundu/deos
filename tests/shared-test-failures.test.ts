@@ -94,3 +94,42 @@ test('a D1 index failure leaves a read-back recovery object with the original fa
     assert.equal(original.error.message,'original provider error');
   } finally {db.close();}
 });
+
+test('a failed first-fault link rolls back the D1 record and keeps R2 recovery proof',async()=>{
+  const db=new ImplementationTestDatabase(),bucket=new ImplementationTestBucket();
+  try {
+    db.sqlite.prepare(`INSERT INTO test_lease_requests
+      (request_id,run_id,node_visit,attempt_id,task_id,candidate_commit,patch_sha256,
+       state,created_at,updated_at) VALUES
+      ('request-1','run-1',1,'attempt-1','issue-1',?,?,'granted','now','now')`)
+      .run('a'.repeat(40),'b'.repeat(64));
+    db.sqlite.prepare(`INSERT INTO test_leases
+      (lease_id,request_id,run_id,attempt_id,task_id,task_key,task_title,team_id,
+       stage,state,fence,base_manifest_id,base_traffic_revision,base_json,repository,
+       branch,pull_request_number,candidate_commit,patch_sha256,created_at)
+      VALUES ('lease-1','request-1','run-1','attempt-1','issue-1','SAC-182',
+        'Test','team-1','shared_test_demo','active',1,'manifest-1',
+        'traffic-1','{}','owner/repo','codex/test',150,?,?,'now')`)
+      .run('a'.repeat(40),'b'.repeat(64));
+    db.sqlite.exec(`CREATE TRIGGER fail_test_fault_link BEFORE UPDATE OF first_fault_id
+      ON test_leases BEGIN SELECT RAISE(ABORT,'link unavailable'); END`);
+    const store=new SharedTestFailureStore(db as unknown as D1Database,
+      bucket as unknown as R2Bucket);
+    const primary=new Error('original provider failure');
+    await assert.rejects(store.record({runId:'run-1',leaseId:'lease-1',
+      phase:'active',operation:'test_service.deploy',safeCode:'remote_failure'},primary),
+    error=>{
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.cause,primary);
+      return true;
+    });
+    assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS count FROM test_failures')
+      .get()?.count,0);
+    const recovery=[...bucket.objects.keys()].find(key=>key.endsWith('.index-failure.json'));
+    assert.ok(recovery);
+    const body=JSON.parse(await (await bucket.get(recovery))!.text());
+    assert.equal(body.databaseError.message,'link unavailable');
+    const original=JSON.parse(await (await bucket.get(body.originalObjectKey))!.text());
+    assert.equal(original.error.message,'original provider failure');
+  } finally {db.close();}
+});

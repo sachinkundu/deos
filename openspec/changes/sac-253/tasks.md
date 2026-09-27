@@ -21,7 +21,7 @@
 
 ## 4. Scoped agent, browser, and provider use
 
-- [ ] 4.1 Admit only a trusted current-team Linear task and save its issue, run, attempt, lease, candidate, repository, branch, and pull-request scope.
+- [x] 4.1 Admit only a trusted current-team Linear task and save its issue, run, attempt, lease, candidate, repository, branch, and pull-request scope.
 - [ ] 4.2 Add a fresh lease-bound demo Sandbox and narrow agent capability; check the current D1 fence on each action and reject staging or live release actions.
 - [ ] 4.3 Add a separate lease app origin, service identity, one-use launch code, short host-only app session, and per-request fence check without exposing keys to the agent or page.
 - [ ] 4.4 Restrict GitHub writes to the saved repository, branch, and pull request; re-read team membership before each Linear write.

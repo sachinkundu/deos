@@ -60,23 +60,24 @@ export class SharedTestFailureStore {
       objectSaved=true;
     } catch (storageError) { objectFailure=storageError; }
     try {
-      await this.db.prepare(`INSERT INTO test_failures
+      const writes=[this.db.prepare(`INSERT INTO test_failures
         (fault_id,run_id,lease_id,phase,work_id,safe_code,object_key,object_sha256,
          first_message,first_stack,causes_json,context_json,occurred_at,later_faults_json)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
         .bind(faultId,context.runId,context.leaseId??null,context.phase,context.workId??null,
           context.safeCode,objectSaved?key:null,objectSaved?hash:null,saved.message,saved.stack,
           JSON.stringify(saved.cause),JSON.stringify(context),at.toISOString(),
-          JSON.stringify(objectFailure ? [{storageError:describeError(objectFailure)}] : [])).run();
+          JSON.stringify(objectFailure ? [{storageError:describeError(objectFailure)}] : []))];
       if (context.leaseId) {
-        await this.db.batch([
+        writes.push(
           this.db.prepare(`UPDATE test_leases SET first_fault_id=COALESCE(first_fault_id,?)
             WHERE lease_id=? AND run_id=?`).bind(faultId,context.leaseId,context.runId),
           this.db.prepare(`UPDATE test_environment SET first_fault_id=COALESCE(first_fault_id,?)
             WHERE site_id=1 AND owner_lease_id=? AND owner_run_id=?`)
             .bind(faultId,context.leaseId,context.runId),
-        ]);
+        );
       }
+      await this.db.batch(writes);
     } catch (databaseError) {
       let fallbackFailure:unknown;
       if (objectSaved) {
