@@ -59,9 +59,10 @@ export class SharedTestFirstProofPublisher {
         ? `![${item.kind}](${item.public_url})`
         : `- [${item.kind}](${item.public_url})`),
       'Close report: pending.'].join('\n');
-    await this.writer.writeSection({repository:lease.repository,
+    const write={repository:lease.repository,
       pullRequestNumber:lease.pull_request_number,workId:`test-first-proof:${leaseId}`,
-      runId,leaseId,marker,section},at);
+      runId,leaseId,marker,section};
+    await this.writer.writeSection(write,at);
     // A PR body link is not proof that its target exists. Fetch the same public
     // URL a reviewer sees, without Access or provider credentials.
     for(const item of selected) {
@@ -72,15 +73,17 @@ export class SharedTestFirstProofPublisher {
       const bytes=new Uint8Array(await response.arrayBuffer());
       if(await sha256(bytes)!==item.public_sha256)
         throw new Error(`test_first_proof_hash_${item.kind}`);
-      const result=await this.db.prepare(`UPDATE test_proof_items SET body_marker=?,
+    }
+    await this.writer.writeSection(write,at);
+    const results=await this.db.batch(selected.map(item=>
+      this.db.prepare(`UPDATE test_proof_items SET body_marker=?,
         read_at=? WHERE proof_id=? AND run_id=? AND lease_id=?
           AND kind=? AND classification='public_safe'
           AND sanitizer_result='passed' AND public_sha256=? AND public_url=?
           AND (body_marker IS NULL OR body_marker=?)`)
         .bind(marker,at.toISOString(),item.proof_id,runId,leaseId,item.kind,
-          item.public_sha256,item.public_url,marker).run();
-      if(result.meta.changes!==1)
-        throw new Error(`test_first_proof_readback_write_${item.kind}`);
-    }
+          item.public_sha256,item.public_url,marker)));
+    if(results.some(result=>result.meta.changes!==1))
+      throw new Error('test_first_proof_readback_write_incomplete');
   }
 }

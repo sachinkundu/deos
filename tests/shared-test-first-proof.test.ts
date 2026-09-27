@@ -47,7 +47,8 @@ function fixture() {
   const writer=new SharedTestPrBodyWriter(db as unknown as D1Database,{
     read:async()=>body,write:async(_repo,_number,next)=>{body=next;},
   });
-  return {db,bucket,payload,writer,body:()=>body};
+  return {db,bucket,payload,writer,body:()=>body,
+    changeBody:(next:string)=>{body=next;}};
 }
 
 test('first proof set preserves PR text and reads every safe link back',async()=>{
@@ -75,6 +76,28 @@ test('a missing public item leaves close proof unread',async()=>{
       f.writer,fetcher);
     await assert.rejects(publisher.publish('run-1','lease-1'),
       /test_first_proof_http_app_screen_503/);
+    assert.equal(f.db.sqlite.prepare(`SELECT COUNT(*) AS count FROM test_proof_items
+      WHERE read_at IS NOT NULL`).get()?.count,0);
+  }finally{f.db.close();}
+});
+
+test('a changed proof section during link checks cannot mark readback',async()=>{
+  const f=fixture();
+  try {
+    let first=true;
+    const fetcher:typeof fetch=async url=>{
+      if(first) {
+        first=false;
+        f.changeBody(f.body().replace('Close report: pending.',
+          'Close report: changed.'));
+      }
+      return routePublicProof(new Request(String(url)),{
+        DB:f.db as unknown as D1Database,
+        ARTIFACTS:f.bucket as unknown as R2Bucket});
+    };
+    await assert.rejects(new SharedTestFirstProofPublisher(
+      f.db as unknown as D1Database,f.writer,fetcher)
+      .publish('run-1','lease-1'),/verified_content_changed/);
     assert.equal(f.db.sqlite.prepare(`SELECT COUNT(*) AS count FROM test_proof_items
       WHERE read_at IS NOT NULL`).get()?.count,0);
   }finally{f.db.close();}
