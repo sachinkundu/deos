@@ -41,8 +41,8 @@
 
 ## 6. Workflow and release integration
 
-- [ ] 6.1 Register a new immutable implementation workflow version with `shared_test_demo` after build and before evidence review and native verification; leave frozen runs unchanged.
-- [ ] 6.2 Make every matching app/provider candidate wait for a complete lease-bound test, and save an exact `test_not_required` decision only for a nonmatching candidate.
+- [x] 6.1 Register a new immutable implementation workflow version with `shared_test_demo` after build and before evidence review and native verification; leave frozen runs unchanged.
+- [x] 6.2 Make every matching app/provider candidate wait for a complete lease-bound test, and save an exact `test_not_required` decision only for a nonmatching candidate.
 - [ ] 6.3 Add the exact-commit staging and live release guard in observe-only mode, with enforcement enabled only after the full SAC-182 proof.
 - [ ] 6.4 Cover grant races, stale attempts, staging drift, wrong versions, old sessions, wrong scopes, event duplicates, uncertain remote replies, proof failures, interrupted cleanup, and first-error preservation with deterministic tests.
 

@@ -241,13 +241,15 @@ def deploy(target):
         "--external:cloudflare:*", "--external:node:*",
         "--outfile=" + str(ROOT / "portal-worker/worker.js"))
     worker_bundle = ROOT / "portal-worker/worker.js"
-    build_input_sha256 = artifact_digest(
-        sha, [worker_bundle, *(path for path in (ROOT / "portal/dist").rglob("*") if path.is_file())]
-    )
+    build_files = [worker_bundle, *(path for path in (ROOT / "portal/dist").rglob("*") if path.is_file())]
+    build_input_sha256 = artifact_digest(sha, build_files)
     if clean_checkout() != sha:
         raise ValueError("Build changed source checkout")
     check_ref(target, sha)
     preflight(json.loads(config_path.read_text()), target)
+    if target == "staging":
+        from shared_test_build_bundle import publish
+        publish("portal", sha, build_files, build_input_sha256)
     args = ["npx", "--no-install", "wrangler", "deploy", str(worker_bundle), "--no-bundle", "--config", "portal/wrangler.jsonc"]
     if target == "staging":
         args += ["--env", "staging"]

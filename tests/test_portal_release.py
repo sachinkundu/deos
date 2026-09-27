@@ -4,9 +4,13 @@ import copy
 import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import shared_test_build_bundle
 
 SPEC = importlib.util.spec_from_file_location(
     "portal_release", Path(__file__).resolve().parents[1] / "scripts/portal_release.py"
@@ -93,6 +97,7 @@ def setup_deploy(monkeypatch):
     monkeypatch.setattr(release, "check_ref", lambda *args: None)
     monkeypatch.setattr(release, "check_route_access", lambda: None)
     monkeypatch.setattr(release, "artifact_digest", lambda *args: "b" * 64)
+    monkeypatch.setattr(shared_test_build_bundle, "publish", lambda *args: "saved-build")
 
 
 def test_missing_route_permission_stops_before_build_or_upload(monkeypatch):

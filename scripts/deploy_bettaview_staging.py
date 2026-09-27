@@ -15,6 +15,7 @@ from portal_release import (
     clean_checkout,
     run,
 )
+from shared_test_build_bundle import publish as publish_test_build
 from shared_test_release_guard import guard as shared_test_release_guard
 
 WORKER = "deos-bettaview-portal-staging"
@@ -83,11 +84,13 @@ def deploy():
     run("npm", "run", "bettaview:build")
     run("npm", "--prefix", "portal/bettaview", "test")
     built = ROOT / "portal/bettaview/dist"
-    digest = artifact_digest(sha, [ROOT / "portal/bettaview/worker/index.js",
-                                   *(path for path in built.rglob("*") if path.is_file())])
+    build_files = [ROOT / "portal/bettaview/worker/index.js",
+                   *(path for path in built.rglob("*") if path.is_file())]
+    digest = artifact_digest(sha, build_files)
     if clean_checkout() != sha:
         raise ValueError("BettaView build changed the source checkout")
     check_ref("staging", sha)
+    publish_test_build("bettaview", sha, build_files, digest)
     args = ("npx", "--no-install", "wrangler", "deploy", "--config",
             "portal/bettaview/wrangler.jsonc", "--env", "staging",
             "--var", f"BETTAVIEW_SOURCE_SHA:{sha}",

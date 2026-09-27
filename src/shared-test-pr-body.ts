@@ -89,7 +89,9 @@ export class SharedTestPrBodyWriter {
     let current=await this.client.read(input.repository,input.pullRequestNumber);
     let currentHash=await sha256Hex(current);
     if (row.state==='verified') {
-      if (currentHash!==row.expected_body_sha256) throw new Error('pr_body_verified_content_changed');
+      if (currentHash!==row.expected_body_sha256 &&
+          mergeProofSection(current,input.marker,input.section)!==current)
+        throw new Error('pr_body_verified_content_changed');
       return current;
     }
     if (row.state==='blocked') throw new Error('pr_body_write_blocked');

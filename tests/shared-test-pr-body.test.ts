@@ -57,6 +57,20 @@ test('a lost GitHub reply reconciles from the exact body and keeps one work ID',
   } finally {db.close();}
 });
 
+test('verified proof survives later human edits outside its marked section',async()=>{
+  const {db,scope}=fixture();
+  let body='Human notes\n';
+  try {
+    const writer=new SharedTestPrBodyWriter(db as unknown as D1Database,
+      {read:async()=>body,write:async(_repo,_pr,value)=>{body=value;}});
+    await writer.writeSection(scope);
+    body=`Later reviewer note\n\n${body}`;
+    assert.equal(await writer.writeSection(scope),body);
+    body=body.replace('Safe proof','Changed proof');
+    await assert.rejects(writer.writeSection(scope),/verified_content_changed/);
+  } finally {db.close();}
+});
+
 test('a human edit before PATCH blocks the writer with its lock retained',async()=>{
   const {db,scope}=fixture();
   let body='Review notes\n',reads=0;
