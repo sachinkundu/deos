@@ -31,6 +31,7 @@ function fixture() {
 }
 
 const build={worker:new Uint8Array([1]),assets:new Map([['portal/dist/index.html',new Uint8Array([2])]]),
+  modules:new Map<string,Uint8Array>(),
   migrations:new Map([['migrations/0001_initial.sql',new Uint8Array([3])]]),
   sha256:base.services[0].buildInputSha256};
 const builds=new Map([['portal',build]]);

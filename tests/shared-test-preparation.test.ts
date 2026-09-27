@@ -95,7 +95,8 @@ test('all worker and store names are saved before the first Cloudflare create',a
             buildInputSha256:plan.service.base.buildInputSha256};
         },
       },{
-        apply:async(input,migrations)=>{
+        apply:async(input,migrations,assertFence)=>{
+          await assertFence();
           assert.equal(input.databaseId,'db-uuid');
           assert.equal(Buffer.from(migrations.get('migrations/0001_initial.sql')!).toString(),
             migration.toString());

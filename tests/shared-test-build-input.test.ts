@@ -53,3 +53,20 @@ test('rejects modified or out-of-scope bytes before provisioning',async()=>{
   await assert.rejects(verifiedSharedTestBuild({...input,sourceCommit:'b'.repeat(40)},base),
     /invalid_test_build_subject/);
 });
+
+test('BettaView pins every imported Worker module with its static assets',async()=>{
+  const source=[
+    {path:'portal/bettaview/worker/access.js',content:Buffer.from('export const access = true;')},
+    {path:'portal/bettaview/worker/index.js',content:Buffer.from('import "./access.js"; export default {};')},
+    {path:'portal/bettaview/dist/index.html',content:Buffer.from('<html></html>')},
+  ];
+  const pinned={...base,serviceName:'bettaview',buildInputSha256:releaseDigest(source)};
+  const input={serviceName:'bettaview',sourceCommit,files:source.map(file=>({path:file.path,
+    contentBase64:file.content.toString('base64')}))};
+  const result=await verifiedSharedTestBuild(input,pinned);
+  assert.equal(result.modules.size,2);
+  assert.equal(result.migrations.size,0);
+  await assert.rejects(verifiedSharedTestBuild({...input,files:[
+    {...input.files[0],contentBase64:Buffer.from('changed').toString('base64')},
+    ...input.files.slice(1)]},pinned),/test_build_input_digest_mismatch/);
+});

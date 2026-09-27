@@ -6,7 +6,8 @@ type VerifiedBuild=Awaited<ReturnType<SharedTestBuildStore['read']>>;
 
 export interface TestSchemaProvider {
   apply(input:{runId:string;leaseId:string;fence:number;databaseId:string;
-    databaseName:string},migrations:ReadonlyMap<string,Uint8Array>):Promise<void>;
+    databaseName:string},migrations:ReadonlyMap<string,Uint8Array>,
+    assertFence:()=>Promise<void>):Promise<void>;
 }
 
 /** Schema is applied only to the D1 database planned for this exact lease. */
@@ -23,7 +24,7 @@ export class SharedTestSchemaProvisioner {
       .find(store=>store.kind==='d1_database');
     if (!plan || !portal.migrations.has('migrations/0001_initial.sql'))
       throw new Error('shared_test_schema_bundle_incomplete');
-    const row=await this.db.prepare(`SELECT r.remote_id FROM test_resources r
+    const readOwner=()=>this.db.prepare(`SELECT r.remote_id FROM test_resources r
       JOIN test_environment e ON e.owner_lease_id=r.lease_id
         AND e.owner_run_id=r.run_id
       WHERE r.resource_id=? AND r.run_id=? AND r.lease_id=? AND r.kind='d1_database'
@@ -34,9 +35,15 @@ export class SharedTestSchemaProvisioner {
       .bind(plan.resourceId,input.runId,input.leaseId,input.fence,
         plan.providerName,plan.workId,input.fence,new Date().toISOString())
       .first<{remote_id:string}>();
+    const row=await readOwner();
     if (!row) throw new Error('shared_test_schema_database_unconfirmed');
+    const assertFence=async()=>{
+      const current=await readOwner();
+      if (current?.remote_id!==row.remote_id)
+        throw new Error('shared_test_schema_write_fenced');
+    };
     await this.provider.apply({runId:input.runId,leaseId:input.leaseId,
       fence:input.fence,databaseId:row.remote_id,databaseName:plan.providerName},
-      portal.migrations);
+      portal.migrations,assertFence);
   }
 }

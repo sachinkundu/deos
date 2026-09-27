@@ -60,7 +60,8 @@ export class SharedTestCloudflareSchema implements TestSchemaProvider {
   }
 
   async apply(input:{runId:string;leaseId:string;fence:number;databaseId:string;
-    databaseName:string},migrations:ReadonlyMap<string,Uint8Array>):Promise<void> {
+    databaseName:string},migrations:ReadonlyMap<string,Uint8Array>,
+    assertFence:()=>Promise<void>):Promise<void> {
     if (!/^[a-f0-9]{64}$/.test(input.leaseId) || !input.runId ||
         !Number.isSafeInteger(input.fence) || input.fence<1 ||
         !uuid.test(input.databaseId) ||
@@ -69,6 +70,7 @@ export class SharedTestCloudflareSchema implements TestSchemaProvider {
         [...migrations.keys()].some(name=>!migrationName.test(name)))
       throw new Error('shared_test_schema_subject_invalid');
     await this.database(input.databaseId,input.databaseName);
+    await assertFence();
     await this.query(input.databaseId,`CREATE TABLE IF NOT EXISTS d1_migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
       applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
@@ -84,6 +86,7 @@ export class SharedTestCloudflareSchema implements TestSchemaProvider {
         .decode(migrations.get(path));
       if (!sql.trim() || sql.length>500_000)
         throw new Error(`shared_test_schema_migration_invalid:${name}`);
+      await assertFence();
       // The API runs semicolon-separated statements as one batch. The fixed
       // filename is validated before being inserted into the tracking SQL.
       await this.query(input.databaseId,

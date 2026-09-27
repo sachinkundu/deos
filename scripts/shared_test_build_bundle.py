@@ -16,10 +16,11 @@ def bundle(service_name, source_commit, files, build_digest):
     ) or not re.fullmatch(r"[a-f0-9]{64}", build_digest):
         raise ValueError("Invalid shared test build identity")
     paths = {
-        "portal": ("portal-worker/worker.js", "portal/dist/", "migrations/"),
-        "bettaview": ("portal/bettaview/worker/index.js", "portal/bettaview/dist/", None),
+        "portal": ("portal-worker/worker.js", "portal/dist/", "migrations/", None),
+        "bettaview": ("portal/bettaview/worker/index.js", "portal/bettaview/dist/",
+                      None, "portal/bettaview/worker/"),
     }
-    worker, assets, migrations = paths[service_name]
+    worker, assets, migrations, modules = paths[service_name]
     selected = sorted(set(files))
     names = [path.relative_to(ROOT).as_posix() for path in selected]
     if (len(selected) != len(files) or worker not in names or not any(
@@ -27,6 +28,8 @@ def bundle(service_name, source_commit, files, build_digest):
     ) or (migrations and "migrations/0001_initial.sql" not in names) or any(
         name != worker and not name.startswith(assets) and not (
             migrations and name.startswith(migrations) and name.endswith(".sql")
+        ) and not (
+            modules and name.startswith(modules) and name.endswith(".js")
         ) for name in names
     )):
         raise ValueError("Invalid shared test build file set")

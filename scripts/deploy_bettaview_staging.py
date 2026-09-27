@@ -84,7 +84,7 @@ def deploy():
     run("npm", "run", "bettaview:build")
     run("npm", "--prefix", "portal/bettaview", "test")
     built = ROOT / "portal/bettaview/dist"
-    build_files = [ROOT / "portal/bettaview/worker/index.js",
+    build_files = [*sorted((ROOT / "portal/bettaview/worker").glob("*.js")),
                    *(path for path in built.rglob("*") if path.is_file())]
     digest = artifact_digest(sha, build_files)
     if clean_checkout() != sha:

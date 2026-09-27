@@ -11,10 +11,13 @@ export interface SharedTestBuildInput {
   files:readonly SharedTestBuildFile[];
 }
 
-const paths:Record<string,{worker:string;assets:string;migrations:string|null}>={
-  portal:{worker:'portal-worker/worker.js',assets:'portal/dist/',migrations:'migrations/'},
+const paths:Record<string,{worker:string;assets:string;migrations:string|null;
+  modules:string|null}>={
+  portal:{worker:'portal-worker/worker.js',assets:'portal/dist/',migrations:'migrations/',
+    modules:null},
   bettaview:{worker:'portal/bettaview/worker/index.js',
-    assets:'portal/bettaview/dist/',migrations:null},
+    assets:'portal/bettaview/dist/',migrations:null,
+    modules:'portal/bettaview/worker/'},
 };
 
 function bytes(value:string):Uint8Array {
@@ -52,6 +55,7 @@ function pythonPathOrder(a:string,b:string):number {
 export async function verifiedSharedTestBuild(input:SharedTestBuildInput,
   base:StagingServiceRead):Promise<{worker:Uint8Array;
     assets:ReadonlyMap<string,Uint8Array>;
+    modules:ReadonlyMap<string,Uint8Array>;
     migrations:ReadonlyMap<string,Uint8Array>;sha256:string}> {
   const scope=paths[input.serviceName];
   if (!scope || input.serviceName!==base.serviceName ||
@@ -67,7 +71,9 @@ export async function verifiedSharedTestBuild(input:SharedTestBuildInput,
     if (!file || typeof file.path!=='string' ||
         !(file.path===scope.worker || file.path.startsWith(scope.assets) ||
           (scope.migrations && file.path.startsWith(scope.migrations) &&
-            file.path.endsWith('.sql'))) ||
+            file.path.endsWith('.sql')) ||
+          (scope.modules && file.path.startsWith(scope.modules) &&
+            file.path.endsWith('.js'))) ||
         file.path.endsWith('/') || file.path.includes('\\') ||
         file.path.split('/').includes('..') || files.has(file.path))
       throw new Error('invalid_test_build_path');
@@ -94,6 +100,8 @@ export async function verifiedSharedTestBuild(input:SharedTestBuildInput,
   if (sha256!==base.buildInputSha256)
     throw new Error('test_build_input_digest_mismatch');
   return {worker,assets:new Map([...files.entries()].filter(([path])=>path.startsWith(scope.assets))),
+    modules:new Map([...files.entries()].filter(([path])=>
+      scope.modules && path.startsWith(scope.modules))),
     migrations:new Map([...files.entries()].filter(([path])=>
       scope.migrations && path.startsWith(scope.migrations))),sha256};
 }

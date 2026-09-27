@@ -66,3 +66,24 @@ def test_publish_reads_back_the_exact_r2_object(tmp_path, monkeypatch):
     key = shared_test_build_bundle.publish("portal", sha, files, digest)
     assert key == f"shared-test/builds/portal/{sha}/{digest}.json"
     assert uploaded is not None
+
+
+def test_bettaview_bundle_includes_imported_worker_modules(tmp_path, monkeypatch):
+    monkeypatch.setattr(portal_release, "ROOT", tmp_path)
+    monkeypatch.setattr(shared_test_build_bundle, "ROOT", tmp_path)
+    index = tmp_path / "portal/bettaview/worker/index.js"
+    sibling = tmp_path / "portal/bettaview/worker/access.js"
+    asset = tmp_path / "portal/bettaview/dist/index.html"
+    index.parent.mkdir(parents=True)
+    asset.parent.mkdir(parents=True)
+    index.write_text('import "./access.js"; export default {};')
+    sibling.write_text("export const access = true;")
+    asset.write_text("<html></html>")
+    files = [index, sibling, asset]
+    sha = "c" * 40
+    digest = portal_release.artifact_digest(sha, files)
+    saved = json.loads(shared_test_build_bundle.bundle("bettaview", sha, files, digest))
+    assert {item["path"] for item in saved["files"]} == {
+        "portal/bettaview/worker/index.js", "portal/bettaview/worker/access.js",
+        "portal/bettaview/dist/index.html",
+    }
