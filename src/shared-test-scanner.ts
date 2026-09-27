@@ -4,6 +4,7 @@ import {SharedTestLeaseStore} from './shared-test-lease.ts';
 import {SharedTestStagingPointer} from './shared-test-staging-pointer.ts';
 import {SharedTestRecovery} from './shared-test-recovery.ts';
 import {SharedTestLeaseDriver,type SharedTestDriverEnv} from './shared-test-lease-driver.ts';
+import {SharedTestReportDriver} from './shared-test-report-driver.ts';
 
 type ScanEnv=SharedTestDriverEnv & Pick<Env,'SHARED_TEST_GRANTS_ENABLED'|
   'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {TEST_MARKER_KEY_V1?:string};
@@ -31,17 +32,25 @@ export async function scanSharedTest(env:ScanEnv,
       operation='shared_test.grant_head';
       await grantHead();
     }
+    // A pending report from a closed lease must not reserve the free site.
+    operation='shared_test.publish_report';
+    await new SharedTestReportDriver(env as Env).resume();
   } catch (error) {
     try {
       const owner=await lease.environment();
       const head=owner.owner_run_id ? null : await env.DB.prepare(`SELECT run_id
         FROM test_lease_requests WHERE state IN ('waiting','validating')
         ORDER BY queue_number LIMIT 1`).first<{run_id:string}>();
-      const runId=owner.owner_run_id??head?.run_id;
+      const pending=operation==='shared_test.publish_report'
+        ? await env.DB.prepare(`SELECT run_id,lease_id FROM test_lease_closures
+          WHERE report_state='pending' ORDER BY committed_at,lease_id LIMIT 1`)
+          .first<{run_id:string;lease_id:string}>():null;
+      const runId=pending?.run_id??owner.owner_run_id??head?.run_id;
       if (runId) await new SharedTestFailureStore(env.DB,env.ARTIFACTS).record({
-        runId,leaseId:owner.owner_lease_id??undefined,
-        fence:owner.owner_lease_id ? owner.fence : undefined,
-        phase:owner.state,operation,safeCode:'shared_test_scan_failed',
+        runId,leaseId:pending?.lease_id??owner.owner_lease_id??undefined,
+        fence:pending ? undefined : owner.owner_lease_id ? owner.fence : undefined,
+        phase:pending ? 'report' : owner.state,operation,
+        safeCode:'shared_test_scan_failed',
       },error);
     } catch (diagnosticError) {
       throw new AggregateError([error,diagnosticError],

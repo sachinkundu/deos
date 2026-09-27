@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {ImplementationTestBucket,ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
+import {ImplementationTestBucket,ImplementationTestDatabase,seedRun} from './helpers/implementation-fixture.ts';
 import {SharedTestCloseStore} from '../src/shared-test-close.ts';
-import {SharedTestReportStore} from '../src/shared-test-report.ts';
-import {SharedTestPrBodyWriter} from '../src/shared-test-pr-body.ts';
+import {SharedTestReportDriver} from '../src/shared-test-report-driver.ts';
 
 const now='2026-09-25T05:00:00Z';
 const kinds=['app_screen','linear_screen','showboat','d1_read',
@@ -11,6 +10,9 @@ const kinds=['app_screen','linear_screen','showboat','d1_read',
 
 function fixture() {
   const db=new ImplementationTestDatabase();
+  seedRun(db,'run-1','issue-1');
+  db.sqlite.prepare(`UPDATE orchestration_runs SET route_repository='owner/repo',
+    route_github_installation_id='installation-1' WHERE run_id='run-1'`).run();
   db.sqlite.prepare(`INSERT INTO test_lease_requests
     (request_id,run_id,node_visit,attempt_id,task_id,candidate_commit,patch_sha256,
      state,created_at,updated_at) VALUES
@@ -117,15 +119,30 @@ test('close needs attached proof and owned absence before one atomic free transi
     assert.equal(db.sqlite.prepare('SELECT report_state FROM test_lease_closures').get()?.report_state,'pending');
     const bucket=new ImplementationTestBucket();
     let body='Human notes\n\n<!-- deos-test-proof:lease-1:start -->\nClose pending\n<!-- deos-test-proof:lease-1:end -->\n';
-    const writer=new SharedTestPrBodyWriter(db as unknown as D1Database,
-      {read:async()=>body,write:async(_repository,_pr,updated)=>{body=updated;}});
-    const report=new SharedTestReportStore(db as unknown as D1Database,
-      bucket as unknown as R2Bucket,writer);
-    const url=await report.publish('run-1','lease-1');
-    assert.equal(url,'https://deos-test.voxdez.com/reports/lease-1');
+    let failWrite=true;
+    const env={DB:db as unknown as D1Database,
+      ARTIFACTS:bucket as unknown as R2Bucket} as Env;
+    const report=new SharedTestReportDriver(env,()=>({
+      json:async<T>(path:string,init?:RequestInit)=>{
+        assert.equal(path,'/pulls/150');
+        if (init?.method==='PATCH') {
+          if (failWrite) {failWrite=false;throw new Error('GitHub body update unavailable');}
+          body=JSON.parse(String(init.body)).body;
+        }
+        return {number:150,body,head:{sha:'a'.repeat(40),ref:'codex/test'},
+          base:{repo:{full_name:'owner/repo'}}} as T;
+      },
+    }));
+    await assert.rejects(report.resume(),/GitHub body update unavailable/);
+    assert.equal(db.sqlite.prepare('SELECT state FROM test_environment').get()?.state,'free');
+    assert.equal(db.sqlite.prepare('SELECT report_state FROM test_lease_closures').get()?.report_state,'pending');
+    assert.equal(await report.resume(),'published');
     assert.match(body,/Human notes/);
     assert.match(body,/Final close report/);
     assert.equal(db.sqlite.prepare('SELECT report_state FROM test_lease_closures').get()?.report_state,'complete');
-    assert.equal(await report.publish('run-1','lease-1'),url);
+    assert.equal(await report.resume(),'idle');
+    const object=await bucket.get('shared-test/reports/lease-1/close.json');
+    assert.ok(object);
+    assert.equal(JSON.parse(await object.text()).leaseId,'lease-1');
   } finally {db.close();}
 });
