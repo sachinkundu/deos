@@ -140,8 +140,18 @@ export class SharedTestResourceStore {
           WHERE resource_id=? AND lease_id=? AND plan_state='absent')`)
         .bind(input.leaseId,input.resourceId,input.removeWorkId,at.toISOString(),
           input.resourceId,input.leaseId),
+      this.db.prepare(`INSERT INTO test_resource_absence_guards
+        (lease_id,resource_id,ready,checked_at) VALUES (?,?,CASE WHEN EXISTS (
+          SELECT 1 FROM test_resources r JOIN test_cleanup_checks c
+            ON c.lease_id=r.lease_id AND c.resource_id=r.resource_id
+          WHERE r.lease_id=? AND r.resource_id=? AND r.run_id=? AND r.plan_state='absent'
+            AND r.absent_at IS NOT NULL AND c.remove_work_id=?
+            AND c.remove_state='done' AND c.read_state='absent')
+          THEN 1 ELSE 0 END,?)`)
+        .bind(input.leaseId,input.resourceId,input.leaseId,input.resourceId,
+          input.runId,input.removeWorkId,at.toISOString()),
     ]);
-    if (results[0].meta.changes!==1 || results[1].meta.changes!==1)
+    if (results.some(result=>result.meta.changes!==1))
       throw new Error('test_resource_absence_write_incomplete');
   }
 }

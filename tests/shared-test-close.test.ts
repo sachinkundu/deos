@@ -100,6 +100,15 @@ test('close needs attached proof and owned absence before one atomic free transi
     db.sqlite.prepare(`INSERT INTO test_cleanup_checks
       (lease_id,resource_id,remove_work_id,remove_state,read_state,checked_at)
       VALUES ('lease-1','resource-1','remove-1','done','absent',?)`).run(now);
+    db.sqlite.exec(`CREATE TRIGGER skip_test_closure BEFORE INSERT ON test_lease_closures
+      BEGIN SELECT RAISE(IGNORE); END;`);
+    await assert.rejects(store.close('run-1','lease-1',fence));
+    assert.equal(db.sqlite.prepare('SELECT state FROM test_environment WHERE site_id=1').get()?.state,
+      'cleaning');
+    assert.equal(db.sqlite.prepare('SELECT state FROM test_leases WHERE lease_id=\'lease-1\'').get()?.state,
+      'cleaning');
+    assert.equal(db.sqlite.prepare('SELECT state FROM test_attestations').get()?.state,'observed');
+    db.sqlite.exec('DROP TRIGGER skip_test_closure');
     const receipt=await store.close('run-1','lease-1',fence);
     assert.equal(receipt.leaseId,'lease-1');
     assert.equal((await store.close('run-1','lease-1',fence)).closeRevision,receipt.closeRevision);

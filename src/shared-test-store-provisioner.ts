@@ -11,6 +11,10 @@ export interface TestStoreProvider {
   create(plan:StorePlan):Promise<string>;
 }
 
+export interface TestStoreCleanupProvider extends TestStoreProvider {
+  remove(plan:StorePlan,remoteId:string):Promise<void>;
+}
+
 /** Reserve every name in D1 before asking Cloudflare to create a store. */
 export class SharedTestStoreProvisioner {
   readonly resources:SharedTestResourceStore;

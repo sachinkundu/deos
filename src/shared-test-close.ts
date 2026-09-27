@@ -162,6 +162,21 @@ export class SharedTestCloseStore {
           WHERE attestation_id=? AND state='complete' AND close_revision=?)`)
         .bind(leaseId,runId,closeRevision,attestation.attestation_id,cleanupSha256,
           absenceSha256,now,JSON.stringify(receipt),attestation.attestation_id,closeRevision),
+      this.db.prepare(`INSERT INTO test_close_transaction_guards
+        (lease_id,ready,checked_at) VALUES (?,CASE WHEN EXISTS (
+          SELECT 1 FROM test_environment e JOIN test_leases l
+            ON l.lease_id=e.last_lease_id JOIN test_attestations a
+            ON a.lease_id=l.lease_id JOIN test_lease_closures c
+            ON c.lease_id=l.lease_id AND c.attestation_id=a.attestation_id
+          WHERE e.site_id=1 AND e.state='free' AND e.owner_run_id IS NULL
+            AND e.owner_lease_id IS NULL AND e.last_lease_id=?
+            AND e.revision=? AND l.run_id=? AND l.state='closed'
+            AND a.state='complete' AND a.close_revision=?
+            AND c.close_revision=? AND c.cleanup_sha256=?
+            AND c.absence_sha256=? AND c.report_state='pending')
+          THEN 1 ELSE 0 END,?)`)
+        .bind(leaseId,leaseId,closeRevision,runId,closeRevision,
+          closeRevision,cleanupSha256,absenceSha256,now),
     ]);
     if (results.some(result=>result.meta.changes!==1))
       throw new Error('shared_test_close_transaction_incomplete');

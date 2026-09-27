@@ -143,6 +143,11 @@ Its activation check requires both records to have confirmed remote identities.
 The BettaView session Durable Object belongs to its separate lease-named Worker.
 A lost store-create response leaves the saved plan uncertain; recovery looks up
 that exact name and never allocates a substitute name.
+Store deletion waits for a proved Worker absence and all required public proof.
+It uses the saved remote identity, reads the fixed name absent twice, and writes
+the resource and cleanup receipt in one guarded D1 transaction. An R2 bucket
+with remaining objects stays owned until its contents are removed and the
+provider confirms bucket absence.
 
 While the lease is `preparing` or `active`, the owning Workflow sends a
 coordinator heartbeat every 30 seconds. The saved deadline is two minutes after

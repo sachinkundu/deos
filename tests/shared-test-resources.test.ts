@@ -66,3 +66,22 @@ test('an expired owner cannot plan or start another remote create',async()=>{
       WHERE resource_id=?`).get(plan.resourceId)?.plan_state,'planned');
   } finally {db.close();}
 });
+
+test('a conflicting absence receipt rolls back the resource transition',async()=>{
+  const {db,store,plan}=fixture();
+  try {
+    await store.plan(plan);
+    db.sqlite.prepare(`UPDATE test_environment SET state='quiescing',fence=2
+      WHERE site_id=1`).run();
+    db.sqlite.prepare(`INSERT INTO test_lease_fence_epochs
+      (lease_id,fence,run_id,reason,transition_revision,created_at)
+      VALUES ('lease-1',2,'run-1','quiesce',2,'now')`).run();
+    db.sqlite.prepare(`INSERT INTO test_cleanup_checks
+      (lease_id,resource_id,remove_work_id,remove_state,read_state,checked_at)
+      VALUES ('lease-1','resource-1','other-work','done','absent','now')`).run();
+    await assert.rejects(store.absent({resourceId:plan.resourceId,runId:plan.runId,
+      leaseId:plan.leaseId,fence:2,removeWorkId:'remove-worker-1',providerAbsent:true}));
+    assert.equal(db.sqlite.prepare(`SELECT plan_state FROM test_resources
+      WHERE resource_id='resource-1'`).get()?.plan_state,'planned');
+  } finally {db.close();}
+});

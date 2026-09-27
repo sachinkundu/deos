@@ -30,3 +30,23 @@ test('Cloudflare store calls use exact names and keep the credential out of erro
   assert.equal(JSON.parse(requests[2].body!).name,d1.providerKey);
   assert.equal(JSON.parse(requests[3].body!).name,r2.providerKey);
 });
+
+test('Cloudflare deletes only a saved database ID or exact bucket name',async()=>{
+  const paths:string[]=[];
+  const fetcher=async(input:RequestInfo|URL,init?:RequestInit)=>{
+    assert.equal(init?.method,'DELETE');
+    paths.push(String(input));
+    return Response.json({success:true,result:{}});
+  };
+  const provider=new SharedTestCloudflareStores(account,'narrow-secret',fetcher as typeof fetch);
+  await assert.rejects(provider.remove(d1,'not-a-database-id'),/delete_id_invalid/);
+  await assert.rejects(provider.remove(r2,'other-bucket'),/delete_identity_changed/);
+  assert.equal(paths.length,0);
+  const id='11111111-1111-4111-8111-111111111111';
+  await provider.remove(d1,id);
+  await provider.remove(r2,r2.providerKey);
+  assert.deepEqual(paths,[
+    `https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${id}`,
+    `https://api.cloudflare.com/client/v4/accounts/${account}/r2/buckets/${r2.providerKey}`,
+  ]);
+});

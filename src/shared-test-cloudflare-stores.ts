@@ -1,9 +1,9 @@
-import type {TestStoreProvider} from './shared-test-store-provisioner.ts';
+import type {TestStoreCleanupProvider} from './shared-test-store-provisioner.ts';
 
-type StorePlan=Parameters<TestStoreProvider['lookup']>[0];
+type StorePlan=Parameters<TestStoreCleanupProvider['lookup']>[0];
 
 /** This credential belongs only to the trusted coordinator, never a demo Sandbox. */
-export class SharedTestCloudflareStores implements TestStoreProvider {
+export class SharedTestCloudflareStores implements TestStoreCleanupProvider {
   readonly accountId:string;
   readonly token:string;
   readonly fetcher:typeof fetch;
@@ -61,5 +61,18 @@ export class SharedTestCloudflareStores implements TestStoreProvider {
     if (typeof uuid!=='string' || !uuid)
       throw new Error(`shared_test_store_create_id_invalid:${plan.resourceId}`);
     return uuid;
+  }
+
+  async remove(plan:StorePlan,remoteId:string):Promise<void> {
+    if (plan.kind==='d1_database') {
+      if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(remoteId))
+        throw new Error('shared_test_d1_delete_id_invalid');
+      await this.api(`/d1/database/${remoteId}`,{method:'DELETE'});
+    } else {
+      if (remoteId!==plan.providerKey)
+        throw new Error('shared_test_r2_delete_identity_changed');
+      await this.api(`/r2/buckets/${encodeURIComponent(plan.providerKey)}`,
+        {method:'DELETE'});
+    }
   }
 }
