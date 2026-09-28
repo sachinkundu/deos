@@ -21,14 +21,19 @@ Read-only remote checks on 28 September 2026 found the following:
   cumulative patch SHA-256
   `fae9ce85980de02b283cfb522bdf548f0997fa86e2883e0c20bc732e82558e4e`.
   Neither the PR nor branch has been closed or rewritten.
+  The private R2 patch readback returned HTTP 200, 211,821 bytes, with exactly
+  that SHA-256. Git's merge-tree check combined PR #137 head with merged main
+  `f8275c1e21a420febeed40139e16fd90605f7b80` without conflicts. A raw
+  patch apply to main did not pass because BettaView source context changed;
+  the tree merge is the supported preservation route.
 
 The 24-hour human gate wait previously let an expected checkpoint timeout
 escape and leave D1 active after the executor errored. The implementation PR
 now catches only the recognized `WorkflowTimeoutError`, then rechecks the
 same durable gate. Unexpected wait failures still retain their original cause.
 This fix protects new runs; it cannot change the frozen v43 instance. The
-old run needs an explicit terminal reconciliation against the saved error
-before a v44 run for the same issue can be admitted. Any new run must reuse
+old run needed an explicit terminal reconciliation against the saved error
+before a v44 run for the same issue could be admitted. Any new run must reuse
 the existing code and re-prove it through the new shared test node.
 
 The coordinator containing the wait fix was deployed with grants disabled.
@@ -36,3 +41,13 @@ Cloudflare deployment readback showed Worker version
 `772c6546-a6c9-4a91-b14e-6b19f9313423` at 100% on 28 September 2026
 09:29:39 UTC. No old run, PR, branch, or Linear issue state was changed by
 this rollout.
+
+At 09:36:09 UTC, after re-reading Cloudflare's `errored` status and the saved
+R2 diagnostic, an exact-run, exact-instance, exact-visit D1 update marked run
+1 `failed` with terminal cause `workflow_executor_timeout`. It required the
+saved error ID and no active agent attempt. Wrangler reported one row written;
+the D1 API readback confirmed the failed status. The old implementation
+record, question, and gate remain as historical evidence. PR #137, its branch,
+patch, and the Linear issue were untouched. This removes the stale active-run
+lock; the DEOS route still selects simple-traceability v26 and no new run has
+been admitted.

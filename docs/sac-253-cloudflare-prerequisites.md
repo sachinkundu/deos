@@ -65,8 +65,9 @@ candidate services successfully, but both upload jobs received Cloudflare HTTP
 403, code 10000, when writing objects to `deos-sample-project-artifacts`.
 The same checked GitHub artifacts uploaded and read back successfully with the
 local operator credential. This isolates the remaining job failure to the
-GitHub environment secret's R2 permission. The exact SAC-182 candidate bundles
-are already in R2; this credential change is for future unattended uploads.
+GitHub environment secret's R2 permission. That first dispatch built the
+SAC-253 implementation PR commit. Its bundles are not the SAC-182 canary
+candidate. The credential change is for future unattended uploads.
 
 The implementation workflow now uses a separate `SHARED_TEST_R2_UPLOAD_TOKEN`
 secret. The portal staging deploy credential stays unchanged. Before relying on
@@ -82,6 +83,8 @@ distinguish this REST API permission from S3-only Object Read & Write tokens.
 
 [The first dispatch and local readback](evidence/sac-253/candidate-build-upload.md)
 record the exact result.
+The same record now includes a separate passing build and private R2 readback
+for the actual SAC-182 PR #137 candidate. Its first lease and demo remain open.
 
 ## Staging base: ready for a lease
 
