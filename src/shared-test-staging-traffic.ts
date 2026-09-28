@@ -32,13 +32,24 @@ export class StagingVersionReader {
 
   async read():Promise<StagingTrafficRead> {
     const services=await Promise.all(this.targets.map(async target=>{
-      const response=await this.versionRequest(target);
-      if (!response.ok) throw new Error(`staging_host_version_http_${response.status}`);
-      const host=await response.json() as Partial<HostVersion>;
+      let response:Response;
+      try {response=await this.versionRequest(target);}
+      catch(error) {
+        throw new Error(`staging_host_version_request_failed:${target.serviceName}:${target.host}`,
+          {cause:error});
+      }
+      if (!response.ok)
+        throw new Error(`staging_host_version_http_${response.status}:${target.serviceName}:${target.host}`);
+      let host:Partial<HostVersion>;
+      try {host=await response.json() as Partial<HostVersion>;}
+      catch(error) {
+        throw new Error(`staging_host_version_json_invalid:${target.serviceName}:${target.host}`,
+          {cause:error});
+      }
       if (host.canonicalHost!==target.host || !host.versionId || !uuid.test(host.versionId) ||
           !host.sourceSha || !sha40.test(host.sourceSha) ||
           !host.buildInputSha256 || !sha64.test(host.buildInputSha256))
-        throw new Error('staging_host_version_invalid');
+        throw new Error(`staging_host_version_invalid:${target.serviceName}:${target.host}`);
       const service:StagingServiceRead={serviceName:target.serviceName,
         sourceCommit:host.sourceSha,deployVersion:host.versionId,
         buildInputSha256:host.buildInputSha256,

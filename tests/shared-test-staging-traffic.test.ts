@@ -46,7 +46,12 @@ test('invalid or mismatched version responses cannot become a lease base',async(
     await assert.rejects(reader.read(),/staging_host_version_invalid/);
   }
   const failed=new StagingVersionReader([target],async()=>new Response('unavailable',{status:503}));
-  await assert.rejects(failed.read(),/staging_host_version_http_503/);
+  await assert.rejects(failed.read(),/staging_host_version_http_503:portal:deos-staging.voxdez.com/);
+  const original=new Error('private binding failed');
+  const rejected=new StagingVersionReader([target],async()=>{throw original;});
+  await assert.rejects(rejected.read(),error=>error instanceof Error &&
+    error.message==='staging_host_version_request_failed:portal:deos-staging.voxdez.com' &&
+    error.cause===original);
 });
 
 test('a private service binding can provide the version behind Access',async()=>{
