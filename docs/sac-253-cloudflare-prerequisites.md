@@ -67,7 +67,7 @@ The same checked GitHub artifacts uploaded and read back successfully with the
 local operator credential. This isolates the remaining job failure to the
 GitHub environment secret's R2 permission. That first dispatch built the
 SAC-253 implementation PR commit. Its bundles are not the SAC-182 canary
-candidate. The credential change is for future unattended uploads.
+candidate. A separate upload credential is needed for future unattended uploads.
 
 The implementation workflow now uses a separate `SHARED_TEST_R2_UPLOAD_TOKEN`
 secret. The portal staging deploy credential stays unchanged. Before relying on
@@ -80,6 +80,8 @@ by Wrangler. Keep the value out of chat and pull requests. Once the
 implementation workflow is on `main` and the secret exists, rerun a candidate
 dispatch. Cloudflare's [R2 token permissions](https://developers.cloudflare.com/r2/api/tokens/)
 distinguish this REST API permission from S3-only Object Read & Write tokens.
+GitHub's environment secret name readback on 28 September showed the new
+`SHARED_TEST_R2_UPLOAD_TOKEN` is not yet saved.
 
 [The first dispatch and local readback](evidence/sac-253/candidate-build-upload.md)
 record the exact result.
