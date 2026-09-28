@@ -16,5 +16,13 @@ evidence, not a successful browser admission result.
 | Token usage | `Not Seen Yet` at readback |
 
 The Client Secret value was not read or copied. Its name in the Worker proves
-presence only. A live request to the first lease app must prove that the value
-matches the enabled Access token and that the app edge accepts the identity.
+presence only. On 28 September, the first lease created both app Workers and
+their custom domains. The portal host has a valid TLS certificate and reaches
+the `DEOS shared test apps` Access application. The controller sends the saved
+Client ID and Worker secret to `/api/version`, but Access returns HTTP 302 to
+its login page. The service token still shows `Not Seen Yet` after those
+requests. The Service Auth policy still includes only this token, and the token
+is enabled and assigned to the app. Browser admission remains unproven. The
+operator must re-enter the matching one-time Client Secret in the Worker secret
+or rotate the token and enter its replacement secret. No secret belongs in this
+evidence file.

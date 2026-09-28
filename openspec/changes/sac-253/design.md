@@ -46,7 +46,7 @@ no Cloudflare, Access, Linear, or GitHub account credential.
 | Before | Operator-owned setup | Read-back needed |
 | --- | --- | --- |
 | Status-page verification | Attach `deos-test.voxdez.com` to the status Worker and include it in the owner-only Access application. | The exact Worker domain mapping and an authenticated status-page visit. |
-| Pinned staging build reuse | Let the staging deploy credential write and read `shared-test/builds/` objects in the private DEOS artifact bucket. Each staging job saves and reads back the exact bundle before it deploys the version. | A content-addressed bundle for each service whose bytes recompute the version endpoint's build digest. |
+| Pinned staging build reuse | Let the staging deploy credential write and read `shared-test/builds/` objects in the private DEOS artifact bucket. Each staging job saves and reads back the exact bundle before it deploys the version. BettaView also saves a compiled Worker module from the same source commit and pins it to the raw build digest. | A content-addressed bundle for each service whose bytes recompute the version endpoint's build digest, plus the checked BettaView module. |
 | Candidate build dispatch | Land the trusted `shared-test-candidate-build` GitHub workflow on the default branch before granting a live lease. Keep its build job free of provider credentials. Its separate upload job uses a bucket-scoped `SHARED_TEST_R2_UPLOAD_TOKEN` secret; the portal staging deploy token stays unchanged. The current GitHub App's Contents write grant can send the repository dispatch. | The workflow is present on `main`; one dispatch from the saved candidate commit yields a verified bundle in private R2 without giving the candidate process the upload secret. |
 | Browser-based app test | Configure separate Access protection for the lease app origins under `*.apps.deos-test.voxdez.com`, with a scoped service identity held by the trusted browser service. | Application and policy IDs, allowed origin, service identity scope, and a real browser admission check. |
 | Provider visual proof | Keep the connected external browser signed in to Linear with access to the saved DEOS issue. The Sandbox agent never receives that session. | A real issue screenshot showing the saved issue key and provider event state; the trusted sanitizer must pass before a public copy is linked. |
@@ -150,6 +150,9 @@ coordinator applies that schema to the empty lease database before the test
 Worker serves app traffic; it never copies staging rows into the lease.
 Its activation check requires both records to have confirmed remote identities.
 The BettaView session Durable Object belongs to its separate lease-named Worker.
+The portal Worker is created first because BettaView binds to it. The BettaView
+Worker upload uses its checked compiled module, including package imports and
+the session class, from the exact pinned source commit.
 A lost store-create response leaves the saved plan uncertain; recovery looks up
 that exact name and never allocates a substitute name.
 Store deletion waits for a proved Worker absence and all required public proof.
