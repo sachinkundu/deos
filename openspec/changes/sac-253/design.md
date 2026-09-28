@@ -47,7 +47,7 @@ no Cloudflare, Access, Linear, or GitHub account credential.
 | --- | --- | --- |
 | Status-page verification | Attach `deos-test.voxdez.com` to the status Worker and include it in the owner-only Access application. | The exact Worker domain mapping and an authenticated status-page visit. |
 | Pinned staging build reuse | Let the staging deploy credential write and read `shared-test/builds/` objects in the private DEOS artifact bucket. Each staging job saves and reads back the exact bundle before it deploys the version. | A content-addressed bundle for each service whose bytes recompute the version endpoint's build digest. |
-| Candidate build dispatch | Land the trusted `shared-test-candidate-build` GitHub workflow on the default branch before granting a live lease. Keep its build job free of provider credentials and give only its separate upload job the existing staging R2 credential. The current GitHub App's Contents write grant can send the repository dispatch. | The workflow is present on `main`; one dispatch from the saved candidate commit yields a verified bundle in private R2 without giving the candidate process the upload secret. |
+| Candidate build dispatch | Land the trusted `shared-test-candidate-build` GitHub workflow on the default branch before granting a live lease. Keep its build job free of provider credentials. Its separate upload job uses a bucket-scoped `SHARED_TEST_R2_UPLOAD_TOKEN` secret; the portal staging deploy token stays unchanged. The current GitHub App's Contents write grant can send the repository dispatch. | The workflow is present on `main`; one dispatch from the saved candidate commit yields a verified bundle in private R2 without giving the candidate process the upload secret. |
 | Browser-based app test | Configure separate Access protection for the lease app origins under `*.apps.deos-test.voxdez.com`, with a scoped service identity held by the trusted browser service. | Application and policy IDs, allowed origin, service identity scope, and a real browser admission check. |
 | Provider visual proof | Keep the connected external browser signed in to Linear with access to the saved DEOS issue. The Sandbox agent never receives that session. | A real issue screenshot showing the saved issue key and provider event state; the trusted sanitizer must pass before a public copy is linked. |
 | Provider test and cleanup | Put the marker-signing key and any required provider or cleanup credentials in trusted services with the narrow scopes in this design. | Presence and scope checks without exposing secret values to the agent, plus a successful owned-item removal and absence read-back. |
@@ -259,8 +259,23 @@ change that touches any app or provider root cannot use that result.
 
 The node ships only in a new immutable workflow version. Existing frozen runs
 keep their graph and cannot release an app candidate under the new guard. A new
-run is required instead of a compatibility handoff because no old safe node has
-the lease and evidence identities that the new node requires.
+run is required. For SAC-182, a trusted, exact-subject handoff seeds that new
+run from its stopped v43 run and PR #137. It does not change the v43 graph or
+claim that the old run performed the shared test. The new run owns every lease,
+provider event, proof item, cleanup record, and attestation.
+
+The handoff checks the old executor's terminal error and saved diagnostic, no
+active attempt or lease, the approved planning and design merge receipts, the
+current DEOS issue and route, the saved patch hash and bytes, and PR #137's
+exact branch and head. It carries the old code onto current `main` with a clean
+tree merge, verifies the resulting tree and single-parent commit, and updates
+the existing branch with an exact old-head precondition. The candidate build
+uses the new commit. The new run starts at the shared test decision with a
+fresh implementation subject; old proof is retained as history and cannot
+satisfy the new run's test or release guard. An immutable handoff record names
+both runs, old and new commit and patch identities, the current base, and the
+source approval receipts. If any readback changes, the handoff stops before
+admission. It creates no new planning, design, or implementation pull request.
 
 ### D1 owns the lease and write fence
 
@@ -400,7 +415,7 @@ milliseconds. No raw secret, auth header, or full private reply is saved.
 | Two requests race or one is sent twice | Save or load one request. Validate only the oldest queue head. | One current and checked head can grant. |
 | A retry has a new agent attempt | Prove the old attempt is final and its Sandbox is gone. Swap the attempt on the same request. | One visit, task, and candidate keeps one queue row. |
 | The oldest waiter dies or is canceled | The scheduled scanner saves terminal run proof and Sandbox absence, then marks that row `canceled`. It does not grant in that transaction. | A later scan may validate the next oldest live waiter. |
-| An older frozen workflow has no demo node | Keep its graph unchanged and reject release of an app candidate without new proof. | Admit a new run under the post-version-17 graph and test the exact candidate there. |
+| An older frozen workflow has no demo node | Keep its graph unchanged and reject release of an app candidate without new proof. | Admit a new run under the post-version-17 graph. For SAC-182, use the guarded PR #137 handoff above; the new run still has to produce every lease-bound test and cleanup receipt. |
 | Staging changes during grant | `updating` blocks grant. Two version reads and the grant transaction bind one stable base. | All services return one unchanged version revision. |
 | A direct deploy makes the pointer stale | Block grant until coordinator refreshes it. | Build a new full manifest from two equal version reads. |
 | The staging controller dies | Read the running versions. Finish the planned manifest, restore the old stable one, or block if versions change between reads. | Never guess a stable base beyond the explicit 100% assumption. |
@@ -473,7 +488,8 @@ milliseconds. No raw secret, auth header, or full private reply is saved.
    identity, proof item, close receipt, final report, and absence read.
 7. Turn on the safe portal at `deos-test.voxdez.com`. Keep provider writes off
    until the lease, version, origin, session, sanitizer, and event checks pass.
-8. Turn on one lease. Admit new SAC-182 work through the required demo node.
+8. Turn on one lease. Verify and apply the guarded SAC-182 handoff from its
+   stopped run and PR #137 to a newly admitted run, then enter the required demo node.
    Save the real provider event, app use, GitHub result, screen shots, D1 reads,
    cleanup, free state, and final report.
 9. Change the staging and live release guard from observe-only to enforcement

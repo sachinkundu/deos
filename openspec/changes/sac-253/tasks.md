@@ -46,11 +46,12 @@
 - [x] 6.2 Make every matching app/provider candidate wait for a complete lease-bound test, and save an exact `test_not_required` decision only for a nonmatching candidate.
 - [ ] 6.3 Add the exact-commit staging and live release guard in observe-only mode, with enforcement enabled only after the full SAC-182 proof.
 - [x] 6.4 Cover grant races, stale attempts, staging drift, wrong versions, old sessions, wrong scopes, event duplicates, uncertain remote replies, proof failures, interrupted cleanup, and first-error preservation with deterministic tests.
+- [ ] 6.5 Add and test an exact-subject handoff from the stopped SAC-182 v43 run and PR #137 to a new v44 run. Preserve approval provenance, carry its code onto current `main`, reuse the existing PR, and require fresh test and release proof.
 
 ## 7. Remote proof and review
 
 - [ ] 7.1 Apply the migration and deploy the coordinator, isolated test app, portal, and new workflow version only after checking live attempts and configured bindings.
-- [ ] 7.2 Resume SAC-182 as newly admitted work and show the lease, pinned staging base, portal issue identity, real app use, scoped GitHub result, and provider-made Linear event in D1.
+- [ ] 7.2 Admit the guarded SAC-182 handoff as a new run and show the lease, pinned staging base, portal issue identity, real app use, scoped GitHub result, and provider-made Linear event in D1.
 - [ ] 7.3 Attach and read back sanitized provider and task screens, Showboat commands, D1 reads, and provider receipts on the implementation pull request.
 - [ ] 7.4 Prove owned resource removal, absence, free state, final report, and subsequent safe lease eligibility; then enable the release guard.
 - [ ] 7.5 Run OpenSpec validation, type checks, focused and full tests, inspect the diff, and publish one ready-for-review implementation pull request citing the approved planning PRs and requirement coverage.

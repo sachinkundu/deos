@@ -194,6 +194,17 @@ lease grant, the pinned staging base, the issue identity on the portal, real app
 use, a real GitHub result, a provider-made Linear event received by the test
 Worker, the saved result, cleanup, and the next free state.
 
+The stopped SAC-182 workflow SHALL remain frozen. A guarded handoff MAY create
+a new workflow run from its verified planning and design approvals and the exact
+code in its existing pull request. The handoff MUST verify the stopped executor,
+saved original error, absence of active work, current issue and repository
+scope, source patch, pull request head, and a clean carry-forward of that code
+onto current `main`. It MUST save the source and target identities and MUST NOT
+create replacement planning, design, or implementation pull requests. The new
+run MUST make a fresh test decision for its new candidate commit and MUST earn
+its own lease, proof, cleanup, and release attestation. Old proof MUST NOT count
+for the new candidate.
+
 A signed request made by a local tool straight to the Worker MAY be kept as
 synthetic ingress proof. It MUST NOT count as the provider-made Linear proof.
 The pull request body SHALL keep attached safe screen images of the provider
@@ -203,6 +214,17 @@ setup and the triggering task state, plus command and data read-back proof.
 
 - **WHEN** the stalled SAC-182 work resumes in the current team and gets the lease.
 - **THEN** it uses the pinned real app and scoped provider links, and its pull request keeps the full proof after cleanup.
+
+#### Scenario: Stopped SAC-182 code is handed to a new run
+
+- **GIVEN** the old executor is terminal and its original error and PR #137 code are preserved.
+- **WHEN** the trusted handoff verifies the source receipts and current branch, then carries that exact code onto current `main`.
+- **THEN** a new workflow run tests the new commit through the shared site while the old run and its approvals remain historical records.
+
+#### Scenario: Source or branch changes during handoff
+
+- **WHEN** the source error, approval, patch, branch head, or resulting tree differs from the saved handoff plan.
+- **THEN** no lease is granted and the changed subject is reported for review.
 
 #### Scenario: Only synthetic ingress is shown
 
