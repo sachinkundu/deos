@@ -90,6 +90,7 @@ export class SharedTestRunHandoff {
       throw new Error('shared_test_handoff_executor_not_errored');
     const error=await db.prepare(`SELECT error_id,detail_r2_key,message
       FROM workflow_errors WHERE run_id=? AND node_id=? AND visit_sequence=?
+      AND message LIKE 'Execution timed out%'
       ORDER BY occurred_at DESC LIMIT 1`)
       .bind(source.run_id,source.current_node,source.current_visit_sequence)
       .first<{error_id:string;detail_r2_key:string;message:string}>();
@@ -189,10 +190,11 @@ export class SharedTestRunHandoff {
     await github.reachable(design.merge_commit_sha,input.targetBaseSha);
     const approved=await store.read<ImplementationInput>(work.input_key,work.input_sha);
     if(approved.runId!==source.run_id || approved.branch!==work.branch ||
-      approved.testedBaseSha!==work.tested_base_sha ||
+      approved.testedBaseSha!==design.merge_commit_sha ||
       approved.approvedDesignSha!==work.approved_design_sha ||
       JSON.stringify(approved.approvedFiles)!==work.approved_files_json)
       throw new Error('shared_test_handoff_approved_input_changed');
+    await github.reachable(approved.testedBaseSha,work.tested_base_sha);
     for(const file of approved.approvedFiles) {
       if(await sha256Hex(file.content)!==file.sha256 ||
         await sha256Hex(await github.file(file.path,input.targetBaseSha))!==file.sha256)
