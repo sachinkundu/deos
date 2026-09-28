@@ -54,6 +54,9 @@
     "TRIAL_DISPATCH_ENABLED": "false",
     "SHARED_TEST_GRANTS_ENABLED": "false",
     "SHARED_TEST_ZONE_ID": "8a120356c46d1557fbf7fec6cbed7a19",
+    "TEST_APP_ACCESS_AUD": "2142eb74725a50ca4b3a8ec6da3204ad3cd46850af731d89e96c04cca6b0d99c",
+    "TEST_APP_ACCESS_POLICY_ID": "cbeedbcd-7717-4d4d-b773-93592a9073eb",
+    "TEST_APP_SERVICE_CLIENT_ID": "999e333296e42d69bc56b6529dcebd18.access",
     "CODEX_AUTH_PROFILE_ID": "controlled-trial",
     "SANDBOX_FAILURE_RETENTION_MINUTES": "0",
     "CAPABILITY_BASE_URL": "https://deos-queue-consumer-ts.skundu.workers.dev/capabilities",
@@ -72,6 +75,8 @@
       "CAPABILITY_SIGNING_SECRET",
       "CLEANUP_AUDIT_SECRET",
       "STAGE_RETRY_SECRET",
+      "TEST_APP_SERVICE_CLIENT_SECRET",
+      "TEST_MARKER_KEY_V1",
       "OPENROUTER_API_KEY"
     ]
   },
