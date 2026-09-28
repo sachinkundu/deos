@@ -39,6 +39,15 @@ test('guarded handoff atomically creates one new run at the test decision and re
       testedBaseSha:'d'.repeat(40),policy:implementationPolicy,approvedFiles:[],
       issue:{id:'issue'},receipts:{},requirements:JSON.parse(work.requirements_json),
     } as ImplementationInput;
+    db.sqlite.prepare(`INSERT INTO implementation_runs
+      (run_id,linear_identifier,issue_run_sequence,change_id,approved_design_sha,
+       tested_base_sha,branch,allowed_linear_user_id,human_binding_revision,
+       input_key,input_sha,approved_files_json,requirements_json,created_at,updated_at)
+      VALUES (?,?,1,?,?,?,?,?,?,?,?,'[]',?,?,?)`)
+      .run(sourceId,work.linear_identifier,work.change_id,work.approved_design_sha,
+        approved.testedBaseSha,work.branch,work.allowed_linear_user_id,
+        work.human_binding_revision,'source-input','source-sha',
+        work.requirements_json,now,now);
     const plan={sourceRunId:sourceId,targetRunId:targetId,
       sourceWorkflowInstanceId:'wf-v1-source',targetWorkflowInstanceId:'wf-v1-target',
       sourceDefinitionDigest:'a'.repeat(64),targetDefinitionDigest:'b'.repeat(64),
@@ -62,14 +71,18 @@ test('guarded handoff atomically creates one new run at the test decision and re
     const next=db.sqlite.prepare(`SELECT current_node,status,definition_version,
       selection_value FROM orchestration_runs WHERE run_id=?`)
       .get(targetId) as {current_node:string;status:string;definition_version:number;selection_value:string};
-    const candidate=db.sqlite.prepare(`SELECT pr_number,pr_head_sha,patch_sha,status
+    const candidate=db.sqlite.prepare(`SELECT pr_number,pr_head_sha,patch_sha,status,branch,pr_branch
       FROM implementation_runs WHERE run_id=?`).get(targetId) as
-      {pr_number:number;pr_head_sha:string;patch_sha:string;status:string};
+      {pr_number:number;pr_head_sha:string;patch_sha:string;status:string;
+        branch:string;pr_branch:string};
     assert.deepEqual({...old},{status:'failed',terminal_cause:'workflow_executor_timeout'});
     assert.deepEqual({...next},{current_node:'shared_test_decide',status:'pending_dispatch',
       definition_version:44,selection_value:'guarded_handoff'});
     assert.deepEqual({...candidate},{pr_number:137,pr_head_sha:'f'.repeat(40),
-      patch_sha:'2'.repeat(64),status:'test_pending'});
+      patch_sha:'2'.repeat(64),status:'test_pending',
+      branch:'deos/agent/SAC-182/run-2',pr_branch:work.branch});
+    assert.equal(db.sqlite.prepare(`SELECT branch FROM implementation_runs WHERE run_id=?`)
+      .get(sourceId)?.branch,work.branch);
     assert.equal(db.sqlite.prepare(`SELECT state FROM shared_test_run_handoffs
       WHERE source_run_id=?`).get(sourceId)?.state,'admitted');
   }finally{db.close();}

@@ -266,7 +266,8 @@ export class SharedTestRunHandoff {
     if(existing && (existing.plan_digest!==digest ||
       existing.target_run_id!==plan.targetRunId))
       throw new Error('shared_test_handoff_existing_subject_changed');
-    if(!existing)await this.admit(plan,source,work,approved,encoded,digest);
+    if(!existing || existing.state==='prepared')
+      await this.admit(plan,source,work,approved,encoded,digest);
     return this.dispatch(plan,digest);
   }
 
@@ -331,16 +332,17 @@ export class SharedTestRunHandoff {
           plan.targetRunId,digest,plan.projectId,plan.issueId),
       db.prepare(`INSERT OR IGNORE INTO implementation_runs
         (run_id,linear_identifier,issue_run_sequence,change_id,approved_design_sha,
-         tested_base_sha,branch,allowed_linear_user_id,human_binding_revision,
+         tested_base_sha,branch,pr_branch,allowed_linear_user_id,human_binding_revision,
          input_key,input_sha,approved_files_json,requirements_json,status,tree_sha,
          candidate_key,candidate_sha,patch_key,patch_sha,patch_base_sha,
          source_attempt_id,pr_number,pr_url,pr_head_sha,created_at,updated_at)
-        SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?, 'test_pending',?,?,?,?,?,?,NULL,?,?,?,?,?
+        SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,'test_pending',?,?,?,?,?,?,NULL,?,?,?,?,?
         WHERE EXISTS(SELECT 1 FROM orchestration_runs WHERE run_id=?
           AND definition_digest=? AND current_node='shared_test_decide'
           AND status='pending_dispatch')`)
         .bind(plan.targetRunId,work.linear_identifier,plan.targetSequence,
-          work.change_id,work.approved_design_sha,plan.targetBaseCommit,work.branch,
+          work.change_id,work.approved_design_sha,plan.targetBaseCommit,
+          `deos/agent/${work.linear_identifier}/run-${plan.targetSequence}`,work.branch,
           work.allowed_linear_user_id,work.human_binding_revision,input.key,
           input.sha256,work.approved_files_json,work.requirements_json,
           plan.targetTreeSha,plan.targetCandidateKey,plan.targetCandidateSha256,
@@ -356,8 +358,31 @@ export class SharedTestRunHandoff {
         .bind(now,plan.sourceRunId,plan.targetRunId,digest,plan.targetRunId,
           plan.targetRunId,plan.targetCandidateCommit,plan.targetPatchSha256),
     ]);
-    if(results.some(result=>result.meta.changes!==1))
+    if(results[3]?.meta.changes!==1 ||
+      results.slice(0,3).some(result=>result.meta.changes!==0 && result.meta.changes!==1))
       throw new Error('shared_test_handoff_admission_incomplete');
+    const [savedHandoff,savedRun,savedWork]=await Promise.all([
+      db.prepare(`SELECT state,plan_digest,target_run_id FROM shared_test_run_handoffs
+        WHERE source_run_id=?`).bind(plan.sourceRunId).first<{
+          state:string;plan_digest:string;target_run_id:string}>(),
+      db.prepare(`SELECT status,definition_digest,workflow_instance_id,current_node
+        FROM orchestration_runs WHERE run_id=?`).bind(plan.targetRunId).first<{
+          status:string;definition_digest:string;workflow_instance_id:string;current_node:string}>(),
+      db.prepare(`SELECT branch,pr_branch,pr_head_sha,patch_sha FROM implementation_runs
+        WHERE run_id=?`).bind(plan.targetRunId).first<{
+          branch:string;pr_branch:string;pr_head_sha:string;patch_sha:string}>(),
+    ]);
+    if(savedHandoff?.state!=='admitted' || savedHandoff.plan_digest!==digest ||
+      savedHandoff.target_run_id!==plan.targetRunId ||
+      savedRun?.status!=='pending_dispatch' ||
+      savedRun.definition_digest!==plan.targetDefinitionDigest ||
+      savedRun.workflow_instance_id!==plan.targetWorkflowInstanceId ||
+      savedRun.current_node!=='shared_test_decide' ||
+      savedWork?.pr_branch!==work.branch ||
+      savedWork.branch!==`deos/agent/${work.linear_identifier}/run-${plan.targetSequence}` ||
+      savedWork.pr_head_sha!==plan.targetCandidateCommit ||
+      savedWork.patch_sha!==plan.targetPatchSha256)
+      throw new Error('shared_test_handoff_admission_readback_changed');
   }
 
   private async dispatch(plan:Plan,digest:string):Promise<Response> {

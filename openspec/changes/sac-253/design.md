@@ -275,7 +275,9 @@ fresh implementation subject; old proof is retained as history and cannot
 satisfy the new run's test or release guard. An immutable handoff record names
 both runs, old and new commit and patch identities, the current base, and the
 source approval receipts. If any readback changes, the handoff stops before
-admission. It creates no new planning, design, or implementation pull request.
+admission. The new run has its own unique run branch identity and separately
+records the existing PR branch it tests, leaving the source row unchanged. It
+creates no new planning, design, or implementation pull request.
 
 ### D1 owns the lease and write fence
 
