@@ -86,6 +86,37 @@ test('lease Worker upload binds only its stores and gate, then attaches its fixe
     calls.indexOf('PUT /workers/domains'));
 });
 
+test('BettaView upload sends the provider-required single-step migration object',async()=>{
+  const bettaBase:StableStagingBase={revision:'version-1',services:[{
+    serviceName:'bettaview',sourceCommit:'b'.repeat(40),deployVersion:'version-1',
+    buildInputSha256:'c'.repeat(64),trafficPercent:100}]};
+  const betta=sharedTestServicePlans(leaseId,bettaBase)[0];
+  const bettaPlan:TestWorkerPlan={resourceId:betta.resourceId,runId:'run-1',leaseId,
+    fence:1,kind:'test_worker',providerKey:betta.canonicalHost,
+    workId:betta.workId,service:betta};
+  const provider=new SharedTestCloudflareWorkers({} as D1Database,
+    'd'.repeat(32),'e'.repeat(32),'test-token');
+  let metadata:Record<string,unknown>|null=null;
+  const privateProvider=provider as unknown as {
+    store:()=>Promise<string>;uploadAssets:()=>Promise<string>;
+    assertFence:()=>Promise<void>;
+    api:(path:string,init:RequestInit)=>Promise<unknown>;
+    upload:(plan:TestWorkerPlan,candidateBuild:typeof build,commit:string,
+      phase:'preparing')=>Promise<void>;
+  };
+  privateProvider.store=async()=> 'store-id';
+  privateProvider.uploadAssets=async()=> 'asset-jwt';
+  privateProvider.assertFence=async()=> {};
+  privateProvider.api=async(_path,init)=>{
+    metadata=JSON.parse(String((init.body as FormData).get('metadata')));
+    return {};
+  };
+  await privateProvider.upload(bettaPlan,build,betta.base.sourceCommit,'preparing');
+  assert.ok(metadata);
+  assert.deepEqual((metadata as Record<string,unknown>).migrations,
+    {new_tag:'v1',new_sqlite_classes:['GitHubSession']});
+});
+
 test('a lease Worker host already assigned elsewhere is refused before upload',async()=>{
   const fetcher:typeof fetch=async input=>{
     const path=new URL(String(input)).pathname;

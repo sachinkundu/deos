@@ -251,7 +251,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
       compatibility_date:portal?'2026-08-26':'2026-08-29',
       compatibility_flags:['nodejs_compat'],
       bindings,assets:{jwt,config:{html_handling:'none',run_worker_first:true}},
-      ...(portal?{}:{migrations:[{tag:'v1',new_sqlite_classes:['GitHubSession']}]}),
+      ...(portal?{}:{migrations:{new_tag:'v1',new_sqlite_classes:['GitHubSession']}}),
       tags:[`deos-test-lease:${plan.leaseId}`,
         `deos-test-source:${plan.service.base.sourceCommit}`,
         `deos-test-base:${plan.service.base.deployVersion}`,
