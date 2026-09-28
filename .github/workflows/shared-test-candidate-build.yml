@@ -85,5 +85,5 @@ jobs:
           name: shared-test-candidate-${{ github.run_id }}-${{ matrix.service }}
       - name: Verify and upload immutable bundle
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.PORTAL_STAGING_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.SHARED_TEST_R2_UPLOAD_TOKEN }}
         run: python tools/scripts/publish_shared_test_candidate.py --bundle bundle.json --receipt receipt.json

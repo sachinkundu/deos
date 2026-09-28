@@ -19,5 +19,8 @@ same immutable object. Both byte-for-byte SHA-256 readbacks passed:
 | bettaview | `a0041a2fffd24c3d56d344bb3cba0cfadbe73609d6c3b961e066f94ff30f4af0` | `6474513e6563f3b14987af5287352df0ad1fe4d7255e7c08b7f3c67681c67eb8` |
 
 This verifies the build and uploader code path with real R2 readback. It does
-not make the GitHub upload job green; its environment secret needs bucket object
-read/write permission before another dispatch can pass unattended.
+not make the GitHub upload job green. The implementation workflow now uses a
+separate `SHARED_TEST_R2_UPLOAD_TOKEN` GitHub environment secret so the portal
+staging deploy token does not gain R2 access. A scoped bucket token must be
+saved before another dispatch can pass unattended. The SAC-182 candidate
+bundles already exist in R2 for the first lease.

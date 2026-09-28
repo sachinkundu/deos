@@ -56,24 +56,28 @@ GitHub starts `repository_dispatch` workflows from the default branch.
 to `main`. Its checks passed. The
 existing GitHub App has Contents write permission for the dispatch. The build
 job checks out the saved candidate commit without storing GitHub credentials.
-A separate staging job receives the
-existing `PORTAL_STAGING_CLOUDFLARE_API_TOKEN` secret, verifies the bundle, and
-uploads it to private R2. On 27 September 2026, GitHub showed that this secret
-exists in `staging`, that the environment permits `main`, and that it has no
-reviewer or wait-timer rule. The first dispatch on 28 September 2026 built both
+A separate staging job verifies the bundle and uploads it to private R2. The
+merged workflow initially reused `PORTAL_STAGING_CLOUDFLARE_API_TOKEN` for this
+upload. On 27 September 2026, GitHub showed that this secret exists in
+`staging`, that the environment permits `main`, and that it has no reviewer or
+wait-timer rule. The first dispatch on 28 September 2026 built both
 candidate services successfully, but both upload jobs received Cloudflare HTTP
 403, code 10000, when writing objects to `deos-sample-project-artifacts`.
 The same checked GitHub artifacts uploaded and read back successfully with the
 local operator credential. This isolates the remaining job failure to the
-GitHub environment secret's R2 permission.
+GitHub environment secret's R2 permission. The exact SAC-182 candidate bundles
+are already in R2; this credential change is for future unattended uploads.
 
-**Operator action:** update or replace the `staging` environment secret
-`PORTAL_STAGING_CLOUDFLARE_API_TOKEN` with a Cloudflare API token that permits
-object read and write on `deos-sample-project-artifacts` through the Cloudflare
-REST API used by Wrangler. The relevant bucket permission is **Workers R2
-Storage Bucket Item Write**; it includes object readback. Keep the token value
-in GitHub, not in chat or a pull request. Re-run the candidate dispatch after
-the secret is updated. Cloudflare's [R2 token permissions](https://developers.cloudflare.com/r2/api/tokens/)
+The implementation workflow now uses a separate `SHARED_TEST_R2_UPLOAD_TOKEN`
+secret. The portal staging deploy credential stays unchanged. Before relying on
+automatic candidate uploads, the operator must create a Cloudflare API token
+with **Workers R2 Storage Bucket Item Write** permission scoped to
+`deos-sample-project-artifacts` and save its value as
+`SHARED_TEST_R2_UPLOAD_TOKEN` in GitHub's `staging` environment. That permission
+allows the job's object upload and readback through the Cloudflare REST API used
+by Wrangler. Keep the value out of chat and pull requests. Once the
+implementation workflow is on `main` and the secret exists, rerun a candidate
+dispatch. Cloudflare's [R2 token permissions](https://developers.cloudflare.com/r2/api/tokens/)
 distinguish this REST API permission from S3-only Object Read & Write tokens.
 
 [The first dispatch and local readback](evidence/sac-253/candidate-build-upload.md)
