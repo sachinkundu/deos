@@ -48,7 +48,7 @@ service token name and Client ID, status-page visit, and lease-app admission
 result. The Client Secret stays out of that record. Leave
 `SHARED_TEST_GRANTS_ENABLED=false` until the remaining proof gates are ready.
 
-## Candidate build job: merged, dispatch proof pending
+## Candidate build job: build proven, GitHub upload credential blocked
 
 GitHub starts `repository_dispatch` workflows from the default branch.
 [Bootstrap PR #153](https://github.com/sachinkundu/deos/pull/153) merged on
@@ -60,7 +60,24 @@ A separate staging job receives the
 existing `PORTAL_STAGING_CLOUDFLARE_API_TOKEN` secret, verifies the bundle, and
 uploads it to private R2. On 27 September 2026, GitHub showed that this secret
 exists in `staging`, that the environment permits `main`, and that it has no
-reviewer or wait-timer rule. The first dispatch still needs a real readback.
+reviewer or wait-timer rule. The first dispatch on 28 September 2026 built both
+candidate services successfully, but both upload jobs received Cloudflare HTTP
+403, code 10000, when writing objects to `deos-sample-project-artifacts`.
+The same checked GitHub artifacts uploaded and read back successfully with the
+local operator credential. This isolates the remaining job failure to the
+GitHub environment secret's R2 permission.
+
+**Operator action:** update or replace the `staging` environment secret
+`PORTAL_STAGING_CLOUDFLARE_API_TOKEN` with a Cloudflare API token that permits
+object read and write on `deos-sample-project-artifacts` through the Cloudflare
+REST API used by Wrangler. The relevant bucket permission is **Workers R2
+Storage Bucket Item Write**; it includes object readback. Keep the token value
+in GitHub, not in chat or a pull request. Re-run the candidate dispatch after
+the secret is updated. Cloudflare's [R2 token permissions](https://developers.cloudflare.com/r2/api/tokens/)
+distinguish this REST API permission from S3-only Object Read & Write tokens.
+
+[The first dispatch and local readback](evidence/sac-253/candidate-build-upload.md)
+record the exact result.
 
 ## Staging base: ready for a lease
 
