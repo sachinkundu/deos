@@ -289,10 +289,19 @@ export class WorkflowOrchestrator {
         run.status = "awaiting_human";
       }
 
-      const event = await step.waitForEvent<WorkflowWake>(
-        `linear-event:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
-        { type: "linear-event", timeout: "24h" },
-      );
+      let event: { payload: Readonly<WorkflowWake> };
+      try {
+        event = await step.waitForEvent<WorkflowWake>(
+          `linear-event:${instruction.nodeId}:visit:${run.current_visit_sequence}`,
+          { type: "linear-event", timeout: "24h" },
+        );
+      } catch (caughtError) {
+        if (!isWorkflowEventTimeout(caughtError)) {
+          recordCaughtError(caughtError, "src/workflow-orchestrator.ts:human_gate_wait");
+          throw caughtError;
+        }
+        continue;
+      }
       if (!isLinearWake(event)) continue;
       const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
         this.store.claimInboxEvent(
@@ -399,10 +408,19 @@ export class WorkflowOrchestrator {
     node: HumanGateWorkflowNode,
     operation: HumanGateOperation,
   ): Promise<void> {
-    const event = await step.waitForEvent<WorkflowWake>(
-      `linear-operation:${operation.providerOperationId}`,
-      { type: "linear-event", timeout: "24h" },
-    );
+    let event: { payload: Readonly<WorkflowWake> };
+    try {
+      event = await step.waitForEvent<WorkflowWake>(
+        `linear-operation:${operation.providerOperationId}`,
+        { type: "linear-event", timeout: "24h" },
+      );
+    } catch (caughtError) {
+      if (!isWorkflowEventTimeout(caughtError)) {
+        recordCaughtError(caughtError, "src/workflow-orchestrator.ts:human_gate_operation_wait");
+        throw caughtError;
+      }
+      return;
+    }
     if (!isLinearWake(event)) return;
     const claimed = await step.do(`claim:${event.payload.deliveryId}`, async () =>
       this.store.claimInboxEvent(
