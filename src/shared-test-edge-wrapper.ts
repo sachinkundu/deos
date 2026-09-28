@@ -4,7 +4,7 @@ export function sharedTestEdgeWrapper(serviceName:string):string {
     serviceName==='bettaview'?'./app/index.js':null;
   if (!app) throw new Error('shared_test_edge_service_invalid');
   return `import candidate from ${JSON.stringify(app)};
-${serviceName==='bettaview'?"export {GitHubSession} from './app/session.js';":''}
+${serviceName==='bettaview'?"export {GitHubSession} from './app/index.js';":''}
 
 const responseHeaders={
   'Cache-Control':'no-store',

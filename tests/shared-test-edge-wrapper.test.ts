@@ -60,5 +60,7 @@ test('edge rejects a forged gate header without the session',async()=>{
 test('edge module selection is fixed',()=>{
   assert.match(sharedTestEdgeWrapper('bettaview'),
     /import candidate from "\.\/app\/index\.js"/);
+  assert.match(sharedTestEdgeWrapper('bettaview'),
+    /export \{GitHubSession\} from '\.\/app\/index\.js'/);
   assert.throws(()=>sharedTestEdgeWrapper('staging'),/service_invalid/);
 });
