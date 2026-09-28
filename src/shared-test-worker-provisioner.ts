@@ -43,8 +43,11 @@ export class SharedTestWorkerProvisioner {
     builds:ReadonlyMap<string,VerifiedBuild>):Promise<void> {
     const plans:TestWorkerPlan[]=sharedTestServicePlans(input.leaseId,input.base)
       .map(service=>({resourceId:service.resourceId,runId:input.runId,
-        leaseId:input.leaseId,fence:input.fence,kind:'test_worker',
-        providerKey:service.canonicalHost,workId:service.workId,service}));
+        leaseId:input.leaseId,fence:input.fence,kind:'test_worker' as const,
+        providerKey:service.canonicalHost,workId:service.workId,service}))
+      // BettaView binds the lease portal, so that Worker must exist first.
+      .sort((a,b)=>Number(b.service.serviceName==='portal')-
+        Number(a.service.serviceName==='portal'));
     if (plans.some(plan=>!builds.has(plan.service.serviceName)) ||
         builds.size!==plans.length)
       throw new Error('shared_test_worker_builds_incomplete');

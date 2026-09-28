@@ -37,6 +37,31 @@ const build={worker:new Uint8Array([1]),assets:new Map([['portal/dist/index.html
 const builds=new Map([['portal',build]]);
 const subject={runId:'run-1',leaseId,fence:1,base};
 
+test('creates the lease portal before BettaView binds to it',async()=>{
+  const db=fixture();
+  try {
+    const twoBase:StableStagingBase={...base,services:[{
+      serviceName:'bettaview',sourceCommit:'b'.repeat(40),
+      deployVersion:'version-1',buildInputSha256:'c'.repeat(64),trafficPercent:100,
+    },...base.services]};
+    const seen:string[]=[];
+    const identities=new Map<string,TestWorkerIdentity>();
+    const worker=new SharedTestWorkerProvisioner(db as unknown as D1Database,{
+      lookup:async plan=>identities.get(plan.service.serviceName)??null,
+      create:async plan=>{
+        seen.push(plan.service.serviceName);
+        identities.set(plan.service.serviceName,{workerName:plan.service.workerName,
+          sourceCommit:plan.service.base.sourceCommit,
+          baseVersionId:plan.service.base.deployVersion,
+          buildInputSha256:plan.service.base.buildInputSha256});
+      },
+    });
+    await worker.provision({...subject,base:twoBase},
+      new Map([['portal',build],['bettaview',build]]));
+    assert.deepEqual(seen,['portal','bettaview']);
+  }finally{db.close();}
+});
+
 test('a lost Worker upload response keeps its name uncertain and never repeats create',async()=>{
   const db=fixture();let identity:TestWorkerIdentity|null=null,creates=0;
   try {
