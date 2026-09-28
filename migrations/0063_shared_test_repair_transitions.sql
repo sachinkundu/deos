@@ -24,7 +24,7 @@ CREATE TRIGGER IF NOT EXISTS test_repair_block_owner
 BEFORE INSERT ON test_manual_reconciliations
 WHEN NEW.choice IS NULL
 BEGIN
-  SELECT CASE WHEN NEW.allowed_action <> 'retry' OR
+  SELECT (CASE WHEN NEW.allowed_action <> 'retry' OR
     NEW.saved_phase NOT IN ('quiescing','cleaning') OR
     NEW.operator_sha256 <> '' OR
     NOT EXISTS (SELECT 1 FROM test_environment e
@@ -36,7 +36,7 @@ BEGIN
         AND l.run_id=NEW.run_id AND l.state=NEW.saved_phase
         AND r.run_id=NEW.run_id AND r.lease_id=NEW.lease_id
         AND r.plan_state<>'absent')
-    THEN RAISE(ABORT,'test_repair_block_scope_invalid') END;
+    THEN RAISE(ABORT,'test_repair_block_scope_invalid') END);
   UPDATE test_leases SET state='blocked' WHERE lease_id=NEW.lease_id;
   UPDATE test_environment SET state='blocked',
     hold_reason='repair:' || NEW.repair_id,revision=revision+1
@@ -48,7 +48,7 @@ CREATE TRIGGER IF NOT EXISTS test_repair_retry_owner
 BEFORE UPDATE OF choice ON test_manual_reconciliations
 WHEN NEW.choice='retry' AND OLD.choice IS NULL
 BEGIN
-  SELECT CASE WHEN NEW.allowed_action<>'retry' OR
+  SELECT (CASE WHEN NEW.allowed_action<>'retry' OR
     NEW.operator_sha256='' OR NEW.proof_sha256 IS NOT NULL OR
     NEW.completed_at IS NULL OR NEW.repair_id<>OLD.repair_id OR
     NEW.run_id<>OLD.run_id OR NEW.lease_id<>OLD.lease_id OR
@@ -66,7 +66,7 @@ BEGIN
         AND l.run_id=OLD.run_id AND l.state='blocked'
         AND r.run_id=OLD.run_id AND r.lease_id=OLD.lease_id
         AND r.plan_state<>'absent')
-    THEN RAISE(ABORT,'test_repair_retry_scope_invalid') END;
+    THEN RAISE(ABORT,'test_repair_retry_scope_invalid') END);
   UPDATE test_leases SET state=OLD.saved_phase WHERE lease_id=OLD.lease_id;
   UPDATE test_environment SET state=OLD.saved_phase,hold_reason=NULL,
     revision=revision+1 WHERE site_id=1 AND owner_run_id=OLD.run_id
