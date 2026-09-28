@@ -16,6 +16,8 @@ from portal_release import (
     run,
 )
 from shared_test_build_bundle import publish as publish_test_build
+from shared_test_worker_module import build as build_test_worker_module
+from shared_test_worker_module import publish as publish_test_worker_module
 from shared_test_release_guard import guard as shared_test_release_guard
 
 WORKER = "deos-bettaview-portal-staging"
@@ -91,6 +93,8 @@ def deploy():
         raise ValueError("BettaView build changed the source checkout")
     check_ref("staging", sha)
     publish_test_build("bettaview", sha, build_files, digest)
+    module, receipt = build_test_worker_module(ROOT, sha, digest)
+    publish_test_worker_module(module, receipt)
     args = ("npx", "--no-install", "wrangler", "deploy", "--config",
             "portal/bettaview/wrangler.jsonc", "--env", "staging",
             "--var", f"BETTAVIEW_SOURCE_SHA:{sha}",

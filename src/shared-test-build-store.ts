@@ -1,6 +1,9 @@
 import type {StagingServiceRead} from './shared-test-lease.ts';
 import {verifiedSharedTestBuild,type SharedTestBuildInput} from './shared-test-build-input.ts';
 
+export type VerifiedSharedTestBuild=Awaited<ReturnType<typeof verifiedSharedTestBuild>> &
+  {compiledWorker?:Uint8Array};
+
 export function sharedTestBuildKey(base:StagingServiceRead):string {
   if (!['portal','bettaview'].includes(base.serviceName) ||
       !/^[a-f0-9]{40}$/.test(base.sourceCommit) ||
@@ -14,7 +17,7 @@ export class SharedTestBuildStore {
   readonly bucket:R2Bucket;
   constructor(bucket:R2Bucket) {this.bucket=bucket;}
 
-  async read(base:StagingServiceRead):ReturnType<typeof verifiedSharedTestBuild> {
+  async read(base:StagingServiceRead):Promise<VerifiedSharedTestBuild> {
     const key=sharedTestBuildKey(base);
     const object=await this.bucket.get(key);
     if (!object) throw new Error(`test_build_artifact_missing:${key}`);
@@ -26,7 +29,25 @@ export class SharedTestBuildStore {
     let input:SharedTestBuildInput;
     try {input=JSON.parse(raw) as SharedTestBuildInput;}
     catch (error) {throw new Error(`test_build_artifact_json_invalid:${key}`,{cause:error});}
-    return verifiedSharedTestBuild(input,base);
+    const build=await verifiedSharedTestBuild(input,base);
+    if(base.serviceName!=='bettaview')return build;
+    const prefix=`shared-test/compiled-workers/bettaview/${base.sourceCommit}/`+
+      `${base.buildInputSha256}/`;
+    const listed=await this.bucket.list({prefix,limit:2});
+    if(listed.truncated || listed.objects.length!==1)
+      throw new Error('test_compiled_worker_missing_or_ambiguous');
+    const compiledKey=listed.objects[0].key;
+    const match=new RegExp(`^${prefix}([a-f0-9]{64})\\.js$`).exec(compiledKey);
+    if(!match)throw new Error('test_compiled_worker_key_invalid');
+    const compiled=await this.bucket.get(compiledKey);
+    if(!compiled || compiled.size<1 || compiled.size>5_000_000)
+      throw new Error('test_compiled_worker_size_invalid');
+    const bytes=new Uint8Array(await compiled.arrayBuffer());
+    const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))]
+      .map(byte=>byte.toString(16).padStart(2,'0')).join('');
+    if(digest!==match[1] || bytes.length!==compiled.size)
+      throw new Error('test_compiled_worker_hash_changed');
+    return {...build,compiledWorker:bytes};
   }
 
   /** Only one immutable bundle may represent a candidate service build. */

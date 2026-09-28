@@ -223,6 +223,8 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     const d1=await this.store(plan,'d1_database');
     const r2=await this.store(plan,'r2_bucket');
     const portal=plan.service.serviceName==='portal';
+    if(!portal && !build.compiledWorker?.byteLength)
+      throw new Error('shared_test_compiled_worker_missing');
     const bindings:Record<string,unknown>[]=[
       {type:'plain_text',name:'TEST_CANONICAL_HOST',text:plan.service.canonicalHost},
       {type:'plain_text',name:portal?'PORTAL_CANONICAL_HOST':'BETTAVIEW_CANONICAL_HOST',
@@ -261,14 +263,9 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     form.set('edge.js',new Blob([sharedTestEdgeWrapper(plan.service.serviceName)],
       {type:'application/javascript+module'}),'edge.js');
     form.set(portal?'app/worker.js':'app/index.js',
-      new Blob([new Uint8Array(build.worker)],{type:'application/javascript+module'}),
+      new Blob([portal?new Uint8Array(build.worker):
+        new Uint8Array(build.compiledWorker!)],{type:'application/javascript+module'}),
       portal?'app/worker.js':'app/index.js');
-    if(!portal)for(const [path,bytes] of build.modules) {
-      if(path==='portal/bettaview/worker/index.js')continue;
-      const name='app/'+path.slice('portal/bettaview/worker/'.length);
-      form.set(name,new Blob([new Uint8Array(bytes)],
-        {type:'application/javascript+module'}),name);
-    }
     await this.assertFence(plan,phase);
     await this.api(this.root(plan),{method:'PUT',body:form});
   }

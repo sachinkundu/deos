@@ -50,6 +50,9 @@ jobs:
             }));
       - name: Build from saved commit without provider credentials
         run: python tools/scripts/build_shared_test_candidate.py --candidate-root candidate --request-file candidate-request.json --output bundle.json --receipt receipt.json
+      - name: Compile BettaView Worker from the same commit
+        if: matrix.service == 'bettaview'
+        run: python tools/scripts/shared_test_worker_module.py build --candidate-root candidate --bundle-receipt receipt.json --output compiled-worker.js --receipt compiled-receipt.json
       - name: Keep checked bundle for isolated uploader
         uses: actions/upload-artifact@v4
         with:
@@ -57,6 +60,8 @@ jobs:
           path: |
             bundle.json
             receipt.json
+            compiled-worker.js
+            compiled-receipt.json
           if-no-files-found: error
           retention-days: 3
 
@@ -87,3 +92,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.SHARED_TEST_R2_UPLOAD_TOKEN }}
         run: python tools/scripts/publish_shared_test_candidate.py --bundle bundle.json --receipt receipt.json
+      - name: Verify and upload compiled BettaView Worker
+        if: matrix.service == 'bettaview'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.SHARED_TEST_R2_UPLOAD_TOKEN }}
+        run: python tools/scripts/shared_test_worker_module.py publish --module compiled-worker.js --receipt compiled-receipt.json

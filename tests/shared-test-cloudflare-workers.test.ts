@@ -101,7 +101,7 @@ test('BettaView upload sends the provider-required single-step migration object'
     store:()=>Promise<string>;uploadAssets:()=>Promise<string>;
     assertFence:()=>Promise<void>;
     api:(path:string,init:RequestInit)=>Promise<unknown>;
-    upload:(plan:TestWorkerPlan,candidateBuild:typeof build,commit:string,
+    upload:(plan:TestWorkerPlan,candidateBuild:typeof build & {compiledWorker?:Uint8Array},commit:string,
       phase:'preparing')=>Promise<void>;
   };
   privateProvider.store=async()=> 'store-id';
@@ -111,7 +111,8 @@ test('BettaView upload sends the provider-required single-step migration object'
     metadata=JSON.parse(String((init.body as FormData).get('metadata')));
     return {};
   };
-  await privateProvider.upload(bettaPlan,build,betta.base.sourceCommit,'preparing');
+  await privateProvider.upload(bettaPlan,{...build,compiledWorker:new Uint8Array([1])},
+    betta.base.sourceCommit,'preparing');
   assert.ok(metadata);
   assert.deepEqual((metadata as Record<string,unknown>).migrations,
     {new_tag:'v1',new_sqlite_classes:['GitHubSession']});

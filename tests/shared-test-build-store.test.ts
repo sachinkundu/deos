@@ -61,3 +61,34 @@ test('candidate discovery accepts one exact immutable bundle only',async()=>{
   await assert.rejects(new SharedTestBuildStore(ambiguous).candidate('portal',sourceCommit),
     /test_candidate_build_ambiguous/);
 });
+
+test('BettaView requires one hash-checked compiled Worker for its pinned raw build',async()=>{
+  const rawWorker=Buffer.from('import "jose"; export default {}');
+  const compiled=Buffer.from('export default {}; export class GitHubSession {}');
+  const files=[
+    {path:'portal/bettaview/dist/index.html',content:asset},
+    {path:'portal/bettaview/worker/index.js',content:rawWorker},
+  ];
+  const digest=createHash('sha256').update(sourceCommit);
+  for(const file of files) {
+    const name=Buffer.from(file.path),length=Buffer.alloc(4),size=Buffer.alloc(8);
+    length.writeUInt32BE(name.length);size.writeBigUInt64BE(BigInt(file.content.length));
+    digest.update(length).update(name).update(size).update(file.content);
+  }
+  const betta={serviceName:'bettaview',sourceCommit,deployVersion:'version-1',
+    buildInputSha256:digest.digest('hex'),trafficPercent:100};
+  const raw=JSON.stringify({serviceName:'bettaview',sourceCommit,files:files.map(file=>({
+    path:file.path,contentBase64:file.content.toString('base64')}))});
+  const prefix=`shared-test/compiled-workers/bettaview/${sourceCommit}/${betta.buildInputSha256}/`;
+  const compiledKey=`${prefix}${createHash('sha256').update(compiled).digest('hex')}.js`;
+  const bucket={list:async()=>({objects:[{key:compiledKey}],truncated:false}),
+    get:async(key:string)=>key===compiledKey?{
+      size:compiled.length,arrayBuffer:async()=>compiled.buffer.slice(
+        compiled.byteOffset,compiled.byteOffset+compiled.byteLength),
+    }:{size:Buffer.byteLength(raw),text:async()=>raw}} as unknown as R2Bucket;
+  const build=await new SharedTestBuildStore(bucket).read(betta);
+  assert.equal(Buffer.from(build.compiledWorker!).toString(),compiled.toString());
+  const missing={...bucket,list:async()=>({objects:[],truncated:false})} as unknown as R2Bucket;
+  await assert.rejects(new SharedTestBuildStore(missing).read(betta),
+    /test_compiled_worker_missing_or_ambiguous/);
+});
