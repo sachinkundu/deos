@@ -558,9 +558,13 @@ export class ImplementationService {
       work.input_key,
       work.input_sha,
     );
+    const handoff=await this.env.DB.prepare(`SELECT source_run_id FROM
+      shared_test_run_handoffs WHERE target_run_id=? AND state IN ('admitted','dispatched')`)
+      .bind(work.run_id).first<{source_run_id:string}>();
+    const approvalRunId=handoff?.source_run_id??work.run_id;
     const [plan, design] = await Promise.all([
-      new D1PlanningStore(this.env.DB).findRunWorkProduct(work.run_id),
-      new D1DesignStore(this.env.DB).findWorkProduct(work.run_id),
+      new D1PlanningStore(this.env.DB).findRunWorkProduct(approvalRunId),
+      new D1DesignStore(this.env.DB).findWorkProduct(approvalRunId),
     ]);
     const pullLink = (number: number | null | undefined) => number
       ? `[PR #${number}](https://github.com/${input.repository}/pull/${number})` : 'Not recorded';

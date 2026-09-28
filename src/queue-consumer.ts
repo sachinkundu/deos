@@ -19,6 +19,7 @@ import { CapabilityRouter } from "./capability-router.ts";
 import { verifyCapabilityToken } from "./capability-auth.ts";
 import { captureWorkflowErrors } from "./error-context.ts";
 import { ImplementationHandoffController } from "./implementation-handoff.ts";
+import {SharedTestRunHandoff} from './shared-test-run-handoff.ts';
 import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
 import { ImplementationDemoUpgradeController } from './implementation-demo-upgrade.ts';
 import { ImplementationProviderTest, type ReviewTestProfile } from "./implementation-provider-test.ts";
@@ -187,17 +188,22 @@ export default {
     if (path === "/workflow-runtime-recoveries") {
       return workflowRuntimeRecoveryController(env).handle(request);
     }
-    if (path === "/implementation-handoffs" || path === '/implementation-demo-upgrades') {
+    if (path === "/implementation-handoffs" || path === '/implementation-demo-upgrades' ||
+        path === '/shared-test-run-handoffs') {
       if (!env.STAGE_RETRY_SECRET || request.headers.get("Authorization") !== `Bearer ${env.STAGE_RETRY_SECRET}`)
         return Response.json({ error: "invalid_operator_capability" }, { status: 401 });
-      const body = await request.clone().json() as { runId?: unknown };
-      if (typeof body?.runId !== "string") return Response.json({ error: "invalid_handoff_request" }, { status: 400 });
+      const body = await request.clone().json() as { runId?: unknown; sourceRunId?: unknown };
+      const diagnosticRunId=path==='/shared-test-run-handoffs'?body?.sourceRunId:body?.runId;
+      if (typeof diagnosticRunId !== "string")
+        return Response.json({ error: "invalid_handoff_request" }, { status: 400 });
       const definition = (await loadBundledWorkflowDefinitionRegistry()).implementation;
       if (!definition) throw new Error("Implementation definition is unavailable");
-      return captureWorkflowErrors(env.DB, env.ARTIFACTS, body.runId, path,
+      return captureWorkflowErrors(env.DB, env.ARTIFACTS, diagnosticRunId, path,
         () => path === '/implementation-demo-upgrades'
           ? new ImplementationDemoUpgradeController(env, definition).handle(request)
-          : new ImplementationHandoffController(env, definition).handle(request));
+          : path === '/shared-test-run-handoffs'
+            ? new SharedTestRunHandoff(env, definition).handle(request)
+            : new ImplementationHandoffController(env, definition).handle(request));
     }
     if (path === '/implementation-hosted-previews') {
       if (request.method !== 'POST') return Response.json({error:'method_not_allowed'}, {status:405});

@@ -6,6 +6,7 @@ import type {StableStagingBase} from './shared-test-lease.ts';
 import {sharedTestServicePlans} from './shared-test-service-plan.ts';
 import {sharedTestCandidateReady} from './shared-test-candidate-ready.ts';
 import {sharedTestCandidateDeployment} from './shared-test-candidate-deployment.ts';
+import {ImplementationDemoService} from './implementation-demo.ts';
 
 interface ActiveLease {
   lease_id:string;
@@ -70,6 +71,13 @@ export async function sharedTestDemoInput(env:Env,run:OrchestrationRunRecord,
   if(identities.length!==services.length || services.some(service=>
     !identities.some(identity=>identity.origin===`https://${service.canonicalHost}`)))
     throw new Error('shared_test_demo_access_identity_missing');
+  const handoff=await env.DB.prepare(`SELECT source_run_id FROM
+    shared_test_run_handoffs WHERE target_run_id=? AND state='dispatched'`)
+    .bind(run.run_id).first<{source_run_id:string}>();
+  const inheritedDemo=handoff
+    ? await new ImplementationDemoService(env.DB,env.ARTIFACTS).buildInput(handoff.source_run_id)
+    : null;
+  const reviewFeedback=handoff?await github.feedback(work.pr_number):null;
   return {
     context:JSON.stringify({version:1,runId:run.run_id,
       leaseId:lease.lease_id,fence:lease.fence,
@@ -78,7 +86,11 @@ export async function sharedTestDemoInput(env:Env,run:OrchestrationRunRecord,
       pullRequestNumber:lease.pull_request_number,
       candidateCommit:lease.candidate_commit,patchSha256:lease.patch_sha256,
       stagingBase:base,apps:services.map(service=>({
-        service:service.serviceName,origin:`https://${service.canonicalHost}`}))}),
+        service:service.serviceName,origin:`https://${service.canonicalHost}`})),
+      ...(inheritedDemo?{inheritedDemo:{sourceRunId:handoff!.source_run_id,
+        plan:inheritedDemo.plan,feedback:inheritedDemo.feedback,
+        trust:'historical plan and review feedback; all proof must be recaptured'}}:{}),
+      ...(reviewFeedback?{implementationReviewFeedback:reviewFeedback}:{})}),
     repository:lease.repository,openspecChange:'',
     continuationPatch:null,planningWorkProduct:null,
     designWorkProduct:null,checkoutCommit:work.pr_head_sha,

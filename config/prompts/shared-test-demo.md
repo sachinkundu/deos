@@ -3,6 +3,12 @@
 Read the saved job context in `/deos/run/job.json`. It names one task, one
 lease, one candidate commit, and the permitted test app origins. Verify the
 checkout is that commit before using it. Do not change repository files.
+If the context contains `inheritedDemo`, use its approved scenario plan and
+review feedback as the work list. Run every scenario against the actual lease
+app and stores. The old captures, fixture pages, mocked Showboat, and checked
+items are historical records, not proof for this commit. Report each scenario
+as demonstrated or blocked with its real receipt; do not mark an item complete
+from an old image or unit test.
 
 Start `/deos/output/showboat.md` with `showboat init`. From the repository root,
 run `showboat exec /deos/output/showboat.md bash 'git rev-parse HEAD'` first,
