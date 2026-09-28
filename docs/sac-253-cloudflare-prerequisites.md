@@ -62,4 +62,21 @@ uploads it to private R2. On 27 September 2026, GitHub showed that this secret
 exists in `staging`, that the environment permits `main`, and that it has no
 reviewer or wait-timer rule. The first dispatch still needs a real readback.
 
+## Staging base: ready for a lease
+
+On 28 September 2026, both staging Workers were built from merged `main`
+commit `f8275c1e21a420febeed40139e16fd90605f7b80`. Their exact build
+bundles were uploaded to private R2 and downloaded for hash comparison. The
+BettaView staging Worker and its custom domain now exist. The portal staging
+Worker was updated because its older deployment did not return a complete
+version record. The coordinator read both version responses twice through its
+private service bindings and saved one stable D1 manifest. The site remains
+free, with no active attempts and `SHARED_TEST_GRANTS_ENABLED=false`.
+
+The [live readback](evidence/sac-253/staging-live.md) includes the two source
+commits, build digests, deployment versions, and D1 pointer. An authenticated
+Brave visit to `deos-test.voxdez.com` now says the site is ready for the next
+checked task. The first lease still must prove the separate app Access
+identity, candidate deployment, browser session, public proof, and cleanup.
+
 Cloudflare documents the [eager redirect cookie](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/), [wildcard hostname matching](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/), and [service token setup](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/).

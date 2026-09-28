@@ -15,6 +15,7 @@ interface RawProof {
   proof_id:string;run_id:string;lease_id:string;kind:string;
   classification:string;sanitizer_result:string|null;
   source_sha256:string;object_key:string;public_sha256:string|null;
+  capture_recipe:string;
 }
 export interface ImageSanitizerRunner {
   run(proofId:string,source:Uint8Array,recipe:ImageProofRecipe):Promise<{
@@ -89,7 +90,8 @@ export class SharedTestImageSanitizer {
   async project(proofId:string,recipe:ImageProofRecipe,
     at=new Date()):Promise<string> {
     const row=await this.db.prepare(`SELECT proof_id,run_id,lease_id,kind,
-      classification,sanitizer_result,source_sha256,object_key,public_sha256
+      classification,sanitizer_result,source_sha256,object_key,public_sha256,
+      capture_recipe
       FROM test_proof_items WHERE proof_id=?`).bind(proofId).first<RawProof>();
     if(!row || !['app_screen','linear_screen'].includes(row.kind) ||
         row.classification!=='private' ||
@@ -130,11 +132,12 @@ export class SharedTestImageSanitizer {
       throw new Error('test_image_proof_readback_failed');
     const updated=await this.db.prepare(`UPDATE test_proof_items SET
       classification='public_safe',view_rule='public',
-      sanitizer_version=?,sanitizer_result='passed',public_sha256=?,
+      capture_recipe=?,sanitizer_version=?,sanitizer_result='passed',public_sha256=?,
       public_url=?,projected_at=? WHERE proof_id=? AND run_id=? AND lease_id=?
         AND classification='private' AND sanitizer_result='pending'
         AND source_sha256=? AND public_sha256 IS NULL`)
-      .bind(manifest.sanitizerVersion,publicSha,publicUrl,at.toISOString(),proofId,
+      .bind(JSON.stringify({capture:JSON.parse(row.capture_recipe),projection:recipe}),
+        manifest.sanitizerVersion,publicSha,publicUrl,at.toISOString(),proofId,
         row.run_id,row.lease_id,row.source_sha256).run();
     if(updated.meta.changes!==1)
       throw new Error('test_image_proof_projection_conflict');

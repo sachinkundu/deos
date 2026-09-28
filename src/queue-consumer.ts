@@ -5,6 +5,7 @@ import {SharedTestRepairController} from './shared-test-repair-controller.ts';
 import {SharedTestMarkerAction} from './shared-test-marker-action.ts';
 import {SharedTestBrowserAction} from './shared-test-browser-action.ts';
 import {refreshSharedTestStaging} from './shared-test-staging-refresh.ts';
+import {projectSharedTestImage} from './shared-test-proof-project.ts';
 import {SharedTestLeaseStore} from './shared-test-lease.ts';
 import { reconcileWorkflowEvents } from './workflow-event-reconciliation.ts';
 import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
@@ -166,6 +167,8 @@ export default {
     const path = new URL(request.url).pathname;
     if (path === '/shared-test/staging-refresh')
       return refreshSharedTestStaging(request,env);
+    if (path === '/shared-test/proof-project')
+      return projectSharedTestImage(request,env);
     if (path.startsWith('/internal/test-repairs/'))
       return new SharedTestRepairController(env).handle(request);
     if (path === "/cleanup-audit") return cleanupAuditor(env).handle(request);
