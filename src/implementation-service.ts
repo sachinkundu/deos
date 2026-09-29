@@ -109,13 +109,11 @@ export class ImplementationService {
               manifestId:decision.manifestId,manifestRevision:decision.manifestRevision,
               changedPaths:candidate.files.map(file=>file.path)});
             if (check.allowed) return completed();
-            let request=await this.env.DB.prepare(`SELECT * FROM test_lease_requests
-              WHERE run_id=? AND task_id=? AND candidate_commit=? AND patch_sha256=?
-                AND state IN ('waiting','validating','granted') ORDER BY queue_number LIMIT 1`)
-              .bind(work.run_id,run.issue_id,work.pr_head_sha,work.patch_sha)
-              .first<{request_id:string;node_visit:number;attempt_id:string;state:string}>();
+            const leases=new SharedTestLeaseStore(this.env.DB);
+            let request=await leases.currentRequest(work.run_id,run.issue_id,
+              work.pr_head_sha,work.patch_sha);
             if (!request) {
-              request=await new SharedTestLeaseStore(this.env.DB).request({runId:work.run_id,
+              request=await leases.request({runId:work.run_id,
                 nodeVisit:run.current_visit_sequence,attemptId:crypto.randomUUID(),
                 taskId:run.issue_id,candidateCommit:work.pr_head_sha,patchSha256:work.patch_sha});
             }
@@ -127,7 +125,7 @@ export class ImplementationService {
               if (!owned) throw new ImplementationError('test_lease_missing',
                 'The granted test request has no exact lease');
               if (owned.state==='preparing' || owned.state==='active')
-                await new SharedTestLeaseStore(this.env.DB).heartbeat(work.run_id,
+                await leases.heartbeat(work.run_id,
                   request.attempt_id,owned.lease_id,owned.fence);
             }
             return {kind:'system_action',outcome:'waiting',providerReceiptsComplete:true};

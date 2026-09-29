@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
 import {SharedTestCloseStore} from '../src/shared-test-close.ts';
+import {SharedTestLeaseStore} from '../src/shared-test-lease.ts';
 
 function fixture() {
   const db=new ImplementationTestDatabase();
@@ -42,6 +43,10 @@ test('failed setup closes only after owned absence and never passes the test',as
   const db=fixture();
   try {
     const close=new SharedTestCloseStore(db as unknown as D1Database);
+    const requests=new SharedTestLeaseStore(db as unknown as D1Database);
+    const current=()=>requests.currentRequest('run-1','issue-1','a'.repeat(40),
+      'b'.repeat(64));
+    assert.equal((await current())?.request_id,'request-1');
     await close.cleaningFailedSetup('run-1','lease-1',2);
     await assert.rejects(close.abortFailedSetup('run-1','lease-1',2),
       /absence_missing/);
@@ -59,6 +64,7 @@ test('failed setup closes only after owned absence and never passes the test',as
       'free');
     assert.equal(db.sqlite.prepare('SELECT state FROM test_leases').get()?.state,
       'closed');
+    assert.equal(await current(),null);
     assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS n FROM test_attestations')
       .get()?.n,0);
     assert.equal(db.sqlite.prepare('SELECT ready FROM test_lease_abort_guards')

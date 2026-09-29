@@ -112,6 +112,20 @@ export class SharedTestLeaseStore {
   readonly db: D1Database;
   constructor(db: D1Database) { this.db = db; }
 
+  async currentRequest(runId:string,taskId:string,candidateCommit:string,
+    patchSha256:string):Promise<QueueRow|null> {
+    return this.db.prepare(`SELECT r.* FROM test_lease_requests r
+      WHERE r.run_id=? AND r.task_id=? AND r.candidate_commit=?
+        AND r.patch_sha256=? AND r.state IN ('waiting','validating','granted')
+        AND NOT EXISTS (SELECT 1 FROM test_leases l
+          JOIN test_lease_aborts a ON a.lease_id=l.lease_id
+          WHERE l.request_id=r.request_id AND l.run_id=r.run_id
+            AND l.state='closed' AND a.run_id=r.run_id
+            AND a.closed_at IS NOT NULL AND a.receipt_json IS NOT NULL)
+      ORDER BY r.queue_number LIMIT 1`)
+      .bind(runId,taskId,candidateCommit,patchSha256).first<QueueRow>();
+  }
+
   async environment(): Promise<EnvironmentRow> {
     const row = await this.db.prepare('SELECT state,owner_run_id,owner_lease_id,fence,heartbeat_due_at,revision FROM test_environment WHERE site_id=1')
       .first<EnvironmentRow>();
