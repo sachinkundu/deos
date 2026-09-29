@@ -12,7 +12,9 @@ export async function isBlockedDemoAbort(db:D1Database,runId:string,leaseId:stri
           AND NOT EXISTS (SELECT 1 FROM test_github_sessions WHERE lease_id=l.lease_id)))
       AND t.cleanup_state='destroyed'
       AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=l.lease_id AND state='complete')
-      AND NOT EXISTS (SELECT 1 FROM test_review_scenarios WHERE lease_id=l.lease_id)
+      AND (NOT EXISTS (SELECT 1 FROM test_review_scenarios WHERE lease_id=l.lease_id) OR
+        EXISTS (SELECT 1 FROM test_review_unpublished_settlements s WHERE s.lease_id=l.lease_id
+          AND s.run_id=l.run_id AND s.candidate_commit=l.candidate_commit AND s.cleanup_fence=l.fence+1))
       AND NOT EXISTS (SELECT 1 FROM agent_attempts x WHERE x.run_id=l.run_id
         AND x.state IN ('pending','starting','running','collecting'))`)
     .bind(leaseId,runId).first<{ready:number}>();

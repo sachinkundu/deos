@@ -1,11 +1,14 @@
-/** Retain setup data before deleting a blocked lease. No review scenario may
- * have started: running candidate workflows need a separate settling step. */
+/** Retain data before deleting a blocked lease. Started scenarios require a
+ * verified settlement receipt before this snapshot can run. */
 export async function snapshotBlockedSetup(env:Env & {IMPLEMENTATION_ENVIRONMENT_TOKEN?:string},runId:string,leaseId:string,
   request:typeof fetch=globalThis.fetch.bind(globalThis)) {
   const guard=async()=>{
     const row=await env.DB.prepare(`SELECT 1 AS ready FROM test_environment e
       WHERE e.site_id=1 AND e.state='quiescing' AND e.owner_run_id=? AND e.owner_lease_id=?
-        AND NOT EXISTS (SELECT 1 FROM test_review_scenarios WHERE lease_id=?)
+        AND (NOT EXISTS (SELECT 1 FROM test_review_scenarios WHERE lease_id=?) OR
+          EXISTS (SELECT 1 FROM test_review_unpublished_settlements s JOIN test_leases l
+            ON l.lease_id=s.lease_id WHERE s.lease_id=e.owner_lease_id AND s.run_id=e.owner_run_id
+              AND s.cleanup_fence=e.fence AND s.candidate_commit=l.candidate_commit))
         AND NOT EXISTS (SELECT 1 FROM test_review_provider_requests WHERE lease_id=? AND finished_at IS NULL)
         AND NOT EXISTS (SELECT 1 FROM test_github_transport_requests WHERE lease_id=? AND finished_at IS NULL)`)
       .bind(runId,leaseId,leaseId,leaseId,leaseId).first<{ready:number}>();
@@ -78,8 +81,7 @@ export async function snapshotBlockedSetup(env:Env & {IMPLEMENTATION_ENVIRONMENT
       const objects=listed.result as Array<{key:string;size:number}>;
       if(!Array.isArray(objects)||objects.length>=1000||listed.result_info?.cursor)
         throw new Error('test_setup_snapshot_bucket_pagination_required');
-      // Setup produces JSON metadata only. Reject unbounded or unexpected binary
-      // artifacts here; review scenarios use a separate archive lifecycle.
+      // Preserve exact bytes, including captures. Reject unbounded objects.
       for(const object of objects) {
         if(object.size>20_000_000)throw new Error('test_setup_snapshot_object_too_large');
         const bytes=new Uint8Array(await (await api(root+'/'+encodeURIComponent(object.key))).arrayBuffer());

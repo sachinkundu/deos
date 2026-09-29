@@ -330,6 +330,33 @@ test('shared test repository checkout is fenced before reaching GitHub',async()=
   assert.equal(gitProxy.calls.length,1);
 });
 
+test('shared test renewal retains scope and rejects expired, fenced, or inactive grants',async()=>{
+  const store=new Store();let live=true,grants=0;
+  const scoped={...claims,actions:['github.clone_repository','test_issue_marker_patch','test_app_browser'] as const,
+    leaseId:'lease-1',fence:1,expiresAt:Math.floor(NOW.getTime()/1000)+30};
+  const router=new CapabilityRouter({store,github:{} as never,linear:{} as never,
+    signingSecret:SECRET,now:()=>NOW,sharedTestLeaseWrite:async()=>{if(!live)throw new Error('fenced');},
+    sharedTestMarker:{handle:async()=>Response.json({}),grant:async(input,secret,now)=>{
+      grants++;assert.deepEqual(input,{runId:scoped.runId,attemptId:scoped.attemptId,
+        leaseId:scoped.leaseId,fence:1,repository:scoped.repository,issueId:scoped.issueId});
+      return mintCapabilityToken({...scoped,expiresAt:Math.floor(now!.getTime()/1000)+900},secret);
+    }},
+  });
+  const invoke=async(token:string,body:unknown={version:1})=>router.handle(new Request(
+    'https://worker.example/capabilities/shared-test-renew',{method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Deos-Attempt':claims.attemptId},body:JSON.stringify(body)}));
+  const token=await mintCapabilityToken(scoped,SECRET);
+  const renewed=await (await invoke(token)).json() as {token:string};
+  assert.deepEqual(await verifyCapabilityToken(renewed.token,SECRET,NOW.getTime()),
+    {...scoped,expiresAt:Math.floor(NOW.getTime()/1000)+900});
+  assert.equal((await invoke(token,{version:1,repository:'other/repo'})).status,400);
+  assert.equal((await invoke(await mintCapabilityToken({...scoped,expiresAt:0},SECRET))).status,401);
+  assert.equal((await invoke(await mintCapabilityToken(claims,SECRET))).status,403);
+  live=false;assert.equal((await invoke(token)).status,403);
+  live=true;store.contextValue!.attemptState='blocked';assert.equal((await invoke(token)).status,403);
+  assert.equal(grants,1);
+});
+
 test('shared test browser route uses only its lease-scoped capability',async()=>{
   const store=new Store(),calls:unknown[]=[];
   const router=new CapabilityRouter({store,github:{} as never,linear:{} as never,

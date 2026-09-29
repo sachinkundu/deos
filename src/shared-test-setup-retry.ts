@@ -1,6 +1,6 @@
 import {sha256Hex} from './implementation-hash.ts';
 
-export const sharedTestSetupRepairRevision='lease-review-runtime-v6';
+export const sharedTestSetupRepairRevision='lease-review-runtime-v7';
 
 /** Authorize one fresh lease after a setup-code repair. Existing provider
  * scope, candidate bytes, and failed evidence remain unchanged. */
@@ -36,7 +36,9 @@ export async function retryBlockedSharedTestSetup(request:Request,env:Env):Promi
       AND a.failure_evidence_sha256=? AND a.receipt_json IS NOT NULL
       AND EXISTS (SELECT 1 FROM test_environment WHERE site_id=1 AND state='free')
       AND NOT EXISTS (SELECT 1 FROM test_leases x WHERE x.run_id=l.run_id AND x.state<>'closed')
-      AND NOT EXISTS (SELECT 1 FROM test_review_scenarios WHERE lease_id=l.lease_id)
+      AND (NOT EXISTS (SELECT 1 FROM test_review_scenarios WHERE lease_id=l.lease_id) OR
+        EXISTS (SELECT 1 FROM test_review_unpublished_settlements s WHERE s.lease_id=l.lease_id
+          AND s.run_id=l.run_id AND s.candidate_commit=l.candidate_commit AND s.cleanup_fence=l.fence+1))
       AND NOT EXISTS (SELECT 1 FROM agent_attempts WHERE run_id=l.run_id
         AND state IN ('pending','starting','running','collecting'))
     ORDER BY r.queue_number LIMIT 1`)

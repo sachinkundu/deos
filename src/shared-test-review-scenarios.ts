@@ -106,7 +106,9 @@ export class SharedTestReviewScenarios {
     if(!value || typeof value!=='object' || Array.isArray(value))throw new Error('test_review_fixture_input_invalid');
     const input=value as Record<string,unknown>;
     if(input.version!==1 || Object.keys(input).some(k=>!['version','operation','scenario','path','kind','step'].includes(k)))
-      throw new Error('test_review_fixture_input_invalid');
+      return Response.json({error:'test_review_fixture_input_invalid',
+        allowedFields:['version','operation','scenario','path','kind','step'],
+        example:{version:1,operation:'inject',scenario:'s01',kind:'account_identity_mismatch'}},{status:400});
     const binding={runId:claims.runId,attemptId:claims.attemptId,leaseId:claims.leaseId,fence:claims.fence};
     await this.live(binding);
     if(input.operation==='bootstrap')return Response.json(await this.control(binding,'bootstrap'));
@@ -147,11 +149,24 @@ export class SharedTestReviewScenarios {
       await this.forward(binding);
       return Response.json({runtime:await this.control(binding,'evidence',{scenario:input.scenario}),
         provider:await this.provider(binding,{operation:'events'}),
+        proof:await this.proofStatus(binding),
         labeledInjections:(await this.env.DB.prepare('SELECT * FROM test_review_fault_injections WHERE lease_id=? AND scenario_id=?')
           .bind(binding.leaseId,input.scenario).all()).results});
     }
     if(input.operation==='github.read')return Response.json(await this.provider(binding,{operation:'github.read',path:input.path??''}));
     if(input.operation==='linear.read')return Response.json(await this.provider(binding,{operation:'linear.read'}));
     throw new Error('test_review_fixture_operation_denied');
+  }
+
+  /** Read publication state without exposing private object keys or granting
+   * the demo agent any control over the trusted sanitizer. */
+  async proofStatus(binding:SharedTestReviewBinding) {
+    await this.live(binding);
+    return (await this.env.DB.prepare(`SELECT proof_id AS proofId,kind,
+      classification,sanitizer_result AS sanitizerResult,
+      CASE WHEN classification='public_safe' AND sanitizer_result='passed'
+        THEN public_url ELSE NULL END AS publicUrl
+      FROM test_proof_items WHERE run_id=? AND lease_id=? AND phase='first'
+      ORDER BY proof_id`).bind(binding.runId,binding.leaseId).all()).results;
   }
 }

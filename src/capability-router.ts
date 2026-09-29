@@ -53,7 +53,8 @@ interface OpenRouterCapabilityRequest {
 
 export interface CapabilityRouterDependencies {
   implementation?: Pick<import("./implementation-broker.ts").ImplementationBroker, "handle">;
-  sharedTestMarker?: Pick<import('./shared-test-marker-action.ts').SharedTestMarkerAction,'handle'>;
+  sharedTestMarker?: Pick<import('./shared-test-marker-action.ts').SharedTestMarkerAction,'handle'> &
+    Partial<Pick<import('./shared-test-marker-action.ts').SharedTestMarkerAction,'grant'>>;
   sharedTestBrowser?: Pick<import('./shared-test-browser-action.ts').SharedTestBrowserAction,'handle'>;
   sharedTestReview?: Pick<import('./shared-test-review-scenarios.ts').SharedTestReviewScenarios,'handle'>;
   sharedTestLeaseWrite?: (runId:string,attemptId:string,leaseId:string,
@@ -385,6 +386,23 @@ export class CapabilityRouter {
     } catch (caughtError) {
       recordCaughtError(caughtError, "src/capability-router.ts:360");
       return json(400, { error: "invalid_json" });
+    }
+    if (path==='/capabilities/shared-test-renew') {
+      if(!claims.leaseId || !claims.fence ||
+          !claims.actions.includes('test_issue_marker_patch') ||
+          !this.dependencies.sharedTestMarker?.grant)
+        return json(403,{error:'shared_test_renew_denied'});
+      if(!untrusted || typeof untrusted!=='object' || Array.isArray(untrusted) ||
+          Object.keys(untrusted).join(',')!=='version' ||
+          (untrusted as {version:unknown}).version!==1)
+        return json(400,{error:'shared_test_renew_input_invalid'});
+      // The existing grant path checks the attempt deadline and current lease.
+      // No caller can change its task, scope, fence, identity, or permissions.
+      const renewed=await this.dependencies.sharedTestMarker.grant({
+        runId:claims.runId,attemptId:claims.attemptId,leaseId:claims.leaseId,
+        fence:claims.fence,repository:claims.repository,issueId:claims.issueId,
+      },this.dependencies.signingSecret,this.now());
+      return json(200,{token:renewed});
     }
     if (path.endsWith("/implementation")) {
       if (!this.dependencies.implementation) return json(503, { error: "implementation_unavailable" });

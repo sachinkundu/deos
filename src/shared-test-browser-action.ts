@@ -8,6 +8,7 @@ import {SharedTestFailureStore} from './shared-test-failures.ts';
 import {SharedTestLeaseStore,type StableStagingBase} from './shared-test-lease.ts';
 import {sharedTestServicePlans} from './shared-test-service-plan.ts';
 import {SharedTestRawProofStore} from './shared-test-raw-proof.ts';
+import {withSharedTestBrowserLock} from './shared-test-browser-lock.ts';
 
 interface Lease {
   lease_id:string;run_id:string;attempt_id:string;task_id:string;
@@ -83,32 +84,34 @@ export class SharedTestBrowserAction {
         new CloudflareTestBrowserProvider(this.env.IMPLEMENTATION_BROWSER),
         new SharedTestAppLauncher(this.env.DB,clientId,clientSecret),
         ()=>deployment.verifyReady(lease));
-      if(request.operation==='open') {
-        await browser.open(scope);
-        return Response.json({ready:true,origin:`https://${plan.canonicalHost}`});
-      }
-      if(request.operation==='reset') {
-        await browser.reset(scope);
-        return Response.json({ready:true,freshContext:true,origin:`https://${plan.canonicalHost}`});
-      }
-      if(request.operation==='capture') {
-        const proofId=await new SharedTestRawProofStore(this.env.DB,this.env.ARTIFACTS)
-          .saveAppScreen(scope,await browser.capture(scope));
-        return Response.json({proofId,classification:'private',
-          sanitizerResult:'pending'});
-      }
-      const input:TestBrowserOperation={operation:request.operation as TestBrowserOperation['operation'],
-        ...(request.method==='GET'||request.method==='POST'?{method:request.method}:{}),
-        ...(typeof request.body==='string'?{body:request.body}:{}),
-        ...(typeof request.url==='string'?{url:request.url}:{}),
-        ...(typeof request.selector==='string'?{selector:request.selector}:{}),
-        ...(typeof request.text==='string'?{text:request.text}:{}),
-        ...(typeof request.key==='string'?{key:request.key}:{}),
-        ...(typeof request.width==='number'?{width:request.width}:{}),
-        ...(typeof request.height==='number'?{height:request.height}:{}),
-        ...(Array.isArray(request.modifiers)?{modifiers:request.modifiers as string[]}:{}),
-      };
-      return Response.json(await browser.command(scope,input));
+      return await withSharedTestBrowserLock(this.env.DB,lease.lease_id,plan.serviceName,async()=>{
+        if(request.operation==='open') {
+          await browser.open(scope);
+          return Response.json({ready:true,origin:`https://${plan.canonicalHost}`});
+        }
+        if(request.operation==='reset') {
+          await browser.reset(scope);
+          return Response.json({ready:true,freshContext:true,origin:`https://${plan.canonicalHost}`});
+        }
+        if(request.operation==='capture') {
+          const proofId=await new SharedTestRawProofStore(this.env.DB,this.env.ARTIFACTS)
+            .saveAppScreen(scope,await browser.capture(scope));
+          return Response.json({proofId,classification:'private',
+            sanitizerResult:'pending'});
+        }
+        const input:TestBrowserOperation={operation:request.operation as TestBrowserOperation['operation'],
+          ...(request.method==='GET'||request.method==='POST'?{method:request.method}:{}),
+          ...(typeof request.body==='string'?{body:request.body}:{}),
+          ...(typeof request.url==='string'?{url:request.url}:{}),
+          ...(typeof request.selector==='string'?{selector:request.selector}:{}),
+          ...(typeof request.text==='string'?{text:request.text}:{}),
+          ...(typeof request.key==='string'?{key:request.key}:{}),
+          ...(typeof request.width==='number'?{width:request.width}:{}),
+          ...(typeof request.height==='number'?{height:request.height}:{}),
+          ...(Array.isArray(request.modifiers)?{modifiers:request.modifiers as string[]}:{}),
+        };
+        return Response.json(await browser.command(scope,input));
+      });
     }catch(error) {
       try {
         await new SharedTestFailureStore(this.env.DB,this.env.ARTIFACTS).record({

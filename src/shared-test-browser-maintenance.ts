@@ -1,4 +1,5 @@
 import {CloudflareTestBrowserProvider} from './shared-test-browser-provider.ts';
+import {withSharedTestBrowserLock} from './shared-test-browser-lock.ts';
 
 /** Keep only a currently owned, ready browser alive between agent calls. */
 export async function maintainSharedTestBrowser(env:Pick<Env,'DB'|'IMPLEMENTATION_BROWSER'>,
@@ -13,8 +14,11 @@ export async function maintainSharedTestBrowser(env:Pick<Env,'DB'|'IMPLEMENTATIO
     .bind(at.toISOString()).first<{lease_id:string;service_name:string;
       session_id:string;run_id:string;fence:number;updated_at:string}>();
   if(!row || Date.parse(row.updated_at)>at.getTime()-60_000)return;
-  await new CloudflareTestBrowserProvider(env.IMPLEMENTATION_BROWSER)
-    .keepAlive(row.session_id);
+  const maintained=await withSharedTestBrowserLock(env.DB,row.lease_id,row.service_name,async()=>{
+    await new CloudflareTestBrowserProvider(env.IMPLEMENTATION_BROWSER).keepAlive(row.session_id);
+    return true;
+  },()=>false);
+  if(!maintained)return;
   const changed=await env.DB.prepare(`UPDATE test_browser_sessions SET updated_at=?
     WHERE lease_id=? AND service_name=? AND state='ready' AND session_id=?
       AND EXISTS (SELECT 1 FROM test_environment WHERE site_id=1

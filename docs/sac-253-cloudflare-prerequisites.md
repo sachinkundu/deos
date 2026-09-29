@@ -28,7 +28,7 @@ On 28 September 2026, an authenticated Brave visit to
 `https://deos-test.voxdez.com/` stayed on that hostname and showed the shared
 test status page. No further status-page Access change is needed.
 
-## Lease app Access setup: saved, admission proof pending
+## Lease app Access setup: admission verified
 
 On 28 September 2026, Cloudflare showed the separate **DEOS shared test apps**
 application on `*.apps.deos-test.voxdez.com` with no path. Its **Shared Test
@@ -38,8 +38,12 @@ rule is also attached. A broader **Cloudflare account members** Allow rule is
 attached by the operator's choice; it does not grant the service token any
 additional scope. The `deos-queue-consumer-ts` Worker lists both
 `TEST_APP_SERVICE_CLIENT_SECRET` and `TEST_MARKER_KEY_V1` as secrets. Cloudflare
-still shows the token as **Not Seen Yet**. The first lease app must prove a real
-request before browser admission is complete.
+previously showed the token as **Not Seen Yet**. On 29 September, the current
+service identity passed real lease app requests, and the trusted browser opened
+the exact candidate app, connected Settings, and composed review drafts. The
+credential stays in the coordinator. No further Access setting change is needed.
+The [runtime evidence](evidence/sac-253/sac-182-runtime-recovery.md) separates
+these successful app visits from the review scenarios that remain unverified.
 
 The non-secret Access audience, Service Auth policy ID, and token Client ID are
 in `wrangler.queue-consumer-ts.jsonc`. The secret values are not in this file.
@@ -101,7 +105,7 @@ bundles were uploaded to private R2 and downloaded for hash comparison. The
 BettaView staging Worker and its custom domain now exist. The portal staging
 Worker was updated because its older deployment did not return a complete
 version record. The coordinator read both version responses twice through its
-private service bindings and saved one stable D1 manifest. The site remains
+private service bindings and saved one stable D1 manifest. At that readback the site was
 free, with no active attempts and `SHARED_TEST_GRANTS_ENABLED=false`.
 
 The [live readback](evidence/sac-253/staging-live.md) includes the two source

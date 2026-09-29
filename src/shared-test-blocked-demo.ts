@@ -5,6 +5,7 @@ import {implementationGitHub,type ImplementationPull} from './implementation-git
 import {D1OrchestrationStore} from './orchestration-store.ts';
 import {sha256Hex} from './implementation-hash.ts';
 import {snapshotBlockedSetup} from './shared-test-setup-snapshot.ts';
+import {settleUnpublishedReview} from './shared-test-unpublished-settlement.ts';
 
 interface Subject {
   run_id:string;lease_id:string;attempt_id:string;candidate_commit:string;
@@ -54,7 +55,6 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
       AND EXISTS (SELECT 1 FROM artifact_manifests m WHERE m.manifest_id=a.manifest_id AND m.state='complete')
       AND a.cleanup_state='destroyed' AND a.ended_at IS NOT NULL AND a.manifest_id IS NOT NULL
       AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=l.lease_id AND state='complete')
-      AND NOT EXISTS (SELECT 1 FROM test_review_scenarios WHERE lease_id=l.lease_id)
       AND NOT EXISTS (SELECT 1 FROM agent_attempts x WHERE x.run_id=l.run_id
         AND x.state IN ('pending','starting','running','collecting'))`)
     .bind(input.runId,input.leaseId,input.fence,input.candidateCommit,input.attemptId)
@@ -135,10 +135,11 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
     workId:`blocked-demo:${subject.attempt_id}`,
   },new Error(startup?'Demo runner failed before its process started':outcome!.blocker));
   await new SharedTestCloseStore(env.DB).quiesce(subject.run_id,subject.lease_id,subject.fence);
+  const unpublishedSettlement=await settleUnpublishedReview(env,subject.run_id,subject.lease_id);
   const setupSnapshot=await snapshotBlockedSetup(env,subject.run_id,subject.lease_id);
   const evidence={version:2,kind:'blocked_demo',runId:subject.run_id,leaseId:subject.lease_id,
     attemptId:subject.attempt_id,candidateCommit:subject.candidate_commit,manifestId:subject.manifest_id,
-    faultId,artifacts,captures,setupSnapshot,result:outcome,
+    faultId,artifacts,captures,setupSnapshot,unpublishedSettlement,result:outcome,
     startupFailure:startup?{summary:JSON.parse(startupText),originalErrors}:null};
   const evidenceText=JSON.stringify(evidence),digest=await sha256Hex(evidenceText);
   const key=`shared-test/failed/${subject.lease_id}/${digest}.json`;

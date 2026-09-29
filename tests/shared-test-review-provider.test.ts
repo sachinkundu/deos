@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs';
 import {sha256Hex} from '../src/implementation-hash.ts';
 import {SharedTestReviewProviderTransport} from '../src/shared-test-review-provider.ts';
 import {sharedTestReviewAssertion,sharedTestReviewKey} from '../src/shared-test-review-signing.ts';
+import {SharedTestReviewScenarios} from '../src/shared-test-review-scenarios.ts';
 
 test('review service transport only moves its live test issue and preserves failed scope reads',async()=>{
   const db=new DatabaseSync(':memory:');
@@ -15,7 +16,9 @@ test('review service transport only moves its live test issue and preserves fail
     CREATE TABLE shared_test_run_handoffs(source_run_id TEXT,target_run_id TEXT,state TEXT);
     CREATE TABLE implementation_test_profiles(run_id TEXT,adapter_binding TEXT,profile_json TEXT,profile_sha TEXT);
     CREATE TABLE test_review_fixtures(resource_id TEXT PRIMARY KEY,run_id TEXT,attempt_id TEXT,
-      kind TEXT,provider TEXT,status TEXT,metadata_json TEXT);`);
+      kind TEXT,provider TEXT,status TEXT,metadata_json TEXT);
+    CREATE TABLE test_proof_items(proof_id TEXT PRIMARY KEY,run_id TEXT,lease_id TEXT,
+      phase TEXT,kind TEXT,classification TEXT,sanitizer_result TEXT,public_url TEXT,object_key TEXT);`);
   db.exec(readFileSync(new URL('../migrations/0076_shared_test_review_transport.sql',import.meta.url),'utf8'));
   db.exec('CREATE TABLE test_review_fixture_events(delivery_id TEXT PRIMARY KEY); CREATE TABLE test_browser_sessions(lease_id TEXT);');
   db.exec(readFileSync(new URL('../migrations/0081_shared_test_review_scenarios.sql',import.meta.url),'utf8'));
@@ -36,6 +39,7 @@ test('review service transport only moves its live test issue and preserves fail
   const binding={prepare(sql:string){return{bind(...values:unknown[]){return{
     first:async()=>db.prepare(sql).get(...values as never[])??null,
     run:async()=>({meta:{changes:Number(db.prepare(sql).run(...values as never[]).changes)}}),
+    all:async()=>({results:db.prepare(sql).all(...values as never[])}),
   };}};}} as unknown as D1Database;
   const env={DB:binding,LINEAR_API_URL:'https://api.linear.app/graphql',
     LINEAR_APP_ACCESS_TOKEN:'private-token',IMPLEMENTATION_TEST_GITHUB_TOKEN:'reviewer-token'} as unknown as Env;
@@ -68,8 +72,20 @@ test('review service transport only moves its live test issue and preserves fail
   const fault=db.prepare("SELECT failure_json FROM test_review_provider_requests WHERE failure_json LIKE '%different-team%'").get()!;
   assert.match(String(fault.failure_json),/different-team/);
   assert.equal(String(fault.failure_json).includes('private-token'),false);
+  const scenarios=new SharedTestReviewScenarios(env);
+  for(const [id,lease,classification,result,url] of [
+    ['pending',leaseId,'private','pending','https://unpublished.invalid'],
+    ['published',leaseId,'public_safe','passed','https://proof.invalid/checked'],
+    ['other-lease','other','public_safe','passed','https://proof.invalid/other'],
+  ])db.prepare("INSERT INTO test_proof_items VALUES (?,'run',?,'first','app_screen',?,?,?,'private/raw.png')")
+    .run(id,lease,classification,result,url);
+  assert.deepEqual(JSON.parse(JSON.stringify(await scenarios.proofStatus(props))),[
+    {proofId:'pending',kind:'app_screen',classification:'private',sanitizerResult:'pending',publicUrl:null},
+    {proofId:'published',kind:'app_screen',classification:'public_safe',sanitizerResult:'passed',publicUrl:'https://proof.invalid/checked'},
+  ]);
   db.prepare('UPDATE test_environment SET fence=4').run();
   await assert.rejects(transport.fetch(request()),/provider_fenced/);
+  await assert.rejects(scenarios.proofStatus(props),/scenario_fenced/);
   assert.equal(scopeReads,3);
 });
 

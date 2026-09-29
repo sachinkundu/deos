@@ -106,6 +106,13 @@ test('blocked pre-review demo needs its retained evidence, settled work, and own
       .run('a'.repeat(40),'b'.repeat(64));
     assert.throws(()=>insert.run('c'.repeat(64),'d'.repeat(64)),/retained failure proof/);
     db.sqlite.prepare("UPDATE test_attestations SET state='observed'").run();
+    db.sqlite.prepare(`INSERT INTO test_review_scenarios VALUES
+      ('lease-1','s01','scenario-1','ready','now')`).run();
+    assert.throws(()=>insert.run('c'.repeat(64),'d'.repeat(64)),/settled workflows/);
+    db.sqlite.prepare(`INSERT INTO test_review_unpublished_settlements VALUES
+      ('lease-1','run-1',?,3,'settlement',?,'now')`).run('a'.repeat(40),'e'.repeat(64));
+    assert.throws(()=>insert.run('c'.repeat(64),'d'.repeat(64)),/settled workflows/);
+    db.sqlite.exec('UPDATE test_review_unpublished_settlements SET cleanup_fence=2');
     insert.run('c'.repeat(64),'d'.repeat(64));
     const close=new SharedTestCloseStore(db as unknown as D1Database);
     db.sqlite.prepare(`INSERT INTO test_operations

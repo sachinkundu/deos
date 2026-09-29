@@ -304,3 +304,101 @@ pixels and fixed masks. Local checks accepted a real Linear issue heading and
 the earlier authenticated Settings capture. These local copies have not been
 published as fresh app proof. All 30 variable hashes, 19 secret names and 60
 bindings match the prior deployed settings.
+
+The startup-failure lease closed at `2026-09-29T13:29:38.516Z`, revision 2090.
+All seven owned resource records are absent. Its absence hash is
+`3640a4c8a4430e8c549910c21af86d790b6b88de66ce28a947a956e831d6f449`.
+A separate download verified the retained failure record
+`3f7a03265781a6c482658c63b115015040d66f8eccd7d860487b380b9efbec77`,
+its complete 131-table database snapshot, and both original error objects.
+The record explicitly has a null agent result.
+
+The full TypeScript suite then passed 825 tests, with one existing skip.
+Type checking and strict OpenSpec validation passed. Fresh lease
+`0ebe69474a9a19ab214e4cd178464db0414f60904211ff559b83a3ab3f521e08`
+was authorized through the checked retry operation for the same candidate.
+
+## 29 September, 13:53 UTC: fresh app and public screenshots
+
+The fresh Sandbox checked out the unchanged candidate and started at
+`2026-09-29T13:43:32.986Z`. The actual BettaView Settings page connected the
+checked reviewer. The next scenario's run froze account policy version 1.
+The first scenario was allocated before connection, so it has no frozen
+account; that setup alone does not prove rotation or identity isolation.
+
+A fresh Brave capture of the original SAC-182 issue passed the deployed
+fixed-mask OCR sanitizer:
+https://deos-shared-test-proof.skundu.workers.dev/proof/94e21673-ee3d-4f7d-b7fd-fd377e1d65bc
+Its public SHA-256 is
+`f6ae5f9af078902e0f0840c03f4ea5071c3dbf9673ac6b767f248e73ef412184`.
+This image proves the task identity; it is not a disposable issue transition.
+
+The actual Settings capture also passed after masking account values and
+the form controls:
+https://deos-shared-test-proof.skundu.workers.dev/proof/7e9c2214-25ca-4b2e-8536-fe0e5ce5bd81
+The public URL returned HTTP 200, image/png, 12,943 bytes. SHA-256 is
+`7984a0e26c2384f97df405a9441d34dcb64ca600aae96674d7d85b588f3865e2`.
+The first masking attempt left a partial button word; OCR blocked it and
+retained that error. The corrected mask covers the whole form row.
+
+The review agent is still running. These screenshots do not establish that
+review publication, continuation, all twelve scenarios, or cleanup passed.
+
+
+## 29 September, failed run retained before another attempt
+
+Attempt `b643a592-9f02-41eb-8dfe-5d390beaea64` ended blocked at
+14:03:12 UTC. It reached the actual Settings form, activated policy version 1,
+and composed two unpublished review drafts. No app review intent, publication,
+or gate decision was recorded. The seeded GitHub thread was fixture setup.
+Browser reconnects timed out, and later helper calls used an expired 15-minute
+capability. These are recorded failures; the app scenarios did not pass.
+
+The private result SHA-256 is
+`ac5d23e41915c44e1b2b23e57b6368ecc4d549feceae0bbde659b971cde1e077`.
+The full transcript SHA-256 is
+`6bbfa7f5b878729c1d7324aa587950da7dab46590d63d0d5ece5cd674eacee0c`.
+Both were downloaded and checked before recovery work.
+
+The repair renews the same short-lived agent grant while its attempt, deadline,
+lease, and fence remain current. Page actions and browser maintenance now share
+one lock. Invalid fixture inputs return a concrete request example. The guide
+also explains how to allocate a run after account activation and read current
+proof publication status. The browser lock fixes a connection race; a fresh
+provider run must still establish whether it resolves the observed timeouts.
+
+Recovery permits only unpublished scenarios: it checks the owned D1, Worker,
+and Workflow identities, refuses any review intent or completed gate decision,
+stops only the allocated scenario instances, and reads each terminal status
+twice. It rechecks effects, retains the original Workflow replies, and then
+snapshots the lease stores before removal. The provider contract is
+[Cloudflare's instance status API](https://developers.cloudflare.com/api/resources/workflows/subresources/instances/subresources/status/methods/edit/).
+
+Verification: TypeScript and OpenSpec validation passed. The full suite passed
+834 tests with one skip and one failure caused by changed diagnostic wording.
+Restoring the established diagnostic phrase passed all five focused cleanup
+tests. Eight new settlement tests cover existing effects, foreign resources,
+changed ownership, retained responses, and repeated cleanup. Live cleanup and
+the fresh app demonstration are still pending at this record.
+
+
+At 14:49:37 UTC, the failed lease closed at revision 2224 after all seven owned
+resources passed removal and absence checks. Two old scenario workflows were
+already terminated; recovery terminated the third and read all three back
+twice. Before and after settling, the lease database had zero review intents,
+zero gate decisions, and zero non-fixture provider operations. The retained
+snapshot contains all 131 tables and both stored objects. All snapshot bytes
+were downloaded and hash-checked before the next lease was authorized.
+
+Failure evidence SHA-256:
+`e4997978439049317168964bac3228019597985a1dd160dab7539258bda875a5`.
+Workflow settlement SHA-256:
+`9ec8b6167a2d0f3c3b525fcd55a63a5550e637d56c7d142875b15d5604d2cf8f`.
+Owned absence SHA-256:
+`c4d6b3a7eaa4fe726a6acf8e1a93e95f72b1b197c7a433dba1d4395a2289b948`.
+No test approval was created by this recovery.
+
+Coordinator `bc240b99-4f3a-491b-a37c-3614b7b3f413` carries migrations 0085 and
+0086. Before and after deployment, all 30 variable hashes, 19 secret names,
+and 60 total binding records matched. The runner image is
+`sha256:cdbf2d32e27f22662fbf025c1654eeda2e015e3fc47061674dddf9ca46cc3bc2`.

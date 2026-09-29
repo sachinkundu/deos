@@ -48,7 +48,8 @@ project and user inputs for Settings. `prepare` takes a `scenario` such as
 the prior scenario facts, and uses the candidate's real run allocator and
 Workflow. Call it before opening that scenario's fresh browser context.
 `evidence` takes the same scenario and returns actual lease D1 facts, verified
-provider events, and the separately labeled fault injections. `github.read`
+provider events, separately labeled fault injections, and current lease proof
+publication status. `github.read`
 accepts the fixed fixture PR path suffix (`/reviews`, `/comments`, `/files`,
 or empty); `linear.read` reads the one disposable issue.
 `seed_thread` adds one labeled starting thread for reply tests. `advance_head`
@@ -74,6 +75,10 @@ make the abandonment decision. The fixture review file is `canary-review.md`.
 After the real app state is visible, call `capture`. This saves a private raw
 image and returns its proof ID. Include that ID in the report. The capture is
 not safe to publish until the trusted sanitizer approves a separate copy.
+Read `evidence` again before reporting publication blocked: the trusted service
+may have published the copy since capture. Only a `public_safe` item with
+`sanitizerResult: passed` and a `publicUrl` is published. Pending items do not
+prove publication failed, and public images do not prove app scenarios passed.
 
 Show real app use and one provider-made Linear event, then save the observed
 receipts to the requested output files. Public screenshot publication is not

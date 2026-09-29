@@ -24,7 +24,7 @@
 
 - [x] 4.1 Admit only a trusted current-team Linear task and save its issue, run, attempt, lease, candidate, repository, branch, and pull-request scope.
 - [x] 4.2 Add a fresh lease-bound demo Sandbox and narrow agent capability; check the current D1 fence on each action and reject staging or live release actions.
-- [ ] 4.3 Add a separate lease app origin, service identity, one-use launch code, short host-only app session, and per-request fence check without exposing keys to the agent or page.
+- [x] 4.3 Add a separate lease app origin, service identity, one-use launch code, short host-only app session, and per-request fence check without exposing keys to the agent or page.
 - [x] 4.4 Restrict GitHub writes to the saved repository, branch, and pull request; re-read team membership before each Linear write.
 - [x] 4.5 Add the trusted `test_issue_marker_patch` action with a versioned keyed marker, saved before/after hashes, idempotent insert/find/remove, and preservation of human edits.
 - [x] 4.6 Route one signed Linear webhook delivery using all saved event-time facts, atomically claim a live expectation, and retry a durable test Queue dispatch without rerouting duplicates.
@@ -34,7 +34,7 @@
 
 ## 5. Proof, cleanup, and portal
 
-- [ ] 5.1 Store raw captures privately and generate public proof only from allowlisted, versioned sanitization with metadata removal, fixed masks, and OCR validation.
+- [x] 5.1 Store raw captures privately and generate public proof only from allowlisted, versioned sanitization with metadata removal, fixed masks, and OCR validation.
 - [ ] 5.2 Attach safe images, command proof, data read-back, and provider receipts to the pull-request body; preserve other body text and read back the body and every attached item before deletion.
 - [ ] 5.3 Fence writes first, settle accepted work, remove only resources owned by the run and lease, and prove each app item, provider fixture, deploy, session, identity, and secret absent.
 - [x] 5.4 Add revision-bound, Access-protected, audited item-level retry or repair; never waive proof or absence and never force the site free.
@@ -52,7 +52,7 @@
 
 ## 7. Remote proof and review
 
-- [ ] 7.1 Apply the migration and deploy the coordinator, isolated test app, portal, and new workflow version only after checking live attempts and configured bindings.
+- [x] 7.1 Apply the migration and deploy the coordinator, isolated test app, portal, and new workflow version only after checking live attempts and configured bindings.
 - [ ] 7.2 Admit the guarded SAC-182 handoff as a new run and show the lease, pinned staging base, portal issue identity, real app use, scoped GitHub result, and provider-made Linear event in D1.
 - [ ] 7.3 Attach and read back sanitized provider and task screens, Showboat commands, D1 reads, and provider receipts on the implementation pull request.
 - [ ] 7.4 Prove owned resource removal, absence, free state, final report, and subsequent safe lease eligibility; then enable the release guard.
