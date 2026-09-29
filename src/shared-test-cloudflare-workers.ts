@@ -7,6 +7,8 @@ type VerifiedBuild=Awaited<ReturnType<SharedTestBuildStore['read']>>;
 type Asset={hash:string;bytes:Uint8Array;type:string};
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const edgeRevision='lease-auth-seam-v2';
+// Public GitHub App identifier used by the maintained BettaView deployment.
+const bettaViewGitHubClientId='Iv23likxukpheraNrZlx';
 const encoder=new TextEncoder();
 
 function base64(bytes:Uint8Array):string {
@@ -288,6 +290,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
       {type:'d1',name:'DB',id:d1},
       {type:'r2_bucket',name:'ARTIFACTS',bucket_name:r2});
     else bindings.push(
+      {type:'plain_text',name:'GITHUB_CLIENT_ID',text:bettaViewGitHubClientId},
       {type:'service',name:'DEOS_PORTAL',service:`deos-test-portal-${plan.leaseId.slice(0,32)}`},
       {type:'durable_object_namespace',name:'GITHUB_SESSIONS',class_name:'GitHubSession'});
     const jwt=await this.uploadAssets(plan,build,phase);

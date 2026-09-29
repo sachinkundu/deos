@@ -117,6 +117,10 @@ test('BettaView upload sends the provider-required single-step migration object'
   assert.ok(metadata);
   assert.deepEqual((metadata as Record<string,unknown>).migrations,
     {new_tag:'v1',new_sqlite_classes:['GitHubSession']});
+  const bindings=(metadata as {bindings:Array<{name:string;text?:string}>}).bindings;
+  assert.equal(bindings.find(binding=>binding.name==='GITHUB_CLIENT_ID')?.text,
+    'Iv23likxukpheraNrZlx');
+  assert.equal(bindings.some(binding=>binding.name==='GITHUB_CLIENT_SECRET'),false);
   await privateProvider.upload(bettaPlan,{...build,compiledWorker:new Uint8Array([1])},
     betta.base.sourceCommit,'preparing',true);
   assert.ok(metadata);
