@@ -506,3 +506,35 @@ secret names matched before and after deployment. Recovery returned HTTP 202
 and a new running executor, `wf-v1-bzr3pzs2rqtkahuawd2o4osnzmsdjmaufyaz6et4ffduhkzvhyaa`.
 It granted a fresh lease at 15:49:22 UTC with fence 17. App review proof remains
 pending; setup recovery is not a passed app test.
+
+## 29 September, draft reload diagnosis
+
+Attempt `14bde650-efec-4850-83a8-b78fb2016126` ended blocked at
+16:19:08 UTC. It proved account connection and rotation to policy version 2,
+with older runs retaining version 1. It also created real inline and reply
+drafts. No review was published. Two signed Linear moves were restored to
+Human Review without a gate decision or workflow transition.
+
+The agent inferred that its replacement browser ended from an HTTP 1101
+response. The saved original exception at 16:10:09 was instead
+`Navigation timeout of 30000 ms exceeded`. BettaView's native leave-drafts
+prompt caused the same timeout in a real local browser. An explicit navigation
+option now confirms that prompt. The local browser then reloaded its saved
+draft and still dismissed an unrelated publish confirmation. Known navigation,
+busy, and closed-session errors now give distinct responses with the retained
+fault ID. Unknown errors still propagate.
+
+The original result and transcript remain unchanged:
+
+- Result: `8218871358996018e8ae9e3d5f40866e51f8220d94dca82419b5cc9df08097ae`.
+- Transcript: `6316e3aac188df728cdd1836d47d8c267a69899437a3e32ff2938e5df157b4d4`.
+
+Failed-demo cleanup now recognizes only the fixed s12 restoration operations
+when their exact source and return deliveries are signed, recorded, forwarded,
+and bound to the owned fixture. It retains the candidate's original pending
+rows; it does not mark them successful or create a test approval. Other
+provider operations and any published review still block this recovery path.
+
+The browser fix passed 23 focused tests, including the real local browser.
+The failure-response and cleanup checks passed 20 tests. Type checking passed.
+Fresh live review publication and successful cleanup remain to be proven.

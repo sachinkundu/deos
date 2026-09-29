@@ -7,6 +7,7 @@ export type TestBrowserOperation={
   width?:number;height?:number;modifiers?:string[];
   viewport?:{width:number;height:number};documentStatus?:number;
   method?:'GET'|'POST';body?:string;
+  beforeUnload?:'accept';
 };
 
 export interface TestBrowserProvider {

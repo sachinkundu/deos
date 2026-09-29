@@ -117,7 +117,8 @@ export class SharedTestReviewScenarios {
     if(['seed_thread','advance_head','move_without_review'].includes(String(input.operation))) {
       if(typeof input.scenario!=='string' || !await this.env.DB.prepare(`SELECT 1 FROM test_review_scenarios
         WHERE lease_id=? AND scenario_id=? AND state='ready'`).bind(binding.leaseId,input.scenario).first())
-        throw new Error('test_review_scenario_not_current');
+        return Response.json({error:'test_review_scenario_not_current',
+          recovery:'Use the exact scenario ID returned by the latest prepare, including its suffix.'},{status:409});
       if(input.step!==undefined && input.step!==1 && input.step!==2)throw new Error('test_review_step_invalid');
       const fixture=await this.live(binding),operationId=`${input.scenario}-${input.operation}-${input.step??1}`;
       if(input.operation==='seed_thread')return Response.json(await this.provider(binding,{operation:'github.review',operationId,
@@ -129,7 +130,8 @@ export class SharedTestReviewScenarios {
     if(['inject','clear_injections','shorten_delivery_deadline'].includes(String(input.operation))) {
       if(typeof input.scenario!=='string' || !await this.env.DB.prepare(`SELECT 1 FROM test_review_scenarios
         WHERE lease_id=? AND scenario_id=? AND state='ready'`).bind(binding.leaseId,input.scenario).first())
-        throw new Error('test_review_scenario_not_current');
+        return Response.json({error:'test_review_scenario_not_current',
+          recovery:'Use the exact scenario ID returned by the latest prepare, including its suffix.'},{status:409});
       if(input.operation==='shorten_delivery_deadline')
         return Response.json(await this.control(binding,'shorten_delivery_deadline',{scenario:input.scenario}));
       if(input.operation==='clear_injections') {

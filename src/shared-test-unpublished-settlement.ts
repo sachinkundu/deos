@@ -66,7 +66,8 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
     const facts=await query<{intents:number;decisions:number;operations:number}>(`SELECT (SELECT COUNT(*) FROM review_intents) AS intents,
     (SELECT COUNT(*) FROM human_gate_visits WHERE state<>'open') AS decisions,
     (SELECT COUNT(*) FROM provider_operations WHERE capability<>'fixture_input') AS operations`);
-    if(facts.length!==1||facts[0].intents!==0||facts[0].operations!==0||
+    if(facts.length!==1||facts[0].intents!==0||
+        !Number.isSafeInteger(facts[0].operations)||facts[0].operations<0||
         !Number.isSafeInteger(facts[0].decisions)||facts[0].decisions<0||facts[0].decisions>scenarios.length)
       throw new Error('test_unpublished_review_effects_present');
     const fixtureDecisions=[];
@@ -94,7 +95,54 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
         fixtureDecisions.push({gate,receipt});
       }
     }
-    return {counts:facts,fixtureDecisions};
+    const fixtureOperations=[];
+    if(facts[0].operations) {
+      const operations=await query<{operation_id:string;run_id:string;capability:string;action:string;
+        sanitized_target:string;request_digest:string;state:string;observed_pre_state:string;
+        latest_delivery_id:string|null;started_at:string;review_id:string|null}>(
+        "SELECT * FROM provider_operations WHERE capability<>'fixture_input' ORDER BY operation_id");
+      if(operations.length!==facts[0].operations || operations.some(op=>
+          op.capability!=='linear.transition' || op.review_id!==null ||
+          !scenarios.some(s=>s.scenario_run_id===op.run_id && /^s12(?:-|$)/.test(s.scenario_id))))
+        throw new Error('test_unpublished_review_effects_present');
+      const fixture=await sharedTestReviewFixture(env.DB,{run_id:runId,attempt_id:subject.attempt_id});
+      for(const op of operations) {
+        if(op.sanitized_target!==fixture.profile.states.review ||
+            op.request_digest!==await sha256Hex(JSON.stringify({issueId:fixture.issueId,
+              targetStateId:fixture.profile.states.review,action:op.action})))
+          throw new Error('test_unpublished_restoration_scope_changed');
+        if(op.action==='enter_human_gate' && op.state==='reconciled' &&
+            op.observed_pre_state===fixture.profile.states.review && op.latest_delivery_id===null &&
+            op.operation_id===`${op.run_id}:review:linear-enter-human-gate:1`) {
+          fixtureOperations.push({operation:op,receipt:null});continue;
+        }
+        if(op.action!=='restore_human_gate' || !['pending','succeeded','reconciled'].includes(op.state) ||
+            op.observed_pre_state!==fixture.profile.states.work || !op.latest_delivery_id ||
+            op.operation_id!==`${op.run_id}:review:linear-repair:${op.latest_delivery_id}:1`)
+          throw new Error('test_unpublished_restoration_scope_changed');
+        const scenario=scenarios.find(s=>s.scenario_run_id===op.run_id)!;
+        const source=await env.DB.prepare(`SELECT e.* FROM test_review_forwarded_events f
+          JOIN test_review_fixture_events e ON e.delivery_id=f.delivery_id
+          JOIN deliveries d ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha
+          WHERE f.lease_id=? AND f.scenario_id=? AND e.delivery_id=? AND e.resource_id=?
+            AND e.issue_id=? AND e.from_state_id=? AND e.to_state_id=?`)
+          .bind(leaseId,scenario.scenario_id,op.latest_delivery_id,fixture.resourceId,fixture.issueId,
+            fixture.profile.states.review,fixture.profile.states.work).first();
+        const receipt=await env.DB.prepare(`SELECT e.* FROM test_review_forwarded_events f
+          JOIN test_review_fixture_events e ON e.delivery_id=f.delivery_id
+          JOIN deliveries d ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha
+          WHERE f.lease_id=? AND f.scenario_id=? AND e.resource_id=? AND e.issue_id=?
+            AND e.from_state_id=? AND e.to_state_id=? AND e.actor_id=?
+            AND julianday(e.provider_time)>=julianday(?) ORDER BY e.provider_time LIMIT 1`)
+          .bind(leaseId,scenario.scenario_id,fixture.resourceId,fixture.issueId,
+            fixture.profile.states.work,fixture.profile.states.review,env.LINEAR_APP_ACTOR_ID,op.started_at).first();
+        if(!source || !receipt)throw new Error('test_unpublished_restoration_receipt_missing');
+        // The candidate's pending row remains untouched in the retained store.
+        // Signed provider evidence proves this bounded restoration took effect.
+        fixtureOperations.push({operation:op,source,receipt});
+      }
+    }
+    return {counts:facts,fixtureDecisions,fixtureOperations};
   };
   const facts=await checkEffects();
   const runs=await query<{run_id:string;workflow_instance_id:string}>('SELECT run_id,workflow_instance_id FROM orchestration_runs ORDER BY run_id');

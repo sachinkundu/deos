@@ -9,6 +9,7 @@ import {SharedTestLeaseStore,type StableStagingBase} from './shared-test-lease.t
 import {sharedTestServicePlans} from './shared-test-service-plan.ts';
 import {SharedTestRawProofStore} from './shared-test-raw-proof.ts';
 import {withSharedTestBrowserLock} from './shared-test-browser-lock.ts';
+import {sharedTestBrowserFailure} from './shared-test-browser-error.ts';
 
 interface Lease {
   lease_id:string;run_id:string;attempt_id:string;task_id:string;
@@ -36,7 +37,9 @@ export class SharedTestBrowserAction {
         !['open','reset','navigate','state','click','fill','press','wait','viewport','capture','api','select']
           .includes(request.operation) ||
         Object.keys(request).some(key=>!['version','service','operation','url',
-          'selector','text','key','width','height','modifiers','method','body'].includes(key)) ||
+          'selector','text','key','width','height','modifiers','method','body','beforeUnload'].includes(key)) ||
+        (request.beforeUnload!==undefined &&
+          (request.beforeUnload!=='accept' || request.operation!=='navigate')) ||
         (request.method!==undefined && !['GET','POST'].includes(String(request.method))) ||
         (request.body!==undefined && (typeof request.body!=='string' || request.body.length>100000)) ||
         (request.url!==undefined && (typeof request.url!=='string' ||
@@ -102,6 +105,7 @@ export class SharedTestBrowserAction {
         const input:TestBrowserOperation={operation:request.operation as TestBrowserOperation['operation'],
           ...(request.method==='GET'||request.method==='POST'?{method:request.method}:{}),
           ...(typeof request.body==='string'?{body:request.body}:{}),
+          ...(request.beforeUnload==='accept'?{beforeUnload:'accept' as const}:{}),
           ...(typeof request.url==='string'?{url:request.url}:{}),
           ...(typeof request.selector==='string'?{selector:request.selector}:{}),
           ...(typeof request.text==='string'?{text:request.text}:{}),
@@ -113,8 +117,9 @@ export class SharedTestBrowserAction {
         return Response.json(await browser.command(scope,input));
       });
     }catch(error) {
+      let faultId:string;
       try {
-        await new SharedTestFailureStore(this.env.DB,this.env.ARTIFACTS).record({
+        faultId=await new SharedTestFailureStore(this.env.DB,this.env.ARTIFACTS).record({
           runId:claims.runId,leaseId:claims.leaseId,fence:claims.fence,
           phase:'active',operation:'shared_test.browser',
           safeCode:'test_browser_action_failed',
@@ -123,6 +128,8 @@ export class SharedTestBrowserAction {
         throw new AggregateError([error,diagnostic],
           'Test browser action and diagnostic storage failed',{cause:error});
       }
+      const response=sharedTestBrowserFailure(error,faultId);
+      if(response)return response;
       throw error;
     }
   }

@@ -30,9 +30,10 @@ function fixture() {
     VALUES ('db','run-1',?,1,'d1_database','created',?,?,'work','now','now')`).run(lease,database,databaseId);
   db.sqlite.prepare(`INSERT INTO test_review_scenarios VALUES (?,'s01','scenario-1','ready','now')`).run(lease);
   const env={DB:db,ARTIFACTS:bucket,IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID:'d'.repeat(32),
-    IMPLEMENTATION_ENVIRONMENT_TOKEN:'private-test-token'} as unknown as Env;
+    IMPLEMENTATION_ENVIRONMENT_TOKEN:'private-test-token',LINEAR_APP_ACTOR_ID:'app-actor'} as unknown as Env;
   const state={intents:0,decisions:0,operations:0,foreign:'',changeOwner:false,lateIntent:false,
-    status:'waiting',patches:0,reads:0,factReads:0,requests:0,gates:[] as Record<string,unknown>[]};
+    status:'waiting',patches:0,reads:0,factReads:0,requests:0,gates:[] as Record<string,unknown>[],
+    operationRows:[] as Record<string,unknown>[]};
   const provider=async(input:RequestInfo|URL,init?:RequestInit)=>{
     state.requests++;
     const path=new URL(String(input)).pathname;
@@ -52,6 +53,7 @@ function fixture() {
         result=[{success:true,results:[{intents:state.intents+(state.lateIntent&&state.factReads>1?1:0),
           decisions:state.decisions,operations:state.operations}]}];
       } else if(sql.includes('human_gate_visits'))result=[{success:true,results:state.gates}];
+      else if(sql.includes('provider_operations'))result=[{success:true,results:state.operationRows}];
       else result=[{success:true,results:[{run_id:state.foreign==='run'?'foreign':'scenario-1',workflow_instance_id:'wf-v1-owned'}]}];
     } else if(path.endsWith('/status')) {
       assert.equal(init?.method,'PATCH');assert.deepEqual(JSON.parse(String(init?.body)),{status:'terminate'});
@@ -79,6 +81,55 @@ test('unpublished recovery settles only the owned scenario and retains its origi
     assert.equal(f.state.patches,1);
     assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_review_unpublished_settlements').get()!.n,1);
   } finally {f.db.close();}
+});
+
+for(const invalid of [null,'hash','actor','action','run','receipt'] as const)
+test(`unpublished s12 restoration requires signed source and return receipts: ${invalid??'valid'}`,async()=>{
+  const f=fixture();
+  try {
+    const profile={repository:'owner/test',projectId:'project',teamId:'team',githubUserId:1,
+      states:{review:'review-state',work:'work-state',merge:'merge-state',canceled:'canceled-state'}};
+    const text=JSON.stringify(profile),hash=await sha256Hex(text);
+    f.db.sqlite.prepare('INSERT INTO implementation_test_profiles VALUES (?,?,?,?,?,?)')
+      .run('run-1',`github-linear-review-v1@${hash}`,text,hash,'now','operator');
+    f.db.sqlite.prepare(`INSERT INTO test_review_fixtures
+      (resource_id,run_id,attempt_id,lease_id,kind,slot_id,allocation_op,provider,status,metadata_json,created_at,updated_at)
+      VALUES ('fixture','run-1','attempt-1',?,'safe_test','slot','allocate','github-linear-review-v1','ready',?,'now','now')`)
+      .run(f.lease,JSON.stringify({profile,branch:'deos/canary/attempt-1',head:'c'.repeat(40),pullNumber:1,issueId:'fixture-issue'}));
+    f.db.sqlite.exec("UPDATE test_review_scenarios SET scenario_id='s12'");
+    for(const [id,from,to,time] of [
+      ['source','review-state','work-state','2026-09-29T16:00:00Z'],
+      ['restored','work-state','review-state','2026-09-29T16:00:02Z'],
+    ]) {
+      f.db.sqlite.prepare("INSERT INTO deliveries (delivery_id,payload_hash,received_at,classification) VALUES (?,'hash',?,'test_review_fixture')").run(id,time);
+      f.db.sqlite.prepare("INSERT INTO test_review_fixture_events VALUES (?,'fixture','fixture-issue','app-actor',?, ?,?,'hash',?,'user')").run(id,from,to,time,time);
+      f.db.sqlite.prepare("INSERT INTO test_review_forwarded_events VALUES (?,'s12',?,?)").run(f.lease,id,time);
+    }
+    const restoration={operation_id:'scenario-1:review:linear-repair:source:1',run_id:'scenario-1',
+      capability:'linear.transition',action:'restore_human_gate',sanitized_target:'review-state',
+      request_digest:await sha256Hex(JSON.stringify({issueId:'fixture-issue',targetStateId:'review-state',action:'restore_human_gate'})),
+      state:'pending',observed_pre_state:'work-state',latest_delivery_id:'source',started_at:'2026-09-29T16:00:01Z',review_id:null};
+    const entered={...restoration,operation_id:'scenario-1:review:linear-enter-human-gate:1',
+      action:'enter_human_gate',state:'reconciled',observed_pre_state:'review-state',latest_delivery_id:null,
+      request_digest:await sha256Hex(JSON.stringify({issueId:'fixture-issue',targetStateId:'review-state',action:'enter_human_gate'}))};
+    f.state.operations=2;f.state.operationRows=[restoration,entered];
+    if(invalid==='hash')f.db.sqlite.exec("UPDATE deliveries SET payload_hash='changed' WHERE delivery_id='restored'");
+    if(invalid==='actor')f.db.sqlite.exec("UPDATE test_review_fixture_events SET actor_id='stranger' WHERE delivery_id='restored'");
+    if(invalid==='action')restoration.action='publish_review';
+    if(invalid==='run')restoration.run_id='foreign';
+    if(invalid==='receipt')f.db.sqlite.exec("DELETE FROM test_review_forwarded_events WHERE delivery_id='restored'");
+    if(invalid) {
+      await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/review_effects_present|restoration_scope_changed|restoration_receipt_missing/);
+      assert.equal(f.state.patches,0);
+    } else {
+      const saved=await settleUnpublishedReview(f.env,'run-1',f.lease,f.provider);
+      const evidence=JSON.parse(await (await f.bucket.get(saved!.evidence_key))!.text());
+      assert.equal(evidence.settledFacts.fixtureOperations[0].receipt.delivery_id,'restored');
+      assert.equal(evidence.settledFacts.fixtureOperations[0].operation.state,'pending');
+      assert.equal(f.state.patches,1);
+      assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_attestations').get()?.n,0);
+    }
+  }finally{f.db.close();}
 });
 
 for(const field of ['intents','decisions','operations'] as const) test(`recovery refuses existing ${field} before any workflow mutation`,async()=>{
