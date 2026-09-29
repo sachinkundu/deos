@@ -527,8 +527,14 @@ export class SandboxAgentController {
     if (configuredJob === undefined) throw new Error(`workflow job ${jobId} is missing`);
     const job = this.runtimeJob(run, configuredJob);
     let attempt = await this.attempts.findLatest(run.run_id, nodeId);
-    if (reservedAttemptId && attempt && attempt.attempt_id !== reservedAttemptId)
-      throw new Error('shared_test_demo_attempt_changed');
+    if (reservedAttemptId && attempt && attempt.attempt_id !== reservedAttemptId) {
+      // Only the trusted lease retry changes a reserved demo ID. The previous
+      // Sandbox must have finished and been destroyed before allocation.
+      if(nodeId!=='shared_test_demo' || !isTerminalAttempt(attempt.state) ||
+          attempt.cleanup_state!=='destroyed')
+        throw new Error('shared_test_demo_attempt_changed');
+      attempt=null;
+    }
     // Finish a saved Claude collection even if acceptance was persisted before interruption.
     if ((job.modelProvider === "claude" || job.boundedReview) && attempt?.state === "collecting") {
       return this.reconcile(run, attempt, job);

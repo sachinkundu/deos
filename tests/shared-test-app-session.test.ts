@@ -103,7 +103,9 @@ test('trusted launcher redeems code without giving it to the agent or page',asyn
       const request=JSON.parse(String(init!.body));
       const result=await new SharedTestAppSessionStore(db as unknown as D1Database)
         .redeemCode(request.code,origin,subject.principalSha256);
-      return new Response(null,{status:204,headers:{'Set-Cookie':result.cookie}});
+      const [pair]=result.cookie.split(';');
+      return new Response(null,{status:204,headers:{'Set-Cookie':
+        `${pair}; HttpOnly; SameSite=lax; Max-Age=900; Secure; Path=/`}});
     };
     const launched=await new SharedTestAppLauncher(db as unknown as D1Database,
       clientId,'secret-1',fetcher).launch({...subject,plan});

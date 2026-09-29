@@ -8,6 +8,29 @@ interface Identity {
   principal_sha256:string;revoked_at:string|null;absent_at:string|null;
 }
 
+function launchCookie(headers:Headers):string {
+  const values=headers.getSetCookie?.()??[];
+  const candidates=values.length?values:[headers.get('Set-Cookie')??''];
+  const matching=candidates.filter(value=>/^__Host-deos_test=/i.test(value));
+  if(matching.length!==1)throw new Error('test_app_launch_cookie_invalid');
+  const parts=matching[0].split(';').map(part=>part.trim());
+  const match=/^__Host-deos_test=([A-Za-z0-9_-]{43})$/.exec(parts.shift()??'');
+  if(!match)throw new Error('test_app_launch_cookie_invalid');
+  const attributes=new Map<string,string>();
+  for(const part of parts) {
+    const [name,...rest]=part.split('=');
+    const key=name.toLowerCase();
+    if(!key || attributes.has(key))throw new Error('test_app_launch_cookie_invalid');
+    attributes.set(key,rest.join('='));
+  }
+  if(attributes.get('path')!=='/' || !attributes.has('secure') ||
+      !attributes.has('httponly') ||
+      attributes.get('samesite')?.toLowerCase()!=='lax' ||
+      attributes.get('max-age')!=='900' || attributes.has('domain'))
+    throw new Error('test_app_launch_cookie_invalid');
+  return match[1];
+}
+
 /** The one-use code and Access secret stay inside trusted services. */
 export class SharedTestAppLauncher {
   readonly db:D1Database;
@@ -54,11 +77,9 @@ export class SharedTestAppLauncher {
       throw new Error(`test_app_launch_http_${response.status}:`+
         raw.slice(0,512).replaceAll(this.clientSecret,'[redacted]'));
     }
-    const header=response.headers.get('Set-Cookie')??'';
-    const match=/^__Host-deos_test=([A-Za-z0-9_-]{43}); Path=\/; Secure; HttpOnly; SameSite=Lax; Max-Age=900$/.exec(header);
-    if(!match)throw new Error('test_app_launch_cookie_invalid');
+    const cookie=launchCookie(response.headers);
     await new SharedTestLeaseStore(this.db).assertWrite(runId,attemptId,leaseId,fence);
-    return {origin,cookie:{name:'__Host-deos_test',value:match[1],
+    return {origin,cookie:{name:'__Host-deos_test',value:cookie,
       domain:plan.canonicalHost,httpOnly:true,secure:true,sameSite:'Lax',path:'/'},
       expiresAt:new Date(Date.now()+15*60_000).toISOString()};
   }

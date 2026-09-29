@@ -818,6 +818,21 @@ test("a reserved demo attempt cannot be replaced by a second attempt", async () 
     '00000000-0000-7000-8000-000000000088'),/shared_test_demo_attempt_changed/);
 });
 
+test("a destroyed terminal demo attempt permits its trusted replacement ID", async () => {
+  const state=setup();
+  const first='00000000-0000-7000-8000-000000000099';
+  const next='00000000-0000-7000-8000-000000000088';
+  await state.controller.execute(run,'shared_test_demo','work',definition,first);
+  assert.ok(state.attempts.latest);
+  state.attempts.latest.state='blocked';
+  state.attempts.latest.cleanup_state='destroyed';
+  state.attempts.latest.ended_at=NOW.toISOString();
+  const restarted=await state.controller.execute(run,'shared_test_demo','work',
+    definition,next);
+  assert.equal(restarted.attemptId,next);
+  assert.equal(state.attempts.latest?.attempt_id,next);
+});
+
 for (const input of [null, 'implementation_context', 'implementation_demo_context']) test(input
   ? `${input} retry refreshes recovery context while preserving the frozen model and source identity`
   : "stage retry preserves the failed attempt's frozen input with a new attempt identity", async () => {
