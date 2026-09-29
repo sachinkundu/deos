@@ -1,8 +1,9 @@
 import puppeteer,{type Page} from '@cloudflare/puppeteer';
 import {browserCommand,CloudflareBrowserProvider} from './implementation-browser.ts';
+import {auditTestBrowserPage} from './shared-test-browser-audit.ts';
 
 export type TestBrowserOperation={
-  operation:'navigate'|'state'|'click'|'fill'|'press'|'wait'|'viewport'|'api'|'select';
+  operation:'navigate'|'state'|'click'|'fill'|'press'|'wait'|'viewport'|'api'|'select'|'audit';
   url?:string;selector?:string;text?:string;key?:string;
   width?:number;height?:number;modifiers?:string[];
   viewport?:{width:number;height:number};documentStatus?:number;
@@ -43,7 +44,9 @@ export async function checkTestBrowserAdmission(page:Page,origin:string):Promise
 export class CloudflareTestBrowserProvider implements TestBrowserProvider {
   readonly browser:CloudflareBrowserProvider;
   readonly binding:Parameters<typeof puppeteer.sessions>[0];
-  constructor(binding:Parameters<typeof puppeteer.sessions>[0]) {
+  readonly protectedValues:string[];
+  constructor(binding:Parameters<typeof puppeteer.sessions>[0],protectedValues:string[]=[]) {
+    this.protectedValues=protectedValues;
     this.binding={fetch:async(input:RequestInfo|URL,init?:RequestInit)=>{
       const response=await binding.fetch(input,init);
       if(new Headers(init?.headers).get('Upgrade')?.toLowerCase()==='websocket' &&
@@ -71,6 +74,19 @@ export class CloudflareTestBrowserProvider implements TestBrowserProvider {
   close(id:string) {return this.browser.close(id);}
   keepAlive(id:string) {return this.browser.keepAlive(id);}
   async command(id:string,origin:string,input:TestBrowserOperation) {
+    if(input.operation==='audit') {
+      const browser=await puppeteer.connect(this.binding,id);
+      let primary:unknown;
+      try {
+        const pages=await browser.pages(),page=pages[0];
+        if(pages.length!==1||!page)throw new Error('test_browser_audit_page');
+        return {url:page.url(),content:JSON.stringify(await auditTestBrowserPage(page,origin,this.protectedValues))};
+      }catch(error){primary=error;throw error;}
+      finally {
+        try {await browser.disconnect();}
+        catch(error){if(primary)throw new AggregateError([primary,error],'Browser audit and disconnect failed',{cause:primary});throw error;}
+      }
+    }
     if(input.operation==='select') {
       if(!input.selector || input.selector.length>512)throw new Error('test_browser_selection_invalid');
       const browser=await puppeteer.connect(this.binding,id);

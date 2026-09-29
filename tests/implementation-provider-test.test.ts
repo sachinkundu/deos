@@ -96,6 +96,21 @@ test("provider proof requires the exact signed actor/state transition and curren
   } finally { globalThis.fetch = original; f.db.close(); }
 });
 
+test('event evidence requires an exact signed payload receipt and separately checks the app actor',async()=>{
+  const f=await fixture();
+  try {
+    f.db.sqlite.prepare("INSERT INTO deliveries (delivery_id,payload_hash,received_at,classification) VALUES ('delivery',?,'2099-01-01T00:00:00Z','relevant')").run('b'.repeat(64));
+    f.db.sqlite.prepare("INSERT INTO implementation_test_events VALUES ('delivery',?,'test-issue','app','review','work','2099-01-01',?,'2099-01-01T00:00:00Z')")
+      .run(f.resource.resource_id,'a'.repeat(64));
+    const read=async()=>((await f.call({operation:'events'})) as {events:Array<Record<string,unknown>>}).events[0]!;
+    assert.equal((await read()).signature_verified,0);
+    f.db.sqlite.prepare("UPDATE deliveries SET payload_hash=? WHERE delivery_id='delivery'").run('a'.repeat(64));
+    assert.equal((await read()).signature_verified,1);assert.equal((await read()).app_actor_matches,1);
+    f.db.sqlite.prepare("UPDATE implementation_test_events SET actor_id='other'").run();
+    assert.equal((await read()).signature_verified,1);assert.equal((await read()).app_actor_matches,0);
+  } finally {f.db.close();}
+});
+
 test('a lease head advance persists the checked head for later scenario reads and is not repeated',async()=>{
   const f=await fixture(),original=globalThis.fetch,leaseId='a'.repeat(64),next='e'.repeat(40);
   let remoteHead=f.owned.head,updates=0;

@@ -20,6 +20,7 @@ export const sharedTestReviewGuide = {
     shorten_delivery_deadline:'After a real Linear mutation with delivery held, shorten only that test input. Read the app to observe the candidate decision.',
   },
   browser:{
+    audit:'Use operation:"audit" before and after the draft reload. It reports completed resource origins for the current document and checks local/session storage for known coordinator credentials without returning values, headers, cookies, or URLs with queries. Combine this bounded observation with the pinned code and binding checks; it is not a complete network log across prior navigations.',
     reload:'For the draft persistence check, navigate to the current PR URL with beforeUnload:"accept". This explicitly confirms the native leave-drafts prompt. Then inspect the reloaded drafts before publishing. A navigation timeout is not provider session absence: read state and use a fresh scenario context; do not abandon later scenarios solely because a navigation failed.',
     wait:'Wait requires a visible CSS selector, for example {version:1,service:"bettaview",operation:"wait",selector:"button"}. It does not accept milliseconds or a duration.',
     reset:'Reset the browser context, navigate, and sign in again for each scenario. Keep viewport 1440 by 900. If the provider session has ended, reset permits one replacement per service and attempt after two absence reads and a saved lifecycle receipt. Navigate and inspect the new session; never blindly repeat a publish or review action. If the replacement also ends, retain the error and stop browser work.',
@@ -27,6 +28,7 @@ export const sharedTestReviewGuide = {
     api:'Use the current browser session for negative cases and exact replay. Supply url, method GET or POST, and JSON-encoded body for POST. Allowed paths are /api/pr, /api/review-continuations, /api/review-continuations/publish, /api/review-continuations/action, and /api/settings/bettaview-account. Required visible actions still use the UI.',
   },
   examples:{
+    providerActor:'The real Linear app may identify its delivery actor type as user. Identify it by the checked stable app actor ID and the signature-verified ingress receipt; do not claim a literal bot actor type that the provider did not send.',
     mismatch:{version:1,operation:'inject',scenario:'s01-after',kind:'account_identity_mismatch'},
     injectionScope:'Use the exact scenario ID most recently returned by prepare, including its suffix, when arming a fault. Read the response before attempting the app action. A rejected injection request is not evidence that the app rejected a mismatched identity.',
     frozenAccount:'Connect the account first, then prepare s01-freeze to allocate a new run with policy version 1. A run prepared before connection correctly keeps its original null account. After rotation, read evidence for s01-freeze to check that its frozen version stays 1.',

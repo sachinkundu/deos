@@ -34,7 +34,7 @@ export class SharedTestBrowserAction {
     const request=value as Record<string,unknown>;
     if(request.version!==1 || !['portal','bettaview'].includes(String(request.service)) ||
         typeof request.operation!=='string' ||
-        !['open','reset','navigate','state','click','fill','press','wait','viewport','capture','api','select']
+        !['open','reset','navigate','state','click','fill','press','wait','viewport','capture','api','select','audit']
           .includes(request.operation) ||
         Object.keys(request).some(key=>!['version','service','operation','url',
           'selector','text','key','width','height','modifiers','method','body','beforeUnload'].includes(key)) ||
@@ -84,7 +84,9 @@ export class SharedTestBrowserAction {
         leaseId:lease.lease_id,fence:lease.fence,plan};
       const deployment=sharedTestCandidateDeployment(this.env);
       const browser=new SharedTestBrowser(new SharedTestBrowserStore(this.env.DB),
-        new CloudflareTestBrowserProvider(this.env.IMPLEMENTATION_BROWSER),
+        new CloudflareTestBrowserProvider(this.env.IMPLEMENTATION_BROWSER,
+          Object.entries(this.env).filter(([key,value])=>
+            /TOKEN|SECRET|KEY_V\d+$/.test(key)&&typeof value==='string').map(([,value])=>value as string)),
         new SharedTestAppLauncher(this.env.DB,clientId,clientSecret),
         ()=>deployment.verifyReady(lease));
       return await withSharedTestBrowserLock(this.env.DB,lease.lease_id,plan.serviceName,async()=>{

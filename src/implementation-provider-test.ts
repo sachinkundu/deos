@@ -323,8 +323,16 @@ export class ImplementationProviderTest {
     }`, { id: fixture.issueId });
   }
   private async events(resource: ImplementationResource, fixture: Fixture) {
-    const events = await this.prepare(`SELECT * FROM implementation_test_events WHERE resource_id=? AND issue_id=? ORDER BY received_at`)
-      .bind(resource.resource_id, fixture.issueId).all();
+    // Ingress saves deliveries only after raw-body signature verification.
+    // Bind that receipt to this event's exact payload, never its ID alone.
+    const events = await this.prepare(`SELECT e.*,
+      CASE WHEN d.delivery_id IS NOT NULL THEN 1 ELSE 0 END AS signature_verified,
+      CASE WHEN e.actor_id=? THEN 1 ELSE 0 END AS app_actor_matches,
+      d.received_at AS ingress_received_at
+      FROM implementation_test_events e LEFT JOIN deliveries d
+        ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha
+      WHERE e.resource_id=? AND e.issue_id=? ORDER BY e.received_at`)
+      .bind(this.env.LINEAR_APP_ACTOR_ID,resource.resource_id, fixture.issueId).all();
     const operations = await this.prepare("SELECT operation_id,request_json,response_json,started_at,completed_at FROM implementation_test_operations WHERE resource_id=? AND state='completed' ORDER BY started_at")
       .bind(resource.resource_id).all();
     return { resourceId: resource.resource_id, fixture, events: events.results, operations: operations.results };

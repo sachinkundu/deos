@@ -576,3 +576,34 @@ local browser test reproduced `{isTrusted: true}` in the outgoing request where
 same browser test passed for Comment, Approve, and Request changes and checked
 that each request retained its review ID and draft content. These local fixes
 still require a fresh pinned candidate and live proof.
+
+
+## 29 September, 17:18 UTC: retained app failure and next candidate
+
+The v10 attempt visited all 12 scenarios. Draft reload and same-user account
+rotation worked. Publishing notes failed because the click handler passed a DOM
+event as the review choice. The app also dropped the server's review link while
+filtering the story, so the continuation API reported `feature_disabled`. Both
+bugs have local regression coverage, including a real browser Publish click.
+The repaired candidate is `9a8b2e3873b8968bc17024646d59b2d549021169`.
+
+The no-note approval did create GitHub review `5355828687` on disposable PR 59.
+It used the direct path; no linked review intent or continuation was recorded.
+Two real Linear moves were restored to Human Review. These are partial results,
+not a passed review-flow demo. A different-user reconnect still needs the owner's
+choice; same-user rotation does not prove it.
+
+Cleanup first hit a Cloudflare timeout. Its original error was retained. The
+idempotent retry closed lease `d1752decb0558306cb40382f981d321971af3025482a67d33291b4f14aaab48d`
+at 17:17:58 UTC, revision 2450. All seven owned resources have absence receipts.
+The readback checked 13 retained snapshots, including 131 database tables, and
+all 13 scenario Workflows were terminated. Failure evidence hash:
+`d8f0b9d19a7868ee6628953e03d7382a8d64d51bde2c2af0ba94af2a4e250de7`.
+Cleanup hash: `66fa5752f93c9bb3844ede1ecc5a721959c9836d95c78805b41efcaad8c3a43c`.
+Absence hash: `338990b94dff342abdce19d2336861dbeb8943193fb864c34b357b70c293cdf8`.
+
+The next demo can read a bounded browser audit: completed resource origins for
+the current document and a value-free credential check of local/session storage.
+This is not a history of earlier navigations. The event evidence now joins each
+Linear event to the exact payload hash accepted by signed ingress and separately
+checks the stable app actor ID. Linear's `user` actor label is preserved.
