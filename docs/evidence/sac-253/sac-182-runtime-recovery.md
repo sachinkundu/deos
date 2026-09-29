@@ -932,3 +932,29 @@ live read-only verification passed with observation hash
 All 63 settlement tests pass, including reanchoring and a wrong original commit.
 The full controller suite passed 908 tests, with four optional browser skips;
 the two browser checks were then run explicitly and passed.
+
+## Retained failure and verified cleanup
+
+The blocked lease closed at 21:51:12 UTC on September 29. The status page
+showed Free, with fence 28 and revision 2832. All seven owned resources read
+back absent. Before removal, the close path saved and read back all 131 app
+database tables, six collected artifacts, 28 captures and proof objects, and
+13 snapshots. All 13 scenario workflows were stopped. The retained database
+still contains the uncertain s07 result; cleanup did not rewrite it as success.
+
+The saved records are:
+
+- Failure evidence: `bc1f38244c03a5294394b424d023f7b9779214c606c3e3b95d2aa07dc17b9e7a`.
+- Settlement: `eeea0bf0fbe312597bab35b839fcdfd4d5c1b35ee15e44deeeb162a6662d8129`.
+- Cleanup: `7900e0125a6a9156241ca4008dc3415b344eaf891b7fdc99e38f152798573726`.
+- Absence: `ce55d5090097669003f45c7c5af9a60f09e87b52d7b8c6f75889b81813392b97`.
+
+The [sanitized review-status image](https://deos-shared-test-proof.skundu.workers.dev/proof/0ae711a9-5148-42cf-9739-6b0491341260)
+passed the private-to-public check and hash readback. It shows a partial s03
+result, not full scenario coverage. Its SHA-256 is
+`829af494778fb32d2cd8b6ff0b06d264f3723e45dffaa20622de909acee3618d`.
+
+The close record is explicitly `blocked_demo`. It creates no passing report
+or release approval. Both CI runs for `17a55b9` passed. The next candidate is
+`103b32380b773edcb3f6c1d6152e8c0231816297`, which includes the operator-item
+repair and fixes long status text in the narrow review rail.
