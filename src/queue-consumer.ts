@@ -7,6 +7,7 @@ import {SharedTestBrowserAction} from './shared-test-browser-action.ts';
 import {refreshSharedTestStaging} from './shared-test-staging-refresh.ts';
 import {projectSharedTestImage} from './shared-test-proof-project.ts';
 import {SharedTestLeaseStore} from './shared-test-lease.ts';
+import {probeSharedTestAccess} from './shared-test-access-probe.ts';
 import { reconcileWorkflowEvents } from './workflow-event-reconciliation.ts';
 import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
 import { IndependentReviewReconciliationController } from './independent-review-reconciliation.ts';
@@ -168,6 +169,8 @@ export default {
     const path = new URL(request.url).pathname;
     if (path === '/shared-test/staging-refresh')
       return refreshSharedTestStaging(request,env);
+    if (path === '/shared-test/access-probe')
+      return probeSharedTestAccess(request,env);
     if (path === '/shared-test/proof-project')
       return projectSharedTestImage(request,env);
     if (path.startsWith('/internal/test-repairs/'))
