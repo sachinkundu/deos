@@ -670,3 +670,31 @@ The focused controller and capability suite passed all 50 tests. The full
 suite reported 859 passes, three optional skips and one timed-test cancellation.
 That progress-watcher file then passed all five tests on a separate rerun.
 Typecheck and strict OpenSpec validation passed.
+
+
+### Retry after an unstarted setup failure
+
+Lease `465d646dc2bd3b24f006fd20b52043c8534813f665d12aee3140145a812a5254`
+expired during preparation. Cloudflare's workflow step at visit 2712 ran
+from 18:25:18 to 18:30:47 UTC and reported
+`WorkflowInternalError: Attempt failed due to internal workflows error`.
+Its retry succeeded at 18:30:49. No demo agent or review scenario started.
+The scanner retained the resource-fence faults, published the failed setup
+record, and proved all four planned resources absent. It closed the lease
+at 18:30:33 UTC with site revision 2540.
+
+Retained failure evidence SHA-256:
+`5a75beb3e358d1d43617f1560a14805f5831961ebe937fe3abcab97782960bf2`.
+Cleanup SHA-256:
+`4f7e18c79d7ba4455c8b7e90d0977d11a0d9d4ab240e07dfc3f85b0916328b3a`.
+Absence SHA-256:
+`b5684d71d96af928b4ac84ffab8a9b6d1f27d5f466039bbed906b21040cfb190`.
+
+The next queue request exposed a retry lineage bug: the repair authorization
+was tied to the request that had just failed during setup. The coordinator
+now carries that authorization forward only after its exact candidate and
+patch have a closed failed-setup receipt, a completed absence guard, and no
+started agent. The repair revision must still match. A later blocked demo
+still needs its own repair authorization. Eight focused lifecycle tests pass,
+including missing cleanup, changed candidate, stale repair, and started-agent
+rejection. This closure does not create a passing test attestation.

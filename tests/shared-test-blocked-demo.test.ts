@@ -7,7 +7,7 @@ import {repairSharedTestCandidate} from '../src/shared-test-candidate-repair.ts'
 import {SharedTestCloseStore} from '../src/shared-test-close.ts';
 import {SharedTestDecisionStore,stagingManifestDigest} from '../src/shared-test-decision-store.ts';
 import {sha256Hex} from '../src/implementation-hash.ts';
-import {retryBlockedSharedTestSetup,sharedTestSetupRepairRevision} from '../src/shared-test-setup-retry.ts';
+import {retryBlockedSharedTestSetup,sharedTestSetupRepairRevision,sharedTestSetupRetryAllowsRequest} from '../src/shared-test-setup-retry.ts';
 import type {implementationGitHub} from '../src/implementation-github.ts';
 
 for(const startup of [false,true]) test(`${startup?'startup failure':'blocked demo'} retains original proof and closes without approval`,async()=>{
@@ -132,6 +132,32 @@ for(const startup of [false,true]) test(`${startup?'startup failure':'blocked de
     await retryBlockedSharedTestSetup(request('retry',retry),env);
     assert.equal(db.sqlite.prepare('SELECT COUNT(*) n FROM test_setup_retries').get()?.n,1);
     assert.equal(db.sqlite.prepare('SELECT COUNT(*) n FROM test_attestations').get()?.n,0);
+    const permits=(nextRequest:string,commit=oldHead)=>sharedTestSetupRetryAllowsRequest(
+      db as unknown as D1Database,leaseId,nextRequest,'run-1',commit);
+    assert.equal(await permits('next-request'),true);
+    assert.equal(await permits('after-setup-failure'),false);
+    // The authorized retry expires during setup, before any agent starts.
+    db.sqlite.prepare(`INSERT INTO test_leases
+      (lease_id,request_id,run_id,attempt_id,task_id,task_key,task_title,team_id,stage,state,fence,
+       base_manifest_id,base_traffic_revision,base_json,repository,branch,pull_request_number,
+       candidate_commit,patch_sha256,created_at)
+      SELECT 'failed-setup','next-request',run_id,'attempt-2',task_id,task_key,task_title,team_id,
+        stage,'closed',3,base_manifest_id,base_traffic_revision,base_json,repository,branch,
+        pull_request_number,candidate_commit,patch_sha256,'now' FROM test_leases WHERE lease_id=?`).run(leaseId);
+    db.sqlite.prepare(`INSERT INTO test_lease_aborts
+      (lease_id,run_id,first_fault_id,proof_body_sha256,proof_read_at,abort_kind,closed_at,receipt_json)
+      SELECT 'failed-setup',run_id,first_fault_id,proof_body_sha256,proof_read_at,'failed_setup','now','{}'
+        FROM test_lease_aborts WHERE lease_id=?`).run(leaseId);
+    assert.equal(await permits('after-setup-failure'),false,'cleanup must be proved');
+    db.sqlite.prepare(`INSERT INTO test_lease_abort_guards VALUES ('failed-setup',1,'now')`).run();
+    assert.equal(await permits('after-setup-failure'),true);
+    assert.equal(await permits('after-setup-failure',newHead),false);
+    db.sqlite.prepare(`UPDATE test_setup_retries SET repair_revision='older-repair'`).run();
+    assert.equal(await permits('after-setup-failure'),false);
+    db.sqlite.prepare(`UPDATE test_setup_retries SET repair_revision=?`).run(sharedTestSetupRepairRevision);
+    seedAttempt(db,'attempt-2');
+    assert.equal(await permits('after-setup-failure'),false,'a started demo must not inherit a setup retry');
+    db.sqlite.prepare(`DELETE FROM agent_attempts WHERE attempt_id='attempt-2'`).run();
     const newPatch=await sha256Hex('new patch'),next={...oldCandidate,treeSha:newTree,patchSha:newPatch};
     const nextText=JSON.stringify(next),nextSha=await sha256Hex(nextText);
     const repair={version:1,runId:'run-1',leaseId,sourceCommit:oldHead,targetCommit:newHead,

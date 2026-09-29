@@ -2,6 +2,24 @@ import {sha256Hex} from './implementation-hash.ts';
 
 export const sharedTestSetupRepairRevision='lease-review-runtime-v9';
 
+/** A retry that never reached the demo can be requeued after proven cleanup.
+ * Keep the original repair authorization and candidate bound to that lineage. */
+export async function sharedTestSetupRetryAllowsRequest(db:D1Database,
+  retiredLeaseId:string,requestId:string,runId:string,candidateCommit:string):Promise<boolean> {
+  return Boolean(await db.prepare(`SELECT 1 AS ready FROM test_setup_retries r
+    WHERE r.retired_lease_id=? AND r.run_id=? AND r.candidate_commit=? AND r.repair_revision=?
+      AND (r.request_id=? OR EXISTS (
+        SELECT 1 FROM test_leases l JOIN test_lease_aborts a ON a.lease_id=l.lease_id
+          JOIN test_lease_abort_guards g ON g.lease_id=l.lease_id AND g.ready=1
+          JOIN test_leases original ON original.lease_id=r.retired_lease_id
+        WHERE l.request_id=r.request_id AND l.run_id=r.run_id
+          AND l.candidate_commit=r.candidate_commit AND l.patch_sha256=original.patch_sha256
+          AND l.state='closed' AND a.abort_kind='failed_setup'
+          AND a.closed_at IS NOT NULL AND a.receipt_json IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM agent_attempts x WHERE x.attempt_id=l.attempt_id)))`)
+    .bind(retiredLeaseId,runId,candidateCommit,sharedTestSetupRepairRevision,requestId).first());
+}
+
 /** Authorize one fresh lease after a setup-code repair. Existing provider
  * scope, candidate bytes, and failed evidence remain unchanged. */
 export async function retryBlockedSharedTestSetup(request:Request,env:Env):Promise<Response> {
