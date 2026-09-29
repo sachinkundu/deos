@@ -1,4 +1,5 @@
 import {sha256Hex} from './implementation-hash.ts';
+import {purgeSharedTestGitHubSessions} from './shared-test-github-broker.ts';
 
 export const requiredProofKinds=['app_screen','linear_screen','showboat','d1_read',
   'provider_receipt','github_receipt'] as const;
@@ -62,6 +63,7 @@ export class SharedTestCloseStore {
   }
 
   async cleaning(runId:string,leaseId:string,fence:number,at=new Date()):Promise<void> {
+    await purgeSharedTestGitHubSessions(this.db,runId,leaseId);
     const proofKinds=requiredProofKinds.map(()=>'?').join(',');
     const result=await this.db.batch([
       this.db.prepare(`UPDATE test_environment SET state='cleaning',saved_phase='cleaning',
