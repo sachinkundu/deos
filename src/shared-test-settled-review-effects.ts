@@ -1,10 +1,12 @@
 import {sharedTestReviewFixture} from './shared-test-review-profile.ts';
+import {checkedUnclearReplies} from './shared-test-unclear-reply-settlement.ts';
 
 type Row=Record<string,unknown>;
 export type ReviewEvidenceQuery=<T>(sql:string)=>Promise<T[]>;
 
 /** Failure cleanup can retain completed reviews and clearly rejected writes.
- * It must not infer the outcome of an unfinished or uncertain provider call.
+ * The labeled lost-reply exercise needs an independent exact provider receipt;
+ * all other unfinished or uncertain calls still block cleanup.
  * This reads evidence only; it never changes the candidate's review records. */
 export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:string;
   attemptId:string;scenarioRunIds:string[];count:number;query:ReviewEvidenceQuery;
@@ -23,8 +25,23 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
       i.target_state_id!==(i.review_type==='APPROVE'?fixture.profile.states.merge:fixture.profile.states.work)))
     throw new Error('test_review_settlement_scope_changed');
   const byId=new Map(intents.map(i=>[i.review_id,i]));
+  const token=(env as Env&{IMPLEMENTATION_TEST_GITHUB_TOKEN?:string}).IMPLEMENTATION_TEST_GITHUB_TOKEN;
+  if(!token)throw new Error('test_review_settlement_github_credential_missing');
+  const github=async(path:string)=>{
+    await guard();
+    const response=await request(`https://api.github.com/repos/${fixture.scope.repository}${path}`,{
+      headers:{Authorization:`Bearer ${token}`,Accept:'application/vnd.github+json',
+        'User-Agent':'deos-test-cleanup','X-GitHub-Api-Version':'2022-11-28'},
+      redirect:'manual',signal:AbortSignal.timeout(30_000)});
+    const raw=await response.text();
+    if(!response.ok)throw new Error(`Review settlement ${path}: HTTP ${response.status}: ${raw.replaceAll(token,'[redacted]')}`);
+    return JSON.parse(raw);
+  };
+  const unclearReplies=await checkedUnclearReplies({db:env.DB,leaseId,repository:fixture.scope.repository,
+    pullNumber:fixture.scope.pullRequestNumber,githubUserId:fixture.githubUserId,intents,parts,attempts,query,github});
+  const checkedReply=(id:unknown)=>unclearReplies.some(r=>r.reviewId===id);
   if(parts.some(p=>!byId.has(p.review_id)) || attempts.some(a=>!byId.has(a.review_id) ||
-      !a.finished_at || !['succeeded','clearly_rejected','abandoned'].includes(String(a.outcome))))
+      !a.finished_at || !['succeeded','clearly_rejected','abandoned',...(checkedReply(a.review_id)?['unclear']:[])].includes(String(a.outcome))))
     throw new Error('test_review_settlement_attempt_unsettled');
   for(const intent of intents) {
     const own=parts.filter(p=>p.review_id===intent.review_id);
@@ -43,10 +60,11 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
       intent.linear_status==='host_check_required' && typeof intent.terminal_at==='string' &&
       typeof intent.linear_operation_id==='string' &&
       attempts.some(a=>a.review_id===intent.review_id && a.step==='linear' && a.outcome==='succeeded');
-    if((!continued&&!rejected&&!unstarted&&!abandoned&&!held) || own.length===0 ||
+    const unclear=checkedReply(intent.review_id);
+    if((!continued&&!rejected&&!unstarted&&!abandoned&&!held&&!unclear) || own.length===0 ||
         ((continued||held)&&!own.some(p=>p.kind==='review_bundle'&&['done','published_prior_intent'].includes(String(p.receipt_status)))) || own.some(p=>
         !['done','published_prior_intent',...(rejected?['failed_retryable','pending']:[]),...(unstarted?['pending']:[]),
-          ...(abandoned?['abandoned','pending','failed_retryable']:[])].includes(String(p.receipt_status))) ||
+          ...(abandoned?['abandoned','pending','failed_retryable']:[]),...(unclear?['host_check_required','pending']:[])].includes(String(p.receipt_status))) ||
         (unstarted&&own.some(p=>!['pending','published_prior_intent'].includes(String(p.receipt_status)))) ||
         ((rejected||abandoned)&&attempts.some(a=>a.review_id===intent.review_id&&a.step!=='github')))
       throw new Error('test_review_settlement_outcome_unsettled');
@@ -64,18 +82,6 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
         throw new Error('test_review_settlement_part_unsettled');
     }
   }
-  const token=(env as Env&{IMPLEMENTATION_TEST_GITHUB_TOKEN?:string}).IMPLEMENTATION_TEST_GITHUB_TOKEN;
-  if(!token)throw new Error('test_review_settlement_github_credential_missing');
-  const github=async(path:string)=>{
-    await guard();
-    const response=await request(`https://api.github.com/repos/${fixture.scope.repository}${path}`,{
-      headers:{Authorization:`Bearer ${token}`,Accept:'application/vnd.github+json',
-        'User-Agent':'deos-test-cleanup','X-GitHub-Api-Version':'2022-11-28'},
-      redirect:'manual',signal:AbortSignal.timeout(30_000)});
-    const raw=await response.text();
-    if(!response.ok)throw new Error(`Review settlement ${path}: HTTP ${response.status}: ${raw.replaceAll(token,'[redacted]')}`);
-    return JSON.parse(raw);
-  };
   const pull=await github(`/pulls/${fixture.scope.pullRequestNumber}`);
   if(pull.number!==fixture.scope.pullRequestNumber || pull.base?.repo?.full_name!==fixture.scope.repository ||
       pull.head?.ref!==fixture.scope.branch || pull.state!=='open')
@@ -100,8 +106,10 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
   }
   const continued=intents.filter(i=>i.outcome==='continued');
   const gates=await query<Row>("SELECT * FROM human_gate_visits WHERE state<>'open' ORDER BY run_id,visit_sequence");
+  if(intents.some(i=>checkedReply(i.review_id)&&gates.some(g=>g.run_id===i.run_id&&g.visit_sequence===i.gate_visit_sequence)))
+    throw new Error('test_review_settlement_reply_gate_decided');
   const heldDeliveries=[];
-  for(const intent of intents.filter(i=>i.outcome==='host_check_required')) {
+  for(const intent of intents.filter(i=>i.outcome==='host_check_required'&&!checkedReply(i.review_id))) {
     const repairs=await query<Row>('SELECT * FROM review_repairs ORDER BY repair_id');
     const ops=await query<Row>('SELECT * FROM review_ops_items ORDER BY review_id');
     const repair=repairs.find(r=>r.review_id===intent.review_id&&r.kind==='delivery_scan'&&r.outcome==='host_check_required');
@@ -145,5 +153,5 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
     if(!receipt)throw new Error('test_review_settlement_signed_delivery_missing');
     deliveries.push({reviewId:intent.review_id,gate,receipt});
   }
-  return {kind:'settled_review_effects' as const,intents,parts,attempts,receipts,deliveries,heldDeliveries};
+  return {kind:'settled_review_effects' as const,intents,parts,attempts,receipts,deliveries,heldDeliveries,unclearReplies};
 }

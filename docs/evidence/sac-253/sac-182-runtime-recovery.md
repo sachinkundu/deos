@@ -852,3 +852,25 @@ The latest complete controller run passed 892 tests, with three optional skips.
 CI caught a portal type boundary: an imported row type pulled backend Worker
 modules into the portal compiler. The row type now lives with the shared demo
 contract. Both the portal and root type checks pass after that correction.
+
+
+## Fresh run and lost-reply retention
+
+The fresh lease `ad1f28dc296445703e7f792db4477245d444b7bc12bd4ee749cb80437afcbfa6`
+activated at 20:42:21 UTC. Both app Workers read back candidate
+`67a52b9f41816a6830a0843d3aac0bf183fe6fcb`. Attempt
+`f49db796-427f-4c84-b929-296e6395e6ca` started at 20:49:41 UTC.
+Its scenarios are still running; this is not a completed demo.
+Both CI runs for `c29f7e6` passed, including the portal type check and app build.
+
+The s07 lost-reply test intentionally leaves the candidate's GitHub step at
+`host_check_required`. Failure cleanup can now retain that result after a
+separate read verifies the one real reply. This path requires the recorded
+successful write, consumed lost-response and failed-read injections, the exact
+scenario and request times, and a complete GitHub listing with one matching
+body, marker, parent, author, path, and head. A changed or duplicate reply,
+unfinished or second attempt, task move, or gate decision blocks cleanup.
+The app's intent and attempt stay unresolved in the retained snapshot. Cleanup
+sends no GitHub write and creates no pass or release approval. All 64 focused
+settlement and failure-retention tests pass. Live use remains pending the end
+of the current run; this local change has not been deployed over its runner.

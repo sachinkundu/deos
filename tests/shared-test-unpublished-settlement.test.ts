@@ -35,6 +35,7 @@ function fixture() {
     status:'waiting',patches:0,reads:0,factReads:0,requests:0,gates:[] as Record<string,unknown>[],
     operationRows:[] as Record<string,unknown>[],reviewRows:[] as Record<string,unknown>[],
     parts:[] as Record<string,unknown>[],attempts:[] as Record<string,unknown>[],
+    content:[] as Record<string,unknown>[],githubComments:[] as Record<string,unknown>[],
     repairs:[] as Record<string,unknown>[],ops:[] as Record<string,unknown>[],
     githubWrites:0,githubReceipt:{id:123,user:{id:1},html_url:'https://github.com/owner/test/pull/1#pullrequestreview-123',
       state:'APPROVED',commit_id:'c'.repeat(40)}};
@@ -46,6 +47,7 @@ function fixture() {
       assert.equal(new Headers(init?.headers).get('Authorization'),'Bearer private-github-token');
       if(path.endsWith('/pulls/1'))return Response.json({number:1,state:'open',
         base:{repo:{full_name:'owner/test'}},head:{ref:'deos/canary/attempt-1'}});
+      if(path.endsWith('/pulls/1/comments'))return Response.json(state.githubComments);
       assert.ok(path.endsWith('/pulls/1/reviews/123'));
       return Response.json(state.githubReceipt);
     }
@@ -69,6 +71,7 @@ function fixture() {
       else if(sql.includes('review_intents'))result=[{success:true,results:state.reviewRows}];
       else if(sql.includes('review_parts'))result=[{success:true,results:state.parts}];
       else if(sql.includes('review_attempts'))result=[{success:true,results:state.attempts}];
+      else if(sql.includes('review_content_items'))result=[{success:true,results:state.content}];
       else if(sql.includes('review_repairs'))result=[{success:true,results:state.repairs}];
       else if(sql.includes('review_ops_items'))result=[{success:true,results:state.ops}];
       else result=[{success:true,results:[{run_id:state.foreign==='run'?'foreign':'scenario-1',workflow_instance_id:'wf-v1-owned'}]}];
@@ -400,5 +403,79 @@ test(`interrupted ${method} ${path} ${readOnly?'is retained as an unfinished rea
       assert.equal(evidence.unfinishedReadRequests[0].finished_at,null);
       assert.equal(f.db.sqlite.prepare("SELECT finished_at FROM test_github_transport_requests WHERE request_id='unfinished'").get()!.finished_at,null);
     }
+  }finally{f.db.close();}
+});
+
+
+for(const invalid of [null,'no-injection','wrong-scenario','missing-read-fault','write-not-successful',
+  'unfinished','started-linear','second-attempt','content-digest','wrong-author','wrong-head',
+  'wrong-parent','changed-body','duplicate','full-page','decided-gate'] as const)
+test(`lost reply cleanup retains unresolved candidate state after independent host read: ${invalid??'valid'}`,async()=>{
+  const f=await publishedFixture();
+  try {
+    const intent=f.state.reviewRows[0],id=intent.review_id;
+    f.state.decisions=0;f.state.gates=[];
+    Object.assign(intent,{outcome:'host_check_required',github_status:'host_check_required',
+      linear_status:'not_started',linear_operation_id:null,terminal_at:'2026-09-29T20:00:05Z'});
+    const content={review_id:id,content_item_id:'reply-1',kind:'reply',ordinal:0,body:'Retained real reply',
+      target_json:'{"parentCommentId":100,"path":"canary-review.md"}',content_digest:'',target_digest:''};
+    content.content_digest=await sha256Hex(content.body);content.target_digest=await sha256Hex(content.target_json);
+    f.state.content=[content];
+    f.state.parts=[{...content,part_id:'reply:reply-1',receipt_status:'host_check_required',
+      github_record_id:null,github_user_id:null,github_url:null},
+      {review_id:id,part_id:'review_bundle',kind:'review_bundle',ordinal:1,receipt_status:'pending'}];
+    f.state.attempts=[{review_id:id,step:'github',scope_id:'reply:reply-1',generation:1,outcome:'unclear',
+      started_at:'2026-09-29T20:00:01Z',finished_at:'2026-09-29T20:00:05Z'}];
+    f.db.sqlite.exec("DELETE FROM test_review_forwarded_events; UPDATE test_review_scenarios SET scenario_id='s07-unclear'");
+    f.db.sqlite.prepare(`INSERT INTO test_review_fault_injections
+      (injection_id,lease_id,scenario_id,kind,state,request_id,armed_at,used_at)
+      VALUES ('lost',?,'s07-unclear','github_drop_reply_response','consumed','write','2026-09-29T20:00:00Z','2026-09-29T20:00:03Z')`).run(f.lease);
+    f.db.sqlite.exec("INSERT INTO test_review_reply_read_faults VALUES ('lost','consumed','read','2026-09-29T20:00:04Z')");
+    for(const [requestId,method,path,status,failure,start,finish] of [
+      ['write','POST','/repos/owner/test/pulls/1/comments/100/replies',201,
+        JSON.stringify({message:'Labeled test injection lost: real GitHub reply succeeded'}),'2026-09-29T20:00:02Z','2026-09-29T20:00:03Z'],
+      ['read','GET','/repos/owner/test/pulls/1/comments',null,
+        JSON.stringify({synthetic:true,injection:'lost',message:'Injected GitHub 429'}),'2026-09-29T20:00:04Z','2026-09-29T20:00:04Z'],
+    ])f.db.sqlite.prepare(`INSERT INTO test_github_transport_requests
+      (request_id,lease_id,fence,repository,pull_request_number,method,path,provider_status,failure_json,started_at,finished_at)
+      VALUES (?,?,1,'owner/test',1,?,?,?,?,?,?)`).run(requestId,f.lease,method,path,status,failure,start,finish);
+    const metadata={kind:'reply',clientSubmissionId:'reply-1',reviewId:id,partId:'reply:reply-1',
+      headSha:'c'.repeat(40),path:'canary-review.md'};
+    const receipt={id:456,user:{id:1},commit_id:'c'.repeat(40),in_reply_to_id:100,path:'canary-review.md',
+      pull_request_url:'https://api.github.com/repos/owner/test/pulls/1',
+      html_url:'https://github.com/owner/test/pull/1#discussion_r456',
+      body:content.body+'\n\n<!-- bettaview:v1 '+Buffer.from(JSON.stringify(metadata)).toString('base64url')+' -->'};
+    f.state.githubComments=[receipt];
+    if(invalid==='no-injection')f.db.sqlite.exec("UPDATE test_review_fault_injections SET state='cleared'");
+    if(invalid==='wrong-scenario')f.db.sqlite.exec("UPDATE test_review_scenarios SET scenario_run_id='foreign'");
+    if(invalid==='missing-read-fault')f.db.sqlite.exec("UPDATE test_review_reply_read_faults SET state='armed'");
+    if(invalid==='write-not-successful')f.db.sqlite.exec("UPDATE test_github_transport_requests SET provider_status=503 WHERE request_id='write'");
+    if(invalid==='unfinished')f.state.attempts[0].finished_at=null;
+    if(invalid==='started-linear')intent.linear_operation_id='started';
+    if(invalid==='second-attempt')f.state.attempts.push({...f.state.attempts[0],generation:2});
+    if(invalid==='content-digest')content.content_digest='d'.repeat(64);
+    if(invalid==='wrong-author')receipt.user.id=2;
+    if(invalid==='wrong-head')receipt.commit_id='d'.repeat(40);
+    if(invalid==='wrong-parent')receipt.in_reply_to_id=101;
+    if(invalid==='changed-body')receipt.body='Changed '+receipt.body;
+    if(invalid==='duplicate')f.state.githubComments.push({...receipt,id:457});
+    if(invalid==='full-page')f.state.githubComments=Array.from({length:100},()=>({...receipt}));
+    if(invalid==='decided-gate'){f.state.decisions=1;f.state.gates=[{run_id:'scenario-1',visit_sequence:1}];}
+    const original=JSON.stringify({intent,parts:f.state.parts,attempts:f.state.attempts});
+    if(invalid){
+      await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/settlement_(reply_|scope_changed)/);
+      assert.equal(f.state.patches,0);
+    }else{
+      const saved=await settleUnpublishedReview(f.env,'run-1',f.lease,f.provider);
+      const evidence=JSON.parse(await (await f.bucket.get(saved!.evidence_key))!.text());
+      assert.equal(evidence.settledFacts.reviews.unclearReplies[0].receipt.id,456);
+      assert.equal(evidence.settledFacts.reviews.unclearReplies[0].kind,'provider_reply_verified_candidate_unresolved');
+      assert.equal(evidence.settledFacts.reviews.intents[0].outcome,'host_check_required');
+      assert.equal(evidence.settledFacts.reviews.attempts[0].outcome,'unclear');
+      assert.equal(f.state.patches,1);
+      assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_attestations').get()!.n,0);
+    }
+    assert.equal(f.state.githubWrites,0);
+    assert.equal(JSON.stringify({intent,parts:f.state.parts,attempts:f.state.attempts}),original);
   }finally{f.db.close();}
 });
