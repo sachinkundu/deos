@@ -220,6 +220,15 @@ uses the revision-bound repair route described below; it never widens the patch.
 | 6 | Close in one guarded D1 transaction. | Check all proof and absence rows. Complete the exact test record. Save the close receipt. Clear the owner. Set the site to `free`. |
 | 7 | Build the final close report after commit from fixed D1 facts. Write it first, read it back, then replace `close pending` with its lasting URL and read the pull request body back. | A failed report or body update retries without taking the clean site back. No dangling URL is published. SAC-182 proof is not complete until the report and final body read back. |
 
+If preparation fails before activation, no app demo or provider event can exist.
+The coordinator keeps the original setup fault, fences the lease, and attaches a
+safe failed-setup note to the scoped pull request with read-back before deleting
+anything. The note states that no test passed. Cleanup still checks every
+planned resource and proves each owned item absent. An abort receipt records
+the fault, note hash, cleanup hash, and absence hash before the site becomes
+free. It never creates or completes a test attestation; the candidate must earn
+a new lease and the full proof set on a later attempt.
+
 The GitHub adapter first tests if a strong ETag update works. If it does, it
 uses `If-Match` and reads again after a clash. If it does not, a D1 lock guards
 DEOS writers. The adapter then does a marked read, merge, write, and read loop.

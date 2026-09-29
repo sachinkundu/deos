@@ -61,8 +61,20 @@ export class SharedTestResourceCleanup {
         AND body_marker IS NOT NULL AND read_at IS NOT NULL
         AND projected_at IS NOT NULL`).bind(leaseId,...requiredProofKinds)
       .first<{ready:number}>();
-    if (proof?.ready!==requiredProofKinds.length)
-      throw new Error('shared_test_cleanup_proof_missing');
+    if (proof?.ready!==requiredProofKinds.length) {
+      const failedSetup=await this.db.prepare(`SELECT 1 AS ready
+        FROM test_lease_aborts a JOIN test_leases l ON l.lease_id=a.lease_id
+        WHERE a.lease_id=? AND a.run_id=? AND a.proof_read_at IS NOT NULL
+          AND a.closed_at IS NULL AND l.activated_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=?)
+          AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=?)
+          AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=?)
+          AND NOT EXISTS (SELECT 1 FROM test_provider_deliveries WHERE lease_id=?)`)
+        .bind(leaseId,runId,leaseId,leaseId,leaseId,leaseId)
+        .first<{ready:number}>();
+      if(failedSetup?.ready!==1)
+        throw new Error('shared_test_cleanup_proof_missing');
+    }
     return row;
   }
 

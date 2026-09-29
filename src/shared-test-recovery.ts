@@ -105,6 +105,14 @@ export class SharedTestRecovery {
       }
     }
     if(owner.state==='quiescing') {
+      const failedSetup=await this.env.DB.prepare(`SELECT 1 AS ready
+        FROM test_lease_aborts WHERE lease_id=? AND run_id=?
+          AND proof_read_at IS NOT NULL AND closed_at IS NULL`)
+        .bind(owner.owner_lease_id,owner.owner_run_id).first<{ready:number}>();
+      if(failedSetup?.ready===1) {
+        await new SharedTestCloseStore(this.env.DB).cleaningFailedSetup(
+          owner.owner_run_id,owner.owner_lease_id,owner.fence);
+      } else {
       const placeholders=requiredProofKinds.map(()=>'?').join(',');
       const proof=await this.env.DB.prepare(`SELECT COUNT(DISTINCT kind) AS ready
         FROM test_proof_items WHERE lease_id=? AND kind IN (${placeholders})
@@ -117,6 +125,7 @@ export class SharedTestRecovery {
       if(proof?.ready!==requiredProofKinds.length)return;
       await new SharedTestCloseStore(this.env.DB).cleaning(owner.owner_run_id,
         owner.owner_lease_id,owner.fence);
+      }
     }
     if(!owner.create_fence || !this.env.IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID ||
         !this.env.IMPLEMENTATION_ENVIRONMENT_TOKEN || !this.env.SHARED_TEST_ZONE_ID)
@@ -138,6 +147,15 @@ export class SharedTestRecovery {
       WHERE lease_id=? AND absent_at IS NULL LIMIT 1`)
       .bind(owner.owner_lease_id).first<{blocked:number}>();
     if(!blocked) {
+      const failedSetup=await this.env.DB.prepare(`SELECT 1 AS ready
+        FROM test_lease_aborts WHERE lease_id=? AND run_id=?
+          AND proof_read_at IS NOT NULL AND closed_at IS NULL`)
+        .bind(owner.owner_lease_id,owner.owner_run_id).first<{ready:number}>();
+      if(failedSetup?.ready===1) {
+        await new SharedTestCloseStore(this.env.DB).abortFailedSetup(
+          owner.owner_run_id,owner.owner_lease_id,owner.fence);
+        return;
+      }
       const attestation=await this.env.DB.prepare(`SELECT 1 AS ready FROM test_attestations
         WHERE lease_id=? AND run_id=? AND state='observed' LIMIT 1`)
         .bind(owner.owner_lease_id,owner.owner_run_id).first<{ready:number}>();

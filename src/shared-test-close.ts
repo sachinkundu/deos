@@ -87,6 +87,116 @@ export class SharedTestCloseStore {
       throw new Error('shared_test_cleaning_not_ready');
   }
 
+  async cleaningFailedSetup(runId:string,leaseId:string,fence:number,
+    at=new Date()):Promise<void> {
+    const results=await this.db.batch([
+      this.db.prepare(`UPDATE test_environment SET state='cleaning',
+        revision=revision+1,updated_at=? WHERE site_id=1 AND state='quiescing'
+        AND saved_phase='preparing' AND owner_run_id=? AND owner_lease_id=?
+        AND fence=? AND EXISTS (SELECT 1 FROM test_leases l
+          WHERE l.lease_id=? AND l.run_id=? AND l.activated_at IS NULL)
+        AND EXISTS (SELECT 1 FROM test_lease_aborts a WHERE a.lease_id=?
+          AND a.run_id=? AND a.proof_read_at IS NOT NULL AND a.closed_at IS NULL)
+        AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_provider_deliveries WHERE lease_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch WHERE lease_id=?)`)
+        .bind(at.toISOString(),runId,leaseId,fence,leaseId,runId,leaseId,runId,
+          leaseId,leaseId,leaseId,leaseId,leaseId),
+      this.db.prepare(`UPDATE test_leases SET state='cleaning' WHERE lease_id=?
+        AND run_id=? AND state='quiescing' AND EXISTS (SELECT 1 FROM test_environment
+          WHERE site_id=1 AND state='cleaning' AND owner_lease_id=? AND fence=?)`)
+        .bind(leaseId,runId,leaseId,fence),
+    ]);
+    if(results[0].meta.changes!==1 || results[1].meta.changes!==1)
+      throw new Error('shared_test_failed_setup_cleaning_not_ready');
+  }
+
+  async abortFailedSetup(runId:string,leaseId:string,fence:number,at=new Date()):Promise<{
+    leaseId:string;runId:string;closeRevision:number;cleanupSha256:string;
+    absenceSha256:string;kind:'failed_setup'}> {
+    const prior=await this.db.prepare(`SELECT receipt_json FROM test_lease_aborts
+      WHERE lease_id=? AND run_id=?`).bind(leaseId,runId)
+      .first<{receipt_json:string|null}>();
+    if(prior?.receipt_json)return JSON.parse(prior.receipt_json);
+    const env=await this.owner(runId,leaseId);
+    if(env.state!=='cleaning' || env.fence!==fence)
+      throw new Error('shared_test_failed_setup_not_cleaning');
+    const resources=(await this.db.prepare(`SELECT resource_id,kind,provider_key,
+      plan_state,absent_at FROM test_resources WHERE lease_id=? AND run_id=?
+      ORDER BY resource_id`).bind(leaseId,runId).all<Record<string,unknown>>()).results;
+    const checks=(await this.db.prepare(`SELECT resource_id,remove_work_id,
+      remove_state,read_state FROM test_cleanup_checks WHERE lease_id=?
+      ORDER BY resource_id`).bind(leaseId).all<Record<string,unknown>>()).results;
+    const cleanupSha256=await sha256Hex(JSON.stringify(resources));
+    const absenceSha256=await sha256Hex(JSON.stringify(checks));
+    const closeRevision=env.revision+1,now=at.toISOString();
+    const receipt={leaseId,runId,closeRevision,cleanupSha256,absenceSha256,
+      kind:'failed_setup' as const};
+    const ready=await this.db.prepare(`SELECT 1 AS ready FROM test_environment e
+      JOIN test_leases l ON l.lease_id=e.owner_lease_id
+      JOIN test_lease_aborts a ON a.lease_id=l.lease_id
+      WHERE e.site_id=1 AND e.state='cleaning' AND e.owner_run_id=?
+        AND e.owner_lease_id=? AND e.fence=? AND e.revision=?
+        AND l.run_id=? AND l.state='cleaning' AND l.activated_at IS NULL
+        AND a.run_id=? AND a.proof_read_at IS NOT NULL AND a.closed_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_provider_deliveries WHERE lease_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch WHERE lease_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_resources r WHERE r.lease_id=?
+          AND (r.plan_state<>'absent' OR r.absent_at IS NULL OR NOT EXISTS
+            (SELECT 1 FROM test_cleanup_checks c WHERE c.lease_id=r.lease_id
+              AND c.resource_id=r.resource_id AND c.remove_state='done'
+              AND c.read_state='absent')))
+        AND NOT EXISTS (SELECT 1 FROM test_browser_sessions WHERE lease_id=?
+          AND (state<>'absent' OR absent_at IS NULL))
+        AND NOT EXISTS (SELECT 1 FROM test_app_sessions WHERE lease_id=?
+          AND revoked_at IS NULL)
+        AND NOT EXISTS (SELECT 1 FROM test_access_identities WHERE lease_id=?
+          AND absent_at IS NULL)`)
+      .bind(runId,leaseId,fence,env.revision,runId,runId,leaseId,leaseId,
+        leaseId,leaseId,leaseId,leaseId,leaseId,leaseId,leaseId)
+      .first<{ready:number}>();
+    if(ready?.ready!==1)throw new Error('shared_test_failed_setup_absence_missing');
+    const results=await this.db.batch([
+      this.db.prepare(`UPDATE test_environment SET state='free',saved_phase=NULL,
+        owner_run_id=NULL,owner_lease_id=NULL,heartbeat_due_at=NULL,
+        cleanup_driver=NULL,hold_reason=NULL,last_lease_id=?,revision=revision+1,
+        updated_at=? WHERE site_id=1 AND state='cleaning' AND owner_run_id=?
+        AND owner_lease_id=? AND fence=? AND revision=?`)
+        .bind(leaseId,now,runId,leaseId,fence,env.revision),
+      this.db.prepare(`UPDATE test_leases SET state='closed',closed_at=?
+        WHERE lease_id=? AND run_id=? AND state='cleaning'
+          AND EXISTS (SELECT 1 FROM test_environment WHERE site_id=1
+            AND state='free' AND last_lease_id=?)`)
+        .bind(now,leaseId,runId,leaseId),
+      this.db.prepare(`UPDATE test_lease_aborts SET cleanup_sha256=?,
+        absence_sha256=?,closed_at=?,receipt_json=? WHERE lease_id=? AND run_id=?
+        AND closed_at IS NULL AND EXISTS (SELECT 1 FROM test_leases
+          WHERE lease_id=? AND state='closed')`)
+        .bind(cleanupSha256,absenceSha256,now,JSON.stringify(receipt),
+          leaseId,runId,leaseId),
+      this.db.prepare(`INSERT INTO test_lease_abort_guards
+        (lease_id,ready,checked_at) VALUES (?,CASE WHEN EXISTS (
+          SELECT 1 FROM test_environment e JOIN test_leases l
+            ON l.lease_id=e.last_lease_id JOIN test_lease_aborts a
+            ON a.lease_id=l.lease_id WHERE e.site_id=1 AND e.state='free'
+              AND e.owner_lease_id IS NULL AND e.last_lease_id=?
+              AND e.revision=? AND l.run_id=? AND l.state='closed'
+              AND a.closed_at=? AND a.cleanup_sha256=? AND a.absence_sha256=?
+              AND NOT EXISTS (SELECT 1 FROM test_attestations
+                WHERE lease_id=l.lease_id)) THEN 1 ELSE 0 END,?)`)
+        .bind(leaseId,leaseId,closeRevision,runId,now,
+          cleanupSha256,absenceSha256,now),
+    ]);
+    if(results.some(result=>result.meta.changes!==1))
+      throw new Error('shared_test_failed_setup_close_incomplete');
+    return receipt;
+  }
+
   async close(runId:string,leaseId:string,fence:number,at=new Date()):Promise<{
     leaseId:string;runId:string;closeRevision:number;cleanupSha256:string;absenceSha256:string}> {
     const prior=await this.db.prepare(`SELECT receipt_json FROM test_lease_closures

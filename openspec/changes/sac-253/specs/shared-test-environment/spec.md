@@ -181,6 +181,11 @@ removal, and absence checks all pass.
 - **WHEN** removal fails or read-back cannot prove that run data is absent.
 - **THEN** the lease stays blocked, the first error and its cause stay saved, and no waiting run gets the site.
 
+#### Scenario: Setup fails before the demo
+
+- **WHEN** an isolated lease is fenced before activation and has no app or provider test work.
+- **THEN** the system saves the original fault and a read-back failed-setup note on the scoped pull request, removes only owned setup resources, proves their absence, and records an abort receipt before freeing the site. The abort MUST NOT count as a passed test or release attestation.
+
 #### Scenario: Cleanup sees unrelated data
 
 - **WHEN** cleanup finds data that is not bound to the ending run and lease.

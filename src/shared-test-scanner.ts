@@ -12,6 +12,7 @@ import {SharedTestStructuredProofDriver} from './shared-test-structured-proof-dr
 import {SharedTestShowboatRawDriver} from './shared-test-showboat-raw.ts';
 import {SharedTestShowboatProjection} from './shared-test-showboat-projection.ts';
 import {SharedTestRepairStore} from './shared-test-repair.ts';
+import {SharedTestFailedSetupProof} from './shared-test-failed-setup-proof.ts';
 
 type ScanEnv=SharedTestDriverEnv & Pick<Env,'SHARED_TEST_GRANTS_ENABLED'|
   'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {TEST_MARKER_KEY_V1?:string};
@@ -39,6 +40,8 @@ export async function scanSharedTest(env:ScanEnv,
     await new SharedTestStructuredProofDriver(env as Env).resume();
     operation='shared_test.publish_first_proof';
     await new SharedTestFirstProofDriver(env as Env).resume();
+    operation='shared_test.publish_failed_setup';
+    await new SharedTestFailedSetupProof(env as Env).resume();
     operation='shared_test.prepare_activate';
     await new SharedTestLeaseDriver(env).resume();
     operation='shared_test.candidate_build';
