@@ -2,7 +2,7 @@ import { recordCaughtError } from "./error-context.ts";
 import { workflowInstanceIdentity } from "./orchestration-identity.ts";
 import type { WorkflowBinding, WorkflowInstanceHandle } from "./queue-consumer-core.ts";
 
-const recoverableNodes = new Set(["design_self_review"]);
+const recoverableNodes = new Set(["design_self_review", "shared_test_demo"]);
 
 export interface WorkflowRuntimeRecoveryRecord {
   recovery_id: string;
@@ -96,7 +96,26 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
              SELECT 1 FROM agent_attempts AS attempt
              WHERE attempt.run_id = run.run_id
                AND attempt.visit_sequence = run.current_visit_sequence
-           )`,
+           )
+           AND (run.current_node <> 'shared_test_demo' OR (
+             EXISTS (SELECT 1 FROM test_lease_requests r
+               JOIN test_leases l ON l.request_id=r.request_id
+               JOIN test_lease_aborts a ON a.lease_id=l.lease_id
+               JOIN test_lease_abort_guards g ON g.lease_id=l.lease_id
+               JOIN implementation_runs w ON w.run_id=r.run_id
+               WHERE r.run_id=run.run_id AND r.task_id=run.issue_id
+                 AND r.node_visit<=run.current_visit_sequence
+                 AND r.candidate_commit=w.pr_head_sha
+                 AND r.patch_sha256=w.patch_sha
+                 AND l.run_id=run.run_id AND l.state='closed'
+                 AND a.run_id=run.run_id AND a.closed_at IS NOT NULL
+                 AND a.receipt_json IS NOT NULL AND g.ready=1)
+             AND NOT EXISTS (SELECT 1 FROM test_leases l
+               WHERE l.run_id=run.run_id AND l.state<>'closed')
+             AND NOT EXISTS (SELECT 1 FROM agent_attempts a
+               WHERE a.run_id=run.run_id
+                 AND a.state IN ('pending','starting','running','collecting'))
+           ))`,
       ).bind(
         recoveryId,
         transitionId,
