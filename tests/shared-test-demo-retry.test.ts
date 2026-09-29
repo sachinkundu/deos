@@ -55,6 +55,12 @@ function fixture() {
       'https://bettaview.apps.deos-test.voxdez.com','creating',
       'test-browser:lease-1:bettaview','[]',?,'session-1',?,?)`)
     .run(at.toISOString(),at.toISOString(),at.toISOString());
+  db.sqlite.prepare(`INSERT INTO test_proof_items
+    (proof_id,run_id,lease_id,phase,kind,classification,view_rule,
+     sanitizer_result,source_sha256,object_key,content_type,byte_count)
+    VALUES ('proof-1','run-1','lease-1','first','showboat','public_safe',
+      'public','passed',?,'raw/showboat','text/markdown',100)`)
+    .run('e'.repeat(64));
   return db;
 }
 
@@ -78,6 +84,8 @@ test('terminal cookie failure rotates only after browser absence and keeps an au
         attempt_id:lease.attempt_id,state:'planned',session_id:null});
     assert.equal((db.sqlite.prepare('SELECT ready FROM test_demo_retry_guards')
       .get() as {ready:number}).ready,1);
+    assert.equal((db.sqlite.prepare(`SELECT phase FROM test_proof_items
+      WHERE proof_id='proof-1'`).get() as {phase:string}).phase,'superseded');
     assert.equal(await retryFailedSharedTestDemo(env,'run-1','lease-1',
       lease.attempt_id,1,at,close),false);
   }finally{db.close();}

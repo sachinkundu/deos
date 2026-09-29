@@ -13,6 +13,7 @@ import {SharedTestShowboatRawDriver} from './shared-test-showboat-raw.ts';
 import {SharedTestShowboatProjection} from './shared-test-showboat-projection.ts';
 import {SharedTestRepairStore} from './shared-test-repair.ts';
 import {SharedTestFailedSetupProof} from './shared-test-failed-setup-proof.ts';
+import {retryFailedSharedTestDemo} from './shared-test-demo-retry.ts';
 
 type ScanEnv=SharedTestDriverEnv & Pick<Env,'SHARED_TEST_GRANTS_ENABLED'|
   'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {TEST_MARKER_KEY_V1?:string};
@@ -42,6 +43,16 @@ export async function scanSharedTest(env:ScanEnv,
     await new SharedTestFirstProofDriver(env as Env).resume();
     operation='shared_test.publish_failed_setup';
     await new SharedTestFailedSetupProof(env as Env).resume();
+    operation='shared_test.retry_failed_demo';
+    const retryOwner=await env.DB.prepare(`SELECT e.owner_run_id,e.owner_lease_id,
+      e.fence,l.attempt_id FROM test_environment e JOIN test_leases l
+      ON l.lease_id=e.owner_lease_id WHERE e.site_id=1 AND e.state='active'
+        AND e.owner_run_id=l.run_id AND l.state='active'`)
+      .first<{owner_run_id:string;owner_lease_id:string;fence:number;
+        attempt_id:string}>();
+    if(retryOwner)await retryFailedSharedTestDemo(env as Env,
+      retryOwner.owner_run_id,retryOwner.owner_lease_id,
+      retryOwner.attempt_id,retryOwner.fence);
     operation='shared_test.prepare_activate';
     await new SharedTestLeaseDriver(env).resume();
     operation='shared_test.candidate_build';

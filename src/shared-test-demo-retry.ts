@@ -50,7 +50,9 @@ export async function retryFailedSharedTestDemo(env:Pick<Env,'DB'|'IMPLEMENTATIO
   const effects=await env.DB.prepare(`SELECT
     (SELECT COUNT(*) FROM test_provider_deliveries WHERE lease_id=?) AS deliveries,
     (SELECT COUNT(*) FROM test_delivery_dispatch WHERE lease_id=?) AS dispatches,
-    (SELECT COUNT(*) FROM test_proof_items WHERE lease_id=?) AS proof_items`)
+    (SELECT COUNT(*) FROM test_proof_items WHERE lease_id=?
+      AND NOT (phase='first' AND kind='showboat'
+        AND body_marker IS NULL AND read_at IS NULL)) AS proof_items`)
     .bind(leaseId,leaseId,leaseId)
     .first<{deliveries:number;dispatches:number;proof_items:number}>();
   if(!effects || effects.deliveries || effects.dispatches || effects.proof_items)
@@ -75,6 +77,10 @@ export async function retryFailedSharedTestDemo(env:Pick<Env,'DB'|'IMPLEMENTATIO
     env.DB.prepare(`UPDATE test_app_sessions SET revoked_at=? WHERE lease_id=?
       AND attempt_id=? AND revoked_at IS NULL`)
       .bind(now,leaseId,attemptId),
+    env.DB.prepare(`UPDATE test_proof_items SET phase='superseded'
+      WHERE lease_id=? AND phase='first' AND kind='showboat'
+        AND body_marker IS NULL AND read_at IS NULL`)
+      .bind(leaseId),
     env.DB.prepare(`UPDATE test_browser_sessions SET attempt_id=?,state='planned',
       inventory_json='[]',create_window=NULL,session_id=NULL,prepared_until=NULL,
       absent_at=NULL,updated_at=? WHERE lease_id=? AND attempt_id=?
@@ -96,12 +102,14 @@ export async function retryFailedSharedTestDemo(env:Pick<Env,'DB'|'IMPLEMENTATIO
         AND NOT EXISTS (SELECT 1 FROM test_app_sessions WHERE lease_id=?
           AND attempt_id=? AND revoked_at IS NULL)
         AND NOT EXISTS (SELECT 1 FROM test_browser_sessions WHERE lease_id=?
-          AND attempt_id=?) THEN 1 ELSE 0 END)`)
+          AND attempt_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_proof_items WHERE lease_id=?
+          AND phase='first' AND kind='showboat') THEN 1 ELSE 0 END)`)
       .bind(leaseId,leaseId,attemptId,next,leaseId,next,
-        subject.request_id,next,leaseId,attemptId,leaseId,attemptId),
+        subject.request_id,next,leaseId,attemptId,leaseId,attemptId,leaseId),
   ]);
-  if(results[0].meta.changes!==1 || results[3].meta.changes!==1 ||
-      results[4].meta.changes!==1 || results[5].meta.changes!==1)
+  if(results[0].meta.changes!==1 || results[4].meta.changes!==1 ||
+      results[5].meta.changes!==1 || results[6].meta.changes!==1)
     throw new Error('test_demo_retry_write_incomplete');
   return true;
 }
