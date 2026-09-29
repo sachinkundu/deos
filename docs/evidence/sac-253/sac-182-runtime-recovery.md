@@ -64,3 +64,62 @@ its incomplete Showboat as superseded proof, and recorded one exact retry in
 `test_demo_attempt_retries` at 07:04:48 UTC. The replacement attempt
 `c64950fe-e6c2-4fdf-81de-e841311fab45` started at 07:05:13 UTC. Its
 app and provider results must be checked separately.
+
+The replacement got a ready managed browser session, then its real navigation
+to the isolated BettaView app returned HTTP 401 `invalid_access_token`.
+The pinned SAC-182 candidate predates the test gate auth seam. Its agent
+marked all 12 scenarios blocked and retained the original result, validation,
+and private blocked-screen capture. A public Showboat readback confirms the
+exact checked-out commit, not scenario success.
+
+The first marker update reached Linear at 06:50:50 UTC and was recorded in
+the normal signed delivery table. It was not claimed as a test delivery:
+Linear indented the marker into the final list item and removed the trailing
+newline, so the saved exact after-hash did not match. The marker action
+remained incomplete. A later different marker ID was rejected while the old
+marker remained. At 07:22 UTC, the original SAC-182 description was restored
+and read back through Linear. A temporary blank-line comment showed that
+Linear preserves a stand-alone comment with no trailing newline; it too was
+removed and the original text read back. Migration 0070 disabled the expired
+unclaimed expectation, saved the provider update and restoration as a repair
+receipt, and authorized exactly one more blocked-attempt retry. It did not
+create a test attestation or provider proof.
+
+The trusted lease wrapper now uses the pinned candidate's exported auth seam
+after the lease gate checks Access and its short app session. Candidate Worker
+edge refreshes are audited and require two matching running-version reads.
+The repair retry is fenced to the recorded attempt, verifies the restored
+Linear description hash, closes the prior browser, revokes its app session,
+and retains incomplete proof as superseded before rotating the attempt ID.
+
+The third attempt `2a237817-b7a1-4081-a139-76a546ab604f` used refreshed
+candidate Workers. BettaView reported the pinned SAC-182 commit and version
+`edb1aa50-3306-4241-b9da-d055728cb499`. The agent opened the actual
+Settings and PR 137 screens, but `/auth/github` returned HTTP 503 with
+`missing_github_client_id`. Its result is `blocked`, with all 12 scenarios
+undemonstrated. The original app result and validation are in its complete
+R2 manifest `manifest:2a237817-b7a1-4081-a139-76a546ab604f`.
+Private screenshots have `sanitizerResult: pending`; none count as public
+visual proof.
+
+The third attempt inserted a stand-alone Linear marker. The genuine signed
+delivery `6e6fdf39-6fe8-4a6b-b67a-5950d9c762cc` reached ingress at
+07:39:48 UTC but followed the normal route, so no test delivery was claimed.
+The cause was a missing `TEST_MARKER_KEY_V1` secret on the ingress Worker. The
+coordinator has the secret and created the marker. Ingress now resolves the
+expected public marker through a private service binding to the coordinator;
+the secret stays there. The deployed ingress binding and a later real Linear
+event returned HTTP 200. A content-free D1 diagnostic for a manual marker
+insertion shows exact issue, team, event time, old and new description hashes,
+and stand-alone marker; only the actor and expired expectation window differed.
+The manual insertion is not test proof. The temporary marker was removed from
+SAC-182, and the original description was read back. A new bounded expectation
+and genuine app-actor event are still required.
+
+The candidate app's GitHub OAuth prerequisite was absent from the SAC-253
+design. The lease host changes per run, and its exact callback is not yet
+registered with the GitHub App. The lease Worker also lacks its OAuth client
+configuration. App review and publish paths cannot be claimed as tested until
+that prerequisite is designed and provided without giving the candidate
+arbitrary provider credentials. The Access token rotation has been proven and
+is unrelated to this remaining GitHub authorization blocker.

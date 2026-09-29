@@ -60,6 +60,7 @@ export { ContainerProxy } from "@cloudflare/sandbox";
 export { ImplementationSandbox, ImplementationStandard2Sandbox } from "./sandbox-platform.ts";
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
 export { SharedTestAppGate } from './shared-test-app-gate-entrypoint.ts';
+export { SharedTestMarkerResolver } from './shared-test-marker-resolver-entrypoint.ts';
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
   implementation: new ImplementationBroker(env),

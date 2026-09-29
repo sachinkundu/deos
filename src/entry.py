@@ -70,6 +70,7 @@ class Default(WorkerEntrypoint):
             router = SharedTestEventRouter(
                 self.env.DB, self._send_test,
                 (getattr(self.env, "TEST_MARKER_KEY_V1", "") or "").encode(),
+                self.env.TEST_MARKER_RESOLVER.resolve,
             )
             delivery_id = headers["linear-delivery"]
             if delivery_id and await router.route(

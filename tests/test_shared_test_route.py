@@ -100,7 +100,12 @@ async def _check_exact_provider_event() -> None:
                    "data": {"id": "issue-1", "teamId": "team-1", "team": {"id": "team-1"},
                             "description": after},
                    "updatedFrom": {"description": before}}
-        router = SharedTestEventRouter(db, send, key)
+        async def resolve_marker(expectation_id: str) -> str:
+            assert expectation_id == "expectation-1"
+            return marker
+
+        # Ingress uses the coordinator's private service binding, not its key.
+        router = SharedTestEventRouter(db, send, b"", resolve_marker)
         received = datetime.fromtimestamp(time_ms / 1000, UTC)
         payload_hash = sha("exact raw delivery")
         assert await router.route(payload, "delivery-1", time_ms, received, payload_hash)

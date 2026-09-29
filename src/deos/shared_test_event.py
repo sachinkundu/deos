@@ -56,8 +56,48 @@ def _description(value: Any) -> str | None:
     return value if isinstance(value, str) else None
 
 
+def mismatch_checks(
+    payload: Mapping[str, Any], header_timestamp_ms: int, expectation: TestExpectation, key: bytes,
+    expected_marker: str | None = None,
+) -> dict[str, bool]:
+    """Content-free field checks for a verified provider event that missed its route."""
+    data = payload.get("data")
+    actor = payload.get("actor")
+    changed = payload.get("updatedFrom")
+    data = data if isinstance(data, dict) else {}
+    actor = actor if isinstance(actor, dict) else {}
+    changed = changed if isinstance(changed, dict) else {}
+    team = data.get("team")
+    before = _description(changed.get("description"))
+    after = _description(data.get("description"))
+    created_at = payload.get("createdAt")
+    try:
+        event_time = datetime.fromisoformat(created_at) if isinstance(created_at, str) else None
+    except ValueError:
+        event_time = None
+    marker = expected_marker if expected_marker is not None else marker_for(expectation, key)
+    return {
+        "type": payload.get("type") == "Issue",
+        "action": payload.get("action") == "update",
+        "timestamp": payload.get("webhookTimestamp") == header_timestamp_ms,
+        "event_time": event_time is not None and event_time.tzinfo is not None
+        and abs(int(event_time.timestamp() * 1000) - header_timestamp_ms) <= 60_000,
+        "issue": data.get("id") == expectation.task_id,
+        "team_id": data.get("teamId") == expectation.team_id,
+        "team_object": isinstance(team, dict) and team.get("id") == expectation.team_id,
+        "actor_id": actor.get("id") == expectation.actor_id,
+        "actor_type": actor.get("type") == "user",
+        "before_present": "description" in changed,
+        "before_hash": before is not None and _sha(before) == expectation.before_sha256,
+        "after_hash": after is not None and _sha(after) == expectation.after_sha256,
+        "marker_hash": _sha(marker) == expectation.marker_sha256,
+        "marker_count": after is not None and after.split("\n").count(marker) == 1,
+    }
+
+
 def match_test_issue_update(
-    payload: Mapping[str, Any], header_timestamp_ms: int, expectation: TestExpectation, key: bytes
+    payload: Mapping[str, Any], header_timestamp_ms: int, expectation: TestExpectation, key: bytes,
+    expected_marker: str | None = None,
 ) -> bool:
     """A marker has no routing power without every saved provider fact."""
     if payload.get("type") != "Issue" or payload.get("action") != "update":
@@ -101,7 +141,7 @@ def match_test_issue_update(
     after = _description(data.get("description"))
     if before is None or after is None or before == after:
         return False
-    marker = marker_for(expectation, key)
+    marker = expected_marker if expected_marker is not None else marker_for(expectation, key)
     return not (
         _sha(marker) != expectation.marker_sha256
         or _sha(before) != expectation.before_sha256

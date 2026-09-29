@@ -14,6 +14,7 @@ import {SharedTestShowboatProjection} from './shared-test-showboat-projection.ts
 import {SharedTestRepairStore} from './shared-test-repair.ts';
 import {SharedTestFailedSetupProof} from './shared-test-failed-setup-proof.ts';
 import {retryFailedSharedTestDemo,retryRepairedSharedTestDemo} from './shared-test-demo-retry.ts';
+import {SharedTestQuiesceDriver} from './shared-test-quiesce-driver.ts';
 
 type ScanEnv=SharedTestDriverEnv & Pick<Env,'SHARED_TEST_GRANTS_ENABLED'|
   'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {TEST_MARKER_KEY_V1?:string};
@@ -41,6 +42,8 @@ export async function scanSharedTest(env:ScanEnv,
     await new SharedTestStructuredProofDriver(env as Env).resume();
     operation='shared_test.publish_first_proof';
     await new SharedTestFirstProofDriver(env as Env).resume();
+    operation='shared_test.quiesce_after_proof';
+    await new SharedTestQuiesceDriver(env.DB).resume();
     operation='shared_test.publish_failed_setup';
     await new SharedTestFailedSetupProof(env as Env).resume();
     operation='shared_test.retry_failed_demo';

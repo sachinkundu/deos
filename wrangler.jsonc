@@ -27,6 +27,13 @@
       "migrations_dir": "migrations"
     }
   ],
+  "services": [
+    {
+      "binding": "TEST_MARKER_RESOLVER",
+      "service": "deos-queue-consumer-ts",
+      "entrypoint": "SharedTestMarkerResolver"
+    }
+  ],
   "triggers": { "crons": ["* * * * *"] },
   "queues": {
     "producers": [

@@ -7,7 +7,8 @@ from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from .shared_test_event import TestExpectation, marker_for, match_test_issue_update
+from .shared_test_event import TestExpectation, marker_for, match_test_issue_update, mismatch_checks
+import json
 
 
 def _value(row: Any, key: str) -> Any:
@@ -33,10 +34,12 @@ def _expectation(row: Any) -> TestExpectation:
 
 
 class SharedTestEventRouter:
-    def __init__(self, db: Any, send: Callable[[object], Awaitable[None]], marker_key: bytes) -> None:
+    def __init__(self, db: Any, send: Callable[[object], Awaitable[None]], marker_key: bytes,
+                 resolve_marker: Callable[[str], Awaitable[str]] | None = None) -> None:
         self.db = db
         self.send = send
         self.marker_key = marker_key
+        self.resolve_marker = resolve_marker
 
     async def route(
         self, payload: Mapping[str, Any], delivery_id: str, header_timestamp_ms: int,
@@ -45,9 +48,9 @@ class SharedTestEventRouter:
         if len(payload_sha256) != 64 or any(c not in "0123456789abcdef" for c in payload_sha256):
             raise ValueError("invalid test delivery payload hash")
         prior = await self.db.prepare(
-            "SELECT route,payload_sha256 FROM test_provider_deliveries WHERE delivery_id=?"
+            "SELECT delivery_id,route,payload_sha256 FROM test_provider_deliveries WHERE delivery_id=?"
         ).bind(delivery_id).first()
-        if prior is not None:
+        if _value(prior, "delivery_id") == delivery_id:
             if _value(prior, "payload_sha256") != payload_sha256:
                 raise ValueError("test delivery payload changed")
             route = _value(prior, "route")
@@ -58,19 +61,34 @@ class SharedTestEventRouter:
         rows = await self.db.prepare(
             """SELECT x.* FROM test_expected_events x JOIN test_environment e
               ON e.owner_lease_id=x.lease_id AND e.owner_run_id=x.run_id
-              WHERE x.task_id=? AND x.state='live' AND x.valid_from_ms<=?
-                AND x.valid_until_ms>=? AND e.site_id=1 AND e.state='active'
+              WHERE x.task_id=? AND x.state='live' AND e.site_id=1 AND e.state='active'
                 AND e.fence=x.fence ORDER BY x.created_at LIMIT 2"""
-        ).bind(data["id"], header_timestamp_ms, header_timestamp_ms).all()
+        ).bind(data["id"]).all()
         candidates = list(_value(rows, "results") or [])
         if len(candidates) > 1:
             raise ValueError("multiple live test expectations for one issue")
         if not candidates:
             return False
         expected = _expectation(candidates[0])
-        if not match_test_issue_update(payload, header_timestamp_ms, expected, self.marker_key):
+        marker = (await self.resolve_marker(expected.expectation_id)
+                  if self.resolve_marker is not None else marker_for(expected, self.marker_key))
+        if not isinstance(marker, str) or hashlib.sha256(marker.encode()).hexdigest() != expected.marker_sha256:
+            raise ValueError("test marker resolver returned a mismatched marker")
+        in_window=expected.valid_from_ms<=header_timestamp_ms<=expected.valid_until_ms
+        if not in_window or not match_test_issue_update(
+            payload, header_timestamp_ms, expected, self.marker_key, marker
+        ):
+            checks=mismatch_checks(payload, header_timestamp_ms, expected,
+                                   self.marker_key, marker)
+            checks["in_window"]=in_window
+            await self.db.prepare(
+                """INSERT OR IGNORE INTO test_route_mismatch_diagnostics
+                  (delivery_id,expectation_id,checks_json,created_at) VALUES (?,?,?,?)"""
+            ).bind(delivery_id, expected.expectation_id,
+                   json.dumps(checks, sort_keys=True),
+                   received_at.astimezone(UTC).isoformat()).run()
             return False
-        marker_hash = hashlib.sha256(marker_for(expected, self.marker_key).encode()).hexdigest()
+        marker_hash = hashlib.sha256(marker.encode()).hexdigest()
         timestamp = received_at.astimezone(UTC).isoformat()
         work_id = f"test-delivery:{delivery_id}"
         await self.db.batch([
