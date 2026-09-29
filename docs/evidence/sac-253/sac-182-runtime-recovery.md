@@ -29,3 +29,21 @@ older v44 row has digest `5a6cf0b2...`. The bundled v45 definition has the
 same content as the admitted v44 bundle except its version field. The next
 repair records this exact mismatch and moves only run 2 to registered v45;
 the historical v44 definition is retained.
+
+Migration `0068_sac_182_definition_repair.sql` recorded that exact repair in
+`workflow_definition_repairs`. A second guarded recovery established instance
+`wf-v1-3vl3fmtcwbhyj3i3nhgpazsxxk4osgtmrwujzwhitwvqgs2xmsfq` at visit
+1496. It retained PR #137 and candidate commit
+`3837087abb16000f115887afe714b4cc2f4acadd`, then requested a new lease:
+`21c57acf3c8489cb1cc1438437ad16cc8a835c5a080b5b510a46414bd4ba6b5c`.
+The coordinator pinned staging source `f8275c1e21a420febeed40139e16fd90605f7b80`
+and created the isolated portal, BettaView, D1, and R2 resources.
+
+The pinned staging app build predates the lease version field. The trusted
+lease edge wrapper now reports the fixed base version from its own binding,
+and an edge revision tag guards refresh of existing lease Workers. The
+BettaView refresh preserves its existing Durable Object migration. Both
+protected app origins returned HTTP 200 with the expected source, build, and
+base version. D1 saved two service readbacks and moved the lease to `active`
+at 2026-09-29T06:44:18.545Z. These facts prove setup and activation only;
+candidate, app use, and provider proof remain separate checks.
