@@ -538,3 +538,20 @@ provider operations and any published review still block this recovery path.
 The browser fix passed 23 focused tests, including the real local browser.
 The failure-response and cleanup checks passed 20 tests. Type checking passed.
 Fresh live review publication and successful cleanup remain to be proven.
+
+Cleanup retained all 13 scenario Workflows, the 131-table database, and 12
+objects before removal. The saved evidence kept zero review intents, zero gate
+decisions, and the three bounded Linear restoration operations. The replacement
+browser history confirms `NormalClosure` at cleanup; it had not ended at the
+failed draft reload. All seven resources were absent at 16:28:43 UTC, when the
+site became free at revision 2369.
+
+- Failure: `d78a2fa9b0dfd790f71b7d60f4d15ae9ecb6c1cd06fa2248ad2c660bcfe73386`.
+- Settlement: `66b31f0616d939b347f64ef44d159c587d193d6dc712338b7a64d56f5fa177b7`.
+- Absence: `39ace3360cdd3337a24d1547a617552b962ccc2fa5bfd6e0987ec14399088248`.
+
+The proof publisher had rejected the two valid Settings screenshots as a
+duplicate kind. It now includes every sanitized app/task image and verifies
+each public link before marking the set read. Structured proof remains unique
+per kind. All five proof publication tests passed, including an unavailable
+second screenshot that must leave the entire set unread.

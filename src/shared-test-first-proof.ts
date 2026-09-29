@@ -45,13 +45,16 @@ export class SharedTestFirstProofPublisher {
     const selected:ProofRow[]=[];
     for(const kind of requiredProofKinds) {
       const matches=items.filter(item=>item.kind===kind);
-      if(matches.length!==1)throw new Error(`test_first_proof_${kind}_missing_or_duplicate`);
-      const item=matches[0];
-      if(item.public_url!==sharedTestProofUrl(item.proof_id) ||
-          new URL(item.public_url).origin!==sharedTestProofOrigin ||
-          !/^[a-f0-9]{64}$/.test(item.public_sha256))
-        throw new Error('test_first_proof_link_invalid');
-      selected.push(item);
+      const images=['app_screen','linear_screen'].includes(kind);
+      if(!matches.length || !images && matches.length!==1)
+        throw new Error(`test_first_proof_${kind}_missing_or_duplicate`);
+      for(const item of matches) {
+        if(item.public_url!==sharedTestProofUrl(item.proof_id) ||
+            new URL(item.public_url).origin!==sharedTestProofOrigin ||
+            !/^[a-f0-9]{64}$/.test(item.public_sha256))
+          throw new Error('test_first_proof_link_invalid');
+        selected.push(item);
+      }
     }
     const marker=`deos-test-proof:${leaseId}`;
     const section=[`### ${lease.task_key} shared test proof`,

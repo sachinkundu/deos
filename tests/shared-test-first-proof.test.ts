@@ -81,6 +81,33 @@ test('a missing public item leaves close proof unread',async()=>{
   }finally{f.db.close();}
 });
 
+for(const unavailable of [false,true])test(`all scenario screenshots require public readback: ${unavailable?'missing extra image':'available'}`,async()=>{
+  const f=fixture();
+  try {
+    const id='00000000-0000-0000-0000-000000000099',url=sharedTestProofUrl(id);
+    const original=f.db.sqlite.prepare("SELECT * FROM test_proof_items WHERE kind='app_screen'").get()!;
+    f.db.sqlite.prepare(`INSERT INTO test_proof_items
+      (proof_id,run_id,lease_id,phase,kind,classification,view_rule,sanitizer_result,source_sha256,
+       object_key,content_type,byte_count,public_sha256,public_url,projected_at)
+      SELECT ? ,run_id,lease_id,phase,kind,classification,view_rule,sanitizer_result,source_sha256,
+       object_key,content_type,byte_count,public_sha256,? ,projected_at FROM test_proof_items WHERE kind='app_screen'`)
+      .run(id,url);
+    const originalBytes=f.payload.get(String(original.public_url))!;
+    f.bucket.objects.set(`shared-test/public/lease-1/${id}.png`,originalBytes);
+    const fetched:string[]=[];
+    const publisher=new SharedTestFirstProofPublisher(f.db as unknown as D1Database,f.writer,async input=>{
+      fetched.push(String(input));
+      if(unavailable && String(input)===url)return new Response('unavailable',{status:503});
+      return routePublicProof(new Request(String(input)),{DB:f.db as unknown as D1Database,ARTIFACTS:f.bucket as unknown as R2Bucket});
+    });
+    if(unavailable)await assert.rejects(publisher.publish('run-1','lease-1'),/test_first_proof_http_app_screen_503/);
+    else await publisher.publish('run-1','lease-1');
+    assert.ok(fetched.includes(url));assert.ok(f.body().includes(url));
+    assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) AS n FROM test_proof_items WHERE read_at IS NOT NULL').get()?.n,
+      unavailable?0:requiredProofKinds.length+1);
+  }finally{f.db.close();}
+});
+
 test('a changed proof section during link checks cannot mark readback',async()=>{
   const f=fixture();
   try {
