@@ -4,6 +4,9 @@ import {ImplementationTestBucket,ImplementationTestDatabase,seedRun,seedAttempt}
 import {SharedTestCloseStore} from '../src/shared-test-close.ts';
 import {SharedTestDecisionStore,stagingManifestDigest} from '../src/shared-test-decision-store.ts';
 import {routeTestPortal} from '../portal/test-environment/worker.ts';
+import {sharedTestDemoReviewEvidence} from '../src/shared-test-demo-review.ts';
+import {sha256Hex} from '../src/implementation-hash.ts';
+import type {ImplementationRun} from '../src/implementation-store.ts';
 import {SharedTestPrBodyWriter} from '../src/shared-test-pr-body.ts';
 import {SharedTestReportStore} from '../src/shared-test-report.ts';
 import {SharedTestReportDriver} from '../src/shared-test-report-driver.ts';
@@ -165,12 +168,47 @@ test('close needs attached proof and owned absence before one atomic free transi
     await decision.record(candidate);
     const release={...candidate,manifestId:'manifest-1',manifestRevision:1};
     assert.equal((await decision.releaseCheck(release)).allowed,true);
+    db.sqlite.exec(`INSERT INTO artifact_manifests (manifest_id,run_id,attempt_id,r2_key,state,created_at)
+      VALUES ('demo-manifest','run-1','attempt-1','manifest','complete','now')`);
+    db.sqlite.exec("UPDATE agent_attempts SET manifest_id='demo-manifest'");
+    for(const name of ['result.json','validation.txt']) {
+      const content=name==='result.json'?'{"outcome":"completed"}':'Provider and app checks passed';
+      await bucket.put(name,content);
+      db.sqlite.prepare(`INSERT INTO artifacts
+        (manifest_id,logical_name,r2_key,media_type,byte_size,sha256,policy_outcome,created_at)
+        VALUES ('demo-manifest',?,?,'text/plain',?,?,'accepted','now')`)
+        .run(name,name,content.length,await sha256Hex(content));
+    }
+    const proof='sanitized public evidence',proofSha=await sha256Hex(proof);
+    for(const [index,kind] of kinds.entries()) {
+      const id=`00000000-0000-4000-8000-${String(index).padStart(12,'0')}`;
+      db.sqlite.prepare(`UPDATE test_proof_items SET proof_id=?,public_url=?,public_sha256=? WHERE kind=?`)
+        .run(id,`https://deos-shared-test-proof.skundu.workers.dev/proof/${id}`,proofSha,kind);
+    }
+    const work={run_id:'run-1',pr_head_sha:'a'.repeat(40),patch_sha:'b'.repeat(64),
+      change_id:'sample',approved_design_sha:'c'.repeat(40),tested_base_sha:'d'.repeat(40),tree_sha:'e'.repeat(40)} as ImplementationRun;
+    const proofFetch=(async()=>new Response(proof)) as typeof fetch;
+    const review=await sharedTestDemoReviewEvidence(env.DB,env.ARTIFACTS,work,proofFetch);
+    assert.equal(review.evidence.length,kinds.length);
+    assert.ok(review.sources.some(s=>s.path==='context/shared-test-result.json'));
+    assert.ok(review.sources.some(s=>s.path==='context/shared-test-validation.txt'));
+    for(const item of review.evidence)assert.equal(await (await bucket.get(item.r2Key))!.text(),proof);
+    await assert.rejects(sharedTestDemoReviewEvidence(env.DB,env.ARTIFACTS,work,
+      (async()=>new Response('changed')) as typeof fetch),/hash_changed/);
+    const imageId='00000000-0000-4000-8000-000000000000';
+    db.sqlite.prepare("UPDATE test_proof_items SET public_url='https://foreign.example/private' WHERE proof_id=?").run(imageId);
+    await assert.rejects(sharedTestDemoReviewEvidence(env.DB,env.ARTIFACTS,work,
+      (async()=>{throw new Error('must not fetch a foreign origin');}) as typeof fetch),/url_changed/);
+    db.sqlite.prepare('UPDATE test_proof_items SET public_url=? WHERE proof_id=?')
+      .run(`https://deos-shared-test-proof.skundu.workers.dev/proof/${imageId}`,imageId);
+
     const portalEnv={DB:env.DB,ARTIFACTS:env.ARTIFACTS,COORDINATOR:{} as Fetcher,
       ACCESS_TEAM_DOMAIN:'test',ACCESS_AUD:'aud',ALLOWED_EMAIL:'allowed@example.com'};
     const auth=(async()=>({email:'allowed@example.com'})) as typeof import('../portal/src/auth.ts').verifyAccess;
     // A historical erroneous close must not authorize release or serve a pass report.
     db.sqlite.exec("UPDATE agent_attempts SET state='blocked'");
     assert.equal((await decision.releaseCheck(release)).allowed,false);
+    await assert.rejects(sharedTestDemoReviewEvidence(env.DB,env.ARTIFACTS,work,proofFetch),/evidence_missing/);
     await assert.rejects(store.close('run-1','lease-1',2),/demo_not_completed/);
     assert.equal((await routeTestPortal(new Request('https://deos-test.voxdez.com/reports/lease-1'),portalEnv,auth)).status,404);
     await assert.rejects(new SharedTestReportStore(env.DB,env.ARTIFACTS,new SharedTestPrBodyWriter(env.DB,{read:async()=>{throw new Error('must not read');},write:async()=>{throw new Error('must not write');}})).publish('run-1','lease-1'),/close_missing/);

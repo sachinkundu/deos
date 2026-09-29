@@ -238,3 +238,43 @@ test('demo planning receives real runtime limits and only a matching immutable c
     assert.throws(()=>f.db.sqlite.exec("UPDATE implementation_demo_upgrades SET plan_json='{}'"),/immutable/);
   }finally{f.db.close();}
 });
+
+
+test('a guarded same-design handoff inherits its plan but never its prior verdict',async()=>{
+  const f=await fixture();
+  try {
+    await acceptGate(f,'pass');
+    f.db.sqlite.exec("UPDATE orchestration_runs SET status='failed' WHERE run_id='run-1'");
+    seedRun(f.db,'run-2','temporary-issue');
+    f.db.sqlite.exec("UPDATE orchestration_runs SET issue_id='issue-1',run_sequence=2 WHERE run_id='run-2'");
+    const approved=await f.store.read<import('../src/implementation-store.ts').ImplementationInput>(f.work.input_key,f.work.input_sha);
+    await f.store.allocate({...approved,runId:'run-2',branch:'deos/agent/SAC-172/run-2'},
+      {userId:'human',revision:1},'SAC-172',2);
+    f.db.sqlite.prepare(`INSERT INTO shared_test_run_handoffs VALUES
+      ('run-1','run-2','wf-old','wf-new',?,?,?,?,?,?,?,?,?, ?,137,?,?,?,'{}','dispatched','now','now')`)
+      .run('d'.repeat(64),'d'.repeat(64),'a'.repeat(40),'b'.repeat(40),'c'.repeat(64),'c'.repeat(64),
+        'e'.repeat(64),'f'.repeat(64),subject.testedBaseSha,subject.treeSha,'a'.repeat(40),'a'.repeat(40),'d'.repeat(64));
+    const inherited=await f.service.buildInput('run-2');
+    assert.equal(inherited.plan.sha256,(await f.service.latest('run-1','plan'))!.payload_sha);
+    assert.equal(inherited.feedback,null);
+    assert.equal(await f.service.handoff(await f.store.requireRun('run-2')),null);
+    const candidate={version:1,kind:'build',outcome:'completed',change:'sample',files:[],checks:[],proof:[],tasks:'Saved tasks',
+      approvedDesignSha:subject.approvedDesignSha,testedBaseSha:subject.testedBaseSha,treeSha:subject.treeSha};
+    const savedCandidate=await f.store.put('run-2','candidate.json',JSON.stringify(candidate));
+    f.db.sqlite.prepare("UPDATE implementation_runs SET candidate_key=?,candidate_sha=?,tree_sha=? WHERE run_id='run-2'")
+      .run(savedCandidate.key,savedCandidate.sha256,subject.treeSha);
+    const run=f.db.sqlite.prepare("SELECT * FROM orchestration_runs WHERE run_id='run-2'").get() as unknown as OrchestrationRunRecord;
+    const gate=await f.service.materialize(run,{reviewKind:'demo_gate'} as never,{context:'{}'} as never);
+    const gateInput=JSON.parse(gate.context).demo;
+    assert.equal(gateInput.plan.sha256,inherited.plan.sha256);
+    assert.equal(gateInput.candidateSha,savedCandidate.sha256);
+    assert.equal(gateInput.feedback,null);
+    assert.deepEqual(gateInput.evidence,[],'No evidence is inherited from the old verdict');
+
+    f.db.sqlite.prepare("UPDATE implementation_runs SET approved_design_sha=? WHERE run_id='run-2'").run('9'.repeat(40));
+    await assert.rejects(f.service.buildInput('run-2'),/ready independent demo plan/);
+    f.db.sqlite.prepare("UPDATE implementation_runs SET approved_design_sha=? WHERE run_id='run-2'").run(subject.approvedDesignSha);
+    f.db.sqlite.exec("UPDATE shared_test_run_handoffs SET state='admitted'");
+    await assert.rejects(f.service.buildInput('run-2'),/ready independent demo plan/);
+  }finally{f.db.close();}
+});

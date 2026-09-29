@@ -826,3 +826,23 @@ close and candidate repair have both been recorded.
 The complete controller suite passed 891 tests, with three optional skips and
 no failures or cancellations. Type checking passed. The 12 focused recovery
 tests include the historical false-close path and the evidence-capture race.
+
+
+The correction endpoint verified the original artifacts, captures, report, and
+absence hashes and returned HTTP 200. The failure correction is saved with hash
+`e1daf3f9f397bfbbea45f8b6d7b0a05a1dc10917c3d56b30e9941ab5f2bf8805`.
+D1 reads back the blocked attempt, `lost_before_capture`, and a checked abort
+receipt. The old report remains preserved as invalid evidence. The repaired
+candidate is `67a52b9f41816a6830a0843d3aac0bf183fe6fcb`. Its four app/runtime
+build objects passed upload and hash read-back. Candidate repair
+`374bae99ba3cb71077b366d4fff09c4fa20ecd8e692f6862c8364a795c9c0ed7`
+retains the old candidate and patch. The replacement executor was established
+at 20:36:59 UTC. All 60 coordinator bindings match the earlier settings snapshot.
+
+The downstream demo gate also needs the handoff's saved plan. It now inherits
+that plan only when the recorded handoff, issue, definition, design, and approved
+files match. It never inherits the old verdict. The reviewer gets the exact
+completed lease's final report, original result and validation, and hash-checked
+public proof. Changed bytes, foreign proof URLs, and blocked or aborted leases
+are rejected. All 12 focused gate and close tests pass. This change does not
+claim that the fresh remote demo has passed.

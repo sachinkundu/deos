@@ -1,3 +1,4 @@
+import {inheritedSharedTestDemoPlan} from './shared-test-demo-review.ts';
 import { ImplementationStore, type ImplementationRun } from './implementation-store.ts';
 import type { DemoResult } from './implementation-demo-contract.ts';
 
@@ -14,7 +15,7 @@ export async function demoHandoff(db:D1Database,bucket:R2Bucket,work:Implementat
   const latest = (kind:string) => db.prepare('SELECT * FROM implementation_demo_reviews WHERE run_id=? AND kind=? ORDER BY visit_sequence DESC LIMIT 1')
     .bind(work.run_id,kind).first<Review>();
   const [gate, plan, human] = await Promise.all([
-    latest('gate'), latest('plan'),
+    latest('gate'), latest('plan').then(async local=>local??await inheritedSharedTestDemoPlan(db,work.run_id)),
     db.prepare("SELECT MAX(visit_sequence) AS visit FROM implementation_gates WHERE run_id=? AND decision_outcome='revision_requested'")
       .bind(work.run_id).first<{visit:number|null}>(),
   ]);
