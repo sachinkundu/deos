@@ -27,7 +27,7 @@ test('Access probe accepts only the operator and a fixed lease host',async()=>{
     headers:{Authorization:'Bearer operator-key'}}),env,fetcher);
   assert.deepEqual(await result.json(),{
     hostname:`portal-${leaseId.slice(0,32)}.apps.deos-test.voxdez.com`,
-    status:200,admitted:true});
+    status:200,admitted:true,version:{}});
   assert.equal(calls,1);
 });
 
