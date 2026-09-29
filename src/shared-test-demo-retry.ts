@@ -1,6 +1,8 @@
 import {SharedTestBrowserCleanup} from './shared-test-browser-cleanup.ts';
 import {CloudflareTestBrowserProvider} from './shared-test-browser-provider.ts';
 import {SharedTestBrowserStore} from './shared-test-browser-store.ts';
+import {sha256Hex} from './implementation-hash.ts';
+import {LinearCapabilityAdapter} from './linear-capability.ts';
 
 interface RetrySubject {
   run_id:string;lease_id:string;attempt_id:string;request_id:string;fence:number;
@@ -111,5 +113,97 @@ export async function retryFailedSharedTestDemo(env:Pick<Env,'DB'|'IMPLEMENTATIO
   if(results[0].meta.changes!==1 || results[4].meta.changes!==1 ||
       results[5].meta.changes!==1 || results[6].meta.changes!==1)
     throw new Error('test_demo_retry_write_incomplete');
+  return true;
+}
+
+/** Resume one operator-audited, blocked demo after checking the provider text. */
+export async function retryRepairedSharedTestDemo(
+  env:Pick<Env,'DB'|'IMPLEMENTATION_BROWSER'|'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'>,
+  runId:string,leaseId:string,attemptId:string,fence:number,at=new Date(),
+  readDescription:((taskId:string)=>Promise<string>)=async taskId=>
+    (await new LinearCapabilityAdapter(env.LINEAR_API_URL,env.LINEAR_APP_ACCESS_TOKEN)
+      .readTestIssue(taskId)).description,
+  closeBrowser:((leaseId:string,runId:string,at:Date)=>Promise<void>)=
+    async(ownedLease,ownedRun,when)=>new SharedTestBrowserCleanup(
+      new SharedTestBrowserStore(env.DB),
+      new CloudflareTestBrowserProvider(env.IMPLEMENTATION_BROWSER))
+      .resume(ownedLease,ownedRun,when)):Promise<boolean> {
+  const request=await env.DB.prepare(`SELECT r.request_id,r.new_attempt_id,
+    r.restored_description_sha256,l.request_id AS lease_request_id,l.task_id
+    FROM test_demo_repair_retries r JOIN test_leases l ON l.lease_id=r.lease_id
+    JOIN test_environment e ON e.owner_lease_id=l.lease_id
+    WHERE r.lease_id=? AND r.run_id=? AND r.old_attempt_id=?
+      AND r.committed_at IS NULL AND l.attempt_id=? AND l.state='active'
+      AND l.fence=? AND e.site_id=1 AND e.state='active'
+      AND e.owner_run_id=? AND e.fence=? AND e.heartbeat_due_at>?
+      AND EXISTS (SELECT 1 FROM agent_attempts a WHERE a.attempt_id=?
+        AND a.run_id=? AND a.node_id='shared_test_demo'
+        AND a.state='blocked' AND a.cleanup_state='destroyed'
+        AND a.ended_at IS NOT NULL)
+      AND NOT EXISTS (SELECT 1 FROM test_provider_deliveries p
+        WHERE p.lease_id=r.lease_id)
+      AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch d
+        WHERE d.lease_id=r.lease_id)
+      AND NOT EXISTS (SELECT 1 FROM test_attestations a
+        WHERE a.lease_id=r.lease_id)
+      AND NOT EXISTS (SELECT 1 FROM test_expected_events x
+        WHERE x.lease_id=r.lease_id AND x.state<>'disabled')
+      AND NOT EXISTS (SELECT 1 FROM test_proof_items p
+        WHERE p.lease_id=r.lease_id AND
+          (p.body_marker IS NOT NULL OR p.read_at IS NOT NULL))`)
+    .bind(leaseId,runId,attemptId,attemptId,fence,runId,fence,
+      at.toISOString(),attemptId,runId)
+    .first<{request_id:string;new_attempt_id:string;
+      restored_description_sha256:string;lease_request_id:string;task_id:string}>();
+  if(!request)return false;
+  const description=await readDescription(request.task_id);
+  if(await sha256Hex(description)!==request.restored_description_sha256)
+    throw new Error('test_demo_repair_linear_description_changed');
+  await closeBrowser(leaseId,runId,at);
+  const browser=await env.DB.prepare(`SELECT COUNT(*) AS count FROM test_browser_sessions
+    WHERE lease_id=? AND state<>'absent'`).bind(leaseId)
+    .first<{count:number}>();
+  if(browser?.count!==0)throw new Error('test_demo_repair_browser_remains');
+  const now=at.toISOString(),next=request.new_attempt_id;
+  const results=await env.DB.batch([
+    env.DB.prepare(`UPDATE test_app_sessions SET revoked_at=? WHERE lease_id=?
+      AND attempt_id=? AND revoked_at IS NULL`).bind(now,leaseId,attemptId),
+    env.DB.prepare(`UPDATE test_proof_items SET phase='superseded'
+      WHERE lease_id=? AND phase='first' AND body_marker IS NULL
+        AND read_at IS NULL`).bind(leaseId),
+    env.DB.prepare(`UPDATE test_browser_sessions SET attempt_id=?,state='planned',
+      inventory_json='[]',create_window=NULL,session_id=NULL,prepared_until=NULL,
+      absent_at=NULL,updated_at=? WHERE lease_id=? AND attempt_id=?
+        AND state='absent'`).bind(next,now,leaseId,attemptId),
+    env.DB.prepare(`UPDATE test_leases SET attempt_id=? WHERE lease_id=?
+      AND run_id=? AND attempt_id=? AND state='active' AND fence=?`)
+      .bind(next,leaseId,runId,attemptId,fence),
+    env.DB.prepare(`UPDATE test_lease_requests SET attempt_id=?,updated_at=?
+      WHERE request_id=? AND run_id=? AND attempt_id=? AND state='granted'`)
+      .bind(next,now,request.lease_request_id,runId,attemptId),
+    env.DB.prepare(`UPDATE test_demo_repair_retries SET committed_at=?
+      WHERE request_id=? AND lease_id=? AND old_attempt_id=?
+        AND new_attempt_id=? AND committed_at IS NULL`)
+      .bind(now,request.request_id,leaseId,attemptId,next),
+    env.DB.prepare(`INSERT INTO test_demo_repair_retry_guards(request_id,ready)
+      VALUES (?,CASE WHEN EXISTS (SELECT 1 FROM test_demo_repair_retries
+          WHERE request_id=? AND committed_at=?)
+        AND EXISTS (SELECT 1 FROM test_leases WHERE lease_id=?
+          AND attempt_id=?)
+        AND EXISTS (SELECT 1 FROM test_lease_requests WHERE request_id=?
+          AND attempt_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_app_sessions WHERE lease_id=?
+          AND attempt_id=? AND revoked_at IS NULL)
+        AND NOT EXISTS (SELECT 1 FROM test_browser_sessions WHERE lease_id=?
+          AND attempt_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_proof_items WHERE lease_id=?
+          AND phase='first') THEN 1 ELSE 0 END)`)
+      .bind(request.request_id,request.request_id,now,leaseId,next,
+        request.lease_request_id,next,leaseId,attemptId,leaseId,attemptId,
+        leaseId),
+  ]);
+  if(results[3].meta.changes!==1 || results[4].meta.changes!==1 ||
+      results[5].meta.changes!==1 || results[6].meta.changes!==1)
+    throw new Error('test_demo_repair_retry_write_incomplete');
   return true;
 }

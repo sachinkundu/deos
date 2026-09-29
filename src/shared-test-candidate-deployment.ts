@@ -14,6 +14,11 @@ interface CandidateVersion {
   canonicalHost:string;sourceSha:string;baseVersionId:string;
   buildInputSha256:string;versionId:string;
 }
+interface EdgeRefresh {
+  candidate_commit:string;build_input_sha256:string;
+  previous_version_id:string;running_version_id:string|null;state:string;
+  claim_token:string|null;claim_until:string|null;
+}
 type Build=NonNullable<Awaited<ReturnType<SharedTestBuildStore['candidate']>>>;
 
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -199,6 +204,9 @@ export class SharedTestCandidateDeployment {
     await this.assertLease(lease);
     if(!await sharedTestCandidateReady(this.db,lease))return false;
     const plans=await sharedTestAffectedServices(this.db,lease);
+    const buildStore=new SharedTestBuildStore(this.bucket);
+    const worker=new SharedTestCloudflareWorkers(this.db,this.accountId,
+      this.zoneId,this.token,this.fetcher);
     for(const plan of plans) {
       const row=await this.db.prepare(`SELECT build_input_sha256,running_version_id
         FROM test_candidate_service_readbacks WHERE lease_id=? AND service_name=?
@@ -207,11 +215,87 @@ export class SharedTestCandidateDeployment {
           lease.candidate_commit,lease.fence)
         .first<{build_input_sha256:string;running_version_id:string}>();
       if(!row)throw new Error('test_candidate_readback_disappeared');
+      const build=await buildStore.candidate(plan.serviceName,lease.candidate_commit);
+      if(!build || build.digest!==row.build_input_sha256)
+        throw new Error('test_candidate_edge_build_changed');
+      const now=new Date().toISOString();
+      await this.db.prepare(`INSERT OR IGNORE INTO test_candidate_edge_refreshes
+        (lease_id,service_name,candidate_commit,build_input_sha256,
+         previous_version_id,state,planned_at)
+        SELECT ?,?,?,?,?,'planned',? WHERE EXISTS (SELECT 1 FROM test_environment
+          WHERE site_id=1 AND state='active' AND owner_run_id=?
+            AND owner_lease_id=? AND fence=? AND heartbeat_due_at>?)`)
+        .bind(lease.lease_id,plan.serviceName,lease.candidate_commit,
+          build.digest,row.running_version_id,now,lease.run_id,lease.lease_id,
+          lease.fence,now).run();
+      const refresh=await this.db.prepare(`SELECT candidate_commit,
+        build_input_sha256,previous_version_id,running_version_id,state,
+        claim_token,claim_until
+        FROM test_candidate_edge_refreshes WHERE lease_id=? AND service_name=?`)
+        .bind(lease.lease_id,plan.serviceName).first<EdgeRefresh>();
+      if(!refresh || refresh.candidate_commit!==lease.candidate_commit ||
+          refresh.build_input_sha256!==build.digest ||
+          !['planned','refreshing','deployed','confirmed'].includes(refresh.state) ||
+          (refresh.state==='confirmed'?
+            refresh.running_version_id!==row.running_version_id:
+            refresh.previous_version_id!==row.running_version_id))
+        throw new Error('test_candidate_edge_refresh_plan_changed');
+      const resource={resourceId:plan.resourceId,runId:lease.run_id,
+        leaseId:lease.lease_id,fence:lease.fence,kind:'test_worker' as const,
+        providerKey:plan.canonicalHost,workId:plan.workId,service:plan};
+      let edgeDeployed=false;
+      if(refresh.state==='planned' || refresh.state==='refreshing') {
+        const token=crypto.randomUUID();
+        const until=new Date(Date.now()+120_000).toISOString();
+        const claimed=await this.db.prepare(`UPDATE test_candidate_edge_refreshes
+          SET state='refreshing',claim_token=?,claim_until=?
+          WHERE lease_id=? AND service_name=? AND previous_version_id=?
+            AND (state='planned' OR (state='refreshing' AND claim_until<=?))`)
+          .bind(token,until,lease.lease_id,plan.serviceName,
+            row.running_version_id,now).run();
+        if(claimed.meta.changes!==1)return false;
+        edgeDeployed=await worker.ensureCandidateEdge(resource,build.build,
+          lease.candidate_commit);
+        const saved=await this.db.prepare(`UPDATE test_candidate_edge_refreshes
+          SET state='deployed',claim_token=NULL,claim_until=NULL,deployed_at=?
+          WHERE lease_id=? AND service_name=? AND state='refreshing'
+            AND claim_token=? AND previous_version_id=?`)
+          .bind(new Date().toISOString(),lease.lease_id,plan.serviceName,
+            token,row.running_version_id).run();
+        if(saved.meta.changes!==1)
+          throw new Error('test_candidate_edge_refresh_save_failed');
+        if(edgeDeployed)return false;
+      }
       const first=await this.version(plan),second=await this.version(plan);
       if(first.sourceSha!==lease.candidate_commit ||
           first.buildInputSha256!==row.build_input_sha256 ||
-          first.versionId!==row.running_version_id ||
           JSON.stringify(first)!==JSON.stringify(second))
+        throw new Error(`test_candidate_runtime_drift:${plan.serviceName}`);
+      if(refresh.state==='deployed' || refresh.state==='refreshing' ||
+          refresh.state==='planned') {
+        if(first.versionId===row.running_version_id &&
+            refresh.state!=='planned')return false;
+        const confirmedAt=new Date().toISOString();
+        const results=await this.db.batch([
+          this.db.prepare(`UPDATE test_candidate_service_readbacks SET
+            running_version_id=?,first_read_at=?,second_read_at=?
+            WHERE lease_id=? AND service_name=? AND candidate_commit=?
+              AND build_input_sha256=? AND fence=? AND running_version_id=?`)
+            .bind(first.versionId,confirmedAt,confirmedAt,lease.lease_id,
+              plan.serviceName,lease.candidate_commit,build.digest,lease.fence,
+              row.running_version_id),
+          this.db.prepare(`UPDATE test_candidate_edge_refreshes SET
+            state='confirmed',running_version_id=?,confirmed_at=?
+            WHERE lease_id=? AND service_name=? AND state='deployed'
+              AND previous_version_id=?`)
+            .bind(first.versionId,confirmedAt,lease.lease_id,plan.serviceName,
+              row.running_version_id),
+        ]);
+        if(results.some(result=>result.meta.changes!==1))
+          throw new Error('test_candidate_edge_refresh_readback_incomplete');
+        continue;
+      }
+      if(first.versionId!==row.running_version_id)
         throw new Error(`test_candidate_runtime_drift:${plan.serviceName}`);
     }
     await this.assertLease(lease);

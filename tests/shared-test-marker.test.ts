@@ -13,11 +13,14 @@ test('versioned keyed mark is fixed to the expectation, issue and fence',async()
   assert.notEqual(marker,await testIssueMarker(subject,'another-local-test-key'));
   const before='Task description\n';
   const after=insertTestMarker(before,marker);
+  assert.equal(after,`${before}\n\n${marker}`);
   assert.equal(insertTestMarker(after,marker),after);
   assert.equal(markerIsStandalone(after,marker),true);
   assert.equal(removeTestMarker(after,marker),before);
   const humanEdited=after.replace('Task description','Task description\nHuman edit');
   assert.equal(removeTestMarker(humanEdited,marker),'Task description\nHuman edit\n');
+  const list='## Done when\n\n* A reviewer can finish the task.';
+  assert.equal(removeTestMarker(insertTestMarker(list,marker),marker),list);
   assert.notDeepEqual(await testMarkerHashes(before,after,marker),
     await testMarkerHashes(before,humanEdited,marker));
 });

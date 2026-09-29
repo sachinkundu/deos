@@ -2,7 +2,7 @@ import { configureImplementationNetwork,configureSharedTestNetwork } from "./imp
 import { BaseChangedError } from "./implementation-contract.ts";
 import { ImplementationService } from "./implementation-service.ts";
 import {sharedTestDemoInput} from './shared-test-demo-input.ts';
-import {retryFailedSharedTestDemo} from './shared-test-demo-retry.ts';
+import {retryFailedSharedTestDemo,retryRepairedSharedTestDemo} from './shared-test-demo-retry.ts';
 import {sharedTestCandidateReady} from './shared-test-candidate-ready.ts';
 import {sharedTestCandidateDeployment} from './shared-test-candidate-deployment.ts';
 import {SharedTestMarkerAction} from './shared-test-marker-action.ts';
@@ -1459,6 +1459,8 @@ export class CloudflareWorkflowServices implements WorkflowNodeServices {
       if(owner && await sharedTestCandidateReady(this.env.DB,owner) &&
           await sharedTestCandidateDeployment(this.env).verifyReady(owner)) {
         if(await retryFailedSharedTestDemo(this.env,run.run_id,
+            owner.lease_id,owner.attempt_id,owner.fence))return outcome;
+        if(await retryRepairedSharedTestDemo(this.env,run.run_id,
             owner.lease_id,owner.attempt_id,owner.fence))return outcome;
         const definition=this.implementation.definition;
         if(!definition.jobs.shared_test_agent)

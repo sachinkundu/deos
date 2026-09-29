@@ -232,6 +232,35 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     await this.upload(plan,build,candidateCommit,'active',true);
   }
 
+  /** Refresh only the trusted edge around an already deployed candidate. */
+  async ensureCandidateEdge(plan:TestWorkerPlan,build:VerifiedBuild,
+    candidateCommit:string):Promise<boolean> {
+    const root=this.root(plan);
+    const settings=await this.api(`${root}/settings`) as {tags?:unknown};
+    if(!Array.isArray(settings.tags))
+      throw new Error('shared_test_candidate_edge_identity_changed');
+    const tags=settings.tags as string[];
+    if(
+        ![`deos-test-lease:${plan.leaseId}`,
+          `deos-test-source:${plan.service.base.sourceCommit}`,
+          `deos-test-base:${plan.service.base.deployVersion}`,
+          `deos-test-build:${plan.service.base.buildInputSha256}`,
+          `deos-test-candidate:${candidateCommit}`,
+          `deos-test-candidate-build:${build.sha256}`]
+          .every(tag=>tags.includes(tag)))
+      throw new Error('shared_test_candidate_edge_identity_changed');
+    if(tags.includes(`deos-test-edge:${edgeRevision}`))return false;
+    await this.assertFence(plan,'active');
+    await this.upload(plan,build,candidateCommit,'active',true);
+    const refreshed=await this.api(`${root}/settings`) as {tags?:unknown};
+    if(!Array.isArray(refreshed.tags) ||
+        !refreshed.tags.includes(`deos-test-edge:${edgeRevision}`) ||
+        !refreshed.tags.includes(`deos-test-candidate:${candidateCommit}`) ||
+        !refreshed.tags.includes(`deos-test-candidate-build:${build.sha256}`))
+      throw new Error('shared_test_candidate_edge_refresh_unconfirmed');
+    return true;
+  }
+
   private async upload(plan:TestWorkerPlan,build:VerifiedBuild,sourceCommit:string,
     phase:'preparing'|'active',existing:boolean):Promise<void> {
     const d1=await this.store(plan,'d1_database');

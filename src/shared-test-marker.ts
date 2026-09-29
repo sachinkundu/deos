@@ -35,7 +35,9 @@ export function insertTestMarker(description:string,marker:string):string {
     return description;
   }
   if (description.includes('<!-- deos-test-v1:')) throw new Error('foreign_test_marker_present');
-  return `${description}${description && !description.endsWith('\n')?'\n':''}${marker}\n`;
+  // A blank line keeps Linear from indenting an HTML comment into the last
+  // list item. Linear also trims a final newline on save, so send none.
+  return description?`${description}\n\n${marker}`:marker;
 }
 
 export function removeTestMarker(description:string,marker:string):string {
@@ -43,9 +45,13 @@ export function removeTestMarker(description:string,marker:string):string {
   const matches=lines.flatMap((line,index)=>line===marker?[index]:[]);
   if (matches.length!==1 || description.split(marker).length!==2)
     throw new Error('test_marker_missing_or_ambiguous');
-  const index=matches[0];
-  lines.splice(index,1);
-  return lines.join('\n');
+  const position=description.indexOf(marker);
+  const before=description.slice(0,position);
+  const after=description.slice(position+marker.length);
+  if(!before)return after;
+  if(!before.endsWith('\n'))throw new Error('test_marker_separator_changed');
+  // The original form used one separator; the Linear-safe form uses two.
+  return before.slice(0,before.endsWith('\n\n')?-2:-1)+after;
 }
 
 export async function testMarkerHashes(before:string,after:string,marker:string):Promise<{

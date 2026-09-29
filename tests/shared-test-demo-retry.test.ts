@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
-import {retryFailedSharedTestDemo} from '../src/shared-test-demo-retry.ts';
+import {retryFailedSharedTestDemo,retryRepairedSharedTestDemo}
+  from '../src/shared-test-demo-retry.ts';
+import {sha256Hex} from '../src/implementation-hash.ts';
 
 const at=new Date('2026-09-29T07:00:00.000Z');
 
@@ -101,5 +103,38 @@ test('retry refuses an undestroyed agent and leaves the lease unchanged',async()
       'attempt-1',1,at,async()=>{throw new Error('must not close');}),false);
     assert.equal((db.sqlite.prepare('SELECT attempt_id FROM test_leases')
       .get() as {attempt_id:string}).attempt_id,'attempt-1');
+  }finally{db.close();}
+});
+
+test('audited repair retry verifies Linear text and supersedes blocked proof',async()=>{
+  const db=fixture();
+  try {
+    const hash=await sha256Hex('Task description');
+    db.sqlite.prepare(`INSERT INTO test_demo_repair_retries
+      (request_id,lease_id,run_id,old_attempt_id,new_attempt_id,reason,
+       restored_description_sha256,requested_at)
+      VALUES ('repair-1','lease-1','run-1','attempt-1','attempt-2',
+        'older candidate auth',?,?)`)
+      .run(hash,at.toISOString());
+    const env={DB:db as unknown as D1Database,
+      IMPLEMENTATION_BROWSER:{} as Env['IMPLEMENTATION_BROWSER'],
+      LINEAR_API_URL:'https://api.linear.app/graphql' as const,
+      LINEAR_APP_ACCESS_TOKEN:'test'};
+    let closed=false;
+    const close=async()=>{closed=true;db.sqlite.prepare(`UPDATE test_browser_sessions
+      SET state='absent',absent_at=? WHERE lease_id='lease-1'`)
+      .run(at.toISOString());};
+    await assert.rejects(retryRepairedSharedTestDemo(env,'run-1','lease-1',
+      'attempt-1',1,at,async()=> 'human edit',close),
+      /linear_description_changed/);
+    assert.equal(closed,false);
+    assert.equal(await retryRepairedSharedTestDemo(env,'run-1','lease-1',
+      'attempt-1',1,at,async()=> 'Task description',close),true);
+    assert.equal((db.sqlite.prepare(`SELECT attempt_id FROM test_leases`)
+      .get() as {attempt_id:string}).attempt_id,'attempt-2');
+    assert.equal((db.sqlite.prepare(`SELECT ready FROM test_demo_repair_retry_guards`)
+      .get() as {ready:number}).ready,1);
+    assert.equal((db.sqlite.prepare(`SELECT phase FROM test_proof_items`)
+      .get() as {phase:string}).phase,'superseded');
   }finally{db.close();}
 });

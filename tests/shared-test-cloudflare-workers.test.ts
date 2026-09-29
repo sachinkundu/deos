@@ -30,7 +30,7 @@ test('lease Worker upload binds only its stores and gate, then attaches its fixe
     if(path.endsWith('/settings')) {
       if(!script)return new Response('missing',{status:404});
       result={tags:[`deos-test-lease:${leaseId}`,
-        'deos-test-edge:version-owned-by-edge-v1',
+        'deos-test-edge:lease-auth-seam-v2',
         `deos-test-source:${service.base.sourceCommit}`,
         `deos-test-base:${service.base.deployVersion}`,
         `deos-test-build:${service.base.buildInputSha256}`]};
@@ -121,6 +121,33 @@ test('BettaView upload sends the provider-required single-step migration object'
     betta.base.sourceCommit,'preparing',true);
   assert.ok(metadata);
   assert.equal((metadata as Record<string,unknown>).migrations,undefined);
+});
+
+test('candidate edge refresh keeps the saved candidate and lease identity',async()=>{
+  const provider=new SharedTestCloudflareWorkers({} as D1Database,
+    'd'.repeat(32),'e'.repeat(32),'test-token');
+  const tags=[`deos-test-lease:${leaseId}`,
+    `deos-test-source:${service.base.sourceCommit}`,
+    `deos-test-base:${service.base.deployVersion}`,
+    `deos-test-build:${service.base.buildInputSha256}`,
+    'deos-test-candidate:'+ 'a'.repeat(40),
+    `deos-test-candidate-build:${build.sha256}`,
+    'deos-test-edge:version-owned-by-edge-v1'];
+  let uploaded=false;
+  const controlled=provider as unknown as {api:()=>Promise<unknown>;
+    assertFence:()=>Promise<void>;upload:()=>Promise<void>};
+  controlled.api=async()=>({tags});
+  controlled.assertFence=async()=>{};
+  controlled.upload=async()=>{
+    uploaded=true;
+    tags.splice(tags.indexOf('deos-test-edge:version-owned-by-edge-v1'),1,
+      'deos-test-edge:lease-auth-seam-v2');
+  };
+  assert.equal(await provider.ensureCandidateEdge(plan,build,'a'.repeat(40)),true);
+  assert.equal(uploaded,true);
+  assert.equal(await provider.ensureCandidateEdge(plan,build,'a'.repeat(40)),false);
+  await assert.rejects(provider.ensureCandidateEdge(plan,build,'b'.repeat(40)),
+    /identity_changed/);
 });
 
 test('a lease Worker host already assigned elsewhere is refused before upload',async()=>{
