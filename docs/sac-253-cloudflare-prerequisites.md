@@ -84,7 +84,10 @@ that bucket object tokens use the **S3 API**. The uploader now uses that API,
 with create-only uploads and exact byte readback. It reads the existing token's
 ID and derives its documented S3 representation in memory. It does not create,
 rotate, or broaden the token. The GitHub run still needs to prove this fix with
-its own saved secret.
+its own saved secret. The latest run built both services and compiled modules,
+then the existing staging branch rule rejected the uploader before it received
+a runner or secret. Run the upload from the allowed branch after the final
+merge; changing that protection rule is not needed.
 
 No operator permission change is requested for this repair. For a fresh setup,
 the operator supplies one token with Object Read & Write access to
@@ -111,7 +114,8 @@ free, with no active attempts and `SHARED_TEST_GRANTS_ENABLED=false`.
 The [live readback](evidence/sac-253/staging-live.md) includes the two source
 commits, build digests, deployment versions, and D1 pointer. An authenticated
 Brave visit to `deos-test.voxdez.com` now says the site is ready for the next
-checked task. The first lease still must prove the separate app Access
-identity, candidate deployment, browser session, public proof, and cleanup.
+checked task. Later leases proved app Access, candidate deployment, browser admission,
+sanitized screenshots, and retained-failure cleanup. A successful full review
+flow, success closure, and lasting report remain separate proof gates.
 
 Cloudflare documents the [eager redirect cookie](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/), [wildcard hostname matching](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/), and [service token setup](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/).

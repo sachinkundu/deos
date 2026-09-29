@@ -1,7 +1,8 @@
 # SAC-253 lease app Access readback
 
 Checked in the Cloudflare One dashboard on 28 September 2026. This is setup
-evidence, not a successful browser admission result.
+evidence, not a successful browser admission result. The failed admission
+below is historical; the 29 September follow-up records the working path.
 
 | Item | Saved readback |
 | --- | --- |
@@ -26,3 +27,19 @@ is enabled and assigned to the app. Browser admission remains unproven. The
 operator must re-enter the matching one-time Client Secret in the Worker secret
 or rotate the token and enter its replacement secret. No secret belongs in this
 evidence file.
+
+
+## 29 September: real admission passed
+
+After the owner corrected the token, the deployed coordinator called the
+lease app's `/api/version` endpoint with its saved service identity. Access
+returned HTTP 200, and the app gate returned `admitted: true`. Fresh managed
+browser sessions then opened the real candidate Settings and review screens.
+This proves the stored pair works; it is stronger than a secret timestamp.
+The Cloudflare account-members Allow rule remains as the owner requested.
+
+The v10 demo at 16:41–17:11 UTC reached the candidate and its GitHub backend.
+Its remaining failures were app code defects, recorded in
+[sac-182-runtime-recovery.md](sac-182-runtime-recovery.md). The Access credential
+was not the cause. No permissions or provider credentials were changed by the
+agent during that repair.
