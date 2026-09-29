@@ -1,4 +1,4 @@
-import type {DemoReviewRow} from './implementation-demo.ts';
+import type {DemoReviewRow} from './implementation-demo-contract.ts';
 import type {DemoEvidence,DemoSource} from './implementation-demo-contract.ts';
 import {ImplementationStore,type ImplementationRun} from './implementation-store.ts';
 import {sharedTestCompletedDemoSql} from './shared-test-demo-completion.ts';

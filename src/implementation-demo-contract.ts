@@ -1,6 +1,12 @@
 import { ImplementationError, type ProofKind, type ProofSubject } from './implementation-contract.ts';
 
 export type DemoKind = 'plan' | 'gate';
+export interface DemoReviewRow {
+  attempt_id: string; run_id: string; visit_sequence: number; kind: DemoKind;
+  input_sha: string; plan_sha: string | null; candidate_sha: string | null;
+  tested_base_sha: string; tree_sha: string; outcome: string; summary: string;
+  payload_key: string; payload_sha: string; created_at: string;
+}
 export type DemoVerdict = 'pass' | 'needs_work' | 'blocked';
 export interface DemoSource { path: string; content: string; sha256: string }
 export interface DemoRequirement { id: string; path: string; line: number; title: string }

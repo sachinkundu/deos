@@ -846,3 +846,9 @@ completed lease's final report, original result and validation, and hash-checked
 public proof. Changed bytes, foreign proof URLs, and blocked or aborted leases
 are rejected. All 12 focused gate and close tests pass. This change does not
 claim that the fresh remote demo has passed.
+
+
+The latest complete controller run passed 892 tests, with three optional skips.
+CI caught a portal type boundary: an imported row type pulled backend Worker
+modules into the portal compiler. The row type now lives with the shared demo
+contract. Both the portal and root type checks pass after that correction.

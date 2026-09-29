@@ -4,7 +4,7 @@ import { ImplementationError } from './implementation-contract.ts';
 import { ImplementationStore, type ImplementationInput, type ImplementationRun } from './implementation-store.ts';
 import { sha256Hex } from './implementation-hash.ts';
 import { demoRequirements, validateDemoPlan, validateDemoResult,
-  type DemoContext, type DemoCorrection, type DemoCorrectionRequest, type DemoEvidence, type DemoKind, type DemoPlan, type DemoResult, type DemoSource } from './implementation-demo-contract.ts';
+  type DemoReviewRow, type DemoContext, type DemoCorrection, type DemoCorrectionRequest, type DemoEvidence, type DemoKind, type DemoPlan, type DemoResult, type DemoSource } from './implementation-demo-contract.ts';
 import type { AgentAttemptRecord } from './sandbox-controller.ts';
 import type { ArtifactCollectionResult } from './artifact-collector.ts';
 import type { OrchestrationRunRecord } from './orchestration-store.ts';
@@ -13,12 +13,7 @@ import type { WorkflowJob } from './workflow-definition.ts';
 import { ImplementationHostedPreview } from './implementation-hosted-preview.ts';
 import { implementationRuntimeContext } from './implementation-runtime-context.ts';
 
-export interface DemoReviewRow {
-  attempt_id: string; run_id: string; visit_sequence: number; kind: DemoKind;
-  input_sha: string; plan_sha: string | null; candidate_sha: string | null;
-  tested_base_sha: string; tree_sha: string; outcome: string; summary: string;
-  payload_key: string; payload_sha: string; created_at: string;
-}
+export type {DemoReviewRow} from './implementation-demo-contract.ts';
 export const isDemoJob = (job: Pick<WorkflowJob, 'reviewKind'>) =>
   job.reviewKind === 'demo_plan' || job.reviewKind === 'demo_gate';
 
