@@ -21,7 +21,7 @@ export const sharedTestReviewGuide = {
   },
   browser:{
     wait:'Wait requires a visible CSS selector, for example {version:1,service:"bettaview",operation:"wait",selector:"button"}. It does not accept milliseconds or a duration.',
-    reset:'Reset the browser context, navigate, and sign in again for each scenario. Keep viewport 1440 by 900.',
+    reset:'Reset the browser context, navigate, and sign in again for each scenario. Keep viewport 1440 by 900. If the provider session has ended, reset permits one replacement per service and attempt after two absence reads and a saved lifecycle receipt. Navigate and inspect the new session; never blindly repeat a publish or review action. If the replacement also ends, retain the error and stop browser work.',
     select:'Select the rendered paragraph using selector to open the real inline comment composer.',
     api:'Use the current browser session for negative cases and exact replay. Supply url, method GET or POST, and JSON-encoded body for POST. Allowed paths are /api/pr, /api/review-continuations, /api/review-continuations/publish, /api/review-continuations/action, and /api/settings/bettaview-account. Required visible actions still use the UI.',
   },

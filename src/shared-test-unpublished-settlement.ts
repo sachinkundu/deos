@@ -1,15 +1,18 @@
 import {sha256Hex} from './implementation-hash.ts';
+import {sharedTestReviewFixture} from './shared-test-review-profile.ts';
 
 /** Recovery for browser failures before review publication. Any review intent,
- * gate decision, unknown run, or unsettled request blocks this narrow path. */
+ * unknown gate decision, unknown run, or unsettled request blocks this path.
+ * The deliberate s12 move may have reached the candidate gate without a review;
+ * retain that result only with its verified provider delivery and fixture scope. */
 export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONMENT_TOKEN?:string},
   runId:string,leaseId:string,request:typeof fetch=globalThis.fetch.bind(globalThis)) {
-  const scenarios=(await env.DB.prepare(`SELECT scenario_run_id FROM test_review_scenarios
-    WHERE lease_id=? ORDER BY scenario_id`).bind(leaseId).all<{scenario_run_id:string|null}>()).results;
+  const scenarios=(await env.DB.prepare(`SELECT scenario_id,scenario_run_id FROM test_review_scenarios
+    WHERE lease_id=? ORDER BY scenario_id`).bind(leaseId).all<{scenario_id:string;scenario_run_id:string|null}>()).results;
   if(!scenarios.length)return null;
   if(scenarios.some(s=>!s.scenario_run_id))throw new Error('test_unpublished_scenario_allocation_uncertain');
   const guard=async()=>{
-    const row=await env.DB.prepare(`SELECT l.candidate_commit,e.fence,r.worker_name,r.workflow_name,
+    const row=await env.DB.prepare(`SELECT l.candidate_commit,l.attempt_id,e.fence,r.worker_name,r.workflow_name,
       r.compiled_sha256,d.remote_id AS database_id,d.provider_key AS database_name
       FROM test_environment e JOIN test_leases l ON l.lease_id=e.owner_lease_id
       JOIN test_review_runtimes r ON r.lease_id=l.lease_id AND r.run_id=l.run_id
@@ -22,7 +25,7 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
         AND NOT EXISTS (SELECT 1 FROM test_github_transport_requests WHERE lease_id=? AND finished_at IS NULL)
         AND NOT EXISTS (SELECT 1 FROM agent_attempts WHERE run_id=? AND state IN ('pending','starting','running','collecting'))`)
       .bind(runId,leaseId,leaseId,leaseId,runId).first<{
-        candidate_commit:string;fence:number;worker_name:string;workflow_name:string;
+        candidate_commit:string;attempt_id:string;fence:number;worker_name:string;workflow_name:string;
         compiled_sha256:string;database_id:string;database_name:string}>();
     if(!row)throw new Error('test_unpublished_not_quiescent');
     return row;
@@ -63,9 +66,35 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
     const facts=await query<{intents:number;decisions:number;operations:number}>(`SELECT (SELECT COUNT(*) FROM review_intents) AS intents,
     (SELECT COUNT(*) FROM human_gate_visits WHERE state<>'open') AS decisions,
     (SELECT COUNT(*) FROM provider_operations WHERE capability<>'fixture_input') AS operations`);
-  if(facts.length!==1||facts[0].intents!==0||facts[0].decisions!==0||facts[0].operations!==0)
+    if(facts.length!==1||facts[0].intents!==0||facts[0].operations!==0||
+        !Number.isSafeInteger(facts[0].decisions)||facts[0].decisions<0||facts[0].decisions>scenarios.length)
       throw new Error('test_unpublished_review_effects_present');
-    return facts;
+    const fixtureDecisions=[];
+    if(facts[0].decisions) {
+      const gates=await query<{run_id:string;state:string;decision_outcome:string;
+        decision_delivery_id:string;repository:string;pull_request_number:number;head_branch:string}>(
+        "SELECT * FROM human_gate_visits WHERE state<>'open' ORDER BY run_id,visit_sequence");
+      if(gates.length!==facts[0].decisions || gates.some(g=>g.state!=='revision_requested' ||
+          g.decision_outcome!==g.state || !g.decision_delivery_id ||
+          !scenarios.some(s=>s.scenario_run_id===g.run_id && /^s12(?:-|$)/.test(s.scenario_id))))
+        throw new Error('test_unpublished_review_effects_present');
+      const fixture=await sharedTestReviewFixture(env.DB,{run_id:runId,attempt_id:subject.attempt_id});
+      for(const gate of gates) {
+        if(gate.repository!==fixture.scope.repository || gate.pull_request_number!==fixture.scope.pullRequestNumber ||
+            gate.head_branch!==fixture.scope.branch)throw new Error('test_unpublished_fixture_decision_scope_changed');
+        const scenario=scenarios.find(s=>s.scenario_run_id===gate.run_id)!;
+        const receipt=await env.DB.prepare(`SELECT e.*,f.forwarded_at FROM test_review_forwarded_events f
+          JOIN test_review_fixture_events e ON e.delivery_id=f.delivery_id
+          JOIN deliveries d ON d.delivery_id=e.delivery_id AND d.payload_hash=e.payload_sha
+          WHERE f.lease_id=? AND f.scenario_id=? AND f.delivery_id=? AND e.resource_id=?
+            AND e.issue_id=? AND e.from_state_id=? AND e.to_state_id=?`)
+          .bind(leaseId,scenario.scenario_id,gate.decision_delivery_id,fixture.resourceId,
+            fixture.issueId,fixture.profile.states.review,fixture.profile.states.work).first();
+        if(!receipt)throw new Error('test_unpublished_fixture_decision_receipt_missing');
+        fixtureDecisions.push({gate,receipt});
+      }
+    }
+    return {counts:facts,fixtureDecisions};
   };
   const facts=await checkEffects();
   const runs=await query<{run_id:string;workflow_instance_id:string}>('SELECT run_id,workflow_instance_id FROM orchestration_runs ORDER BY run_id');

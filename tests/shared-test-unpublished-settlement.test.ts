@@ -32,7 +32,7 @@ function fixture() {
   const env={DB:db,ARTIFACTS:bucket,IMPLEMENTATION_ENVIRONMENT_ACCOUNT_ID:'d'.repeat(32),
     IMPLEMENTATION_ENVIRONMENT_TOKEN:'private-test-token'} as unknown as Env;
   const state={intents:0,decisions:0,operations:0,foreign:'',changeOwner:false,lateIntent:false,
-    status:'waiting',patches:0,reads:0,factReads:0,requests:0};
+    status:'waiting',patches:0,reads:0,factReads:0,requests:0,gates:[] as Record<string,unknown>[]};
   const provider=async(input:RequestInfo|URL,init?:RequestInit)=>{
     state.requests++;
     const path=new URL(String(input)).pathname;
@@ -51,7 +51,8 @@ function fixture() {
         state.factReads++;
         result=[{success:true,results:[{intents:state.intents+(state.lateIntent&&state.factReads>1?1:0),
           decisions:state.decisions,operations:state.operations}]}];
-      } else result=[{success:true,results:[{run_id:state.foreign==='run'?'foreign':'scenario-1',workflow_instance_id:'wf-v1-owned'}]}];
+      } else if(sql.includes('human_gate_visits'))result=[{success:true,results:state.gates}];
+      else result=[{success:true,results:[{run_id:state.foreign==='run'?'foreign':'scenario-1',workflow_instance_id:'wf-v1-owned'}]}];
     } else if(path.endsWith('/status')) {
       assert.equal(init?.method,'PATCH');assert.deepEqual(JSON.parse(String(init?.body)),{status:'terminate'});
       assert.equal(state.factReads,1);state.patches++;state.status='terminated';result={};
@@ -106,4 +107,45 @@ test('recovery stops on changed ownership and rechecks effects after workflows s
     assert.equal(f.state.patches,1);assert.equal(f.bucket.objects.size,0);
     assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_review_unpublished_settlements').get()!.n,0);
   } finally {f.db.close();}
+});
+
+for(const invalid of [null,'hash','scenario','fixture','outcome'] as const)
+test(`unpublished s12 decision requires its exact provider receipt: ${invalid??'valid'}`,async()=>{
+  const f=fixture();
+  try {
+    const profile={repository:'owner/test',projectId:'project',teamId:'team',githubUserId:1,
+      states:{review:'review-state',work:'work-state',merge:'merge-state',canceled:'canceled-state'}};
+    const profileText=JSON.stringify(profile),profileHash=await sha256Hex(profileText);
+    f.db.sqlite.prepare('INSERT INTO implementation_test_profiles VALUES (?,?,?,?,?,?)')
+      .run('run-1',`github-linear-review-v1@${profileHash}`,profileText,profileHash,'now','operator');
+    const metadata={profile,branch:'deos/canary/attempt-1',head:'c'.repeat(40),pullNumber:1,issueId:'fixture-issue'};
+    f.db.sqlite.prepare(`INSERT INTO test_review_fixtures
+      (resource_id,run_id,attempt_id,lease_id,kind,slot_id,allocation_op,provider,status,metadata_json,created_at,updated_at)
+      VALUES ('fixture','run-1','attempt-1',?,'safe_test','slot','allocate','github-linear-review-v1','ready',?,'now','now')`)
+      .run(f.lease,JSON.stringify(metadata));
+    f.db.sqlite.exec("UPDATE test_review_scenarios SET scenario_id='s12'");
+    f.db.sqlite.exec(`INSERT INTO deliveries (delivery_id,payload_hash,received_at,classification)
+      VALUES ('delivery','hash','now','test_review_fixture')`);
+    f.db.sqlite.exec(`INSERT INTO test_review_fixture_events VALUES
+      ('delivery','fixture','fixture-issue','actor','review-state','work-state','now','hash','now','user')`);
+    f.db.sqlite.prepare("INSERT INTO test_review_forwarded_events VALUES (?,'s12','delivery','now')").run(f.lease);
+    f.state.decisions=1;
+    f.state.gates=[{run_id:'scenario-1',state:'revision_requested',decision_outcome:'revision_requested',
+      decision_delivery_id:'delivery',repository:profile.repository,pull_request_number:1,head_branch:metadata.branch}];
+    if(invalid==='hash')f.db.sqlite.exec("UPDATE deliveries SET payload_hash='changed'");
+    if(invalid==='scenario')f.state.gates[0].run_id='unknown-run';
+    if(invalid==='fixture')f.state.gates[0].pull_request_number=2;
+    if(invalid==='outcome')f.state.gates[0].state='merge_authorized';
+    if(invalid) {
+      await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/review_effects_present|decision_scope_changed|decision_receipt_missing/);
+      assert.equal(f.state.patches,0);
+    } else {
+      const saved=await settleUnpublishedReview(f.env,'run-1',f.lease,f.provider);
+      const evidence=JSON.parse(await (await f.bucket.get(saved!.evidence_key))!.text());
+      assert.equal(evidence.facts.fixtureDecisions[0].receipt.delivery_id,'delivery');
+      assert.equal(evidence.settledFacts.fixtureDecisions[0].gate.state,'revision_requested');
+      assert.equal(f.state.patches,1);
+      assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_attestations').get()?.n,0);
+    }
+  }finally{f.db.close();}
 });

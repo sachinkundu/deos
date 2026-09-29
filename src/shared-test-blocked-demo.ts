@@ -6,6 +6,7 @@ import {D1OrchestrationStore} from './orchestration-store.ts';
 import {sha256Hex} from './implementation-hash.ts';
 import {snapshotBlockedSetup} from './shared-test-setup-snapshot.ts';
 import {settleUnpublishedReview} from './shared-test-unpublished-settlement.ts';
+import {CloudflareTestBrowserProvider} from './shared-test-browser-provider.ts';
 
 interface Subject {
   run_id:string;lease_id:string;attempt_id:string;candidate_commit:string;
@@ -137,9 +138,15 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
   await new SharedTestCloseStore(env.DB).quiesce(subject.run_id,subject.lease_id,subject.fence);
   const unpublishedSettlement=await settleUnpublishedReview(env,subject.run_id,subject.lease_id);
   const setupSnapshot=await snapshotBlockedSetup(env,subject.run_id,subject.lease_id);
+  const browsers=(await env.DB.prepare(`SELECT service_name,session_id FROM test_browser_sessions
+    WHERE lease_id=? AND run_id=? AND session_id IS NOT NULL`)
+    .bind(subject.lease_id,subject.run_id).all<{service_name:string;session_id:string}>()).results;
+  const browserHistory=[];
+  for(const browser of browsers)browserHistory.push({...browser,
+    history:await new CloudflareTestBrowserProvider(env.IMPLEMENTATION_BROWSER).history(browser.session_id)});
   const evidence={version:2,kind:'blocked_demo',runId:subject.run_id,leaseId:subject.lease_id,
     attemptId:subject.attempt_id,candidateCommit:subject.candidate_commit,manifestId:subject.manifest_id,
-    faultId,artifacts,captures,setupSnapshot,unpublishedSettlement,result:outcome,
+    faultId,artifacts,captures,setupSnapshot,unpublishedSettlement,browserHistory,result:outcome,
     startupFailure:startup?{summary:JSON.parse(startupText),originalErrors}:null};
   const evidenceText=JSON.stringify(evidence),digest=await sha256Hex(evidenceText);
   const key=`shared-test/failed/${subject.lease_id}/${digest}.json`;

@@ -114,6 +114,19 @@ export class SharedTestBrowser {
   }
 
   async reset(scope:TestBrowserScope):Promise<void> {
+    if(!await this.verifyCandidate(scope))throw new Error('test_browser_candidate_not_running');
+    const prior=await this.store.plan(scope);
+    if(prior.state==='ready' && prior.session_id &&
+        !(await this.provider.inventory()).includes(prior.session_id)) {
+      const history=await this.provider.history(prior.session_id);
+      if((await this.provider.inventory()).includes(prior.session_id))
+        throw new Error('test_browser_absence_changed');
+      await this.store.replaceMissing(scope,prior,history);
+      // Only explicit reset replaces a confirmed absent browser. No page action
+      // is replayed, and the caller must navigate and inspect the new session.
+      await this.open(scope);
+      return;
+    }
     const row=await this.open(scope);
     const launch=await this.launcher.launch(scope);
     await this.provider.prepare(row.session_id!,launch.origin,launch.cookie,

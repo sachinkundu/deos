@@ -11,6 +11,7 @@ export type TestBrowserOperation={
 
 export interface TestBrowserProvider {
   inventory():Promise<string[]>;
+  history(id:string):Promise<unknown>;
   capacity():Promise<{available:boolean;retryAfterMs:number}>;
   create(host:string):Promise<{id:string;disconnect():Promise<void>}>;
   prepare(id:string,origin:string,cookie:{name:string;value:string;
@@ -27,10 +28,28 @@ export class CloudflareTestBrowserProvider implements TestBrowserProvider {
   readonly browser:CloudflareBrowserProvider;
   readonly binding:Parameters<typeof puppeteer.sessions>[0];
   constructor(binding:Parameters<typeof puppeteer.sessions>[0]) {
-    this.binding=binding;
-    this.browser=new CloudflareBrowserProvider(binding);
+    this.binding={fetch:async(input:RequestInfo|URL,init?:RequestInit)=>{
+      const response=await binding.fetch(input,init);
+      if(new Headers(init?.headers).get('Upgrade')?.toLowerCase()==='websocket' &&
+          !response.webSocket) {
+        // The SDK otherwise dereferences a null WebSocket and discards the
+        // provider's HTTP error, hiding why reconnect failed.
+        throw new Error(`test_browser_connect_http_${response.status}: ${await response.text()}`);
+      }
+      return response;
+    }} as Parameters<typeof puppeteer.sessions>[0];
+    this.browser=new CloudflareBrowserProvider(this.binding);
   }
   inventory() {return this.browser.inventory();}
+  async history(id:string) {
+    const history=await this.browser.history(id);
+    if(!history)return null;
+    // The provider may add signed debugger URLs. Retain only lifecycle facts.
+    return Object.fromEntries(Object.entries(history).filter(([key])=>[
+      'sessionId','closeReason','closeReasonText','startTime','endTime',
+      'connectionStartTime','connectionEndTime','lastUpdated',
+    ].includes(key)));
+  }
   capacity() {return this.browser.capacity();}
   create(host:string) {return this.browser.create(host);}
   close(id:string) {return this.browser.close(id);}

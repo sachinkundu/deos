@@ -169,6 +169,63 @@ test('unknown browser create outcome is retained and never retried as new',async
   }finally{db.close();}
 });
 
+test('explicit reset replaces one confirmed absent session without replaying a command',async()=>{
+  const db=fixture();
+  try {
+    let sessions:string[]=[],creates=0,commands=0,historyReads=0;
+    const provider={
+      inventory:async()=>[...sessions],capacity:async()=>({available:true,retryAfterMs:1000}),
+      history:async(id:string)=>{historyReads++;return {sessionId:id,closeReasonText:'BrowserEvicted'};},
+      create:async()=>{const id=`browser-${++creates}`;sessions.push(id);return {id,disconnect:async()=>{}};},
+      prepare:async()=>{},
+      command:async()=>{commands++;throw new Error('provider disconnected during publish');},
+    } as unknown as TestBrowserProvider;
+    const store=new SharedTestBrowserStore(db as unknown as D1Database);
+    const browser=new SharedTestBrowser(store,provider,launcher(db),async()=>true);
+    await browser.open(scope);
+    await assert.rejects(browser.command(scope,{operation:'click',selector:'#publish'}),/during publish/);
+    assert.equal(commands,1);assert.equal(creates,1);
+    sessions=[];
+    await assert.rejects(browser.open(scope),/session_disappeared/);
+    assert.equal(creates,1);
+    await browser.reset(scope);
+    assert.equal((await store.row(leaseId,'portal'))?.session_id,'browser-2');
+    assert.equal(commands,1);assert.equal(creates,2);assert.equal(historyReads,1);
+    const receipt=db.sqlite.prepare('SELECT * FROM test_browser_replacements').get()!;
+    assert.equal(receipt.previous_session_id,'browser-1');
+    assert.equal(JSON.parse(String(receipt.previous_row_json)).state,'ready');
+    assert.equal(JSON.parse(String(receipt.provider_history_json)).closeReasonText,'BrowserEvicted');
+    sessions=[];
+    await assert.rejects(browser.reset(scope),/recovery_exhausted/);
+    assert.equal(creates,2);assert.equal(commands,1);
+  }finally{db.close();}
+});
+
+for(const changed of ['inventory','fence','candidate','history'])test(`lost browser reset stops on changed ${changed}`,async()=>{
+  const db=fixture();
+  try {
+    let sessions=['browser-1'],creates=0,verified=true;
+    const provider={
+      inventory:async()=>[...sessions],capacity:async()=>({available:true,retryAfterMs:1000}),
+      history:async()=>{
+        if(changed==='inventory')sessions=['browser-1'];
+        if(changed==='fence')db.sqlite.exec("UPDATE test_environment SET state='quiescing',fence=2");
+        if(changed==='history')throw new Error('provider history HTTP 502');
+        return null;
+      },
+      create:async()=>{creates++;return {id:'browser-1',disconnect:async()=>{}};},
+      prepare:async()=>{},
+    } as unknown as TestBrowserProvider;
+    const browser=new SharedTestBrowser(new SharedTestBrowserStore(db as unknown as D1Database),
+      provider,launcher(db),async()=>verified);
+    await browser.open(scope);sessions=[];
+    if(changed==='candidate')verified=false;
+    await assert.rejects(browser.reset(scope),/absence_changed|write_fenced|candidate_not_running|history HTTP 502/);
+    assert.equal(creates,1);
+    assert.equal(db.sqlite.prepare('SELECT COUNT(*) n FROM test_browser_replacements').get()?.n,0);
+  }finally{db.close();}
+});
+
 test('Linear screenshot storage is tied to the saved issue and remains private until sanitized',async()=>{
   const db=fixture(),bucket=new ImplementationTestBucket();
   try {

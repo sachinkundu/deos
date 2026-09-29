@@ -1,6 +1,6 @@
 import {sha256Hex} from './implementation-hash.ts';
 
-export const sharedTestSetupRepairRevision='lease-review-runtime-v7';
+export const sharedTestSetupRepairRevision='lease-review-runtime-v8';
 
 /** Authorize one fresh lease after a setup-code repair. Existing provider
  * scope, candidate bytes, and failed evidence remain unchanged. */

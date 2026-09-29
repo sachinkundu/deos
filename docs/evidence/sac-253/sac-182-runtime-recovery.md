@@ -410,3 +410,70 @@ that guard and permits started scenarios only when the same candidate and
 cleanup fence have a saved unpublished-workflow settlement. Fifteen focused
 recovery tests passed, including missing and mismatched settlement rejection.
 The original live error remains in the workflow error store.
+
+
+## 29 September, fresh repaired run
+
+Fresh lease `8566ef7dc29b67431c182aac293d9ecbd11131706f6e89d87c9e5e732055a100`
+was granted with fence 13 for the unchanged SAC-182 candidate. All four runner
+classes showed the repaired image ready before the retry request. The lease
+owns a new D1 database, R2 bucket, app Workers, review Worker and Workflow,
+and disposable Linear issue SAC-264.
+
+A fresh Brave capture of SAC-182 was imported privately. The fixed crop and
+OCR sanitizer published only its issue heading:
+[task identity image](https://deos-shared-test-proof.skundu.workers.dev/proof/788eee44-a2af-4552-88e0-11c37a458026).
+This proves task identity, not the disposable issue's later state changes.
+
+CI for commit `7b3b77f` passed all six push and pull-request jobs. The
+[pull-request run](https://github.com/sachinkundu/deos/actions/runs/36586570995)
+reports 834 TypeScript tests passed, two skipped, zero failures; 105 portal
+and 111 BettaView tests passed; and 116 Python tests passed on both Python 3.11
+and 3.14. Builds, binding checks, and configuration validation also passed.
+These checks are separate from the pending provider demonstrations.
+
+## 29 September, provider eviction and gate finding
+
+The fresh demo ran from 15:09:37 to 15:24:48 UTC and ended blocked. Cloudflare's
+Runs page and its browser binding history both report `BrowserSessionEvicted`
+for session `015a07ce-4b5b-48b4-bfd1-36cd6ad850cd`. It started at 15:11:57
+and ended 33 seconds later. The previous browser was also evicted. This is a
+provider closure, not evidence of a bad Access secret or a browser lock race.
+
+The raw result and transcript remain retained, with these SHA-256 digests:
+
+- Result: `22056397c279baf01bee9b18870d6dabf004e047684cb31a2cd69927346ddd77`.
+- Transcript: `076f2eef1bdb6b16629a295d34a3678eab5135ee377d4a1364c5563a29d8da0c`.
+
+The s12 fixture produced signed Linear delivery
+`dec7e78c-703d-4102-b11f-e10f2c5283bb`. Its actor differed from the allowed
+person, yet the candidate moved from review to the edit wait. The code checked
+the allowed ID only for the `implementation` definition. SAC-182 now checks
+the saved allowed person on other definitions too. Its new regression test
+rejects a different user and then accepts the allowed user exactly once.
+All 41 workflow tests passed. This test still needs a fresh provider run.
+
+Recovery retained the s12 failure with its exact fixture, forwarded delivery,
+and original payload hash. It verified zero review intents and zero app
+provider operations before and after settling all twelve owned Workflows.
+The snapshot holds all 131 tables and eleven stored objects. Every object was
+read back and hash-checked. All seven owned resources were then removed and
+proved absent. The site became free at 15:34:39 UTC, revision 2288.
+
+- Failure evidence: `29e35dddcbe668b40b4afe2781167eb27186aa977f36c67be9845fee8a4ccfd6`.
+- Settlement: `c70c82e1229ace146267acf699b40654bbc5d56c9bfacd888f3e77c1dd58a5f5`.
+- Absence: `465495bb2b6307f245523873c44dda85ded99175180ad127fce560d15c64afa4`.
+
+Coordinator `ae1d5269-c0a3-4a7c-a66b-7f1a1c142af4` and migration 0088 add one
+explicit browser replacement per service and attempt. Two provider inventory
+reads must prove absence; the prior ownership row and close history are kept.
+No click or submission is replayed. The browser wrapper now preserves a failed
+connection's HTTP status and body instead of losing it behind the SDK's null
+WebSocket error. All 60 bindings, 30 variable hashes, and 19 secret names match
+their pre-deploy values. No provider settings or credentials were changed.
+
+The repaired SAC-182 candidate is `2e8f3bfd65458a92158638666ee7416ba5925460`.
+Its parent is still the saved base. The earlier commit has a backup branch and
+a retained candidate record. Portal and BettaView builds passed; 121 BettaView
+tests passed. Candidate bundles and the review runtime were uploaded, then
+downloaded and hash-checked before adoption. No test approval was created.
