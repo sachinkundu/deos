@@ -43,3 +43,27 @@ then downloaded both objects and compared SHA-256:
 These are the SAC-182 candidate bundles. The build and upload proof does not
 show that a lease was granted, candidate Workers were deployed, or a real app
 demo ran.
+
+## 29 September: clean CI build and protected upload
+
+The workflow now accepts an exact commit through a manual dispatch. This lets
+the operator check the implementation branch before merging it. Candidate
+build jobs still have no provider credential. The uploader still uses the
+existing protected `staging` environment.
+
+[Run 36600064297](https://github.com/sachinkundu/deos/actions/runs/36600064297)
+found a missing root dependency install before BettaView Worker compilation:
+`npx canceled due to missing packages and no YES option`. The job now installs
+the locked Worker dependencies before compiling either Worker module.
+
+[Run 36602139672](https://github.com/sachinkundu/deos/actions/runs/36602139672)
+built both services and both compiled modules from candidate
+`2e8f3bfd65458a92158638666ee7416ba5925460`. Both build jobs passed. GitHub then
+rejected both upload jobs before a runner or secret was supplied:
+
+> Branch "codex/sac-253-implementation" is not allowed to deploy to staging due to environment protection rules.
+
+This does not test the saved upload token. The protection rule remains in
+place. After the final implementation merge, the same upload job can run from
+the allowed branch. No broader credential or environment permission is needed
+for that route.

@@ -555,3 +555,24 @@ duplicate kind. It now includes every sanitized app/task image and verifies
 each public link before marking the set read. Structured proof remains unique
 per kind. All five proof publication tests passed, including an unavailable
 second screenshot that must leave the entire set unread.
+
+## 29 September: session renewal and review UI fixes
+
+The coordinator now refreshes browser admission without navigating away from
+the current review. Its local browser regression keeps the page and saved
+draft intact. Coordinator version `fe9968a6-ff50-40fb-8fe9-89881421d221`
+contains that fix. All 60 bindings, 30 variable hashes, and 19 secret names
+matched the prior deployment. No provider setting or credential changed.
+
+The next live attempt exposed missing continuation status in the review UI.
+The portal returned the link, but BettaView's story filter dropped it. The
+candidate repair keeps that server link through the filter. Four API tests
+cover ready, unlinked, closed, and stale links while still excluding provider
+diagnostics from the story.
+
+The Publish button also passed its DOM click event as the review type. A real
+local browser test reproduced `{isTrusted: true}` in the outgoing request where
+`COMMENT` was required. The repaired handler uses the saved review type. The
+same browser test passed for Comment, Approve, and Request changes and checked
+that each request retained its review ID and draft content. These local fixes
+still require a fresh pinned candidate and live proof.
