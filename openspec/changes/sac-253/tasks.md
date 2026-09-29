@@ -18,7 +18,7 @@
 - [x] 3.2 Prepare lease-named test services and stores from fixed staging build inputs, excluding live and staging data bindings and provider secrets.
 - [x] 3.3 Read each running test service version back and block agent and provider writes until every service matches the saved base.
 - [x] 3.4 Save plans before remote creates, reconcile uncertain replies by fixed names and work IDs, and retain per-resource ownership and create-fence facts.
-- [ ] 3.5 Build the exact candidate commit in a fresh trusted checkout, deploy it only to affected lease services, and read back the candidate version twice before the demo starts.
+- [x] 3.5 Build the exact candidate commit in a fresh trusted checkout, deploy it only to affected lease services, and read back the candidate version twice before the demo starts.
 
 ## 4. Scoped agent, browser, and provider use
 

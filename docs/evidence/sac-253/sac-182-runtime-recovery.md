@@ -47,3 +47,20 @@ protected app origins returned HTTP 200 with the expected source, build, and
 base version. D1 saved two service readbacks and moved the lease to `active`
 at 2026-09-29T06:44:18.545Z. These facts prove setup and activation only;
 candidate, app use, and provider proof remain separate checks.
+
+The trusted candidate build for commit
+`3837087abb16000f115887afe714b4cc2f4acadd` was deployed to the two
+lease Workers. After Cloudflare rollout settled, D1 stored two matching
+readbacks: BettaView version `6aee4ce8-b5ed-430e-a17f-153899c21cc2` at
+06:47:50 UTC and portal version `0666c8c5-805f-44ea-87c9-01ecaa01f2da`
+at 06:48:53 UTC. The app origins each returned HTTP 200 with that commit and
+the saved base version. This is candidate deployment proof, not an app demo.
+
+The first demo agent attempt `12f131c0-a90c-4d7f-942e-543b4178239a`
+started at 06:49:09 UTC and blocked at app launch with the saved original
+error `test_app_launch_cookie_invalid`. Its Sandbox was destroyed. The
+coordinator closed the owned browser, revoked the old app session, retained
+its incomplete Showboat as superseded proof, and recorded one exact retry in
+`test_demo_attempt_retries` at 07:04:48 UTC. The replacement attempt
+`c64950fe-e6c2-4fdf-81de-e841311fab45` started at 07:05:13 UTC. Its
+app and provider results must be checked separately.
