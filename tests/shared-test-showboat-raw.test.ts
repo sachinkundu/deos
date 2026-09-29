@@ -102,3 +102,24 @@ test('a Showboat checkout for another commit stays private',async()=>{
       WHERE kind='showboat'`).get()?.classification,'private');
   }finally{f.db.close();}
 });
+
+
+test('large accepted Showboat preserves every byte while public projection stays narrow',async()=>{
+  const f=fixture();
+  try {
+    const large=document+'Private scenario detail\n'.repeat(150_000);
+    const bytes=new TextEncoder().encode(large),sha=createHash('sha256').update(bytes).digest('hex');
+    f.bucket.objects.set(key,bytes);
+    f.db.sqlite.prepare("UPDATE artifacts SET byte_size=?,sha256=? WHERE logical_name='showboat.md'").run(bytes.byteLength,sha);
+    assert.equal(await f.driver.resume(),'saved');
+    const row=f.db.sqlite.prepare("SELECT * FROM test_proof_items WHERE kind='showboat'").get()!;
+    assert.equal(await (await f.bucket.get(String(row.object_key)))!.text(),large);
+    assert.equal(row.source_sha256,sha);
+    assert.equal(await new SharedTestShowboatProjection(f.db as unknown as D1Database,f.bucket as unknown as R2Bucket).resume(),'projected');
+    const projected=await routePublicProof(new Request(sharedTestProofUrl(String(row.proof_id))),{
+      DB:f.db as unknown as D1Database,ARTIFACTS:f.bucket as unknown as R2Bucket});
+    const text=await projected.text();
+    assert.match(text,new RegExp(candidate)); assert.doesNotMatch(text,/Private scenario|demo-secret/);
+    assert.ok(text.length<1000);
+  }finally{f.db.close();}
+});

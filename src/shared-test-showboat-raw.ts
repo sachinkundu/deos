@@ -4,6 +4,10 @@ async function bytesSha256(bytes:Uint8Array):Promise<string> {
     .join('');
 }
 
+// A full multi-scenario capture can exceed 2 MB. Keep one bounded source limit
+// across preservation and public projection; never truncate accepted evidence.
+export const sharedTestShowboatMaxBytes=8_000_000;
+
 interface Pending {
   run_id:string;lease_id:string;attempt_id:string;
   r2_key:string;sha256:string;byte_size:number;
@@ -31,7 +35,7 @@ export class SharedTestShowboatRawDriver {
       .first<Pending>();
     if(!row)return 'idle';
     if(!/^[a-f0-9]{64}$/.test(row.sha256) || row.byte_size<20 ||
-        row.byte_size>2_000_000 ||
+        row.byte_size>sharedTestShowboatMaxBytes ||
         row.r2_key!==`runs/${encodeURIComponent(row.run_id)}/attempts/${row.attempt_id}/showboat.md`)
       throw new Error('test_showboat_artifact_invalid');
     const source=await this.bucket.get(row.r2_key);
