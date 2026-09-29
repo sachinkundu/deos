@@ -53,6 +53,17 @@ test('Cloudflare deletes only a saved database ID or exact bucket name',async()=
   ]);
 });
 
+test('a saved database delete accepts a successful empty reply',async()=>{
+  const id='11111111-1111-4111-8111-111111111111';
+  const fetcher:typeof fetch=async(input,init)=>{
+    assert.equal(String(input),
+      `https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${id}`);
+    assert.equal(init?.method,'DELETE');
+    return new Response(null,{status:204});
+  };
+  await new SharedTestCloudflareStores(account,'narrow-secret',fetcher).remove(d1,id);
+});
+
 test('R2 cleanup deletes only listed objects and reads empty twice before bucket deletion',async()=>{
   const calls:string[]=[];
   let present=true;

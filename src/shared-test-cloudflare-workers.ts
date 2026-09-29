@@ -76,6 +76,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     if(missing&&response.status===404)return null;
     if(!response.ok)throw new Error(`Cloudflare ${init.method??'GET'} ${path}: `+
       `HTTP ${response.status} ${raw.replaceAll(this.token,'[redacted]').replaceAll(bearer,'[redacted]')}`);
+    if(init.method==='DELETE' && raw.trim()==='')return null;
     let envelope:{success?:boolean;result?:unknown;errors?:unknown};
     try {envelope=JSON.parse(raw) as typeof envelope;}
     catch(error){throw new Error(`Cloudflare ${init.method??'GET'} ${path}: invalid JSON`,{cause:error});}

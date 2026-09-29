@@ -132,6 +132,28 @@ test('a lease Worker host already assigned elsewhere is refused before upload',a
   await assert.rejects(provider.create(plan,build),/domain_conflict/);
 });
 
+test('cleanup accepts empty successful delete replies after fixed identity checks',async()=>{
+  const calls:string[]=[];
+  const fetcher:typeof fetch=async(input,init)=>{
+    const path=new URL(String(input)).pathname.replace(/^\/client\/v4\/accounts\/[a-f0-9]{32}/,'');
+    calls.push(`${init?.method??'GET'} ${path}`);
+    if(init?.method==='DELETE')return new Response(null,{status:204});
+    if(path.endsWith('/settings'))return Response.json({success:true,result:{tags:[
+      `deos-test-lease:${leaseId}`,`deos-test-source:${service.base.sourceCommit}`,
+      `deos-test-base:${service.base.deployVersion}`,
+      `deos-test-build:${service.base.buildInputSha256}`]}});
+    if(path==='/workers/domains')return Response.json({success:true,result:[{
+      id:'domain-1',hostname:service.canonicalHost,service:service.workerName,
+      zone_id:'e'.repeat(32)}]});
+    throw new Error(`unexpected ${path}`);
+  };
+  await new SharedTestCloudflareWorkers({} as D1Database,'d'.repeat(32),
+    'e'.repeat(32),'test-token',fetcher).remove(plan);
+  assert.deepEqual(calls.slice(-2),[
+    'DELETE /workers/domains/domain-1',
+    `DELETE /workers/scripts/${service.workerName}`]);
+});
+
 test('an expired lease is refused before the first asset write',async()=>{
   let writes=0;
   const fetcher:typeof fetch=async(input,init)=>{

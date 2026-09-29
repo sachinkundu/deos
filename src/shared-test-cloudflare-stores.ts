@@ -23,6 +23,7 @@ export class SharedTestCloudflareStores implements TestStoreCleanupProvider {
     const raw=await response.text();
     if (!response.ok)
       throw new Error(`Cloudflare ${init.method??'GET'} ${path}: HTTP ${response.status} ${raw.replaceAll(this.token,'[redacted]')}`);
+    if(init.method==='DELETE' && raw.trim()==='')return null;
     const envelope=JSON.parse(raw) as {success?:boolean;result?:unknown;errors?:unknown};
     if (envelope.success!==true)
       throw new Error(`Cloudflare ${init.method??'GET'} ${path}: ${JSON.stringify(envelope.errors).replaceAll(this.token,'[redacted]')}`);
