@@ -146,7 +146,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     if(!settings.tags.includes(`deos-test-edge:${edgeRevision}`)) {
       if(build.sha256!==plan.service.base.buildInputSha256)
         throw new Error('shared_test_worker_build_mismatch');
-      await this.upload(plan,build,plan.service.base.sourceCommit,'preparing');
+      await this.upload(plan,build,plan.service.base.sourceCommit,'preparing',true);
       const refreshed=await this.api(`${this.root(plan)}/settings`) as {tags?:unknown};
       if(!Array.isArray(refreshed.tags) ||
           !refreshed.tags.includes(`deos-test-edge:${edgeRevision}`))
@@ -217,7 +217,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     if(build.sha256!==plan.service.base.buildInputSha256)
       throw new Error('shared_test_worker_build_mismatch');
     if(await this.lookup(plan))throw new Error('shared_test_worker_already_exists');
-    await this.upload(plan,build,plan.service.base.sourceCommit,'preparing');
+    await this.upload(plan,build,plan.service.base.sourceCommit,'preparing',false);
     await this.complete(plan,build);
   }
 
@@ -229,11 +229,11 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
       !/^[a-f0-9]{64}$/.test(build.sha256) ||
       !(await this.lookup(plan)))
       throw new Error('shared_test_candidate_worker_missing');
-    await this.upload(plan,build,candidateCommit,'active');
+    await this.upload(plan,build,candidateCommit,'active',true);
   }
 
   private async upload(plan:TestWorkerPlan,build:VerifiedBuild,sourceCommit:string,
-    phase:'preparing'|'active'):Promise<void> {
+    phase:'preparing'|'active',existing:boolean):Promise<void> {
     const d1=await this.store(plan,'d1_database');
     const r2=await this.store(plan,'r2_bucket');
     const portal=plan.service.serviceName==='portal';
@@ -267,7 +267,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
       compatibility_date:portal?'2026-08-26':'2026-08-29',
       compatibility_flags:['nodejs_compat'],
       bindings,assets:{jwt,config:{html_handling:'none',run_worker_first:true}},
-      ...(portal?{}:{migrations:{new_tag:'v1',new_sqlite_classes:['GitHubSession']}}),
+      ...(!portal&&!existing?{migrations:{new_tag:'v1',new_sqlite_classes:['GitHubSession']}}:{}),
       tags:[`deos-test-lease:${plan.leaseId}`,
         `deos-test-edge:${edgeRevision}`,
         `deos-test-source:${plan.service.base.sourceCommit}`,

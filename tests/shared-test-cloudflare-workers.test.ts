@@ -103,7 +103,7 @@ test('BettaView upload sends the provider-required single-step migration object'
     assertFence:()=>Promise<void>;
     api:(path:string,init:RequestInit)=>Promise<unknown>;
     upload:(plan:TestWorkerPlan,candidateBuild:typeof build & {compiledWorker?:Uint8Array},commit:string,
-      phase:'preparing')=>Promise<void>;
+      phase:'preparing',existing:boolean)=>Promise<void>;
   };
   privateProvider.store=async()=> 'store-id';
   privateProvider.uploadAssets=async()=> 'asset-jwt';
@@ -113,10 +113,14 @@ test('BettaView upload sends the provider-required single-step migration object'
     return {};
   };
   await privateProvider.upload(bettaPlan,{...build,compiledWorker:new Uint8Array([1])},
-    betta.base.sourceCommit,'preparing');
+    betta.base.sourceCommit,'preparing',false);
   assert.ok(metadata);
   assert.deepEqual((metadata as Record<string,unknown>).migrations,
     {new_tag:'v1',new_sqlite_classes:['GitHubSession']});
+  await privateProvider.upload(bettaPlan,{...build,compiledWorker:new Uint8Array([1])},
+    betta.base.sourceCommit,'preparing',true);
+  assert.ok(metadata);
+  assert.equal((metadata as Record<string,unknown>).migrations,undefined);
 });
 
 test('a lease Worker host already assigned elsewhere is refused before upload',async()=>{
