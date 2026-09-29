@@ -80,10 +80,86 @@ test('lease gate authorizes an older BettaView candidate through its auth seam',
   const worker=(await import(`data:text/javascript,${encodeURIComponent(source)}`)).default;
   const origin='https://bettaview-test.apps.deos-test.voxdez.com';
   const env={TEST_CANONICAL_HOST:new URL(origin).hostname,
-    TEST_APP_GATE:{authorize:async()=>true}};
+    TEST_APP_GATE:{authorize:async()=>true},
+    TEST_GITHUB_BROKER:{authorized:async()=>false}};
   assert.equal((await worker.fetch(new Request(origin+'/'),env)).status,401);
   const response=await worker.fetch(new Request(origin+'/',{headers:{
     'CF-Access-Jwt-Assertion':'access','Cookie':'__Host-deos_test=fresh'}}),env);
   assert.deepEqual(await response.json(),{identity:{email:'reviewer@deos-test.invalid'},
     gate:'verified'});
+});
+
+test('lease GitHub callback maps back to the saved app session',async()=>{
+  const source=sharedTestEdgeWrapper('bettaview')
+    .replace(/^import \{createBettaViewHandler\} from .*;\n/,
+      `const createBettaViewHandler=()=>({fetch:async request=>
+        Response.json({cookie:request.headers.get('Cookie')})});\n`)
+    .replace("export {GitHubSession} from './app/index.js';",'');
+  const worker=(await import(`data:text/javascript,${encodeURIComponent(source)}`)).default;
+  const origin='https://bettaview-test.apps.deos-test.voxdez.com';
+  const calls:string[]=[];
+  const env={TEST_CANONICAL_HOST:new URL(origin).hostname,
+    TEST_APP_GATE:{authorize:async()=>true},TEST_GITHUB_BROKER:{
+      start:async(session:string,savedOrigin:string)=>{
+        calls.push(`start:${session}:${savedOrigin}`);
+        return 'https://github.com/login/oauth/authorize?state=one';},
+      redeem:async(session:string,savedOrigin:string,handoff:string)=>{
+        calls.push(`redeem:${session}:${savedOrigin}:${handoff}`);
+        return {returnTo:'/settings',cookie:'__Host-deos_github=opaque; Path=/; Secure; HttpOnly'};},
+      authorized:async()=>true,
+    }};
+  const headers={'CF-Access-Jwt-Assertion':'access','Cookie':'__Host-deos_test=fresh'};
+  const started=await worker.fetch(new Request(origin+'/auth/github',{headers}),env);
+  assert.equal(started.status,302);
+  assert.match(started.headers.get('Location')??'',/github.com\/login\/oauth/);
+  const completed=await worker.fetch(new Request(origin+'/__deos/github-complete?handoff=one',
+    {headers}),env);
+  assert.equal(completed.status,303);
+  assert.equal(completed.headers.get('Location'),'/settings');
+  assert.match(completed.headers.get('Set-Cookie')??'',/__Host-deos_github=opaque/);
+  assert.deepEqual(calls,[`start:fresh:${origin}`,`redeem:fresh:${origin}:one`]);
+  const app=await worker.fetch(new Request(origin+'/',{headers:{...headers,
+    Cookie:'__Host-deos_test=fresh; __Host-deos_github=opaque; other=value'}}),env);
+  assert.deepEqual(await app.json(),{cookie:'other=value'});
+});
+
+test('candidate review code uses a scoped transport without seeing the session',async()=>{
+  const source=sharedTestEdgeWrapper('bettaview')
+    .replace(/^import \{createBettaViewHandler\} from .*;\n/,
+      `const createBettaViewHandler=()=>({fetch:async(request,env)=>{
+        const credential=await env.GITHUB_TEST_SESSION(request);
+        const provider=await env.GITHUB_REQUEST('https://api.github.com/user');
+        let continuation;
+        try {await env.TEST_REVIEW_CONTINUATION_CALL('status',{reviewId:'one'});}
+        catch(error) {continuation=error.message;}
+        return Response.json({credential,provider:await provider.json(),
+          cookie:request.headers.get('Cookie'),rawBroker:env.TEST_GITHUB_BROKER,
+          rawSessions:env.GITHUB_SESSIONS,
+          continuation,continuationSecret:env.REVIEW_CONTINUATION_SECRET,
+          liveContinuation:env.DEOS_REVIEW_CONTINUATION});
+      }});\n`)
+    .replace("export {GitHubSession} from './app/index.js';",'');
+  const worker=(await import(`data:text/javascript,${encodeURIComponent(source)}`)).default;
+  const origin='https://bettaview-test.apps.deos-test.voxdez.com';
+  const env={TEST_CANONICAL_HOST:new URL(origin).hostname,
+    REVIEW_CONTINUATION_SECRET:'production-secret',
+    DEOS_REVIEW_CONTINUATION:{status:async()=>({live:true})},
+    TEST_APP_GATE:{authorize:async()=>true},TEST_GITHUB_BROKER:{
+      authorized:async(appSession:string,githubSession:string)=>{
+        assert.equal(appSession,'app-secret');
+        assert.equal(githubSession,'github-secret');
+        return true;},
+      request:async(input:{appSession:string;githubSession:string;target:string})=>{
+        assert.equal(input.appSession,'app-secret');
+        assert.equal(input.githubSession,'github-secret');
+        assert.equal(input.target,'https://api.github.com/user');
+        return {status:200,contentType:'application/json',body:'{"login":"reviewer"}'};},
+    }};
+  const response=await worker.fetch(new Request(origin+'/api/session',{headers:{
+    'CF-Access-Jwt-Assertion':'access',
+    Cookie:'__Host-deos_test=app-secret; __Host-deos_github=github-secret; other=value',
+  }}),env);
+  assert.deepEqual(await response.json(),{credential:'lease-session',
+    provider:{login:'reviewer'},cookie:'other=value',
+    continuation:'test_review_continuation_unavailable'});
 });

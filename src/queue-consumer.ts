@@ -8,6 +8,7 @@ import {refreshSharedTestStaging} from './shared-test-staging-refresh.ts';
 import {projectSharedTestImage} from './shared-test-proof-project.ts';
 import {SharedTestLeaseStore} from './shared-test-lease.ts';
 import {probeSharedTestAccess} from './shared-test-access-probe.ts';
+import {SharedTestGitHubBroker} from './shared-test-github-broker.ts';
 import { reconcileWorkflowEvents } from './workflow-event-reconciliation.ts';
 import { BoundedReviewReconciliationController } from './bounded-review-reconciliation.ts';
 import { IndependentReviewReconciliationController } from './independent-review-reconciliation.ts';
@@ -61,6 +62,7 @@ export { ImplementationSandbox, ImplementationStandard2Sandbox } from "./sandbox
 export { RouteAdmin } from "./route-admin-entrypoint.ts";
 export { SharedTestAppGate } from './shared-test-app-gate-entrypoint.ts';
 export { SharedTestMarkerResolver } from './shared-test-marker-resolver-entrypoint.ts';
+export { SharedTestGitHubBrokerEntrypoint } from './shared-test-github-broker-entrypoint.ts';
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
   implementation: new ImplementationBroker(env),
@@ -172,6 +174,8 @@ export default {
       return refreshSharedTestStaging(request,env);
     if (path === '/shared-test/access-probe')
       return probeSharedTestAccess(request,env);
+    if (path === '/shared-test/github/callback')
+      return new SharedTestGitHubBroker(env).callback(request);
     if (path === '/shared-test/proof-project')
       return projectSharedTestImage(request,env);
     if (path.startsWith('/internal/test-repairs/'))

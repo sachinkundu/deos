@@ -30,7 +30,7 @@ test('lease Worker upload binds only its stores and gate, then attaches its fixe
     if(path.endsWith('/settings')) {
       if(!script)return new Response('missing',{status:404});
       result={tags:[`deos-test-lease:${leaseId}`,
-        'deos-test-edge:lease-auth-seam-v2',
+        'deos-test-edge:lease-github-broker-v3',
         `deos-test-source:${service.base.sourceCommit}`,
         `deos-test-base:${service.base.deployVersion}`,
         `deos-test-build:${service.base.buildInputSha256}`]};
@@ -117,10 +117,14 @@ test('BettaView upload sends the provider-required single-step migration object'
   assert.ok(metadata);
   assert.deepEqual((metadata as Record<string,unknown>).migrations,
     {new_tag:'v1',new_sqlite_classes:['GitHubSession']});
-  const bindings=(metadata as {bindings:Array<{name:string;text?:string}>}).bindings;
+  const bindings=(metadata as {bindings:Array<{name:string;text?:string;
+    service?:string;entrypoint?:string}>}).bindings;
   assert.equal(bindings.find(binding=>binding.name==='GITHUB_CLIENT_ID')?.text,
     'Iv23likxukpheraNrZlx');
   assert.equal(bindings.some(binding=>binding.name==='GITHUB_CLIENT_SECRET'),false);
+  assert.deepEqual(bindings.find(binding=>binding.name==='TEST_GITHUB_BROKER'),{
+    type:'service',name:'TEST_GITHUB_BROKER',service:'deos-queue-consumer-ts',
+    entrypoint:'SharedTestGitHubBrokerEntrypoint'});
   await privateProvider.upload(bettaPlan,{...build,compiledWorker:new Uint8Array([1])},
     betta.base.sourceCommit,'preparing',true);
   assert.ok(metadata);
@@ -145,7 +149,7 @@ test('candidate edge refresh keeps the saved candidate and lease identity',async
   controlled.upload=async()=>{
     uploaded=true;
     tags.splice(tags.indexOf('deos-test-edge:version-owned-by-edge-v1'),1,
-      'deos-test-edge:lease-auth-seam-v2');
+      'deos-test-edge:lease-github-broker-v3');
   };
   assert.equal(await provider.ensureCandidateEdge(plan,build,'a'.repeat(40)),true);
   assert.equal(uploaded,true);

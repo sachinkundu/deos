@@ -4,6 +4,28 @@ These account settings are owned by the Cloudflare operator. Keep the shared
 test grant switch off until the readbacks below pass. Do not send service token
 secrets in chat, an issue, or a pull request.
 
+## GitHub sign-in for lease apps: code path pending
+
+The lease BettaView address changes on each run. The trusted coordinator will
+use one fixed callback:
+`https://deos-queue-consumer-ts.skundu.workers.dev/shared-test/github/callback`.
+It will map a one-use sign-in state to the active lease and return the browser
+to that lease. The candidate's own review backend will send its GitHub network
+calls through a trusted, lease-scoped transport without receiving a GitHub
+credential. No Cloudflare permission change or new hostname is planned.
+
+After the callback and proxy code is ready, the operator has two manual steps:
+
+1. In the GitHub App whose Client ID is `Iv23likxukpheraNrZlx`, add that exact
+   callback URL and keep wildcard matching off. Preserve the current callback.
+2. Put that app's existing Client Secret into the trusted
+   `deos-queue-consumer-ts` Worker secret `SHARED_TEST_GITHUB_CLIENT_SECRET`.
+   Do not put it on a lease Worker or send its value in chat.
+
+Do not perform these steps yet. A saved callback and secret alone cannot prove
+the app works; the coordinator must first have the route and test it with a
+real lease sign-in and scoped GitHub request.
+
 ## Status page login: complete
 
 On 28 September 2026, an authenticated Brave visit to

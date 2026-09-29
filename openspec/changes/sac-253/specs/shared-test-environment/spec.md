@@ -87,6 +87,18 @@ owned by the leased run. All test records SHALL carry the run and lease IDs.
 The system MUST reject a write to any other task, branch, pull request, app
 store, or run.
 
+BettaView test sign-in SHALL use one fixed GitHub callback owned by a trusted
+service. A single-use state and handoff SHALL bind the user back to the exact
+active lease app session and origin. The candidate Worker MUST NOT receive the
+GitHub client secret, authorization code, or user token. Its own review API
+logic SHALL run for the exact candidate commit, using a trusted GitHub
+transport that checks the live lease fence and saved GitHub scope on every
+provider request.
+Linked review continuation SHALL use test-owned state through a trusted adapter.
+The candidate Worker MUST NOT receive the production continuation signing
+secret or a binding that can advance a live workflow. A test review MUST NOT
+move the live Linear issue.
+
 #### Scenario: Current team task is admitted
 
 - **WHEN** a trusted Linear read finds the run task in the current DEOS team.
@@ -116,6 +128,21 @@ store, or run.
 
 - **WHEN** the agent asks to write to a branch or pull request outside the saved lease scope.
 - **THEN** the trusted service rejects the write and records the safe cause.
+
+#### Scenario: GitHub redirects after a lease changes
+
+- **WHEN** GitHub returns to the fixed callback after the saved lease, fence, app session, or state has expired or changed.
+- **THEN** the coordinator refuses the exchange or handoff and gives no credential to the old app.
+
+#### Scenario: Candidate code requests a GitHub credential
+
+- **WHEN** candidate code calls its GitHub routes or asks for a raw credential.
+- **THEN** the trusted transport permits only lease-scoped provider operations and never returns a provider secret or user token; the candidate's review API logic still runs.
+
+#### Scenario: Candidate publishes a linked review
+
+- **WHEN** the candidate's linked-review route publishes through the lease app.
+- **THEN** the trusted continuation adapter records only test-owned review state and cannot advance the live workflow or move its Linear issue.
 
 ### Requirement: Show who holds the site
 

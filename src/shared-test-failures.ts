@@ -24,12 +24,13 @@ function redact(text: string): string {
     .replace(/\b(?:sk-[a-zA-Z0-9_-]{12,}|gh[pousr]_[a-zA-Z0-9_]{12,})\b/g,'[redacted]');
 }
 
-function describeError(value: unknown, seen = new Set<unknown>()): SavedError {
+export function describeSharedTestError(value: unknown,
+  seen = new Set<unknown>()): SavedError {
   if (seen.has(value)) return {name:'CircularCause',message:'circular error cause',stack:null,cause:null};
   seen.add(value);
   if (value instanceof Error) return {name:value.name,message:redact(value.message),
     stack:value.stack ? redact(value.stack) : null,
-    cause:value.cause === undefined ? null : describeError(value.cause,seen)};
+    cause:value.cause === undefined ? null : describeSharedTestError(value.cause,seen)};
   return {name:'NonError',message:redact(String(value)),stack:null,cause:null};
 }
 
@@ -44,7 +45,7 @@ export class SharedTestFailureStore {
         (context.fence !== undefined && (!Number.isSafeInteger(context.fence) || context.fence < 0)))
       throw new Error('invalid_shared_test_failure_context');
     const faultId=crypto.randomUUID();
-    const saved=describeError(error);
+    const saved=describeSharedTestError(error);
     const key=`shared-test/failures/${encodeURIComponent(context.runId)}/${faultId}.json`;
     const body=JSON.stringify({faultId,context,error:saved,occurredAt:at.toISOString()});
     const hash=await sha256Hex(body);
@@ -67,7 +68,7 @@ export class SharedTestFailureStore {
         .bind(faultId,context.runId,context.leaseId??null,context.phase,context.workId??null,
           context.safeCode,objectSaved?key:null,objectSaved?hash:null,saved.message,saved.stack,
           JSON.stringify(saved.cause),JSON.stringify(context),at.toISOString(),
-          JSON.stringify(objectFailure ? [{storageError:describeError(objectFailure)}] : []))];
+          JSON.stringify(objectFailure ? [{storageError:describeSharedTestError(objectFailure)}] : []))];
       if (context.leaseId) {
         writes.push(
           this.db.prepare(`UPDATE test_leases SET first_fault_id=COALESCE(first_fault_id,?)
@@ -83,7 +84,7 @@ export class SharedTestFailureStore {
       if (objectSaved) {
         const fallbackKey=`shared-test/failures/${encodeURIComponent(context.runId)}/${faultId}.index-failure.json`;
         const fallback=JSON.stringify({faultId,originalObjectKey:key,originalObjectSha256:hash,
-          context,databaseError:describeError(databaseError),occurredAt:new Date().toISOString()});
+          context,databaseError:describeSharedTestError(databaseError),occurredAt:new Date().toISOString()});
         try {
           const written=await this.bucket.put(fallbackKey,fallback,
             {onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});

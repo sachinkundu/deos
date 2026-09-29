@@ -8,6 +8,7 @@ import {SharedTestCloudflareWorkers} from './shared-test-cloudflare-workers.ts';
 import {SharedTestBrowserCleanup} from './shared-test-browser-cleanup.ts';
 import {SharedTestBrowserStore} from './shared-test-browser-store.ts';
 import {CloudflareTestBrowserProvider} from './shared-test-browser-provider.ts';
+import {purgeSharedTestGitHubSessions} from './shared-test-github-broker.ts';
 
 type RecoveryEnv=Pick<Env,'DB'|'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {
   TEST_MARKER_KEY_V1?:string;
@@ -61,6 +62,8 @@ export class SharedTestRecovery {
     await this.env.DB.prepare(`UPDATE test_app_sessions SET revoked_at=?
       WHERE run_id=? AND lease_id=? AND revoked_at IS NULL`).bind(now,
         owner.owner_run_id,owner.owner_lease_id).run();
+    await purgeSharedTestGitHubSessions(this.env.DB,
+      owner.owner_run_id,owner.owner_lease_id);
     await this.env.DB.prepare(`UPDATE test_access_identities SET absent_at=?
       WHERE run_id=? AND lease_id=? AND revoked_at IS NOT NULL AND absent_at IS NULL
         AND NOT EXISTS (SELECT 1 FROM test_app_sessions s

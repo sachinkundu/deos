@@ -29,7 +29,8 @@
 - [x] 4.5 Add the trusted `test_issue_marker_patch` action with a versioned keyed marker, saved before/after hashes, idempotent insert/find/remove, and preservation of human edits.
 - [x] 4.6 Route one signed Linear webhook delivery using all saved event-time facts, atomically claim a live expectation, and retry a durable test Queue dispatch without rerouting duplicates.
 - [x] 4.7 Claim test Queue work with expiring tokens and stable work IDs; save the observed result against the exact task, run, lease, commit, pull request, and base.
-- [ ] 4.8 Support BettaView GitHub sign-in on a changing lease host through a fixed callback and trusted exchange, with no OAuth secret or user token in the candidate Worker. Prove a real lease sign-in and scoped GitHub read and write after the operator registers the callback and supplies the trusted secret.
+- [ ] 4.8 Intercept lease BettaView sign-in in the trusted edge. Map a one-use OAuth state to the current lease, handle the fixed coordinator callback, and return a one-use handoff to the exact app session. Add a fenced GitHub transport seam to the SAC-182 candidate backend so its own review API logic still runs without seeing the client secret or user token. Prove real sign-in and scoped read and write after the operator registers the exact callback and supplies the trusted secret.
+- [ ] 4.9 Give the SAC-182 candidate's linked-review API a lease-fenced continuation adapter backed by test-owned state. Keep the production continuation signing secret and live workflow out of the lease Worker, and prove a linked publish cannot move the live Linear issue.
 
 ## 5. Proof, cleanup, and portal
 
