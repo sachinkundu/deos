@@ -1013,10 +1013,7 @@ export class SandboxAgentController {
         project_id:run.project_id,attempt_id:attempt.attempt_id,sandbox_tier:attempt.sandbox_tier,
         stage:attempt.node_id,cause:sandboxCreationCause(error)}));
       try {
-        if (lease !== null) await this.credentials.release(lease);
-      } catch (cleanupError) { recordCaughtError(cleanupError,"sandbox.start.release"); }
-      try {
-        await this.finishFailure(attempt, sandbox, job, "failed", "startup_failed", supervisor);
+        await this.finishFailure(attempt, sandbox, job, "failed", "startup_failed", supervisor, lease);
       } catch (cleanupError) { recordCaughtError(cleanupError,"sandbox.start.failure_cleanup"); }
       throw error;
     }
@@ -1053,11 +1050,24 @@ export class SandboxAgentController {
       const cloneExit = await clone.waitForExit({ timeout: 10 * 60_000 });
       if (cloneExit.code === 0) return;
 
-      const output = await clone.output({ encoding: "utf8", timeout: 10_000, maxBytes: 8_192 });
+      let output;
+      try {
+        output = await clone.output({ encoding: "utf8", timeout: 10_000, maxBytes: 65_536 });
+      } catch (cause) {
+        throw new Error("repository_checkout_output_unavailable", { cause: {
+          attemptId: attempt.attempt_id, attemptNumber, exit: cloneExit, outputError: errorDetails(cause),
+        } });
+      }
       const category = classifyRepositoryCheckoutFailure(output.stderr);
+      const redact = (value: string) => value.replaceAll(grant.token, "[redacted]");
+      const failure = new Error(category, { cause: {
+        attemptId: attempt.attempt_id, attemptNumber, exit: cloneExit,
+        output: { ...output, stdout: redact(output.stdout), stderr: redact(output.stderr) },
+      } });
+      recordCaughtError(failure, "sandbox.repository_checkout");
       const canRetry = RETRYABLE_REPOSITORY_CHECKOUT_FAILURES.has(category) &&
         attemptNumber < REPOSITORY_CHECKOUT_MAX_ATTEMPTS;
-      if (!canRetry) throw new Error(category);
+      if (!canRetry) throw failure;
 
       const backoffMs = REPOSITORY_CHECKOUT_BASE_BACKOFF_MS * 2 ** (attemptNumber - 1);
       await (this.dependencies.wait ?? ((delayMs) => scheduler.wait(delayMs)))(backoffMs);
@@ -1928,6 +1938,7 @@ export class SandboxAgentController {
     state: "failed" | "interrupted" | "absolute_timeout",
     category: string,
     process: SandboxProcessView | null = null,
+    startupLease?: CredentialLease | null,
   ): Promise<string> {
     if (process !== null) await this.stopProcess(process);
     if (JSON.parse(attempt.job_spec_json).nativeSelfReview?.schema === 'deos-bounded-review-v1') {
@@ -1953,8 +1964,11 @@ export class SandboxAgentController {
     } catch (caughtError) {
       recordCaughtError(caughtError, "src/sandbox-controller.ts:1456");}
     try {
-      const lease = await this.credentials.resume(this.config.authProfileId, attempt.attempt_id);
-      await this.credentials.release(lease);
+      // Startup already knows whether acquisition succeeded. Release exactly
+      // once; later failure paths recover the existing lease from its owner.
+      const lease = startupLease === undefined
+        ? await this.credentials.resume(this.config.authProfileId, attempt.attempt_id) : startupLease;
+      if (lease !== null) await this.credentials.release(lease);
     } catch (caughtError) {
       recordCaughtError(caughtError, "src/sandbox-controller.ts:1460");}
     }

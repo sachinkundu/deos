@@ -213,6 +213,11 @@ class Default(WorkerEntrypoint):
         test_event = _implementation_test_event_statement(self.env.DB, event, delivery)
         if test_event is not None:
             statements.append(test_event)
+        lease_test_event = _implementation_test_event_statement(
+            self.env.DB, event, delivery, shared_lease=True
+        )
+        if lease_test_event is not None:
+            statements.append(lease_test_event)
         try:
             await self.env.DB.batch(statements)
         except Exception:
@@ -263,19 +268,23 @@ async def _record_implementation_test_event(
 
 
 def _implementation_test_event_statement(
-    database: Any, event: ApplicationEvent, delivery: Delivery
+    database: Any, event: ApplicationEvent, delivery: Delivery, *, shared_lease: bool = False
 ) -> Any:
     """Capture only verified provider state changes for a reserved test issue."""
     from pyodide.ffi import jsnull
 
     if event.event_kind != "Issue.update" or not event.actor_id or not event.state_id:
         return None
+    events_table = "test_review_fixture_events" if shared_lease else "implementation_test_events"
+    resources_table = "test_review_fixtures" if shared_lease else "implementation_resources"
+    actor_column = ", actor_type" if shared_lease else ""
+    actor_value = ", ?" if shared_lease else ""
     return (
         database.prepare(
-            """INSERT OR IGNORE INTO implementation_test_events
+            f"""INSERT OR IGNORE INTO {events_table}
         (delivery_id, resource_id, issue_id, actor_id, from_state_id, to_state_id,
-         provider_time, payload_sha, received_at)
-        SELECT ?, resource_id, ?, ?, ?, ?, ?, ?, ? FROM implementation_resources
+         provider_time, payload_sha, received_at{actor_column})
+        SELECT ?, resource_id, ?, ?, ?, ?, ?, ?, ?{actor_value} FROM {resources_table}
         WHERE kind='safe_test' AND provider='github-linear-review-v1' AND provider_resource_id=?"""
         )
         .bind(
@@ -287,6 +296,7 @@ def _implementation_test_event_statement(
             event.occurred_at.isoformat(),
             delivery.payload_hash,
             delivery.received_at.isoformat(),
+            *([event.actor_type if event.actor_type else jsnull] if shared_lease else []),
             event.issue_id,
         )
     )

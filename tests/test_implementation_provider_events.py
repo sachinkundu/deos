@@ -59,7 +59,7 @@ def test_only_scoped_issue_state_deliveries_enter_provider_proof(monkeypatch):
                     'github-linear-review-v1','test-issue','ready','now','now')"""
         )
         delivery = SimpleNamespace(delivery_id="delivery", payload_hash="a" * 64, received_at=datetime.now(UTC))
-        event = SimpleNamespace(event_kind="Issue.update", actor_id="app", state_id="work",
+        event = SimpleNamespace(event_kind="Issue.update", actor_id="app", actor_type="application", state_id="work",
                                 previous_state_id="review", occurred_at=datetime.now(UTC), issue_id="real-issue")
         asyncio.run(module._record_implementation_test_event(database, event, delivery))
         assert database.connection.execute("SELECT COUNT(*) FROM implementation_test_events").fetchone()[0] == 0
@@ -73,5 +73,41 @@ def test_only_scoped_issue_state_deliveries_enter_provider_proof(monkeypatch):
         delivery.delivery_id = "comment"
         asyncio.run(module._record_implementation_test_event(database, event, delivery))
         assert database.connection.execute("SELECT COUNT(*) FROM implementation_test_events").fetchone()[0] == 1
+    finally:
+        database.connection.close()
+
+
+def test_lease_fixture_delivery_uses_its_own_ledger_without_a_build_attempt(monkeypatch):
+    module, database = load_entry(monkeypatch), Database()
+    try:
+        database.connection.execute(
+            """INSERT INTO test_review_fixtures
+            (resource_id,run_id,attempt_id,lease_id,kind,slot_id,allocation_op,provider,
+             provider_resource_id,status,created_at,updated_at)
+            VALUES ('fixture','run','reserved-demo','lease','safe_test','slot','allocation',
+                    'github-linear-review-v1','test-issue','ready','now','now')"""
+        )
+        delivery = SimpleNamespace(delivery_id="signed-delivery", payload_hash="b" * 64,
+                                   received_at=datetime.now(UTC))
+        event = SimpleNamespace(event_kind="Issue.update", actor_id="app", actor_type="application", state_id="work",
+                                previous_state_id="review", occurred_at=datetime.now(UTC),
+                                issue_id="another-issue")
+        async def record():
+            statement = module._implementation_test_event_statement(
+                database, event, delivery, shared_lease=True)
+            if statement is not None:
+                await statement.run()
+        asyncio.run(record())
+        assert database.connection.execute("SELECT COUNT(*) FROM test_review_fixture_events").fetchone()[0] == 0
+        event.issue_id = "test-issue"
+        asyncio.run(record())
+        asyncio.run(record())
+        row = database.connection.execute(
+            "SELECT delivery_id,resource_id,issue_id,payload_sha FROM test_review_fixture_events"
+        ).fetchone()
+        assert row == ("signed-delivery", "fixture", "test-issue", "b" * 64)
+        assert database.connection.execute("SELECT COUNT(*) FROM test_review_fixture_events").fetchone()[0] == 1
+        assert database.connection.execute("SELECT COUNT(*) FROM implementation_test_events").fetchone()[0] == 0
+        assert database.connection.execute("SELECT COUNT(*) FROM implementation_tries").fetchone()[0] == 0
     finally:
         database.connection.close()

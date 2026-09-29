@@ -18,6 +18,10 @@ function database():{db:DatabaseSync;binding:D1Database} {
       cookie_class TEXT,expires_at TEXT,revoked_at TEXT);`);
   db.exec(readFileSync(new URL('../migrations/0074_shared_test_github_auth.sql',
     import.meta.url),'utf8'));
+  db.exec(readFileSync(new URL('../migrations/0075_shared_test_reviewer_sessions.sql',
+    import.meta.url),'utf8'));
+  db.exec('CREATE TABLE test_review_fixture_events(delivery_id TEXT PRIMARY KEY); CREATE TABLE test_browser_sessions(lease_id TEXT);');
+  db.exec(readFileSync(new URL('../migrations/0081_shared_test_review_scenarios.sql',import.meta.url),'utf8'));
   const binding={
     prepare(sql:string) {return {bind(...args:unknown[]) {
       const statement=db.prepare(sql);
@@ -126,4 +130,70 @@ test('fixed callback returns to its lease and never gives the candidate a token'
     .get()!.token_ciphertext,'');
   assert.equal(db.prepare('SELECT token_ciphertext FROM test_github_oauth_states')
     .get()!.token_ciphertext,null);
+});
+
+test('saved reviewer session stays on its disposable fixture and stores no token',async()=>{
+  const {db,binding}=database();
+  db.exec(`CREATE TABLE shared_test_run_handoffs(source_run_id TEXT,target_run_id TEXT,state TEXT);
+    CREATE TABLE implementation_test_profiles(run_id TEXT,adapter_binding TEXT,profile_json TEXT,profile_sha TEXT);
+    CREATE TABLE test_review_fixtures(resource_id TEXT,run_id TEXT,attempt_id TEXT,
+      kind TEXT,provider TEXT,status TEXT,metadata_json TEXT);`);
+  const appSession='a'.repeat(43),leaseId='b'.repeat(64),origin=
+    `https://bettaview-${leaseId.slice(0,32)}.apps.deos-test.voxdez.com`;
+  const expires=new Date(Date.now()+3600_000).toISOString();
+  db.prepare('INSERT INTO test_leases VALUES (?,?,?,?,?,?,?,?,?)').run(
+    leaseId,'new-run','attempt','active',3,'owner/real-work','real-branch',137,'c'.repeat(40));
+  db.prepare('INSERT INTO test_environment VALUES (?,?,?,?,?,?)').run(
+    1,'active','new-run',leaseId,3,expires);
+  db.prepare('INSERT INTO test_app_sessions VALUES (?,?,?,?,?,?,?,?,?)').run(
+    await sha256Hex(appSession),'new-run','attempt',leaseId,3,origin,'browser',expires,null);
+  db.prepare('INSERT INTO shared_test_run_handoffs VALUES (?,?,?)').run('old-run','new-run','dispatched');
+  const profile={repository:'owner/test-fixtures',projectId:'test-project',teamId:'team',
+    githubUserId:123,states:{review:'review',work:'work',merge:'merge',canceled:'canceled'}};
+  const encoded=JSON.stringify(profile),digest=await sha256Hex(encoded);
+  db.prepare('INSERT INTO implementation_test_profiles VALUES (?,?,?,?)').run(
+    'old-run',`github-linear-review-v1@${digest}`,encoded,digest);
+  const fixture={profile,branch:'deos/canary/attempt',head:'d'.repeat(40),pullNumber:9};
+  db.prepare('INSERT INTO test_review_fixtures VALUES (?,?,?,?,?,?,?)').run(
+    'fixture','new-run','attempt','safe_test','github-linear-review-v1','ready',JSON.stringify(fixture));
+  let reviewerId=123;
+  const calls:string[]=[];
+  const broker=new SharedTestGitHubBroker({DB:binding,GITHUB_API_URL:'https://api.github.com',
+    IMPLEMENTATION_TEST_GITHUB_TOKEN:'already-configured-reviewer'} as never,async(input,init)=>{
+    const url=String(input);calls.push(url);
+    assert.equal((init?.headers as Record<string,string>).Authorization,'Bearer already-configured-reviewer');
+    if(url==='https://api.github.com/user')return Response.json({id:reviewerId,type:'User'});
+    if(url==='https://api.github.com/repos/owner/test-fixtures/pulls/9')
+      return Response.json({state:'open',head:{sha:fixture.head,ref:fixture.branch,
+        repo:{full_name:profile.repository}}});
+    if(url==='https://api.github.com/repos/owner/test-fixtures/pulls/9/reviews')
+      return Response.json({id:4},{status:201});
+    throw new Error(`unexpected:${url}`);
+  });
+  const login=await broker.reviewer(appSession,origin,'//untrusted.test');
+  assert.equal(login.returnTo,'/');
+  const githubSession=login.cookie.match(/__Host-deos_github=([^;]+)/)![1];
+  const stored=db.prepare('SELECT * FROM test_github_sessions').get()!;
+  assert.equal(stored.credential_source,'test_reviewer');
+  assert.equal(stored.token_ciphertext,'');
+  assert.equal(stored.token_nonce,'');
+  assert.equal(JSON.stringify(stored).includes('already-configured-reviewer'),false);
+  const request={appSession,githubSession,origin,method:'POST',
+    target:'https://api.github.com/repos/owner/test-fixtures/pulls/9/reviews',
+    body:JSON.stringify({commit_id:fixture.head,event:'APPROVE'})};
+  assert.equal((await broker.request(request)).status,201);
+  db.prepare("INSERT INTO test_review_scenarios VALUES (?,'s06','test-run','ready','now')").run(leaseId);
+  db.prepare("INSERT INTO test_review_fault_injections VALUES ('reject',?,'s06','github_reject_review','armed',NULL,'now',NULL)").run(leaseId);
+  assert.equal((await broker.request(request)).status,422);
+  assert.equal(db.prepare("SELECT state FROM test_review_fault_injections WHERE injection_id='reject'").get()!.state,'consumed');
+  await assert.rejects(broker.request({...request,
+    target:'https://api.github.com/repos/owner/real-work/pulls/137/reviews'}),/repository_denied/);
+  reviewerId=456;
+  await assert.rejects(broker.request(request),/identity_changed/);
+  assert.equal(calls.filter(url=>url===request.target).length,1);
+  db.prepare("UPDATE test_review_fixtures SET status='destroyed'").run();
+  await assert.rejects(broker.request(request),/fixture_unavailable/);
+  db.prepare("UPDATE test_environment SET state='cleaning'").run();
+  await purgeSharedTestGitHubSessions(binding,'new-run',leaseId);
+  assert.ok(db.prepare('SELECT revoked_at FROM test_github_sessions').get()!.revoked_at);
 });

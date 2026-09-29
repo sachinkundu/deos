@@ -10,6 +10,7 @@ import {SharedTestBrowserCleanup} from '../src/shared-test-browser-cleanup.ts';
 import type {TestBrowserProvider} from '../src/shared-test-browser-provider.ts';
 import {sharedTestServicePlans} from '../src/shared-test-service-plan.ts';
 import {SharedTestRawProofStore} from '../src/shared-test-raw-proof.ts';
+import {importSharedTestLinearCapture} from '../src/shared-test-operator-capture.ts';
 import {SharedTestImageSanitizer} from '../src/shared-test-image-sanitizer.ts';
 import {routePublicProof} from '../portal/test-proof/worker.ts';
 
@@ -118,7 +119,7 @@ test('owned browser starts after trusted launch and rejects a later fence',async
       allowedText:['SAC-182'],requiredText:['SAC-182']};
     const projector=new SharedTestImageSanitizer(db as unknown as D1Database,
       bucket as unknown as R2Bucket,{run:async()=>({image:safeImage,
-        manifest:{version:1,sanitizerVersion:'fixed-mask-ocr-v1',
+        manifest:{version:1,sanitizerVersion:'fixed-mask-ocr-v2',
           sourceSha256:String(proof.source_sha256),publicSha256:publicSha,
           width:600,height:400,recognizedText:['SAC-182'],passed:true}})});
     const publicUrl=await projector.project(proofId,recipe);
@@ -178,8 +179,17 @@ test('Linear screenshot storage is tied to the saved issue and remains private u
     await assert.rejects(store.saveLinearScreen(runId,leaseId,{image,
       url:'https://linear.app/sachinkundu/issue/SAC-2/wrong'}),
     /test_linear_screen_capture_invalid/);
-    const proofId=await store.saveLinearScreen(runId,leaseId,{image,
-      url:'https://linear.app/sachinkundu/issue/SAC-1/test'});
+    await assert.rejects(store.saveLinearScreen(runId,leaseId,{image,
+      url:'https://linear.app/sachinkundu/issue/SAC-1/test'},new Date(),999),/lease_missing/);
+    const request=(token:string)=>new Request('https://coordinator/shared-test/linear-capture',{
+      method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'image/png',
+        'X-Test-Run-Id':runId,'X-Test-Lease-Id':leaseId,'X-Test-Fence':'1',
+        'X-Test-Source-Url':'https://linear.app/sachinkundu/issue/SAC-1/test'},body:image});
+    const env={DB:db,ARTIFACTS:bucket,STAGE_RETRY_SECRET:'operator'} as unknown as Env;
+    assert.equal((await importSharedTestLinearCapture(request('wrong'),env)).status,401);
+    const imported=await importSharedTestLinearCapture(request('operator'),env);
+    assert.equal(imported.status,200);
+    const {proofId}=await imported.json() as {proofId:string};
     const row=db.sqlite.prepare(`SELECT classification,source_sha256,public_url
       FROM test_proof_items WHERE proof_id=?`).get(proofId);
     assert.equal(row?.classification,'private');
@@ -188,7 +198,7 @@ test('Linear screenshot storage is tied to the saved issue and remains private u
     const safeHash=createHash('sha256').update(safeImage).digest('hex');
     await new SharedTestImageSanitizer(db as unknown as D1Database,
       bucket as unknown as R2Bucket,{run:async()=>({image:safeImage,
-        manifest:{version:1,sanitizerVersion:'fixed-mask-ocr-v1',
+        manifest:{version:1,sanitizerVersion:'fixed-mask-ocr-v2',
           sourceSha256:String(row?.source_sha256),publicSha256:safeHash,
           width:600,height:400,recognizedText:['SAC-1'],passed:true}})})
       .project(proofId,{version:1,sourceSha256:String(row?.source_sha256),

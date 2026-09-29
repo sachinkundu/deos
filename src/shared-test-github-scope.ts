@@ -4,6 +4,7 @@ export interface SharedTestGitHubScope {
   branch:string;
   pullRequestNumber:number;
   candidateCommit:string;
+  readOnlyPull?:{pullRequestNumber:number;candidateCommit:string};
 }
 
 const reviewThreadsQuery='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated path line startLine comments(first:100){nodes{databaseId body createdAt url author{login}}}}}}}}';
@@ -25,6 +26,9 @@ export function assertSharedTestGitHubRequest(scope:SharedTestGitHubScope,
   if(repo.length!==2 || !Number.isSafeInteger(scope.pullRequestNumber) ||
       scope.pullRequestNumber<=0 || !/^[a-f0-9]{40}$/.test(scope.candidateCommit))
     throw new Error('test_github_scope_invalid');
+  if(scope.readOnlyPull && (!Number.isSafeInteger(scope.readOnlyPull.pullRequestNumber) ||
+      scope.readOnlyPull.pullRequestNumber<=0 || scope.readOnlyPull.pullRequestNumber===scope.pullRequestNumber ||
+      !/^[a-f0-9]{40}$/.test(scope.readOnlyPull.candidateCommit)))throw new Error('test_github_read_only_scope_invalid');
   if(url.pathname==='/user' && verb==='GET' && !url.search) return;
   if(url.pathname==='/markdown' && verb==='POST' && !url.search) {
     const value=object(JSON.parse(body??''));
@@ -37,7 +41,8 @@ export function assertSharedTestGitHubRequest(scope:SharedTestGitHubScope,
     const variables=object(value.variables);
     if(value.query===reviewThreadsQuery &&
         variables.owner===repo[0] && variables.repo===repo[1] &&
-        variables.number===scope.pullRequestNumber) return;
+        (variables.number===scope.pullRequestNumber ||
+          (scope.readOnlyPull && variables.number===scope.readOnlyPull.pullRequestNumber))) return;
     throw new Error('test_github_graphql_scope_denied');
   }
   const prefix=`/repos/${encodeURIComponent(repo[0])}/${encodeURIComponent(repo[1])}`;
@@ -45,11 +50,13 @@ export function assertSharedTestGitHubRequest(scope:SharedTestGitHubScope,
     throw new Error('test_github_repository_denied');
   const path=url.pathname.slice(prefix.length);
   const pull=`/pulls/${scope.pullRequestNumber}`;
-  if(verb==='GET' && [pull,`${pull}/files`,`${pull}/comments`].includes(path) &&
-      (!url.search || url.search==='?per_page=100')) return;
+  const readable=[pull,...(scope.readOnlyPull?[`/pulls/${scope.readOnlyPull.pullRequestNumber}`]:[])];
+  if(verb==='GET' && readable.some(p=>[p,`${p}/files`,`${p}/comments`,`${p}/reviews`].includes(path) ||
+      new RegExp(`^${p}/reviews/[1-9][0-9]*(?:/comments)?$`).test(path)) &&
+      (!url.search || /^\?per_page=100(?:&page=[1-9][0-9]*)?$/.test(url.search))) return;
   if(verb==='GET' && path.startsWith('/contents/') &&
       path.length<2000 && url.searchParams.size===1 &&
-      url.searchParams.get('ref')===scope.candidateCommit) return;
+      [scope.candidateCommit,scope.readOnlyPull?.candidateCommit].includes(url.searchParams.get('ref')??'')) return;
   if(verb==='POST' && path===`${pull}/reviews` && !url.search) {
     const value=object(JSON.parse(body??''));
     if(value.commit_id===scope.candidateCommit &&

@@ -2,8 +2,13 @@ import { reconcileImplementations } from "./implementation-reconciliation.ts";
 import {processSharedTestBatch} from './shared-test-queue.ts';
 import {scanSharedTest} from './shared-test-scanner.ts';
 import {SharedTestRepairController} from './shared-test-repair-controller.ts';
+import {closeBlockedSharedTestDemo} from './shared-test-blocked-demo.ts';
+import {retryBlockedSharedTestSetup} from './shared-test-setup-retry.ts';
+import {importSharedTestLinearCapture} from './shared-test-operator-capture.ts';
+import {repairSharedTestCandidate} from './shared-test-candidate-repair.ts';
 import {SharedTestMarkerAction} from './shared-test-marker-action.ts';
 import {SharedTestBrowserAction} from './shared-test-browser-action.ts';
+import {SharedTestReviewScenarios} from './shared-test-review-scenarios.ts';
 import {refreshSharedTestStaging} from './shared-test-staging-refresh.ts';
 import {projectSharedTestImage} from './shared-test-proof-project.ts';
 import {SharedTestLeaseStore} from './shared-test-lease.ts';
@@ -63,10 +68,12 @@ export { RouteAdmin } from "./route-admin-entrypoint.ts";
 export { SharedTestAppGate } from './shared-test-app-gate-entrypoint.ts';
 export { SharedTestMarkerResolver } from './shared-test-marker-resolver-entrypoint.ts';
 export { SharedTestGitHubBrokerEntrypoint } from './shared-test-github-broker-entrypoint.ts';
+export { SharedTestReviewProvider } from './shared-test-review-provider-entrypoint.ts';
 
 const capabilityRouter = (env: Env): CapabilityRouter => new CapabilityRouter({
   implementation: new ImplementationBroker(env),
   sharedTestBrowser:new SharedTestBrowserAction(env),
+  sharedTestReview:new SharedTestReviewScenarios(env),
   sharedTestLeaseWrite:(runId,attemptId,leaseId,fence)=>
     new SharedTestLeaseStore(env.DB).assertWrite(runId,attemptId,leaseId,fence),
   ...((env as Env & {TEST_MARKER_KEY_V1?:string}).TEST_MARKER_KEY_V1 ? {
@@ -178,6 +185,20 @@ export default {
       return new SharedTestGitHubBroker(env).callback(request);
     if (path === '/shared-test/proof-project')
       return projectSharedTestImage(request,env);
+    if (path === '/shared-test/linear-capture')
+      return captureWorkflowErrors(env.DB,env.ARTIFACTS,
+        request.headers.get('X-Test-Run-Id')??'shared-test-capture',path,()=>importSharedTestLinearCapture(request,env));
+    if (path === '/shared-test/blocked-demo-close' || path === '/shared-test/candidate-repair' ||
+      path === '/shared-test/setup-retry') {
+      if (!env.STAGE_RETRY_SECRET || request.headers.get('Authorization') !== `Bearer ${env.STAGE_RETRY_SECRET}`)
+        return Response.json({error:'invalid_operator_capability'},{status:401});
+      const body=await request.clone().json() as {runId?:unknown};
+      if(typeof body?.runId!=='string')return Response.json({error:'invalid_test_recovery_subject'},{status:400});
+      return captureWorkflowErrors(env.DB,env.ARTIFACTS,body.runId,path,()=>
+        path==='/shared-test/blocked-demo-close'?closeBlockedSharedTestDemo(request,env)
+          :path==='/shared-test/setup-retry'?retryBlockedSharedTestSetup(request,env)
+          :repairSharedTestCandidate(request,env));
+    }
     if (path.startsWith('/internal/test-repairs/'))
       return new SharedTestRepairController(env).handle(request);
     if (path === "/cleanup-audit") return cleanupAuditor(env).handle(request);

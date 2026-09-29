@@ -2,8 +2,8 @@
 import {readFile} from 'node:fs/promises';
 
 const [kind,path,extra]=process.argv.slice(2);
-if(!['browser','marker'].includes(kind) || !path?.startsWith('/deos/output/') || extra)
-  throw new Error('Usage: deos-test browser|marker /deos/output/request.json');
+if(!['browser','marker','review'].includes(kind) || !path?.startsWith('/deos/output/') || extra)
+  throw new Error('Usage: deos-test browser|marker|review /deos/output/request.json');
 const raw=await readFile(path,'utf8');
 if(raw.length>20_000)throw new Error('Test capability request is too large');
 const value=JSON.parse(raw);

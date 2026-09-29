@@ -15,6 +15,7 @@ import {SharedTestRepairStore} from './shared-test-repair.ts';
 import {SharedTestFailedSetupProof} from './shared-test-failed-setup-proof.ts';
 import {retryFailedSharedTestDemo,retryRepairedSharedTestDemo} from './shared-test-demo-retry.ts';
 import {SharedTestQuiesceDriver} from './shared-test-quiesce-driver.ts';
+import {SharedTestReviewScenarios} from './shared-test-review-scenarios.ts';
 
 type ScanEnv=SharedTestDriverEnv & Pick<Env,'SHARED_TEST_GRANTS_ENABLED'|
   'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {TEST_MARKER_KEY_V1?:string};
@@ -63,6 +64,12 @@ export async function scanSharedTest(env:ScanEnv,
     }
     operation='shared_test.prepare_activate';
     await new SharedTestLeaseDriver(env).resume();
+    operation='shared_test.forward_review_events';
+    if(retryOwner && await env.DB.prepare(`SELECT 1 AS ready FROM test_review_runtimes
+      WHERE lease_id=? AND verified_at IS NOT NULL AND absent_at IS NULL`)
+      .bind(retryOwner.owner_lease_id).first())
+      await new SharedTestReviewScenarios(env as Env).forward({runId:retryOwner.owner_run_id,
+        attemptId:retryOwner.attempt_id,leaseId:retryOwner.owner_lease_id,fence:retryOwner.fence});
     operation='shared_test.candidate_build';
     await new SharedTestCandidateBuildDispatch(env as Env).resume();
     operation='shared_test.browser_keepalive';

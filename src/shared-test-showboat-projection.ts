@@ -44,7 +44,7 @@ export class SharedTestShowboatProjection {
     const source=await this.bucket.get(row.object_key);
     if(!source)throw new Error('test_showboat_projection_source_missing');
     const bytes=new Uint8Array(await source.arrayBuffer());
-    if(bytes.byteLength>200_000 || await hash(bytes)!==row.source_sha256)
+    if(bytes.byteLength>2_000_000 || await hash(bytes)!==row.source_sha256)
       throw new Error('test_showboat_projection_source_changed');
     const raw=new TextDecoder('utf-8',{fatal:true,ignoreBOM:false}).decode(bytes);
     if(!checkoutOutput(raw,row.candidate_commit))

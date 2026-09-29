@@ -102,11 +102,14 @@ export class SharedTestMarkerAction {
         input.leaseId,input.fence,input.repository,input.issueId)
       .first<{allowed:number}>();
     if (starting?.allowed!==1) throw new Error('shared_test_marker_agent_inactive');
+    const reviewFixture=await this.db.prepare(`SELECT 1 AS ready FROM test_review_runtimes
+      WHERE lease_id=? AND run_id=? AND attempt_id=? AND verified_at IS NOT NULL AND absent_at IS NULL`)
+      .bind(input.leaseId,input.runId,input.attemptId).first<{ready:number}>();
     const claims:CapabilityClaims={version:1,issuer:'deos',
       audience:'sandbox-capabilities',runId:input.runId,attemptId:input.attemptId,
       leaseId:input.leaseId,fence:input.fence,repository:input.repository,
       issueId:input.issueId,actions:['github.clone_repository',
-        'test_issue_marker_patch','test_app_browser'],changeId:null,
+        'test_issue_marker_patch','test_app_browser',...(reviewFixture?.ready===1?['test_review_fixture' as const]:[])],changeId:null,
       planningBranch:null,expiresAt:Math.floor(now.getTime()/1000)+15*60};
     return mintCapabilityToken(claims,secret);
   }

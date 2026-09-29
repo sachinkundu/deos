@@ -2,11 +2,12 @@ import type {TestWorkerCleanupProvider} from './shared-test-resource-cleanup.ts'
 import type {TestWorkerIdentity,TestWorkerPlan} from './shared-test-worker-provisioner.ts';
 import type {SharedTestBuildStore} from './shared-test-build-store.ts';
 import {sharedTestEdgeWrapper} from './shared-test-edge-wrapper.ts';
+import {sharedTestSetupRepairRevision} from './shared-test-setup-retry.ts';
 
 type VerifiedBuild=Awaited<ReturnType<SharedTestBuildStore['read']>>;
 type Asset={hash:string;bytes:Uint8Array;type:string};
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-const edgeRevision='lease-github-broker-v3';
+const edgeRevision=sharedTestSetupRepairRevision;
 // Public GitHub App identifier used by the maintained BettaView deployment.
 const bettaViewGitHubClientId='Iv23likxukpheraNrZlx';
 const encoder=new TextEncoder();
@@ -268,6 +269,11 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
     const d1=await this.store(plan,'d1_database');
     const r2=await this.store(plan,'r2_bucket');
     const portal=plan.service.serviceName==='portal';
+    const runtime=!portal && phase==='active'?await this.db.prepare(`SELECT worker_name
+      FROM test_review_runtimes WHERE lease_id=? AND run_id=? AND fence=?
+        AND candidate_commit=? AND verified_at IS NOT NULL AND absent_at IS NULL`)
+      .bind(plan.leaseId,plan.runId,plan.fence,sourceCommit)
+      .first<{worker_name:string}>():null;
     if(!portal && !build.compiledWorker?.byteLength)
       throw new Error('shared_test_compiled_worker_missing');
     const bindings:Record<string,unknown>[]=[
@@ -293,8 +299,11 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
       {type:'plain_text',name:'GITHUB_CLIENT_ID',text:bettaViewGitHubClientId},
       {type:'service',name:'TEST_GITHUB_BROKER',service:'deos-queue-consumer-ts',
         entrypoint:'SharedTestGitHubBrokerEntrypoint'},
-      {type:'service',name:'DEOS_PORTAL',service:`deos-test-portal-${plan.leaseId.slice(0,32)}`},
+      {type:'service',name:'DEOS_PORTAL',service:`deos-test-portal-${plan.leaseId.slice(0,32)}`,
+        entrypoint:'SharedTestPortalRead'},
       {type:'durable_object_namespace',name:'GITHUB_SESSIONS',class_name:'GitHubSession'});
+    if(runtime)bindings.push({type:'service',name:'TEST_REVIEW_CONTINUATION',
+      service:runtime.worker_name,entrypoint:'ReviewContinuation'});
     const jwt=await this.uploadAssets(plan,build,phase);
     const form=new FormData();
     form.set('metadata',JSON.stringify({main_module:'edge.js',

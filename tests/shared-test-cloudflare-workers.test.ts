@@ -1,3 +1,4 @@
+import {sharedTestSetupRepairRevision} from '../src/shared-test-setup-retry.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {SharedTestCloudflareWorkers} from '../src/shared-test-cloudflare-workers.ts';
@@ -30,7 +31,7 @@ test('lease Worker upload binds only its stores and gate, then attaches its fixe
     if(path.endsWith('/settings')) {
       if(!script)return new Response('missing',{status:404});
       result={tags:[`deos-test-lease:${leaseId}`,
-        'deos-test-edge:lease-github-broker-v3',
+        `deos-test-edge:${sharedTestSetupRepairRevision}`,
         `deos-test-source:${service.base.sourceCommit}`,
         `deos-test-base:${service.base.deployVersion}`,
         `deos-test-build:${service.base.buildInputSha256}`]};
@@ -149,7 +150,7 @@ test('candidate edge refresh keeps the saved candidate and lease identity',async
   controlled.upload=async()=>{
     uploaded=true;
     tags.splice(tags.indexOf('deos-test-edge:version-owned-by-edge-v1'),1,
-      'deos-test-edge:lease-github-broker-v3');
+      `deos-test-edge:${sharedTestSetupRepairRevision}`);
   };
   assert.equal(await provider.ensureCandidateEdge(plan,build,'a'.repeat(40)),true);
   assert.equal(uploaded,true);

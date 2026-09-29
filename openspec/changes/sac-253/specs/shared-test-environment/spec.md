@@ -87,17 +87,28 @@ owned by the leased run. All test records SHALL carry the run and lease IDs.
 The system MUST reject a write to any other task, branch, pull request, app
 store, or run.
 
-BettaView test sign-in SHALL use one fixed GitHub callback owned by a trusted
-service. A single-use state and handoff SHALL bind the user back to the exact
-active lease app session and origin. The candidate Worker MUST NOT receive the
-GitHub client secret, authorization code, or user token. Its own review API
-logic SHALL run for the exact candidate commit, using a trusted GitHub
-transport that checks the live lease fence and saved GitHub scope on every
-provider request.
-Linked review continuation SHALL use test-owned state through a trusted adapter.
-The candidate Worker MUST NOT receive the production continuation signing
-secret or a binding that can advance a live workflow. A test review MUST NOT
-move the live Linear issue.
+BettaView automated test sign-in SHALL use the existing checked test reviewer
+from the frozen provider profile. The trusted coordinator SHALL verify its
+current numeric GitHub identity, exact lease app session, fence, and ready
+disposable fixture before issuing a short-lived opaque session. It MUST repeat
+these checks on each provider request. No new callback setting or credential
+is required for this path. An optional interactive OAuth path SHALL bind
+single-use state and handoffs to the exact active lease and origin.
+
+The candidate Worker MUST NOT receive a GitHub client secret, authorization
+code, or user token. Its own review API logic SHALL run for the exact candidate
+commit, using a trusted transport that checks the live lease fence and saved
+fixture scope. Linked review continuation SHALL execute the candidate's actual
+ReviewContinuation service and DeosWorkflow with test-owned stores. The trusted
+builder SHALL pin their source and bundle hashes; deployment SHALL verify the
+running version twice. Outbound provider transport MAY inject explicitly
+labeled failures but MUST NOT replace review or gate decisions. Real signed
+Linear deliveries SHALL be retained as provider evidence.
+
+The candidate MUST NOT receive the production continuation signing secret or
+a binding that can advance a live workflow. A test review MUST NOT move the
+live Linear issue. A lease-specific service key and fixed-scope provider
+binding SHALL authorize only the disposable test fixture.
 
 #### Scenario: Current team task is admitted
 
@@ -129,7 +140,7 @@ move the live Linear issue.
 - **WHEN** the agent asks to write to a branch or pull request outside the saved lease scope.
 - **THEN** the trusted service rejects the write and records the safe cause.
 
-#### Scenario: GitHub redirects after a lease changes
+#### Scenario: Optional GitHub OAuth redirects after a lease changes
 
 - **WHEN** GitHub returns to the fixed callback after the saved lease, fence, app session, or state has expired or changed.
 - **THEN** the coordinator refuses the exchange or handoff and gives no credential to the old app.
@@ -142,7 +153,7 @@ move the live Linear issue.
 #### Scenario: Candidate publishes a linked review
 
 - **WHEN** the candidate's linked-review route publishes through the lease app.
-- **THEN** the trusted continuation adapter records only test-owned review state and cannot advance the live workflow or move its Linear issue.
+- **THEN** the actual candidate service and Workflow record test-owned review state through the scoped provider transport and cannot advance a live workflow or move its Linear issue.
 
 ### Requirement: Show who holds the site
 
@@ -217,6 +228,16 @@ removal, and absence checks all pass.
 
 - **WHEN** cleanup finds data that is not bound to the ending run and lease.
 - **THEN** it leaves that data unchanged and raises a scoped cleanup fault.
+
+#### Scenario: App setup blocks before a review session
+
+- **WHEN** the demo attempt is blocked and its Sandbox is destroyed, with no GitHub session, review fixture, or test attestation, and the operator requests an exact-subject abort.
+- **THEN** the system retains and verifies all original artifacts and captures, reads back a failed-setup PR note, fences writes, settles accepted marker work, and proves owned-resource absence before freeing the site. It creates a failed close receipt and no release attestation.
+
+#### Scenario: A repaired draft follows a failed lease
+
+- **WHEN** the previous lease has a failed close receipt and the operator submits a new exact draft head and hash-pinned artifacts on the same approved base.
+- **THEN** the coordinator verifies the live PR, tree and blob hashes, preserves the old candidate and patch, and requires a fresh lease and full proof for the new commit. The retired commit cannot silently reacquire the site.
 
 ### Requirement: Prove the real flow with stalled SAC-182 work
 

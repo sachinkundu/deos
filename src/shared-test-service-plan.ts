@@ -28,7 +28,9 @@ export function sharedTestServicePlans(leaseId:string,base:StableStagingBase):Sh
         !/^[a-f0-9]{40}$/.test(service.sourceCommit) || !service.deployVersion ||
         !/^[a-f0-9]{64}$/.test(service.buildInputSha256)))
     throw new Error('invalid_shared_test_service_base');
-  return [...base.services].sort((a,b)=>a.serviceName.localeCompare(b.serviceName))
+  // BettaView's named read binding requires the portal entrypoint to exist.
+  return [...base.services].sort((a,b)=>a.serviceName==='portal'?-1:
+    b.serviceName==='portal'?1:a.serviceName.localeCompare(b.serviceName))
     .map(service=>({
       serviceName:service.serviceName,
       resourceId:`test-worker:${leaseId}:${service.serviceName}`,

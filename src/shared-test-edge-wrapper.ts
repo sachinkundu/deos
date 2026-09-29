@@ -3,7 +3,30 @@ export function sharedTestEdgeWrapper(serviceName:string):string {
   const app=serviceName==='portal'?'./app/worker.js':
     serviceName==='bettaview'?'./app/index.js':null;
   if (!app) throw new Error('shared_test_edge_service_invalid');
-  return `import ${serviceName==='bettaview'?'{createBettaViewHandler}':'candidate'} from ${JSON.stringify(app)};
+  return `import ${serviceName==='bettaview'?'{createBettaViewHandler}':'{routePortalRequest}'} from ${JSON.stringify(app)};
+${serviceName==='portal'?`import {WorkerEntrypoint} from 'cloudflare:workers';
+const candidate={fetch:(request,env)=>routePortalRequest(request,env,async()=>({email:'reviewer@deos-test.invalid'}))};
+// Only the BettaView service binding can reach this entrypoint. Each call still
+// checks the original browser's lease session and the live coordinator fence.
+export class SharedTestPortalRead extends WorkerEntrypoint {
+  async fetch(request) {
+    const target=new URL(request.url);
+    const origin=request.headers.get('X-Deos-Test-Origin');
+    const expected='https://'+this.env.TEST_CANONICAL_HOST.replace(/^portal-/,'bettaview-');
+    const path=target.pathname;
+    const readable=/^\\/api\\/pull-requests\\/[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+\\/[1-9][0-9]*\\/review-story$/.test(path)||
+      /^\\/api\\/process-attempts\\/[a-f0-9-]{36}\\/artifacts\\/[^/]+$/i.test(path);
+    if(target.origin!=='https://deos.internal'||target.search||!readable||
+      !['GET','HEAD'].includes(request.method)||origin!==expected)
+      return new Response('test portal read denied',{status:403});
+    const session=request.headers.get('X-Deos-Test-Session');
+    const accessJwt=request.headers.get('CF-Access-Jwt-Assertion');
+    if(!session||!accessJwt||!await this.env.TEST_APP_GATE.authorize({session,origin,accessJwt}))
+      return new Response('test portal session denied',{status:403});
+    return candidate.fetch(new Request('https://'+this.env.TEST_CANONICAL_HOST+path,
+      {method:request.method}),this.env,this.ctx);
+  }
+}`:''}
 ${serviceName==='bettaview'?"export {GitHubSession} from './app/index.js';":''}
 ${serviceName==='bettaview'?`// The lease gate has already checked Access and the one-use app session.
 // Older pinned candidates still call their production Access verifier; use
@@ -80,10 +103,10 @@ ${serviceName==='bettaview'?`
     if(url.pathname==='/auth/github') {
       if(request.method!=='GET')
         return new Response('method not allowed',{status:405,headers:responseHeaders});
-      const destination=await env.TEST_GITHUB_BROKER.start(session,url.origin,
+      const result=await env.TEST_GITHUB_BROKER.reviewer(session,url.origin,
         url.searchParams.get('returnTo')||'/');
-      return new Response(null,{status:302,headers:{...responseHeaders,
-        Location:destination}});
+      return new Response(null,{status:303,headers:{...responseHeaders,
+        Location:result.returnTo,'Set-Cookie':result.cookie}});
     }
     if(url.pathname==='/__deos/github-complete') {
       if(request.method!=='GET')
@@ -116,8 +139,28 @@ ${serviceName==='bettaview'?`
     const candidateEnv={...env,TEST_APP_GATE:undefined,TEST_GITHUB_BROKER:undefined,
       GITHUB_SESSIONS:undefined,GITHUB_CLIENT_SECRET:undefined,
       DEOS_REVIEW_CONTINUATION:undefined,REVIEW_CONTINUATION_SECRET:undefined,
-      TEST_REVIEW_CONTINUATION_CALL:async()=>{
-        throw new Error('test_review_continuation_unavailable');
+      TEST_REVIEW_CONTINUATION:undefined,
+      DEOS_PORTAL:{fetch:async request=>{
+        if(!await env.TEST_GITHUB_BROKER.authorized(session,githubSession,url.origin))
+          return new Response('test review identity denied',{status:403});
+        const forwarded=new Headers();
+        forwarded.set('CF-Access-Jwt-Assertion',accessJwt);
+        forwarded.set('X-Deos-Test-Session',session);
+        forwarded.set('X-Deos-Test-Origin',url.origin);
+        return env.DEOS_PORTAL.fetch(new Request(request,{headers:forwarded}));
+      }},
+      TEST_REVIEW_CONTINUATION_CALL:async(method,body,identity={})=>{
+        if(!env.TEST_REVIEW_CONTINUATION)
+          throw new Error('test_review_continuation_unavailable');
+        if(method==='status') {
+          if(!await env.TEST_GITHUB_BROKER.authorized(session,githubSession,url.origin))
+            throw new Error('test_review_identity_denied');
+          return env.TEST_REVIEW_CONTINUATION.status(body.reviewId);
+        }
+        const assertion=await env.TEST_GITHUB_BROKER.assertion({appSession:session,
+          githubSession,origin:url.origin,method,body,
+          githubUserId:identity.githubUserId,accessAccount:identity.accessAccount});
+        return env.TEST_REVIEW_CONTINUATION[method](assertion,body);
       },
       GITHUB_TEST_SESSION:async()=>githubSession&&
         await env.TEST_GITHUB_BROKER.authorized(session,githubSession,url.origin)

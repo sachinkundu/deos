@@ -113,9 +113,17 @@ export class SharedTestBrowser {
     await this.store.refreshed(scope,row.session_id,launch.expiresAt);
   }
 
+  async reset(scope:TestBrowserScope):Promise<void> {
+    const row=await this.open(scope);
+    const launch=await this.launcher.launch(scope);
+    await this.provider.prepare(row.session_id!,launch.origin,launch.cookie,
+      this.launcher.clientId,this.launcher.clientSecret,true);
+    await this.store.refreshed(scope,row.session_id!,launch.expiresAt);
+  }
+
   async command(scope:TestBrowserScope,input:TestBrowserOperation):Promise<{
     url:string;title?:string;content?:string;documentStatus?:number}> {
-    if(!['navigate','state','click','fill','press','wait','viewport'].includes(input.operation))
+    if(!['navigate','state','click','fill','press','wait','viewport','api','select'].includes(input.operation))
       throw new Error('test_browser_operation_invalid');
     if(!await this.verifyCandidate(scope))
       throw new Error('test_browser_candidate_not_running');
@@ -129,7 +137,12 @@ export class SharedTestBrowser {
       throw new Error('test_browser_session_fenced');
     if(!row.prepared_until || Date.parse(row.prepared_until)-Date.now()<120_000)
       await this.refresh(scope,row);
-    const result=await this.provider.command(row.session_id,row.origin,input);
+    const viewport=input.operation==='viewport'?{width:input.width!,height:input.height!}:
+      {width:row.viewport_width??1440,height:row.viewport_height??900};
+    const result=await this.provider.command(row.session_id,row.origin,{...input,viewport});
+    if(input.operation==='viewport')await this.store.db.prepare(`UPDATE test_browser_sessions
+      SET viewport_width=?,viewport_height=? WHERE lease_id=? AND service_name=? AND session_id=?`)
+      .bind(viewport.width,viewport.height,scope.leaseId,scope.plan.serviceName,row.session_id).run();
     if('image' in result || result.content && result.content.length>200_000)
       throw new Error('test_browser_result_invalid');
     await new SharedTestLeaseStore(this.store.db).assertWrite(scope.runId,
@@ -152,7 +165,8 @@ export class SharedTestBrowser {
       throw new Error('test_browser_session_fenced');
     if(!row.prepared_until || Date.parse(row.prepared_until)-Date.now()<120_000)
       await this.refresh(scope,row);
-    const result=await this.provider.capture(row.session_id,row.origin);
+    const result=await this.provider.capture(row.session_id,row.origin,
+      {width:row.viewport_width??1440,height:row.viewport_height??900});
     if(result.image.byteLength<100 || result.image.byteLength>8_000_000 ||
         new URL(result.url).origin!==row.origin)
       throw new Error('test_browser_capture_invalid');

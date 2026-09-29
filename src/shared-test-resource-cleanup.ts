@@ -4,6 +4,7 @@ import type {StableStagingBase} from './shared-test-lease.ts';
 import type {TestStoreCleanupProvider} from './shared-test-store-provisioner.ts';
 import type {TestWorkerIdentity,TestWorkerPlan} from './shared-test-worker-provisioner.ts';
 import {requiredProofKinds} from './shared-test-close.ts';
+import {isBlockedDemoAbort,isUnstartedSetupAbort} from './shared-test-abort-state.ts';
 
 export interface TestWorkerCleanupProvider {
   lookup(plan:TestWorkerPlan):Promise<TestWorkerIdentity|null>;
@@ -37,9 +38,12 @@ export class SharedTestResourceCleanup {
   readonly workers:TestWorkerCleanupProvider;
   readonly stores:TestStoreCleanupProvider;
   readonly resources:SharedTestResourceStore;
+  readonly cleanupFixtures?:(input:{runId:string;leaseId:string;cleanupFence:number})=>Promise<void>;
   constructor(db:D1Database,workers:TestWorkerCleanupProvider,
-    stores:TestStoreCleanupProvider) {
+    stores:TestStoreCleanupProvider,
+    cleanupFixtures?:(input:{runId:string;leaseId:string;cleanupFence:number})=>Promise<void>) {
     this.db=db;this.workers=workers;this.stores=stores;
+    this.cleanupFixtures=cleanupFixtures;
     this.resources=new SharedTestResourceStore(db);
   }
 
@@ -62,14 +66,16 @@ export class SharedTestResourceCleanup {
         AND projected_at IS NOT NULL`).bind(leaseId,...requiredProofKinds)
       .first<{ready:number}>();
     if (proof?.ready!==requiredProofKinds.length) {
+      const blockedDemo=await isBlockedDemoAbort(this.db,runId,leaseId);
+      const activatedAbort=blockedDemo || await isUnstartedSetupAbort(this.db,runId,leaseId);
       const failedSetup=await this.db.prepare(`SELECT 1 AS ready
         FROM test_lease_aborts a JOIN test_leases l ON l.lease_id=a.lease_id
         WHERE a.lease_id=? AND a.run_id=? AND a.proof_read_at IS NOT NULL
-          AND a.closed_at IS NULL AND l.activated_at IS NULL
-          AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=?)
-          AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=?)
-          AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=?)
-          AND NOT EXISTS (SELECT 1 FROM test_provider_deliveries WHERE lease_id=?)`)
+          AND a.closed_at IS NULL AND l.activated_at IS ${activatedAbort?'NOT ':''}NULL
+          AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=? ${blockedDemo?"AND state='complete'":''})
+          AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=? ${blockedDemo?"AND state NOT IN ('done','absent')":''})
+          AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=? ${blockedDemo?"AND state<>'disabled'":''})
+          AND NOT EXISTS (SELECT 1 FROM test_provider_deliveries WHERE lease_id=? ${blockedDemo?"AND route='test' AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch d WHERE d.delivery_id=test_provider_deliveries.delivery_id AND d.state='done')":''})`)
         .bind(leaseId,runId,leaseId,leaseId,leaseId,leaseId)
         .first<{ready:number}>();
       if(failedSetup?.ready!==1)
@@ -104,7 +110,8 @@ export class SharedTestResourceCleanup {
     const base=JSON.parse(owner.base_json) as StableStagingBase;
     const services=sharedTestServicePlans(input.leaseId,base);
     const stores=sharedTestStorePlans(input.leaseId,base);
-    for (const service of services) {
+    // Remove callers before their bound services. The portal was created first.
+    for (const service of [...services].reverse()) {
       await this.owner(input.runId,input.leaseId,input.cleanupFence);
       const plan:TestWorkerPlan={resourceId:service.resourceId,
         runId:input.runId,leaseId:input.leaseId,fence:input.createFence,
@@ -152,6 +159,9 @@ export class SharedTestResourceCleanup {
         removeWorkId:`test-worker-remove:${input.leaseId}:${service.serviceName}`,
         providerAbsent:true});
     }
+    // BettaView binds the candidate review runtime. Its Worker must be gone
+    // before that runtime, and all runtime code must be gone before its stores.
+    await this.cleanupFixtures?.(input);
     for (const store of stores) {
       await this.owner(input.runId,input.leaseId,input.cleanupFence);
       const plan={resourceId:store.resourceId,runId:input.runId,

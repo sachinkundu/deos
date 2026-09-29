@@ -22,6 +22,7 @@ export type CapabilityAction =
   | "implementation.tools"
   | "test_issue_marker_patch"
   | "test_app_browser"
+  | "test_review_fixture"
   | "github.clone_repository"
   | "github.publish_work_product"
   | "github.publish_planning_work_product"
@@ -33,6 +34,7 @@ const CAPABILITY_ACTIONS = new Set<CapabilityAction>([
   "implementation.tools",
   "test_issue_marker_patch",
   "test_app_browser",
+  "test_review_fixture",
   "github.clone_repository",
   "github.publish_work_product",
   "github.publish_planning_work_product",
@@ -118,7 +120,7 @@ export const verifyCapabilityToken = async (
   const planning = claims.actions.includes("github.publish_planning_work_product");
   const sharedTestMarker = claims.actions.includes("test_issue_marker_patch");
   const sharedTestBrowser = claims.actions.includes("test_app_browser");
-  const sharedTest = sharedTestMarker || sharedTestBrowser;
+  const sharedTest = sharedTestMarker || sharedTestBrowser || claims.actions.includes('test_review_fixture');
   const openRouterReview = claims.actions.includes("model.openrouter_review");
   const claudeReview = claims.actions.includes("model.claude_review");
   const modelReview = openRouterReview || claudeReview;
@@ -129,7 +131,7 @@ export const verifyCapabilityToken = async (
       claims.leaseId.length > 0 && Number.isSafeInteger(claims.fence) &&
       (claims.fence ?? 0) > 0)) ||
     (sharedTest && workActions.some(action=>
-      action!=="test_issue_marker_patch" && action!=="test_app_browser")) ||
+      action!=="test_issue_marker_patch" && action!=="test_app_browser" && action!=="test_review_fixture")) ||
     (planning && workActions.length !== 1) ||
     (claims.changeId !== null && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(claims.changeId)) ||
     (claims.planningBranch !== null && !/^deos\/planning\/[a-f0-9]{24}$/.test(claims.planningBranch)) ||

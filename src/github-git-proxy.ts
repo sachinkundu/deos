@@ -1,3 +1,4 @@
+import { recordCaughtError } from "./error-context.ts";
 import type { GitHubTokenProvider } from "./github-capability.ts";
 
 export type GitUploadPackRequest = "advertisement" | "upload_pack";
@@ -63,6 +64,11 @@ export class GitHubGitProxy implements GitHubGitProxyAdapter {
       redirect: "manual",
     });
     if (!response.ok) {
+      const body = (await response.text()).replaceAll(token, "[redacted]").replaceAll(authorization, "[redacted]");
+      recordCaughtError(new Error(`GitHub checkout ${input.kind}: HTTP ${response.status}`, { cause: {
+        repository: input.repository, kind: input.kind, status: response.status,
+        requestId: response.headers.get("x-github-request-id"), body,
+      } }), "github.checkout.upstream");
       return new Response("repository checkout upstream failed\n", {
         status: response.status === 401 || response.status === 403 ? 403 : 502,
         headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" },

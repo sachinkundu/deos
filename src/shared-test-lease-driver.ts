@@ -6,6 +6,8 @@ import {SharedTestCloudflareWorkers} from './shared-test-cloudflare-workers.ts';
 import {sharedTestCandidateDeployment} from './shared-test-candidate-deployment.ts';
 import {SharedTestPreparation} from './shared-test-preparation.ts';
 import type {StableStagingBase} from './shared-test-lease.ts';
+import {prepareSharedTestReviewFixture} from './shared-test-review-fixture.ts';
+import {SharedTestReviewRuntime} from './shared-test-review-runtime.ts';
 
 interface Owner {
   state:string;
@@ -69,6 +71,16 @@ export class SharedTestLeaseDriver {
     const identityConfig={audience,policyId,clientId};
     if(owner.state==='active') {
       await identities.provision(input,identityConfig,at);
+      const work=await this.env.DB.prepare('SELECT change_id FROM implementation_runs WHERE run_id=?')
+        .bind(owner.owner_run_id).first<{change_id:string}>();
+      if(work?.change_id==='sac-182') {
+        // The accepted SAC-182 demo requires its real service and Workflow.
+        // Reuse the frozen provider profile carried by the audited handoff.
+        const runtime=new SharedTestReviewRuntime(this.env as Env,this.fetcher);
+        if(!await runtime.hasBuild(owner.candidate_commit))return 'active';
+        await prepareSharedTestReviewFixture(this.env as Env,input);
+        await runtime.prepare(input);
+      }
       await sharedTestCandidateDeployment(this.env,this.fetcher).resume({
           lease_id:owner.owner_lease_id,run_id:owner.owner_run_id,
           attempt_id:owner.attempt_id,fence:owner.fence,

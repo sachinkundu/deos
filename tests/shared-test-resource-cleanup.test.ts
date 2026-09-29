@@ -69,17 +69,19 @@ test('cleanup removes Worker before stores, reads each absent twice, and is repe
       create:async()=>{throw new Error('unexpected create');},
       remove:async plan=>{calls.push(`store-remove:${plan.providerKey}`);
         remote.delete(plan.providerKey);},
-    });
+    },async()=>{calls.push('runtime-remove');assert.equal(worker,false);});
     const input={runId,leaseId,createFence:1,cleanupFence:2};
     await cleanup.resume(input);
     assert.ok(calls.indexOf('worker-remove')<calls.findIndex(call=>call.startsWith('store-remove')));
+    assert.ok(calls.indexOf('worker-remove')<calls.indexOf('runtime-remove'));
+    assert.ok(calls.indexOf('runtime-remove')<calls.findIndex(call=>call.startsWith('store-remove')));
     assert.equal(db.sqlite.prepare(`SELECT COUNT(*) AS n FROM test_resources
       WHERE lease_id=? AND plan_state='absent'`).get(leaseId)?.n,3);
     assert.equal(db.sqlite.prepare(`SELECT COUNT(*) AS n FROM test_cleanup_checks
       WHERE lease_id=? AND read_state='absent'`).get(leaseId)?.n,3);
     const count=calls.length;
     await cleanup.resume(input);
-    assert.equal(calls.length,count+2*(stores.length+1));
+    assert.equal(calls.length,count+2*(stores.length+1)+1);
   } finally {db.close();}
 });
 

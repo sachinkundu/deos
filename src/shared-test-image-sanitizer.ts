@@ -109,7 +109,7 @@ export class SharedTestImageSanitizer {
         publicSha===row.source_sha256 ||
         ![0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a].every((byte,index)=>
           image[index]===byte) ||
-        manifest.version!==1 || manifest.sanitizerVersion!=='fixed-mask-ocr-v1' ||
+        manifest.version!==1 || manifest.sanitizerVersion!=='fixed-mask-ocr-v2' ||
         manifest.sourceSha256!==row.source_sha256 ||
         manifest.publicSha256!==publicSha || manifest.passed!==true ||
         manifest.width!==recipe.crop.width || manifest.height!==recipe.crop.height ||

@@ -55,6 +55,7 @@ export interface CapabilityRouterDependencies {
   implementation?: Pick<import("./implementation-broker.ts").ImplementationBroker, "handle">;
   sharedTestMarker?: Pick<import('./shared-test-marker-action.ts').SharedTestMarkerAction,'handle'>;
   sharedTestBrowser?: Pick<import('./shared-test-browser-action.ts').SharedTestBrowserAction,'handle'>;
+  sharedTestReview?: Pick<import('./shared-test-review-scenarios.ts').SharedTestReviewScenarios,'handle'>;
   sharedTestLeaseWrite?: (runId:string,attemptId:string,leaseId:string,
     fence:number)=>Promise<void>;
   completion?: Pick<import("./attempt-completion.ts").AttemptCompletionNotifier, "notify">;
@@ -395,6 +396,11 @@ export class CapabilityRouter {
       if (!this.dependencies.sharedTestMarker)
         return json(503,{error:'shared_test_marker_unavailable'});
       return this.dependencies.sharedTestMarker.handle(claims,untrusted);
+    }
+    if (path==='/capabilities/shared-test-review') {
+      if (!claims.actions.includes('test_review_fixture'))return json(403,{error:'shared_test_review_denied'});
+      if (!this.dependencies.sharedTestReview)return json(503,{error:'shared_test_review_unavailable'});
+      return this.dependencies.sharedTestReview.handle(claims,untrusted);
     }
     if (path==='/capabilities/shared-test-browser') {
       if (!claims.actions.includes('test_app_browser'))

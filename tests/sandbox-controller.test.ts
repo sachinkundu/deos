@@ -1126,6 +1126,22 @@ test("transient repository checkout failure becomes terminal after bounded retri
   assert.equal(state.attempts.latest?.state, "failed");
   assert.equal(state.attempts.latest?.result_class, "startup_failed");
   assert.equal(state.factory.sandbox.destroyed, true);
+  assert.equal(state.credentials.released, 1);
+});
+
+test("checkout failure keeps original output and exit details while redacting the grant", async () => {
+  const state = setup();
+  state.factory.sandbox.cloneFailureStderr.push("remote: Repository not found. grant-token");
+  await assert.rejects(state.controller.execute(run, "work", "work", definition), (error: unknown) => {
+    const failure = error as Error & {cause: {attemptNumber:number;output:{stderr:string};exit:{code:number}}};
+    assert.equal(failure.message, "repository_checkout_missing");
+    assert.equal(failure.cause.attemptNumber, 1);
+    assert.equal(failure.cause.exit.code, 128);
+    assert.equal(failure.cause.output.stderr, "remote: Repository not found. [redacted]");
+    assert.ok(!JSON.stringify(failure.cause).includes("grant-token"));
+    return true;
+  });
+  assert.equal(state.credentials.released, 1);
 });
 
 test("permanent repository checkout failures do not retry", async () => {

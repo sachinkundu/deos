@@ -4,8 +4,9 @@ import {sharedTestEdgeWrapper} from '../src/shared-test-edge-wrapper.ts';
 
 async function edge() {
   const source=sharedTestEdgeWrapper('portal').replace(
-    /^import candidate from .*;\n/,
-    `const candidate={fetch:async request=>Response.json({gate:request.headers.get('X-Deos-Test-Gate'),access:request.headers.get('CF-Access-Jwt-Assertion'),clientId:request.headers.get('CF-Access-Client-Id'),clientSecret:request.headers.get('CF-Access-Client-Secret'),cookie:request.headers.get('Cookie')})};\n`);
+    /^import \{routePortalRequest\} from .*;\n/,
+    `const routePortalRequest=async request=>Response.json({gate:request.headers.get('X-Deos-Test-Gate'),access:request.headers.get('CF-Access-Jwt-Assertion'),clientId:request.headers.get('CF-Access-Client-Id'),clientSecret:request.headers.get('CF-Access-Client-Secret'),cookie:request.headers.get('Cookie')});\n`)
+    .replace("import {WorkerEntrypoint} from 'cloudflare:workers';",'class WorkerEntrypoint {}');
   return (await import(`data:text/javascript,${encodeURIComponent(source)}`)).default;
 }
 
@@ -100,9 +101,9 @@ test('lease GitHub callback maps back to the saved app session',async()=>{
   const calls:string[]=[];
   const env={TEST_CANONICAL_HOST:new URL(origin).hostname,
     TEST_APP_GATE:{authorize:async()=>true},TEST_GITHUB_BROKER:{
-      start:async(session:string,savedOrigin:string)=>{
-        calls.push(`start:${session}:${savedOrigin}`);
-        return 'https://github.com/login/oauth/authorize?state=one';},
+      reviewer:async(session:string,savedOrigin:string)=>{
+        calls.push(`reviewer:${session}:${savedOrigin}`);
+        return {returnTo:'/',cookie:'__Host-deos_github=reviewer; Path=/; Secure; HttpOnly'};},
       redeem:async(session:string,savedOrigin:string,handoff:string)=>{
         calls.push(`redeem:${session}:${savedOrigin}:${handoff}`);
         return {returnTo:'/settings',cookie:'__Host-deos_github=opaque; Path=/; Secure; HttpOnly'};},
@@ -110,14 +111,15 @@ test('lease GitHub callback maps back to the saved app session',async()=>{
     }};
   const headers={'CF-Access-Jwt-Assertion':'access','Cookie':'__Host-deos_test=fresh'};
   const started=await worker.fetch(new Request(origin+'/auth/github',{headers}),env);
-  assert.equal(started.status,302);
-  assert.match(started.headers.get('Location')??'',/github.com\/login\/oauth/);
+  assert.equal(started.status,303);
+  assert.equal(started.headers.get('Location'),'/');
+  assert.match(started.headers.get('Set-Cookie')??'',/__Host-deos_github=reviewer/);
   const completed=await worker.fetch(new Request(origin+'/__deos/github-complete?handoff=one',
     {headers}),env);
   assert.equal(completed.status,303);
   assert.equal(completed.headers.get('Location'),'/settings');
   assert.match(completed.headers.get('Set-Cookie')??'',/__Host-deos_github=opaque/);
-  assert.deepEqual(calls,[`start:fresh:${origin}`,`redeem:fresh:${origin}:one`]);
+  assert.deepEqual(calls,[`reviewer:fresh:${origin}`,`redeem:fresh:${origin}:one`]);
   const app=await worker.fetch(new Request(origin+'/',{headers:{...headers,
     Cookie:'__Host-deos_test=fresh; __Host-deos_github=opaque; other=value'}}),env);
   assert.deepEqual(await app.json(),{cookie:'other=value'});
@@ -162,4 +164,32 @@ test('candidate review code uses a scoped transport without seeing the session',
   assert.deepEqual(await response.json(),{credential:'lease-session',
     provider:{login:'reviewer'},cookie:'other=value',
     continuation:'test_review_continuation_unavailable'});
+});
+
+test('portal binding reads the candidate through a live lease session and denies writes',async()=>{
+  const source=sharedTestEdgeWrapper('portal')
+    .replace(/^import \{routePortalRequest\} from .*;\n/,
+      `const routePortalRequest=async(request,env,authenticate)=>Response.json({
+        path:new URL(request.url).pathname,identity:await authenticate(),
+        credential:request.headers.get('CF-Access-Jwt-Assertion'),
+        session:request.headers.get('X-Deos-Test-Session')});\n`)
+    .replace("import {WorkerEntrypoint} from 'cloudflare:workers';",'class WorkerEntrypoint {}');
+  const {SharedTestPortalRead}=await import(`data:text/javascript,${encodeURIComponent(source)}`);
+  const service=new SharedTestPortalRead();let allowed=true,calls=0;
+  const origin='https://bettaview-lease.apps.deos-test.voxdez.com';
+  service.env={TEST_CANONICAL_HOST:'portal-lease.apps.deos-test.voxdez.com',
+    TEST_APP_GATE:{authorize:async(input:unknown)=>{
+      calls++;assert.deepEqual(input,{session:'opaque',origin,accessJwt:'signed'});return allowed;}}};
+  const headers={'X-Deos-Test-Origin':origin,'X-Deos-Test-Session':'opaque','CF-Access-Jwt-Assertion':'signed'};
+  const path='/api/pull-requests/owner/repo/50/review-story';
+  const read=await service.fetch(new Request('https://deos.internal'+path,{headers}));
+  assert.equal(read.status,200);
+  assert.deepEqual(await read.json(),{path,identity:{email:'reviewer@deos-test.invalid'},credential:null,session:null});
+  for(const url of ['https://wrong.internal'+path,'https://deos.internal/api/settings',
+    'https://deos.internal'+path+'?other=1'])
+    assert.equal((await service.fetch(new Request(url,{headers}))).status,403);
+  assert.equal((await service.fetch(new Request('https://deos.internal'+path,{method:'POST',headers}))).status,403);
+  assert.equal(calls,1);
+  allowed=false;
+  assert.equal((await service.fetch(new Request('https://deos.internal'+path,{headers}))).status,403);
 });

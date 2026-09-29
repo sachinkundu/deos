@@ -49,44 +49,47 @@ no Cloudflare, Access, Linear, or GitHub account credential.
 | Pinned staging build reuse | Let the staging deploy credential write and read `shared-test/builds/` objects in the private DEOS artifact bucket. Each staging job saves and reads back the exact bundle before it deploys the version. BettaView also saves a compiled Worker module from the same source commit and pins it to the raw build digest. | A content-addressed bundle for each service whose bytes recompute the version endpoint's build digest, plus the checked BettaView module. |
 | Candidate build dispatch | Land the trusted `shared-test-candidate-build` GitHub workflow on the default branch before granting a live lease. Keep its build job free of provider credentials. Its separate upload job uses a bucket-scoped `SHARED_TEST_R2_UPLOAD_TOKEN` secret; the portal staging deploy token stays unchanged. The current GitHub App's Contents write grant can send the repository dispatch. | The workflow is present on `main`; one dispatch from the saved candidate commit yields a verified bundle in private R2 without giving the candidate process the upload secret. |
 | Browser-based app test | Configure separate Access protection for the lease app origins under `*.apps.deos-test.voxdez.com`, with a scoped service identity held by the trusted browser service. | Application and policy IDs, allowed origin, service identity scope, and a real browser admission check. |
-| BettaView GitHub sign-in during app test | Use one fixed callback at `https://deos-queue-consumer-ts.skundu.workers.dev/shared-test/github/callback`. The trusted coordinator maps a short-lived OAuth state to the live lease, exchanges the code, and returns a one-use handoff to that lease's BettaView origin. It stores the user token only in trusted encrypted state. The candidate BettaView backend still handles its API routes; its GitHub network calls use a lease-scoped service binding that returns only provider responses, not a token. The operator registers that exact callback and supplies the existing GitHub App client secret to the coordinator after the code path is ready. | The registered exact callback with wildcard matching off, trusted secret presence without its value, a real sign-in from a lease host, and a scoped GitHub read and write through the candidate backend. A public client ID binding alone is not sign-in proof. |
+| BettaView test reviewer | Reuse the existing trusted `IMPLEMENTATION_TEST_GITHUB_TOKEN` and the checked `github-linear-review-v1` profile. The coordinator reads GitHub's current numeric user ID and compares it with that frozen profile before admitting the session or forwarding a request. The candidate receives only an opaque session and scoped provider responses. | A real identity read, a ready disposable fixture, a lease app session, and scoped GitHub reads and writes through the actual candidate backend. No new OAuth callback or secret is required for this automated reviewer path. |
 | Provider visual proof | Keep the connected external browser signed in to Linear with access to the saved DEOS issue. The Sandbox agent never receives that session. | A real issue screenshot showing the saved issue key and provider event state; the trusted sanitizer must pass before a public copy is linked. |
 | Provider test and cleanup | Put the marker-signing key and any required provider or cleanup credentials in trusted services with the narrow scopes in this design. | Presence and scope checks without exposing secret values to the agent, plus a successful owned-item removal and absence read-back. |
 
 The current Cloudflare dashboard steps and the status-login redirect fix are in
 [`docs/sac-253-cloudflare-prerequisites.md`](../../../docs/sac-253-cloudflare-prerequisites.md).
 
-### Fixed GitHub callback for lease apps
+### Test reviewer and actual candidate review runtime
 
-The trusted lease edge intercepts BettaView's sign-in start and completion
-after Access and the lease app session pass. The candidate backend keeps its
-review API routes and calls a trusted GitHub transport for low-level provider
-requests. It never receives the GitHub client secret, authorization code, user
-token, or opaque GitHub session cookie. The coordinator saves a random, single-use OAuth state
-with the lease, attempt, fence, exact BettaView origin, app session hash, and
-expiry. GitHub redirects only to the fixed callback above. The coordinator
-must recheck the live lease and state before exchanging the code, then return
-the browser to the saved origin using a separate one-use handoff. The edge
-redeems the handoff against the same app session and sets a host-only,
-HttpOnly, short-lived cookie. Each candidate GitHub transport call goes through
-the trusted coordinator, which checks the live fence and saved repository,
-branch, and pull request before a read or write. This transport seam must be
-part of the exact SAC-182 candidate commit so the test exercises its changed
-backend code. State, handoffs, sessions, and encrypted
-tokens expire and are removed during owned-resource cleanup.
+After Access and the lease app session pass, the trusted edge intercepts
+BettaView sign-in. For the automated demo it uses the existing test reviewer
+from the frozen provider profile. The coordinator checks the current numeric
+GitHub user ID, lease, fence, app session, and disposable fixture. It saves an
+opaque, short-lived session without copying the provider token. Each provider
+request repeats those checks and can reach only the saved fixture repository,
+branch, and pull request. Cleanup revokes the session and proves the fixture
+absent. This path needs no new provider setting or credential.
 
-SAC-182 also calls its review-continuation RPC while publishing a linked
-review. The lease app must call a trusted, lease-fenced continuation adapter
-instead of receiving the production continuation signing secret. The adapter
-must use test-owned review state and may dispatch only test work. It must not
-move the live Linear issue or advance the live workflow. A GitHub sign-in and
-read alone do not prove this publish path.
+The exact candidate commit includes the GitHub transport seam. Its own review
+API logic runs unchanged above that transport. The candidate also supplies its
+actual `ReviewContinuation` service and `DeosWorkflow` entrypoint. The trusted
+builder packages those exports from a clean checkout and pins the source and
+bundle hashes. The coordinator deploys that module with the lease's D1 and R2
+stores, a lease-specific service signing key, and its own test Workflow binding.
+It reads the running version twice before the app can use it.
 
-The callback is public so GitHub can reach it; random state, one-use claims,
-exact origin checks, and the live lease fence provide admission. The fixed
-address avoids wildcard GitHub callbacks and any per-lease GitHub settings
-change. The browser's existing lease Access identity and app session still
-guard the app itself.
+A trusted outbound transport holds the existing provider credentials. Fixed
+service-binding properties bind it to one run, attempt, lease, and fence.
+GitHub reads and Linear reads and transitions are restricted to the disposable
+fixture. Linear membership is checked before each write. The real candidate
+service owns account checks, review receipts, retries, and gate decisions;
+the transport must not manufacture a successful review or gate result. Real
+signed Linear deliveries remain distinguishable from labeled transport fault
+injection. No live workflow binding or production signing key enters the app.
+
+The fixed OAuth callback remains an optional interactive path at
+`https://deos-queue-consumer-ts.skundu.workers.dev/shared-test/github/callback`.
+It binds one-use state and handoffs to an exact lease and app session, and keeps
+any user token encrypted in the coordinator. Enabling it would require the
+operator to register the callback and supply the existing GitHub App secret.
+Those settings are not prerequisites for the automated test reviewer above.
 
 Staging base initialization is automated. The trusted coordinator reads
 `/api/version` from both staging Workers through service bindings and saves the
@@ -270,6 +273,25 @@ It saves the old body and hash. Any merge it cannot prove stops before cleanup.
 Cleanup may use a newer fence than setup used. The resource row keeps its create
 fence. The lease also keeps each fence it has used. Delete is safe only when the
 row and that lease history agree.
+
+An activated app can also fail before it establishes any review session. A
+blocked demo with no test attestation, provider review fixture, or GitHub
+session may use an explicit operator abort. The original result, transcript,
+command log, and every captured image must be retained in private storage and
+read back by hash first. The draft PR receives a read-back failure note. This
+is failed setup evidence; it must not claim that any app scenario passed.
+The old Sandbox must already be destroyed. The coordinator raises the fence,
+revokes browser use, settles accepted work, removes its exact marker, and
+checks every owned resource absent before writing a failed close receipt.
+No successful test attestation or normal test close row is created.
+
+A repaired draft can then be admitted through an exact-subject operator call.
+The old lease must be closed with the failed receipt. The old candidate and
+patch remain in the repair journal. The new draft head, base, tree, blobs, and
+artifact hashes must match live GitHub reads and the saved approved design.
+The new candidate needs a fresh path decision, lease, deployment, demo, proof,
+and close. The retired candidate cannot be automatically granted another
+lease. This repair does not change provider permissions or credentials.
 
 The repair page requires the same Access operator allowlist as Settings plus a
 fresh CSRF token. The coordinator rechecks the operator, repair ID, current

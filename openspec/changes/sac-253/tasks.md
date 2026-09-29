@@ -29,8 +29,8 @@
 - [x] 4.5 Add the trusted `test_issue_marker_patch` action with a versioned keyed marker, saved before/after hashes, idempotent insert/find/remove, and preservation of human edits.
 - [x] 4.6 Route one signed Linear webhook delivery using all saved event-time facts, atomically claim a live expectation, and retry a durable test Queue dispatch without rerouting duplicates.
 - [x] 4.7 Claim test Queue work with expiring tokens and stable work IDs; save the observed result against the exact task, run, lease, commit, pull request, and base.
-- [ ] 4.8 Intercept lease BettaView sign-in in the trusted edge. Map a one-use OAuth state to the current lease, handle the fixed coordinator callback, and return a one-use handoff to the exact app session. Add a fenced GitHub transport seam to the SAC-182 candidate backend so its own review API logic still runs without seeing the client secret or user token. Prove real sign-in and scoped read and write after the operator registers the exact callback and supplies the trusted secret.
-- [ ] 4.9 Give the SAC-182 candidate's linked-review API a lease-fenced continuation adapter backed by test-owned state. Keep the production continuation signing secret and live workflow out of the lease Worker, and prove a linked publish cannot move the live Linear issue.
+- [ ] 4.8 Establish a lease-bound session for the existing checked test reviewer through the trusted edge. Keep the credential in the coordinator, recheck its numeric identity and fixture scope, and prove real scoped GitHub reads and writes through the exact candidate backend. Keep fixed-callback OAuth optional and operator-controlled.
+- [ ] 4.9 Deploy the exact SAC-182 candidate ReviewContinuation service and DeosWorkflow with lease-owned stores. Use the trusted, fixed-scope outbound provider transport and a lease-specific signing key. Prove actual linked review publication, signed Linear delivery, gate transition, and cleanup without advancing a live workflow.
 
 ## 5. Proof, cleanup, and portal
 

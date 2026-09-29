@@ -27,3 +27,19 @@ test('OCR allowlist comes only from the saved task and fixed UI labels',()=>{
   assert.ok(recipe.allowedText.includes('SAC-182'));
   assert.ok(!recipe.allowedText.includes('private account number'));
 });
+
+test('Settings proof admits fixed labels but never account values or another origin',()=>{
+  const row={run_id:'run',lease_id:'a'.repeat(64),kind:'app_screen',source_sha256:'b'.repeat(64),
+    task_key:'SAC-182',task_title:'Continue the workflow from BettaView reviews',
+    capture_recipe:JSON.stringify({version:1,service:'bettaview',
+      origin:`https://bettaview-${'a'.repeat(32)}.apps.deos-test.voxdez.com`})};
+  const request={proofId:'00000000-0000-0000-0000-000000000000',width:1440,height:900,
+    crop:{x:310,y:135,width:820,height:515},masks:[],identityLine:'settings_account' as const};
+  const recipe=sharedTestImageRecipe(row,request);
+  assert.deepEqual(recipe.requiredText,['Checked BettaView account']);
+  for(const privateValue of ['233623','reviewer@deos-test.invalid','8efc07d8-0d85-430f-84e7-f51bc6833a0b'])
+    assert.equal(recipe.allowedText.includes(privateValue),false);
+  assert.throws(()=>sharedTestImageRecipe({...row,kind:'linear_screen'},request),/scope_invalid/);
+  assert.throws(()=>sharedTestImageRecipe({...row,capture_recipe:JSON.stringify({version:1,
+    service:'bettaview',origin:'https://bettaview.voxdez.com'})},request),/scope_invalid/);
+});

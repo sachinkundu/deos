@@ -59,9 +59,12 @@ const publicPng=await sharp(source,{limitInputPixels:16_000_000})
   .flatten({background:'#fff'})
   .composite([{input:Buffer.from(maskSvg),left:0,top:0}])
   .png({compressionLevel:9,adaptiveFiltering:false}).toBuffer();
-// OCR runs only on newly encoded bytes. Unknown or uncertain text blocks release.
+// OCR reads a fixed two-times raster of the newly encoded public bytes so small
+// UI labels remain legible. The published PNG keeps its original geometry.
+// Unknown or uncertain text still blocks release at the same confidence limit.
 const ocrPath=`${outputPath}.ocr-input.png`;
-await writeFile(ocrPath,publicPng,{flag:'wx'});
+const ocrPng=await sharp(publicPng).resize(crop.width*2,crop.height*2).png().toBuffer();
+await writeFile(ocrPath,ocrPng,{flag:'wx'});
 let tsv;
 let ocrError;
 try {
@@ -78,7 +81,8 @@ try {
     throw error;
   }
 }
-const rows=tsv.trim().split(/\r?\n/u).map(line=>line.split('\t'));
+// Keep trailing tabs: Tesseract may emit an empty final text field.
+const rows=tsv.split(/\r?\n/u).filter(line=>line.length>0).map(line=>line.split('\t'));
 const header=rows.shift();
 if(!header || header.join('\t')!=='level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext')
   throw new Error('proof_ocr_format_invalid');
@@ -89,7 +93,10 @@ for(const row of rows) {
   if(!normalize(row.slice(11).join('\t')))continue;
   const confidence=Number(row[10]);
   if(!Number.isFinite(confidence) || confidence<80)
-    throw new Error('proof_ocr_uncertain');
+    throw Object.assign(new Error('proof_ocr_uncertain'),{
+      confidence,bounds:{x:Number(row[6])/2,y:Number(row[7])/2,
+        width:Number(row[8])/2,height:Number(row[9])/2},
+    });
   const key=row.slice(1,5).join(':');
   lines.set(key,[...(lines.get(key)??[]),normalize(row.slice(11).join('\t'))]);
 }
@@ -99,6 +106,6 @@ if(recognized.length===0 || recognized.some(line=>!allowed.has(line)) ||
   throw new Error('proof_ocr_text_not_allowlisted');
 const publicSha256=createHash('sha256').update(publicPng).digest('hex');
 await writeFile(outputPath,publicPng,{flag:'wx'});
-await writeFile(manifestPath,JSON.stringify({version:1,sanitizerVersion:'fixed-mask-ocr-v1',
+await writeFile(manifestPath,JSON.stringify({version:1,sanitizerVersion:'fixed-mask-ocr-v2',
   sourceSha256,publicSha256,width:crop.width,height:crop.height,
   recognizedText:recognized,passed:true})+'\n',{flag:'wx'});

@@ -7,6 +7,9 @@ import {sharedTestServicePlans} from './shared-test-service-plan.ts';
 import {sharedTestCandidateReady} from './shared-test-candidate-ready.ts';
 import {sharedTestCandidateDeployment} from './shared-test-candidate-deployment.ts';
 import {ImplementationDemoService} from './implementation-demo.ts';
+import {sharedTestReviewFixture} from './shared-test-review-profile.ts';
+import {SharedTestReviewScenarios} from './shared-test-review-scenarios.ts';
+import {sharedTestReviewGuide} from './shared-test-review-guide.ts';
 
 interface ActiveLease {
   lease_id:string;
@@ -78,6 +81,10 @@ export async function sharedTestDemoInput(env:Env,run:OrchestrationRunRecord,
     ? await new ImplementationDemoService(env.DB,env.ARTIFACTS).buildInput(handoff.source_run_id)
     : null;
   const reviewFeedback=handoff?await github.feedback(work.pr_number):null;
+  const reviewFixture=work.change_id==='sac-182'
+    ?await sharedTestReviewFixture(env.DB,{run_id:run.run_id,attempt_id:lease.attempt_id}):null;
+  const reviewSetup=reviewFixture?await new SharedTestReviewScenarios(env).control({runId:run.run_id,
+    attemptId:lease.attempt_id,leaseId:lease.lease_id,fence:lease.fence},'bootstrap'):null;
   return {
     context:JSON.stringify({version:1,runId:run.run_id,
       leaseId:lease.lease_id,fence:lease.fence,
@@ -87,6 +94,13 @@ export async function sharedTestDemoInput(env:Env,run:OrchestrationRunRecord,
       candidateCommit:lease.candidate_commit,patchSha256:lease.patch_sha256,
       stagingBase:base,apps:services.map(service=>({
         service:service.serviceName,origin:`https://${service.canonicalHost}`})),
+      ...(reviewFixture?{reviewFixture:{...reviewFixture,
+        setup:reviewSetup,
+        capabilityPath:'/shared-test-review',
+        guide:sharedTestReviewGuide,
+        operations:['bootstrap','prepare','evidence','github.read','linear.read','seed_thread','advance_head','move_without_review','inject','clear_injections','shorten_delivery_deadline'],
+        authentication:'Use Sign in with GitHub. The trusted edge establishes the saved test reviewer session.',
+        runtime:'The candidate ReviewContinuation and DeosWorkflow run in the lease runtime.'}}:{}),
       ...(inheritedDemo?{inheritedDemo:{sourceRunId:handoff!.source_run_id,
         plan:inheritedDemo.plan,feedback:inheritedDemo.feedback,
         trust:'historical plan and review feedback; all proof must be recaptured'}}:{}),

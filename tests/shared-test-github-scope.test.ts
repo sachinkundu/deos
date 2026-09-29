@@ -39,3 +39,15 @@ test('GraphQL permits scoped review-thread reads but refuses mutations',()=>{
     JSON.stringify({query,
       variables:{...variables,number:138}})));
 });
+
+test('an owned unlinked fixture can be read but cannot receive reviews or replies',()=>{
+  const checked={...scope,readOnlyPull:{pullRequestNumber:138,candidateCommit:'b'.repeat(40)}};
+  for(const suffix of ['', '/files','/reviews','/comments'])assert.doesNotThrow(()=>
+    assertSharedTestGitHubRequest(checked,`${api}/repos/sachinkundu/deos/pulls/138${suffix}`,'GET',null));
+  assert.throws(()=>assertSharedTestGitHubRequest(checked,
+    `${api}/repos/sachinkundu/deos/pulls/138/reviews`,'POST',JSON.stringify({commit_id:'b'.repeat(40),event:'COMMENT'})));
+  assert.throws(()=>assertSharedTestGitHubRequest(checked,
+    `${api}/repos/sachinkundu/deos/pulls/138/comments/1/replies`,'POST',JSON.stringify({body:'Denied'})));
+  assert.throws(()=>assertSharedTestGitHubRequest(checked,
+    `${api}/repos/sachinkundu/deos/pulls/139`,'GET',null));
+});

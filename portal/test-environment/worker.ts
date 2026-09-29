@@ -80,11 +80,17 @@ function statusHtml(row:StatusRow):string {
   const owned=row.state!=='free';
   const baseReady=row.staging_state==='stable';
   const title=owned ? `${row.task_key} · ${row.task_title}` : 'Shared test site';
+  const stage=row.stage==='shared_test_demo'?'App and provider checks':'Shared test';
+  const started=row.created_at?new Date(row.created_at):null;
+  const startedLabel=started && !Number.isNaN(started.getTime())
+    ?new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeStyle:'short',timeZone:'UTC'}).format(started)+' UTC'
+    :'Unavailable';
+  const baseId=row.base_manifest_id?.replace(/^manifest:/,'');
   const details=owned ? `<dl>
     <div><dt>Task</dt><dd>${escape(row.task_key!)} · ${escape(row.task_title!)}</dd></div>
-    <div><dt>Stage</dt><dd>${escape(row.stage??'Shared test')}</dd></div>
-    <div><dt>Staging base</dt><dd>${escape(row.base_manifest_id??'Unavailable')}</dd></div>
-    <div><dt>Lease started</dt><dd>${escape(row.created_at??'Unavailable')}</dd></div>
+    <div><dt>Stage</dt><dd>${escape(stage)}</dd></div>
+    <div><dt>Staging base</dt><dd>${baseId?`Saved release ${escape(baseId.slice(0,12))}<details><summary>Full release ID</summary>${escape(row.base_manifest_id!)}</details>`:'Unavailable'}</dd></div>
+    <div><dt>Lease started</dt><dd>${escape(startedLabel)}</dd></div>
   </dl>` : baseReady ? '<p>The site is ready for the next checked task.</p>' :
     '<p>The staging base is being prepared. No test lease can start yet.</p>';
   const repairId=row.hold_reason?.match(/^repair:([a-f0-9-]{36})$/i)?.[1];

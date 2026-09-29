@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { GitHubTokenProvider } from "../src/github-capability.ts";
+import { captureErrors } from "../src/error-context.ts";
 import { GitHubGitProxy } from "../src/github-git-proxy.ts";
 
 class TokenProvider implements GitHubTokenProvider {
@@ -104,4 +105,20 @@ test("Git proxy normalizes transient upstream failures to HTTP 502", async () =>
 
   assert.equal(response.status, 502);
   assert.equal((await response.text()).includes("temporary provider failure"), false);
+});
+
+
+test("checkout upstream diagnostics keep status and body with token redaction", async () => {
+  let saved: unknown;
+  const token="github-installation-secret";
+  const proxy=new GitHubGitProxy({tokenProvider:()=>new TokenProvider(),
+    fetch:()=>Promise.resolve(new Response(`original failure ${token} ${btoa(`x-access-token:${token}`)}`,
+      {status:502,headers:{"x-github-request-id":"request-123"}}))});
+  const response=await captureErrors(async errors=>{saved=errors;},()=>proxy.proxy({
+    request:new Request("https://deos.example/capabilities/git/info/refs?service=git-upload-pack"),
+    repository:"owner/repo",installationId:"123",kind:"advertisement"}));
+  assert.equal(response.status,502);
+  const encoded=JSON.stringify(saved);
+  assert.match(encoded,/original failure/);assert.match(encoded,/request-123/);
+  assert.ok(!encoded.includes(token));assert.ok(!encoded.includes(btoa(`x-access-token:${token}`)));
 });

@@ -19,9 +19,9 @@ const plans=sharedTestServicePlans(leaseId,base);
 const stores=sharedTestStorePlans(leaseId,base);
 
 test('isolated Worker names are fixed to the full lease and service base',()=>{
-  assert.deepEqual(plans.map(plan=>plan.serviceName),['bettaview','portal']);
-  assert.equal(plans[0].workerName,`deos-test-bettaview-${leaseId.slice(0,32)}`);
-  assert.equal(plans[0].canonicalHost,
+  assert.deepEqual(plans.map(plan=>plan.serviceName),['portal','bettaview']);
+  assert.equal(plans[1].workerName,`deos-test-bettaview-${leaseId.slice(0,32)}`);
+  assert.equal(plans[1].canonicalHost,
     `bettaview-${leaseId.slice(0,32)}.apps.deos-test.voxdez.com`);
   assert.notEqual(sharedTestServicePlans('b'.repeat(64),base)[0].workerName,
     plans[0].workerName);
@@ -78,7 +78,7 @@ test('only complete matching test service readbacks activate the lease',async()=
       return Response.json(version(plan));
     });
     await gate.activate({runId,attemptId,leaseId,fence},at);
-    assert.deepEqual(reads,['bettaview','portal','bettaview','portal']);
+    assert.deepEqual(reads,['portal','bettaview','portal','bettaview']);
     assert.equal((await new SharedTestLeaseStore(db as unknown as D1Database).environment()).state,'active');
     assert.equal(db.sqlite.prepare(`SELECT COUNT(*) AS n FROM test_service_readbacks`).get()?.n,2);
     assert.equal(db.sqlite.prepare(`SELECT COUNT(*) AS n FROM test_service_activation_guards`).get()?.n,1);

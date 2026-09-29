@@ -50,17 +50,22 @@ def publish(raw: bytes, receipt: dict) -> str:
         raise ValueError("Compiled Worker receipt differs from bytes")
     key = ("shared-test/compiled-workers/bettaview/" + receipt["sourceCommit"] +
            "/" + receipt["buildInputSha256"] + "/" + receipt["compiledSha256"] + ".js")
-    with tempfile.TemporaryDirectory(prefix="deos-compiled-worker-publish-") as directory:
-        upload = Path(directory) / "worker.js"
-        download = Path(directory) / "readback.js"
-        upload.write_bytes(raw)
-        run("npx", "--no-install", "wrangler", "r2", "object", "put",
-            f"{BUCKET}/{key}", "--file", str(upload), "--remote",
-            "--content-type", "application/javascript")
-        run("npx", "--no-install", "wrangler", "r2", "object", "get",
-            f"{BUCKET}/{key}", "--file", str(download), "--remote")
-        if hashlib.sha256(download.read_bytes()).hexdigest() != receipt["compiledSha256"]:
-            raise ValueError("Compiled Worker R2 readback differs")
+    from shared_test_r2_upload import enabled
+    from shared_test_r2_upload import publish as publish_s3
+    if enabled():
+        publish_s3(key, raw, "application/javascript")
+    else:
+        with tempfile.TemporaryDirectory(prefix="deos-compiled-worker-publish-") as directory:
+            upload = Path(directory) / "worker.js"
+            download = Path(directory) / "readback.js"
+            upload.write_bytes(raw)
+            run("npx", "--no-install", "wrangler", "r2", "object", "put",
+                f"{BUCKET}/{key}", "--file", str(upload), "--remote",
+                "--content-type", "application/javascript")
+            run("npx", "--no-install", "wrangler", "r2", "object", "get",
+                f"{BUCKET}/{key}", "--file", str(download), "--remote")
+            if hashlib.sha256(download.read_bytes()).hexdigest() != receipt["compiledSha256"]:
+                raise ValueError("Compiled Worker R2 readback differs")
     return key
 
 

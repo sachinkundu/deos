@@ -2,6 +2,7 @@ import {ImplementationStore} from './implementation-store.ts';
 import {D1OrchestrationStore} from './orchestration-store.ts';
 import {SharedTestDecisionStore} from './shared-test-decision-store.ts';
 import {SharedTestLeaseStore,type StagingTrafficRead} from './shared-test-lease.ts';
+import {sharedTestSetupRepairRevision} from './shared-test-setup-retry.ts';
 import {SharedTestAdmission} from './shared-test-admission.ts';
 import {LinearCapabilityAdapter} from './linear-capability.ts';
 import {implementationGitHub} from './implementation-github.ts';
@@ -62,6 +63,15 @@ export class SharedTestCoordinator {
       WHERE state IN ('waiting','validating') ORDER BY queue_number LIMIT 1`)
       .first<WaitingRequest>();
     if (!head) return {state:'empty'};
+    const retired=await this.env.DB.prepare(`SELECT l.lease_id FROM test_lease_aborts a
+      JOIN test_leases l ON l.lease_id=a.lease_id WHERE l.run_id=?
+        AND l.candidate_commit=? AND a.abort_kind='blocked_demo' AND a.closed_at IS NOT NULL
+      ORDER BY a.closed_at DESC,l.lease_id LIMIT 1`)
+      .bind(head.run_id,head.candidate_commit).first<{lease_id:string}>();
+    if(retired&&!await this.env.DB.prepare(`SELECT 1 AS ready FROM test_setup_retries
+      WHERE retired_lease_id=? AND request_id=? AND run_id=? AND candidate_commit=? AND repair_revision=?`)
+      .bind(retired.lease_id,head.request_id,head.run_id,head.candidate_commit,sharedTestSetupRepairRevision).first())
+      return {state:'waiting'};
     const run=await new D1OrchestrationStore(this.env.DB).findRun(head.run_id);
     if (!run || run.status!=='active' || run.current_node!=='shared_test_demo' ||
         run.issue_id!==head.task_id)

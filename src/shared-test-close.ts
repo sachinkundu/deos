@@ -1,5 +1,6 @@
 import {sha256Hex} from './implementation-hash.ts';
 import {purgeSharedTestGitHubSessions} from './shared-test-github-broker.ts';
+import {isBlockedDemoAbort,isUnstartedSetupAbort} from './shared-test-abort-state.ts';
 
 export const requiredProofKinds=['app_screen','linear_screen','showboat','d1_read',
   'provider_receipt','github_receipt'] as const;
@@ -91,19 +92,22 @@ export class SharedTestCloseStore {
 
   async cleaningFailedSetup(runId:string,leaseId:string,fence:number,
     at=new Date()):Promise<void> {
+    const blockedDemo=await isBlockedDemoAbort(this.db,runId,leaseId);
+    if(blockedDemo)await purgeSharedTestGitHubSessions(this.db,runId,leaseId);
+    const activatedAbort=blockedDemo || await isUnstartedSetupAbort(this.db,runId,leaseId);
     const results=await this.db.batch([
       this.db.prepare(`UPDATE test_environment SET state='cleaning',
         revision=revision+1,updated_at=? WHERE site_id=1 AND state='quiescing'
-        AND saved_phase='preparing' AND owner_run_id=? AND owner_lease_id=?
+        AND saved_phase='${activatedAbort?'active':'preparing'}' AND owner_run_id=? AND owner_lease_id=?
         AND fence=? AND EXISTS (SELECT 1 FROM test_leases l
-          WHERE l.lease_id=? AND l.run_id=? AND l.activated_at IS NULL)
+          WHERE l.lease_id=? AND l.run_id=? AND l.activated_at IS ${activatedAbort?'NOT ':''}NULL)
         AND EXISTS (SELECT 1 FROM test_lease_aborts a WHERE a.lease_id=?
           AND a.run_id=? AND a.proof_read_at IS NOT NULL AND a.closed_at IS NULL)
-        AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=?)
-        AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=?)
-        AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=?)
-        AND NOT EXISTS (SELECT 1 FROM test_provider_deliveries WHERE lease_id=?)
-        AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch WHERE lease_id=?)`)
+        AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=? ${blockedDemo?"AND state='complete'":''})
+        AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=? ${blockedDemo?"AND state NOT IN ('done','absent')":''})
+        AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=? ${blockedDemo?"AND state<>'disabled'":''})
+        AND NOT EXISTS (SELECT 1 FROM test_provider_deliveries WHERE lease_id=? ${blockedDemo?"AND route='test' AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch d WHERE d.delivery_id=test_provider_deliveries.delivery_id AND d.state='done')":''})
+        AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch WHERE lease_id=? ${blockedDemo?"AND state<>'done'":''})`)
         .bind(at.toISOString(),runId,leaseId,fence,leaseId,runId,leaseId,runId,
           leaseId,leaseId,leaseId,leaseId,leaseId),
       this.db.prepare(`UPDATE test_leases SET state='cleaning' WHERE lease_id=?
@@ -117,11 +121,14 @@ export class SharedTestCloseStore {
 
   async abortFailedSetup(runId:string,leaseId:string,fence:number,at=new Date()):Promise<{
     leaseId:string;runId:string;closeRevision:number;cleanupSha256:string;
-    absenceSha256:string;kind:'failed_setup'}> {
+    absenceSha256:string;kind:'failed_setup'|'blocked_demo'}> {
     const prior=await this.db.prepare(`SELECT receipt_json FROM test_lease_aborts
       WHERE lease_id=? AND run_id=?`).bind(leaseId,runId)
       .first<{receipt_json:string|null}>();
     if(prior?.receipt_json)return JSON.parse(prior.receipt_json);
+    const blockedDemo=await isBlockedDemoAbort(this.db,runId,leaseId);
+    if(blockedDemo)await purgeSharedTestGitHubSessions(this.db,runId,leaseId);
+    const activatedAbort=blockedDemo || await isUnstartedSetupAbort(this.db,runId,leaseId);
     const env=await this.owner(runId,leaseId);
     if(env.state!=='cleaning' || env.fence!==fence)
       throw new Error('shared_test_failed_setup_not_cleaning');
@@ -135,19 +142,19 @@ export class SharedTestCloseStore {
     const absenceSha256=await sha256Hex(JSON.stringify(checks));
     const closeRevision=env.revision+1,now=at.toISOString();
     const receipt={leaseId,runId,closeRevision,cleanupSha256,absenceSha256,
-      kind:'failed_setup' as const};
+      kind:blockedDemo?'blocked_demo' as const:'failed_setup' as const};
     const ready=await this.db.prepare(`SELECT 1 AS ready FROM test_environment e
       JOIN test_leases l ON l.lease_id=e.owner_lease_id
       JOIN test_lease_aborts a ON a.lease_id=l.lease_id
       WHERE e.site_id=1 AND e.state='cleaning' AND e.owner_run_id=?
         AND e.owner_lease_id=? AND e.fence=? AND e.revision=?
-        AND l.run_id=? AND l.state='cleaning' AND l.activated_at IS NULL
+        AND l.run_id=? AND l.state='cleaning' AND l.activated_at IS ${activatedAbort?'NOT ':''}NULL
         AND a.run_id=? AND a.proof_read_at IS NOT NULL AND a.closed_at IS NULL
-        AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=?)
-        AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=?)
-        AND NOT EXISTS (SELECT 1 FROM test_provider_deliveries WHERE lease_id=?)
-        AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch WHERE lease_id=?)
-        AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=?)
+        AND NOT EXISTS (SELECT 1 FROM test_attestations WHERE lease_id=? ${blockedDemo?"AND state='complete'":''})
+        AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=? ${blockedDemo?"AND state<>'disabled'":''})
+        AND NOT EXISTS (SELECT 1 FROM test_provider_deliveries WHERE lease_id=? ${blockedDemo?"AND route='test' AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch d WHERE d.delivery_id=test_provider_deliveries.delivery_id AND d.state='done')":''})
+        AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch WHERE lease_id=? ${blockedDemo?"AND state<>'done'":''})
+        AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=? ${blockedDemo?"AND state NOT IN ('done','absent')":''})
         AND NOT EXISTS (SELECT 1 FROM test_resources r WHERE r.lease_id=?
           AND (r.plan_state<>'absent' OR r.absent_at IS NULL OR NOT EXISTS
             (SELECT 1 FROM test_cleanup_checks c WHERE c.lease_id=r.lease_id
@@ -190,7 +197,7 @@ export class SharedTestCloseStore {
               AND e.revision=? AND l.run_id=? AND l.state='closed'
               AND a.closed_at=? AND a.cleanup_sha256=? AND a.absence_sha256=?
               AND NOT EXISTS (SELECT 1 FROM test_attestations
-                WHERE lease_id=l.lease_id)) THEN 1 ELSE 0 END,?)`)
+                WHERE lease_id=l.lease_id ${blockedDemo?"AND state='complete'":''})) THEN 1 ELSE 0 END,?)`)
         .bind(leaseId,leaseId,closeRevision,runId,now,
           cleanupSha256,absenceSha256,now),
     ]);

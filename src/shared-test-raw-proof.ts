@@ -54,12 +54,13 @@ export class SharedTestRawProofStore {
 
   /** Trusted operator capture of the real Linear issue; no agent route calls this. */
   async saveLinearScreen(runId:string,leaseId:string,
-    capture:{image:Uint8Array;url:string},at=new Date()):Promise<string> {
-    const lease=await this.db.prepare(`SELECT l.task_key FROM test_leases l
+    capture:{image:Uint8Array;url:string},at=new Date(),expectedFence?:number):Promise<string> {
+    const lease=await this.db.prepare(`SELECT l.task_key,e.fence FROM test_leases l
       JOIN test_environment e ON e.owner_lease_id=l.lease_id
       WHERE l.run_id=? AND l.lease_id=? AND e.owner_run_id=?
-        AND e.state IN ('active','quiescing') AND l.state IN ('active','quiescing')`)
-      .bind(runId,leaseId,runId).first<{task_key:string}>();
+        AND e.state IN ('active','quiescing') AND l.state IN ('active','quiescing')
+        AND (? IS NULL OR e.fence=?)`)
+      .bind(runId,leaseId,runId,expectedFence??null,expectedFence??null).first<{task_key:string;fence:number}>();
     if(!lease || !/^[A-Z]+-\d+$/.test(lease.task_key))
       throw new Error('test_linear_screen_lease_missing');
     const url=new URL(capture.url);
@@ -90,12 +91,12 @@ export class SharedTestRawProofStore {
          ON l.lease_id=e.owner_lease_id WHERE e.site_id=1 AND
            e.owner_run_id=? AND e.owner_lease_id=? AND
            e.state IN ('active','quiescing') AND l.run_id=? AND
-           l.task_key=? AND l.state IN ('active','quiescing'))`)
+           l.task_key=? AND e.fence=? AND l.state IN ('active','quiescing'))`)
       .bind(proofId,runId,leaseId,
         JSON.stringify({version:1,source:'connected-operator-browser',
           issueKey:lease.task_key,sourceUrl:capture.url}),
         sha,key,capture.image.byteLength,runId,leaseId,runId,
-        lease.task_key).run();
+        lease.task_key,lease.fence).run();
     if(inserted.meta.changes!==1)
       throw new Error('test_linear_screen_write_fenced');
     return proofId;

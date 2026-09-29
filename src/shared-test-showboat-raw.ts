@@ -31,7 +31,7 @@ export class SharedTestShowboatRawDriver {
       .first<Pending>();
     if(!row)return 'idle';
     if(!/^[a-f0-9]{64}$/.test(row.sha256) || row.byte_size<20 ||
-        row.byte_size>200_000 ||
+        row.byte_size>2_000_000 ||
         row.r2_key!==`runs/${encodeURIComponent(row.run_id)}/attempts/${row.attempt_id}/showboat.md`)
       throw new Error('test_showboat_artifact_invalid');
     const source=await this.bucket.get(row.r2_key);

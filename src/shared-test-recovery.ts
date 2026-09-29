@@ -9,6 +9,8 @@ import {SharedTestBrowserCleanup} from './shared-test-browser-cleanup.ts';
 import {SharedTestBrowserStore} from './shared-test-browser-store.ts';
 import {CloudflareTestBrowserProvider} from './shared-test-browser-provider.ts';
 import {purgeSharedTestGitHubSessions} from './shared-test-github-broker.ts';
+import {cleanupSharedTestReviewFixtures} from './shared-test-review-fixture.ts';
+import {SharedTestReviewRuntime} from './shared-test-review-runtime.ts';
 
 type RecoveryEnv=Pick<Env,'DB'|'LINEAR_API_URL'|'LINEAR_APP_ACCESS_TOKEN'> & {
   TEST_MARKER_KEY_V1?:string;
@@ -138,7 +140,11 @@ export class SharedTestRecovery {
     const cleanup=new SharedTestResourceCleanup(this.env.DB,
       new SharedTestCloudflareWorkers(this.env.DB,account,
         this.env.SHARED_TEST_ZONE_ID,token),
-      new SharedTestCloudflareStores(account,token));
+      new SharedTestCloudflareStores(account,token),
+      async input=>{
+        await new SharedTestReviewRuntime(this.env as Env).cleanup(input);
+        await cleanupSharedTestReviewFixtures(this.env as Env,input);
+      });
     await cleanup.resume({runId:owner.owner_run_id,leaseId:owner.owner_lease_id,
       createFence:owner.create_fence,cleanupFence:owner.fence});
     const remaining=await this.env.DB.prepare(`SELECT COUNT(*) AS count FROM test_resources

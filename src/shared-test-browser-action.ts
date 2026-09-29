@@ -32,10 +32,12 @@ export class SharedTestBrowserAction {
     const request=value as Record<string,unknown>;
     if(request.version!==1 || !['portal','bettaview'].includes(String(request.service)) ||
         typeof request.operation!=='string' ||
-        !['open','navigate','state','click','fill','press','wait','viewport','capture']
+        !['open','reset','navigate','state','click','fill','press','wait','viewport','capture','api','select']
           .includes(request.operation) ||
         Object.keys(request).some(key=>!['version','service','operation','url',
-          'selector','text','key','width','height','modifiers'].includes(key)) ||
+          'selector','text','key','width','height','modifiers','method','body'].includes(key)) ||
+        (request.method!==undefined && !['GET','POST'].includes(String(request.method))) ||
+        (request.body!==undefined && (typeof request.body!=='string' || request.body.length>100000)) ||
         (request.url!==undefined && (typeof request.url!=='string' ||
           request.url.length>2048)) ||
         (request.selector!==undefined && (typeof request.selector!=='string' ||
@@ -85,6 +87,10 @@ export class SharedTestBrowserAction {
         await browser.open(scope);
         return Response.json({ready:true,origin:`https://${plan.canonicalHost}`});
       }
+      if(request.operation==='reset') {
+        await browser.reset(scope);
+        return Response.json({ready:true,freshContext:true,origin:`https://${plan.canonicalHost}`});
+      }
       if(request.operation==='capture') {
         const proofId=await new SharedTestRawProofStore(this.env.DB,this.env.ARTIFACTS)
           .saveAppScreen(scope,await browser.capture(scope));
@@ -92,6 +98,8 @@ export class SharedTestBrowserAction {
           sanitizerResult:'pending'});
       }
       const input:TestBrowserOperation={operation:request.operation as TestBrowserOperation['operation'],
+        ...(request.method==='GET'||request.method==='POST'?{method:request.method}:{}),
+        ...(typeof request.body==='string'?{body:request.body}:{}),
         ...(typeof request.url==='string'?{url:request.url}:{}),
         ...(typeof request.selector==='string'?{selector:request.selector}:{}),
         ...(typeof request.text==='string'?{text:request.text}:{}),

@@ -7,6 +7,7 @@ export interface TestBrowserRow {
     'absent'|'uncertain';operation_id:string;inventory_json:string|null;
   create_window:string|null;session_id:string|null;prepared_until:string|null;
   absent_at:string|null;
+  viewport_width?:number;viewport_height?:number;
 }
 
 export interface TestBrowserScope {

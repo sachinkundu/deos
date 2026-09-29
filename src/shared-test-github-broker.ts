@@ -1,6 +1,9 @@
 import {sha256Hex} from './implementation-hash.ts';
 import {assertSharedTestGitHubRequest,type SharedTestGitHubScope} from './shared-test-github-scope.ts';
 import {describeSharedTestError} from './shared-test-failures.ts';
+import {sharedTestReviewFixture} from './shared-test-review-profile.ts';
+import {sharedTestReviewAssertion,sharedTestReviewKey} from './shared-test-review-signing.ts';
+import {takeSharedReviewFault} from './shared-test-review-faults.ts';
 
 export const sharedTestGitHubCallback=
   'https://deos-queue-consumer-ts.skundu.workers.dev/shared-test/github/callback';
@@ -10,6 +13,7 @@ const decoder=new TextDecoder();
 
 type BrokerEnv=Pick<Env,'DB'|'TEST_MARKER_KEY_V1'|'GITHUB_API_URL'> & {
   SHARED_TEST_GITHUB_CLIENT_SECRET?:string;
+  IMPLEMENTATION_TEST_GITHUB_TOKEN?:string;
 };
 interface LiveSession extends SharedTestGitHubScope {
   run_id:string;attempt_id:string;lease_id:string;fence:number;
@@ -24,6 +28,8 @@ interface OAuthState extends LiveSession {
 }
 interface GitHubSession extends LiveSession {
   session_sha256:string;token_ciphertext:string;token_nonce:string;
+  credential_source:'oauth'|'test_reviewer';
+  fixture_resource_id:string|null;github_user_id:number|null;
 }
 
 function random():string {
@@ -60,8 +66,10 @@ function expiry(now:Date,minutes:number):string {
 export class SharedTestGitHubBroker {
   readonly env:BrokerEnv;
   readonly fetcher:typeof fetch;
-  constructor(env:BrokerEnv,fetcher:typeof fetch=globalThis.fetch.bind(globalThis)) {
-    this.env=env;this.fetcher=fetcher;
+  readonly advanceAfterReply?: (row:LiveSession,operationId:string)=>Promise<unknown>;
+  constructor(env:BrokerEnv,fetcher:typeof fetch=globalThis.fetch.bind(globalThis),
+      advanceAfterReply?:(row:LiveSession,operationId:string)=>Promise<unknown>) {
+    this.env=env;this.fetcher=fetcher;this.advanceAfterReply=advanceAfterReply;
   }
   private async digest(value:string):Promise<string> {
     if(!/^[A-Za-z0-9_-]{43}$/.test(value))
@@ -141,6 +149,38 @@ export class SharedTestGitHubBroker {
     url.searchParams.set('code_challenge_method','S256');
     url.searchParams.set('allow_signup','false');
     return url.toString();
+  }
+  /** A lease browser can use only the approved reviewer on its own fixture. */
+  async reviewer(appSession:string,origin:string,returnTo:string):Promise<{
+    cookie:string;returnTo:string}> {
+    const live=await this.live(appSession,origin);
+    const fixture=await sharedTestReviewFixture(this.env.DB,live);
+    await this.checkedReviewer(fixture.githubUserId);
+    // Recheck the fence after the remote identity read, before issuing a session.
+    await this.live(appSession,origin);
+    const session=random(),sessionSha=await sha256Hex(session);
+    await this.env.DB.prepare(`INSERT INTO test_github_sessions
+      (session_sha256,run_id,attempt_id,lease_id,fence,origin,app_session_sha256,
+       token_ciphertext,token_nonce,expires_at,credential_source,fixture_resource_id,github_user_id)
+      VALUES (?,?,?,?,?,?,?,'','',?,'test_reviewer',?,?)`)
+      .bind(sessionSha,live.run_id,live.attempt_id,live.lease_id,live.fence,origin,
+        live.app_session_sha256,[expiry(new Date(),15),live.expires_at].sort()[0],
+        fixture.resourceId,fixture.githubUserId).run();
+    return {cookie:`__Host-deos_github=${session}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=900`,
+      returnTo:returnPath(returnTo)};
+  }
+  private async checkedReviewer(expectedId:number):Promise<string> {
+    const token=this.env.IMPLEMENTATION_TEST_GITHUB_TOKEN;
+    if(!token)throw new Error('test_reviewer_credential_missing');
+    const response=await this.fetcher('https://api.github.com/user',{
+      redirect:'manual',signal:AbortSignal.timeout(20_000),headers:{
+        Authorization:`Bearer ${token}`,Accept:'application/vnd.github+json',
+        'User-Agent':'deos-shared-test'}});
+    if(!response.ok)throw new Error(`test_reviewer_read_failed:${response.status}:${await response.text()}`);
+    const user=await response.json() as {id?:number;type?:string};
+    if(user.id!==expectedId || user.type!=='User')
+      throw new Error('test_reviewer_identity_changed');
+    return token;
   }
   private async state(state:string,at=new Date()):Promise<OAuthState> {
     const digest=await this.digest(state),now=at.toISOString();
@@ -257,7 +297,7 @@ export class SharedTestGitHubBroker {
     Promise<GitHubSession|null> {
     const live=await this.live(appSession,origin);
     const sessionSha=await this.digest(githubSession),now=new Date().toISOString();
-    return this.env.DB.prepare(`SELECT g.*,l.repository,l.branch,
+    const row=await this.env.DB.prepare(`SELECT g.*,l.repository,l.branch,
       l.pull_request_number AS pullRequestNumber,
       l.candidate_commit AS candidateCommit
       FROM test_github_sessions g JOIN test_leases l ON l.lease_id=g.lease_id
@@ -265,6 +305,13 @@ export class SharedTestGitHubBroker {
         AND g.fence=? AND g.origin=? AND g.expires_at>? AND g.revoked_at IS NULL`)
       .bind(sessionSha,live.app_session_sha256,live.lease_id,live.fence,origin,now)
       .first<GitHubSession>();
+    if(row?.credential_source==='test_reviewer') {
+      const fixture=await sharedTestReviewFixture(this.env.DB,live,row.fixture_resource_id);
+      if(fixture.githubUserId!==row.github_user_id)
+        throw new Error('test_reviewer_identity_changed');
+      return {...row,...fixture.scope};
+    }
+    return row;
   }
   async authorized(appSession:string,githubSession:string,origin:string):Promise<boolean> {
     if(!githubSession)return false;
@@ -282,6 +329,26 @@ export class SharedTestGitHubBroker {
       WHERE session_sha256=? AND revoked_at IS NULL`)
       .bind(new Date().toISOString(),row.session_sha256).run();
   }
+  async assertion(input:{appSession:string;githubSession:string;origin:string;
+    method:string;body:Record<string,unknown>;githubUserId:number;accessAccount:string}) {
+    const row=await this.session(input.appSession,input.githubSession,input.origin);
+    if(!row || row.credential_source!=='test_reviewer' ||
+        input.githubUserId!==row.github_user_id || input.accessAccount!=='reviewer@deos-test.invalid')
+      throw new Error('test_review_identity_denied');
+    const fixture=await sharedTestReviewFixture(this.env.DB,row,row.fixture_resource_id);
+    if(input.method==='prepareReview' && (input.body.repository!==fixture.scope.repository ||
+        input.body.pullRequestNumber!==fixture.scope.pullRequestNumber ||
+        input.body.issueId!==fixture.issueId || !await this.env.DB.prepare(`SELECT 1 AS allowed
+          FROM test_review_scenarios WHERE lease_id=? AND scenario_run_id=? AND state='ready'`)
+          .bind(row.lease_id,input.body.runId).first()))
+      throw new Error('test_review_prepare_scope_denied');
+    if(input.method==='connectAccount' && input.body.projectId!==fixture.profile.projectId)
+      throw new Error('test_review_account_scope_denied');
+    await this.checkedReviewer(row.github_user_id!);
+    await this.live(input.appSession,input.origin);
+    return sharedTestReviewAssertion(await sharedTestReviewKey(this.env.TEST_MARKER_KEY_V1,
+      row.lease_id,row.fence),row.github_user_id!,input.method,input.body);
+  }
   async request(input:{appSession:string;githubSession:string;origin:string;
     target:string;method:string;body:string|null}):Promise<{
       status:number;contentType:string;body:string}> {
@@ -290,7 +357,9 @@ export class SharedTestGitHubBroker {
     if(input.target.length>4000 || (input.body?.length??0)>16*1024*1024)
       throw new Error('test_github_request_too_large');
     assertSharedTestGitHubRequest(row,input.target,input.method,input.body);
-    const token=await this.decrypt(row.token_ciphertext,row.token_nonce);
+    const token=row.credential_source==='test_reviewer'
+      ?await this.checkedReviewer(row.github_user_id!)
+      :await this.decrypt(row.token_ciphertext,row.token_nonce);
     const requestId=crypto.randomUUID(),path=new URL(input.target).pathname;
     const startedAt=new Date().toISOString();
     await this.env.DB.prepare(`INSERT INTO test_github_transport_requests
@@ -318,6 +387,14 @@ export class SharedTestGitHubBroker {
             checked.head.repo?.full_name!==row.repository)
           throw new Error('test_github_head_changed');
       }
+      if(row.credential_source==='test_reviewer' && input.method==='POST' && /\/reviews$/.test(path)) {
+        const injection=await takeSharedReviewFault(this.env.DB,row.lease_id,'github_reject_review',requestId);
+        if(injection) {
+          await this.env.DB.prepare(`UPDATE test_github_transport_requests SET failure_json=?,finished_at=? WHERE request_id=?`)
+            .bind(JSON.stringify({synthetic:true,injection,message:'Injected GitHub 422 before provider write'}),new Date().toISOString(),requestId).run();
+          return {status:422,contentType:'application/json',body:JSON.stringify({message:'Labeled test injection: GitHub rejected this review.'})};
+        }
+      }
       const response=await this.fetcher(input.target,{method:input.method,
         body:input.body??undefined,redirect:'manual',signal:AbortSignal.timeout(20_000),
         headers:{Authorization:`Bearer ${token}`,
@@ -329,6 +406,15 @@ export class SharedTestGitHubBroker {
       await this.env.DB.prepare(`UPDATE test_github_transport_requests
         SET provider_status=?,finished_at=? WHERE request_id=?`)
         .bind(response.status,new Date().toISOString(),requestId).run();
+      if(row.credential_source==='test_reviewer' && input.method==='POST' && /\/comments\/\d+\/replies$/.test(path) && response.ok) {
+        const advance=await takeSharedReviewFault(this.env.DB,row.lease_id,'github_advance_after_reply',requestId);
+        if(advance) {
+          if(!this.advanceAfterReply)throw new Error('test_reply_head_advance_unconfigured');
+          await this.advanceAfterReply(row,`reply-head-${advance}`);
+        }
+        const injection=await takeSharedReviewFault(this.env.DB,row.lease_id,'github_drop_reply_response',requestId);
+        if(injection)throw new Error(`Labeled test injection ${injection}: real GitHub reply succeeded; response deliberately lost after provider receipt`);
+      }
       return {status:response.status,
         contentType:response.headers.get('content-type')??'application/json',body};
     } catch(error) {
