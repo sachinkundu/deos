@@ -16,9 +16,9 @@ from portal_release import (
     run,
 )
 from shared_test_build_bundle import publish as publish_test_build
+from shared_test_release_guard import guard as shared_test_release_guard
 from shared_test_worker_module import build as build_test_worker_module
 from shared_test_worker_module import publish as publish_test_worker_module
-from shared_test_release_guard import guard as shared_test_release_guard
 
 WORKER = "deos-bettaview-portal-staging"
 HOST = "bettaview-staging.voxdez.com"

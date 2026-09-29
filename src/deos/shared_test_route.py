@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
 from .shared_test_event import TestExpectation, marker_for, match_test_issue_update, mismatch_checks
-import json
 
 
 def _value(row: Any, key: str) -> Any:
