@@ -526,6 +526,10 @@ class Sandbox implements SandboxView {
     }
     if (command[0] === "git" && command[1] === "rev-parse") process.stdout = `${this.revision}\n`;
     if (command[0] === "git" && command[1] === "status") process.stdout = this.statusOutput;
+    if (command[0] === 'mv' && command[1] === '--' && this.files.has(command[2])) {
+      this.files.set(command[3],this.files.get(command[2])!);
+      this.files.delete(command[2]);
+    }
     return Promise.resolve(process);
   }
 
@@ -1514,6 +1518,36 @@ test("running process reconciles the exact process and fresh supervisor heartbea
   const observation = await controller.execute(run, "work", "work", definition);
   assert.equal(observation.state, "running");
   assert.equal(attempts.latest?.heartbeat_at, NOW.toISOString());
+});
+
+test('a model delay cannot expire the active shared-test capability',async()=>{
+  let time=new Date(NOW);
+  const state=setup({clock:()=>time,checkoutCommit:'a'.repeat(40)});
+  const shared={...definition,jobs:{...definition.jobs,
+    work:{...definition.jobs.work,inputs:['shared_test_context']}}};
+  await state.controller.execute(run,'work','work',shared);
+  const attemptId=state.attempts.latest!.attempt_id;
+  const poll=async(minutes:number)=>{
+    time=new Date(NOW.getTime()+minutes*60_000);
+    state.factory.sandbox.files.set('/deos/output/heartbeat.json',JSON.stringify({
+      attemptId,observedAt:time.toISOString(),
+    }));
+    assert.equal((await state.controller.execute(run,'work','work',shared)).state,'running');
+  };
+  await poll(1);
+  assert.equal(state.grantCalls.length,2);
+  await poll(2);
+  assert.equal(state.grantCalls.length,2);
+  // Even after the old 15-minute grant expired, only the trusted controller
+  // can request a new grant after rechecking the exact live lease subject.
+  await poll(25);
+  assert.equal(state.grantCalls.length,3);
+  assert.deepEqual(state.grantCalls.at(-1)?.slice(0,2),[attemptId,run.run_id]);
+  const saved=JSON.parse(state.factory.sandbox.files.get('/deos/run/shared-test-capability.json')!);
+  assert.deepEqual(saved,{attempt:attemptId,token:'grant-token',refreshedAt:time.toISOString()});
+  assert.equal(state.attempts.latest!.absolute_deadline,
+    new Date(NOW.getTime()+24*60*60_000).toISOString());
+  assert.equal(state.factory.sandbox.supervisor.killed,false);
 });
 
 test("non-zero supervisor exit persists failure evidence before cleanup", async () => {

@@ -607,3 +607,66 @@ the current document and a value-free credential check of local/session storage.
 This is not a history of earlier navigations. The event evidence now joins each
 Linear event to the exact payload hash accepted by signed ingress and separately
 checks the stable app actor ID. Linear's `user` actor label is preserved.
+
+
+## 29 September, 18:03 UTC: candidate ready, model connection delayed
+
+The new lease `a34db2f565a0af85b54d68f041c0806bb4cfed43d263821ea3107298170166ce`
+activated at 17:33 UTC. Both candidate app versions passed two matching reads
+for commit `9a8b2e3873b8968bc17024646d59b2d549021169`: BettaView
+`c9c627b0-91bc-4538-b7f1-108bf9bd61ef` and portal
+`9c8bfc75-f6ee-41a5-85c6-2c7213ba6116`. The disposable fixtures are PR 61
+and SAC-267. The fresh task identity image passed sanitization and public
+hash readback at [its lasting URL](https://deos-shared-test-proof.skundu.workers.dev/proof/99703a76-b34b-4b16-a251-907b2fda5e34).
+
+Attempt `3111e3a0-3738-42b5-981b-26c3714dbc94` started at 17:41 UTC.
+At 18:03 UTC the process and parent Workflow were running, but no browser session
+or review scenario had started. Retained Workers Observability events for its
+exact container show repeated model response stream disconnects, an HTTP 503
+from the response endpoint, and HTTP 500/503 from the model-list endpoint.
+The heartbeat proves only that the process is alive. It does not prove model
+progress or a passed test. No coordinator update was made during this attempt.
+
+The handoff readback still shows the old v43 run failed with its original
+`workflow_executor_timeout`. Its dispatched successor uses v45 and the same
+PR 137. The handoff test covers approval identity, preserved source failure,
+and the new candidate binding. This completes the handoff implementation
+check; the live review and release gates still require fresh proof.
+
+
+The attempt ended blocked at 18:08:26 UTC and its Sandbox was destroyed after
+collection. Its first useful model actions arrived after the 15-minute test
+capability had expired. The helper's action-triggered renewal then returned
+`invalid_capability` before any app or provider request could be dispatched.
+The original proxy CA failure is also retained; using the installed system CA
+reached the broker and exposed the authoritative capability rejection.
+The isolated database has no account, run, review intent, gate decision, or app
+operation from this attempt.
+
+Retained result SHA-256:
+`1fba03323c8ee2c0074c4a99e19b4a448e92af110ab30b9f971ac23d2441018a`.
+Transcript SHA-256:
+`e8716510f1174c7780ffe50769e53eb3406b991af91fc3bb1001e94bf580aed5`.
+
+The controller now refreshes the existing short-lived grant during a healthy
+shared-test heartbeat, independent of model activity. The same trusted grant
+path rechecks the attempt deadline, task, repository, active lease and fence.
+Expired bearer tokens still fail at the public endpoints. A 25-minute-delay
+regression proves renewal without extending the attempt deadline; completed
+attempts and changed fences cannot mint a replacement. The prompt also names
+the installed system CA option for the test helper. No provider credential,
+permission or account setting changes are needed.
+
+
+The blocked lease closed at 18:14:49 UTC, free revision 2536. All seven owned
+resources have absence receipts. The retained database snapshot contains all
+131 tables and no app account, run, review intent, gate decision, or operation.
+Failure evidence hash:
+`53cb296269ee4cd44e83eb5b921f869cefb3f30312172f8cbd138bceae095634`.
+Cleanup hash: `6bb0b4d408a89ba67c03195895d95796063ec01a4a319266cc89c42feddabc44`.
+Absence hash: `ce5a264a78748ec5bea34a0c19e62eab3983ce47993e3093acdb67589e203d2e`.
+
+The focused controller and capability suite passed all 50 tests. The full
+suite reported 859 passes, three optional skips and one timed-test cancellation.
+That progress-watcher file then passed all five tests on a separate rerun.
+Typecheck and strict OpenSpec validation passed.

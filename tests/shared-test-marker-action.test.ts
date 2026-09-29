@@ -54,6 +54,12 @@ test('test marker action derives issue scope from the lease and stops at a new f
       expectationId:'expectation-1'}),/shared_test_marker_agent_inactive/);
     db.sqlite.prepare(`UPDATE agent_attempts SET state='running'
       WHERE attempt_id='attempt-1'`).run();
+    const later=new Date(Date.now()+25*60_000);
+    await assert.rejects(verifyCapabilityToken(token,secret,later.getTime()),/expired/);
+    const renewed=await action.grant(input,secret,later);
+    const refreshed=await verifyCapabilityToken(renewed,secret,later.getTime());
+    assert.deepEqual({...refreshed,expiresAt:claims.expiresAt},claims);
+    assert.equal(refreshed.expiresAt,Math.floor(later.getTime()/1000)+15*60);
     const invalid=await action.handle(claims,{version:1,action:'insert',
       expectationId:'expectation-1',taskId:'other-issue'});
     assert.equal(invalid.status,400);
@@ -68,6 +74,7 @@ test('test marker action derives issue scope from the lease and stops at a new f
     assert.deepEqual(await found.json(),{present:true});
     db.sqlite.prepare(`UPDATE agent_attempts SET state='completed'
       WHERE attempt_id='attempt-1'`).run();
+    await assert.rejects(action.grant(input,secret),/shared_test_marker_agent_inactive/);
     await assert.rejects(action.handle(claims,{version:1,action:'find',
       expectationId:'expectation-1'}),/shared_test_marker_agent_inactive/);
     db.sqlite.prepare(`UPDATE agent_attempts SET state='running'
@@ -76,6 +83,7 @@ test('test marker action derives issue scope from the lease and stops at a new f
       heartbeat_due_at=NULL WHERE site_id=1`).run();
     await assert.rejects(action.handle(claims,{version:1,action:'find',
       expectationId:'expectation-1'}),/shared_test_write_fenced/);
+    await assert.rejects(action.grant(input,secret),/shared_test_write_fenced/);
     assert.equal(reads,2);
   } finally {db.close();}
 });

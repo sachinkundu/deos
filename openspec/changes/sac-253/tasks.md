@@ -29,7 +29,7 @@
 - [x] 4.5 Add the trusted `test_issue_marker_patch` action with a versioned keyed marker, saved before/after hashes, idempotent insert/find/remove, and preservation of human edits.
 - [x] 4.6 Route one signed Linear webhook delivery using all saved event-time facts, atomically claim a live expectation, and retry a durable test Queue dispatch without rerouting duplicates.
 - [x] 4.7 Claim test Queue work with expiring tokens and stable work IDs; save the observed result against the exact task, run, lease, commit, pull request, and base.
-- [ ] 4.8 Establish a lease-bound session for the existing checked test reviewer through the trusted edge. Keep the credential in the coordinator, recheck its numeric identity and fixture scope, and prove real scoped GitHub reads and writes through the exact candidate backend. Keep fixed-callback OAuth optional and operator-controlled.
+- [x] 4.8 Establish a lease-bound session for the existing checked test reviewer through the trusted edge. Keep the credential in the coordinator, recheck its numeric identity and fixture scope, and prove real scoped GitHub reads and writes through the exact candidate backend. Keep fixed-callback OAuth optional and operator-controlled.
 - [ ] 4.9 Deploy the exact SAC-182 candidate ReviewContinuation service and DeosWorkflow with lease-owned stores. Use the trusted, fixed-scope outbound provider transport and a lease-specific signing key. Prove actual linked review publication, signed Linear delivery, gate transition, and cleanup without advancing a live workflow.
 
 ## 5. Proof, cleanup, and portal
@@ -48,7 +48,7 @@
 - [x] 6.2 Make every matching app/provider candidate wait for a complete lease-bound test, and save an exact `test_not_required` decision only for a nonmatching candidate.
 - [ ] 6.3 Add the exact-commit staging and live release guard in observe-only mode, with enforcement enabled only after the full SAC-182 proof.
 - [x] 6.4 Cover grant races, stale attempts, staging drift, wrong versions, old sessions, wrong scopes, event duplicates, uncertain remote replies, proof failures, interrupted cleanup, and first-error preservation with deterministic tests.
-- [ ] 6.5 Add and test an exact-subject handoff from the stopped SAC-182 v43 run and PR #137 to a new v44 run. Preserve approval provenance, carry its code onto current `main`, reuse the existing PR, and require fresh test and release proof.
+- [x] 6.5 Add and test an exact-subject handoff from the stopped SAC-182 v43 run and PR #137 to a new run under the shared-test workflow (deployed version 45). Preserve approval provenance, carry its code onto current `main`, reuse the existing PR, and require fresh test and release proof.
 
 ## 7. Remote proof and review
 

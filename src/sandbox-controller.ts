@@ -10,6 +10,7 @@ import { captureImplementationFailure, implementationFailureFiles } from "./impl
 import type { CredentialLease, CredentialVault } from "./credential-vault.ts";
 import type { ProviderReceiptVerifier } from "./capability-store.ts";
 import { sandboxIdentity, uuidV7 } from "./orchestration-identity.ts";
+import {refreshSharedTestCapability} from './shared-test-capability-refresh.ts';
 import type { OrchestrationRunRecord } from "./orchestration-store.ts";
 import type { ValidatedAgentOutcome } from "./workflow-evaluator.ts";
 import type { LoadedWorkflowDefinition, WorkflowJob } from "./workflow-definition.ts";
@@ -1189,6 +1190,12 @@ export class SandboxAgentController {
         observedAt,
         this.dependencies.now().toISOString(),
       );
+      if(job.inputs.includes('shared_test_context')) {
+        const saved=JSON.parse(attempt.job_spec_json) as {repository:string};
+        await refreshSharedTestCapability(sandbox,attempt.attempt_id,()=>
+          this.dependencies.capabilityGrant(attempt.attempt_id,run.run_id,job,
+            saved.repository,'',null),this.dependencies.now());
+      }
       if (job.inputs.includes("implementation_context")) await this.dependencies.implementationProgress?.(run, attempt, sandbox);
       return { state: "running", attemptId: attempt.attempt_id, sandboxId: attempt.sandbox_id };
     }
@@ -2254,6 +2261,7 @@ export class SandboxAgentController {
       '<deos-job-inputs>',materializedContext,'</deos-job-inputs>',
       `Required outputs under /deos/output: ${job.requiredOutputs.join(', ')}.`,
       'The supervisor captures transcript.jsonl, patch.diff, and provider-references.json. Return result.json through its schema and write validation.txt with real observations.',
+      'Run the test helper as NODE_OPTIONS=--use-system-ca deos-test browser|marker|review /deos/output/request.json. This uses the installed Sandbox proxy CA while keeping TLS verification enabled. The trusted controller refreshes the same short-lived lease capability while the attempt is active; never edit its saved capability file.',
       'No GitHub publication, general Linear update, Cloudflare deployment, staging release, or live release capability is available.',
     ].join('\n\n');
     if (job.inputs.includes('implementation_demo_context')) return [job.prompt.trim(),
