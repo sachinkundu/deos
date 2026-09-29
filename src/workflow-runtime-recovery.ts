@@ -78,26 +78,54 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
     );
     const recoveryId = `workflow-runtime-recovery:${input.sourceWorkflowInstanceId}`;
     const transitionId = `transition:${recoveryId}`;
+    // A fenced, unstarted demo can have committed its failure transition before
+    // the provider reports the executor errored. Recover only that exact closed
+    // setup; a failed review, live lease, or another terminal node is ineligible.
+    const eligibleNode = `((run.current_node = ? AND run.status = 'active') OR (
+      ? = 'shared_test_demo' AND run.current_node = 'implementation_failed'
+      AND run.previous_node = 'shared_test_demo' AND run.status = 'failed'
+      AND EXISTS (SELECT 1 FROM workflow_transitions_v2 t
+        WHERE t.transition_id=run.last_transition_id AND t.run_id=run.run_id
+          AND t.from_node='shared_test_demo' AND t.to_node='implementation_failed'
+          AND t.from_visit_sequence=run.current_visit_sequence-1
+          AND t.to_visit_sequence=run.current_visit_sequence
+          AND t.cause_reference='system:implementation.shared_test_demo:failed')
+      AND NOT EXISTS (SELECT 1 FROM agent_attempts x WHERE x.run_id=run.run_id
+        AND x.visit_sequence>=run.current_visit_sequence-1)
+      AND EXISTS (SELECT 1 FROM test_leases l
+        JOIN test_lease_aborts a ON a.lease_id=l.lease_id AND a.run_id=l.run_id
+        JOIN implementation_runs w ON w.run_id=l.run_id
+        JOIN test_failures f ON f.lease_id=l.lease_id AND f.run_id=l.run_id
+        WHERE l.run_id=run.run_id AND l.candidate_commit=w.pr_head_sha
+          AND l.patch_sha256=w.patch_sha AND l.state='closed'
+          AND a.abort_kind='failed_setup' AND a.closed_at IS NOT NULL
+          AND f.safe_code='shared_test_failed'
+          AND f.first_message='shared_test_heartbeat_fenced'
+          AND NOT EXISTS (SELECT 1 FROM agent_attempts x WHERE x.attempt_id=l.attempt_id)
+          AND NOT EXISTS (SELECT 1 FROM test_review_scenarios s WHERE s.lease_id=l.lease_id)
+          AND NOT EXISTS (SELECT 1 FROM test_github_sessions s WHERE s.lease_id=l.lease_id)
+          AND NOT EXISTS (SELECT 1 FROM test_attestations t WHERE t.lease_id=l.lease_id))
+    ))`;
     const statements = [
       this.database.prepare(
         `INSERT OR IGNORE INTO workflow_runtime_recoveries
          (recovery_id, run_id, retry_node, from_visit_sequence, to_visit_sequence,
           transition_id, state, requested_by, source_workflow_instance_id,
           target_workflow_instance_id, source_delivery_id, created_at, updated_at)
-         SELECT ?, run.run_id, run.current_node, run.current_visit_sequence,
+         SELECT ?, run.run_id, ?, run.current_visit_sequence,
                 run.current_visit_sequence + 1, ?, 'pending', ?, run.workflow_instance_id,
                 ?, COALESCE(run.selection_delivery_id, intent.source_delivery_id), ?, ?
          FROM orchestration_runs AS run
          JOIN dispatch_intents AS intent ON intent.run_id = run.run_id
          WHERE run.run_id = ? AND run.workflow_instance_id = ?
-           AND run.current_node = ? AND run.current_visit_sequence = ? AND run.status = 'active'
+           AND ${eligibleNode} AND run.current_visit_sequence = ?
            AND COALESCE(run.selection_delivery_id, intent.source_delivery_id) IS NOT NULL
            AND NOT EXISTS (
              SELECT 1 FROM agent_attempts AS attempt
              WHERE attempt.run_id = run.run_id
                AND attempt.visit_sequence = run.current_visit_sequence
            )
-           AND (run.current_node <> 'shared_test_demo' OR (
+           AND (? <> 'shared_test_demo' OR (
              EXISTS (SELECT 1 FROM test_lease_requests r
                JOIN test_leases l ON l.request_id=r.request_id
                JOIN test_lease_aborts a ON a.lease_id=l.lease_id
@@ -118,6 +146,7 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
            ))`,
       ).bind(
         recoveryId,
+        input.retryNode,
         transitionId,
         input.requestedBy,
         targetWorkflowInstanceId,
@@ -126,25 +155,30 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
         input.runId,
         input.sourceWorkflowInstanceId,
         input.retryNode,
+        input.retryNode,
         input.visitSequence,
+        input.retryNode,
       ),
       this.database.prepare(
-        `UPDATE orchestration_runs
+        `UPDATE orchestration_runs AS run
          SET workflow_instance_id = ?, previous_node = current_node,
+             current_node = ?, status = 'active',
              current_visit_sequence = current_visit_sequence + 1,
              last_transition_id = ?, updated_at = ?
-         WHERE run_id = ? AND workflow_instance_id = ? AND current_node = ?
-           AND current_visit_sequence = ? AND status = 'active'
+         WHERE run_id = ? AND workflow_instance_id = ? AND ${eligibleNode}
+           AND current_visit_sequence = ?
            AND EXISTS (
              SELECT 1 FROM workflow_runtime_recoveries
              WHERE recovery_id = ? AND state = 'pending'
            )`,
       ).bind(
         targetWorkflowInstanceId,
+        input.retryNode,
         transitionId,
         input.now,
         input.runId,
         input.sourceWorkflowInstanceId,
+        input.retryNode,
         input.retryNode,
         input.visitSequence,
         recoveryId,
@@ -168,7 +202,7 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
          (transition_id, run_id, from_node, to_node, from_visit_sequence,
           to_visit_sequence, cause_type, cause_reference, actor_id, actor_type,
           provider_operation_id, occurred_at)
-         SELECT recovery.transition_id, recovery.run_id, recovery.retry_node,
+         SELECT recovery.transition_id, recovery.run_id, run.previous_node,
                 recovery.retry_node, recovery.from_visit_sequence,
                 recovery.to_visit_sequence, 'operator_retry', recovery.recovery_id,
                 recovery.requested_by, 'operator', NULL, ?

@@ -477,3 +477,32 @@ Its parent is still the saved base. The earlier commit has a backup branch and
 a retained candidate record. Portal and BettaView builds passed; 121 BettaView
 tests passed. Candidate bundles and the review runtime were uploaded, then
 downloaded and hash-checked before adoption. No test approval was created.
+
+## 29 September, interrupted setup recovery
+
+Lease `e6b9603323c87d308bd1d9fb11c6cf8b4d59ada85ba3e6599051ac65e515870c`
+never started a demo attempt. Setup recorded an HTTP 530 and a missing compiled
+BettaView Worker. The raw app bundle and review runtime were present, but the
+separate compiled Worker had been omitted. It is now built from the clean,
+exact candidate and read back from storage with SHA-256
+`9ec415b7565eb222c17ea2af25ad061602a65b7d22c4ab521566422179660680`.
+
+The Workflow also recorded a closed Durable Object connection. Its next
+heartbeat was fenced, and it entered `implementation_failed`. All four owned
+resources were removed. The site became free at 15:43:21 UTC, revision 2298.
+The retained setup receipt was downloaded and hash-checked:
+`068666fd81a70d887daae4a4a7e8c172dbacddee1ad74815008cc75fb24b1d25`.
+The original connection error remains in the private error store.
+
+The recovery handler now accepts this narrow case: an errored executor, an
+exact fenced setup failure, no started demo, and a closed lease with verified
+absence. Other terminal failures remain ineligible. Five recovery tests and
+the type check passed. The audit transition records the failed node as its
+source and keeps the old failure records.
+
+Coordinator `c8c8c431-bba1-42c2-9265-b9783653c4b2` was deployed while there
+were zero live agent attempts. Existing binding types, variable hashes, and
+secret names matched before and after deployment. Recovery returned HTTP 202
+and a new running executor, `wf-v1-bzr3pzs2rqtkahuawd2o4osnzmsdjmaufyaz6et4ffduhkzvhyaa`.
+It granted a fresh lease at 15:49:22 UTC with fence 17. App review proof remains
+pending; setup recovery is not a passed app test.

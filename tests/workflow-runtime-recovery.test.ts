@@ -165,7 +165,7 @@ test("an established recovery is idempotent", async () => {
   assert.equal(workflows.creates.length, 0);
 });
 
-test('demo recovery requires a closed, proved abort of the exact candidate',async()=>{
+for(const terminal of [false,true])test(`demo recovery requires a closed, proved abort (${terminal?'fenced terminal':'active'} run)`,async()=>{
   const db=new ImplementationTestDatabase();
   const now=NOW.toISOString(),sha='a'.repeat(40),patch='b'.repeat(64);
   try {
@@ -222,10 +222,43 @@ test('demo recovery requires a closed, proved abort of the exact candidate',asyn
       .run('d'.repeat(64),now,'e'.repeat(64),'f'.repeat(64),now);
     db.sqlite.prepare(`INSERT INTO test_lease_abort_guards
       (lease_id,ready,checked_at) VALUES ('lease-1',1,?)`).run(now);
+    if(terminal) {
+      db.sqlite.prepare(`INSERT INTO workflow_transitions_v2
+        (transition_id,run_id,from_node,to_node,from_visit_sequence,to_visit_sequence,
+          cause_type,cause_reference,actor_type,occurred_at)
+        VALUES ('failure','run-1','shared_test_demo','implementation_failed',19,20,
+          'workflow','system:implementation.shared_test_demo:failed','workflow',?)`).run(now);
+      db.sqlite.prepare(`UPDATE orchestration_runs SET current_node='implementation_failed',
+        previous_node='shared_test_demo',status='failed',last_transition_id='failure'
+        WHERE run_id='run-1'`).run();
+      await assert.rejects(store.prepare(input),/not_eligible/);
+      db.sqlite.prepare(`UPDATE test_failures SET safe_code='shared_test_failed',
+        first_message='shared_test_heartbeat_fenced' WHERE fault_id='fault-1'`).run();
+      db.sqlite.prepare(`UPDATE workflow_transitions_v2 SET cause_reference='another_failure'
+        WHERE transition_id='failure'`).run();
+      await assert.rejects(store.prepare(input),/not_eligible/);
+      db.sqlite.prepare(`UPDATE workflow_transitions_v2
+        SET cause_reference='system:implementation.shared_test_demo:failed'
+        WHERE transition_id='failure'`).run();
+      db.sqlite.prepare(`UPDATE test_leases SET candidate_commit=? WHERE lease_id='lease-1'`)
+        .run('9'.repeat(40));
+      await assert.rejects(store.prepare(input),/not_eligible/);
+      db.sqlite.prepare(`UPDATE test_leases SET candidate_commit=? WHERE lease_id='lease-1'`).run(sha);
+      db.sqlite.prepare(`DELETE FROM test_lease_abort_guards WHERE lease_id='lease-1'`).run();
+      await assert.rejects(store.prepare(input),/not_eligible/);
+      db.sqlite.prepare(`INSERT INTO test_lease_abort_guards VALUES ('lease-1',1,?)`).run(now);
+      assert.equal(db.sqlite.prepare(`SELECT status FROM orchestration_runs WHERE run_id='run-1'`).get()?.status,'failed');
+      assert.equal(db.sqlite.prepare(`SELECT COUNT(*) AS n FROM workflow_runtime_recoveries`).get()?.n,0);
+    }
     const recovery=await store.prepare(input);
     assert.equal(recovery.retry_node,'shared_test_demo');
     assert.equal(recovery.to_visit_sequence,21);
     assert.equal(db.sqlite.prepare(`SELECT current_visit_sequence FROM orchestration_runs
       WHERE run_id='run-1'`).get()?.current_visit_sequence,21);
+    assert.deepEqual({...db.sqlite.prepare(`SELECT current_node,status FROM orchestration_runs
+      WHERE run_id='run-1'`).get()},{current_node:'shared_test_demo',status:'active'});
+    assert.equal(db.sqlite.prepare(`SELECT from_node FROM workflow_transitions_v2
+      WHERE transition_id=?`).get(recovery.transition_id)?.from_node,
+      terminal?'implementation_failed':'shared_test_demo');
   }finally{db.close();}
 });
