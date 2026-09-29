@@ -3,6 +3,7 @@ import test from 'node:test';
 import {createServer} from 'node:http';
 import {PuppeteerNode} from '@cloudflare/puppeteer/internal/node/PuppeteerNode.js';
 import {browserCommand} from '../src/implementation-browser.ts';
+import {checkTestBrowserAdmission} from '../src/shared-test-browser-provider.ts';
 
 test('leave-drafts consent cannot authorize a click or an unknown dialog response',async()=>{
   const api={connect:async()=>{throw new Error('must reject before connection');}} as never;
@@ -42,6 +43,12 @@ test('explicit draft reload confirms beforeunload and restores saved drafts acro
       const call=(input:Parameters<typeof browserCommand>[3])=>browserCommand({} as never,'draft-reload',origin,input,api);
       await call({operation:'navigate'});
       await call({operation:'click',selector:'#draft'});
+      browser=await puppeteer.connect({browserWSEndpoint:endpoint});
+      const page=(await browser.pages())[0]!;
+      await checkTestBrowserAdmission(page as unknown as Parameters<typeof checkTestBrowserAdmission>[0],origin);
+      assert.equal(page.url(),`${origin}/`);
+      assert.equal(await page.$eval('output',element=>element.textContent),'Unpublished note');
+      await browser.disconnect();
       const result=await call({operation:'navigate',url:'/?reloaded=1',beforeUnload:'accept'});
       assert.equal(result.documentStatus,200);
       assert.equal(result.url,`${origin}/?reloaded=1`);

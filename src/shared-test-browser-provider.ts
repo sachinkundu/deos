@@ -1,4 +1,4 @@
-import puppeteer from '@cloudflare/puppeteer';
+import puppeteer,{type Page} from '@cloudflare/puppeteer';
 import {browserCommand,CloudflareBrowserProvider} from './implementation-browser.ts';
 
 export type TestBrowserOperation={
@@ -22,6 +22,21 @@ export interface TestBrowserProvider {
   capture(id:string,origin:string,viewport?:{width:number;height:number}):Promise<{image:Uint8Array;url:string}>;
   close(id:string):Promise<void>;
   keepAlive(id:string):Promise<void>;
+}
+
+/** Renew admission without replacing the app document or its draft state. */
+export async function checkTestBrowserAdmission(page:Page,origin:string):Promise<void> {
+  if(page.url()==='about:blank') {
+    const response=await page.goto(`${origin}/api/version`,{waitUntil:'networkidle0',timeout:30_000});
+    if(!response?.ok())throw new Error(`test_browser_access_http_${response?.status()??0}`);
+    return;
+  }
+  if(new URL(page.url()).origin!==origin)throw new Error('test_browser_admission_origin');
+  const status=await page.evaluate(async url=>{
+    const response=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(30_000)});
+    return response.status;
+  },`${origin}/api/version`);
+  if(status<200 || status>=300)throw new Error(`test_browser_access_http_${status}`);
 }
 
 /** Browser guardrails allow only the lease app host. */
@@ -133,9 +148,7 @@ export class CloudflareTestBrowserProvider implements TestBrowserProvider {
         'CF-Access-Client-Id':clientId,
         'CF-Access-Client-Secret':clientSecret,
       });
-      const response=await page.goto(`${origin}/api/version`,{
-        waitUntil:'networkidle0',timeout:30_000});
-      if(!response?.ok())throw new Error(`test_browser_access_http_${response?.status()??0}`);
+      await checkTestBrowserAdmission(page,origin);
       await page.setCookie(cookie);
     }catch(error){primary=error;throw error;}
     finally {
