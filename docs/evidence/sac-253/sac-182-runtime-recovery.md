@@ -402,3 +402,11 @@ Coordinator `bc240b99-4f3a-491b-a37c-3614b7b3f413` carries migrations 0085 and
 0086. Before and after deployment, all 30 variable hashes, 19 secret names,
 and 60 total binding records matched. The runner image is
 `sha256:cdbf2d32e27f22662fbf025c1654eeda2e015e3fc47061674dddf9ca46cc3bc2`.
+
+
+The first retry was rejected by the older database trigger with
+`test setup retry requires retained closed failure`. Migration 0087 retains
+that guard and permits started scenarios only when the same candidate and
+cleanup fence have a saved unpublished-workflow settlement. Fifteen focused
+recovery tests passed, including missing and mismatched settlement rejection.
+The original live error remains in the workflow error store.

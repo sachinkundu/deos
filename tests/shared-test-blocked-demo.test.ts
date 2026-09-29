@@ -119,6 +119,14 @@ for(const startup of [false,true]) test(`${startup?'startup failure':'blocked de
       repairRevision:sharedTestSetupRepairRevision,reason:'Lease portal routing and setup helper were repaired.'};
     await assert.rejects(retryBlockedSharedTestSetup(request('retry',{...retry,repairRevision:'unknown'}),env),/input_invalid/);
     await assert.rejects(retryBlockedSharedTestSetup(request('retry',{...retry,candidateCommit:newHead}),env),/not_ready/);
+    if(!startup) {
+      db.sqlite.prepare(`INSERT INTO test_review_scenarios VALUES (?,'s01','scenario-1','retired','now')`).run(leaseId);
+      await assert.rejects(retryBlockedSharedTestSetup(request('retry',retry),env),/not_ready/);
+      db.sqlite.prepare(`INSERT INTO test_review_unpublished_settlements VALUES
+        (?,'run-1',?,3,'private-settlement',?,'now')`).run(leaseId,oldHead,'e'.repeat(64));
+      await assert.rejects(retryBlockedSharedTestSetup(request('retry',retry),env),/not_ready/);
+      db.sqlite.exec('UPDATE test_review_unpublished_settlements SET cleanup_fence=2');
+    }
     assert.deepEqual(await (await retryBlockedSharedTestSetup(request('retry',retry),env)).json(),
       {state:'authorized',requestId:'next-request'});
     await retryBlockedSharedTestSetup(request('retry',retry),env);
