@@ -698,3 +698,33 @@ started agent. The repair revision must still match. A later blocked demo
 still needs its own repair authorization. Eight focused lifecycle tests pass,
 including missing cleanup, changed candidate, stale repair, and started-agent
 rejection. This closure does not create a passing test attestation.
+
+
+## Published reviews and failure cleanup
+
+The lease `be29ec6f1f30615bc8b079b95096026af2e4b986090e06d8b73cd18b5985737a`
+produced real linked reviews from candidate `9a8b2e3873b8968bc17024646d59b2d549021169`.
+The [provider proof](sac182-linked-review.md) records a change request and
+approvals, their signed Linear deliveries, and the resulting workflow paths.
+This satisfies the admission and live-use check in task 7.2. It does not yet
+satisfy the full demo or cleanup checks.
+
+Failure cleanup previously refused every saved review intent. It now also
+accepts bounded cases after the lease write fence advances and the runner
+has stopped: completed reviews with checked GitHub and signed Linear receipts;
+clearly rejected GitHub writes that never started a task move; reviews abandoned
+before a task move; and the labeled withheld-delivery test, with its signed
+provider event and retained escalation. It still rejects unfinished and uncertain provider calls,
+foreign fixtures, wrong authors or heads, missing deliveries, and changed
+receipts. It reads the evidence again after stopping the owned workflows.
+Candidate records remain unchanged in the retained private snapshot. A failed
+demo still cannot create a passed test attestation or release approval.
+
+The historical `test_review_unpublished_settlements` table stores the checked
+receipt. Version 2 of its evidence object distinguishes published review effects
+from unpublished fixture work. Existing receipts and guards keep their keys.
+All 39 focused cleanup checks pass. They reject invalid evidence before any
+workflow termination. Type checking and strict OpenSpec validation pass. The
+full local suite recorded 871 passes, three optional skips, and one timeout in
+the existing progress test; all five tests in that file then passed on their own.
+Remote cleanup with this change is still pending.

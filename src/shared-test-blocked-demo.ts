@@ -16,7 +16,7 @@ interface Subject {
 const hashBytes=async(bytes:ArrayBuffer)=>[...new Uint8Array(
   await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
 
-/** Retire an app-setup failure without inventing a completed demo. This explicit
+/** Retire a failed or blocked demo without inventing a completed demo. This explicit
  * operator action retains every saved artifact before owned-resource cleanup. */
 export async function closeBlockedSharedTestDemo(request:Request,env:Env,
   githubForRun:typeof implementationGitHub=implementationGitHub):Promise<Response> {
@@ -168,10 +168,10 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
       await github.json(`/pulls/${number}`,{method:'PATCH',body:JSON.stringify({body})});
     },
   });
-  const section=[`### ${subject.task_key} test setup blocked`,
+  const section=[`### ${subject.task_key} test incomplete`,
     `Candidate: ${subject.candidate_commit}. Attempt: ${subject.attempt_id}.`,
     startup?'The test runner failed during startup. No review scenario ran; all remain unverified.':
-      'The deployed app could not finish review setup. The review scenarios remain unverified.',
+      'The demo did not complete all required checks. Any partial app and provider results remain in the retained evidence; this is not a passed demo.',
     startup?'The original startup error, failure summary, and lease store snapshots are retained privately with verified hashes.':
       'The original result, transcript, commands, captures, and lease store snapshots are retained privately with verified hashes.',
     `Failure evidence SHA-256: ${digest}. Saved fault: ${faultId}.`,

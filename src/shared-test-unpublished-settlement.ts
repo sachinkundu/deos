@@ -1,8 +1,10 @@
 import {sha256Hex} from './implementation-hash.ts';
 import {sharedTestReviewFixture} from './shared-test-review-profile.ts';
+import {settledReviewEffects} from './shared-test-settled-review-effects.ts';
 
-/** Recovery for browser failures before review publication. Any review intent,
- * unknown gate decision, unknown run, or unsettled request blocks this path.
+/** Retire a failed demo after fencing writes. The historical receipt table name
+ * is retained; published effects require separate provider receipt validation.
+ * Unknown outcomes, gate decisions, runs, or unsettled requests block this path.
  * The deliberate s12 move may have reached the candidate gate without a review;
  * retain that result only with its verified provider delivery and fixture scope. */
 export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONMENT_TOKEN?:string},
@@ -66,21 +68,26 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
     const facts=await query<{intents:number;decisions:number;operations:number}>(`SELECT (SELECT COUNT(*) FROM review_intents) AS intents,
     (SELECT COUNT(*) FROM human_gate_visits WHERE state<>'open') AS decisions,
     (SELECT COUNT(*) FROM provider_operations WHERE capability<>'fixture_input') AS operations`);
-    if(facts.length!==1||facts[0].intents!==0||
+    if(facts.length!==1||!Number.isSafeInteger(facts[0].intents)||facts[0].intents<0||
         !Number.isSafeInteger(facts[0].operations)||facts[0].operations<0||
         !Number.isSafeInteger(facts[0].decisions)||facts[0].decisions<0||facts[0].decisions>scenarios.length)
       throw new Error('test_unpublished_review_effects_present');
+    const reviews=facts[0].intents?await settledReviewEffects({env,runId,leaseId,
+      attemptId:subject.attempt_id,scenarioRunIds:scenarios.map(s=>s.scenario_run_id!),
+      count:facts[0].intents,query,guard,request}):null;
     const fixtureDecisions=[];
     if(facts[0].decisions) {
       const gates=await query<{run_id:string;state:string;decision_outcome:string;
         decision_delivery_id:string;repository:string;pull_request_number:number;head_branch:string}>(
         "SELECT * FROM human_gate_visits WHERE state<>'open' ORDER BY run_id,visit_sequence");
-      if(gates.length!==facts[0].decisions || gates.some(g=>g.state!=='revision_requested' ||
+      const unpublishedGates=gates.filter(g=>!reviews?.deliveries.some(d=>
+        d.gate.run_id===g.run_id&&d.gate.decision_delivery_id===g.decision_delivery_id));
+      if(gates.length!==facts[0].decisions || unpublishedGates.some(g=>g.state!=='revision_requested' ||
           g.decision_outcome!==g.state || !g.decision_delivery_id ||
           !scenarios.some(s=>s.scenario_run_id===g.run_id && /^s12(?:-|$)/.test(s.scenario_id))))
         throw new Error('test_unpublished_review_effects_present');
       const fixture=await sharedTestReviewFixture(env.DB,{run_id:runId,attempt_id:subject.attempt_id});
-      for(const gate of gates) {
+      for(const gate of unpublishedGates) {
         if(gate.repository!==fixture.scope.repository || gate.pull_request_number!==fixture.scope.pullRequestNumber ||
             gate.head_branch!==fixture.scope.branch)throw new Error('test_unpublished_fixture_decision_scope_changed');
         const scenario=scenarios.find(s=>s.scenario_run_id===gate.run_id)!;
@@ -142,7 +149,7 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
         fixtureOperations.push({operation:op,source,receipt});
       }
     }
-    return {counts:facts,fixtureDecisions,fixtureOperations};
+    return {counts:facts,fixtureDecisions,fixtureOperations,reviews};
   };
   const facts=await checkEffects();
   const runs=await query<{run_id:string;workflow_instance_id:string}>('SELECT run_id,workflow_instance_id FROM orchestration_runs ORDER BY run_id');
@@ -162,7 +169,9 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
     statuses.push({runId:run.run_id,instanceId:run.workflow_instance_id,before,first,second});
   }
   const settledFacts=await checkEffects();
-  const evidence=JSON.stringify({version:1,runId,leaseId,subject,facts,settledFacts,statuses});
+  if(JSON.stringify(facts.reviews)!==JSON.stringify(settledFacts.reviews))
+    throw new Error('test_review_settlement_changed_during_stop');
+  const evidence=JSON.stringify({version:2,runId,leaseId,subject,facts,settledFacts,statuses});
   if(new TextEncoder().encode(evidence).length>20_000_000)throw new Error('test_unpublished_evidence_too_large');
   const digest=await sha256Hex(evidence),key=`shared-test/failed/${leaseId}/unpublished/${digest}.json`;
   await env.ARTIFACTS.put(key,evidence,{onlyIf:{etagDoesNotMatch:'*'},customMetadata:{evidenceClass:'private-failure'}});

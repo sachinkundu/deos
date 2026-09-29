@@ -53,7 +53,7 @@
 ## 7. Remote proof and review
 
 - [x] 7.1 Apply the migration and deploy the coordinator, isolated test app, portal, and new workflow version only after checking live attempts and configured bindings.
-- [ ] 7.2 Admit the guarded SAC-182 handoff as a new run and show the lease, pinned staging base, portal issue identity, real app use, scoped GitHub result, and provider-made Linear event in D1.
+- [x] 7.2 Admit the guarded SAC-182 handoff as a new run and show the lease, pinned staging base, portal issue identity, real app use, scoped GitHub result, and provider-made Linear event in D1.
 - [ ] 7.3 Attach and read back sanitized provider and task screens, Showboat commands, D1 reads, and provider receipts on the implementation pull request.
 - [ ] 7.4 Prove owned resource removal, absence, free state, final report, and subsequent safe lease eligibility; then enable the release guard.
 - [ ] 7.5 Run OpenSpec validation, type checks, focused and full tests, inspect the diff, and publish one ready-for-review implementation pull request citing the approved planning PRs and requirement coverage.

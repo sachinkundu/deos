@@ -84,7 +84,8 @@ for(const startup of [false,true]) test(`${startup?'startup failure':'blocked de
     bucket.objects.set(changedName,new TextEncoder().encode(originalContent));
     const result=await (await closeBlockedSharedTestDemo(request('close',input),env,githubForRun)).json() as {state:string};
     assert.equal(result.state,'cleanup_pending');
-    assert.equal(writes,1);assert.match(body,/Existing human text/);assert.match(body,/remain unverified/);
+    assert.equal(writes,1);assert.match(body,/Existing human text/);
+    assert.match(body,startup?/remain unverified/:/did not complete all required checks/);
     const abort=db.sqlite.prepare('SELECT failure_evidence_key,failure_evidence_sha256 FROM test_lease_aborts').get()!;
     const evidenceText=await (await bucket.get(String(abort.failure_evidence_key)))!.text();
     assert.equal(await sha256Hex(evidenceText),abort.failure_evidence_sha256);
