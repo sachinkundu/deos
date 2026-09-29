@@ -9,21 +9,23 @@ interface PendingImage {
 }
 interface ProjectionRequest {
   proofId:string;width:number;height:number;crop:ImageProofRecipe['crop'];
-  masks:ImageProofRecipe['masks'];identityLine:'key'|'key_title'|'key_dot_title'|'settings_account'|'review_status'|'review_status_stacked';
+  masks:ImageProofRecipe['masks'];identityLine:'key'|'key_title'|'key_dot_title'|'settings_account'|'review_status'|'review_status_stacked'|'review_status_two_lines';
 }
 
 export function sharedTestImageRecipe(row:PendingImage,
   value:ProjectionRequest):ImageProofRecipe {
   if(value.identityLine==='settings_account' || value.identityLine==='review_status' ||
-      value.identityLine==='review_status_stacked') {
+      value.identityLine==='review_status_stacked' || value.identityLine==='review_status_two_lines') {
     const capture=row.capture_recipe?JSON.parse(row.capture_recipe):null;
     if(row.kind!=='app_screen' || capture?.version!==1 || capture.service!=='bettaview' ||
         capture.origin!==`https://bettaview-${row.lease_id.slice(0,32)}.apps.deos-test.voxdez.com`)
       throw new Error('test_settings_image_scope_invalid');
-    if(value.identityLine==='review_status' || value.identityLine==='review_status_stacked')return {
+    if(value.identityLine==='review_status' || value.identityLine==='review_status_stacked' ||
+        value.identityLine==='review_status_two_lines')return {
       version:1,sourceSha256:row.source_sha256,width:value.width,height:value.height,
       crop:value.crop,masks:value.masks,requiredText:value.identityLine==='review_status_stacked'
-        ? ['CONTINUE','LINKED','WORKFLOW'] : ['CONTINUE LINKED WORKFLOW'],
+        ? ['CONTINUE','LINKED','WORKFLOW'] : value.identityLine==='review_status_two_lines'
+          ? ['CONTINUE LINKED','WORKFLOW'] : ['CONTINUE LINKED WORKFLOW'],
       allowedText:['CONTINUE LINKED WORKFLOW','Continue linked workflow',
         'Goal: In Progress','Goal: Merging','Goal: Waiting for review',
         'GitHub review','Linear · In Progress','Linear · Merging','Linear · next state',
@@ -31,8 +33,8 @@ export function sharedTestImageRecipe(row:PendingImage,
         'awaiting delivery','host check required','failed','blocked','abandoned',
         'Outcome: active','Outcome: completed','Outcome: stopped','Outcome: abandoned','Outcome: blocked',
         'The linked workflow continued.','Retry','Check','Refresh','Abandon','Reload current head',
-        'Done',...(value.identityLine==='review_status_stacked' ?
-          ['CONTINUE','LINKED','WORKFLOW','Goal: In','Goal:','In','Progress','Merging',
+        'Done',...(value.identityLine!=='review_status' ?
+          ['CONTINUE','LINKED','CONTINUE LINKED','WORKFLOW','Goal: In','Goal:','In','Progress','Merging',
             'GitHub','review','Linear ·','Linear -','The linked','workflow','continued.'] : [])],
     };
     // Account values remain private. The public image shows only fixed UI text;
@@ -73,7 +75,7 @@ export async function projectSharedTestImage(request:Request,env:Env):Promise<Re
       !Number.isSafeInteger(value.width) || !Number.isSafeInteger(value.height) ||
       !value.crop || typeof value.crop!=='object' ||
       !Array.isArray(value.masks) || value.masks.length>32 ||
-      !['key','key_title','key_dot_title','settings_account','review_status','review_status_stacked'].includes(value.identityLine))
+      !['key','key_title','key_dot_title','settings_account','review_status','review_status_stacked','review_status_two_lines'].includes(value.identityLine))
     return Response.json({error:'test_image_projection_invalid'},{status:400});
   const row=await env.DB.prepare(`SELECT p.run_id,p.lease_id,p.kind,
     p.source_sha256,p.capture_recipe,l.task_key,l.task_title FROM test_proof_items p
