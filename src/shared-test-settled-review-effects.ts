@@ -38,7 +38,8 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
     return JSON.parse(raw);
   };
   const unclearReplies=await checkedUnclearReplies({db:env.DB,leaseId,repository:fixture.scope.repository,
-    pullNumber:fixture.scope.pullRequestNumber,githubUserId:fixture.githubUserId,intents,parts,attempts,query,github});
+    pullNumber:fixture.scope.pullRequestNumber,fixtureHead:fixture.scope.candidateCommit,
+    githubUserId:fixture.githubUserId,intents,parts,attempts,query,github});
   const checkedReply=(id:unknown)=>unclearReplies.some(r=>r.reviewId===id);
   if(parts.some(p=>!byId.has(p.review_id)) || attempts.some(a=>!byId.has(a.review_id) ||
       !a.finished_at || !['succeeded','clearly_rejected','abandoned',...(checkedReply(a.review_id)?['unclear']:[])].includes(String(a.outcome))))

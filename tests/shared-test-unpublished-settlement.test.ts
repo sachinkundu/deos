@@ -407,7 +407,7 @@ test(`interrupted ${method} ${path} ${readOnly?'is retained as an unfinished rea
 });
 
 
-for(const invalid of [null,'no-injection','wrong-scenario','missing-read-fault','write-not-successful',
+for(const invalid of [null,'reanchored-head','wrong-original-head','no-injection','wrong-scenario','missing-read-fault','write-not-successful',
   'unfinished','started-linear','second-attempt','content-digest','wrong-author','wrong-head',
   'wrong-parent','changed-body','duplicate','full-page','decided-gate'] as const)
 test(`lost reply cleanup retains unresolved candidate state after independent host read: ${invalid??'valid'}`,async()=>{
@@ -441,7 +441,7 @@ test(`lost reply cleanup retains unresolved candidate state after independent ho
       VALUES (?,?,1,'owner/test',1,?,?,?,?,?,?)`).run(requestId,f.lease,method,path,status,failure,start,finish);
     const metadata={kind:'reply',clientSubmissionId:'reply-1',reviewId:id,partId:'reply:reply-1',
       headSha:'c'.repeat(40),path:'canary-review.md'};
-    const receipt={id:456,user:{id:1},commit_id:'c'.repeat(40),in_reply_to_id:100,path:'canary-review.md',
+    const receipt={id:456,user:{id:1},commit_id:'c'.repeat(40),original_commit_id:'c'.repeat(40),in_reply_to_id:100,path:'canary-review.md',
       pull_request_url:'https://api.github.com/repos/owner/test/pulls/1',
       html_url:'https://github.com/owner/test/pull/1#discussion_r456',
       body:content.body+'\n\n<!-- bettaview:v1 '+Buffer.from(JSON.stringify(metadata)).toString('base64url')+' -->'};
@@ -456,13 +456,18 @@ test(`lost reply cleanup retains unresolved candidate state after independent ho
     if(invalid==='content-digest')content.content_digest='d'.repeat(64);
     if(invalid==='wrong-author')receipt.user.id=2;
     if(invalid==='wrong-head')receipt.commit_id='d'.repeat(40);
+    if(invalid==='wrong-original-head')receipt.original_commit_id='d'.repeat(40);
+    if(invalid==='reanchored-head') {
+      receipt.commit_id='d'.repeat(40);
+      f.db.sqlite.prepare("UPDATE test_review_fixtures SET metadata_json=json_set(metadata_json,'$.head',?)").run(receipt.commit_id);
+    }
     if(invalid==='wrong-parent')receipt.in_reply_to_id=101;
     if(invalid==='changed-body')receipt.body='Changed '+receipt.body;
     if(invalid==='duplicate')f.state.githubComments.push({...receipt,id:457});
     if(invalid==='full-page')f.state.githubComments=Array.from({length:100},()=>({...receipt}));
     if(invalid==='decided-gate'){f.state.decisions=1;f.state.gates=[{run_id:'scenario-1',visit_sequence:1}];}
     const original=JSON.stringify({intent,parts:f.state.parts,attempts:f.state.attempts});
-    if(invalid){
+    if(invalid&&invalid!=='reanchored-head'){
       await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/settlement_(reply_|scope_changed)/);
       assert.equal(f.state.patches,0);
     }else{

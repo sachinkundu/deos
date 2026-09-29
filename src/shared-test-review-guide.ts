@@ -6,6 +6,8 @@ export const sharedTestReviewGuide = {
   legacyHelper:'If deos-test does not accept review, copy it to /deos/output/deos-test.mjs, add review to its existing kind allowlist, and invoke that copy with Node. Preserve its authentication and request-file behavior. Never print credentials.',
   request:{version:1,operation:'prepare',scenario:'s02'},
   scope:'Use only the supplied checked reviewer. The different-Linear-user part of s01 remains blocked pending owner approval; do not select a different identity or report that part passed. Continue the other authorized checks. For s09, scope.readOnlyPull names a second disposable PR with no linked run. It is readable through the broker; review writes are denied.',
+  completion:'Use the saved plan as a subcase checklist. A successful main path does not complete its replay, retry, replacement, or negative checks. Finish every authorized subcase before retiring its scenario. Do not call a skipped check blocked: retain the precise failed command and original error if a real blocker prevents it. Public screenshot projection is a separate trusted operator step; retain the private proof IDs and finish the app checks while projection is pending.',
+  evidenceVolume:'Save every full response and Showboat output in files. Read compact facts from those saved responses between actions instead of repeatedly printing whole HTML pages and all prior provider events. Retain the full original files without truncation. Keep requests in separate saved JSON files and await each call.',
   operations:{
     bootstrap:'Read the checked Settings project and reviewer inputs.',
     prepare:'Use a unique scenario from s01 through s12, optionally with a short suffix. A retired ID cannot be reused; choose a fresh suffix such as s11-final. Finish all checks and readbacks before preparing the next scenario. Retain prior facts and allocate the real candidate workflow before opening a fresh browser context.',
@@ -27,6 +29,7 @@ export const sharedTestReviewGuide = {
     select:'Select the first rendered paragraph (A test note goes here.) using selector to open the real inline comment composer. Head-advance fixtures change a separate paragraph, so replacement-review checks keep the selected passage unchanged.',
     api:'Use the current browser session for negative cases and exact replay. Supply url, method GET or POST, and JSON-encoded body for POST. Allowed paths are /api/pr, /api/review-continuations, /api/review-continuations/publish, /api/review-continuations/action, and /api/settings/bettaview-account. Required visible actions still use the UI.',
     busy:'Await every browser operation before starting another, including wait. After test_browser_busy, finish the outstanding operation then retry state or capture. Never repeat publication while its outcome is unknown.',
+    verifyDraft:'After adding an inline note, read the actual unpublished draft count and text. Do not publish if the note was not staged. A textarea value is not serialized by page.content; empty textarea markup alone does not prove an empty field. After a reset or replacement, wait for #rendered-document and the intended enabled control, not a generic button from the page header.',
   },
   examples:{
     providerActor:'The real Linear app may identify its delivery actor type as user. Identify it by the checked stable app actor ID and the signature-verified ingress receipt; do not claim a literal bot actor type that the provider did not send.',
@@ -36,5 +39,16 @@ export const sharedTestReviewGuide = {
     idempotentResend:'Complete the s03 exact replay before preparing another scenario. Use browser api to resend the identical review ID and payload, then compare provider record IDs, review attempts, and task transitions. A UI success alone does not prove resend safety.',
     rejectedReview:'For s06 a clearly rejected GitHub part offers Abandon before Linear, not Retry remaining step. Abandon, then Replace review and use a fresh review ID with COMMENT at the same gate. The original review type is immutable. Prove the rejected intent never moved Linear and the corrected replacement publishes once.',
     unclearReply:'For s07 phase B, inject github_drop_reply_response with reconciliationRead:"rate_limited". The real reply is sent once; its response is dropped and exactly the next receipt-list read gets a labeled 429. Capture host_check_required before moving on. Use github.read /comments for real provider readback; it bypasses the injected app transport. Never retry publication to discover the outcome.',
+  },
+  remainingSubcases:{
+    s03:'Stage the inline note, reply, and review body. Verify all three before REQUEST_CHANGES publication. Save the exact payload and review ID, then complete the authenticated identical replay before retiring this scenario. Compare provider IDs, attempts, and transitions before and after.',
+    s04:'Stage and verify the planned notes before APPROVE; an approval with zero staged notes is s05 coverage only.',
+    s06:'After Abandon and Replace, wait for the loaded document. Stage the replacement content, choose Comment, and verify the Comment button is selected before Publish. Read back review_type=COMMENT and the edit transition.',
+    s07:'Run both phases in separate fresh s07 scenario IDs: first a lost reply with successful receipt adoption and continuation, then the rate-limited receipt phase that retains an operator item without a second write.',
+    s08:'Run both phases in separate fresh s08 scenario IDs: first rejected Linear move and only-Linear retry, then hold_linear_delivery, a real successful mutation, shorten_delivery_deadline, and the retained escalation with no gate transition.',
+    s09:'After the stale-head rejection, reload to the current head, review the new content, and publish successfully. Also check the separate read-only PR.',
+    s10:'After stale-head abandonment, use Replace, wait for the current-head document, retain the prior reply receipt, and publish the remaining review. Verify supersedes_review_id and that the prior reply was not sent twice.',
+    s11:'Complete each separate authenticated negative check from the plan: forged identity, frozen identity mismatch, second review ID while the first lease is active, and altered payload reusing the same review ID. Keep a clearly rejected first intent when an active gate lease is needed; never manufacture a success or omit the database/provider readback.',
+    s12:'After proving both unauthorized provider moves cannot select an edge and are restored, publish the checked human review in this same scenario and prove exactly one resulting traversal.',
   },
 } as const;

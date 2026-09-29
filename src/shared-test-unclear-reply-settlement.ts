@@ -6,7 +6,7 @@ type Row=Record<string,unknown>;
 /** Check only the labeled lost-response/failed-read exercise. Keep the app's
  * host-check result intact; a cleanup receipt never completes its review. */
 export async function checkedUnclearReplies(input:{db:D1Database;leaseId:string;
-  repository:string;pullNumber:number;githubUserId:number;intents:Row[];parts:Row[];
+  repository:string;pullNumber:number;fixtureHead:string;githubUserId:number;intents:Row[];parts:Row[];
   attempts:Row[];query:ReviewEvidenceQuery;github:(path:string)=>Promise<any>}) {
   const {db,leaseId,intents,parts,attempts,query,github}=input;
   const unclear=intents.filter(i=>i.outcome==='host_check_required'&&i.github_status==='host_check_required');
@@ -70,7 +70,11 @@ export async function checkedUnclearReplies(input:{db:D1Database;leaseId:string;
     const matches=observed.filter(r=>typeof r.body==='string'&&r.body.includes(marker));
     const receipt=matches[0];
     if(matches.length!==1||receipt.body!==body||!Number.isSafeInteger(receipt.id)||receipt.id<=0||
-        receipt.user?.id!==input.githubUserId||receipt.commit_id!==intent.head_sha||
+        receipt.user?.id!==input.githubUserId||
+        // GitHub reanchors commit_id after a later fixture head advance. The
+        // original commit and our exact marker must still bind the sent reply.
+        (receipt.original_commit_id??receipt.commit_id)!==intent.head_sha||
+        ![intent.head_sha,input.fixtureHead].includes(receipt.commit_id)||
         receipt.in_reply_to_id!==target.parentCommentId||receipt.path!==target.path||
         receipt.pull_request_url!==`https://api.github.com/repos/${input.repository}/pulls/${input.pullNumber}`||
         receipt.html_url!==`https://github.com/${input.repository}/pull/${input.pullNumber}#discussion_r${receipt.id}`)

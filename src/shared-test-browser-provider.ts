@@ -25,6 +25,22 @@ export interface TestBrowserProvider {
   keepAlive(id:string):Promise<void>;
 }
 
+/** Match a user's new document selection before the app focuses its composer. */
+export async function selectTestBrowserText(page:Page,selector:string):Promise<string> {
+  return page.$eval(selector,element=>{
+    const doc=element.ownerDocument,range=doc.createRange(),selection=doc.getSelection();
+    if(!selection || !element.textContent?.trim())throw new Error('No selectable text');
+    const active=doc.activeElement;
+    if(active && 'blur' in active && typeof active.blur==='function')active.blur();
+    range.selectNodeContents(element);selection.removeAllRanges();selection.addRange(range);
+    // The app may focus a textarea in its mouseup handler, collapsing selection.
+    // Read the selected document text first so the caller does not repeat it.
+    const selected=selection.toString();
+    const event=doc.createEvent('MouseEvents');event.initEvent('mouseup',true,true);element.dispatchEvent(event);
+    return selected;
+  });
+}
+
 /** Renew admission without replacing the app document or its draft state. */
 export async function checkTestBrowserAdmission(page:Page,origin:string):Promise<void> {
   if(page.url()==='about:blank') {
@@ -94,13 +110,8 @@ export class CloudflareTestBrowserProvider implements TestBrowserProvider {
       try {
         const pages=await browser.pages(),page=pages[0];
         if(pages.length!==1 || !page || new URL(page.url()).origin!==origin)throw new Error('test_browser_selection_origin');
-        const selected=await page.$eval(input.selector,element=>{
-          const doc=element.ownerDocument,range=doc.createRange(),selection=doc.getSelection();
-          if(!selection || !element.textContent?.trim())throw new Error('No selectable text');
-          range.selectNodeContents(element);selection.removeAllRanges();selection.addRange(range);
-          const event=doc.createEvent('MouseEvents');event.initEvent('mouseup',true,true);element.dispatchEvent(event);
-          return selection.toString();
-        });
+        if(input.viewport)await page.setViewport({...input.viewport,deviceScaleFactor:1});
+        const selected=await selectTestBrowserText(page,input.selector);
         return {url:page.url(),content:JSON.stringify({selected})};
       }catch(error){primary=error;throw error;}
       finally {

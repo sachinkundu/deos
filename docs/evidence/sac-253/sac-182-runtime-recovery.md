@@ -874,3 +874,61 @@ The app's intent and attempt stay unresolved in the retained snapshot. Cleanup
 sends no GitHub write and creates no pass or release approval. All 64 focused
 settlement and failure-retention tests pass. Live use remains pending the end
 of the current run; this local change has not been deployed over its runner.
+
+
+At 21:21 UTC, the fresh s07 case sent one real GitHub reply and consumed both
+labeled transport faults. The candidate retained review
+`01a0ef0a-9ca7-7f02-af01-af2bfb721bc8` as `host_check_required`, with Linear
+`not_started`. Its saved diagnostic keeps both the lost reply and failed read.
+The new cleanup receipt checker passed against the live read-only database
+queries and [GitHub reply 4138451877](https://github.com/sachinkundu/deos-sample-project/pull/65#discussion_r4138451877).
+The independent read matched the original body, marker, author, parent, path,
+head, fault records, and request times. The retained Showboat observation hash is
+`f6ef25575a1b19d3ce97d8d3932b6bbb1523ff8d178cd35e64ff4e001623fb52`.
+This verifies the receipt check only. The runner is still active; no cleanup
+or full-demo pass is claimed. Both CI runs for `aa0426a` passed.
+
+
+## Fresh run result and second-stage repairs
+
+Attempt `f49db796-427f-4c84-b929-296e6395e6ca` ended blocked at
+21:33:53 UTC. Its Sandbox was destroyed. It demonstrated draft persistence
+and approval without notes, and retained partial real results for the other
+ten scenarios. Follow-up checks were omitted; those are missing coverage,
+not proof of an app failure. All 27 raw screens remain private.
+The exact collected artifacts are:
+
+- Result: `ee9d7734b3b6da61308a991f13a977f5c5fdfa01a21d97fb4fd2833a2bae13a3`.
+- Validation: `94dee61fb7b4c83bbb43310ad1ebbb72654dce45d92b62e5d84b64d322afe106`.
+- Commands: `a4a8c214735ccb0fe89ab5a104a6f5c48379a3e1e21bfe91c9dec66f2597071d`.
+- Transcript: `33d0f1f378a5951063daf8220cf28f0ececbc787cbaf7a431ae7b35eba288676`.
+
+The controller read selected text after the app focused its composer. The
+first selection could look empty. Repeating that operation while the textarea
+already had focus left the document range active. The controller now blurs
+the prior field, restores the saved viewport, and records the selected text
+before dispatching the app event. A real Chromium regression fails with the
+old selection code and passes with the fix, including repeated selection and
+filling across reconnects. The guide now requires each authorized subcase and
+its readback before the next scenario; it also asks the runner to retain full
+outputs in files and inspect short summaries. Neither change waives s01's
+pending identity decision.
+
+The uncertain GitHub reply also lacked a stable operator item. The candidate
+now records that item with the original fault, leaves Linear untouched, and
+retains the gate lease. Two regression cases cover an uncertain result and a
+clear rejection; all 13 focused review tests and candidate type checks pass.
+
+The first close attempt stopped before deletion because GitHub had reanchored
+reply `4138451877` to the later fixture head. Its original commit remained
+`60b6473f023b1cea10dca17cfa45a2af9adc9ce3`; its current commit became
+`3dcea6c0216cf50451c3a9a6c8f147da3192bc8c`. GitHub's
+[review-comment response contract](https://docs.github.com/en/rest/pulls/comments#list-review-comments-on-a-pull-request)
+returns these as separate fields. The cleanup check now requires the original
+commit to match the saved intent and the current commit to match either that
+commit or the saved fixture head. All other exact receipt checks remain. Its
+live read-only verification passed with observation hash
+`f20aa1e5a201227a7dd6ea8158f2e3aaaed9494d6ca6590c30ab933482cfbf82`.
+All 63 settlement tests pass, including reanchoring and a wrong original commit.
+The full controller suite passed 908 tests, with four optional browser skips;
+the two browser checks were then run explicitly and passed.
