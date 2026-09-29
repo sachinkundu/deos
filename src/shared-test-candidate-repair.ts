@@ -47,7 +47,11 @@ export async function repairSharedTestCandidate(request:Request,env:Env,
   if(closed?.ready!==1)throw new Error('test_candidate_repair_old_lease_not_closed');
   const store=new ImplementationStore(env.DB,env.ARTIFACTS),work=await store.requireRun(input.runId);
   const run=await new D1OrchestrationStore(env.DB).findRun(input.runId);
-  if(!run || run.status!=='active' || run.current_node!=='shared_test_demo' ||
+  const invalidatedGate=await env.DB.prepare(`SELECT 1 AS ready FROM test_invalid_closures
+    WHERE lease_id=? AND run_id=? AND candidate_commit=?`)
+    .bind(input.leaseId,input.runId,input.sourceCommit).first<{ready:number}>();
+  if(!run || run.status!=='active' || !(run.current_node==='shared_test_demo' ||
+      (run.current_node==='implementation_demo_gate' && invalidatedGate?.ready===1)) ||
       work.pr_head_sha!==input.sourceCommit || !work.pr_number || !work.tree_sha ||
       !work.candidate_key || !work.candidate_sha || !work.patch_key || !work.patch_sha)
     throw new Error('test_candidate_repair_source_changed');
@@ -109,12 +113,14 @@ export async function repairSharedTestCandidate(request:Request,env:Env,
     env.DB.prepare(`UPDATE implementation_runs SET pr_head_sha=?,tree_sha=?,candidate_key=?,candidate_sha=?,
       patch_key=?,patch_sha=?,patch_base_sha=?,updated_at=? WHERE run_id=? AND pr_head_sha=?
       AND candidate_sha=? AND patch_sha=? AND tested_base_sha=?
+      AND EXISTS (SELECT 1 FROM orchestration_runs o WHERE o.run_id=implementation_runs.run_id
+        AND o.status='active' AND o.current_node=?)
       AND NOT EXISTS (SELECT 1 FROM test_leases WHERE run_id=? AND state<>'closed')
       AND NOT EXISTS (SELECT 1 FROM agent_attempts WHERE run_id=?
         AND state IN ('pending','starting','running','collecting'))`)
       .bind(input.targetCommit,candidate.treeSha,input.candidateKey,input.candidateSha256,
         input.patchKey,input.patchSha256,work.tested_base_sha,now,input.runId,input.sourceCommit,
-        work.candidate_sha,work.patch_sha,work.tested_base_sha,input.runId,input.runId),
+        work.candidate_sha,work.patch_sha,work.tested_base_sha,run.current_node,input.runId,input.runId),
     env.DB.prepare(`INSERT INTO test_candidate_repair_guards(repair_id,ready)
       SELECT ?,CASE WHEN EXISTS (SELECT 1 FROM implementation_runs WHERE run_id=?
         AND pr_head_sha=? AND candidate_sha=? AND patch_sha=?) THEN 1 ELSE 0 END`)

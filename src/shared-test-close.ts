@@ -1,6 +1,7 @@
 import {sha256Hex} from './implementation-hash.ts';
 import {purgeSharedTestGitHubSessions} from './shared-test-github-broker.ts';
 import {isBlockedDemoAbort,isUnstartedSetupAbort} from './shared-test-abort-state.ts';
+import {sharedTestCompletedDemoSql} from './shared-test-demo-completion.ts';
 
 export const requiredProofKinds=['app_screen','linear_screen','showboat','d1_read',
   'provider_receipt','github_receipt'] as const;
@@ -64,12 +65,17 @@ export class SharedTestCloseStore {
   }
 
   async cleaning(runId:string,leaseId:string,fence:number,at=new Date()):Promise<void> {
+    const completed=await this.db.prepare(`SELECT 1 AS ready FROM test_leases l WHERE l.lease_id=?
+      AND l.run_id=? AND ${sharedTestCompletedDemoSql('l.lease_id','l.run_id')}`)
+      .bind(leaseId,runId).first<{ready:number}>();
+    if(completed?.ready!==1)throw new Error('shared_test_cleaning_demo_not_completed');
     await purgeSharedTestGitHubSessions(this.db,runId,leaseId);
     const proofKinds=requiredProofKinds.map(()=>'?').join(',');
     const result=await this.db.batch([
       this.db.prepare(`UPDATE test_environment SET state='cleaning',saved_phase='cleaning',
         revision=revision+1,updated_at=? WHERE site_id=1 AND state='quiescing'
         AND owner_run_id=? AND owner_lease_id=? AND fence=?
+        AND ${sharedTestCompletedDemoSql('test_environment.owner_lease_id','test_environment.owner_run_id')}
         AND NOT EXISTS (SELECT 1 FROM test_delivery_dispatch WHERE lease_id=? AND state<>'done')
         AND NOT EXISTS (SELECT 1 FROM test_expected_events WHERE lease_id=? AND state<>'disabled')
         AND NOT EXISTS (SELECT 1 FROM test_operations WHERE lease_id=?
@@ -208,6 +214,10 @@ export class SharedTestCloseStore {
 
   async close(runId:string,leaseId:string,fence:number,at=new Date()):Promise<{
     leaseId:string;runId:string;closeRevision:number;cleanupSha256:string;absenceSha256:string}> {
+    const completed=await this.db.prepare(`SELECT 1 AS ready FROM test_leases l WHERE l.lease_id=?
+      AND l.run_id=? AND ${sharedTestCompletedDemoSql('l.lease_id','l.run_id')}`)
+      .bind(leaseId,runId).first<{ready:number}>();
+    if(completed?.ready!==1)throw new Error('shared_test_close_demo_not_completed');
     const prior=await this.db.prepare(`SELECT receipt_json FROM test_lease_closures
       WHERE lease_id=? AND run_id=?`).bind(leaseId,runId).first<{receipt_json:string}>();
     if (prior) return JSON.parse(prior.receipt_json);

@@ -787,3 +787,42 @@ All four Showboat checks pass, including a 3.6 MB private source whose public
 extract excludes its private content. The cloud image sanitizer rejected the
 completed-review crop for low-confidence OCR. Its original and local checked
 crop remain saved; no cloud publication is claimed for that image.
+
+
+## Failed-demo cleanup race and withdrawn pass
+
+At 20:12 UTC, the blocked-demo close verified the original artifacts and fenced
+lease `be29ec6f1f30615bc8b079b95096026af2e4b986090e06d8b73cd18b5985737a`.
+It then stopped at `test_unpublished_not_quiescent`. The scheduled cleanup saw
+all six public proof kinds and treated them as enough for successful cleanup.
+It removed the seven test resources and closed the lease at 20:14:57.809 UTC,
+revision 2711. It also marked the provisional attestation complete and wrote a
+passed report. Those success claims are invalid: the original demo was blocked.
+
+The transcript, Showboat record, result, captures, and earlier database reads
+remain retained. The final app database snapshot and review settlement were
+lost before capture. We cannot reconstruct or claim them. The original cleanup
+and absence receipts remain as evidence of resource removal, not test success:
+
+- Cleanup: `21cc7db9fd82ce7593324f5152ea8be0cacd0e15b30a1a85bd6ef37cfa85bf07`.
+- Absence: `cb54bd665538171b72dedf7f7827f723b0bed2f351ec4515625281814ede4543`.
+- Invalid report: `088295ed49f9e27223c03d1bbd4843c60ae2eca130063f9c3224a24fad05e672`.
+
+The pass section on the draft was withdrawn. Successful cleanup, reports, and
+release checks now require the lease's own completed demo, a destroyed runner,
+and no abort. Scheduled cleanup waits for blocked-demo evidence before touching
+its browser or session data. Regression tests cover the original race and an
+old false pass that must no longer serve a report or authorize release.
+
+A recovery receipt records `snapshot_state=lost_before_capture`. It retains the
+old close and attestation unchanged, verifies the stored resource-removal hashes,
+and attaches the original blocked result. It grants no approval. A changed
+candidate still needs a fresh isolated demo. Recovery refuses an active runner,
+a changed receipt, or a completed demo. The workflow stopped at its old demo
+gate at 20:21:49 UTC with `Demo gate requires its saved ready plan`; no gate agent
+started. Recovery may replace that errored executor only after the invalid
+close and candidate repair have both been recorded.
+
+The complete controller suite passed 891 tests, with three optional skips and
+no failures or cancellations. Type checking passed. The 12 focused recovery
+tests include the historical false-close path and the evidence-capture race.

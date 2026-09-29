@@ -1,3 +1,4 @@
+import {readInvalidSharedTestClosure,recordInvalidSharedTestClosure} from './shared-test-invalid-closure.ts';
 import {SharedTestCloseStore} from './shared-test-close.ts';
 import {SharedTestFailureStore} from './shared-test-failures.ts';
 import {SharedTestPrBodyWriter} from './shared-test-pr-body.ts';
@@ -40,7 +41,7 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
       throw new Error('test_blocked_demo_abort_subject_changed');
     return Response.json({state:prior.closed_at?'closed':'cleanup_pending',...prior});
   }
-  const subject=await env.DB.prepare(`SELECT l.run_id,l.lease_id,l.attempt_id,l.candidate_commit,
+  let subject=await env.DB.prepare(`SELECT l.run_id,l.lease_id,l.attempt_id,l.candidate_commit,
     l.repository,l.branch,l.pull_request_number,l.task_key,l.fence,a.manifest_id,e.state,
       a.state AS attempt_state,a.started_at,a.ended_at
     FROM test_environment e JOIN test_leases l ON l.lease_id=e.owner_lease_id
@@ -60,6 +61,19 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
         AND x.state IN ('pending','starting','running','collecting'))`)
     .bind(input.runId,input.leaseId,input.fence,input.candidateCommit,input.attemptId)
     .first<Subject>();
+  if(!subject)subject=await env.DB.prepare(`SELECT l.run_id,l.lease_id,l.attempt_id,l.candidate_commit,
+    l.repository,l.branch,l.pull_request_number,l.task_key,l.fence,a.manifest_id,l.state,
+    a.state AS attempt_state,a.started_at,a.ended_at FROM test_leases l
+    JOIN agent_attempts a ON a.attempt_id=l.attempt_id AND a.run_id=l.run_id
+    JOIN test_lease_closures c ON c.lease_id=l.lease_id AND c.run_id=l.run_id
+    WHERE l.run_id=? AND l.lease_id=? AND l.fence=? AND l.candidate_commit=? AND l.attempt_id=?
+      AND l.state='closed' AND l.activated_at IS NOT NULL AND a.node_id='shared_test_demo'
+      AND a.state='blocked' AND a.cleanup_state='destroyed' AND a.ended_at IS NOT NULL
+      AND EXISTS (SELECT 1 FROM artifact_manifests m WHERE m.manifest_id=a.manifest_id AND m.state='complete')
+      AND NOT EXISTS (SELECT 1 FROM agent_attempts x WHERE x.run_id=l.run_id
+        AND x.state IN ('pending','starting','running','collecting'))
+      AND NOT EXISTS (SELECT 1 FROM test_leases x WHERE x.run_id=l.run_id AND x.state<>'closed')`)
+    .bind(input.runId,input.leaseId,input.fence,input.candidateCommit,input.attemptId).first<Subject>();
   if(!subject)throw new Error('test_blocked_demo_subject_not_ready');
   const artifacts=(await env.DB.prepare(`SELECT logical_name,r2_key,sha256,byte_size
     FROM artifacts WHERE manifest_id=? AND policy_outcome='accepted' ORDER BY logical_name`)
@@ -135,16 +149,17 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
     phase:'active',operation:'shared_test.blocked_demo',safeCode:'test_demo_setup_blocked',
     workId:`blocked-demo:${subject.attempt_id}`,
   },new Error(startup?'Demo runner failed before its process started':outcome!.blocker));
-  await new SharedTestCloseStore(env.DB).quiesce(subject.run_id,subject.lease_id,subject.fence);
-  const unpublishedSettlement=await settleUnpublishedReview(env,subject.run_id,subject.lease_id);
-  const setupSnapshot=await snapshotBlockedSetup(env,subject.run_id,subject.lease_id);
+  const invalidClosure=subject.state==='closed'?await readInvalidSharedTestClosure(env,subject.run_id,subject.lease_id):null;
+  if(!invalidClosure)await new SharedTestCloseStore(env.DB).quiesce(subject.run_id,subject.lease_id,subject.fence);
+  const unpublishedSettlement=invalidClosure?null:await settleUnpublishedReview(env,subject.run_id,subject.lease_id);
+  const setupSnapshot=invalidClosure?null:await snapshotBlockedSetup(env,subject.run_id,subject.lease_id);
   const browsers=(await env.DB.prepare(`SELECT service_name,session_id FROM test_browser_sessions
     WHERE lease_id=? AND run_id=? AND session_id IS NOT NULL`)
     .bind(subject.lease_id,subject.run_id).all<{service_name:string;session_id:string}>()).results;
   const browserHistory=[];
-  for(const browser of browsers)browserHistory.push({...browser,
+  for(const browser of invalidClosure?[]:browsers)browserHistory.push({...browser,
     history:await new CloudflareTestBrowserProvider(env.IMPLEMENTATION_BROWSER).history(browser.session_id)});
-  const evidence={version:2,kind:'blocked_demo',runId:subject.run_id,leaseId:subject.lease_id,
+  const evidence={version:3,kind:'blocked_demo',invalidClosure,runId:subject.run_id,leaseId:subject.lease_id,
     attemptId:subject.attempt_id,candidateCommit:subject.candidate_commit,manifestId:subject.manifest_id,
     faultId,artifacts,captures,setupSnapshot,unpublishedSettlement,browserHistory,result:outcome,
     startupFailure:startup?{summary:JSON.parse(startupText),originalErrors}:null};
@@ -172,13 +187,21 @@ export async function closeBlockedSharedTestDemo(request:Request,env:Env,
     `Candidate: ${subject.candidate_commit}. Attempt: ${subject.attempt_id}.`,
     startup?'The test runner failed during startup. No review scenario ran; all remain unverified.':
       'The demo did not complete all required checks. Any partial app and provider results remain in the retained evidence; this is not a passed demo.',
+    invalidClosure?'The cleanup race deleted the final app database before the failure snapshot. No final database snapshot or workflow settlement is claimed. The original false pass record is retained privately and invalidated.':
     startup?'The original startup error, failure summary, and lease store snapshots are retained privately with verified hashes.':
       'The original result, transcript, commands, captures, and lease store snapshots are retained privately with verified hashes.',
     `Failure evidence SHA-256: ${digest}. Saved fault: ${faultId}.`,
+    invalidClosure?'The previous pass claim is withdrawn. This correction grants no test or release approval. A fresh test is required.':
     'This abort grants no test or release approval. Owned resources must pass removal and absence checks before the site can be reused.'].join('\n\n');
   await writer.writeSection({repository:subject.repository,pullRequestNumber:subject.pull_request_number,
-    workId:`test-blocked-demo:${subject.lease_id}`,runId:subject.run_id,leaseId:subject.lease_id,
-    marker:`deos-test-abort:${subject.lease_id}`,section});
+    workId:`test-${invalidClosure?'invalid-close':'blocked-demo'}:${subject.lease_id}`,runId:subject.run_id,leaseId:subject.lease_id,
+    marker:`deos-test-${invalidClosure?'proof':'abort'}:${subject.lease_id}`,section});
+  if(invalidClosure) {
+    await recordInvalidSharedTestClosure(env.DB,{runId:subject.run_id,leaseId:subject.lease_id,
+      attemptId:subject.attempt_id,candidateCommit:subject.candidate_commit,faultId,
+      evidenceKey:key,evidenceSha256:digest,sectionSha256:await sha256Hex(section),now,retained:invalidClosure});
+    return Response.json({state:'closed',invalidated:true,leaseId:subject.lease_id,failureEvidenceSha256:digest});
+  }
   const inserted=await env.DB.prepare(`INSERT INTO test_lease_aborts
     (lease_id,run_id,first_fault_id,proof_body_sha256,proof_read_at,abort_kind,attempt_id,
       failure_evidence_key,failure_evidence_sha256)

@@ -55,6 +55,15 @@ export class SharedTestRecovery {
       ON l.lease_id=e.owner_lease_id WHERE e.site_id=1`).first<Owner>();
     if (!owner || !['quiescing','cleaning'].includes(owner.state) ||
         !owner.owner_run_id || !owner.owner_lease_id) return;
+    // A blocked-demo close owns its evidence capture until the abort receipt exists.
+    // Do not remove its browser or credentials while that capture is in progress.
+    const evidencePending=await this.env.DB.prepare(`SELECT 1 AS pending FROM test_leases l
+      JOIN agent_attempts a ON a.attempt_id=l.attempt_id AND a.run_id=l.run_id
+      WHERE l.lease_id=? AND l.run_id=? AND a.node_id='shared_test_demo'
+        AND a.state IN ('blocked','failed') AND NOT EXISTS
+          (SELECT 1 FROM test_lease_aborts x WHERE x.lease_id=l.lease_id AND x.run_id=l.run_id)`)
+      .bind(owner.owner_lease_id,owner.owner_run_id).first<{pending:number}>();
+    if(evidencePending)return;
     // The Access service token is shared infrastructure. This row is the
     // lease-specific right to use it, so revoke it before provider cleanup.
     const now=new Date().toISOString();

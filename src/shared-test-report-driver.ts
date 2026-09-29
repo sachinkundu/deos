@@ -3,6 +3,7 @@ import {D1OrchestrationStore} from './orchestration-store.ts';
 import type {OrchestrationRunRecord} from './orchestration-store.ts';
 import {SharedTestPrBodyWriter} from './shared-test-pr-body.ts';
 import {SharedTestReportStore} from './shared-test-report.ts';
+import {sharedTestCompletedDemoSql} from './shared-test-demo-completion.ts';
 
 interface PendingReport {
   run_id:string;
@@ -30,6 +31,7 @@ export class SharedTestReportDriver {
       l.branch,l.pull_request_number,l.candidate_commit
       FROM test_lease_closures c JOIN test_leases l ON l.lease_id=c.lease_id
       WHERE c.report_state='pending' AND l.state='closed'
+        AND ${sharedTestCompletedDemoSql('l.lease_id','l.run_id')}
       ORDER BY c.committed_at,c.lease_id LIMIT 1`).first<PendingReport>();
     if (!pending) return 'idle';
     const run=await new D1OrchestrationStore(this.env.DB).findRun(pending.run_id);

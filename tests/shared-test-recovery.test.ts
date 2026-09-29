@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
+import {ImplementationTestDatabase,seedRun,seedAttempt} from './helpers/implementation-fixture.ts';
 import {SharedTestRecovery} from '../src/shared-test-recovery.ts';
 import {testIssueMarker} from '../src/shared-test-marker.ts';
 
@@ -107,5 +107,19 @@ test('recovery revokes browser admission before waiting on browser cleanup',asyn
     assert.ok(f.db.sqlite.prepare(`SELECT revoked_at FROM test_app_sessions`).get()?.revoked_at);
     assert.equal(f.db.sqlite.prepare(`SELECT state FROM test_environment`).get()?.state,
       'quiescing');
+  }finally{f.db.close();}
+});
+
+
+test('blocked demo snapshot finishes before scheduled cleanup touches retained state',async()=>{
+  const f=await fixture();
+  try {
+    seedRun(f.db);seedAttempt(f.db,'attempt-1');
+    f.db.sqlite.exec("UPDATE agent_attempts SET node_id='shared_test_demo',state='blocked',cleanup_state='destroyed',ended_at='now'");
+    await new SharedTestRecovery(f.env,f.linear).resume();
+    assert.equal(f.writes(),0);
+    assert.equal(f.db.sqlite.prepare('SELECT revoked_at FROM test_access_identities').get()?.revoked_at,null);
+    assert.equal(f.db.sqlite.prepare('SELECT revoked_at FROM test_app_sessions').get()?.revoked_at,null);
+    assert.equal(f.db.sqlite.prepare('SELECT state FROM test_environment').get()?.state,'quiescing');
   }finally{f.db.close();}
 });

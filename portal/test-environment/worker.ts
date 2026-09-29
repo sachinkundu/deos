@@ -1,3 +1,4 @@
+import {sharedTestCompletedDemoSql} from '../../src/shared-test-demo-completion.ts';
 import {verifyAccess} from '../src/auth.ts';
 import {sha256Hex} from '../../src/implementation-hash.ts';
 import {recordCaughtError} from '../../src/error-context.ts';
@@ -210,7 +211,8 @@ export async function routeTestPortal(request:Request,env:TestPortalEnv,
   if (reportMatch) {
     const leaseId=reportMatch[1];
     const row=await env.DB.prepare(`SELECT report_object_key,report_sha256
-      FROM test_lease_closures WHERE lease_id=? AND report_state='complete'`)
+      FROM test_lease_closures c WHERE lease_id=? AND report_state='complete'
+        AND ${sharedTestCompletedDemoSql('c.lease_id','c.run_id')}`)
       .bind(leaseId).first<{report_object_key:string;report_sha256:string}>();
     if (!row?.report_object_key || !row.report_sha256)
       return Response.json({error:'report_not_found'},{status:404,headers});

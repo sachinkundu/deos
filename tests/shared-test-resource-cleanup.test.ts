@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {ImplementationTestDatabase} from './helpers/implementation-fixture.ts';
+import {ImplementationTestDatabase,seedRun,seedAttempt} from './helpers/implementation-fixture.ts';
 import {SharedTestResourceCleanup} from '../src/shared-test-resource-cleanup.ts';
 import {sharedTestServicePlans,sharedTestStorePlans} from '../src/shared-test-service-plan.ts';
 import type {StableStagingBase} from '../src/shared-test-lease.ts';
@@ -17,6 +17,9 @@ const stores=sharedTestStorePlans(leaseId,base);
 
 function fixture() {
   const db=new ImplementationTestDatabase();
+  seedRun(db,runId,'issue-1');
+  seedAttempt(db,'attempt-1');
+  db.sqlite.exec("UPDATE agent_attempts SET node_id='shared_test_demo',state='completed',cleanup_state='destroyed',ended_at='now'");
   db.sqlite.prepare(`INSERT INTO test_lease_requests
     (request_id,run_id,node_visit,attempt_id,task_id,candidate_commit,patch_sha256,
      state,created_at,updated_at) VALUES ('request-1',?,1,'attempt-1','issue-1',

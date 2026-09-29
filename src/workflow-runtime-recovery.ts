@@ -105,6 +105,16 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
           AND NOT EXISTS (SELECT 1 FROM test_review_scenarios s WHERE s.lease_id=l.lease_id)
           AND NOT EXISTS (SELECT 1 FROM test_github_sessions s WHERE s.lease_id=l.lease_id)
           AND NOT EXISTS (SELECT 1 FROM test_attestations t WHERE t.lease_id=l.lease_id))
+    ) OR (run.current_node='implementation_demo_gate' AND run.status='active'
+      AND ?='shared_test_demo' AND EXISTS (
+        SELECT 1 FROM test_invalid_closures i
+        JOIN test_lease_aborts a ON a.lease_id=i.lease_id AND a.run_id=i.run_id
+        JOIN test_candidate_repairs c ON c.retired_lease_id=i.lease_id AND c.run_id=i.run_id
+        JOIN test_candidate_repair_guards g ON g.repair_id=c.repair_id AND g.ready=1
+        JOIN implementation_runs w ON w.run_id=i.run_id
+        WHERE i.run_id=run.run_id AND i.candidate_commit=c.source_commit
+          AND c.target_commit=w.pr_head_sha AND c.target_patch_sha256=w.patch_sha
+          AND a.failure_evidence_sha256=i.failure_evidence_sha256 AND a.closed_at IS NOT NULL)
     ))`;
     const statements = [
       this.database.prepare(
@@ -133,8 +143,12 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
                JOIN implementation_runs w ON w.run_id=r.run_id
                WHERE r.run_id=run.run_id AND r.task_id=run.issue_id
                  AND r.node_visit<=run.current_visit_sequence
-                 AND r.candidate_commit=w.pr_head_sha
-                 AND r.patch_sha256=w.patch_sha
+                 AND ((r.candidate_commit=w.pr_head_sha AND r.patch_sha256=w.patch_sha) OR EXISTS (
+                   SELECT 1 FROM test_candidate_repairs c JOIN test_invalid_closures i ON i.lease_id=c.retired_lease_id
+                   JOIN test_candidate_repair_guards cg ON cg.repair_id=c.repair_id AND cg.ready=1
+                   WHERE c.retired_lease_id=l.lease_id AND c.run_id=run.run_id
+                     AND c.source_commit=r.candidate_commit AND c.source_patch_sha256=r.patch_sha256
+                     AND c.target_commit=w.pr_head_sha AND c.target_patch_sha256=w.patch_sha))
                  AND l.run_id=run.run_id AND l.state='closed'
                  AND a.run_id=run.run_id AND a.closed_at IS NOT NULL
                  AND a.receipt_json IS NOT NULL AND g.ready=1)
@@ -154,6 +168,7 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
         input.now,
         input.runId,
         input.sourceWorkflowInstanceId,
+        input.retryNode,
         input.retryNode,
         input.retryNode,
         input.visitSequence,
@@ -178,6 +193,7 @@ export class D1WorkflowRuntimeRecoveryStore implements WorkflowRuntimeRecoverySt
         input.now,
         input.runId,
         input.sourceWorkflowInstanceId,
+        input.retryNode,
         input.retryNode,
         input.retryNode,
         input.visitSequence,

@@ -1,3 +1,4 @@
+import {sharedTestCompletedDemoSql} from './shared-test-demo-completion.ts';
 import {sha256Hex} from './implementation-hash.ts';
 import {decideTestPath, releaseHasTestProof, type TestPathDecision, type TestServiceManifest} from './shared-test-path-rule.ts';
 
@@ -118,7 +119,7 @@ export class SharedTestDecisionStore {
       FROM test_attestations a JOIN test_lease_closures c ON c.attestation_id=a.attestation_id
       WHERE a.run_id=? AND a.candidate_commit=? AND a.patch_sha256=?
         AND a.manifest_id=? AND a.manifest_revision=? AND a.state='complete'
-        AND c.report_state='complete'`)
+        AND c.report_state='complete' AND ${sharedTestCompletedDemoSql('a.lease_id','a.run_id')}`)
       .bind(input.runId,input.candidateCommit,input.patchSha256,input.manifestId,
         input.manifestRevision).first<{run_id:string;candidate_commit:string;patch_sha256:string;
           manifest_id:string;manifest_revision:number;state:'complete'}>();

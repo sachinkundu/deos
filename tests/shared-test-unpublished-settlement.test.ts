@@ -383,7 +383,7 @@ test(`unstarted replacement preserves its checked prior receipt and pending work
 
 
 for(const [method,path,readOnly] of [['GET','/user',true],['POST','/graphql',true],['POST','/markdown',true],
-  ['POST','/repos/owner/test/pulls/1/reviews',false],['POST','/repos/owner/test/pulls/1/comments/1/replies',false]])
+  ['POST','/repos/owner/test/pulls/1/reviews',false],['POST','/repos/owner/test/pulls/1/comments/1/replies',false]] as const)
 test(`interrupted ${method} ${path} ${readOnly?'is retained as an unfinished read':'blocks cleanup'}`,async()=>{
   const f=fixture();
   try {

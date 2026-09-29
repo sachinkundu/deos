@@ -1,5 +1,6 @@
 import {sha256Hex} from './implementation-hash.ts';
 import {SharedTestPrBodyWriter} from './shared-test-pr-body.ts';
+import {sharedTestCompletedDemoSql} from './shared-test-demo-completion.ts';
 
 interface ReportClosure {
   lease_id:string;
@@ -37,8 +38,9 @@ export class SharedTestReportStore {
     const closure=await this.db.prepare(`SELECT * FROM test_lease_closures
       WHERE run_id=? AND lease_id=?`).bind(runId,leaseId).first<ReportClosure>();
     const lease=await this.db.prepare(`SELECT task_key,task_title,repository,
-      pull_request_number,candidate_commit,base_manifest_id FROM test_leases
-      WHERE run_id=? AND lease_id=? AND state='closed'`)
+      pull_request_number,candidate_commit,base_manifest_id FROM test_leases l
+      WHERE run_id=? AND lease_id=? AND state='closed'
+        AND ${sharedTestCompletedDemoSql('l.lease_id','l.run_id')}`)
       .bind(runId,leaseId).first<ReportLease>();
     if (!closure || !lease?.pull_request_number) throw new Error('test_report_close_missing');
     const proof=(await this.db.prepare(`SELECT kind,public_url,public_sha256

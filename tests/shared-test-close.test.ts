@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {ImplementationTestBucket,ImplementationTestDatabase,seedRun} from './helpers/implementation-fixture.ts';
+import {ImplementationTestBucket,ImplementationTestDatabase,seedRun,seedAttempt} from './helpers/implementation-fixture.ts';
 import {SharedTestCloseStore} from '../src/shared-test-close.ts';
+import {SharedTestDecisionStore,stagingManifestDigest} from '../src/shared-test-decision-store.ts';
+import {routeTestPortal} from '../portal/test-environment/worker.ts';
+import {SharedTestPrBodyWriter} from '../src/shared-test-pr-body.ts';
+import {SharedTestReportStore} from '../src/shared-test-report.ts';
 import {SharedTestReportDriver} from '../src/shared-test-report-driver.ts';
 
 const now='2026-09-25T05:00:00Z';
@@ -11,6 +15,8 @@ const kinds=['app_screen','linear_screen','showboat','d1_read',
 function fixture() {
   const db=new ImplementationTestDatabase();
   seedRun(db,'run-1','issue-1');
+  seedAttempt(db,'attempt-1');
+  db.sqlite.exec("UPDATE agent_attempts SET node_id='shared_test_demo',state='completed',cleanup_state='destroyed',ended_at='now'");
   db.sqlite.prepare(`UPDATE orchestration_runs SET route_repository='owner/repo',
     route_github_installation_id='installation-1' WHERE run_id='run-1'`).run();
   db.sqlite.prepare(`INSERT INTO test_lease_requests
@@ -145,5 +151,48 @@ test('close needs attached proof and owned absence before one atomic free transi
     const object=await bucket.get('shared-test/reports/lease-1/close.json');
     assert.ok(object);
     assert.equal(JSON.parse(await object.text()).leaseId,'lease-1');
+    const service={service_name:'portal',source_commit:'a'.repeat(40),deploy_version:'version',
+      build_input_sha256:'c'.repeat(64),app_paths_json:'["portal/"]',provider_paths_json:'[]'};
+    db.sqlite.prepare(`INSERT INTO staging_release_manifests
+      VALUES ('manifest-1',1,'traffic-1',1,?,'now')`).run(await stagingManifestDigest([service]));
+    db.sqlite.prepare(`INSERT INTO staging_release_services
+      VALUES ('manifest-1','portal',?,'version',?,'["portal/"]','[]','now')`)
+      .run('a'.repeat(40),'c'.repeat(64));
+    db.sqlite.exec("UPDATE staging_release_pointer SET state='stable',manifest_id='manifest-1',manifest_revision=1,traffic_revision='traffic-1'");
+    const decision=new SharedTestDecisionStore(env.DB);
+    const candidate={runId:'run-1',candidateCommit:'a'.repeat(40),patchSha256:'b'.repeat(64),
+      changedPaths:['portal/example.ts']};
+    await decision.record(candidate);
+    const release={...candidate,manifestId:'manifest-1',manifestRevision:1};
+    assert.equal((await decision.releaseCheck(release)).allowed,true);
+    const portalEnv={DB:env.DB,ARTIFACTS:env.ARTIFACTS,COORDINATOR:{} as Fetcher,
+      ACCESS_TEAM_DOMAIN:'test',ACCESS_AUD:'aud',ALLOWED_EMAIL:'allowed@example.com'};
+    const auth=(async()=>({email:'allowed@example.com'})) as typeof import('../portal/src/auth.ts').verifyAccess;
+    // A historical erroneous close must not authorize release or serve a pass report.
+    db.sqlite.exec("UPDATE agent_attempts SET state='blocked'");
+    assert.equal((await decision.releaseCheck(release)).allowed,false);
+    await assert.rejects(store.close('run-1','lease-1',2),/demo_not_completed/);
+    assert.equal((await routeTestPortal(new Request('https://deos-test.voxdez.com/reports/lease-1'),portalEnv,auth)).status,404);
+    await assert.rejects(new SharedTestReportStore(env.DB,env.ARTIFACTS,new SharedTestPrBodyWriter(env.DB,{read:async()=>{throw new Error('must not read');},write:async()=>{throw new Error('must not write');}})).publish('run-1','lease-1'),/close_missing/);
+
   } finally {db.close();}
+});
+
+
+test('a blocked demo cannot use complete public proof to race its failure snapshot',async()=>{
+  const {db,store}=fixture();
+  try {
+    for(const kind of kinds)db.sqlite.prepare(`INSERT INTO test_proof_items
+      (proof_id,run_id,lease_id,phase,kind,classification,view_rule,source_sha256,object_key,content_type,byte_count,
+        public_sha256,public_url,body_marker,read_at,projected_at,sanitizer_result)
+      VALUES (?,'run-1','lease-1','first',?,'public_safe','allowlisted',?,'raw','text/plain',10,?,'https://proof','marker','now','now','passed')`)
+      .run(kind,kind,'a'.repeat(64),'b'.repeat(64));
+    db.sqlite.exec("UPDATE agent_attempts SET state='blocked'");
+    await store.quiesce('run-1','lease-1',1);
+    await assert.rejects(store.cleaning('run-1','lease-1',2),/demo_not_completed/);
+    assert.equal(db.sqlite.prepare('SELECT state FROM test_environment').get()!.state,'quiescing');
+    assert.equal(db.sqlite.prepare('SELECT plan_state FROM test_resources').get()!.plan_state,'created');
+    await assert.rejects(store.close('run-1','lease-1',2),/demo_not_completed/);
+    assert.equal(db.sqlite.prepare('SELECT state FROM test_attestations').get()!.state,'observed');
+  }finally{db.close();}
 });

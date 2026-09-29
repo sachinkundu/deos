@@ -1,3 +1,4 @@
+import {sharedTestCompletedDemoSql} from './shared-test-demo-completion.ts';
 import {SharedTestResourceStore} from './shared-test-resources.ts';
 import {sharedTestServicePlans,sharedTestStorePlans} from './shared-test-service-plan.ts';
 import type {StableStagingBase} from './shared-test-lease.ts';
@@ -65,7 +66,10 @@ export class SharedTestResourceCleanup {
         AND body_marker IS NOT NULL AND read_at IS NOT NULL
         AND projected_at IS NOT NULL`).bind(leaseId,...requiredProofKinds)
       .first<{ready:number}>();
-    if (proof?.ready!==requiredProofKinds.length) {
+    const completed=await this.db.prepare(`SELECT 1 AS ready FROM test_leases l WHERE l.lease_id=?
+      AND l.run_id=? AND ${sharedTestCompletedDemoSql('l.lease_id','l.run_id')}`)
+      .bind(leaseId,runId).first<{ready:number}>();
+    if (proof?.ready!==requiredProofKinds.length || completed?.ready!==1) {
       const blockedDemo=await isBlockedDemoAbort(this.db,runId,leaseId);
       const activatedAbort=blockedDemo || await isUnstartedSetupAbort(this.db,runId,leaseId);
       const failedSetup=await this.db.prepare(`SELECT 1 AS ready
