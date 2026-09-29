@@ -770,3 +770,20 @@ controller, browser, broker, and cleanup group passed all 52 tests. The app fix
 records host-check-required when both a reply response and receipt read fail,
 retaining both original errors and stacks. Its 126 app tests and 20 review
 service tests passed, with one optional app test skipped.
+
+
+The first close attempt stopped at `test_unpublished_not_quiescent`.
+Three GitHub transport rows from 19:39:22 UTC had no final response: GET
+`/user`, GET for the fixture Markdown, and POST `/graphql`. The broker accepts
+only one fixed read query at that GraphQL path. Cleanup now retains those
+unfinished read records without treating them as writes or marking them done.
+Any unfinished review/reply write or Linear request still blocks cleanup.
+All 50 focused settlement, snapshot, and request-scope checks pass.
+
+The raw Showboat capture is 3,305,832 bytes, above the older 2 MB projection
+limit. Preservation and projection now share an 8 MB cap and verify the full
+bytes. The public extract still contains only the checked checkout command.
+All four Showboat checks pass, including a 3.6 MB private source whose public
+extract excludes its private content. The cloud image sanitizer rejected the
+completed-review crop for low-confidence OCR. Its original and local checked
+crop remain saved; no cloud publication is claimed for that image.

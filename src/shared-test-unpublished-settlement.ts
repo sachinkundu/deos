@@ -1,6 +1,7 @@
 import {sha256Hex} from './implementation-hash.ts';
 import {sharedTestReviewFixture} from './shared-test-review-profile.ts';
 import {settledReviewEffects} from './shared-test-settled-review-effects.ts';
+import {sharedTestGitHubReadOnlyTransportSql} from './shared-test-github-scope.ts';
 
 /** Retire a failed demo after fencing writes. The historical receipt table name
  * is retained; published effects require separate provider receipt validation.
@@ -24,7 +25,8 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
       WHERE e.site_id=1 AND e.state='quiescing' AND e.owner_run_id=? AND e.owner_lease_id=?
         AND e.fence=l.fence+1 AND l.state='quiescing'
         AND NOT EXISTS (SELECT 1 FROM test_review_provider_requests WHERE lease_id=? AND finished_at IS NULL)
-        AND NOT EXISTS (SELECT 1 FROM test_github_transport_requests WHERE lease_id=? AND finished_at IS NULL)
+        AND NOT EXISTS (SELECT 1 FROM test_github_transport_requests WHERE lease_id=? AND finished_at IS NULL
+          AND NOT ${sharedTestGitHubReadOnlyTransportSql})
         AND NOT EXISTS (SELECT 1 FROM agent_attempts WHERE run_id=? AND state IN ('pending','starting','running','collecting'))`)
       .bind(runId,leaseId,leaseId,leaseId,runId).first<{
         candidate_commit:string;attempt_id:string;fence:number;worker_name:string;workflow_name:string;
@@ -33,6 +35,9 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
     return row;
   };
   const subject=await guard(),suffix=leaseId.slice(0,32);
+  const unfinishedReadRequests=(await env.DB.prepare(`SELECT * FROM test_github_transport_requests
+    WHERE lease_id=? AND finished_at IS NULL AND ${sharedTestGitHubReadOnlyTransportSql} ORDER BY request_id`)
+    .bind(leaseId).all()).results;
   if(subject.worker_name!==`deos-test-review-${suffix}` || subject.workflow_name!==subject.worker_name ||
       subject.database_name!==`deos-test-portal-db-${suffix}` || !/^[a-f0-9-]{36}$/.test(subject.database_id))
     throw new Error('test_unpublished_resource_scope_changed');
@@ -171,7 +176,7 @@ export async function settleUnpublishedReview(env:Env & {IMPLEMENTATION_ENVIRONM
   const settledFacts=await checkEffects();
   if(JSON.stringify(facts.reviews)!==JSON.stringify(settledFacts.reviews))
     throw new Error('test_review_settlement_changed_during_stop');
-  const evidence=JSON.stringify({version:2,runId,leaseId,subject,facts,settledFacts,statuses});
+  const evidence=JSON.stringify({version:2,runId,leaseId,subject,facts,settledFacts,statuses,unfinishedReadRequests});
   if(new TextEncoder().encode(evidence).length>20_000_000)throw new Error('test_unpublished_evidence_too_large');
   const digest=await sha256Hex(evidence),key=`shared-test/failed/${leaseId}/unpublished/${digest}.json`;
   await env.ARTIFACTS.put(key,evidence,{onlyIf:{etagDoesNotMatch:'*'},customMetadata:{evidenceClass:'private-failure'}});

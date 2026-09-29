@@ -380,3 +380,25 @@ test(`unstarted replacement preserves its checked prior receipt and pending work
     assert.equal(f.state.githubWrites,0);
   }finally{f.db.close();}
 });
+
+
+for(const [method,path,readOnly] of [['GET','/user',true],['POST','/graphql',true],['POST','/markdown',true],
+  ['POST','/repos/owner/test/pulls/1/reviews',false],['POST','/repos/owner/test/pulls/1/comments/1/replies',false]])
+test(`interrupted ${method} ${path} ${readOnly?'is retained as an unfinished read':'blocks cleanup'}`,async()=>{
+  const f=fixture();
+  try {
+    f.db.sqlite.prepare(`INSERT INTO test_github_transport_requests
+      (request_id,lease_id,fence,repository,pull_request_number,method,path,started_at)
+      VALUES ('unfinished',?,1,'owner/test',1,?,?,'now')`).run(f.lease,method,path);
+    if(!readOnly){
+      await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/not_quiescent/);
+      assert.equal(f.state.patches,0);
+    }else{
+      const saved=await settleUnpublishedReview(f.env,'run-1',f.lease,f.provider);
+      const evidence=JSON.parse(await (await f.bucket.get(saved!.evidence_key))!.text());
+      assert.equal(evidence.unfinishedReadRequests[0].request_id,'unfinished');
+      assert.equal(evidence.unfinishedReadRequests[0].finished_at,null);
+      assert.equal(f.db.sqlite.prepare("SELECT finished_at FROM test_github_transport_requests WHERE request_id='unfinished'").get()!.finished_at,null);
+    }
+  }finally{f.db.close();}
+});

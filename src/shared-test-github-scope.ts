@@ -9,6 +9,11 @@ export interface SharedTestGitHubScope {
 
 const reviewThreadsQuery='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated path line startLine comments(first:100){nodes{databaseId body createdAt url author{login}}}}}}}}';
 
+// Journal rows are inserted only after this allowlist passes. Both POST paths
+// below are read-only here: one fixed GraphQL query and Markdown rendering.
+// If either contract ever admits writes, update this cleanup predicate too.
+export const sharedTestGitHubReadOnlyTransportSql="(method='GET' OR (method='POST' AND path IN ('/graphql','/markdown')))";
+
 function object(value:unknown):Record<string,unknown> {
   if(!value || typeof value!=='object' || Array.isArray(value))
     throw new Error('test_github_request_body_invalid');

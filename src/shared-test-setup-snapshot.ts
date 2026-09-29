@@ -1,3 +1,5 @@
+import {sharedTestGitHubReadOnlyTransportSql} from './shared-test-github-scope.ts';
+
 /** Retain data before deleting a blocked lease. Started scenarios require a
  * verified settlement receipt before this snapshot can run. */
 export async function snapshotBlockedSetup(env:Env & {IMPLEMENTATION_ENVIRONMENT_TOKEN?:string},runId:string,leaseId:string,
@@ -10,7 +12,8 @@ export async function snapshotBlockedSetup(env:Env & {IMPLEMENTATION_ENVIRONMENT
             ON l.lease_id=s.lease_id WHERE s.lease_id=e.owner_lease_id AND s.run_id=e.owner_run_id
               AND s.cleanup_fence=e.fence AND s.candidate_commit=l.candidate_commit))
         AND NOT EXISTS (SELECT 1 FROM test_review_provider_requests WHERE lease_id=? AND finished_at IS NULL)
-        AND NOT EXISTS (SELECT 1 FROM test_github_transport_requests WHERE lease_id=? AND finished_at IS NULL)`)
+        AND NOT EXISTS (SELECT 1 FROM test_github_transport_requests WHERE lease_id=? AND finished_at IS NULL
+          AND NOT ${sharedTestGitHubReadOnlyTransportSql})`)
       .bind(runId,leaseId,leaseId,leaseId,leaseId).first<{ready:number}>();
     if(row?.ready!==1)throw new Error('test_setup_snapshot_not_quiescent');
   };
