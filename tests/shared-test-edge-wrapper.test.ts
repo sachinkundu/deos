@@ -34,17 +34,23 @@ test('edge checks host and session before forwarding and strips credentials',asy
   assert.deepEqual(calls,['redeem','authorize']);
 });
 
-test('public version metadata cannot expose service credentials to candidate code',async()=>{
+test('edge reports its own release metadata without forwarding credentials to candidate code',async()=>{
   const worker=await edge();
+  const host='portal-test.apps.deos-test.voxdez.com';
   const response=await worker.fetch(new Request(
-    'https://portal-test.apps.deos-test.voxdez.com/api/version',{headers:{
+    `https://${host}/api/version`,{headers:{
       'CF-Access-Jwt-Assertion':'assertion',
       'CF-Access-Client-Id':'client-id',
       'CF-Access-Client-Secret':'client-secret',
-    }}),{TEST_CANONICAL_HOST:'portal-test.apps.deos-test.voxdez.com'});
+    }}),{TEST_CANONICAL_HOST:host,PORTAL_SOURCE_SHA:'a'.repeat(40),
+      PORTAL_BUILD_INPUT_SHA256:'b'.repeat(64),
+      TEST_BASE_VERSION_ID:'11111111-1111-4111-8111-111111111111',
+      CF_VERSION_METADATA:{id:'22222222-2222-4222-8222-222222222222'}});
   assert.equal(response.status,200);
-  assert.deepEqual(await response.json(),{gate:null,access:null,
-    clientId:null,clientSecret:null,cookie:null});
+  assert.deepEqual(await response.json(),{canonicalHost:host,sourceSha:'a'.repeat(40),
+    baseVersionId:'11111111-1111-4111-8111-111111111111',
+    buildInputSha256:'b'.repeat(64),
+    versionId:'22222222-2222-4222-8222-222222222222'});
 });
 
 test('edge rejects a forged gate header without the session',async()=>{

@@ -30,6 +30,7 @@ test('lease Worker upload binds only its stores and gate, then attaches its fixe
     if(path.endsWith('/settings')) {
       if(!script)return new Response('missing',{status:404});
       result={tags:[`deos-test-lease:${leaseId}`,
+        'deos-test-edge:version-owned-by-edge-v1',
         `deos-test-source:${service.base.sourceCommit}`,
         `deos-test-base:${service.base.deployVersion}`,
         `deos-test-build:${service.base.buildInputSha256}`]};

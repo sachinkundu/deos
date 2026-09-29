@@ -25,11 +25,12 @@ export default {
     if(url.protocol!=='https:'||url.hostname!==env.TEST_CANONICAL_HOST)
       return new Response('wrong test host',{status:421,headers:responseHeaders});
     if(url.pathname==='/api/version'&&request.method==='GET') {
-      const headers=new Headers(request.headers);
-      headers.delete('CF-Access-Jwt-Assertion');
-      headers.delete('CF-Access-Client-Id');
-      headers.delete('CF-Access-Client-Secret');
-      return candidate.fetch(new Request(request,{headers}),env,ctx);
+      return Response.json({canonicalHost:env.TEST_CANONICAL_HOST,
+        sourceSha:env.${serviceName==='portal'?'PORTAL':'BETTAVIEW'}_SOURCE_SHA,
+        baseVersionId:env.TEST_BASE_VERSION_ID,
+        buildInputSha256:env.${serviceName==='portal'?'PORTAL':'BETTAVIEW'}_BUILD_INPUT_SHA256,
+        versionId:env.CF_VERSION_METADATA?.id??null},
+        {headers:responseHeaders});
     }
     if(!env.TEST_APP_GATE)throw new Error('test_app_gate_binding_missing');
     const accessJwt=request.headers.get('CF-Access-Jwt-Assertion');

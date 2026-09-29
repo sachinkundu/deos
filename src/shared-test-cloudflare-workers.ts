@@ -6,6 +6,7 @@ import {sharedTestEdgeWrapper} from './shared-test-edge-wrapper.ts';
 type VerifiedBuild=Awaited<ReturnType<SharedTestBuildStore['read']>>;
 type Asset={hash:string;bytes:Uint8Array;type:string};
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const edgeRevision='version-owned-by-edge-v1';
 const encoder=new TextEncoder();
 
 function base64(bytes:Uint8Array):string {
@@ -137,8 +138,20 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
   }
 
   /** Safe after a lost domain-attach reply: only the exact saved host is used. */
-  async complete(plan:TestWorkerPlan):Promise<void> {
+  async complete(plan:TestWorkerPlan,build:VerifiedBuild):Promise<void> {
     this.root(plan);
+    const settings=await this.api(`${this.root(plan)}/settings`) as {tags?:unknown};
+    if(!Array.isArray(settings.tags))
+      throw new Error('shared_test_worker_tags_missing');
+    if(!settings.tags.includes(`deos-test-edge:${edgeRevision}`)) {
+      if(build.sha256!==plan.service.base.buildInputSha256)
+        throw new Error('shared_test_worker_build_mismatch');
+      await this.upload(plan,build,plan.service.base.sourceCommit,'preparing');
+      const refreshed=await this.api(`${this.root(plan)}/settings`) as {tags?:unknown};
+      if(!Array.isArray(refreshed.tags) ||
+          !refreshed.tags.includes(`deos-test-edge:${edgeRevision}`))
+        throw new Error('shared_test_worker_edge_refresh_unconfirmed');
+    }
     const matches=(await this.domains()).filter(value=>value.hostname===plan.service.canonicalHost);
     if(matches.length>1 || matches.some(value=>value.service!==plan.service.workerName ||
       value.zone_id!==this.zoneId))throw new Error('shared_test_worker_domain_conflict');
@@ -205,7 +218,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
       throw new Error('shared_test_worker_build_mismatch');
     if(await this.lookup(plan))throw new Error('shared_test_worker_already_exists');
     await this.upload(plan,build,plan.service.base.sourceCommit,'preparing');
-    await this.complete(plan);
+    await this.complete(plan,build);
   }
 
   /** Replace only this lease Worker after the base has been activated. */
@@ -256,6 +269,7 @@ export class SharedTestCloudflareWorkers implements TestWorkerCleanupProvider {
       bindings,assets:{jwt,config:{html_handling:'none',run_worker_first:true}},
       ...(portal?{}:{migrations:{new_tag:'v1',new_sqlite_classes:['GitHubSession']}}),
       tags:[`deos-test-lease:${plan.leaseId}`,
+        `deos-test-edge:${edgeRevision}`,
         `deos-test-source:${plan.service.base.sourceCommit}`,
         `deos-test-base:${plan.service.base.deployVersion}`,
         `deos-test-build:${plan.service.base.buildInputSha256}`,

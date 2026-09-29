@@ -21,7 +21,7 @@ export interface TestWorkerProvider {
   lookup(plan:TestWorkerPlan):Promise<TestWorkerIdentity|null>;
   create(plan:TestWorkerPlan,build:VerifiedBuild):Promise<void>;
   /** Finish a fixed-name route after an uncertain script upload or attach. */
-  complete?(plan:TestWorkerPlan):Promise<void>;
+  complete?(plan:TestWorkerPlan,build:VerifiedBuild):Promise<void>;
 }
 
 function same(identity:TestWorkerIdentity,plan:TestWorkerPlan):boolean {
@@ -60,12 +60,12 @@ export class SharedTestWorkerProvisioner {
       if (row.plan_state==='created') {
         if (!found || row.remote_id!==found.workerName)
           throw new Error(`shared_test_worker_missing:${plan.resourceId}`);
-        await this.provider.complete?.(plan);
+        await this.provider.complete?.(plan,builds.get(plan.service.serviceName)!);
         continue;
       }
       if (row.plan_state==='creating' || row.plan_state==='uncertain') {
         if (!found) throw new Error(`shared_test_worker_reconcile_pending:${plan.resourceId}`);
-        await this.provider.complete?.(plan);
+        await this.provider.complete?.(plan,builds.get(plan.service.serviceName)!);
         await this.resources.created(plan,found.workerName);
         continue;
       }
