@@ -3,8 +3,12 @@ export function sharedTestEdgeWrapper(serviceName:string):string {
   const app=serviceName==='portal'?'./app/worker.js':
     serviceName==='bettaview'?'./app/index.js':null;
   if (!app) throw new Error('shared_test_edge_service_invalid');
-  return `import candidate from ${JSON.stringify(app)};
+  return `import ${serviceName==='bettaview'?'{createBettaViewHandler}':'candidate'} from ${JSON.stringify(app)};
 ${serviceName==='bettaview'?"export {GitHubSession} from './app/index.js';":''}
+${serviceName==='bettaview'?`// The lease gate has already checked Access and the one-use app session.
+// Older pinned candidates still call their production Access verifier; use
+// their exported auth seam only inside this lease Worker.
+const candidate=createBettaViewHandler(async()=>({email:'reviewer@deos-test.invalid'}));`:''}
 
 const responseHeaders={
   'Cache-Control':'no-store',

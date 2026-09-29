@@ -6,7 +6,7 @@ import {sharedTestEdgeWrapper} from './shared-test-edge-wrapper.ts';
 type VerifiedBuild=Awaited<ReturnType<SharedTestBuildStore['read']>>;
 type Asset={hash:string;bytes:Uint8Array;type:string};
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-const edgeRevision='version-owned-by-edge-v1';
+const edgeRevision='lease-auth-seam-v2';
 const encoder=new TextEncoder();
 
 function base64(bytes:Uint8Array):string {

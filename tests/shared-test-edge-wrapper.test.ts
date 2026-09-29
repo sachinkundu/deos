@@ -65,8 +65,25 @@ test('edge rejects a forged gate header without the session',async()=>{
 
 test('edge module selection is fixed',()=>{
   assert.match(sharedTestEdgeWrapper('bettaview'),
-    /import candidate from "\.\/app\/index\.js"/);
+    /import \{createBettaViewHandler\} from "\.\/app\/index\.js"/);
   assert.match(sharedTestEdgeWrapper('bettaview'),
     /export \{GitHubSession\} from '\.\/app\/index\.js'/);
   assert.throws(()=>sharedTestEdgeWrapper('staging'),/service_invalid/);
+});
+
+test('lease gate authorizes an older BettaView candidate through its auth seam',async()=>{
+  const source=sharedTestEdgeWrapper('bettaview')
+    .replace(/^import \{createBettaViewHandler\} from .*;\n/,
+      `const createBettaViewHandler=authenticate=>({fetch:async request=>
+        Response.json({identity:await authenticate(),gate:request.headers.get('X-Deos-Test-Gate')})});\n`)
+    .replace("export {GitHubSession} from './app/index.js';",'');
+  const worker=(await import(`data:text/javascript,${encodeURIComponent(source)}`)).default;
+  const origin='https://bettaview-test.apps.deos-test.voxdez.com';
+  const env={TEST_CANONICAL_HOST:new URL(origin).hostname,
+    TEST_APP_GATE:{authorize:async()=>true}};
+  assert.equal((await worker.fetch(new Request(origin+'/'),env)).status,401);
+  const response=await worker.fetch(new Request(origin+'/',{headers:{
+    'CF-Access-Jwt-Assertion':'access','Cookie':'__Host-deos_test=fresh'}}),env);
+  assert.deepEqual(await response.json(),{identity:{email:'reviewer@deos-test.invalid'},
+    gate:'verified'});
 });
