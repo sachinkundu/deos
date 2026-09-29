@@ -33,6 +33,9 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
     const rejected=intent.outcome==='active' && intent.github_status==='failed_retryable' &&
       intent.linear_status==='not_started' && intent.linear_operation_id===null &&
       attempts.some(a=>a.review_id===intent.review_id && a.step==='github' && a.outcome==='clearly_rejected');
+    const unstarted=intent.outcome==='active' && intent.github_status==='not_started' &&
+      intent.linear_status==='not_started' && intent.linear_operation_id===null && intent.terminal_at===null &&
+      !attempts.some(a=>a.review_id===intent.review_id);
     const abandoned=intent.outcome==='abandoned_before_linear' &&
       ['done','abandoned'].includes(String(intent.github_status)) && intent.linear_status==='not_started' &&
       intent.linear_operation_id===null && typeof intent.terminal_at==='string';
@@ -40,15 +43,22 @@ export async function settledReviewEffects(input:{env:Env;runId:string;leaseId:s
       intent.linear_status==='host_check_required' && typeof intent.terminal_at==='string' &&
       typeof intent.linear_operation_id==='string' &&
       attempts.some(a=>a.review_id===intent.review_id && a.step==='linear' && a.outcome==='succeeded');
-    if((!continued&&!rejected&&!abandoned&&!held) || own.length===0 ||
+    if((!continued&&!rejected&&!unstarted&&!abandoned&&!held) || own.length===0 ||
         ((continued||held)&&!own.some(p=>p.kind==='review_bundle'&&['done','published_prior_intent'].includes(String(p.receipt_status)))) || own.some(p=>
-        !['done','published_prior_intent',...(rejected?['failed_retryable','pending']:[]),
+        !['done','published_prior_intent',...(rejected?['failed_retryable','pending']:[]),...(unstarted?['pending']:[]),
           ...(abandoned?['abandoned','pending','failed_retryable']:[])].includes(String(p.receipt_status))) ||
+        (unstarted&&own.some(p=>!['pending','published_prior_intent'].includes(String(p.receipt_status)))) ||
         ((rejected||abandoned)&&attempts.some(a=>a.review_id===intent.review_id&&a.step!=='github')))
       throw new Error('test_review_settlement_outcome_unsettled');
     for(const part of own) {
       const partAttempts=attempts.filter(a=>a.review_id===part.review_id&&a.step==='github'&&a.scope_id===part.part_id);
       const last=partAttempts.at(-1);
+      if(unstarted&&part.receipt_status==='published_prior_intent'&&!parts.some(source=>
+          source.review_id===intent.supersedes_review_id&&source.part_id===part.part_id&&
+          source.receipt_status==='done'&&source.github_record_id===part.github_record_id&&
+          source.github_user_id===part.github_user_id&&source.github_url===part.github_url&&
+          byId.get(source.review_id)?.outcome==='abandoned_before_linear'))
+        throw new Error('test_review_settlement_prior_receipt_missing');
       if((part.receipt_status==='failed_retryable'&&last?.outcome!=='clearly_rejected') ||
           (part.receipt_status==='pending'&&partAttempts.length>0))
         throw new Error('test_review_settlement_part_unsettled');

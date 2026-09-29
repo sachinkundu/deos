@@ -136,7 +136,7 @@ export class SharedTestBrowser {
 
   async command(scope:TestBrowserScope,input:TestBrowserOperation):Promise<{
     url:string;title?:string;content?:string;documentStatus?:number}> {
-    if(!['navigate','state','click','fill','press','wait','viewport','api','select'].includes(input.operation))
+    if(!['navigate','state','click','fill','press','wait','viewport','api','select','audit'].includes(input.operation))
       throw new Error('test_browser_operation_invalid');
     if(!await this.verifyCandidate(scope))
       throw new Error('test_browser_candidate_not_running');

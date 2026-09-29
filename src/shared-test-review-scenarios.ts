@@ -105,15 +105,23 @@ export class SharedTestReviewScenarios {
       return Response.json({error:'test_review_fixture_denied'},{status:403});
     if(!value || typeof value!=='object' || Array.isArray(value))throw new Error('test_review_fixture_input_invalid');
     const input=value as Record<string,unknown>;
-    if(input.version!==1 || Object.keys(input).some(k=>!['version','operation','scenario','path','kind','step'].includes(k)))
+    if(input.version!==1 || Object.keys(input).some(k=>!['version','operation','scenario','path','kind','step','reconciliationRead'].includes(k)))
       return Response.json({error:'test_review_fixture_input_invalid',
-        allowedFields:['version','operation','scenario','path','kind','step'],
+        allowedFields:['version','operation','scenario','path','kind','step','reconciliationRead'],
         example:{version:1,operation:'inject',scenario:'s01',kind:'account_identity_mismatch'}},{status:400});
     const binding={runId:claims.runId,attemptId:claims.attemptId,leaseId:claims.leaseId,fence:claims.fence};
+    if(input.reconciliationRead!==undefined && (input.operation!=='inject' ||
+        input.kind!=='github_drop_reply_response' || input.reconciliationRead!=='rate_limited'))
+      return Response.json({error:'test_review_reconciliation_read_invalid'},{status:400});
     await this.live(binding);
     if(input.operation==='bootstrap')return Response.json(await this.control(binding,'bootstrap'));
-    if(input.operation==='prepare' && typeof input.scenario==='string')
+    if(input.operation==='prepare' && typeof input.scenario==='string') {
+      const prior=await this.env.DB.prepare('SELECT state FROM test_review_scenarios WHERE lease_id=? AND scenario_id=?')
+        .bind(binding.leaseId,input.scenario).first<{state:string}>();
+      if(prior?.state==='retired')return Response.json({error:'test_review_scenario_already_retired',
+        recovery:'Preserve the earlier evidence. Prepare a new scenario ID with a unique suffix, such as s11-final.'},{status:409});
       return Response.json(await this.prepare(binding,input.scenario));
+    }
     if(['seed_thread','advance_head','move_without_review'].includes(String(input.operation))) {
       if(typeof input.scenario!=='string' || !await this.env.DB.prepare(`SELECT 1 FROM test_review_scenarios
         WHERE lease_id=? AND scenario_id=? AND state='ready'`).bind(binding.leaseId,input.scenario).first())
@@ -135,6 +143,10 @@ export class SharedTestReviewScenarios {
       if(input.operation==='shorten_delivery_deadline')
         return Response.json(await this.control(binding,'shorten_delivery_deadline',{scenario:input.scenario}));
       if(input.operation==='clear_injections') {
+        await this.env.DB.prepare(`UPDATE test_review_reply_read_faults SET state='cleared',used_at=?
+          WHERE state='armed' AND injection_id IN (SELECT injection_id FROM test_review_fault_injections
+            WHERE lease_id=? AND scenario_id=?)`)
+          .bind(new Date().toISOString(),binding.leaseId,input.scenario).run();
         await this.env.DB.prepare(`UPDATE test_review_fault_injections SET state='cleared',used_at=?
           WHERE lease_id=? AND scenario_id=? AND state='armed'`)
           .bind(new Date().toISOString(),binding.leaseId,input.scenario).run();
@@ -142,17 +154,22 @@ export class SharedTestReviewScenarios {
       }
       if(!sharedReviewFaultKinds.includes(input.kind as SharedReviewFaultKind))throw new Error('test_review_injection_invalid');
       const injectionId=crypto.randomUUID();
-      await this.env.DB.prepare(`INSERT INTO test_review_fault_injections
+      const writes=[this.env.DB.prepare(`INSERT INTO test_review_fault_injections
         (injection_id,lease_id,scenario_id,kind,state,armed_at) VALUES (?,?,?,?,'armed',?)`)
-        .bind(injectionId,binding.leaseId,input.scenario,input.kind,new Date().toISOString()).run();
-      return Response.json({injectionId,synthetic:true,kind:input.kind});
+        .bind(injectionId,binding.leaseId,input.scenario,input.kind,new Date().toISOString())];
+      if(input.reconciliationRead==='rate_limited')writes.push(this.env.DB.prepare(`INSERT INTO test_review_reply_read_faults
+        (injection_id,state) VALUES (?,'armed')`).bind(injectionId));
+      await this.env.DB.batch(writes);
+      return Response.json({injectionId,synthetic:true,kind:input.kind,reconciliationRead:input.reconciliationRead});
     }
     if(input.operation==='evidence' && typeof input.scenario==='string') {
       await this.forward(binding);
       return Response.json({runtime:await this.control(binding,'evidence',{scenario:input.scenario}),
         provider:await this.provider(binding,{operation:'events'}),
         proof:await this.proofStatus(binding),
-        labeledInjections:(await this.env.DB.prepare('SELECT * FROM test_review_fault_injections WHERE lease_id=? AND scenario_id=?')
+        labeledInjections:(await this.env.DB.prepare(`SELECT i.*,r.state AS receipt_read_state,r.request_id AS receipt_read_request_id,
+          r.used_at AS receipt_read_used_at FROM test_review_fault_injections i LEFT JOIN test_review_reply_read_faults r
+          ON r.injection_id=i.injection_id WHERE i.lease_id=? AND i.scenario_id=?`)
           .bind(binding.leaseId,input.scenario).all()).results});
     }
     if(input.operation==='github.read')return Response.json(await this.provider(binding,{operation:'github.read',path:input.path??''}));

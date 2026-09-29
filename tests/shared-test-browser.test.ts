@@ -80,7 +80,8 @@ test('owned browser starts after trusted launch and rejects a later fence',async
       prepare:async(_id:string,_origin:string,cookie:{httpOnly:boolean})=>{
         assert.equal(cookie.httpOnly,true);prepared=true;prepares++;
       },
-      command:async()=>({url:origin,title:'Test',content:'<html>ready</html>'}),
+      command:async(_id:string,_origin:string,operation:{operation:string})=>({url:origin,title:'Test',
+        content:operation.operation==='audit'?JSON.stringify({storage:{knownCredentialPresent:false}}):'<html>ready</html>'}),
       capture:async()=>({url:`${origin}/review`,image}),
       close:async(id:string)=>{sessions.splice(sessions.indexOf(id),1);},
     } as unknown as TestBrowserProvider;
@@ -92,6 +93,8 @@ test('owned browser starts after trusted launch and rejects a later fence',async
     assert.equal(creates,1);
     assert.deepEqual(await browser.command(scope,{operation:'state'}),{
       url:origin,title:'Test',content:'<html>ready</html>'});
+    assert.deepEqual(JSON.parse((await browser.command(scope,{operation:'audit'})).content!),
+      {storage:{knownCredentialPresent:false}});
     db.sqlite.prepare(`UPDATE test_browser_sessions SET prepared_until=?
       WHERE lease_id=?`).run(new Date(Date.now()+30_000).toISOString(),leaseId);
     await browser.command(scope,{operation:'state'});

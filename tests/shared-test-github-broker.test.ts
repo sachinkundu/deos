@@ -22,6 +22,7 @@ function database():{db:DatabaseSync;binding:D1Database} {
     import.meta.url),'utf8'));
   db.exec('CREATE TABLE test_review_fixture_events(delivery_id TEXT PRIMARY KEY); CREATE TABLE test_browser_sessions(lease_id TEXT);');
   db.exec(readFileSync(new URL('../migrations/0081_shared_test_review_scenarios.sql',import.meta.url),'utf8'));
+  db.exec(readFileSync(new URL('../migrations/0089_shared_test_reply_read_fault.sql',import.meta.url),'utf8'));
   const binding={
     prepare(sql:string) {return {bind(...args:unknown[]) {
       const statement=db.prepare(sql);
@@ -166,6 +167,8 @@ test('saved reviewer session stays on its disposable fixture and stores no token
     if(url==='https://api.github.com/repos/owner/test-fixtures/pulls/9')
       return Response.json({state:'open',head:{sha:fixture.head,ref:fixture.branch,
         repo:{full_name:profile.repository}}});
+    if(url==='https://api.github.com/repos/owner/test-fixtures/pulls/9/comments')return Response.json([]);
+    if(url==='https://api.github.com/repos/owner/test-fixtures/pulls/9/comments/1/replies')return Response.json({id:10},{status:201});
     if(url==='https://api.github.com/repos/owner/test-fixtures/pulls/9/reviews')
       return Response.json({id:4},{status:201});
     throw new Error(`unexpected:${url}`);
@@ -188,6 +191,20 @@ test('saved reviewer session stays on its disposable fixture and stores no token
   assert.equal(db.prepare("SELECT state FROM test_review_fault_injections WHERE injection_id='reject'").get()!.state,'consumed');
   await assert.rejects(broker.request({...request,
     target:'https://api.github.com/repos/owner/real-work/pulls/137/reviews'}),/repository_denied/);
+  db.prepare("INSERT INTO test_review_fault_injections VALUES ('lost',?,'s06','github_drop_reply_response','armed',NULL,'now',NULL)").run(leaseId);
+  db.prepare("INSERT INTO test_review_reply_read_faults (injection_id,state) VALUES ('lost','armed')").run();
+  const listing={...request,method:'GET',body:null,target:'https://api.github.com/repos/owner/test-fixtures/pulls/9/comments'};
+  assert.equal((await broker.request(listing)).status,200,'a normal pre-write read is unaffected');
+  await assert.rejects(broker.request({...request,target:'https://api.github.com/repos/owner/test-fixtures/pulls/9/comments/1/replies',
+    body:JSON.stringify({body:'A reply'})}),/real GitHub reply succeeded/);
+  assert.equal((await broker.request(listing)).status,429);
+  assert.equal((await broker.request(listing)).status,200,'the read fault is consumed once');
+  assert.equal(calls.filter(url=>url.endsWith('/comments/1/replies')).length,1);
+  assert.equal(db.prepare("SELECT provider_status FROM test_github_transport_requests WHERE path LIKE '%/replies'").get()!.provider_status,201);
+  assert.match(String(db.prepare("SELECT failure_json FROM test_github_transport_requests WHERE failure_json LIKE '%Injected GitHub 429%'").get()!.failure_json),/synthetic/);
+  db.prepare("UPDATE test_review_reply_read_faults SET state='armed'").run();
+  db.prepare("UPDATE test_review_scenarios SET state='retired'").run();
+  assert.equal((await broker.request(listing)).status,200,'a retired scenario cannot affect the next scenario');
   reviewerId=456;
   await assert.rejects(broker.request(request),/identity_changed/);
   assert.equal(calls.filter(url=>url===request.target).length,1);

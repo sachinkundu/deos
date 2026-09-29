@@ -1,6 +1,6 @@
 import {sha256Hex} from './implementation-hash.ts';
 
-export const sharedTestSetupRepairRevision='lease-review-runtime-v9';
+export const sharedTestSetupRepairRevision='lease-review-runtime-v10';
 
 /** A retry that never reached the demo can be requeued after proven cleanup.
  * Keep the original repair authorization and candidate bound to that lineage. */

@@ -3,7 +3,7 @@ import {assertSharedTestGitHubRequest,type SharedTestGitHubScope} from './shared
 import {describeSharedTestError} from './shared-test-failures.ts';
 import {sharedTestReviewFixture} from './shared-test-review-profile.ts';
 import {sharedTestReviewAssertion,sharedTestReviewKey} from './shared-test-review-signing.ts';
-import {takeSharedReviewFault} from './shared-test-review-faults.ts';
+import {takeSharedReviewFault,takeSharedReplyReadFault} from './shared-test-review-faults.ts';
 
 export const sharedTestGitHubCallback=
   'https://deos-queue-consumer-ts.skundu.workers.dev/shared-test/github/callback';
@@ -393,6 +393,15 @@ export class SharedTestGitHubBroker {
           await this.env.DB.prepare(`UPDATE test_github_transport_requests SET failure_json=?,finished_at=? WHERE request_id=?`)
             .bind(JSON.stringify({synthetic:true,injection,message:'Injected GitHub 422 before provider write'}),new Date().toISOString(),requestId).run();
           return {status:422,contentType:'application/json',body:JSON.stringify({message:'Labeled test injection: GitHub rejected this review.'})};
+        }
+      }
+      if(row.credential_source==='test_reviewer' && input.method==='GET' &&
+          path===`/repos/${row.repository}/pulls/${row.pullRequestNumber}/comments`) {
+        const injection=await takeSharedReplyReadFault(this.env.DB,row.lease_id,requestId);
+        if(injection) {
+          await this.env.DB.prepare(`UPDATE test_github_transport_requests SET failure_json=?,finished_at=? WHERE request_id=?`)
+            .bind(JSON.stringify({synthetic:true,injection,message:'Injected GitHub 429 during lost reply receipt read'}),new Date().toISOString(),requestId).run();
+          return {status:429,contentType:'application/json',body:JSON.stringify({message:'Labeled test injection: GitHub receipt listing is rate limited.'})};
         }
       }
       const response=await this.fetcher(input.target,{method:input.method,

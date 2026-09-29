@@ -8,7 +8,7 @@ export const sharedTestReviewGuide = {
   scope:'Use only the supplied checked reviewer. The different-Linear-user part of s01 remains blocked pending owner approval; do not select a different identity or report that part passed. Continue the other authorized checks. For s09, scope.readOnlyPull names a second disposable PR with no linked run. It is readable through the broker; review writes are denied.',
   operations:{
     bootstrap:'Read the checked Settings project and reviewer inputs.',
-    prepare:'Use a unique scenario from s01 through s12, optionally with a short suffix. Retain prior facts and allocate the real candidate workflow before opening a fresh browser context.',
+    prepare:'Use a unique scenario from s01 through s12, optionally with a short suffix. A retired ID cannot be reused; choose a fresh suffix such as s11-final. Finish all checks and readbacks before preparing the next scenario. Retain prior facts and allocate the real candidate workflow before opening a fresh browser context.',
     evidence:'Read actual candidate database facts, signed provider deliveries, labeled injections for the named scenario, and current lease proof publication status. A capture starts private and pending; check proof again before reporting its publication blocked. Only public_safe items with sanitizerResult passed and a publicUrl have been published.',
     'github.read':'Read the fixed fixture PR. Optional path is empty, /reviews, /comments, or /files.',
     'linear.read':'Read the fixed disposable Linear issue.',
@@ -24,13 +24,17 @@ export const sharedTestReviewGuide = {
     reload:'For the draft persistence check, navigate to the current PR URL with beforeUnload:"accept". This explicitly confirms the native leave-drafts prompt. Then inspect the reloaded drafts before publishing. A navigation timeout is not provider session absence: read state and use a fresh scenario context; do not abandon later scenarios solely because a navigation failed.',
     wait:'Wait requires a visible CSS selector, for example {version:1,service:"bettaview",operation:"wait",selector:"button"}. It does not accept milliseconds or a duration.',
     reset:'Reset the browser context, navigate, and sign in again for each scenario. Keep viewport 1440 by 900. If the provider session has ended, reset permits one replacement per service and attempt after two absence reads and a saved lifecycle receipt. Navigate and inspect the new session; never blindly repeat a publish or review action. If the replacement also ends, retain the error and stop browser work.',
-    select:'Select the rendered paragraph using selector to open the real inline comment composer.',
+    select:'Select the first rendered paragraph (A test note goes here.) using selector to open the real inline comment composer. Head-advance fixtures change a separate paragraph, so replacement-review checks keep the selected passage unchanged.',
     api:'Use the current browser session for negative cases and exact replay. Supply url, method GET or POST, and JSON-encoded body for POST. Allowed paths are /api/pr, /api/review-continuations, /api/review-continuations/publish, /api/review-continuations/action, and /api/settings/bettaview-account. Required visible actions still use the UI.',
+    busy:'Await every browser operation before starting another, including wait. After test_browser_busy, finish the outstanding operation then retry state or capture. Never repeat publication while its outcome is unknown.',
   },
   examples:{
     providerActor:'The real Linear app may identify its delivery actor type as user. Identify it by the checked stable app actor ID and the signature-verified ingress receipt; do not claim a literal bot actor type that the provider did not send.',
     mismatch:{version:1,operation:'inject',scenario:'s01-after',kind:'account_identity_mismatch'},
     injectionScope:'Use the exact scenario ID most recently returned by prepare, including its suffix, when arming a fault. Read the response before attempting the app action. A rejected injection request is not evidence that the app rejected a mismatched identity.',
     frozenAccount:'Connect the account first, then prepare s01-freeze to allocate a new run with policy version 1. A run prepared before connection correctly keeps its original null account. After rotation, read evidence for s01-freeze to check that its frozen version stays 1.',
+    idempotentResend:'Complete the s03 exact replay before preparing another scenario. Use browser api to resend the identical review ID and payload, then compare provider record IDs, review attempts, and task transitions. A UI success alone does not prove resend safety.',
+    rejectedReview:'For s06 a clearly rejected GitHub part offers Abandon before Linear, not Retry remaining step. Abandon, then Replace review and use a fresh review ID with COMMENT at the same gate. The original review type is immutable. Prove the rejected intent never moved Linear and the corrected replacement publishes once.',
+    unclearReply:'For s07 phase B, inject github_drop_reply_response with reconciliationRead:"rate_limited". The real reply is sent once; its response is dropped and exactly the next receipt-list read gets a labeled 429. Capture host_check_required before moving on. Use github.read /comments for real provider readback; it bypasses the injected app transport. Never retry publication to discover the outcome.',
   },
 } as const;

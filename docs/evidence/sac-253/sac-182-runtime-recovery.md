@@ -728,3 +728,45 @@ workflow termination. Type checking and strict OpenSpec validation pass. The
 full local suite recorded 871 passes, three optional skips, and one timeout in
 the existing progress test; all five tests in that file then passed on their own.
 Remote cleanup with this change is still pending.
+
+
+## September 29: complete run record and remaining checks
+
+Attempt `a71e7244-23b1-4fae-8cac-f5de76fee795` ended blocked at
+19:52:50 UTC. Its runner was destroyed and all six artifacts were accepted.
+The saved report marks s04, s05, s09, and s12 demonstrated. The other eight
+have gaps; the report is retained unchanged. Result SHA-256:
+`d3d0c85a5c1e8a3891927af0159f61223eecedb5a4c9e33bab788d0c34f90e88`.
+Validation SHA-256:
+`19f755f8287c89fac1765c5d7eb66490301a4c1c1fee6bcae9c33e6121d2ad6a`.
+Showboat SHA-256:
+`2ab2f656b163a7db30dd0a06087a5c24d7d9a77079f2661272964a819499ed47`.
+Transcript SHA-256:
+`f93d82c410e9ffa2ccbceeba185e2311a4b0de306184934313dbad0d0b674d89`.
+
+Follow-up diagnosis found three test-control causes. The browser command gate
+omitted the supported audit operation. Reusing a retired scenario ID threw a
+Worker error instead of returning a clear conflict and recovery step. The
+head-change fixture edited the paragraph selected for the replacement inline
+note. The app correctly refused that now-missing passage; the original report
+called this an app defect before that cause was known. The fixture now changes
+a separate paragraph, and the guide uses the stable passage.
+
+The guide requires the exact s03 replay before moving on, explains the
+Abandon then Replace recovery for s06, and says to await each browser command
+before capturing the s08 final state. s07 can now pair a real lost reply
+response with one labeled 429 on its next receipt-list read. The fault affects
+only that active scenario, after a successful real reply write. No credential,
+permission, or provider setting changes are involved. The different-user part
+of s01 remains pending the owner's decision.
+
+An unstarted replacement can now be retained during failed-demo cleanup. It
+must have no provider attempt or task operation. Pending work stays pending;
+a copied receipt must match its abandoned source intent and a live GitHub
+read. These records are saved unchanged, and cannot yield a passed attestation.
+
+The controller suite passed 882 tests with three optional skips. The focused
+controller, browser, broker, and cleanup group passed all 52 tests. The app fix
+records host-check-required when both a reply response and receipt read fail,
+retaining both original errors and stacks. Its 126 app tests and 20 review
+service tests passed, with one optional app test skipped.

@@ -257,7 +257,7 @@ export class ImplementationProviderTest {
         const parent=await app.json<{tree:{sha:string}}>(`/git/commits/${fixture.head}`);
         const tree=await app.json<{sha:string}>('/git/trees',jsonInit({base_tree:parent.tree.sha,
           tree:[{path:fixture.reviewPath??'canary-review.txt',mode:'100644',type:'blob',
-            content:`# Review canary\nA test note goes here.\nFixture head change ${fixture.heads.length}.\n`}]}));
+            content:`# Review canary\nA test note goes here.\n\nFixture head change ${fixture.heads.length}.\n`}]}));
         const next=await app.json<{sha:string}>('/git/commits',jsonInit({message:'Advance disposable review scenario',tree:tree.sha,parents:[fixture.head]}));
         fixture.heads.push(next.sha);await this.save(resource,fixture,true);
         await this.assertScope?.();

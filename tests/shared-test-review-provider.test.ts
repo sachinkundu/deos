@@ -22,6 +22,7 @@ test('review service transport only moves its live test issue and preserves fail
   db.exec(readFileSync(new URL('../migrations/0076_shared_test_review_transport.sql',import.meta.url),'utf8'));
   db.exec('CREATE TABLE test_review_fixture_events(delivery_id TEXT PRIMARY KEY); CREATE TABLE test_browser_sessions(lease_id TEXT);');
   db.exec(readFileSync(new URL('../migrations/0081_shared_test_review_scenarios.sql',import.meta.url),'utf8'));
+  db.exec(readFileSync(new URL('../migrations/0089_shared_test_reply_read_fault.sql',import.meta.url),'utf8'));
   const leaseId='b'.repeat(64);
   const props={leaseId,runId:'run',attemptId:'attempt',fence:3};
   const profile={repository:'owner/fixtures',projectId:'project',teamId:'team',githubUserId:123,
@@ -83,6 +84,12 @@ test('review service transport only moves its live test issue and preserves fail
     {proofId:'pending',kind:'app_screen',classification:'private',sanitizerResult:'pending',publicUrl:null},
     {proofId:'published',kind:'app_screen',classification:'public_safe',sanitizerResult:'passed',publicUrl:'https://proof.invalid/checked'},
   ]);
+  db.prepare("UPDATE test_review_scenarios SET state='retired'").run();
+  const response=await scenarios.handle({...props,actions:['test_review_fixture']} as never,
+    {version:1,operation:'prepare',scenario:'s08'});
+  assert.equal(response.status,409);
+  assert.match(JSON.stringify(await response.json()),/unique suffix/);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM test_review_scenarios').get()!.n,1);
   db.prepare('UPDATE test_environment SET fence=4').run();
   await assert.rejects(transport.fetch(request()),/provider_fenced/);
   await assert.rejects(scenarios.proofStatus(props),/scenario_fenced/);

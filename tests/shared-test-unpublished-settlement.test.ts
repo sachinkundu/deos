@@ -348,3 +348,35 @@ test('abandoned review cleanup retains the abandoned record and rejects any star
     await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/outcome_unsettled/);
   } finally {f.db.close();}
 });
+
+
+for(const invalid of [null,'attempt','linear','foreign-prior'] as const)
+test(`unstarted replacement preserves its checked prior receipt and pending work: ${invalid??'valid'}`,async()=>{
+  const f=await publishedFixture();
+  try {
+    const original=f.state.reviewRows[0],part=f.state.parts[0];
+    f.state.decisions=0;f.state.gates=[];f.state.attempts=f.state.attempts.slice(0,1);
+    Object.assign(original,{outcome:'abandoned_before_linear',github_status:'abandoned',linear_status:'not_started',linear_operation_id:null});
+    const nextId='22222222-2222-4222-8222-222222222222';
+    f.state.intents=2;
+    f.state.reviewRows.push({...original,review_id:nextId,supersedes_review_id:original.review_id,
+      outcome:'active',github_status:'not_started',terminal_at:null});
+    f.state.parts.push({...part,review_id:nextId,receipt_status:'published_prior_intent'},
+      {...part,review_id:nextId,part_id:'pending-note',kind:'reply',receipt_status:'pending',github_record_id:null,github_url:null,github_user_id:null});
+    if(invalid==='attempt')f.state.attempts.push({...f.state.attempts[0],review_id:nextId});
+    if(invalid==='linear')f.state.reviewRows[1].linear_operation_id='started';
+    if(invalid==='foreign-prior')f.state.reviewRows[1].supersedes_review_id='33333333-3333-4333-8333-333333333333';
+    if(invalid){
+      await assert.rejects(settleUnpublishedReview(f.env,'run-1',f.lease,f.provider),/settlement_/);
+      assert.equal(f.state.patches,0);
+    }else{
+      const saved=await settleUnpublishedReview(f.env,'run-1',f.lease,f.provider);
+      const evidence=JSON.parse(await (await f.bucket.get(saved!.evidence_key))!.text());
+      assert.equal(evidence.settledFacts.reviews.intents[1].outcome,'active');
+      assert.equal(evidence.settledFacts.reviews.parts.at(-1).receipt_status,'pending');
+      assert.equal(evidence.settledFacts.reviews.receipts.length,2);
+      assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM test_attestations').get()!.n,0);
+    }
+    assert.equal(f.state.githubWrites,0);
+  }finally{f.db.close();}
+});
