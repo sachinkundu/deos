@@ -22,6 +22,38 @@ def index(rows, key):
     return result
 
 
+def verify_content_cases(facts):
+    """Check the content and replacement subcases visible in saved D1 rows."""
+    intents = index(facts["intents"], "review_id")
+
+    def completed(case):
+        return [i for i in intents.values() if i["scenario_id"].split("-")[0] == case
+                and i["outcome"] == "continued"]
+
+    require(any(i["review_type"] == "REQUEST_CHANGES" and i["inline_notes"] >= 1
+                and i["replies"] >= 1 and i["summaries"] >= 1 for i in completed("s03")),
+            "s03 missing inline note, reply, or summary")
+    require(any(i["review_type"] == "APPROVE" and i["inline_notes"] >= 2
+                for i in completed("s04")), "s04 missing approval with two inline notes")
+    require(any(i["review_type"] == "APPROVE" and i["inline_notes"] == 0
+                and i["replies"] == 0 for i in completed("s05")),
+            "s05 missing approval without inline notes or replies")
+    replacements = []
+    for review in completed("s06"):
+        prior = intents.get(review["supersedes_review_id"])
+        if review["review_type"] != "COMMENT" or not prior:
+            continue
+        attempts = [a for a in facts["attempts"] if a["review_id"] == prior["review_id"]]
+        if (prior["scenario_id"] == review["scenario_id"] and
+                prior["outcome"] == "abandoned_before_linear" and prior["transitions"] == 0 and
+                prior["linear_status"] == "not_started" and
+                any(a["step"] == "github" and a["outcome"] == "clearly_rejected"
+                    for a in attempts) and all(a["step"] != "linear" for a in attempts)):
+            replacements.append(review["review_id"])
+    require(replacements, "s06 missing rejected review replaced by a Comment before Linear")
+    return ["s03 content", "s04 noted approval", "s05 empty notes", "s06 Comment replacement"]
+
+
 def verify(data, candidate, github_user, linear_actor):
     require(data["version"] == 1, "unsupported evidence version")
     require(data["candidateCommit"] == candidate, "candidate mismatch")
@@ -37,6 +69,12 @@ def verify(data, candidate, github_user, linear_actor):
     required = {f"s{i:02d}" for i in range(3, 13)}
     require(required <= {i["scenario_id"].split("-")[0] for i in continued},
             "missing completed publication scenario")
+    fact_intents = index(facts["intents"], "review_id")
+    require(fact_intents.keys() == intents.keys(), "intent inventory mismatch")
+    require(all(all(fact_intents[key][field] == row[field] for field in
+                    ("scenario_id", "review_type", "supersedes_review_id", "outcome"))
+                for key, row in intents.items()), "intent summary mismatch")
+    content_cases = verify_content_cases(facts)
 
     for transition in chain["transitions"]:
         review = intents[transition["review_id"]]
@@ -104,7 +142,8 @@ def verify(data, candidate, github_user, linear_actor):
             "joinedProviderDeliveries": len(chain["transitions"]),
             "acceptedParts": len(accepted), "uniqueProviderReceipts": len(set(accepted)),
             "unfinishedAttempts": 0, "duplicateReviewOrReplyMarkers": 0,
-            "limit": "Saved receipt consistency only. Does not prove screenshots, distinct users, cleanup, or a completed demo."}
+            "savedContentCaseChecks": content_cases,
+            "limit": "Saved receipt consistency and listed content checks only. Does not prove all subcases, screenshots, distinct users, cleanup, or a completed demo."}
 
 
 if __name__ == "__main__":

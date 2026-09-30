@@ -8,6 +8,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY = runpy.run_path(str(ROOT / "scripts/verify_shared_test_review_evidence.py"))["verify"]
+VERIFY_CONTENT = runpy.run_path(str(ROOT / "scripts/verify_shared_test_review_evidence.py"))["verify_content_cases"]
 CANDIDATE = "b2596f7e211f20a289e362971e489857f99cd0ea"
 ACTOR = "f010429f-7734-4f3f-9b4b-13a4abb9b4ab"
 
@@ -61,3 +62,28 @@ def test_changed_receipt_is_rejected(evidence, fault, message):
         evidence["facts"]["attempts"][0]["outcome"] = None
     with pytest.raises(ValueError, match=message):
         VERIFY(evidence, CANDIDATE, 233623, ACTOR)
+
+
+@pytest.mark.parametrize("case, field, value, message", [
+    ("s03", "inline_notes", 0, "s03 missing inline note"),
+    ("s04", "inline_notes", 0, "s04 missing approval with two inline notes"),
+    ("s05", "replies", 1, "s05 missing approval without inline notes or replies"),
+    ("s06", "review_type", "APPROVE", "s06 missing rejected review replaced by a Comment"),
+    ("s06", "supersedes_review_id", None, "s06 missing rejected review replaced by a Comment"),
+])
+def test_continuation_does_not_prove_missing_content(evidence, case, field, value, message):
+    for row in evidence["facts"]["intents"]:
+        if row["scenario_id"].split("-")[0] == case and row["outcome"] == "continued":
+            row[field] = value
+    with pytest.raises(ValueError, match=message):
+        VERIFY_CONTENT(evidence["facts"])
+
+
+def test_rejected_review_must_not_start_linear(evidence):
+    original = next(row for row in evidence["facts"]["intents"]
+                    if row["scenario_id"].startswith("s06") and
+                    row["outcome"] == "abandoned_before_linear")
+    evidence["facts"]["attempts"].append({
+        "review_id": original["review_id"], "step": "linear", "outcome": "clearly_rejected"})
+    with pytest.raises(ValueError, match="s06 missing rejected review replaced by a Comment"):
+        VERIFY_CONTENT(evidence["facts"])

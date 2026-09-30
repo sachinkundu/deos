@@ -41,7 +41,11 @@ marker was duplicated. None of the 34 step attempts was unfinished. The five
 non-continued intents caused no checked gate transition.
 
 The checked-in auditor repeats these joins from the saved facts. It also checks
-the provider actor, commit, part marker, event order, and selected workflow edge:
+the provider actor, commit, part marker, event order, and selected workflow edge.
+Its content checks require the notes, reply, and summary in s03; two inline notes
+in s04; no inline notes or replies in s05; and a Comment that replaces the rejected
+s06 review before that review starts Linear. A repeated approval does not satisfy
+the Comment recovery case:
 
 ```sh
 rtk proxy python3 scripts/verify_shared_test_review_evidence.py \
@@ -50,10 +54,12 @@ rtk proxy python3 scripts/verify_shared_test_review_evidence.py \
   --github-user 233623 --linear-actor f010429f-7734-4f3f-9b4b-13a4abb9b4ab
 ```
 
-This checks saved receipt consistency. It makes no new live request and does not
-prove screenshots, distinct users, cleanup, or a completed demo. The tests reject
+This checks saved receipt consistency and those content rows. It makes no new
+live request and does not prove all subcases, screenshots, distinct users,
+cleanup, or a completed demo. The tests reject
 changed actors, heads, markers, payloads, duplicate or missing transitions, and
-unfinished step attempts.
+unfinished step attempts. They also reject missing content and an invalid s06
+replacement.
 
 | Case | Evidence and limit |
 | --- | --- |
